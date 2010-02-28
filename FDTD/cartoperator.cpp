@@ -431,7 +431,7 @@ unsigned int CartOperator::GetVoltageExcitation(unsigned int* &index, FDTD_FLOAT
 				if (prop)
 				{
 					CSPropElectrode* elec = prop->ToElectrode();
-					if (elec->GetType()==0)
+					if (elec->GetExcitType()==0)
 					{
 						vIndex.push_back(ipos);
 						for (int n=0;n<3;++n)
@@ -444,5 +444,5 @@ unsigned int CartOperator::GetVoltageExcitation(unsigned int* &index, FDTD_FLOAT
 			}
 		}
 	}
-	cerr << "size:" << vIndex.size() << endl;
+	cerr << "size: " << vIndex.size() << endl;
 }
