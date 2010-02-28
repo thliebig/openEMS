@@ -1,0 +1,9 @@
+release/
+debug/
+doc/
+obj/
+Makefile*
+*~
+*.so*
+*.pro.user
+openEMS
