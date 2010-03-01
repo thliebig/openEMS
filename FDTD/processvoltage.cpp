@@ -38,5 +38,5 @@ void ProcessVoltage::Process()
 	}
 //	cerr << voltage << endl;
 	voltages.push_back(voltage);
-	file << Eng->numTS << "\t" << voltage << endl;
+	file << (double)Eng->numTS*Op->GetTimestep() << "\t" << voltage << endl;
 }

@@ -12,6 +12,7 @@
 using namespace std;
 
 void BuildMSL(ContinuousStructure &CSX);
+void BuildDipol(ContinuousStructure &CSX);
 
 int main(int argc, char *argv[])
 {
@@ -19,8 +20,7 @@ int main(int argc, char *argv[])
 
 	//*************** setup/read geometry ************//
 	ContinuousStructure CSX;
-//	CSX.ReadFromXML("csx-files/MSL.xml");
-	BuildMSL(CSX);
+	BuildDipol(CSX);
 
 	//*************** setup operator ************//
 	CartOperator cop;
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 //	cop.DumpOperator2File("tmp/Operator");
 
 	cerr << "Nyquist number of timesteps: " << cop.GetNyquistNum(fmax) << endl;
-	unsigned int NrIter = cop.GetNyquistNum(fmax);
+	unsigned int NrIter = cop.GetNyquistNum(fmax)/3;
 
 	cerr << "Time for operator: " << difftime(OpDoneTime,startTime) << endl;
 
@@ -50,11 +50,13 @@ int main(int argc, char *argv[])
 	//*************** setup processing ************//
 	ProcessVoltage PV(&cop,&eng);
 	PV.OpenFile("tmp/u1");
-	double start[]={0,0,0};
-	double stop[]={0,50,0};
+	double start[]={-500,-150,0};
+	double stop[]={-500,150,0};
 	PV.DefineStartStopCoord(start,stop);
 	unsigned int maxIter = 5000;
 
+	PV.Process();
+//	NrIter=200;
 	//*************** simulate ************//
 	for (unsigned int i=0;i<maxIter;i+=NrIter)
 	{
@@ -71,6 +73,44 @@ int main(int argc, char *argv[])
 	cerr << "Time for " << eng.GetNumberOfTimesteps() << " iterations with " << cop.GetNumberCells() << " cells : " << t_diff << " sec" << endl;
 	cerr << "Speed (MCells/s): " << (double)cop.GetNumberCells()*(double)eng.GetNumberOfTimesteps()/t_diff/1e6 << endl;
     return 0;
+}
+
+void BuildDipol(ContinuousStructure &CSX)
+{
+	CSPropMaterial* mat = new CSPropMaterial(CSX.GetParameterSet());
+	mat->SetKappa(0.001);
+	CSX.AddProperty(mat);
+
+	CSPrimBox* matbox = new CSPrimBox(CSX.GetParameterSet(),mat);
+	matbox->SetCoord(0,-1000.0);matbox->SetCoord(1,1000.0);
+	matbox->SetCoord(2,-1000.0);matbox->SetCoord(3,1000.0);
+	matbox->SetCoord(4,-1000.0);matbox->SetCoord(5,1000.0);
+	CSX.AddPrimitive(matbox);
+
+	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
+	elec->SetExcitation(1,1);
+	elec->SetExcitType(0);
+//	elec->SetDelay(2.0e-9);
+	CSX.AddProperty(elec);
+
+	CSPrimBox* box = new CSPrimBox(CSX.GetParameterSet(),elec);
+	box->SetCoord(0,-1.0);box->SetCoord(1,1.0);
+	box->SetCoord(2,-75.0);box->SetCoord(3,75.0);
+	box->SetCoord(4,-1.0);box->SetCoord(5,1.0);
+	CSX.AddPrimitive(box);
+
+	CSRectGrid* grid = CSX.GetGrid();
+
+	for (int n=-1000;n<=1000;n+=20)
+		grid->AddDiscLine(2,(double)n);
+	for (int n=-1000;n<=1000;n+=20)
+		grid->AddDiscLine(0,(double)n);
+	for (int n=-1000;n<=1000;n+=20)
+		grid->AddDiscLine(1,(double)n);
+
+	grid->SetDeltaUnit(1e-3);
+
+	CSX.Write2XML("tmp/Dipol.xml");
 }
 
 void BuildMSL(ContinuousStructure &CSX)
@@ -109,14 +149,14 @@ void BuildMSL(ContinuousStructure &CSX)
 
 	CSRectGrid* grid = CSX.GetGrid();
 
-	for (int n=-100;n<=100;n+=10)
-		grid->AddDiscLine(2,(double)n);
-	for (int n=-100;n<=100;n+=10)
+	for (int n=-300;n<=300;n+=20)
 		grid->AddDiscLine(0,(double)n);
-	for (int n=0;n<=100;n+=10)
+	for (int n=0;n<=300;n+=20)
 		grid->AddDiscLine(1,(double)n);
+	for (int n=-1000;n<=1000;n+=20)
+		grid->AddDiscLine(2,(double)n);
 
 	grid->SetDeltaUnit(1e-3);
 
-	CSX.Write2XML("csx-files/MSL.xml");
+	CSX.Write2XML("tmp/MSL.xml");
 }
