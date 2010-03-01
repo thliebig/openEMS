@@ -1,15 +1,14 @@
 #include "cartoperator.h"
+#include "tools/array_ops.h"
 
 CartOperator::CartOperator()
 {
     Init();
-	Operator::Init();
 }
 
 CartOperator::~CartOperator()
 {
 	Reset();
-	Operator::Reset();
 }
 
 void CartOperator::Init()
@@ -24,7 +23,6 @@ void CartOperator::Init()
 		EC_L[n]=NULL;
 		EC_R[n]=NULL;
 	}
-
 	Operator::Init();
 }
 
@@ -39,6 +37,7 @@ void CartOperator::Reset()
 		delete[] EC_L[n];
 		delete[] EC_R[n];
 	}
+	Operator::Reset();
 	Init();
 }
 
@@ -71,25 +70,34 @@ int CartOperator::CalcECOperator()
 
 	CalcTimestep();
 
+	Delete_N_3DArray(vv,numLines);
+	Delete_N_3DArray(vi,numLines);
+	Delete_N_3DArray(iv,numLines);
+	Delete_N_3DArray(ii,numLines);
+	vv = Create_N_3DArray(numLines);
+	vi = Create_N_3DArray(numLines);
+	iv = Create_N_3DArray(numLines);
+	ii = Create_N_3DArray(numLines);
+
+	unsigned int i=0;
+	unsigned int pos[3];
+
 	for (int n=0;n<3;++n)
 	{
-		delete[] vv[n];
-		vv[n] = new FDTD_FLOAT[MainOp->GetSize()];
-		delete[] vi[n];
-		vi[n] = new FDTD_FLOAT[MainOp->GetSize()];
-		delete[] iv[n];
-		iv[n] = new FDTD_FLOAT[MainOp->GetSize()];
-		delete[] ii[n];
-		ii[n] = new FDTD_FLOAT[MainOp->GetSize()];
-
-		for (unsigned int i=0;i<MainOp->GetSize();++i)
+		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
-			vv[n][i] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-			vi[n][i] = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			{
+				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+				{
+					i = MainOp->SetPos(pos[0],pos[1],pos[2]);
+					vv[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+					vi[n][pos[0]][pos[1]][pos[2]] = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
 
-			ii[n][i] = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
-			iv[n][i] = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
-//			cerr << iv[n][i] << endl;
+					ii[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+					iv[n][pos[0]][pos[1]][pos[2]] = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+				}
+			}
 		}
 	}
 
@@ -125,14 +133,11 @@ void CartOperator::ApplyElectricBC(bool* dirs)
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
 				pos[n]=0;
-				ipos=MainOp->SetPos(pos[0],pos[1],pos[2]);
-				vv[n][ipos] *= (FDTD_FLOAT)!dirs[2*n];
-				vi[n][ipos] *= (FDTD_FLOAT)!dirs[2*n];
-
+				vv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				vi[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 				pos[n]=numLines[n]-1;
-				ipos=MainOp->SetPos(pos[0],pos[1],pos[2]);
-				vv[n][ipos] *= (FDTD_FLOAT)!dirs[2*n+1];
-				vi[n][ipos] *= (FDTD_FLOAT)!dirs[2*n+1];
+				vv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				vi[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
 			}
 		}
 	}
@@ -152,14 +157,12 @@ void CartOperator::ApplyMagneticBC(bool* dirs)
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
 				pos[n]=0;
-				ipos=MainOp->SetPos(pos[0],pos[1],pos[2]);
-				ii[n][ipos] *= (FDTD_FLOAT)!dirs[2*n];
-				iv[n][ipos] *= (FDTD_FLOAT)!dirs[2*n];
+				ii[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				iv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 
 				pos[n]=numLines[n]-2;
-				ipos=MainOp->SetPos(pos[0],pos[1],pos[2]);
-				ii[n][ipos] *= (FDTD_FLOAT)!dirs[2*n+1];
-				iv[n][ipos] *= (FDTD_FLOAT)!dirs[2*n+1];
+				ii[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				iv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
 			}
 		}
 	}
@@ -407,9 +410,10 @@ double CartOperator::CalcTimestep()
 
 bool CartOperator::CalcEFieldExcitation()
 {
-	vector<unsigned int> vIndex;
+	if (dT==0) return false;
+	vector<unsigned int> vIndex[3];
 	vector<FDTD_FLOAT> vExcit[3];
-	vector<FDTD_FLOAT> vDelay;
+	vector<unsigned int> vDelay;
 	unsigned int ipos;
 	unsigned int pos[3];
 	double coord[3];
@@ -420,7 +424,6 @@ bool CartOperator::CalcEFieldExcitation()
 		{
 			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 			{
-				ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
 				coord[0] = discLines[0][pos[0]];
 				coord[1] = discLines[1][pos[1]];
 				coord[2] = discLines[2][pos[2]];
@@ -430,9 +433,10 @@ bool CartOperator::CalcEFieldExcitation()
 					CSPropElectrode* elec = prop->ToElectrode();
 					if (elec->GetExcitType()==0)
 					{
-						vIndex.push_back(ipos);
+						vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
 						for (int n=0;n<3;++n)
 						{
+							vIndex[n].push_back(pos[n]);
 							double delta=MainOp->GetIndexDelta(n,pos[n])*gridDelta;
 							vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta);
 						}
@@ -441,13 +445,18 @@ bool CartOperator::CalcEFieldExcitation()
 			}
 		}
 	}
-	E_Ex_Count = vIndex.size();
-	delete[] E_Ex_index;
-	E_Ex_index = new unsigned int[E_Ex_Count];
+	E_Ex_Count = vIndex[0].size();
+	for (int n=0;n<3;++n)
+	{
+		delete[] E_Ex_index[n];
+		E_Ex_index[n] = new unsigned int[E_Ex_Count];
+		for (unsigned int i=0;i<E_Ex_Count;++i)
+			E_Ex_index[n][i]=vIndex[n].at(i);
+	}
 	delete[] E_Ex_delay;
-	E_Ex_delay = new FDTD_FLOAT[E_Ex_Count];
+	E_Ex_delay = new unsigned int[E_Ex_Count];
 	for (unsigned int i=0;i<E_Ex_Count;++i)
-		E_Ex_delay[i]=vIndex.at(i);
+		E_Ex_delay[i]=vDelay.at(i);
 	for (int n=0;n<3;++n)
 	{
 		delete[] E_Ex_amp[n];

@@ -1,6 +1,8 @@
 #include <iostream>
 #include <time.h>
 #include "FDTD/cartoperator.h"
+#include "FDTD/engine.h"
+
 #include "ContinuousStructure.h"
 
 using namespace std;
@@ -21,10 +23,29 @@ int main(int argc, char *argv[])
 
 	cop.CalcECOperator();
 
+	cop.CalcGaussianPulsExcitation(1e9,1e9);
+
 	time_t OpDoneTime=time(NULL);
+
+	cop.ShowSize();
 
 	cerr << "Time for operator: " << difftime(OpDoneTime,startTime) << endl;
 
+	Engine eng(&cop);
+
+	time_t currTime = time(NULL);
+
+	unsigned int NrIter = 500;
+
+	eng.IterateTS(NrIter);
+
+	time_t prevTime = currTime;
+	currTime = time(NULL);
+
+	double t_diff = difftime(currTime,prevTime);
+
+	cerr << "Time for " << NrIter << " iterations with " << cop.GetNumberCells() << " cells : " << t_diff << " sec" << endl;
+	cerr << "Speed (MCells/s): " << (double)cop.GetNumberCells()*(double)NrIter/t_diff/1e6 << endl;
     return 0;
 }
 
@@ -53,6 +74,7 @@ void BuildMSL(ContinuousStructure &CSX)
 	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
 	elec->SetExcitation(1,1);
 	elec->SetExcitType(0);
+//	elec->SetDelay(2.0e-9);
 	CSX.AddProperty(elec);
 
 	box = new CSPrimBox(CSX.GetParameterSet(),elec);

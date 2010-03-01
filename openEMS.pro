@@ -19,10 +19,12 @@ SOURCES += main.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \
     FDTD/engine.cpp \
-    FDTD/operator.cpp
+    FDTD/operator.cpp \
+    tools/array_ops.cpp
 HEADERS += FDTD/cartoperator.h \
     tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
     FDTD/engine.h \
-    FDTD/operator.h
+    FDTD/operator.h \
+    tools/array_ops.h
