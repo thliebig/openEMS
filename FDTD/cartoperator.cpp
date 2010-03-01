@@ -15,6 +15,8 @@ void CartOperator::Init()
     CSX = NULL;
     MainOp=NULL;
     DualOp=NULL;
+	E_Ex_index = NULL;
+	E_Ex_delay = NULL;
     for (int n=0;n<3;++n)
     {
 		discLines[n]=NULL;
@@ -26,11 +28,14 @@ void CartOperator::Init()
 		vi[n]=NULL;
 		iv[n]=NULL;
 		ii[n]=NULL;
+		E_Ex_amp[n]=NULL;
 	}
 }
 
 void CartOperator::Reset()
 {
+	delete[] E_Ex_index;
+	delete[] E_Ex_delay;
 	for (int n=0;n<3;++n)
 	{
 		delete[] EC_C[n];
@@ -41,6 +46,7 @@ void CartOperator::Reset()
 		delete[] vi[n];
 		delete[] iv[n];
 		delete[] ii[n];
+		delete[] E_Ex_amp[n];
 	}
 	delete MainOp;
 	delete DualOp;
@@ -110,6 +116,8 @@ int CartOperator::CalcECOperator()
 	//Always apply PEC to all boundary's
 	bool PEC[6]={0,0,0,0,0,0};
 	ApplyElectricBC(PEC);
+
+	if (CalcEFieldExcitation()==false) return -1;
 
     return 0;
 }
@@ -408,7 +416,7 @@ double CartOperator::CalcTimestep()
 	return 0;
 }
 
-unsigned int CartOperator::GetVoltageExcitation(unsigned int* &index, FDTD_FLOAT** &excit_amp, FDTD_FLOAT* &excit_delay)
+bool CartOperator::CalcEFieldExcitation()
 {
 	vector<unsigned int> vIndex;
 	vector<FDTD_FLOAT> vExcit[3];
@@ -436,7 +444,7 @@ unsigned int CartOperator::GetVoltageExcitation(unsigned int* &index, FDTD_FLOAT
 						vIndex.push_back(ipos);
 						for (int n=0;n<3;++n)
 						{
-							double delta=MainOp->GetIndexDelta(n,pos[n]);
+							double delta=MainOp->GetIndexDelta(n,pos[n])*gridDelta;
 							vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta);
 						}
 					}
@@ -444,5 +452,19 @@ unsigned int CartOperator::GetVoltageExcitation(unsigned int* &index, FDTD_FLOAT
 			}
 		}
 	}
-	cerr << "size: " << vIndex.size() << endl;
+	E_Ex_Count = vIndex.size();
+	delete[] E_Ex_index;
+	E_Ex_index = new unsigned int[E_Ex_Count];
+	delete[] E_Ex_delay;
+	E_Ex_delay = new FDTD_FLOAT[E_Ex_Count];
+	for (unsigned int i=0;i<E_Ex_Count;++i)
+		E_Ex_delay[i]=vIndex.at(i);
+	for (int n=0;n<3;++n)
+	{
+		delete[] E_Ex_amp[n];
+		E_Ex_amp[n] = new FDTD_FLOAT[E_Ex_Count];
+		for (unsigned int i=0;i<E_Ex_Count;++i)
+			E_Ex_amp[n][i]=vExcit[n].at(i);
+	}
+	return true;
 }

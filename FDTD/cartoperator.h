@@ -22,11 +22,6 @@ public:
 
 	double GetTimestep() {return dT;};
 
-	/*!
-	  Get the voltage excitations. Returns number of excitations, listed position in index, with amplitude in all 3 directions and a possible time delay.
-	  */
-	unsigned int GetVoltageExcitation(unsigned int* &index, FDTD_FLOAT** &excit_amp, FDTD_FLOAT* &excit_delay);
-
     void Reset();
 
 protected:
@@ -46,6 +41,14 @@ protected:
 	FDTD_FLOAT* vi[3]; //calc new voltage from old current
 	FDTD_FLOAT* ii[3]; //calc new current from old current
 	FDTD_FLOAT* iv[3]; //calc new current from old voltage
+
+	//E-Field Excitation
+	//!	  Calc the electric field excitation.
+	bool CalcEFieldExcitation();
+	unsigned int E_Ex_Count;
+	unsigned int* E_Ex_index;
+	FDTD_FLOAT* E_Ex_amp[3]; //represented as edge-voltages!!
+	FDTD_FLOAT* E_Ex_delay;
 
 	//Calc timestep only internal use
 	double CalcTimestep();

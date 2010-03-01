@@ -21,12 +21,6 @@ int main(int argc, char *argv[])
 
 	cop.CalcECOperator();
 
-	unsigned int* index = NULL;
-	FDTD_FLOAT** amp=NULL;
-	FDTD_FLOAT* delay=NULL;
-
-	unsigned int nEx = cop.GetVoltageExcitation(index,amp,delay);
-
 	time_t OpDoneTime=time(NULL);
 
 	cerr << "Time for operator: " << difftime(OpDoneTime,startTime) << endl;
@@ -75,6 +69,8 @@ void BuildMSL(ContinuousStructure &CSX)
 		grid->AddDiscLine(0,(double)n);
 	for (int n=0;n<=300;n+=10)
 		grid->AddDiscLine(1,(double)n);
+
+	grid->SetDeltaUnit(1e-3);
 
 	CSX.Write2XML("csx-files/MSL.xml");
 }

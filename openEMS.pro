@@ -9,7 +9,11 @@ TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += ../CSXCAD
 LIBS += -L../CSXCAD \
-    -lCSXCAD
+    -lCSXCAD \
+    -L../fparser \
+    -lfparser \
+    -L../tinyxml \
+    -ltinyxml
 SOURCES += main.cpp \
     FDTD/cartoperator.cpp \
     tools/ErrorMsg.cpp \
