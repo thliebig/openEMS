@@ -1,57 +1,31 @@
 #ifndef CARTOPERATOR_H
 #define CARTOPERATOR_H
 
-#include "ContinuousStructure.h"
-#include "tools/AdrOp.h"
-#include "tools/constants.h"
+#include "operator.h"
 
-#define FDTD_FLOAT float
-
-class CartOperator
+class CartOperator : public Operator
 {
 public:
     CartOperator();
     virtual ~CartOperator();
 
-    void SetGeometryCSX(ContinuousStructure* geo);
+	virtual void SetGeometryCSX(ContinuousStructure* geo);
 
-	int CalcECOperator();
+	virtual int CalcECOperator();
 
-	void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
-	void ApplyMagneticBC(bool* dirs);
+	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
+	virtual void ApplyMagneticBC(bool* dirs);
 
-	double GetTimestep() {return dT;};
-
-    void Reset();
+	virtual void Reset();
 
 protected:
-    void Init();
-    ContinuousStructure* CSX;
+	virtual void Init();
 
     AdrOp* MainOp;
     AdrOp* DualOp;
-    double* discLines[3];
-    unsigned int numLines[3];
-	double gridDelta;
 
-	double dT; //FDTD timestep!
-
-	//EC operator
-	FDTD_FLOAT* vv[3]; //calc new voltage from old voltage
-	FDTD_FLOAT* vi[3]; //calc new voltage from old current
-	FDTD_FLOAT* ii[3]; //calc new current from old current
-	FDTD_FLOAT* iv[3]; //calc new current from old voltage
-
-	//E-Field Excitation
-	//!	  Calc the electric field excitation.
-	bool CalcEFieldExcitation();
-	unsigned int E_Ex_Count;
-	unsigned int* E_Ex_index;
-	FDTD_FLOAT* E_Ex_amp[3]; //represented as edge-voltages!!
-	FDTD_FLOAT* E_Ex_delay;
-
-	//Calc timestep only internal use
-	double CalcTimestep();
+	virtual bool CalcEFieldExcitation();
+	virtual double CalcTimestep();
 
 	//EC elements, internal only!
     bool Calc_EC();

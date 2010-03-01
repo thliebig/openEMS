@@ -17,8 +17,12 @@ LIBS += -L../CSXCAD \
 SOURCES += main.cpp \
     FDTD/cartoperator.cpp \
     tools/ErrorMsg.cpp \
-    tools/AdrOp.cpp
+    tools/AdrOp.cpp \
+    FDTD/engine.cpp \
+    FDTD/operator.cpp
 HEADERS += FDTD/cartoperator.h \
     tools/ErrorMsg.h \
     tools/AdrOp.h \
-    tools/constants.h
+    tools/constants.h \
+    FDTD/engine.h \
+    FDTD/operator.h

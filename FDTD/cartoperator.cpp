@@ -3,53 +3,42 @@
 CartOperator::CartOperator()
 {
     Init();
+	Operator::Init();
 }
 
 CartOperator::~CartOperator()
 {
 	Reset();
+	Operator::Reset();
 }
 
 void CartOperator::Init()
 {
-    CSX = NULL;
     MainOp=NULL;
     DualOp=NULL;
-	E_Ex_index = NULL;
-	E_Ex_delay = NULL;
-    for (int n=0;n<3;++n)
-    {
-		discLines[n]=NULL;
-        EC_C[n]=NULL;
-        EC_G[n]=NULL;
-        EC_L[n]=NULL;
-        EC_R[n]=NULL;
-		vv[n]=NULL;
-		vi[n]=NULL;
-		iv[n]=NULL;
-		ii[n]=NULL;
-		E_Ex_amp[n]=NULL;
+
+	for (int n=0;n<3;++n)
+	{
+		EC_C[n]=NULL;
+		EC_G[n]=NULL;
+		EC_L[n]=NULL;
+		EC_R[n]=NULL;
 	}
+
+	Operator::Init();
 }
 
 void CartOperator::Reset()
 {
-	delete[] E_Ex_index;
-	delete[] E_Ex_delay;
+	delete MainOp;
+	delete DualOp;
 	for (int n=0;n<3;++n)
 	{
 		delete[] EC_C[n];
 		delete[] EC_G[n];
 		delete[] EC_L[n];
 		delete[] EC_R[n];
-		delete[] vv[n];
-		delete[] vi[n];
-		delete[] iv[n];
-		delete[] ii[n];
-		delete[] E_Ex_amp[n];
 	}
-	delete MainOp;
-	delete DualOp;
 	Init();
 }
 
