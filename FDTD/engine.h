@@ -5,6 +5,7 @@
 
 class Engine
 {
+	friend class ProcessVoltage;
 public:
 	Engine(Operator* op);
 	virtual ~Engine();
@@ -14,6 +15,8 @@ public:
 
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
+
+	unsigned int GetNumberOfTimesteps() {return numTS;};
 
 protected:
 	Operator* Op;

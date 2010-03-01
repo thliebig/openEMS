@@ -78,15 +78,15 @@ bool Engine::IterateTS(unsigned int iterTS)
 					//do the updates here
 					//for x
 					curr[0][pos[0]][pos[1]][pos[2]] *= Op->ii[0][pos[0]][pos[1]][pos[2]];
-					curr[0][pos[0]][pos[1]][pos[2]] += Op->vi[0][pos[0]][pos[1]][pos[2]] * ( volt[2][pos[0]][pos[1]+1][pos[2]] - volt[2][pos[0]][pos[1]][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]+1] + volt[1][pos[0]][pos[1]][pos[2]]);
+					curr[0][pos[0]][pos[1]][pos[2]] -= Op->iv[0][pos[0]][pos[1]][pos[2]] * ( volt[2][pos[0]][pos[1]+1][pos[2]] - volt[2][pos[0]][pos[1]][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]+1] + volt[1][pos[0]][pos[1]][pos[2]]);
 
 					//for y
 					curr[1][pos[0]][pos[1]][pos[2]] *= Op->ii[1][pos[0]][pos[1]][pos[2]];
-					curr[1][pos[0]][pos[1]][pos[2]] += Op->vi[1][pos[0]][pos[1]][pos[2]] * ( volt[0][pos[0]][pos[1]][pos[2]+1] - volt[0][pos[0]][pos[1]][pos[2]] - volt[2][pos[0]+1][pos[1]][pos[2]] + volt[2][pos[0]][pos[1]][pos[2]]);
+					curr[1][pos[0]][pos[1]][pos[2]] -= Op->iv[1][pos[0]][pos[1]][pos[2]] * ( volt[0][pos[0]][pos[1]][pos[2]+1] - volt[0][pos[0]][pos[1]][pos[2]] - volt[2][pos[0]+1][pos[1]][pos[2]] + volt[2][pos[0]][pos[1]][pos[2]]);
 
 					//for x
 					curr[2][pos[0]][pos[1]][pos[2]] *= Op->ii[2][pos[0]][pos[1]][pos[2]];
-					curr[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( volt[1][pos[0]+1][pos[1]][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]+1][pos[2]] + volt[0][pos[0]][pos[1]][pos[2]]);
+					curr[2][pos[0]][pos[1]][pos[2]] -= Op->iv[2][pos[0]][pos[1]][pos[2]] * ( volt[1][pos[0]+1][pos[1]][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]+1][pos[2]] + volt[0][pos[0]][pos[1]][pos[2]]);
 				}
 			}
 		}

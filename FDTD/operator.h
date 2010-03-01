@@ -17,7 +17,7 @@ public:
 
 	virtual void SetGeometryCSX(ContinuousStructure* geo);
 
-	virtual int CalcECOperator() {};
+	virtual int CalcECOperator() {return -1;};
 
 	virtual void CalcGaussianPulsExcitation(double f0, double fc);
 
@@ -25,11 +25,16 @@ public:
 	virtual void ApplyMagneticBC(bool* dirs) {};
 
 	double GetTimestep() {return dT;};
+	unsigned int GetNyquistNum(double fmax);
 	double GetNumberCells();
 
 	void ShowSize();
 
+	void DumpOperator2File(string filename);
+
 	virtual void Reset();
+
+	bool SnapToMesh(double* coord, unsigned int* uicoord);
 
 protected:
 	virtual void Init();
@@ -51,14 +56,14 @@ protected:
 
 	//E-Field Excitation
 	//!	  Calc the electric field excitation.
-	virtual bool CalcEFieldExcitation() {};
+	virtual bool CalcEFieldExcitation() {return false;};
 	unsigned int E_Ex_Count;
 	unsigned int* E_Ex_index[3];
 	FDTD_FLOAT* E_Ex_amp[3]; //represented as edge-voltages!!
 	unsigned int* E_Ex_delay;
 
 	//Calc timestep only internal use
-	virtual double CalcTimestep() {};
+	virtual double CalcTimestep() {return 0;};
 	double dT; //FDTD timestep!
 };
 

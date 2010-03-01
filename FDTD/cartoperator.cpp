@@ -1,7 +1,7 @@
 #include "cartoperator.h"
 #include "tools/array_ops.h"
 
-CartOperator::CartOperator()
+CartOperator::CartOperator() : Operator()
 {
     Init();
 }
@@ -325,6 +325,7 @@ bool CartOperator::Calc_EffMatPos(int n, unsigned int* pos, double* inMat)
 	inMat[2] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
 	inMat[3] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
 
+	return true;
 }
 
 

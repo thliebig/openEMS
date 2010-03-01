@@ -20,11 +20,15 @@ SOURCES += main.cpp \
     tools/AdrOp.cpp \
     FDTD/engine.cpp \
     FDTD/operator.cpp \
-    tools/array_ops.cpp
+    tools/array_ops.cpp \
+    FDTD/processvoltage.cpp \
+    FDTD/processing.cpp
 HEADERS += FDTD/cartoperator.h \
     tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
     FDTD/engine.h \
     FDTD/operator.h \
-    tools/array_ops.h
+    tools/array_ops.h \
+    FDTD/processvoltage.h \
+    FDTD/processing.h

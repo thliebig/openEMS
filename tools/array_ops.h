@@ -9,4 +9,6 @@ void Delete3DArray(FDTD_FLOAT*** array, unsigned int* numLines);
 FDTD_FLOAT**** Create_N_3DArray(unsigned int* numLines);
 void Delete_N_3DArray(FDTD_FLOAT**** array, unsigned int* numLines);
 
+void Dump_N_3DArray2File(ostream &file, FDTD_FLOAT**** array, unsigned int* numLines);
+
 #endif // ARRAY_OPS_H

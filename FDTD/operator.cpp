@@ -1,3 +1,4 @@
+#include <fstream>
 #include "operator.h"
 #include "tools/array_ops.h"
 
@@ -46,6 +47,37 @@ void Operator::Reset()
 	Operator::Init();
 }
 
+unsigned int Operator::GetNyquistNum(double fmax)
+{
+	if (dT==0) return 1;
+	double T0 = 1/fmax;
+	return floor(T0/2/dT);
+}
+
+bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord)
+{
+	bool ok=true;
+	for (int n=0;n<3;++n)
+	{
+		if (dcoord[n]<discLines[n][0]) {ok=false;uicoord[n]=0;};
+		if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1;};
+		for (unsigned int i=0;i<numLines[n]-1;++i)
+		{
+			if (dcoord[n]<=discLines[n][i])
+			{
+				if (fabs(dcoord[n]-discLines[n][i])<(fabs(dcoord[n]-discLines[n][i+1])))
+					uicoord[n]=i;
+				else
+					uicoord[n]=i+1;
+				i = numLines[n];
+			}
+		}
+	}
+//	cerr << "Operator::SnapToMesh: " << discLines[0][uicoord[0]] << " " << discLines[1][uicoord[1]] << " " << discLines[2][uicoord[2]] << endl;
+//	cerr << "Operator::SnapToMesh: " << uicoord[0] << " " << uicoord[1] << " " << uicoord[2] << endl;
+	return ok;
+}
+
 void Operator::SetGeometryCSX(ContinuousStructure* geo)
 {
 	if (geo==NULL) return;
@@ -86,4 +118,32 @@ void Operator::CalcGaussianPulsExcitation(double f0, double fc)
 		ExciteSignal[n] = cos(2.0*PI*f0*(n*dT-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*n*dT/3.0-3,2));
 //		cerr << ExciteSignal[n] << endl;
 	}
+}
+
+void Operator::DumpOperator2File(string filename)
+{
+	ofstream file(filename.c_str(),ios_base::out);
+//	file.open;
+	if (file.is_open()==false)
+	{
+		cerr << "Operator::DumpOperator2File: Can't open file: " << filename << endl;
+		return;
+	}
+	file << "########### Operator vv ###########" << endl;
+	file << "ix\tiy\tiz\tvv_x\tvv_y\tvv_z" << endl;
+	Dump_N_3DArray2File(file,vv,numLines);
+
+	file << "########### Operator vi ###########" << endl;
+	file << "ix\tiy\tiz\tvi_x\tvi_y\tvi_z" << endl;
+	Dump_N_3DArray2File(file,vi,numLines);
+
+	file << "########### Operator iv ###########" << endl;
+	file << "ix\tiy\tiz\tiv_x\tiv_y\tiv_z" << endl;
+	Dump_N_3DArray2File(file,iv,numLines);
+
+	file << "########### Operator ii ###########" << endl;
+	file << "ix\tiy\tiz\tii_x\tii_y\tii_z" << endl;
+	Dump_N_3DArray2File(file,ii,numLines);
+
+	file.close();
 }

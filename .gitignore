@@ -2,6 +2,7 @@ release/
 debug/
 doc/
 obj/
+tmp*
 Makefile*
 *~
 *.so*
