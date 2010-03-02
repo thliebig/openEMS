@@ -11,6 +11,8 @@
 class Operator
 {
 	friend class Engine;
+	friend class ProcessFields;
+	friend class ProcessFieldsTD;
 public:
     Operator();
 	virtual ~Operator();
@@ -34,7 +36,7 @@ public:
 
 	virtual void Reset();
 
-	bool SnapToMesh(double* coord, unsigned int* uicoord);
+	bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false);
 
 protected:
 	virtual void Init();

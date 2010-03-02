@@ -432,14 +432,22 @@ bool CartOperator::CalcEFieldExcitation()
 				if (prop)
 				{
 					CSPropElectrode* elec = prop->ToElectrode();
-					if (elec->GetExcitType()==0)
+					if ((elec->GetExcitType()==0) || (elec->GetExcitType()==1)) //soft or hard E-Field excite!
 					{
 						vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
 						for (int n=0;n<3;++n)
 						{
 							vIndex[n].push_back(pos[n]);
 							double delta=MainOp->GetIndexDelta(n,pos[n])*gridDelta;
-							vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta);
+							if (elec->GetActiveDir(n))
+								vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta);
+							else
+								vExcit[n].push_back(0);
+							if ((elec->GetExcitType()==1) && (elec->GetActiveDir(n))) //hard excite
+							{
+								vv[n][pos[0]][pos[1]][pos[2]] = 0;
+								vi[n][pos[0]][pos[1]][pos[2]] = 0;
+							}
 						}
 					}
 				}

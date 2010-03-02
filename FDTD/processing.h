@@ -9,17 +9,19 @@
 class Processing
 {
 public:
-	Processing(Operator* op, Engine* eng);
 	virtual ~Processing();
 
-	virtual void OpenFile(string outfile);
+	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
 	virtual void Process() {};
 
 protected:
+	Processing(Operator* op, Engine* eng);
 	Operator* Op;
 	Engine* Eng;
-	ofstream file;
+
+	unsigned int start[3];
+	unsigned int stop[3];
 };
 
 #endif // PROCESSING_H

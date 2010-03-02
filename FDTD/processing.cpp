@@ -8,17 +8,12 @@ Processing::Processing(Operator* op, Engine* eng)
 
 Processing::~Processing()
 {
-	file.close();
 }
 
-void Processing::OpenFile(string outfile)
+
+void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (file.is_open()) file.close();
-
-	file.open(outfile.c_str());
-	if (file.is_open()==false)
-	{
-		cerr << "Can't open file: " << outfile << endl;
-		return;
-	}
+	if (Op->SnapToMesh(dstart,start)==false) cerr << "Processing::DefineStartStopCoord: Snapping error in mesh, check start value!!" << endl;
+	if (Op->SnapToMesh(dstop,stop)==false) cerr << "Processing::DefineStartStopCoord: Snapping error in mesh, check start value!!" << endl;
 }
+

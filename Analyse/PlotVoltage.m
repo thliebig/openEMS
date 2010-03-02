@@ -11,6 +11,7 @@ L=numel(t);
 
 subplot(2,1,1);
 plot(t,u);
+grid on;
 
 dt=t(2)-t(1);
 
@@ -18,4 +19,5 @@ f = (1:L)/L/dt;
 fu = fft(u)/L;
 subplot(2,1,2);
 plot(f(1:L/2),abs(fu(1:L/2)));
+grid on;
 

@@ -54,27 +54,33 @@ unsigned int Operator::GetNyquistNum(double fmax)
 	return floor(T0/2/dT);
 }
 
-bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord)
+bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower)
 {
 	bool ok=true;
 	for (int n=0;n<3;++n)
 	{
-		if (dcoord[n]<discLines[n][0]) {ok=false;uicoord[n]=0;};
-		if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1;};
-		for (unsigned int i=0;i<numLines[n]-1;++i)
-		{
-			if (dcoord[n]<=discLines[n][i])
+		uicoord[n]=0;
+		if (dcoord[n]<discLines[n][0]) {ok=false;uicoord[n]=0;}
+		else if (dcoord[n]==discLines[n][0]) {uicoord[n]=0;}
+		else if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
+		else if (dcoord[n]==discLines[n][numLines[n]-1]) {uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
+		else
+			for (unsigned int i=0;i<numLines[n]-1;++i)
 			{
-				if (fabs(dcoord[n]-discLines[n][i])<(fabs(dcoord[n]-discLines[n][i+1])))
-					uicoord[n]=i;
-				else
-					uicoord[n]=i+1;
-				i = numLines[n];
+				if (dcoord[n]<=discLines[n][i])
+				{
+					if (fabs(dcoord[n]-discLines[n][i])<(fabs(dcoord[n]-discLines[n][i+1])))
+						uicoord[n]=i;
+					else
+						uicoord[n]=i+1;
+					if (lower) uicoord[n]=i;
+					i = numLines[n];
+				}
 			}
-		}
 	}
-//	cerr << "Operator::SnapToMesh: " << discLines[0][uicoord[0]] << " " << discLines[1][uicoord[1]] << " " << discLines[2][uicoord[2]] << endl;
-//	cerr << "Operator::SnapToMesh: " << uicoord[0] << " " << uicoord[1] << " " << uicoord[2] << endl;
+//	cerr << "Operator::SnapToMesh Wish: " << dcoord[0] << " " << dcoord[1] << " " << dcoord[2] << endl;
+//	cerr << "Operator::SnapToMesh Found: " << discLines[0][uicoord[0]] << " " << discLines[1][uicoord[1]] << " " << discLines[2][uicoord[2]] << endl;
+//	cerr << "Operator::SnapToMesh Index: " << uicoord[0] << " " << uicoord[1] << " " << uicoord[2] << endl;
 	return ok;
 }
 
@@ -99,9 +105,9 @@ void Operator::ShowSize()
 	unsigned int FieldSize = 6*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
 	double MBdiff = 1024*1024;
 
-	cout << "FDTD Operator Size:" << endl;
-	cout << "Size of Operator in Byte  : " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
-	cout << "Size of Field-Data in Byte: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
+	cout << "---- Stat: FDTD Operator ----" << endl;
+	cout << "Size of Operator  : " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
+	cout << "Size of Field-Data: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
 }
 
 void Operator::CalcGaussianPulsExcitation(double f0, double fc)

@@ -6,6 +6,7 @@
 #include "FDTD/cartoperator.h"
 #include "FDTD/engine.h"
 #include "FDTD/processvoltage.h"
+#include "FDTD/processfields_td.h"
 
 #include "ContinuousStructure.h"
 
@@ -35,8 +36,6 @@ int main(int argc, char *argv[])
 
 	cop.ShowSize();
 
-//	cop.DumpOperator2File("tmp/Operator");
-
 	cerr << "Nyquist number of timesteps: " << cop.GetNyquistNum(fmax) << endl;
 	unsigned int NrIter = cop.GetNyquistNum(fmax)/3;
 
@@ -50,18 +49,26 @@ int main(int argc, char *argv[])
 	//*************** setup processing ************//
 	ProcessVoltage PV(&cop,&eng);
 	PV.OpenFile("tmp/u1");
-	double start[]={-500,-150,0};
-	double stop[]={-500,150,0};
+	double start[]={-0,-75,0};
+	double stop[]={-0,75,0};
 	PV.DefineStartStopCoord(start,stop);
 	unsigned int maxIter = 5000;
 
+	ProcessFieldsTD PETD(&cop,&eng);
+	start[0]=-1000;start[1]=0;start[2]=-1000;
+	stop[0]=1000;stop[1]=0;stop[2]=1000;
+	PETD.SetFilePattern("tmp/Et_");
+	PETD.DefineStartStopCoord(start,stop);
+
 	PV.Process();
-//	NrIter=200;
+	PETD.Process();
+
 	//*************** simulate ************//
 	for (unsigned int i=0;i<maxIter;i+=NrIter)
 	{
 		eng.IterateTS(NrIter);
 		PV.Process();
+		PETD.Process();
 	}
 
 	//*************** postproc ************//
@@ -89,7 +96,9 @@ void BuildDipol(ContinuousStructure &CSX)
 
 	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
 	elec->SetExcitation(1,1);
-	elec->SetExcitType(0);
+	elec->SetExcitType(1);
+	elec->SetActiveDir(0,0);//disable x
+	elec->SetActiveDir(0,2);//disable z
 //	elec->SetDelay(2.0e-9);
 	CSX.AddProperty(elec);
 

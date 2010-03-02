@@ -3,19 +3,19 @@
 
 #include "processing.h"
 
+//! Process voltage along a line from start to stop coordinates. ATM integration along the axis e.g.: in x, then y then z direction (Future: diagonal integration)
 class ProcessVoltage : public Processing
 {
 public:
 	ProcessVoltage(Operator* op, Engine* eng);
 	virtual ~ProcessVoltage();
 
-	void DefineStartStopCoord(double* dstart, double* dstop);
+	virtual void OpenFile(string outfile);
 
 	virtual void Process();
 
 protected:
-	unsigned int start[3];
-	unsigned int stop[3];
+	ofstream file;
 
 	vector<FDTD_FLOAT> voltages;
 };

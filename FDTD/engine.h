@@ -6,6 +6,7 @@
 class Engine
 {
 	friend class ProcessVoltage;
+	friend class ProcessFieldsTD;
 public:
 	Engine(Operator* op);
 	virtual ~Engine();

@@ -3,7 +3,7 @@
 
 FDTD_FLOAT*** Create3DArray(unsigned int* numLines)
 {
-	FDTD_FLOAT*** array;
+	FDTD_FLOAT*** array=NULL;
 	unsigned int pos[3];
 	array = new FDTD_FLOAT**[numLines[0]];
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
@@ -38,7 +38,7 @@ void Delete3DArray(FDTD_FLOAT*** array, unsigned int* numLines)
 
 FDTD_FLOAT**** Create_N_3DArray(unsigned int* numLines)
 {
-	FDTD_FLOAT**** array;
+	FDTD_FLOAT**** array=NULL;
 	array = new FDTD_FLOAT***[3];
 	for (int n=0;n<3;++n)
 	{

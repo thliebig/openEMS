@@ -6,12 +6,19 @@ ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : Processing(op, eng)
 
 ProcessVoltage::~ProcessVoltage()
 {
+	file.close();
 }
 
-void ProcessVoltage::DefineStartStopCoord(double* dstart, double* dstop)
+void ProcessVoltage::OpenFile(string outfile)
 {
-	if (Op->SnapToMesh(dstart,start)==false) cerr << "ProcessVoltage::DefineStartStopCoord: Snapping error in mesh, check start value!!" << endl;
-	if (Op->SnapToMesh(dstop,stop)==false) cerr << "ProcessVoltage::DefineStartStopCoord: Snapping error in mesh, check start value!!" << endl;
+	if (file.is_open()) file.close();
+
+	file.open(outfile.c_str());
+	if (file.is_open()==false)
+	{
+		cerr << "Can't open file: " << outfile << endl;
+		return;
+	}
 }
 
 void ProcessVoltage::Process()
