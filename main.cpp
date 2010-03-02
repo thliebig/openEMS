@@ -14,6 +14,7 @@ using namespace std;
 
 void BuildMSL(ContinuousStructure &CSX);
 void BuildDipol(ContinuousStructure &CSX);
+void BuildPlaneWave(ContinuousStructure &CSX);
 
 int main(int argc, char *argv[])
 {
@@ -21,7 +22,7 @@ int main(int argc, char *argv[])
 
 	//*************** setup/read geometry ************//
 	ContinuousStructure CSX;
-	BuildDipol(CSX);
+	BuildPlaneWave(CSX);
 
 	//*************** setup operator ************//
 	CartOperator cop;
@@ -30,11 +31,13 @@ int main(int argc, char *argv[])
 	cop.CalcECOperator();
 
 	double fmax=1e9;
-	cop.CalcGaussianPulsExcitation(fmax/2,fmax/2);
+	cop.CalcGaussianPulsExcitation(fmax/2,fmax/8);
 
 	time_t OpDoneTime=time(NULL);
 
 	cop.ShowSize();
+	bool bnd[] = {1,1,0,0,0,0};
+	cop.ApplyMagneticBC(bnd);
 
 	cerr << "Nyquist number of timesteps: " << cop.GetNyquistNum(fmax) << endl;
 	unsigned int NrIter = cop.GetNyquistNum(fmax)/3;
@@ -49,14 +52,16 @@ int main(int argc, char *argv[])
 	//*************** setup processing ************//
 	ProcessVoltage PV(&cop,&eng);
 	PV.OpenFile("tmp/u1");
-	double start[]={-0,-75,0};
-	double stop[]={-0,75,0};
+	double start[]={-100,-250,0};
+	double stop[]={-100,250,0};
 	PV.DefineStartStopCoord(start,stop);
-	unsigned int maxIter = 5000;
+	unsigned int maxIter = 2000;
 
 	ProcessFieldsTD PETD(&cop,&eng);
-	start[0]=-1000;start[1]=0;start[2]=-1000;
-	stop[0]=1000;stop[1]=0;stop[2]=1000;
+	start[0]=-250;start[1]=0;start[2]=-2000;
+	stop[0]=250;stop[1]=0;stop[2]=4000;
+//	start[0]=-250;start[1]=-250;start[2]=0;
+//	stop[0]=250;stop[1]=250;stop[2]=0;
 	PETD.SetDumpType(0);
 	PETD.SetFilePattern("tmp/Et_");
 	PETD.DefineStartStopCoord(start,stop);
@@ -68,9 +73,12 @@ int main(int argc, char *argv[])
 	PHTD.SetFilePattern("tmp/Ht_");
 	PHTD.DefineStartStopCoord(start,stop);
 
+	PETD.SetEnable(false);
+	PHTD.SetEnable(false);
+
 	PV.Process();
 	PETD.Process();
-	PHTD.Process();
+	PHTD.Process();	
 
 	//*************** simulate ************//
 	for (unsigned int i=0;i<maxIter;i+=NrIter)
@@ -130,6 +138,46 @@ void BuildDipol(ContinuousStructure &CSX)
 	grid->SetDeltaUnit(1e-3);
 
 	CSX.Write2XML("tmp/Dipol.xml");
+}
+
+void BuildPlaneWave(ContinuousStructure &CSX)
+{
+//	CSPropMaterial* mat = new CSPropMaterial(CSX.GetParameterSet());
+////	mat->SetKappa(0.001);
+//	CSX.AddProperty(mat);
+//
+//	CSPrimBox* matbox = new CSPrimBox(CSX.GetParameterSet(),mat);
+//	matbox->SetCoord(0,-1000.0);matbox->SetCoord(1,1000.0);
+//	matbox->SetCoord(2,-1000.0);matbox->SetCoord(3,1000.0);
+//	matbox->SetCoord(4,-2000.0);matbox->SetCoord(5,4000.0);
+//	CSX.AddPrimitive(matbox);
+
+	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
+	elec->SetExcitation(1,1);
+	elec->SetExcitType(0);
+	elec->SetActiveDir(0,0);//disable x
+	elec->SetActiveDir(0,2);//disable z
+//	elec->SetDelay(2.0e-9);
+	CSX.AddProperty(elec);
+
+	CSPrimBox* box = new CSPrimBox(CSX.GetParameterSet(),elec);
+	box->SetCoord(0,-250.0);box->SetCoord(1,250.0);
+	box->SetCoord(2,-250.0);box->SetCoord(3,250.0);
+	box->SetCoord(4,-0000.0);box->SetCoord(5,-0000.0);
+	CSX.AddPrimitive(box);
+
+	CSRectGrid* grid = CSX.GetGrid();
+
+	for (int n=-250;n<=250;n+=10)
+		grid->AddDiscLine(0,(double)n);
+	for (int n=-250;n<=250;n+=10)
+		grid->AddDiscLine(1,(double)n);
+	for (int n=-4000;n<=4000;n+=10)
+		grid->AddDiscLine(2,(double)n);
+
+	grid->SetDeltaUnit(1e-3);
+
+	CSX.Write2XML("tmp/PlaneWave.xml");
 }
 
 void BuildMSL(ContinuousStructure &CSX)

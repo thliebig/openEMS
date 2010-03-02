@@ -133,11 +133,15 @@ void CartOperator::ApplyElectricBC(bool* dirs)
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
 				pos[n]=0;
-				vv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
-				vi[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				vv[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				vi[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				vv[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				vi[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 				pos[n]=numLines[n]-1;
-				vv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
-				vi[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				vv[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				vi[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				vv[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				vi[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
 			}
 		}
 	}
@@ -157,12 +161,16 @@ void CartOperator::ApplyMagneticBC(bool* dirs)
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
 				pos[n]=0;
-				ii[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
-				iv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				ii[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				iv[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				ii[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				iv[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 
 				pos[n]=numLines[n]-2;
-				ii[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
-				iv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				ii[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				iv[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				ii[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				iv[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
 			}
 		}
 	}

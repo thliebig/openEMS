@@ -32,28 +32,32 @@ bool Engine::IterateTS(unsigned int iterTS)
 {
 	unsigned int pos[3];
 	int exc_pos;
+	bool shift[3];
 
 	for (unsigned int iter=0;iter<iterTS;++iter)
 	{
 		//voltage updates
-		for (pos[0]=1;pos[0]<Op->numLines[0]-1;++pos[0])
+		for (pos[0]=0;pos[0]<Op->numLines[0];++pos[0])
 		{
-			for (pos[1]=1;pos[1]<Op->numLines[1]-1;++pos[1])
+			shift[0]=pos[0];
+			for (pos[1]=0;pos[1]<Op->numLines[1];++pos[1])
 			{
-				for (pos[2]=1;pos[2]<Op->numLines[2]-1;++pos[2])
+				shift[1]=pos[1];
+				for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
 				{
+					shift[2]=pos[2];
 					//do the updates here
 					//for x
 					volt[0][pos[0]][pos[1]][pos[2]] *= Op->vv[0][pos[0]][pos[1]][pos[2]];
-					volt[0][pos[0]][pos[1]][pos[2]] += Op->vi[0][pos[0]][pos[1]][pos[2]] * ( curr[2][pos[0]][pos[1]][pos[2]] - curr[2][pos[0]][pos[1]-1][pos[2]] - curr[1][pos[0]][pos[1]][pos[2]] + curr[1][pos[0]][pos[1]][pos[2]-1]);
+					volt[0][pos[0]][pos[1]][pos[2]] += Op->vi[0][pos[0]][pos[1]][pos[2]] * ( curr[2][pos[0]][pos[1]][pos[2]] - curr[2][pos[0]][pos[1]-shift[1]][pos[2]] - curr[1][pos[0]][pos[1]][pos[2]] + curr[1][pos[0]][pos[1]][pos[2]-shift[2]]);
 
 					//for y
 					volt[1][pos[0]][pos[1]][pos[2]] *= Op->vv[1][pos[0]][pos[1]][pos[2]];
-					volt[1][pos[0]][pos[1]][pos[2]] += Op->vi[1][pos[0]][pos[1]][pos[2]] * ( curr[0][pos[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]-1] - curr[2][pos[0]][pos[1]][pos[2]] + curr[2][pos[0]-1][pos[1]][pos[2]]);
+					volt[1][pos[0]][pos[1]][pos[2]] += Op->vi[1][pos[0]][pos[1]][pos[2]] * ( curr[0][pos[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]-shift[2]] - curr[2][pos[0]][pos[1]][pos[2]] + curr[2][pos[0]-shift[0]][pos[1]][pos[2]]);
 
 					//for x
 					volt[2][pos[0]][pos[1]][pos[2]] *= Op->vv[2][pos[0]][pos[1]][pos[2]];
-					volt[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( curr[1][pos[0]][pos[1]][pos[2]] - curr[1][pos[0]-1][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]] + curr[0][pos[0]][pos[1]-1][pos[2]]);
+					volt[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( curr[1][pos[0]][pos[1]][pos[2]] - curr[1][pos[0]-shift[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]] + curr[0][pos[0]][pos[1]-shift[1]][pos[2]]);
 				}
 			}
 		}

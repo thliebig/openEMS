@@ -23,6 +23,7 @@ void ProcessVoltage::OpenFile(string outfile)
 
 void ProcessVoltage::Process()
 {
+	if (Enabled==false) return;
 	FDTD_FLOAT voltage=0;
 	unsigned int pos[3]={start[0],start[1],start[2]};
 //	cerr << Eng->volt[1][pos[0]][pos[1]][pos[2]] << endl;
