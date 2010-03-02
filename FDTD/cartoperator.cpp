@@ -111,7 +111,7 @@ int CartOperator::CalcECOperator()
 	}
 
 	//Always apply PEC to all boundary's
-	bool PEC[6]={0,0,0,0,0,0};
+	bool PEC[6]={1,1,1,1,1,1};
 	ApplyElectricBC(PEC);
 
 	if (CalcEFieldExcitation()==false) return -1;
