@@ -23,7 +23,7 @@ ProcessFields::~ProcessFields()
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	if (Op->SnapToMesh(dstart,start,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Snapping error in mesh, check start value!!" << endl;
-	if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Snapping error in mesh, check start value!!" << endl;
+	if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Snapping error in mesh, check stop value!!" << endl;
 
 	for (int n=0;n<3;++n)
 	{

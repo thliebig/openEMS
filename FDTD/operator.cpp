@@ -65,15 +65,15 @@ bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower)
 		else if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
 		else if (dcoord[n]==discLines[n][numLines[n]-1]) {uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
 		else
-			for (unsigned int i=0;i<numLines[n]-1;++i)
+			for (unsigned int i=1;i<numLines[n]-1;++i)
 			{
-				if (dcoord[n]<=discLines[n][i])
+				if (dcoord[n]<discLines[n][i])
 				{
-					if (fabs(dcoord[n]-discLines[n][i])<(fabs(dcoord[n]-discLines[n][i+1])))
+					if (fabs(dcoord[n]-discLines[n][i])<(fabs(dcoord[n]-discLines[n][i-1])))
 						uicoord[n]=i;
 					else
-						uicoord[n]=i+1;
-					if (lower) uicoord[n]=i;
+						uicoord[n]=i-1;
+					if (lower) uicoord[n]=i-1;
 					i = numLines[n];
 				}
 			}

@@ -57,11 +57,20 @@ int main(int argc, char *argv[])
 	ProcessFieldsTD PETD(&cop,&eng);
 	start[0]=-1000;start[1]=0;start[2]=-1000;
 	stop[0]=1000;stop[1]=0;stop[2]=1000;
+	PETD.SetDumpType(0);
 	PETD.SetFilePattern("tmp/Et_");
 	PETD.DefineStartStopCoord(start,stop);
 
+	ProcessFieldsTD PHTD(&cop,&eng);
+	start[0]=-1000;start[2]=0;start[1]=-1000;
+	stop[0]=1000;stop[2]=0;stop[1]=1000;
+	PHTD.SetDumpType(1);
+	PHTD.SetFilePattern("tmp/Ht_");
+	PHTD.DefineStartStopCoord(start,stop);
+
 	PV.Process();
 	PETD.Process();
+	PHTD.Process();
 
 	//*************** simulate ************//
 	for (unsigned int i=0;i<maxIter;i+=NrIter)
@@ -69,6 +78,7 @@ int main(int argc, char *argv[])
 		eng.IterateTS(NrIter);
 		PV.Process();
 		PETD.Process();
+		PHTD.Process();
 	}
 
 	//*************** postproc ************//
@@ -103,18 +113,18 @@ void BuildDipol(ContinuousStructure &CSX)
 	CSX.AddProperty(elec);
 
 	CSPrimBox* box = new CSPrimBox(CSX.GetParameterSet(),elec);
-	box->SetCoord(0,-1.0);box->SetCoord(1,1.0);
+	box->SetCoord(0,-10.0);box->SetCoord(1,10.0);
 	box->SetCoord(2,-75.0);box->SetCoord(3,75.0);
-	box->SetCoord(4,-1.0);box->SetCoord(5,1.0);
+	box->SetCoord(4,-10.0);box->SetCoord(5,10.0);
 	CSX.AddPrimitive(box);
 
 	CSRectGrid* grid = CSX.GetGrid();
 
-	for (int n=-1000;n<=1000;n+=20)
+	for (int n=-990;n<=990;n+=20)
 		grid->AddDiscLine(2,(double)n);
-	for (int n=-1000;n<=1000;n+=20)
+	for (int n=-990;n<=990;n+=20)
 		grid->AddDiscLine(0,(double)n);
-	for (int n=-1000;n<=1000;n+=20)
+	for (int n=-990;n<=990;n+=20)
 		grid->AddDiscLine(1,(double)n);
 
 	grid->SetDeltaUnit(1e-3);
