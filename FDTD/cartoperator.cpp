@@ -115,6 +115,7 @@ int CartOperator::CalcECOperator()
 	ApplyElectricBC(PEC);
 
 	if (CalcEFieldExcitation()==false) return -1;
+	CalcPEC();
 
     return 0;
 }
@@ -482,4 +483,40 @@ bool CartOperator::CalcEFieldExcitation()
 			E_Ex_amp[n][i]=vExcit[n].at(i);
 	}
 	return true;
+}
+
+bool CartOperator::CalcPEC()
+{
+	unsigned int pos[3];
+	double coord[3];
+	double delta;
+
+	for (int n=0;n<3;++n)
+	{
+		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		{
+			coord[2] = discLines[2][pos[2]];
+			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			{
+				coord[1] = discLines[1][pos[1]];
+				for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+				{
+					coord[0] = discLines[0][pos[0]];
+					MainOp->SetPos(pos[0],pos[1],pos[2]);
+					delta=MainOp->GetIndexDelta(n,pos[n]);
+					coord[n]= discLines[n][pos[n]] + delta*0.5;
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
+					if (prop)
+					{
+						if (prop->GetType()==CSProperties::METAL) //set to PEC
+						{
+							vv[n][pos[0]][pos[1]][pos[2]] = 0;
+							vi[n][pos[0]][pos[1]][pos[2]] = 0;
+//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
+						}
+					}
+				}
+			}
+		}
+	}
 }

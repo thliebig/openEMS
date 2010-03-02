@@ -25,6 +25,7 @@ protected:
     AdrOp* DualOp;
 
 	virtual bool CalcEFieldExcitation();
+	virtual bool CalcPEC();
 	virtual double CalcTimestep();
 
 	//EC elements, internal only!

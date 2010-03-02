@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
 
 	//*************** setup/read geometry ************//
 	ContinuousStructure CSX;
+
 	BuildPlaneWave(CSX);
 
 	//*************** setup operator ************//
@@ -58,8 +59,8 @@ int main(int argc, char *argv[])
 	unsigned int maxIter = 2000;
 
 	ProcessFieldsTD PETD(&cop,&eng);
-	start[0]=-250;start[1]=0;start[2]=-2000;
-	stop[0]=250;stop[1]=0;stop[2]=4000;
+	start[0]=-480;start[1]=0;start[2]=-4000;
+	stop[0]=480;stop[1]=0;stop[2]=4000;
 //	start[0]=-250;start[1]=-250;start[2]=0;
 //	stop[0]=250;stop[1]=250;stop[2]=0;
 	PETD.SetDumpType(0);
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
 	PHTD.SetFilePattern("tmp/Ht_");
 	PHTD.DefineStartStopCoord(start,stop);
 
-	PETD.SetEnable(false);
+	PETD.SetEnable(true);
 	PHTD.SetEnable(false);
 
 	PV.Process();
@@ -149,7 +150,7 @@ void BuildPlaneWave(ContinuousStructure &CSX)
 //	CSPrimBox* matbox = new CSPrimBox(CSX.GetParameterSet(),mat);
 //	matbox->SetCoord(0,-1000.0);matbox->SetCoord(1,1000.0);
 //	matbox->SetCoord(2,-1000.0);matbox->SetCoord(3,1000.0);
-//	matbox->SetCoord(4,-2000.0);matbox->SetCoord(5,4000.0);
+//	matbox->SetCoord(4,-4000.0);matbox->SetCoord(5,4000.0);
 //	CSX.AddPrimitive(matbox);
 
 	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
@@ -161,18 +162,27 @@ void BuildPlaneWave(ContinuousStructure &CSX)
 	CSX.AddProperty(elec);
 
 	CSPrimBox* box = new CSPrimBox(CSX.GetParameterSet(),elec);
-	box->SetCoord(0,-250.0);box->SetCoord(1,250.0);
-	box->SetCoord(2,-250.0);box->SetCoord(3,250.0);
-	box->SetCoord(4,-0000.0);box->SetCoord(5,-0000.0);
+	box->SetCoord(0,-500.0);box->SetCoord(1,500.0);
+	box->SetCoord(2,-500.0);box->SetCoord(3,500.0);
+	box->SetCoord(4,-4000.0);box->SetCoord(5,-4000.0);
 	CSX.AddPrimitive(box);
+
+	CSPropMetal* metal = new CSPropMetal(CSX.GetParameterSet());
+	CSX.AddProperty(metal);
+	CSPrimCylinder* cyl = new CSPrimCylinder(CSX.GetParameterSet(),metal);
+	cyl->SetRadius(100);
+	cyl->SetCoord(0,0.0);cyl->SetCoord(1,0.0);
+	cyl->SetCoord(2,-250.0);cyl->SetCoord(3,250.0);
+	cyl->SetCoord(4,-0000.0);cyl->SetCoord(5,-0000.0);
+	CSX.AddPrimitive(cyl);
 
 	CSRectGrid* grid = CSX.GetGrid();
 
-	for (int n=-250;n<=250;n+=10)
+	for (int n=-500;n<=500;n+=20)
 		grid->AddDiscLine(0,(double)n);
-	for (int n=-250;n<=250;n+=10)
+	for (int n=-500;n<=500;n+=20)
 		grid->AddDiscLine(1,(double)n);
-	for (int n=-4000;n<=4000;n+=10)
+	for (int n=-4000;n<=4000;n+=20)
 		grid->AddDiscLine(2,(double)n);
 
 	grid->SetDeltaUnit(1e-3);
