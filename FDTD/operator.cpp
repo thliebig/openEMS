@@ -106,8 +106,10 @@ void Operator::ShowSize()
 	double MBdiff = 1024*1024;
 
 	cout << "---- Stat: FDTD Operator ----" << endl;
+	cout << "Dimensions        : " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  numLines[0]*numLines[1]*numLines[2] << " Cells (" << numLines[0]*numLines[1]*numLines[2]/1e6 << " MCells)" << endl;
 	cout << "Size of Operator  : " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
 	cout << "Size of Field-Data: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
+	cout << "-----------------------------" << endl;
 }
 
 void Operator::CalcGaussianPulsExcitation(double f0, double fc)
