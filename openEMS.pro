@@ -7,7 +7,8 @@ CONFIG += console
 CONFIG -= app_bundle
 TEMPLATE = app
 OBJECTS_DIR = obj
-INCLUDEPATH += ../CSXCAD
+INCLUDEPATH += ../CSXCAD \
+			../fparser
 LIBS += -L../CSXCAD \
     -lCSXCAD \
     -L../fparser \
@@ -24,7 +25,8 @@ SOURCES += main.cpp \
     FDTD/processvoltage.cpp \
     FDTD/processing.cpp \
     FDTD/processfields.cpp \
-    FDTD/processfields_td.cpp
+    FDTD/processfields_td.cpp \
+    FDTD/processcurrent.cpp
 HEADERS += FDTD/cartoperator.h \
     tools/ErrorMsg.h \
     tools/AdrOp.h \
@@ -35,4 +37,5 @@ HEADERS += FDTD/cartoperator.h \
     FDTD/processvoltage.h \
     FDTD/processing.h \
     FDTD/processfields.h \
-    FDTD/processfields_td.h
+    FDTD/processfields_td.h \
+    FDTD/processcurrent.h

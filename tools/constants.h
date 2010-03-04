@@ -3,6 +3,8 @@
 
 #define __EPS0__ 8.85418781762e-12
 #define __MUE0__ 1.256637062e-6
+#define __C0__ 299792458
+#define __Z0__ 376.730313461
 #define PI 3.141592653589793238462643383279
 
 #endif // CONSTANTS_H

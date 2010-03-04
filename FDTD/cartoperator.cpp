@@ -204,8 +204,8 @@ bool CartOperator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] = mat->GetEpsilon(n)*fabs(deltaP*deltaPP);
-		inEC[1] = mat->GetKappa(n)*fabs(deltaP*deltaPP);
+		inEC[0] = mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		inEC[1] = mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
 	}
 	else
 	{
@@ -220,8 +220,8 @@ bool CartOperator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilon(n)*fabs(deltaP*deltaPP);
-		inEC[1] += mat->GetKappa(n)*fabs(deltaP*deltaPP);
+		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
 	}
 	else
 	{
@@ -237,8 +237,8 @@ bool CartOperator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilon(n)*fabs(deltaP*deltaPP);
-		inEC[1] += mat->GetKappa(n)*fabs(deltaP*deltaPP);
+		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
 	}
 	else
 	{
@@ -254,8 +254,8 @@ bool CartOperator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilon(n)*fabs(deltaP*deltaPP);
-		inEC[1] += mat->GetKappa(n)*fabs(deltaP*deltaPP);
+		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
 	}
 	else
 	{
@@ -275,9 +275,9 @@ bool CartOperator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[2] = fabs(delta_M) / mat->GetMue(n);
+		inEC[2] = fabs(delta_M) / mat->GetMueWeighted(n,shiftCoord);
 		if (mat->GetSigma(n))
-			inEC[3] = fabs(delta_M) / mat->GetSigma(n);
+			inEC[3] = fabs(delta_M) / mat->GetSigmaWeighted(n,shiftCoord);
 		else
 			inEC[3] = 0;
 	}
@@ -295,8 +295,8 @@ bool CartOperator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
 		inEC[2] += mat->GetMue(n)*fabs(delta);
-		if (mat->GetSigma(n))
-			inEC[3] += fabs(delta)/mat->GetSigma(n);
+		if (mat->GetSigmaWeighted(n,shiftCoord))
+			inEC[3] += fabs(delta)/mat->GetSigmaWeighted(n,shiftCoord);
 		else
 			inEC[3] = 0;
 	}
@@ -454,8 +454,10 @@ bool CartOperator::CalcEFieldExcitation()
 								vExcit[n].push_back(0);
 							if ((elec->GetExcitType()==1) && (elec->GetActiveDir(n))) //hard excite
 							{
-								vv[n][pos[0]][pos[1]][pos[2]] = 0;
-								vi[n][pos[0]][pos[1]][pos[2]] = 0;
+								vv[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
+								vi[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
+								vv[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
+								vi[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
 							}
 						}
 					}
