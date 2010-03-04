@@ -4,6 +4,7 @@ Processing::Processing(Operator* op, Engine* eng)
 {
 	Op=op;
 	Eng=eng;
+	Enabled = true;
 }
 
 Processing::~Processing()
