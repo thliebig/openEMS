@@ -19,12 +19,12 @@ public:
 
 	virtual void SetGeometryCSX(ContinuousStructure* geo);
 
-	virtual int CalcECOperator() {return -1;};
+	virtual int CalcECOperator();
 
 	virtual void CalcGaussianPulsExcitation(double f0, double fc);
 
-	virtual void ApplyElectricBC(bool* dirs) {}; //applied by default to all boundaries
-	virtual void ApplyMagneticBC(bool* dirs) {};
+	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
+	virtual void ApplyMagneticBC(bool* dirs);
 
 	double GetTimestep() {return dT;};
 	unsigned int GetNyquistNum(double fmax);
@@ -40,11 +40,16 @@ public:
 
 protected:
 	virtual void Init();
+	virtual void InitOperator();
+
 	ContinuousStructure* CSX;
 	double gridDelta;
 
 	double* discLines[3];
 	unsigned int numLines[3];
+
+	AdrOp* MainOp;
+	AdrOp* DualOp;
 
 	//EC operator
 	FDTD_FLOAT**** vv; //calc new voltage from old voltage
@@ -58,15 +63,26 @@ protected:
 
 	//E-Field Excitation
 	//!	  Calc the electric field excitation.
-	virtual bool CalcEFieldExcitation() {return false;};
+	virtual bool CalcEFieldExcitation();
 	unsigned int E_Ex_Count;
 	unsigned int* E_Ex_index[3];
 	FDTD_FLOAT* E_Ex_amp[3]; //represented as edge-voltages!!
 	unsigned int* E_Ex_delay;
 
+	virtual bool CalcPEC();
+
 	//Calc timestep only internal use
-	virtual double CalcTimestep() {return 0;};
+	virtual double CalcTimestep();
 	double dT; //FDTD timestep!
+
+	//EC elements, internal only!
+	bool Calc_EC();
+	bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
+	bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
+	double* EC_C[3];
+	double* EC_G[3];
+	double* EC_L[3];
+	double* EC_R[3];
 };
 
 #endif // OPERATOR_H

@@ -8,7 +8,7 @@ CONFIG -= app_bundle
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += ../CSXCAD \
-			../fparser
+    ../fparser
 LIBS += -L../CSXCAD \
     -lCSXCAD \
     -L../fparser \
@@ -16,7 +16,6 @@ LIBS += -L../CSXCAD \
     -L../tinyxml \
     -ltinyxml
 SOURCES += main.cpp \
-    FDTD/cartoperator.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \
     FDTD/engine.cpp \
@@ -27,8 +26,7 @@ SOURCES += main.cpp \
     FDTD/processfields.cpp \
     FDTD/processfields_td.cpp \
     FDTD/processcurrent.cpp
-HEADERS += FDTD/cartoperator.h \
-    tools/ErrorMsg.h \
+HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
     FDTD/engine.h \

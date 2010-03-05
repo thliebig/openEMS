@@ -3,7 +3,7 @@
 #include <sstream>
 #include <time.h>
 #include "tools/array_ops.h"
-#include "FDTD/cartoperator.h"
+#include "FDTD/operator.h"
 #include "FDTD/engine.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
 	//*************** setup operator ************//
 	cerr << "Create Operator..." << endl;
-	CartOperator cop;
+	Operator cop;
 	cop.SetGeometryCSX(&CSX);
 
 	cop.CalcECOperator();
