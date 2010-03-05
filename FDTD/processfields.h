@@ -24,7 +24,7 @@ public:
 protected:
 	ProcessFields(Operator* op, Engine* eng);
 
-	bool DumpFieldArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines);
+	static bool DumpFieldArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines);
 
 	int DumpMode;
 	int DumpType;

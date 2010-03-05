@@ -20,6 +20,7 @@ public:
 
 protected:
 	virtual void Init();
+	virtual void InitOperator();
 
     AdrOp* MainOp;
     AdrOp* DualOp;

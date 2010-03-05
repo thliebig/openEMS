@@ -63,13 +63,8 @@ void CartOperator::SetGeometryCSX(ContinuousStructure* geo)
     MainOp->AddCellAdrOp();
 }
 
-int CartOperator::CalcECOperator()
+void CartOperator::InitOperator()
 {
-    if (Calc_EC()==0)
-        return -1;
-
-	CalcTimestep();
-
 	Delete_N_3DArray(vv,numLines);
 	Delete_N_3DArray(vi,numLines);
 	Delete_N_3DArray(iv,numLines);
@@ -78,6 +73,16 @@ int CartOperator::CalcECOperator()
 	vi = Create_N_3DArray(numLines);
 	iv = Create_N_3DArray(numLines);
 	ii = Create_N_3DArray(numLines);
+}
+
+int CartOperator::CalcECOperator()
+{
+	if (Calc_EC()==0)
+        return -1;
+
+	CalcTimestep();
+
+	InitOperator();
 
 	unsigned int i=0;
 	unsigned int pos[3];
