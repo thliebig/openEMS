@@ -25,7 +25,8 @@ SOURCES += main.cpp \
     FDTD/processing.cpp \
     FDTD/processfields.cpp \
     FDTD/processfields_td.cpp \
-    FDTD/processcurrent.cpp
+    FDTD/processcurrent.cpp \
+    examples/FDTD_examples.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -36,4 +37,5 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/processing.h \
     FDTD/processfields.h \
     FDTD/processfields_td.h \
-    FDTD/processcurrent.h
+    FDTD/processcurrent.h \
+    examples/FDTD_examples.h
