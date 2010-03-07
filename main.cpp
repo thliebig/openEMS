@@ -23,8 +23,8 @@ int main(int argc, char *argv[])
 	cerr << "Create Geometry..." << endl;
 	ContinuousStructure CSX;
 
-	//BuildPlaneWave(CSX);
-	BuildMSL(CSX);
+	BuildPlaneWave(CSX);
+//	BuildMSL(CSX);
 
 	//*************** setup operator ************//
 	cerr << "Create Operator..." << endl;
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	time_t OpDoneTime=time(NULL);
 
 	cop.ShowSize();
-	bool bnd[] = {1,1,0,1,0,1};
+	bool bnd[] = {1,1,0,0,0,0};
 	cop.ApplyMagneticBC(bnd);
 
 	cerr << "Nyquist number of timesteps: " << cop.GetNyquistNum(fmax) << endl;
