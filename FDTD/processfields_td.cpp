@@ -15,6 +15,7 @@ ProcessFieldsTD::~ProcessFieldsTD()
 void ProcessFieldsTD::Process()
 {
 	if (Enabled==false) return;
+	if (filePattern.empty()) return;
 	stringstream ss;
 	ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->numTS;
 
