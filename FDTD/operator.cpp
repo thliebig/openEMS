@@ -287,6 +287,8 @@ void Operator::ApplyElectricBC(bool* dirs)
 				vv[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 				vi[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 				pos[n]=numLines[n]-1;
+				vv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
+				vi[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
 				vv[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
 				vi[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
 				vv[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n+1];
@@ -310,6 +312,8 @@ void Operator::ApplyMagneticBC(bool* dirs)
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
 				pos[n]=0;
+				ii[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
+				iv[n][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 				ii[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 				iv[nP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
 				ii[nPP][pos[0]][pos[1]][pos[2]] *= (FDTD_FLOAT)!dirs[2*n];
@@ -594,10 +598,18 @@ bool Operator::CalcEFieldExcitation()
 						vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
 						for (int n=0;n<3;++n)
 						{
+							coord[0] = discLines[0][pos[0]];
+							coord[1] = discLines[1][pos[1]];
+							coord[2] = discLines[2][pos[2]];
+							double delta=0;
+							if (pos[n]<numLines[n]-1)
+								delta = (discLines[n][pos[n]+1]-discLines[n][pos[n]]);
+							else
+								delta = (discLines[n][pos[n]]-discLines[n][pos[n]-1]);
+							coord[n]+=0.5*delta;
 							vIndex[n].push_back(pos[n]);
-							double delta=MainOp->GetIndexDelta(n,pos[n])*gridDelta;
-							if (elec->GetActiveDir(n))
-								vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta);
+							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
+								vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta*gridDelta);
 							else
 								vExcit[n].push_back(0);
 							if ((elec->GetExcitType()==1) && (elec->GetActiveDir(n))) //hard excite
@@ -614,6 +626,8 @@ bool Operator::CalcEFieldExcitation()
 		}
 	}
 	E_Ex_Count = vIndex[0].size();
+	if (E_Ex_Count==0)
+		cerr << "No E-Field excitation found!" << endl;
 	for (int n=0;n<3;++n)
 	{
 		delete[] E_Ex_index[n];
