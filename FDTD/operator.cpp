@@ -141,6 +141,22 @@ void Operator::CalcGaussianPulsExcitation(double f0, double fc)
 	}
 }
 
+void Operator::CalcSinusExcitation(double f0, int nTS)
+{
+	if (dT==0) return;
+	if (nTS<=0) return;
+
+	ExciteLength = (unsigned int)(nTS);
+	delete[] ExciteSignal;
+	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal[0]=0.0;
+	for (unsigned int n=1;n<ExciteLength+1;++n)
+	{
+		ExciteSignal[n] = sin(2.0*PI*f0*n*dT);
+//		cerr << ExciteSignal[n] << endl;
+	}
+}
+
 void Operator::DumpOperator2File(string filename)
 {
 	ofstream file(filename.c_str(),ios_base::out);
