@@ -16,6 +16,8 @@ public:
 	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump.
 	void SetFilePattern(string fp) {filePattern=fp;}
 
+	//! Define the Dump-Mode
+	void SetDumpMode(int mode) {DumpMode=mode;}
 	//! This methode will dump all fields in the center of a main cell (dual-node) using 4 E-field and 2 H-fields per direction. (default)
 	void SetDumpMode2Cell() {DumpMode=2;}
 

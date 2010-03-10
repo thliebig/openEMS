@@ -100,9 +100,21 @@ void BuildPlaneWave(ContinuousStructure &CSX)
 
 	//E-field dump
 	CSPropDumpBox* Edump = new CSPropDumpBox(CSX.GetParameterSet());
-	Edump->SetEFieldDump(true);
+	Edump->SetDumpType(0);
+	Edump->SetName("tmp/Et_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+	box->SetCoord(0,width/-3.0);box->SetCoord(1,width/3.0);
+	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
+	box->SetCoord(4,length/-2.0+abs_l);box->SetCoord(5,length/2.0-abs_l);
+	CSX.AddPrimitive(box);
+
+	//H-field dump
+	CSPropDumpBox* Hdump = new CSPropDumpBox(CSX.GetParameterSet());
+	Hdump->SetDumpType(1);
+	Hdump->SetName("tmp/Ht_");
+	CSX.AddProperty(Hdump);
+	box = new CSPrimBox(CSX.GetParameterSet(),Hdump);
 	box->SetCoord(0,width/-3.0);box->SetCoord(1,width/3.0);
 	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
 	box->SetCoord(4,length/-2.0+abs_l);box->SetCoord(5,length/2.0-abs_l);
@@ -188,7 +200,8 @@ void BuildMSL(ContinuousStructure &CSX)
 
 	//E-field dump
 	CSPropDumpBox* Edump = new CSPropDumpBox(CSX.GetParameterSet());
-	Edump->SetEFieldDump(true);
+	Edump->SetDumpType(0);
+	Edump->SetName("tmp/Et_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
 	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);

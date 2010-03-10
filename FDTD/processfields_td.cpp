@@ -138,20 +138,22 @@ void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
 	}
 }
 
-void ProcessFieldsTD::Process()
+int ProcessFieldsTD::Process()
 {
-	if (Enabled==false) return;
-	if (filePattern.empty()) return;
+	if (Enabled==false) return -1;
+	if (filePattern.empty()) return -1;
+	if (CheckTimestep()==false) return GetNextInterval();
 	stringstream ss;
 	ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->numTS;
 
 	string filename = filePattern + ss.str() + ".vtk";
 	ofstream file(filename.c_str());
-	if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl; return;};
+	if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl; return GetNextInterval();};
 
 	if (DumpMode==0)
 		DumpNoInterpol(file);
 	if (DumpMode==2)
 		DumpCellInterpol(file);
 	file.close();
+	return GetNextInterval();
 }

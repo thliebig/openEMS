@@ -13,7 +13,7 @@ public:
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
-	virtual void Process();
+	virtual int Process();
 
 protected:
 	ofstream file;

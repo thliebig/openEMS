@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	cop.ApplyMagneticBC(bnd);
 
 	cerr << "Nyquist number of timesteps: " << cop.GetNyquistNum(fmax) << endl;
-	unsigned int NrIter = cop.GetNyquistNum(fmax)/3;
+	unsigned int Nyquist = cop.GetNyquistNum(fmax);
 
 	cerr << "Time for operator: " << difftime(OpDoneTime,startTime) << endl;
 
@@ -53,59 +53,68 @@ int main(int argc, char *argv[])
 	time_t currTime = time(NULL);
 
 	//*************** setup processing ************//
-	ProcessVoltage PV(&cop,&eng);
-	PV.OpenFile("tmp/u1");
+	ProcessingArray PA;
+
+	ProcessVoltage* PV = new ProcessVoltage(&cop,&eng);
+	PA.AddProcessing(PV);
+	PV->SetProcessInterval(Nyquist/3); //three times as often as nyquist dictates
+	PV->OpenFile("tmp/u1");
 	double start[]={0,50,0};
 	double stop[]={0,0,0};
-	PV.DefineStartStopCoord(start,stop);
+	PV->DefineStartStopCoord(start,stop);
 
-	ProcessCurrent PCurr(&cop,&eng);
-	PCurr.OpenFile("tmp/i1");
+	ProcessCurrent* PCurr = new ProcessCurrent(&cop,&eng);
+	PA.AddProcessing(PCurr);
+	PCurr->SetProcessInterval(Nyquist/3); //three times as often as nyquist dictates
+	PCurr->OpenFile("tmp/i1");
 	start[0]=-50;start[1]=40;start[2]=-0;
 	stop[0]=50;stop[1]=60;stop[2]=-0;
-	PCurr.DefineStartStopCoord(start,stop);
+	PCurr->DefineStartStopCoord(start,stop);
 
 	unsigned int maxIter = 1800;
 
+	bool EnableDump = true;
+
 	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
-	vector<ProcessFieldsTD*> TD_Dump;
-	ProcessFieldsTD PETD(&cop,&eng);
-	if (DumpProps.size()>0)
+	for (size_t i=0;i<DumpProps.size();++i)
 	{
-		CSPrimitives* prim = DumpProps.at(0)->GetPrimitive(0);
-		bool acc;
-		double* bnd = prim->GetBoundBox(acc);
-		start[0]= bnd[0];start[1]=bnd[2];start[2]=bnd[4];
-		stop[0] = bnd[1];stop[1] =bnd[3];stop[2] =bnd[5];
-		CSPropDumpBox* db = DumpProps.at(0)->ToDumpBox();
-		if (db)
+		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(&cop,&eng);
+		ProcTD->SetEnable(EnableDump);
+		ProcTD->SetProcessInterval(Nyquist/2); //twice as often as nyquist dictates
+
+		//only looking for one prim atm
+		CSPrimitives* prim = DumpProps.at(i)->GetPrimitive(0);
+		if (prim==NULL)
+			delete 	ProcTD;
+		else
 		{
-			if (db->GetEFieldDump())
+			bool acc;
+			double* bnd = prim->GetBoundBox(acc);
+			start[0]= bnd[0];start[1]=bnd[2];start[2]=bnd[4];
+			stop[0] = bnd[1];stop[1] =bnd[3];stop[2] =bnd[5];
+			ProcTD->DefineStartStopCoord(start,stop);
+			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
+			if (db)
 			{
-				PETD.SetDumpType(0);
-				PETD.SetFilePattern("tmp/Et_");
+				ProcTD->SetDumpType(db->GetDumpType());
+				ProcTD->SetDumpMode(db->GetDumpMode());
+				ProcTD->SetFilePattern(db->GetName());
+				PA.AddProcessing(ProcTD);
 			}
 			else
-				PETD.SetEnable(false);
+				delete 	ProcTD;
 		}
-		else
-			PETD.SetEnable(false);
-		PETD.DefineStartStopCoord(start,stop);
 	}
 
-	PETD.SetEnable(true);
-
-	PV.Process();
-	PCurr.Process();
-	PETD.Process();
-
+	int step=PA.Process();
+	if ((step<0) || (step>maxIter)) step=maxIter;
 	//*************** simulate ************//
-	for (unsigned int i=0;i<maxIter;i+=NrIter)
+	while (eng.GetNumberOfTimesteps()<maxIter)
 	{
-		eng.IterateTS(NrIter);
-		PV.Process();
-		PCurr.Process();
-		PETD.Process();
+		eng.IterateTS(step);
+		step=PA.Process();
+//		cerr << " do " << step << " steps; current: " << eng.GetNumberOfTimesteps() << endl;
+		if ((step<0) || (step>maxIter - eng.GetNumberOfTimesteps())) step=maxIter - eng.GetNumberOfTimesteps();
 	}
 
 	//*************** postproc ************//
@@ -116,5 +125,9 @@ int main(int argc, char *argv[])
 
 	cerr << "Time for " << eng.GetNumberOfTimesteps() << " iterations with " << cop.GetNumberCells() << " cells : " << t_diff << " sec" << endl;
 	cerr << "Speed: " << (double)cop.GetNumberCells()*(double)eng.GetNumberOfTimesteps()/t_diff/1e6 << " MCells/s " << endl;
+
+	//cleanup
+	PA.DeleteAll();
+
     return 0;
 }

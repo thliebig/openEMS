@@ -26,9 +26,10 @@ void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 	if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
 }
 
-void ProcessCurrent::Process()
+int ProcessCurrent::Process()
 {
-	if (Enabled==false) return;
+	if (Enabled==false) return -1;
+	if (CheckTimestep()==false) return GetNextInterval();
 	FDTD_FLOAT current=0;
 //	FDTD_FLOAT help=0;
 	double sign[3]={1,1,1};
@@ -68,4 +69,5 @@ void ProcessCurrent::Process()
 //	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
 	v_current.push_back(current);
 	file << (double)Eng->numTS*Op->GetTimestep() << "\t" << current << endl;
+	return GetNextInterval();
 }

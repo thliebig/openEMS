@@ -12,7 +12,7 @@ public:
 
 	virtual void OpenFile(string outfile);
 
-	virtual void Process();
+	virtual int Process();
 
 protected:
 	ofstream file;

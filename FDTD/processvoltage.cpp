@@ -21,9 +21,10 @@ void ProcessVoltage::OpenFile(string outfile)
 	}
 }
 
-void ProcessVoltage::Process()
+int ProcessVoltage::Process()
 {
-	if (Enabled==false) return;
+	if (Enabled==false) return -1;
+	if (CheckTimestep()==false) return GetNextInterval();
 	FDTD_FLOAT voltage=0;
 	unsigned int pos[3]={start[0],start[1],start[2]};
 //	cerr << Eng->volt[1][pos[0]][pos[1]][pos[2]] << endl;
@@ -47,4 +48,5 @@ void ProcessVoltage::Process()
 //	cerr << voltage << endl;
 	voltages.push_back(voltage);
 	file << (double)Eng->numTS*Op->GetTimestep() << "\t" << voltage << endl;
+	return GetNextInterval();
 }

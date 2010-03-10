@@ -9,7 +9,7 @@ public:
 	ProcessFieldsTD(Operator* op, Engine* eng);
 	virtual ~ProcessFieldsTD();
 
-	virtual void Process();
+	virtual int Process();
 
 	//! Set the length of the filename timestep pad filled with zeros (default is 8)
 	void SetPadLength(int val) {pad_length=val;};
