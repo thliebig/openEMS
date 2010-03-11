@@ -1,8 +1,16 @@
 #include "FDTD_examples.h"
 #include "../tools/constants.h"
 
-void BuildDipol(ContinuousStructure &CSX)
+void BuildDipol(const char* filename)
 {
+	int maxIter = 1000;
+	double fmax=1e9;
+	int Excit_Type=0;
+	int bounds[] = {1,1,0,0,0,0};
+
+	cerr << "Create Geometry..." << endl;
+	ContinuousStructure CSX;
+
 	CSPropMaterial* mat = new CSPropMaterial(CSX.GetParameterSet());
 	mat->SetKappa(0.001);
 	CSX.AddProperty(mat);
@@ -38,11 +46,48 @@ void BuildDipol(ContinuousStructure &CSX)
 
 	grid->SetDeltaUnit(1e-3);
 
-	CSX.Write2XML("tmp/Dipol.xml");
+	//*************** Create XML file **********************
+	TiXmlDocument doc(filename);
+	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
+
+	TiXmlElement FDTD_Opts("openEMS-Parameter");
+	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
+
+	TiXmlElement Excite("Excitation");
+	Excite.SetAttribute("Type",Excit_Type);
+	Excite.SetAttribute("f0",fmax);
+	FDTD_Opts.InsertEndChild(Excite);
+
+	TiXmlElement BC("BoundaryCond");
+	BC.SetAttribute("xmin",bounds[0]);
+	BC.SetAttribute("xmax",bounds[1]);
+	BC.SetAttribute("ymin",bounds[2]);
+	BC.SetAttribute("ymax",bounds[3]);
+	BC.SetAttribute("zmin",bounds[4]);
+	BC.SetAttribute("zmax",bounds[5]);
+	FDTD_Opts.InsertEndChild(BC);
+
+	doc.InsertEndChild(FDTD_Opts);
+
+	if (CSX.Write2XML(&doc,true)==false)
+	{
+		cerr << "writing failed" << endl;
+		exit(-1);
+	}
+
+	doc.SaveFile();
 }
 
-void BuildPlaneWave(ContinuousStructure &CSX)
+void BuildPlaneWave(const char* filename)
 {
+	int maxIter = 1000;
+	double fmax=1e9;
+	int Excit_Type=0;
+	int bounds[] = {1,1,0,0,0,0};
+
+	cerr << "Create Geometry..." << endl;
+	ContinuousStructure CSX;
+
 	double width = 1000;
 	double hight = 1000;
 	double length = 4000;
@@ -140,15 +185,55 @@ void BuildPlaneWave(ContinuousStructure &CSX)
 
 	grid->SetDeltaUnit(1e-3);
 
-	CSX.Write2XML("tmp/PlaneWave.xml");
+	//*************** Create XML file **********************
+	TiXmlDocument doc(filename);
+	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
+
+	TiXmlElement FDTD_Opts("openEMS-Parameter");
+	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
+
+	TiXmlElement Excite("Excitation");
+	Excite.SetAttribute("Type",Excit_Type);
+	Excite.SetAttribute("f0",fmax);
+	FDTD_Opts.InsertEndChild(Excite);
+
+	TiXmlElement BC("BoundaryCond");
+	BC.SetAttribute("xmin",bounds[0]);
+	BC.SetAttribute("xmax",bounds[1]);
+	BC.SetAttribute("ymin",bounds[2]);
+	BC.SetAttribute("ymax",bounds[3]);
+	BC.SetAttribute("zmin",bounds[4]);
+	BC.SetAttribute("zmax",bounds[5]);
+	FDTD_Opts.InsertEndChild(BC);
+
+	doc.InsertEndChild(FDTD_Opts);
+
+	if (CSX.Write2XML(&doc,true)==false)
+	{
+		cerr << "writing failed" << endl;
+		exit(-1);
+	}
+
+	doc.SaveFile();
 }
 
-void BuildMSL(ContinuousStructure &CSX)
+void BuildMSL(const char* filename)
 {
+	int maxIter = 1000;
+	double fmax=1e9;
+	int Excit_Type=0;
+	int bounds[] = {1,1,0,0,0,0};
+
+	cerr << "Create Geometry..." << endl;
+	ContinuousStructure CSX;
+
 	double width = 1000;
-	double hight = 500;
+	double height = 500;
 	double length = 2000;
 	double abs_l = 200;
+	double MSL_height=50;
+	double MSL_width=80;
+	double delta[] = {20,10,20};
 
 	//substrate....
 	CSPropMaterial* mat = new CSPropMaterial(CSX.GetParameterSet());
@@ -167,7 +252,7 @@ void BuildMSL(ContinuousStructure &CSX)
 	CSX.AddProperty(mat);
 	CSPrimBox* box = new CSPrimBox(CSX.GetParameterSet(),mat);
 	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
-	box->SetCoord(2,0.0);box->SetCoord(3,hight);
+	box->SetCoord(2,0.0);box->SetCoord(3,height);
 	box->SetCoord(4,length/2.0-abs_l); box->SetCoord(5,length/2.0);
 	CSX.AddPrimitive(box);
 //	box = new CSPrimBox(CSX.GetParameterSet(),mat);
@@ -177,11 +262,16 @@ void BuildMSL(ContinuousStructure &CSX)
 //	CSX.AddPrimitive(box);
 
 	//MSL
-	CSPropMetal* MSL = new CSPropMetal(CSX.GetParameterSet());
+	CSProperties* MSL = NULL;
+	CSPropMaterial* MSL_mat = new CSPropMaterial(CSX.GetParameterSet());
+	MSL_mat->SetKappa(56e6);
+	MSL = MSL_mat;
+//	MSL = new CSPropMetal(CSX.GetParameterSet());
+
 	CSX.AddProperty(MSL);
 	box = new CSPrimBox(CSX.GetParameterSet(),MSL);
-	box->SetCoord(0,-40.0);box->SetCoord(1,40.0);
-	box->SetCoord(2,50.0);box->SetCoord(3,50.0);
+	box->SetCoord(0,MSL_width/-2.0);box->SetCoord(1,MSL_width/2.0);
+	box->SetCoord(2,MSL_height);box->SetCoord(3,MSL_height+delta[1]);
 	box->SetCoord(4,length/-2);box->SetCoord(5,length/2.0);
 	box->SetPriority(100);
 	CSX.AddPrimitive(box);
@@ -198,29 +288,104 @@ void BuildMSL(ContinuousStructure &CSX)
 	box->SetCoord(4,length/-2.0);box->SetCoord(5,length/-2.0);
 	CSX.AddPrimitive(box);
 
-	//E-field dump
-	CSPropDumpBox* Edump = new CSPropDumpBox(CSX.GetParameterSet());
+	CSPropDumpBox* Edump = NULL;
+//	//E-field dump xz
+//	Edump = new CSPropDumpBox(CSX.GetParameterSet());
+//	Edump->SetDumpType(0);
+//	Edump->SetName("tmp/Et_xz_");
+//	CSX.AddProperty(Edump);
+//	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+//	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
+//	box->SetCoord(2,25.0);box->SetCoord(3,25.);
+//	box->SetCoord(4,length/-2.0);box->SetCoord(5,length/2.0);
+//	CSX.AddPrimitive(box);
+//
+//	//E-field dump xy
+//	Edump = new CSPropDumpBox(CSX.GetParameterSet());
+//	Edump->SetDumpType(0);
+//	Edump->SetName("tmp/Et_xy_");
+//	CSX.AddProperty(Edump);
+//	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+//	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
+//	box->SetCoord(2,0.0);box->SetCoord(3,height);
+//	box->SetCoord(4,0.0);box->SetCoord(5,0.0);
+//	CSX.AddPrimitive(box);
+
+	//E-field dump 3D
+	Edump = new CSPropDumpBox(CSX.GetParameterSet());
 	Edump->SetDumpType(0);
+	Edump->SetDumpMode(2); //cell interpolated dump
 	Edump->SetName("tmp/Et_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
-	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
-	box->SetCoord(2,25.0);box->SetCoord(3,25.);
+	box->SetCoord(0,MSL_width*-1.5);box->SetCoord(1,MSL_width*1.5);
+	box->SetCoord(2,0.0);box->SetCoord(3,MSL_height*1.5);
 	box->SetCoord(4,length/-2.0);box->SetCoord(5,length/2.0);
+	CSX.AddPrimitive(box);
+
+	//voltage calc
+	CSPropProbeBox* volt = new CSPropProbeBox(CSX.GetParameterSet());
+	volt->SetProbeType(0);
+	volt->SetName("tmp/u1");
+	CSX.AddProperty(volt);
+	box = new CSPrimBox(CSX.GetParameterSet(),volt);
+	box->SetCoord(0,0.0);box->SetCoord(1,0.0);
+	box->SetCoord(2,MSL_height);box->SetCoord(3,0.0);
+	box->SetCoord(4,0.0);box->SetCoord(5,0.0);
+	CSX.AddPrimitive(box);
+
+	//current calc
+	CSPropProbeBox* curr = new CSPropProbeBox(CSX.GetParameterSet());
+	curr->SetProbeType(1);
+	curr->SetName("tmp/i1");
+	CSX.AddProperty(curr);
+	box = new CSPrimBox(CSX.GetParameterSet(),curr);
+	box->SetCoord(0,MSL_width*-1.5);box->SetCoord(1,MSL_width*1.5);
+	box->SetCoord(2,MSL_height/2.0);box->SetCoord(3,MSL_height*1.5);
+	box->SetCoord(4,0.0);box->SetCoord(5,0.0);
 	CSX.AddPrimitive(box);
 
 	CSRectGrid* grid = CSX.GetGrid();
 
-	for (double n=width/-2.0;n<=width/2;n+=20)
+	for (double n=width/-2.0;n<=width/2;n+=delta[0])
 		grid->AddDiscLine(0,n);
-	for (double n=0;n<=500;n+=10)
+	for (double n=0;n<=height;n+=delta[1])
 		grid->AddDiscLine(1,n);
-	for (double n=length/-2.0;n<=length/2.0;n+=20)
+	for (double n=length/-2.0;n<=length/2.0;n+=delta[2])
 		grid->AddDiscLine(2,n);
 
 	grid->SetDeltaUnit(1e-3);
 
-	CSX.Write2XML("tmp/MSL.xml");
+	//*************** Create XML file **********************
+	TiXmlDocument doc(filename);
+	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
+
+	TiXmlElement FDTD_Opts("openEMS-Parameter");
+	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
+
+	TiXmlElement Excite("Excitation");
+	Excite.SetAttribute("Type",Excit_Type);
+	Excite.SetAttribute("f0",fmax);
+	FDTD_Opts.InsertEndChild(Excite);
+
+	TiXmlElement BC("BoundaryCond");
+	BC.SetAttribute("xmin",bounds[0]);
+	BC.SetAttribute("xmax",bounds[1]);
+	BC.SetAttribute("ymin",bounds[2]);
+	BC.SetAttribute("ymax",bounds[3]);
+	BC.SetAttribute("zmin",bounds[4]);
+	BC.SetAttribute("zmax",bounds[5]);
+	FDTD_Opts.InsertEndChild(BC);
+
+	doc.InsertEndChild(FDTD_Opts);
+
+	if (CSX.Write2XML(&doc,true)==false)
+	{
+		cerr << "writing failed" << endl;
+		exit(-1);
+	}
+
+	doc.SaveFile();
 }
 
 

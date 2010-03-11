@@ -2,11 +2,12 @@
 #define FDTD_EXAMPLES_H
 
 #include "ContinuousStructure.h"
+#include "tinyxml.h"
 
-void BuildDipol(ContinuousStructure &CSX);
+void BuildDipol(const char* filename);
 
-void BuildPlaneWave(ContinuousStructure &CSX);
+void BuildPlaneWave(const char* filename);
 
-void BuildMSL(ContinuousStructure &CSX);
+void BuildMSL(const char* filename);
 
 #endif // FDTD_EXAMPLES_H

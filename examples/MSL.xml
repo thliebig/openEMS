@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes" ?>
+<openEMS-Parameter NumberOfTimesteps="1000">
+    <Excitation Type="0" f0="1000000000" />
+    <BoundaryCond xmin="1" xmax="1" ymin="0" ymax="0" zmin="0" zmax="0" />
+</openEMS-Parameter>
+<ContinuousStructure>
+    <RectilinearGrid DeltaUnit="0.001000">
+        <XLines Qty="51">-500,-480,-460,-440,-420,-400,-380,-360,-340,-320,-300,-280,-260,-240,-220,-200,-180,-160,-140,-120,-100,-80,-60,-40,-20,0,20,40,60,80,100,120,140,160,180,200,220,240,260,280,300,320,340,360,380,400,420,440,460,480,500</XLines>
+        <YLines Qty="51">0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300,310,320,330,340,350,360,370,380,390,400,410,420,430,440,450,460,470,480,490,500</YLines>
+        <ZLines Qty="101">-1000,-980,-960,-940,-920,-900,-880,-860,-840,-820,-800,-780,-760,-740,-720,-700,-680,-660,-640,-620,-600,-580,-560,-540,-520,-500,-480,-460,-440,-420,-400,-380,-360,-340,-320,-300,-280,-260,-240,-220,-200,-180,-160,-140,-120,-100,-80,-60,-40,-20,0,20,40,60,80,100,120,140,160,180,200,220,240,260,280,300,320,340,360,380,400,420,440,460,480,500,520,540,560,580,600,620,640,660,680,700,720,740,760,780,800,820,840,860,880,900,920,940,960,980,1000</ZLines>
+    </RectilinearGrid>
+    <ParameterSet />
+    <Properties>
+        <Material ID="0" Name="" Isotropy="1">
+            <FillColor R="232" G="231" B="141" a="255" />
+            <EdgeColor R="232" G="231" B="141" a="255" />
+            <Property Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.875000e-10" Sigma="2.661107e-05" />
+            <PropertyY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
+            <PropertyZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
+            <WeightX Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="term:pow(abs(z)-800,4)" Sigma="term:pow(abs(z)-800,4)" />
+            <WeightY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="term:pow(abs(z)-800,4)" Sigma="term:pow(abs(z)-800,4)" />
+            <WeightZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="term:pow(abs(z)-800,4)" Sigma="term:pow(abs(z)-800,4)" />
+        </Material>
+        <Material ID="1" Name="" Isotropy="1">
+            <FillColor R="118" G="90" B="46" a="255" />
+            <EdgeColor R="118" G="90" B="46" a="255" />
+            <Property Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="5.600000e+07" Sigma="0.000000e+00" />
+            <PropertyY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
+            <PropertyZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
+            <WeightX Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
+            <WeightY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
+            <WeightZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
+        </Material>
+        <Electrode ID="2" Name="" Number="0" Delay="0.000000e+00">
+            <FillColor R="99" G="51" B="159" a="255" />
+            <EdgeColor R="99" G="51" B="159" a="255" />
+            <Excitation Type="0" Excit_X="0.000000e+00" Excit_Y="-1.000000e+00" Excit_Z="0.000000e+00" />
+            <Weight Function_X="1.000000e+00" Function_Y="1.000000e+00" Function_Z="1.000000e+00" />
+        </Electrode>
+        <DumpBox ID="3" Name="tmp/Et_" GlobalSetting="1" DumpType="0" DumpMode="2">
+            <FillColor R="201" G="154" B="102" a="255" />
+            <EdgeColor R="201" G="154" B="102" a="255" />
+            <ScalarDump DumpPhi="1" DumpDivE="0" DumpDivD="0" DumpDivP="0" DumpFieldW="0" DumpChargeW="0" />
+            <VectorDump DumpEField="0" DumpDField="0" DumpPField="0" />
+            <SubGridDump SubGridDump="0" SimpleDump="0" SubGridLevel="-1" />
+        </DumpBox>
+        <ProbeBox ID="4" Name="tmp/u1" Number="0" Type="0">
+            <FillColor R="50" G="13" B="183" a="255" />
+            <EdgeColor R="50" G="13" B="183" a="255" />
+        </ProbeBox>
+        <ProbeBox ID="5" Name="tmp/i1" Number="0" Type="1">
+            <FillColor R="49" G="88" B="163" a="255" />
+            <EdgeColor R="49" G="88" B="163" a="255" />
+        </ProbeBox>
+    </Properties>
+    <Primitives>
+        <Box ID="0" PropertyID="0" Priority="0">
+            <P1 X="-5.000000e+02" Y="0.000000e+00" Z="8.000000e+02" />
+            <P2 X="5.000000e+02" Y="5.000000e+02" Z="1.000000e+03" />
+        </Box>
+        <Box ID="1" PropertyID="1" Priority="100">
+            <P1 X="-4.000000e+01" Y="5.000000e+01" Z="-1.000000e+03" />
+            <P2 X="4.000000e+01" Y="6.000000e+01" Z="1.000000e+03" />
+        </Box>
+        <Box ID="2" PropertyID="2" Priority="0">
+            <P1 X="-4.000000e+01" Y="0.000000e+00" Z="-1.000000e+03" />
+            <P2 X="4.000000e+01" Y="5.000000e+01" Z="-1.000000e+03" />
+        </Box>
+        <Box ID="3" PropertyID="3" Priority="0">
+            <P1 X="-1.200000e+02" Y="0.000000e+00" Z="-1.000000e+03" />
+            <P2 X="1.200000e+02" Y="7.500000e+01" Z="1.000000e+03" />
+        </Box>
+        <Box ID="4" PropertyID="4" Priority="0">
+            <P1 X="0.000000e+00" Y="5.000000e+01" Z="0.000000e+00" />
+            <P2 X="0.000000e+00" Y="0.000000e+00" Z="0.000000e+00" />
+        </Box>
+        <Box ID="5" PropertyID="5" Priority="0">
+            <P1 X="-1.200000e+02" Y="2.500000e+01" Z="0.000000e+00" />
+            <P2 X="1.200000e+02" Y="7.500000e+01" Z="0.000000e+00" />
+        </Box>
+    </Primitives>
+</ContinuousStructure>
