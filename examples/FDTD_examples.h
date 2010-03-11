@@ -10,4 +10,7 @@ void BuildPlaneWave(const char* filename);
 
 void BuildMSL(const char* filename);
 
+void BuildCoaxial_Cartesian(const char* filename);
+
+
 #endif // FDTD_EXAMPLES_H

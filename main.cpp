@@ -32,7 +32,10 @@ int main(int argc, char *argv[])
 	const char* fileMSL="examples/MSL.xml";
 	BuildMSL(fileMSL);
 
-	const char* file=fileMSL;
+	const char* fileCoax="examples/Coax_Cart.xml";
+	BuildCoaxial_Cartesian(fileCoax);
+
+	const char* file=fileCoax;
 
 //	cerr << CSX.ReadFromXML("examples/PlaneWave.xml") << endl;
 #endif

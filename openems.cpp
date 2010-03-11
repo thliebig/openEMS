@@ -42,7 +42,8 @@ int openEMS::SetupFDTD(const char* file)
 {
 	if (file==NULL) return -1;
 	Reset();
-	double fmax=0;
+	double f0=0;
+	double fc=0;
 	int Excit_Type=0;
 	bool EnableDump = true;
 	int bounds[6];
@@ -72,7 +73,11 @@ int openEMS::SetupFDTD(const char* file)
 		exit(-2);
 	}
 	Excite->QueryIntAttribute("Type",&Excit_Type);
-	Excite->QueryDoubleAttribute("f0",&fmax);
+	if (Excit_Type==0)
+	{
+		Excite->QueryDoubleAttribute("f0",&f0);
+		Excite->QueryDoubleAttribute("fc",&fc);
+	}
 
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
@@ -108,7 +113,7 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Op->CalcECOperator();
 
 	if (Excit_Type==0)
-		FDTD_Op->CalcGaussianPulsExcitation(fmax/2,fmax/2);
+		FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
 	else
 	{
 		cerr << "openEMS: Excitation type is unknown" << endl;
@@ -121,8 +126,8 @@ int openEMS::SetupFDTD(const char* file)
 
 	FDTD_Op->ApplyMagneticBC(PMC);
 
-	cerr << "Nyquist number of timesteps: " << FDTD_Op->GetNyquistNum(fmax) << endl;
-	unsigned int Nyquist = FDTD_Op->GetNyquistNum(fmax);
+	cerr << "Nyquist number of timesteps: " << FDTD_Op->GetNyquistNum(f0+fc) << endl;
+	unsigned int Nyquist = FDTD_Op->GetNyquistNum(f0+fc);
 
 	cerr << "Time for operator: " << difftime(OpDoneTime,startTime) << endl;
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1" standalone="yes" ?>
 <openEMS-Parameter NumberOfTimesteps="1000">
-    <Excitation Type="0" f0="1000000000" />
+    <Excitation Type="0" f0="500000000" fc="500000000" />
     <BoundaryCond xmin="1" xmax="1" ymin="0" ymax="0" zmin="0" zmax="0" />
 </openEMS-Parameter>
 <ContinuousStructure>
@@ -25,7 +25,7 @@
             <FillColor R="115" G="81" B="255" a="255" />
             <EdgeColor R="115" G="81" B="255" a="255" />
             <Excitation Type="1" Excit_X="0.000000e+00" Excit_Y="1.000000e+00" Excit_Z="0.000000e+00" />
-            <Weight Function_X="1.000000e+00" Function_Y="1.000000e+00" Function_Z="1.000000e+00" />
+            <Weight X="1.000000e+00" Y="1.000000e+00" Z="1.000000e+00" />
         </Electrode>
     </Properties>
     <Primitives>
