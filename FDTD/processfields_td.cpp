@@ -14,7 +14,7 @@ ProcessFieldsTD::~ProcessFieldsTD()
 
 void ProcessFieldsTD::DumpCellInterpol(ofstream &file)
 {
-		if (DumpType==0)
+	if (DumpType==0)
 	{
 		//create array
 		FDTD_FLOAT**** E_T = Create_N_3DArray(numDLines);

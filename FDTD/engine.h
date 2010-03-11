@@ -5,6 +5,7 @@
 
 class Engine
 {
+	friend class Processing;
 	friend class ProcessVoltage;
 	friend class ProcessCurrent;
 	friend class ProcessFieldsTD;

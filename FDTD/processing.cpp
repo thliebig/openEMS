@@ -29,6 +29,37 @@ void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 	if (Op->SnapToMesh(dstop,stop)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
 }
 
+double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int field)
+{
+	double result=0;
+	FDTD_FLOAT**** array;
+	if (field==0)
+		array=Eng->volt;
+	else if (field==1)
+		array=Eng->curr;
+	else return 0.0;
+
+	unsigned int pos[3]={start[0],start[1],start[2]};
+//	cerr << Eng->volt[1][pos[0]][pos[1]][pos[2]] << endl;
+	for (int n=0;n<3;++n)
+	{
+		if (start[n]<stop[n])
+		{
+			for (;pos[n]<stop[n];++pos[n])
+			{
+				result+=array[n][pos[0]][pos[1]][pos[2]];
+//				cerr << n << " " << pos[0] << " " << pos[1] << " " <<  pos[2] << " " << Eng->volt[n][pos[0]][pos[1]][pos[2]] << endl;
+			}
+		}
+		else
+		{
+			for (;pos[n]>stop[n];--pos[n])
+				result-=array[n][pos[0]][pos[1]][pos[2]];
+		}
+	}
+	return result;
+}
+
 
 void ProcessingArray::AddProcessing(Processing* proc)
 {

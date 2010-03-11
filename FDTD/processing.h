@@ -34,6 +34,8 @@ protected:
 
 	unsigned int start[3];
 	unsigned int stop[3];
+
+	double CalcLineIntegral(unsigned int* start, unsigned int* stop, int field);
 };
 
 class ProcessingArray
