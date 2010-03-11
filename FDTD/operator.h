@@ -17,7 +17,7 @@ public:
     Operator();
 	virtual ~Operator();
 
-	virtual void SetGeometryCSX(ContinuousStructure* geo);
+	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
 	virtual int CalcECOperator();
 

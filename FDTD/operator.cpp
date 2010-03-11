@@ -185,9 +185,9 @@ void Operator::DumpOperator2File(string filename)
 	file.close();
 }
 
-void Operator::SetGeometryCSX(ContinuousStructure* geo)
+bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 {
-	if (geo==NULL) return;
+	if (geo==NULL) return false;
 
 	Reset();
 	CSX = geo;
@@ -196,14 +196,15 @@ void Operator::SetGeometryCSX(ContinuousStructure* geo)
 	for (int n=0;n<3;++n)
 	{
 		discLines[n] = grid->GetLines(n,discLines[n],numLines[n],true);
-		if (numLines[n]<3) {cerr << "CartOperator::SetGeometryCSX: you need at least 3 disc-lines in every direction (3D!)!!!" << endl; Reset(); return;}
+		if (numLines[n]<3) {cerr << "CartOperator::SetGeometryCSX: you need at least 3 disc-lines in every direction (3D!)!!!" << endl; Reset(); return false;}
 	}
 	MainOp = new AdrOp(numLines[0],numLines[1],numLines[2]);
 	MainOp->SetGrid(discLines[0],discLines[1],discLines[2]);
-	if (grid->GetDeltaUnit()<=0)  {cerr << "CartOperator::SetGeometryCSX: grid delta unit must not be <=0 !!!" << endl; Reset(); return;}
+	if (grid->GetDeltaUnit()<=0)  {cerr << "CartOperator::SetGeometryCSX: grid delta unit must not be <=0 !!!" << endl; Reset(); return false;}
 	else gridDelta=grid->GetDeltaUnit();
 	MainOp->SetGridDelta(1);
 	MainOp->AddCellAdrOp();
+	return true;
 }
 
 void Operator::InitOperator()
