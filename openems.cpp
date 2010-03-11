@@ -15,6 +15,7 @@ openEMS::openEMS()
 	FDTD_Op=NULL;
 	FDTD_Eng=NULL;
 	PA=NULL;
+	Enable_Dumps = true;
 }
 
 openEMS::~openEMS()
@@ -45,7 +46,6 @@ int openEMS::SetupFDTD(const char* file)
 	double f0=0;
 	double fc=0;
 	int Excit_Type=0;
-	bool EnableDump = true;
 	int bounds[6];
 
 	time_t startTime=time(NULL);
@@ -181,7 +181,7 @@ int openEMS::SetupFDTD(const char* file)
 	for (size_t i=0;i<DumpProps.size();++i)
 	{
 		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(FDTD_Op,FDTD_Eng);
-		ProcTD->SetEnable(EnableDump);
+		ProcTD->SetEnable(Enable_Dumps);
 		ProcTD->SetProcessInterval(Nyquist/2); //twice as often as nyquist dictates
 
 		//only looking for one prim atm
