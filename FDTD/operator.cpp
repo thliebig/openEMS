@@ -590,38 +590,40 @@ bool Operator::CalcEFieldExcitation()
 				coord[0] = discLines[0][pos[0]];
 				coord[1] = discLines[1][pos[1]];
 				coord[2] = discLines[2][pos[2]];
-				CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,CSProperties::ELECTRODE);
+//				CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE | CSProperties::METAL));
+				CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
 				if (prop)
 				{
 					CSPropElectrode* elec = prop->ToElectrode();
-					if ((elec->GetExcitType()==0) || (elec->GetExcitType()==1)) //soft or hard E-Field excite!
-					{
-						vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-						for (int n=0;n<3;++n)
+					if (elec!=NULL)
+						if ((elec->GetExcitType()==0) || (elec->GetExcitType()==1)) //soft or hard E-Field excite!
 						{
-							coord[0] = discLines[0][pos[0]];
-							coord[1] = discLines[1][pos[1]];
-							coord[2] = discLines[2][pos[2]];
-							double delta=0;
-							if (pos[n]<numLines[n]-1)
-								delta = (discLines[n][pos[n]+1]-discLines[n][pos[n]]);
-							else
-								delta = (discLines[n][pos[n]]-discLines[n][pos[n]-1]);
-							coord[n]+=0.5*delta;
-							vIndex[n].push_back(pos[n]);
-							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
-								vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta*gridDelta);
-							else
-								vExcit[n].push_back(0);
-							if ((elec->GetExcitType()==1) && (elec->GetActiveDir(n))) //hard excite
+							vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+							for (int n=0;n<3;++n)
 							{
-								vv[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
-								vi[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
-								vv[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
-								vi[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
+								coord[0] = discLines[0][pos[0]];
+								coord[1] = discLines[1][pos[1]];
+								coord[2] = discLines[2][pos[2]];
+								double delta=0;
+								if (pos[n]<numLines[n]-1)
+									delta = (discLines[n][pos[n]+1]-discLines[n][pos[n]]);
+								else
+									delta = (discLines[n][pos[n]]-discLines[n][pos[n]-1]);
+								coord[n]+=0.5*delta;
+								vIndex[n].push_back(pos[n]);
+								if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
+									vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta*gridDelta);
+								else
+									vExcit[n].push_back(0);
+								if ((elec->GetExcitType()==1) && (elec->GetActiveDir(n))) //hard excite
+								{
+									vv[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
+									vi[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
+									vv[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
+									vi[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
+								}
 							}
 						}
-					}
 				}
 			}
 		}
