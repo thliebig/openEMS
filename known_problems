@@ -1,0 +1,4 @@
+#known problems that also might be bugs
+
+11-03-2010
+example Coaxial_Cartesian: field distribution with PEC != kappa very large, staircasing problem??
