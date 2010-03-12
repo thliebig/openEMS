@@ -1,0 +1,21 @@
+#this is a todo/wish/feature-request/outlook list for the openEMS project
+#priorities: todo (highest) --> outlook (lowest)
+
+todo:
+- pml
+- more examples and lots of testing...
+- location dependend excitation given by a file (e.g. simulated with comsol or complicated formula via matlab)
+- (re)include cylindrical FDTD
+
+wishes:
+- dispersive material
+- optimized operator/engine
+- multithreaded processing (should be easy enough)
+- more output file-formats (e.g. hdf5)
+
+feature-requests:
+- port libraries
+
+outlook:
+- incorporate a static FD-solver into openEMS
+- include other EM-solver (e.g. FEM)
