@@ -76,10 +76,17 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	cout << "Read openEMS Settings..." << endl;
-	TiXmlElement* FDTD_Opts = doc.FirstChildElement("openEMS-Parameter");
+	TiXmlElement* openEMSxml = doc.FirstChildElement("openEMS");
+	if (openEMSxml==NULL)
+	{
+		cerr << "Can't read openEMS ... " << endl;
+		exit(-1);
+	}
+
+	TiXmlElement* FDTD_Opts = openEMSxml->FirstChildElement("FDTD");
 	if (FDTD_Opts==NULL)
 	{
-		cerr << "Can't read openEMS Settings... " << endl;
+		cerr << "Can't read openEMS FDTD Settings... " << endl;
 		exit(-1);
 	}
 	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&NrTS);
@@ -112,7 +119,7 @@ int openEMS::SetupFDTD(const char* file)
 
 	cout << "Read Geometry..." << endl;
 	ContinuousStructure CSX;
-	string EC(CSX.ReadFromXML(&doc));
+	string EC(CSX.ReadFromXML(openEMSxml));
 	if (EC.empty()==false)
 	{
 		cerr << EC << endl;

@@ -68,7 +68,9 @@ void BuildDipol(const char* filename)
 	TiXmlDocument doc(filename);
 	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
 
-	TiXmlElement FDTD_Opts("openEMS-Parameter");
+	TiXmlElement openEMS("openEMS");
+
+	TiXmlElement FDTD_Opts("FDTD");
 	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
 
 	TiXmlElement Excite("Excitation");
@@ -86,13 +88,15 @@ void BuildDipol(const char* filename)
 	BC.SetAttribute("zmax",bounds[5]);
 	FDTD_Opts.InsertEndChild(BC);
 
-	doc.InsertEndChild(FDTD_Opts);
+	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&doc,true)==false)
+	if (CSX.Write2XML(&openEMS,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
 	}
+
+	doc.InsertEndChild(openEMS);
 
 	doc.SaveFile();
 }
@@ -209,7 +213,9 @@ void BuildPlaneWave(const char* filename)
 	TiXmlDocument doc(filename);
 	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
 
-	TiXmlElement FDTD_Opts("openEMS-Parameter");
+	TiXmlElement openEMS("openEMS");
+
+	TiXmlElement FDTD_Opts("FDTD");
 	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
 
 	TiXmlElement Excite("Excitation");
@@ -227,13 +233,15 @@ void BuildPlaneWave(const char* filename)
 	BC.SetAttribute("zmax",bounds[5]);
 	FDTD_Opts.InsertEndChild(BC);
 
-	doc.InsertEndChild(FDTD_Opts);
+	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&doc,true)==false)
+	if (CSX.Write2XML(&openEMS,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
 	}
+
+	doc.InsertEndChild(openEMS);
 
 	doc.SaveFile();
 }
@@ -382,7 +390,9 @@ void BuildMSL(const char* filename)
 	TiXmlDocument doc(filename);
 	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
 
-	TiXmlElement FDTD_Opts("openEMS-Parameter");
+	TiXmlElement openEMS("openEMS");
+
+	TiXmlElement FDTD_Opts("FDTD");
 	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
 
 	TiXmlElement Excite("Excitation");
@@ -400,13 +410,15 @@ void BuildMSL(const char* filename)
 	BC.SetAttribute("zmax",bounds[5]);
 	FDTD_Opts.InsertEndChild(BC);
 
-	doc.InsertEndChild(FDTD_Opts);
+	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&doc,true)==false)
+	if (CSX.Write2XML(&openEMS,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
 	}
+
+	doc.InsertEndChild(openEMS);
 
 	doc.SaveFile();
 }
@@ -552,7 +564,9 @@ void BuildCoaxial_Cartesian(const char* filename)
 	TiXmlDocument doc(filename);
 	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
 
-	TiXmlElement FDTD_Opts("openEMS-Parameter");
+	TiXmlElement openEMS("openEMS");
+
+	TiXmlElement FDTD_Opts("FDTD");
 	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
 
 	TiXmlElement Excite("Excitation");
@@ -570,13 +584,15 @@ void BuildCoaxial_Cartesian(const char* filename)
 	BC.SetAttribute("zmax",bounds[5]);
 	FDTD_Opts.InsertEndChild(BC);
 
-	doc.InsertEndChild(FDTD_Opts);
+	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&doc,true)==false)
+	if (CSX.Write2XML(&openEMS,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
 	}
+
+	doc.InsertEndChild(openEMS);
 
 	doc.SaveFile();
 }
