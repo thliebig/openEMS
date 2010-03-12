@@ -63,7 +63,7 @@ void ProcessFieldsTD::DumpCellInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpFieldArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines);
+		DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines);
 		Delete_N_3DArray(E_T,numDLines);
 		E_T = NULL;
 	}
@@ -101,7 +101,7 @@ void ProcessFieldsTD::DumpCellInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpFieldArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines);
+		DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines);
 		Delete_N_3DArray(H_T,numDLines);
 		H_T = NULL;
 	}
@@ -126,7 +126,7 @@ void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpFieldArray2VTK(file,string("E-Field"),E_T,discLines,numLines);
+		DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines);
 		Delete_N_3DArray(E_T,numLines);
 		E_T = NULL;
 	}
@@ -149,7 +149,7 @@ void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpFieldArray2VTK(file,string("H-Field"),H_T,discLines,numLines);
+		DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines);
 		Delete_N_3DArray(H_T,numLines);
 		H_T = NULL;
 	}

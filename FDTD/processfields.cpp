@@ -109,7 +109,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 //	else subSample[dir]=subSampleRate;
 //}
 
-bool ProcessFields::DumpFieldArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines)
+void ProcessFields::WriteVTKHeader(ofstream &file, double** discLines, unsigned int* numLines)
 {
 	file << "# vtk DataFile Version 2.0" << endl;
 	file << "Rectilinear Grid openEMS_ProcessFields" << endl;
@@ -128,8 +128,11 @@ bool ProcessFields::DumpFieldArray2VTK(ofstream &file, string name, FDTD_FLOAT**
 	for (unsigned int i=0;i<numLines[2];++i)
 		file << discLines[2][i] << " ";
 	file << endl << endl;
-
 	file << "POINT_DATA " << numLines[0]*numLines[1]*numLines[2] << endl;
+}
+
+void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT**** array, unsigned int* numLines)
+{
 	file << "VECTORS " << name << " float " << endl;
 
 	unsigned int pos[3];
@@ -149,3 +152,59 @@ bool ProcessFields::DumpFieldArray2VTK(ofstream &file, string name, FDTD_FLOAT**
 		}
 	}
 }
+
+
+bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines)
+{
+	WriteVTKHeader(file, discLines, numLines);
+	WriteVTKVectorArray(file, name, array, numLines);
+}
+
+bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
+{
+	WriteVTKHeader(file, discLines, numLines);
+	for (int n=0;n<numFields;++n)
+	{
+		WriteVTKVectorArray(file, names[n], array[n], numLines);
+		file << endl;
+	}
+}
+
+void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines)
+{
+	file << "SCALARS " << name << " float " << 1 << endl;
+	file << "LOOKUP_TABLE default" << endl;
+	unsigned int pos[3];
+	int count=0;
+	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+	{
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+			{
+				file << array[pos[0]][pos[1]][pos[2]] << " ";
+				++count;
+				if (count%10==0)
+					file << endl;
+			}
+		}
+	}
+}
+
+bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*** array, double** discLines, unsigned int* numLines)
+{
+	WriteVTKHeader(file, discLines, numLines);
+	WriteVTKScalarArray(file, name, array, numLines);
+}
+
+bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
+{
+	WriteVTKHeader(file, discLines, numLines);
+	for (int n=0;n<numFields;++n)
+	{
+		WriteVTKScalarArray(file, names[n], array[n], numLines);
+		file << endl;
+	}
+}
+
+

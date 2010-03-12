@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 #ifdef STANDALONE
 	if (argc<=1)
 	{
-		cerr << " usage: openEMS FDTD_XML_FILE [--disable-dumps]" << endl;
+		cout << " usage: openEMS FDTD_XML_FILE [--disable-dumps] [--debug-material]" << endl;
 		exit(-1);
 	}
 
@@ -43,7 +43,17 @@ int main(int argc, char *argv[])
 		for (int n=2;n<argc;++n)
 		{
 			if (strcmp(argv[n],"--disable-dumps")==0)
+			{
+				cout << "openEMS - disabling all field dumps" << endl;
 				FDTD.SetEnableDumps(false);
+			}
+			else if (strcmp(argv[n],"--debug-material")==0)
+			{
+				cout << "openEMS - dumping material to 'material_dump.vtk'" << endl;
+				FDTD.DebugMaterial();
+			}
+			else
+				cout << "openEMS - unknown argument: " << argv[n] << endl;
 		}
 	}
 
@@ -63,7 +73,7 @@ int main(int argc, char *argv[])
 	const char* fileCoax="../examples/Coax_Cart.xml";
 	BuildCoaxial_Cartesian(fileCoax);
 
-	const char* file=fileCoax;
+	const char* file=fileMSL;
 
 //	cerr << CSX.ReadFromXML("examples/PlaneWave.xml") << endl;
 #endif

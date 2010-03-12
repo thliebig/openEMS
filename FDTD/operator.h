@@ -53,6 +53,7 @@ public:
 	void ShowSize();
 
 	void DumpOperator2File(string filename);
+	void DumpMaterial2File(string filename);
 
 	virtual void Reset();
 

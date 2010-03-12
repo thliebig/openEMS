@@ -285,10 +285,10 @@ void BuildMSL(const char* filename)
 
 	//MSL
 	CSProperties* MSL = NULL;
-//	CSPropMaterial* MSL_mat = new CSPropMaterial(CSX.GetParameterSet());
-//	MSL_mat->SetKappa(56e6);
-//	MSL = MSL_mat;
-	MSL = new CSPropMetal(CSX.GetParameterSet());
+	CSPropMaterial* MSL_mat = new CSPropMaterial(CSX.GetParameterSet());
+	MSL_mat->SetKappa(56e6);
+	MSL = MSL_mat;
+//	MSL = new CSPropMetal(CSX.GetParameterSet());
 
 	CSX.AddProperty(MSL);
 	box = new CSPrimBox(CSX.GetParameterSet(),MSL);

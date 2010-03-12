@@ -21,10 +21,16 @@
             <WeightY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="term:pow(abs(z)-800,4)" Sigma="term:pow(abs(z)-800,4)" />
             <WeightZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="term:pow(abs(z)-800,4)" Sigma="term:pow(abs(z)-800,4)" />
         </Material>
-        <Metal ID="1" Name="">
+        <Material ID="1" Name="" Isotropy="1">
             <FillColor R="118" G="90" B="46" a="255" />
             <EdgeColor R="118" G="90" B="46" a="255" />
-        </Metal>
+            <Property Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="5.600000e+07" Sigma="0.000000e+00" />
+            <PropertyY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
+            <PropertyZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
+            <WeightX Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
+            <WeightY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
+            <WeightZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
+        </Material>
         <Electrode ID="2" Name="" Number="0" Delay="0.000000e+00">
             <FillColor R="99" G="51" B="159" a="255" />
             <EdgeColor R="99" G="51" B="159" a="255" />

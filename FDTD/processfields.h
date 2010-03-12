@@ -41,11 +41,18 @@ public:
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
 	void SetDumpType(int type) {DumpType=type;}
 
+	static bool DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines);
+	static bool DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines);
+	static bool DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*** array, double** discLines, unsigned int* numLines);
+	static bool DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines);
+
 //	virtual void Process();
 protected:
 	ProcessFields(Operator* op, Engine* eng);
 
-	static bool DumpFieldArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines);
+	static void WriteVTKHeader(ofstream &file, double** discLines, unsigned int* numLines);
+	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT**** array, unsigned int* numLines);
+	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines);
 
 	int DumpMode;
 	int DumpType;

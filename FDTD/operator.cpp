@@ -17,6 +17,7 @@
 
 #include <fstream>
 #include "operator.h"
+#include "processfields.h"
 #include "tools/array_ops.h"
 
 Operator::Operator()
@@ -199,6 +200,59 @@ void Operator::DumpOperator2File(string filename)
 	file << "ix\tiy\tiz\tii_x\tii_y\tii_z" << endl;
 	Dump_N_3DArray2File(file,ii,numLines);
 
+	file.close();
+}
+
+void Operator::DumpMaterial2File(string filename)
+{
+	FDTD_FLOAT*** epsilon;
+	FDTD_FLOAT*** mue;
+	FDTD_FLOAT*** kappa;
+	FDTD_FLOAT*** sigma;
+	unsigned int pos[3];
+	double inMat[4];
+
+	ofstream file(filename.c_str(),ios_base::out);
+//	file.open;
+	if (file.is_open()==false)
+	{
+		cerr << "Operator::DumpMaterial2File: Can't open file: " << filename << endl;
+		return;
+	}
+
+	epsilon = Create3DArray( numLines);
+	mue = Create3DArray( numLines);
+	kappa = Create3DArray( numLines);
+	sigma = Create3DArray( numLines);
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			{
+				for (int n=0;n<3;++n)
+				{
+					Calc_EffMatPos(n, pos, inMat);
+					epsilon[pos[0]][pos[1]][pos[2]]+=inMat[0]/__EPS0__;
+					mue[pos[0]][pos[1]][pos[2]]+=inMat[2]/__MUE0__;
+					kappa[pos[0]][pos[1]][pos[2]]+=inMat[1];
+					sigma[pos[0]][pos[1]][pos[2]]+=inMat[3];
+				}
+				epsilon[pos[0]][pos[1]][pos[2]]/=3;
+				mue[pos[0]][pos[1]][pos[2]]/=3;
+				kappa[pos[0]][pos[1]][pos[2]]/=3;
+				sigma[pos[0]][pos[1]][pos[2]]/=3;
+			}
+		}
+	}
+
+	string names[] = {"epsilon","mue","kappa","sigma"};
+	FDTD_FLOAT*** array[] = {epsilon,mue,kappa,sigma};
+	ProcessFields::DumpMultiScalarArray2VTK(file, names, array, 4, discLines, numLines);
+	Delete3DArray(epsilon,numLines);
+	Delete3DArray(mue,numLines);
+	Delete3DArray(kappa,numLines);
+	Delete3DArray(sigma,numLines);
 	file.close();
 }
 

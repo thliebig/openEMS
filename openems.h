@@ -36,10 +36,13 @@ public:
 
 	void SetEnableDumps(bool val) {Enable_Dumps=val;}
 
+	void DebugMaterial() {DebugMat=true;}
+
 protected:
 	//! Number of Timesteps
 	int NrTS;
 	bool Enable_Dumps;
+	bool DebugMat;
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;

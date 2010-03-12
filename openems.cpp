@@ -33,6 +33,7 @@ openEMS::openEMS()
 	FDTD_Eng=NULL;
 	PA=NULL;
 	Enable_Dumps = true;
+	DebugMat = false;
 }
 
 openEMS::~openEMS()
@@ -74,7 +75,7 @@ int openEMS::SetupFDTD(const char* file)
 		exit(-1);
 	}
 
-	cerr << "Read openEMS Settings..." << endl;
+	cout << "Read openEMS Settings..." << endl;
 	TiXmlElement* FDTD_Opts = doc.FirstChildElement("openEMS-Parameter");
 	if (FDTD_Opts==NULL)
 	{
@@ -109,7 +110,7 @@ int openEMS::SetupFDTD(const char* file)
 	BC->QueryIntAttribute("zmin",&bounds[4]);
 	BC->QueryIntAttribute("zmax",&bounds[5]);
 
-	cerr << "Read Geometry..." << endl;
+	cout << "Read Geometry..." << endl;
 	ContinuousStructure CSX;
 	string EC(CSX.ReadFromXML(&doc));
 	if (EC.empty()==false)
@@ -123,9 +124,14 @@ int openEMS::SetupFDTD(const char* file)
 		PMC[n]=(bounds[n]==1);
 
 	//*************** setup operator ************//
-	cerr << "Create Operator..." << endl;
+	cout << "Create Operator..." << endl;
 	FDTD_Op = new Operator();
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(-1);
+
+	if (DebugMat)
+	{
+		FDTD_Op->DumpMaterial2File("material_dump.vtk");
+	}
 
 	FDTD_Op->CalcECOperator();
 
@@ -143,10 +149,10 @@ int openEMS::SetupFDTD(const char* file)
 
 	FDTD_Op->ApplyMagneticBC(PMC);
 
-	cerr << "Nyquist number of timesteps: " << FDTD_Op->GetNyquistNum(f0+fc) << endl;
+	cout << "Nyquist number of timesteps: " << FDTD_Op->GetNyquistNum(f0+fc) << endl;
 	unsigned int Nyquist = FDTD_Op->GetNyquistNum(f0+fc);
 
-	cerr << "Time for operator: " << difftime(OpDoneTime,startTime) << endl;
+	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 
 	//create FDTD engine
 	FDTD_Eng = new Engine(FDTD_Op);
@@ -154,6 +160,7 @@ int openEMS::SetupFDTD(const char* file)
 	time_t currTime = time(NULL);
 
 	//*************** setup processing ************//
+	cout << "Setting up processing..." << endl;
 	PA = new ProcessingArray();
 
 	double start[3];
@@ -229,6 +236,7 @@ int openEMS::SetupFDTD(const char* file)
 
 void openEMS::RunFDTD()
 {
+	cout << "Running FDTD engine... this may take a while... grab a coup of coffee?!?" << endl;
 	time_t currTime = time(NULL);
 	//*************** simulate ************//
 	int step=PA->Process();
@@ -237,7 +245,7 @@ void openEMS::RunFDTD()
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
-//		cerr << " do " << step << " steps; current: " << eng.GetNumberOfTimesteps() << endl;
+//		cout << " do " << step << " steps; current: " << eng.GetNumberOfTimesteps() << endl;
 		if ((step<0) || (step>NrTS - FDTD_Eng->GetNumberOfTimesteps())) step=NrTS - FDTD_Eng->GetNumberOfTimesteps();
 	}
 
@@ -247,6 +255,6 @@ void openEMS::RunFDTD()
 
 	double t_diff = difftime(currTime,prevTime);
 
-	cerr << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
-	cerr << "Speed: " << (double)FDTD_Op->GetNumberCells()*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff/1e6 << " MCells/s " << endl;
+	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
+	cout << "Speed: " << (double)FDTD_Op->GetNumberCells()*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff/1e6 << " MCells/s " << endl;
 }
