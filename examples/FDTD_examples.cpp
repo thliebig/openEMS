@@ -166,7 +166,7 @@ void BuildPlaneWave(const char* filename)
 	//E-field dump
 	CSPropDumpBox* Edump = new CSPropDumpBox(CSX.GetParameterSet());
 	Edump->SetDumpType(0);
-	Edump->SetName("tmp/Et_");
+	Edump->SetName("Et_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
 	box->SetCoord(0,width/-3.0);box->SetCoord(1,width/3.0);
@@ -177,7 +177,7 @@ void BuildPlaneWave(const char* filename)
 	//H-field dump
 	CSPropDumpBox* Hdump = new CSPropDumpBox(CSX.GetParameterSet());
 	Hdump->SetDumpType(1);
-	Hdump->SetName("tmp/Ht_");
+	Hdump->SetName("Ht_");
 	CSX.AddProperty(Hdump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Hdump);
 	box->SetCoord(0,width/-3.0);box->SetCoord(1,width/3.0);
@@ -285,10 +285,10 @@ void BuildMSL(const char* filename)
 
 	//MSL
 	CSProperties* MSL = NULL;
-	CSPropMaterial* MSL_mat = new CSPropMaterial(CSX.GetParameterSet());
-	MSL_mat->SetKappa(56e6);
-	MSL = MSL_mat;
-//	MSL = new CSPropMetal(CSX.GetParameterSet());
+//	CSPropMaterial* MSL_mat = new CSPropMaterial(CSX.GetParameterSet());
+//	MSL_mat->SetKappa(56e6);
+//	MSL = MSL_mat;
+	MSL = new CSPropMetal(CSX.GetParameterSet());
 
 	CSX.AddProperty(MSL);
 	box = new CSPrimBox(CSX.GetParameterSet(),MSL);
@@ -314,7 +314,7 @@ void BuildMSL(const char* filename)
 //	//E-field dump xz
 //	Edump = new CSPropDumpBox(CSX.GetParameterSet());
 //	Edump->SetDumpType(0);
-//	Edump->SetName("tmp/Et_xz_");
+//	Edump->SetName("Et_xz_");
 //	CSX.AddProperty(Edump);
 //	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
 //	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
@@ -325,7 +325,7 @@ void BuildMSL(const char* filename)
 //	//E-field dump xy
 //	Edump = new CSPropDumpBox(CSX.GetParameterSet());
 //	Edump->SetDumpType(0);
-//	Edump->SetName("tmp/Et_xy_");
+//	Edump->SetName("Et_xy_");
 //	CSX.AddProperty(Edump);
 //	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
 //	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
@@ -337,7 +337,7 @@ void BuildMSL(const char* filename)
 	Edump = new CSPropDumpBox(CSX.GetParameterSet());
 	Edump->SetDumpType(0);
 	Edump->SetDumpMode(2); //cell interpolated dump
-	Edump->SetName("tmp/Et_");
+	Edump->SetName("Et_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
 	box->SetCoord(0,MSL_width*-1.5);box->SetCoord(1,MSL_width*1.5);
@@ -348,7 +348,7 @@ void BuildMSL(const char* filename)
 	//voltage calc
 	CSPropProbeBox* volt = new CSPropProbeBox(CSX.GetParameterSet());
 	volt->SetProbeType(0);
-	volt->SetName("tmp/u1");
+	volt->SetName("u1");
 	CSX.AddProperty(volt);
 	box = new CSPrimBox(CSX.GetParameterSet(),volt);
 	box->SetCoord(0,0.0);box->SetCoord(1,0.0);
@@ -359,7 +359,7 @@ void BuildMSL(const char* filename)
 	//current calc
 	CSPropProbeBox* curr = new CSPropProbeBox(CSX.GetParameterSet());
 	curr->SetProbeType(1);
-	curr->SetName("tmp/i1");
+	curr->SetName("i1");
 	CSX.AddProperty(curr);
 	box = new CSPrimBox(CSX.GetParameterSet(),curr);
 	box->SetCoord(0,MSL_width*-1.5);box->SetCoord(1,MSL_width*1.5);
@@ -479,7 +479,7 @@ void BuildCoaxial_Cartesian(const char* filename)
 	CSPropDumpBox* Edump = new CSPropDumpBox(CSX.GetParameterSet());
 	Edump->SetDumpType(0);
 	Edump->SetDumpMode(2);
-	Edump->SetName("tmp/Et_");
+	Edump->SetName("Et_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
 	box->SetCoord(0,-1*rad[1]);box->SetCoord(1,rad[1]);
@@ -490,7 +490,7 @@ void BuildCoaxial_Cartesian(const char* filename)
 	//voltage calc
 	CSPropProbeBox* volt = new CSPropProbeBox(CSX.GetParameterSet());
 	volt->SetProbeType(0);
-	volt->SetName("tmp/u1");
+	volt->SetName("u1");
 	CSX.AddProperty(volt);
 	box = new CSPrimBox(CSX.GetParameterSet(),volt);
 	box->SetCoord(0,rad[0]);box->SetCoord(1,rad[1]);
@@ -501,7 +501,7 @@ void BuildCoaxial_Cartesian(const char* filename)
 	//current calc
 	CSPropProbeBox* curr = new CSPropProbeBox(CSX.GetParameterSet());
 	curr->SetProbeType(1);
-	curr->SetName("tmp/i1");
+	curr->SetName("i1");
 	CSX.AddProperty(curr);
 	box = new CSPrimBox(CSX.GetParameterSet(),curr);
 	box->SetCoord(0,-1.5*rad[0]);box->SetCoord(1,1.5*rad[0]);

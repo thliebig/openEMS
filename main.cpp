@@ -51,16 +51,16 @@ int main(int argc, char *argv[])
 #else
 	//*************** setup/read geometry ************//
 
-	const char* fileDP="examples/Dipol.xml";
+	const char* fileDP="../examples/Dipol.xml";
 	BuildDipol(fileDP);
 
-	const char* filePW="examples/PlaneWave.xml";
+	const char* filePW="../examples/PlaneWave.xml";
 	BuildPlaneWave(filePW);
 
-	const char* fileMSL="examples/MSL.xml";
+	const char* fileMSL="../examples/MSL.xml";
 	BuildMSL(fileMSL);
 
-	const char* fileCoax="examples/Coax_Cart.xml";
+	const char* fileCoax="../examples/Coax_Cart.xml";
 	BuildCoaxial_Cartesian(fileCoax);
 
 	const char* file=fileCoax;
