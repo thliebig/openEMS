@@ -29,5 +29,6 @@ void BuildMSL(const char* filename);
 
 void BuildCoaxial_Cartesian(const char* filename);
 
+void BuildHelix(const char* filename);
 
 #endif // FDTD_EXAMPLES_H

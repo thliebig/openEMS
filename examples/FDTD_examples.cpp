@@ -597,3 +597,157 @@ void BuildCoaxial_Cartesian(const char* filename)
 	doc.SaveFile();
 }
 
+void BuildHelix(const char* filename)
+{
+	int maxIter = 10000;
+	double f0=0.15e9;
+	double fc=0.15e9;
+	int Excit_Type=0;
+	int bounds[] = {1,1,1,1,0,0};
+
+	cerr << "Create Helix Geometry..." << endl;
+	ContinuousStructure CSX;
+
+	double width = 800;
+	double length = 800;
+	double delta[] = {5,5,5};
+
+	//MSL
+	CSPropMaterial* copper = new CSPropMaterial(CSX.GetParameterSet());
+	copper->SetKappa(56e6);
+	copper->SetName("copper");
+	CSX.AddProperty(copper);
+
+	CSPrimUserDefined* helix = new CSPrimUserDefined(CSX.GetParameterSet(),copper);
+	helix->SetCoordSystem(CSPrimUserDefined::CYLINDER_SYSTEM);
+	helix->SetFunction("(r<110)&(r>90)&(sqrt(pow(x-r*cos(2*pi*z/100),2)+pow(y-r*sin(2*pi*z/100),2))<20)&(z>200)&(z<600)");
+	CSX.AddPrimitive(helix);
+	CSPrimCylinder* cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
+	cyl->SetRadius(10);
+	cyl->SetCoord(0,100.0);cyl->SetCoord(1,310.0);
+	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
+	cyl->SetCoord(4,200.0);cyl->SetCoord(5,200.0);
+	CSX.AddPrimitive(cyl);
+	cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
+	cyl->SetRadius(10);
+	cyl->SetCoord(0,100.0);cyl->SetCoord(1,310.0);
+	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
+	cyl->SetCoord(4,600.0);cyl->SetCoord(5,600.0);
+	CSX.AddPrimitive(cyl);
+
+	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
+	elec->SetExcitation(1.0,2);
+	elec->SetExcitType(1);
+//	elec->SetDelay(2.0e-9);
+	CSX.AddProperty(elec);
+	cyl = new CSPrimCylinder(CSX.GetParameterSet(),elec);
+	cyl->SetRadius(10);
+	cyl->SetCoord(0,300.0);cyl->SetCoord(1,300.0);
+	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
+	cyl->SetCoord(4,200.0);cyl->SetCoord(5,600.0);
+	CSX.AddPrimitive(cyl);
+
+	CSPropDumpBox* Edump = NULL;
+	//E-field dump xz
+	Edump = new CSPropDumpBox(CSX.GetParameterSet());
+	Edump->SetDumpType(0);
+	Edump->SetName("Et_xz_");
+	CSX.AddProperty(Edump);
+	CSPrimBox* box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
+	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
+	box->SetCoord(4,-50.0);box->SetCoord(5,length);
+	CSX.AddPrimitive(box);
+//
+//	//E-field dump xy
+//	Edump = new CSPropDumpBox(CSX.GetParameterSet());
+//	Edump->SetDumpType(0);
+//	Edump->SetName("Et_xy_");
+//	CSX.AddProperty(Edump);
+//	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+//	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
+//	box->SetCoord(2,0.0);box->SetCoord(3,height);
+//	box->SetCoord(4,0.0);box->SetCoord(5,0.0);
+//	CSX.AddPrimitive(box);
+
+//	//E-field dump 3D
+//	Edump = new CSPropDumpBox(CSX.GetParameterSet());
+//	Edump->SetDumpType(0);
+//	Edump->SetDumpMode(2); //cell interpolated dump
+//	Edump->SetName("Et_");
+//	CSX.AddProperty(Edump);
+//	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+//	box->SetCoord(0,MSL_width*-1.5);box->SetCoord(1,MSL_width*1.5);
+//	box->SetCoord(2,0.0);box->SetCoord(3,MSL_height*1.5);
+//	box->SetCoord(4,length/-2.0);box->SetCoord(5,length/2.0);
+//	CSX.AddPrimitive(box);
+//
+	//voltage calc
+	CSPropProbeBox* volt = new CSPropProbeBox(CSX.GetParameterSet());
+	volt->SetProbeType(0);
+	volt->SetName("u1");
+	CSX.AddProperty(volt);
+	box = new CSPrimBox(CSX.GetParameterSet(),volt);
+	box->SetCoord(0,300.0);box->SetCoord(1,300.0);
+	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
+	box->SetCoord(4,200.0);box->SetCoord(5,600.0);
+	CSX.AddPrimitive(box);
+
+	//current calc
+	CSPropProbeBox* curr = new CSPropProbeBox(CSX.GetParameterSet());
+	curr->SetProbeType(1);
+	curr->SetName("i1");
+	CSX.AddProperty(curr);
+	box = new CSPrimBox(CSX.GetParameterSet(),curr);
+	box->SetCoord(0,200.0);box->SetCoord(1,200.0);
+	box->SetCoord(2,-50.0);box->SetCoord(3,50.0);
+	box->SetCoord(4,150.0);box->SetCoord(5,250.0);
+	CSX.AddPrimitive(box);
+
+	CSRectGrid* grid = CSX.GetGrid();
+
+	for (double n=width/-2.0;n<=width/2;n+=delta[0])
+		grid->AddDiscLine(0,n);
+	for (double n=width/-2.0;n<=width/2;n+=delta[0])
+		grid->AddDiscLine(1,n);
+	for (double n=-50;n<=length;n+=delta[2])
+		grid->AddDiscLine(2,n);
+
+	grid->SetDeltaUnit(1e-3);
+
+	//*************** Create XML file **********************
+	TiXmlDocument doc(filename);
+	doc.InsertEndChild(TiXmlDeclaration("1.0","ISO-8859-1","yes"));
+
+	TiXmlElement openEMS("openEMS");
+
+	TiXmlElement FDTD_Opts("FDTD");
+	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
+
+	TiXmlElement Excite("Excitation");
+	Excite.SetAttribute("Type",Excit_Type);
+	Excite.SetAttribute("f0",f0);
+	Excite.SetAttribute("fc",fc);
+	FDTD_Opts.InsertEndChild(Excite);
+
+	TiXmlElement BC("BoundaryCond");
+	BC.SetAttribute("xmin",bounds[0]);
+	BC.SetAttribute("xmax",bounds[1]);
+	BC.SetAttribute("ymin",bounds[2]);
+	BC.SetAttribute("ymax",bounds[3]);
+	BC.SetAttribute("zmin",bounds[4]);
+	BC.SetAttribute("zmax",bounds[5]);
+	FDTD_Opts.InsertEndChild(BC);
+
+	openEMS.InsertEndChild(FDTD_Opts);
+
+	if (CSX.Write2XML(&openEMS,true)==false)
+	{
+		cerr << "writing failed" << endl;
+		exit(-1);
+	}
+
+	doc.InsertEndChild(openEMS);
+
+	doc.SaveFile();
+}

@@ -23,7 +23,7 @@
 
 #include "examples/FDTD_examples.h"
 
-#define STANDALONE
+//#define STANDALONE
 
 using namespace std;
 
@@ -73,11 +73,15 @@ int main(int argc, char *argv[])
 	const char* fileCoax="../examples/Coax_Cart.xml";
 	BuildCoaxial_Cartesian(fileCoax);
 
-	const char* file=fileMSL;
+	const char* fileHelix="../examples/Helix.xml";
+	BuildHelix(fileHelix);
+
+	const char* file=fileHelix;
 
 //	cerr << CSX.ReadFromXML("examples/PlaneWave.xml") << endl;
 #endif
 
+	FDTD.DebugMaterial();
 	int EC = FDTD.SetupFDTD(file);
 	if (EC) return EC;
 	FDTD.RunFDTD();
