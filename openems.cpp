@@ -16,6 +16,7 @@
 */
 
 #include "openems.h"
+#include <iomanip>
 #include "tools/array_ops.h"
 #include "FDTD/operator.h"
 #include "FDTD/engine.h"
@@ -91,6 +92,9 @@ int openEMS::SetupFDTD(const char* file)
 		exit(-1);
 	}
 	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&NrTS);
+	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
+	if (endCrit==0)
+		endCrit=1e-6;
 
 	TiXmlElement* Excite = FDTD_Opts->FirstChildElement("Excitation");
 	if (Excite==NULL)
@@ -272,9 +276,9 @@ void openEMS::RunFDTD()
 			currE = ProcField.CalcTotalEnergy();
 			if ((currE>0) && (currE>maxE))
 				maxE=currE;
-			cout << "Timestep:\t" << currTS << " of " << NrTS << " (" << (double)currTS/(double)NrTS*100.0 << "%)" ;
-			cout << "\t with currently " << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
-			cout << "\t current Energy estimate: " << currE << " (decrement: " << -10.0*log10(currE/maxE) << "dB)" << endl;
+			cout << "Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
+			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
+			cout << " --- Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (decrement: " << setw(6)  << setprecision(2) << std::fixed << fabs(10.0*log10(currE/maxE)) << "dB)" << endl;
 			prevTime=currTime;
 			prevTS=currTS;
 		}
