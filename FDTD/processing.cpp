@@ -94,7 +94,7 @@ void ProcessingArray::DeleteAll()
 
 int ProcessingArray::Process()
 {
-	int nextProcess=1e100;
+	int nextProcess=maxInterval;
 	//this could be done nicely in parallel??
 	for (size_t i=0;i<ProcessArray.size();++i)
 	{

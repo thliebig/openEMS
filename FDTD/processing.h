@@ -58,7 +58,7 @@ protected:
 class ProcessingArray
 {
 public:
-	ProcessingArray() {};
+	ProcessingArray(unsigned int maximalInterval) {maxInterval=maximalInterval;}
 	~ProcessingArray() {};
 
 	void AddProcessing(Processing* proc);
@@ -69,6 +69,7 @@ public:
 	int Process();
 
 protected:
+	unsigned int maxInterval;
 	vector<Processing*> ProcessArray;
 };
 

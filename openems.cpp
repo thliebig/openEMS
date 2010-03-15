@@ -173,7 +173,7 @@ int openEMS::SetupFDTD(const char* file)
 
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;
-	PA = new ProcessingArray();
+	PA = new ProcessingArray(Nyquist);
 
 	double start[3];
 	double stop[3];
@@ -274,11 +274,13 @@ void openEMS::RunFDTD()
 		if (t_diff>4)
 		{
 			currE = ProcField.CalcTotalEnergy();
-			if ((currE>0) && (currE>maxE))
+			if (currE>maxE)
 				maxE=currE;
 			cout << "Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
 			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
-			cout << " --- Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (decrement: " << setw(6)  << setprecision(2) << std::fixed << fabs(10.0*log10(currE/maxE)) << "dB)" << endl;
+			if (maxE)
+				change = currE/maxE;
+			cout << " --- Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (decrement: " << setw(6)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
 			prevTime=currTime;
 			prevTS=currTS;
 		}

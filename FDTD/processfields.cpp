@@ -110,9 +110,12 @@ double ProcessFields::CalcTotalEnergy()
 		{
 			for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
 			{
-				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
 			}
 		}
 	}
