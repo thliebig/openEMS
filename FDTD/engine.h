@@ -25,6 +25,7 @@ class Engine
 	friend class Processing;
 	friend class ProcessVoltage;
 	friend class ProcessCurrent;
+	friend class ProcessFields;
 	friend class ProcessFieldsTD;
 public:
 	Engine(Operator* op);

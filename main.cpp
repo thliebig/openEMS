@@ -76,12 +76,12 @@ int main(int argc, char *argv[])
 	const char* fileHelix="../examples/Helix.xml";
 	BuildHelix(fileHelix);
 
-	const char* file=fileHelix;
+	const char* file=fileMSL;
 
 //	cerr << CSX.ReadFromXML("examples/PlaneWave.xml") << endl;
 #endif
 
-	FDTD.DebugMaterial();
+//	FDTD.DebugMaterial();
 	int EC = FDTD.SetupFDTD(file);
 	if (EC) return EC;
 	FDTD.RunFDTD();

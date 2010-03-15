@@ -34,6 +34,7 @@ openEMS::openEMS()
 	PA=NULL;
 	Enable_Dumps = true;
 	DebugMat = false;
+	endCrit = 1e-6;
 }
 
 openEMS::~openEMS()
@@ -245,23 +246,46 @@ void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a coup of coffee?!?" << endl;
 	time_t currTime = time(NULL);
+	time_t startTime = currTime;
+	time_t prevTime=currTime;
+	ProcessFields ProcField(FDTD_Op,FDTD_Eng);
+	double maxE=0,currE=0;
+	double change=1;
+	int prevTS=0,currTS=0;
+	double speed = (double)FDTD_Op->GetNumberCells()/1e6;
+	double t_diff;
 	//*************** simulate ************//
 	int step=PA->Process();
 	if ((step<0) || (step>NrTS)) step=NrTS;
-	while (FDTD_Eng->GetNumberOfTimesteps()<NrTS)
+	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit))
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
 //		cout << " do " << step << " steps; current: " << eng.GetNumberOfTimesteps() << endl;
-		if ((step<0) || (step>NrTS - FDTD_Eng->GetNumberOfTimesteps())) step=NrTS - FDTD_Eng->GetNumberOfTimesteps();
+		currTS = FDTD_Eng->GetNumberOfTimesteps();
+		if ((step<0) || (step>NrTS - currTS)) step=NrTS - currTS;
+
+		currTime = time(NULL);
+		t_diff = difftime(currTime,prevTime);
+		if (t_diff>4)
+		{
+			currE = ProcField.CalcTotalEnergy();
+			if ((currE>0) && (currE>maxE))
+				maxE=currE;
+			cout << "Timestep:\t" << currTS << " of " << NrTS << " (" << (double)currTS/(double)NrTS*100.0 << "%)" ;
+			cout << "\t with currently " << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
+			cout << "\t current Energy estimate: " << currE << " (decrement: " << -10.0*log10(currE/maxE) << "dB)" << endl;
+			prevTime=currTime;
+			prevTS=currTS;
+		}
 	}
 
 	//*************** postproc ************//
-	time_t prevTime = currTime;
+	prevTime = currTime;
 	currTime = time(NULL);
 
-	double t_diff = difftime(currTime,prevTime);
+	t_diff = difftime(currTime,startTime);
 
 	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
-	cout << "Speed: " << (double)FDTD_Op->GetNumberCells()*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff/1e6 << " MCells/s " << endl;
+	cout << "Speed: " << speed*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff << " MCells/s " << endl;
 }

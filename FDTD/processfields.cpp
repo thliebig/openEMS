@@ -25,6 +25,7 @@ ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 
 	for (int n=0;n<3;++n)
 	{
+		numLines[n]=0;
 		discDLines[n]=NULL;
 		discLines[n]=NULL;
 	}
@@ -95,6 +96,27 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			}
 		}
 	}
+}
+
+
+double ProcessFields::CalcTotalEnergy()
+{
+	double energy=0;
+	if (Eng==NULL) return 0.0;
+	unsigned int pos[3];
+	for (pos[0]=0;pos[0]<Op->numLines[0];++pos[0])
+	{
+		for (pos[1]=0;pos[1]<Op->numLines[1];++pos[1])
+		{
+			for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
+			{
+				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
+			}
+		}
+	}
+	return energy*0.5;
 }
 
 //void  ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)

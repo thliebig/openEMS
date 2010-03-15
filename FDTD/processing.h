@@ -26,6 +26,7 @@
 class Processing
 {
 public:
+	Processing(Operator* op, Engine* eng);
 	virtual ~Processing();
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
@@ -39,7 +40,6 @@ public:
 	virtual bool GetEnable() {return Enabled;}
 
 protected:
-	Processing(Operator* op, Engine* eng);
 	Operator* Op;
 	Engine* Eng;
 

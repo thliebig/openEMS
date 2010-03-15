@@ -35,6 +35,7 @@ public:
 	void Reset();
 
 	void SetEnableDumps(bool val) {Enable_Dumps=val;}
+	void SetEndCriteria(double val) {endCrit=val;}
 
 	void DebugMaterial() {DebugMat=true;}
 
@@ -43,6 +44,7 @@ protected:
 	int NrTS;
 	bool Enable_Dumps;
 	bool DebugMat;
+	double endCrit;
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;

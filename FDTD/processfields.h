@@ -24,6 +24,7 @@
 class ProcessFields : public Processing
 {
 public:
+	ProcessFields(Operator* op, Engine* eng);
 	virtual ~ProcessFields();
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
@@ -46,10 +47,10 @@ public:
 	static bool DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*** array, double** discLines, unsigned int* numLines);
 	static bool DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines);
 
+	double CalcTotalEnergy();
+
 //	virtual void Process();
 protected:
-	ProcessFields(Operator* op, Engine* eng);
-
 	static void WriteVTKHeader(ofstream &file, double** discLines, unsigned int* numLines);
 	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT**** array, unsigned int* numLines);
 	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines);
