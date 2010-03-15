@@ -17,11 +17,11 @@ ylabel('ut_1 \rightarrow');
 grid on;
 
 dt=t(2)-t(1);
-u= [u ; zeros(size(u))];
+u= [u ; zeros(5000,1)];
 L=numel(u);
 t = (1:L)*dt;
 
-f = (1:L)/L/dt;
+f = (0:L-1)/L/dt;
 fu = fft(u)/L;
 subplot(2,2,2);
 title('u_1 FD');
@@ -42,10 +42,10 @@ ylabel('it_1 \rightarrow');
 grid on;
 
 dt=t(2)-t(1);
-i = [i; zeros(size(t))];
+i = [i; zeros(5000,1)];
 L=numel(i);
 t = (1:L)*dt;
-f = (1:L)/L/dt;
+f = (0:L-1)/L/dt;
 
 fi = fft(i)/L;
 subplot(2,2,4);
@@ -56,7 +56,12 @@ ylabel('|if_1| \rightarrow');
 grid on;
 
 figure(2);
+subplot(2,1,1);
 plot(f,real(fu./fi));
+xlim([0 1e9]);
+grid on;
+subplot(2,1,2);
+plot(f,imag(fu./fi));
 xlim([0 1e9]);
 grid on;
 

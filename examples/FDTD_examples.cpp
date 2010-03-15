@@ -248,7 +248,7 @@ void BuildPlaneWave(const char* filename)
 
 void BuildMSL(const char* filename)
 {
-	int maxIter = 1000;
+	int maxIter = 10000;
 	double f0=0.5e9;
 	double fc=0.5e9;
 	int Excit_Type=0;
@@ -599,7 +599,7 @@ void BuildCoaxial_Cartesian(const char* filename)
 
 void BuildHelix(const char* filename)
 {
-	int maxIter = 1e5;
+	int maxIter = 5e5;
 	double f0=0.5e9;
 	double fc=0.5e9;
 	int Excit_Type=0;
@@ -614,7 +614,6 @@ void BuildHelix(const char* filename)
 	double coil_length = 50;
 	double delta[] = {0.5,0.5,0.5};
 
-	//MSL
 	CSPropMaterial* copper = new CSPropMaterial(CSX.GetParameterSet());
 	copper->SetKappa(56e6);
 	copper->SetName("copper");
@@ -622,7 +621,7 @@ void BuildHelix(const char* filename)
 
 	CSPrimUserDefined* helix = new CSPrimUserDefined(CSX.GetParameterSet(),copper);
 	helix->SetCoordSystem(CSPrimUserDefined::CYLINDER_SYSTEM);
-	helix->SetFunction("(r>9)&(r<11)&(sqrt(pow(x-r*cos(2*pi*z/6.25),2)+pow(y-r*sin(2*pi*z/6.25),2))<2)&(z>0)&(z<50)");
+	helix->SetFunction("(r>9.3)&(r<10.7)&(sqrt(pow(x-r*cos(2*pi*z/6.25),2)+pow(y-r*sin(2*pi*z/6.25),2))<1.4)&(z>0)&(z<50)");
 	CSX.AddPrimitive(helix);
 	CSPrimCylinder* cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
 	cyl->SetRadius(wire_rad);
@@ -670,15 +669,15 @@ void BuildHelix(const char* filename)
 	CSPropDumpBox* Edump = NULL;
 	CSPrimBox* box = NULL;
 	//E-field dump xz
-//	Edump = new CSPropDumpBox(CSX.GetParameterSet());
-//	Edump->SetDumpType(0);
-//	Edump->SetName("Et_xz_");
-//	CSX.AddProperty(Edump);
-//	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
-//	box->SetCoord(0,coil_rad/-2.0-25.0);box->SetCoord(1,coil_rad/2.0+25.0+feed_length);
-//	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
-//	box->SetCoord(4,-25.0);box->SetCoord(5,coil_length+25.0);
-//	CSX.AddPrimitive(box);
+	Edump = new CSPropDumpBox(CSX.GetParameterSet());
+	Edump->SetDumpType(0);
+	Edump->SetName("Et_xz_");
+	CSX.AddProperty(Edump);
+	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+	box->SetCoord(0,coil_rad/-1.0-25.0);box->SetCoord(1,coil_rad/1.0+25.0+feed_length);
+	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
+	box->SetCoord(4,-25.0);box->SetCoord(5,coil_length+25.0);
+	CSX.AddPrimitive(box);
 //
 //	//E-field dump xy
 //	Edump = new CSPropDumpBox(CSX.GetParameterSet());
@@ -728,12 +727,49 @@ void BuildHelix(const char* filename)
 
 	CSRectGrid* grid = CSX.GetGrid();
 
-	for (double n=coil_rad/-2.0-25.0;n<=coil_rad/2.0+25.0+feed_length;n+=delta[0])
+	double offset[]={coil_rad/-1.0,coil_rad/-1.0,0.0};
+	//graded mesh
+	for (int n=0;n<3;++n)
+	{
+		grid->AddDiscLine(n,offset[n] - 25.0);
+		grid->AddDiscLine(n,offset[n] - 15.0);
+		grid->AddDiscLine(n,offset[n] - 10.0);
+		grid->AddDiscLine(n,offset[n] - 5.0);
+		grid->AddDiscLine(n,offset[n] - 2.0);
+		grid->AddDiscLine(n,offset[n] - 1.0);
+		grid->AddDiscLine(n,offset[n] - 0.5);
+	}
+
+	for (double n=coil_rad/-1.0;n<=coil_rad;n+=delta[0])
 		grid->AddDiscLine(0,n);
-	for (double n=coil_rad/-2.0-25.0;n<=coil_rad/2.0+25.0;n+=delta[1])
+	//feeding mesh
+	grid->AddDiscLine(0,coil_rad+0.5);
+	grid->AddDiscLine(0,coil_rad+1);
+	grid->AddDiscLine(0,coil_rad+2);
+	grid->AddDiscLine(0,coil_rad+5);
+	grid->AddDiscLine(0,coil_rad+7);
+	grid->AddDiscLine(0,coil_rad+9);
+	grid->AddDiscLine(0,coil_rad+9.5);
+	grid->AddDiscLine(0,coil_rad+10);
+	for (double n=coil_rad/-1.0;n<=coil_rad;n+=delta[1])
 		grid->AddDiscLine(1,n);
-	for (double n=-25.0;n<=coil_length+25.0;n+=delta[2])
+	for (double n=0.0;n<=coil_length;n+=delta[2])
 		grid->AddDiscLine(2,n);
+
+	offset[0]=coil_rad+feed_length;
+	offset[1]=coil_rad;
+	offset[2]=coil_length;
+	for (int n=0;n<3;++n)
+	{
+		grid->AddDiscLine(n,offset[n] + 0.5);
+		grid->AddDiscLine(n,offset[n] + 1.0);
+		grid->AddDiscLine(n,offset[n] + 2.0);
+		grid->AddDiscLine(n,offset[n] + 5.0);
+		grid->AddDiscLine(n,offset[n] + 10.0);
+		grid->AddDiscLine(n,offset[n] + 15.0);
+		grid->AddDiscLine(n,offset[n] + 25.0);
+		grid->Sort(n);
+	}
 
 	grid->SetDeltaUnit(1e-3);
 
