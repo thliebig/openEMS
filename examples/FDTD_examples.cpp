@@ -599,18 +599,20 @@ void BuildCoaxial_Cartesian(const char* filename)
 
 void BuildHelix(const char* filename)
 {
-	int maxIter = 10000;
-	double f0=0.15e9;
-	double fc=0.15e9;
+	int maxIter = 1e5;
+	double f0=0.5e9;
+	double fc=0.5e9;
 	int Excit_Type=0;
-	int bounds[] = {1,1,1,1,0,0};
+	int bounds[] = {1,1,1,1,1,1};
 
 	cerr << "Create Helix Geometry..." << endl;
 	ContinuousStructure CSX;
 
-	double width = 800;
-	double length = 800;
-	double delta[] = {5,5,5};
+	double feed_length=10;
+	double wire_rad = 0.7;
+	double coil_rad = 10;
+	double coil_length = 50;
+	double delta[] = {0.5,0.5,0.5};
 
 	//MSL
 	CSPropMaterial* copper = new CSPropMaterial(CSX.GetParameterSet());
@@ -620,19 +622,37 @@ void BuildHelix(const char* filename)
 
 	CSPrimUserDefined* helix = new CSPrimUserDefined(CSX.GetParameterSet(),copper);
 	helix->SetCoordSystem(CSPrimUserDefined::CYLINDER_SYSTEM);
-	helix->SetFunction("(r<110)&(r>90)&(sqrt(pow(x-r*cos(2*pi*z/100),2)+pow(y-r*sin(2*pi*z/100),2))<20)&(z>200)&(z<600)");
+	helix->SetFunction("(r>9)&(r<11)&(sqrt(pow(x-r*cos(2*pi*z/6.25),2)+pow(y-r*sin(2*pi*z/6.25),2))<2)&(z>0)&(z<50)");
 	CSX.AddPrimitive(helix);
 	CSPrimCylinder* cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
-	cyl->SetRadius(10);
-	cyl->SetCoord(0,100.0);cyl->SetCoord(1,310.0);
+	cyl->SetRadius(wire_rad);
+	cyl->SetCoord(0,coil_rad);cyl->SetCoord(1,coil_rad+feed_length);
 	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,200.0);cyl->SetCoord(5,200.0);
+	cyl->SetCoord(4,0.0);cyl->SetCoord(5,0.0);
 	CSX.AddPrimitive(cyl);
 	cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
-	cyl->SetRadius(10);
-	cyl->SetCoord(0,100.0);cyl->SetCoord(1,310.0);
+	cyl->SetRadius(wire_rad);
+	cyl->SetCoord(0,coil_rad);cyl->SetCoord(1,coil_rad+feed_length);
 	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,600.0);cyl->SetCoord(5,600.0);
+	cyl->SetCoord(4,coil_length);cyl->SetCoord(5,coil_length);
+	CSX.AddPrimitive(cyl);
+
+	double kappa_resist = (coil_length-2.0*delta[2])/(PI*wire_rad*wire_rad)/50/1e-3;
+	CSPropMaterial* Src_Resist = new CSPropMaterial(CSX.GetParameterSet());
+	Src_Resist->SetKappa(kappa_resist);
+	Src_Resist->SetName("resist");
+	CSX.AddProperty(Src_Resist);
+	cyl = new CSPrimCylinder(CSX.GetParameterSet(),Src_Resist);
+	cyl->SetRadius(wire_rad);
+	cyl->SetCoord(0,coil_rad+feed_length);cyl->SetCoord(1,coil_rad+feed_length);
+	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
+	cyl->SetCoord(4,0.0);cyl->SetCoord(5,coil_length/2.0-delta[2]);
+	CSX.AddPrimitive(cyl);
+	cyl = new CSPrimCylinder(CSX.GetParameterSet(),Src_Resist);
+	cyl->SetRadius(wire_rad);
+	cyl->SetCoord(0,coil_rad+feed_length);cyl->SetCoord(1,coil_rad+feed_length);
+	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
+	cyl->SetCoord(4,coil_length/2.0+delta[2]);cyl->SetCoord(5,coil_length);
 	CSX.AddPrimitive(cyl);
 
 	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
@@ -641,23 +661,24 @@ void BuildHelix(const char* filename)
 //	elec->SetDelay(2.0e-9);
 	CSX.AddProperty(elec);
 	cyl = new CSPrimCylinder(CSX.GetParameterSet(),elec);
-	cyl->SetRadius(10);
-	cyl->SetCoord(0,300.0);cyl->SetCoord(1,300.0);
+	cyl->SetRadius(wire_rad);
+	cyl->SetCoord(0,coil_rad+feed_length);cyl->SetCoord(1,coil_rad+feed_length);
 	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,200.0);cyl->SetCoord(5,600.0);
+	cyl->SetCoord(4,coil_length/2.0-delta[2]);cyl->SetCoord(5,coil_length/2.0+delta[2]);
 	CSX.AddPrimitive(cyl);
 
 	CSPropDumpBox* Edump = NULL;
+	CSPrimBox* box = NULL;
 	//E-field dump xz
-	Edump = new CSPropDumpBox(CSX.GetParameterSet());
-	Edump->SetDumpType(0);
-	Edump->SetName("Et_xz_");
-	CSX.AddProperty(Edump);
-	CSPrimBox* box = new CSPrimBox(CSX.GetParameterSet(),Edump);
-	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
-	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
-	box->SetCoord(4,-50.0);box->SetCoord(5,length);
-	CSX.AddPrimitive(box);
+//	Edump = new CSPropDumpBox(CSX.GetParameterSet());
+//	Edump->SetDumpType(0);
+//	Edump->SetName("Et_xz_");
+//	CSX.AddProperty(Edump);
+//	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
+//	box->SetCoord(0,coil_rad/-2.0-25.0);box->SetCoord(1,coil_rad/2.0+25.0+feed_length);
+//	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
+//	box->SetCoord(4,-25.0);box->SetCoord(5,coil_length+25.0);
+//	CSX.AddPrimitive(box);
 //
 //	//E-field dump xy
 //	Edump = new CSPropDumpBox(CSX.GetParameterSet());
@@ -688,29 +709,30 @@ void BuildHelix(const char* filename)
 	volt->SetName("u1");
 	CSX.AddProperty(volt);
 	box = new CSPrimBox(CSX.GetParameterSet(),volt);
-	box->SetCoord(0,300.0);box->SetCoord(1,300.0);
+	box->SetCoord(0,coil_rad+feed_length);box->SetCoord(1,coil_rad+feed_length);
 	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
-	box->SetCoord(4,200.0);box->SetCoord(5,600.0);
+	box->SetCoord(4,coil_length/2.0+delta[2]);box->SetCoord(5,coil_length/2.0-delta[2]);
 	CSX.AddPrimitive(box);
 
 	//current calc
+	double curr_dist = 2;
 	CSPropProbeBox* curr = new CSPropProbeBox(CSX.GetParameterSet());
 	curr->SetProbeType(1);
 	curr->SetName("i1");
 	CSX.AddProperty(curr);
 	box = new CSPrimBox(CSX.GetParameterSet(),curr);
-	box->SetCoord(0,200.0);box->SetCoord(1,200.0);
-	box->SetCoord(2,-50.0);box->SetCoord(3,50.0);
-	box->SetCoord(4,150.0);box->SetCoord(5,250.0);
+	box->SetCoord(0,coil_rad+feed_length-curr_dist);box->SetCoord(1,coil_rad+feed_length+curr_dist);
+	box->SetCoord(2,-curr_dist);box->SetCoord(3,curr_dist);
+	box->SetCoord(4,coil_length/2.0);box->SetCoord(5,coil_length/2.0);
 	CSX.AddPrimitive(box);
 
 	CSRectGrid* grid = CSX.GetGrid();
 
-	for (double n=width/-2.0;n<=width/2;n+=delta[0])
+	for (double n=coil_rad/-2.0-25.0;n<=coil_rad/2.0+25.0+feed_length;n+=delta[0])
 		grid->AddDiscLine(0,n);
-	for (double n=width/-2.0;n<=width/2;n+=delta[0])
+	for (double n=coil_rad/-2.0-25.0;n<=coil_rad/2.0+25.0;n+=delta[1])
 		grid->AddDiscLine(1,n);
-	for (double n=-50;n<=length;n+=delta[2])
+	for (double n=-25.0;n<=coil_length+25.0;n+=delta[2])
 		grid->AddDiscLine(2,n);
 
 	grid->SetDeltaUnit(1e-3);
