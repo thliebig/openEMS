@@ -23,7 +23,7 @@
 
 #include "examples/FDTD_examples.h"
 
-//#define STANDALONE
+#define STANDALONE
 
 using namespace std;
 
