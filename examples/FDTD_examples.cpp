@@ -612,11 +612,16 @@ void BuildHelix(const char* filename)
 	double wire_rad = 0.7;
 	double coil_rad = 10;
 	double coil_length = 50;
+	int coil_turns = 8;
 	double delta[] = {0.5,0.5,0.5};
 
 	CSPrimBox* box = NULL;
 
 	ParameterSet* PS = CSX.GetParameterSet();
+	PS->AddParameter(new Parameter("rad_coil",coil_rad));
+	PS->AddParameter(new Parameter("rad_wire",wire_rad));
+	PS->AddParameter(new Parameter("turns",coil_turns));
+	PS->AddParameter(new Parameter("coil_length",coil_length));
 
 	CSPropMaterial* copper = new CSPropMaterial(CSX.GetParameterSet());
 	copper->SetKappa(56e6);
@@ -625,7 +630,7 @@ void BuildHelix(const char* filename)
 
 	CSPrimUserDefined* helix = new CSPrimUserDefined(CSX.GetParameterSet(),copper);
 	helix->SetCoordSystem(CSPrimUserDefined::CYLINDER_SYSTEM);
-	helix->SetFunction("(r>9.3)&(r<10.7)&(sqrt(pow(x-r*cos(2*pi*z/6.25),2)+pow(y-r*sin(2*pi*z/6.25),2))<1.4)&(z>0)&(z<50)");
+	helix->SetFunction("(r>(rad_coil-rad_wire))&(r<rad_coil+rad_wire)&(sqrt(pow(x-r*cos(2*pi*z*turns/coil_length),2)+pow(y-r*sin(2*pi*z*turns/coil_length),2))<(2*rad_wire))&(z>0)&(z<coil_length)");
 	CSX.AddPrimitive(helix);
 	CSPrimCylinder* cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
 	cyl->SetRadius(wire_rad);
