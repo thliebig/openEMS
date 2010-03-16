@@ -103,7 +103,7 @@ void BuildDipol(const char* filename)
 
 void BuildPlaneWave(const char* filename)
 {
-	int maxIter = 1000;
+	int maxIter = 10000;
 	double f0=0.5e9;
 	double fc=0.5e9;
 	int Excit_Type=0;
@@ -614,6 +614,10 @@ void BuildHelix(const char* filename)
 	double coil_length = 50;
 	double delta[] = {0.5,0.5,0.5};
 
+	CSPrimBox* box = NULL;
+
+	ParameterSet* PS = CSX.GetParameterSet();
+
 	CSPropMaterial* copper = new CSPropMaterial(CSX.GetParameterSet());
 	copper->SetKappa(56e6);
 	copper->SetName("copper");
@@ -625,52 +629,58 @@ void BuildHelix(const char* filename)
 	CSX.AddPrimitive(helix);
 	CSPrimCylinder* cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
 	cyl->SetRadius(wire_rad);
-	cyl->SetCoord(0,coil_rad);cyl->SetCoord(1,coil_rad+feed_length);
-	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,0.0);cyl->SetCoord(5,0.0);
+	cyl->SetCoord(0,coil_rad);	cyl->SetCoord(1,coil_rad+feed_length);
+	cyl->SetCoord(2,0.0);		cyl->SetCoord(3,0.0);
+	cyl->SetCoord(4,0.0);		cyl->SetCoord(5,0.0);
 	CSX.AddPrimitive(cyl);
 	cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
 	cyl->SetRadius(wire_rad);
-	cyl->SetCoord(0,coil_rad);cyl->SetCoord(1,coil_rad+feed_length);
-	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,coil_length);cyl->SetCoord(5,coil_length);
+	cyl->SetCoord(0,coil_rad);		cyl->SetCoord(1,coil_rad+feed_length);
+	cyl->SetCoord(2,0.0);			cyl->SetCoord(3,0.0);
+	cyl->SetCoord(4,coil_length);	cyl->SetCoord(5,coil_length);
 	CSX.AddPrimitive(cyl);
 
-	double kappa_resist = (coil_length-2.0*delta[2])/(PI*wire_rad*wire_rad)/50/1e-3;
+	double kappa_resist = (coil_length)/50/1e-3;
 	CSPropMaterial* Src_Resist = new CSPropMaterial(CSX.GetParameterSet());
-	Src_Resist->SetKappa(kappa_resist);
+	Src_Resist->SetKappa(kappa_resist,2);
+	Src_Resist->SetIsotropy(false);
 	Src_Resist->SetName("resist");
 	CSX.AddProperty(Src_Resist);
-	cyl = new CSPrimCylinder(CSX.GetParameterSet(),Src_Resist);
-	cyl->SetRadius(wire_rad);
-	cyl->SetCoord(0,coil_rad+feed_length);cyl->SetCoord(1,coil_rad+feed_length);
-	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,0.0);cyl->SetCoord(5,coil_length/2.0-delta[2]);
-	CSX.AddPrimitive(cyl);
-	cyl = new CSPrimCylinder(CSX.GetParameterSet(),Src_Resist);
-	cyl->SetRadius(wire_rad);
-	cyl->SetCoord(0,coil_rad+feed_length);cyl->SetCoord(1,coil_rad+feed_length);
-	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,coil_length/2.0+delta[2]);cyl->SetCoord(5,coil_length);
-	CSX.AddPrimitive(cyl);
+	box = new CSPrimBox(CSX.GetParameterSet(),Src_Resist);
+	box->SetCoord(0,coil_rad+feed_length-0.5);	box->SetCoord(1,coil_rad+feed_length+0.5);
+	box->SetCoord(2,-0.5);						box->SetCoord(3,0.5);
+	box->SetCoord(4,0.0);						box->SetCoord(5,coil_length);///2.0-delta[2]);
+	CSX.AddPrimitive(box);
+//	box = new CSPrimBox(CSX.GetParameterSet(),Src_Resist);
+//	box->SetCoord(0,coil_rad+feed_length-0.5);	box->SetCoord(1,coil_rad+feed_length+0.5);
+//	box->SetCoord(2,-0.5);						box->SetCoord(3,0.5);
+//	box->SetCoord(4,coil_length/2.0+delta[2]);	box->SetCoord(5,coil_length);
+//	CSX.AddPrimitive(box);
 
 	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
 	elec->SetExcitation(1.0,2);
-	elec->SetExcitType(1);
+	elec->SetExcitType(0);
 //	elec->SetDelay(2.0e-9);
 	CSX.AddProperty(elec);
-	cyl = new CSPrimCylinder(CSX.GetParameterSet(),elec);
-	cyl->SetRadius(wire_rad);
-	cyl->SetCoord(0,coil_rad+feed_length);cyl->SetCoord(1,coil_rad+feed_length);
-	cyl->SetCoord(2,0.0);cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,coil_length/2.0-delta[2]);cyl->SetCoord(5,coil_length/2.0+delta[2]);
-	CSX.AddPrimitive(cyl);
+	box = new CSPrimBox(CSX.GetParameterSet(),elec);
+	box->SetCoord(0,coil_rad+feed_length+0.5);	box->SetCoord(1,coil_rad+feed_length-0.5);
+	box->SetCoord(2,-0.5);						box->SetCoord(3,0.5);
+	box->SetCoord(4,0.0);	box->SetCoord(5,coil_length);
+	CSX.AddPrimitive(box);
+
+//	CSPropMetal* elec_mat = new CSPropMetal(CSX.GetParameterSet());
+//	CSX.AddProperty(elec_mat);
+//	box = new CSPrimBox(CSX.GetParameterSet(),elec_mat);
+//	box->SetCoord(0,coil_rad+feed_length+0.5);	box->SetCoord(1,coil_rad+feed_length-0.5);
+//	box->SetCoord(2,-0.5);						box->SetCoord(3,0.5);
+//	box->SetCoord(4,coil_length/2.0-delta[2]);	box->SetCoord(5,coil_length/2.0+delta[2]);
+//	CSX.AddPrimitive(box);
 
 	CSPropDumpBox* Edump = NULL;
-	CSPrimBox* box = NULL;
 	//E-field dump xz
 	Edump = new CSPropDumpBox(CSX.GetParameterSet());
 	Edump->SetDumpType(0);
+	Edump->SetDumpMode(0);
 	Edump->SetName("Et_xz_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
@@ -678,6 +688,20 @@ void BuildHelix(const char* filename)
 	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
 	box->SetCoord(4,-25.0);box->SetCoord(5,coil_length+25.0);
 	CSX.AddPrimitive(box);
+
+	CSPropDumpBox* Hdump = NULL;
+	//H-field dump xz
+	Hdump = new CSPropDumpBox(CSX.GetParameterSet());
+	Hdump->SetDumpType(1);
+	Hdump->SetDumpMode(0);
+	Hdump->SetName("Ht_xz_");
+	CSX.AddProperty(Hdump);
+	box = new CSPrimBox(CSX.GetParameterSet(),Hdump);
+	box->SetCoord(0,coil_rad/-1.0-25.0);box->SetCoord(1,coil_rad/1.0+25.0+feed_length);
+	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
+	box->SetCoord(4,-25.0);box->SetCoord(5,coil_length+25.0);
+	CSX.AddPrimitive(box);
+
 //
 //	//E-field dump xy
 //	Edump = new CSPropDumpBox(CSX.GetParameterSet());
@@ -710,11 +734,11 @@ void BuildHelix(const char* filename)
 	box = new CSPrimBox(CSX.GetParameterSet(),volt);
 	box->SetCoord(0,coil_rad+feed_length);box->SetCoord(1,coil_rad+feed_length);
 	box->SetCoord(2,0.0);box->SetCoord(3,0.0);
-	box->SetCoord(4,coil_length/2.0+delta[2]);box->SetCoord(5,coil_length/2.0-delta[2]);
+	box->SetCoord(4,coil_length);box->SetCoord(5,0.0);
 	CSX.AddPrimitive(box);
 
 	//current calc
-	double curr_dist = 2;
+	double curr_dist = 1;
 	CSPropProbeBox* curr = new CSPropProbeBox(CSX.GetParameterSet());
 	curr->SetProbeType(1);
 	curr->SetName("i1");
@@ -746,8 +770,10 @@ void BuildHelix(const char* filename)
 	grid->AddDiscLine(0,coil_rad+0.5);
 	grid->AddDiscLine(0,coil_rad+1);
 	grid->AddDiscLine(0,coil_rad+2);
+	grid->AddDiscLine(0,coil_rad+3.5);
 	grid->AddDiscLine(0,coil_rad+5);
 	grid->AddDiscLine(0,coil_rad+7);
+	grid->AddDiscLine(0,coil_rad+8);
 	grid->AddDiscLine(0,coil_rad+9);
 	grid->AddDiscLine(0,coil_rad+9.5);
 	grid->AddDiscLine(0,coil_rad+10);
@@ -764,7 +790,9 @@ void BuildHelix(const char* filename)
 		grid->AddDiscLine(n,offset[n] + 0.5);
 		grid->AddDiscLine(n,offset[n] + 1.0);
 		grid->AddDiscLine(n,offset[n] + 2.0);
+		grid->AddDiscLine(n,offset[n] + 3.0);
 		grid->AddDiscLine(n,offset[n] + 5.0);
+		grid->AddDiscLine(n,offset[n] + 7.5);
 		grid->AddDiscLine(n,offset[n] + 10.0);
 		grid->AddDiscLine(n,offset[n] + 15.0);
 		grid->AddDiscLine(n,offset[n] + 25.0);

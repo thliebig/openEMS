@@ -2,6 +2,8 @@
 clear all;
 clc
 
+fmax = 50e6;
+
 figure(1);
 tmpu = load('../tmp/u1');
 tmpi = load('../tmp/i1');
@@ -58,11 +60,11 @@ grid on;
 figure(2);
 subplot(2,1,1);
 plot(f,real(fu./fi));
-xlim([0 1e9]);
+xlim([0 fmax]);
 grid on;
 subplot(2,1,2);
 plot(f,imag(fu./fi));
-xlim([0 1e9]);
+xlim([0 fmax]);
 grid on;
 
 

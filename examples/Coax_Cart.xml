@@ -13,8 +13,8 @@
         <ParameterSet />
         <Properties>
             <Material ID="0" Name="" Isotropy="1">
-                <FillColor R="90" G="37" B="93" a="255" />
-                <EdgeColor R="90" G="37" B="93" a="255" />
+                <FillColor R="49" G="88" B="163" a="255" />
+                <EdgeColor R="49" G="88" B="163" a="255" />
                 <Property Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.875000e-10" Sigma="2.661107e-05" />
                 <PropertyY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
                 <PropertyZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
@@ -23,29 +23,29 @@
                 <WeightZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="term:pow(abs(z)-1300,4)" Sigma="term:pow(abs(z)-1300,4)" />
             </Material>
             <Electrode ID="1" Name="" Number="0" Delay="0.000000e+00">
-                <FillColor R="5" G="23" B="88" a="255" />
-                <EdgeColor R="5" G="23" B="88" a="255" />
+                <FillColor R="90" G="37" B="93" a="255" />
+                <EdgeColor R="90" G="37" B="93" a="255" />
                 <Excitation Type="0" Excit_X="1.000000e+00" Excit_Y="1.000000e+00" Excit_Z="0.000000e+00" />
                 <Weight X="term:x/pow(rho,2)" Y="term:y/pow(rho,2)" Z="1.000000e+00" />
             </Electrode>
             <DumpBox ID="2" Name="Et_" GlobalSetting="1" DumpType="0" DumpMode="2">
-                <FillColor R="233" G="94" B="212" a="255" />
-                <EdgeColor R="233" G="94" B="212" a="255" />
+                <FillColor R="5" G="23" B="88" a="255" />
+                <EdgeColor R="5" G="23" B="88" a="255" />
                 <ScalarDump DumpPhi="1" DumpDivE="0" DumpDivD="0" DumpDivP="0" DumpFieldW="0" DumpChargeW="0" />
                 <VectorDump DumpEField="0" DumpDField="0" DumpPField="0" />
                 <SubGridDump SubGridDump="0" SimpleDump="0" SubGridLevel="-1" />
             </DumpBox>
             <ProbeBox ID="3" Name="u1" Number="0" Type="0">
+                <FillColor R="233" G="94" B="212" a="255" />
+                <EdgeColor R="233" G="94" B="212" a="255" />
+            </ProbeBox>
+            <ProbeBox ID="4" Name="i1" Number="0" Type="1">
                 <FillColor R="171" G="178" B="205" a="255" />
                 <EdgeColor R="171" G="178" B="205" a="255" />
             </ProbeBox>
-            <ProbeBox ID="4" Name="i1" Number="0" Type="1">
+            <Material ID="5" Name="" Isotropy="1">
                 <FillColor R="198" G="155" B="180" a="255" />
                 <EdgeColor R="198" G="155" B="180" a="255" />
-            </ProbeBox>
-            <Material ID="5" Name="" Isotropy="1">
-                <FillColor R="84" G="17" B="14" a="255" />
-                <EdgeColor R="84" G="17" B="14" a="255" />
                 <Property Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="5.600000e+10" Sigma="0.000000e+00" />
                 <PropertyY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
                 <PropertyZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
@@ -54,8 +54,8 @@
                 <WeightZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
             </Material>
             <Material ID="6" Name="" Isotropy="1">
-                <FillColor R="130" G="116" B="65" a="255" />
-                <EdgeColor R="130" G="116" B="65" a="255" />
+                <FillColor R="84" G="17" B="14" a="255" />
+                <EdgeColor R="84" G="17" B="14" a="255" />
                 <Property Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
                 <PropertyY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
                 <PropertyZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
