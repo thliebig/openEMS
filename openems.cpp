@@ -144,7 +144,6 @@ int openEMS::SetupFDTD(const char* file)
 	{
 		FDTD_Op->DumpMaterial2File("material_dump.vtk");
 	}
-
 	FDTD_Op->CalcECOperator();
 
 	if (Excit_Type==0)
@@ -276,7 +275,7 @@ void openEMS::RunFDTD()
 			currE = ProcField.CalcTotalEnergy();
 			if (currE>maxE)
 				maxE=currE;
-			cout << "Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
+			cout << "[@" << setw(8) << (int)difftime(currTime,startTime)  <<  "s] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
 			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
 			if (maxE)
 				change = currE/maxE;
