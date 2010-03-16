@@ -444,12 +444,12 @@ bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP);
+		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP);
 	}
 	else
 	{
-		inEC[0] += 1*fabs(deltaP*deltaPP);
+		inEC[0] += 1*fabs(deltaP_M*deltaPP);
 		inEC[1] += 0;
 	}
 
@@ -461,12 +461,12 @@ bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP_M);
+		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP_M);
 	}
 	else
 	{
-		inEC[0] += 1*fabs(deltaP*deltaPP);
+		inEC[0] += 1*fabs(deltaP*deltaPP_M);
 		inEC[1] += 0;
 	}
 
@@ -478,12 +478,12 @@ bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP_M);
+		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP_M);
 	}
 	else
 	{
-		inEC[0] += 1*fabs(deltaP*deltaPP);
+		inEC[0] += 1*fabs(deltaP_M*deltaPP_M);
 		inEC[1] += 0;
 	}
 
@@ -552,8 +552,8 @@ bool Operator::Calc_EffMatPos(int n, unsigned int* pos, double* inMat)
 
 	this->Calc_ECPos(n,pos,inMat);
 
-	inMat[0] *= (delta*delta)/MainOp->GetNodeVolume(ipos)/gridDelta;
-	inMat[1] *= (delta*delta)/MainOp->GetNodeVolume(ipos)/gridDelta;
+	inMat[0] *= fabs(delta)/(0.25*(fabs(deltaP_M) + fabs(deltaP))*(fabs(deltaPP_M) + fabs(deltaPP)))/gridDelta;
+	inMat[1] *= fabs(delta)/(0.25*(fabs(deltaP_M) + fabs(deltaP))*(fabs(deltaPP_M) + fabs(deltaPP)))/gridDelta;
 
 	inMat[2] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
 	inMat[3] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
