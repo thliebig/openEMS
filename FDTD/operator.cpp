@@ -35,7 +35,9 @@ void Operator::Init()
 	CSX = NULL;
 
 	ExciteSignal = NULL;
-	E_Ex_delay = NULL;
+	E_Exc_delay = NULL;
+	E_Exc_amp=NULL;
+	E_Exc_dir=NULL;
 	vv=NULL;
 	vi=NULL;
 	iv=NULL;
@@ -43,8 +45,7 @@ void Operator::Init()
 	for (int n=0;n<3;++n)
 	{
 		discLines[n]=NULL;
-		E_Ex_amp[n]=NULL;
-		E_Ex_index[n]=NULL;
+		E_Exc_index[n]=NULL;
 	}
 
 	MainOp=NULL;
@@ -62,7 +63,9 @@ void Operator::Init()
 void Operator::Reset()
 {
 	delete[] ExciteSignal;
-	delete[] E_Ex_delay;
+	delete[] E_Exc_delay;
+	delete[] E_Exc_dir;
+	delete[] E_Exc_amp;
 	Delete_N_3DArray(vv,numLines);
 	Delete_N_3DArray(vi,numLines);
 	Delete_N_3DArray(iv,numLines);
@@ -70,8 +73,7 @@ void Operator::Reset()
 	for (int n=0;n<3;++n)
 	{
 		delete[] discLines[n];
-		delete[] E_Ex_amp[n];
-		delete[] E_Ex_index[n];
+		delete[] E_Exc_index[n];
 	}
 	delete MainOp;
 	delete DualOp;
@@ -487,8 +489,8 @@ bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 		inEC[1] += 0;
 	}
 
-	inEC[0]*=gridDelta/fabs(delta)/4*__EPS0__;
-	inEC[1]*=gridDelta/fabs(delta)/4;
+	inEC[0]*=gridDelta/fabs(delta)/4.0*__EPS0__;
+	inEC[1]*=gridDelta/fabs(delta)/4.0;
 
 	//******************************* mu,sigma averaging *****************************//
 	//shift down
@@ -530,8 +532,8 @@ bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 		inEC[3] = 0;
 	}
 
-	inEC[2] = gridDelta * fabs(deltaP*deltaPP) * 2 * __MUE0__ / inEC[2];
-	if (inEC[3]) inEC[3]=gridDelta*fabs(deltaP*deltaPP) * 2 / inEC[3];
+	inEC[2] = gridDelta * fabs(deltaP*deltaPP) * 2.0 * __MUE0__ / inEC[2];
+	if (inEC[3]) inEC[3]=gridDelta*fabs(deltaP*deltaPP) * 2.0 / inEC[3];
 
 	return true;
 }
@@ -646,79 +648,86 @@ bool Operator::CalcEFieldExcitation()
 {
 	if (dT==0) return false;
 	vector<unsigned int> vIndex[3];
-	vector<FDTD_FLOAT> vExcit[3];
+	vector<FDTD_FLOAT> vExcit;
 	vector<unsigned int> vDelay;
+	vector<unsigned int> vDir;
 	unsigned int ipos;
-	unsigned int pos[3];
+	int pos[3];
 	double coord[3];
+	double delta[3];
+	double amp=0;
 
 	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 	{
+		delta[2]=fabs(MainOp->GetIndexDelta(2,pos[2]));
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
+			delta[1]=fabs(MainOp->GetIndexDelta(1,pos[1]));
 			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 			{
+				delta[0]=fabs(MainOp->GetIndexDelta(0,pos[0]));
 				coord[0] = discLines[0][pos[0]];
 				coord[1] = discLines[1][pos[1]];
 				coord[2] = discLines[2][pos[2]];
 //				CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE | CSProperties::METAL));
-				CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
-				if (prop)
+				CSProperties* prop = NULL;
+				for (int n=0;n<3;++n)
 				{
-					CSPropElectrode* elec = prop->ToElectrode();
-					if (elec!=NULL)
-						if ((elec->GetExcitType()==0) || (elec->GetExcitType()==1)) //soft or hard E-Field excite!
+					coord[n]+=delta[n]*0.5;
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
+					if (prop)
+					{
+						CSPropElectrode* elec = prop->ToElectrode();
+						if (elec!=NULL)
 						{
-							vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-							for (int n=0;n<3;++n)
+							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
 							{
-								coord[0] = discLines[0][pos[0]];
-								coord[1] = discLines[1][pos[1]];
-								coord[2] = discLines[2][pos[2]];
-								double delta=0;
-								if (pos[n]<numLines[n]-1)
-									delta = (discLines[n][pos[n]+1]-discLines[n][pos[n]]);
-								else
-									delta = (discLines[n][pos[n]]-discLines[n][pos[n]-1]);
-								coord[n]+=0.5*delta;
-								vIndex[n].push_back(pos[n]);
-								if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
-									vExcit[n].push_back(elec->GetWeightedExcitation(n,coord)*delta*gridDelta);
-								else
-									vExcit[n].push_back(0);
-								if ((elec->GetExcitType()==1) && (elec->GetActiveDir(n))) //hard excite
+								amp = elec->GetWeightedExcitation(n,coord)*delta[n]*gridDelta;
+								if (amp!=0)
 								{
-									vv[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
-									vi[(n+1)%3][pos[0]][pos[1]][pos[2]] = 0;
-									vv[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
-									vi[(n+2)%3][pos[0]][pos[1]][pos[2]] = 0;
+									vExcit.push_back(amp);
+									vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+									vDir.push_back(n);
+									vIndex[0].push_back(pos[0]);
+									vIndex[1].push_back(pos[1]);
+									vIndex[2].push_back(pos[2]);
+								}
+								if (elec->GetExcitType()==1) //hard excite
+								{
+									vv[n][pos[0]][pos[1]][pos[2]] = 0;
+									vi[n][pos[0]][pos[1]][pos[2]] = 0;
 								}
 							}
 						}
+					}
+					coord[n]-=delta[n]*0.5;
 				}
 			}
 		}
 	}
-	E_Ex_Count = vIndex[0].size();
-	if (E_Ex_Count==0)
+
+	E_Exc_Count = vExcit.size();
+	cerr << "Operator::CalcEFieldExcitation: Found number of excitations points: " << E_Exc_Count << endl;
+	if (E_Exc_Count==0)
 		cerr << "No E-Field excitation found!" << endl;
 	for (int n=0;n<3;++n)
 	{
-		delete[] E_Ex_index[n];
-		E_Ex_index[n] = new unsigned int[E_Ex_Count];
-		for (unsigned int i=0;i<E_Ex_Count;++i)
-			E_Ex_index[n][i]=vIndex[n].at(i);
+		delete[] E_Exc_index[n];
+		E_Exc_index[n] = new unsigned int[E_Exc_Count];
+		for (unsigned int i=0;i<E_Exc_Count;++i)
+			E_Exc_index[n][i]=vIndex[n].at(i);
 	}
-	delete[] E_Ex_delay;
-	E_Ex_delay = new unsigned int[E_Ex_Count];
-	for (unsigned int i=0;i<E_Ex_Count;++i)
-		E_Ex_delay[i]=vDelay.at(i);
-	for (int n=0;n<3;++n)
+	delete[] E_Exc_delay;
+	E_Exc_delay = new unsigned int[E_Exc_Count];
+	delete[] E_Exc_amp;
+	E_Exc_amp = new FDTD_FLOAT[E_Exc_Count];
+	delete[] E_Exc_dir;
+	E_Exc_dir = new unsigned short[E_Exc_Count];
+	for (unsigned int i=0;i<E_Exc_Count;++i)
 	{
-		delete[] E_Ex_amp[n];
-		E_Ex_amp[n] = new FDTD_FLOAT[E_Ex_Count];
-		for (unsigned int i=0;i<E_Ex_Count;++i)
-			E_Ex_amp[n][i]=vExcit[n].at(i);
+		E_Exc_delay[i]=vDelay.at(i);
+		E_Exc_amp[i]=vExcit.at(i);
+		E_Exc_dir[i]=vDir.at(i);
 	}
 	return true;
 }

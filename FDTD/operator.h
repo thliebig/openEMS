@@ -85,10 +85,11 @@ protected:
 	//E-Field Excitation
 	//!	  Calc the electric field excitation.
 	virtual bool CalcEFieldExcitation();
-	unsigned int E_Ex_Count;
-	unsigned int* E_Ex_index[3];
-	FDTD_FLOAT* E_Ex_amp[3]; //represented as edge-voltages!!
-	unsigned int* E_Ex_delay;
+	unsigned int E_Exc_Count;
+	unsigned int* E_Exc_index[3];
+	unsigned short* E_Exc_dir;
+	FDTD_FLOAT* E_Exc_amp; //represented as edge-voltages!!
+	unsigned int* E_Exc_delay;
 
 	virtual bool CalcPEC();
 

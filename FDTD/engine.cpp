@@ -79,14 +79,12 @@ bool Engine::IterateTS(unsigned int iterTS)
 		}
 
 		//soft voltage excitation here (E-field excite)
-		for (unsigned int n=0;n<Op->E_Ex_Count;++n)
+		for (unsigned int n=0;n<Op->E_Exc_Count;++n)
 		{
-			exc_pos = (int)numTS - (int)Op->E_Ex_delay[n];
+			exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
 			exc_pos*= (exc_pos>0 && exc_pos<(int)Op->ExciteLength);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-			volt[0][Op->E_Ex_index[0][n]][Op->E_Ex_index[1][n]][Op->E_Ex_index[2][n]] += Op->E_Ex_amp[0][n]*Op->ExciteSignal[exc_pos];
-			volt[1][Op->E_Ex_index[0][n]][Op->E_Ex_index[1][n]][Op->E_Ex_index[2][n]] += Op->E_Ex_amp[1][n]*Op->ExciteSignal[exc_pos];
-			volt[2][Op->E_Ex_index[0][n]][Op->E_Ex_index[1][n]][Op->E_Ex_index[2][n]] += Op->E_Ex_amp[2][n]*Op->ExciteSignal[exc_pos];
+			volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
 		}
 
 		//current updates
