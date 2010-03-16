@@ -56,22 +56,23 @@ double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int
 		array=Eng->curr;
 	else return 0.0;
 
-	unsigned int pos[3]={start[0],start[1],start[2]};
-//	cerr << Eng->volt[1][pos[0]][pos[1]][pos[2]] << endl;
 	for (int n=0;n<3;++n)
 	{
 		if (start[n]<stop[n])
 		{
+			unsigned int pos[3]={start[0],start[1],start[2]};
 			for (;pos[n]<stop[n];++pos[n])
 			{
 				result+=array[n][pos[0]][pos[1]][pos[2]];
-//				cerr << n << " " << pos[0] << " " << pos[1] << " " <<  pos[2] << " " << Eng->volt[n][pos[0]][pos[1]][pos[2]] << endl;
 			}
 		}
 		else
 		{
-			for (;pos[n]>stop[n];--pos[n])
+			unsigned int pos[3]={stop[0],stop[1],stop[2]};
+			for (;pos[n]<start[n];++pos[n])
+			{
 				result-=array[n][pos[0]][pos[1]][pos[2]];
+			}
 		}
 	}
 	return result;

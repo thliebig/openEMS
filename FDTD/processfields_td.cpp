@@ -109,20 +109,24 @@ void ProcessFieldsTD::DumpCellInterpol(ofstream &file)
 
 void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
 {
+	unsigned int pos[3];
+	double delta[3];
 	if (DumpType==0)
 	{
 		//create array
 		FDTD_FLOAT**** E_T = Create_N_3DArray(numLines);
-		unsigned int pos[3];
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
+			delta[0]=fabs(Op->MainOp->GetIndexDelta(0,pos[0]+start[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
+				delta[1]=fabs(Op->MainOp->GetIndexDelta(1,pos[1]+start[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
-					E_T[0][pos[0]][pos[1]][pos[2]] = Eng->volt[0][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]];
-					E_T[1][pos[0]][pos[1]][pos[2]] = Eng->volt[1][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]];
-					E_T[2][pos[0]][pos[1]][pos[2]] = Eng->volt[2][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]];
+					delta[2]=fabs(Op->MainOp->GetIndexDelta(2,pos[2]+start[2]));
+					E_T[0][pos[0]][pos[1]][pos[2]] = Eng->volt[0][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[0]/Op->gridDelta;
+					E_T[1][pos[0]][pos[1]][pos[2]] = Eng->volt[1][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[1]/Op->gridDelta;
+					E_T[2][pos[0]][pos[1]][pos[2]] = Eng->volt[2][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[2]/Op->gridDelta;
 				}
 			}
 		}
@@ -135,17 +139,19 @@ void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
 	{
 		//create array
 		FDTD_FLOAT**** H_T = Create_N_3DArray(numLines);
-		unsigned int pos[3] = {start[0],start[1],start[2]};
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
+			delta[0]=fabs(Op->MainOp->GetIndexWidth(0,pos[0]+start[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
+				delta[1]=fabs(Op->MainOp->GetIndexWidth(1,pos[1]+start[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
+					delta[2]=fabs(Op->MainOp->GetIndexWidth(2,pos[2]+start[2]));
 					//in x
-					H_T[0][pos[0]][pos[1]][pos[2]] = Eng->curr[0][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]];
-					H_T[1][pos[0]][pos[1]][pos[2]] = Eng->curr[1][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]];
-					H_T[2][pos[0]][pos[1]][pos[2]] = Eng->curr[2][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]];
+					H_T[0][pos[0]][pos[1]][pos[2]] = Eng->curr[0][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[0]/Op->gridDelta;
+					H_T[1][pos[0]][pos[1]][pos[2]] = Eng->curr[1][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[1]/Op->gridDelta;
+					H_T[2][pos[0]][pos[1]][pos[2]] = Eng->curr[2][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[2]/Op->gridDelta;
 				}
 			}
 		}
