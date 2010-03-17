@@ -186,21 +186,11 @@ void Operator::DumpOperator2File(string filename)
 		cerr << "Operator::DumpOperator2File: Can't open file: " << filename << endl;
 		return;
 	}
-	file << "########### Operator vv ###########" << endl;
-	file << "ix\tiy\tiz\tvv_x\tvv_y\tvv_z" << endl;
-	Dump_N_3DArray2File(file,vv,numLines);
 
-	file << "########### Operator vi ###########" << endl;
-	file << "ix\tiy\tiz\tvi_x\tvi_y\tvi_z" << endl;
-	Dump_N_3DArray2File(file,vi,numLines);
+	string names[] = {"vv", "vi", "iv" , "ii"};
+	FDTD_FLOAT**** array[] = {vv,vi,iv,ii};
 
-	file << "########### Operator iv ###########" << endl;
-	file << "ix\tiy\tiz\tiv_x\tiv_y\tiv_z" << endl;
-	Dump_N_3DArray2File(file,iv,numLines);
-
-	file << "########### Operator ii ###########" << endl;
-	file << "ix\tiy\tiz\tii_x\tii_y\tii_z" << endl;
-	Dump_N_3DArray2File(file,ii,numLines);
+	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 4, discLines, numLines);
 
 	file.close();
 }

@@ -38,12 +38,14 @@ public:
 	void SetEndCriteria(double val) {endCrit=val;}
 
 	void DebugMaterial() {DebugMat=true;}
+	void DebugOperator() {DebugOp=true;}
 
 protected:
 	//! Number of Timesteps
 	int NrTS;
 	bool Enable_Dumps;
 	bool DebugMat;
+	bool DebugOp;
 	double endCrit;
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;

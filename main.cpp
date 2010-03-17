@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 #ifdef STANDALONE
 	if (argc<=1)
 	{
-		cout << " usage: openEMS FDTD_XML_FILE [--disable-dumps] [--debug-material]" << endl;
+		cout << " usage: openEMS FDTD_XML_FILE [--disable-dumps] [--debug-material] [--debug-operator]" << endl;
 		exit(-1);
 	}
 
@@ -51,6 +51,11 @@ int main(int argc, char *argv[])
 			{
 				cout << "openEMS - dumping material to 'material_dump.vtk'" << endl;
 				FDTD.DebugMaterial();
+			}
+			else if (strcmp(argv[n],"--debug-operator")==0)
+			{
+				cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
+				FDTD.DebugOperator();
 			}
 			else
 				cout << "openEMS - unknown argument: " << argv[n] << endl;
@@ -78,7 +83,8 @@ int main(int argc, char *argv[])
 
 	const char* file=fileHelix;
 
-	FDTD.DebugMaterial();
+//	FDTD.DebugMaterial();
+//	FDTD.DebugOperator();
 #endif
 
 	int EC = FDTD.SetupFDTD(file);

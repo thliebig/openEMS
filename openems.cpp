@@ -35,6 +35,7 @@ openEMS::openEMS()
 	PA=NULL;
 	Enable_Dumps = true;
 	DebugMat = false;
+	DebugOp = false;
 	endCrit = 1e-6;
 }
 
@@ -145,6 +146,10 @@ int openEMS::SetupFDTD(const char* file)
 		FDTD_Op->DumpMaterial2File("material_dump.vtk");
 	}
 	FDTD_Op->CalcECOperator();
+	if (DebugOp)
+	{
+		FDTD_Op->DumpOperator2File("operator_dump.vtk");
+	}
 
 	if (Excit_Type==0)
 		FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
