@@ -12,32 +12,30 @@
         </RectilinearGrid>
         <ParameterSet />
         <Properties>
-            <Material ID="0" Name="" Isotropy="1">
-                <FillColor R="103" G="198" B="105" a="255" />
-                <EdgeColor R="103" G="198" B="105" a="255" />
+            <Material Isotropy="1" ID="0" Name="">
                 <Property Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e-03" Sigma="0.000000e+00" />
                 <PropertyY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
                 <PropertyZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="0.000000e+00" Sigma="0.000000e+00" />
                 <WeightX Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
                 <WeightY Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
                 <WeightZ Epsilon="1.000000e+00" Mue="1.000000e+00" Kappa="1.000000e+00" Sigma="1.000000e+00" />
+                <Primitives>
+                    <Box ID="0" Priority="0">
+                        <P1 X="-1.000000e+03" Y="-1.000000e+03" Z="-1.000000e+03" />
+                        <P2 X="1.000000e+03" Y="1.000000e+03" Z="1.000000e+03" />
+                    </Box>
+                </Primitives>
             </Material>
-            <Electrode ID="1" Name="" Number="0" Delay="0.000000e+00">
-                <FillColor R="115" G="81" B="255" a="255" />
-                <EdgeColor R="115" G="81" B="255" a="255" />
+            <Electrode Number="0" Delay="0.000000e+00" ID="1" Name="">
                 <Excitation Type="1" Excit_X="0.000000e+00" Excit_Y="1.000000e+00" Excit_Z="0.000000e+00" />
                 <Weight X="1.000000e+00" Y="1.000000e+00" Z="1.000000e+00" />
+                <Primitives>
+                    <Box ID="1" Priority="0">
+                        <P1 X="-1.000000e+01" Y="-7.500000e+01" Z="-1.000000e+01" />
+                        <P2 X="1.000000e+01" Y="7.500000e+01" Z="1.000000e+01" />
+                    </Box>
+                </Primitives>
             </Electrode>
         </Properties>
-        <Primitives>
-            <Box ID="0" PropertyID="0" Priority="0">
-                <P1 X="-1.000000e+03" Y="-1.000000e+03" Z="-1.000000e+03" />
-                <P2 X="1.000000e+03" Y="1.000000e+03" Z="1.000000e+03" />
-            </Box>
-            <Box ID="1" PropertyID="1" Priority="0">
-                <P1 X="-1.000000e+01" Y="-7.500000e+01" Z="-1.000000e+01" />
-                <P2 X="1.000000e+01" Y="7.500000e+01" Z="1.000000e+01" />
-            </Box>
-        </Primitives>
     </ContinuousStructure>
 </openEMS>

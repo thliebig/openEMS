@@ -90,7 +90,7 @@ void BuildDipol(const char* filename)
 
 	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&openEMS,true)==false)
+	if (CSX.Write2XML(&openEMS,true,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
@@ -237,7 +237,7 @@ void BuildPlaneWave(const char* filename)
 
 	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&openEMS,true)==false)
+	if (CSX.Write2XML(&openEMS,true,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
@@ -414,7 +414,7 @@ void BuildMSL(const char* filename)
 
 	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&openEMS,true)==false)
+	if (CSX.Write2XML(&openEMS,true,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
@@ -588,7 +588,7 @@ void BuildCoaxial_Cartesian(const char* filename)
 
 	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&openEMS,true)==false)
+	if (CSX.Write2XML(&openEMS,true,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
@@ -864,7 +864,7 @@ void BuildHelix(const char* filename)
 
 	openEMS.InsertEndChild(FDTD_Opts);
 
-	if (CSX.Write2XML(&openEMS,true)==false)
+	if (CSX.Write2XML(&openEMS,true,true)==false)
 	{
 		cerr << "writing failed" << endl;
 		exit(-1);
