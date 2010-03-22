@@ -63,6 +63,13 @@ protected:
 	virtual void Init();
 	virtual void InitOperator();
 
+	typedef struct Grid_Path
+	{
+		vector<unsigned int> posPath[3];
+		vector<unsigned short> dir;
+	};
+	struct Grid_Path FindPath(double start[], double stop[]);
+
 	ContinuousStructure* CSX;
 	double gridDelta;
 

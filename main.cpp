@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
 	const char* file=fileHelix;
 
-//	FDTD.DebugMaterial();
+	FDTD.DebugMaterial();
 //	FDTD.DebugOperator();
 #endif
 

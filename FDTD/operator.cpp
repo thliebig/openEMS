@@ -125,6 +125,93 @@ bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower)
 	return ok;
 }
 
+struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
+{
+	struct Grid_Path path;
+	double dV[] = {stop[0]-start[0],stop[1]-start[1],stop[2]-start[2]};
+
+	unsigned int uiStart[3],uiStop[3],currPos[3],pos[3];
+	SnapToMesh(start,uiStart);
+	SnapToMesh(stop,uiStop);
+	currPos[0]=uiStart[0];
+	currPos[1]=uiStart[1];
+	currPos[2]=uiStart[2];
+	double meshStart[] = {discLines[0][uiStart[0]], discLines[1][uiStart[1]], discLines[2][uiStart[2]]};
+	double meshStop[] = {discLines[0][uiStop[0]], discLines[1][uiStop[1]], discLines[2][uiStop[2]]};
+
+	double foot,dist,minFoot,minDist,minDir;
+	unsigned int minPos[3];
+	double startFoot,stopFoot,currFoot;
+	Point_Line_Distance(meshStart,start,stop,startFoot,dist);
+	Point_Line_Distance(meshStop,start,stop,stopFoot,dist);
+	currFoot=startFoot;
+
+	double P[3];
+
+//	cerr << "start pos " << discLines[0][currPos[0]] << " "  << discLines[1][currPos[1]] << " "  << discLines[2][currPos[2]] << endl;
+//
+//	FDTD_FLOAT**** array = Create_N_3DArray(numLines);
+
+	while (minFoot<stopFoot)
+	{
+		minDist=1e300;
+		for (int n=0;n<3;++n) //check all 6 surrounding points
+		{
+			P[0] = discLines[0][currPos[0]];
+			P[1] = discLines[1][currPos[1]];
+			P[2] = discLines[2][currPos[2]];
+			if ((currPos[n]-1)>=0)
+			{
+				P[n] = discLines[n][currPos[n]-1];
+				Point_Line_Distance(P,start,stop,foot,dist);
+				if ((foot>currFoot) && (dist<minDist))
+				{
+					minFoot=foot;
+					minDist=dist;
+					minDir = n;
+					minPos[0]=currPos[0];
+					minPos[1]=currPos[1];
+					minPos[2]=currPos[2];
+					minPos[n]=currPos[n]-1;
+//					array[n][minPos[0]][minPos[1]][minPos[2]] = 1;
+				}
+			}
+			if ((currPos[n]+1)<numLines[n])
+			{
+				P[n] = discLines[n][currPos[n]+1];
+				Point_Line_Distance(P,start,stop,foot,dist);
+				if ((foot>currFoot) && (dist<minDist))
+				{
+					minFoot=foot;
+					minDist=dist;
+					minDir = n;
+					minPos[0]=currPos[0];
+					minPos[1]=currPos[1];
+					minPos[2]=currPos[2];
+					minPos[n]=currPos[n]+1;
+//					array[n][minPos[0]][minPos[1]][minPos[2]] = 1;
+				}
+			}
+		}
+//		cerr << "next best pos " << minDir << " "  << " " << discLines[0][minPos[0]] << " " << discLines[1][minPos[1]] << " " << discLines[2][minPos[2]] << endl;
+		currPos[0]=minPos[0];
+		currPos[1]=minPos[1];
+		currPos[2]=minPos[2];
+		currFoot=minFoot;
+		path.dir.push_back(minDir);
+		path.posPath[0].push_back(minPos[0]);
+		path.posPath[1].push_back(minPos[1]);
+		path.posPath[2].push_back(minPos[2]);
+	}
+
+//	ofstream file("test.vtk",ios_base::out);
+//
+//	ProcessFields::DumpVectorArray2VTK(file,"path",array,discLines,numLines);
+//	file.close();
+
+	return path;
+}
+
 double Operator::GetNumberCells()
 {
 	if (numLines)
@@ -204,14 +291,6 @@ void Operator::DumpMaterial2File(string filename)
 	unsigned int pos[3];
 	double inMat[4];
 
-	ofstream file(filename.c_str(),ios_base::out);
-//	file.open;
-	if (file.is_open()==false)
-	{
-		cerr << "Operator::DumpMaterial2File: Can't open file: " << filename << endl;
-		return;
-	}
-
 	epsilon = Create3DArray( numLines);
 	mue = Create3DArray( numLines);
 	kappa = Create3DArray( numLines);
@@ -236,6 +315,13 @@ void Operator::DumpMaterial2File(string filename)
 				sigma[pos[0]][pos[1]][pos[2]]/=3;
 			}
 		}
+	}
+
+	ofstream file(filename.c_str(),ios_base::out);
+	if (file.is_open()==false)
+	{
+		cerr << "Operator::DumpMaterial2File: Can't open file: " << filename << endl;
+		return;
 	}
 
 	string names[] = {"epsilon","mue","kappa","sigma"};
@@ -756,5 +842,54 @@ bool Operator::CalcPEC()
 			}
 		}
 	}
+
+	//special treatment for primitives of type curve (treated as wires)
+	double p1[3];
+	double p2[3];
+	struct Grid_Path path;
+	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::METAL);
+	for (size_t p=0;p<vec_prop.size();++p)
+	{
+		CSProperties* prop = vec_prop.at(p);
+		for (size_t n=0;n<prop->GetQtyPrimitives();++n)
+		{
+			CSPrimitives* prim = prop->GetPrimitive(n);
+			CSPrimCurve* curv = prim->ToCurve();
+			if (curv)
+			{
+				for (size_t i=1;i<curv->GetNumberOfPoints();++i)
+				{
+					curv->GetPoint(i-1,p1);
+					curv->GetPoint(i,p2);
+					path = FindPath(p1,p2);
+					cerr << p1[0] <<  " " << p1[1] <<  " "  << p1[2] << endl;
+					cerr << p2[0] <<  " " << p2[1] <<  " "  << p2[2] << endl;
+					for (size_t t=0;t<path.dir.size();++t)
+					{
+						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
+						vv[path.dir.at(t)][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+						vi[path.dir.at(t)][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+						vv[0][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+						vi[0][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+						vv[1][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+						vi[1][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+						vv[2][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+						vi[2][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
+					}
+					cerr << "found path size: " << path.dir.size() << endl;
+				}
+			}
+		}
+	}
+
+//	double p1[] = {10,0,0};
+//	double p2[] = {10,0,50};
+//	struct Grid_Path path = FindPath(p1,p2);
+//
+//	for (size_t i=0;i<path.dir.size();++i)
+//	{
+//		vv[path.dir.at(i)][path.posPath[0].at(i)][path.posPath[1].at(i)][path.posPath[2].at(i)] = 0;
+//		vi[path.dir.at(i)][path.posPath[0].at(i)][path.posPath[1].at(i)][path.posPath[2].at(i)] = 0;
+//	}
 }
 

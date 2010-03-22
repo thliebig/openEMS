@@ -147,11 +147,13 @@ void BuildPlaneWave(const char* filename)
 	CSPropMaterial* mat2 = new CSPropMaterial(CSX.GetParameterSet());
 	mat2->SetEpsilon(2);
 	CSX.AddProperty(mat2);
-	box = new CSPrimBox(CSX.GetParameterSet(),mat2);
-	box->SetCoord(0,width/-2.0);box->SetCoord(1,width/2.0);
-	box->SetCoord(2,hight/-2.0);box->SetCoord(3,hight/2.0);
-	box->SetCoord(4,length/-4.0);box->SetCoord(5,length/4.0);
-	CSX.AddPrimitive(box);
+	CSPrimCylindricalShell* cylshell = new CSPrimCylindricalShell(CSX.GetParameterSet(),mat2);
+	cylshell->SetRadius(length/4.0);
+	cylshell->SetShellWidth(200.0);
+	cylshell->SetCoord(0,0.0);cylshell->SetCoord(1,0.0);
+	cylshell->SetCoord(2,hight/-2.0);cylshell->SetCoord(3,hight/2.0);
+	cylshell->SetCoord(4,0.0);cylshell->SetCoord(5,0.0);
+	CSX.AddPrimitive(cylshell);
 
 	CSPropElectrode* elec = new CSPropElectrode(CSX.GetParameterSet());
 	elec->SetExcitation(1,1);
@@ -490,7 +492,7 @@ void BuildCoaxial_Cartesian(const char* filename)
 	//E-field dump
 	CSPropDumpBox* Edump = new CSPropDumpBox(CSX.GetParameterSet());
 	Edump->SetDumpType(0);
-	Edump->SetDumpMode(2);
+	Edump->SetDumpMode(0);
 	Edump->SetName("Et_");
 	CSX.AddProperty(Edump);
 	box = new CSPrimBox(CSX.GetParameterSet(),Edump);
@@ -609,10 +611,11 @@ void BuildHelix(const char* filename)
 	ContinuousStructure CSX;
 
 	double feed_length=10;
-	double wire_rad = 0.7;
+	double wire_rad = sqrt(1.4/PI);
 	double coil_rad = 10;
 	double coil_length = 50;
 	int coil_turns = 8;
+	int coil_res = 10;
 	double delta[] = {0.5,0.5,0.5};
 
 	CSPrimBox* box = NULL;
@@ -628,33 +631,61 @@ void BuildHelix(const char* filename)
 	copper->SetName("copper");
 	CSX.AddProperty(copper);
 
-	CSPrimUserDefined* helix = new CSPrimUserDefined(CSX.GetParameterSet(),copper);
-	helix->SetCoordSystem(CSPrimUserDefined::CYLINDER_SYSTEM);
-	helix->SetFunction("(r>(rad_coil-rad_wire))&(r<rad_coil+rad_wire)&(sqrt(pow(x-r*cos(2*pi*z*turns/coil_length),2)+pow(y-r*sin(2*pi*z*turns/coil_length),2))<(2*rad_wire))&(z>0)&(z<coil_length)");
-	CSX.AddPrimitive(helix);
-	CSPrimCylinder* cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
-	cyl->SetRadius(wire_rad);
-	cyl->SetCoord(0,coil_rad);	cyl->SetCoord(1,coil_rad+feed_length);
-	cyl->SetCoord(2,0.0);		cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,0.0);		cyl->SetCoord(5,0.0);
-	CSX.AddPrimitive(cyl);
-	cyl = new CSPrimCylinder(CSX.GetParameterSet(),copper);
-	cyl->SetRadius(wire_rad);
-	cyl->SetCoord(0,coil_rad);		cyl->SetCoord(1,coil_rad+feed_length);
-	cyl->SetCoord(2,0.0);			cyl->SetCoord(3,0.0);
-	cyl->SetCoord(4,coil_length);	cyl->SetCoord(5,coil_length);
-	CSX.AddPrimitive(cyl);
+//	CSPropMetal* pec = new CSPropMetal(CSX.GetParameterSet());
+//	CSX.AddProperty(pec);
+//	CSPrimCurve* curve = new CSPrimCurve(CSX.GetParameterSet(),pec);
+	CSPrimWire* curve = new CSPrimWire(CSX.GetParameterSet(),copper);
+	curve->SetWireRadius("rad_wire");
+	double p[3];
+	double dt = 1.0/coil_res;
+	double height=0;
+	for (int n=0;n<coil_turns;++n)
+	{
+		for (int m=0;m<=coil_res;++m)
+		{
+			p[0] = coil_rad * cos(2*PI*dt*m);
+			p[1] = coil_rad * sin(2*PI*dt*m);
+			p[2] = height + coil_length/(double)coil_turns * dt*m;
+//			cerr << p[0] << " " << p[1] << " " << p[2] << " " << endl;
+			curve->AddPoint(p);
+		}
+		height += coil_length/(double)coil_turns;
+	}
+//	exit(0);
+	CSX.AddPrimitive(curve);
 
-	double kappa_resist = (coil_length)/50/1e-3;
+//	CSPrimUserDefined* helix = new CSPrimUserDefined(CSX.GetParameterSet(),copper);
+//	helix->SetCoordSystem(CSPrimUserDefined::CYLINDER_SYSTEM);
+//	helix->SetFunction("(r>(rad_coil-rad_wire))&(r<rad_coil+rad_wire)&(sqrt(pow(x-r*cos(2*pi*z*turns/coil_length),2)+pow(y-r*sin(2*pi*z*turns/coil_length),2))<(2*rad_wire))&(z>0)&(z<coil_length)");
+//	CSX.AddPrimitive(helix);
+
+	box = new CSPrimBox(CSX.GetParameterSet(),copper);
+	box->SetCoord(0,coil_rad);	box->SetCoord(1,coil_rad+feed_length);
+	box->SetCoord(2,-0.5);		box->SetCoord(3,0.5);
+	box->SetCoord(4,-0.5);		box->SetCoord(5,0.5);
+	CSX.AddPrimitive(box);
+	box = new CSPrimBox(CSX.GetParameterSet(),copper);
+	box->SetCoord(0,coil_rad);		box->SetCoord(1,coil_rad+feed_length);
+	box->SetCoord(2,-0.5);			box->SetCoord(3,0.5);
+	box->SetCoord(4,coil_length-0.5);	box->SetCoord(5,coil_length+0.5);
+	CSX.AddPrimitive(box);
+	box = new CSPrimBox(CSX.GetParameterSet(),copper);
+	box->SetCoord(0,coil_rad+feed_length-0.5);	box->SetCoord(1,coil_rad+feed_length+0.5);
+	box->SetCoord(2,-0.5);						box->SetCoord(3,0.5);
+	box->SetCoord(4,0.0);						box->SetCoord(5,coil_length);///2.0-delta[2]);
+	CSX.AddPrimitive(box);
+
+	double kappa_resist = (coil_length/3.0)/50/1e-3;
 	CSPropMaterial* Src_Resist = new CSPropMaterial(CSX.GetParameterSet());
 	Src_Resist->SetKappa(kappa_resist,2);
 	Src_Resist->SetIsotropy(false);
 	Src_Resist->SetName("resist");
 	CSX.AddProperty(Src_Resist);
 	box = new CSPrimBox(CSX.GetParameterSet(),Src_Resist);
+	box->SetPriority(100);
 	box->SetCoord(0,coil_rad+feed_length-0.5);	box->SetCoord(1,coil_rad+feed_length+0.5);
 	box->SetCoord(2,-0.5);						box->SetCoord(3,0.5);
-	box->SetCoord(4,0.0);						box->SetCoord(5,coil_length);///2.0-delta[2]);
+	box->SetCoord(4,coil_length/3.0);						box->SetCoord(5,coil_length/3.0*2.0);///2.0-delta[2]);
 	CSX.AddPrimitive(box);
 //	box = new CSPrimBox(CSX.GetParameterSet(),Src_Resist);
 //	box->SetCoord(0,coil_rad+feed_length-0.5);	box->SetCoord(1,coil_rad+feed_length+0.5);
@@ -670,7 +701,7 @@ void BuildHelix(const char* filename)
 	box = new CSPrimBox(CSX.GetParameterSet(),elec);
 	box->SetCoord(0,coil_rad+feed_length+0.5);	box->SetCoord(1,coil_rad+feed_length-0.5);
 	box->SetCoord(2,-0.5);						box->SetCoord(3,0.5);
-	box->SetCoord(4,0.0);	box->SetCoord(5,coil_length);
+	box->SetCoord(4,coil_length/3.0);						box->SetCoord(5,coil_length/3.0*2.0);///2.0-delta[2]);
 	CSX.AddPrimitive(box);
 
 //	CSPropMetal* elec_mat = new CSPropMetal(CSX.GetParameterSet());
@@ -743,7 +774,7 @@ void BuildHelix(const char* filename)
 	CSX.AddPrimitive(box);
 
 	//current calc
-	double curr_dist = 1;
+	double curr_dist = 2;
 	CSPropProbeBox* curr = new CSPropProbeBox(CSX.GetParameterSet());
 	curr->SetProbeType(1);
 	curr->SetName("i1");
@@ -814,6 +845,7 @@ void BuildHelix(const char* filename)
 
 	TiXmlElement FDTD_Opts("FDTD");
 	FDTD_Opts.SetAttribute("NumberOfTimesteps",maxIter);
+	FDTD_Opts.SetDoubleAttribute("endCriteria",1e-8);
 
 	TiXmlElement Excite("Excitation");
 	Excite.SetAttribute("Type",Excit_Type);
