@@ -92,7 +92,7 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %cd to working dir and run openEMS
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS ' Sim_CSX ' ' openEMS_opts];
+command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
 disp(command);
 system(command)
 cd(savePath);
