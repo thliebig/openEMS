@@ -23,10 +23,19 @@
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/processfields_td.h"
+#include <sys/time.h>
+#include <time.h>
 
 //external libs
 #include "tinyxml.h"
 #include "ContinuousStructure.h"
+
+double CalcDiffTime(timeval t1, timeval t2)
+{
+	double s_diff = difftime(t1.tv_sec,t2.tv_sec);
+	s_diff += ((double)t1.tv_usec-(double)t2.tv_usec)*1e-6;
+	return s_diff;
+}
 
 openEMS::openEMS()
 {
@@ -260,9 +269,11 @@ int openEMS::SetupFDTD(const char* file)
 void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a coup of coffee?!?" << endl;
-	time_t currTime = time(NULL);
-	time_t startTime = currTime;
-	time_t prevTime=currTime;
+
+	timeval currTime;
+	gettimeofday(&currTime,NULL);
+	timeval startTime = currTime;
+	timeval prevTime= currTime;
 	ProcessFields ProcField(FDTD_Op,FDTD_Eng);
 	double maxE=0,currE=0;
 	double change=1;
@@ -280,14 +291,15 @@ void openEMS::RunFDTD()
 		currTS = FDTD_Eng->GetNumberOfTimesteps();
 		if ((step<0) || (step>NrTS - currTS)) step=NrTS - currTS;
 
-		currTime = time(NULL);
-		t_diff = difftime(currTime,prevTime);
+		gettimeofday(&currTime,NULL);
+
+		t_diff = CalcDiffTime(currTime,prevTime);
 		if (t_diff>4)
 		{
 			currE = ProcField.CalcTotalEnergy();
 			if (currE>maxE)
 				maxE=currE;
-			cout << "[@" << setw(8) << (int)difftime(currTime,startTime)  <<  "s] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
+			cout << "[@" << setw(8) << (int)CalcDiffTime(currTime,startTime)  <<  "s] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
 			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
 			if (maxE)
 				change = currE/maxE;
@@ -299,9 +311,9 @@ void openEMS::RunFDTD()
 
 	//*************** postproc ************//
 	prevTime = currTime;
-	currTime = time(NULL);
+	gettimeofday(&currTime,NULL);
 
-	t_diff = difftime(currTime,startTime);
+	t_diff = CalcDiffTime(currTime,startTime);
 
 	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
 	cout << "Speed: " << speed*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff << " MCells/s " << endl;
