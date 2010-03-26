@@ -193,6 +193,7 @@ bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDT
 		WriteVTKVectorArray(file, names[n], array[n], numLines);
 		file << endl;
 	}
+	return true;
 }
 
 void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines)
@@ -220,16 +221,18 @@ bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*
 {
 	WriteVTKHeader(file, discLines, numLines);
 	WriteVTKScalarArray(file, name, array, numLines);
+	return true;
 }
 
 bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
 {
 	WriteVTKHeader(file, discLines, numLines);
-	for (int n=0;n<numFields;++n)
+	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKScalarArray(file, names[n], array[n], numLines);
 		file << endl;
 	}
+	return true;
 }
 
 

@@ -139,9 +139,9 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	double meshStart[] = {discLines[0][uiStart[0]], discLines[1][uiStart[1]], discLines[2][uiStart[2]]};
 	double meshStop[] = {discLines[0][uiStop[0]], discLines[1][uiStop[1]], discLines[2][uiStop[2]]};
 
-	double foot,dist,minFoot,minDist;
-	int minDir;
 	bool UpDir;
+	double foot=0,dist=0,minFoot=0,minDist=0;
+	int minDir=0;
 	unsigned int minPos[3];
 	double startFoot,stopFoot,currFoot;
 	Point_Line_Distance(meshStart,start,stop,startFoot,dist);
@@ -158,7 +158,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 			P[0] = discLines[0][currPos[0]];
 			P[1] = discLines[1][currPos[1]];
 			P[2] = discLines[2][currPos[2]];
-			if ((currPos[n]-1)>=0)
+			if (((int)currPos[n]-1)>=0)
 			{
 				P[n] = discLines[n][currPos[n]-1];
 				Point_Line_Distance(P,start,stop,foot,dist);
@@ -725,13 +725,13 @@ bool Operator::CalcEFieldExcitation()
 	double delta[3];
 	double amp=0;
 
-	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+	for (pos[2]=0;pos[2]<(int)numLines[2];++pos[2])
 	{
 		delta[2]=fabs(MainOp->GetIndexDelta(2,pos[2]));
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0;pos[1]<(int)numLines[1];++pos[1])
 		{
 			delta[1]=fabs(MainOp->GetIndexDelta(1,pos[1]));
-			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+			for (pos[0]=0;pos[0]<(int)numLines[0];++pos[0])
 			{
 				delta[0]=fabs(MainOp->GetIndexDelta(0,pos[0]));
 				coord[0] = discLines[0][pos[0]];
@@ -748,7 +748,7 @@ bool Operator::CalcEFieldExcitation()
 						CSPropElectrode* elec = prop->ToElectrode();
 						if (elec!=NULL)
 						{
-							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
+							if ((elec->GetActiveDir(n)) && (pos[n]<(int)numLines[n]-1))
 							{
 								amp = elec->GetWeightedExcitation(n,coord)*delta[n]*gridDelta;
 								if (amp!=0)
@@ -865,5 +865,7 @@ bool Operator::CalcPEC()
 			}
 		}
 	}
+
+	return true;
 }
 
