@@ -716,7 +716,7 @@ double Operator::CalcTimestep()
 			}
 		}
 	}
-//	cerr << "Timestep: " << dT << endl;
+	cerr << "Operator Timestep: " << dT << endl;
 	return 0;
 }
 

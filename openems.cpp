@@ -121,6 +121,7 @@ int openEMS::SetupFDTD(const char* file)
 	else if (Excit_Type==1)
 	{
 		Excite->QueryDoubleAttribute("f0",&f0);
+		fc = 0;
 	}
 
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
@@ -164,7 +165,6 @@ int openEMS::SetupFDTD(const char* file)
 		FDTD_Op->DumpOperator2File("operator_dump.vtk");
 	}
 
-	fc = 0;
 	if (Excit_Type==0)
 		FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
 	else if (Excit_Type==1)
