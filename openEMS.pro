@@ -46,3 +46,6 @@ HEADERS += tools/ErrorMsg.h \
     examples/FDTD_examples.h \
     openems.h \
     FDTD/engine_multithread.h
+
+QMAKE_CXXFLAGS_RELEASE = -O2 -g -march=native
+QMAKE_CXXFLAGS_DEBUG = -O0 -g -march=native
