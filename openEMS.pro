@@ -14,7 +14,8 @@ LIBS += -L../CSXCAD \
     -L../fparser \
     -lfparser \
     -L../tinyxml \
-    -ltinyxml
+	-ltinyxml \
+	-lboost_thread
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
