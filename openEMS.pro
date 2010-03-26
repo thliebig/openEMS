@@ -1,7 +1,7 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-02-26T22:34:51
 # -------------------------------------------------
-QT -= gui
+QT -= gui core
 TARGET = openEMS
 CONFIG += console
 CONFIG -= app_bundle
@@ -15,9 +15,9 @@ LIBS += -L../CSXCAD \
     -lfparser \
     -L../tinyxml \
     -ltinyxml
-QMAKE_LFLAGS += '-Wl,-rpath,\$$ORIGIN/../CSXCAD'
-QMAKE_LFLAGS += '-Wl,-rpath,\$$ORIGIN/../fparser'
-QMAKE_LFLAGS += '-Wl,-rpath,\$$ORIGIN/../tinyxml'
+QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
+QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
+QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
 SOURCES += main.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \
