@@ -42,22 +42,7 @@ int main(int argc, char *argv[])
 	{
 		for (int n=2;n<argc;++n)
 		{
-			if (strcmp(argv[n],"--disable-dumps")==0)
-			{
-				cout << "openEMS - disabling all field dumps" << endl;
-				FDTD.SetEnableDumps(false);
-			}
-			else if (strcmp(argv[n],"--debug-material")==0)
-			{
-				cout << "openEMS - dumping material to 'material_dump.vtk'" << endl;
-				FDTD.DebugMaterial();
-			}
-			else if (strcmp(argv[n],"--debug-operator")==0)
-			{
-				cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
-				FDTD.DebugOperator();
-			}
-			else
+			if (!FDTD.parseCommandLineArgument(argv[n]))
 				cout << "openEMS - unknown argument: " << argv[n] << endl;
 		}
 	}

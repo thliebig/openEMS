@@ -69,6 +69,36 @@ void openEMS::Reset()
 	PA=NULL;
 }
 
+//! \brief processes a command line argument
+//! returns true if argument is known
+//! returns false if argument is unknown
+bool openEMS::parseCommandLineArgument( const char *argv )
+{
+	if (!argv)
+		return false;
+
+	if (strcmp(argv,"--disable-dumps")==0)
+	{
+		cout << "openEMS - disabling all field dumps" << endl;
+		SetEnableDumps(false);
+		return true;
+	}
+	else if (strcmp(argv,"--debug-material")==0)
+	{
+		cout << "openEMS - dumping material to 'material_dump.vtk'" << endl;
+		DebugMaterial();
+		return true;
+	}
+	else if (strcmp(argv,"--debug-operator")==0)
+	{
+		cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
+		DebugOperator();
+		return true;
+	}
+
+	return false;
+}
+
 int openEMS::SetupFDTD(const char* file)
 {
 	if (file==NULL) return -1;

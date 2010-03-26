@@ -28,6 +28,8 @@ public:
     openEMS();
 	~openEMS();
 
+	bool parseCommandLineArgument( const char *argv );
+
 	int SetupFDTD(const char* file);
 
 	void RunFDTD();
