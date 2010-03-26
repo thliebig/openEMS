@@ -862,11 +862,11 @@ bool Operator::CalcPEC()
 					curv->GetPoint(i-1,p1);
 					curv->GetPoint(i,p2);
 					path = FindPath(p1,p2);
-					cerr << p1[0] <<  " " << p1[1] <<  " "  << p1[2] << endl;
-					cerr << p2[0] <<  " " << p2[1] <<  " "  << p2[2] << endl;
+//					cerr << p1[0] <<  " " << p1[1] <<  " "  << p1[2] << endl;
+//					cerr << p2[0] <<  " " << p2[1] <<  " "  << p2[2] << endl;
 					for (size_t t=0;t<path.dir.size();++t)
 					{
-						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
+//						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
 						vv[path.dir.at(t)][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
 						vi[path.dir.at(t)][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
 						vv[0][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
@@ -876,20 +876,10 @@ bool Operator::CalcPEC()
 						vv[2][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
 						vi[2][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
 					}
-					cerr << "found path size: " << path.dir.size() << endl;
+//					cerr << "found path size: " << path.dir.size() << endl;
 				}
 			}
 		}
 	}
-
-//	double p1[] = {10,0,0};
-//	double p2[] = {10,0,50};
-//	struct Grid_Path path = FindPath(p1,p2);
-//
-//	for (size_t i=0;i<path.dir.size();++i)
-//	{
-//		vv[path.dir.at(i)][path.posPath[0].at(i)][path.posPath[1].at(i)][path.posPath[2].at(i)] = 0;
-//		vi[path.dir.at(i)][path.posPath[0].at(i)][path.posPath[1].at(i)][path.posPath[2].at(i)] = 0;
-//	}
 }
 
