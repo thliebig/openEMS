@@ -50,12 +50,12 @@ openEMS::openEMS()
 
 openEMS::~openEMS()
 {
-	delete FDTD_Op;
-	FDTD_Op=NULL;
 	delete FDTD_Eng;
 	FDTD_Eng=NULL;
 	delete PA;
 	PA=NULL;
+	delete FDTD_Op;
+	FDTD_Op=NULL;
 }
 
 void openEMS::Reset()
