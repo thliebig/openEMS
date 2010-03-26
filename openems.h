@@ -52,6 +52,9 @@ protected:
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;
+
+	enum EngineType {EngineType_Standard,EngineType_Multithreaded};
+	EngineType m_engine;
 };
 
 #endif // OPENEMS_H

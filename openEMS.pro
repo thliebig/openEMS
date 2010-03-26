@@ -31,7 +31,8 @@ SOURCES += main.cpp \
     FDTD/processfields_td.cpp \
     FDTD/processcurrent.cpp \
     examples/FDTD_examples.cpp \
-    openems.cpp
+    openems.cpp \
+    FDTD/engine_multithread.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -44,4 +45,5 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/processfields_td.h \
     FDTD/processcurrent.h \
     examples/FDTD_examples.h \
-    openems.h
+    openems.h \
+    FDTD/engine_multithread.h

@@ -20,6 +20,7 @@
 #include "tools/array_ops.h"
 #include "FDTD/operator.h"
 #include "FDTD/engine.h"
+#include "FDTD/engine_multithread.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/processfields_td.h"
@@ -93,6 +94,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
 		DebugOperator();
+		return true;
+	}
+	else if (strcmp(argv,"--engine=multithreaded")==0)
+	{
+		cout << "openEMS - enabled multithreading" << endl;
+		m_engine = EngineType_Multithreaded;
 		return true;
 	}
 
@@ -217,7 +224,15 @@ int openEMS::SetupFDTD(const char* file)
 	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 
 	//create FDTD engine
-	FDTD_Eng = new Engine(FDTD_Op);
+	switch (m_engine) {
+	case EngineType_Multithreaded:
+		FDTD_Eng = new Engine_Multithread(FDTD_Op);
+		break;
+	default:
+		FDTD_Eng = new Engine(FDTD_Op);
+		break;
+	}
+
 
 	time_t currTime = time(NULL);
 
