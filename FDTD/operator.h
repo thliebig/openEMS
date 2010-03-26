@@ -27,7 +27,6 @@
 //! Abstract base-class for the FDTD-operator
 class Operator
 {
-	friend class Engine;
 	friend class ProcessFields;
 	friend class ProcessFieldsTD;
 public:
@@ -63,7 +62,7 @@ protected:
 	virtual void Init();
 	virtual void InitOperator();
 
-	typedef struct Grid_Path
+	struct Grid_Path
 	{
 		vector<unsigned int> posPath[3];
 		vector<unsigned short> dir;
@@ -74,29 +73,13 @@ protected:
 	double gridDelta;
 
 	double* discLines[3];
-	unsigned int numLines[3];
 
 	AdrOp* MainOp;
 	AdrOp* DualOp;
 
-	//EC operator
-	FDTD_FLOAT**** vv; //calc new voltage from old voltage
-	FDTD_FLOAT**** vi; //calc new voltage from old current
-	FDTD_FLOAT**** ii; //calc new current from old current
-	FDTD_FLOAT**** iv; //calc new current from old voltage
-
-	//Excitation time-signal
-	unsigned int ExciteLength;
-	FDTD_FLOAT* ExciteSignal;
-
 	//E-Field Excitation
 	//!	  Calc the electric field excitation.
 	virtual bool CalcEFieldExcitation();
-	unsigned int E_Exc_Count;
-	unsigned int* E_Exc_index[3];
-	unsigned short* E_Exc_dir;
-	FDTD_FLOAT* E_Exc_amp; //represented as edge-voltages!!
-	unsigned int* E_Exc_delay;
 
 	virtual bool CalcPEC();
 
@@ -112,6 +95,27 @@ protected:
 	double* EC_G[3];
 	double* EC_L[3];
 	double* EC_R[3];
+
+// engine needs access
+public:
+	unsigned int numLines[3];
+
+	//EC operator
+	FDTD_FLOAT**** vv; //calc new voltage from old voltage
+	FDTD_FLOAT**** vi; //calc new voltage from old current
+	FDTD_FLOAT**** ii; //calc new current from old current
+	FDTD_FLOAT**** iv; //calc new current from old voltage
+
+	//Excitation time-signal
+	unsigned int ExciteLength;
+	FDTD_FLOAT* ExciteSignal;
+
+	//E-Field Excitation
+	unsigned int E_Exc_Count;
+	unsigned int* E_Exc_index[3];
+	unsigned short* E_Exc_dir;
+	FDTD_FLOAT* E_Exc_amp; //represented as edge-voltages!!
+	unsigned int* E_Exc_delay;
 };
 
 #endif // OPERATOR_H
