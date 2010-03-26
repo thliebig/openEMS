@@ -28,7 +28,7 @@ class Engine
 	friend class ProcessFields;
 	friend class ProcessFieldsTD;
 public:
-	Engine(Operator* op);
+	static Engine* createEngine(Operator* op);
 	virtual ~Engine();
 
 	virtual void Init();
@@ -40,6 +40,7 @@ public:
 	unsigned int GetNumberOfTimesteps() {return numTS;};
 
 protected:
+	Engine(Operator* op);
 	Operator* Op;
 
 	FDTD_FLOAT**** volt;

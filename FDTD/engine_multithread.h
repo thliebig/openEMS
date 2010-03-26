@@ -29,8 +29,8 @@ class Engine_Multithread : public Engine
 	friend class ProcessFields;
 	friend class ProcessFieldsTD;
 public:
-    Engine_Multithread(Operator* op);
-    virtual ~Engine_Multithread();
+	static Engine_Multithread* createEngine(Operator* op);
+	virtual ~Engine_Multithread();
 
 	virtual void Init();
 	virtual void Reset();
@@ -40,6 +40,7 @@ public:
 
 
 protected:
+	Engine_Multithread(Operator* op);
 };
 
 #endif // ENGINE_MULTITHREAD_H

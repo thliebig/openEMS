@@ -226,10 +226,10 @@ int openEMS::SetupFDTD(const char* file)
 	//create FDTD engine
 	switch (m_engine) {
 	case EngineType_Multithreaded:
-		FDTD_Eng = new Engine_Multithread(FDTD_Op);
+		FDTD_Eng = Engine_Multithread::createEngine(FDTD_Op);
 		break;
 	default:
-		FDTD_Eng = new Engine(FDTD_Op);
+		FDTD_Eng = Engine::createEngine(FDTD_Op);
 		break;
 	}
 

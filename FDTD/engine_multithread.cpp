@@ -18,6 +18,15 @@
 #include "engine_multithread.h"
 #include "tools/array_ops.h"
 
+//! \brief construct an Engine_Multithread instance
+//! it's the responsibility of the caller to free the returned pointer
+Engine_Multithread* Engine_Multithread::createEngine(Operator* op)
+{
+	Engine_Multithread* e = new Engine_Multithread(op);
+	e->Init();
+	return e;
+}
+
 Engine_Multithread::Engine_Multithread(Operator* op) : Engine(op)
 {
 }
