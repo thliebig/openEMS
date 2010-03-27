@@ -37,7 +37,7 @@ public:
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
-	unsigned int GetNumberOfTimesteps() {return numTS;};
+	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
 protected:
 	Engine(Operator* op);
