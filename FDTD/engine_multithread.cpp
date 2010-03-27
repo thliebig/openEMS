@@ -40,6 +40,7 @@ void Engine_Multithread::Init()
 	Engine::Init();
 
 	numTS = 0;
+	m_numTS_times_threads = 0;
 
 	// initialize threads
 	m_numThreads = boost::thread::hardware_concurrency();
@@ -77,6 +78,7 @@ bool Engine_Multithread::IterateTS(unsigned int iterTS)
 	//cout << "... threads started";
 
 	m_stopBarrier->wait(); // wait for the threads to finish <iterTS> time steps
+	numTS = m_numTS_times_threads;
 	return true;
 }
 
