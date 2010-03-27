@@ -22,6 +22,18 @@
 #include "engine.h"
 
 #include <boost/thread.hpp>
+#include <boost/fusion/include/list.hpp>
+#include <boost/fusion/container/list/list_fwd.hpp>
+#include <boost/fusion/include/list_fwd.hpp>
+
+//debug
+class Timer {
+public:
+	Timer() {gettimeofday(&t1,NULL);}
+	double elapsed() {gettimeofday(&t2,NULL); return (t2.tv_sec-t1.tv_sec) + (t2.tv_usec-t1.tv_usec)*1e-6;}
+protected:
+	timeval t1,t2;
+};
 
 class Engine_Multithread : public Engine
 {
@@ -51,7 +63,11 @@ protected:
 	volatile unsigned int m_iterTS;
 	volatile unsigned int m_numTS_times_threads; //!< numTS times the number of worker threads
 	unsigned int m_numThreads; //!< number of worker threads
+
+	//debug
+	std::map<boost::thread::id, std::vector<double> > m_timer_list;
 };
+
 
 
 class thread {

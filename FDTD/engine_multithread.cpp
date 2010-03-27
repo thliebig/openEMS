@@ -18,6 +18,11 @@
 #include "engine_multithread.h"
 #include "tools/array_ops.h"
 
+#include "boost/date_time/posix_time/posix_time.hpp"
+#include "boost/date_time/gregorian/gregorian.hpp"
+#include <iomanip>
+
+
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
 Engine_Multithread* Engine_Multithread::createEngine(Operator* op)
@@ -33,6 +38,22 @@ Engine_Multithread::Engine_Multithread(Operator* op) : Engine(op)
 
 Engine_Multithread::~Engine_Multithread()
 {
+	//DEBUG
+	cout << "Engine_Multithread::~Engine_Multithread()" << endl;
+	std::map<boost::thread::id, std::vector<double> >::iterator it;
+	for (it=m_timer_list.begin(); it!=m_timer_list.end(); it++) {
+		std::cout << "*** DEBUG Thread: " << it->first << std::endl;
+		std::vector<double>::iterator it2;
+		for (it2=it->second.begin(); it2<it->second.end();) {
+			std::cout << "after voltage update, before barrier1: " << fixed << setprecision(6) << *(it2++) << std::endl;
+			std::cout << "after barrier1, before barrier2: "       << fixed << setprecision(6) << *(it2++) << std::endl;
+			std::cout << "after barrier2, before current update: " << fixed << setprecision(6) << *(it2++) << std::endl;
+			std::cout << "after current update, before barrier3: " << fixed << setprecision(6) << *(it2++) << std::endl;
+			std::cout << "after barrier3: "                        << fixed << setprecision(6) << *(it2++) << std::endl;
+		}
+	}
+	//DEBUG
+
 }
 
 void Engine_Multithread::Init()
@@ -65,7 +86,6 @@ void Engine_Multithread::Init()
 
 void Engine_Multithread::Reset()
 {
-
 
 	Engine::Reset();
 }
@@ -108,6 +128,8 @@ void thread::operator()()
 		m_enginePtr->m_startBarrier->wait();
 		//cout << "Thread " << boost::this_thread::get_id() << " waiting... started." << endl;
 
+		Timer timer1;
+
 		for (unsigned int iter=0;iter<m_enginePtr->m_iterTS;++iter)
 		{
 			//voltage updates
@@ -136,13 +158,22 @@ void thread::operator()()
 				}
 			}
 
+			// record time
+			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
+
 			//cout << "Thread " << boost::this_thread::get_id() << " m_barrier1 waiting..." << endl;
 			m_enginePtr->m_barrier1->wait();
+
+			// record time
+			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
 
 			// e-field excitation (thread thread_e_excitation)
 
 			m_enginePtr->m_barrier2->wait();
 			// e_excitation finished
+
+			// record time
+			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
 
 			//current updates
 			for (pos[0]=m_start;pos[0]<=m_stop-1;++pos[0])
@@ -167,7 +198,13 @@ void thread::operator()()
 				}
 			}
 
+			// record time
+			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
+
 			m_enginePtr->m_barrier3->wait();
+
+			// record time
+			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
 
 			//soft current excitation here (H-field excite)
 
