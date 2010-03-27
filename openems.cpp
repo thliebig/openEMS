@@ -33,8 +33,8 @@
 
 double CalcDiffTime(timeval t1, timeval t2)
 {
-	double s_diff = difftime(t1.tv_sec,t2.tv_sec);
-	s_diff += ((double)t1.tv_usec-(double)t2.tv_usec)*1e-6;
+	double s_diff = t1.tv_sec - t2.tv_sec;
+	s_diff += (t1.tv_usec-t2.tv_usec)*1e-6;
 	return s_diff;
 }
 
@@ -315,17 +315,20 @@ void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a coup of coffee?!?" << endl;
 
-	timeval currTime;
-	gettimeofday(&currTime,NULL);
-	timeval startTime = currTime;
-	timeval prevTime= currTime;
 	ProcessFields ProcField(FDTD_Op,FDTD_Eng);
 	double maxE=0,currE=0;
 	double change=1;
 	int prevTS=0,currTS=0;
-	double speed = (double)FDTD_Op->GetNumberCells()/1e6;
+	double speed = FDTD_Op->GetNumberCells()/1e6;
 	double t_diff;
+
+	timeval currTime;
+	gettimeofday(&currTime,NULL);
+	timeval startTime = currTime;
+	timeval prevTime= currTime;
+
 	//*************** simulate ************//
+
 	int step=PA->Process();
 	if ((step<0) || (step>NrTS)) step=NrTS;
 	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit))
@@ -345,7 +348,7 @@ void openEMS::RunFDTD()
 			if (currE>maxE)
 				maxE=currE;
 			cout << "[@" << setw(8) << (int)CalcDiffTime(currTime,startTime)  <<  "s] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
-			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
+			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MCells/s" ;
 			if (maxE)
 				change = currE/maxE;
 			cout << " --- Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (decrement: " << setw(6)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
