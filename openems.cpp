@@ -185,24 +185,37 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Op = new Operator();
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(-1);
 
-	if (DebugMat)
-	{
-		FDTD_Op->DumpMaterial2File("material_dump.vtk");
-	}
 	FDTD_Op->CalcECOperator();
-	if (DebugOp)
-	{
-		FDTD_Op->DumpOperator2File("operator_dump.vtk");
-	}
 
 	if (Excit_Type==0)
-		FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
+	{
+		if (!FDTD_Op->CalcGaussianPulsExcitation(f0,fc))
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
 	else if (Excit_Type==1)
-		FDTD_Op->CalcSinusExcitation(f0,NrTS);
+	{
+		if (!FDTD_Op->CalcSinusExcitation(f0,NrTS))
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
 	else
 	{
 		cerr << "openEMS: Excitation type is unknown" << endl;
 		exit(-1);
+	}
+
+	if (DebugMat)
+	{
+		FDTD_Op->DumpMaterial2File("material_dump.vtk");
+	}
+	if (DebugOp)
+	{
+		FDTD_Op->DumpOperator2File("operator_dump.vtk");
 	}
 
 	time_t OpDoneTime=time(NULL);
