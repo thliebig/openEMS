@@ -42,16 +42,16 @@ void Engine_Multithread::Init()
 	numTS = 0;
 
 	// initialize threads
-	int numThreads = boost::thread::hardware_concurrency();
-	std::cout << "using " << numThreads << " threads" << std::endl;
-	m_barrier1 = new boost::barrier(numThreads+1); // numThread workers + 1 excitation thread
-	m_barrier2 = new boost::barrier(numThreads+1); // numThread workers + 1 excitation thread
-	m_barrier3 = new boost::barrier(numThreads); // numThread workers
-	m_startBarrier = new boost::barrier(numThreads+1); // numThread workers + 1 controller
-	m_stopBarrier = new boost::barrier(numThreads+1); // numThread workers + 1 controller
+	m_numThreads = boost::thread::hardware_concurrency();
+	std::cout << "using " << m_numThreads << " threads" << std::endl;
+	m_barrier1 = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
+	m_barrier2 = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
+	m_barrier3 = new boost::barrier(m_numThreads); // numThread workers
+	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
+	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 
-	for (int n=0; n<numThreads; n++) {
-		unsigned int linesPerThread = (Op->numLines[0]+numThreads-1) / numThreads;
+	for (int n=0; n<m_numThreads; n++) {
+		unsigned int linesPerThread = (Op->numLines[0]+m_numThreads-1) / m_numThreads;
 		unsigned int start = n * linesPerThread;
 		unsigned int stop = min( (n+1) * linesPerThread - 1, Op->numLines[0]-1 );
 		//std::cout << "### " << Op->numLines[0] << " " << linesPerThread << " " << start << " " << stop << std::endl;
@@ -169,7 +169,7 @@ void thread::operator()()
 
 			//soft current excitation here (H-field excite)
 
-			++m_enginePtr->numTS;   // FIXME BUG!!!!!     increases not by 1, but by the number of threads!!!!
+			++m_enginePtr->m_numTS_times_threads;
 		}
 
 		m_enginePtr->m_stopBarrier->wait();
@@ -194,10 +194,12 @@ void thread_e_excitation::operator()()
 		m_enginePtr->m_barrier1->wait();
 
 		int exc_pos;
+		unsigned int numTS = m_enginePtr->m_numTS_times_threads / m_enginePtr->m_numThreads;
+
 		//soft voltage excitation here (E-field excite)
 		for (unsigned int n=0;n<Op->E_Exc_Count;++n)
 		{
-			exc_pos = (int)m_enginePtr->m_numTS - (int)Op->E_Exc_delay[n];
+			exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
 			exc_pos*= (exc_pos>0 && exc_pos<(int)Op->ExciteLength);
 	//			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
 			volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];

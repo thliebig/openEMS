@@ -42,16 +42,15 @@ public:
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
-	void doWork(unsigned int start, unsigned int stop, unsigned int iterTS);
-	void doWork_e_excitation(unsigned int start, unsigned int stop, unsigned int iterTS);
-
+	virtual unsigned int GetNumberOfTimesteps() {return m_numTS_times_threads / m_numThreads;}
 
 protected:
 	Engine_Multithread(Operator* op);
 	boost::thread_group m_thread_group;
 	boost::barrier *m_barrier1, *m_barrier2, *m_barrier3, *m_startBarrier, *m_stopBarrier;
 	volatile unsigned int m_iterTS;
-	volatile unsigned int m_numTS;
+	volatile unsigned int m_numTS_times_threads; //!< numTS times the number of worker threads
+	unsigned int m_numThreads; //!< number of worker threads
 };
 
 
