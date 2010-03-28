@@ -64,8 +64,9 @@ protected:
 	volatile unsigned int m_numTS_times_threads; //!< numTS times the number of worker threads
 	unsigned int m_numThreads; //!< number of worker threads
 
-	//debug
+#ifdef ENABLE_DEBUG_TIME
 	std::map<boost::thread::id, std::vector<double> > m_timer_list;
+#endif
 };
 
 

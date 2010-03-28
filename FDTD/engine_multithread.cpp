@@ -15,6 +15,16 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//#define ENABLE_DEBUG_TIME
+
+#ifdef ENABLE_DEBUG_TIME
+	#define DEBUG_TIME(x) x;
+#else
+	#define DEBUG_TIME(x) ;
+#endif
+
+
+
 #include "engine_multithread.h"
 #include "tools/array_ops.h"
 
@@ -38,7 +48,7 @@ Engine_Multithread::Engine_Multithread(Operator* op) : Engine(op)
 
 Engine_Multithread::~Engine_Multithread()
 {
-	//DEBUG
+#ifdef ENABLE_DEBUG_TIME
 	cout << "Engine_Multithread::~Engine_Multithread()" << endl;
 	std::map<boost::thread::id, std::vector<double> >::iterator it;
 	for (it=m_timer_list.begin(); it!=m_timer_list.end(); it++) {
@@ -52,7 +62,7 @@ Engine_Multithread::~Engine_Multithread()
 			std::cout << "after barrier3: "                        << fixed << setprecision(6) << *(it2++) << std::endl;
 		}
 	}
-	//DEBUG
+#endif
 
 }
 
@@ -98,7 +108,7 @@ bool Engine_Multithread::IterateTS(unsigned int iterTS)
 	//cout << "... threads started";
 
 	m_stopBarrier->wait(); // wait for the threads to finish <iterTS> time steps
-	numTS = m_numTS_times_threads;
+	numTS = m_numTS_times_threads / m_numThreads;
 	return true;
 }
 
@@ -128,7 +138,7 @@ void thread::operator()()
 		m_enginePtr->m_startBarrier->wait();
 		//cout << "Thread " << boost::this_thread::get_id() << " waiting... started." << endl;
 
-		Timer timer1;
+		DEBUG_TIME( Timer timer1 );
 
 		for (unsigned int iter=0;iter<m_enginePtr->m_iterTS;++iter)
 		{
@@ -159,13 +169,13 @@ void thread::operator()()
 			}
 
 			// record time
-			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
+			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//cout << "Thread " << boost::this_thread::get_id() << " m_barrier1 waiting..." << endl;
 			m_enginePtr->m_barrier1->wait();
 
 			// record time
-			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
+			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			// e-field excitation (thread thread_e_excitation)
 
@@ -173,7 +183,7 @@ void thread::operator()()
 			// e_excitation finished
 
 			// record time
-			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
+			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//current updates
 			for (pos[0]=m_start;pos[0]<=m_stop-1;++pos[0])
@@ -199,12 +209,12 @@ void thread::operator()()
 			}
 
 			// record time
-			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
+			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			m_enginePtr->m_barrier3->wait();
 
 			// record time
-			m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() );
+			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//soft current excitation here (H-field excite)
 
