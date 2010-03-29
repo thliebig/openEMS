@@ -51,9 +51,9 @@ double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int
 	double result=0;
 	FDTD_FLOAT**** array;
 	if (field==0)
-		array=Eng->volt;
+		array=Eng->GetVoltages();
 	else if (field==1)
-		array=Eng->curr;
+		array=Eng->GetCurrents();
 	else return 0.0;
 
 	for (int n=0;n<3;++n)

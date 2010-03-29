@@ -106,7 +106,7 @@ bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower)
 		else if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
 		else if (dcoord[n]==discLines[n][numLines[n]-1]) {uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
 		else
-			for (unsigned int i=1;i<numLines[n]-1;++i)
+			for (unsigned int i=1;i<numLines[n];++i)
 			{
 				if (dcoord[n]<discLines[n][i])
 				{
@@ -139,18 +139,16 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	double meshStart[] = {discLines[0][uiStart[0]], discLines[1][uiStart[1]], discLines[2][uiStart[2]]};
 	double meshStop[] = {discLines[0][uiStop[0]], discLines[1][uiStop[1]], discLines[2][uiStop[2]]};
 
-	double foot,dist,minFoot,minDist,minDir;
+	bool UpDir;
+	double foot=0,dist=0,minFoot=0,minDist=0;
+	int minDir=0;
 	unsigned int minPos[3];
 	double startFoot,stopFoot,currFoot;
 	Point_Line_Distance(meshStart,start,stop,startFoot,dist);
 	Point_Line_Distance(meshStop,start,stop,stopFoot,dist);
 	currFoot=startFoot;
-
+	minFoot=startFoot;
 	double P[3];
-
-//	cerr << "start pos " << discLines[0][currPos[0]] << " "  << discLines[1][currPos[1]] << " "  << discLines[2][currPos[2]] << endl;
-//
-//	FDTD_FLOAT**** array = Create_N_3DArray(numLines);
 
 	while (minFoot<stopFoot)
 	{
@@ -160,7 +158,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 			P[0] = discLines[0][currPos[0]];
 			P[1] = discLines[1][currPos[1]];
 			P[2] = discLines[2][currPos[2]];
-			if ((currPos[n]-1)>=0)
+			if (((int)currPos[n]-1)>=0)
 			{
 				P[n] = discLines[n][currPos[n]-1];
 				Point_Line_Distance(P,start,stop,foot,dist);
@@ -169,11 +167,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 					minFoot=foot;
 					minDist=dist;
 					minDir = n;
-					minPos[0]=currPos[0];
-					minPos[1]=currPos[1];
-					minPos[2]=currPos[2];
-					minPos[n]=currPos[n]-1;
-//					array[n][minPos[0]][minPos[1]][minPos[2]] = 1;
+					UpDir = false;
 				}
 			}
 			if ((currPos[n]+1)<numLines[n])
@@ -185,30 +179,28 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 					minFoot=foot;
 					minDist=dist;
 					minDir = n;
-					minPos[0]=currPos[0];
-					minPos[1]=currPos[1];
-					minPos[2]=currPos[2];
-					minPos[n]=currPos[n]+1;
-//					array[n][minPos[0]][minPos[1]][minPos[2]] = 1;
+					UpDir = true;
 				}
 			}
 		}
-//		cerr << "next best pos " << minDir << " "  << " " << discLines[0][minPos[0]] << " " << discLines[1][minPos[1]] << " " << discLines[2][minPos[2]] << endl;
-		currPos[0]=minPos[0];
-		currPos[1]=minPos[1];
-		currPos[2]=minPos[2];
-		currFoot=minFoot;
-		path.dir.push_back(minDir);
+		minPos[0]=currPos[0];
+		minPos[1]=currPos[1];
+		minPos[2]=currPos[2];
+		if (UpDir)
+		{
+			currPos[minDir]+=1;
+		}
+		else
+		{
+			currPos[minDir]+=-1;
+			minPos[minDir]-=1;
+		}
 		path.posPath[0].push_back(minPos[0]);
 		path.posPath[1].push_back(minPos[1]);
 		path.posPath[2].push_back(minPos[2]);
+		currFoot=minFoot;
+		path.dir.push_back(minDir);
 	}
-
-//	ofstream file("test.vtk",ios_base::out);
-//
-//	ProcessFields::DumpVectorArray2VTK(file,"path",array,discLines,numLines);
-//	file.close();
-
 	return path;
 }
 
@@ -232,9 +224,9 @@ void Operator::ShowSize()
 	cout << "-----------------------------" << endl;
 }
 
-void Operator::CalcGaussianPulsExcitation(double f0, double fc)
+bool Operator::CalcGaussianPulsExcitation(double f0, double fc)
 {
-	if (dT==0) return;
+	if (dT==0) return false;
 
 	ExciteLength = (unsigned int)(2.0 * 9.0/(2.0*PI*fc) / dT);
 	cerr << "Operator::CalcGaussianPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
@@ -246,14 +238,16 @@ void Operator::CalcGaussianPulsExcitation(double f0, double fc)
 		ExciteSignal[n] = cos(2.0*PI*f0*(n*dT-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*n*dT/3.0-3,2));
 //		cerr << ExciteSignal[n] << endl;
 	}
+	return true;
 }
 
-void Operator::CalcSinusExcitation(double f0, int nTS)
+bool Operator::CalcSinusExcitation(double f0, int nTS)
 {
-	if (dT==0) return;
-	if (nTS<=0) return;
+	if (dT==0) return false;
+	if (nTS<=0) return false;
 
 	ExciteLength = (unsigned int)(nTS);
+	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
 	delete[] ExciteSignal;
 	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
 	ExciteSignal[0]=0.0;
@@ -262,6 +256,7 @@ void Operator::CalcSinusExcitation(double f0, int nTS)
 		ExciteSignal[n] = sin(2.0*PI*f0*n*dT);
 //		cerr << ExciteSignal[n] << endl;
 	}
+	return true;
 }
 
 void Operator::DumpOperator2File(string filename)
@@ -274,10 +269,18 @@ void Operator::DumpOperator2File(string filename)
 		return;
 	}
 
-	string names[] = {"vv", "vi", "iv" , "ii"};
-	FDTD_FLOAT**** array[] = {vv,vi,iv,ii};
+	FDTD_FLOAT**** exc = Create_N_3DArray(numLines);
+	for (unsigned int n=0;n<E_Exc_Count;++n)
+	{
+		exc[E_Exc_dir[n]][E_Exc_index[0][n]][E_Exc_index[1][n]][E_Exc_index[2][n]] = E_Exc_amp[n];
+	}
 
-	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 4, discLines, numLines);
+	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
+	FDTD_FLOAT**** array[] = {vv,vi,iv,ii,exc};
+
+	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines);
+
+	Delete_N_3DArray(exc,numLines);
 
 	file.close();
 }
@@ -728,7 +731,7 @@ bool Operator::CalcEFieldExcitation()
 	vector<unsigned int> vDelay;
 	vector<unsigned int> vDir;
 	unsigned int ipos;
-	int pos[3];
+	unsigned int pos[3];
 	double coord[3];
 	double delta[3];
 	double amp=0;
@@ -777,6 +780,70 @@ bool Operator::CalcEFieldExcitation()
 						}
 					}
 					coord[n]-=delta[n]*0.5;
+				}
+			}
+		}
+	}
+
+	//special treatment for primitives of type curve (treated as wires) see also Calc_PEC
+	double p1[3];
+	double p2[3];
+	double deltaN=0.0;
+	int n;
+	struct Grid_Path path;
+	CSPropElectrode* elec=NULL;
+	CSProperties* prop=NULL;
+	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::ELECTRODE);
+	for (size_t p=0;p<vec_prop.size();++p)
+	{
+		prop = vec_prop.at(p);
+		elec = prop->ToElectrode();
+		for (size_t n=0;n<prop->GetQtyPrimitives();++n)
+		{
+			CSPrimitives* prim = prop->GetPrimitive(n);
+			CSPrimCurve* curv = prim->ToCurve();
+			if (curv)
+			{
+				for (size_t i=1;i<curv->GetNumberOfPoints();++i)
+				{
+					curv->GetPoint(i-1,p1);
+					curv->GetPoint(i,p2);
+					path = FindPath(p1,p2);
+					for (size_t t=0;t<path.dir.size();++t)
+					{
+						n = path.dir.at(t);
+						pos[0] = path.posPath[0].at(t);
+						pos[1] = path.posPath[1].at(t);
+						pos[2] = path.posPath[2].at(t);
+						MainOp->SetPos(pos[0],pos[1],pos[2]);
+						deltaN=fabs(MainOp->GetIndexDelta(n,pos[n]));
+						coord[0] = discLines[0][pos[0]];
+						coord[1] = discLines[1][pos[1]];
+						coord[2] = discLines[2][pos[2]];
+						coord[n] += 0.5*deltaN;
+//						cerr << n << " " << coord[0] << " " << coord[1] << " " << coord[2] << endl;
+						if (elec!=NULL)
+						{
+							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
+							{
+								amp = elec->GetWeightedExcitation(n,coord)*deltaN*gridDelta;
+								if (amp!=0)
+								{
+									vExcit.push_back(amp);
+									vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+									vDir.push_back(n);
+									vIndex[0].push_back(pos[0]);
+									vIndex[1].push_back(pos[1]);
+									vIndex[2].push_back(pos[2]);
+								}
+								if (elec->GetExcitType()==1) //hard excite
+								{
+									vv[n][pos[0]][pos[1]][pos[2]] = 0;
+									vi[n][pos[0]][pos[1]][pos[2]] = 0;
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -862,24 +929,18 @@ bool Operator::CalcPEC()
 					curv->GetPoint(i-1,p1);
 					curv->GetPoint(i,p2);
 					path = FindPath(p1,p2);
-//					cerr << p1[0] <<  " " << p1[1] <<  " "  << p1[2] << endl;
-//					cerr << p2[0] <<  " " << p2[1] <<  " "  << p2[2] << endl;
 					for (size_t t=0;t<path.dir.size();++t)
 					{
 //						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
 						vv[path.dir.at(t)][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
 						vi[path.dir.at(t)][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
-						vv[0][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
-						vi[0][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
-						vv[1][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
-						vi[1][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
-						vv[2][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
-						vi[2][path.posPath[0].at(t)][path.posPath[1].at(t)][path.posPath[2].at(t)] = 0;
 					}
 //					cerr << "found path size: " << path.dir.size() << endl;
 				}
 			}
 		}
 	}
+
+	return true;
 }
 

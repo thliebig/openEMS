@@ -45,6 +45,6 @@ int ProcessVoltage::Process()
 	FDTD_FLOAT voltage=CalcLineIntegral(start,stop,0);
 //	cerr << voltage << endl;
 	voltages.push_back(voltage);
-	file << (double)Eng->numTS*Op->GetTimestep() << "\t" << voltage << endl;
+	file << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << voltage << endl;
 	return GetNextInterval();
 }

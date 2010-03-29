@@ -38,9 +38,9 @@ public:
 	virtual int CalcECOperator();
 
 	//! Calculate an excitation with center of f0 and the half bandwidth fc
-	virtual void CalcGaussianPulsExcitation(double f0, double fc);
+	virtual bool CalcGaussianPulsExcitation(double f0, double fc);
 	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps
-	virtual void CalcSinusExcitation(double f0, int nTS);
+	virtual bool CalcSinusExcitation(double f0, int nTS);
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);

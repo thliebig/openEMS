@@ -22,11 +22,6 @@
 
 class Engine
 {
-	friend class Processing;
-	friend class ProcessVoltage;
-	friend class ProcessCurrent;
-	friend class ProcessFields;
-	friend class ProcessFieldsTD;
 public:
 	static Engine* createEngine(Operator* op);
 	virtual ~Engine();
@@ -38,6 +33,9 @@ public:
 	virtual bool IterateTS(unsigned int iterTS);
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
+
+	virtual FDTD_FLOAT**** GetVoltages() {return volt;};
+	virtual FDTD_FLOAT**** GetCurrents() {return curr;};
 
 protected:
 	Engine(Operator* op);

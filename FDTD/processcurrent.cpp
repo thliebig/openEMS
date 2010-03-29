@@ -45,6 +45,7 @@ void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 
 int ProcessCurrent::Process()
 {
+	FDTD_FLOAT**** curr = Eng->GetCurrents();
 	if (Enabled==false) return -1;
 	if (CheckTimestep()==false) return GetNextInterval();
 	FDTD_FLOAT current=0;
@@ -65,26 +66,26 @@ int ProcessCurrent::Process()
 	}
 
 	//x-current
-	for (int i=start[0];i<stop[0];++i)
-		current+=Eng->curr[0][i][start[1]][start[2]];
+	for (unsigned int i=start[0];i<stop[0];++i)
+		current+=curr[0][i][start[1]][start[2]];
 	//y-current
-	for (int i=start[1];i<stop[1];++i)
-		current+=Eng->curr[1][stop[0]][i][start[2]];
+	for (unsigned int i=start[1];i<stop[1];++i)
+		current+=curr[1][stop[0]][i][start[2]];
 	//z-current
-	for (int i=start[2];i<stop[2];++i)
-		current+=Eng->curr[2][stop[0]][stop[1]][i];
+	for (unsigned int i=start[2];i<stop[2];++i)
+		current+=curr[2][stop[0]][stop[1]][i];
 	//x-current
-	for (int i=start[0];i<stop[0];++i)
-		current-=Eng->curr[0][i][stop[1]][stop[2]];
+	for (unsigned int i=start[0];i<stop[0];++i)
+		current-=curr[0][i][stop[1]][stop[2]];
 	//y-current
-	for (int i=start[1];i<stop[1];++i)
-		current-=Eng->curr[1][start[0]][i][stop[2]];
+	for (unsigned int i=start[1];i<stop[1];++i)
+		current-=curr[1][start[0]][i][stop[2]];
 	//z-current
-	for (int i=start[2];i<stop[2];++i)
-		current-=Eng->curr[2][start[0]][start[1]][i];
+	for (unsigned int i=start[2];i<stop[2];++i)
+		current-=curr[2][start[0]][start[1]][i];
 
 //	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
 	v_current.push_back(current);
-	file << (double)Eng->numTS*Op->GetTimestep() << "\t" << current << endl;
+	file << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << current << endl;
 	return GetNextInterval();
 }

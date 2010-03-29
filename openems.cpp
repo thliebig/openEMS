@@ -138,7 +138,12 @@ int openEMS::SetupFDTD(const char* file)
 		cerr << "Can't read openEMS FDTD Settings... " << endl;
 		exit(-1);
 	}
-	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&NrTS);
+	int help=0;
+	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&help);
+	if (help<0)
+		NrTS=0;
+	else
+		NrTS = help;
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
 	if (endCrit==0)
 		endCrit=1e-6;
@@ -192,24 +197,37 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Op = new Operator();
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(-1);
 
-	if (DebugMat)
-	{
-		FDTD_Op->DumpMaterial2File("material_dump.vtk");
-	}
 	FDTD_Op->CalcECOperator();
-	if (DebugOp)
-	{
-		FDTD_Op->DumpOperator2File("operator_dump.vtk");
-	}
 
 	if (Excit_Type==0)
-		FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
+	{
+		if (!FDTD_Op->CalcGaussianPulsExcitation(f0,fc))
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
 	else if (Excit_Type==1)
-		FDTD_Op->CalcSinusExcitation(f0,NrTS);
+	{
+		if (!FDTD_Op->CalcSinusExcitation(f0,NrTS))
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
 	else
 	{
 		cerr << "openEMS: Excitation type is unknown" << endl;
 		exit(-1);
+	}
+
+	if (DebugMat)
+	{
+		FDTD_Op->DumpMaterial2File("material_dump.vtk");
+	}
+	if (DebugOp)
+	{
+		FDTD_Op->DumpOperator2File("operator_dump.vtk");
 	}
 
 	time_t OpDoneTime=time(NULL);
@@ -330,14 +348,14 @@ void openEMS::RunFDTD()
 	//*************** simulate ************//
 
 	int step=PA->Process();
-	if ((step<0) || (step>NrTS)) step=NrTS;
+	if ((step<0) || (step>(int)NrTS)) step=NrTS;
 	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit))
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
 //		cout << " do " << step << " steps; current: " << eng.GetNumberOfTimesteps() << endl;
 		currTS = FDTD_Eng->GetNumberOfTimesteps();
-		if ((step<0) || (step>NrTS - currTS)) step=NrTS - currTS;
+		if ((step<0) || (step>(int)(NrTS - currTS))) step=NrTS - currTS;
 
 		gettimeofday(&currTime,NULL);
 

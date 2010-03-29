@@ -101,6 +101,8 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 
 double ProcessFields::CalcTotalEnergy()
 {
+	FDTD_FLOAT**** volt = Eng->GetVoltages();
+	FDTD_FLOAT**** curr = Eng->GetCurrents();
 	double energy=0;
 	if (Eng==NULL) return 0.0;
 	unsigned int pos[3];
@@ -110,12 +112,12 @@ double ProcessFields::CalcTotalEnergy()
 		{
 			for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
 			{
-				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[0][pos[0]][pos[1]][pos[2]] * curr[1][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[0][pos[0]][pos[1]][pos[2]] * curr[2][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[1][pos[0]][pos[1]][pos[2]] * curr[0][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[1][pos[0]][pos[1]][pos[2]] * curr[2][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[2][pos[0]][pos[1]][pos[2]] * curr[0][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[2][pos[0]][pos[1]][pos[2]] * curr[1][pos[0]][pos[1]][pos[2]]);
 			}
 		}
 	}
@@ -183,16 +185,18 @@ bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT*
 {
 	WriteVTKHeader(file, discLines, numLines);
 	WriteVTKVectorArray(file, name, array, numLines);
+	return true;
 }
 
 bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
 {
 	WriteVTKHeader(file, discLines, numLines);
-	for (int n=0;n<numFields;++n)
+	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKVectorArray(file, names[n], array[n], numLines);
 		file << endl;
 	}
+	return true;
 }
 
 void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines)
@@ -220,16 +224,18 @@ bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*
 {
 	WriteVTKHeader(file, discLines, numLines);
 	WriteVTKScalarArray(file, name, array, numLines);
+	return true;
 }
 
 bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
 {
 	WriteVTKHeader(file, discLines, numLines);
-	for (int n=0;n<numFields;++n)
+	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKScalarArray(file, names[n], array[n], numLines);
 		file << endl;
 	}
+	return true;
 }
 
 
