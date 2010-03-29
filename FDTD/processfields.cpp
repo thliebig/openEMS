@@ -185,12 +185,13 @@ bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT*
 {
 	WriteVTKHeader(file, discLines, numLines);
 	WriteVTKVectorArray(file, name, array, numLines);
+	return true;
 }
 
 bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
 {
 	WriteVTKHeader(file, discLines, numLines);
-	for (int n=0;n<numFields;++n)
+	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKVectorArray(file, names[n], array[n], numLines);
 		file << endl;

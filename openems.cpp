@@ -131,7 +131,12 @@ int openEMS::SetupFDTD(const char* file)
 		cerr << "Can't read openEMS FDTD Settings... " << endl;
 		exit(-1);
 	}
-	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&NrTS);
+	int help=0;
+	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&help);
+	if (help<0)
+		NrTS=0;
+	else
+		NrTS = help;
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
 	if (endCrit==0)
 		endCrit=1e-6;
@@ -325,14 +330,14 @@ void openEMS::RunFDTD()
 	double t_diff;
 	//*************** simulate ************//
 	int step=PA->Process();
-	if ((step<0) || (step>NrTS)) step=NrTS;
+	if ((step<0) || (step>(int)NrTS)) step=NrTS;
 	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit))
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
 //		cout << " do " << step << " steps; current: " << eng.GetNumberOfTimesteps() << endl;
 		currTS = FDTD_Eng->GetNumberOfTimesteps();
-		if ((step<0) || (step>NrTS - currTS)) step=NrTS - currTS;
+		if ((step<0) || (step>(int)(NrTS - currTS))) step=NrTS - currTS;
 
 		gettimeofday(&currTime,NULL);
 

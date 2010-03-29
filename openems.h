@@ -44,7 +44,7 @@ public:
 
 protected:
 	//! Number of Timesteps
-	int NrTS;
+	unsigned int NrTS;
 	bool Enable_Dumps;
 	bool DebugMat;
 	bool DebugOp;
