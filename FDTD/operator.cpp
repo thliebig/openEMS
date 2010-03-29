@@ -92,7 +92,8 @@ unsigned int Operator::GetNyquistNum(double fmax)
 {
 	if (dT==0) return 1;
 	double T0 = 1/fmax;
-	return floor(T0/2/dT);
+	m_nyquistTS = floor(T0/2/dT);
+	return m_nyquistTS;
 }
 
 bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower)
@@ -207,29 +208,35 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 double Operator::GetNumberCells()
 {
 	if (numLines)
-		return (numLines[0]-1)*(numLines[1]-1)*(numLines[2]-1);
+		return (numLines[0])*(numLines[1])*(numLines[2]); //it's more like number of nodes???
 	return 0;
 }
 
-void Operator::ShowSize()
+void Operator::ShowStat()
 {
 	unsigned int OpSize = 12*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
 	unsigned int FieldSize = 6*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
 	double MBdiff = 1024*1024;
 
-	cout << "---- Stat: FDTD Operator ----" << endl;
-	cout << "Dimensions        : " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  numLines[0]*numLines[1]*numLines[2] << " Cells (" << numLines[0]*numLines[1]*numLines[2]/1e6 << " MCells)" << endl;
-	cout << "Size of Operator  : " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
-	cout << "Size of Field-Data: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
-	cout << "-----------------------------" << endl;
+	cout << "------- Stat: FDTD Operator -------" << endl;
+	cout << "Dimensions               : " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  numLines[0]*numLines[1]*numLines[2] << " Cells (" << numLines[0]*numLines[1]*numLines[2]/1e6 << " MCells)" << endl;
+	cout << "Size of Operator         : " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
+	cout << "Size of Field-Data       : " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
+	cout << "-----------------------------------" << endl;
+	cout << "Timestep (s)             : " << dT << endl;
+	cout << "Nyquist criteria (TS)    : " << m_nyquistTS << endl;
+	cout << "Nyquist criteria (s)     : " << m_nyquistTS*dt << endl;
+	cout << "Excitation Length (TS)   : " << ExciteLength << endl;
+	cout << "Excitation Length (s)    : " << ExciteLength*dT << endl;
+	cout << "-----------------------------------" << endl;
 }
 
-bool Operator::CalcGaussianPulsExcitation(double f0, double fc)
+unsigned int Operator::CalcGaussianPulsExcitation(double f0, double fc)
 {
-	if (dT==0) return false;
+	if (dT==0) return 0;
 
 	ExciteLength = (unsigned int)(2.0 * 9.0/(2.0*PI*fc) / dT);
-	cerr << "Operator::CalcGaussianPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
+//	cerr << "Operator::CalcGaussianPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
 	delete[] ExciteSignal;
 	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
 	ExciteSignal[0]=0.0;
@@ -238,16 +245,16 @@ bool Operator::CalcGaussianPulsExcitation(double f0, double fc)
 		ExciteSignal[n] = cos(2.0*PI*f0*(n*dT-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*n*dT/3.0-3,2));
 //		cerr << ExciteSignal[n] << endl;
 	}
-	return true;
+	return GetNyquistNum(f0+fc);
 }
 
-bool Operator::CalcSinusExcitation(double f0, int nTS)
+unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
 {
-	if (dT==0) return false;
-	if (nTS<=0) return false;
+	if (dT==0) return 0;
+	if (nTS<=0) return 0;
 
 	ExciteLength = (unsigned int)(nTS);
-	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
+//	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
 	delete[] ExciteSignal;
 	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
 	ExciteSignal[0]=0.0;
@@ -256,7 +263,7 @@ bool Operator::CalcSinusExcitation(double f0, int nTS)
 		ExciteSignal[n] = sin(2.0*PI*f0*n*dT);
 //		cerr << ExciteSignal[n] << endl;
 	}
-	return true;
+	return GetNyquistNum(f0);
 }
 
 void Operator::DumpOperator2File(string filename)
