@@ -101,6 +101,8 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 
 double ProcessFields::CalcTotalEnergy()
 {
+	FDTD_FLOAT**** volt = Eng->GetVoltages();
+	FDTD_FLOAT**** curr = Eng->GetCurrents();
 	double energy=0;
 	if (Eng==NULL) return 0.0;
 	unsigned int pos[3];
@@ -110,12 +112,12 @@ double ProcessFields::CalcTotalEnergy()
 		{
 			for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
 			{
-				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[0][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[1][pos[0]][pos[1]][pos[2]] * Eng->curr[2][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[0][pos[0]][pos[1]][pos[2]]);
-				energy+=fabs(Eng->volt[2][pos[0]][pos[1]][pos[2]] * Eng->curr[1][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[0][pos[0]][pos[1]][pos[2]] * curr[1][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[0][pos[0]][pos[1]][pos[2]] * curr[2][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[1][pos[0]][pos[1]][pos[2]] * curr[0][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[1][pos[0]][pos[1]][pos[2]] * curr[2][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[2][pos[0]][pos[1]][pos[2]] * curr[0][pos[0]][pos[1]][pos[2]]);
+				energy+=fabs(volt[2][pos[0]][pos[1]][pos[2]] * curr[1][pos[0]][pos[1]][pos[2]]);
 			}
 		}
 	}
