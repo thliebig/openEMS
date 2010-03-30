@@ -23,6 +23,6 @@ for n=1:numel(filenames)
     L=numel(val);
     UI.FD{n}.f = (0:L-1)/L/dt;
     UI.FD{n}.f = UI.FD{n}.f(1:floor(L/2));
-    UI.FD{n}.val = fft(val)/L;
+    UI.FD{n}.val = 2*fft(val)/L;
     UI.FD{n}.val = UI.FD{n}.val(1:floor(L/2));
 end
