@@ -248,6 +248,20 @@ unsigned int Operator::CalcGaussianPulsExcitation(double f0, double fc)
 	return GetNyquistNum(f0+fc);
 }
 
+unsigned int Operator::CalcDiracPulsExcitation()
+{
+	if (dT==0) return 0;
+
+	ExciteLength = 1;
+	cerr << "Operator::CalcDiracPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
+	delete[] ExciteSignal;
+	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal[0]=0.0;
+	ExciteSignal[1]=1.0;
+
+	return 1;
+}
+
 unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
 {
 	if (dT==0) return 0;

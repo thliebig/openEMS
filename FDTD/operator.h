@@ -41,6 +41,7 @@ public:
 	virtual unsigned int CalcGaussianPulsExcitation(double f0, double fc);
 	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps \return number of Nyquist timesteps
 	virtual unsigned int CalcSinusExcitation(double f0, int nTS);
+	virtual unsigned int CalcDiracPulsExcitation();
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
