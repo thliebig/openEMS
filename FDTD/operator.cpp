@@ -225,7 +225,7 @@ void Operator::ShowStat()
 	cout << "-----------------------------------" << endl;
 	cout << "Timestep (s)             : " << dT << endl;
 	cout << "Nyquist criteria (TS)    : " << m_nyquistTS << endl;
-	cout << "Nyquist criteria (s)     : " << m_nyquistTS*dt << endl;
+	cout << "Nyquist criteria (s)     : " << m_nyquistTS*dT << endl;
 	cout << "Excitation Length (TS)   : " << ExciteLength << endl;
 	cout << "Excitation Length (s)    : " << ExciteLength*dT << endl;
 	cout << "-----------------------------------" << endl;
@@ -726,7 +726,7 @@ double Operator::CalcTimestep()
 			}
 		}
 	}
-	cerr << "Operator Timestep: " << dT << endl;
+//	cerr << "Operator Timestep: " << dT << endl;
 	return 0;
 }
 

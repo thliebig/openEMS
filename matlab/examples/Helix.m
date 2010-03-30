@@ -8,7 +8,7 @@ coil_rad = 10;
 coil_length = 50;
 coil_turns = 8;
 coil_res = 10;
-port_length = coil_length;
+port_length = coil_length/2;
 port_resist = 50;
 
 f_max = 50e6;
@@ -17,7 +17,7 @@ mesh_size = wire_rad;
 
 openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
-openEMS_opts = [openEMS_opts ' --disable-dumps'];
+% openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
 % openEMS_opts = [openEMS_opts ' --debug-operator'];
 
@@ -32,8 +32,8 @@ FDTD = SetGaussExcite(FDTD,f_excite/2,f_excite/2);
 BC = [1 1 1 1 1 1];
 FDTD = SetBoundaryCond(FDTD,BC);
 
-add_Lines = mesh_size * 1.5.^(1:10)
-add_Lines = add_Lines(find(add_Lines<(3e8/f_max)*1e3))
+add_Lines = mesh_size * 1.5.^(1:10);
+add_Lines = add_Lines(find(add_Lines<(3e8/f_excite)/10*1e3));
 
 %setup CSXCAD geometry
 CSX = InitCSX();
