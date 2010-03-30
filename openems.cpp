@@ -47,6 +47,9 @@ openEMS::openEMS()
 	DebugMat = false;
 	DebugOp = false;
 	endCrit = 1e-6;
+
+	m_engine = EngineType_Standard;
+	m_engine_numThreads = 0;
 }
 
 openEMS::~openEMS()
@@ -100,6 +103,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - enabled multithreading" << endl;
 		m_engine = EngineType_Multithreaded;
+		return true;
+	}
+	else if (strncmp(argv,"--numThreads=",13)==0)
+	{
+		m_engine_numThreads = atoi(argv+13);
+		cout << "openEMS - fixed number of threads: " << m_engine_numThreads << endl;
 		return true;
 	}
 
@@ -243,7 +252,7 @@ int openEMS::SetupFDTD(const char* file)
 	//create FDTD engine
 	switch (m_engine) {
 	case EngineType_Multithreaded:
-		FDTD_Eng = Engine_Multithread::createEngine(FDTD_Op);
+		FDTD_Eng = Engine_Multithread::createEngine(FDTD_Op,m_engine_numThreads);
 		break;
 	default:
 		FDTD_Eng = Engine::createEngine(FDTD_Op);

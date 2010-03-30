@@ -35,9 +35,10 @@
 
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine_Multithread* Engine_Multithread::createEngine(Operator* op)
+Engine_Multithread* Engine_Multithread::createEngine(Operator* op, unsigned int numThreads)
 {
 	Engine_Multithread* e = new Engine_Multithread(op);
+	e->setNumThreads( numThreads );
 	e->Init();
 	return e;
 }
@@ -66,15 +67,20 @@ Engine_Multithread::~Engine_Multithread()
 
 }
 
+void Engine_Multithread::setNumThreads( unsigned int numThreads )
+{
+	m_numThreads = numThreads;
+}
+
 void Engine_Multithread::Init()
 {
 	Engine::Init();
 
-	numTS = 0;
 	m_numTS_times_threads = 0;
 
 	// initialize threads
-	m_numThreads = boost::thread::hardware_concurrency();
+	if (m_numThreads == 0)
+		m_numThreads = boost::thread::hardware_concurrency();
 	std::cout << "using " << m_numThreads << " threads" << std::endl;
 	m_barrier1 = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
 	m_barrier2 = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
@@ -82,12 +88,13 @@ void Engine_Multithread::Init()
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 
-	for (int n=0; n<m_numThreads; n++) {
+	for (unsigned int n=0; n<m_numThreads; n++) {
 		unsigned int linesPerThread = (Op->numLines[0]+m_numThreads-1) / m_numThreads;
 		unsigned int start = n * linesPerThread;
 		unsigned int stop = min( (n+1) * linesPerThread - 1, Op->numLines[0]-1 );
-		//std::cout << "### " << Op->numLines[0] << " " << linesPerThread << " " << start << " " << stop << std::endl;
-		boost::thread *t = new boost::thread( thread(this,start,stop) );
+		unsigned int stop_h = (n!=m_numThreads-1)?stop:stop-1;
+		std::cout << "###DEBUG## Thread " << n << ": start=" << start << " stop=" << stop  << " stop_h=" << stop_h << std::endl;
+		boost::thread *t = new boost::thread( thread(this,start,stop,stop_h) );
 		m_thread_group.add_thread( t );
 	}
 	boost::thread *t = new boost::thread( thread_e_excitation(this) );
@@ -118,11 +125,16 @@ bool Engine_Multithread::IterateTS(unsigned int iterTS)
 
 
 
-thread::thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop ) : m_enginePtr(ptr), m_start(start), m_stop(stop), m_stopThread(false)
+thread::thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int stop_h )
 {
+	m_enginePtr = ptr;
+	m_start = start;
+	m_stop = stop;
+	m_stop_h = stop_h;
 	Op = m_enginePtr->Op;
-	volt = m_enginePtr->volt;
-	curr = m_enginePtr->curr;
+	m_stopThread = false;
+//	volt = m_enginePtr->volt;
+//	curr = m_enginePtr->curr;
 }
 
 void thread::operator()()
@@ -154,16 +166,16 @@ void thread::operator()()
 						shift[2]=pos[2];
 						//do the updates here
 						//for x
-						volt[0][pos[0]][pos[1]][pos[2]] *= Op->vv[0][pos[0]][pos[1]][pos[2]];
-						volt[0][pos[0]][pos[1]][pos[2]] += Op->vi[0][pos[0]][pos[1]][pos[2]] * ( curr[2][pos[0]][pos[1]][pos[2]] - curr[2][pos[0]][pos[1]-shift[1]][pos[2]] - curr[1][pos[0]][pos[1]][pos[2]] + curr[1][pos[0]][pos[1]][pos[2]-shift[2]]);
+						m_enginePtr->volt[0][pos[0]][pos[1]][pos[2]] *= Op->vv[0][pos[0]][pos[1]][pos[2]];
+						m_enginePtr->volt[0][pos[0]][pos[1]][pos[2]] += Op->vi[0][pos[0]][pos[1]][pos[2]] * ( m_enginePtr->curr[2][pos[0]][pos[1]][pos[2]] - m_enginePtr->curr[2][pos[0]][pos[1]-shift[1]][pos[2]] - m_enginePtr->curr[1][pos[0]][pos[1]][pos[2]] + m_enginePtr->curr[1][pos[0]][pos[1]][pos[2]-shift[2]]);
 
 						//for y
-						volt[1][pos[0]][pos[1]][pos[2]] *= Op->vv[1][pos[0]][pos[1]][pos[2]];
-						volt[1][pos[0]][pos[1]][pos[2]] += Op->vi[1][pos[0]][pos[1]][pos[2]] * ( curr[0][pos[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]-shift[2]] - curr[2][pos[0]][pos[1]][pos[2]] + curr[2][pos[0]-shift[0]][pos[1]][pos[2]]);
+						m_enginePtr->volt[1][pos[0]][pos[1]][pos[2]] *= Op->vv[1][pos[0]][pos[1]][pos[2]];
+						m_enginePtr->volt[1][pos[0]][pos[1]][pos[2]] += Op->vi[1][pos[0]][pos[1]][pos[2]] * ( m_enginePtr->curr[0][pos[0]][pos[1]][pos[2]] - m_enginePtr->curr[0][pos[0]][pos[1]][pos[2]-shift[2]] - m_enginePtr->curr[2][pos[0]][pos[1]][pos[2]] + m_enginePtr->curr[2][pos[0]-shift[0]][pos[1]][pos[2]]);
 
 						//for x
-						volt[2][pos[0]][pos[1]][pos[2]] *= Op->vv[2][pos[0]][pos[1]][pos[2]];
-						volt[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( curr[1][pos[0]][pos[1]][pos[2]] - curr[1][pos[0]-shift[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]] + curr[0][pos[0]][pos[1]-shift[1]][pos[2]]);
+						m_enginePtr->volt[2][pos[0]][pos[1]][pos[2]] *= Op->vv[2][pos[0]][pos[1]][pos[2]];
+						m_enginePtr->volt[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( m_enginePtr->curr[1][pos[0]][pos[1]][pos[2]] - m_enginePtr->curr[1][pos[0]-shift[0]][pos[1]][pos[2]] - m_enginePtr->curr[0][pos[0]][pos[1]][pos[2]] + m_enginePtr->curr[0][pos[0]][pos[1]-shift[1]][pos[2]]);
 					}
 				}
 			}
@@ -186,7 +198,7 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//current updates
-			for (pos[0]=m_start;pos[0]<=m_stop-1;++pos[0])
+			for (pos[0]=m_start;pos[0]<=m_stop_h;++pos[0])
 			{
 				for (pos[1]=0;pos[1]<Op->numLines[1]-1;++pos[1])
 				{
@@ -194,16 +206,16 @@ void thread::operator()()
 					{
 						//do the updates here
 						//for x
-						curr[0][pos[0]][pos[1]][pos[2]] *= Op->ii[0][pos[0]][pos[1]][pos[2]];
-						curr[0][pos[0]][pos[1]][pos[2]] += Op->iv[0][pos[0]][pos[1]][pos[2]] * ( volt[2][pos[0]][pos[1]][pos[2]] - volt[2][pos[0]][pos[1]+1][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]] + volt[1][pos[0]][pos[1]][pos[2]+1]);
+						m_enginePtr->curr[0][pos[0]][pos[1]][pos[2]] *= Op->ii[0][pos[0]][pos[1]][pos[2]];
+						m_enginePtr->curr[0][pos[0]][pos[1]][pos[2]] += Op->iv[0][pos[0]][pos[1]][pos[2]] * ( m_enginePtr->volt[2][pos[0]][pos[1]][pos[2]] - m_enginePtr->volt[2][pos[0]][pos[1]+1][pos[2]] - m_enginePtr->volt[1][pos[0]][pos[1]][pos[2]] + m_enginePtr->volt[1][pos[0]][pos[1]][pos[2]+1]);
 
 						//for y
-						curr[1][pos[0]][pos[1]][pos[2]] *= Op->ii[1][pos[0]][pos[1]][pos[2]];
-						curr[1][pos[0]][pos[1]][pos[2]] += Op->iv[1][pos[0]][pos[1]][pos[2]] * ( volt[0][pos[0]][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]+1] - volt[2][pos[0]][pos[1]][pos[2]] + volt[2][pos[0]+1][pos[1]][pos[2]]);
+						m_enginePtr->curr[1][pos[0]][pos[1]][pos[2]] *= Op->ii[1][pos[0]][pos[1]][pos[2]];
+						m_enginePtr->curr[1][pos[0]][pos[1]][pos[2]] += Op->iv[1][pos[0]][pos[1]][pos[2]] * ( m_enginePtr->volt[0][pos[0]][pos[1]][pos[2]] - m_enginePtr->volt[0][pos[0]][pos[1]][pos[2]+1] - m_enginePtr->volt[2][pos[0]][pos[1]][pos[2]] + m_enginePtr->volt[2][pos[0]+1][pos[1]][pos[2]]);
 
 						//for x
-						curr[2][pos[0]][pos[1]][pos[2]] *= Op->ii[2][pos[0]][pos[1]][pos[2]];
-						curr[2][pos[0]][pos[1]][pos[2]] += Op->iv[2][pos[0]][pos[1]][pos[2]] * ( volt[1][pos[0]][pos[1]][pos[2]] - volt[1][pos[0]+1][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]] + volt[0][pos[0]][pos[1]+1][pos[2]]);
+						m_enginePtr->curr[2][pos[0]][pos[1]][pos[2]] *= Op->ii[2][pos[0]][pos[1]][pos[2]];
+						m_enginePtr->curr[2][pos[0]][pos[1]][pos[2]] += Op->iv[2][pos[0]][pos[1]][pos[2]] * ( m_enginePtr->volt[1][pos[0]][pos[1]][pos[2]] - m_enginePtr->volt[1][pos[0]+1][pos[1]][pos[2]] - m_enginePtr->volt[0][pos[0]][pos[1]][pos[2]] + m_enginePtr->volt[0][pos[0]][pos[1]+1][pos[2]]);
 					}
 				}
 			}
@@ -226,11 +238,13 @@ void thread::operator()()
 }
 
 
-thread_e_excitation::thread_e_excitation( Engine_Multithread* ptr ) : m_enginePtr(ptr), m_stopThread(false)
+thread_e_excitation::thread_e_excitation( Engine_Multithread* ptr )
 {
+	m_enginePtr = ptr;
 	Op = m_enginePtr->Op;
-	volt = m_enginePtr->volt;
-	curr = m_enginePtr->curr;
+	m_stopThread = false;
+//	volt = m_enginePtr->volt;
+//	curr = m_enginePtr->curr;
 }
 
 void thread_e_excitation::operator()()
@@ -251,7 +265,7 @@ void thread_e_excitation::operator()()
 			exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
 			exc_pos*= (exc_pos>0 && exc_pos<(int)Op->ExciteLength);
 	//			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-			volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
+			m_enginePtr->volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
 		}
 
 		// continueing thread

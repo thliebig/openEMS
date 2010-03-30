@@ -37,17 +37,13 @@ protected:
 
 class Engine_Multithread : public Engine
 {
-	friend class Processing;
-	friend class ProcessVoltage;
-	friend class ProcessCurrent;
-	friend class ProcessFields;
-	friend class ProcessFieldsTD;
 	friend class thread;
 	friend class thread_e_excitation;
 public:
-	static Engine_Multithread* createEngine(Operator* op);
+	static Engine_Multithread* createEngine(Operator* op, unsigned int numThreads = 0);
 	virtual ~Engine_Multithread();
 
+	virtual void setNumThreads( unsigned int numThreads );
 	virtual void Init();
 	virtual void Reset();
 
@@ -73,16 +69,16 @@ protected:
 
 class thread {
 public:
-	thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop );
+	thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int stop_h );
 	void operator()();
 
 protected:
-	unsigned int m_start, m_stop;
+	unsigned int m_start, m_stop, m_stop_h;
 	volatile bool m_stopThread;
 	Engine_Multithread *m_enginePtr;
 	Operator *Op;
-	FDTD_FLOAT**** volt;
-	FDTD_FLOAT**** curr;
+//	FDTD_FLOAT**** volt;
+//	FDTD_FLOAT**** curr;
 };
 
 class thread_e_excitation {
@@ -94,8 +90,8 @@ protected:
 	volatile bool m_stopThread;
 	Engine_Multithread *m_enginePtr;
 	Operator *Op;
-	FDTD_FLOAT**** volt;
-	FDTD_FLOAT**** curr;
+//	FDTD_FLOAT**** volt;
+//	FDTD_FLOAT**** curr;
 };
 
 #endif // ENGINE_MULTITHREAD_H

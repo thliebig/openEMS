@@ -55,6 +55,7 @@ protected:
 
 	enum EngineType {EngineType_Standard,EngineType_Multithreaded};
 	EngineType m_engine;
+	unsigned int m_engine_numThreads;
 };
 
 #endif // OPENEMS_H
