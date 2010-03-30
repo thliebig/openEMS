@@ -1,6 +1,11 @@
 #!/bin/bash
 
+#clear LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=
 
-exec /home/thorsten/devel/openEMS/openEMS $@
+#get path to openEMS
+openEMS_PATH=`dirname $0`
+
+#execute openEMS
+exec $openEMS_PATH/openEMS $@
 

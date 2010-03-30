@@ -37,10 +37,10 @@ public:
 
 	virtual int CalcECOperator();
 
-	//! Calculate an excitation with center of f0 and the half bandwidth fc
-	virtual bool CalcGaussianPulsExcitation(double f0, double fc);
-	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps
-	virtual bool CalcSinusExcitation(double f0, int nTS);
+	//! Calculate an excitation with center of f0 and the half bandwidth fc \return number of Nyquist timesteps
+	virtual unsigned int CalcGaussianPulsExcitation(double f0, double fc);
+	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps \return number of Nyquist timesteps
+	virtual unsigned int CalcSinusExcitation(double f0, int nTS);
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
@@ -49,7 +49,7 @@ public:
 	unsigned int GetNyquistNum(double fmax);
 	double GetNumberCells();
 
-	void ShowSize();
+	void ShowStat();
 
 	void DumpOperator2File(string filename);
 	void DumpMaterial2File(string filename);
@@ -86,6 +86,7 @@ protected:
 	//Calc timestep only internal use
 	virtual double CalcTimestep();
 	double dT; //FDTD timestep!
+	unsigned int m_nyquistTS;
 
 	//EC elements, internal only!
 	bool Calc_EC();

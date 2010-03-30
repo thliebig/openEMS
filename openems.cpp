@@ -198,10 +198,11 @@ int openEMS::SetupFDTD(const char* file)
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(-1);
 
 	FDTD_Op->CalcECOperator();
-
+	unsigned int Nyquist = 0;
 	if (Excit_Type==0)
 	{
-		if (!FDTD_Op->CalcGaussianPulsExcitation(f0,fc))
+		Nyquist = FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
+		if (!Nyquist)
 		{
 			cerr << "openEMS: excitation setup failed!!" << endl;
 			exit(2);
@@ -209,7 +210,8 @@ int openEMS::SetupFDTD(const char* file)
 	}
 	else if (Excit_Type==1)
 	{
-		if (!FDTD_Op->CalcSinusExcitation(f0,NrTS))
+		Nyquist = FDTD_Op->CalcSinusExcitation(f0,NrTS);
+		if (!Nyquist)
 		{
 			cerr << "openEMS: excitation setup failed!!" << endl;
 			exit(2);
@@ -232,12 +234,9 @@ int openEMS::SetupFDTD(const char* file)
 
 	time_t OpDoneTime=time(NULL);
 
-	FDTD_Op->ShowSize();
+	FDTD_Op->ShowStat();
 
 	FDTD_Op->ApplyMagneticBC(PMC);
-
-	cout << "Nyquist number of timesteps: " << FDTD_Op->GetNyquistNum(f0+fc) << endl;
-	unsigned int Nyquist = FDTD_Op->GetNyquistNum(f0+fc);
 
 	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 
@@ -331,7 +330,7 @@ int openEMS::SetupFDTD(const char* file)
 
 void openEMS::RunFDTD()
 {
-	cout << "Running FDTD engine... this may take a while... grab a coup of coffee?!?" << endl;
+	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
 	ProcessFields ProcField(FDTD_Op,FDTD_Eng);
 	double maxE=0,currE=0;
