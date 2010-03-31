@@ -12,4 +12,4 @@ openEMS_Path = [dir '/../../'];
 
 command = [openEMS_Path 'openEMS.sh ' opts];
 disp(command);
-system(command)
+system(command);
