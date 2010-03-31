@@ -18,7 +18,7 @@
 #include "array_ops.h"
 #include <ostream>
 
-FDTD_FLOAT*** Create3DArray(unsigned int* numLines)
+FDTD_FLOAT*** Create3DArray(const unsigned int* numLines)
 {
 	FDTD_FLOAT*** array=NULL;
 	unsigned int pos[3];
@@ -38,7 +38,7 @@ FDTD_FLOAT*** Create3DArray(unsigned int* numLines)
 	return array;
 }
 
-void Delete3DArray(FDTD_FLOAT*** array, unsigned int* numLines)
+void Delete3DArray(FDTD_FLOAT*** array, const unsigned int* numLines)
 {
 	if (array==NULL) return;
 	unsigned int pos[3];
@@ -53,7 +53,7 @@ void Delete3DArray(FDTD_FLOAT*** array, unsigned int* numLines)
 	delete[] array;
 }
 
-FDTD_FLOAT**** Create_N_3DArray(unsigned int* numLines)
+FDTD_FLOAT**** Create_N_3DArray(const unsigned int* numLines)
 {
 	FDTD_FLOAT**** array=NULL;
 	array = new FDTD_FLOAT***[3];
@@ -64,7 +64,7 @@ FDTD_FLOAT**** Create_N_3DArray(unsigned int* numLines)
 	return array;
 }
 
-void Delete_N_3DArray(FDTD_FLOAT**** array, unsigned int* numLines)
+void Delete_N_3DArray(FDTD_FLOAT**** array, const unsigned int* numLines)
 {
 	if (array==NULL) return;
 	unsigned int pos[3];

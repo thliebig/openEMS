@@ -23,7 +23,7 @@
 class Engine
 {
 public:
-	static Engine* createEngine(Operator* op);
+	static Engine* createEngine(const Operator* op);
 	virtual ~Engine();
 
 	virtual void Init();
@@ -38,8 +38,8 @@ public:
 	virtual FDTD_FLOAT**** GetCurrents() {return curr;};
 
 protected:
-	Engine(Operator* op);
-	Operator* Op;
+	Engine(const Operator* op);
+	const Operator* Op;
 
 	FDTD_FLOAT**** volt;
 	FDTD_FLOAT**** curr;

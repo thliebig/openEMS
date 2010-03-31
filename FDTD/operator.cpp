@@ -205,14 +205,14 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	return path;
 }
 
-double Operator::GetNumberCells()
+double Operator::GetNumberCells() const
 {
 	if (numLines)
 		return (numLines[0])*(numLines[1])*(numLines[2]); //it's more like number of nodes???
 	return 0;
 }
 
-void Operator::ShowStat()
+void Operator::ShowStat() const
 {
 	unsigned int OpSize = 12*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
 	unsigned int FieldSize = 6*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);

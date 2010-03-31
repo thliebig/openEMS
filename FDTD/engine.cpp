@@ -20,14 +20,14 @@
 
 //! \brief construct an Engine instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine* Engine::createEngine(Operator* op)
+Engine* Engine::createEngine(const Operator* op)
 {
 	Engine* e = new Engine(op);
 	e->Init();
 	return e;
 }
 
-Engine::Engine(Operator* op)
+Engine::Engine(const Operator* op)
 {
 	Op = op;
 }

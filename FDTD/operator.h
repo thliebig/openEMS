@@ -46,11 +46,11 @@ public:
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 
-	double GetTimestep() {return dT;};
+	double GetTimestep() const {return dT;};
 	unsigned int GetNyquistNum(double fmax);
-	double GetNumberCells();
+	double GetNumberCells() const;
 
-	void ShowStat();
+	void ShowStat() const;
 
 	void DumpOperator2File(string filename);
 	void DumpMaterial2File(string filename);
