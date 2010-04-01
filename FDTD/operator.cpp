@@ -253,13 +253,32 @@ unsigned int Operator::CalcDiracPulsExcitation()
 	if (dT==0) return 0;
 
 	ExciteLength = 1;
-	cerr << "Operator::CalcDiracPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
+//	cerr << "Operator::CalcDiracPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
 	delete[] ExciteSignal;
 	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
 	ExciteSignal[0]=0.0;
 	ExciteSignal[1]=1.0;
 
-	return 1;
+	// FIXME GetNyquistNum() has side-effects!
+	m_nyquistTS = 1;
+
+	return m_nyquistTS;
+}
+
+unsigned int Operator::CalcStepExcitation()
+{
+	if (dT==0) return 0;
+
+	ExciteLength = 1;
+	delete[] ExciteSignal;
+	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal[0]=1.0;
+	ExciteSignal[1]=1.0;
+
+	// FIXME GetNyquistNum() has side-effects!
+	m_nyquistTS = 1;
+
+	return m_nyquistTS;
 }
 
 unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
