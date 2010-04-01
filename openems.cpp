@@ -54,23 +54,15 @@ openEMS::openEMS()
 
 openEMS::~openEMS()
 {
-	delete FDTD_Eng;
-	FDTD_Eng=NULL;
-	delete PA;
-	PA=NULL;
-	delete FDTD_Op;
-	FDTD_Op=NULL;
+	Reset();
 }
 
 void openEMS::Reset()
 {
-	delete FDTD_Op;
-	FDTD_Op=NULL;
-	delete FDTD_Eng;
-	FDTD_Eng=NULL;
 	if (PA) PA->DeleteAll();
-	delete PA;
-	PA=NULL;
+	delete PA; PA=0;
+	delete FDTD_Eng; FDTD_Eng=0;
+	delete FDTD_Op; FDTD_Op=0;
 }
 
 //! \brief processes a command line argument
