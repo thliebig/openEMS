@@ -18,10 +18,18 @@
 #include "engine.h"
 #include "tools/array_ops.h"
 
-Engine::Engine(Operator* op)
+//! \brief construct an Engine instance
+//! it's the responsibility of the caller to free the returned pointer
+Engine* Engine::createEngine(const Operator* op)
+{
+	Engine* e = new Engine(op);
+	e->Init();
+	return e;
+}
+
+Engine::Engine(const Operator* op)
 {
 	Op = op;
-	Init();
 }
 
 Engine::~Engine()

@@ -205,14 +205,14 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	return path;
 }
 
-double Operator::GetNumberCells()
+double Operator::GetNumberCells() const
 {
 	if (numLines)
 		return (numLines[0])*(numLines[1])*(numLines[2]); //it's more like number of nodes???
 	return 0;
 }
 
-void Operator::ShowStat()
+void Operator::ShowStat() const
 {
 	unsigned int OpSize = 12*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
 	unsigned int FieldSize = 6*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
@@ -246,6 +246,39 @@ unsigned int Operator::CalcGaussianPulsExcitation(double f0, double fc)
 //		cerr << ExciteSignal[n] << endl;
 	}
 	return GetNyquistNum(f0+fc);
+}
+
+unsigned int Operator::CalcDiracPulsExcitation()
+{
+	if (dT==0) return 0;
+
+	ExciteLength = 1;
+//	cerr << "Operator::CalcDiracPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
+	delete[] ExciteSignal;
+	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal[0]=0.0;
+	ExciteSignal[1]=1.0;
+
+	// FIXME GetNyquistNum() has side-effects!
+	m_nyquistTS = 1;
+
+	return m_nyquistTS;
+}
+
+unsigned int Operator::CalcStepExcitation()
+{
+	if (dT==0) return 0;
+
+	ExciteLength = 1;
+	delete[] ExciteSignal;
+	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal[0]=1.0;
+	ExciteSignal[1]=1.0;
+
+	// FIXME GetNyquistNum() has side-effects!
+	m_nyquistTS = 1;
+
+	return m_nyquistTS;
 }
 
 unsigned int Operator::CalcSinusExcitation(double f0, int nTS)

@@ -20,6 +20,7 @@
 #include "tools/array_ops.h"
 #include "FDTD/operator.h"
 #include "FDTD/engine.h"
+#include "FDTD/engine_multithread.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/processfields_td.h"
@@ -32,8 +33,8 @@
 
 double CalcDiffTime(timeval t1, timeval t2)
 {
-	double s_diff = difftime(t1.tv_sec,t2.tv_sec);
-	s_diff += ((double)t1.tv_usec-(double)t2.tv_usec)*1e-6;
+	double s_diff = t1.tv_sec - t2.tv_sec;
+	s_diff += (t1.tv_usec-t2.tv_usec)*1e-6;
 	return s_diff;
 }
 
@@ -46,27 +47,22 @@ openEMS::openEMS()
 	DebugMat = false;
 	DebugOp = false;
 	endCrit = 1e-6;
+
+	m_engine = EngineType_Standard;
+	m_engine_numThreads = 0;
 }
 
 openEMS::~openEMS()
 {
-	delete FDTD_Eng;
-	FDTD_Eng=NULL;
-	delete PA;
-	PA=NULL;
-	delete FDTD_Op;
-	FDTD_Op=NULL;
+	Reset();
 }
 
 void openEMS::Reset()
 {
-	delete FDTD_Op;
-	FDTD_Op=NULL;
-	delete FDTD_Eng;
-	FDTD_Eng=NULL;
 	if (PA) PA->DeleteAll();
-	delete PA;
-	PA=NULL;
+	delete PA; PA=0;
+	delete FDTD_Eng; FDTD_Eng=0;
+	delete FDTD_Op; FDTD_Op=0;
 }
 
 //! \brief processes a command line argument
@@ -93,6 +89,18 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
 		DebugOperator();
+		return true;
+	}
+	else if (strcmp(argv,"--engine=multithreaded")==0)
+	{
+		cout << "openEMS - enabled multithreading" << endl;
+		m_engine = EngineType_Multithreaded;
+		return true;
+	}
+	else if (strncmp(argv,"--numThreads=",13)==0)
+	{
+		m_engine_numThreads = atoi(argv+13);
+		cout << "openEMS - fixed number of threads: " << m_engine_numThreads << endl;
 		return true;
 	}
 
@@ -158,6 +166,11 @@ int openEMS::SetupFDTD(const char* file)
 		Excite->QueryDoubleAttribute("f0",&f0);
 		fc = 0;
 	}
+	else if (Excit_Type==2)
+	{
+		Excite->QueryDoubleAttribute("f0",&f0);
+		fc = 0;
+	}
 
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
@@ -210,6 +223,24 @@ int openEMS::SetupFDTD(const char* file)
 			exit(2);
 		}
 	}
+	else if (Excit_Type==2)
+	{
+		Nyquist = FDTD_Op->CalcDiracPulsExcitation();
+		if (!Nyquist)
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
+	else if (Excit_Type==3)
+	{
+		Nyquist = FDTD_Op->CalcStepExcitation();
+		if (!Nyquist)
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
 	else
 	{
 		cerr << "openEMS: Excitation type is unknown" << endl;
@@ -234,7 +265,15 @@ int openEMS::SetupFDTD(const char* file)
 	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 
 	//create FDTD engine
-	FDTD_Eng = new Engine(FDTD_Op);
+	switch (m_engine) {
+	case EngineType_Multithreaded:
+		FDTD_Eng = Engine_Multithread::createEngine(FDTD_Op,m_engine_numThreads);
+		break;
+	default:
+		FDTD_Eng = Engine::createEngine(FDTD_Op);
+		break;
+	}
+
 
 	time_t currTime = time(NULL);
 
@@ -317,17 +356,20 @@ void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
-	timeval currTime;
-	gettimeofday(&currTime,NULL);
-	timeval startTime = currTime;
-	timeval prevTime= currTime;
 	ProcessFields ProcField(FDTD_Op,FDTD_Eng);
 	double maxE=0,currE=0;
 	double change=1;
 	int prevTS=0,currTS=0;
-	double speed = (double)FDTD_Op->GetNumberCells()/1e6;
+	double speed = FDTD_Op->GetNumberCells()/1e6;
 	double t_diff;
+
+	timeval currTime;
+	gettimeofday(&currTime,NULL);
+	timeval startTime = currTime;
+	timeval prevTime= currTime;
+
 	//*************** simulate ************//
+
 	int step=PA->Process();
 	if ((step<0) || (step>(int)NrTS)) step=NrTS;
 	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit))
@@ -347,7 +389,7 @@ void openEMS::RunFDTD()
 			if (currE>maxE)
 				maxE=currE;
 			cout << "[@" << setw(8) << (int)CalcDiffTime(currTime,startTime)  <<  "s] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
-			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(double)(currTS-prevTS)/t_diff << " MCells/s" ;
+			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MCells/s" ;
 			if (maxE)
 				change = currE/maxE;
 			cout << " --- Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (decrement: " << setw(6)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;

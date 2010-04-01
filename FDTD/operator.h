@@ -41,15 +41,19 @@ public:
 	virtual unsigned int CalcGaussianPulsExcitation(double f0, double fc);
 	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps \return number of Nyquist timesteps
 	virtual unsigned int CalcSinusExcitation(double f0, int nTS);
+	//! Calculate a dirac impuls excitation \return number of Nyquist timesteps
+	virtual unsigned int CalcDiracPulsExcitation();
+	//! Calculate a step excitation \return number of Nyquist timesteps
+	virtual unsigned int CalcStepExcitation();
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 
-	double GetTimestep() {return dT;};
+	double GetTimestep() const {return dT;};
 	unsigned int GetNyquistNum(double fmax);
-	double GetNumberCells();
+	double GetNumberCells() const;
 
-	void ShowStat();
+	void ShowStat() const;
 
 	void DumpOperator2File(string filename);
 	void DumpMaterial2File(string filename);

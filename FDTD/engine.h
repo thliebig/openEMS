@@ -23,7 +23,7 @@
 class Engine
 {
 public:
-	Engine(Operator* op);
+	static Engine* createEngine(const Operator* op);
 	virtual ~Engine();
 
 	virtual void Init();
@@ -32,13 +32,14 @@ public:
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
-	unsigned int GetNumberOfTimesteps() {return numTS;};
+	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
 	virtual FDTD_FLOAT**** GetVoltages() {return volt;};
 	virtual FDTD_FLOAT**** GetCurrents() {return curr;};
 
 protected:
-	Operator* Op;
+	Engine(const Operator* op);
+	const Operator* Op;
 
 	FDTD_FLOAT**** volt;
 	FDTD_FLOAT**** curr;

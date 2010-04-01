@@ -1,7 +1,7 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-02-26T22:34:51
 # -------------------------------------------------
-QT -= gui
+QT -= gui core
 TARGET = openEMS
 CONFIG += console
 CONFIG -= app_bundle
@@ -14,11 +14,11 @@ LIBS += -L../CSXCAD \
     -L../fparser \
     -lfparser \
     -L../tinyxml \
-    -ltinyxml
-QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\' 
-QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\' 
-QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\' 
-
+	-ltinyxml \
+	-lboost_thread
+QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
+QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
+QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
 SOURCES += main.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \
@@ -31,7 +31,8 @@ SOURCES += main.cpp \
     FDTD/processfields_td.cpp \
     FDTD/processcurrent.cpp \
     examples/FDTD_examples.cpp \
-    openems.cpp
+    openems.cpp \
+    FDTD/engine_multithread.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -44,4 +45,8 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/processfields_td.h \
     FDTD/processcurrent.h \
     examples/FDTD_examples.h \
-    openems.h
+    openems.h \
+    FDTD/engine_multithread.h
+
+QMAKE_CXXFLAGS_RELEASE = -O2 -g -march=native
+QMAKE_CXXFLAGS_DEBUG = -O0 -g -march=native
