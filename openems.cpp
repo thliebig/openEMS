@@ -174,6 +174,11 @@ int openEMS::SetupFDTD(const char* file)
 		Excite->QueryDoubleAttribute("f0",&f0);
 		fc = 0;
 	}
+	else if (Excit_Type==2)
+	{
+		Excite->QueryDoubleAttribute("f0",&f0);
+		fc = 0;
+	}
 
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
@@ -220,6 +225,24 @@ int openEMS::SetupFDTD(const char* file)
 	else if (Excit_Type==1)
 	{
 		Nyquist = FDTD_Op->CalcSinusExcitation(f0,NrTS);
+		if (!Nyquist)
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
+	else if (Excit_Type==2)
+	{
+		Nyquist = FDTD_Op->CalcDiracPulsExcitation();
+		if (!Nyquist)
+		{
+			cerr << "openEMS: excitation setup failed!!" << endl;
+			exit(2);
+		}
+	}
+	else if (Excit_Type==3)
+	{
+		Nyquist = FDTD_Op->CalcStepExcitation();
 		if (!Nyquist)
 		{
 			cerr << "openEMS: excitation setup failed!!" << endl;
