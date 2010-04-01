@@ -31,7 +31,7 @@ public:
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
-	void SetProcessInterval(unsigned int interval) {ProcessInterval=interval;}
+	void SetProcessInterval(unsigned int interval) {ProcessInterval=max((unsigned int)1,interval);}
 	virtual int Process() {return GetNextInterval();}
 
 	//! If Disabled Process() will do nothing...
