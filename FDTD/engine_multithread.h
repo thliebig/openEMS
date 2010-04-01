@@ -26,21 +26,54 @@
 #include <boost/fusion/container/list/list_fwd.hpp>
 #include <boost/fusion/include/list_fwd.hpp>
 
-//debug
-class Timer {
-public:
-	Timer() {gettimeofday(&t1,NULL);}
-	double elapsed() {gettimeofday(&t2,NULL); return (t2.tv_sec-t1.tv_sec) + (t2.tv_usec-t1.tv_usec)*1e-6;}
-protected:
-	timeval t1,t2;
-};
+class Engine_Multithread;
+
+namespace NS_Engine_Multithread {
+
+	class DBG { // debug
+	public:
+		DBG() {}
+		~DBG() { std::cout << os.str();}
+		std::ostringstream& cout() {return os;}
+	protected:
+		std::ostringstream os;
+	};
+
+	class Timer { //debug
+	public:
+		Timer() {gettimeofday(&t1,NULL);}
+		double elapsed() {gettimeofday(&t2,NULL); return (t2.tv_sec-t1.tv_sec) + (t2.tv_usec-t1.tv_usec)*1e-6;}
+	protected:
+		timeval t1,t2;
+	};
+
+	class thread {
+	public:
+		thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int stop_h, unsigned int threadID );
+		void operator()();
+
+	protected:
+		unsigned int m_start, m_stop, m_stop_h, m_threadID;
+		Engine_Multithread *m_enginePtr;
+	};
+
+	class thread_e_excitation {
+	public:
+		thread_e_excitation( Engine_Multithread* ptr);
+		void operator()();
+
+	protected:
+		Engine_Multithread *m_enginePtr;
+	};
+} // namespace
+
 
 class Engine_Multithread : public Engine
 {
-	friend class thread;
-	friend class thread_e_excitation;
+	friend class NS_Engine_Multithread::thread;
+	friend class NS_Engine_Multithread::thread_e_excitation;
 public:
-	static Engine_Multithread* createEngine(Operator* op, unsigned int numThreads = 0);
+	static Engine_Multithread* createEngine(const Operator* op, unsigned int numThreads = 0);
 	virtual ~Engine_Multithread();
 
 	virtual void setNumThreads( unsigned int numThreads );
@@ -50,48 +83,17 @@ public:
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
-	virtual unsigned int GetNumberOfTimesteps() {return m_numTS_times_threads / m_numThreads;}
-
 protected:
-	Engine_Multithread(Operator* op);
+	Engine_Multithread(const Operator* op);
 	boost::thread_group m_thread_group;
 	boost::barrier *m_barrier1, *m_barrier2, *m_barrier3, *m_startBarrier, *m_stopBarrier;
 	volatile unsigned int m_iterTS;
-	volatile unsigned int m_numTS_times_threads; //!< numTS times the number of worker threads
 	unsigned int m_numThreads; //!< number of worker threads
+	volatile bool m_stopThreads;
 
 #ifdef ENABLE_DEBUG_TIME
 	std::map<boost::thread::id, std::vector<double> > m_timer_list;
 #endif
-};
-
-
-
-class thread {
-public:
-	thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int stop_h );
-	void operator()();
-
-protected:
-	unsigned int m_start, m_stop, m_stop_h;
-	volatile bool m_stopThread;
-	Engine_Multithread *m_enginePtr;
-	Operator *Op;
-//	FDTD_FLOAT**** volt;
-//	FDTD_FLOAT**** curr;
-};
-
-class thread_e_excitation {
-public:
-	thread_e_excitation( Engine_Multithread* ptr);
-	void operator()();
-
-protected:
-	volatile bool m_stopThread;
-	Engine_Multithread *m_enginePtr;
-	Operator *Op;
-//	FDTD_FLOAT**** volt;
-//	FDTD_FLOAT**** curr;
 };
 
 #endif // ENGINE_MULTITHREAD_H
