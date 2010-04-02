@@ -88,12 +88,11 @@ void Operator::Reset()
 	Operator::Init();
 }
 
-unsigned int Operator::GetNyquistNum(double fmax)
+unsigned int Operator::CalcNyquistNum(double fmax)
 {
 	if (dT==0) return 1;
 	double T0 = 1/fmax;
-	m_nyquistTS = floor(T0/2/dT);
-	return m_nyquistTS;
+	return floor(T0/2/dT);
 }
 
 bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower)
@@ -245,7 +244,7 @@ unsigned int Operator::CalcGaussianPulsExcitation(double f0, double fc)
 		ExciteSignal[n] = cos(2.0*PI*f0*(n*dT-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*n*dT/3.0-3,2));
 //		cerr << ExciteSignal[n] << endl;
 	}
-	return GetNyquistNum(f0+fc);
+	return CalcNyquistNum(f0+fc);
 }
 
 unsigned int Operator::CalcDiracPulsExcitation()
@@ -259,10 +258,7 @@ unsigned int Operator::CalcDiracPulsExcitation()
 	ExciteSignal[0]=0.0;
 	ExciteSignal[1]=1.0;
 
-	// FIXME GetNyquistNum() has side-effects!
-	m_nyquistTS = 1;
-
-	return m_nyquistTS;
+	return 1;
 }
 
 unsigned int Operator::CalcStepExcitation()
@@ -275,10 +271,7 @@ unsigned int Operator::CalcStepExcitation()
 	ExciteSignal[0]=1.0;
 	ExciteSignal[1]=1.0;
 
-	// FIXME GetNyquistNum() has side-effects!
-	m_nyquistTS = 1;
-
-	return m_nyquistTS;
+	return 1;
 }
 
 unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
@@ -296,7 +289,7 @@ unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
 		ExciteSignal[n] = sin(2.0*PI*f0*n*dT);
 //		cerr << ExciteSignal[n] << endl;
 	}
-	return GetNyquistNum(f0);
+	return CalcNyquistNum(f0);
 }
 
 void Operator::DumpOperator2File(string filename)

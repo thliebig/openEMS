@@ -247,6 +247,8 @@ int openEMS::SetupFDTD(const char* file)
 		exit(-1);
 	}
 
+	FDTD_Op->SetNyquistNum(Nyquist);
+
 	if (DebugMat)
 	{
 		FDTD_Op->DumpMaterial2File("material_dump.vtk");

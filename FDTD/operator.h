@@ -48,8 +48,11 @@ public:
 	virtual void ApplyMagneticBC(bool* dirs);
 
 	double GetTimestep() const {return dT;};
-	unsigned int GetNyquistNum(double fmax);
 	double GetNumberCells() const;
+
+	void SetNyquistNum(unsigned int nyquist) {m_nyquistTS=nyquist;}
+	unsigned int GetNyquistNum() const {return m_nyquistTS;};
+	unsigned int CalcNyquistNum(double fmax);
 
 	void ShowStat() const;
 
