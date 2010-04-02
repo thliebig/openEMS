@@ -27,8 +27,6 @@
 //! Abstract base-class for the FDTD-operator
 class Operator
 {
-	friend class ProcessFields;
-	friend class ProcessFieldsTD;
 public:
     Operator();
 	virtual ~Operator();
@@ -74,12 +72,6 @@ protected:
 	struct Grid_Path FindPath(double start[], double stop[]);
 
 	ContinuousStructure* CSX;
-	double gridDelta;
-
-	double* discLines[3];
-
-	AdrOp* MainOp;
-	AdrOp* DualOp;
 
 	//E-Field Excitation
 	//!	  Calc the electric field excitation.
@@ -101,9 +93,13 @@ protected:
 	double* EC_L[3];
 	double* EC_R[3];
 
-// engine needs access
+// engine/post-proc needs access
 public:
 	unsigned int numLines[3];
+	double* discLines[3];
+	double gridDelta;
+	AdrOp* MainOp;
+	AdrOp* DualOp;
 
 	//EC operator
 	FDTD_FLOAT**** vv; //calc new voltage from old voltage
