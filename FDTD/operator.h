@@ -44,6 +44,9 @@ public:
 	//! Calculate a step excitation \return number of Nyquist timesteps
 	virtual unsigned int CalcStepExcitation();
 
+	//! Get the excitation timestep with the (first) max amplitude
+	virtual unsigned int GetMaxExcitationTimestep() const;
+
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 

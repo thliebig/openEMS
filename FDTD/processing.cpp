@@ -22,22 +22,65 @@ Processing::Processing(Operator* op, Engine* eng)
 	Op=op;
 	Eng=eng;
 	Enabled = true;
+	m_PS_pos = 0;
+	ProcessInterval=0;
 }
 
 Processing::~Processing()
 {
 }
 
+void Processing::Reset()
+{
+	m_PS_pos=0;
+}
+
 bool Processing::CheckTimestep()
 {
-	if (Eng->GetNumberOfTimesteps()%ProcessInterval==0) return true;
+	if (m_ProcessSteps.size()>m_PS_pos)
+	{
+		if (m_ProcessSteps.at(m_PS_pos)==Eng->GetNumberOfTimesteps())
+		{
+			++m_PS_pos;
+			return true;
+		}
+	}
+	if (ProcessInterval)
+	{
+		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0) return true;
+	}
 	return false;
 }
 
-int Processing::GetNextInterval()
+int Processing::GetNextInterval() const
 {
 	if (Enabled==false) return -1;
-	return ProcessInterval - Eng->GetNumberOfTimesteps()%ProcessInterval;
+	unsigned int next=-1;
+	if (m_ProcessSteps.size()>m_PS_pos)
+	{
+		next = m_ProcessSteps.at(m_PS_pos)-Eng->GetNumberOfTimesteps();
+	}
+	if (ProcessInterval==0) return next;
+	unsigned int next_Interval = ProcessInterval - Eng->GetNumberOfTimesteps()%ProcessInterval;
+	if (next_Interval<next)
+		next = next_Interval;
+	return next;
+}
+
+void Processing::AddStep(unsigned int step)
+{
+	if (m_ProcessSteps.size()==0)
+		m_ProcessSteps.push_back(step);
+	else if (find(m_ProcessSteps.begin(), m_ProcessSteps.end(),step)==m_ProcessSteps.end())
+		m_ProcessSteps.push_back(step);
+}
+
+void Processing::AddSteps(vector<unsigned int> steps)
+{
+	for (size_t n=0;n<steps.size();++n)
+	{
+		AddStep(steps.at(n));
+	}
 }
 
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
@@ -82,6 +125,14 @@ double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int
 void ProcessingArray::AddProcessing(Processing* proc)
 {
 	ProcessArray.push_back(proc);
+}
+
+void ProcessingArray::Reset()
+{
+	for (size_t i=0;i<ProcessArray.size();++i)
+	{
+		ProcessArray.at(i)->Reset();
+	}
 }
 
 void ProcessingArray::DeleteAll()

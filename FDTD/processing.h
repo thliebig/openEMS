@@ -29,15 +29,22 @@ public:
 	Processing(Operator* op, Engine* eng);
 	virtual ~Processing();
 
+	virtual void Reset();
+
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
 	void SetProcessInterval(unsigned int interval) {ProcessInterval=max((unsigned int)1,interval);}
+
+	void AddStep(unsigned int step);
+	void AddSteps(vector<unsigned int> steps);
+
+	bool CheckTimestep();
 	virtual int Process() {return GetNextInterval();}
 
 	//! If Disabled Process() will do nothing...
 	virtual void SetEnable(bool val) {Enabled=val;}
 	//! If Disabled Process() will do nothing...
-	virtual bool GetEnable() {return Enabled;}
+	virtual bool GetEnable() const {return Enabled;}
 
 protected:
 	Operator* Op;
@@ -45,9 +52,11 @@ protected:
 
 	bool Enabled;
 
-	bool CheckTimestep();
-	int GetNextInterval();
+	int GetNextInterval() const;
 	unsigned int ProcessInterval;
+
+	size_t m_PS_pos; //! current position in list of processing steps
+	vector<unsigned int> m_ProcessSteps; //! list of processing steps
 
 	unsigned int start[3];
 	unsigned int stop[3];
@@ -62,6 +71,8 @@ public:
 	~ProcessingArray() {};
 
 	void AddProcessing(Processing* proc);
+
+	void Reset();
 
 	//! Deletes all given processing's, can be helpful, but use carefull!!!
 	void DeleteAll();

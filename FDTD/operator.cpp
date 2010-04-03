@@ -230,6 +230,21 @@ void Operator::ShowStat() const
 	cout << "-----------------------------------" << endl;
 }
 
+unsigned int Operator::GetMaxExcitationTimestep() const
+{
+	FDTD_FLOAT maxAmp=0;
+	unsigned int maxStep=0;
+	for (unsigned int n=1;n<ExciteLength+1;++n)
+	{
+		if (fabs(ExciteSignal[n])>maxAmp)
+		{
+			maxAmp = fabs(ExciteSignal[n]);
+			maxStep = n;
+		}
+	}
+	return maxStep;
+}
+
 unsigned int Operator::CalcGaussianPulsExcitation(double f0, double fc)
 {
 	if (dT==0) return 0;

@@ -358,8 +358,16 @@ void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
-	ProcessFields ProcField(FDTD_Op,FDTD_Eng);
+	//special handling of a field processing, needed to realize the end criteria...
+	ProcessFields* ProcField = new ProcessFields(FDTD_Op,FDTD_Eng);
+	PA->AddProcessing(ProcField);
 	double maxE=0,currE=0;
+
+	//add all timesteps to end-crit field processing with max excite amplitude
+	unsigned int maxExcite = FDTD_Op->GetMaxExcitationTimestep();
+	for (unsigned int n=0;n<FDTD_Op->E_Exc_Count;++n)
+		ProcField->AddStep(FDTD_Op->E_Exc_delay[n]+maxExcite);
+
 	double change=1;
 	int prevTS=0,currTS=0;
 	double speed = FDTD_Op->GetNumberCells()/1e6;
@@ -378,6 +386,14 @@ void openEMS::RunFDTD()
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
+
+		if (ProcField->CheckTimestep())
+		{
+			currE = ProcField->CalcTotalEnergy();
+			if (currE>maxE)
+				maxE=currE;
+		}
+
 //		cout << " do " << step << " steps; current: " << eng.GetNumberOfTimesteps() << endl;
 		currTS = FDTD_Eng->GetNumberOfTimesteps();
 		if ((step<0) || (step>(int)(NrTS - currTS))) step=NrTS - currTS;
@@ -387,7 +403,7 @@ void openEMS::RunFDTD()
 		t_diff = CalcDiffTime(currTime,prevTime);
 		if (t_diff>4)
 		{
-			currE = ProcField.CalcTotalEnergy();
+			currE = ProcField->CalcTotalEnergy();
 			if (currE>maxE)
 				maxE=currE;
 			cout << "[@" << setw(8) << (int)CalcDiffTime(currTime,startTime)  <<  "s] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
