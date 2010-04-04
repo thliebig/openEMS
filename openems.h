@@ -49,6 +49,7 @@ protected:
 	bool DebugMat;
 	bool DebugOp;
 	double endCrit;
+	int m_OverSampling;
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;

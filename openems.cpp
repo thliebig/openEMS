@@ -47,6 +47,7 @@ openEMS::openEMS()
 	DebugMat = false;
 	DebugOp = false;
 	endCrit = 1e-6;
+	m_OverSampling = 4;
 
 	m_engine = EngineType_Standard;
 	m_engine_numThreads = 0;
@@ -148,6 +149,10 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
 	if (endCrit==0)
 		endCrit=1e-6;
+
+	FDTD_Opts->QueryIntAttribute("OverSampling",&m_OverSampling);
+	if (m_OverSampling<2)
+		m_OverSampling=2;
 
 	TiXmlElement* Excite = FDTD_Opts->FirstChildElement("Excitation");
 	if (Excite==NULL)
@@ -312,7 +317,7 @@ int openEMS::SetupFDTD(const char* file)
 					procCurr->OpenFile(pb->GetName());
 					proc=procCurr;
 				}
-				proc->SetProcessInterval(Nyquist/3); //three times as often as nyquist dictates
+				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->DefineStartStopCoord(start,stop);
 				PA->AddProcessing(proc);
 			}
@@ -326,7 +331,7 @@ int openEMS::SetupFDTD(const char* file)
 	{
 		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(FDTD_Op,FDTD_Eng);
 		ProcTD->SetEnable(Enable_Dumps);
-		ProcTD->SetProcessInterval(Nyquist/2); //twice as often as nyquist dictates
+		ProcTD->SetProcessInterval(Nyquist/m_OverSampling);
 
 		//only looking for one prim atm
 		CSPrimitives* prim = DumpProps.at(i)->GetPrimitive(0);
