@@ -53,13 +53,13 @@ CSX = AddExcitation(CSX,'excite',0,[0 1 0]);
 CSX = AddBox(CSX,'excite',0 ,start,stop);
  
 %dump
-CSX = AddDump(CSX,'Et_',0,0);
+CSX = AddDump(CSX,'Et',0,0,1);
 start = [mesh.x(1) , 0 , mesh.z(1)];
 stop = [mesh.x(end) , 0 , mesh.z(end)];
-CSX = AddBox(CSX,'Et_',0 , start,stop);
+CSX = AddBox(CSX,'Et',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht_',1,0);
-CSX = AddBox(CSX,'Ht_',0,start,stop);
+CSX = AddDump(CSX,'Ht',1,0,1);
+CSX = AddBox(CSX,'Ht',0,start,stop);
 
 %Write openEMS compatoble xml-file
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);

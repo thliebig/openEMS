@@ -34,8 +34,8 @@ public:
 protected:
 	int pad_length;
 
-	void DumpNoInterpol(ofstream &file);
-	void DumpCellInterpol(ofstream &file);
+	void DumpNoInterpol(string filename);
+	void DumpCellInterpol(string filename);
 };
 
 #endif // PROCESSFIELDS_TD_H

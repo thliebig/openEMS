@@ -15,10 +15,12 @@ LIBS += -L../CSXCAD \
     -lfparser \
     -L../tinyxml \
 	-ltinyxml \
-	-lboost_thread
+	-lboost_thread \
+	-lhdf5_cpp
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
+
 SOURCES += main.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \

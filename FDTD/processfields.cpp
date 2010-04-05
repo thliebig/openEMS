@@ -17,10 +17,14 @@
 
 #include "processfields.h"
 
+#include "H5Cpp.h"
+
 ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 {
-	DumpMode=0;
-	DumpType = 0;
+	m_DumpMode = NO_INTERPOLATION;
+	m_DumpType = E_FIELD_DUMP;
+	// vtk-file is default
+	m_fileType = VTK_FILETYPE;
 //	SetSubSampling(1);
 
 	for (int n=0;n<3;++n)
@@ -42,9 +46,68 @@ ProcessFields::~ProcessFields()
 	}
 }
 
+void ProcessFields::InitProcess()
+{
+	string names[] = {"x","y","z"};
+	if (m_fileType==HDF5_FILETYPE)
+	{
+		unsigned int* NrLines;
+		double** Lines;
+
+		if (m_DumpMode==CELL_INTERPOLATE)
+		{
+			NrLines = numDLines;
+			Lines = discDLines;
+		}
+		else if (m_DumpMode==NO_INTERPOLATION)
+		{
+			NrLines = numLines;
+			Lines = discLines;
+		}
+		else
+			return;
+
+		m_fileName+= ".h5";
+		H5::H5File* file = new H5::H5File( m_fileName , H5F_ACC_TRUNC );
+
+		H5::Group* group = new H5::Group( file->createGroup( "/Mesh" ));
+		for (int n=0;n<3;++n)
+		{
+			hsize_t dimsf[1];              // dataset dimensions
+			dimsf[0] = NrLines[n];
+			H5::DataSpace dataspace( 1, dimsf );
+			H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
+			H5::DataSet dataset = group->createDataSet( names[n].c_str(), datatype, dataspace );
+			//convert to float...
+			float* array = new float[NrLines[n]];
+			for (int i=0;i<NrLines[n];++i)
+				array[i] = Lines[n][i];
+			//write to dataset
+			dataset.write( array, H5::PredType::NATIVE_FLOAT );
+		}
+		delete group;
+
+		group = new H5::Group( file->createGroup( "/FieldData" ));
+		delete group;
+		delete file;
+	}
+}
+
+string ProcessFields::GetFieldNameByType(DumpType type)
+{
+	switch (type)
+	{
+		case E_FIELD_DUMP:
+			return "E-Field";
+		case H_FIELD_DUMP:
+			return "H-Field";
+	}
+	return "unknown field";
+}
+
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (DumpMode==0)
+	if (m_DumpMode==NO_INTERPOLATION)
 	{
 		if (Op->SnapToMesh(dstart,start)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
 		if (Op->SnapToMesh(dstop,stop)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
@@ -69,7 +132,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			}
 		}
 	}
-	else if (DumpMode==2)
+	else if (m_DumpMode==CELL_INTERPOLATE)
 	{
 		if (Op->SnapToMesh(dstart,start,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
 		if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
@@ -86,7 +149,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			}
 			++stop[n];
 			numDLines[n]=stop[n]-start[n];
-	//		cerr << " number of lines " << numDLines[n] << endl;
+//			cerr << " number of lines " << numDLines[n] << endl;
 			delete[] discDLines[n];
 			discDLines[n] = new double[numDLines[n]];
 			for (unsigned int i=0;i<numDLines[n];++i)
@@ -235,6 +298,49 @@ bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDT
 		WriteVTKScalarArray(file, names[n], array[n], numLines);
 		file << endl;
 	}
+	return true;
+}
+
+bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT**** array, unsigned int* numLines)
+{
+	const H5std_string FILE_NAME(filename);
+	const H5std_string DATASET_NAME( name );
+
+	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
+
+	H5::Group group( file.openGroup( "/FieldData" ));
+
+	hsize_t dimsf[4];              // dataset dimensions
+
+	dimsf[0] = 3;
+	dimsf[1] = numLines[2];
+	dimsf[2] = numLines[1];
+	dimsf[3] = numLines[0];
+
+	H5::DataSpace dataspace( 4, dimsf );
+
+	H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
+//	datatype.setOrder( H5T_ORDER_LE );
+	H5::DataSet dataset = group.createDataSet( DATASET_NAME, datatype, dataspace );
+
+	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
+	// at least it is save in case FDTD_FLOAT was defined as double...
+	// why does hdf5 write the dimensions backwards??? or matlab???
+	float hdf5array[3][numLines[2]][numLines[1]][numLines[0]];
+	for (int n=0;n<3;++n)
+	{
+		for (unsigned int i=0;i<numLines[0];++i)
+		{
+			for (unsigned int j=0;j<numLines[1];++j)
+			{
+				for (unsigned int k=0;k<numLines[2];++k)
+				{
+					hdf5array[n][k][j][i] = array[n][i][j][k];
+				}
+			}
+		}
+	}
+	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
 	return true;
 }
 

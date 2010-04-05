@@ -29,12 +29,12 @@ ProcessFieldsTD::~ProcessFieldsTD()
 {
 }
 
-void ProcessFieldsTD::DumpCellInterpol(ofstream &file)
+void ProcessFieldsTD::DumpCellInterpol(string filename)
 {
 	FDTD_FLOAT**** volt = Eng->GetVoltages();
 	FDTD_FLOAT**** curr = Eng->GetCurrents();
 
-	if (DumpType==0)
+	if (m_DumpType==E_FIELD_DUMP)
 	{
 		//create array
 		FDTD_FLOAT**** E_T = Create_N_3DArray(numDLines);
@@ -66,12 +66,27 @@ void ProcessFieldsTD::DumpCellInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines);
+
+		if (m_fileType==VTK_FILETYPE)
+		{
+			ofstream file(filename.c_str());
+			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
+			DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines);
+			file.close();
+		}
+		else if (m_fileType==HDF5_FILETYPE)
+		{
+			stringstream ss;
+			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numDLines);
+		}
+		else
+			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
 		Delete_N_3DArray(E_T,numDLines);
 		E_T = NULL;
 	}
 
-	if (DumpType==1)
+	if (m_DumpType==1)
 	{
 		//create array
 		FDTD_FLOAT**** H_T = Create_N_3DArray(numDLines);
@@ -104,20 +119,34 @@ void ProcessFieldsTD::DumpCellInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines);
+		if (m_fileType==VTK_FILETYPE)
+		{
+			ofstream file(filename.c_str());
+			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
+			DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines);
+			file.close();
+		}
+		else if (m_fileType==HDF5_FILETYPE)
+		{
+			stringstream ss;
+			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numDLines);
+		}
+		else
+			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
 		Delete_N_3DArray(H_T,numDLines);
 		H_T = NULL;
 	}
 }
 
-void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
+void ProcessFieldsTD::DumpNoInterpol(string filename)
 {
 	FDTD_FLOAT**** volt = Eng->GetVoltages();
 	FDTD_FLOAT**** curr = Eng->GetCurrents();
 
 	unsigned int pos[3];
 	double delta[3];
-	if (DumpType==0)
+	if (m_DumpType==E_FIELD_DUMP)
 	{
 		//create array
 		FDTD_FLOAT**** E_T = Create_N_3DArray(numLines);
@@ -136,12 +165,27 @@ void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines);
+		if (m_fileType==VTK_FILETYPE)
+		{
+			ofstream file(filename.c_str());
+			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
+			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines);
+			file.close();
+		}
+		else if (m_fileType==HDF5_FILETYPE)
+		{
+			stringstream ss;
+			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numLines);
+		}
+		else
+			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
+
 		Delete_N_3DArray(E_T,numLines);
 		E_T = NULL;
 	}
 
-	if (DumpType==1)
+	if (m_DumpType==H_FIELD_DUMP)
 	{
 		//create array
 		FDTD_FLOAT**** H_T = Create_N_3DArray(numLines);
@@ -161,7 +205,22 @@ void ProcessFieldsTD::DumpNoInterpol(ofstream &file)
 				}
 			}
 		}
-		DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines);
+		if (m_fileType==VTK_FILETYPE)
+		{
+			ofstream file(filename.c_str());
+			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
+			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines);
+			file.close();
+		}
+		else if (m_fileType==HDF5_FILETYPE)
+		{
+			stringstream ss;
+			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numLines);
+		}
+		else
+			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
+
 		Delete_N_3DArray(H_T,numLines);
 		H_T = NULL;
 	}
@@ -173,16 +232,22 @@ int ProcessFieldsTD::Process()
 	if (filePattern.empty()) return -1;
 	if (CheckTimestep()==false) return GetNextInterval();
 	stringstream ss;
-	ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
+	ss << filePattern << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
 
-	string filename = filePattern + ss.str() + ".vtk";
-	ofstream file(filename.c_str());
-	if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl; return GetNextInterval();};
-
-	if (DumpMode==0)
-		DumpNoInterpol(file);
-	if (DumpMode==2)
-		DumpCellInterpol(file);
-	file.close();
+	if (m_fileType==VTK_FILETYPE)
+	{
+		ss << ".vtk";
+		if (m_DumpMode==NO_INTERPOLATION)
+			DumpNoInterpol(ss.str());
+		if (m_DumpMode==CELL_INTERPOLATE)
+			DumpCellInterpol(ss.str());
+	}
+	else if (m_fileType==HDF5_FILETYPE)
+	{
+		if (m_DumpMode==NO_INTERPOLATION)
+			DumpNoInterpol(m_fileName);
+		if (m_DumpMode==CELL_INTERPOLATE)
+			DumpCellInterpol(m_fileName);
+	}
 	return GetNextInterval();
 }

@@ -27,27 +27,40 @@ public:
 	ProcessFields(Operator* op, Engine* eng);
 	virtual ~ProcessFields();
 
+	enum FileType { VTK_FILETYPE, HDF5_FILETYPE};
+	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP};
+	enum DumpMode { NO_INTERPOLATION, NODE_INTERPOLATE, CELL_INTERPOLATE};
+
+	virtual void InitProcess();
+
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
 //	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
 
-	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump.
+	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType
 	void SetFilePattern(string fp) {filePattern=fp;}
 
+	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType
+	void SetFileName(string fn) {m_fileName=fn;}
+
 	//! Define the Dump-Mode
-	void SetDumpMode(int mode) {DumpMode=mode;}
+	void SetDumpMode(DumpMode mode) {m_DumpMode=mode;}
 	//! This methode will dump all fields in the center of a main cell (dual-node) using 4 E-field and 2 H-fields per direction. (default)
-	void SetDumpMode2Cell() {DumpMode=2;}
+	void SetDumpMode2Cell() {m_DumpMode=CELL_INTERPOLATE;}
 
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
-	void SetDumpType(int type) {DumpType=type;}
+	void SetDumpType(DumpType type) {m_DumpType=type;}
 
 	static bool DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines);
 	static bool DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines);
 	static bool DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*** array, double** discLines, unsigned int* numLines);
 	static bool DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines);
 
+	static bool DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT**** array, unsigned int* numLines);
+
 	double CalcTotalEnergy();
+
+	void SetFileType(FileType fileType) {m_fileType=fileType;}
 
 //	virtual void Process();
 protected:
@@ -55,9 +68,12 @@ protected:
 	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT**** array, unsigned int* numLines);
 	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines);
 
-	int DumpMode;
-	int DumpType;
+	static string GetFieldNameByType(DumpType type);
+	DumpMode m_DumpMode;
+	DumpType m_DumpType;
 	string filePattern;
+	string m_fileName;
+	FileType m_fileType;
 
 //	unsigned int subSample[3];
 

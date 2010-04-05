@@ -346,10 +346,13 @@ int openEMS::SetupFDTD(const char* file)
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 			if (db)
 			{
-				ProcTD->SetDumpType(db->GetDumpType());
-				ProcTD->SetDumpMode(db->GetDumpMode());
+				ProcTD->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
+				ProcTD->SetDumpMode((ProcessFields::DumpMode)db->GetDumpMode());
+				ProcTD->SetFileType((ProcessFields::FileType)db->GetFileType());
 				ProcTD->SetFilePattern(db->GetName());
+				ProcTD->SetFileName(db->GetName());
 				ProcTD->DefineStartStopCoord(start,stop);
+				ProcTD->InitProcess();
 				PA->AddProcessing(ProcTD);
 			}
 			else
