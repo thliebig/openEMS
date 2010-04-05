@@ -72,3 +72,11 @@ disp(command);
 system(command)
 cd(savePath);
 
+% plotting
+PlotArgs.plane='zx';
+PlotArgs.pauseTime=0.01;
+PlotArgs.component=1;
+PlotArgs.zlim='auto';
+
+PlotHDF5FieldData('tmp/Ht_.h5',PlotArgs)
+
