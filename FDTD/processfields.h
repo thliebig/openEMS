@@ -35,7 +35,8 @@ public:
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
-//	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
+	//! Define a field dump sub sampling rate for a given direction (default: dir = -1 means all directions)
+	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
 
 	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType
 	void SetFilePattern(string fp) {filePattern=fp;}
@@ -75,7 +76,8 @@ protected:
 	string m_fileName;
 	FileType m_fileType;
 
-//	unsigned int subSample[3];
+	//! field dump sub-sampling
+	unsigned int subSample[3];
 
 	//! dump mesh
 	unsigned int numLines[3];

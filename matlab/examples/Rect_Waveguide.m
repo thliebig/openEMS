@@ -23,7 +23,7 @@ f0 = 1e9;
 
 k = 2*pi*f0/C0;
 kc = sqrt((m*pi/a/unit)^2 + (n*pi/b/unit)^2);
-fc = C0*kc;
+fc = C0*kc/2/pi
 beta = sqrt(k^2 - kc^2);
 
 func_Ex = [num2str(n/b/unit) '*cos(' num2str(m*pi/a) '*x)*sin('  num2str(n*pi/b) '*y)'];
@@ -79,12 +79,12 @@ CSX = SetExcitationWeight(CSX,'excite',weight);
 CSX = AddBox(CSX,'excite',0 ,start,stop);
  
 %dump
-CSX = AddDump(CSX,'Et',0,0,1);
+CSX = AddDump(CSX,'Et','FileType',1);
 start = [mesh.x(1) , height/2 , mesh.z(1)];
 stop = [mesh.x(end) , height/2 , mesh.z(end)];
 CSX = AddBox(CSX,'Et',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht',1,0,1);
+CSX = AddDump(CSX,'Ht','DumpType',1,'FileType',1);
 CSX = AddBox(CSX,'Ht',0,start,stop);
 
 %Write openEMS compatoble xml-file

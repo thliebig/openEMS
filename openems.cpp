@@ -349,6 +349,8 @@ int openEMS::SetupFDTD(const char* file)
 				ProcTD->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
 				ProcTD->SetDumpMode((ProcessFields::DumpMode)db->GetDumpMode());
 				ProcTD->SetFileType((ProcessFields::FileType)db->GetFileType());
+				for (int n=0;n<3;++n)
+					ProcTD->SetSubSampling(db->GetSubSampling(n),n);
 				ProcTD->SetFilePattern(db->GetName());
 				ProcTD->SetFileName(db->GetName());
 				ProcTD->DefineStartStopCoord(start,stop);

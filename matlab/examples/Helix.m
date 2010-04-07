@@ -102,12 +102,12 @@ stop(1) = stop(1)+2;stop(2) = stop(2)+2;
 CSX = AddBox(CSX,'it1', 0 ,start,stop);
 
 %dump
-CSX = AddDump(CSX,'Et_',0,0);
+CSX = AddDump(CSX,'Et_');
 start = [mesh.x(1) , 0 , mesh.z(1)];
 stop = [mesh.x(end) , 0 , mesh.z(end)];
 CSX = AddBox(CSX,'Et_',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht_',1,0);
+CSX = AddDump(CSX,'Ht_','DumpType',1);
 start = [mesh.x(1) , 0 , mesh.z(1)];
 stop = [mesh.x(end) , 0 , mesh.z(end)];
 CSX = AddBox(CSX,'Ht_',0 , start,stop);

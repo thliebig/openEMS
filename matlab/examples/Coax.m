@@ -63,12 +63,12 @@ CSX = SetExcitationWeight(CSX, 'excite', weight );
 CSX = AddCylindricalShell(CSX,'excite',0 ,start,stop,0.5*(coax_rad_i+coax_rad_ai),(coax_rad_ai-coax_rad_i));
  
 %dump
-CSX = AddDump(CSX,'Et_',0,2);
+CSX = AddDump(CSX,'Et_','DumpMode',2);
 start = [mesh.x(1) , 0 , mesh.z(1)];
 stop = [mesh.x(end) , 0 , mesh.z(end)];
 CSX = AddBox(CSX,'Et_',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht_',1,2);
+CSX = AddDump(CSX,'Ht_','DumpType',1,'DumpMode',2);
 CSX = AddBox(CSX,'Ht_',0,start,stop);
 
 %voltage calc

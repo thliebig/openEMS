@@ -25,7 +25,7 @@ ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 	m_DumpType = E_FIELD_DUMP;
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
-//	SetSubSampling(1);
+	SetSubSampling(1);
 
 	for (int n=0;n<3;++n)
 	{
@@ -107,6 +107,7 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
+	vector<double> lines;
 	if (m_DumpMode==NO_INTERPOLATION)
 	{
 		if (Op->SnapToMesh(dstart,start)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
@@ -121,15 +122,16 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 				start[n]=stop[n];
 				stop[n]=help;
 			}
-			numLines[n]=stop[n]-start[n]+1;
-	//		cerr << " number of lines " << numDLines[n] << endl;
+			lines.clear();
+			for (unsigned int i=start[n];i<=stop[n];i+=subSample[n])
+			{
+				lines.push_back(Op->discLines[n][i]);
+			}
+			numLines[n] = lines.size();
 			delete[] discLines[n];
 			discLines[n] = new double[numLines[n]];
 			for (unsigned int i=0;i<numLines[n];++i)
-			{
-				discLines[n][i] = Op->discLines[n][start[n]+i];
-	//			cerr << n << " : " << discDLines[n][i] << endl;
-			}
+				discLines[n][i] = lines.at(i);
 		}
 	}
 	else if (m_DumpMode==CELL_INTERPOLATE)
@@ -148,15 +150,16 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 				stop[n]=help;
 			}
 			++stop[n];
-			numDLines[n]=stop[n]-start[n];
-//			cerr << " number of lines " << numDLines[n] << endl;
+			lines.clear();
+			for (unsigned int i=start[n];i<stop[n];i+=subSample[n])
+			{
+				lines.push_back(0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
+			}		
+			numDLines[n] = lines.size();
 			delete[] discDLines[n];
 			discDLines[n] = new double[numDLines[n]];
 			for (unsigned int i=0;i<numDLines[n];++i)
-			{
-				discDLines[n][i] = 0.5*(Op->discLines[n][start[n]+i+1] +  Op->discLines[n][start[n]+i]);
-	//			cerr << n << " : " << discDLines[n][i] << endl;
-			}
+				discDLines[n][i] = lines.at(i);
 		}
 	}
 }
@@ -187,17 +190,17 @@ double ProcessFields::CalcTotalEnergy()
 	return energy*0.5;
 }
 
-//void  ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
-//{
-//	if (dir>2) return;
-//	if (dir<0)
-//	{
-//		subSample[0]=subSampleRate;
-//		subSample[1]=subSampleRate;
-//		subSample[2]=subSampleRate;
-//	}
-//	else subSample[dir]=subSampleRate;
-//}
+void  ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
+{
+	if (dir>2) return;
+	if (dir<0)
+	{
+		subSample[0]=subSampleRate;
+		subSample[1]=subSampleRate;
+		subSample[2]=subSampleRate;
+	}
+	else subSample[dir]=subSampleRate;
+}
 
 void ProcessFields::WriteVTKHeader(ofstream &file, double** discLines, unsigned int* numLines)
 {

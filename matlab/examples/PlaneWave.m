@@ -15,6 +15,7 @@ openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
+openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'plane_wave.xml';
@@ -53,12 +54,12 @@ CSX = AddExcitation(CSX,'excite',0,[0 1 0]);
 CSX = AddBox(CSX,'excite',0 ,start,stop);
  
 %dump
-CSX = AddDump(CSX,'Et',0,0,1);
+CSX = AddDump(CSX,'Et','FileType',1);
 start = [mesh.x(1) , 0 , mesh.z(1)];
 stop = [mesh.x(end) , 0 , mesh.z(end)];
 CSX = AddBox(CSX,'Et',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht',1,0,1);
+CSX = AddDump(CSX,'Ht','DumpType',1,'FileType',1);
 CSX = AddBox(CSX,'Ht',0,start,stop);
 
 %Write openEMS compatoble xml-file
@@ -75,8 +76,8 @@ cd(savePath);
 % plotting
 PlotArgs.plane='zx';
 PlotArgs.pauseTime=0.01;
-PlotArgs.component=1;
+PlotArgs.component=2;
 PlotArgs.zlim='auto';
 
-PlotHDF5FieldData('tmp/Ht_.h5',PlotArgs)
+PlotHDF5FieldData('tmp/Et.h5',PlotArgs)
 

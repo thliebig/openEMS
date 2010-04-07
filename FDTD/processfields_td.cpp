@@ -44,13 +44,13 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 //		cerr << "processing e-fields... " << endl;
 		for (pos[0]=0;pos[0]<numDLines[0];++pos[0])
 		{
-			OpPos[0]=start[0]+pos[0];
+			OpPos[0]=start[0]+pos[0]*subSample[0];
 			for (pos[1]=0;pos[1]<numDLines[1];++pos[1])
 			{
-				OpPos[1]=start[1]+pos[1];
+				OpPos[1]=start[1]+pos[1]*subSample[0];
 				for (pos[2]=0;pos[2]<numDLines[2];++pos[2])
 				{
-					OpPos[2]=start[2]+pos[2];
+					OpPos[2]=start[2]+pos[2]*subSample[0];
 					//in x
 					delta  = Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
 					E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]][OpPos[2]+1] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]+1];
@@ -96,13 +96,13 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 //		cerr << "processing h-fields... " << endl;
 		for (pos[0]=0;pos[0]<numDLines[0];++pos[0])
 		{
-			OpPos[0]=start[0]+pos[0];
+			OpPos[0]=start[0]+pos[0]*subSample[0];
 			for (pos[1]=0;pos[1]<numDLines[1];++pos[1])
 			{
-				OpPos[1]=start[1]+pos[1];
+				OpPos[1]=start[1]+pos[1]*subSample[1];
 				for (pos[2]=0;pos[2]<numDLines[2];++pos[2])
 				{
-					OpPos[2]=start[2]+pos[2];
+					OpPos[2]=start[2]+pos[2]*subSample[2];
 					//in x
 					if (OpPos[0]==0) delta  = Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
 					else delta = 0.5* (Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]-1]);
@@ -145,6 +145,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 	FDTD_FLOAT**** curr = Eng->GetCurrents();
 
 	unsigned int pos[3];
+	unsigned int OpPos[3];
 	double delta[3];
 	if (m_DumpType==E_FIELD_DUMP)
 	{
@@ -152,16 +153,19 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		FDTD_FLOAT**** E_T = Create_N_3DArray(numLines);
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
-			delta[0]=fabs(Op->MainOp->GetIndexDelta(0,pos[0]+start[0]));
+			OpPos[0]=start[0]+pos[0]*subSample[0];
+			delta[0]=fabs(Op->MainOp->GetIndexDelta(0,OpPos[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
-				delta[1]=fabs(Op->MainOp->GetIndexDelta(1,pos[1]+start[1]));
+				OpPos[1]=start[1]+pos[1]*subSample[1];
+				delta[1]=fabs(Op->MainOp->GetIndexDelta(1,OpPos[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
-					delta[2]=fabs(Op->MainOp->GetIndexDelta(2,pos[2]+start[2]));
-					E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[0]/Op->gridDelta;
-					E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[1]/Op->gridDelta;
-					E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[2]/Op->gridDelta;
+					OpPos[2]=start[2]+pos[2]*subSample[2];
+					delta[2]=fabs(Op->MainOp->GetIndexDelta(2,OpPos[2]));
+					E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0]/Op->gridDelta;
+					E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1]/Op->gridDelta;
+					E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2]/Op->gridDelta;
 				}
 			}
 		}
@@ -191,17 +195,20 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		FDTD_FLOAT**** H_T = Create_N_3DArray(numLines);
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
-			delta[0]=fabs(Op->MainOp->GetIndexWidth(0,pos[0]+start[0]));
+			OpPos[0]=start[0]+pos[0]*subSample[0];
+			delta[0]=fabs(Op->MainOp->GetIndexWidth(0,OpPos[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
-				delta[1]=fabs(Op->MainOp->GetIndexWidth(1,pos[1]+start[1]));
+				OpPos[1]=start[1]+pos[1]*subSample[1];
+				delta[1]=fabs(Op->MainOp->GetIndexWidth(1,OpPos[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
-					delta[2]=fabs(Op->MainOp->GetIndexWidth(2,pos[2]+start[2]));
+					OpPos[2]=start[2]+pos[2]*subSample[2];
+					delta[2]=fabs(Op->MainOp->GetIndexWidth(2,OpPos[2]));
 					//in x
-					H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[0]/Op->gridDelta;
-					H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[1]/Op->gridDelta;
-					H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][pos[0]+start[0]][pos[1]+start[1]][pos[2]+start[2]]/delta[2]/Op->gridDelta;
+					H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0]/Op->gridDelta;
+					H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1]/Op->gridDelta;
+					H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2]/Op->gridDelta;
 				}
 			}
 		}
