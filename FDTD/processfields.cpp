@@ -48,6 +48,7 @@ ProcessFields::~ProcessFields()
 
 void ProcessFields::InitProcess()
 {
+	if (Enabled==false) return;
 	string names[] = {"x","y","z"};
 	if (m_fileType==HDF5_FILETYPE)
 	{
