@@ -19,6 +19,7 @@
 #include "operator.h"
 #include "processfields.h"
 #include "tools/array_ops.h"
+#include "fparser.hh"
 
 Operator::Operator()
 {
@@ -287,6 +288,35 @@ unsigned int Operator::CalcStepExcitation()
 	ExciteSignal[1]=1.0;
 
 	return 1;
+}
+
+unsigned int Operator::CalcCustomExcitation(double f0, int nTS, string signal)
+{
+	if (dT==0) return 0;
+	if (nTS<=0) return 0;
+
+	ExciteLength = (unsigned int)(nTS);
+//	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
+	delete[] ExciteSignal;
+	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal[0]=0.0;
+	FunctionParser fParse;
+	fParse.AddConstant("pi", 3.14159265358979323846);
+	fParse.AddConstant("e", 2.71828182845904523536);
+	fParse.Parse(signal,"t");
+	if (fParse.GetParseErrorType()!=FunctionParser::FP_NO_ERROR)
+	{
+		cerr << "Operator::CalcCustomExcitation: Function Parser error: " << fParse.ErrorMsg() << endl;
+		exit(1);
+	}
+	double vars[1];
+	for (unsigned int n=1;n<ExciteLength+1;++n)
+	{
+		vars[0] = (n-1)*GetTimestep();
+		ExciteSignal[n] = fParse.Eval(vars);
+//		cerr << ExciteSignal[n] << endl;
+	}
+	return CalcNyquistNum(f0);
 }
 
 unsigned int Operator::CalcSinusExcitation(double f0, int nTS)

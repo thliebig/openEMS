@@ -108,13 +108,55 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
+void openEMS::SetupExcitation(TiXmlElement* Excite)
+{
+	if (Excite==NULL)
+	{
+		cerr << "Can't read openEMS Excitation Settings... " << endl;
+		exit(-2);
+	}
+
+	int Excit_Type=0;
+	double f0=0;
+	double fc=0;
+	Excite->QueryIntAttribute("Type",&Excit_Type);
+
+	unsigned int Nyquist = 0;
+	switch (Excit_Type)
+	{
+		case 0:
+			Excite->QueryDoubleAttribute("f0",&f0);
+			Excite->QueryDoubleAttribute("fc",&fc);
+			Nyquist = FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
+			break;
+		case 1:
+			Excite->QueryDoubleAttribute("f0",&f0);
+			Nyquist = FDTD_Op->CalcSinusExcitation(f0,NrTS);
+			break;
+		case 2:
+			Nyquist = FDTD_Op->CalcDiracPulsExcitation();
+			break;
+		case 3:
+			Nyquist = FDTD_Op->CalcStepExcitation();
+			break;
+		case 10:
+			Excite->QueryDoubleAttribute("f0",&f0);
+			Nyquist = FDTD_Op->CalcCustomExcitation(f0,NrTS,Excite->Attribute("Function"));
+			break;
+	}
+
+	if (!Nyquist)
+	{
+		cerr << "openEMS: excitation setup failed!!" << endl;
+		exit(2);
+	}
+	FDTD_Op->SetNyquistNum(Nyquist);
+}
+
 int openEMS::SetupFDTD(const char* file)
 {
 	if (file==NULL) return -1;
 	Reset();
-	double f0=0;
-	double fc=0;
-	int Excit_Type=0;
 	int bounds[6];
 
 	time_t startTime=time(NULL);
@@ -135,6 +177,7 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	TiXmlElement* FDTD_Opts = openEMSxml->FirstChildElement("FDTD");
+
 	if (FDTD_Opts==NULL)
 	{
 		cerr << "Can't read openEMS FDTD Settings... " << endl;
@@ -146,6 +189,7 @@ int openEMS::SetupFDTD(const char* file)
 		NrTS=0;
 	else
 		NrTS = help;
+
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
 	if (endCrit==0)
 		endCrit=1e-6;
@@ -153,29 +197,6 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Opts->QueryIntAttribute("OverSampling",&m_OverSampling);
 	if (m_OverSampling<2)
 		m_OverSampling=2;
-
-	TiXmlElement* Excite = FDTD_Opts->FirstChildElement("Excitation");
-	if (Excite==NULL)
-	{
-		cerr << "Can't read openEMS Excitation Settings... " << endl;
-		exit(-2);
-	}
-	Excite->QueryIntAttribute("Type",&Excit_Type);
-	if (Excit_Type==0)
-	{
-		Excite->QueryDoubleAttribute("f0",&f0);
-		Excite->QueryDoubleAttribute("fc",&fc);
-	}
-	else if (Excit_Type==1)
-	{
-		Excite->QueryDoubleAttribute("f0",&f0);
-		fc = 0;
-	}
-	else if (Excit_Type==2)
-	{
-		Excite->QueryDoubleAttribute("f0",&f0);
-		fc = 0;
-	}
 
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
@@ -209,50 +230,8 @@ int openEMS::SetupFDTD(const char* file)
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(-1);
 
 	FDTD_Op->CalcECOperator();
-	unsigned int Nyquist = 0;
-	if (Excit_Type==0)
-	{
-		Nyquist = FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
-		if (!Nyquist)
-		{
-			cerr << "openEMS: excitation setup failed!!" << endl;
-			exit(2);
-		}
-	}
-	else if (Excit_Type==1)
-	{
-		Nyquist = FDTD_Op->CalcSinusExcitation(f0,NrTS);
-		if (!Nyquist)
-		{
-			cerr << "openEMS: excitation setup failed!!" << endl;
-			exit(2);
-		}
-	}
-	else if (Excit_Type==2)
-	{
-		Nyquist = FDTD_Op->CalcDiracPulsExcitation();
-		if (!Nyquist)
-		{
-			cerr << "openEMS: excitation setup failed!!" << endl;
-			exit(2);
-		}
-	}
-	else if (Excit_Type==3)
-	{
-		Nyquist = FDTD_Op->CalcStepExcitation();
-		if (!Nyquist)
-		{
-			cerr << "openEMS: excitation setup failed!!" << endl;
-			exit(2);
-		}
-	}
-	else
-	{
-		cerr << "openEMS: Excitation type is unknown" << endl;
-		exit(-1);
-	}
 
-	FDTD_Op->SetNyquistNum(Nyquist);
+	SetupExcitation(FDTD_Opts->FirstChildElement("Excitation"));
 
 	if (DebugMat)
 	{
@@ -281,11 +260,11 @@ int openEMS::SetupFDTD(const char* file)
 		break;
 	}
 
-
 	time_t currTime = time(NULL);
 
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;
+	unsigned int Nyquist = FDTD_Op->GetNyquistNum();
 	PA = new ProcessingArray(Nyquist);
 
 	double start[3];

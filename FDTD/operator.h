@@ -35,6 +35,8 @@ public:
 
 	virtual int CalcECOperator();
 
+	//! Calculate a custom signal \return number of Nyquist timesteps defined by f0
+	virtual unsigned int CalcCustomExcitation(double f0, int nTS, string signal);
 	//! Calculate an excitation with center of f0 and the half bandwidth fc \return number of Nyquist timesteps
 	virtual unsigned int CalcGaussianPulsExcitation(double f0, double fc);
 	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps \return number of Nyquist timesteps

@@ -8,6 +8,7 @@ CONFIG -= app_bundle
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += ../CSXCAD \
+	../fparser \
     ../tinyxml
 LIBS += -L../CSXCAD \
     -lCSXCAD \

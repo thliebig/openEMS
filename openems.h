@@ -21,6 +21,7 @@
 class Operator;
 class Engine;
 class ProcessingArray;
+class TiXmlElement;
 
 class openEMS
 {
@@ -43,6 +44,7 @@ public:
 	void DebugOperator() {DebugOp=true;}
 
 protected:
+	void SetupExcitation(TiXmlElement* Excite);
 	//! Number of Timesteps
 	unsigned int NrTS;
 	bool Enable_Dumps;
