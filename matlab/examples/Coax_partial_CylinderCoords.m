@@ -5,8 +5,10 @@ clc
 EPS0 = 8.85418781762e-12;
 MUE0 = 1.256637062e-6;
 C0 = 1/sqrt(EPS0*MUE0);
+Z0 = sqrt(MUE0/EPS0);
 
 f0 = 0.5e9;
+epsR = 3.6;
 
 abs_length = 250;
 length = 6000;
@@ -14,7 +16,7 @@ port_dist = 1500;
 rad_i  = 100;
 rad_a = 230;
 partial = 0.25;
-max_mesh = 15;
+max_mesh = 10;
 max_alpha = max_mesh;
 N_alpha = ceil(rad_a * 2*pi * partial / max_alpha);
 mesh_res = [max_mesh 2*pi*partial/N_alpha max_mesh];
@@ -30,7 +32,7 @@ Sim_CSX = 'coax.xml';
 mkdir(Sim_Path);
 
 %setup FDTD parameter
-FDTD = InitCylindricalFDTD(1e5,1e-4);
+FDTD = InitCylindricalFDTD(1e5,1e-5);
 FDTD = SetGaussExcite(FDTD,f0,f0);
 BC = [0 0 1 1 0 0];
 FDTD = SetBoundaryCond(FDTD,BC);
@@ -44,9 +46,9 @@ CSX = DefineRectGrid(CSX, 1e-3,mesh);
 
 %%%fake pml
 finalKappa = 0.3/abs_length^4;
-finalSigma = finalKappa*MUE0/EPS0;
+finalSigma = finalKappa*MUE0/EPS0/epsR;
 CSX = AddMaterial(CSX,'pml');
-CSX = SetMaterialProperty(CSX,'pml','Kappa',finalKappa);
+CSX = SetMaterialProperty(CSX,'pml','Kappa',finalKappa,'Epsilon',epsR);
 CSX = SetMaterialProperty(CSX,'pml','Sigma',finalSigma);
 CSX = SetMaterialWeight(CSX,'pml','Kappa',['pow(abs(z)-' num2str(length-abs_length) ',4)']);
 CSX = SetMaterialWeight(CSX,'pml','Sigma',['pow(abs(z)-' num2str(length-abs_length) ',4)']);
@@ -54,6 +56,14 @@ CSX = SetMaterialWeight(CSX,'pml','Sigma',['pow(abs(z)-' num2str(length-abs_leng
 start = [rad_i mesh.y(1) length-abs_length];
 stop = [rad_a mesh.y(end) length];
 CSX = AddBox(CSX,'pml',0 ,start,stop);
+
+
+CSX = AddMaterial(CSX,'fill');
+CSX = SetMaterialProperty(CSX,'fill','Epsilon',epsR);
+start = [mesh.x(1) mesh.y(1) 0];
+stop = [mesh.x(end) mesh.y(end) length];
+CSX = AddBox(CSX,'fill',0 ,start,stop);
+
 
 start = [rad_i mesh.y(1) 0];
 stop = [rad_a mesh.y(end) 0];
@@ -107,10 +117,14 @@ i_f = UI.FD{3}.val / partial;
 delta_t = UI.TD{3}.t(1) - UI.TD{1}.t(1);        % half time-step (s) 
 i_f2 = i_f .* exp(-1i*2*pi*UI.FD{1}.f*delta_t); % compensate half time-step advance of H-field
 
-Z = u_f./i_f2;
-plot(UI.FD{1}.f,real(Z),'Linewidth',2);
+ZL = Z0/2/pi/sqrt(epsR)*log(rad_a/rad_i); %analytic line-impedance of a coax
+plot(UI.FD{1}.f,ZL*ones(size(u_f)),'g');
 hold on;
 grid on;
+Z = u_f./i_f2;
+plot(UI.FD{1}.f,real(Z),'Linewidth',2);
 plot(UI.FD{1}.f,imag(Z),'r','Linewidth',2);
 xlim([0 2*f0]);
+legend('Z_L','\Re\{Z\}','\Im\{Z\}','Location','Best');
+
 
