@@ -102,15 +102,17 @@ unsigned int Operator::CalcNyquistNum(double fmax)
 	return floor(T0/2/dT);
 }
 
-bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower)
+bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, bool* inside)
 {
 	bool ok=true;
 	for (int n=0;n<3;++n)
 	{
+		if (inside) //set defaults
+			inside[n] = true;
 		uicoord[n]=0;
-		if (dcoord[n]<discLines[n][0]) {ok=false;uicoord[n]=0;}
+		if (dcoord[n]<discLines[n][0]) {ok=false;uicoord[n]=0; if (inside) inside[n] = false;}
 		else if (dcoord[n]==discLines[n][0]) {uicoord[n]=0;}
-		else if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
+		else if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2; if (inside) inside[n] = false; }
 		else if (dcoord[n]==discLines[n][numLines[n]-1]) {uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
 		else
 			for (unsigned int i=1;i<numLines[n];++i)

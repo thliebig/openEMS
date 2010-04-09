@@ -85,8 +85,8 @@ void Processing::AddSteps(vector<unsigned int> steps)
 
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (Op->SnapToMesh(dstart,start)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
-	if (Op->SnapToMesh(dstop,stop)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
+	if (Op->SnapToMesh(dstart,start)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+	if (Op->SnapToMesh(dstop,stop)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 }
 
 double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int field)

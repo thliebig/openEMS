@@ -39,8 +39,8 @@ void ProcessCurrent::OpenFile(string outfile)
 
 void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (Op->SnapToMesh(dstart,start,true)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
-	if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
+	if (Op->SnapToMesh(dstart,start,true,m_start_inside)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+	if (Op->SnapToMesh(dstop,stop,true,m_stop_inside)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 }
 
 int ProcessCurrent::Process()
@@ -62,27 +62,36 @@ int ProcessCurrent::Process()
 			unsigned int help=start[n];
 			start[n]=stop[n];
 			stop[n]=help;
+			bool b_help=m_start_inside[n];
+			m_start_inside[n] = m_stop_inside[n];
+			m_stop_inside[n] = b_help;
 		}
 	}
 
 	//x-current
-	for (unsigned int i=start[0];i<stop[0];++i)
-		current+=curr[0][i][start[1]][start[2]];
+	if (m_start_inside[1] && m_start_inside[2])
+		for (unsigned int i=start[0];i<stop[0];++i)
+			current+=curr[0][i][start[1]][start[2]];
 	//y-current
-	for (unsigned int i=start[1];i<stop[1];++i)
-		current+=curr[1][stop[0]][i][start[2]];
+	if (m_stop_inside[0] && m_start_inside[2])
+		for (unsigned int i=start[1];i<stop[1];++i)
+			current+=curr[1][stop[0]][i][start[2]];
 	//z-current
-	for (unsigned int i=start[2];i<stop[2];++i)
-		current+=curr[2][stop[0]][stop[1]][i];
+	if (m_stop_inside[0] && m_stop_inside[1])
+		for (unsigned int i=start[2];i<stop[2];++i)
+			current+=curr[2][stop[0]][stop[1]][i];
 	//x-current
-	for (unsigned int i=start[0];i<stop[0];++i)
-		current-=curr[0][i][stop[1]][stop[2]];
+	if (m_stop_inside[1] && m_stop_inside[2])
+		for (unsigned int i=start[0];i<stop[0];++i)
+			current-=curr[0][i][stop[1]][stop[2]];
 	//y-current
-	for (unsigned int i=start[1];i<stop[1];++i)
-		current-=curr[1][start[0]][i][stop[2]];
+	if (m_start_inside[0] && m_stop_inside[2])
+		for (unsigned int i=start[1];i<stop[1];++i)
+			current-=curr[1][start[0]][i][stop[2]];
 	//z-current
-	for (unsigned int i=start[2];i<stop[2];++i)
-		current-=curr[2][start[0]][start[1]][i];
+	if (m_start_inside[0] && m_start_inside[1])
+		for (unsigned int i=start[2];i<stop[2];++i)
+			current-=curr[2][start[0]][start[1]][i];
 
 //	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
 	v_current.push_back(current);

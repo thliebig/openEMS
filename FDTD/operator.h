@@ -67,7 +67,7 @@ public:
 
 	virtual void Reset();
 
-	bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false);
+	bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 
 protected:
 	//! use New() for creating a new Operator

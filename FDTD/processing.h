@@ -58,8 +58,13 @@ protected:
 	size_t m_PS_pos; //! current position in list of processing steps
 	vector<unsigned int> m_ProcessSteps; //! list of processing steps
 
+	//! define/store snapped start/stop coords as mesh index
 	unsigned int start[3];
 	unsigned int stop[3];
+
+	//! define/store if snapped start/stop coords are inside the field domain
+	bool m_start_inside[3];
+	bool m_stop_inside[3];
 
 	double CalcLineIntegral(unsigned int* start, unsigned int* stop, int field);
 };
