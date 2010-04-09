@@ -15,40 +15,35 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ENGINE_H
-#define ENGINE_H
+#ifndef OPERATOR_CYLINDER_H
+#define OPERATOR_CYLINDER_H
 
 #include "operator.h"
 
-class Engine
+class Operator_Cylinder : public Operator
 {
 public:
-	static Engine* New(const Operator* op);
-	virtual ~Engine();
+	static Operator_Cylinder* New();
+	virtual ~Operator_Cylinder();
+	
+	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
-	virtual void Init();
+	virtual void ApplyElectricBC(bool* dirs);
+	virtual void ApplyMagneticBC(bool* dirs);
+
 	virtual void Reset();
 
-	//!Iterate a number of timesteps
-	virtual bool IterateTS(unsigned int iterTS);
-
-	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
-
-	virtual FDTD_FLOAT**** GetVoltages() {return volt;};
-	virtual FDTD_FLOAT**** GetCurrents() {return curr;};
-
 protected:
-	Engine(const Operator* op);
-	const Operator* Op;
+	Operator_Cylinder();
+	virtual void Init();
 
-	virtual inline void UpdateVoltages();
-	virtual inline void ApplyVoltageExcite();
-	virtual inline void UpdateCurrents();
-	virtual inline void ApplyCurrentExcite();
+	virtual inline void Calc_ECOperatorPos(int n, unsigned int* pos);
 
-	FDTD_FLOAT**** volt;
-	FDTD_FLOAT**** curr;
-	unsigned int numTS;
+	bool CC_closedAlpha;
+	bool CC_R0_included;
+
+	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
+	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
 };
 
-#endif // ENGINE_H
+#endif // OPERATOR_CYLINDER_H

@@ -21,14 +21,20 @@
 #include "tools/array_ops.h"
 #include "fparser.hh"
 
+Operator* Operator::New()
+{
+	Operator* op = new Operator();
+	op->Init();
+	return op;
+}
+
 Operator::Operator()
 {
-	Operator::Init();
 }
 
 Operator::~Operator()
 {
-	Operator::Reset();
+	Reset();
 }
 
 void Operator::Init()
@@ -86,7 +92,7 @@ void Operator::Reset()
 		delete[] EC_R[n];
 	}
 
-	Operator::Init();
+	Init();
 }
 
 unsigned int Operator::CalcNyquistNum(double fmax)
@@ -449,6 +455,16 @@ void Operator::InitOperator()
 	ii = Create_N_3DArray(numLines);
 }
 
+inline void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
+{
+	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
+	vv[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+	vi[n][pos[0]][pos[1]][pos[2]] = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+
+	ii[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+	iv[n][pos[0]][pos[1]][pos[2]] = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+}
+
 int Operator::CalcECOperator()
 {
 	if (Calc_EC()==0)
@@ -469,12 +485,7 @@ int Operator::CalcECOperator()
 			{
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
-					i = MainOp->SetPos(pos[0],pos[1],pos[2]);
-					vv[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-					vi[n][pos[0]][pos[1]][pos[2]] = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-
-					ii[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
-					iv[n][pos[0]][pos[1]][pos[2]] = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+					Calc_ECOperatorPos(n,pos);
 				}
 			}
 		}

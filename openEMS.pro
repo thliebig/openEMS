@@ -1,27 +1,28 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-02-26T22:34:51
 # -------------------------------------------------
-QT -= gui core
+QT -= gui \
+    core
 TARGET = openEMS
 CONFIG += console
 CONFIG -= app_bundle
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += ../CSXCAD \
-	../fparser \
+    ../fparser \
     ../tinyxml
 LIBS += -L../CSXCAD \
     -lCSXCAD \
     -L../fparser \
     -lfparser \
     -L../tinyxml \
-	-ltinyxml \
-	-lboost_thread \
-	-lhdf5 -lhdf5_cpp
+    -ltinyxml \
+    -lboost_thread \
+    -lhdf5 \
+    -lhdf5_cpp
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
-
 SOURCES += main.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \
@@ -35,7 +36,9 @@ SOURCES += main.cpp \
     FDTD/processcurrent.cpp \
     examples/FDTD_examples.cpp \
     openems.cpp \
-    FDTD/engine_multithread.cpp
+    FDTD/engine_multithread.cpp \
+    FDTD/operator_cylinder.cpp \
+    FDTD/engine_cylinder.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -49,7 +52,12 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/processcurrent.h \
     examples/FDTD_examples.h \
     openems.h \
-    FDTD/engine_multithread.h
-
-QMAKE_CXXFLAGS_RELEASE = -O2 -g -march=native
-QMAKE_CXXFLAGS_DEBUG = -O0 -g -march=native
+    FDTD/engine_multithread.h \
+    FDTD/operator_cylinder.h \
+    FDTD/engine_cylinder.h
+QMAKE_CXXFLAGS_RELEASE = -O2 \
+    -g \
+    -march=native
+QMAKE_CXXFLAGS_DEBUG = -O0 \
+    -g \
+    -march=native

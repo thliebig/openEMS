@@ -18,8 +18,8 @@
 #include "openems.h"
 #include <iomanip>
 #include "tools/array_ops.h"
-#include "FDTD/operator.h"
 #include "FDTD/engine.h"
+#include "FDTD/engine_cylinder.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
@@ -43,6 +43,7 @@ openEMS::openEMS()
 	FDTD_Op=NULL;
 	FDTD_Eng=NULL;
 	PA=NULL;
+	CylinderCoords = false;
 	Enable_Dumps = true;
 	DebugMat = false;
 	DebugOp = false;
@@ -190,6 +191,13 @@ int openEMS::SetupFDTD(const char* file)
 	else
 		NrTS = help;
 
+	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
+	if (help==1)
+	{
+		cout << "Using a cylinder coordinate FDTD..." << endl;
+		CylinderCoords = true;
+	}
+
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
 	if (endCrit==0)
 		endCrit=1e-6;
@@ -226,8 +234,16 @@ int openEMS::SetupFDTD(const char* file)
 
 	//*************** setup operator ************//
 	cout << "Create Operator..." << endl;
-	FDTD_Op = new Operator();
-	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(-1);
+	if (CylinderCoords)
+	{
+		FDTD_Op = Operator_Cylinder::New();
+	}
+	else
+	{
+		FDTD_Op = Operator::New();
+	}
+
+	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(2);
 
 	FDTD_Op->CalcECOperator();
 
@@ -251,13 +267,21 @@ int openEMS::SetupFDTD(const char* file)
 	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 
 	//create FDTD engine
-	switch (m_engine) {
-	case EngineType_Multithreaded:
-		FDTD_Eng = Engine_Multithread::createEngine(FDTD_Op,m_engine_numThreads);
-		break;
-	default:
-		FDTD_Eng = Engine::createEngine(FDTD_Op);
-		break;
+	if (CylinderCoords)
+	{
+		cerr << "openEMS: creating cylinder coordinate FDTD engine..." << endl;
+		FDTD_Eng = Engine_Cylinder::New((Operator_Cylinder*)FDTD_Op);
+	}
+	else
+	{
+		switch (m_engine) {
+		case EngineType_Multithreaded:
+			FDTD_Eng = Engine_Multithread::New(FDTD_Op,m_engine_numThreads);
+			break;
+		default:
+			FDTD_Eng = Engine::New(FDTD_Op);
+			break;
+		}
 	}
 
 	time_t currTime = time(NULL);

@@ -34,7 +34,7 @@
 
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine_Multithread* Engine_Multithread::createEngine(const Operator* op, unsigned int numThreads)
+Engine_Multithread* Engine_Multithread::New(const Operator* op, unsigned int numThreads)
 {
 	Engine_Multithread* e = new Engine_Multithread(op);
 	e->setNumThreads( numThreads );

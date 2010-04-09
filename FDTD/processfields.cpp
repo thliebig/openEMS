@@ -81,7 +81,7 @@ void ProcessFields::InitProcess()
 			H5::DataSet dataset = group->createDataSet( names[n].c_str(), datatype, dataspace );
 			//convert to float...
 			float* array = new float[NrLines[n]];
-			for (int i=0;i<NrLines[n];++i)
+			for (unsigned int i=0;i<NrLines[n];++i)
 				array[i] = Lines[n][i];
 			//write to dataset
 			dataset.write( array, H5::PredType::NATIVE_FLOAT );

@@ -73,7 +73,7 @@ class Engine_Multithread : public Engine
 	friend class NS_Engine_Multithread::thread;
 	friend class NS_Engine_Multithread::thread_e_excitation;
 public:
-	static Engine_Multithread* createEngine(const Operator* op, unsigned int numThreads = 0);
+	static Engine_Multithread* New(const Operator* op, unsigned int numThreads = 0);
 	virtual ~Engine_Multithread();
 
 	virtual void setNumThreads( unsigned int numThreads );

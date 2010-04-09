@@ -28,7 +28,8 @@
 class Operator
 {
 public:
-    Operator();
+	//! Create a new operator
+	static Operator* New();
 	virtual ~Operator();
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
@@ -69,6 +70,9 @@ public:
 	bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false);
 
 protected:
+	//! use New() for creating a new Operator
+	Operator();
+
 	virtual void Init();
 	virtual void InitOperator();
 
@@ -92,10 +96,13 @@ protected:
 	double dT; //FDTD timestep!
 	unsigned int m_nyquistTS;
 
+	//! Calc operator at certain pos
+	virtual inline void Calc_ECOperatorPos(int n, unsigned int* pos);
+
 	//EC elements, internal only!
-	bool Calc_EC();
-	bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
-	bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
+	virtual bool Calc_EC();
+	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
+	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
 	double* EC_C[3];
 	double* EC_G[3];
 	double* EC_L[3];

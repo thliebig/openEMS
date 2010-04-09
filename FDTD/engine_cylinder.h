@@ -15,40 +15,23 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ENGINE_H
-#define ENGINE_H
+#ifndef ENGINE_CYLINDER_H
+#define ENGINE_CYLINDER_H
 
-#include "operator.h"
+#include "engine.h"
+#include "operator_cylinder.h"
 
-class Engine
+class Engine_Cylinder : public Engine
 {
 public:
-	static Engine* New(const Operator* op);
-	virtual ~Engine();
+	static Engine_Cylinder* New(const Operator_Cylinder* op);
 
 	virtual void Init();
 	virtual void Reset();
 
-	//!Iterate a number of timesteps
-	virtual bool IterateTS(unsigned int iterTS);
-
-	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
-
-	virtual FDTD_FLOAT**** GetVoltages() {return volt;};
-	virtual FDTD_FLOAT**** GetCurrents() {return curr;};
-
 protected:
-	Engine(const Operator* op);
-	const Operator* Op;
-
-	virtual inline void UpdateVoltages();
-	virtual inline void ApplyVoltageExcite();
-	virtual inline void UpdateCurrents();
-	virtual inline void ApplyCurrentExcite();
-
-	FDTD_FLOAT**** volt;
-	FDTD_FLOAT**** curr;
-	unsigned int numTS;
+	Engine_Cylinder(const Operator_Cylinder* op);
+	~Engine_Cylinder();
 };
 
-#endif // ENGINE_H
+#endif // ENGINE_CYLINDER_H

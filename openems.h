@@ -45,6 +45,9 @@ public:
 
 protected:
 	void SetupExcitation(TiXmlElement* Excite);
+
+	bool CylinderCoords;
+
 	//! Number of Timesteps
 	unsigned int NrTS;
 	bool Enable_Dumps;
