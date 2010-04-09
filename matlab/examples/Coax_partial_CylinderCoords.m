@@ -103,7 +103,11 @@ cd(savePath);
 UI = ReadUI({'ut1_1','ut1_2','it1'},'tmp/');
 u_f = (UI.FD{1}.val + UI.FD{2}.val)/2; %averaging voltages to fit current
 i_f = UI.FD{3}.val / partial;
-Z = u_f./i_f;
+
+delta_t = 1.35929e-11; % time-step (s)   FIXME will change, if mesh is changed!
+i_f2 = i_f .* exp(-1i*2*pi*UI.FD{1}.f*delta_t/2); % compensate half time-step advance of H-field
+
+Z = u_f./i_f2;
 plot(UI.FD{1}.f,real(Z),'Linewidth',2);
 hold on;
 grid on;
