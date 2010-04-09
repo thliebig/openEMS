@@ -95,6 +95,7 @@ int ProcessCurrent::Process()
 
 //	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
 	v_current.push_back(current);
-	file << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << current << endl;
+	//current is sampled half a timestep later then the voltages
+	file << (0.5 + (double)Eng->GetNumberOfTimesteps())*Op->GetTimestep() << "\t" << current << endl;
 	return GetNextInterval();
 }

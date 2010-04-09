@@ -34,7 +34,6 @@ Engine_Cylinder::~Engine_Cylinder()
 
 void Engine_Cylinder::Init()
 {
-	cerr << "Engine_Cylinder::Init()" << endl;
 	Engine::Init();
 }
 
