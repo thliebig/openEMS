@@ -30,25 +30,29 @@ Engine* Engine::New(const Operator* op)
 Engine::Engine(const Operator* op)
 {
 	Op = op;
+	for (int n=0;n<3;++n)
+	{
+		numLines[n] = Op->GetNumberOfLines(n);
+	}
 }
 
 Engine::~Engine()
 {
-	Reset();
+	this->Reset();
 }
 
 void Engine::Init()
 {
 	numTS = 0;
-	volt = Create_N_3DArray(Op->numLines);
-	curr = Create_N_3DArray(Op->numLines);
+	volt = Create_N_3DArray(numLines);
+	curr = Create_N_3DArray(numLines);
 }
 
 void Engine::Reset()
 {
-	Delete_N_3DArray(volt,Op->numLines);
+	Delete_N_3DArray(volt,numLines);
 	volt=NULL;
-	Delete_N_3DArray(curr,Op->numLines);
+	Delete_N_3DArray(curr,numLines);
 	curr=NULL;
 }
 
@@ -58,13 +62,13 @@ inline void Engine::UpdateVoltages()
 	bool shift[3];
 
 	//voltage updates
-	for (pos[0]=0;pos[0]<Op->numLines[0];++pos[0])
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 	{
 		shift[0]=pos[0];
-		for (pos[1]=0;pos[1]<Op->numLines[1];++pos[1])
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
 			shift[1]=pos[1];
-			for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
+			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 			{
 				shift[2]=pos[2];
 				//do the updates here
@@ -100,11 +104,11 @@ inline void Engine::ApplyVoltageExcite()
 inline void Engine::UpdateCurrents()
 {
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<Op->numLines[0]-1;++pos[0])
+	for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
 	{
-		for (pos[1]=0;pos[1]<Op->numLines[1]-1;++pos[1])
+		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 		{
-			for (pos[2]=0;pos[2]<Op->numLines[2]-1;++pos[2])
+			for (pos[2]=0;pos[2]<numLines[2]-1;++pos[2])
 			{
 				//do the updates here
 				//for x

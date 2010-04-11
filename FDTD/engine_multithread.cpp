@@ -87,14 +87,14 @@ void Engine_Multithread::Init()
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 
-	unsigned int linesPerThread = round((float)Op->numLines[0] / (float)m_numThreads);
+	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
 	for (unsigned int n=0; n<m_numThreads; n++) {
 		unsigned int start = n * linesPerThread;
 		unsigned int stop = (n+1) * linesPerThread - 1;
 		unsigned int stop_h = stop;
 		if (n == m_numThreads-1) {
 			// last thread
-			stop = Op->numLines[0]-1;
+			stop = numLines[0]-1;
 			stop_h = stop-1;
 		}
 		//NS_Engine_Multithread::DBG().cout() << "###DEBUG## Thread " << n << ": start=" << start << " stop=" << stop  << " stop_h=" << stop_h << std::endl;
@@ -176,10 +176,10 @@ void thread::operator()()
 			for (pos[0]=m_start;pos[0]<=m_stop;++pos[0])
 			{
 				shift[0]=pos[0];
-				for (pos[1]=0;pos[1]<m_enginePtr->Op->numLines[1];++pos[1])
+				for (pos[1]=0;pos[1]<m_enginePtr->numLines[1];++pos[1])
 				{
 					shift[1]=pos[1];
-					for (pos[2]=0;pos[2]<m_enginePtr->Op->numLines[2];++pos[2])
+					for (pos[2]=0;pos[2]<m_enginePtr->numLines[2];++pos[2])
 					{
 						shift[2]=pos[2];
 						//do the updates here
@@ -218,9 +218,9 @@ void thread::operator()()
 			//current updates
 			for (pos[0]=m_start;pos[0]<=m_stop_h;++pos[0])
 			{
-				for (pos[1]=0;pos[1]<m_enginePtr->Op->numLines[1]-1;++pos[1])
+				for (pos[1]=0;pos[1]<m_enginePtr->numLines[1]-1;++pos[1])
 				{
-					for (pos[2]=0;pos[2]<m_enginePtr->Op->numLines[2]-1;++pos[2])
+					for (pos[2]=0;pos[2]<m_enginePtr->numLines[2]-1;++pos[2])
 					{
 						//do the updates here
 						//for x

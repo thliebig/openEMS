@@ -56,6 +56,8 @@ public:
 	double GetTimestep() const {return dT;};
 	double GetNumberCells() const;
 
+	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
+
 	void SetNyquistNum(unsigned int nyquist) {m_nyquistTS=nyquist;}
 	unsigned int GetNyquistNum() const {return m_nyquistTS;};
 	unsigned int CalcNyquistNum(double fmax);
@@ -108,9 +110,10 @@ protected:
 	double* EC_L[3];
 	double* EC_R[3];
 
-// engine/post-proc needs access
-public:
 	unsigned int numLines[3];
+
+	// engine/post-proc needs access
+public:
 	double* discLines[3];
 	double gridDelta;
 	AdrOp* MainOp;

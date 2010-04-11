@@ -46,6 +46,8 @@ protected:
 	virtual inline void UpdateCurrents();
 	virtual inline void ApplyCurrentExcite();
 
+	unsigned int numLines[3];
+
 	FDTD_FLOAT**** volt;
 	FDTD_FLOAT**** curr;
 	unsigned int numTS;

@@ -66,8 +66,9 @@ int ProcessCurrent::Process()
 			m_start_inside[n] = m_stop_inside[n];
 			m_stop_inside[n] = b_help;
 		}
+		if (m_stop_inside[n]==false) // integrate up to the wall, Operator::SnapToMesh would give numLines[n]-2
+			stop[n]=Op->GetNumberOfLines(n)-1;
 	}
-
 	//x-current
 	if (m_start_inside[1] && m_start_inside[2])
 		for (unsigned int i=start[0];i<stop[0];++i)

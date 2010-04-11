@@ -173,11 +173,11 @@ double ProcessFields::CalcTotalEnergy()
 	double energy=0;
 	if (Eng==NULL) return 0.0;
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<Op->numLines[0];++pos[0])
+	for (pos[0]=0;pos[0]<Op->GetNumberOfLines(0);++pos[0])
 	{
-		for (pos[1]=0;pos[1]<Op->numLines[1];++pos[1])
+		for (pos[1]=0;pos[1]<Op->GetNumberOfLines(1);++pos[1])
 		{
-			for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
+			for (pos[2]=0;pos[2]<Op->GetNumberOfLines(2);++pos[2])
 			{
 				energy+=fabs(volt[0][pos[0]][pos[1]][pos[2]] * curr[1][pos[0]][pos[1]][pos[2]]);
 				energy+=fabs(volt[0][pos[0]][pos[1]][pos[2]] * curr[2][pos[0]][pos[1]][pos[2]]);

@@ -105,15 +105,32 @@ unsigned int Operator::CalcNyquistNum(double fmax)
 bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, bool* inside)
 {
 	bool ok=true;
+	unsigned int numLines[3];
 	for (int n=0;n<3;++n)
 	{
+		numLines[n] = GetNumberOfLines(n);
 		if (inside) //set defaults
 			inside[n] = true;
 		uicoord[n]=0;
-		if (dcoord[n]<discLines[n][0]) {ok=false;uicoord[n]=0; if (inside) inside[n] = false;}
-		else if (dcoord[n]==discLines[n][0]) {uicoord[n]=0;}
-		else if (dcoord[n]>discLines[n][numLines[n]-1]) {ok=false;uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2; if (inside) inside[n] = false; }
-		else if (dcoord[n]==discLines[n][numLines[n]-1]) {uicoord[n]=numLines[n]-1; if (lower) uicoord[n]=numLines[n]-2;}
+		if (dcoord[n]<discLines[n][0])
+		{
+			ok=false;uicoord[n]=0;
+			if (inside) inside[n] = false;
+		}
+		else if (dcoord[n]==discLines[n][0])
+			uicoord[n]=0;
+		else if (dcoord[n]>discLines[n][numLines[n]-1])
+		{
+			ok=false;
+			uicoord[n]=numLines[n]-1;
+			if (lower) uicoord[n]=numLines[n]-2;
+			if (inside) inside[n] = false;
+		}
+		else if (dcoord[n]==discLines[n][numLines[n]-1])
+		{
+			uicoord[n]=numLines[n]-1;
+			if (lower) uicoord[n]=numLines[n]-2;
+		}
 		else
 			for (unsigned int i=1;i<numLines[n];++i)
 			{
@@ -516,7 +533,6 @@ void Operator::ApplyElectricBC(bool* dirs)
 {
 	if (dirs==NULL) return;
 	unsigned int pos[3];
-	unsigned int ipos;
 	for (int n=0;n<3;++n)
 	{
 		int nP = (n+1)%3;
