@@ -45,6 +45,16 @@ void Operator_Cylinder::Reset()
 	Operator::Reset();
 }
 
+inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
+{
+	//this is necessary for a correct field processing... cylindrical engine has to reset this by adding +1
+	if (CC_closedAlpha && ny==1)
+		return numLines[1]-1;
+
+	return numLines[ny];
+}
+
+
 bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 {
 	if (Operator::SetGeometryCSX(geo)==false) return false;
@@ -53,10 +63,20 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 //			cerr << minmaxA -2*PI << " < " << (2*PI)/10/numLines[1] << endl;
 	if (fabs(minmaxA-2*PI) < (2*PI)/10/numLines[1]) //check minmaxA smaller then a tenth of average alpha-width
 	{
-		CC_closedAlpha = true;
-		--numLines[1];
 		cout << "Operator_Cylinder::SetGeometryCSX: Alpha is a full 2*PI => closed Cylinder..." << endl;
-		cerr << "Operator_Cylinder::SetGeometryCSX: closed cylinder not yet implemented... exit... " << endl; exit(1);
+		CC_closedAlpha = true;
+		discLines[1][numLines[1]-1] = discLines[1][0] + 2*PI;
+		cerr << "Operator_Cylinder::SetGeometryCSX: Warning, not handling the disc-line width and material averaging correctly yet for a closed cylinder..." << endl;
+		if (MainOp->GetIndexDelta(1,0)-MainOp->GetIndexDelta(1,numLines[1]-2) > (2*PI)/10/numLines[1])
+		{
+			cerr << "Operator_Cylinder::SetGeometryCSX: first and last angle delta must be the same... deviation to large..." << MainOp->GetIndexDelta(1,0) - MainOp->GetIndexDelta(1,numLines[1]-2) << endl;
+			exit(1);
+		}
+		if (MainOp->GetIndexDelta(1,0)-MainOp->GetIndexDelta(1,numLines[1]-2) > 0)
+		{
+			cerr << "Operator_Cylinder::SetGeometryCSX: first and last angle delta must be the same... auto correction of deviation: " << MainOp->GetIndexDelta(1,0) - MainOp->GetIndexDelta(1,numLines[1]-2) << endl;
+			discLines[1][numLines[1]-2] = discLines[1][numLines[1]-1]-MainOp->GetIndexDelta(1,0);
+		}
 	}
 	else if (minmaxA>2*PI)
 		{cerr << "Operator_Cylinder::SetGeometryCSX: Alpha Max-Min must not be larger than 2*PI!!!" << endl; Reset(); return false;}

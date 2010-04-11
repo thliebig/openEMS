@@ -33,6 +33,11 @@ public:
 
 	virtual void Reset();
 
+	virtual unsigned int GetNumberOfLines(int ny) const;
+
+	bool GetClosedAlpha() const {return CC_closedAlpha;}
+	bool GetR0Included() const {return CC_R0_included;}
+
 protected:
 	Operator_Cylinder();
 	virtual void Init();

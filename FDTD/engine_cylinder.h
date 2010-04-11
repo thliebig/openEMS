@@ -25,13 +25,21 @@ class Engine_Cylinder : public Engine
 {
 public:
 	static Engine_Cylinder* New(const Operator_Cylinder* op);
+	virtual ~Engine_Cylinder();
 
 	virtual void Init();
 	virtual void Reset();
 
+	//!Iterate a number of timesteps
+	virtual bool IterateTS(unsigned int iterTS);
+
 protected:
 	Engine_Cylinder(const Operator_Cylinder* op);
-	~Engine_Cylinder();
+
+	virtual inline void CloseAlphaVoltages();
+	virtual inline void CloseAlphaCurrents();
+
+	const Operator_Cylinder* cyl_Op;
 };
 
 #endif // ENGINE_CYLINDER_H
