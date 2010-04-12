@@ -17,6 +17,7 @@
 
 #include "processfields.h"
 
+#include <iomanip>
 #include "H5Cpp.h"
 
 ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
@@ -26,6 +27,7 @@ ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
 	SetSubSampling(1);
+	SetPrecision(6);
 
 	for (int n=0;n<3;++n)
 	{
@@ -203,7 +205,7 @@ void  ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
 	else subSample[dir]=subSampleRate;
 }
 
-void ProcessFields::WriteVTKHeader(ofstream &file, double** discLines, unsigned int* numLines)
+void ProcessFields::WriteVTKHeader(ofstream &file, double** discLines, unsigned int* numLines, unsigned int precision)
 {
 	file << "# vtk DataFile Version 2.0" << endl;
 	file << "Rectilinear Grid openEMS_ProcessFields" << endl;
@@ -212,20 +214,20 @@ void ProcessFields::WriteVTKHeader(ofstream &file, double** discLines, unsigned 
 	file << "DIMENSIONS " << numLines[0] << " " << numLines[1] << " " << numLines[2] << endl;
 	file << "X_COORDINATES " << numLines[0] << " float" << endl;
 	for (unsigned int i=0;i<numLines[0];++i)
-		file << discLines[0][i] << " ";
+		file << setprecision(precision) << discLines[0][i] << " ";
 	file << endl;
 	file << "Y_COORDINATES " << numLines[1] << " float" << endl;
 	for (unsigned int i=0;i<numLines[1];++i)
-		file << discLines[1][i] << " ";
+		file << setprecision(precision) << discLines[1][i] << " ";
 	file << endl;
 	file << "Z_COORDINATES " << numLines[2] << " float" << endl;
 	for (unsigned int i=0;i<numLines[2];++i)
-		file << discLines[2][i] << " ";
+		file << setprecision(precision) << discLines[2][i] << " ";
 	file << endl << endl;
 	file << "POINT_DATA " << numLines[0]*numLines[1]*numLines[2] << endl;
 }
 
-void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT**** array, unsigned int* numLines)
+void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT**** array, unsigned int* numLines, unsigned int precision)
 {
 	file << "VECTORS " << name << " float " << endl;
 
@@ -237,36 +239,36 @@ void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT*
 			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 			{
 				//in x
-				file << array[0][pos[0]][pos[1]][pos[2]] << " ";
+				file << setprecision(precision) << array[0][pos[0]][pos[1]][pos[2]] << " ";
 				//in y
-				file << array[1][pos[0]][pos[1]][pos[2]] << " ";
+				file << setprecision(precision) << array[1][pos[0]][pos[1]][pos[2]] << " ";
 				//in z
-				file << array[2][pos[0]][pos[1]][pos[2]] << endl;
+				file << setprecision(precision) << array[2][pos[0]][pos[1]][pos[2]] << endl;
 			}
 		}
 	}
 }
 
 
-bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines)
+bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines, unsigned int precision)
 {
-	WriteVTKHeader(file, discLines, numLines);
-	WriteVTKVectorArray(file, name, array, numLines);
+	WriteVTKHeader(file, discLines, numLines, precision);
+	WriteVTKVectorArray(file, name, array, numLines, precision);
 	return true;
 }
 
-bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
+bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines, unsigned int precision)
 {
-	WriteVTKHeader(file, discLines, numLines);
+	WriteVTKHeader(file, discLines, numLines, precision);
 	for (unsigned int n=0;n<numFields;++n)
 	{
-		WriteVTKVectorArray(file, names[n], array[n], numLines);
+		WriteVTKVectorArray(file, names[n], array[n], numLines, precision);
 		file << endl;
 	}
 	return true;
 }
 
-void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines)
+void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines, unsigned int precision)
 {
 	file << "SCALARS " << name << " float " << 1 << endl;
 	file << "LOOKUP_TABLE default" << endl;
@@ -287,19 +289,19 @@ void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*
 	}
 }
 
-bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*** array, double** discLines, unsigned int* numLines)
+bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*** array, double** discLines, unsigned int* numLines, unsigned int precision)
 {
-	WriteVTKHeader(file, discLines, numLines);
-	WriteVTKScalarArray(file, name, array, numLines);
+	WriteVTKHeader(file, discLines, numLines, precision);
+	WriteVTKScalarArray(file, name, array, numLines, precision);
 	return true;
 }
 
-bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines)
+bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines, unsigned int precision)
 {
 	WriteVTKHeader(file, discLines, numLines);
 	for (unsigned int n=0;n<numFields;++n)
 	{
-		WriteVTKScalarArray(file, names[n], array[n], numLines);
+		WriteVTKScalarArray(file, names[n], array[n], numLines, precision);
 		file << endl;
 	}
 	return true;

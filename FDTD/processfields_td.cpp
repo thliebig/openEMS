@@ -71,7 +71,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines);
+			DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines,m_precision);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -123,7 +123,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines);
+			DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines,m_precision);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -173,7 +173,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines);
+			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines,m_precision);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -216,7 +216,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines);
+			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines,m_precision);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)

@@ -16,6 +16,7 @@
 */
 
 #include "processvoltage.h"
+#include <iomanip>
 
 ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : Processing(op, eng)
 {
@@ -45,6 +46,6 @@ int ProcessVoltage::Process()
 	FDTD_FLOAT voltage=CalcLineIntegral(start,stop,0);
 //	cerr << voltage << endl;
 	voltages.push_back(voltage);
-	file << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << voltage << endl;
+	file << setprecision(m_precision) << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << voltage << endl;
 	return GetNextInterval();
 }

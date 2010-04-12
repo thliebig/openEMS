@@ -23,6 +23,7 @@ Processing::Processing(Operator* op, Engine* eng)
 	Eng=eng;
 	Enabled = true;
 	m_PS_pos = 0;
+	SetPrecision(12);
 	ProcessInterval=0;
 }
 
