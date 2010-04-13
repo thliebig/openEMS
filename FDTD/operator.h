@@ -59,7 +59,7 @@ public:
 	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
 
 	void SetNyquistNum(unsigned int nyquist) {m_nyquistTS=nyquist;}
-	unsigned int GetNyquistNum() const {return m_nyquistTS;};
+	unsigned int GetNyquistNum() const {return m_nyquistTS;}
 	unsigned int CalcNyquistNum(double fmax);
 
 	void ShowStat() const;
@@ -67,15 +67,22 @@ public:
 	void DumpOperator2File(string filename);
 	void DumpMaterial2File(string filename);
 
-	virtual void Reset();
+	virtual double GetGridDelta() const {return gridDelta;}
+	//! Get the mesh delta times the grid delta for a 3D position
+	virtual double GetMeshDelta(int n, int* pos, bool dualMesh=false) const;
+	virtual double GetMeshDelta(int n, unsigned int* pos, bool dualMesh=false) const;
 
-	bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
+	//! Get the disc line in n direction
+	virtual double GetDiscLine(int n, int pos, bool dualMesh=false) const;
+	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
+	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 
 protected:
 	//! use New() for creating a new Operator
 	Operator();
 
 	virtual void Init();
+	virtual void Reset();
 	virtual void InitOperator();
 
 	struct Grid_Path
@@ -111,14 +118,13 @@ protected:
 	double* EC_R[3];
 
 	unsigned int numLines[3];
-
-	// engine/post-proc needs access
-public:
 	double* discLines[3];
 	double gridDelta;
 	AdrOp* MainOp;
 	AdrOp* DualOp;
 
+	// engine/post-proc needs access
+public:
 	//EC operator
 	FDTD_FLOAT**** vv; //calc new voltage from old voltage
 	FDTD_FLOAT**** vi; //calc new voltage from old current

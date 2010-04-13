@@ -102,6 +102,42 @@ unsigned int Operator::CalcNyquistNum(double fmax)
 	return floor(T0/2/dT);
 }
 
+double Operator::GetMeshDelta(int n, unsigned int* pos, bool dualMesh) const
+{
+	if ((n<0) || (n>2)) return 0.0;
+	int i_pos[] = {pos[0],pos[1],pos[2]};
+	return GetMeshDelta(n,i_pos,dualMesh);
+}
+
+double Operator::GetMeshDelta(int n, int* pos, bool dualMesh) const
+{
+	if ((n<0) || (n>2)) return 0.0;
+	if (dualMesh==false)
+		return fabs(MainOp->GetIndexDelta(n,pos[n]))*gridDelta;
+	else
+		return fabs(MainOp->GetIndexWidth(n,pos[n]))*gridDelta;
+}
+
+double Operator::GetDiscLine(int n, unsigned int pos, bool dualMesh) const
+{
+	return GetDiscLine(n,(int)pos,dualMesh);
+}
+
+double Operator::GetDiscLine(int n, int pos, bool dualMesh) const
+{
+	if ((n<0) || (n>2)) return 0.0;
+	if ((pos<0) || (pos>=(int)numLines[n])) return 0.0;
+	if (dualMesh==false)
+		return discLines[n][pos];
+	else
+	{
+		if (pos<(int)numLines[n]-1)
+			return 0.5*(discLines[n][pos+1]+discLines[n][pos]);
+		else
+			return 0.5*(discLines[n][pos]+discLines[n][pos-1]);
+	}
+}
+
 bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, bool* inside)
 {
 	bool ok=true;
@@ -451,6 +487,7 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 	for (int n=0;n<3;++n)
 	{
 		discLines[n] = grid->GetLines(n,discLines[n],numLines[n],true);
+		if (n==1)
 		if (numLines[n]<3) {cerr << "CartOperator::SetGeometryCSX: you need at least 3 disc-lines in every direction (3D!)!!!" << endl; Reset(); return false;}
 	}
 	MainOp = new AdrOp(numLines[0],numLines[1],numLines[2]);
@@ -821,10 +858,15 @@ double Operator::CalcTimestep()
 					ipos_PPM= MainOp->Shift(nPP,-1);
 					MainOp->ResetShift();
 					newT = 2/sqrt( ( 4/EC_L[nP][ipos] + 4/EC_L[nP][ipos_PPM] + 4/EC_L[nPP][ipos] + 4/EC_L[nPP][ipos_PM]) / EC_C[n][ipos] );
-					if (newT<dT) dT=newT;
+					if ((newT<dT) && (newT>0.0)) dT=newT;
 				}
 			}
 		}
+	}
+	if (dT==0)
+	{
+		cerr << "Operator::CalcTimestep: Timestep is zero... this is not supposed to happen!!! exit!" << endl;
+		exit(3);
 	}
 //	cerr << "Operator Timestep: " << dT << endl;
 	return 0;
@@ -852,13 +894,11 @@ bool Operator::CalcEFieldExcitation()
 			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 			{
 				delta[0]=fabs(MainOp->GetIndexDelta(0,pos[0]));
-				coord[0] = discLines[0][pos[0]];
-				coord[1] = discLines[1][pos[1]];
-				coord[2] = discLines[2][pos[2]];
-//				CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE | CSProperties::METAL));
-				CSProperties* prop = NULL;
 				for (int n=0;n<3;++n)
 				{
+					coord[0] = discLines[0][pos[0]];
+					coord[1] = discLines[1][pos[1]];
+					coord[2] = discLines[2][pos[2]];
 					coord[n]+=delta[n]*0.5;
 					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
 					if (prop)
@@ -866,9 +906,9 @@ bool Operator::CalcEFieldExcitation()
 						CSPropElectrode* elec = prop->ToElectrode();
 						if (elec!=NULL)
 						{
-							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
+							if ((elec->GetActiveDir(n)) )//&& (pos[n]<numLines[n]-1))
 							{
-								amp = elec->GetWeightedExcitation(n,coord)*delta[n]*gridDelta;
+								amp = elec->GetWeightedExcitation(n,coord)*GetMeshDelta(n,pos);// delta[n]*gridDelta;
 								if (amp!=0)
 								{
 									vExcit.push_back(amp);
@@ -886,7 +926,6 @@ bool Operator::CalcEFieldExcitation()
 							}
 						}
 					}
-					coord[n]-=delta[n]*0.5;
 				}
 			}
 		}

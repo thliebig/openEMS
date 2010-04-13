@@ -35,6 +35,8 @@ protected:
 	virtual inline void CloseAlphaVoltages();
 	virtual inline void CloseAlphaCurrents();
 
+	virtual inline void R0IncludeVoltages();
+
 	const Operator_Cylinder* cyl_Op;
 };
 

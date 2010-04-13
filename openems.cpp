@@ -237,6 +237,7 @@ int openEMS::SetupFDTD(const char* file)
 	if (CylinderCoords)
 	{
 		FDTD_Op = Operator_Cylinder::New();
+		CSX.SetCoordInputType(1); //tell CSX to use cylinder-coords
 	}
 	else
 	{

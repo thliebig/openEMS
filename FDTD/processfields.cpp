@@ -128,7 +128,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			lines.clear();
 			for (unsigned int i=start[n];i<=stop[n];i+=subSample[n])
 			{
-				lines.push_back(Op->discLines[n][i]);
+				lines.push_back(Op->GetDiscLine(n,i));//Op->discLines[n][i]);
 			}
 			numLines[n] = lines.size();
 			delete[] discLines[n];
@@ -156,7 +156,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			lines.clear();
 			for (unsigned int i=start[n];i<stop[n];i+=subSample[n])
 			{
-				lines.push_back(0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
+				lines.push_back(Op->GetDiscLine(n,i,true));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
 			}		
 			numDLines[n] = lines.size();
 			delete[] discDLines[n];
@@ -280,7 +280,7 @@ void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*
 		{
 			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 			{
-				file << array[pos[0]][pos[1]][pos[2]] << " ";
+				file << setprecision(precision) << array[pos[0]][pos[1]][pos[2]] << " ";
 				++count;
 				if (count%10==0)
 					file << endl;

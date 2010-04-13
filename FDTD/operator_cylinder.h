@@ -28,12 +28,15 @@ public:
 	
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
+	virtual int CalcECOperator();
+
 	virtual void ApplyElectricBC(bool* dirs);
 	virtual void ApplyMagneticBC(bool* dirs);
 
-	virtual void Reset();
-
 	virtual unsigned int GetNumberOfLines(int ny) const;
+
+	//! Get the mesh delta times the grid delta for a 3D position, including radius corrected alpha-mesh width
+	virtual double GetMeshDelta(int n, int* pos, bool dualMesh=false) const;
 
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
@@ -41,6 +44,8 @@ public:
 protected:
 	Operator_Cylinder();
 	virtual void Init();
+	virtual void InitOperator();
+	virtual void Reset();
 
 	virtual inline void Calc_ECOperatorPos(int n, unsigned int* pos);
 
@@ -49,6 +54,12 @@ protected:
 
 	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
 	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
+
+public:
+	//special EC operator for R0
+	FDTD_FLOAT* vv_R0; //calc new voltage from old voltage
+	FDTD_FLOAT* vi_R0; //calc new voltage from old current
+
 };
 
 #endif // OPERATOR_CYLINDER_H

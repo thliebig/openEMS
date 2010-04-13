@@ -52,17 +52,26 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[0];
 					//in x
-					delta  = Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
-					E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]][OpPos[2]+1] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]+1];
-					E_T[0][pos[0]][pos[1]][pos[2]] /= (4*delta*Op->gridDelta);
+					delta  = Op->GetMeshDelta(0,OpPos); //Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
+					if (delta)
+					{
+						E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]][OpPos[2]+1] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]+1];
+						E_T[0][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
+					}
 					//in y
-					delta  = Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
-					E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][OpPos[0]][OpPos[1]][OpPos[2]] + volt[1][OpPos[0]+1][OpPos[1]][OpPos[2]] + volt[1][OpPos[0]][OpPos[1]][OpPos[2]+1] + volt[1][OpPos[0]+1][OpPos[1]][OpPos[2]+1];
-					E_T[1][pos[0]][pos[1]][pos[2]] /= (4*delta*Op->gridDelta);
+					delta  = Op->GetMeshDelta(1,OpPos); //Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
+					if (delta)
+					{
+						E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][OpPos[0]][OpPos[1]][OpPos[2]] + volt[1][OpPos[0]+1][OpPos[1]][OpPos[2]] + volt[1][OpPos[0]][OpPos[1]][OpPos[2]+1] + volt[1][OpPos[0]+1][OpPos[1]][OpPos[2]+1];
+						E_T[1][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
+					}
 					//in z
-					delta  = Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
-					E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][OpPos[0]][OpPos[1]][OpPos[2]] + volt[2][OpPos[0]][OpPos[1]+1][OpPos[2]] + volt[2][OpPos[0]+1][OpPos[1]][OpPos[2]] + volt[2][OpPos[0]+1][OpPos[1]+1][OpPos[2]];
-					E_T[2][pos[0]][pos[1]][pos[2]] /= (4*delta*Op->gridDelta);
+					delta  = Op->GetMeshDelta(2,OpPos); //Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
+					if (delta)
+					{
+						E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][OpPos[0]][OpPos[1]][OpPos[2]] + volt[2][OpPos[0]][OpPos[1]+1][OpPos[2]] + volt[2][OpPos[0]+1][OpPos[1]][OpPos[2]] + volt[2][OpPos[0]+1][OpPos[1]+1][OpPos[2]];
+						E_T[2][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
+					}
 				}
 			}
 		}
@@ -104,18 +113,30 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
 					//in x
-					if (OpPos[0]==0) delta  = Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
-					else delta = 0.5* (Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]-1]);
-					H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][OpPos[0]][OpPos[1]][OpPos[2]] + curr[0][OpPos[0]+1][OpPos[1]][OpPos[2]];
-					H_T[0][pos[0]][pos[1]][pos[2]] /= (2*delta*Op->gridDelta);
+//					if (OpPos[0]==0) delta  = Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
+//					else delta = 0.5* (Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]-1]);
+					delta = Op->GetDiscLine(0,OpPos[0],true);
+					if (delta)
+					{
+						H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][OpPos[0]][OpPos[1]][OpPos[2]] + curr[0][OpPos[0]+1][OpPos[1]][OpPos[2]];
+						H_T[0][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
+					}
 					//in y
-					delta  = Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
-					H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][OpPos[0]][OpPos[1]][OpPos[2]] + curr[1][OpPos[0]][OpPos[1]+1][OpPos[2]];
-					H_T[1][pos[0]][pos[1]][pos[2]] /= (2*delta*Op->gridDelta);
+//					delta  = Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
+					delta = Op->GetDiscLine(1,OpPos[1],true);
+					if (delta)
+					{
+						H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][OpPos[0]][OpPos[1]][OpPos[2]] + curr[1][OpPos[0]][OpPos[1]+1][OpPos[2]];
+						H_T[1][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
+					}
 					//in z
-					delta  = Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
-					H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][OpPos[0]][OpPos[1]][OpPos[2]] + curr[2][OpPos[0]][OpPos[1]][OpPos[2]+1];
-					H_T[2][pos[0]][pos[1]][pos[2]] /= (2*delta*Op->gridDelta);
+//					delta  = Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
+					delta = Op->GetDiscLine(2,OpPos[2],true);
+					if (delta)
+					{
+						H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][OpPos[0]][OpPos[1]][OpPos[2]] + curr[2][OpPos[0]][OpPos[1]][OpPos[2]+1];
+						H_T[2][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
+					}
 				}
 			}
 		}
@@ -154,18 +175,21 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
-			delta[0]=fabs(Op->MainOp->GetIndexDelta(0,OpPos[0]));
+			delta[0]=Op->GetMeshDelta(0,OpPos);//fabs(Op->MainOp->GetIndexDelta(0,OpPos[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
 				OpPos[1]=start[1]+pos[1]*subSample[1];
-				delta[1]=fabs(Op->MainOp->GetIndexDelta(1,OpPos[1]));
+				delta[1]=Op->GetMeshDelta(1,OpPos);//fabs(Op->MainOp->GetIndexDelta(1,OpPos[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
-					delta[2]=fabs(Op->MainOp->GetIndexDelta(2,OpPos[2]));
-					E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0]/Op->gridDelta;
-					E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1]/Op->gridDelta;
-					E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2]/Op->gridDelta;
+					delta[2]=Op->GetMeshDelta(2,OpPos);//fabs(Op->MainOp->GetIndexDelta(2,OpPos[2]));
+					if (delta[0])
+						E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0];// /Op->gridDelta;
+					if (delta[1])
+						E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1];// /Op->gridDelta;
+					if (delta[2])
+						E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2];// /Op->gridDelta;
 				}
 			}
 		}
@@ -196,19 +220,22 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
-			delta[0]=fabs(Op->MainOp->GetIndexWidth(0,OpPos[0]));
+			delta[0]=Op->GetMeshDelta(0,OpPos,true);//fabs(Op->MainOp->GetIndexWidth(0,OpPos[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
 				OpPos[1]=start[1]+pos[1]*subSample[1];
-				delta[1]=fabs(Op->MainOp->GetIndexWidth(1,OpPos[1]));
+				delta[1]=Op->GetMeshDelta(1,OpPos,true);//fabs(Op->MainOp->GetIndexWidth(1,OpPos[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
-					delta[2]=fabs(Op->MainOp->GetIndexWidth(2,OpPos[2]));
+					delta[2]=Op->GetMeshDelta(2,OpPos,true);//fabs(Op->MainOp->GetIndexWidth(2,OpPos[2]));
 					//in x
-					H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0]/Op->gridDelta;
-					H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1]/Op->gridDelta;
-					H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2]/Op->gridDelta;
+					if (delta[0])
+						H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0];// /Op->gridDelta;
+					if (delta[1])
+						H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1];// /Op->gridDelta;
+					if (delta[2])
+						H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2];// /Op->gridDelta;
 				}
 			}
 		}

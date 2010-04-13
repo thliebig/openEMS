@@ -46,7 +46,28 @@ inline void Engine_Cylinder::CloseAlphaVoltages()
 			volt[1][pos[0]][0][pos[2]] = volt[1][pos[0]][last_A_Line][pos[2]];
 			volt[2][pos[0]][0][pos[2]] = volt[2][pos[0]][last_A_Line][pos[2]];
 		}
+	}
+}
 
+void Engine_Cylinder::R0IncludeVoltages()
+{
+	unsigned int pos[3];
+	pos[0] = 0;
+	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+	{
+		volt[2][0][0][pos[2]] *= cyl_Op->vv_R0[pos[2]];
+		for (pos[1]=0;pos[1]<numLines[1]-cyl_Op->GetClosedAlpha();++pos[1])
+		{
+				volt[2][0][0][pos[2]] += cyl_Op->vi_R0[pos[2]] *  curr[1][0][pos[1]][pos[2]];
+		}
+	}
+	for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+	{
+		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		{
+			volt[1][0][pos[1]][pos[2]] = 0; //no voltage in alpha-direction at r=0
+			volt[2][0][pos[1]][pos[2]] = volt[2][0][0][pos[2]];
+		}
 	}
 }
 
@@ -74,6 +95,10 @@ bool Engine_Cylinder::IterateTS(unsigned int iterTS)
 	for (unsigned int iter=0;iter<iterTS;++iter)
 	{
 		UpdateVoltages();
+
+		if (cyl_Op->GetR0Included())
+			R0IncludeVoltages();
+
 		ApplyVoltageExcite();
 
 		CloseAlphaVoltages();

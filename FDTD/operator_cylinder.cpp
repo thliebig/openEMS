@@ -37,12 +37,26 @@ void Operator_Cylinder::Init()
 {
 	CC_closedAlpha = false;
 	CC_R0_included = false;
+	vv_R0 = NULL;
+	vi_R0 = NULL;
 	Operator::Init();
 }
 
 void Operator_Cylinder::Reset()
 {
 	Operator::Reset();
+	delete[] vv_R0;vv_R0=NULL;
+	delete[] vi_R0;vi_R0=NULL;
+}
+
+void Operator_Cylinder::InitOperator()
+{
+	if (CC_R0_included)
+	{
+		vv_R0 = new FDTD_FLOAT[numLines[2]];
+		vi_R0 = new FDTD_FLOAT[numLines[2]];
+	}
+	Operator::InitOperator();
 }
 
 inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
@@ -54,13 +68,23 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
 	return numLines[ny];
 }
 
+double Operator_Cylinder::GetMeshDelta(int n, int* pos, bool dualMesh) const
+{
+	double delta = Operator::GetMeshDelta(n,pos,dualMesh);
+	if (delta==0) return delta;
+	if (n==1)
+	{
+		return delta * GetDiscLine(n,pos[0],dualMesh);
+	}
+	return delta;
+}
+
 
 bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 {
 	if (Operator::SetGeometryCSX(geo)==false) return false;
 
 	double minmaxA = fabs(discLines[1][numLines[1]-1]-discLines[1][0]);
-//			cerr << minmaxA -2*PI << " < " << (2*PI)/10/numLines[1] << endl;
 	if (fabs(minmaxA-2*PI) < (2*PI)/10/numLines[1]) //check minmaxA smaller then a tenth of average alpha-width
 	{
 		cout << "Operator_Cylinder::SetGeometryCSX: Alpha is a full 2*PI => closed Cylinder..." << endl;
@@ -87,11 +111,39 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 	else if (discLines[0][0]==0.0)
 	{
 		cout << "Operator_Cylinder::SetGeometryCSX: r=0 included..." << endl;
-		cerr << "Operator_Cylinder::SetGeometryCSX: r=0 included not yet implemented... exit... " << endl; exit(1);
 		CC_R0_included=true;
 	}
 
 	return true;
+}
+
+int Operator_Cylinder::CalcECOperator()
+{
+	int val = Operator::CalcECOperator();
+	if (val)
+		return val;
+
+	if (CC_R0_included==false)
+		return val;
+
+	unsigned int pos[3];
+	double inEC[4];
+	pos[0]=0;
+	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+	{
+		double C=0;
+		double G=0;
+		for (pos[1]=0;pos[1]<numLines[1]-CC_closedAlpha;++pos[1])
+		{
+			Calc_ECPos(2,pos,inEC);
+			C+=inEC[0];
+			G+=inEC[1];
+		}
+		cerr << C << " and " << G << endl;
+		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
+		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
+	}
+	return 0;
 }
 
 inline void Operator_Cylinder::Calc_ECOperatorPos(int n, unsigned int* pos)
@@ -117,6 +169,12 @@ inline void Operator_Cylinder::Calc_ECOperatorPos(int n, unsigned int* pos)
 	{
 		ii[n][pos[0]][pos[1]][pos[2]] = 0;
 		iv[n][pos[0]][pos[1]][pos[2]] = 0;
+	}
+
+	if (CC_R0_included && (n==2) && (pos[0]==0))
+	{
+		vv[n][pos[0]][pos[1]][pos[2]] = 1;
+		vi[n][pos[0]][pos[1]][pos[2]] = 0;
 	}
 }
 
@@ -165,7 +223,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	double delta_M=MainOp->GetIndexDelta(n,pos[n]-1);
 	double deltaP_M=MainOp->GetIndexDelta(nP,pos[nP]-1);
 	double deltaPP_M=MainOp->GetIndexDelta(nPP,pos[nPP]-1);
-	double geom_factor,A_n;
+	double geom_factor=0,A_n=0;
 
 	//******************************* epsilon,kappa averaging *****************************//
 	//shift up-right
@@ -176,13 +234,13 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	switch (n)
 	{
 	case 0:
-		geom_factor = fabs(deltaPP*deltaP/delta)*(coord[0]+fabs(delta)/2)*0.25;
+		geom_factor = fabs((deltaPP*deltaP/delta)*(coord[0]+fabs(delta)/2))*0.25;
 		break;
 	case 1:
 		geom_factor = fabs(deltaP*deltaPP/(delta*coord[0]))*0.25;
 		break;
 	case 2:
-		geom_factor = fabs(deltaPP/delta) * (pow(coord[0]+fabs(deltaP)/2.0,2.0) - pow(coord[0],2.0))*0.25;
+		geom_factor = fabs((deltaPP/delta) * (pow(coord[0]+fabs(deltaP)/2.0,2.0) - pow(coord[0],2.0)))*0.25;
 		break;
 	}
 	geom_factor*=gridDelta;
@@ -206,13 +264,13 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	switch (n)
 	{
 	case 0:
-		geom_factor = fabs(deltaPP*deltaP_M/delta)*(coord[0]+fabs(delta)/2)*0.25;
+		geom_factor = fabs((deltaPP*deltaP_M/delta)*(coord[0]+fabs(delta)/2))*0.25;
 		break;
 	case 1:
 		geom_factor = fabs(deltaP_M*deltaPP/(delta*coord[0]))*0.25;
 		break;
 	case 2:
-		geom_factor = fabs(deltaPP/delta) * (pow(coord[0],2.0) - pow(coord[0]-fabs(deltaP_M)/2.0,2.0))*0.25;
+		geom_factor = fabs((deltaPP/delta) * (pow(coord[0],2.0) - pow(coord[0]-fabs(deltaP_M)/2.0,2.0)))*0.25;
 		break;
 	}
 	geom_factor*=gridDelta;
@@ -236,13 +294,13 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	switch (n)
 	{
 	case 0:
-		geom_factor = fabs(deltaPP_M*deltaP/delta)*(coord[0]+fabs(delta)/2)*0.25;
+		geom_factor = fabs((deltaPP_M*deltaP/delta)*(coord[0]+fabs(delta)/2))*0.25;
 		break;
 	case 1:
 		geom_factor = fabs(deltaP*deltaPP_M/(delta*coord[0]))*0.25;
 		break;
 	case 2:
-		geom_factor = fabs(deltaPP_M/delta) * (pow(coord[0]+fabs(deltaP)/2.0,2.0) - pow(coord[0],2.0))*0.25;
+		geom_factor = fabs((deltaPP_M/delta) * (pow(coord[0]+fabs(deltaP)/2.0,2.0) - pow(coord[0],2.0)))*0.25;
 		break;
 	}
 	geom_factor*=gridDelta;
@@ -266,13 +324,13 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	switch (n)
 	{
 	case 0:
-		geom_factor = fabs(deltaPP_M*deltaP_M/delta)*(coord[0]+fabs(delta)/2)*0.25;
+		geom_factor = fabs((deltaPP_M*deltaP_M/delta)*(coord[0]+fabs(delta)/2))*0.25;
 		break;
 	case 1:
 		geom_factor = fabs(deltaP_M*deltaPP_M/(delta*coord[0]))*0.25;
 		break;
 	case 2:
-		geom_factor = fabs(deltaPP_M/delta) * (pow(coord[0],2.0) - pow(coord[0]-fabs(deltaP_M)/2.0,2.0))*0.25;
+		geom_factor = fabs((deltaPP_M/delta) * (pow(coord[0],2.0) - pow(coord[0]-fabs(deltaP_M)/2.0,2.0)))*0.25;
 		break;
 	}
 	geom_factor*=gridDelta;
@@ -288,14 +346,11 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 		inEC[1] += 0;
 	}
 
-	if (CC_R0_included && (n>0) && (coord[0]==0))
+	if (CC_R0_included && (n==1) && (coord[0]==0))
 	{
 		inEC[0]=0;
 		inEC[1]=0;
 	}
-
-//	if ((n==2) && (pos[1]==0) && (pos[2]==0))
-//	cerr << n << " -> " <<  pos[0] << " " << pos[1] << " " << pos[2] << " " << inEC[0] << endl;
 
 	//******************************* mu,sigma averaging *****************************//
 	//shift down
@@ -306,7 +361,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	double delta_n = fabs(delta_M);
 	if (n==1)
 	{
-		delta_n = delta_n * (coord[0]+0.5*fabs(deltaPP)); //multiply delta-angle by radius
+		delta_n = delta_n * fabs(coord[0]+0.5*fabs(deltaPP)); //multiply delta-angle by radius
 	}
 	if (prop)
 	{
@@ -330,7 +385,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	delta_n = fabs(delta);
 	if (n==1)
 	{
-		delta_n = delta_n * (coord[0]+0.5*fabs(deltaPP)); //multiply delta-angle by radius
+		delta_n = delta_n * fabs(coord[0]+0.5*fabs(deltaPP)); //multiply delta-angle by radius
 	}
 	if (prop)
 	{
@@ -360,7 +415,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	inEC[2] = gridDelta * A_n * 2 * __MUE0__ / inEC[2];
 	if (inEC[3]) inEC[3]=gridDelta * A_n * 2 / inEC[3];
 
-//	if ((n==0) && (pos[1]==0) && (pos[2]==0))
+//	if ((n==1) && (pos[1]==0) && (pos[2]==0))
 //		cerr <<  inEC[2]/(coord[0]) <<  endl;
 //	cerr << n << " -> " <<  pos[0] << " " << pos[1] << " " << pos[2] << " " << inEC[2] << endl;
 
@@ -369,28 +424,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 
 bool Operator_Cylinder::Calc_EffMatPos(int n, unsigned int* pos, double* inMat)
 {
-	return false; //fixme
-
-//	int nP = (n+1)%3;
-//	int nPP = (n+2)%3;
-//
-//	unsigned int ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
-//	double delta=MainOp->GetIndexDelta(n,pos[n]);
-//	double deltaP=MainOp->GetIndexDelta(nP,pos[nP]);
-//	double deltaPP=MainOp->GetIndexDelta(nPP,pos[nPP]);
-//
-//	double delta_M=MainOp->GetIndexDelta(n,pos[n]-1);
-//	double deltaP_M=MainOp->GetIndexDelta(nP,pos[nP]-1);
-//	double deltaPP_M=MainOp->GetIndexDelta(nPP,pos[nPP]-1);
-//
-//	this->Calc_ECPos(n,pos,inMat);
-//
-//	inMat[0] *= (delta*delta)/MainOp->GetNodeVolume(ipos)/gridDelta;
-//	inMat[1] *= (delta*delta)/MainOp->GetNodeVolume(ipos)/gridDelta;
-//
-//	inMat[2] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
-//	inMat[3] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
-//
-//	return true;
+	cerr << "Operator_Cylinder::Calc_EffMatPos: Warning! method not implemented yet..." << endl;
+	return false;
 }
 
