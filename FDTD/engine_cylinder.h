@@ -25,10 +25,6 @@ class Engine_Cylinder : public Engine
 {
 public:
 	static Engine_Cylinder* New(const Operator_Cylinder* op);
-	virtual ~Engine_Cylinder();
-
-	virtual void Init();
-	virtual void Reset();
 
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);

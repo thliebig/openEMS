@@ -33,49 +33,6 @@ Engine_Cylinder::Engine_Cylinder(const Operator_Cylinder* op) : Engine(op)
 	}
 }
 
-Engine_Cylinder::~Engine_Cylinder()
-{
-	Reset();
-}
-
-void Engine_Cylinder::Init()
-{
-	Engine::Init();
-
-//	if (cyl_Op->GetClosedAlpha())
-//	{
-//		unsigned int lastLine = Op->numLines[1]-1; //number of last alpha-line
-//		unsigned int pos[3];
-//		for (pos[0]=0;pos[0]<Op->numLines[0];++pos[0])
-//		{
-//			for (int n=0;n<3;++n)
-//			{
-//				delete[] volt[n][pos[0]][lastLine];
-//				volt[n][pos[0]][lastLine] = volt[n][pos[0]][0];
-//				delete[] curr[n][pos[0]][lastLine];
-//				curr[n][pos[0]][lastLine] = curr[n][pos[0]][0];
-//			}
-//		}
-//	}
-}
-
-void Engine_Cylinder::Reset()
-{
-//	if (cyl_Op->GetClosedAlpha())
-//	{
-//		unsigned int lastLine = Op->numLines[1]-1; //number of last alpha-line
-//		unsigned int pos[3];
-//		for (pos[0]=0;pos[0]<Op->numLines[0];++pos[0])
-//		{
-//			for (int n=0;n<3;++n)
-//			{
-//				volt[n][pos[0]][lastLine] = NULL;
-//				curr[n][pos[0]][lastLine] = NULL;
-//			}
-//		}
-//	}
-}
-
 inline void Engine_Cylinder::CloseAlphaVoltages()
 {
 	unsigned int pos[3];
