@@ -56,7 +56,7 @@ void Engine::Reset()
 	curr=NULL;
 }
 
-inline void Engine::UpdateVoltages()
+void Engine::UpdateVoltages()
 {
 	unsigned int pos[3];
 	bool shift[3];
@@ -88,7 +88,7 @@ inline void Engine::UpdateVoltages()
 	}
 }
 
-inline void Engine::ApplyVoltageExcite()
+void Engine::ApplyVoltageExcite()
 {
 	int exc_pos;
 	//soft voltage excitation here (E-field excite)
@@ -101,7 +101,7 @@ inline void Engine::ApplyVoltageExcite()
 	}
 }
 
-inline void Engine::UpdateCurrents()
+void Engine::UpdateCurrents()
 {
 	unsigned int pos[3];
 	for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
@@ -127,7 +127,7 @@ inline void Engine::UpdateCurrents()
 	}
 }
 
-inline void Engine::ApplyCurrentExcite()
+void Engine::ApplyCurrentExcite()
 {
 	int exc_pos;
 }

@@ -41,10 +41,10 @@ protected:
 	Engine(const Operator* op);
 	const Operator* Op;
 
-	virtual inline void UpdateVoltages();
-	virtual inline void ApplyVoltageExcite();
-	virtual inline void UpdateCurrents();
-	virtual inline void ApplyCurrentExcite();
+	virtual void UpdateVoltages();
+	virtual void ApplyVoltageExcite();
+	virtual void UpdateCurrents();
+	virtual void ApplyCurrentExcite();
 
 	unsigned int numLines[3];
 
