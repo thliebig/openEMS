@@ -139,7 +139,7 @@ int Operator_Cylinder::CalcECOperator()
 			C+=inEC[0];
 			G+=inEC[1];
 		}
-		cerr << C << " and " << G << endl;
+//		cerr << C << " and " << G << endl;
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 	}
