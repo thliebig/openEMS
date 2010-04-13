@@ -216,7 +216,6 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	coord[0] = discLines[0][pos[0]];
 	coord[1] = discLines[1][pos[1]];
 	coord[2] = discLines[2][pos[2]];
-	unsigned int ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
 	double delta=MainOp->GetIndexDelta(n,pos[n]);
 	double deltaP=MainOp->GetIndexDelta(nP,pos[nP]);
 	double deltaPP=MainOp->GetIndexDelta(nPP,pos[nPP]);
@@ -422,7 +421,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	return true;
 }
 
-bool Operator_Cylinder::Calc_EffMatPos(int n, unsigned int* pos, double* inMat)
+bool Operator_Cylinder::Calc_EffMatPos(int /*n*/, unsigned int* /*pos*/, double* /*inMat*/)
 {
 	cerr << "Operator_Cylinder::Calc_EffMatPos: Warning! method not implemented yet..." << endl;
 	return false;

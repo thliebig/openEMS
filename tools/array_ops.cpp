@@ -67,7 +67,6 @@ FDTD_FLOAT**** Create_N_3DArray(const unsigned int* numLines)
 void Delete_N_3DArray(FDTD_FLOAT**** array, const unsigned int* numLines)
 {
 	if (array==NULL) return;
-	unsigned int pos[3];
 	for (int n=0;n<3;++n)
 	{
 		Delete3DArray(array[n],numLines);

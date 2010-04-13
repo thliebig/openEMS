@@ -190,9 +190,9 @@ bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, boo
 struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 {
 	struct Grid_Path path;
-	double dV[] = {stop[0]-start[0],stop[1]-start[1],stop[2]-start[2]};
+//	double dV[] = {stop[0]-start[0],stop[1]-start[1],stop[2]-start[2]};
 
-	unsigned int uiStart[3],uiStop[3],currPos[3],pos[3];
+	unsigned int uiStart[3],uiStop[3],currPos[3];
 	SnapToMesh(start,uiStart);
 	SnapToMesh(stop,uiStop);
 	currPos[0]=uiStart[0];
@@ -201,7 +201,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	double meshStart[] = {discLines[0][uiStart[0]], discLines[1][uiStart[1]], discLines[2][uiStart[2]]};
 	double meshStop[] = {discLines[0][uiStop[0]], discLines[1][uiStop[1]], discLines[2][uiStop[2]]};
 
-	bool UpDir;
+	bool UpDir = false;
 	double foot=0,dist=0,minFoot=0,minDist=0;
 	int minDir=0;
 	unsigned int minPos[3];
@@ -401,7 +401,6 @@ unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
 void Operator::DumpOperator2File(string filename)
 {
 	ofstream file(filename.c_str(),ios_base::out);
-//	file.open;
 	if (file.is_open()==false)
 	{
 		cerr << "Operator::DumpOperator2File: Can't open file: " << filename << endl;
@@ -530,7 +529,6 @@ int Operator::CalcECOperator()
 
 	InitOperator();
 
-	unsigned int i=0;
 	unsigned int pos[3];
 
 	for (int n=0;n<3;++n)
@@ -599,7 +597,6 @@ void Operator::ApplyMagneticBC(bool* dirs)
 {
 	if (dirs==NULL) return;
 	unsigned int pos[3];
-	unsigned int ipos;
 	for (int n=0;n<3;++n)
 	{
 		int nP = (n+1)%3;
@@ -636,7 +633,6 @@ bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	coord[0] = discLines[0][pos[0]];
 	coord[1] = discLines[1][pos[1]];
 	coord[2] = discLines[2][pos[2]];
-	unsigned int ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
 	double delta=MainOp->GetIndexDelta(n,pos[n]);
 	double deltaP=MainOp->GetIndexDelta(nP,pos[nP]);
 	double deltaPP=MainOp->GetIndexDelta(nPP,pos[nPP]);
@@ -766,7 +762,6 @@ bool Operator::Calc_EffMatPos(int n, unsigned int* pos, double* inMat)
 	int nP = (n+1)%3;
 	int nPP = (n+2)%3;
 
-	unsigned int ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
 	double delta=MainOp->GetIndexDelta(n,pos[n]);
 	double deltaP=MainOp->GetIndexDelta(nP,pos[nP]);
 	double deltaPP=MainOp->GetIndexDelta(nPP,pos[nPP]);
@@ -879,7 +874,6 @@ bool Operator::CalcEFieldExcitation()
 	vector<FDTD_FLOAT> vExcit;
 	vector<unsigned int> vDelay;
 	vector<unsigned int> vDir;
-	unsigned int ipos;
 	unsigned int pos[3];
 	double coord[3];
 	double delta[3];
@@ -935,7 +929,6 @@ bool Operator::CalcEFieldExcitation()
 	double p1[3];
 	double p2[3];
 	double deltaN=0.0;
-	int n;
 	struct Grid_Path path;
 	CSPropElectrode* elec=NULL;
 	CSProperties* prop=NULL;

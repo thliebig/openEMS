@@ -285,8 +285,6 @@ int openEMS::SetupFDTD(const char* file)
 		}
 	}
 
-	time_t currTime = time(NULL);
-
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;
 	unsigned int Nyquist = FDTD_Op->GetNyquistNum();

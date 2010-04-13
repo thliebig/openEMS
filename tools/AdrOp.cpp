@@ -20,16 +20,16 @@
 AdrOp::AdrOp(unsigned int muiImax, unsigned int muiJmax, unsigned int muiKmax, unsigned int muiLmax)
 {
 	//error-handling...
-	error = new ErrorMsg(9); if (error==NULL) { fprintf(stderr,"Memory allocation failed!! exiting... \0"); exit(1); }
-	error->SetMsg(1,"Adress Operator: Memory allocation failed!! exiting... \0");
-	error->SetMsg(2,"Adress Operator: Invalid Adress requested!! exiting... \0");
-	error->SetMsg(3,"Adress Operator: Invalid Position set!! exiting...\0");
-	error->SetMsg(4,"Adress Operator: Invalid jump or passing end of iteration!! exiting...\0");
-	error->SetMsg(5,"Adress Operator: 4D not yet implemented!! exiting... \0");
-	error->SetMsg(6,"Adress Operator: Position not set!! exiting... \0");
-	error->SetMsg(7,"Adress Operator: Cells not added to Adress Operator!! exiting... \0");
-	error->SetMsg(8,"Adress Operator: Invalid Node!! exiting... \0");
-	error->SetMsg(9,"Adress Operator: Grid invalid!! exiting... \0");
+	error = new ErrorMsg(9); if (error==NULL) { fprintf(stderr,"Memory allocation failed!! exiting..."); exit(1); }
+	error->SetMsg(1,"Adress Operator: Memory allocation failed!! exiting...");
+	error->SetMsg(2,"Adress Operator: Invalid Adress requested!! exiting...");
+	error->SetMsg(3,"Adress Operator: Invalid Position set!! exiting...");
+	error->SetMsg(4,"Adress Operator: Invalid jump or passing end of iteration!! exiting...");
+	error->SetMsg(5,"Adress Operator: 4D not yet implemented!! exiting...");
+	error->SetMsg(6,"Adress Operator: Position not set!! exiting...");
+	error->SetMsg(7,"Adress Operator: Cells not added to Adress Operator!! exiting...");
+	error->SetMsg(8,"Adress Operator: Invalid Node!! exiting...");
+	error->SetMsg(9,"Adress Operator: Grid invalid!! exiting...");
 	
 	//if (muiImax<0) muiImax=0;
 	//if (muiJmax<0) muiJmax=0;
@@ -168,7 +168,7 @@ bool AdrOp::CheckRelativePos(int muiIrel,int muiJrel,int muiKrel, int muiLrel)
 	return bPosSet;
 }
 
-unsigned int AdrOp::GetPos(int muiIrel, int muiJrel, int muiKrel, int muiLrel)
+unsigned int AdrOp::GetPos(int muiIrel, int muiJrel, int muiKrel, int /*muiLrel*/)
 {
 	if (bPosSet==false) error->Error(6);
 	if (reflect)

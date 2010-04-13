@@ -23,7 +23,7 @@
 ErrorMsg::ErrorMsg(unsigned int NoMessage)
 {
 	NoMsg=NoMessage;
-	if (NoMsg>0) Msg = new char*[NoMsg]; if (Msg==NULL) { fprintf(stderr,"Memory allocation failed!! exiting... \0"); exit(1); }
+	if (NoMsg>0) Msg = new char*[NoMsg]; if (Msg==NULL) { fprintf(stderr,"Memory allocation failed!! exiting..."); exit(1); }
 	for (unsigned int i=0;i<NoMsg;i++) Msg[i]=NULL;
 }
 
@@ -33,10 +33,10 @@ ErrorMsg::~ErrorMsg()
 	delete[] Msg; Msg=NULL;
 }
 
-void ErrorMsg::SetMsg(unsigned int nr, char *Message)
+void ErrorMsg::SetMsg(unsigned int nr, const char *Message)
 {
 	if ((nr<1) || (nr>NoMsg) || (Message==NULL)) ownError();
-	Msg[nr-1] = new char[strlen(Message)+1]; if (Msg[nr-1]==NULL) { fprintf(stderr,"Memory allocation failed!! exiting... \0"); exit(1); }
+	Msg[nr-1] = new char[strlen(Message)+1]; if (Msg[nr-1]==NULL) { fprintf(stderr,"Memory allocation failed!! exiting..."); exit(1); }
 	Msg[nr-1]=strcpy(Msg[nr-1],Message);
 }
 

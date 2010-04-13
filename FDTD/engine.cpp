@@ -129,7 +129,6 @@ void Engine::UpdateCurrents()
 
 void Engine::ApplyCurrentExcite()
 {
-	int exc_pos;
 }
 
 bool Engine::IterateTS(unsigned int iterTS)

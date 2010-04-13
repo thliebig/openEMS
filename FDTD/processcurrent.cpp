@@ -50,11 +50,6 @@ int ProcessCurrent::Process()
 	if (Enabled==false) return -1;
 	if (CheckTimestep()==false) return GetNextInterval();
 	FDTD_FLOAT current=0;
-//	FDTD_FLOAT help=0;
-	double sign[3]={1,1,1};
-	unsigned int pos[3]={start[0],start[1],start[2]};
-	double loc_start[]={start[0],start[1],start[2]};
-	double loc_stop[]={stop[0],stop[1],stop[2]};
 
 	for (int n=0;n<3;++n)
 	{
