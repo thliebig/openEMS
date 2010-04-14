@@ -9,7 +9,7 @@ function FDTD = InitCylindricalFDTD(NrTS, endCrit, varargin)
 % -----------------------
 % author: Thorsten Liebig
 
-FDTD = InitFDTD(NrTS, endCrit, varargin);
+FDTD = InitFDTD(NrTS, endCrit, varargin{:});
 
 FDTD.ATTRIBUTE.CylinderCoords=1;
 
