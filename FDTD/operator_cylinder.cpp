@@ -136,10 +136,13 @@ int Operator_Cylinder::CalcECOperator()
 		for (pos[1]=0;pos[1]<numLines[1]-CC_closedAlpha;++pos[1])
 		{
 			Calc_ECPos(2,pos,inEC);
-			C+=inEC[0];
-			G+=inEC[1];
+//			if (pos[2]==0)
+//				cerr << inEC[0] << endl;
+			C+=inEC[0]*0.5;
+			G+=inEC[1]*0.5;
 		}
-//		cerr << C << " and " << G << endl;
+		if (pos[2]==0)
+			cerr << C << " and " << G << endl;
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 	}
