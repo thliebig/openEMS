@@ -191,6 +191,7 @@ int openEMS::SetupFDTD(const char* file)
 	else
 		NrTS = help;
 
+	help = 0;
 	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
 	if (help==1)
 	{
