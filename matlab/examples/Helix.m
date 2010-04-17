@@ -1,19 +1,19 @@
 close all;
-clear all;
+clear;
 clc
 
 feed_length=10;
 wire_rad = sqrt(1.4/pi);
+mesh_size = wire_rad;
 coil_rad = 10;
 coil_length = 50;
 coil_turns = 8;
 coil_res = 10;
-port_length = coil_length/2;
-port_resist = 50;
+port_length = mesh_size; %coil_length/2;
+port_resist = 1000;
 
-f_max = 50e6;
+f_max = 100e6;
 f_excite = 1e9;
-mesh_size = wire_rad;
 
 openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
@@ -24,6 +24,7 @@ openEMS_opts = '';
 Sim_Path = 'tmp';
 Sim_CSX = 'helix.xml';
 
+rmdir(Sim_Path,'s');
 mkdir(Sim_Path);
 
 %setup FDTD parameter
@@ -96,7 +97,7 @@ CSX = AddBox(CSX,'ut1', 0 ,stop,start);
 
 %current calc
 CSX = AddProbe(CSX,'it1',1);
-start(3) = coil_length/2;stop(3) = coil_length/2;
+start(3) = coil_length/2+mesh_size;stop(3) = coil_length/2+mesh_size;
 start(1) = start(1)-2;start(2) = start(2)-2;
 stop(1) = stop(1)+2;stop(2) = stop(2)+2;
 CSX = AddBox(CSX,'it1', 0 ,start,stop);
@@ -127,6 +128,9 @@ cd(savePath);
 U = ReadUI('ut1','tmp/');
 I = ReadUI('it1','tmp/');
 
+delta_t_2 = I.TD{1}.t(1) - U.TD{1}.t(1);                        % half time-step (s) 
+I.FD{1}.val = I.FD{1}.val .* exp(-1i*2*pi*I.FD{1}.f*delta_t_2); % compensate half time-step advance of H-field
+
 Z = U.FD{1}.val./I.FD{1}.val;
 f = U.FD{1}.f;
 L = imag(Z)./(f*2*pi);
@@ -140,9 +144,8 @@ ylabel('coil inductance (nH)');
 grid on;
 subplot(2,1,2);
 plot(f(ind)*1e-6,R(ind),'Linewidth',2);
+hold on
+plot(f(ind)*1e-6,imag(Z(ind)),'r','Linewidth',2);
 xlabel('frequency (MHz)');
 ylabel('resistance (\Omega)');
 grid on;
-
-
-
