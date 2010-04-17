@@ -10,6 +10,8 @@ else
     filenames=files;
 end
 
+UI.TD = {};
+UI.FD = {};
 for n=1:numel(filenames)
     tmp = load([path filenames{n}]);
     t = tmp(:,1)';
