@@ -5,7 +5,7 @@ QT -= gui \
     core
 TARGET = openEMS
 CONFIG += console
-CONFIG -= app_bundle
+CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += ../CSXCAD \
