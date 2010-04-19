@@ -349,5 +349,3 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOA
 	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
 	return true;
 }
-
-

@@ -49,6 +49,9 @@ public:
 	//! Set the dump precision
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
+	virtual void OpenFile( string outfile );
+
+	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
 protected:
 	Operator* Op;
 	Engine* Eng;
@@ -70,6 +73,9 @@ protected:
 	bool m_start_inside[3];
 	bool m_stop_inside[3];
 
+	ofstream file;
+	string m_filename;
+
 	double CalcLineIntegral(unsigned int* start, unsigned int* stop, int field);
 };
 
@@ -87,6 +93,8 @@ public:
 	void DeleteAll();
 
 	int Process();
+
+	void DumpBoxes2File( string vtkfilenameprefix ) const;
 
 protected:
 	unsigned int maxInterval;

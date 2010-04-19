@@ -47,6 +47,7 @@ openEMS::openEMS()
 	Enable_Dumps = true;
 	DebugMat = false;
 	DebugOp = false;
+	m_debugBox = false;
 	endCrit = 1e-6;
 	m_OverSampling = 4;
 
@@ -91,6 +92,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
 		DebugOperator();
+		return true;
+	}
+	else if (strcmp(argv,"--debug-boxes")==0)
+	{
+		cout << "openEMS - dumping boxes to 'box_dump*.vtk'" << endl;
+		DebugBox();
 		return true;
 	}
 	else if (strcmp(argv,"--engine=multithreaded")==0)
@@ -364,6 +371,13 @@ int openEMS::SetupFDTD(const char* file)
 				delete 	ProcTD;
 		}
 	}
+
+	// dump all boxes (voltage, current, fields, ...)
+	if (m_debugBox)
+	{
+		PA->DumpBoxes2File("box_dump_");
+	}
+
 	return 0;
 }
 

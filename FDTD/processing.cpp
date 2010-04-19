@@ -29,6 +29,7 @@ Processing::Processing(Operator* op, Engine* eng)
 
 Processing::~Processing()
 {
+	file.close();
 }
 
 void Processing::Reset()
@@ -122,6 +123,71 @@ double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int
 	return result;
 }
 
+void Processing::OpenFile( string outfile )
+{
+	if (file.is_open())
+		file.close();
+
+	file.open( outfile.c_str() );
+	if (!file.is_open())
+		cerr << "Can't open file: " << outfile << endl;
+
+	m_filename = outfile;
+}
+
+void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
+{
+	string vtkfilename = vtkfilenameprefix + m_filename + ".vtk";
+
+	ofstream file( vtkfilename.c_str() );
+	if (!file.is_open())
+	{
+		cerr << "Processing::DumpBoxes2File(): Can't open file: " << vtkfilename << endl;
+		return;
+	}
+
+	// normalize coordinates
+	double s1[3], s2[3];
+	for (int i=0; i<3; i++) {
+		s1[i] = min(Op->GetDiscLine(i,start[i],dualMesh),Op->GetDiscLine(i,stop[i],dualMesh));
+		s2[i] = max(Op->GetDiscLine(i,start[i],dualMesh),Op->GetDiscLine(i,stop[i],dualMesh));
+	}
+
+	// fix degenerate box/plane -> line (paraview display problem)
+	if (((s1[0] == s2[0]) && (s1[1] == s2[1])) || ((s1[0] == s2[0]) && (s1[2] == s2[2])) || ((s1[2] == s2[2]) && (s1[1] == s2[1]))) {
+		// line are not displayed correctly -> enlarge
+		for (int i=0; i<3; i++) {
+			double delta = min( Op->GetMeshDelta( i, start,dualMesh ), Op->GetMeshDelta( i, stop,dualMesh ) ) / Op->GetGridDelta() / 4.0;
+			s1[i] -= delta;
+			s2[i] += delta;
+		}
+	}
+
+	file << "# vtk DataFile Version 2.0" << endl;
+	file << "" << endl;
+	file << "ASCII" << endl;
+	file << "DATASET POLYDATA" << endl;
+
+	file << "POINTS 8 float" << endl;
+	file << s1[0] << " " << s1[1] << " " << s1[2] << endl;
+	file << s2[0] << " " << s1[1] << " " << s1[2] << endl;
+	file << s2[0] << " " << s2[1] << " " << s1[2] << endl;
+	file << s1[0] << " " << s2[1] << " " << s1[2] << endl;
+	file << s1[0] << " " << s1[1] << " " << s2[2] << endl;
+	file << s2[0] << " " << s1[1] << " " << s2[2] << endl;
+	file << s2[0] << " " << s2[1] << " " << s2[2] << endl;
+	file << s1[0] << " " << s2[1] << " " << s2[2] << endl;
+
+	file << "POLYGONS 6 30" << endl;
+	file << "4 0 1 2 3" << endl;
+	file << "4 4 5 6 7" << endl;
+	file << "4 7 6 2 3" << endl;
+	file << "4 4 5 1 0" << endl;
+	file << "4 0 4 7 3" << endl;
+	file << "4 5 6 2 1" << endl;
+
+	file.close();
+}
 
 void ProcessingArray::AddProcessing(Processing* proc)
 {
@@ -156,4 +222,10 @@ int ProcessingArray::Process()
 			nextProcess=step;
 	}
 	return nextProcess;
+}
+
+void ProcessingArray::DumpBoxes2File( string vtkfilenameprefix ) const
+{
+	for (size_t i=0;i<ProcessArray.size();++i)
+		ProcessArray.at(i)->DumpBox2File( vtkfilenameprefix );
 }

@@ -26,15 +26,12 @@ public:
 	ProcessCurrent(Operator* op, Engine* eng);
 	virtual ~ProcessCurrent();
 
-	virtual void OpenFile(string outfile);
-
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
 	virtual int Process();
 
+	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
 protected:
-	ofstream file;
-
 	vector<FDTD_FLOAT> v_current;
 };
 

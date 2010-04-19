@@ -42,6 +42,7 @@ public:
 
 	void DebugMaterial() {DebugMat=true;}
 	void DebugOperator() {DebugOp=true;}
+	void DebugBox() {m_debugBox=true;}
 
 protected:
 	void SetupExcitation(TiXmlElement* Excite);
@@ -53,6 +54,7 @@ protected:
 	bool Enable_Dumps;
 	bool DebugMat;
 	bool DebugOp;
+	bool m_debugBox;
 	double endCrit;
 	int m_OverSampling;
 	Operator* FDTD_Op;

@@ -26,18 +26,6 @@ ProcessCurrent::~ProcessCurrent()
 {
 }
 
-void ProcessCurrent::OpenFile(string outfile)
-{
-	if (file.is_open()) file.close();
-
-	file.open(outfile.c_str());
-	if (file.is_open()==false)
-	{
-		cerr << "Can't open file: " << outfile << endl;
-		return;
-	}
-}
-
 void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	if (Op->SnapToMesh(dstart,start,true,m_start_inside)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
@@ -95,4 +83,9 @@ int ProcessCurrent::Process()
 	//current is sampled half a timestep later then the voltages
 	file  << setprecision(m_precision) << (0.5 + (double)Eng->GetNumberOfTimesteps())*Op->GetTimestep() << "\t" << current << endl;
 	return GetNextInterval();
+}
+
+void ProcessCurrent::DumpBox2File( string vtkfilenameprefix, bool /*dualMesh*/ ) const
+{
+	Processing::DumpBox2File( vtkfilenameprefix, true );
 }

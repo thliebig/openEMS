@@ -39,10 +39,10 @@ public:
 	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
 
 	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType
-	void SetFilePattern(string fp) {filePattern=fp;}
+	void SetFilePattern(string fp) {m_filename=filePattern=fp;}
 
 	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType
-	void SetFileName(string fn) {m_fileName=fn;}
+	void SetFileName(string fn) {m_filename=m_fileName=fn;}
 
 	//! Define the Dump-Mode
 	void SetDumpMode(DumpMode mode) {m_DumpMode=mode;}

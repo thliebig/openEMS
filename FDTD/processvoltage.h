@@ -27,13 +27,9 @@ public:
 	ProcessVoltage(Operator* op, Engine* eng);
 	virtual ~ProcessVoltage();
 
-	virtual void OpenFile(string outfile);
-
 	virtual int Process();
 
 protected:
-	ofstream file;
-
 	vector<FDTD_FLOAT> voltages;
 };
 
