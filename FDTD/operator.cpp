@@ -102,14 +102,14 @@ unsigned int Operator::CalcNyquistNum(double fmax)
 	return floor(T0/2/dT);
 }
 
-double Operator::GetMeshDelta(int n, unsigned int* pos, bool dualMesh) const
+double Operator::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
 {
 	if ((n<0) || (n>2)) return 0.0;
 	int i_pos[] = {pos[0],pos[1],pos[2]};
 	return GetMeshDelta(n,i_pos,dualMesh);
 }
 
-double Operator::GetMeshDelta(int n, int* pos, bool dualMesh) const
+double Operator::GetMeshDelta(int n, const int* pos, bool dualMesh) const
 {
 	if ((n<0) || (n>2)) return 0.0;
 	if (dualMesh==false)

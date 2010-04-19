@@ -69,8 +69,8 @@ public:
 
 	virtual double GetGridDelta() const {return gridDelta;}
 	//! Get the mesh delta times the grid delta for a 3D position
-	virtual double GetMeshDelta(int n, int* pos, bool dualMesh=false) const;
-	virtual double GetMeshDelta(int n, unsigned int* pos, bool dualMesh=false) const;
+	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;
+	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const;
 
 	//! Get the disc line in n direction
 	virtual double GetDiscLine(int n, int pos, bool dualMesh=false) const;
