@@ -38,7 +38,8 @@ SOURCES += main.cpp \
     openems.cpp \
     FDTD/engine_multithread.cpp \
     FDTD/operator_cylinder.cpp \
-    FDTD/engine_cylinder.cpp
+	FDTD/engine_cylinder.cpp \
+	FDTD/engine_sse.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -54,10 +55,11 @@ HEADERS += tools/ErrorMsg.h \
     openems.h \
     FDTD/engine_multithread.h \
     FDTD/operator_cylinder.h \
-    FDTD/engine_cylinder.h
-QMAKE_CXXFLAGS_RELEASE = -O2 \
+	FDTD/engine_cylinder.h \
+	FDTD/engine_sse.h
+QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
-    -march=native
+	-march=native
 QMAKE_CXXFLAGS_DEBUG = -O0 \
     -g \
     -march=native

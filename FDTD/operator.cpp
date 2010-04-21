@@ -47,6 +47,8 @@ void Operator::Init()
 	E_Exc_dir=NULL;
 	vv=NULL;
 	vi=NULL;
+	vv_=NULL;
+	vi_=NULL;
 	iv=NULL;
 	ii=NULL;
 	for (int n=0;n<3;++n)
@@ -75,6 +77,8 @@ void Operator::Reset()
 	delete[] E_Exc_amp;
 	Delete_N_3DArray(vv,numLines);
 	Delete_N_3DArray(vi,numLines);
+	Delete_N_3DArray_v4sf(vv_,numLines);
+	Delete_N_3DArray_v4sf(vi_,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
 	for (int n=0;n<3;++n)
@@ -502,10 +506,14 @@ void Operator::InitOperator()
 {
 	Delete_N_3DArray(vv,numLines);
 	Delete_N_3DArray(vi,numLines);
+	Delete_N_3DArray_v4sf(vv_,numLines);
+	Delete_N_3DArray_v4sf(vi_,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
 	vv = Create_N_3DArray(numLines);
 	vi = Create_N_3DArray(numLines);
+	vv_ = Create_N_3DArray_v4sf(numLines);
+	vi_ = Create_N_3DArray_v4sf(numLines);
 	iv = Create_N_3DArray(numLines);
 	ii = Create_N_3DArray(numLines);
 }
@@ -515,6 +523,9 @@ inline void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
 	vv[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
 	vi[n][pos[0]][pos[1]][pos[2]] = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+
+	vv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vv[n][pos[0]][pos[1]][pos[2]];
+	vi_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vi[n][pos[0]][pos[1]][pos[2]];
 
 	ii[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
 	iv[n][pos[0]][pos[1]][pos[2]] = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);

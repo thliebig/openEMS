@@ -21,6 +21,7 @@
 #include "FDTD/engine.h"
 #include "FDTD/engine_cylinder.h"
 #include "FDTD/engine_multithread.h"
+#include "FDTD/engine_sse.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/processfields_td.h"
@@ -110,6 +111,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		m_engine_numThreads = atoi(argv+13);
 		cout << "openEMS - fixed number of threads: " << m_engine_numThreads << endl;
+		return true;
+	}
+	else if (strcmp(argv,"--engine=sse")==0)
+	{
+		cout << "openEMS - enabled sse engine" << endl;
+		m_engine = EngineType_SSE;
 		return true;
 	}
 

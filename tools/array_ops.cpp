@@ -91,3 +91,70 @@ void Dump_N_3DArray2File(ostream &file, FDTD_FLOAT**** array, unsigned int* numL
 		}
 	}
 }
+
+
+
+
+void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines)
+{
+	if (array==NULL) return;
+	unsigned int pos[3];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			delete[] array[pos[0]][pos[1]];
+		}
+		delete[] array[pos[0]];
+	}
+	delete[] array;
+}
+
+void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines)
+{
+	if (array==NULL) return;
+	for (int n=0;n<3;++n)
+	{
+		Delete3DArray_v4sf(array[n],numLines);
+	}
+	delete[] array;
+}
+
+f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
+{
+	f4vector*** array=NULL;
+	unsigned int pos[3];
+	array = new f4vector**[numLines[0]];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		array[pos[0]] = new f4vector*[numLines[1]];
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			array[pos[0]][pos[1]] = new f4vector[numLines[2]/4];
+			for (pos[2]=0;pos[2]<numLines[2]/4;++pos[2])
+			{
+				array[pos[0]][pos[1]][pos[2]].f[0] = 0;
+				array[pos[0]][pos[1]][pos[2]].f[1] = 0;
+				array[pos[0]][pos[1]][pos[2]].f[2] = 0;
+				array[pos[0]][pos[1]][pos[2]].f[3] = 0;
+			}
+		}
+	}
+	return array;
+}
+f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines)
+{
+	if ((numLines[2] % 4) != 0) {
+		cerr << "sse engine needs number of mesh lines divideable by 4" << endl;
+		exit(1);
+	}
+
+	f4vector**** array=NULL;
+	array = new f4vector***[3];
+	for (int n=0;n<3;++n)
+	{
+		array[n]=Create3DArray_v4sf(numLines);
+	}
+	return array;
+}
+
