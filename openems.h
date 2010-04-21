@@ -61,7 +61,7 @@ protected:
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;
 
-	enum EngineType {EngineType_Standard,EngineType_Multithreaded};
+	enum EngineType {EngineType_Standard,EngineType_Multithreaded,EngineType_SSE};
 	EngineType m_engine;
 	unsigned int m_engine_numThreads;
 };
