@@ -46,6 +46,8 @@ void Engine::Init()
 	numTS = 0;
 	volt = Create_N_3DArray(numLines);
 	curr = Create_N_3DArray(numLines);
+
+	file_et1.open( "et1" );
 }
 
 void Engine::Reset()
@@ -54,6 +56,8 @@ void Engine::Reset()
 	volt=NULL;
 	Delete_N_3DArray(curr,numLines);
 	curr=NULL;
+
+	file_et1.close();
 }
 
 void Engine::UpdateVoltages()
@@ -98,6 +102,13 @@ void Engine::ApplyVoltageExcite()
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
 		volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
+	}
+
+	// write the first excitation into the file "et1"
+	if (Op->E_Exc_Count >= 1) {
+		exc_pos = (int)numTS - (int)Op->E_Exc_delay[0];
+		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
+		file_et1 << numTS * Op->GetTimestep() << "\t" << Op->E_Exc_amp[0]*Op->ExciteSignal[exc_pos] << "\n"; // do not use std::endl here, because it will do an implicit flush
 	}
 }
 

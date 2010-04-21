@@ -18,6 +18,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#include <fstream>
 #include "operator.h"
 
 class Engine
@@ -51,6 +52,8 @@ protected:
 	FDTD_FLOAT**** volt;
 	FDTD_FLOAT**** curr;
 	unsigned int numTS;
+
+	ofstream file_et1;
 };
 
 #endif // ENGINE_H
