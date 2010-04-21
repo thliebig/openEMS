@@ -109,7 +109,7 @@ protected:
 	unsigned int m_nyquistTS;
 
 	//! Calc operator at certain pos
-	virtual inline void Calc_ECOperatorPos(int n, unsigned int* pos);
+	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
 
 	//EC elements, internal only!
 	virtual bool Calc_EC();

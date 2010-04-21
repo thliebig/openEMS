@@ -518,7 +518,7 @@ void Operator::InitOperator()
 	ii = Create_N_3DArray(numLines);
 }
 
-inline void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
+void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 {
 	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
 	vv[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
