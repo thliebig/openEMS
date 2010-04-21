@@ -24,21 +24,6 @@
 
 #define FDTD_FLOAT float
 
-
-#if __SIZEOF_FLOAT__ != 4
-	#error wrong size of float
-#endif
-
-typedef float v4sf __attribute__ ((vector_size (16))); // vector of four single floats
-
-union f4vector
-{
-  v4sf v;
-  float f[4];
-};
-
-
-
 //! Abstract base-class for the FDTD-operator
 class Operator
 {
@@ -145,10 +130,6 @@ public:
 	FDTD_FLOAT**** vi; //calc new voltage from old current
 	FDTD_FLOAT**** ii; //calc new current from old current
 	FDTD_FLOAT**** iv; //calc new current from old voltage
-	f4vector**** vv_; //calc new voltage from old voltage
-	f4vector**** vi_; //calc new voltage from old current
-	f4vector**** iv_; //calc new current from old current
-	f4vector**** ii_; //calc new current from old voltage
 
 	//Excitation time-signal
 	unsigned int ExciteLength;

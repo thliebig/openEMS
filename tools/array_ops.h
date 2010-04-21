@@ -18,6 +18,19 @@
 #ifndef ARRAY_OPS_H
 #define ARRAY_OPS_H
 
+#if __SIZEOF_FLOAT__ != 4
+	#error wrong size of float
+#endif
+
+typedef float v4sf __attribute__ ((vector_size (16))); // vector of four single floats
+
+union f4vector
+{
+  v4sf v;
+  float f[4];
+};
+
+
 #include "../FDTD/operator.h"
 
 FDTD_FLOAT*** Create3DArray(const unsigned int* numLines);

@@ -16,18 +16,17 @@
 */
 
 #include "engine_sse.h"
-#include "tools/array_ops.h"
 
 //! \brief construct an Engine_sse instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine_sse* Engine_sse::New(const Operator* op)
+Engine_sse* Engine_sse::New(const Operator_sse* op)
 {
 	Engine_sse* e = new Engine_sse(op);
 	e->Init();
 	return e;
 }
 
-Engine_sse::Engine_sse(const Operator* op) : Engine(op)
+Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 {
 	Op = op;
 	for (int n=0;n<3;++n)
@@ -48,7 +47,6 @@ void Engine_sse::Init()
 	curr_ = Create_N_3DArray_v4sf(numLines);
 	volt = 0; // not used
 	curr = 0; // not used
-//	Engine::Init(); //FIXME currently postprocessing operates on volt and curr arrays, which are not updated by this engine!!!!
 }
 
 void Engine_sse::Reset()
