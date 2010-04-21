@@ -18,13 +18,13 @@
 #ifndef ENGINE_SSE_H
 #define ENGINE_SSE_H
 
-#include "operator.h"
 #include "engine.h"
+#include "operator_sse.h"
 
 class Engine_sse : public Engine
 {
 public:
-	static Engine_sse* New(const Operator* op);
+	static Engine_sse* New(const Operator_sse* op);
 	virtual ~Engine_sse();
 
 	virtual void Init();
@@ -39,8 +39,8 @@ public:
 	inline virtual FDTD_FLOAT GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return curr_[n][x][y][z/4].f[z%4]; }
 
 protected:
-	Engine_sse(const Operator* op);
-	const Operator* Op;
+	Engine_sse(const Operator_sse* op);
+	const Operator_sse* Op;
 
 	virtual void UpdateVoltages();
 	virtual void ApplyVoltageExcite();
