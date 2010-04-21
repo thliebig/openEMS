@@ -294,6 +294,9 @@ int openEMS::SetupFDTD(const char* file)
 		case EngineType_Multithreaded:
 			FDTD_Eng = Engine_Multithread::New(FDTD_Op,m_engine_numThreads);
 			break;
+		case EngineType_SSE:
+			FDTD_Eng = Engine_sse::New(FDTD_Op);
+			break;
 		default:
 			FDTD_Eng = Engine::New(FDTD_Op);
 			break;

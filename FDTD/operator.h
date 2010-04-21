@@ -147,6 +147,8 @@ public:
 	FDTD_FLOAT**** iv; //calc new current from old voltage
 	f4vector**** vv_; //calc new voltage from old voltage
 	f4vector**** vi_; //calc new voltage from old current
+	f4vector**** iv_; //calc new current from old current
+	f4vector**** ii_; //calc new current from old voltage
 
 	//Excitation time-signal
 	unsigned int ExciteLength;

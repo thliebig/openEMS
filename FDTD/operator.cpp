@@ -51,6 +51,8 @@ void Operator::Init()
 	vi_=NULL;
 	iv=NULL;
 	ii=NULL;
+	iv_=NULL;
+	ii_=NULL;
 	for (int n=0;n<3;++n)
 	{
 		discLines[n]=NULL;
@@ -81,6 +83,8 @@ void Operator::Reset()
 	Delete_N_3DArray_v4sf(vi_,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
+	Delete_N_3DArray_v4sf(iv_,numLines);
+	Delete_N_3DArray_v4sf(ii_,numLines);
 	for (int n=0;n<3;++n)
 	{
 		delete[] discLines[n];
@@ -510,12 +514,16 @@ void Operator::InitOperator()
 	Delete_N_3DArray_v4sf(vi_,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
+	Delete_N_3DArray_v4sf(iv_,numLines);
+	Delete_N_3DArray_v4sf(ii_,numLines);
 	vv = Create_N_3DArray(numLines);
 	vi = Create_N_3DArray(numLines);
 	vv_ = Create_N_3DArray_v4sf(numLines);
 	vi_ = Create_N_3DArray_v4sf(numLines);
 	iv = Create_N_3DArray(numLines);
 	ii = Create_N_3DArray(numLines);
+	iv_ = Create_N_3DArray_v4sf(numLines);
+	ii_ = Create_N_3DArray_v4sf(numLines);
 }
 
 inline void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
@@ -523,9 +531,6 @@ inline void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
 	vv[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
 	vi[n][pos[0]][pos[1]][pos[2]] = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-
-	vv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vv[n][pos[0]][pos[1]][pos[2]];
-	vi_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vi[n][pos[0]][pos[1]][pos[2]];
 
 	ii[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
 	iv[n][pos[0]][pos[1]][pos[2]] = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
@@ -571,6 +576,27 @@ int Operator::CalcECOperator()
 
 	if (CalcEFieldExcitation()==false) return -1;
 	CalcPEC();
+
+
+	// copy operator to aligned memory (only for sse engine)
+	// FIXME this is really inefficient!
+	for (int n=0;n<3;++n)
+	{
+		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+		{
+			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			{
+				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+				{
+					vv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vv[n][pos[0]][pos[1]][pos[2]];
+					vi_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vi[n][pos[0]][pos[1]][pos[2]];
+					iv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = iv[n][pos[0]][pos[1]][pos[2]];
+					ii_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = ii[n][pos[0]][pos[1]][pos[2]];
+				}
+			}
+		}
+	}
+
 
 	return 0;
 }

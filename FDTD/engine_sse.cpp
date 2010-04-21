@@ -45,23 +45,26 @@ void Engine_sse::Init()
 {
 	numTS = 0;
 	volt_ = Create_N_3DArray_v4sf(numLines);
-	curr = Create_N_3DArray(numLines);
+	curr_ = Create_N_3DArray_v4sf(numLines);
+	volt = 0; // not used
+	curr = 0; // not used
+//	Engine::Init(); //FIXME currently postprocessing operates on volt and curr arrays, which are not updated by this engine!!!!
 }
 
 void Engine_sse::Reset()
 {
 	Delete_N_3DArray_v4sf(volt_,numLines);
-	volt=NULL;
-	Delete_N_3DArray(curr,numLines);
-	curr=NULL;
+	volt_ = 0;
+	Delete_N_3DArray_v4sf(curr_,numLines);
+	curr_ = 0;
 }
 
 void Engine_sse::UpdateVoltages()
 {
-	unsigned int pos[4];
-	bool shift[3];
+	unsigned int pos[3];
+	bool shift[2];
+	f4vector temp;
 
-	//voltage updates
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 	{
 		shift[0]=pos[0];
@@ -70,19 +73,25 @@ void Engine_sse::UpdateVoltages()
 			shift[1]=pos[1];
 			for (pos[2]=0;pos[2]<numLines[2]/4;++pos[2])
 			{
-				//do the updates here
-				//for x
+				// x-polarization
+				temp.f[0] = curr_[1][pos[0]][pos[1]][pos[2]-(bool)pos[2]].f[3];
+				temp.f[1] = curr_[1][pos[0]][pos[1]][pos[2]].f[0];
+				temp.f[2] = curr_[1][pos[0]][pos[1]][pos[2]].f[1];
+				temp.f[3] = curr_[1][pos[0]][pos[1]][pos[2]].f[2];
 				volt_[0][pos[0]][pos[1]][pos[2]].v *= Op->vv_[0][pos[0]][pos[1]][pos[2]].v;
+				volt_[0][pos[0]][pos[1]][pos[2]].v += Op->vi_[0][pos[0]][pos[1]][pos[2]].v * ( curr_[2][pos[0]][pos[1]][pos[2]].v - curr_[2][pos[0]][pos[1]-shift[1]][pos[2]].v - curr_[1][pos[0]][pos[1]][pos[2]].v + temp.v );
+
+				// y-polarization
+				temp.f[0] = curr_[0][pos[0]][pos[1]][pos[2]-(bool)pos[2]].f[3];
+				temp.f[1] = curr_[0][pos[0]][pos[1]][pos[2]].f[0];
+				temp.f[2] = curr_[0][pos[0]][pos[1]][pos[2]].f[1];
+				temp.f[3] = curr_[0][pos[0]][pos[1]][pos[2]].f[2];
 				volt_[1][pos[0]][pos[1]][pos[2]].v *= Op->vv_[1][pos[0]][pos[1]][pos[2]].v;
+				volt_[1][pos[0]][pos[1]][pos[2]].v += Op->vi_[1][pos[0]][pos[1]][pos[2]].v * ( curr_[0][pos[0]][pos[1]][pos[2]].v - temp.v - curr_[2][pos[0]][pos[1]][pos[2]].v + curr_[2][pos[0]-shift[0]][pos[1]][pos[2]].v);
+
+				// z-polarization
 				volt_[2][pos[0]][pos[1]][pos[2]].v *= Op->vv_[2][pos[0]][pos[1]][pos[2]].v;
-
-
-				for (pos[3]=0;pos[3]<4;++pos[3]) {
-					shift[2]=pos[2]+pos[3];
-					volt_[0][pos[0]][pos[1]][pos[2]].f[pos[3]] += Op->vi_[0][pos[0]][pos[1]][pos[2]].f[pos[3]] * ( curr[2][pos[0]][pos[1]][pos[2]] - curr[2][pos[0]][pos[1]-shift[1]][pos[2]] - curr[1][pos[0]][pos[1]][pos[2]] + curr[1][pos[0]][pos[1]][pos[2]-shift[2]]);
-					volt_[1][pos[0]][pos[1]][pos[2]].f[pos[3]] += Op->vi_[1][pos[0]][pos[1]][pos[2]].f[pos[3]] * ( curr[0][pos[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]-shift[2]] - curr[2][pos[0]][pos[1]][pos[2]] + curr[2][pos[0]-shift[0]][pos[1]][pos[2]]);
-					volt_[2][pos[0]][pos[1]][pos[2]].f[pos[3]] += Op->vi_[2][pos[0]][pos[1]][pos[2]].f[pos[3]] * ( curr[1][pos[0]][pos[1]][pos[2]] - curr[1][pos[0]-shift[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]] + curr[0][pos[0]][pos[1]-shift[1]][pos[2]]);
-				}
+				volt_[2][pos[0]][pos[1]][pos[2]].v += Op->vi_[2][pos[0]][pos[1]][pos[2]].v * ( curr_[1][pos[0]][pos[1]][pos[2]].v - curr_[1][pos[0]-shift[0]][pos[1]][pos[2]].v - curr_[0][pos[0]][pos[1]][pos[2]].v + curr_[0][pos[0]][pos[1]-shift[1]][pos[2]].v);
 			}
 		}
 	}
@@ -91,37 +100,47 @@ void Engine_sse::UpdateVoltages()
 void Engine_sse::ApplyVoltageExcite()
 {
 	int exc_pos;
+	unsigned int pos;
 	//soft voltage excitation here (E-field excite)
 	for (unsigned int n=0;n<Op->E_Exc_Count;++n)
 	{
 		exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
-//			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
+		pos = Op->E_Exc_index[2][n];
+		volt_[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][pos/4].f[pos%4] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
 	}
 }
 
 void Engine_sse::UpdateCurrents()
 {
-	unsigned int pos[3];
+	unsigned int pos[5];
+	f4vector temp;
+
 	for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
 	{
 		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2]-1;++pos[2])
+			for (pos[2]=0;pos[2]<numLines[2]/4;++pos[2]) // FIXME is this correct?
 			{
-				//do the updates here
-				//for x
-				curr[0][pos[0]][pos[1]][pos[2]] *= Op->ii[0][pos[0]][pos[1]][pos[2]];
-				curr[0][pos[0]][pos[1]][pos[2]] += Op->iv[0][pos[0]][pos[1]][pos[2]] * ( volt[2][pos[0]][pos[1]][pos[2]] - volt[2][pos[0]][pos[1]+1][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]] + volt[1][pos[0]][pos[1]][pos[2]+1]);
+				// x-pol
+				temp.f[0] = volt_[1][pos[0]][pos[1]][pos[2]].f[1];
+				temp.f[1] = volt_[1][pos[0]][pos[1]][pos[2]].f[2];
+				temp.f[2] = volt_[1][pos[0]][pos[1]][pos[2]].f[3];
+				temp.f[3] = volt_[1][pos[0]][pos[1]][pos[2]+1].f[0]; // FIXME outside sim area
+				curr_[0][pos[0]][pos[1]][pos[2]].v *= Op->ii_[0][pos[0]][pos[1]][pos[2]].v;
+				curr_[0][pos[0]][pos[1]][pos[2]].v += Op->iv_[0][pos[0]][pos[1]][pos[2]].v * ( volt_[2][pos[0]][pos[1]][pos[2]].v - volt_[2][pos[0]][pos[1]+1][pos[2]].v - volt_[1][pos[0]][pos[1]][pos[2]].v + temp.v);
 
-				//for y
-				curr[1][pos[0]][pos[1]][pos[2]] *= Op->ii[1][pos[0]][pos[1]][pos[2]];
-				curr[1][pos[0]][pos[1]][pos[2]] += Op->iv[1][pos[0]][pos[1]][pos[2]] * ( volt[0][pos[0]][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]+1] - volt[2][pos[0]][pos[1]][pos[2]] + volt[2][pos[0]+1][pos[1]][pos[2]]);
+				// y-pol
+				temp.f[0] = volt_[0][pos[0]][pos[1]][pos[2]].f[1];
+				temp.f[1] = volt_[0][pos[0]][pos[1]][pos[2]].f[2];
+				temp.f[2] = volt_[0][pos[0]][pos[1]][pos[2]].f[3];
+				temp.f[3] = volt_[0][pos[0]][pos[1]][pos[2]+1].f[0]; // FIXME outside sim area
+				curr_[1][pos[0]][pos[1]][pos[2]].v *= Op->ii_[1][pos[0]][pos[1]][pos[2]].v;
+				curr_[1][pos[0]][pos[1]][pos[2]].v += Op->iv_[1][pos[0]][pos[1]][pos[2]].v * ( volt_[0][pos[0]][pos[1]][pos[2]].v - temp.v - volt_[2][pos[0]][pos[1]][pos[2]].v + volt_[2][pos[0]+1][pos[1]][pos[2]].v);
 
-				//for z
-				curr[2][pos[0]][pos[1]][pos[2]] *= Op->ii[2][pos[0]][pos[1]][pos[2]];
-				curr[2][pos[0]][pos[1]][pos[2]] += Op->iv[2][pos[0]][pos[1]][pos[2]] * ( volt[1][pos[0]][pos[1]][pos[2]] - volt[1][pos[0]+1][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]] + volt[0][pos[0]][pos[1]+1][pos[2]]);
+				// z-pol
+				curr_[2][pos[0]][pos[1]][pos[2]].v *= Op->ii_[2][pos[0]][pos[1]][pos[2]].v;
+				curr_[2][pos[0]][pos[1]][pos[2]].v += Op->iv_[2][pos[0]][pos[1]][pos[2]].v * ( volt_[1][pos[0]][pos[1]][pos[2]].v - volt_[1][pos[0]+1][pos[1]][pos[2]].v - volt_[0][pos[0]][pos[1]][pos[2]].v + volt_[0][pos[0]][pos[1]+1][pos[2]].v);
 			}
 		}
 	}
