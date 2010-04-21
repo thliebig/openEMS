@@ -4,7 +4,7 @@ physical_constants;
 
 
 ENABLE_PLOTS = 1;
-CLEANUP = 0;        % if enabled and result is PASS, remove simulation folder
+CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
 
 % LIMITS - inside
@@ -34,6 +34,7 @@ f_stop = 10e9;
 Sim_Path = 'tmp';
 Sim_CSX = 'cavity.xml';
 
+[status,message,messageid]=rmdir(Sim_Path,'s');
 [status,message,messageid]=mkdir(Sim_Path);
 
 %setup FDTD parameter
@@ -44,10 +45,13 @@ FDTD = SetBoundaryCond(FDTD,BC);
 
 %setup CSXCAD geometry
 CSX = InitCSX();
-grid_res = 2e-3;
-mesh.x = 0:grid_res:a; %linspace(0,a,25);
-mesh.y = 0:grid_res:b; %linspace(0,b,25);
-mesh.z = 0:grid_res:d; %linspace(0,d,25);
+% grid_res = 2e-3;
+% mesh.x = 0:grid_res:a; %linspace(0,a,25);
+% mesh.y = 0:grid_res:b; %linspace(0,b,25);
+% mesh.z = 0:grid_res:d; %linspace(0,d,25);
+mesh.x = linspace(0,a,26);
+mesh.y = linspace(0,b,11);
+mesh.z = linspace(0,d,32);
 CSX = DefineRectGrid(CSX, 1,mesh);
 
 % excitation
@@ -205,7 +209,7 @@ end
 
 
 if pass && CLEANUP
-    rmdir( [Sim_Path '/' Sim_CSX], 's' );
+    rmdir( Sim_Path, 's' );
 end
 if ~pass && STOP_IF_FAILED
     error 'test failed';

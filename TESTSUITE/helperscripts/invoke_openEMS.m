@@ -3,8 +3,10 @@ function invoke_openEMS( opts )
 if nargin < 1
     opts = '';
 end
-% openEMS_opts = [openEMS_opts ' --disable-dumps'];
-% openEMS_opts = [openEMS_opts ' --debug-material'];
+% opts = [opts ' --disable-dumps'];
+% opts = [opts ' --debug-material'];
+% opts = [opts ' --engine=multithreaded'];
+% opts = [opts ' --engine=sse'];
 
 filename = mfilename('fullpath');
 dir = fileparts( filename );

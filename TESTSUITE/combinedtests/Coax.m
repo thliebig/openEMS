@@ -4,7 +4,7 @@ physical_constants;
 
 
 ENABLE_PLOTS = 1;
-CLEANUP = 0;        % if enabled and result is PASS, remove simulation folder
+CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
 
 % LIMITS
@@ -24,6 +24,7 @@ f_stop = 1e9;
 Sim_Path = 'tmp';
 Sim_CSX = 'coax.xml';
 
+[status,message,messageid]=rmdir(Sim_Path,'s');
 [status,message,messageid]=mkdir(Sim_Path);
 
 %setup FDTD parameter
@@ -37,6 +38,7 @@ CSX = InitCSX();
 mesh.x = -2.5*mesh_res(1)-coax_rad_aa : mesh_res(1) : coax_rad_aa+2.5*mesh_res(1);
 mesh.y = mesh.x;
 mesh.z = 0 : mesh_res(3) : length;
+mesh.z = linspace(0,length,numel(mesh.z) + 4-mod(numel(mesh.z),4)); % make it compatible with sse-engine
 CSX = DefineRectGrid(CSX, 1e-3,mesh);
 
 %create copper
@@ -67,14 +69,14 @@ weight{3} = 0;
 CSX = SetExcitationWeight(CSX, 'excite', weight );
 CSX = AddCylindricalShell(CSX,'excite',0 ,start,stop,0.5*(coax_rad_i+coax_rad_ai),(coax_rad_ai-coax_rad_i));
  
-%dump
-CSX = AddDump(CSX,'Et_',0,2);
-start = [mesh.x(1) , 0 , mesh.z(1)];
-stop = [mesh.x(end) , 0 , mesh.z(end)];
-CSX = AddBox(CSX,'Et_',0 , start,stop);
-
-CSX = AddDump(CSX,'Ht_',1,2);
-CSX = AddBox(CSX,'Ht_',0,start,stop);
+% %dump
+% CSX = AddDump(CSX,'Et_',0,2);
+% start = [mesh.x(1) , 0 , mesh.z(1)];
+% stop = [mesh.x(end) , 0 , mesh.z(end)];
+% CSX = AddBox(CSX,'Et_',0 , start,stop);
+% 
+% CSX = AddDump(CSX,'Ht_',1,2);
+% CSX = AddBox(CSX,'Ht_',0,start,stop);
 
 %voltage calc
 CSX = AddProbe(CSX,'ut1',0);
@@ -145,7 +147,7 @@ end
 
 
 if pass && CLEANUP
-    rmdir( [Sim_Path '/' Sim_CSX], 's' );
+    rmdir( Sim_Path, 's' );
 end
 if ~pass && STOP_IF_FAILED
     error 'test failed';
