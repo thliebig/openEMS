@@ -34,8 +34,8 @@ public:
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
-	virtual FDTD_FLOAT**** GetVoltages() {return volt;};
-	virtual FDTD_FLOAT**** GetCurrents() {return curr;};
+	inline virtual FDTD_FLOAT GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return volt[n][x][y][z]; }
+	inline virtual FDTD_FLOAT GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return curr[n][x][y][z]; }
 
 protected:
 	Engine(const Operator* op);

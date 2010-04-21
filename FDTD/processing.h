@@ -76,7 +76,9 @@ protected:
 	ofstream file;
 	string m_filename;
 
-	double CalcLineIntegral(unsigned int* start, unsigned int* stop, int field);
+	double CalcLineIntegral(unsigned int* start, unsigned int* stop, int field) const;
+	double CalcLineIntegral_I(unsigned int* start, unsigned int* stop) const;
+	double CalcLineIntegral_V(unsigned int* start, unsigned int* stop) const;
 };
 
 class ProcessingArray

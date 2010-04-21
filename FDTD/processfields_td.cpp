@@ -31,9 +31,6 @@ ProcessFieldsTD::~ProcessFieldsTD()
 
 void ProcessFieldsTD::DumpCellInterpol(string filename)
 {
-	FDTD_FLOAT**** volt = Eng->GetVoltages();
-	FDTD_FLOAT**** curr = Eng->GetCurrents();
-
 	if (m_DumpType==E_FIELD_DUMP)
 	{
 		//create array
@@ -55,21 +52,21 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 					delta  = Op->GetMeshDelta(0,OpPos); //Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
 					if (delta)
 					{
-						E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]] + volt[0][OpPos[0]][OpPos[1]][OpPos[2]+1] + volt[0][OpPos[0]][OpPos[1]+1][OpPos[2]+1];
+						E_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(0,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetVolt(0,OpPos[0],OpPos[1]+1,OpPos[2]) + Eng->GetVolt(0,OpPos[0],OpPos[1],OpPos[2]+1) + Eng->GetVolt(0,OpPos[0],OpPos[1]+1,OpPos[2]+1);
 						E_T[0][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
 					}
 					//in y
 					delta  = Op->GetMeshDelta(1,OpPos); //Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
 					if (delta)
 					{
-						E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][OpPos[0]][OpPos[1]][OpPos[2]] + volt[1][OpPos[0]+1][OpPos[1]][OpPos[2]] + volt[1][OpPos[0]][OpPos[1]][OpPos[2]+1] + volt[1][OpPos[0]+1][OpPos[1]][OpPos[2]+1];
+						E_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(1,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetVolt(1,OpPos[0]+1,OpPos[1],OpPos[2]) + Eng->GetVolt(1,OpPos[0],OpPos[1],OpPos[2]+1) + Eng->GetVolt(1,OpPos[0]+1,OpPos[1],OpPos[2]+1);
 						E_T[1][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
 					}
 					//in z
 					delta  = Op->GetMeshDelta(2,OpPos); //Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
 					if (delta)
 					{
-						E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][OpPos[0]][OpPos[1]][OpPos[2]] + volt[2][OpPos[0]][OpPos[1]+1][OpPos[2]] + volt[2][OpPos[0]+1][OpPos[1]][OpPos[2]] + volt[2][OpPos[0]+1][OpPos[1]+1][OpPos[2]];
+						E_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(2,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetVolt(2,OpPos[0],OpPos[1]+1,OpPos[2]) + Eng->GetVolt(2,OpPos[0]+1,OpPos[1],OpPos[2]) + Eng->GetVolt(2,OpPos[0]+1,OpPos[1]+1,OpPos[2]);
 						E_T[2][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
 					}
 				}
@@ -118,7 +115,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 					delta = Op->GetDiscLine(0,OpPos[0],true);
 					if (delta)
 					{
-						H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][OpPos[0]][OpPos[1]][OpPos[2]] + curr[0][OpPos[0]+1][OpPos[1]][OpPos[2]];
+						H_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(0,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(0,OpPos[0]+1,OpPos[1],OpPos[2]);
 						H_T[0][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
 					}
 					//in y
@@ -126,7 +123,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 					delta = Op->GetDiscLine(1,OpPos[1],true);
 					if (delta)
 					{
-						H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][OpPos[0]][OpPos[1]][OpPos[2]] + curr[1][OpPos[0]][OpPos[1]+1][OpPos[2]];
+						H_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(1,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(1,OpPos[0],OpPos[1]+1,OpPos[2]);
 						H_T[1][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
 					}
 					//in z
@@ -134,7 +131,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 					delta = Op->GetDiscLine(2,OpPos[2],true);
 					if (delta)
 					{
-						H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][OpPos[0]][OpPos[1]][OpPos[2]] + curr[2][OpPos[0]][OpPos[1]][OpPos[2]+1];
+						H_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2]+1);
 						H_T[2][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
 					}
 				}
@@ -162,9 +159,6 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 
 void ProcessFieldsTD::DumpNoInterpol(string filename)
 {
-	FDTD_FLOAT**** volt = Eng->GetVoltages();
-	FDTD_FLOAT**** curr = Eng->GetCurrents();
-
 	unsigned int pos[3];
 	unsigned int OpPos[3];
 	double delta[3];
@@ -185,11 +179,11 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 					OpPos[2]=start[2]+pos[2]*subSample[2];
 					delta[2]=Op->GetMeshDelta(2,OpPos);//fabs(Op->MainOp->GetIndexDelta(2,OpPos[2]));
 					if (delta[0])
-						E_T[0][pos[0]][pos[1]][pos[2]] = volt[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0];// /Op->gridDelta;
+						E_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(0,OpPos[0],OpPos[1],OpPos[2])/delta[0];// /Op->gridDelta;
 					if (delta[1])
-						E_T[1][pos[0]][pos[1]][pos[2]] = volt[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1];// /Op->gridDelta;
+						E_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(1,OpPos[0],OpPos[1],OpPos[2])/delta[1];// /Op->gridDelta;
 					if (delta[2])
-						E_T[2][pos[0]][pos[1]][pos[2]] = volt[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2];// /Op->gridDelta;
+						E_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(2,OpPos[0],OpPos[1],OpPos[2])/delta[2];// /Op->gridDelta;
 				}
 			}
 		}
@@ -231,11 +225,11 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 					delta[2]=Op->GetMeshDelta(2,OpPos,true);//fabs(Op->MainOp->GetIndexWidth(2,OpPos[2]));
 					//in x
 					if (delta[0])
-						H_T[0][pos[0]][pos[1]][pos[2]] = curr[0][OpPos[0]][OpPos[1]][OpPos[2]]/delta[0];// /Op->gridDelta;
+						H_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(0,OpPos[0],OpPos[1],OpPos[2])/delta[0];// /Op->gridDelta;
 					if (delta[1])
-						H_T[1][pos[0]][pos[1]][pos[2]] = curr[1][OpPos[0]][OpPos[1]][OpPos[2]]/delta[1];// /Op->gridDelta;
+						H_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(1,OpPos[0],OpPos[1],OpPos[2])/delta[1];// /Op->gridDelta;
 					if (delta[2])
-						H_T[2][pos[0]][pos[1]][pos[2]] = curr[2][OpPos[0]][OpPos[1]][OpPos[2]]/delta[2];// /Op->gridDelta;
+						H_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2])/delta[2];// /Op->gridDelta;
 				}
 			}
 		}
