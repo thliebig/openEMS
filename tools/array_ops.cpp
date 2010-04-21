@@ -122,6 +122,11 @@ void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines)
 
 f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 {
+	if ((numLines[2] % 4) != 0) {
+		cerr << "sse engine needs number of mesh lines divideable by 4" << endl;
+		exit(1);
+	}
+
 	f4vector*** array=NULL;
 	unsigned int pos[3];
 	array = new f4vector**[numLines[0]];
@@ -144,11 +149,6 @@ f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 }
 f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines)
 {
-	if ((numLines[2] % 4) != 0) {
-		cerr << "sse engine needs number of mesh lines divideable by 4" << endl;
-		exit(1);
-	}
-
 	f4vector**** array=NULL;
 	array = new f4vector***[3];
 	for (int n=0;n<3;++n)

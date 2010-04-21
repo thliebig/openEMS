@@ -31,7 +31,7 @@ union f4vector
 };
 
 
-#include "../FDTD/operator.h"
+#include "FDTD/operator.h"
 
 FDTD_FLOAT*** Create3DArray(const unsigned int* numLines);
 void Delete3DArray(FDTD_FLOAT*** array, const unsigned int* numLines);
