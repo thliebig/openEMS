@@ -52,22 +52,22 @@ public:
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
 	void SetDumpType(DumpType type) {m_DumpType=type;}
 
-	static bool DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT**** array, double** discLines, unsigned int* numLines, unsigned int precision=12);
-	static bool DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT**** array[], unsigned int numFields, double** discLines, unsigned int* numLines, unsigned int precision=12);
-	static bool DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT*** array, double** discLines, unsigned int* numLines, unsigned int precision=12);
-	static bool DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT*** array[], unsigned int numFields, double** discLines, unsigned int* numLines, unsigned int precision=12);
+	static bool DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const * const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12);
+	static bool DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12);
+	static bool DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12);
+	static bool DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12);
 
-	static bool DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT**** array, unsigned int* numLines);
+	static bool DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines);
 
-	double CalcTotalEnergy();
+	double CalcTotalEnergy() const;
 
 	void SetFileType(FileType fileType) {m_fileType=fileType;}
 
 //	virtual void Process();
 protected:
-	static void WriteVTKHeader(ofstream &file, double** discLines, unsigned int* numLines, unsigned int precision=12);
-	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT**** array, unsigned int* numLines, unsigned int precision=12);
-	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT*** array, unsigned int* numLines, unsigned int precision=12);
+	static void WriteVTKHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12);
+	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, unsigned int precision=12);
+	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, unsigned int precision=12);
 
 	static string GetFieldNameByType(DumpType type);
 	DumpMode m_DumpMode;

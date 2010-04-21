@@ -91,33 +91,53 @@ void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 	if (Op->SnapToMesh(dstop,stop)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 }
 
-double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int field)
+double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int field) const
+{
+	switch (field) {
+	case 0:
+		return CalcLineIntegral_V( start, stop );
+	case 1:
+		return CalcLineIntegral_I( start, stop );
+	}
+	return 0;
+}
+
+double Processing::CalcLineIntegral_I(unsigned int* start, unsigned int* stop) const
 {
 	double result=0;
-	FDTD_FLOAT**** array;
-	if (field==0)
-		array=Eng->GetVoltages();
-	else if (field==1)
-		array=Eng->GetCurrents();
-	else return 0.0;
-
 	for (int n=0;n<3;++n)
 	{
 		if (start[n]<stop[n])
 		{
 			unsigned int pos[3]={start[0],start[1],start[2]};
 			for (;pos[n]<stop[n];++pos[n])
-			{
-				result+=array[n][pos[0]][pos[1]][pos[2]];
-			}
+				result += Eng->GetCurr(n,pos[0],pos[1],pos[2]);
 		}
 		else
 		{
 			unsigned int pos[3]={stop[0],stop[1],stop[2]};
 			for (;pos[n]<start[n];++pos[n])
-			{
-				result-=array[n][pos[0]][pos[1]][pos[2]];
-			}
+				result -= Eng->GetCurr(n,pos[0],pos[1],pos[2]);
+		}
+	}
+	return result;
+}
+double Processing::CalcLineIntegral_V(unsigned int* start, unsigned int* stop) const
+{
+	double result=0;
+	for (int n=0;n<3;++n)
+	{
+		if (start[n]<stop[n])
+		{
+			unsigned int pos[3]={start[0],start[1],start[2]};
+			for (;pos[n]<stop[n];++pos[n])
+				result += Eng->GetVolt(n,pos[0],pos[1],pos[2]);
+		}
+		else
+		{
+			unsigned int pos[3]={stop[0],stop[1],stop[2]};
+			for (;pos[n]<start[n];++pos[n])
+				result -= Eng->GetVolt(n,pos[0],pos[1],pos[2]);
 		}
 	}
 	return result;
