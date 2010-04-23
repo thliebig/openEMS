@@ -131,7 +131,9 @@ int Operator_Cylinder::CalcECOperator()
 	if (val)
 		return val;
 
-	if (CC_R0_included==false)
+	//if r=0 is not included -> obviously no special treatment for r=0
+	//if alpha direction is not closed, PEC-BC at r=0 necessary and already set...
+	if ((CC_R0_included==false) || (CC_closedAlpha==false))
 		return val;
 
 	unsigned int pos[3];
@@ -144,13 +146,9 @@ int Operator_Cylinder::CalcECOperator()
 		for (pos[1]=0;pos[1]<numLines[1]-CC_closedAlpha;++pos[1])
 		{
 			Calc_ECPos(2,pos,inEC);
-//			if (pos[2]==0)
-//				cerr << inEC[0] << endl;
 			C+=inEC[0]*0.5;
 			G+=inEC[1]*0.5;
 		}
-		if (pos[2]==0)
-			cerr << C << " and " << G << endl;
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 	}
@@ -184,8 +182,8 @@ inline void Operator_Cylinder::Calc_ECOperatorPos(int n, unsigned int* pos)
 
 	if (CC_R0_included && (n==2) && (pos[0]==0))
 	{
-		vv[n][pos[0]][pos[1]][pos[2]] = 1;
-		vi[n][pos[0]][pos[1]][pos[2]] = 0;
+		vv[2][0][pos[1]][pos[2]] = 1;
+		vi[2][0][pos[1]][pos[2]] = 0;
 	}
 }
 
@@ -198,9 +196,9 @@ void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 	}
 	if (CC_R0_included)
 	{
-		dirs[2]=0;  //no PEC in r_min directions...
+		// no special treatment necessary
+		// operator for z-direction at r=0 will be calculated and set separately
 	}
-
 	Operator::ApplyElectricBC(dirs);
 }
 
