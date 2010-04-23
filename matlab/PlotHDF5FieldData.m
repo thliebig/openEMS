@@ -11,7 +11,11 @@ end
 mesh = ReadHDF5Mesh(file);
 fields = ReadHDF5FieldData(file);
 
-[X Y Z] = meshgrid(double(mesh.lines{1}),double(mesh.lines{2}),double(mesh.lines{3}));
+if (mesh.type==0)
+    [X Y Z] = meshgrid(double(mesh.lines{1}),double(mesh.lines{2}),double(mesh.lines{3}));
+else
+    disp(['PlotHDF5FieldData:: Error: unknown mesh type ' num2str(mesh.type)]);
+end
 
 max_amp = 0;
 

@@ -68,6 +68,14 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
 	return numLines[ny];
 }
 
+string Operator_Cylinder::GetDirName(int ny) const
+{
+	if (ny==0) return "rho";
+	if (ny==1) return "alpha";
+	if (ny==2) return "z";
+	return "";
+}
+
 double Operator_Cylinder::GetMeshDelta(int n, int* pos, bool dualMesh) const
 {
 	double delta = Operator::GetMeshDelta(n,pos,dualMesh);

@@ -67,6 +67,9 @@ public:
 	void DumpOperator2File(string filename);
 	void DumpMaterial2File(string filename);
 
+	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
+	virtual string GetDirName(int ny) const;
+
 	virtual double GetGridDelta() const {return gridDelta;}
 	//! Get the mesh delta times the grid delta for a 3D position
 	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;

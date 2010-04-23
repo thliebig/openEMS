@@ -102,6 +102,14 @@ unsigned int Operator::CalcNyquistNum(double fmax)
 	return floor(T0/2/dT);
 }
 
+string Operator::GetDirName(int ny) const
+{
+	if (ny==0) return "x";
+	if (ny==1) return "y";
+	if (ny==2) return "z";
+	return "";
+}
+
 double Operator::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
 {
 	if ((n<0) || (n>2)) return 0.0;

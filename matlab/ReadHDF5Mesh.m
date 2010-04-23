@@ -14,3 +14,9 @@ hdf_mesh.names = names;
 for n=1:numel(names)
     hdf_mesh.lines{n} = hdf5read(file,names{n});
 end
+
+if (strcmp(names{1},'/mesh/rho'))
+    hdf_mesh.type=1;
+else
+    hdf_mesh.type=0;
+end
