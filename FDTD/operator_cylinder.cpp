@@ -76,13 +76,13 @@ string Operator_Cylinder::GetDirName(int ny) const
 	return "";
 }
 
-double Operator_Cylinder::GetMeshDelta(int n, int* pos, bool dualMesh) const
+double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) const
 {
 	double delta = Operator::GetMeshDelta(n,pos,dualMesh);
 	if (delta==0) return delta;
 	if (n==1)
 	{
-		return delta * GetDiscLine(n,pos[0],dualMesh);
+		return delta * GetDiscLine(0,pos[0],dualMesh);
 	}
 	return delta;
 }
@@ -211,7 +211,7 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 	}
 	if (CC_R0_included)
 	{
-		dirs[2]=0;  //no PMC in r_min directions...
+		dirs[0]=0;  //no PMC in r_min directions...
 	}
 	Operator::ApplyMagneticBC(dirs);
 }
