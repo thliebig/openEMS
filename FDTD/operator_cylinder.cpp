@@ -112,7 +112,10 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 	}
 	else if (minmaxA>2*PI)
 		{cerr << "Operator_Cylinder::SetGeometryCSX: Alpha Max-Min must not be larger than 2*PI!!!" << endl; Reset(); return false;}
-	else CC_closedAlpha=false;
+	else
+	{
+		CC_closedAlpha=false;
+	}
 
 	if (discLines[0][0]<0)
 		{cerr << "Operator_Cylinder::SetGeometryCSX: r<0 not allowed in Cylinder Coordinates!!!" << endl; Reset(); return false;}
@@ -143,12 +146,13 @@ int Operator_Cylinder::CalcECOperator()
 	{
 		double C=0;
 		double G=0;
-		for (pos[1]=0;pos[1]<numLines[1]-CC_closedAlpha;++pos[1])
+		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 		{
 			Calc_ECPos(2,pos,inEC);
 			C+=inEC[0]*0.5;
 			G+=inEC[1]*0.5;
 		}
+		vv[2][0][0][pos[2]] = 1;
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 	}
@@ -178,12 +182,6 @@ inline void Operator_Cylinder::Calc_ECOperatorPos(int n, unsigned int* pos)
 	{
 		ii[n][pos[0]][pos[1]][pos[2]] = 0;
 		iv[n][pos[0]][pos[1]][pos[2]] = 0;
-	}
-
-	if (CC_R0_included && (n==2) && (pos[0]==0))
-	{
-		vv[2][0][pos[1]][pos[2]] = 1;
-		vi[2][0][pos[1]][pos[2]] = 0;
 	}
 }
 
@@ -354,7 +352,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 		inEC[1] += 0;
 	}
 
-	if (CC_R0_included && (n==1) && (coord[0]==0))
+	if (CC_R0_included && (n==1) && (pos[0]==0))
 	{
 		inEC[0]=0;
 		inEC[1]=0;
