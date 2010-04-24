@@ -2,6 +2,7 @@ close all;
 clear all;
 clc
 
+%% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 abs_length = 500;
 length = 5000;
 unit = 1e-3;
@@ -27,6 +28,7 @@ func_Ea = [ num2str(1/kc) '*sin(a)*0.5*(j0('  num2str(kc) '*rho)-jn(2,'  num2str
 func_Ex = [func_Er '*cos(a) - ' func_Ea '*sin(a)'];
 func_Ey = [func_Er '*sin(a) + ' func_Ea '*cos(a)'];
 
+%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
@@ -39,14 +41,14 @@ Sim_CSX = 'Circ_WG.xml';
 
 mkdir(Sim_Path);
 
-%setup FDTD parameter
+%% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD(1000,1e-6,'OverSampling',5);
 T = 1/f0;
 FDTD = SetCustomExcite(FDTD,f0,[ '(1-exp(-1*(t/' num2str(T) ')^2) ) * sin(2*pi*' num2str(f0) '*t)' ]);
 BC = [1 1 1 1 1 1] * 0;
 FDTD = SetBoundaryCond(FDTD,BC);
 
-%setup CSXCAD geometry
+%% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = InitCSX();
 mesh.x = -mesh_res(1)/2-rad:mesh_res(1):rad+mesh_res(1)/2;
 mesh.y = -mesh_res(2)/2-rad:mesh_res(2):rad+mesh_res(2)/2;
@@ -56,7 +58,7 @@ CSX = DefineRectGrid(CSX, 1e-3,mesh);
 start = [0,0,0];
 stop = [0,0,length];
 
-%%fake pml
+%%% fake pml
 finalKappa = 0.3/abs_length^4;
 finalSigma = finalKappa*MUE0/EPS0;
 CSX = AddMaterial(CSX,'pml');
@@ -83,7 +85,7 @@ weight{3} = 0;
 CSX = SetExcitationWeight(CSX, 'excite', weight );
 CSX = AddCylinder(CSX,'excite', 5 ,[0 0 -0.1],[0 0 0.1],rad);
  
-%dump
+%% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddDump(CSX,'Et','SubSampling','2,2,4','FileType',1,'DumpMode',2);
 start = [mesh.x(1) , mesh.y(1) , mesh.z(1)];
 stop = [mesh.x(end) , mesh.y(end) , mesh.z(end)];
@@ -102,21 +104,22 @@ CSX = AddBox(CSX,'Et',0 , start,stop);
 % stop = [mesh.x(end) , mesh.y(end) , length/2];
 % CSX = AddBox(CSX,'Exy',0 , start,stop);
 
+%% define voltage calc boxes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %voltage calc
 CSX = AddProbe(CSX,'ut1',0);
 start = [ -rad 0 0/2 ];stop = [ rad 0 0/2 ];
 CSX = AddBox(CSX,'ut1', 0 ,start,stop);
-% 
-% %current calc
-% CSX = AddProbe(CSX,'it1',1);
-% mid = 0.5*(coax_rad_i+coax_rad_ai);
-% start = [ -mid -mid length/2 ];stop = [ mid mid length/2 ];
-% CSX = AddBox(CSX,'it1', 0 ,start,stop);
 
-%Write openEMS compatoble xml-file
+%current calc
+CSX = AddProbe(CSX,'it1',1);
+mid = 0.5*(coax_rad_i+coax_rad_ai);
+start = [ -mid -mid length/2 ];stop = [ mid mid length/2 ];
+CSX = AddBox(CSX,'it1', 0 ,start,stop);
+
+%% Write openEMS compatoble xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
-%cd to working dir and run openEMS
+%% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
 command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
@@ -124,6 +127,7 @@ disp(command);
 system(command)
 cd(savePath);
 
+%% do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 UI = ReadUI('ut1','tmp/');
 plot(UI.TD{1}.t,UI.TD{1}.val);
 grid on;
