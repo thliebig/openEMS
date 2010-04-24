@@ -1,4 +1,17 @@
 function PlotHDF5FieldData(file, PlotArgs)
+% function PlotHDF5FieldData(file, PlotArgs)
+%
+% e.g.
+% PlotArgs.slice = {0 [10 20] 0};
+% PlotArgs.pauseTime=0.01;
+% PlotArgs.component=2;
+% PlotArgs.Limit = 'auto';
+% 
+% PlotHDF5FieldData('tmp/Et.h5',PlotArgs)
+%
+% openEMS matlab interface
+% -----------------------
+% author: Thorsten Liebig
 
 component = PlotArgs.component;
 
@@ -50,14 +63,18 @@ for n=1:numel(Field)
     title(fields.names{n});
     %view(3)
     axis equal
-%     if (isfield(PlotArgs,'zlim'))
-%         if ~ischar(PlotArgs.zlim)
-%             zlim(PlotArgs.zlim);
-%         elseif strcmp(PlotArgs.zlim,'auto')
-%             zlim([-max_amp*(component>0) max_amp]);
-%         end
-%     end
-%       
+    if (isfield(PlotArgs,'Limit'))
+        if ~ischar(PlotArgs.Limit)
+            caxis(PlotArgs.Limit);
+        elseif strcmp(PlotArgs.Limit,'auto')    
+            if (component>0)
+                caxis([-max_amp,max_amp]);
+            else
+                caxis([0,max_amp]);
+            end
+        end
+    end
+    
     drawnow
     pause(pauseT)
 end

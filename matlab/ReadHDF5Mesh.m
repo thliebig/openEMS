@@ -1,4 +1,14 @@
 function hdf_mesh = ReadHDF5Mesh(file)
+% function hdf_mesh = ReadHDF5Mesh(file)
+%
+% returns:
+% hdf_mesh.type
+% hdf_mesh.names
+% hdf_mesh.lines
+%
+% openEMS matlab interface
+% -----------------------
+% author: Thorsten Liebig
 
 info = hdf5info(file);
 
