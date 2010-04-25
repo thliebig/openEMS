@@ -24,6 +24,8 @@
 
 #define FDTD_FLOAT float
 
+class Operator_Extension;
+
 //! Abstract base-class for the FDTD-operator
 class Operator
 {
@@ -80,6 +82,8 @@ public:
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 
+	virtual void AddExtension(Operator_Extension* op_ext);
+
 protected:
 	//! use New() for creating a new Operator
 	Operator();
@@ -125,6 +129,8 @@ protected:
 	double gridDelta;
 	AdrOp* MainOp;
 	AdrOp* DualOp;
+
+	vector<Operator_Extension*> m_Op_exts;
 
 	// engine/post-proc needs access
 public:

@@ -21,6 +21,8 @@
 #include <fstream>
 #include "operator.h"
 
+class Engine_Extension;
+
 class Engine
 {
 public:
@@ -38,6 +40,8 @@ public:
 	inline virtual FDTD_FLOAT GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return volt[n][x][y][z]; }
 	inline virtual FDTD_FLOAT GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return curr[n][x][y][z]; }
 
+	virtual void AddExtension(Engine_Extension* eng_ext);
+
 protected:
 	Engine(const Operator* op);
 	const Operator* Op;
@@ -52,6 +56,8 @@ protected:
 	FDTD_FLOAT**** volt;
 	FDTD_FLOAT**** curr;
 	unsigned int numTS;
+
+	vector<Engine_Extension*> m_Eng_exts;
 
 	ofstream file_et1;
 };

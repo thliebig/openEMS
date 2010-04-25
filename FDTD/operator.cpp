@@ -17,6 +17,7 @@
 
 #include <fstream>
 #include "operator.h"
+#include "operator_extension.h"
 #include "processfields.h"
 #include "tools/array_ops.h"
 #include "fparser.hh"
@@ -552,6 +553,10 @@ int Operator::CalcECOperator()
 			}
 		}
 	}
+
+	//all information available for extension... create now...
+	for (size_t n=0;n<m_Op_exts.size();++n)
+		m_Op_exts.at(n)->BuildExtension();
 
 	//cleanup
 	for (int n=0;n<3;++n)
@@ -1091,3 +1096,7 @@ bool Operator::CalcPEC()
 	return true;
 }
 
+void Operator::AddExtension(Operator_Extension* op_ext)
+{
+	m_Op_exts.push_back(op_ext);
+}

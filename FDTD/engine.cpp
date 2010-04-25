@@ -16,6 +16,7 @@
 */
 
 #include "engine.h"
+#include "engine_extension.h"
 #include "tools/array_ops.h"
 
 //! \brief construct an Engine instance
@@ -142,14 +143,41 @@ void Engine::ApplyCurrentExcite()
 {
 }
 
+void Engine::AddExtension(Engine_Extension* eng_ext)
+{
+	m_Eng_exts.push_back(eng_ext);
+}
+
 bool Engine::IterateTS(unsigned int iterTS)
 {
 	for (unsigned int iter=0;iter<iterTS;++iter)
 	{
+		//voltage updates with extensions
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPreVoltageUpdates();
+
 		UpdateVoltages();
+
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPostVoltageUpdates();
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->Apply2Voltages();
+
 		ApplyVoltageExcite();
+
+		//current updates with extensions
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPreCurrentUpdates();
+
 		UpdateCurrents();
+
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPostCurrentUpdates();
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->Apply2Current();
+
 		ApplyCurrentExcite();
+
 		++numTS;
 	}
 	return true;
