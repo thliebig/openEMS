@@ -18,8 +18,10 @@
 #ifndef ARRAY_OPS_H
 #define ARRAY_OPS_H
 
+#ifdef __SIZEOF_FLOAT__
 #if __SIZEOF_FLOAT__ != 4
 	#error wrong size of float
+#endif
 #endif
 
 typedef float v4sf __attribute__ ((vector_size (16))); // vector of four single floats
