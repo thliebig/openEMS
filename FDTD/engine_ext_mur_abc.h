@@ -15,23 +15,36 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPERATOR_EXTENSION_H
-#define OPERATOR_EXTENSION_H
+#ifndef ENGINE_EXT_MUR_ABC_H
+#define ENGINE_EXT_MUR_ABC_H
 
-class Operator;
-class Engine_Extension;
+#include "engine_extension.h"
+#include "operator.h"
 
-//! Abstract base-class for all operator extensions
-class Operator_Extension
+class Operator_Ext_Mur_ABC;
+
+class Engine_Ext_Mur_ABC : public Engine_Extension
 {
 public:
-	virtual bool BuildExtension() {return true;}
+	Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext);
+	virtual ~Engine_Ext_Mur_ABC();
 
-	virtual Engine_Extension* CreateEngineExtention() {return 0;}
+	virtual void DoPreVoltageUpdates();
+	virtual void DoPostVoltageUpdates();
+	virtual void Apply2Voltages();
 
 protected:
-	Operator_Extension(Operator* op);
-	Operator* m_Op;
+	Operator_Ext_Mur_ABC* m_Op_mur;
+
+	int m_ny;
+	int m_nyP,m_nyPP;
+	unsigned int m_LineNr;
+	int m_LineNr_Shift;
+	unsigned int m_numLines[2];
+
+	FDTD_FLOAT m_Mur_Coeff;
+	FDTD_FLOAT** m_volt_nyP; //n+1 direction
+	FDTD_FLOAT** m_volt_nyPP; //n+2 direction
 };
 
-#endif // OPERATOR_EXTENSION_H
+#endif // ENGINE_EXT_MUR_ABC_H

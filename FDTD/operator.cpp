@@ -35,6 +35,9 @@ Operator::Operator()
 
 Operator::~Operator()
 {
+	for (size_t n=0;n<m_Op_exts.size();++n)
+		delete m_Op_exts.at(n);
+	m_Op_exts.clear();
 	Reset();
 }
 

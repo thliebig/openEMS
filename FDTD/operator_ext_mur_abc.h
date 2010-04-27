@@ -15,23 +15,35 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPERATOR_EXTENSION_H
-#define OPERATOR_EXTENSION_H
+#ifndef OPERATOR_EXT_MUR_ABC_H
+#define OPERATOR_EXT_MUR_ABC_H
 
-class Operator;
-class Engine_Extension;
+#include "operator.h"
+#include "operator_extension.h"
 
-//! Abstract base-class for all operator extensions
-class Operator_Extension
+class Operator_Ext_Mur_ABC : public Operator_Extension
 {
+	friend class Engine_Ext_Mur_ABC;
 public:
-	virtual bool BuildExtension() {return true;}
+	Operator_Ext_Mur_ABC(Operator* op);
+	~Operator_Ext_Mur_ABC();
 
-	virtual Engine_Extension* CreateEngineExtention() {return 0;}
+	//! Define the direction of this ABC: ny=0,1,2 -> x,y,z and if at bottom_ny -> e.g. x=0 or x=end
+	void SetDirection(int ny, bool top_ny);
+
+	virtual bool BuildExtension();
+
+	virtual Engine_Extension* CreateEngineExtention();
 
 protected:
-	Operator_Extension(Operator* op);
-	Operator* m_Op;
+	int m_ny;
+	int m_nyP,m_nyPP;
+	unsigned int m_LineNr;
+	int m_LineNr_Shift;
+
+	unsigned int m_numLines[2];
+
+	FDTD_FLOAT m_Mur_Coeff;
 };
 
-#endif // OPERATOR_EXTENSION_H
+#endif // OPERATOR_EXT_MUR_ABC_H

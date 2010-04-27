@@ -29,18 +29,20 @@ public:
 	virtual void DoPreVoltageUpdates() {}
 	//! This methode will be called __after__ the main engine does the usual voltage updates. This methode may __not__ change the engine voltages!!!
 	virtual void DoPostVoltageUpdates() {}
-	//! This methode will be called __after__ all updates to the voltages and extensions and may add its results to the engine voltages, but may __not__ rely on the current value of the engine voltages!!!
+	//! This methode will be called __after__ all updates to the voltages and extensions and may add/set its results to the engine voltages, but may __not__ rely on the current value of the engine voltages!!!
 	virtual void Apply2Voltages() {}
 
 	//! This methode will be called __before__ the main engine does the usual current updates. This methode may __not__ change the engine current!!!
 	virtual void DoPreCurrentUpdates() {}
 	//! This methode will be called __after__ the main engine does the usual current updates. This methode may __not__ change the engine current!!!
 	virtual void DoPostCurrentUpdates() {}
-	//! This methode will be called __after__ all updates to the current and extensions and may add its results to the engine current, but may __not__ rely on the current value of the engine current!!!
+	//! This methode will be called __after__ all updates to the current and extensions and may add/set its results to the engine current, but may __not__ rely on the current value of the engine current!!!
 	virtual void Apply2Current() {}
 
+	//! Set the Engine to this extention. This will usually done automatically by Engine::AddExtension
+	virtual void SetEngine(Engine* eng) {m_Eng=eng;}
 protected:
-	Engine_Extension(Operator_Extension* op_ext, Engine* eng);
+	Engine_Extension(Operator_Extension* op_ext);
 
 	Operator_Extension* m_Op_ext;
 	Engine* m_Eng;

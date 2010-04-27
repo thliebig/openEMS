@@ -40,7 +40,9 @@ SOURCES += main.cpp \
     FDTD/operator_cylinder.cpp \
     FDTD/engine_cylinder.cpp \
     FDTD/operator_extension.cpp \
-    FDTD/engine_extension.cpp
+    FDTD/engine_extension.cpp \
+    FDTD/engine_ext_mur_abc.cpp \
+    FDTD/operator_ext_mur_abc.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -58,7 +60,9 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_cylinder.h \
     FDTD/engine_cylinder.h \
     FDTD/operator_extension.h \
-    FDTD/engine_extension.h
+    FDTD/engine_extension.h \
+    FDTD/engine_ext_mur_abc.h \
+    FDTD/operator_ext_mur_abc.h
 QMAKE_CXXFLAGS_RELEASE = -O2 \
     -g \
     -march=native

@@ -17,6 +17,7 @@
 
 #include "engine.h"
 #include "engine_extension.h"
+#include "operator_extension.h"
 #include "tools/array_ops.h"
 
 //! \brief construct an Engine instance
@@ -35,10 +36,25 @@ Engine::Engine(const Operator* op)
 	{
 		numLines[n] = Op->GetNumberOfLines(n);
 	}
+
+	for (size_t n=0;n<Op->GetNumberOfExtentions();++n)
+	{
+		Operator_Extension* op_ext = Op->GetExtension(n);
+		Engine_Extension* eng_ext = op_ext->CreateEngineExtention();
+		if (eng_ext)
+		{
+			eng_ext->SetEngine(this);
+			m_Eng_exts.push_back(eng_ext);
+		}
+	}
 }
 
 Engine::~Engine()
 {
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		delete m_Eng_exts.at(n);
+	m_Eng_exts.clear();
+
 	this->Reset();
 }
 
@@ -141,11 +157,6 @@ void Engine::UpdateCurrents()
 
 void Engine::ApplyCurrentExcite()
 {
-}
-
-void Engine::AddExtension(Engine_Extension* eng_ext)
-{
-	m_Eng_exts.push_back(eng_ext);
 }
 
 bool Engine::IterateTS(unsigned int iterTS)

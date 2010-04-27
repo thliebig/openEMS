@@ -83,6 +83,8 @@ public:
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 
 	virtual void AddExtension(Operator_Extension* op_ext);
+	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}
+	virtual Operator_Extension* GetExtension(size_t index) const {return m_Op_exts.at(index);}
 
 protected:
 	//! use New() for creating a new Operator

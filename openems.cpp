@@ -21,6 +21,7 @@
 #include "FDTD/engine.h"
 #include "FDTD/engine_cylinder.h"
 #include "FDTD/engine_multithread.h"
+#include "FDTD/operator_ext_mur_abc.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/processfields_td.h"
@@ -253,6 +254,18 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(2);
+
+	/**************************** create all operator/engine extensions here !!!! **********************************/
+	//Mur-ABC
+	for (int n=0;n<6;++n)
+	{
+		if (bounds[n]==2)
+		{
+			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
+			op_ext_mur->SetDirection(n/2,n%2);
+			FDTD_Op->AddExtension(op_ext_mur);
+		}
+	}
 
 	FDTD_Op->CalcECOperator();
 

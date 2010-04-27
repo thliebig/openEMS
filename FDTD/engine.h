@@ -40,7 +40,8 @@ public:
 	inline virtual FDTD_FLOAT GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return volt[n][x][y][z]; }
 	inline virtual FDTD_FLOAT GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return curr[n][x][y][z]; }
 
-	virtual void AddExtension(Engine_Extension* eng_ext);
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[] ) { return volt[n][pos[0]][pos[1]][pos[2]]; }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[] ) { return curr[n][pos[0]][pos[1]][pos[2]]; }
 
 protected:
 	Engine(const Operator* op);
