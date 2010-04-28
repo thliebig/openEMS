@@ -1,25 +1,32 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-02-26T22:34:51
 # -------------------------------------------------
-QT -= gui \
-    core
 TARGET = openEMS
 CONFIG += console
 CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
+INCLUDEPATH += .
 INCLUDEPATH += ../CSXCAD \
     ../fparser \
     ../tinyxml
-LIBS += -L../CSXCAD \
-    -lCSXCAD \
-    -L../fparser \
-    -lfparser \
-    -L../tinyxml \
-    -ltinyxml \
-    -lboost_thread \
-    -lhdf5 \
-    -lhdf5_cpp
+LIBS += -L../CSXCAD -lCSXCAD
+
+win32 {
+    INCLUDEPATH += ../hdf5/include ../boost/include/boost-1_42
+    LIBS +=  ../hdf5/lib/libhdf5_cpp.a ../hdf5/lib/libhdf5.a
+    LIBS += ../boost/lib/libboost_thread-mgw44-mt.lib
+    LIBS += -L../CSXCAD/release
+    LIBS += ../fparser/release/libfparser4.a
+    LIBS += ../tinyxml/release/libtinyxml2.a
+}
+!win32 {
+    LIBS += ../fparser/libfparser.so
+    LIBS += ../tinyxml/libtinyxml.so
+    LIBS += -lboost_thread
+    LIBS += -lhdf5 -lhdf5_cpp
+}
+
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'

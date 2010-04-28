@@ -19,7 +19,7 @@
 #define PROCESSFIELDS_H
 
 #include "processing.h"
-#include "../tools/array_ops.h"
+#include "tools/array_ops.h"
 
 class ProcessFields : public Processing
 {
