@@ -69,6 +69,9 @@ void Operator::Init()
 		EC_L[n]=NULL;
 		EC_R[n]=NULL;
 	}
+
+	for (int n=0;n<6;++n)
+		m_BC[n]=0;
 }
 
 void Operator::Reset()
@@ -576,6 +579,11 @@ int Operator::CalcECOperator()
 
 	if (CalcEFieldExcitation()==false) return -1;
 	CalcPEC();
+
+	bool PMC[6];
+	for (int n=0;n<6;++n)
+		PMC[n] = m_BC[n]==1;
+	ApplyMagneticBC(PMC);
 
 	return 0;
 }

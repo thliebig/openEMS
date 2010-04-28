@@ -53,6 +53,7 @@ public:
 	//! Get the excitation timestep with the (first) max amplitude
 	virtual unsigned int GetMaxExcitationTimestep() const;
 
+	virtual void SetBoundaryCondition(int* BCs) {for (int n=0;n<6;++n) m_BC[n]=BCs[n];}
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 
@@ -103,6 +104,8 @@ protected:
 	struct Grid_Path FindPath(double start[], double stop[]);
 
 	ContinuousStructure* CSX;
+
+	int m_BC[6];
 
 	//E-Field Excitation
 	//!	  Calc the electric field excitation.
