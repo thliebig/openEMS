@@ -7,4 +7,4 @@ NFFT = 2^nextpow2(L); % next power of 2 (makes fft fast)
 val = fft( val, NFFT)/L;
 f = 1/(2*dt) * linspace(0,1,NFFT/2+1);
 
-val = 2*val; % single-sided spectrum
+val = 2*val(1:NFFT/2+1); % single-sided spectrum
