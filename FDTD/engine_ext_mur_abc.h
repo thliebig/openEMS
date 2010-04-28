@@ -46,7 +46,8 @@ protected:
 	int m_LineNr_Shift;
 	unsigned int m_numLines[2];
 
-	FDTD_FLOAT m_Mur_Coeff;
+	FDTD_FLOAT** m_Mur_Coeff_nyP;
+	FDTD_FLOAT** m_Mur_Coeff_nyPP;
 	FDTD_FLOAT** m_volt_nyP; //n+1 direction
 	FDTD_FLOAT** m_volt_nyPP; //n+2 direction
 };
