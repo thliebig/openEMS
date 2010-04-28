@@ -14,13 +14,14 @@ port_length = mesh_size; %coil_length/2;
 port_resist = 1000;
 
 f_max = 100e6;
-f_excite = 1e9;
+f_excite = 300e6;
 
 %% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
-% openEMS_opts = [openEMS_opts ' --debug-material'];
+openEMS_opts = [openEMS_opts ' --debug-material'];
+openEMS_opts = [openEMS_opts ' --debug-boxes'];
 % openEMS_opts = [openEMS_opts ' --debug-operator'];
 
 Sim_Path = 'tmp';
@@ -30,7 +31,7 @@ rmdir(Sim_Path,'s');
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD(5e5,1e-6);
+FDTD = InitFDTD(30000,1e-6);
 FDTD = SetGaussExcite(FDTD,f_excite/2,f_excite/2);
 BC = [1 1 1 1 1 1];
 FDTD = SetBoundaryCond(FDTD,BC);
@@ -149,5 +150,12 @@ plot(f(ind)*1e-6,R(ind),'Linewidth',2);
 hold on
 plot(f(ind)*1e-6,imag(Z(ind)),'r','Linewidth',2);
 xlabel('frequency (MHz)');
-ylabel('resistance (\Omega)');
+ylabel('resistance (Ohm)');
+grid on;
+legend( {'real','imaginary'}, 'location', 'northwest' )
+
+figure
+plot(U.TD{1}.t/1e-6,U.TD{1}.val,'Linewidth',2);
+xlabel('time (us)');
+ylabel('amplitude (V)');
 grid on;
