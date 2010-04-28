@@ -157,6 +157,15 @@ void Engine::UpdateCurrents()
 
 void Engine::ApplyCurrentExcite()
 {
+	int exc_pos;
+	//soft current excitation here (H-field excite)
+	for (unsigned int n=0;n<Op->Curr_Exc_Count;++n)
+	{
+		exc_pos = (int)numTS - (int)Op->Curr_Exc_delay[n];
+		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
+//			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
+		curr[Op->Curr_Exc_dir[n]][Op->Curr_Exc_index[0][n]][Op->Curr_Exc_index[1][n]][Op->Curr_Exc_index[2][n]] += Op->Curr_Exc_amp[n]*Op->ExciteSignal[exc_pos];
+	}
 }
 
 bool Engine::IterateTS(unsigned int iterTS)

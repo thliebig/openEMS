@@ -149,12 +149,19 @@ public:
 	unsigned int ExciteLength;
 	FDTD_FLOAT* ExciteSignal;
 
-	//E-Field Excitation
+	//E-Field/voltage Excitation
 	unsigned int E_Exc_Count;
 	unsigned int* E_Exc_index[3];
 	unsigned short* E_Exc_dir;
 	FDTD_FLOAT* E_Exc_amp; //represented as edge-voltages!!
 	unsigned int* E_Exc_delay;
+
+	//H-Field/current Excitation
+	unsigned int Curr_Exc_Count;
+	unsigned int* Curr_Exc_index[3];
+	unsigned short* Curr_Exc_dir;
+	FDTD_FLOAT* Curr_Exc_amp; //represented as edge-currents!!
+	unsigned int* Curr_Exc_delay;
 };
 
 #endif // OPERATOR_H

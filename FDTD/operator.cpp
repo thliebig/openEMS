@@ -51,12 +51,16 @@ void Operator::Init()
 	E_Exc_dir=NULL;
 	vv=NULL;
 	vi=NULL;
+	Curr_Exc_delay = NULL;
+	Curr_Exc_amp=NULL;
+	Curr_Exc_dir=NULL;
 	iv=NULL;
 	ii=NULL;
 	for (int n=0;n<3;++n)
 	{
 		discLines[n]=NULL;
 		E_Exc_index[n]=NULL;
+		Curr_Exc_index[n]=NULL;
 	}
 
 	MainOp=NULL;
@@ -80,6 +84,9 @@ void Operator::Reset()
 	delete[] E_Exc_delay;
 	delete[] E_Exc_dir;
 	delete[] E_Exc_amp;
+	delete[] Curr_Exc_delay;
+	delete[] Curr_Exc_dir;
+	delete[] Curr_Exc_amp;
 	Delete_N_3DArray(vv,numLines);
 	Delete_N_3DArray(vi,numLines);
 	Delete_N_3DArray(iv,numLines);
@@ -88,6 +95,7 @@ void Operator::Reset()
 	{
 		delete[] discLines[n];
 		delete[] E_Exc_index[n];
+		delete[] Curr_Exc_index[n];
 	}
 	delete MainOp;
 	delete DualOp;
@@ -894,14 +902,21 @@ double Operator::CalcTimestep()
 bool Operator::CalcFieldExcitation()
 {
 	if (dT==0) return false;
-	vector<unsigned int> vIndex[3];
-	vector<FDTD_FLOAT> vExcit;
-	vector<unsigned int> vDelay;
-	vector<unsigned int> vDir;
 	unsigned int pos[3];
-	double volt_coord[3];
 	double delta[3];
 	double amp=0;
+
+	vector<unsigned int> volt_vIndex[3];
+	vector<FDTD_FLOAT> volt_vExcit;
+	vector<unsigned int> volt_vDelay;
+	vector<unsigned int> volt_vDir;
+	double volt_coord[3];
+
+	vector<unsigned int> curr_vIndex[3];
+	vector<FDTD_FLOAT> curr_vExcit;
+	vector<unsigned int> curr_vDelay;
+	vector<unsigned int> curr_vDir;
+	double curr_coord[3];
 
 	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 	{
@@ -912,6 +927,8 @@ bool Operator::CalcFieldExcitation()
 			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 			{
 				delta[0]=fabs(MainOp->GetIndexDelta(0,pos[0]));
+
+				//electric field excite
 				for (int n=0;n<3;++n)
 				{
 					volt_coord[0] = discLines[0][pos[0]];
@@ -929,12 +946,12 @@ bool Operator::CalcFieldExcitation()
 								amp = elec->GetWeightedExcitation(n,volt_coord)*GetMeshDelta(n,pos);// delta[n]*gridDelta;
 								if (amp!=0)
 								{
-									vExcit.push_back(amp);
-									vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-									vDir.push_back(n);
-									vIndex[0].push_back(pos[0]);
-									vIndex[1].push_back(pos[1]);
-									vIndex[2].push_back(pos[2]);
+									volt_vExcit.push_back(amp);
+									volt_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+									volt_vDir.push_back(n);
+									volt_vIndex[0].push_back(pos[0]);
+									volt_vIndex[1].push_back(pos[1]);
+									volt_vIndex[2].push_back(pos[2]);
 								}
 								if (elec->GetExcitType()==1) //hard excite
 								{
@@ -945,6 +962,45 @@ bool Operator::CalcFieldExcitation()
 						}
 					}
 				}
+
+				//magnetic field excite
+				for (int n=0;n<3;++n)
+				{
+					int nP = (n+1)%3;
+					int nPP = (n+2)%3;
+					curr_coord[0] = discLines[0][pos[0]];
+					curr_coord[1] = discLines[1][pos[1]];
+					curr_coord[2] = discLines[2][pos[2]];
+					curr_coord[nP] +=delta[nP]*0.5;
+					curr_coord[nPP] +=delta[nPP]*0.5;
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(curr_coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
+					if (prop)
+					{
+						CSPropElectrode* elec = prop->ToElectrode();
+						if (elec!=NULL)
+						{
+							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))//&& (pos[n]<numLines[n]-1))
+							{
+								amp = elec->GetWeightedExcitation(n,curr_coord)*GetMeshDelta(n,pos,true);// delta[n]*gridDelta;
+								if (amp!=0)
+								{
+									curr_vExcit.push_back(amp);
+									curr_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+									curr_vDir.push_back(n);
+									curr_vIndex[0].push_back(pos[0]);
+									curr_vIndex[1].push_back(pos[1]);
+									curr_vIndex[2].push_back(pos[2]);
+								}
+								if (elec->GetExcitType()==3) //hard excite
+								{
+									ii[n][pos[0]][pos[1]][pos[2]] = 0;
+									iv[n][pos[0]][pos[1]][pos[2]] = 0;
+								}
+							}
+						}
+					}
+				}
+
 			}
 		}
 	}
@@ -992,12 +1048,12 @@ bool Operator::CalcFieldExcitation()
 								amp = elec->GetWeightedExcitation(n,volt_coord)*deltaN*gridDelta;
 								if (amp!=0)
 								{
-									vExcit.push_back(amp);
-									vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-									vDir.push_back(n);
-									vIndex[0].push_back(pos[0]);
-									vIndex[1].push_back(pos[1]);
-									vIndex[2].push_back(pos[2]);
+									volt_vExcit.push_back(amp);
+									volt_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+									volt_vDir.push_back(n);
+									volt_vIndex[0].push_back(pos[0]);
+									volt_vIndex[1].push_back(pos[1]);
+									volt_vIndex[2].push_back(pos[2]);
 								}
 								if (elec->GetExcitType()==1) //hard excite
 								{
@@ -1012,16 +1068,18 @@ bool Operator::CalcFieldExcitation()
 		}
 	}
 
-	E_Exc_Count = vExcit.size();
-	cerr << "Operator::CalcEFieldExcitation: Found number of excitations points: " << E_Exc_Count << endl;
+
+	// set voltage excitations
+	E_Exc_Count = volt_vExcit.size();
+	cerr << "Operator::CalcFieldExcitation: Number of voltage excitation points: " << E_Exc_Count << endl;
 	if (E_Exc_Count==0)
-		cerr << "No E-Field excitation found!" << endl;
+		cerr << "No E-Field/voltage excitation found!" << endl;
 	for (int n=0;n<3;++n)
 	{
 		delete[] E_Exc_index[n];
 		E_Exc_index[n] = new unsigned int[E_Exc_Count];
 		for (unsigned int i=0;i<E_Exc_Count;++i)
-			E_Exc_index[n][i]=vIndex[n].at(i);
+			E_Exc_index[n][i]=volt_vIndex[n].at(i);
 	}
 	delete[] E_Exc_delay;
 	E_Exc_delay = new unsigned int[E_Exc_Count];
@@ -1031,10 +1089,37 @@ bool Operator::CalcFieldExcitation()
 	E_Exc_dir = new unsigned short[E_Exc_Count];
 	for (unsigned int i=0;i<E_Exc_Count;++i)
 	{
-		E_Exc_delay[i]=vDelay.at(i);
-		E_Exc_amp[i]=vExcit.at(i);
-		E_Exc_dir[i]=vDir.at(i);
+		E_Exc_delay[i]=volt_vDelay.at(i);
+		E_Exc_amp[i]=volt_vExcit.at(i);
+		E_Exc_dir[i]=volt_vDir.at(i);
 	}
+
+
+	// set current excitations
+	Curr_Exc_Count = curr_vExcit.size();
+	cerr << "Operator::CalcFieldExcitation: Number of current excitation points: " << Curr_Exc_Count << endl;
+	if (Curr_Exc_Count==0)
+		cerr << "No H-Field/current excitation found!" << endl;
+	for (int n=0;n<3;++n)
+	{
+		delete[] Curr_Exc_index[n];
+		Curr_Exc_index[n] = new unsigned int[Curr_Exc_Count];
+		for (unsigned int i=0;i<Curr_Exc_Count;++i)
+			Curr_Exc_index[n][i]=curr_vIndex[n].at(i);
+	}
+	delete[] Curr_Exc_delay;
+	Curr_Exc_delay = new unsigned int[Curr_Exc_Count];
+	delete[] Curr_Exc_amp;
+	Curr_Exc_amp = new FDTD_FLOAT[Curr_Exc_Count];
+	delete[] Curr_Exc_dir;
+	Curr_Exc_dir = new unsigned short[Curr_Exc_Count];
+	for (unsigned int i=0;i<Curr_Exc_Count;++i)
+	{
+		Curr_Exc_delay[i]=curr_vDelay.at(i);
+		Curr_Exc_amp[i]=curr_vExcit.at(i);
+		Curr_Exc_dir[i]=curr_vDir.at(i);
+	}
+
 	return true;
 }
 
