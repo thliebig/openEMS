@@ -69,7 +69,7 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 	pos[m_ny] = m_LineNr;
 	double delta = fabs(m_Op->GetMeshDelta(m_ny,pos));
 	m_Mur_Coeff = (__C0__ * dT - delta) / (__C0__ * dT + delta);
-//	cerr << "Operator_Ext_Mur_ABC::BuildExtension(): " << m_Mur_Coeff << endl;
+//	cerr << "Operator_Ext_Mur_ABC::BuildExtension(): " << m_ny << " @ " << m_LineNr << " = "<< m_Mur_Coeff << endl;
 	return true;
 }
 

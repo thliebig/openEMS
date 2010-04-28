@@ -35,6 +35,23 @@ Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) : Engine_Ex
 
 	m_volt_nyP = Create2DArray(m_numLines);
 	m_volt_nyPP = Create2DArray(m_numLines);
+
+	//find if some excitation is on this mur-abc and find the max length of this excite, so that the abc can start after the excitation is done...
+	int maxDelay=-1;
+	for (unsigned int n=0;n<m_Op_mur->m_Op->E_Exc_Count;++n)
+	{
+		if ( ((m_Op_mur->m_Op->E_Exc_dir[n]==m_nyP) || (m_Op_mur->m_Op->E_Exc_dir[n]==m_nyPP)) && (m_Op_mur->m_Op->E_Exc_index[m_ny][n]==m_LineNr) )
+		{
+			if ((int)m_Op_mur->m_Op->E_Exc_delay[n]>maxDelay)
+				maxDelay = (int)m_Op_mur->m_Op->E_Exc_delay[n];
+		}
+	}
+	m_start_TS = 0;
+	if (maxDelay>=0)
+	{
+		m_start_TS = maxDelay + m_Op_mur->m_Op->ExciteLength + 10; //give it some extra timesteps, for the excitation to travel at least one cell away
+		cerr << "Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC: Warning: Excitation inside the Mur-ABC #" <<  m_ny << "-" << (int)(m_LineNr>0) << " found!!!!  Mur-ABC will be switched on after excitation is done at " << m_start_TS << " timesteps!!! " << endl;
+	}
 }
 
 Engine_Ext_Mur_ABC::~Engine_Ext_Mur_ABC()
@@ -47,6 +64,7 @@ Engine_Ext_Mur_ABC::~Engine_Ext_Mur_ABC()
 
 void Engine_Ext_Mur_ABC::DoPreVoltageUpdates()
 {
+	if (IsActive()==false) return;
 	if (m_Eng==NULL) return;
 	if (m_Mur_Coeff==0) return;
 	unsigned int pos[] = {0,0,0};
@@ -68,6 +86,7 @@ void Engine_Ext_Mur_ABC::DoPreVoltageUpdates()
 
 void Engine_Ext_Mur_ABC::DoPostVoltageUpdates()
 {
+	if (IsActive()==false) return;
 	if (m_Eng==NULL) return;
 	if (m_Mur_Coeff==0) return;
 	unsigned int pos[] = {0,0,0};
@@ -89,6 +108,7 @@ void Engine_Ext_Mur_ABC::DoPostVoltageUpdates()
 
 void Engine_Ext_Mur_ABC::Apply2Voltages()
 {
+	if (IsActive()==false) return;
 	if (m_Eng==NULL) return;
 	if (m_Mur_Coeff==0) return;
 	unsigned int pos[] = {0,0,0};
