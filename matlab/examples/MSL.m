@@ -2,6 +2,7 @@ close all;
 clear all;
 clc
 
+%% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 abs_length = 250;
 length = 1000;
 width = 500;
@@ -13,23 +14,24 @@ mesh_res = [5 5 10];
 EPS0 = 8.85418781762e-12;
 MUE0 = 1.256637062e-6;
 
+%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
-openEMS_opts = [openEMS_opts ' --debug-material'];
+% openEMS_opts = [openEMS_opts ' --debug-material'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'msl.xml';
 
 mkdir(Sim_Path);
 
-%setup FDTD parameter
+%% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD(5e5,1e-6);
 FDTD = SetGaussExcite(FDTD,0.5e9,0.5e9);
 BC = [1 1 0 1 0 0];
 FDTD = SetBoundaryCond(FDTD,BC);
 
-%setup CSXCAD geometry
+%% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = InitCSX();
 mesh.x = -width/2 : mesh_res(1) : width/2;
 mesh.y = [linspace(0,MSL_height,11) MSL_height+1 MSL_height+3 MSL_height+mesh_res(2):mesh_res(2):height];
@@ -46,7 +48,7 @@ start = [-0.5*MSL_width, 0 , 0];stop = [0.5*MSL_width, MSL_height , mesh_res(1)/
 CSX = AddExcitation(CSX,'excite',0,[0 -1 0]);
 CSX = AddBox(CSX,'excite',0 ,start,stop);
 
-%%%fake pml
+%% fake pml %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 finalKappa = 0.3/abs_length^4;
 finalSigma = finalKappa*MUE0/EPS0;
 CSX = AddMaterial(CSX,'pml');
@@ -58,7 +60,7 @@ start = [mesh.x(1) mesh.y(1) length-abs_length];
 stop = [mesh.x(end) mesh.y(end) length];
 CSX = AddBox(CSX,'pml',0 ,start,stop);
  
-%dump
+%% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddDump(CSX,'Et_','DumpMode',2);
 start = [mesh.x(1) , MSL_height/2 , mesh.z(1)];
 stop = [mesh.x(end) , MSL_height/2 , mesh.z(end)];
@@ -67,6 +69,7 @@ CSX = AddBox(CSX,'Et_',0 , start,stop);
 CSX = AddDump(CSX,'Ht_','DumpType',1,'DumpMode',2);
 CSX = AddBox(CSX,'Ht_',0,start,stop);
 
+%% define voltage calc boxes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %voltage calc
 CSX = AddProbe(CSX,'ut1',0);
 start = [ 0 MSL_height length/2 ];stop = [ 0 0 length/2 ];
@@ -77,10 +80,10 @@ CSX = AddProbe(CSX,'it1',1);
 start = [ -MSL_width MSL_height/2 length/2 ];stop = [ MSL_width MSL_height*1.5 length/2 ];
 CSX = AddBox(CSX,'it1', 0 ,start,stop);
 
-%Write openEMS compatoble xml-file
+%% Write openEMS compatoble xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
-%cd to working dir and run openEMS
+%% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
 command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];

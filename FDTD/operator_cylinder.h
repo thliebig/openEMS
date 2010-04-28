@@ -35,8 +35,11 @@ public:
 
 	virtual unsigned int GetNumberOfLines(int ny) const;
 
+	//! Get the name for the given direction: 0 -> rho, 1 -> alpha, 2 -> z
+	virtual string GetDirName(int ny) const;
+
 	//! Get the mesh delta times the grid delta for a 3D position, including radius corrected alpha-mesh width
-	virtual double GetMeshDelta(int n, int* pos, bool dualMesh=false) const;
+	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;
 
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}

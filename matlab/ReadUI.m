@@ -1,4 +1,16 @@
 function UI = ReadUI(files, path)
+% function UI = ReadUI(files, path)
+%
+% read current and voltages from multiple files found in path
+%
+% returns voltages/currents in time and frequency-domain
+%
+% e.g.
+% UI = ReadUI({'ut1_1','ut1_2','it1'},'tmp/');
+% 
+% openEMS matlab interface
+% -----------------------
+% author: Thorsten Liebig
 
 if (nargin<2)
     path ='';

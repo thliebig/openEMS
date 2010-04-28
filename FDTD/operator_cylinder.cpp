@@ -68,13 +68,21 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
 	return numLines[ny];
 }
 
-double Operator_Cylinder::GetMeshDelta(int n, int* pos, bool dualMesh) const
+string Operator_Cylinder::GetDirName(int ny) const
+{
+	if (ny==0) return "rho";
+	if (ny==1) return "alpha";
+	if (ny==2) return "z";
+	return "";
+}
+
+double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) const
 {
 	double delta = Operator::GetMeshDelta(n,pos,dualMesh);
 	if (delta==0) return delta;
 	if (n==1)
 	{
-		return delta * GetDiscLine(n,pos[0],dualMesh);
+		return delta * GetDiscLine(0,pos[0],dualMesh);
 	}
 	return delta;
 }
@@ -104,7 +112,10 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 	}
 	else if (minmaxA>2*PI)
 		{cerr << "Operator_Cylinder::SetGeometryCSX: Alpha Max-Min must not be larger than 2*PI!!!" << endl; Reset(); return false;}
-	else CC_closedAlpha=false;
+	else
+	{
+		CC_closedAlpha=false;
+	}
 
 	if (discLines[0][0]<0)
 		{cerr << "Operator_Cylinder::SetGeometryCSX: r<0 not allowed in Cylinder Coordinates!!!" << endl; Reset(); return false;}
@@ -123,7 +134,9 @@ int Operator_Cylinder::CalcECOperator()
 	if (val)
 		return val;
 
-	if (CC_R0_included==false)
+	//if r=0 is not included -> obviously no special treatment for r=0
+	//if alpha direction is not closed, PEC-BC at r=0 necessary and already set...
+	if ((CC_R0_included==false) || (CC_closedAlpha==false))
 		return val;
 
 	unsigned int pos[3];
@@ -133,16 +146,13 @@ int Operator_Cylinder::CalcECOperator()
 	{
 		double C=0;
 		double G=0;
-		for (pos[1]=0;pos[1]<numLines[1]-CC_closedAlpha;++pos[1])
+		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 		{
 			Calc_ECPos(2,pos,inEC);
-//			if (pos[2]==0)
-//				cerr << inEC[0] << endl;
 			C+=inEC[0]*0.5;
 			G+=inEC[1]*0.5;
 		}
-		if (pos[2]==0)
-			cerr << C << " and " << G << endl;
+		vv[2][0][0][pos[2]] = 1;
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 	}
@@ -173,12 +183,6 @@ inline void Operator_Cylinder::Calc_ECOperatorPos(int n, unsigned int* pos)
 		ii[n][pos[0]][pos[1]][pos[2]] = 0;
 		iv[n][pos[0]][pos[1]][pos[2]] = 0;
 	}
-
-	if (CC_R0_included && (n==2) && (pos[0]==0))
-	{
-		vv[n][pos[0]][pos[1]][pos[2]] = 1;
-		vi[n][pos[0]][pos[1]][pos[2]] = 0;
-	}
 }
 
 void Operator_Cylinder::ApplyElectricBC(bool* dirs)
@@ -190,9 +194,9 @@ void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 	}
 	if (CC_R0_included)
 	{
-		dirs[2]=0;  //no PEC in r_min directions...
+		// no special treatment necessary
+		// operator for z-direction at r=0 will be calculated and set separately
 	}
-
 	Operator::ApplyElectricBC(dirs);
 }
 
@@ -205,7 +209,7 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 	}
 	if (CC_R0_included)
 	{
-		dirs[2]=0;  //no PMC in r_min directions...
+		dirs[0]=0;  //no PMC in r_min directions...
 	}
 	Operator::ApplyMagneticBC(dirs);
 }
@@ -348,7 +352,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 		inEC[1] += 0;
 	}
 
-	if (CC_R0_included && (n==1) && (coord[0]==0))
+	if (CC_R0_included && (n==1) && (pos[0]==0))
 	{
 		inEC[0]=0;
 		inEC[1]=0;

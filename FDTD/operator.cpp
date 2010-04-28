@@ -17,6 +17,7 @@
 
 #include <fstream>
 #include "operator.h"
+#include "operator_extension.h"
 #include "processfields.h"
 #include "tools/array_ops.h"
 #include "fparser.hh"
@@ -34,6 +35,9 @@ Operator::Operator()
 
 Operator::~Operator()
 {
+	for (size_t n=0;n<m_Op_exts.size();++n)
+		delete m_Op_exts.at(n);
+	m_Op_exts.clear();
 	Reset();
 }
 
@@ -100,6 +104,14 @@ unsigned int Operator::CalcNyquistNum(double fmax)
 	if (dT==0) return 1;
 	double T0 = 1/fmax;
 	return floor(T0/2/dT);
+}
+
+string Operator::GetDirName(int ny) const
+{
+	if (ny==0) return "x";
+	if (ny==1) return "y";
+	if (ny==2) return "z";
+	return "";
 }
 
 double Operator::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
@@ -544,6 +556,10 @@ int Operator::CalcECOperator()
 			}
 		}
 	}
+
+	//all information available for extension... create now...
+	for (size_t n=0;n<m_Op_exts.size();++n)
+		m_Op_exts.at(n)->BuildExtension();
 
 	//cleanup
 	for (int n=0;n<3;++n)
@@ -1083,3 +1099,7 @@ bool Operator::CalcPEC()
 	return true;
 }
 
+void Operator::AddExtension(Operator_Extension* op_ext)
+{
+	m_Op_exts.push_back(op_ext);
+}

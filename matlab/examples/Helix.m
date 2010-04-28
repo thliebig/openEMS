@@ -2,6 +2,7 @@ close all;
 clear;
 clc
 
+%% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 feed_length=10;
 wire_rad = sqrt(1.4/pi);
 mesh_size = wire_rad;
@@ -13,12 +14,14 @@ port_length = mesh_size; %coil_length/2;
 port_resist = 1000;
 
 f_max = 100e6;
-f_excite = 1e9;
+f_excite = 300e6;
 
+%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
-% openEMS_opts = [openEMS_opts ' --debug-material'];
+openEMS_opts = [openEMS_opts ' --debug-material'];
+openEMS_opts = [openEMS_opts ' --debug-boxes'];
 % openEMS_opts = [openEMS_opts ' --debug-operator'];
 
 Sim_Path = 'tmp';
@@ -27,16 +30,16 @@ Sim_CSX = 'helix.xml';
 rmdir(Sim_Path,'s');
 mkdir(Sim_Path);
 
-%setup FDTD parameter
-FDTD = InitFDTD(5e5,1e-6);
+%% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+FDTD = InitFDTD(30000,1e-6);
 FDTD = SetGaussExcite(FDTD,f_excite/2,f_excite/2);
 BC = [1 1 1 1 1 1];
 FDTD = SetBoundaryCond(FDTD,BC);
 
+%% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 add_Lines = mesh_size * 1.5.^(1:10);
 add_Lines = add_Lines(find(add_Lines<(3e8/f_excite)/10*1e3));
 
-%setup CSXCAD geometry
 CSX = InitCSX();
 mesh.x = -coil_rad-mesh_size : mesh_size : coil_rad+mesh_size+feed_length;
 mesh.x = [mesh.x(1)-add_Lines mesh.x mesh.x(end)+add_Lines ];
@@ -46,11 +49,10 @@ mesh.z = -mesh_size : mesh_size : coil_length+mesh_size;
 mesh.z = [mesh.z(1)-add_Lines mesh.z mesh.z(end)+add_Lines ];
 CSX = DefineRectGrid(CSX, 1e-3,mesh);
 
-%create copper helix and feed lines...
+%% build/define helix %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddMaterial(CSX,'copper');
 CSX = SetMaterialProperty(CSX,'copper','Kappa',56e6);
 
-%build helix-wire
 dt = 1.0/coil_res;
 height=0;
 wire.Vertex = {};
@@ -78,6 +80,7 @@ p(2,count+2) = 0;
 p(3,count+2) = 0.5*(coil_length+port_length);
 CSX = AddWire(CSX, 'copper', 0, p, wire_rad);
 
+%% apply the excitation & resist as a current source%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddMaterial(CSX,'resist');
 kappa = port_length/port_resist/wire_rad^2/pi/1e-3;
 CSX = SetMaterialProperty(CSX,'resist','Kappa',kappa);
@@ -87,10 +90,10 @@ stop=[coil_rad+feed_length 0 (coil_length+port_length)/2];
 %start(3)=(coil_length-port_length)/2;stop(3)=(coil_length+port_length)/2;
 CSX = AddCylinder(CSX,'resist',5 ,start,stop,wire_rad);
 
-%excitation
 CSX = AddExcitation(CSX,'excite',0,[0 0 1]);
 CSX = AddCylinder(CSX,'excite', 0 ,start,stop,wire_rad);
 
+%% define voltage calc boxes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %voltage calc
 CSX = AddProbe(CSX,'ut1',0);
 CSX = AddBox(CSX,'ut1', 0 ,stop,start);
@@ -102,7 +105,7 @@ start(1) = start(1)-2;start(2) = start(2)-2;
 stop(1) = stop(1)+2;stop(2) = stop(2)+2;
 CSX = AddBox(CSX,'it1', 0 ,start,stop);
 
-%dump
+%% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddDump(CSX,'Et_');
 start = [mesh.x(1) , 0 , mesh.z(1)];
 stop = [mesh.x(end) , 0 , mesh.z(end)];
@@ -113,10 +116,10 @@ start = [mesh.x(1) , 0 , mesh.z(1)];
 stop = [mesh.x(end) , 0 , mesh.z(end)];
 CSX = AddBox(CSX,'Ht_',0 , start,stop);
 
-%Write openEMS compatoble xml-file
+%% Write openEMS compatoble xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
-%cd to working dir and run openEMS
+%% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
 command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
@@ -124,7 +127,7 @@ disp(command);
 system(command)
 cd(savePath);
 
-%%%post-proc
+%% postproc & do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 U = ReadUI('ut1','tmp/');
 I = ReadUI('it1','tmp/');
 
@@ -147,5 +150,12 @@ plot(f(ind)*1e-6,R(ind),'Linewidth',2);
 hold on
 plot(f(ind)*1e-6,imag(Z(ind)),'r','Linewidth',2);
 xlabel('frequency (MHz)');
-ylabel('resistance (\Omega)');
+ylabel('resistance (Ohm)');
+grid on;
+legend( {'real','imaginary'}, 'location', 'northwest' )
+
+figure
+plot(U.TD{1}.t/1e-6,U.TD{1}.val,'Linewidth',2);
+xlabel('time (us)');
+ylabel('amplitude (V)');
 grid on;

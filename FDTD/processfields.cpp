@@ -18,7 +18,7 @@
 #include "processfields.h"
 
 #include <iomanip>
-#include "H5Cpp.h"
+#include <H5Cpp.h>
 
 ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 {
@@ -51,7 +51,8 @@ ProcessFields::~ProcessFields()
 void ProcessFields::InitProcess()
 {
 	if (Enabled==false) return;
-	string names[] = {"x","y","z"};
+	//get the correct direction names for all coordinate systems
+	string names[] = {Op->GetDirName(0),Op->GetDirName(1),Op->GetDirName(2)};
 	if (m_fileType==HDF5_FILETYPE)
 	{
 		unsigned int* NrLines;

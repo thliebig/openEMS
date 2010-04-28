@@ -24,6 +24,8 @@
 
 #define FDTD_FLOAT float
 
+class Operator_Extension;
+
 //! Abstract base-class for the FDTD-operator
 class Operator
 {
@@ -67,6 +69,9 @@ public:
 	void DumpOperator2File(string filename);
 	void DumpMaterial2File(string filename);
 
+	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
+	virtual string GetDirName(int ny) const;
+
 	virtual double GetGridDelta() const {return gridDelta;}
 	//! Get the mesh delta times the grid delta for a 3D position
 	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;
@@ -76,6 +81,10 @@ public:
 	virtual double GetDiscLine(int n, int pos, bool dualMesh=false) const;
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
+
+	virtual void AddExtension(Operator_Extension* op_ext);
+	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}
+	virtual Operator_Extension* GetExtension(size_t index) const {return m_Op_exts.at(index);}
 
 protected:
 	//! use New() for creating a new Operator
@@ -122,6 +131,8 @@ protected:
 	double gridDelta;
 	AdrOp* MainOp;
 	AdrOp* DualOp;
+
+	vector<Operator_Extension*> m_Op_exts;
 
 	// engine/post-proc needs access
 public:

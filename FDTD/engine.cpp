@@ -16,6 +16,8 @@
 */
 
 #include "engine.h"
+#include "engine_extension.h"
+#include "operator_extension.h"
 #include "tools/array_ops.h"
 
 //! \brief construct an Engine instance
@@ -34,10 +36,25 @@ Engine::Engine(const Operator* op)
 	{
 		numLines[n] = Op->GetNumberOfLines(n);
 	}
+
+	for (size_t n=0;n<Op->GetNumberOfExtentions();++n)
+	{
+		Operator_Extension* op_ext = Op->GetExtension(n);
+		Engine_Extension* eng_ext = op_ext->CreateEngineExtention();
+		if (eng_ext)
+		{
+			eng_ext->SetEngine(this);
+			m_Eng_exts.push_back(eng_ext);
+		}
+	}
 }
 
 Engine::~Engine()
 {
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		delete m_Eng_exts.at(n);
+	m_Eng_exts.clear();
+
 	this->Reset();
 }
 
@@ -46,6 +63,8 @@ void Engine::Init()
 	numTS = 0;
 	volt = Create_N_3DArray(numLines);
 	curr = Create_N_3DArray(numLines);
+
+	file_et1.open( "et1" );
 }
 
 void Engine::Reset()
@@ -54,6 +73,8 @@ void Engine::Reset()
 	volt=NULL;
 	Delete_N_3DArray(curr,numLines);
 	curr=NULL;
+
+	file_et1.close();
 }
 
 void Engine::UpdateVoltages()
@@ -99,6 +120,13 @@ void Engine::ApplyVoltageExcite()
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
 		volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
 	}
+
+	// write the first excitation into the file "et1"
+	if (Op->E_Exc_Count >= 1) {
+		exc_pos = (int)numTS - (int)Op->E_Exc_delay[0];
+		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
+		file_et1 << numTS * Op->GetTimestep() << "\t" << Op->E_Exc_amp[0]*Op->ExciteSignal[exc_pos] << "\n"; // do not use std::endl here, because it will do an implicit flush
+	}
 }
 
 void Engine::UpdateCurrents()
@@ -135,10 +163,32 @@ bool Engine::IterateTS(unsigned int iterTS)
 {
 	for (unsigned int iter=0;iter<iterTS;++iter)
 	{
+		//voltage updates with extensions
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPreVoltageUpdates();
+
 		UpdateVoltages();
+
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPostVoltageUpdates();
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->Apply2Voltages();
+
 		ApplyVoltageExcite();
+
+		//current updates with extensions
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPreCurrentUpdates();
+
 		UpdateCurrents();
+
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPostCurrentUpdates();
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->Apply2Current();
+
 		ApplyCurrentExcite();
+
 		++numTS;
 	}
 	return true;

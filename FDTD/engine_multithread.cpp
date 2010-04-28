@@ -275,24 +275,13 @@ void thread_e_excitation::operator()()
 	//std::cout << "thread_e_excitation::operator()" << std::endl;
 	//DBG().cout() << "Thread e_excitation (" << boost::this_thread::get_id() << ") started." << endl;
 
-	int exc_pos;
-	const unsigned int E_Exc_Count = m_enginePtr->Op->E_Exc_Count;
-
 	while (!m_enginePtr->m_stopThreads)
 	{
-		// waiting on NS_Engine_Multithread::thread
-		m_enginePtr->m_barrier1->wait();
+		m_enginePtr->m_barrier1->wait(); // waiting on NS_Engine_Multithread::thread
 
-		// soft voltage excitation here (E-field excite)
-		for (unsigned int n=0;n<E_Exc_Count;++n)
-		{
-			exc_pos = (int)m_enginePtr->numTS - (int)m_enginePtr->Op->E_Exc_delay[n];
-			exc_pos*= (exc_pos>0 && exc_pos<=(int)m_enginePtr->Op->ExciteLength);
-			m_enginePtr->volt[m_enginePtr->Op->E_Exc_dir[n]][m_enginePtr->Op->E_Exc_index[0][n]][m_enginePtr->Op->E_Exc_index[1][n]][m_enginePtr->Op->E_Exc_index[2][n]] += m_enginePtr->Op->E_Exc_amp[n]*m_enginePtr->Op->ExciteSignal[exc_pos];
-		}
+		m_enginePtr->ApplyVoltageExcite();
 
-		// continue NS_Engine_Multithread::thread
-		m_enginePtr->m_barrier2->wait();
+		m_enginePtr->m_barrier2->wait(); // continue NS_Engine_Multithread::thread
 	}
 
 	//DBG().cout() << "Thread e_excitation (" << boost::this_thread::get_id() << ") finished." << endl;

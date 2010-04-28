@@ -1,4 +1,13 @@
 function hdf_fielddata = ReadHDF5FieldData(file)
+% function hdf_fielddata = ReadHDF5FieldData(file)
+%
+% returns:
+% hdf_fielddata.names
+% hdf_fielddata.values
+%
+% openEMS matlab interface
+% -----------------------
+% author: Thorsten Liebig
 
 info = hdf5info(file);
 

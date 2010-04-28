@@ -18,6 +18,33 @@
 #include "array_ops.h"
 #include <ostream>
 
+FDTD_FLOAT** Create2DArray(const unsigned int* numLines)
+{
+	FDTD_FLOAT** array=NULL;
+	unsigned int pos[3];
+	array = new FDTD_FLOAT*[numLines[0]];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		array[pos[0]] = new FDTD_FLOAT[numLines[1]];
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			array[pos[0]][pos[1]] = 0;
+		}
+	}
+	return array;
+}
+
+void Delete2DArray(FDTD_FLOAT** array, const unsigned int* numLines)
+{
+	if (array==NULL) return;
+	unsigned int pos[3];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		delete[] array[pos[0]];
+	}
+	delete[] array;
+}
+
 FDTD_FLOAT*** Create3DArray(const unsigned int* numLines)
 {
 	FDTD_FLOAT*** array=NULL;
