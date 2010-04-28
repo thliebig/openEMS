@@ -107,9 +107,8 @@ protected:
 
 	int m_BC[6];
 
-	//E-Field Excitation
-	//!	  Calc the electric field excitation.
-	virtual bool CalcEFieldExcitation();
+	//! Calculate the field excitations.
+	virtual bool CalcFieldExcitation();
 
 	virtual bool CalcPEC();
 

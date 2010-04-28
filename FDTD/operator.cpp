@@ -577,7 +577,7 @@ int Operator::CalcECOperator()
 	bool PEC[6]={1,1,1,1,1,1};
 	ApplyElectricBC(PEC);
 
-	if (CalcEFieldExcitation()==false) return -1;
+	if (CalcFieldExcitation()==false) return -1;
 	CalcPEC();
 
 	bool PMC[6];
@@ -891,7 +891,7 @@ double Operator::CalcTimestep()
 	return 0;
 }
 
-bool Operator::CalcEFieldExcitation()
+bool Operator::CalcFieldExcitation()
 {
 	if (dT==0) return false;
 	vector<unsigned int> vIndex[3];
@@ -899,7 +899,7 @@ bool Operator::CalcEFieldExcitation()
 	vector<unsigned int> vDelay;
 	vector<unsigned int> vDir;
 	unsigned int pos[3];
-	double coord[3];
+	double volt_coord[3];
 	double delta[3];
 	double amp=0;
 
@@ -914,19 +914,19 @@ bool Operator::CalcEFieldExcitation()
 				delta[0]=fabs(MainOp->GetIndexDelta(0,pos[0]));
 				for (int n=0;n<3;++n)
 				{
-					coord[0] = discLines[0][pos[0]];
-					coord[1] = discLines[1][pos[1]];
-					coord[2] = discLines[2][pos[2]];
-					coord[n]+=delta[n]*0.5;
-					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
+					volt_coord[0] = discLines[0][pos[0]];
+					volt_coord[1] = discLines[1][pos[1]];
+					volt_coord[2] = discLines[2][pos[2]];
+					volt_coord[n]+=delta[n]*0.5;
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(volt_coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
 					if (prop)
 					{
 						CSPropElectrode* elec = prop->ToElectrode();
 						if (elec!=NULL)
 						{
-							if ((elec->GetActiveDir(n)) )//&& (pos[n]<numLines[n]-1))
+							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 							{
-								amp = elec->GetWeightedExcitation(n,coord)*GetMeshDelta(n,pos);// delta[n]*gridDelta;
+								amp = elec->GetWeightedExcitation(n,volt_coord)*GetMeshDelta(n,pos);// delta[n]*gridDelta;
 								if (amp!=0)
 								{
 									vExcit.push_back(amp);
@@ -980,16 +980,16 @@ bool Operator::CalcEFieldExcitation()
 						pos[2] = path.posPath[2].at(t);
 						MainOp->SetPos(pos[0],pos[1],pos[2]);
 						deltaN=fabs(MainOp->GetIndexDelta(n,pos[n]));
-						coord[0] = discLines[0][pos[0]];
-						coord[1] = discLines[1][pos[1]];
-						coord[2] = discLines[2][pos[2]];
-						coord[n] += 0.5*deltaN;
+						volt_coord[0] = discLines[0][pos[0]];
+						volt_coord[1] = discLines[1][pos[1]];
+						volt_coord[2] = discLines[2][pos[2]];
+						volt_coord[n] += 0.5*deltaN;
 //						cerr << n << " " << coord[0] << " " << coord[1] << " " << coord[2] << endl;
 						if (elec!=NULL)
 						{
-							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1))
+							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))
 							{
-								amp = elec->GetWeightedExcitation(n,coord)*deltaN*gridDelta;
+								amp = elec->GetWeightedExcitation(n,volt_coord)*deltaN*gridDelta;
 								if (amp!=0)
 								{
 									vExcit.push_back(amp);
