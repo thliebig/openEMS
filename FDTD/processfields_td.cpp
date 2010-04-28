@@ -44,10 +44,10 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 			OpPos[0]=start[0]+pos[0]*subSample[0];
 			for (pos[1]=0;pos[1]<numDLines[1];++pos[1])
 			{
-				OpPos[1]=start[1]+pos[1]*subSample[0];
+				OpPos[1]=start[1]+pos[1]*subSample[1];
 				for (pos[2]=0;pos[2]<numDLines[2];++pos[2])
 				{
-					OpPos[2]=start[2]+pos[2]*subSample[0];
+					OpPos[2]=start[2]+pos[2]*subSample[2];
 					//in x
 					delta  = Op->GetMeshDelta(0,OpPos); //Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
 					if (delta)
