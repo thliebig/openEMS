@@ -76,3 +76,58 @@ QMAKE_CXXFLAGS_RELEASE = -O2 \
 QMAKE_CXXFLAGS_DEBUG = -O0 \
     -g \
     -march=native
+
+
+#
+# to use ABI2 target:
+# qmake CONFIG+="ABI2 bits64" -o Makefile.ABI2-64 openEMS.pro
+# make -fMakefile.ABI2-64
+#
+
+ABI2 {
+	CONFIG-=debug debug_and_release
+	CONFIG+=release
+	QMAKE_CFLAGS_RELEASE=-O2 -fabi-version=2
+	QMAKE_CXXFLAGS_RELEASE=-O2 -fabi-version=2
+	QMAKE_CC = apgcc
+	QMAKE_CXX = apg++
+	QMAKE_LINK = apg++
+	QMAKE_LINK_SHLIB = apg++
+	QMAKE_LFLAGS_RPATH =
+	QMAKE_LFLAGS = \'-Wl,-rpath,\$$ORIGIN/lib\'
+}
+
+bits64 {
+	QMAKE_CXXFLAGS_RELEASE+=-m64 -march=athlon64
+	QMAKE_LFLAGS_RELEASE+=-m64 -march=athlon64
+	OBJECTS_DIR = ABI2-64
+	LIBS = ../CSXCAD/ABI2-64/libCSXCAD.so
+	LIBS += ../fparser/ABI2-64/libfparser.so
+	LIBS += ../tinyxml/ABI2-64/libtinyxml.so
+	LIBS += ../boost-64/lib/libboost_thread.so
+	LIBS += ../hdf5-64/lib/libhdf5.so
+	LIBS += ../hdf5-64/lib/libhdf5_cpp.so -lpthread
+	INCLUDEPATH += ../hdf5-64/include
+	INCLUDEPATH += ../boost-64/include
+}
+
+bits32 {
+	QMAKE_CXXFLAGS_RELEASE+=-m32 -march=i686
+	QMAKE_LFLAGS_RELEASE+=-m32 -march=i686
+	OBJECTS_DIR = ABI2-32
+	LIBS = ../CSXCAD/ABI2-32/libCSXCAD.so
+	LIBS += ../fparser/ABI2-32/libfparser.so
+	LIBS += ../tinyxml/ABI2-32/libtinyxml.so
+	LIBS += ../boost-32/lib/libboost_thread.so
+	LIBS += ../hdf5-32/lib/libhdf5.so
+	LIBS += ../hdf5-32/lib/libhdf5_cpp.so
+	INCLUDEPATH += ../hdf5-32/include
+	INCLUDEPATH += ../boost-32/include
+}
+
+ABI2 {
+	DESTDIR = $$OBJECTS_DIR
+	MOC_DIR = $$OBJECTS_DIR
+	UI_DIR = $$OBJECTS_DIR
+	RCC_DIR = $$OBJECTS_DIR
+}
