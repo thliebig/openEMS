@@ -84,7 +84,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 		{
 			stringstream ss;
 			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numDLines);
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numDLines,Eng->GetNumberOfTimesteps()*Op->GetTimestep());
 		}
 		else
 			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
@@ -148,7 +148,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 		{
 			stringstream ss;
 			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numDLines);
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numDLines,(0.5+Eng->GetNumberOfTimesteps())*Op->GetTimestep());
 		}
 		else
 			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
@@ -198,7 +198,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		{
 			stringstream ss;
 			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numLines);
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numLines,Eng->GetNumberOfTimesteps()*Op->GetTimestep());
 		}
 		else
 			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
@@ -244,7 +244,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		{
 			stringstream ss;
 			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numLines);
+			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numLines,(0.5+Eng->GetNumberOfTimesteps())*Op->GetTimestep());
 		}
 		else
 			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
