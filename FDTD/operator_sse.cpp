@@ -37,83 +37,31 @@ Operator_sse::~Operator_sse()
 void Operator_sse::Init()
 {
 	Operator::Init();
-	vv_ = 0;
-	vi_ = 0;
-	iv_ = 0;
-	ii_ = 0;
+	f4_vv = 0;
+	f4_vi = 0;
+	f4_iv = 0;
+	f4_ii = 0;
 }
 
 void Operator_sse::Reset()
 {
-	Delete_N_3DArray_v4sf(vv_,numLines);
-	Delete_N_3DArray_v4sf(vi_,numLines);
-	Delete_N_3DArray_v4sf(iv_,numLines);
-	Delete_N_3DArray_v4sf(ii_,numLines);
+	Delete_N_3DArray_v4sf(f4_vv,numLines);
+	Delete_N_3DArray_v4sf(f4_vi,numLines);
+	Delete_N_3DArray_v4sf(f4_iv,numLines);
+	Delete_N_3DArray_v4sf(f4_ii,numLines);
 	Operator::Reset();
-	Init(); // FIXME this calls Operator::Init() twice...
+//	Init(); // FIXME this calls Operator::Init() twice...
 }
 
 void Operator_sse::InitOperator()
 {
-	Operator::InitOperator();
-	Delete_N_3DArray_v4sf(vv_,numLines);
-	Delete_N_3DArray_v4sf(vi_,numLines);
-	Delete_N_3DArray_v4sf(iv_,numLines);
-	Delete_N_3DArray_v4sf(ii_,numLines);
-	vv_ = Create_N_3DArray_v4sf(numLines);
-	vi_ = Create_N_3DArray_v4sf(numLines);
-	iv_ = Create_N_3DArray_v4sf(numLines);
-	ii_ = Create_N_3DArray_v4sf(numLines);
+	Delete_N_3DArray_v4sf(f4_vv,numLines);
+	Delete_N_3DArray_v4sf(f4_vi,numLines);
+	Delete_N_3DArray_v4sf(f4_iv,numLines);
+	Delete_N_3DArray_v4sf(f4_ii,numLines);
+	f4_vv = Create_N_3DArray_v4sf(numLines);
+	f4_vi = Create_N_3DArray_v4sf(numLines);
+	f4_iv = Create_N_3DArray_v4sf(numLines);
+	f4_ii = Create_N_3DArray_v4sf(numLines);
 }
 
-int Operator_sse::CalcECOperator()
-{
-	Operator::CalcECOperator();
-
-	// copy operator to aligned memory
-	// FIXME this is really inefficient!
-	unsigned int pos[3];
-	for (int n=0;n<3;++n)
-	{
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
-		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
-			{
-				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
-				{
-					vv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vv[n][pos[0]][pos[1]][pos[2]];
-					vi_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vi[n][pos[0]][pos[1]][pos[2]];
-					iv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = iv[n][pos[0]][pos[1]][pos[2]];
-					ii_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = ii[n][pos[0]][pos[1]][pos[2]];
-				}
-			}
-		}
-	}
-
-	return 0;
-}
-
-void Operator_sse::ApplyMagneticBC(bool* dirs)
-{
-	Operator::ApplyMagneticBC(dirs);
-
-	// copy operator to aligned memory
-	// FIXME this is really inefficient!
-	unsigned int pos[3];
-	for (int n=0;n<3;++n)
-	{
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
-		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
-			{
-				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
-				{
-					vv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vv[n][pos[0]][pos[1]][pos[2]];
-					vi_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = vi[n][pos[0]][pos[1]][pos[2]];
-					iv_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = iv[n][pos[0]][pos[1]][pos[2]];
-					ii_[n][pos[0]][pos[1]][pos[2]/4].f[pos[2]%4] = ii[n][pos[0]][pos[1]][pos[2]];
-				}
-			}
-		}
-	}
-}

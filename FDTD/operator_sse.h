@@ -28,9 +28,11 @@ public:
 	static Operator_sse* New();
 	virtual ~Operator_sse();
 
-	virtual int CalcECOperator();
+	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vv[n][x][y][z/4].f[z%4]; }
+	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vi[n][x][y][z/4].f[z%4]; }
 
-	virtual void ApplyMagneticBC(bool* dirs);
+	inline virtual FDTD_FLOAT& GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_ii[n][x][y][z/4].f[z%4]; }
+	inline virtual FDTD_FLOAT& GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_iv[n][x][y][z/4].f[z%4]; }
 
 protected:
 	//! use New() for creating a new Operator
@@ -42,10 +44,10 @@ protected:
 
 	// engine/post-proc needs access
 public:
-	f4vector**** vv_; //calc new voltage from old voltage
-	f4vector**** vi_; //calc new voltage from old current
-	f4vector**** iv_; //calc new current from old current
-	f4vector**** ii_; //calc new current from old voltage
+	f4vector**** f4_vv; //calc new voltage from old voltage
+	f4vector**** f4_vi; //calc new voltage from old current
+	f4vector**** f4_iv; //calc new current from old current
+	f4vector**** f4_ii; //calc new current from old voltage
 };
 
 #endif // OPERATOR_SSE_H

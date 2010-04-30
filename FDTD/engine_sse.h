@@ -32,8 +32,8 @@ public:
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return volt_[n][x][y][z/4].f[z%4]; }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return curr_[n][x][y][z/4].f[z%4]; }
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_volt[n][x][y][z/4].f[z%4]; }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_curr[n][x][y][z/4].f[z%4]; }
 
 protected:
 	Engine_sse(const Operator_sse* op);
@@ -42,8 +42,8 @@ protected:
 	virtual void UpdateVoltages();
 	virtual void UpdateCurrents();
 
-	f4vector**** volt_;
-	f4vector**** curr_;
+	f4vector**** f4_volt;
+	f4vector**** f4_curr;
 };
 
 #endif // ENGINE_SSE_H
