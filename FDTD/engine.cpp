@@ -118,7 +118,7 @@ void Engine::ApplyVoltageExcite()
 		exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal_volt[exc_pos];
+		GetVolt(Op->E_Exc_dir[n],Op->E_Exc_index[0][n],Op->E_Exc_index[1][n],Op->E_Exc_index[2][n]) += Op->E_Exc_amp[n]*Op->ExciteSignal_volt[exc_pos];
 	}
 
 	// write the first excitation into the file "et1"
@@ -164,7 +164,7 @@ void Engine::ApplyCurrentExcite()
 		exc_pos = (int)numTS - (int)Op->Curr_Exc_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		curr[Op->Curr_Exc_dir[n]][Op->Curr_Exc_index[0][n]][Op->Curr_Exc_index[1][n]][Op->Curr_Exc_index[2][n]] += Op->Curr_Exc_amp[n]*Op->ExciteSignal_curr[exc_pos];
+		GetCurr(Op->Curr_Exc_dir[n],Op->Curr_Exc_index[0][n],Op->Curr_Exc_index[1][n],Op->Curr_Exc_index[2][n]) += Op->Curr_Exc_amp[n]*Op->ExciteSignal_curr[exc_pos];
 	}
 }
 

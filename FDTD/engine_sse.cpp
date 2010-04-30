@@ -69,7 +69,7 @@ void Engine_sse::UpdateVoltages()
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
 			shift[1]=pos[1];
-			for (pos[2]=0;pos[2]<numLines[2]/4;++pos[2])
+			for (pos[2]=0;pos[2]<ceil(numLines[2]/4);++pos[2])
 			{
 				// x-polarization
 				temp.f[0] = curr_[1][pos[0]][pos[1]][pos[2]-(bool)pos[2]].f[3];
@@ -95,20 +95,6 @@ void Engine_sse::UpdateVoltages()
 	}
 }
 
-void Engine_sse::ApplyVoltageExcite()
-{
-	int exc_pos;
-	unsigned int pos;
-	//soft voltage excitation here (E-field excite)
-	for (unsigned int n=0;n<Op->E_Exc_Count;++n)
-	{
-		exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
-		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
-		pos = Op->E_Exc_index[2][n];
-		volt_[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][pos/4].f[pos%4] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
-	}
-}
-
 void Engine_sse::UpdateCurrents()
 {
 	unsigned int pos[5];
@@ -118,7 +104,7 @@ void Engine_sse::UpdateCurrents()
 	{
 		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2]/4;++pos[2]) // FIXME is this correct?
+			for (pos[2]=0;pos[2]<ceil(numLines[2]/4);++pos[2]) // FIXME is this correct?
 			{
 				// x-pol
 				temp.f[0] = volt_[1][pos[0]][pos[1]][pos[2]].f[1];
@@ -142,21 +128,4 @@ void Engine_sse::UpdateCurrents()
 			}
 		}
 	}
-}
-
-void Engine_sse::ApplyCurrentExcite()
-{
-}
-
-bool Engine_sse::IterateTS(unsigned int iterTS)
-{
-	for (unsigned int iter=0;iter<iterTS;++iter)
-	{
-		UpdateVoltages();
-		ApplyVoltageExcite();
-		UpdateCurrents();
-		ApplyCurrentExcite();
-		++numTS;
-	}
-	return true;
 }
