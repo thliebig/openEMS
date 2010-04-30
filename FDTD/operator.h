@@ -39,6 +39,13 @@ public:
 
 	virtual int CalcECOperator();
 
+	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[n][x][y][z]; }
+	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }
+
+	inline virtual FDTD_FLOAT& GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return ii[n][x][y][z]; }
+	inline virtual FDTD_FLOAT& GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return iv[n][x][y][z]; }
+
+
 	//! Calculate a custom signal \return number of Nyquist timesteps defined by f0
 	virtual unsigned int CalcCustomExcitation(double f0, int nTS, string signal);
 	//! Calculate an excitation with center of f0 and the half bandwidth fc \return number of Nyquist timesteps
