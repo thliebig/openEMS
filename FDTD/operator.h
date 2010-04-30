@@ -147,7 +147,8 @@ public:
 
 	//Excitation time-signal
 	unsigned int ExciteLength;
-	FDTD_FLOAT* ExciteSignal;
+	FDTD_FLOAT* ExciteSignal_volt;
+	FDTD_FLOAT* ExciteSignal_curr;
 
 	//E-Field/voltage Excitation
 	unsigned int E_Exc_Count;

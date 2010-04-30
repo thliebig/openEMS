@@ -45,7 +45,8 @@ void Operator::Init()
 {
 	CSX = NULL;
 
-	ExciteSignal = NULL;
+	ExciteSignal_volt = NULL;
+	ExciteSignal_curr = NULL;
 	E_Exc_delay = NULL;
 	E_Exc_amp=NULL;
 	E_Exc_dir=NULL;
@@ -80,7 +81,8 @@ void Operator::Init()
 
 void Operator::Reset()
 {
-	delete[] ExciteSignal;
+	delete[] ExciteSignal_volt;
+	delete[] ExciteSignal_curr;
 	delete[] E_Exc_delay;
 	delete[] E_Exc_dir;
 	delete[] E_Exc_amp;
@@ -321,9 +323,9 @@ unsigned int Operator::GetMaxExcitationTimestep() const
 	unsigned int maxStep=0;
 	for (unsigned int n=1;n<ExciteLength+1;++n)
 	{
-		if (fabs(ExciteSignal[n])>maxAmp)
+		if (fabs(ExciteSignal_volt[n])>maxAmp)
 		{
-			maxAmp = fabs(ExciteSignal[n]);
+			maxAmp = fabs(ExciteSignal_volt[n]);
 			maxStep = n;
 		}
 	}
@@ -336,13 +338,18 @@ unsigned int Operator::CalcGaussianPulsExcitation(double f0, double fc)
 
 	ExciteLength = (unsigned int)(2.0 * 9.0/(2.0*PI*fc) / dT);
 //	cerr << "Operator::CalcGaussianPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal;
-	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal[0]=0.0;
+	delete[] ExciteSignal_volt;
+	delete[] ExciteSignal_curr;
+	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_volt[0]=0.0;
+	ExciteSignal_curr[0]=0.0;
 	for (unsigned int n=1;n<ExciteLength+1;++n)
 	{
-		ExciteSignal[n] = cos(2.0*PI*f0*(n*dT-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*n*dT/3.0-3,2));
-//		cerr << ExciteSignal[n] << endl;
+		double t = (n-1)*dT;
+		ExciteSignal_volt[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
+		t += 0.5*dT;
+		ExciteSignal_curr[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
 	}
 	return CalcNyquistNum(f0+fc);
 }
@@ -353,10 +360,14 @@ unsigned int Operator::CalcDiracPulsExcitation()
 
 	ExciteLength = 1;
 //	cerr << "Operator::CalcDiracPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal;
-	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal[0]=0.0;
-	ExciteSignal[1]=1.0;
+	delete[] ExciteSignal_volt;
+	delete[] ExciteSignal_curr;
+	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_volt[0]=0.0;
+	ExciteSignal_volt[1]=1.0;
+	ExciteSignal_curr[0]=0.0;
+	ExciteSignal_curr[1]=1.0;
 
 	return 1;
 }
@@ -366,10 +377,14 @@ unsigned int Operator::CalcStepExcitation()
 	if (dT==0) return 0;
 
 	ExciteLength = 1;
-	delete[] ExciteSignal;
-	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal[0]=1.0;
-	ExciteSignal[1]=1.0;
+	delete[] ExciteSignal_volt;
+	delete[] ExciteSignal_curr;
+	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_volt[0]=1.0;
+	ExciteSignal_volt[1]=1.0;
+	ExciteSignal_curr[0]=0.0;
+	ExciteSignal_curr[1]=1.0;
 
 	return 1;
 }
@@ -381,9 +396,12 @@ unsigned int Operator::CalcCustomExcitation(double f0, int nTS, string signal)
 
 	ExciteLength = (unsigned int)(nTS);
 //	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal;
-	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal[0]=0.0;
+	delete[] ExciteSignal_volt;
+	delete[] ExciteSignal_curr;
+	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_volt[0]=0.0;
+	ExciteSignal_curr[0]=0.0;
 	FunctionParser fParse;
 	fParse.AddConstant("pi", 3.14159265358979323846);
 	fParse.AddConstant("e", 2.71828182845904523536);
@@ -397,8 +415,9 @@ unsigned int Operator::CalcCustomExcitation(double f0, int nTS, string signal)
 	for (unsigned int n=1;n<ExciteLength+1;++n)
 	{
 		vars[0] = (n-1)*GetTimestep();
-		ExciteSignal[n] = fParse.Eval(vars);
-//		cerr << ExciteSignal[n] << endl;
+		ExciteSignal_volt[n] = fParse.Eval(vars);
+		vars[0] += 0.5*GetTimestep();
+		ExciteSignal_curr[n] = fParse.Eval(vars);
 	}
 	return CalcNyquistNum(f0);
 }
@@ -410,13 +429,18 @@ unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
 
 	ExciteLength = (unsigned int)(nTS);
 //	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal;
-	ExciteSignal = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal[0]=0.0;
+	delete[] ExciteSignal_volt;
+	delete[] ExciteSignal_curr;
+	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
+	ExciteSignal_volt[0]=0.0;
+	ExciteSignal_curr[0]=0.0;
 	for (unsigned int n=1;n<ExciteLength+1;++n)
 	{
-		ExciteSignal[n] = sin(2.0*PI*f0*n*dT);
-//		cerr << ExciteSignal[n] << endl;
+		double t = (n-1)*dT;
+		ExciteSignal_volt[n] = sin(2.0*PI*f0*t);
+		t += 0.5*dT;
+		ExciteSignal_curr[n] = sin(2.0*PI*f0*t);
 	}
 	return CalcNyquistNum(f0);
 }
