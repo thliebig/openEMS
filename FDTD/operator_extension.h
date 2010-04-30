@@ -24,6 +24,7 @@ class Engine_Extension;
 //! Abstract base-class for all operator extensions
 class Operator_Extension
 {
+	friend class Engine_Extension;
 public:
 	virtual bool BuildExtension() {return true;}
 

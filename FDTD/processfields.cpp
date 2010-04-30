@@ -307,7 +307,7 @@ bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDT
 	return true;
 }
 
-bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines)
+bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, float time)
 {
 	const H5std_string FILE_NAME(filename);
 	const H5std_string DATASET_NAME( name );
@@ -328,6 +328,11 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOA
 	H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
 //	datatype.setOrder( H5T_ORDER_LE );
 	H5::DataSet dataset = group.createDataSet( DATASET_NAME, datatype, dataspace );
+
+	hsize_t t_dimsf[] = {1};
+	H5::DataSpace t_dataspace( 1, t_dimsf );
+	H5::Attribute attr = dataset.createAttribute("time",H5::PredType::NATIVE_FLOAT,t_dataspace);
+	attr.write( H5::PredType::NATIVE_FLOAT , &time);
 
 	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
 	// at least it is save in case FDTD_FLOAT was defined as double...

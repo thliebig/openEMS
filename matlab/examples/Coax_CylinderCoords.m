@@ -1,5 +1,5 @@
-close all;
-clear all;
+close all
+clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -21,8 +21,7 @@ max_alpha = max_mesh;
 N_alpha = ceil(rad_a * 2*pi / max_alpha);
 mesh_res = [max_mesh 2*pi/N_alpha max_mesh];
 
-%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_Path = [pwd() '/../../'];
+%% define and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
 openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -107,9 +106,8 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args);
 cd(savePath);
 
 %% postproc & do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -129,5 +127,3 @@ plot(UI.FD{1}.f,real(Z),'Linewidth',2);
 plot(UI.FD{1}.f,imag(Z),'r','Linewidth',2);
 xlim([0 2*f0]);
 legend('Z_L','\Re\{Z\}','\Im\{Z\}','Location','Best');
-
-

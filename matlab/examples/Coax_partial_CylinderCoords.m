@@ -1,5 +1,5 @@
-close all;
-clear all;
+close all
+clear
 clc
 
 EPS0 = 8.85418781762e-12;
@@ -21,7 +21,6 @@ max_alpha = max_mesh;
 N_alpha = ceil(rad_a * 2*pi * partial / max_alpha);
 mesh_res = [max_mesh 2*pi*partial/N_alpha max_mesh];
 
-openEMS_Path = [pwd() '/../../']
 openEMS_opts = '';
 openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -105,9 +104,8 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %cd to working dir and run openEMS
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args)
 cd(savePath);
 
 UI = ReadUI({'ut1_1','ut1_2','it1'},'tmp/');

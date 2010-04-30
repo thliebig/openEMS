@@ -244,10 +244,6 @@ int openEMS::SetupFDTD(const char* file)
 		return(-2);
 	}
 
-	bool PMC[6];
-	for (int n=0;n<6;++n)
-		PMC[n]=(bounds[n]==1);
-
 	//*************** setup operator ************//
 	cout << "Create Operator..." << endl;
 	if (CylinderCoords)
@@ -266,8 +262,10 @@ int openEMS::SetupFDTD(const char* file)
 
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(2);
 
+	FDTD_Op->SetBoundaryCondition(bounds); //operator only knows about PEC and PMC, everything else is defined by extensions (see below)
+
 	/**************************** create all operator/engine extensions here !!!! **********************************/
-	//Mur-ABC
+	//Mur-ABC, defined as extension to the operator
 	for (int n=0;n<6;++n)
 	{
 		if (bounds[n]==2)
@@ -294,8 +292,6 @@ int openEMS::SetupFDTD(const char* file)
 	time_t OpDoneTime=time(NULL);
 
 	FDTD_Op->ShowStat();
-
-	FDTD_Op->ApplyMagneticBC(PMC);
 
 	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 

@@ -118,14 +118,14 @@ void Engine::ApplyVoltageExcite()
 		exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal[exc_pos];
+		volt[Op->E_Exc_dir[n]][Op->E_Exc_index[0][n]][Op->E_Exc_index[1][n]][Op->E_Exc_index[2][n]] += Op->E_Exc_amp[n]*Op->ExciteSignal_volt[exc_pos];
 	}
 
 	// write the first excitation into the file "et1"
 	if (Op->E_Exc_Count >= 1) {
 		exc_pos = (int)numTS - (int)Op->E_Exc_delay[0];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
-		file_et1 << numTS * Op->GetTimestep() << "\t" << Op->E_Exc_amp[0]*Op->ExciteSignal[exc_pos] << "\n"; // do not use std::endl here, because it will do an implicit flush
+		file_et1 << numTS * Op->GetTimestep() << "\t" << Op->E_Exc_amp[0]*Op->ExciteSignal_volt[exc_pos] << "\n"; // do not use std::endl here, because it will do an implicit flush
 	}
 }
 
@@ -157,6 +157,15 @@ void Engine::UpdateCurrents()
 
 void Engine::ApplyCurrentExcite()
 {
+	int exc_pos;
+	//soft current excitation here (H-field excite)
+	for (unsigned int n=0;n<Op->Curr_Exc_Count;++n)
+	{
+		exc_pos = (int)numTS - (int)Op->Curr_Exc_delay[n];
+		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
+//			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
+		curr[Op->Curr_Exc_dir[n]][Op->Curr_Exc_index[0][n]][Op->Curr_Exc_index[1][n]][Op->Curr_Exc_index[2][n]] += Op->Curr_Exc_amp[n]*Op->ExciteSignal_curr[exc_pos];
+	}
 }
 
 bool Engine::IterateTS(unsigned int iterTS)

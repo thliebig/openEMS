@@ -35,6 +35,7 @@ public:
 	virtual ~Operator();
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
+	virtual ContinuousStructure* GetGeometryCSX() {return CSX;}
 
 	virtual int CalcECOperator();
 
@@ -52,6 +53,7 @@ public:
 	//! Get the excitation timestep with the (first) max amplitude
 	virtual unsigned int GetMaxExcitationTimestep() const;
 
+	virtual void SetBoundaryCondition(int* BCs) {for (int n=0;n<6;++n) m_BC[n]=BCs[n];}
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 
@@ -103,9 +105,10 @@ protected:
 
 	ContinuousStructure* CSX;
 
-	//E-Field Excitation
-	//!	  Calc the electric field excitation.
-	virtual bool CalcEFieldExcitation();
+	int m_BC[6];
+
+	//! Calculate the field excitations.
+	virtual bool CalcFieldExcitation();
 
 	virtual bool CalcPEC();
 
@@ -144,14 +147,22 @@ public:
 
 	//Excitation time-signal
 	unsigned int ExciteLength;
-	FDTD_FLOAT* ExciteSignal;
+	FDTD_FLOAT* ExciteSignal_volt;
+	FDTD_FLOAT* ExciteSignal_curr;
 
-	//E-Field Excitation
+	//E-Field/voltage Excitation
 	unsigned int E_Exc_Count;
 	unsigned int* E_Exc_index[3];
 	unsigned short* E_Exc_dir;
 	FDTD_FLOAT* E_Exc_amp; //represented as edge-voltages!!
 	unsigned int* E_Exc_delay;
+
+	//H-Field/current Excitation
+	unsigned int Curr_Exc_Count;
+	unsigned int* Curr_Exc_index[3];
+	unsigned short* Curr_Exc_dir;
+	FDTD_FLOAT* Curr_Exc_amp; //represented as edge-currents!!
+	unsigned int* Curr_Exc_delay;
 };
 
 #endif // OPERATOR_H

@@ -1,5 +1,5 @@
-close all;
-clear;
+close all
+clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -16,8 +16,7 @@ port_resist = 1000;
 f_max = 100e6;
 f_excite = 300e6;
 
-%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_Path = [pwd() '/../../']
+%% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -27,8 +26,8 @@ openEMS_opts = [openEMS_opts ' --debug-boxes'];
 Sim_Path = 'tmp';
 Sim_CSX = 'helix.xml';
 
-rmdir(Sim_Path,'s');
-mkdir(Sim_Path);
+[status, message, messageid] = rmdir(Sim_Path,'s');
+[status,message,messageid] = mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD(30000,1e-6);
@@ -120,11 +119,10 @@ CSX = AddBox(CSX,'Ht_',0 , start,stop);
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-savePath = pwd();
+savePath = pwd;
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args);
 cd(savePath);
 
 %% postproc & do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

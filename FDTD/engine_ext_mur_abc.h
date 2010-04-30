@@ -19,6 +19,7 @@
 #define ENGINE_EXT_MUR_ABC_H
 
 #include "engine_extension.h"
+#include "engine.h"
 #include "operator.h"
 
 class Operator_Ext_Mur_ABC;
@@ -36,13 +37,17 @@ public:
 protected:
 	Operator_Ext_Mur_ABC* m_Op_mur;
 
+	inline bool IsActive() {if (m_Eng->GetNumberOfTimesteps()<m_start_TS) return false; return true;}
+	unsigned int m_start_TS;
+
 	int m_ny;
 	int m_nyP,m_nyPP;
 	unsigned int m_LineNr;
 	int m_LineNr_Shift;
 	unsigned int m_numLines[2];
 
-	FDTD_FLOAT m_Mur_Coeff;
+	FDTD_FLOAT** m_Mur_Coeff_nyP;
+	FDTD_FLOAT** m_Mur_Coeff_nyPP;
 	FDTD_FLOAT** m_volt_nyP; //n+1 direction
 	FDTD_FLOAT** m_volt_nyPP; //n+2 direction
 };

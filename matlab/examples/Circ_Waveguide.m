@@ -1,5 +1,5 @@
-close all;
-clear all;
+close all
+clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -18,7 +18,7 @@ f0 = 400e6;
 p11 = 1.841;
 kc = p11 / rad /unit;
 k = 2*pi*f0/C0;
-fc = C0*kc/2/pi
+fc = C0*kc/2/pi;
 beta = sqrt(k^2 - kc^2);
 
 kc = kc*unit;
@@ -28,8 +28,7 @@ func_Ea = [ num2str(1/kc) '*sin(a)*0.5*(j0('  num2str(kc) '*rho)-jn(2,'  num2str
 func_Ex = [func_Er '*cos(a) - ' func_Ea '*sin(a)'];
 func_Ey = [func_Er '*sin(a) + ' func_Ea '*cos(a)'];
 
-%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_Path = [pwd() '/../../']
+%% define and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -110,21 +109,14 @@ CSX = AddProbe(CSX,'ut1',0);
 start = [ -rad 0 0/2 ];stop = [ rad 0 0/2 ];
 CSX = AddBox(CSX,'ut1', 0 ,start,stop);
 
-%current calc
-CSX = AddProbe(CSX,'it1',1);
-mid = 0.5*(coax_rad_i+coax_rad_ai);
-start = [ -mid -mid length/2 ];stop = [ mid mid length/2 ];
-CSX = AddBox(CSX,'it1', 0 ,start,stop);
-
 %% Write openEMS compatoble xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args);
 cd(savePath);
 
 %% do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
