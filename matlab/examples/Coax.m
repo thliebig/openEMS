@@ -1,5 +1,5 @@
-close all;
-clear all;
+close all
+clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -18,8 +18,7 @@ Z0 = sqrt(MUE0/EPS0);
 f0 = 0.5e9;
 epsR = 1;
 
-%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_Path = [pwd() '/../../']
+%% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
 openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -98,9 +97,8 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args)
 cd(savePath);
 
 %% postproc & do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

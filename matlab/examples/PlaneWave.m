@@ -1,5 +1,5 @@
-close all;
-clear all;
+close all
+clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -12,8 +12,7 @@ mesh_res = 25;
 EPS0 = 8.85418781762e-12;
 MUE0 = 1.256637062e-6;
 
-%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_Path = [pwd() '/../../']
+%% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -25,7 +24,7 @@ Sim_CSX = 'plane_wave.xml';
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD(5e5,1e-6,'OverSampling',10);
+FDTD = InitFDTD(5e5,1e-5,'OverSampling',10);
 FDTD = SetGaussExcite(FDTD,0.5e9,0.5e9);
 BC = [1 1 0 0 0 0];
 FDTD = SetBoundaryCond(FDTD,BC);
@@ -71,9 +70,8 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args);
 cd(savePath);
 
 %% do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -83,4 +81,3 @@ PlotArgs.component=2;
 PlotArgs.Limit = 'auto';
 
 PlotHDF5FieldData('tmp/Et.h5',PlotArgs)
-

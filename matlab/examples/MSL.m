@@ -1,5 +1,5 @@
-close all;
-clear all;
+close all
+clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -14,8 +14,7 @@ mesh_res = [5 5 10];
 EPS0 = 8.85418781762e-12;
 MUE0 = 1.256637062e-6;
 
-%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_Path = [pwd() '/../../']
+%% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -86,8 +85,7 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args);
 cd(savePath);
 

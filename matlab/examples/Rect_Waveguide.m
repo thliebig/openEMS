@@ -1,5 +1,5 @@
-close all;
-clear all;
+close all
+clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -24,14 +24,13 @@ f0 = 1e9;
 
 k = 2*pi*f0/C0;
 kc = sqrt((m*pi/a/unit)^2 + (n*pi/b/unit)^2);
-fc = C0*kc/2/pi
+fc = C0*kc/2/pi;
 beta = sqrt(k^2 - kc^2);
 
 func_Ex = [num2str(n/b/unit) '*cos(' num2str(m*pi/a) '*x)*sin('  num2str(n*pi/b) '*y)'];
 func_Ey = [num2str(m/a/unit) '*sin(' num2str(m*pi/a) '*x)*cos('  num2str(n*pi/b) '*y)'];
 
-%% define file pathes and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_Path = [pwd() '/../../']
+%% define and openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
@@ -95,9 +94,8 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
-command = [openEMS_Path 'openEMS.sh ' Sim_CSX ' ' openEMS_opts];
-disp(command);
-system(command)
+args = [Sim_CSX ' ' openEMS_opts];
+invoke_openEMS(args);
 cd(savePath);
 
 %% do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -107,4 +105,3 @@ PlotArgs.component=2;
 PlotArgs.Limit = 'auto';
 
 PlotHDF5FieldData('tmp/Et.h5',PlotArgs)
-
