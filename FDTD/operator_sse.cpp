@@ -63,5 +63,7 @@ void Operator_sse::InitOperator()
 	f4_vi = Create_N_3DArray_v4sf(numLines);
 	f4_iv = Create_N_3DArray_v4sf(numLines);
 	f4_ii = Create_N_3DArray_v4sf(numLines);
+
+	numVectors =  ceil((double)numLines[2]/4.0);
 }
 

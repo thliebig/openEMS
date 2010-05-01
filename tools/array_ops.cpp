@@ -149,7 +149,7 @@ void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines)
 
 f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 {
-	unsigned int numZ = ceil(numLines[2]/4)+1;
+	unsigned int numZ = ceil((double)numLines[2]/4.0);
 
 	f4vector*** array=NULL;
 	unsigned int pos[3];

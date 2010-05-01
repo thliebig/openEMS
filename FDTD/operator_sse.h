@@ -28,11 +28,11 @@ public:
 	static Operator_sse* New();
 	virtual ~Operator_sse();
 
-	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vv[n][x][y][z/4].f[z%4]; }
-	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vi[n][x][y][z/4].f[z%4]; }
+	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vv[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vi[n][x][y][z%numVectors].f[z/numVectors]; }
 
-	inline virtual FDTD_FLOAT& GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_ii[n][x][y][z/4].f[z%4]; }
-	inline virtual FDTD_FLOAT& GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_iv[n][x][y][z/4].f[z%4]; }
+	inline virtual FDTD_FLOAT& GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_ii[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT& GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_iv[n][x][y][z%numVectors].f[z/numVectors]; }
 
 protected:
 	//! use New() for creating a new Operator
@@ -41,6 +41,8 @@ protected:
 	virtual void Init();
 	virtual void Reset();
 	virtual void InitOperator();
+
+	unsigned int numVectors;
 
 	// engine/post-proc needs access
 public:
