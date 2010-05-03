@@ -21,8 +21,7 @@
 #include "ContinuousStructure.h"
 #include "tools/AdrOp.h"
 #include "tools/constants.h"
-
-#define FDTD_FLOAT float
+#include "excitation.h"
 
 class Operator_Extension;
 
@@ -45,21 +44,6 @@ public:
 	inline virtual FDTD_FLOAT& GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return ii[n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return iv[n][x][y][z]; }
 
-
-	//! Calculate a custom signal \return number of Nyquist timesteps defined by f0
-	virtual unsigned int CalcCustomExcitation(double f0, int nTS, string signal);
-	//! Calculate an excitation with center of f0 and the half bandwidth fc \return number of Nyquist timesteps
-	virtual unsigned int CalcGaussianPulsExcitation(double f0, double fc);
-	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps \return number of Nyquist timesteps
-	virtual unsigned int CalcSinusExcitation(double f0, int nTS);
-	//! Calculate a dirac impuls excitation \return number of Nyquist timesteps
-	virtual unsigned int CalcDiracPulsExcitation();
-	//! Calculate a step excitation \return number of Nyquist timesteps
-	virtual unsigned int CalcStepExcitation();
-
-	//! Get the excitation timestep with the (first) max amplitude
-	virtual unsigned int GetMaxExcitationTimestep() const;
-
 	virtual void SetBoundaryCondition(int* BCs) {for (int n=0;n<6;++n) m_BC[n]=BCs[n];}
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
@@ -68,10 +52,6 @@ public:
 	double GetNumberCells() const;
 
 	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
-
-	void SetNyquistNum(unsigned int nyquist) {m_nyquistTS=nyquist;}
-	unsigned int GetNyquistNum() const {return m_nyquistTS;}
-	unsigned int CalcNyquistNum(double fmax);
 
 	void ShowStat() const;
 
@@ -102,6 +82,7 @@ protected:
 	virtual void Init();
 	virtual void Reset();
 	virtual void InitOperator();
+	virtual void InitExcitation();
 
 	struct Grid_Path
 	{
@@ -122,7 +103,6 @@ protected:
 	//Calc timestep only internal use
 	virtual double CalcTimestep();
 	double dT; //FDTD timestep!
-	unsigned int m_nyquistTS;
 
 	//! Calc operator at certain pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
@@ -152,24 +132,7 @@ public:
 	FDTD_FLOAT**** ii; //calc new current from old current
 	FDTD_FLOAT**** iv; //calc new current from old voltage
 
-	//Excitation time-signal
-	unsigned int ExciteLength;
-	FDTD_FLOAT* ExciteSignal_volt;
-	FDTD_FLOAT* ExciteSignal_curr;
-
-	//E-Field/voltage Excitation
-	unsigned int E_Exc_Count;
-	unsigned int* E_Exc_index[3];
-	unsigned short* E_Exc_dir;
-	FDTD_FLOAT* E_Exc_amp; //represented as edge-voltages!!
-	unsigned int* E_Exc_delay;
-
-	//H-Field/current Excitation
-	unsigned int Curr_Exc_Count;
-	unsigned int* Curr_Exc_index[3];
-	unsigned short* Curr_Exc_dir;
-	FDTD_FLOAT* Curr_Exc_amp; //represented as edge-currents!!
-	unsigned int* Curr_Exc_delay;
+	Excitation* Exc;
 };
 
 #endif // OPERATOR_H

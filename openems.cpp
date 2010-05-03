@@ -124,51 +124,6 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
-void openEMS::SetupExcitation(TiXmlElement* Excite)
-{
-	if (Excite==NULL)
-	{
-		cerr << "Can't read openEMS Excitation Settings... " << endl;
-		exit(-2);
-	}
-
-	int Excit_Type=0;
-	double f0=0;
-	double fc=0;
-	Excite->QueryIntAttribute("Type",&Excit_Type);
-
-	unsigned int Nyquist = 0;
-	switch (Excit_Type)
-	{
-		case 0:
-			Excite->QueryDoubleAttribute("f0",&f0);
-			Excite->QueryDoubleAttribute("fc",&fc);
-			Nyquist = FDTD_Op->CalcGaussianPulsExcitation(f0,fc);
-			break;
-		case 1:
-			Excite->QueryDoubleAttribute("f0",&f0);
-			Nyquist = FDTD_Op->CalcSinusExcitation(f0,NrTS);
-			break;
-		case 2:
-			Nyquist = FDTD_Op->CalcDiracPulsExcitation();
-			break;
-		case 3:
-			Nyquist = FDTD_Op->CalcStepExcitation();
-			break;
-		case 10:
-			Excite->QueryDoubleAttribute("f0",&f0);
-			Nyquist = FDTD_Op->CalcCustomExcitation(f0,NrTS,Excite->Attribute("Function"));
-			break;
-	}
-
-	if (!Nyquist)
-	{
-		cerr << "openEMS: excitation setup failed!!" << endl;
-		exit(2);
-	}
-	FDTD_Op->SetNyquistNum(Nyquist);
-}
-
 int openEMS::SetupFDTD(const char* file)
 {
 	if (file==NULL) return -1;
@@ -278,7 +233,8 @@ int openEMS::SetupFDTD(const char* file)
 
 	FDTD_Op->CalcECOperator();
 
-	SetupExcitation(FDTD_Opts->FirstChildElement("Excitation"));
+	if (!FDTD_Op->Exc->setupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
+		exit(2);
 
 	if (DebugMat)
 	{
@@ -318,7 +274,7 @@ int openEMS::SetupFDTD(const char* file)
 
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;
-	unsigned int Nyquist = FDTD_Op->GetNyquistNum();
+	unsigned int Nyquist = FDTD_Op->Exc->GetNyquistNum();
 	PA = new ProcessingArray(Nyquist);
 
 	double start[3];
@@ -414,9 +370,9 @@ void openEMS::RunFDTD()
 	double maxE=0,currE=0;
 
 	//add all timesteps to end-crit field processing with max excite amplitude
-	unsigned int maxExcite = FDTD_Op->GetMaxExcitationTimestep();
-	for (unsigned int n=0;n<FDTD_Op->E_Exc_Count;++n)
-		ProcField->AddStep(FDTD_Op->E_Exc_delay[n]+maxExcite);
+	unsigned int maxExcite = FDTD_Op->Exc->GetMaxExcitationTimestep();
+	for (unsigned int n=0;n<FDTD_Op->Exc->E_Count;++n)
+		ProcField->AddStep(FDTD_Op->Exc->E_delay[n]+maxExcite);
 
 	double change=1;
 	int prevTS=0,currTS=0;

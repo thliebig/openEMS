@@ -49,8 +49,11 @@ void Operator_sse::Reset()
 	Delete_N_3DArray_v4sf(f4_vi,numLines);
 	Delete_N_3DArray_v4sf(f4_iv,numLines);
 	Delete_N_3DArray_v4sf(f4_ii,numLines);
+	f4_vv = 0;
+	f4_vi = 0;
+	f4_iv = 0;
+	f4_ii = 0;
 	Operator::Reset();
-//	Init(); // FIXME this calls Operator::Init() twice...
 }
 
 void Operator_sse::InitOperator()

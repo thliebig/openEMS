@@ -45,8 +45,6 @@ public:
 	void DebugBox() {m_debugBox=true;}
 
 protected:
-	void SetupExcitation(TiXmlElement* Excite);
-
 	bool CylinderCoords;
 
 	//! Number of Timesteps

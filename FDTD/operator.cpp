@@ -22,6 +22,7 @@
 #include "tools/array_ops.h"
 #include "fparser.hh"
 
+
 Operator* Operator::New()
 {
 	Operator* op = new Operator();
@@ -31,6 +32,7 @@ Operator* Operator::New()
 
 Operator::Operator()
 {
+	Exc = 0;
 }
 
 Operator::~Operator()
@@ -45,24 +47,12 @@ void Operator::Init()
 {
 	CSX = NULL;
 
-	ExciteSignal_volt = NULL;
-	ExciteSignal_curr = NULL;
-	E_Exc_delay = NULL;
-	E_Exc_amp=NULL;
-	E_Exc_dir=NULL;
 	vv=NULL;
 	vi=NULL;
-	Curr_Exc_delay = NULL;
-	Curr_Exc_amp=NULL;
-	Curr_Exc_dir=NULL;
 	iv=NULL;
 	ii=NULL;
 	for (int n=0;n<3;++n)
-	{
 		discLines[n]=NULL;
-		E_Exc_index[n]=NULL;
-		Curr_Exc_index[n]=NULL;
-	}
 
 	MainOp=NULL;
 	DualOp=NULL;
@@ -77,28 +67,18 @@ void Operator::Init()
 
 	for (int n=0;n<6;++n)
 		m_BC[n]=0;
+
+	Exc = 0;
 }
 
 void Operator::Reset()
 {
-	delete[] ExciteSignal_volt;
-	delete[] ExciteSignal_curr;
-	delete[] E_Exc_delay;
-	delete[] E_Exc_dir;
-	delete[] E_Exc_amp;
-	delete[] Curr_Exc_delay;
-	delete[] Curr_Exc_dir;
-	delete[] Curr_Exc_amp;
 	Delete_N_3DArray(vv,numLines);
 	Delete_N_3DArray(vi,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
 	for (int n=0;n<3;++n)
-	{
 		delete[] discLines[n];
-		delete[] E_Exc_index[n];
-		delete[] Curr_Exc_index[n];
-	}
 	delete MainOp;
 	delete DualOp;
 	for (int n=0;n<3;++n)
@@ -109,14 +89,9 @@ void Operator::Reset()
 		delete[] EC_R[n];
 	}
 
-	Init();
-}
+	delete Exc;
 
-unsigned int Operator::CalcNyquistNum(double fmax)
-{
-	if (dT==0) return 1;
-	double T0 = 1/fmax;
-	return floor(T0/2/dT);
+	Init();
 }
 
 string Operator::GetDirName(int ny) const
@@ -310,140 +285,13 @@ void Operator::ShowStat() const
 	cout << "Size of Field-Data       : " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
 	cout << "-----------------------------------" << endl;
 	cout << "Timestep (s)             : " << dT << endl;
-	cout << "Nyquist criteria (TS)    : " << m_nyquistTS << endl;
-	cout << "Nyquist criteria (s)     : " << m_nyquistTS*dT << endl;
-	cout << "Excitation Length (TS)   : " << ExciteLength << endl;
-	cout << "Excitation Length (s)    : " << ExciteLength*dT << endl;
+	cout << "Nyquist criteria (TS)    : " << Exc->GetNyquistNum() << endl;
+	cout << "Nyquist criteria (s)     : " << Exc->GetNyquistNum()*dT << endl;
+	cout << "Excitation Length (TS)   : " << Exc->Length << endl;
+	cout << "Excitation Length (s)    : " << Exc->Length*dT << endl;
 	cout << "-----------------------------------" << endl;
 }
 
-unsigned int Operator::GetMaxExcitationTimestep() const
-{
-	FDTD_FLOAT maxAmp=0;
-	unsigned int maxStep=0;
-	for (unsigned int n=1;n<ExciteLength+1;++n)
-	{
-		if (fabs(ExciteSignal_volt[n])>maxAmp)
-		{
-			maxAmp = fabs(ExciteSignal_volt[n]);
-			maxStep = n;
-		}
-	}
-	return maxStep;
-}
-
-unsigned int Operator::CalcGaussianPulsExcitation(double f0, double fc)
-{
-	if (dT==0) return 0;
-
-	ExciteLength = (unsigned int)(2.0 * 9.0/(2.0*PI*fc) / dT);
-//	cerr << "Operator::CalcGaussianPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal_volt;
-	delete[] ExciteSignal_curr;
-	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_volt[0]=0.0;
-	ExciteSignal_curr[0]=0.0;
-	for (unsigned int n=1;n<ExciteLength+1;++n)
-	{
-		double t = (n-1)*dT;
-		ExciteSignal_volt[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
-		t += 0.5*dT;
-		ExciteSignal_curr[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
-	}
-	return CalcNyquistNum(f0+fc);
-}
-
-unsigned int Operator::CalcDiracPulsExcitation()
-{
-	if (dT==0) return 0;
-
-	ExciteLength = 1;
-//	cerr << "Operator::CalcDiracPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal_volt;
-	delete[] ExciteSignal_curr;
-	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_volt[0]=0.0;
-	ExciteSignal_volt[1]=1.0;
-	ExciteSignal_curr[0]=0.0;
-	ExciteSignal_curr[1]=1.0;
-
-	return 1;
-}
-
-unsigned int Operator::CalcStepExcitation()
-{
-	if (dT==0) return 0;
-
-	ExciteLength = 1;
-	delete[] ExciteSignal_volt;
-	delete[] ExciteSignal_curr;
-	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_volt[0]=1.0;
-	ExciteSignal_volt[1]=1.0;
-	ExciteSignal_curr[0]=0.0;
-	ExciteSignal_curr[1]=1.0;
-
-	return 1;
-}
-
-unsigned int Operator::CalcCustomExcitation(double f0, int nTS, string signal)
-{
-	if (dT==0) return 0;
-	if (nTS<=0) return 0;
-
-	ExciteLength = (unsigned int)(nTS);
-//	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal_volt;
-	delete[] ExciteSignal_curr;
-	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_volt[0]=0.0;
-	ExciteSignal_curr[0]=0.0;
-	FunctionParser fParse;
-	fParse.AddConstant("pi", 3.14159265358979323846);
-	fParse.AddConstant("e", 2.71828182845904523536);
-	fParse.Parse(signal,"t");
-	if (fParse.GetParseErrorType()!=FunctionParser::FP_NO_ERROR)
-	{
-		cerr << "Operator::CalcCustomExcitation: Function Parser error: " << fParse.ErrorMsg() << endl;
-		exit(1);
-	}
-	double vars[1];
-	for (unsigned int n=1;n<ExciteLength+1;++n)
-	{
-		vars[0] = (n-1)*GetTimestep();
-		ExciteSignal_volt[n] = fParse.Eval(vars);
-		vars[0] += 0.5*GetTimestep();
-		ExciteSignal_curr[n] = fParse.Eval(vars);
-	}
-	return CalcNyquistNum(f0);
-}
-
-unsigned int Operator::CalcSinusExcitation(double f0, int nTS)
-{
-	if (dT==0) return 0;
-	if (nTS<=0) return 0;
-
-	ExciteLength = (unsigned int)(nTS);
-//	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
-	delete[] ExciteSignal_volt;
-	delete[] ExciteSignal_curr;
-	ExciteSignal_volt = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_curr = new FDTD_FLOAT[ExciteLength+1];
-	ExciteSignal_volt[0]=0.0;
-	ExciteSignal_curr[0]=0.0;
-	for (unsigned int n=1;n<ExciteLength+1;++n)
-	{
-		double t = (n-1)*dT;
-		ExciteSignal_volt[n] = sin(2.0*PI*f0*t);
-		t += 0.5*dT;
-		ExciteSignal_curr[n] = sin(2.0*PI*f0*t);
-	}
-	return CalcNyquistNum(f0);
-}
 
 void Operator::DumpOperator2File(string filename)
 {
@@ -455,9 +303,9 @@ void Operator::DumpOperator2File(string filename)
 	}
 
 	FDTD_FLOAT**** exc = Create_N_3DArray(numLines);
-	for (unsigned int n=0;n<E_Exc_Count;++n)
-	{
-		exc[E_Exc_dir[n]][E_Exc_index[0][n]][E_Exc_index[1][n]][E_Exc_index[2][n]] = E_Exc_amp[n];
+	if (Exc) {
+		for (unsigned int n=0;n<Exc->E_Count;++n)
+			exc[Exc->E_dir[n]][Exc->E_index[0][n]][Exc->E_index[1][n]][Exc->E_index[2][n]] = Exc->E_amp[n];
 	}
 
 	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
@@ -557,6 +405,12 @@ void Operator::InitOperator()
 	ii = Create_N_3DArray(numLines);
 }
 
+void Operator::InitExcitation()
+{
+	delete Exc;
+	Exc = new Excitation( dT );
+}
+
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 {
 	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
@@ -575,6 +429,8 @@ int Operator::CalcECOperator()
 	CalcTimestep();
 
 	InitOperator();
+
+	InitExcitation();
 
 	unsigned int pos[3];
 
@@ -925,7 +781,11 @@ double Operator::CalcTimestep()
 
 bool Operator::CalcFieldExcitation()
 {
-	if (dT==0) return false;
+	if (dT==0)
+		return false;
+	if (Exc==0)
+		return false;
+
 	unsigned int pos[3];
 	double delta[3];
 	double amp=0;
@@ -1094,58 +954,15 @@ bool Operator::CalcFieldExcitation()
 
 
 	// set voltage excitations
-	E_Exc_Count = volt_vExcit.size();
-	cerr << "Operator::CalcFieldExcitation: Number of voltage excitation points: " << E_Exc_Count << endl;
-	if (E_Exc_Count==0)
-		cerr << "No E-Field/voltage excitation found!" << endl;
-	for (int n=0;n<3;++n)
-	{
-		delete[] E_Exc_index[n];
-		E_Exc_index[n] = new unsigned int[E_Exc_Count];
-		for (unsigned int i=0;i<E_Exc_Count;++i)
-			E_Exc_index[n][i]=volt_vIndex[n].at(i);
-	}
-	delete[] E_Exc_delay;
-	E_Exc_delay = new unsigned int[E_Exc_Count];
-	delete[] E_Exc_amp;
-	E_Exc_amp = new FDTD_FLOAT[E_Exc_Count];
-	delete[] E_Exc_dir;
-	E_Exc_dir = new unsigned short[E_Exc_Count];
-	for (unsigned int i=0;i<E_Exc_Count;++i)
-	{
-		E_Exc_delay[i]=volt_vDelay.at(i);
-		E_Exc_amp[i]=volt_vExcit.at(i);
-		E_Exc_dir[i]=volt_vDir.at(i);
-	}
-
+	Exc->setupVoltageExcitation( volt_vIndex, volt_vExcit, volt_vDelay, volt_vDir );
 
 	// set current excitations
-	Curr_Exc_Count = curr_vExcit.size();
-	cerr << "Operator::CalcFieldExcitation: Number of current excitation points: " << Curr_Exc_Count << endl;
-	if (Curr_Exc_Count==0)
-		cerr << "No H-Field/current excitation found!" << endl;
-	for (int n=0;n<3;++n)
-	{
-		delete[] Curr_Exc_index[n];
-		Curr_Exc_index[n] = new unsigned int[Curr_Exc_Count];
-		for (unsigned int i=0;i<Curr_Exc_Count;++i)
-			Curr_Exc_index[n][i]=curr_vIndex[n].at(i);
-	}
-	delete[] Curr_Exc_delay;
-	Curr_Exc_delay = new unsigned int[Curr_Exc_Count];
-	delete[] Curr_Exc_amp;
-	Curr_Exc_amp = new FDTD_FLOAT[Curr_Exc_Count];
-	delete[] Curr_Exc_dir;
-	Curr_Exc_dir = new unsigned short[Curr_Exc_Count];
-	for (unsigned int i=0;i<Curr_Exc_Count;++i)
-	{
-		Curr_Exc_delay[i]=curr_vDelay.at(i);
-		Curr_Exc_amp[i]=curr_vExcit.at(i);
-		Curr_Exc_dir[i]=curr_vDir.at(i);
-	}
+	Exc->setupCurrentExcitation( curr_vIndex, curr_vExcit, curr_vDelay, curr_vDir );
 
 	return true;
 }
+
+
 
 bool Operator::CalcPEC()
 {

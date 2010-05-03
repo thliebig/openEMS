@@ -113,19 +113,19 @@ void Engine::ApplyVoltageExcite()
 {
 	int exc_pos;
 	//soft voltage excitation here (E-field excite)
-	for (unsigned int n=0;n<Op->E_Exc_Count;++n)
+	for (unsigned int n=0;n<Op->Exc->E_Count;++n)
 	{
-		exc_pos = (int)numTS - (int)Op->E_Exc_delay[n];
-		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
+		exc_pos = (int)numTS - (int)Op->Exc->E_delay[n];
+		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		GetVolt(Op->E_Exc_dir[n],Op->E_Exc_index[0][n],Op->E_Exc_index[1][n],Op->E_Exc_index[2][n]) += Op->E_Exc_amp[n]*Op->ExciteSignal_volt[exc_pos];
+		GetVolt(Op->Exc->E_dir[n],Op->Exc->E_index[0][n],Op->Exc->E_index[1][n],Op->Exc->E_index[2][n]) += Op->Exc->E_amp[n]*Op->Exc->Signal_volt[exc_pos];
 	}
 
 	// write the first excitation into the file "et1"
-	if (Op->E_Exc_Count >= 1) {
-		exc_pos = (int)numTS - (int)Op->E_Exc_delay[0];
-		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
-		file_et1 << numTS * Op->GetTimestep() << "\t" << Op->E_Exc_amp[0]*Op->ExciteSignal_volt[exc_pos] << "\n"; // do not use std::endl here, because it will do an implicit flush
+	if (Op->Exc->E_Count >= 1) {
+		exc_pos = (int)numTS - (int)Op->Exc->E_delay[0];
+		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
+		file_et1 << numTS * Op->GetTimestep() << "\t" << Op->Exc->E_amp[0]*Op->Exc->Signal_volt[exc_pos] << "\n"; // do not use std::endl here, because it will do an implicit flush
 	}
 }
 
@@ -159,12 +159,12 @@ void Engine::ApplyCurrentExcite()
 {
 	int exc_pos;
 	//soft current excitation here (H-field excite)
-	for (unsigned int n=0;n<Op->Curr_Exc_Count;++n)
+	for (unsigned int n=0;n<Op->Exc->Curr_Count;++n)
 	{
-		exc_pos = (int)numTS - (int)Op->Curr_Exc_delay[n];
-		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->ExciteLength);
+		exc_pos = (int)numTS - (int)Op->Exc->Curr_delay[n];
+		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		GetCurr(Op->Curr_Exc_dir[n],Op->Curr_Exc_index[0][n],Op->Curr_Exc_index[1][n],Op->Curr_Exc_index[2][n]) += Op->Curr_Exc_amp[n]*Op->ExciteSignal_curr[exc_pos];
+		GetCurr(Op->Exc->Curr_dir[n],Op->Exc->Curr_index[0][n],Op->Exc->Curr_index[1][n],Op->Exc->Curr_index[2][n]) += Op->Exc->Curr_amp[n]*Op->Exc->Signal_curr[exc_pos];
 	}
 }
 
