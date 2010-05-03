@@ -16,6 +16,8 @@
 */
 
 #include "engine_cylinder.h"
+#include "engine_extension.h"
+#include "operator_extension.h"
 
 Engine_Cylinder* Engine_Cylinder::New(const Operator_Cylinder* op)
 {
@@ -94,7 +96,16 @@ bool Engine_Cylinder::IterateTS(unsigned int iterTS)
 
 	for (unsigned int iter=0;iter<iterTS;++iter)
 	{
+		//voltage updates with extensions
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPreVoltageUpdates();
+
 		UpdateVoltages();
+
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPostVoltageUpdates();
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->Apply2Voltages();
 
 		if (cyl_Op->GetR0Included())
 			R0IncludeVoltages();
@@ -103,7 +114,17 @@ bool Engine_Cylinder::IterateTS(unsigned int iterTS)
 
 		CloseAlphaVoltages();
 
+		//current updates with extensions
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPreCurrentUpdates();
+
 		UpdateCurrents();
+
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->DoPostCurrentUpdates();
+		for (size_t n=0;n<m_Eng_exts.size();++n)
+			m_Eng_exts.at(n)->Apply2Current();
+
 		ApplyCurrentExcite();
 
 		CloseAlphaCurrents();
@@ -113,86 +134,3 @@ bool Engine_Cylinder::IterateTS(unsigned int iterTS)
 
 	return true;
 }
-
-
-//inline void Engine_Cylinder::UpdateVoltages()
-//{
-//	unsigned int pos[3];
-//	bool shift[3];
-//
-//	if (cyl_Op->GetClosedAlpha()==false)
-//		return Engine::UpdateVoltages();
-//
-//	//voltage updates
-//	for (pos[0]=0;pos[0]<Op->numLines[0];++pos[0])
-//	{
-//		shift[0]=pos[0];
-//		for (pos[1]=1;pos[1]<Op->numLines[1];++pos[1])
-//		{
-//			shift[1]=pos[1];
-//			for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
-//			{
-//				shift[2]=pos[2];
-//				//do the updates here
-//				//for x
-//				volt[0][pos[0]][pos[1]][pos[2]] *= Op->vv[0][pos[0]][pos[1]][pos[2]];
-//				volt[0][pos[0]][pos[1]][pos[2]] += Op->vi[0][pos[0]][pos[1]][pos[2]] * ( curr[2][pos[0]][pos[1]][pos[2]] - curr[2][pos[0]][pos[1]-shift[1]][pos[2]] - curr[1][pos[0]][pos[1]][pos[2]] + curr[1][pos[0]][pos[1]][pos[2]-shift[2]]);
-//
-//				//for y
-//				volt[1][pos[0]][pos[1]][pos[2]] *= Op->vv[1][pos[0]][pos[1]][pos[2]];
-//				volt[1][pos[0]][pos[1]][pos[2]] += Op->vi[1][pos[0]][pos[1]][pos[2]] * ( curr[0][pos[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]-shift[2]] - curr[2][pos[0]][pos[1]][pos[2]] + curr[2][pos[0]-shift[0]][pos[1]][pos[2]]);
-//
-//				//for z
-//				volt[2][pos[0]][pos[1]][pos[2]] *= Op->vv[2][pos[0]][pos[1]][pos[2]];
-//				volt[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( curr[1][pos[0]][pos[1]][pos[2]] - curr[1][pos[0]-shift[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]] + curr[0][pos[0]][pos[1]-shift[1]][pos[2]]);
-//			}
-//		}
-//
-//		// copy voltages from last alpha-plane to first
-//		unsigned int last_A_Line = Op->numLines[1]-1;
-//		for (pos[2]=0;pos[2]<Op->numLines[2];++pos[2])
-//		{
-//			volt[0][pos[0]][0][pos[2]] = volt[0][pos[0]][last_A_Line][pos[2]];
-//			volt[1][pos[0]][0][pos[2]] = volt[1][pos[0]][last_A_Line][pos[2]];
-//			volt[2][pos[0]][0][pos[2]] = volt[2][pos[0]][last_A_Line][pos[2]];
-//		}
-//
-//	}
-//}
-//
-//inline void Engine_Cylinder::UpdateCurrents()
-//{
-//	if (cyl_Op->GetClosedAlpha()==false)
-//		return Engine::UpdateCurrents();
-//
-//	unsigned int pos[3];
-//	for (pos[0]=0;pos[0]<Op->numLines[0]-1;++pos[0])
-//	{
-//		for (pos[1]=0;pos[1]<Op->numLines[1]-1;++pos[1])
-//		{
-//			for (pos[2]=0;pos[2]<Op->numLines[2]-1;++pos[2])
-//			{
-//				//do the updates here
-//				//for x
-//				curr[0][pos[0]][pos[1]][pos[2]] *= Op->ii[0][pos[0]][pos[1]][pos[2]];
-//				curr[0][pos[0]][pos[1]][pos[2]] += Op->iv[0][pos[0]][pos[1]][pos[2]] * ( volt[2][pos[0]][pos[1]][pos[2]] - volt[2][pos[0]][pos[1]+1][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]] + volt[1][pos[0]][pos[1]][pos[2]+1]);
-//
-//				//for y
-//				curr[1][pos[0]][pos[1]][pos[2]] *= Op->ii[1][pos[0]][pos[1]][pos[2]];
-//				curr[1][pos[0]][pos[1]][pos[2]] += Op->iv[1][pos[0]][pos[1]][pos[2]] * ( volt[0][pos[0]][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]+1] - volt[2][pos[0]][pos[1]][pos[2]] + volt[2][pos[0]+1][pos[1]][pos[2]]);
-//
-//				//for z
-//				curr[2][pos[0]][pos[1]][pos[2]] *= Op->ii[2][pos[0]][pos[1]][pos[2]];
-//				curr[2][pos[0]][pos[1]][pos[2]] += Op->iv[2][pos[0]][pos[1]][pos[2]] * ( volt[1][pos[0]][pos[1]][pos[2]] - volt[1][pos[0]+1][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]] + volt[0][pos[0]][pos[1]+1][pos[2]]);
-//			}
-//		}
-//		// copy currents from first alpha-plane to last
-//		unsigned int last_A_Line = Op->numLines[1]-1;
-//		for (pos[2]=0;pos[2]<Op->numLines[2]-1;++pos[2])
-//		{
-//			curr[0][pos[0]][last_A_Line][pos[2]] = curr[0][pos[0]][0][pos[2]];
-//			curr[1][pos[0]][last_A_Line][pos[2]] = curr[1][pos[0]][0][pos[2]];
-//			curr[2][pos[0]][last_A_Line][pos[2]] = curr[2][pos[0]][0][pos[2]];
-//		}
-//	}
-//}

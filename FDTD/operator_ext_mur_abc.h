@@ -35,7 +35,7 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() {return false;} //not yet save to use with cylinder-coords
+	virtual bool IsCylinderCoordsSave() {if (m_ny==2) return true; else return false;}
 
 	virtual string GetExtensionName() {return string("Mur ABC extension");}
 
