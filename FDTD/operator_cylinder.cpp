@@ -16,6 +16,7 @@
 */
 
 #include "operator_cylinder.h"
+#include "operator_extension.h"
 
 Operator_Cylinder* Operator_Cylinder::New()
 {
@@ -408,3 +409,10 @@ bool Operator_Cylinder::Calc_EffMatPos(int /*n*/, unsigned int* /*pos*/, double*
 	return false;
 }
 
+void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)
+{
+	if (op_ext->IsCylinderCoordsSave())
+		m_Op_exts.push_back(op_ext);
+	else
+		cerr << "Operator_Cylinder::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylinder-coords!! skipping...!" << endl;
+}

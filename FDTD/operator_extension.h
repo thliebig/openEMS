@@ -18,6 +18,8 @@
 #ifndef OPERATOR_EXTENSION_H
 #define OPERATOR_EXTENSION_H
 
+#include <string>
+
 class Operator;
 class Engine_Extension;
 
@@ -29,6 +31,10 @@ public:
 	virtual bool BuildExtension() {return true;}
 
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}
+
+	virtual bool IsCylinderCoordsSave() {return false;}
+
+	virtual std::string GetExtensionName() {return std::string("Abstract Operator Extension Base Class");}
 
 protected:
 	Operator_Extension(Operator* op);

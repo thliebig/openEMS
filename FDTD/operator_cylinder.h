@@ -44,6 +44,8 @@ public:
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
+	virtual void AddExtension(Operator_Extension* op_ext);
+
 protected:
 	Operator_Cylinder();
 	virtual void Init();
