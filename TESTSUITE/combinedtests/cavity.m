@@ -38,7 +38,7 @@ Sim_CSX = 'cavity.xml';
 [status,message,messageid]=mkdir(Sim_Path);
 
 %setup FDTD parameter
-FDTD = InitFDTD( 10000,1e-6 );
+FDTD = InitFDTD( 20000,1e-6 );
 FDTD = SetGaussExcite(FDTD,(f_stop-f_start)/2,(f_stop-f_start)/2);
 BC = [0 0 0 0 0 0]; % PEC boundaries
 FDTD = SetBoundaryCond(FDTD,BC);

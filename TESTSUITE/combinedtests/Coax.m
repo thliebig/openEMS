@@ -65,7 +65,7 @@ start(3) = 0; stop(3)=mesh_res(1)/2;
 CSX = AddExcitation(CSX,'excite',0,[1 1 0]);
 weight{1} = '(x)/(x*x+y*y)';
 weight{2} = 'y/pow(rho,2)';
-weight{3} = 0;
+weight{3} = '0';
 CSX = SetExcitationWeight(CSX, 'excite', weight );
 CSX = AddCylindricalShell(CSX,'excite',0 ,start,stop,0.5*(coax_rad_i+coax_rad_ai),(coax_rad_ai-coax_rad_i));
  
@@ -152,3 +152,4 @@ end
 if ~pass && STOP_IF_FAILED
     error 'test failed';
 end
+
