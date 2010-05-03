@@ -37,7 +37,7 @@ Excitation::Excitation( double timestep )
 	}
 
 	dT = timestep;
-	m_nyquistTS = nan("");
+	m_nyquistTS = 0;
 }
 
 Excitation::~Excitation()
