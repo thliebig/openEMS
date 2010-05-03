@@ -159,32 +159,6 @@ int Operator_Cylinder::CalcECOperator()
 	return 0;
 }
 
-inline void Operator_Cylinder::Calc_ECOperatorPos(int n, unsigned int* pos)
-{
-	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
-	if (EC_C[n][i]>0)
-	{
-		vv[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-		vi[n][pos[0]][pos[1]][pos[2]] = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-	}
-	else
-	{
-		vv[n][pos[0]][pos[1]][pos[2]] = 0;
-		vi[n][pos[0]][pos[1]][pos[2]] = 0;
-	}
-
-	if (EC_L[n][i]>0)
-	{
-		ii[n][pos[0]][pos[1]][pos[2]] = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
-		iv[n][pos[0]][pos[1]][pos[2]] = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
-	}
-	else
-	{
-		ii[n][pos[0]][pos[1]][pos[2]] = 0;
-		iv[n][pos[0]][pos[1]][pos[2]] = 0;
-	}
-}
-
 void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 {
 	if (dirs==NULL) return;

@@ -50,8 +50,6 @@ protected:
 	virtual void InitOperator();
 	virtual void Reset();
 
-	virtual inline void Calc_ECOperatorPos(int n, unsigned int* pos);
-
 	bool CC_closedAlpha;
 	bool CC_R0_included;
 

@@ -414,11 +414,26 @@ void Operator::InitExcitation()
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 {
 	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
-	GetVV(n,pos[0],pos[1],pos[2]) = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-	GetVI(n,pos[0],pos[1],pos[2]) = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-
-	GetII(n,pos[0],pos[1],pos[2]) = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
-	GetIV(n,pos[0],pos[1],pos[2]) = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+	if (EC_C[n][i]>0)
+	{
+		GetVV(n,pos[0],pos[1],pos[2]) = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+		GetVI(n,pos[0],pos[1],pos[2]) = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+	}
+	else
+	{
+		GetVV(n,pos[0],pos[1],pos[2]) = 0;
+		GetVI(n,pos[0],pos[1],pos[2]) = 0;
+	}
+	if (EC_L[n][i]>0)
+	{
+		GetII(n,pos[0],pos[1],pos[2]) = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+		GetIV(n,pos[0],pos[1],pos[2]) = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+	}
+	else
+	{
+		GetII(n,pos[0],pos[1],pos[2]) = 0;
+		GetIV(n,pos[0],pos[1],pos[2]) = 0;
+	}
 }
 
 int Operator::CalcECOperator()
