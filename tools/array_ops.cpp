@@ -130,11 +130,14 @@ void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines)
 	{
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
-			delete[] array[pos[0]][pos[1]];
+			free( array[pos[0]][pos[1]] );
+			//delete[] array[pos[0]][pos[1]];
 		}
-		delete[] array[pos[0]];
+		free( array[pos[0]] );
+		//delete[] array[pos[0]];
 	}
-	delete[] array;
+	free( array );
+	//delete[] array;
 }
 
 void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines)
@@ -144,22 +147,36 @@ void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines)
 	{
 		Delete3DArray_v4sf(array[n],numLines);
 	}
-	delete[] array;
+	free( array );
+	//delete[] array;
 }
 
+//! \brief this function allocates a 3D array, which is aligned to 16 byte
 f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 {
 	unsigned int numZ = ceil((double)numLines[2]/4.0);
 
 	f4vector*** array=NULL;
 	unsigned int pos[3];
-	array = new f4vector**[numLines[0]];
+	if (posix_memalign( (void**)&array, 16, sizeof(typeof(f4vector**))*numLines[0] )) {
+		cerr << "cannot allocate aligned memory" << endl;
+		exit(3);
+	}
+	//array = new f4vector**[numLines[0]];
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 	{
-		array[pos[0]] = new f4vector*[numLines[1]];
+		if (posix_memalign( (void**)&array[pos[0]], 16, sizeof(typeof(f4vector*))*numLines[1] )) {
+			cerr << "cannot allocate aligned memory" << endl;
+			exit(3);
+		}
+		//array[pos[0]] = new f4vector*[numLines[1]];
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
-			array[pos[0]][pos[1]] = new f4vector[numZ];
+			if (posix_memalign( (void**)&array[pos[0]][pos[1]], 16, sizeof(typeof(f4vector))*numZ )) {
+				cerr << "cannot allocate aligned memory" << endl;
+				exit(3);
+			}
+			//array[pos[0]][pos[1]] = new f4vector[numZ];
 			for (pos[2]=0;pos[2]<numZ;++pos[2])
 			{
 				array[pos[0]][pos[1]][pos[2]].f[0] = 0;
@@ -174,7 +191,11 @@ f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines)
 {
 	f4vector**** array=NULL;
-	array = new f4vector***[3];
+	if (posix_memalign( (void**)&array, 16, sizeof(typeof(f4vector***))*3 )) {
+		cerr << "cannot allocate aligned memory" << endl;
+		exit(3);
+	}
+	//array = new f4vector***[3];
 	for (int n=0;n<3;++n)
 	{
 		array[n]=Create3DArray_v4sf(numLines);
