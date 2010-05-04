@@ -25,6 +25,10 @@
 
 #define STANDALONE
 
+#ifndef GIT_VERSION
+#define GIT_VERSION "unknown:compiled@" __DATE__
+#endif
+
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -34,6 +38,8 @@ int main(int argc, char *argv[])
 #ifdef STANDALONE
 	if (argc<=1)
 	{
+		cout << " | openEMS version " GIT_VERSION << endl;
+		cout << " | (C) 2010 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl << endl;
 		cout << " usage: openEMS FDTD_XML_FILE [--disable-dumps] [--debug-material] [--debug-operator]" << endl;
 		exit(-1);
 	}

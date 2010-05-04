@@ -76,12 +76,15 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/engine_ext_mur_abc.h \
     FDTD/operator_ext_mur_abc.h \
     FDTD/excitation.h
-QMAKE_CXXFLAGS_RELEASE = -O2 \
+QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
-	-march=native -msse -msse2
+	-march=native
 QMAKE_CXXFLAGS_DEBUG = -O0 \
     -g \
-	-march=native -msse -msse2
+	-march=native
+
+# add git revision
+QMAKE_CXXFLAGS += -DGIT_VERSION=\\\"`git describe --tags`\\\"
 
 # to use ABI2 target:
 # qmake CONFIG+="ABI2 bits64" -o Makefile.ABI2-64 openEMS.pro
