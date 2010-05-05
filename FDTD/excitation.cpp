@@ -74,7 +74,7 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 		case 0:
 			Excite->QueryDoubleAttribute("f0",&f0);
 			Excite->QueryDoubleAttribute("fc",&fc);
-			CalcGaussianPulsExcitation(f0,fc);
+			CalcGaussianPulsExcitation(f0,fc,maxTS);
 			break;
 		case 1:
 			Excite->QueryDoubleAttribute("f0",&f0);
@@ -122,11 +122,16 @@ unsigned int Excitation::GetMaxExcitationTimestep() const
 	return maxStep;
 }
 
-void Excitation::CalcGaussianPulsExcitation(double f0, double fc)
+void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 {
 	if (dT==0) return;
 
 	Length = (unsigned int)(2.0 * 9.0/(2.0*PI*fc) / dT);
+	if ((int)Length>nTS)
+	{
+		cerr << "Operator::CalcGaussianPulsExcitation: Requested excitation pusle would be " << Length << " timesteps or " << Length * dT << " s long. Cutting to max number of timesteps!" << endl;
+		Length=(unsigned int)nTS;
+	}
 //	cerr << "Operator::CalcGaussianPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
 	delete[] Signal_volt;
 	delete[] Signal_curr;
