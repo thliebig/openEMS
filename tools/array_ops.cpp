@@ -18,6 +18,18 @@
 #include "array_ops.h"
 #include <ostream>
 
+#ifdef WIN32
+	#define __MSVCRT_VERSION__ 0x0700
+	#include <malloc.h>
+	//(void**)&array, 16, sizeof(typeof(f4vector**))*numLines[0]
+	#define MEMALIGN( array, alignment, size ) !(*array = _aligned_malloc( size, alignment ))
+	#define FREE( array ) _aligned_free( array )
+#else
+	#define MEMALIGN( array, alignment, size ) posix_memalign( array, alignment, size )
+	#define FREE( array ) free( array )
+#endif
+
+
 FDTD_FLOAT** Create2DArray(const unsigned int* numLines)
 {
 	FDTD_FLOAT** array=NULL;
@@ -130,13 +142,13 @@ void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines)
 	{
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
-			free( array[pos[0]][pos[1]] );
+			FREE( array[pos[0]][pos[1]] );
 			//delete[] array[pos[0]][pos[1]];
 		}
-		free( array[pos[0]] );
+		FREE( array[pos[0]] );
 		//delete[] array[pos[0]];
 	}
-	free( array );
+	FREE( array );
 	//delete[] array;
 }
 
@@ -147,7 +159,7 @@ void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines)
 	{
 		Delete3DArray_v4sf(array[n],numLines);
 	}
-	free( array );
+	FREE( array );
 	//delete[] array;
 }
 
@@ -158,21 +170,21 @@ f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 
 	f4vector*** array=NULL;
 	unsigned int pos[3];
-	if (posix_memalign( (void**)&array, 16, sizeof(typeof(f4vector**))*numLines[0] )) {
+	if (MEMALIGN( (void**)&array, 16, sizeof(typeof(f4vector**))*numLines[0] )) {
 		cerr << "cannot allocate aligned memory" << endl;
 		exit(3);
 	}
 	//array = new f4vector**[numLines[0]];
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 	{
-		if (posix_memalign( (void**)&array[pos[0]], 16, sizeof(typeof(f4vector*))*numLines[1] )) {
+		if (MEMALIGN( (void**)&array[pos[0]], 16, sizeof(typeof(f4vector*))*numLines[1] )) {
 			cerr << "cannot allocate aligned memory" << endl;
 			exit(3);
 		}
 		//array[pos[0]] = new f4vector*[numLines[1]];
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
-			if (posix_memalign( (void**)&array[pos[0]][pos[1]], 16, sizeof(typeof(f4vector))*numZ )) {
+			if (MEMALIGN( (void**)&array[pos[0]][pos[1]], 16, sizeof(typeof(f4vector))*numZ )) {
 				cerr << "cannot allocate aligned memory" << endl;
 				exit(3);
 			}
@@ -191,7 +203,7 @@ f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines)
 {
 	f4vector**** array=NULL;
-	if (posix_memalign( (void**)&array, 16, sizeof(typeof(f4vector***))*3 )) {
+	if (MEMALIGN( (void**)&array, 16, sizeof(typeof(f4vector***))*3 )) {
 		cerr << "cannot allocate aligned memory" << endl;
 		exit(3);
 	}
