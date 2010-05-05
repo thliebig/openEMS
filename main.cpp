@@ -15,15 +15,13 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
 #include "openems.h"
-
-#include "examples/FDTD_examples.h"
-
-#define STANDALONE
 
 #ifndef GIT_VERSION
 #define GIT_VERSION "unknown:compiled@" __DATE__
@@ -35,7 +33,6 @@ int main(int argc, char *argv[])
 {
 	openEMS FDTD;
 
-#ifdef STANDALONE
 	if (argc<=1)
 	{
 		cout << " | openEMS version " GIT_VERSION << endl;
@@ -53,32 +50,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	char* file = argv[1];
-#else
-	//*************** setup/read geometry ************//
-
-	const char* fileDP="../examples/Dipol.xml";
-	BuildDipol(fileDP);
-
-	const char* filePW="../examples/PlaneWave.xml";
-	BuildPlaneWave(filePW);
-
-	const char* fileMSL="../examples/MSL.xml";
-	BuildMSL(fileMSL);
-
-	const char* fileCoax="../examples/Coax_Cart.xml";
-	BuildCoaxial_Cartesian(fileCoax);
-
-	const char* fileHelix="../examples/Helix.xml";
-	BuildHelix(fileHelix);
-
-	const char* file=fileHelix;
-
-	FDTD.DebugMaterial();
-//	FDTD.DebugOperator();
-#endif
-
-	int EC = FDTD.SetupFDTD(file);
+	int EC = FDTD.SetupFDTD(argv[1]);
 	if (EC) return EC;
 	FDTD.RunFDTD();
 

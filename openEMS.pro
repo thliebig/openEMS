@@ -41,7 +41,6 @@ SOURCES += main.cpp \
     FDTD/processfields.cpp \
     FDTD/processfields_td.cpp \
     FDTD/processcurrent.cpp \
-    examples/FDTD_examples.cpp \
     openems.cpp \
     FDTD/engine_multithread.cpp \
     FDTD/operator_cylinder.cpp \
@@ -64,7 +63,6 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/processfields.h \
     FDTD/processfields_td.h \
     FDTD/processcurrent.h \
-    examples/FDTD_examples.h \
     openems.h \
     FDTD/engine_multithread.h \
     FDTD/operator_cylinder.h \
