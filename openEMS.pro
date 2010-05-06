@@ -44,14 +44,15 @@ SOURCES += main.cpp \
     openems.cpp \
     FDTD/engine_multithread.cpp \
     FDTD/operator_cylinder.cpp \
-    FDTD/engine_cylinder.cpp \
     FDTD/engine_sse.cpp \
     FDTD/operator_sse.cpp \
     FDTD/operator_extension.cpp \
     FDTD/engine_extension.cpp \
     FDTD/engine_ext_mur_abc.cpp \
     FDTD/operator_ext_mur_abc.cpp \
-    FDTD/excitation.cpp
+    FDTD/excitation.cpp \
+    FDTD/operator_ext_cylinder.cpp \
+    FDTD/engine_ext_cylinder.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -68,12 +69,13 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_cylinder.h \
     FDTD/engine_sse.h \
     FDTD/operator_sse.h \
-    FDTD/engine_cylinder.h \
     FDTD/operator_extension.h \
     FDTD/engine_extension.h \
     FDTD/engine_ext_mur_abc.h \
     FDTD/operator_ext_mur_abc.h \
-    FDTD/excitation.h
+    FDTD/excitation.h \
+    FDTD/operator_ext_cylinder.h \
+    FDTD/engine_ext_cylinder.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native

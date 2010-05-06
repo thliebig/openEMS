@@ -17,6 +17,7 @@
 
 #include "operator_cylinder.h"
 #include "operator_extension.h"
+#include "operator_ext_cylinder.h"
 
 Operator_Cylinder* Operator_Cylinder::New()
 {
@@ -38,26 +39,20 @@ void Operator_Cylinder::Init()
 {
 	CC_closedAlpha = false;
 	CC_R0_included = false;
-	vv_R0 = NULL;
-	vi_R0 = NULL;
 	Operator::Init();
 }
 
 void Operator_Cylinder::Reset()
 {
 	Operator::Reset();
-	delete[] vv_R0;vv_R0=NULL;
-	delete[] vi_R0;vi_R0=NULL;
 }
 
 void Operator_Cylinder::InitOperator()
 {
-	if (CC_R0_included)
-	{
-		vv_R0 = new FDTD_FLOAT[numLines[2]];
-		vi_R0 = new FDTD_FLOAT[numLines[2]];
-	}
 	Operator::InitOperator();
+
+	if (CC_closedAlpha || CC_R0_included)
+		this->AddExtension(new Operator_Ext_Cylinder(this));
 }
 
 inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
@@ -123,41 +118,10 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 	else if (discLines[0][0]==0.0)
 	{
 		cout << "Operator_Cylinder::SetGeometryCSX: r=0 included..." << endl;
-		CC_R0_included=true;
+		CC_R0_included= true;  //also needed for correct ec-calculation
 	}
 
 	return true;
-}
-
-int Operator_Cylinder::CalcECOperator()
-{
-	int val = Operator::CalcECOperator();
-	if (val)
-		return val;
-
-	//if r=0 is not included -> obviously no special treatment for r=0
-	//if alpha direction is not closed, PEC-BC at r=0 necessary and already set...
-	if ((CC_R0_included==false) || (CC_closedAlpha==false))
-		return val;
-
-	unsigned int pos[3];
-	double inEC[4];
-	pos[0]=0;
-	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
-	{
-		double C=0;
-		double G=0;
-		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
-		{
-			Calc_ECPos(2,pos,inEC);
-			C+=inEC[0]*0.5;
-			G+=inEC[1]*0.5;
-		}
-		vv[2][0][0][pos[2]] = 1;
-		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
-		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
-	}
-	return 0;
 }
 
 void Operator_Cylinder::ApplyElectricBC(bool* dirs)

@@ -34,7 +34,8 @@ Engine::Engine(const Operator* op)
 	Op = op;
 	for (int n=0;n<3;++n)
 	{
-		numLines[n] = Op->GetNumberOfLines(n);
+//		numLines[n] = Op->GetNumberOfLines(n);
+		numLines[n] = Op->numLines[n];
 	}
 
 	for (size_t n=0;n<Op->GetNumberOfExtentions();++n)

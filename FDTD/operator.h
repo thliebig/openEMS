@@ -28,6 +28,7 @@ class Operator_Extension;
 //! Abstract base-class for the FDTD-operator
 class Operator
 {
+	friend class Engine;
 public:
 	//! Create a new operator
 	static Operator* New();

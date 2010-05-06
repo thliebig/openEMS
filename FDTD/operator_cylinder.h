@@ -28,7 +28,7 @@ public:
 	
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
-	virtual int CalcECOperator();
+//	virtual int CalcECOperator();
 
 	virtual void ApplyElectricBC(bool* dirs);
 	virtual void ApplyMagneticBC(bool* dirs);
@@ -46,6 +46,9 @@ public:
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
+	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
+	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
+
 protected:
 	Operator_Cylinder();
 	virtual void Init();
@@ -54,14 +57,6 @@ protected:
 
 	bool CC_closedAlpha;
 	bool CC_R0_included;
-
-	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
-	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
-
-public:
-	//special EC operator for R0
-	FDTD_FLOAT* vv_R0; //calc new voltage from old voltage
-	FDTD_FLOAT* vi_R0; //calc new voltage from old current
 
 };
 

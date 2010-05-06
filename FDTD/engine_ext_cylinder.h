@@ -19,25 +19,27 @@
 #define ENGINE_CYLINDER_H
 
 #include "engine.h"
+#include "engine_extension.h"
 #include "operator_cylinder.h"
 
-class Engine_Cylinder : public Engine
+class Operator_Ext_Cylinder;
+
+class Engine_Ext_Cylinder : public Engine_Extension
 {
 public:
-	static Engine_Cylinder* New(const Operator_Cylinder* op);
+	Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext);
 
-	//!Iterate a number of timesteps
-	virtual bool IterateTS(unsigned int iterTS);
+	virtual void Apply2Voltages();
+
+	virtual void Apply2Current();
 
 protected:
-	Engine_Cylinder(const Operator_Cylinder* op);
+	Operator_Ext_Cylinder* cyl_Op;
 
-	virtual inline void CloseAlphaVoltages();
-	virtual inline void CloseAlphaCurrents();
+	unsigned int numLines[3];
 
-	virtual inline void R0IncludeVoltages();
-
-	const Operator_Cylinder* cyl_Op;
+	bool CC_closedAlpha;
+	bool CC_R0_included;
 };
 
 #endif // ENGINE_CYLINDER_H
