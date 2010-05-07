@@ -112,7 +112,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 					//in x
 //					if (OpPos[0]==0) delta  = Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
 //					else delta = 0.5* (Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]-1]);
-					delta = Op->GetDiscLine(0,OpPos[0],true);
+					delta = Op->GetMeshDelta(0,OpPos,true);
 					if (delta)
 					{
 						H_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(0,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(0,OpPos[0]+1,OpPos[1],OpPos[2]);
@@ -120,7 +120,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 					}
 					//in y
 //					delta  = Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
-					delta = Op->GetDiscLine(1,OpPos[1],true);
+					delta = Op->GetMeshDelta(1,OpPos,true);
 					if (delta)
 					{
 						H_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(1,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(1,OpPos[0],OpPos[1]+1,OpPos[2]);
@@ -128,7 +128,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 					}
 					//in z
 //					delta  = Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
-					delta = Op->GetDiscLine(2,OpPos[2],true);
+					delta = Op->GetMeshDelta(2,OpPos,true);
 					if (delta)
 					{
 						H_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2]+1);
