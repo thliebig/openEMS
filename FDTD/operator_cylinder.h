@@ -20,6 +20,11 @@
 
 #include "operator.h"
 
+//! This class creates an operator for a cylindrical FDTD.
+/*!
+This class creates an operator for a cylindrical FDTD. No special engine is necessary,
+all special cases e.g. a closed alpha mesh or an included r=0 case is treated by an operator/engine extension \sa operator_ext_cylinder.
+*/
 class Operator_Cylinder : public Operator
 {
 public:
@@ -27,8 +32,6 @@ public:
 	virtual ~Operator_Cylinder();
 	
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
-
-//	virtual int CalcECOperator();
 
 	virtual void ApplyElectricBC(bool* dirs);
 	virtual void ApplyMagneticBC(bool* dirs);
@@ -57,7 +60,6 @@ protected:
 
 	bool CC_closedAlpha;
 	bool CC_R0_included;
-
 };
 
 #endif // OPERATOR_CYLINDER_H
