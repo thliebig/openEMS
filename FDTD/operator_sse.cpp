@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "engine_sse.h"
 #include "operator_sse.h"
 #include "tools/array_ops.h"
 
@@ -32,6 +33,13 @@ Operator_sse::Operator_sse() : Operator()
 Operator_sse::~Operator_sse()
 {
 	Reset();
+}
+
+Engine* Operator_sse::CreateEngine()
+{
+	//!create a special sse-engine
+	Engine_sse* eng = Engine_sse::New(this);
+	return eng;
 }
 
 void Operator_sse::Init()

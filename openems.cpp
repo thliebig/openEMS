@@ -252,35 +252,12 @@ int openEMS::SetupFDTD(const char* file)
 	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 
 	//create FDTD engine
-	if (CylinderCoords)
+	if (m_engine==EngineType_Multithreaded)
 	{
-		cerr << "openEMS: creating cylinder coordinate FDTD engine..." << endl;
-		switch (m_engine) {
-//		case EngineType_Multithreaded:
-//			FDTD_Eng = Engine_Multithread::New(FDTD_Op,m_engine_numThreads);
-//			break;
-//		case EngineType_SSE:
-//			FDTD_Eng = Engine_sse::New(dynamic_cast<Operator_sse*>(FDTD_Op));
-//			break;
-		default:
-			FDTD_Eng = Engine::New(FDTD_Op);
-			break;
-		}
+		FDTD_Eng = Engine_Multithread::New(FDTD_Op,m_engine_numThreads);
 	}
 	else
-	{
-		switch (m_engine) {
-		case EngineType_Multithreaded:
-			FDTD_Eng = Engine_Multithread::New(FDTD_Op,m_engine_numThreads);
-			break;
-		case EngineType_SSE:
-			FDTD_Eng = Engine_sse::New(dynamic_cast<Operator_sse*>(FDTD_Op));
-			break;
-		default:
-			FDTD_Eng = Engine::New(FDTD_Op);
-			break;
-		}
-	}
+		FDTD_Eng = FDTD_Op->CreateEngine();
 
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;

@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "engine.h"
 #include "operator_cylinder.h"
 #include "operator_extension.h"
 #include "operator_ext_cylinder.h"
@@ -33,6 +34,13 @@ Operator_Cylinder::Operator_Cylinder()
 Operator_Cylinder::~Operator_Cylinder()
 {
 	Operator::Reset();
+}
+
+Engine* Operator_Cylinder::CreateEngine()
+{
+	//!create a confentional engine... cylinder special operations will be dealt by engine extentions
+	Engine* eng = Engine::New(this);
+	return eng;
 }
 
 void Operator_Cylinder::Init()

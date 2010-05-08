@@ -24,6 +24,7 @@
 #include "excitation.h"
 
 class Operator_Extension;
+class Engine;
 
 //! Abstract base-class for the FDTD-operator
 class Operator
@@ -33,6 +34,8 @@ public:
 	//! Create a new operator
 	static Operator* New();
 	virtual ~Operator();
+
+	virtual Engine* CreateEngine();
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 	virtual ContinuousStructure* GetGeometryCSX() {return CSX;}

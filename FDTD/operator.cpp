@@ -17,6 +17,7 @@
 
 #include <fstream>
 #include "operator.h"
+#include "engine.h"
 #include "operator_extension.h"
 #include "processfields.h"
 #include "tools/array_ops.h"
@@ -41,6 +42,12 @@ Operator::~Operator()
 		delete m_Op_exts.at(n);
 	m_Op_exts.clear();
 	Reset();
+}
+
+Engine* Operator::CreateEngine()
+{
+	Engine* eng = Engine::New(this);
+	return eng;
 }
 
 void Operator::Init()
