@@ -31,7 +31,7 @@ public:
 	static Operator_Cylinder* New();
 	virtual ~Operator_Cylinder();
 
-	virtual Engine* CreateEngine();
+	virtual Engine* CreateEngine() const;
 	
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 

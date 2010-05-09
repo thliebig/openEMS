@@ -48,6 +48,8 @@ void Engine_sse::Init()
 	f4_curr = Create_N_3DArray_v4sf(numLines);
 	volt = 0; // not used
 	curr = 0; // not used
+
+	InitExtensions();
 }
 
 void Engine_sse::Reset()
@@ -58,13 +60,14 @@ void Engine_sse::Reset()
 	f4_curr = 0;
 }
 
-void Engine_sse::UpdateVoltages()
+void Engine_sse::UpdateVoltages(unsigned int startX, unsigned int numX)
 {
 	unsigned int pos[3];
 	bool shift[2];
 	f4vector temp;
 
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	pos[0] = startX;
+	for (unsigned int posX=0;posX<numX;++posX)
 	{
 		shift[0]=pos[0];
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
@@ -106,15 +109,17 @@ void Engine_sse::UpdateVoltages()
 			f4_volt[2][pos[0]][pos[1]][0].v *= Op->f4_vv[2][pos[0]][pos[1]][0].v;
 			f4_volt[2][pos[0]][pos[1]][0].v += Op->f4_vi[2][pos[0]][pos[1]][0].v * ( f4_curr[1][pos[0]][pos[1]][0].v - f4_curr[1][pos[0]-shift[0]][pos[1]][0].v - f4_curr[0][pos[0]][pos[1]][0].v + f4_curr[0][pos[0]][pos[1]-shift[1]][0].v);
 		}
+		++pos[0];
 	}
 }
 
-void Engine_sse::UpdateCurrents()
+void Engine_sse::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
 	unsigned int pos[5];
 	f4vector temp;
 
-	for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
+	pos[0] = startX;
+	for (unsigned int posX=0;posX<numX;++posX)
 	{
 		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 		{
@@ -154,5 +159,6 @@ void Engine_sse::UpdateCurrents()
 			f4_curr[2][pos[0]][pos[1]][numVectors-1].v *= Op->f4_ii[2][pos[0]][pos[1]][numVectors-1].v;
 			f4_curr[2][pos[0]][pos[1]][numVectors-1].v += Op->f4_iv[2][pos[0]][pos[1]][numVectors-1].v * ( f4_volt[1][pos[0]][pos[1]][numVectors-1].v - f4_volt[1][pos[0]+1][pos[1]][numVectors-1].v - f4_volt[0][pos[0]][pos[1]][numVectors-1].v + f4_volt[0][pos[0]][pos[1]+1][numVectors-1].v);
 		}
+		++pos[0];
 	}
 }

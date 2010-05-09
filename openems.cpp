@@ -46,6 +46,7 @@ openEMS::openEMS()
 	FDTD_Eng=NULL;
 	PA=NULL;
 	CylinderCoords = false;
+	m_MultiThreading = false;
 	Enable_Dumps = true;
 	DebugMat = false;
 	DebugOp = false;
@@ -105,7 +106,7 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	else if (strcmp(argv,"--engine=multithreaded")==0)
 	{
 		cout << "openEMS - enabled multithreading" << endl;
-		m_engine = EngineType_Multithreaded;
+		m_MultiThreading = true;
 		return true;
 	}
 	else if (strncmp(argv,"--numThreads=",13)==0)
@@ -252,7 +253,7 @@ int openEMS::SetupFDTD(const char* file)
 	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
 
 	//create FDTD engine
-	if (m_engine==EngineType_Multithreaded)
+	if (m_MultiThreading)
 	{
 		FDTD_Eng = Engine_Multithread::New(FDTD_Op,m_engine_numThreads);
 	}

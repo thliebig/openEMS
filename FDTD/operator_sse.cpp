@@ -35,7 +35,7 @@ Operator_sse::~Operator_sse()
 	Reset();
 }
 
-Engine* Operator_sse::CreateEngine()
+Engine* Operator_sse::CreateEngine() const
 {
 	//!create a special sse-engine
 	Engine_sse* eng = Engine_sse::New(this);

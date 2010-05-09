@@ -33,11 +33,30 @@ Engine::Engine(const Operator* op)
 {
 	Op = op;
 	for (int n=0;n<3;++n)
-	{
-//		numLines[n] = Op->GetNumberOfLines(n);
-		numLines[n] = Op->numLines[n];
-	}
+		numLines[n] = Op->GetOriginalNumLines(n);
+	volt=NULL;
+	curr=NULL;
+}
 
+Engine::~Engine()
+{
+	this->Reset();
+}
+
+void Engine::Init()
+{
+	Reset();
+	numTS = 0;
+	volt = Create_N_3DArray(numLines);
+	curr = Create_N_3DArray(numLines);
+
+	file_et1.open( "et1" );
+
+	InitExtensions();
+}
+
+void Engine::InitExtensions()
+{
 	for (size_t n=0;n<Op->GetNumberOfExtentions();++n)
 	{
 		Operator_Extension* op_ext = Op->GetExtension(n);
@@ -50,24 +69,6 @@ Engine::Engine(const Operator* op)
 	}
 }
 
-Engine::~Engine()
-{
-	for (size_t n=0;n<m_Eng_exts.size();++n)
-		delete m_Eng_exts.at(n);
-	m_Eng_exts.clear();
-
-	this->Reset();
-}
-
-void Engine::Init()
-{
-	numTS = 0;
-	volt = Create_N_3DArray(numLines);
-	curr = Create_N_3DArray(numLines);
-
-	file_et1.open( "et1" );
-}
-
 void Engine::Reset()
 {
 	Delete_N_3DArray(volt,numLines);
@@ -76,15 +77,20 @@ void Engine::Reset()
 	curr=NULL;
 
 	file_et1.close();
+
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		delete m_Eng_exts.at(n);
+	m_Eng_exts.clear();
 }
 
-void Engine::UpdateVoltages()
+void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 {
 	unsigned int pos[3];
 	bool shift[3];
 
+	pos[0] = startX;
 	//voltage updates
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (unsigned int posX=0;posX<numX;++posX)
 	{
 		shift[0]=pos[0];
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
@@ -107,6 +113,7 @@ void Engine::UpdateVoltages()
 				volt[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( curr[1][pos[0]][pos[1]][pos[2]] - curr[1][pos[0]-shift[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]] + curr[0][pos[0]][pos[1]-shift[1]][pos[2]]);
 			}
 		}
+		++pos[0];
 	}
 }
 
@@ -130,10 +137,11 @@ void Engine::ApplyVoltageExcite()
 	}
 }
 
-void Engine::UpdateCurrents()
+void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
+	pos[0] = startX;
+	for (unsigned int posX=0;posX<numX;++posX)
 	{
 		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 		{
@@ -153,6 +161,7 @@ void Engine::UpdateCurrents()
 				curr[2][pos[0]][pos[1]][pos[2]] += Op->iv[2][pos[0]][pos[1]][pos[2]] * ( volt[1][pos[0]][pos[1]][pos[2]] - volt[1][pos[0]+1][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]] + volt[0][pos[0]][pos[1]+1][pos[2]]);
 			}
 		}
+		++pos[0];
 	}
 }
 
@@ -177,7 +186,7 @@ bool Engine::IterateTS(unsigned int iterTS)
 		for (size_t n=0;n<m_Eng_exts.size();++n)
 			m_Eng_exts.at(n)->DoPreVoltageUpdates();
 
-		UpdateVoltages();
+		UpdateVoltages(0,numLines[0]);
 
 		for (size_t n=0;n<m_Eng_exts.size();++n)
 			m_Eng_exts.at(n)->DoPostVoltageUpdates();
@@ -190,7 +199,7 @@ bool Engine::IterateTS(unsigned int iterTS)
 		for (size_t n=0;n<m_Eng_exts.size();++n)
 			m_Eng_exts.at(n)->DoPreCurrentUpdates();
 
-		UpdateCurrents();
+		UpdateCurrents(0,numLines[0]-1);
 
 		for (size_t n=0;n<m_Eng_exts.size();++n)
 			m_Eng_exts.at(n)->DoPostCurrentUpdates();

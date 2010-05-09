@@ -36,7 +36,7 @@ Operator_Cylinder::~Operator_Cylinder()
 	Operator::Reset();
 }
 
-Engine* Operator_Cylinder::CreateEngine()
+Engine* Operator_Cylinder::CreateEngine() const
 {
 	//!create a confentional engine... cylinder special operations will be dealt by engine extentions
 	Engine* eng = Engine::New(this);

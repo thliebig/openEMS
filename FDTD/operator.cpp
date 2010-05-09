@@ -44,7 +44,7 @@ Operator::~Operator()
 	Reset();
 }
 
-Engine* Operator::CreateEngine()
+Engine* Operator::CreateEngine() const
 {
 	Engine* eng = Engine::New(this);
 	return eng;

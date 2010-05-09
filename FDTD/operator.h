@@ -35,7 +35,7 @@ public:
 	static Operator* New();
 	virtual ~Operator();
 
-	virtual Engine* CreateEngine();
+	virtual Engine* CreateEngine() const;
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 	virtual ContinuousStructure* GetGeometryCSX() {return CSX;}
@@ -55,7 +55,10 @@ public:
 	double GetTimestep() const {return dT;};
 	double GetNumberCells() const;
 
+	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines)
 	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
+	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetOriginalNumLines)
+	virtual unsigned int GetOriginalNumLines(int ny) const {return numLines[ny];}
 
 	void ShowStat() const;
 

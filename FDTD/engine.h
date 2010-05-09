@@ -43,14 +43,17 @@ public:
 	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[] ) { return GetVolt(n,pos[0],pos[1],pos[2]); }
 	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[] ) { return GetCurr(n,pos[0],pos[1],pos[2]); }
 
+	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
+	virtual void ApplyVoltageExcite();
+	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
+	virtual void ApplyCurrentExcite();
+
+	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
+	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
+
 protected:
 	Engine(const Operator* op);
 	const Operator* Op;
-
-	virtual void UpdateVoltages();
-	virtual void ApplyVoltageExcite();
-	virtual void UpdateCurrents();
-	virtual void ApplyCurrentExcite();
 
 	unsigned int numLines[3];
 
@@ -58,6 +61,7 @@ protected:
 	FDTD_FLOAT**** curr;
 	unsigned int numTS;
 
+	virtual void InitExtensions();
 	vector<Engine_Extension*> m_Eng_exts;
 
 	ofstream file_et1;

@@ -82,6 +82,9 @@ public:
 	static Engine_Multithread* New(const Operator* op, unsigned int numThreads = 0);
 	virtual ~Engine_Multithread();
 
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return m_RunEngine->GetVolt(n,x,y,z); }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return m_RunEngine->GetCurr(n,x,y,z);}
+
 	virtual void setNumThreads( unsigned int numThreads );
 	virtual void Init();
 	virtual void Reset();
@@ -92,10 +95,14 @@ public:
 protected:
 	Engine_Multithread(const Operator* op);
 	boost::thread_group m_thread_group;
-	boost::barrier *m_barrier1, *m_barrier2, *m_barrier3, *m_startBarrier, *m_stopBarrier;
+	boost::barrier *m_startBarrier, *m_stopBarrier;
+	boost::barrier *m_barrier_VoltUpdate, *m_barrier_VoltExcite, *m_barrier_PreVolt, *m_barrier_PostVolt;
+	boost::barrier *m_barrier_CurrUpdate, *m_barrier_CurrExcite, *m_barrier_PreCurr, *m_barrier_PostCurr;
 	volatile unsigned int m_iterTS;
 	unsigned int m_numThreads; //!< number of worker threads
 	volatile bool m_stopThreads;
+
+	Engine* m_RunEngine;
 
 #ifdef ENABLE_DEBUG_TIME
 	std::map<boost::thread::id, std::vector<double> > m_timer_list;

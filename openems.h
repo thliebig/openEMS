@@ -46,6 +46,7 @@ public:
 
 protected:
 	bool CylinderCoords;
+	bool m_MultiThreading;
 
 	//! Number of Timesteps
 	unsigned int NrTS;
@@ -59,7 +60,7 @@ protected:
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;
 
-	enum EngineType {EngineType_Standard,EngineType_Multithreaded,EngineType_SSE};
+	enum EngineType {EngineType_Standard, EngineType_SSE};
 	EngineType m_engine;
 	unsigned int m_engine_numThreads;
 };
