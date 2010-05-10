@@ -280,15 +280,20 @@ void Operator::ShowStat() const
 	double MBdiff = 1024*1024;
 
 	cout << "------- Stat: FDTD Operator -------" << endl;
-	cout << "Dimensions               : " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  numLines[0]*numLines[1]*numLines[2] << " Cells (" << numLines[0]*numLines[1]*numLines[2]/1e6 << " MCells)" << endl;
-	cout << "Size of Operator         : " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
-	cout << "Size of Field-Data       : " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
+	cout << "Dimensions\t\t: " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  numLines[0]*numLines[1]*numLines[2] << " Cells (" << numLines[0]*numLines[1]*numLines[2]/1e6 << " MCells)" << endl;
+	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
+	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
 	cout << "-----------------------------------" << endl;
-	cout << "Timestep (s)             : " << dT << endl;
-	cout << "Nyquist criteria (TS)    : " << Exc->GetNyquistNum() << endl;
-	cout << "Nyquist criteria (s)     : " << Exc->GetNyquistNum()*dT << endl;
-	cout << "Excitation Length (TS)   : " << Exc->Length << endl;
-	cout << "Excitation Length (s)    : " << Exc->Length*dT << endl;
+	cout << "Number of PEC edges\t: " << m_Nr_PEC[0]+m_Nr_PEC[1]+m_Nr_PEC[2] << endl;
+	cout << "in " << GetDirName(0) << " direction\t\t: " << m_Nr_PEC[0] << endl;
+	cout << "in " << GetDirName(1) << " direction\t\t: " << m_Nr_PEC[1] << endl;
+	cout << "in " << GetDirName(2) << " direction\t\t: " << m_Nr_PEC[2] << endl;
+	cout << "-----------------------------------" << endl;
+	cout << "Timestep (s)\t\t: " << dT << endl;
+	cout << "Nyquist criteria (TS)\t: " << Exc->GetNyquistNum() << endl;
+	cout << "Nyquist criteria (s)\t: " << Exc->GetNyquistNum()*dT << endl;
+	cout << "Excitation Length (TS)\t: " << Exc->Length << endl;
+	cout << "Excitation Length (s)\t: " << Exc->Length*dT << endl;
 	cout << "-----------------------------------" << endl;
 }
 
@@ -984,6 +989,7 @@ bool Operator::CalcPEC()
 	unsigned int pos[3];
 	double coord[3];
 	double delta;
+	m_Nr_PEC[0]=0;	m_Nr_PEC[1]=0;	m_Nr_PEC[2]=0;
 
 	for (int n=0;n<3;++n)
 	{
@@ -1006,6 +1012,7 @@ bool Operator::CalcPEC()
 						{
 							GetVV(n,pos[0],pos[1],pos[2]) = 0;
 							GetVI(n,pos[0],pos[1],pos[2]) = 0;
+							++m_Nr_PEC[n];
 //							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
 						}
 					}
@@ -1038,7 +1045,8 @@ bool Operator::CalcPEC()
 //						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
 						GetVV(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t)) = 0;
 						GetVI(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t)) = 0;
-					}
+						++m_Nr_PEC[path.dir.at(t)];
+				}
 //					cerr << "found path size: " << path.dir.size() << endl;
 				}
 			}

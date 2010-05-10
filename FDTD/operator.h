@@ -116,6 +116,8 @@ protected:
 	double* EC_L[3];
 	double* EC_R[3];
 
+	unsigned int m_Nr_PEC[3];
+
 	unsigned int numLines[3];
 	double* discLines[3];
 	double gridDelta;
