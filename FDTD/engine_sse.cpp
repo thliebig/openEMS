@@ -29,6 +29,8 @@ Engine_sse* Engine_sse::New(const Operator_sse* op)
 Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 {
 	Op = op;
+	f4_volt = 0;
+	f4_curr = 0;
 	for (int n=0;n<3;++n)
 	{
 		numLines[n] = Op->GetNumberOfLines(n);
@@ -38,7 +40,7 @@ Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 
 Engine_sse::~Engine_sse()
 {
-	this->Reset();
+	Reset();
 }
 
 void Engine_sse::Init()
@@ -56,6 +58,7 @@ void Engine_sse::Init()
 
 void Engine_sse::Reset()
 {
+	Engine::Reset();
 	Delete_N_3DArray_v4sf(f4_volt,numLines);
 	f4_volt = 0;
 	Delete_N_3DArray_v4sf(f4_curr,numLines);
