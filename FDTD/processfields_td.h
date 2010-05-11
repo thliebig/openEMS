@@ -35,6 +35,7 @@ protected:
 	int pad_length;
 
 	void DumpNoInterpol(string filename);
+	void DumpNodeInterpol(string filename);
 	void DumpCellInterpol(string filename);
 };
 

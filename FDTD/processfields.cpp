@@ -138,6 +138,35 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 				discLines[n][i] = lines.at(i);
 		}
 	}
+	else if (m_DumpMode==NODE_INTERPOLATE)
+	{
+		if (Op->SnapToMesh(dstart,start)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
+		if (Op->SnapToMesh(dstop,stop)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
+
+		//create mesh
+		for (int n=0;n<3;++n)
+		{
+			if (start[n]>stop[n])
+			{
+				unsigned int help = start[n];
+				start[n]=stop[n];
+				stop[n]=help;
+			}
+			if (stop[n]==Op->GetNumberOfLines(n)-1)
+				--stop[n];
+//			cerr << "start " << start[n] << "stop " << stop[n];
+			lines.clear();
+			for (unsigned int i=start[n];i<=stop[n];i+=subSample[n])
+			{
+				lines.push_back(Op->GetDiscLine(n,i));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
+			}
+			numLines[n] = lines.size();
+			delete[] discLines[n];
+			discLines[n] = new double[numLines[n]];
+			for (unsigned int i=0;i<numLines[n];++i)
+				discLines[n][i] = lines.at(i);
+		}
+	}
 	else if (m_DumpMode==CELL_INTERPOLATE)
 	{
 		if (Op->SnapToMesh(dstart,start,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
@@ -158,7 +187,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			for (unsigned int i=start[n];i<stop[n];i+=subSample[n])
 			{
 				lines.push_back(Op->GetDiscLine(n,i,true));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
-			}		
+			}
 			numDLines[n] = lines.size();
 			delete[] discDLines[n];
 			discDLines[n] = new double[numDLines[n]];
