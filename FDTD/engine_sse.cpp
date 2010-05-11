@@ -43,13 +43,15 @@ Engine_sse::~Engine_sse()
 
 void Engine_sse::Init()
 {
-	numTS = 0;
+	Engine::Init();
+
+	Delete_N_3DArray(volt,numLines);
+	volt=NULL; // not used
+	Delete_N_3DArray(curr,numLines);
+	curr=NULL; // not used
+
 	f4_volt = Create_N_3DArray_v4sf(numLines);
 	f4_curr = Create_N_3DArray_v4sf(numLines);
-	volt = 0; // not used
-	curr = 0; // not used
-
-	InitExtensions();
 }
 
 void Engine_sse::Reset()
