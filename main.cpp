@@ -33,10 +33,13 @@ int main(int argc, char *argv[])
 {
 	openEMS FDTD;
 
+	cout << " -------------------------------------------------------------------- " << endl;
+	cout << " | openEMS version " GIT_VERSION << endl;
+	cout << " | (C) 2010 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
+	cout << " -------------------------------------------------------------------- " << endl << endl;
+
 	if (argc<=1)
 	{
-		cout << " | openEMS version " GIT_VERSION << endl;
-		cout << " | (C) 2010 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl << endl;
 		cout << " usage: openEMS FDTD_XML_FILE [--disable-dumps] [--debug-material] [--debug-operator]" << endl;
 		exit(-1);
 	}
