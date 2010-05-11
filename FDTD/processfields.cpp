@@ -109,6 +109,21 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 	return "unknown field";
 }
 
+string ProcessFields::GetInterpolationNameByType(DumpMode mode)
+{
+	switch (mode)
+	{
+	case NO_INTERPOLATION:
+		return string("Interpolation: None");
+	case NODE_INTERPOLATE:
+		return string("Interpolation: Node");
+	case CELL_INTERPOLATE:
+		return string("Interpolation: Cell");
+	}
+	return string();
+}
+
+
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	vector<double> lines;
@@ -234,10 +249,13 @@ void  ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
 	else subSample[dir]=subSampleRate;
 }
 
-void ProcessFields::WriteVTKHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision)
+void ProcessFields::WriteVTKHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info)
 {
 	file << "# vtk DataFile Version 2.0" << endl;
-	file << "Rectilinear Grid openEMS_ProcessFields" << endl;
+	file << "Rectilinear Grid openEMS_ProcessFields";
+	if (!header_info.empty())
+		file << " " << header_info;
+	file << endl;
 	file << "ASCII" << endl;
 	file << "DATASET RECTILINEAR_GRID " << endl;
 	file << "DIMENSIONS " << numLines[0] << " " << numLines[1] << " " << numLines[2] << endl;
@@ -279,16 +297,16 @@ void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT 
 }
 
 
-bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision)
+bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info)
 {
-	WriteVTKHeader(file, discLines, numLines, precision);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info);
 	WriteVTKVectorArray(file, name, array, numLines, precision);
 	return true;
 }
 
-bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision)
+bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info)
 {
-	WriteVTKHeader(file, discLines, numLines, precision);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info);
 	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKVectorArray(file, names[n], array[n], numLines, precision);
@@ -318,16 +336,16 @@ void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT 
 	}
 }
 
-bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision)
+bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info)
 {
-	WriteVTKHeader(file, discLines, numLines, precision);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info);
 	WriteVTKScalarArray(file, name, array, numLines, precision);
 	return true;
 }
 
-bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision)
+bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info)
 {
-	WriteVTKHeader(file, discLines, numLines);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info);
 	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKScalarArray(file, names[n], array[n], numLines, precision);
