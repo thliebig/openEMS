@@ -98,41 +98,33 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 		FDTD_FLOAT**** H_T = Create_N_3DArray(numDLines);
 		unsigned int pos[3] = {start[0],start[1],start[2]};
 		unsigned int OpPos[3];
-		double delta;
+		unsigned int OpPosUp[3];
+		double delta, deltaUp, deltaRel;
 //		cerr << "processing h-fields... " << endl;
 		for (pos[0]=0;pos[0]<numDLines[0];++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
+			OpPosUp[0]=start[0]+pos[0]*subSample[0];
 			for (pos[1]=0;pos[1]<numDLines[1];++pos[1])
 			{
 				OpPos[1]=start[1]+pos[1]*subSample[1];
+				OpPosUp[1]=start[1]+pos[1]*subSample[1];
 				for (pos[2]=0;pos[2]<numDLines[2];++pos[2])
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
-					//in x
-//					if (OpPos[0]==0) delta  = Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
-//					else delta = 0.5* (Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]-1]);
-					delta = Op->GetMeshDelta(0,OpPos,true);
-					if (delta)
+					OpPosUp[2]=start[2]+pos[2]*subSample[2];
+
+					for (int n=0;n<3;++n)
 					{
-						H_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(0,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(0,OpPos[0]+1,OpPos[1],OpPos[2]);
-						H_T[0][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
-					}
-					//in y
-//					delta  = Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
-					delta = Op->GetMeshDelta(1,OpPos,true);
-					if (delta)
-					{
-						H_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(1,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(1,OpPos[0],OpPos[1]+1,OpPos[2]);
-						H_T[1][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
-					}
-					//in z
-//					delta  = Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
-					delta = Op->GetMeshDelta(2,OpPos,true);
-					if (delta)
-					{
-						H_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2]+1);
-						H_T[2][pos[0]][pos[1]][pos[2]] /= (2*delta);//*Op->gridDelta);
+						delta = Op->GetMeshDelta(n,OpPos,true);
+						++OpPosUp[n];
+						deltaUp = Op->GetMeshDelta(n,OpPos,true);
+						deltaRel = delta / (delta+deltaUp);
+						if (delta*deltaUp)
+						{
+							H_T[n][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(n,OpPos)*(1-deltaRel)/delta + Eng->GetCurr(n,OpPosUp)/deltaUp*deltaRel;
+						}
+						--OpPosUp[n];
 					}
 				}
 			}
