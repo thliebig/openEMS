@@ -50,7 +50,7 @@ void Engine::Init()
 	volt = Create_N_3DArray(numLines);
 	curr = Create_N_3DArray(numLines);
 
-	file_et1.open( "et1" );
+	file_et.open( "et" );
 
 	InitExtensions();
 }
@@ -76,7 +76,7 @@ void Engine::Reset()
 	Delete_N_3DArray(curr,numLines);
 	curr=NULL;
 
-	file_et1.close();
+	file_et.close();
 
 	for (size_t n=0;n<m_Eng_exts.size();++n)
 		delete m_Eng_exts.at(n);
@@ -130,11 +130,10 @@ void Engine::ApplyVoltageExcite()
 	}
 
 	// write the first excitation into the file "et1"
-	if (Op->Exc->E_Count >= 1) {
-		exc_pos = (int)numTS - (int)Op->Exc->E_delay[0];
-		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
-		file_et1 << numTS * Op->GetTimestep() << "\t" << Op->Exc->E_amp[0]*Op->Exc->Signal_volt[exc_pos] << "\n"; // do not use std::endl here, because it will do an implicit flush
-	}
+	if (numTS < Op->Exc->Length)
+		file_et << numTS * Op->GetTimestep() << "\t" << Op->Exc->Signal_volt[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
+	else
+		file_et << numTS * Op->GetTimestep() << "\t0" << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
 
 void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)

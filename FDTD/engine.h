@@ -64,7 +64,7 @@ protected:
 	virtual void InitExtensions();
 	vector<Engine_Extension*> m_Eng_exts;
 
-	ofstream file_et1;
+	ofstream file_et; //excite signal dump file
 };
 
 #endif // ENGINE_H
