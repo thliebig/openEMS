@@ -388,6 +388,8 @@ int ProcessFieldsTD::Process()
 	{
 		if (m_DumpMode==NO_INTERPOLATION)
 			DumpNoInterpol(m_fileName);
+		if (m_DumpMode==NODE_INTERPOLATE)
+			DumpNodeInterpol(m_fileName);
 		if (m_DumpMode==CELL_INTERPOLATE)
 			DumpCellInterpol(m_fileName);
 	}
