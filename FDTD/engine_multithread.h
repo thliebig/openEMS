@@ -82,8 +82,11 @@ public:
 	static Engine_Multithread* New(const Operator* op, unsigned int numThreads = 0);
 	virtual ~Engine_Multithread();
 
+	//this access functions muss be overloaded by any new engine using a different storage model
 	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return m_RunEngine->GetVolt(n,x,y,z); }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return m_RunEngine->GetCurr(n,x,y,z);}
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[3] ) const { return m_RunEngine->GetVolt(n,pos); }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return m_RunEngine->GetCurr(n,x,y,z); }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[3] ) const { return m_RunEngine->GetCurr(n,pos);}
 
 	virtual void setNumThreads( unsigned int numThreads );
 	virtual void Init();
