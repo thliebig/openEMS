@@ -18,6 +18,7 @@
 #include "engine_ext_mur_abc.h"
 #include "operator_ext_mur_abc.h"
 #include "engine.h"
+#include "engine_sse.h"
 #include "tools/array_ops.h"
 
 Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) : Engine_Extension(op_ext)
@@ -72,15 +73,50 @@ void Engine_Ext_Mur_ABC::DoPreVoltageUpdates()
 	pos[m_ny] = m_LineNr;
 	pos_shift[m_ny] = m_LineNr_Shift;
 
-	for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+	//switch for different engine types to access faster inline engine functions
+	switch (m_Eng->GetType())
 	{
-		pos_shift[m_nyP] = pos[m_nyP];
-		for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+	case Engine::BASIC:
 		{
-			pos_shift[m_nyPP] = pos[m_nyPP];
-			m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyP,pos);
-			m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyPP,pos);
+			for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+			{
+				pos_shift[m_nyP] = pos[m_nyP];
+				for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+				{
+					pos_shift[m_nyPP] = pos[m_nyPP];
+					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->Engine::GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyP,pos);
+					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->Engine::GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyPP,pos);
+				}
+			}
+		break;
 		}
+	case Engine::SSE:
+		{
+			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
+			for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+			{
+				pos_shift[m_nyP] = pos[m_nyP];
+				for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+				{
+					pos_shift[m_nyPP] = pos[m_nyPP];
+					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = eng_sse->Engine_sse::GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyP,pos);
+					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = eng_sse->Engine_sse::GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyPP,pos);
+				}
+			}
+		break;
+		}
+	default:
+		for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+		{
+			pos_shift[m_nyP] = pos[m_nyP];
+			for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+			{
+				pos_shift[m_nyPP] = pos[m_nyPP];
+				m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyP,pos);
+				m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyPP,pos);
+			}
+		}
+		break;
 	}
 }
 
@@ -93,15 +129,52 @@ void Engine_Ext_Mur_ABC::DoPostVoltageUpdates()
 	pos[m_ny] = m_LineNr;
 	pos_shift[m_ny] = m_LineNr_Shift;
 
-	for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+	//switch for different engine types to access faster inline engine functions
+	switch (m_Eng->GetType())
 	{
-		pos_shift[m_nyP] = pos[m_nyP];
-		for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+	case Engine::BASIC:
 		{
-			pos_shift[m_nyPP] = pos[m_nyPP];
-			m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyP,pos_shift);
-			m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyPP,pos_shift);
+			for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+			{
+				pos_shift[m_nyP] = pos[m_nyP];
+				for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+				{
+					pos_shift[m_nyPP] = pos[m_nyPP];
+					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyP,pos_shift);
+					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyPP,pos_shift);
+				}
+			}
+			break;
 		}
+
+	case Engine::SSE:
+		{
+			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
+			for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+			{
+				pos_shift[m_nyP] = pos[m_nyP];
+				for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+				{
+					pos_shift[m_nyPP] = pos[m_nyPP];
+					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyP,pos_shift);
+					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyPP,pos_shift);
+				}
+			}
+			break;
+		}
+
+	default:
+		for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+		{
+			pos_shift[m_nyP] = pos[m_nyP];
+			for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+			{
+				pos_shift[m_nyPP] = pos[m_nyPP];
+				m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyP,pos_shift);
+				m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyPP,pos_shift);
+			}
+		}
+		break;
 	}
 }
 
@@ -112,12 +185,46 @@ void Engine_Ext_Mur_ABC::Apply2Voltages()
 	unsigned int pos[] = {0,0,0};
 	pos[m_ny] = m_LineNr;
 
-	for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+	//switch for different engine types to access faster inline engine functions
+	switch (m_Eng->GetType())
 	{
-		for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+	case Engine::BASIC:
 		{
-			m_Eng->GetVolt(m_nyP,pos) = m_volt_nyP[pos[m_nyP]][pos[m_nyPP]];
-			m_Eng->GetVolt(m_nyPP,pos) = m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]];
+			for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+			{
+				for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+				{
+					m_Eng->Engine::GetVolt(m_nyP,pos) = m_volt_nyP[pos[m_nyP]][pos[m_nyPP]];
+					m_Eng->Engine::GetVolt(m_nyPP,pos) = m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]];
+				}
+			}
+			break;
 		}
+
+	case Engine::SSE:
+		{
+			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
+			for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+			{
+				for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+				{
+					eng_sse->Engine_sse::GetVolt(m_nyP,pos) = m_volt_nyP[pos[m_nyP]][pos[m_nyPP]];
+					eng_sse->Engine_sse::GetVolt(m_nyPP,pos) = m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]];
+				}
+			}
+			break;
+		}
+
+	default:
+		for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+		{
+			for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+			{
+				m_Eng->GetVolt(m_nyP,pos) = m_volt_nyP[pos[m_nyP]][pos[m_nyPP]];
+				m_Eng->GetVolt(m_nyPP,pos) = m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]];
+			}
+		}
+		break;
 	}
+
 }
