@@ -29,18 +29,18 @@ bool Operator_Ext_Cylinder::BuildExtension()
 	if ((CC_R0_included==false) || (CC_closedAlpha==false))
 		return true;
 
-	vv_R0 = new FDTD_FLOAT[m_Op->GetNumberOfLines(2)];
-	vi_R0 = new FDTD_FLOAT[m_Op->GetNumberOfLines(2)];
+	vv_R0 = new FDTD_FLOAT[m_Op->GetOriginalNumLines(2)];
+	vi_R0 = new FDTD_FLOAT[m_Op->GetOriginalNumLines(2)];
 
 	unsigned int pos[3];
 	double inEC[4];
 	double dT = m_Op->GetTimestep();
 	pos[0]=0;
-	for (pos[2]=0;pos[2]<m_Op->GetNumberOfLines(2);++pos[2])
+	for (pos[2]=0;pos[2]<m_Op->GetOriginalNumLines(2);++pos[2])
 	{
 		double C=0;
 		double G=0;
-		for (pos[1]=0;pos[1]<m_Op->GetNumberOfLines(1)-1;++pos[1])
+		for (pos[1]=0;pos[1]<m_Op->GetOriginalNumLines(1)-1;++pos[1])
 		{
 			m_Op_Cyl->Calc_ECPos(2,pos,inEC);
 			C+=inEC[0]*0.5;
