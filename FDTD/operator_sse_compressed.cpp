@@ -24,6 +24,7 @@
 
 Operator_SSE_Compressed* Operator_SSE_Compressed::New()
 {
+	cout << "Create FDTD operator (compressed SSE)" << endl;
 	Operator_SSE_Compressed* op = new Operator_SSE_Compressed();
 	op->Init();
 	return op;

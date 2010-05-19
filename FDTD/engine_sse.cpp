@@ -21,6 +21,7 @@
 //! it's the responsibility of the caller to free the returned pointer
 Engine_sse* Engine_sse::New(const Operator_sse* op)
 {
+	cout << "Create FDTD engine (SSE)" << endl;
 	Engine_sse* e = new Engine_sse(op);
 	e->Init();
 	return e;

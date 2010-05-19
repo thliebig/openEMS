@@ -20,6 +20,7 @@
 
 Engine_SSE_Compressed* Engine_SSE_Compressed::New(const Operator_SSE_Compressed* op)
 {
+	cout << "Create FDTD engine (compressed SSE)" << endl;
 	Engine_SSE_Compressed* e = new Engine_SSE_Compressed(op);
 	e->Init();
 	return e;

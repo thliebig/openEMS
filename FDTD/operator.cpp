@@ -26,6 +26,7 @@
 
 Operator* Operator::New()
 {
+	cout << "Create FDTD operator" << endl;
 	Operator* op = new Operator();
 	op->Init();
 	return op;

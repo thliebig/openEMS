@@ -37,6 +37,7 @@
 //! it's the responsibility of the caller to free the returned pointer
 Engine_Multithread* Engine_Multithread::New(const Operator* op, unsigned int numThreads)
 {
+	cout << "Create FDTD engine multithreading environment" << endl;
 	Engine_Multithread* e = new Engine_Multithread(op);
 	e->setNumThreads( numThreads );
 	e->Init();
@@ -84,7 +85,7 @@ void Engine_Multithread::Init()
 	m_stopThreads = false;
 	if (m_numThreads == 0)
 		m_numThreads = boost::thread::hardware_concurrency();
-	cout << "using " << m_numThreads << " threads" << std::endl;
+	cout << "Multithreading engine using " << m_numThreads << " threads." << std::endl;
 	m_barrier_VoltUpdate = new boost::barrier(m_numThreads); // numThread workers
 	m_barrier_VoltExcite = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
 	m_barrier_CurrUpdate = new boost::barrier(m_numThreads); // numThread workers

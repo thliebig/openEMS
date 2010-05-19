@@ -22,6 +22,7 @@
 
 Operator_Cylinder* Operator_Cylinder::New()
 {
+	cout << "Create cylindrical FDTD operator" << endl;
 	Operator_Cylinder* op = new Operator_Cylinder();
 	op->Init();
 	return op;

@@ -21,6 +21,7 @@
 
 Operator_sse* Operator_sse::New()
 {
+	cout << "Create FDTD operator (SSE)" << endl;
 	Operator_sse* op = new Operator_sse();
 	op->Init();
 	return op;

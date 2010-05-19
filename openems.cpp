@@ -173,7 +173,7 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
 	if (help==1)
 	{
-		cout << "Using a cylinder coordinate FDTD..." << endl;
+//		cout << "Using a cylinder coordinate FDTD..." << endl;
 		CylinderCoords = true;
 	}
 
@@ -208,7 +208,6 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	//*************** setup operator ************//
-	cout << "Create Operator..." << endl;
 	if (CylinderCoords)
 	{
 		FDTD_Op = Operator_Cylinder::New();

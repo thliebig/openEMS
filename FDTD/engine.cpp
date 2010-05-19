@@ -24,6 +24,7 @@
 //! it's the responsibility of the caller to free the returned pointer
 Engine* Engine::New(const Operator* op)
 {
+	cout << "Create FDTD engine" << endl;
 	Engine* e = new Engine(op);
 	e->Init();
 	return e;
