@@ -32,10 +32,6 @@ Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 	Op = op;
 	f4_volt = 0;
 	f4_curr = 0;
-	for (int n=0;n<3;++n)
-	{
-		numLines[n] = Op->GetNumberOfLines(n);
-	}
 	numVectors =  ceil((double)numLines[2]/4.0);
 }
 
