@@ -18,21 +18,22 @@
 #ifndef OPERATOR_CYLINDER_H
 #define OPERATOR_CYLINDER_H
 
-#include "operator.h"
+//! define the base class for the cylindrical coordinate FDTD
+#define __OP_CYLINDER_BASE_CLASS__ Operator_SSE_Compressed
+
+#include "operator_sse_compressed.h"
 
 //! This class creates an operator for a cylindrical FDTD.
 /*!
 This class creates an operator for a cylindrical FDTD. No special engine is necessary,
 all special cases e.g. a closed alpha mesh or an included r=0 case is treated by an operator/engine extension \sa operator_ext_cylinder.
 */
-class Operator_Cylinder : public Operator
+class Operator_Cylinder : public __OP_CYLINDER_BASE_CLASS__
 {
 public:
 	static Operator_Cylinder* New();
 	virtual ~Operator_Cylinder();
 
-	virtual Engine* CreateEngine() const;
-	
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
 	virtual void ApplyElectricBC(bool* dirs);

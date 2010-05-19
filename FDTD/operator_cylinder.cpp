@@ -27,37 +27,30 @@ Operator_Cylinder* Operator_Cylinder::New()
 	return op;
 }
 
-Operator_Cylinder::Operator_Cylinder()
+Operator_Cylinder::Operator_Cylinder() : __OP_CYLINDER_BASE_CLASS__()
 {
 }
 
 Operator_Cylinder::~Operator_Cylinder()
 {
-	Operator::Reset();
-}
-
-Engine* Operator_Cylinder::CreateEngine() const
-{
-	//!create a confentional engine... cylinder special operations will be dealt by engine extentions
-	Engine* eng = Engine::New(this);
-	return eng;
+	__OP_CYLINDER_BASE_CLASS__::Reset();
 }
 
 void Operator_Cylinder::Init()
 {
 	CC_closedAlpha = false;
 	CC_R0_included = false;
-	Operator::Init();
+	__OP_CYLINDER_BASE_CLASS__::Init();
 }
 
 void Operator_Cylinder::Reset()
 {
-	Operator::Reset();
+	__OP_CYLINDER_BASE_CLASS__::Reset();
 }
 
 void Operator_Cylinder::InitOperator()
 {
-	Operator::InitOperator();
+	__OP_CYLINDER_BASE_CLASS__::InitOperator();
 
 	if (CC_closedAlpha || CC_R0_included)
 		this->AddExtension(new Operator_Ext_Cylinder(this));
@@ -82,7 +75,7 @@ string Operator_Cylinder::GetDirName(int ny) const
 
 double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) const
 {
-	double delta = Operator::GetMeshDelta(n,pos,dualMesh);
+	double delta = __OP_CYLINDER_BASE_CLASS__::GetMeshDelta(n,pos,dualMesh);
 	if (delta==0) return delta;
 	if (n==1)
 	{
@@ -94,7 +87,7 @@ double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) con
 
 bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 {
-	if (Operator::SetGeometryCSX(geo)==false) return false;
+	if (__OP_CYLINDER_BASE_CLASS__::SetGeometryCSX(geo)==false) return false;
 
 	double minmaxA = fabs(discLines[1][numLines[1]-1]-discLines[1][0]);
 	if (fabs(minmaxA-2*PI) < (2*PI)/10/numLines[1]) //check minmaxA smaller then a tenth of average alpha-width
@@ -144,7 +137,7 @@ void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 		// no special treatment necessary
 		// operator for z-direction at r=0 will be calculated and set separately
 	}
-	Operator::ApplyElectricBC(dirs);
+	__OP_CYLINDER_BASE_CLASS__::ApplyElectricBC(dirs);
 }
 
 void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
@@ -158,7 +151,7 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 	{
 		dirs[0]=0;  //no PMC in r_min directions...
 	}
-	Operator::ApplyMagneticBC(dirs);
+	__OP_CYLINDER_BASE_CLASS__::ApplyMagneticBC(dirs);
 }
 
 bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
