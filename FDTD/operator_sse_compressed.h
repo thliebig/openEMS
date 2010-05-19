@@ -31,6 +31,8 @@ public:
 
 	virtual int CalcECOperator();
 
+	virtual void ShowStat() const;
+
 	void SetCompressionThreshold(double val) {m_Compression_Threshold = val;}
 	void SetCacheSize(unsigned int size) {m_max_fifo = size;}
 	bool CompressOperator();

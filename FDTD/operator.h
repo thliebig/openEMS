@@ -60,7 +60,7 @@ public:
 	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetOriginalNumLines)
 	virtual unsigned int GetOriginalNumLines(int ny) const {return numLines[ny];}
 
-	void ShowStat() const;
+	virtual void ShowStat() const;
 
 	void DumpOperator2File(string filename);
 	void DumpMaterial2File(string filename);

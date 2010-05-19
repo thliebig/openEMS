@@ -138,6 +138,17 @@ void Operator_SSE_Compressed::InitOperator()
 	}
 }
 
+void Operator_SSE_Compressed::ShowStat() const
+{
+	Operator_sse::ShowStat();
+
+	cout << "SSE compression enabled\t: " << m_Use_Compression << endl;
+	cout << "Unique SSE operator\t: " << m_Op_Count << endl;
+	cout << "Optimal compression\t: " << m_Max_Compression << endl;
+	cout << "-----------------------------------" << endl;
+}
+
+
 bool Operator_SSE_Compressed::CompareOperators(unsigned int pos1[3], unsigned int pos2[3])
 {
 //	cerr << pos1[0] << " " << pos1[1] << " " << pos1[2] << endl;

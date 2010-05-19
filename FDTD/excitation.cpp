@@ -258,7 +258,7 @@ void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[
 	E_amp = new FDTD_FLOAT[E_Count];
 	E_dir = new unsigned short[E_Count];
 
-	cerr << "Excitation::setupVoltageExcitation(): Number of voltage excitation points: " << E_Count << endl;
+//	cerr << "Excitation::setupVoltageExcitation(): Number of voltage excitation points: " << E_Count << endl;
 //	if (E_Count==0)
 //		cerr << "No E-Field/voltage excitation found!" << endl;
 	for (int n=0; n<3; n++)
@@ -286,7 +286,7 @@ void Excitation::setupCurrentExcitation( vector<unsigned int> const curr_vIndex[
 	Curr_amp = new FDTD_FLOAT[Curr_Count];
 	Curr_dir = new unsigned short[Curr_Count];
 
-	cerr << "Excitation::setupCurrentExcitation(): Number of current excitation points: " << Curr_Count << endl;
+//	cerr << "Excitation::setupCurrentExcitation(): Number of current excitation points: " << Curr_Count << endl;
 //	if (Curr_Count==0)
 //		cerr << "No H-Field/current excitation found!" << endl;
 	for (int n=0;n<3;++n)
