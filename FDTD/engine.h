@@ -26,6 +26,11 @@ class Engine_Extension;
 class Engine
 {
 public:
+	enum EngineType
+	{
+		BASIC, SSE, UNKNOWN
+	};
+
 	static Engine* New(const Operator* op);
 	virtual ~Engine();
 
@@ -37,11 +42,11 @@ public:
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return volt[n][x][y][z]; }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return curr[n][x][y][z]; }
-
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[] ) { return GetVolt(n,pos[0],pos[1],pos[2]); }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[] ) { return GetCurr(n,pos[0],pos[1],pos[2]); }
+	//this access functions muss be overloaded by any new engine using a different storage model
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return volt[n][x][y][z]; }
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[3] ) { return volt[n][pos[0]][pos[1]][pos[2]]; }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return curr[n][x][y][z]; }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[3] ) { return curr[n][pos[0]][pos[1]][pos[2]]; }
 
 	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
 	virtual void ApplyVoltageExcite();
@@ -51,7 +56,11 @@ public:
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
 
+	EngineType GetType() const {return m_type;}
+
 protected:
+	EngineType m_type;
+
 	Engine(const Operator* op);
 	const Operator* Op;
 

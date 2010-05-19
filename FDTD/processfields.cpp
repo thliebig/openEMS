@@ -58,15 +58,20 @@ void ProcessFields::InitProcess()
 		unsigned int* NrLines;
 		double** Lines;
 
-		if (m_DumpMode==CELL_INTERPOLATE)
-		{
-			NrLines = numDLines;
-			Lines = discDLines;
-		}
-		else if (m_DumpMode==NO_INTERPOLATION)
+		if (m_DumpMode==NO_INTERPOLATION)
 		{
 			NrLines = numLines;
 			Lines = discLines;
+		}
+		else if (m_DumpMode==NODE_INTERPOLATE)
+		{
+			NrLines = numLines;
+			Lines = discLines;
+		}
+		else if (m_DumpMode==CELL_INTERPOLATE)
+		{
+			NrLines = numDLines;
+			Lines = discDLines;
 		}
 		else
 			return;

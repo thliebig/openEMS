@@ -32,8 +32,11 @@ public:
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_volt[n][x][y][z%numVectors].f[z/numVectors]; }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_curr[n][x][y][z%numVectors].f[z/numVectors]; }
+	//this access functions muss be overloaded by any new engine using a different storage model
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return f4_volt[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[3] ) { return f4_volt[n][pos[0]][pos[1]][pos[2]%numVectors].f[pos[2]/numVectors]; }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return f4_curr[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[3] ) { return f4_curr[n][pos[0]][pos[1]][pos[2]%numVectors].f[pos[2]/numVectors]; }
 
 protected:
 	Engine_sse(const Operator_sse* op);

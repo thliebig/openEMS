@@ -45,6 +45,7 @@ Engine_Multithread* Engine_Multithread::New(const Operator* op, unsigned int num
 
 Engine_Multithread::Engine_Multithread(const Operator* op) : Engine(op)
 {
+	m_type = UNKNOWN;
 	m_RunEngine = NULL;
 }
 

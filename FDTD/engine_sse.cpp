@@ -28,6 +28,7 @@ Engine_sse* Engine_sse::New(const Operator_sse* op)
 
 Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 {
+	m_type = SSE;
 	Op = op;
 	f4_volt = 0;
 	f4_curr = 0;

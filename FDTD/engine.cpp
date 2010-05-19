@@ -31,6 +31,8 @@ Engine* Engine::New(const Operator* op)
 
 Engine::Engine(const Operator* op)
 {
+	m_type = BASIC;
+	numTS = 0;
 	Op = op;
 	for (int n=0;n<3;++n)
 		numLines[n] = Op->GetOriginalNumLines(n);
