@@ -22,6 +22,7 @@
 #include "FDTD/operator_cylinder.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/engine_sse.h"
+#include "FDTD/operator_sse_compressed.h"
 #include "FDTD/operator_ext_mur_abc.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
@@ -121,6 +122,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 		m_engine = EngineType_SSE;
 		return true;
 	}
+	else if (strcmp(argv,"--engine=sse-compressed")==0)
+	{
+		cout << "openEMS - enabled compressed sse engine" << endl;
+		m_engine = EngineType_SSE_Compressed;
+		return true;
+	}
 
 	return false;
 }
@@ -210,6 +217,10 @@ int openEMS::SetupFDTD(const char* file)
 	else if (m_engine == EngineType_SSE)
 	{
 		FDTD_Op = Operator_sse::New();
+	}
+	else if (m_engine == EngineType_SSE_Compressed)
+	{
+		FDTD_Op = Operator_SSE_Compressed::New();
 	}
 	else
 	{

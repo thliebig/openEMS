@@ -47,8 +47,10 @@ void Delete_N_3DArray(FDTD_FLOAT**** array, const unsigned int* numLines);
 void Dump_N_3DArray2File(ostream &file, FDTD_FLOAT**** array, const unsigned int* numLines);
 
 
+void Delete1DArray_v4sf(f4vector* array);
 void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines);
 void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines);
+f4vector* Create1DArray_v4sf(const unsigned int numLines);
 f4vector*** Create3DArray_v4sf(const unsigned int* numLines);
 f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines);
 

@@ -28,6 +28,10 @@ Operator_sse* Operator_sse::New()
 
 Operator_sse::Operator_sse() : Operator()
 {
+	f4_vv = 0;
+	f4_vi = 0;
+	f4_iv = 0;
+	f4_ii = 0;
 }
 
 Operator_sse::~Operator_sse()

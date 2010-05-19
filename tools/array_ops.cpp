@@ -132,6 +132,11 @@ void Dump_N_3DArray2File(ostream &file, FDTD_FLOAT**** array, unsigned int* numL
 }
 
 
+void Delete1DArray_v4sf(f4vector* array)
+{
+	if (array==NULL) return;
+	FREE( array );
+}
 
 
 void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines)
@@ -161,6 +166,16 @@ void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines)
 	}
 	FREE( array );
 	//delete[] array;
+}
+
+f4vector* Create1DArray_v4sf(const unsigned int numLines)
+{
+	f4vector* array=NULL;
+	if (MEMALIGN( (void**)&array, 16, sizeof(typeof(f4vector))*numLines )) {
+		cerr << "cannot allocate aligned memory" << endl;
+		exit(3);
+	}
+	return array;
 }
 
 //! \brief this function allocates a 3D array, which is aligned to 16 byte

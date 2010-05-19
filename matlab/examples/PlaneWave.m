@@ -3,20 +3,22 @@ clear
 clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-abs_length = 250;
-length = 4000;
+length = 10000;
 width = 1000;
 height = 1000;
-mesh_res = 25;
+mesh_res = 20;
+abs_length = mesh_res*10;
 
 EPS0 = 8.85418781762e-12;
 MUE0 = 1.256637062e-6;
 
 %% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
-% openEMS_opts = [openEMS_opts ' --disable-dumps'];
+openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
-% openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
+openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
+% openEMS_opts = [openEMS_opts ' --engine=sse'];
+openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'plane_wave.xml';
@@ -24,7 +26,7 @@ Sim_CSX = 'plane_wave.xml';
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD(5e5,1e-5,'OverSampling',10);
+FDTD = InitFDTD(5000,1e-5,'OverSampling',10);
 FDTD = SetGaussExcite(FDTD,0.5e9,0.5e9);
 BC = [1 1 0 0 0 0];
 FDTD = SetBoundaryCond(FDTD,BC);

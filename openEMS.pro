@@ -52,7 +52,9 @@ SOURCES += main.cpp \
     FDTD/operator_ext_mur_abc.cpp \
     FDTD/excitation.cpp \
     FDTD/operator_ext_cylinder.cpp \
-    FDTD/engine_ext_cylinder.cpp
+    FDTD/engine_ext_cylinder.cpp \
+    FDTD/operator_sse_compressed.cpp \
+    FDTD/engine_sse_compressed.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -75,7 +77,9 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_ext_mur_abc.h \
     FDTD/excitation.h \
     FDTD/operator_ext_cylinder.h \
-    FDTD/engine_ext_cylinder.h
+    FDTD/engine_ext_cylinder.h \
+    FDTD/operator_sse_compressed.h \
+    FDTD/engine_sse_compressed.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native
