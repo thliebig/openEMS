@@ -19,9 +19,9 @@
 #define OPERATOR_CYLINDER_H
 
 //! define the base class for the cylindrical coordinate FDTD
-#define __OP_CYLINDER_BASE_CLASS__ Operator_SSE_Compressed
+#define __OP_CYLINDER_BASE_CLASS__ Operator_Multithread
 
-#include "operator_sse_compressed.h"
+#include "operator_multithread.h"
 
 //! This class creates an operator for a cylindrical FDTD.
 /*!
