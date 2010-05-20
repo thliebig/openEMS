@@ -833,6 +833,18 @@ bool Operator::CalcFieldExcitation()
 	vector<unsigned int> curr_vDir;
 	double curr_coord[3];
 
+	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::ELECTRODE);
+
+	if (vec_prop.size()==0)
+	{
+		cerr << "Operator::CalcFieldExcitation: Warning, no excitation properties found" << endl;
+		return false;
+	}
+
+	CSPropElectrode* elec=NULL;
+	CSProperties* prop=NULL;
+	int priority=0;
+
 	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 	{
 		delta[2]=fabs(MainOp->GetIndexDelta(2,pos[2]));
@@ -850,10 +862,12 @@ bool Operator::CalcFieldExcitation()
 					volt_coord[1] = discLines[1][pos[1]];
 					volt_coord[2] = discLines[2][pos[2]];
 					volt_coord[n]+=delta[n]*0.5;
-					CSProperties* prop = CSX->GetPropertyByCoordPriority(volt_coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
-					if (prop)
+					for (size_t p=0;p<vec_prop.size();++p)
 					{
-						CSPropElectrode* elec = prop->ToElectrode();
+						prop = vec_prop.at(p);
+						elec = prop->ToElectrode();
+						if (prop->CheckCoordInPrimitive(volt_coord,priority)==false)
+							elec=NULL;
 						if (elec!=NULL)
 						{
 							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
@@ -888,10 +902,12 @@ bool Operator::CalcFieldExcitation()
 					curr_coord[2] = discLines[2][pos[2]];
 					curr_coord[nP] +=delta[nP]*0.5;
 					curr_coord[nPP] +=delta[nPP]*0.5;
-					CSProperties* prop = CSX->GetPropertyByCoordPriority(curr_coord,(CSProperties::PropertyType)(CSProperties::ELECTRODE));
-					if (prop)
+					for (size_t p=0;p<vec_prop.size();++p)
 					{
-						CSPropElectrode* elec = prop->ToElectrode();
+						prop = vec_prop.at(p);
+						elec = prop->ToElectrode();
+						if (prop->CheckCoordInPrimitive(curr_coord,priority)==false)
+							elec=NULL;
 						if (elec!=NULL)
 						{
 							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))//&& (pos[n]<numLines[n]-1))
@@ -925,9 +941,6 @@ bool Operator::CalcFieldExcitation()
 	double p2[3];
 	double deltaN=0.0;
 	struct Grid_Path path;
-	CSPropElectrode* elec=NULL;
-	CSProperties* prop=NULL;
-	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::ELECTRODE);
 	for (size_t p=0;p<vec_prop.size();++p)
 	{
 		prop = vec_prop.at(p);
