@@ -35,19 +35,28 @@
 
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine_Multithread* Engine_Multithread::New(const Operator* op, unsigned int numThreads)
+Engine_Multithread* Engine_Multithread::New(const Operator_Multithread* op, unsigned int numThreads)
 {
-	cout << "Create FDTD engine multithreading environment" << endl;
+	cout << "Create FDTD engine (compressed SSE + multi-threading)" << endl;
 	Engine_Multithread* e = new Engine_Multithread(op);
 	e->setNumThreads( numThreads );
 	e->Init();
 	return e;
 }
 
-Engine_Multithread::Engine_Multithread(const Operator* op) : Engine(op)
+Engine_Multithread::Engine_Multithread(const Operator_SSE_Compressed* op) : Engine_SSE_Compressed(op)
 {
-	m_type = UNKNOWN;
-	m_RunEngine = NULL;
+	m_type = SSE;
+	m_barrier_VoltUpdate = 0;
+	m_barrier_VoltExcite = 0;
+	m_barrier_PreVolt = 0;
+	m_barrier_PostVolt = 0;
+	m_barrier_CurrUpdate = 0;
+	m_barrier_CurrExcite = 0;
+	m_barrier_PreCurr = 0;
+	m_barrier_PostCurr = 0;
+	m_startBarrier = 0;
+	m_stopBarrier = 0;
 }
 
 Engine_Multithread::~Engine_Multithread()
@@ -78,8 +87,8 @@ void Engine_Multithread::setNumThreads( unsigned int numThreads )
 
 void Engine_Multithread::Init()
 {
-	delete m_RunEngine;
-	m_RunEngine = Op->CreateEngine();
+	m_stopThreads = true;
+	Engine_SSE_Compressed::Init();
 
 	// initialize threads
 	m_stopThreads = false;
@@ -141,8 +150,7 @@ void Engine_Multithread::Reset()
 		delete m_stopBarrier; m_stopBarrier = 0;
 	}
 
-	delete m_RunEngine;
-	m_RunEngine = NULL;
+	Engine_SSE_Compressed::Reset();
 }
 
 bool Engine_Multithread::IterateTS(unsigned int iterTS)
@@ -189,13 +197,13 @@ void thread::operator()()
 		for (unsigned int iter=0;iter<m_enginePtr->m_iterTS;++iter)
 		{
 			// pre voltage stuff...
-			for (size_t n=m_threadID;n<m_enginePtr->m_RunEngine->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->m_RunEngine->GetExtension(n)->DoPreVoltageUpdates();
+			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
+				m_enginePtr->GetExtension(n)->DoPreVoltageUpdates();
 
 			m_enginePtr->m_barrier_PreVolt->wait();
 
 			//voltage updates
-			m_enginePtr->m_RunEngine->UpdateVoltages(m_start,m_stop-m_start+1);
+			m_enginePtr->UpdateVoltages(m_start,m_stop-m_start+1);
 
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
@@ -207,8 +215,8 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//post voltage stuff...
-			for (size_t n=m_threadID;n<m_enginePtr->m_RunEngine->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->m_RunEngine->GetExtension(n)->DoPostVoltageUpdates();
+			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
+				m_enginePtr->GetExtension(n)->DoPostVoltageUpdates();
 			m_enginePtr->m_barrier_PostVolt->wait();
 
 			// e-field excitation (thread thread_e_excitation)
@@ -219,12 +227,12 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//pre current stuff
-			for (size_t n=m_threadID;n<m_enginePtr->m_RunEngine->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->m_RunEngine->GetExtension(n)->DoPreCurrentUpdates();
+			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
+				m_enginePtr->GetExtension(n)->DoPreCurrentUpdates();
 			m_enginePtr->m_barrier_PreCurr->wait();
 
 			//current updates
-			m_enginePtr->m_RunEngine->UpdateCurrents(m_start,m_stop_h-m_start+1);
+			m_enginePtr->UpdateCurrents(m_start,m_stop_h-m_start+1);
 
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
@@ -234,8 +242,8 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//post current stuff
-			for (size_t n=m_threadID;n<m_enginePtr->m_RunEngine->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->m_RunEngine->GetExtension(n)->DoPostCurrentUpdates();
+			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
+				m_enginePtr->GetExtension(n)->DoPostCurrentUpdates();
 			m_enginePtr->m_barrier_PostCurr->wait();
 
 			//soft current excitation here (H-field excite)
@@ -243,7 +251,7 @@ void thread::operator()()
 			// excitation finished
 
 			if (m_threadID == 0)
-				++m_enginePtr->m_RunEngine->numTS; // only the first thread increments numTS
+				++m_enginePtr->numTS; // only the first thread increments numTS
 		}
 
 		m_enginePtr->m_stopBarrier->wait();
@@ -273,20 +281,20 @@ void thread_e_excitation::operator()()
 	{
 		m_enginePtr->m_barrier_PostVolt->wait(); // waiting on NS_Engine_Multithread::thread
 
-		for (size_t n=0;n<m_enginePtr->m_RunEngine->GetExtensionCount();++n)
-			m_enginePtr->m_RunEngine->GetExtension(n)->Apply2Voltages();
+		for (size_t n=0;n<m_enginePtr->GetExtensionCount();++n)
+			m_enginePtr->GetExtension(n)->Apply2Voltages();
 
-		m_enginePtr->m_RunEngine->ApplyVoltageExcite();
+		m_enginePtr->ApplyVoltageExcite();
 
 		m_enginePtr->m_barrier_VoltExcite->wait(); // continue NS_Engine_Multithread::thread
 
 
 		m_enginePtr->m_barrier_PostCurr->wait(); // waiting on NS_Engine_Multithread::thread
 
-		for (size_t n=0;n<m_enginePtr->m_RunEngine->GetExtensionCount();++n)
-			m_enginePtr->m_RunEngine->GetExtension(n)->Apply2Current();
+		for (size_t n=0;n<m_enginePtr->GetExtensionCount();++n)
+			m_enginePtr->GetExtension(n)->Apply2Current();
 
-		m_enginePtr->m_RunEngine->ApplyCurrentExcite();
+		m_enginePtr->ApplyCurrentExcite();
 
 		m_enginePtr->m_barrier_CurrExcite->wait(); // continue NS_Engine_Multithread::thread
 	}

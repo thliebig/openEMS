@@ -18,8 +18,8 @@
 #ifndef ENGINE_MULTITHREAD_H
 #define ENGINE_MULTITHREAD_H
 
-#include "operator.h"
-#include "engine.h"
+#include "operator_multithread.h"
+#include "engine_sse_compressed.h"
 
 #include <boost/thread.hpp>
 #include <boost/fusion/include/list.hpp>
@@ -74,31 +74,23 @@ namespace NS_Engine_Multithread {
 } // namespace
 
 
-class Engine_Multithread : public Engine
+class Engine_Multithread : public Engine_SSE_Compressed
 {
 	friend class NS_Engine_Multithread::thread;
 	friend class NS_Engine_Multithread::thread_e_excitation;
 public:
-	static Engine_Multithread* New(const Operator* op, unsigned int numThreads = 0);
+	static Engine_Multithread* New(const Operator_Multithread* op, unsigned int numThreads = 0);
 	virtual ~Engine_Multithread();
-
-	//this access functions muss be overloaded by any new engine using a different storage model
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return m_RunEngine->GetVolt(n,x,y,z); }
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[3] ) { return m_RunEngine->GetVolt(n,pos); }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return m_RunEngine->GetCurr(n,x,y,z); }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[3] ) { return m_RunEngine->GetCurr(n,pos);}
 
 	virtual void setNumThreads( unsigned int numThreads );
 	virtual void Init();
 	virtual void Reset();
 
-	virtual unsigned int GetNumberOfTimesteps() {return m_RunEngine->GetNumberOfTimesteps();}
-
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
 protected:
-	Engine_Multithread(const Operator* op);
+	Engine_Multithread(const Operator_SSE_Compressed* op);
 	boost::thread_group m_thread_group;
 	boost::barrier *m_startBarrier, *m_stopBarrier;
 	boost::barrier *m_barrier_VoltUpdate, *m_barrier_VoltExcite, *m_barrier_PreVolt, *m_barrier_PostVolt;
@@ -106,8 +98,6 @@ protected:
 	volatile unsigned int m_iterTS;
 	unsigned int m_numThreads; //!< number of worker threads
 	volatile bool m_stopThreads;
-
-	Engine* m_RunEngine;
 
 #ifdef ENABLE_DEBUG_TIME
 	std::map<boost::thread::id, std::vector<double> > m_timer_list;
