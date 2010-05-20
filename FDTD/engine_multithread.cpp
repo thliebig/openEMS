@@ -243,7 +243,7 @@ void thread::operator()()
 			// excitation finished
 
 			if (m_threadID == 0)
-				++m_enginePtr->numTS; // only the first thread increments numTS
+				++m_enginePtr->m_RunEngine->numTS; // only the first thread increments numTS
 		}
 
 		m_enginePtr->m_stopBarrier->wait();
@@ -276,7 +276,7 @@ void thread_e_excitation::operator()()
 		for (size_t n=0;n<m_enginePtr->m_RunEngine->GetExtensionCount();++n)
 			m_enginePtr->m_RunEngine->GetExtension(n)->Apply2Voltages();
 
-		m_enginePtr->ApplyVoltageExcite();
+		m_enginePtr->m_RunEngine->ApplyVoltageExcite();
 
 		m_enginePtr->m_barrier_VoltExcite->wait(); // continue NS_Engine_Multithread::thread
 
@@ -286,7 +286,7 @@ void thread_e_excitation::operator()()
 		for (size_t n=0;n<m_enginePtr->m_RunEngine->GetExtensionCount();++n)
 			m_enginePtr->m_RunEngine->GetExtension(n)->Apply2Current();
 
-		m_enginePtr->ApplyCurrentExcite();
+		m_enginePtr->m_RunEngine->ApplyCurrentExcite();
 
 		m_enginePtr->m_barrier_CurrExcite->wait(); // continue NS_Engine_Multithread::thread
 	}

@@ -92,6 +92,8 @@ public:
 	virtual void Init();
 	virtual void Reset();
 
+	virtual unsigned int GetNumberOfTimesteps() {return m_RunEngine->GetNumberOfTimesteps();}
+
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 

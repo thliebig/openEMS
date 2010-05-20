@@ -21,6 +21,10 @@
 #include <fstream>
 #include "operator.h"
 
+namespace NS_Engine_Multithread {
+	class thread; // evil hack to access numTS from multithreading context
+}
+
 class Engine_Extension;
 
 class Engine
@@ -74,6 +78,8 @@ protected:
 	vector<Engine_Extension*> m_Eng_exts;
 
 	ofstream file_et; //excite signal dump file
+
+	friend class NS_Engine_Multithread::thread; // evil hack to access numTS from multithreading context
 };
 
 #endif // ENGINE_H
