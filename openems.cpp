@@ -125,6 +125,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 		m_engine = EngineType_SSE_Compressed;
 		return true;
 	}
+	else if (strcmp(argv,"--engine=fastest")==0)
+	{
+		cout << "openEMS - enabled multithreading engine" << endl;
+		m_engine = EngineType_Multithreaded;
+		return true;
+	}
 
 	return false;
 }

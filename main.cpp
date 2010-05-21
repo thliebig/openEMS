@@ -40,7 +40,19 @@ int main(int argc, char *argv[])
 
 	if (argc<=1)
 	{
-		cout << " usage: openEMS FDTD_XML_FILE [--disable-dumps] [--debug-material] [--debug-operator]" << endl;
+		cout << " Usage: openEMS <FDTD_XML_FILE> [<options>...]" << endl << endl;
+		cout << " <options>" << endl;
+		cout << "\t--disable-dumps\t\tDisable all field dumps for faster simulation" << endl;
+		cout << "\t--debug-material\tDump material distribution to a vtk file for debugging" << endl;
+		cout << "\t--debug-operator\tDump operator to vtk file for debugging" << endl;
+		cout << "\t--debug-boxes\t\tDump e.g. probe boxes to vtk file for debugging" << endl;
+		cout << "\t--engine=<type>\t\tChoose engine type" << endl;
+		cout << "\t\t--engine=fastest\t\tfastest available engine" << endl;
+		cout << "\t\t--engine=sse\t\t\tengine using sse vector extensions" << endl;
+		cout << "\t\t--engine=sse_compressed\t\tengine using compressed operator + sse vector extensions" << endl;
+		cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + multithreading" << endl;
+		cout << "\t--numThreads=<n>\tForce use n threads for multithreaded engine (needs: --engine=multithreaded)" << endl;
+		cout << endl;
 		exit(-1);
 	}
 
