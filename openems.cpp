@@ -188,6 +188,10 @@ int openEMS::SetupFDTD(const char* file)
 	if (m_OverSampling<2)
 		m_OverSampling=2;
 
+	double maxTime=0;
+	FDTD_Opts->QueryDoubleAttribute("MaxTime",&maxTime);
+
+
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
 	{
@@ -250,6 +254,10 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	FDTD_Op->CalcECOperator();
+	
+	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
+	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
+		NrTS = maxTime_TS;
 
 	if (!FDTD_Op->Exc->setupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
 		exit(2);
