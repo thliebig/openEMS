@@ -46,7 +46,7 @@ Operator_SSE_Compressed::Operator_SSE_Compressed() : Operator_sse()
 		f4_iv_Compressed[n]=NULL;
 	}
 
-	m_max_fifo = 1000;
+	m_max_fifo = 0;
 }
 
 Operator_SSE_Compressed::~Operator_SSE_Compressed()
@@ -169,6 +169,12 @@ bool Operator_SSE_Compressed::CompareOperators(unsigned int pos1[3], unsigned in
 bool Operator_SSE_Compressed::CompressOperator()
 {
 	cout << "Compressing the FDTD operator... this my take a while..." << endl;
+
+	if (m_max_fifo==0)
+	{
+		m_max_fifo = numVectors*numLines[1] + 1;
+//		cerr << m_max_fifo << endl;
+	}
 
 	m_Max_Compression = true;
 
