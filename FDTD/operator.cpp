@@ -289,8 +289,8 @@ void Operator::ShowStat() const
 
 	cout << "------- Stat: FDTD Operator -------" << endl;
 	cout << "Dimensions\t\t: " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  numLines[0]*numLines[1]*numLines[2] << " Cells (" << numLines[0]*numLines[1]*numLines[2]/1e6 << " MCells)" << endl;
-	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MB) " << endl;
-	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MB) " << endl;
+	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MiB) " << endl;
+	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MiB) " << endl;
 	cout << "-----------------------------------" << endl;
 	cout << "Voltage excitations\t: " << Exc->E_Count << endl;
 	cout << "Current excitations\t: " << Exc->Curr_Count << endl;
