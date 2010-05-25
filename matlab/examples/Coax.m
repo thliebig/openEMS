@@ -20,18 +20,24 @@ epsR = 1;
 
 %% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
-openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
+% openEMS_opts = [openEMS_opts ' --debug-operator'];
+
+% openEMS_opts = [openEMS_opts ' --disable-dumps --engine=fastest'];
+openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'coax.xml';
 
+if (exist(Sim_Path,'dir'))
+    rmdir(Sim_Path,'s');
+end
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD(5e5,1e-5);
 FDTD = SetGaussExcite(FDTD,f0,f0);
-BC = [1 1 1 1 1 1] * 0;
+BC = [0 0 0 0 0 0]; %electric walls only
 FDTD = SetBoundaryCond(FDTD,BC);
 
 %% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

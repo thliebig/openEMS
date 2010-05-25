@@ -14,15 +14,16 @@ MUE0 = 1.256637062e-6;
 
 %% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
-openEMS_opts = [openEMS_opts ' --disable-dumps'];
+% openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
-openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
-% openEMS_opts = [openEMS_opts ' --engine=sse'];
-openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
+openEMS_opts = [openEMS_opts ' --engine=fastest'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'plane_wave.xml';
 
+if (exist(Sim_Path,'dir'))
+    rmdir(Sim_Path,'s');
+end
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -63,7 +64,7 @@ start = [mesh.x(1) , mesh.y(1) , mesh.z(1)];
 stop = [mesh.x(end) , mesh.y(end) , mesh.z(end)];
 CSX = AddBox(CSX,'Et',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht','DumpType',1,'FileType',1,'SubSampling','4,4,1');
+CSX = AddDump(CSX,'Ht','DumpType',1,'FileType',1,'SubSampling','4,4,1','DumpMode',2);
 CSX = AddBox(CSX,'Ht',0,start,stop);
 
 %% Write openEMS compatoble xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -72,6 +73,7 @@ WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 savePath = pwd();
 cd(Sim_Path); %cd to working dir
+
 args = [Sim_CSX ' ' openEMS_opts];
 invoke_openEMS(args);
 cd(savePath);
@@ -79,7 +81,7 @@ cd(savePath);
 %% do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 PlotArgs.slice = {mesh.x(round(end/2)) mesh.y(round(end/2)) mesh.z(round(end/2))};
 PlotArgs.pauseTime=0.01;
-PlotArgs.component=2;
+PlotArgs.component=1;
 PlotArgs.Limit = 'auto';
 
-PlotHDF5FieldData('tmp/Et.h5',PlotArgs)
+PlotHDF5FieldData('tmp/Ht.h5',PlotArgs)

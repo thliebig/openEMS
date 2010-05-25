@@ -22,7 +22,7 @@ end
 
 hdf_mesh.names = names;
 for n=1:numel(names)
-    hdf_mesh.lines{n} = hdf5read(file,names{n});
+    hdf_mesh.lines{n} = double(hdf5read(file,names{n}));
 end
 
 if (strcmp(names{1},'/mesh/rho'))

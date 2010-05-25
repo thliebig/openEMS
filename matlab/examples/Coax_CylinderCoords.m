@@ -29,6 +29,9 @@ openEMS_opts = [openEMS_opts ' --disable-dumps'];
 Sim_Path = 'tmp';
 Sim_CSX = 'coax.xml';
 
+if (exist(Sim_Path,'dir'))
+    rmdir(Sim_Path,'s');
+end
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%

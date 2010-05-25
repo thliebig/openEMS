@@ -34,7 +34,6 @@ openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
 % openEMS_opts = [openEMS_opts ' --debug-operator'];
-% openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
 
 if (do_Half_Waveguide)
     Sim_Path = 'tmp_half_CWG_CC';
@@ -43,6 +42,9 @@ else
 end
 Sim_CSX = 'Circ_WG_CC.xml';
 
+if (exist(Sim_Path,'dir'))
+    rmdir(Sim_Path,'s');
+end
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -88,18 +90,19 @@ stop(3)=0.5;
 CSX = AddBox(CSX,'excite', 5 ,start,stop);
  
 %% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-CSX = AddDump(CSX,'Et','FileType',1,'DumpMode',0,'SubSampling','1,1,5');
+CSX = AddDump(CSX,'Et','FileType',1,'DumpMode',0,'SubSampling','2,2,5');
 start = [mesh.x(1) , mesh.y(1)-y_delta , 0];
 stop = [mesh.x(end) , mesh.y(end)+y_delta , length];
 CSX = AddBox(CSX,'Et',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht','FileType',1,'DumpType',1,'DumpMode',0,'SubSampling','1,1,5');
+CSX = AddDump(CSX,'Ht','FileType',1,'DumpType',1,'DumpMode',0,'SubSampling','2,2,5');
 CSX = AddBox(CSX,'Ht',0 , start,stop);
 
-CSX = AddDump(CSX,'Et_rz_','FileType',0,'DumpMode',2,'SubSampling','1,1,5');
-start = [mesh.x(1) , 0 , 0];
-stop = [mesh.x(end) , 0 , length];
-CSX = AddBox(CSX,'Et_rz_',0 , start,stop);
+% % dumpt r-z-plane to vtk-file
+% CSX = AddDump(CSX,'Et_rz_','FileType',0,'DumpMode',2,'SubSampling','1,1,5');
+% start = [mesh.x(1) , 0 , 0];
+% stop = [mesh.x(end) , 0 , length];
+% CSX = AddBox(CSX,'Et_rz_',0 , start,stop);
 
 %% define voltage calc boxes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddProbe(CSX,'ut_exc',0);

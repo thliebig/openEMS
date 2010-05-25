@@ -33,16 +33,19 @@ openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
 % openEMS_opts = [openEMS_opts ' --debug-operator'];
-% openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
+openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'Circ_WG.xml';
 
+if (exist(Sim_Path,'dir'))
+    rmdir(Sim_Path,'s');
+end
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD(1000,1e-6,'OverSampling',5);
-T = 1/f0;
+T = 4*1/f0;
 FDTD = SetCustomExcite(FDTD,f0,[ '(1-exp(-1*(t/' num2str(T) ')^2) ) * sin(2*pi*' num2str(f0) '*t)' ]);
 BC = [1 1 1 1 1 1] * 0;
 FDTD = SetBoundaryCond(FDTD,BC);
@@ -85,23 +88,13 @@ CSX = SetExcitationWeight(CSX, 'excite', weight );
 CSX = AddCylinder(CSX,'excite', 5 ,[0 0 -0.1],[0 0 0.1],rad);
  
 %% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-CSX = AddDump(CSX,'Et','SubSampling','2,2,4','FileType',1,'DumpMode',2);
+CSX = AddDump(CSX,'Et','SubSampling','2,2,2','FileType',1,'DumpMode',2);
 start = [mesh.x(1) , mesh.y(1) , mesh.z(1)];
 stop = [mesh.x(end) , mesh.y(end) , mesh.z(end)];
 CSX = AddBox(CSX,'Et',0 , start,stop);
 
-% CSX = AddDump(CSX,'Ht','SubSampling','2,2,4','DumpType',1,'FileType',1,'DumpMode',2);
-% CSX = AddBox(CSX,'Ht',0,start,stop);
-
-% CSX = AddDump(CSX,'Excite_');
-% start = [mesh.x(1) , mesh.y(1) , 0];
-% stop = [mesh.x(end) , mesh.y(end) ,0];
-% CSX = AddBox(CSX,'Excite_',0 , start,stop);
-% 
-% CSX = AddDump(CSX,'Exy');
-% start = [mesh.x(1) , mesh.y(1) , length/2];
-% stop = [mesh.x(end) , mesh.y(end) , length/2];
-% CSX = AddBox(CSX,'Exy',0 , start,stop);
+CSX = AddDump(CSX,'Ht','SubSampling','2,2,2','DumpType',1,'FileType',1,'DumpMode',2);
+CSX = AddBox(CSX,'Ht',0,start,stop);
 
 %% define voltage calc boxes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %voltage calc
@@ -124,6 +117,7 @@ UI = ReadUI('ut1','tmp/');
 plot(UI.TD{1}.t,UI.TD{1}.val);
 grid on;
 
+figure
 % plotting
 if exist('tmp/Et.h5','file')
     PlotArgs.slice = {mesh.x(round(end/2)) mesh.y(round(end/2)) mesh.z(round(end/2))};

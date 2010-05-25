@@ -25,7 +25,10 @@ mesh = ReadHDF5Mesh(file);
 fields = ReadHDF5FieldData(file);
 
 if (mesh.type==0)
-    [X Y Z] = meshgrid(double(mesh.lines{1}),double(mesh.lines{2}),double(mesh.lines{3}));
+    % matlab is building a meshgrid incorrect, adressing it like X(y,x,z)
+    % ??it's not a bug, it's a feature??
+    % check if this workaround is correct  (TL)
+    [X Y Z] = meshgrid(mesh.lines{2},mesh.lines{1},mesh.lines{3});
 else
     disp(['PlotHDF5FieldData:: Error: unknown mesh type ' num2str(mesh.type)]);
 end
@@ -34,13 +37,13 @@ max_amp = 0;
 
 if (component>0)
     for n=1:numel(fields.values)
-        Field{n} = double(fields.values{n}(:,:,:,component));
+        Field{n} = fields.values{n}(:,:,:,component);
     end
 else 
     for n=1:numel(fields.values)
-        fx = double(fields.values{n}(:,:,:,1));
-        fy = double(fields.values{n}(:,:,:,2));
-        fz = double(fields.values{n}(:,:,:,3));
+        fx = fields.values{n}(:,:,:,1);
+        fy = fields.values{n}(:,:,:,2);
+        fz = fields.values{n}(:,:,:,3);
         Field{n} = sqrt(fx.^2 + fy.^2 + fz.^2);
     end        
 end

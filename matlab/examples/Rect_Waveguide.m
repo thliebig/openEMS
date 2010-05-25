@@ -34,11 +34,14 @@ func_Ey = [num2str(m/a/unit) '*sin(' num2str(m*pi/a) '*x)*cos('  num2str(n*pi/b)
 openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --disable-dumps'];
 % openEMS_opts = [openEMS_opts ' --debug-material'];
-% openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
+openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'rect_wg.xml';
 
+if (exist(Sim_Path,'dir'))
+    rmdir(Sim_Path,'s');
+end
 mkdir(Sim_Path);
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -51,7 +54,7 @@ FDTD = SetBoundaryCond(FDTD,BC);
 CSX = InitCSX();
 mesh.x = 0 : mesh_res(1) : width;
 mesh.y = 0 : mesh_res(2) : height;
-mesh.z = -length: mesh_res(3) : length;
+mesh.z = 0 : mesh_res(3) : length;
 CSX = DefineRectGrid(CSX, unit,mesh);
 
 %% fake pml %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -80,12 +83,12 @@ CSX = SetExcitationWeight(CSX,'excite',weight);
 CSX = AddBox(CSX,'excite',0 ,start,stop);
  
 %% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-CSX = AddDump(CSX,'Et','FileType',1);
-start = [mesh.x(1) , height/2 , mesh.z(1)];
-stop = [mesh.x(end) , height/2 , mesh.z(end)];
+CSX = AddDump(CSX,'Et','FileType',1,'SubSampling','4,4,4');
+start = [mesh.x(1) , mesh.y(1) , mesh.z(1)];
+stop = [mesh.x(end) ,  mesh.y(end) , mesh.z(end)];
 CSX = AddBox(CSX,'Et',0 , start,stop);
 
-CSX = AddDump(CSX,'Ht','DumpType',1,'FileType',1);
+CSX = AddDump(CSX,'Ht','DumpType',1,'FileType',1,'SubSampling','4,4,4');
 CSX = AddBox(CSX,'Ht',0,start,stop);
 
 %% Write openEMS compatoble xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

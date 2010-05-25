@@ -18,10 +18,12 @@ f_excite = 300e6;
 
 %% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 openEMS_opts = '';
-% openEMS_opts = [openEMS_opts ' --disable-dumps'];
-openEMS_opts = [openEMS_opts ' --debug-material'];
-openEMS_opts = [openEMS_opts ' --debug-boxes'];
+% openEMS_opts = [openEMS_opts ' --debug-material'];
+% openEMS_opts = [openEMS_opts ' --debug-boxes'];
 % openEMS_opts = [openEMS_opts ' --debug-operator'];
+
+% openEMS_opts = [openEMS_opts ' --disable-dumps --engine=fastest'];
+openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'helix.xml';
