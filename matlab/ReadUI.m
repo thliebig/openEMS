@@ -25,7 +25,7 @@ end
 UI.TD = {};
 UI.FD = {};
 for n=1:numel(filenames)
-    tmp = load([path filenames{n}]);
+    tmp = load( fullfile(path,filenames{n}) );
     t = tmp(:,1)';
     val = tmp(:,2)';
 
