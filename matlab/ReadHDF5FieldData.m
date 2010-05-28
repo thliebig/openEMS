@@ -2,12 +2,21 @@ function hdf_fielddata = ReadHDF5FieldData(file)
 % function hdf_fielddata = ReadHDF5FieldData(file)
 %
 % returns:
+% hdf_fielddata.time
 % hdf_fielddata.names
 % hdf_fielddata.values
+%
+% example: values of timestep 12:
+% hdf_fielddata.values{12}: array (x,y,z,polarization)
+%
+% plot z-field component along y-direction for timestep 12:
+% plot( hdf_fielddata.values{12}(1,:,1,3) )
 %
 % openEMS matlab interface
 % -----------------------
 % author: Thorsten Liebig
+%
+% See also ReadHDF5Mesh
 
 info = hdf5info(file);
 

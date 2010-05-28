@@ -9,6 +9,8 @@ function hdf_mesh = ReadHDF5Mesh(file)
 % openEMS matlab interface
 % -----------------------
 % author: Thorsten Liebig
+%
+% See also ReadHDF5FieldData
 
 info = hdf5info(file);
 
