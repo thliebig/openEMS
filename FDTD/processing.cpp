@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "tools/global.h"
 #include "processing.h"
 
 Processing::Processing(Operator* op, Engine* eng)
@@ -87,8 +88,19 @@ void Processing::AddSteps(vector<unsigned int> steps)
 
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (Op->SnapToMesh(dstart,start)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
-	if (Op->SnapToMesh(dstop,stop)==false) cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+	if (Op->SnapToMesh(dstart,start)==false)
+		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+	if (Op->SnapToMesh(dstop,stop)==false)
+		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+
+	if (g_settings.showProbeDiscretization()) {
+		cerr << m_filename << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], false ) << ","
+				<< Op->GetDiscLine( 1, start[1], false ) << "," << Op->GetDiscLine( 2, start[2], false ) << ") -> ("
+				<< Op->GetDiscLine( 0, stop[0], false ) << ","<< Op->GetDiscLine( 1, stop[1], false ) << ","
+				<< Op->GetDiscLine( 2, stop[2], false ) << ")";
+		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
+				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+	}
 }
 
 double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int field) const

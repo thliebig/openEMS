@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include "openems.h"
+#include "tools/global.h"
 
 #ifndef GIT_VERSION
 #define GIT_VERSION "unknown:compiled@" __DATE__
@@ -60,6 +61,9 @@ int main(int argc, char *argv[])
 	{
 		for (int n=2;n<argc;++n)
 		{
+			if (g_settings.parseCommandLineArgument(argv[n]))
+				continue;
+
 			if (!FDTD.parseCommandLineArgument(argv[n]))
 				cout << "openEMS - unknown argument: " << argv[n] << endl;
 		}

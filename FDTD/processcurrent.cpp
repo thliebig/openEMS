@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "tools/global.h"
 #include "processcurrent.h"
 #include <iomanip>
 
@@ -28,8 +29,19 @@ ProcessCurrent::~ProcessCurrent()
 
 void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (Op->SnapToMesh(dstart,start,true,m_start_inside)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
-	if (Op->SnapToMesh(dstop,stop,true,m_stop_inside)==false) cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+	if (Op->SnapToMesh(dstart,start)==false)
+		cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+	if (Op->SnapToMesh(dstop,stop)==false)
+		cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+
+	if (g_settings.showProbeDiscretization()) {
+		cerr << m_filename << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], true ) << ","
+				<< Op->GetDiscLine( 1, start[1], true ) << "," << Op->GetDiscLine( 2, start[2], true ) << ") -> ("
+				<< Op->GetDiscLine( 0, stop[0], true ) << ","<< Op->GetDiscLine( 1, stop[1], true ) << ","
+				<< Op->GetDiscLine( 2, stop[2], true ) << ")";
+		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
+				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+	}
 }
 
 int ProcessCurrent::Process()
