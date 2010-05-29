@@ -956,6 +956,8 @@ bool Operator::CalcFieldExcitation()
 					curv->GetPoint(i-1,p1);
 					curv->GetPoint(i,p2);
 					path = FindPath(p1,p2);
+					if (path.dir.size()>0)
+						prim->SetPrimitiveUsed(true);
 					for (size_t t=0;t<path.dir.size();++t)
 					{
 						n = path.dir.at(t);
@@ -1064,13 +1066,15 @@ bool Operator::CalcPEC()
 					curv->GetPoint(i-1,p1);
 					curv->GetPoint(i,p2);
 					path = FindPath(p1,p2);
+					if (path.dir.size()>0)
+						prim->SetPrimitiveUsed(true);
 					for (size_t t=0;t<path.dir.size();++t)
 					{
 //						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
 						GetVV(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t)) = 0;
 						GetVI(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t)) = 0;
 						++m_Nr_PEC[path.dir.at(t)];
-				}
+					}
 //					cerr << "found path size: " << path.dir.size() << endl;
 				}
 			}

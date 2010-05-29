@@ -315,6 +315,7 @@ int openEMS::SetupFDTD(const char* file)
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->DefineStartStopCoord(start,stop);
 				PA->AddProcessing(proc);
+				prim->SetPrimitiveUsed(true);
 			}
 			else
 				delete 	proc;
@@ -351,11 +352,14 @@ int openEMS::SetupFDTD(const char* file)
 				ProcTD->DefineStartStopCoord(start,stop);
 				ProcTD->InitProcess();
 				PA->AddProcessing(ProcTD);
+				prim->SetPrimitiveUsed(true);
 			}
 			else
 				delete 	ProcTD;
 		}
 	}
+
+	CSX.WarnUnusedPrimitves(cerr);
 
 	// dump all boxes (voltage, current, fields, ...)
 	if (m_debugBox)
