@@ -266,11 +266,8 @@ int openEMS::SetupFDTD(const char* file)
 	{
 		FDTD_Op->DumpMaterial2File("material_dump.vtk");
 	}
-	if (DebugOp && (m_engine == EngineType_Standard))
+	if (DebugOp)
 		FDTD_Op->DumpOperator2File("operator_dump.vtk");
-	if (DebugOp && (m_engine != EngineType_Standard))
-		cerr << "openEMS - Warning: operator dump needs the standard engine." << endl;
-
 
 	time_t OpDoneTime=time(NULL);
 

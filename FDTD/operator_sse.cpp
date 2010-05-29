@@ -18,6 +18,7 @@
 #include "engine_sse.h"
 #include "operator_sse.h"
 #include "tools/array_ops.h"
+#include "processfields.h"
 
 Operator_sse* Operator_sse::New()
 {
@@ -81,5 +82,57 @@ void Operator_sse::InitOperator()
 	f4_ii = Create_N_3DArray_v4sf(numLines);
 
 	numVectors =  ceil((double)numLines[2]/4.0);
+}
+
+void Operator_sse::DumpOperator2File(string filename)
+{
+	ofstream file(filename.c_str(),ios_base::out);
+	if (file.is_open()==false)
+	{
+		cerr << "Operator_sse::DumpOperator2File: Can't open file: " << filename << endl;
+		return;
+	}
+
+	FDTD_FLOAT**** exc = Create_N_3DArray(numLines);
+	if (Exc) {
+		for (unsigned int n=0;n<Exc->E_Count;++n)
+			exc[Exc->E_dir[n]][Exc->E_index[0][n]][Exc->E_index[1][n]][Exc->E_index[2][n]] = Exc->E_amp[n];
+	}
+
+	vv = Create_N_3DArray(numLines);
+	vi = Create_N_3DArray(numLines);
+	iv = Create_N_3DArray(numLines);
+	ii = Create_N_3DArray(numLines);
+
+	unsigned int pos[3];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			{
+				for (int n=0;n<3;++n)
+				{
+					vv[n][pos[0]][pos[1]][pos[2]] = GetVV(n,pos[0],pos[1],pos[2]);
+					vi[n][pos[0]][pos[1]][pos[2]] = GetVI(n,pos[0],pos[1],pos[2]);
+					ii[n][pos[0]][pos[1]][pos[2]] = GetII(n,pos[0],pos[1],pos[2]);
+					iv[n][pos[0]][pos[1]][pos[2]] = GetIV(n,pos[0],pos[1],pos[2]);
+				}
+			}
+		}
+	}
+
+	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
+	FDTD_FLOAT**** array[] = {vv,vi,iv,ii,exc};
+
+	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines);
+
+	Delete_N_3DArray(exc,numLines);
+	Delete_N_3DArray(vv,numLines);vv=NULL;
+	Delete_N_3DArray(vi,numLines);vi=NULL;
+	Delete_N_3DArray(iv,numLines);iv=NULL;
+	Delete_N_3DArray(ii,numLines);ii=NULL;
+
+	file.close();
 }
 
