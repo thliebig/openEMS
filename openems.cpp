@@ -211,7 +211,7 @@ int openEMS::SetupFDTD(const char* file)
 	if (EC.empty()==false)
 	{
 		cerr << EC << endl;
-		return(-2);
+//		return(-2);
 	}
 
 	//*************** setup operator ************//
