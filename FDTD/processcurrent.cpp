@@ -29,9 +29,9 @@ ProcessCurrent::~ProcessCurrent()
 
 void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (Op->SnapToMesh(dstart,start)==false)
+	if (Op->SnapToMesh(dstart,start,true,m_start_inside)==false)
 		cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
-	if (Op->SnapToMesh(dstop,stop)==false)
+	if (Op->SnapToMesh(dstop,stop,true,m_stop_inside)==false)
 		cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 
 	if (g_settings.showProbeDiscretization()) {
