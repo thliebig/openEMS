@@ -34,6 +34,7 @@ Operator* Operator::New()
 
 Operator::Operator()
 {
+	m_MeshType = ProcessFields::CARTESIAN_MESH;
 	Exc = 0;
 }
 
@@ -327,7 +328,7 @@ void Operator::DumpOperator2File(string filename)
 	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
 	FDTD_FLOAT**** array[] = {vv,vi,iv,ii,exc};
 
-	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines);
+	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines, 6, "Operator dump" , (ProcessFields::MeshType)m_MeshType);
 
 	Delete_N_3DArray(exc,numLines);
 
@@ -361,7 +362,7 @@ void Operator::DumpPEC2File( string filename )
 		}
 	}
 
-	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines );
+	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines, 6, "PEC dump" , (ProcessFields::MeshType)m_MeshType );
 
 	file.close();
 }
@@ -410,7 +411,7 @@ void Operator::DumpMaterial2File(string filename)
 
 	string names[] = {"epsilon","mue","kappa","sigma"};
 	FDTD_FLOAT*** array[] = {epsilon,mue,kappa,sigma};
-	ProcessFields::DumpMultiScalarArray2VTK(file, names, array, 4, discLines, numLines);
+	ProcessFields::DumpMultiScalarArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType);
 	Delete3DArray(epsilon,numLines);
 	Delete3DArray(mue,numLines);
 	Delete3DArray(kappa,numLines);

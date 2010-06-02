@@ -16,6 +16,7 @@
 */
 
 #include "engine.h"
+#include "processfields.h"
 #include "operator_cylinder.h"
 #include "operator_extension.h"
 #include "operator_ext_cylinder.h"
@@ -30,6 +31,7 @@ Operator_Cylinder* Operator_Cylinder::New()
 
 Operator_Cylinder::Operator_Cylinder() : __OP_CYLINDER_BASE_CLASS__()
 {
+	m_MeshType = ProcessFields::CYLINDRICAL_MESH;
 }
 
 Operator_Cylinder::~Operator_Cylinder()

@@ -125,7 +125,7 @@ void Operator_sse::DumpOperator2File(string filename)
 	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
 	FDTD_FLOAT**** array[] = {vv,vi,iv,ii,exc};
 
-	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines);
+	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines,  6, "Operator dump" , (ProcessFields::MeshType)m_MeshType);
 
 	Delete_N_3DArray(exc,numLines);
 	Delete_N_3DArray(vv,numLines);vv=NULL;

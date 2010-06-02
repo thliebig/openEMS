@@ -126,6 +126,7 @@ protected:
 
 	unsigned int m_Nr_PEC[3];
 
+	int m_MeshType;
 	unsigned int numLines[3];
 	double* discLines[3];
 	double gridDelta;
