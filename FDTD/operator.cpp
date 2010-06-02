@@ -334,6 +334,38 @@ void Operator::DumpOperator2File(string filename)
 	file.close();
 }
 
+//! \brief dump PEC (perfect electric conductor) information (into VTK-file)
+//! visualization via paraview
+//! visualize only one component (x, y or z)
+void Operator::DumpPEC2File( string filename )
+{
+	ofstream file( filename.c_str() );
+	if (!file.is_open()) {
+		cerr << "Operator::DumpPEC2File: Can't open file: " << filename << endl;
+		return;
+	}
+
+	FDTD_FLOAT**** pec = Create_N_3DArray( numLines );
+	unsigned int pos[3];
+
+	for (pos[0]=0; pos[0]<numLines[0]; pos[0]++) {
+		for (pos[1]=0; pos[1]<numLines[1]; pos[1]++) {
+			for (pos[2]=0; pos[2]<numLines[2]; pos[2]++) {
+				if ((GetVV(0,pos[0],pos[1],pos[2]) == 0) && (GetVI(0,pos[0],pos[1],pos[2]) == 0))
+					pec[0][pos[0]][pos[1]][pos[2]] = MainOp->GetIndexDelta( 0, pos[0] ); // PEC-x found
+				if ((GetVV(1,pos[0],pos[1],pos[2]) == 0) && (GetVI(1,pos[0],pos[1],pos[2]) == 0))
+					pec[1][pos[0]][pos[1]][pos[2]] = MainOp->GetIndexDelta( 1, pos[1] ); // PEC-y found
+				if ((GetVV(2,pos[0],pos[1],pos[2]) == 0) && (GetVI(2,pos[0],pos[1],pos[2]) == 0))
+					pec[2][pos[0]][pos[1]][pos[2]] = MainOp->GetIndexDelta( 2, pos[2] ); // PEC-z found
+			}
+		}
+	}
+
+	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines );
+
+	file.close();
+}
+
 void Operator::DumpMaterial2File(string filename)
 {
 	FDTD_FLOAT*** epsilon;

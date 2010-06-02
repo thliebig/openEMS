@@ -64,6 +64,7 @@ public:
 
 	virtual void DumpOperator2File(string filename);
 	virtual void DumpMaterial2File(string filename);
+	virtual void DumpPEC2File( string filename );
 
 	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
 	virtual string GetDirName(int ny) const;

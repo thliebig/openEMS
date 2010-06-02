@@ -52,7 +52,7 @@ protected:
 	bool Enable_Dumps;
 	bool DebugMat;
 	bool DebugOp;
-	bool m_debugBox;
+	bool m_debugBox, m_debugPEC;
 	double endCrit;
 	int m_OverSampling;
 	Operator* FDTD_Op;

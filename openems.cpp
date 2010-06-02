@@ -48,7 +48,7 @@ openEMS::openEMS()
 	Enable_Dumps = true;
 	DebugMat = false;
 	DebugOp = false;
-	m_debugBox = false;
+	m_debugBox = m_debugPEC = false;
 	endCrit = 1e-6;
 	m_OverSampling = 4;
 
@@ -99,6 +99,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - dumping boxes to 'box_dump*.vtk'" << endl;
 		DebugBox();
+		return true;
+	}
+	else if (strcmp(argv,"--debug-PEC")==0)
+	{
+		cout << "openEMS - dumping PEC info to 'PEC_dump.vtk'" << endl;
+		m_debugPEC = true;
 		return true;
 	}
 	else if (strcmp(argv,"--engine=multithreaded")==0)
@@ -268,6 +274,8 @@ int openEMS::SetupFDTD(const char* file)
 	}
 	if (DebugOp)
 		FDTD_Op->DumpOperator2File("operator_dump.vtk");
+	if (m_debugPEC)
+		FDTD_Op->DumpPEC2File("PEC_dump.vtk");
 
 	time_t OpDoneTime=time(NULL);
 
