@@ -319,6 +319,8 @@ void Operator::DumpOperator2File(string filename)
 		return;
 	}
 
+	cout << "Dumping PEC information to vtk file: " << filename << " ..." ;
+
 	FDTD_FLOAT**** exc = Create_N_3DArray(numLines);
 	if (Exc) {
 		for (unsigned int n=0;n<Exc->E_Count;++n)
@@ -333,6 +335,8 @@ void Operator::DumpOperator2File(string filename)
 	Delete_N_3DArray(exc,numLines);
 
 	file.close();
+
+	cout << " done!" << endl;
 }
 
 //! \brief dump PEC (perfect electric conductor) information (into VTK-file)
@@ -345,6 +349,8 @@ void Operator::DumpPEC2File( string filename )
 		cerr << "Operator::DumpPEC2File: Can't open file: " << filename << endl;
 		return;
 	}
+
+	cout << "Dumping PEC information to vtk file: " << filename << " ..." ;
 
 	FDTD_FLOAT**** pec = Create_N_3DArray( numLines );
 	unsigned int pos[3];
@@ -365,10 +371,21 @@ void Operator::DumpPEC2File( string filename )
 	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines, 6, "PEC dump" , (ProcessFields::MeshType)m_MeshType );
 
 	file.close();
+
+	cout << " done!" << endl;
 }
 
 void Operator::DumpMaterial2File(string filename)
 {
+	ofstream file(filename.c_str(),ios_base::out);
+	if (file.is_open()==false)
+	{
+		cerr << "Operator::DumpMaterial2File: Can't open file: " << filename << endl;
+		return;
+	}
+
+	cout << "Dumping material information to vtk file: " << filename << " ..." ;
+
 	FDTD_FLOAT*** epsilon;
 	FDTD_FLOAT*** mue;
 	FDTD_FLOAT*** kappa;
@@ -402,13 +419,6 @@ void Operator::DumpMaterial2File(string filename)
 		}
 	}
 
-	ofstream file(filename.c_str(),ios_base::out);
-	if (file.is_open()==false)
-	{
-		cerr << "Operator::DumpMaterial2File: Can't open file: " << filename << endl;
-		return;
-	}
-
 	string names[] = {"epsilon","mue","kappa","sigma"};
 	FDTD_FLOAT*** array[] = {epsilon,mue,kappa,sigma};
 	ProcessFields::DumpMultiScalarArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType);
@@ -417,6 +427,8 @@ void Operator::DumpMaterial2File(string filename)
 	Delete3DArray(kappa,numLines);
 	Delete3DArray(sigma,numLines);
 	file.close();
+
+	cout << " done!" << endl;
 }
 
 bool Operator::SetGeometryCSX(ContinuousStructure* geo)
