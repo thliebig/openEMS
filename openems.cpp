@@ -147,7 +147,9 @@ int openEMS::SetupFDTD(const char* file)
 	Reset();
 	int bounds[6];
 
-	time_t startTime=time(NULL);
+	timeval startTime;
+	gettimeofday(&startTime,NULL);
+
 
 	TiXmlDocument doc(file);
 	if (!doc.LoadFile())
@@ -277,11 +279,12 @@ int openEMS::SetupFDTD(const char* file)
 	if (m_debugPEC)
 		FDTD_Op->DumpPEC2File("PEC_dump.vtk");
 
-	time_t OpDoneTime=time(NULL);
+	timeval OpDoneTime;
+	gettimeofday(&OpDoneTime,NULL);
 
 	FDTD_Op->ShowStat();
 
-	cout << "Creation time for operator: " << difftime(OpDoneTime,startTime) << " s" << endl;
+	cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
 
 	//create FDTD engine
 	FDTD_Eng = FDTD_Op->CreateEngine();
