@@ -301,7 +301,8 @@ int openEMS::SetupFDTD(const char* file)
 		if (prim!=NULL)
 		{
 			bool acc;
-			double* bnd = prim->GetBoundBox(acc,true);
+			double bnd[6] = {0,0,0,0,0,0};
+			acc = prim->GetBoundBox(bnd,true);
 			start[0]= bnd[0];start[1]=bnd[2];start[2]=bnd[4];
 			stop[0] = bnd[1];stop[1] =bnd[3];stop[2] =bnd[5];
 			CSPropProbeBox* pb = Probes.at(i)->ToProbeBox();
@@ -344,7 +345,8 @@ int openEMS::SetupFDTD(const char* file)
 		else
 		{
 			bool acc;
-			double* bnd = prim->GetBoundBox(acc);
+			double bnd[6] = {0,0,0,0,0,0};
+			acc = prim->GetBoundBox(bnd,true);
 			start[0]= bnd[0];start[1]=bnd[2];start[2]=bnd[4];
 			stop[0] = bnd[1];stop[1] =bnd[3];stop[2] =bnd[5];
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
