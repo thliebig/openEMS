@@ -1064,14 +1064,14 @@ bool Operator::CalcPEC()
 {
 	m_Nr_PEC[0]=0;	m_Nr_PEC[1]=0;	m_Nr_PEC[2]=0;
 
-	CalcPEC_Range(0,numLines[0]-1);
+	CalcPEC_Range(0,numLines[0]-1,m_Nr_PEC);
 
 	CalcPEC_Curves();
 
 	return true;
 }
 
-void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX)
+void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned int* counter)
 {
 	double coord[3];
 	double delta;
@@ -1087,7 +1087,6 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX)
 					coord[0] = discLines[0][pos[0]];
 					coord[1] = discLines[1][pos[1]];
 					coord[2] = discLines[2][pos[2]];
-					MainOp->SetPos(pos[0],pos[1],pos[2]);
 					delta=MainOp->GetIndexDelta(n,pos[n]);
 					coord[n]= discLines[n][pos[n]] + delta*0.5;
 					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
@@ -1097,7 +1096,7 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX)
 						{
 							GetVV(n,pos[0],pos[1],pos[2]) = 0;
 							GetVI(n,pos[0],pos[1],pos[2]) = 0;
-							++m_Nr_PEC[n];
+							++counter[n];
 				//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
 						}
 					}

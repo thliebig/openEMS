@@ -106,8 +106,9 @@ protected:
 	//! Calculate the field excitations.
 	virtual bool CalcFieldExcitation();
 
+	unsigned int m_Nr_PEC[3]; //count PEC edges
 	virtual bool CalcPEC();
-	virtual void CalcPEC_Range(unsigned int startX, unsigned int stopX);	//internal to CalcPEC
+	virtual void CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned int* counter);	//internal to CalcPEC
 	virtual void CalcPEC_Curves();	//internal to CalcPEC
 
 	//Calc timestep only internal use
@@ -126,8 +127,6 @@ protected:
 	double* EC_G[3];
 	double* EC_L[3];
 	double* EC_R[3];
-
-	unsigned int m_Nr_PEC[3];
 
 	int m_MeshType;
 	unsigned int numLines[3];

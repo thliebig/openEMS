@@ -46,6 +46,9 @@ Operator_Multithread::Operator_Multithread()
 {
 	m_CalcEC_Start=NULL;
 	m_CalcEC_Stop=NULL;
+
+	m_CalcPEC_Start=NULL;
+	m_CalcPEC_Stop=NULL;
 }
 
 void Operator_Multithread::Init()
@@ -53,6 +56,9 @@ void Operator_Multithread::Init()
 	Operator_SSE_Compressed::Init();
 	m_CalcEC_Start=NULL;
 	m_CalcEC_Stop=NULL;
+
+	m_CalcPEC_Start=NULL;
+	m_CalcPEC_Stop=NULL;
 }
 
 void Operator_Multithread::Reset()
@@ -63,6 +69,9 @@ void Operator_Multithread::Reset()
 
 	delete m_CalcEC_Start;m_CalcEC_Start=NULL;
 	delete m_CalcEC_Stop;m_CalcEC_Stop=NULL;
+
+	delete m_CalcPEC_Start;m_CalcPEC_Start=NULL;
+	delete m_CalcPEC_Stop;m_CalcPEC_Stop=NULL;
 }
 
 int Operator_Multithread::CalcECOperator()
@@ -75,6 +84,9 @@ int Operator_Multithread::CalcECOperator()
 	m_thread_group.join_all();
 	delete m_CalcEC_Start;m_CalcEC_Start = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	delete m_CalcEC_Stop;m_CalcEC_Stop = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
+
+	delete m_CalcPEC_Start;m_CalcPEC_Start = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
+	delete m_CalcPEC_Stop;m_CalcPEC_Stop = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 
 	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
 	for (unsigned int n=0; n<m_numThreads; n++)
@@ -103,6 +115,28 @@ bool Operator_Multithread::Calc_EC()
 
 	return true;
 }
+
+bool Operator_Multithread::CalcPEC()
+{
+	m_Nr_PEC[0]=0;	m_Nr_PEC[1]=0;	m_Nr_PEC[2]=0;
+
+	m_Nr_PEC_thread = new unsigned int[m_numThreads][3];
+
+	m_CalcPEC_Start->wait();
+
+	m_CalcPEC_Stop->wait();
+
+	for (unsigned int t=0;t<m_numThreads;++t)
+		for (int n=0;n<3;++n)
+			m_Nr_PEC[n]+=m_Nr_PEC_thread[t][n];
+
+	CalcPEC_Curves();
+
+	delete[] m_Nr_PEC_thread;
+
+	return true;
+}
+
 
 Operator_Thread::Operator_Thread( Operator_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int threadID )
 {
@@ -138,5 +172,13 @@ void Operator_Thread::operator()()
 		}
 	}
 	m_OpPtr->m_CalcEC_Stop->wait();
+
+	//************** calculate EC (Calc_EC) ***********************//
+	m_OpPtr->m_CalcPEC_Start->wait();
+	for (int n=0;n<3;++n)
+		m_OpPtr->m_Nr_PEC_thread[m_threadID][n] = 0;
+
+	m_OpPtr->CalcPEC_Range(m_start,m_stop,m_OpPtr->m_Nr_PEC_thread[m_threadID]);
+	m_OpPtr->m_CalcPEC_Stop->wait();
 }
 

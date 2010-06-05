@@ -43,8 +43,16 @@ protected:
 
 	virtual bool Calc_EC(); //this method is using multi-threading
 
+	unsigned int (*m_Nr_PEC_thread)[3]; //count PEC edges per thread
+	virtual bool CalcPEC(); //this method is using multi-threading
+
+	//Calc_EC barrier
 	boost::barrier* m_CalcEC_Start;
 	boost::barrier* m_CalcEC_Stop;
+	//CalcPEC barrier
+	boost::barrier* m_CalcPEC_Start;
+	boost::barrier* m_CalcPEC_Stop;
+
 	boost::thread_group m_thread_group;
 	unsigned int m_numThreads; // number of worker threads
 };
