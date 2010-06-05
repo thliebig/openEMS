@@ -107,6 +107,8 @@ protected:
 	virtual bool CalcFieldExcitation();
 
 	virtual bool CalcPEC();
+	virtual void CalcPEC_Range(unsigned int startX, unsigned int stopX);	//internal to CalcPEC
+	virtual void CalcPEC_Curves();	//internal to CalcPEC
 
 	//Calc timestep only internal use
 	virtual double CalcTimestep();

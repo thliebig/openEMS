@@ -1060,22 +1060,29 @@ bool Operator::CalcFieldExcitation()
 	return true;
 }
 
-
-
 bool Operator::CalcPEC()
 {
-	unsigned int pos[3];
-	double coord[3];
-	double delta;
 	m_Nr_PEC[0]=0;	m_Nr_PEC[1]=0;	m_Nr_PEC[2]=0;
 
-	for (int n=0;n<3;++n)
+	CalcPEC_Range(0,numLines[0]-1);
+
+	CalcPEC_Curves();
+
+	return true;
+}
+
+void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX)
+{
+	double coord[3];
+	double delta;
+	unsigned int pos[3];
+	for (pos[0]=startX;pos[0]<=stopX;++pos[0])
 	{
-		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 			{
-				for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+				for (int n=0;n<3;++n)
 				{
 					coord[0] = discLines[0][pos[0]];
 					coord[1] = discLines[1][pos[1]];
@@ -1091,14 +1098,17 @@ bool Operator::CalcPEC()
 							GetVV(n,pos[0],pos[1],pos[2]) = 0;
 							GetVI(n,pos[0],pos[1],pos[2]) = 0;
 							++m_Nr_PEC[n];
-//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
+				//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
 						}
 					}
 				}
 			}
 		}
 	}
+}
 
+void Operator::CalcPEC_Curves()
+{
 	//special treatment for primitives of type curve (treated as wires)
 	double p1[3];
 	double p2[3];
@@ -1132,8 +1142,6 @@ bool Operator::CalcPEC()
 			}
 		}
 	}
-
-	return true;
 }
 
 void Operator::AddExtension(Operator_Extension* op_ext)
