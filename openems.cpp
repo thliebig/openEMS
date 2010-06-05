@@ -236,7 +236,7 @@ int openEMS::SetupFDTD(const char* file)
 	}
 	else if (m_engine == EngineType_Multithreaded)
 	{
-		FDTD_Op = Operator_Multithread::New();
+		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
 	}
 	else
 	{
