@@ -41,6 +41,14 @@ void Delete2DArray(FDTD_FLOAT** array, const unsigned int* numLines);
 FDTD_FLOAT*** Create3DArray(const unsigned int* numLines);
 void Delete3DArray(FDTD_FLOAT*** array, const unsigned int* numLines);
 
+inline FDTD_FLOAT& Access_N_3DArray(FDTD_FLOAT**** array, unsigned int n, unsigned int* pos)
+{
+	return array[n][pos[0]][pos[1]][pos[2]];
+}
+inline FDTD_FLOAT& Access_N_3DArray(FDTD_FLOAT**** array, unsigned int n, unsigned int x, unsigned int y, unsigned int z )
+{
+	return array[n][x][y][z];
+}
 FDTD_FLOAT**** Create_N_3DArray(const unsigned int* numLines);
 void Delete_N_3DArray(FDTD_FLOAT**** array, const unsigned int* numLines);
 
