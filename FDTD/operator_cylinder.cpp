@@ -21,10 +21,11 @@
 #include "operator_extension.h"
 #include "operator_ext_cylinder.h"
 
-Operator_Cylinder* Operator_Cylinder::New()
+Operator_Cylinder* Operator_Cylinder::New(unsigned int numThreads)
 {
 	cout << "Create cylindrical FDTD operator" << endl;
 	Operator_Cylinder* op = new Operator_Cylinder();
+	op->setNumThreads(numThreads);
 	op->Init();
 	return op;
 }
