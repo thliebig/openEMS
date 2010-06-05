@@ -116,6 +116,7 @@ protected:
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
 
 	//EC elements, internal only!
+	virtual void Init_EC();
 	virtual bool Calc_EC();
 	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
 	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);

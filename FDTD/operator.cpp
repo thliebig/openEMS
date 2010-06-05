@@ -23,7 +23,6 @@
 #include "tools/array_ops.h"
 #include "fparser.hh"
 
-
 Operator* Operator::New()
 {
 	cout << "Create FDTD operator" << endl;
@@ -499,14 +498,14 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 
 int Operator::CalcECOperator()
 {
+	Init_EC();
+
 	if (Calc_EC()==0)
 		return -1;
 
 	CalcTimestep();
 
 	InitOperator();
-
-	InitExcitation();
 
 	unsigned int pos[3];
 
@@ -541,7 +540,10 @@ int Operator::CalcECOperator()
 	bool PEC[6]={1,1,1,1,1,1};
 	ApplyElectricBC(PEC);
 
+	InitExcitation();
+
 	if (CalcFieldExcitation()==false) return -1;
+
 	CalcPEC();
 
 	bool PMC[6];
@@ -769,14 +771,8 @@ bool Operator::Calc_EffMatPos(int n, unsigned int* pos, double* inMat)
 	return true;
 }
 
-
-bool Operator::Calc_EC()
+void Operator::Init_EC()
 {
-	if (CSX==NULL) {cerr << "CartOperator::Calc_EC: CSX not given or invalid!!!" << endl; return false;}
-
-	unsigned int ipos;
-	unsigned int pos[3];
-	double inEC[4];
 	for (int n=0;n<3;++n)
 	{
 		//init x-cell-array
@@ -795,6 +791,17 @@ bool Operator::Calc_EC()
 			EC_L[n][i]=0;
 			EC_R[n][i]=0;
 		}
+	}
+}
+
+bool Operator::Calc_EC()
+{
+	if (CSX==NULL) {cerr << "CartOperator::Calc_EC: CSX not given or invalid!!!" << endl; return false;}
+	unsigned int ipos;
+	unsigned int pos[3];
+	double inEC[4];
+	for (int n=0;n<3;++n)
+	{
 		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 		{
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
