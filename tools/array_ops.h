@@ -38,21 +38,84 @@ union f4vector
 FDTD_FLOAT** Create2DArray(const unsigned int* numLines);
 void Delete2DArray(FDTD_FLOAT** array, const unsigned int* numLines);
 
-FDTD_FLOAT*** Create3DArray(const unsigned int* numLines);
-void Delete3DArray(FDTD_FLOAT*** array, const unsigned int* numLines);
+void Dump_N_3DArray2File(ostream &file, FDTD_FLOAT**** array, const unsigned int* numLines);
 
-inline FDTD_FLOAT& Access_N_3DArray(FDTD_FLOAT**** array, unsigned int n, unsigned int* pos)
+
+//
+// templates
+//
+template <typename T>
+inline T& Access_N_3DArray(T**** array, unsigned int n, unsigned int* pos)
 {
 	return array[n][pos[0]][pos[1]][pos[2]];
 }
-inline FDTD_FLOAT& Access_N_3DArray(FDTD_FLOAT**** array, unsigned int n, unsigned int x, unsigned int y, unsigned int z )
+
+template <typename T>
+inline T& Access_N_3DArray(T**** array, unsigned int n, unsigned int x, unsigned int y, unsigned int z )
 {
 	return array[n][x][y][z];
 }
-FDTD_FLOAT**** Create_N_3DArray(const unsigned int* numLines);
-void Delete_N_3DArray(FDTD_FLOAT**** array, const unsigned int* numLines);
 
-void Dump_N_3DArray2File(ostream &file, FDTD_FLOAT**** array, const unsigned int* numLines);
+template <typename T>
+T*** Create3DArray(const unsigned int* numLines)
+{
+	T*** array=NULL;
+	unsigned int pos[3];
+	array = new T**[numLines[0]];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		array[pos[0]] = new T*[numLines[1]];
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			array[pos[0]][pos[1]] = new T[numLines[2]];
+			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			{
+				array[pos[0]][pos[1]][pos[2]] = 0;
+			}
+		}
+	}
+	return array;
+}
+
+template <typename T>
+T**** Create_N_3DArray(const unsigned int* numLines)
+{
+	T**** array=NULL;
+	array = new T***[3];
+	for (int n=0;n<3;++n)
+	{
+		array[n]=Create3DArray<T>( numLines );
+	}
+	return array;
+}
+
+template <typename T>
+void Delete3DArray(T*** array, const unsigned int* numLines)
+{
+	if (!array) return;
+	unsigned int pos[3];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			delete[] array[pos[0]][pos[1]];
+		}
+		delete[] array[pos[0]];
+	}
+	delete[] array;
+}
+
+template <typename T>
+void Delete_N_3DArray(T**** array, const unsigned int* numLines)
+{
+	if (!array) return;
+	for (int n=0;n<3;++n)
+	{
+		Delete3DArray<T>(array[n],numLines);
+	}
+	delete[] array;
+}
+
 
 
 void Delete1DArray_v4sf(f4vector* array);

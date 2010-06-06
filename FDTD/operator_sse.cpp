@@ -93,16 +93,16 @@ void Operator_sse::DumpOperator2File(string filename)
 		return;
 	}
 
-	FDTD_FLOAT**** exc = Create_N_3DArray(numLines);
+	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (Exc) {
 		for (unsigned int n=0;n<Exc->E_Count;++n)
 			exc[Exc->E_dir[n]][Exc->E_index[0][n]][Exc->E_index[1][n]][Exc->E_index[2][n]] = Exc->E_amp[n];
 	}
 
-	vv = Create_N_3DArray(numLines);
-	vi = Create_N_3DArray(numLines);
-	iv = Create_N_3DArray(numLines);
-	ii = Create_N_3DArray(numLines);
+	vv = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	vi = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	iv = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	ii = Create_N_3DArray<FDTD_FLOAT>(numLines);
 
 	unsigned int pos[3];
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])

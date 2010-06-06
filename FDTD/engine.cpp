@@ -50,8 +50,8 @@ void Engine::Init()
 {
 	Reset();
 	numTS = 0;
-	volt = Create_N_3DArray(numLines);
-	curr = Create_N_3DArray(numLines);
+	volt = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	curr = Create_N_3DArray<FDTD_FLOAT>(numLines);
 
 	file_et.open( "et" );
 

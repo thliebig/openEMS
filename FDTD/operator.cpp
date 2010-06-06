@@ -319,8 +319,7 @@ void Operator::DumpOperator2File(string filename)
 	}
 
 	cout << "Dumping PEC information to vtk file: " << filename << " ..." ;
-
-	FDTD_FLOAT**** exc = Create_N_3DArray(numLines);
+	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (Exc) {
 		for (unsigned int n=0;n<Exc->E_Count;++n)
 			exc[Exc->E_dir[n]][Exc->E_index[0][n]][Exc->E_index[1][n]][Exc->E_index[2][n]] = Exc->E_amp[n];
@@ -351,7 +350,7 @@ void Operator::DumpPEC2File( string filename )
 
 	cout << "Dumping PEC information to vtk file: " << filename << " ..." ;
 
-	FDTD_FLOAT**** pec = Create_N_3DArray( numLines );
+	FDTD_FLOAT**** pec = Create_N_3DArray<FDTD_FLOAT>( numLines );
 	unsigned int pos[3];
 
 	for (pos[0]=0; pos[0]<numLines[0]; pos[0]++) {
@@ -392,10 +391,10 @@ void Operator::DumpMaterial2File(string filename)
 	unsigned int pos[3];
 	double inMat[4];
 
-	epsilon = Create3DArray( numLines);
-	mue = Create3DArray( numLines);
-	kappa = Create3DArray( numLines);
-	sigma = Create3DArray( numLines);
+	epsilon = Create3DArray<FDTD_FLOAT>( numLines);
+	mue = Create3DArray<FDTD_FLOAT>( numLines);
+	kappa = Create3DArray<FDTD_FLOAT>( numLines);
+	sigma = Create3DArray<FDTD_FLOAT>( numLines);
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 	{
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
@@ -459,10 +458,10 @@ void Operator::InitOperator()
 	Delete_N_3DArray(vi,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
-	vv = Create_N_3DArray(numLines);
-	vi = Create_N_3DArray(numLines);
-	iv = Create_N_3DArray(numLines);
-	ii = Create_N_3DArray(numLines);
+	vv = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	vi = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	iv = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	ii = Create_N_3DArray<FDTD_FLOAT>(numLines);
 }
 
 void Operator::InitExcitation()

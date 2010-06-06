@@ -34,7 +34,7 @@ void ProcessFieldsTD::DumpNodeInterpol(string filename)
 	if (m_DumpType==H_FIELD_DUMP)
 	{
 		//create array
-		FDTD_FLOAT**** H_T = Create_N_3DArray(numLines);
+		FDTD_FLOAT**** H_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
 		unsigned int pos[3] = {start[0],start[1],start[2]};
 		unsigned int OpPos[3];
 		double delta;
@@ -95,7 +95,7 @@ void ProcessFieldsTD::DumpNodeInterpol(string filename)
 	if (m_DumpType==E_FIELD_DUMP)
 	{
 		//create array
-		FDTD_FLOAT**** E_T = Create_N_3DArray(numLines);
+		FDTD_FLOAT**** E_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
 		unsigned int pos[3] = {start[0],start[1],start[2]};
 		unsigned int OpPos[3];
 		unsigned int OpPosUp[3];
@@ -154,7 +154,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 	if (m_DumpType==E_FIELD_DUMP)
 	{
 		//create array
-		FDTD_FLOAT**** E_T = Create_N_3DArray(numDLines);
+		FDTD_FLOAT**** E_T = Create_N_3DArray<FDTD_FLOAT>(numDLines);
 		unsigned int pos[3] = {start[0],start[1],start[2]};
 		unsigned int OpPos[3];
 		double delta;
@@ -215,7 +215,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 	if (m_DumpType==1)
 	{
 		//create array
-		FDTD_FLOAT**** H_T = Create_N_3DArray(numDLines);
+		FDTD_FLOAT**** H_T = Create_N_3DArray<FDTD_FLOAT>(numDLines);
 		unsigned int pos[3] = {start[0],start[1],start[2]};
 		unsigned int OpPos[3];
 		unsigned int OpPosUp[3];
@@ -277,7 +277,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 	if (m_DumpType==E_FIELD_DUMP)
 	{
 		//create array
-		FDTD_FLOAT**** E_T = Create_N_3DArray(numLines);
+		FDTD_FLOAT**** E_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
@@ -322,7 +322,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 	if (m_DumpType==H_FIELD_DUMP)
 	{
 		//create array
-		FDTD_FLOAT**** H_T = Create_N_3DArray(numLines);
+		FDTD_FLOAT**** H_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
