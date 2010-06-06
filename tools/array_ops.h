@@ -24,6 +24,15 @@
 #endif
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <string>
+#include <math.h>
+#include "constants.h"
+
+using namespace std;
+
 typedef float v4sf __attribute__ ((vector_size (16))); // vector of four single floats
 
 union f4vector
@@ -31,9 +40,6 @@ union f4vector
   v4sf v;
   float f[4];
 };
-
-
-#include "FDTD/operator.h"
 
 FDTD_FLOAT** Create2DArray(const unsigned int* numLines);
 void Delete2DArray(FDTD_FLOAT** array, const unsigned int* numLines);
