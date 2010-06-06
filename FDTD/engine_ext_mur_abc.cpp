@@ -35,8 +35,8 @@ Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) : Engine_Ex
 	m_Mur_Coeff_nyP = m_Op_mur->m_Mur_Coeff_nyP;
 	m_Mur_Coeff_nyPP = m_Op_mur->m_Mur_Coeff_nyPP;
 
-	m_volt_nyP = Create2DArray(m_numLines);
-	m_volt_nyPP = Create2DArray(m_numLines);
+	m_volt_nyP = Create2DArray<FDTD_FLOAT>(m_numLines);
+	m_volt_nyPP = Create2DArray<FDTD_FLOAT>(m_numLines);
 
 	//find if some excitation is on this mur-abc and find the max length of this excite, so that the abc can start after the excitation is done...
 	int maxDelay=-1;

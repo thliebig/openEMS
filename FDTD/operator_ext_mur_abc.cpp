@@ -68,8 +68,8 @@ void Operator_Ext_Mur_ABC::SetDirection(int ny, bool top_ny)
 	m_numLines[0] = m_Op->GetNumberOfLines(m_nyP);
 	m_numLines[1] = m_Op->GetNumberOfLines(m_nyPP);
 
-	m_Mur_Coeff_nyP = Create2DArray(m_numLines);
-	m_Mur_Coeff_nyPP = Create2DArray(m_numLines);
+	m_Mur_Coeff_nyP = Create2DArray<FDTD_FLOAT>(m_numLines);
+	m_Mur_Coeff_nyPP = Create2DArray<FDTD_FLOAT>(m_numLines);
 
 }
 

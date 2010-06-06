@@ -41,15 +41,45 @@ union f4vector
   float f[4];
 };
 
-FDTD_FLOAT** Create2DArray(const unsigned int* numLines);
-void Delete2DArray(FDTD_FLOAT** array, const unsigned int* numLines);
+void Delete1DArray_v4sf(f4vector* array);
+void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines);
+void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines);
+f4vector* Create1DArray_v4sf(const unsigned int numLines);
+f4vector*** Create3DArray_v4sf(const unsigned int* numLines);
+f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines);
 
-void Dump_N_3DArray2File(ostream &file, FDTD_FLOAT**** array, const unsigned int* numLines);
-
-
-//
+// *************************************************************************************
 // templates
-//
+// *************************************************************************************
+template <typename T>
+T** Create2DArray(const unsigned int* numLines)
+{
+	T** array=NULL;
+	unsigned int pos[3];
+	array = new T*[numLines[0]];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		array[pos[0]] = new T[numLines[1]];
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			array[pos[0]][pos[1]] = 0;
+		}
+	}
+	return array;
+}
+
+template <typename T>
+void Delete2DArray(T** array, const unsigned int* numLines)
+{
+	if (array==NULL) return;
+	unsigned int pos[3];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		delete[] array[pos[0]];
+	}
+	delete[] array;
+}
+
 template <typename T>
 inline T& Access_N_3DArray(T**** array, unsigned int n, unsigned int* pos)
 {
@@ -122,14 +152,23 @@ void Delete_N_3DArray(T**** array, const unsigned int* numLines)
 	delete[] array;
 }
 
-
-
-void Delete1DArray_v4sf(f4vector* array);
-void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines);
-void Delete_N_3DArray_v4sf(f4vector**** array, const unsigned int* numLines);
-f4vector* Create1DArray_v4sf(const unsigned int numLines);
-f4vector*** Create3DArray_v4sf(const unsigned int* numLines);
-f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines);
-
+template <typename T>
+void Dump_N_3DArray2File(ostream &file, T**** array, const unsigned int* numLines)
+{
+	unsigned int pos[3];
+	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	{
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			{
+				file << pos[0] << "\t" << pos[1] << "\t" << pos[2];
+				for (int n=0;n<3;++n)
+					file << "\t" << (float)array[n][pos[0]][pos[1]][pos[2]];
+				file << endl;
+			}
+		}
+	}
+}
 
 #endif // ARRAY_OPS_H
