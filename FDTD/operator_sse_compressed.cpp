@@ -168,7 +168,7 @@ bool Operator_SSE_Compressed::CompareOperators(unsigned int pos1[3], unsigned in
 
 bool Operator_SSE_Compressed::CompressOperator()
 {
-	cout << "Compressing the FDTD operator... this my take a while..." << endl;
+	cout << "Compressing the FDTD operator... this may take a while..." << endl;
 
 	if (m_max_fifo==0)
 	{

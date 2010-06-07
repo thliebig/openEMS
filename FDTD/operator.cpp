@@ -318,7 +318,8 @@ void Operator::DumpOperator2File(string filename)
 		return;
 	}
 
-	cout << "Dumping PEC information to vtk file: " << filename << " ..." ;
+	cout << "Dumping FDTD operator information to vtk file: " << filename << " ..." << flush ;
+
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (Exc) {
 		for (unsigned int n=0;n<Exc->E_Count;++n)
@@ -348,7 +349,7 @@ void Operator::DumpPEC2File( string filename )
 		return;
 	}
 
-	cout << "Dumping PEC information to vtk file: " << filename << " ..." ;
+	cout << "Dumping PEC information to vtk file: " << filename << " ..." << flush;
 
 	FDTD_FLOAT**** pec = Create_N_3DArray<FDTD_FLOAT>( numLines );
 	unsigned int pos[3];
@@ -382,7 +383,7 @@ void Operator::DumpMaterial2File(string filename)
 		return;
 	}
 
-	cout << "Dumping material information to vtk file: " << filename << " ..." ;
+	cout << "Dumping material information to vtk file: " << filename << " ..."  << flush;
 
 	FDTD_FLOAT*** epsilon;
 	FDTD_FLOAT*** mue;

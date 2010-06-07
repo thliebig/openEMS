@@ -93,6 +93,9 @@ void Operator_sse::DumpOperator2File(string filename)
 		return;
 	}
 
+	cout << "Dumping FDTD operator information to vtk file: " << filename << " ..." << flush ;
+
+
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (Exc) {
 		for (unsigned int n=0;n<Exc->E_Count;++n)
@@ -134,5 +137,7 @@ void Operator_sse::DumpOperator2File(string filename)
 	Delete_N_3DArray(ii,numLines);ii=NULL;
 
 	file.close();
+
+	cout << " done!" << endl;
 }
 

@@ -79,7 +79,7 @@ int Operator_Multithread::CalcECOperator()
 	if (m_numThreads == 0)
 		m_numThreads = boost::thread::hardware_concurrency();
 
-	cout << "Multithreading operator using " << m_numThreads << " threads." << std::endl;
+	cout << "Multithreaded operator using " << m_numThreads << " threads." << std::endl;
 
 	m_thread_group.join_all();
 	delete m_CalcEC_Start;m_CalcEC_Start = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
