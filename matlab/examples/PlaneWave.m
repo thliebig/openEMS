@@ -70,13 +70,8 @@ CSX = AddBox(CSX,'Ht',0,start,stop);
 %% Write openEMS compatoble xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
-%% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-savePath = pwd();
-cd(Sim_Path); %cd to working dir
-
-args = [Sim_CSX ' ' openEMS_opts];
-invoke_openEMS(args);
-cd(savePath);
+%% run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+RunOpenEMS(Sim_Path, Sim_CSX, openEMS_opts);
 
 %% do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 PlotArgs.slice = {mesh.x(round(end/2)) mesh.y(round(end/2)) mesh.z(round(end/2))};

@@ -1,4 +1,13 @@
 function invoke_openEMS( opts )
+% function invoke_openEMS( opts )
+%
+% internal method to invoke openEMS, use RunOpenEMS instead
+%
+% See also RunOpenEMS
+%
+% openEMS matlab interface
+% -----------------------
+% author: Sebastian Held
 
 if nargin < 1
     error 'specify the xml file to simulate'
