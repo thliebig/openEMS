@@ -26,6 +26,7 @@ Processing::Processing(Operator* op, Engine* eng)
 	m_PS_pos = 0;
 	SetPrecision(12);
 	ProcessInterval=0;
+	m_weight=1;
 }
 
 Processing::~Processing()

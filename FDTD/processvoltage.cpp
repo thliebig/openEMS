@@ -32,6 +32,7 @@ int ProcessVoltage::Process()
 	if (CheckTimestep()==false) return GetNextInterval();
 	FDTD_FLOAT voltage=CalcLineIntegral(start,stop,0);
 //	cerr << voltage << endl;
+	voltage*=m_weight;
 	voltages.push_back(voltage);
 	file << setprecision(m_precision) << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << voltage << endl;
 	return GetNextInterval();

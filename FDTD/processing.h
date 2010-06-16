@@ -46,6 +46,9 @@ public:
 	//! If Disabled Process() will do nothing...
 	virtual bool GetEnable() const {return Enabled;}
 
+	virtual void SetWeight(double weight) {m_weight=weight;}
+	virtual double GetWeight() {return m_weight;}
+
 	//! Set the dump precision
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
@@ -56,6 +59,8 @@ protected:
 	Operator* Op;
 	Engine* Eng;
 	unsigned int m_precision;
+
+	double m_weight;
 
 	bool Enabled;
 

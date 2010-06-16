@@ -326,6 +326,7 @@ int openEMS::SetupFDTD(const char* file)
 				}
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->DefineStartStopCoord(start,stop);
+				proc->SetWeight(pb->GetWeighting());
 				PA->AddProcessing(proc);
 				prim->SetPrimitiveUsed(true);
 			}

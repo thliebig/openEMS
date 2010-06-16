@@ -90,6 +90,7 @@ int ProcessCurrent::Process()
 			current-=Eng->GetCurr(2,start[0],start[1],i);
 
 //	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
+	current*=m_weight;
 	v_current.push_back(current);
 	//current is sampled half a timestep later then the voltages
 	file  << setprecision(m_precision) << (0.5 + (double)Eng->GetNumberOfTimesteps())*Op->GetTimestep() << "\t" << current << endl;
