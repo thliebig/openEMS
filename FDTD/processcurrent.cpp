@@ -50,6 +50,9 @@ int ProcessCurrent::Process()
 	if (CheckTimestep()==false) return GetNextInterval();
 	FDTD_FLOAT current=0;
 
+	int Dump_Dim = 0;
+	int NormDir = 0;
+
 	for (int n=0;n<3;++n)
 	{
 		if (start[n]>stop[n])
@@ -63,31 +66,81 @@ int ProcessCurrent::Process()
 		}
 		if (m_stop_inside[n]==false) // integrate up to the wall, Operator::SnapToMesh would give numLines[n]-2
 			stop[n]=Op->GetNumberOfLines(n)-1;
+
+		if (stop[n]>start[n])
+			++Dump_Dim;
+		if (stop[n] == start[n])
+			NormDir = n;
 	}
-	//x-current
-	if (m_start_inside[1] && m_start_inside[2])
-		for (unsigned int i=start[0]+1;i<=stop[0];++i)
-			current+=Eng->GetCurr(0,i,start[1],start[2]);
-	//y-current
-	if (m_stop_inside[0] && m_start_inside[2])
-		for (unsigned int i=start[1]+1;i<=stop[1];++i)
-			current+=Eng->GetCurr(1,stop[0],i,start[2]);
-	//z-current
-	if (m_stop_inside[0] && m_stop_inside[1])
-		for (unsigned int i=start[2]+1;i<=stop[2];++i)
-			current+=Eng->GetCurr(2,stop[0],stop[1],i);
-	//x-current
-	if (m_stop_inside[1] && m_stop_inside[2])
-		for (unsigned int i=start[0]+1;i<=stop[0];++i)
-			current-=Eng->GetCurr(0,i,stop[1],stop[2]);
-	//y-current
-	if (m_start_inside[0] && m_stop_inside[2])
-		for (unsigned int i=start[1]+1;i<=stop[1];++i)
-			current-=Eng->GetCurr(1,start[0],i,stop[2]);
-	//z-current
-	if (m_start_inside[0] && m_start_inside[1])
-		for (unsigned int i=start[2]+1;i<=stop[2];++i)
-			current-=Eng->GetCurr(2,start[0],start[1],i);
+
+	if (Dump_Dim!=2)
+	{
+		cerr << "ProcessCurrent::Process(): Warning Current Integration Box \"" << m_filename << "\" is not a surface (found dimension: " << Dump_Dim << ") --> i = 0" << endl;
+		current = 0;
+		return -1;
+	}
+
+	switch (NormDir)
+	{
+	case 0:
+		//y-current
+		if (m_stop_inside[0] && m_start_inside[2])
+			for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				current+=Eng->GetCurr(1,stop[0],i,start[2]);
+		//z-current
+		if (m_stop_inside[0] && m_stop_inside[1])
+			for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				current+=Eng->GetCurr(2,stop[0],stop[1],i);
+		//y-current
+		if (m_start_inside[0] && m_stop_inside[2])
+			for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				current-=Eng->GetCurr(1,start[0],i,stop[2]);
+		//z-current
+		if (m_start_inside[0] && m_start_inside[1])
+			for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				current-=Eng->GetCurr(2,start[0],start[1],i);
+		break;
+	case 1:
+		//z-current
+		if (m_start_inside[0] && m_start_inside[1])
+			for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				current+=Eng->GetCurr(2,start[0],start[1],i);
+		//x-current
+		if (m_stop_inside[1] && m_stop_inside[2])
+			for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				current+=Eng->GetCurr(0,i,stop[1],stop[2]);
+		//z-current
+		if (m_stop_inside[0] && m_stop_inside[1])
+			for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				current-=Eng->GetCurr(2,stop[0],stop[1],i);
+		//x-current
+		if (m_start_inside[1] && m_start_inside[2])
+			for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				current-=Eng->GetCurr(0,i,start[1],start[2]);
+		break;
+	case 2:
+		//x-current
+		if (m_start_inside[1] && m_start_inside[2])
+			for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				current+=Eng->GetCurr(0,i,start[1],start[2]);
+		//y-current
+		if (m_stop_inside[0] && m_start_inside[2])
+			for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				current+=Eng->GetCurr(1,stop[0],i,start[2]);
+		//x-current
+		if (m_stop_inside[1] && m_stop_inside[2])
+			for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				current-=Eng->GetCurr(0,i,stop[1],stop[2]);
+		//y-current
+		if (m_start_inside[0] && m_stop_inside[2])
+			for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				current-=Eng->GetCurr(1,start[0],i,stop[2]);
+		break;
+	default:
+		//this cannot happen...
+		return -2;
+		break;
+	}
 
 //	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
 	current*=m_weight;
