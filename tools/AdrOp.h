@@ -73,8 +73,8 @@ public:
 	///Set a checked shift in ny direction (e.g. 0 for i-direction)
 	/*!Shift set by this methode will be ignored by methode GetPos*/
 	bool CheckShift(int ny, int step);
-	///Returns the current 1-dim position including shift by methode "Shift"
-	unsigned int GetShiftedPos();
+	///Returns the current 1-dim position including shift by methode "Shift" + additional (transitory) shift
+	unsigned int GetShiftedPos(int ny=-1, int step=0);
 	///Reset shift set by "Shift"-methode
 	void ResetShift();
 	///Iterates through AdrOp; --- obsolete ---

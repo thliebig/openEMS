@@ -347,9 +347,13 @@ bool AdrOp::CheckShift(int ny, int step)
 	else return false;
 }
 
-unsigned int AdrOp::GetShiftedPos()
+unsigned int AdrOp::GetShiftedPos(int ny, int step)
 {
-	return GetPos(iIshift,iJshift,iKshift);
+	if ((ny<0) || (ny>2))
+		return GetPos(iIshift,iJshift,iKshift);
+	int pos[3] = {iIshift, iJshift, iKshift};
+	pos[ny]+=step;
+	return GetPos(pos[0],pos[1],pos[2]);
 }
 
 void AdrOp::ResetShift()

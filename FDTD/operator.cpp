@@ -822,6 +822,8 @@ bool Operator::Calc_EC()
 	return true;
 }
 
+#if 0  //use the old timestep-calc (1) or the new one (0)
+////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52
 double Operator::CalcTimestep()
 {
 	dT=1e200;
@@ -861,6 +863,87 @@ double Operator::CalcTimestep()
 //	cerr << "Operator Timestep: " << dT << endl;
 	return 0;
 }
+
+#else
+
+double min(double* val, unsigned int count)
+{
+	if (count==0)
+		return 0.0;
+	double min = val[0];
+	for (unsigned int n=1;n<count;++n)
+		if (val[n]<min)
+			min = val[n];
+	return min;
+}
+
+//Berechnung nach Andreas Rennings Dissertation 2008, Seite 76 ff, Formel 4.77 ff
+double Operator::CalcTimestep()
+{
+	dT=1e200;
+	double newT;
+	unsigned int pos[3];
+	unsigned int ipos;
+	double w_total=0;
+	double wqp=0,wt1=0,wt2=0;
+	double wt_4[4]={0,0,0,0};
+	MainOp->SetReflection2Cell();
+	for (int n=0;n<3;++n)
+	{
+		int nP = (n+1)%3;
+		int nPP = (n+2)%3;
+
+		for (pos[2]=1;pos[2]<numLines[2]-1;++pos[2])
+		{
+			for (pos[1]=1;pos[1]<numLines[1]-1;++pos[1])
+			{
+				for (pos[0]=1;pos[0]<numLines[0]-1;++pos[0])
+				{
+					MainOp->ResetShift();
+					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
+					wqp  = 1/(EC_L[nPP][ipos]*EC_C[n][MainOp->GetShiftedPos(nP ,1)]) + 1/(EC_L[nPP][ipos]*EC_C[n][ipos]);
+					wqp += 1/(EC_L[nP ][ipos]*EC_C[n][MainOp->GetShiftedPos(nPP,1)]) + 1/(EC_L[nP ][ipos]*EC_C[n][ipos]);
+					ipos = MainOp->Shift(nP,-1);
+					wqp += 1/(EC_L[nPP][ipos]*EC_C[n][MainOp->GetShiftedPos(nP ,1)]) + 1/(EC_L[nPP][ipos]*EC_C[n][ipos]);
+					ipos = MainOp->Shift(nPP,-1);
+					wqp += 1/(EC_L[nP ][ipos]*EC_C[n][MainOp->GetShiftedPos(nPP,1)]) + 1/(EC_L[nP ][ipos]*EC_C[n][ipos]);
+
+					MainOp->ResetShift();
+					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
+					wt_4[0] = 1/(EC_L[nPP][ipos]						  *EC_C[nP ][ipos]);
+					wt_4[1] = 1/(EC_L[nPP][MainOp->GetShiftedPos(nP ,-1)] *EC_C[nP ][ipos]);
+					wt_4[2] = 1/(EC_L[nP ][ipos]						  *EC_C[nPP][ipos]);
+					wt_4[3] = 1/(EC_L[nP ][MainOp->GetShiftedPos(nPP,-1)] *EC_C[nPP][ipos]);
+
+					wt1 = wt_4[0]+wt_4[1]+wt_4[2]+wt_4[3] - 2*min(wt_4,4);
+
+					MainOp->ResetShift();
+					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
+					wt_4[0] = 1/(EC_L[nPP][ipos]						  *EC_C[nP ][MainOp->GetShiftedPos(n,1)]);
+					wt_4[1] = 1/(EC_L[nPP][MainOp->GetShiftedPos(nP ,-1)] *EC_C[nP ][MainOp->GetShiftedPos(n,1)]);
+					wt_4[2] = 1/(EC_L[nP ][ipos]						  *EC_C[nPP][MainOp->GetShiftedPos(n,1)]);
+					wt_4[3] = 1/(EC_L[nP ][MainOp->GetShiftedPos(nPP,-1)] *EC_C[nPP][MainOp->GetShiftedPos(n,1)]);
+
+					wt2 = wt_4[0]+wt_4[1]+wt_4[2]+wt_4[3] - 2*min(wt_4,4);
+
+					w_total = wqp + wt1 + wt2;
+					newT = 2/sqrt( w_total );
+					if ((newT<dT) && (newT>0.0))
+						dT=newT;
+				}
+			}
+		}
+	}
+	if (dT==0)
+	{
+		cerr << "Operator::CalcTimestep: Timestep is zero... this is not supposed to happen!!! exit!" << endl;
+		exit(3);
+	}
+//	cerr << "Operator Timestep: " << dT << endl;
+	return 0;
+}
+
+#endif
 
 bool Operator::CalcFieldExcitation()
 {
