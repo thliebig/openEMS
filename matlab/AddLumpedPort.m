@@ -6,7 +6,7 @@ function [CSX,port] = AddLumpedPort( CSX, portnr, R, start, stop, dir, excitenam
 % R: internal resistance of the port
 % start: 3D start rowvector for port definition
 % stop:  3D end rowvector for port definition
-% dir: direction of wave propagation (choices: [1 0 0], [0 1 0] or [0 0 1])
+% dir: direction of of port (choices: [1 0 0], [0 1 0] or [0 0 1])
 % excitename (optional): if specified, the port will be switched on (see AddExcitation())
 %
 % the mesh must be already initialized
@@ -74,21 +74,25 @@ delta2_n = mesh{idx_plane}(idx) - mesh{idx_plane}(idx-1);
 delta2_p = mesh{idx_plane}(idx+1) - mesh{idx_plane}(idx);
 m_start = nstart;
 m_stop  = nstop;
-m_start = m_start - delta2_n/2;
-m_stop  = m_stop  + delta2_p/2;
+m_start(idx_plane) = m_start(idx_plane) - delta2_n/2;
+m_stop(idx_plane)  = m_stop(idx_plane)  + delta2_p/2;
 
 % calculate kappa
 l = (m_stop(idx_cal) - m_start(idx_cal)) * drawingunit; % length of the "sheet"
 A = (m_stop(idx1) - m_start(idx1)) * (m_stop(idx_plane) - m_start(idx_plane)) * drawingunit^2; % area of the "sheet"
 kappa = l/A / R; % [kappa] = S/m
-CSX = AddMaterial( CSX, ['port' num2str(portnr) '_sheet_resistance'] );
-CSX = SetMaterialProperty( CSX, ['port' num2str(portnr) '_sheet_resistance'], 'Kappa', kappa );
+CSX = AddMaterial( CSX, ['port' num2str(portnr) '_sheet_resistance'], 'Isotropy', 0 );
+kappa_cell = {};
+kappa_cell{1} = kappa*dir(1);
+kappa_cell{2} = kappa*dir(2);
+kappa_cell{3} = kappa*dir(3);
+CSX = SetMaterialProperty( CSX, ['port' num2str(portnr) '_sheet_resistance'], 'Kappa', kappa_cell );
 CSX = AddBox( CSX, ['port' num2str(portnr) '_sheet_resistance'], 0, m_start, m_stop );
 
 % calculate position of the voltage probe
-center1 = interp1( mesh{idx1}, 1:numel(mesh{idx1}), (nstart(idx1)+nstop(idx1))/2, 'nearest' );
 v_start(idx_plane) = start(idx_plane);
-v_start(idx1) = center1;
+center1 = interp1( mesh{idx1}, 1:numel(mesh{idx1}), (nstart(idx1)+nstop(idx1))/2, 'nearest' );
+v_start(idx1) = mesh{idx1}(center1);
 v_stop = v_start;
 v_start(idx_cal) = nstart(idx_cal);
 v_stop(idx_cal)  = nstop(idx_cal);
@@ -98,9 +102,10 @@ idx = interp1( mesh{idx1}, 1:numel(mesh{idx1}), nstart(idx1), 'nearest' );
 delta1_n = mesh{idx1}(idx) - mesh{idx1}(idx-1);
 idx = interp1( mesh{idx1}, 1:numel(mesh{idx1}), nstop(idx1), 'nearest' );
 delta1_p = mesh{idx1}(idx+1) - mesh{idx1}(idx);
-idx = interp1( mesh{idx_cal}, 1:numel(mesh{idx_cal}), (nstart(idx_cal)+nstop(idx_cal))/2, 'nearest' );
-i_start(idx_cal)   = mesh{idx_cal}(idx-1);
-i_stop(idx_cal)    = mesh{idx_cal}(idx-1);
+h_offset = diff(mesh{idx_cal});
+idx = interp1( mesh{idx_cal} + [h_offset h_offset(end)]/2, 1:numel(mesh{idx_cal}), (nstart(idx_cal)+nstop(idx_cal))/2, 'nearest' );
+i_start(idx_cal)   = mesh{idx_cal}(idx) + h_offset(idx)/2;
+i_stop(idx_cal)    = i_start(idx_cal);
 i_start(idx1)      = nstart(idx1) - delta1_n/2;
 i_start(idx_plane) = nstart(idx_plane) - delta2_n/2;
 i_stop(idx1)       = nstop(idx1) + delta1_p/2;
@@ -108,31 +113,38 @@ i_stop(idx_plane)  = nstop(idx_plane) + delta2_p/2;
 
 % create the probes
 name = ['port_ut' num2str(portnr)];
-CSX = AddProbe( CSX, name, 0 );
+weight = -direction;
+CSX = AddProbe( CSX, name, 0, weight );
 CSX = AddBox( CSX, name, 999, v_start, v_stop );
 name = ['port_it' num2str(portnr)];
-CSX = AddProbe( CSX, name, 1 );
+weight = direction;
+CSX = AddProbe( CSX, name, 1, weight );
 CSX = AddBox( CSX, name, 999, i_start, i_stop );
 
 % create port structure
 port.nr = portnr;
 port.drawingunit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
-port.start = start;
-port.stop = stop;
-port.v_start = v_start;
-port.v_stop  = v_stop;
-port.i_start = i_start;
-port.i_stop  = i_stop;
-port.dir = dir;
+% port.start = start;
+% port.stop = stop;
+% port.v_start = v_start;
+% port.v_stop  = v_stop;
+% port.i_start = i_start;
+% port.i_stop  = i_stop;
+% port.dir = dir;
 port.direction = direction;
-port.idx_cal = idx_cal;
-port.idx1 = idx1;
-port.idx1 = idx1;
+% port.idx_cal = idx_cal;
+% port.idx1 = idx1;
+% port.idx1 = idx1;
 port.excite = 0;
 
 % create excitation
 if (nargin >= 7) && ~isempty(excitename)
 	% excitation of this port is enabled
 	port.excite = 1;
-	CSX = AddBox( CSX, excitename, 999, v_start, v_stop );
+    e_start = nstart;
+    e_stop  = nstop;
+    e_start(idx_plane) = start(idx_plane); % excitation-plane is determined by start vector
+    e_stop(idx_plane)  = start(idx_plane);
+    CSX = AddExcitation( CSX, excitename, 0, -dir*direction);
+	CSX = AddBox( CSX, excitename, 999, e_start, e_stop );
 end
