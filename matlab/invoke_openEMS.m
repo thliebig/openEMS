@@ -1,4 +1,4 @@
-function invoke_openEMS( opts )
+function invoke_openEMS( opts , logfile)
 % function invoke_openEMS( opts )
 %
 % internal method to invoke openEMS, use RunOpenEMS instead
@@ -30,5 +30,10 @@ else
 end
 
 command = [openEMS_Path ' ' opts];
+
+if (isunix && nargin>1)
+    command = [command ' 2>&1 | tee ' logfile];
+end
+
 disp( ['invoking openEMS simulator: ' command] );
 system(command);
