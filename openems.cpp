@@ -386,6 +386,23 @@ int openEMS::SetupFDTD(const char* file)
 	return 0;
 }
 
+string FormatTime(int sec)
+{
+	stringstream ss;
+	if (sec<60)
+	{
+		ss << setw(8) << sec << "s";
+		return ss.str();
+	}
+	if (sec<3600)
+	{
+		ss << setw(5) << sec/60 << "m" << setw(2) << setfill('0') << sec%60 << "s";
+		return ss.str();
+	}
+	ss << setw(3) << sec/3600 << "h" << setw(2) << setfill('0')  << (sec%3600)/60 << "m" << setw(2) << setfill('0')  << sec%60 << "s";
+	return ss.str();
+}
+
 void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
@@ -438,7 +455,7 @@ void openEMS::RunFDTD()
 			currE = ProcField->CalcTotalEnergy();
 			if (currE>maxE)
 				maxE=currE;
-			cout << "[@" << setw(8) << (int)CalcDiffTime(currTime,startTime)  <<  "s] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
+			cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
 			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MCells/s" ;
 			if (maxE)
 				change = currE/maxE;
