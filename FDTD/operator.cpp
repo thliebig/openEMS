@@ -822,10 +822,20 @@ bool Operator::Calc_EC()
 	return true;
 }
 
-#if 0  //use the old timestep-calc (1) or the new one (0)
-////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52
+
 double Operator::CalcTimestep()
 {
+#if 1  //use the old timestep-calc (1) or the new one (0)
+	return CalcTimestep_Var3();
+#else
+	return CalcTimestep_Var1();
+#endif
+}
+
+////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52
+double Operator::CalcTimestep_Var1()
+{
+	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 66, eq. 4.52" << endl;
 	dT=1e200;
 	double newT;
 	unsigned int pos[3];
@@ -864,8 +874,6 @@ double Operator::CalcTimestep()
 	return 0;
 }
 
-#else
-
 double min(double* val, unsigned int count)
 {
 	if (count==0)
@@ -878,9 +886,10 @@ double min(double* val, unsigned int count)
 }
 
 //Berechnung nach Andreas Rennings Dissertation 2008, Seite 76 ff, Formel 4.77 ff
-double Operator::CalcTimestep()
+double Operator::CalcTimestep_Var3()
 {
 	dT=1e200;
+	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 76, eq. 4.77 ff." << endl;
 	double newT;
 	unsigned int pos[3];
 	unsigned int ipos;
@@ -893,11 +902,11 @@ double Operator::CalcTimestep()
 		int nP = (n+1)%3;
 		int nPP = (n+2)%3;
 
-		for (pos[2]=1;pos[2]<numLines[2]-1;++pos[2])
+		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 		{
-			for (pos[1]=1;pos[1]<numLines[1]-1;++pos[1])
+			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
-				for (pos[0]=1;pos[0]<numLines[0]-1;++pos[0])
+				for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 				{
 					MainOp->ResetShift();
 					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
@@ -942,8 +951,6 @@ double Operator::CalcTimestep()
 //	cerr << "Operator Timestep: " << dT << endl;
 	return 0;
 }
-
-#endif
 
 bool Operator::CalcFieldExcitation()
 {

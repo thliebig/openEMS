@@ -61,6 +61,9 @@ protected:
 	virtual void InitOperator();
 	virtual void Reset();
 
+	//Calc timestep only internal use
+	virtual double CalcTimestep();
+
 	bool CC_closedAlpha;
 	bool CC_R0_included;
 };

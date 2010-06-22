@@ -115,6 +115,9 @@ protected:
 	virtual double CalcTimestep();
 	double dT; //FDTD timestep!
 
+	double CalcTimestep_Var1();
+	double CalcTimestep_Var3();
+
 	//! Calc operator at certain pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
 

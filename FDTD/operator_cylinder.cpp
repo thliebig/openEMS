@@ -385,3 +385,8 @@ void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)
 	else
 		cerr << "Operator_Cylinder::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylinder-coords!! skipping...!" << endl;
 }
+
+double Operator_Cylinder::CalcTimestep()
+{
+	return CalcTimestep_Var1();
+}
