@@ -318,11 +318,16 @@ int openEMS::SetupFDTD(const char* file)
 					procVolt->OpenFile(pb->GetName());
 					proc=procVolt;
 				}
-				if (pb->GetProbeType()==1)
+				else if (pb->GetProbeType()==1)
 				{
 					ProcessCurrent* procCurr = new ProcessCurrent(FDTD_Op,FDTD_Eng);
 					procCurr->OpenFile(pb->GetName());
 					proc=procCurr;
+				}
+				else
+				{
+					cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
+					continue;
 				}
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->DefineStartStopCoord(start,stop);
@@ -391,12 +396,12 @@ string FormatTime(int sec)
 	stringstream ss;
 	if (sec<60)
 	{
-		ss << setw(8) << sec << "s";
+		ss << setw(9) << sec << "s";
 		return ss.str();
 	}
 	if (sec<3600)
 	{
-		ss << setw(5) << sec/60 << "m" << setw(2) << setfill('0') << sec%60 << "s";
+		ss << setw(6) << sec/60 << "m" << setw(2) << setfill('0') << sec%60 << "s";
 		return ss.str();
 	}
 	ss << setw(3) << sec/3600 << "h" << setw(2) << setfill('0')  << (sec%3600)/60 << "m" << setw(2) << setfill('0')  << sec%60 << "s";
