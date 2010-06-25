@@ -34,6 +34,7 @@
 using namespace std;
 
 typedef float v4sf __attribute__ ((vector_size (16))); // vector of four single floats
+typedef   int v4si __attribute__ ((vector_size (4*sizeof(int)))); // vector of four single ints
 
 union f4vector
 {

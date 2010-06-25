@@ -149,19 +149,40 @@ void Operator_SSE_Compressed::ShowStat() const
 	cout << "-----------------------------------" << endl;
 }
 
+// see http://www.informit.com/articles/article.aspx?p=710752&seqNum=6
+#define INLINE inline extern __attribute__((always_inline))
+INLINE int equal(f4vector v1, f4vector v2)
+{
+#if defined(__SSE__)
+  v4sf compare = __builtin_ia32_cmpeqps( v1.v, v2.v ); // hmm should return v4si...
+  return __builtin_ia32_movmskps( compare ) == 0x0f;
+#else
+  return (
+	  v1.f[0] == v2.f[0] &&
+	  v1.f[1] == v2.f[1] &&
+	  v1.f[2] == v2.f[2] &&
+	  v1.f[3] == v2.f[3]
+	  );
+#endif
+}
 
 bool Operator_SSE_Compressed::CompareOperators(unsigned int pos1[3], unsigned int pos2[3])
 {
 //	cerr << pos1[0] << " " << pos1[1] << " " << pos1[2] << endl;
 	for (int n=0;n<3;++n)
 	{
-		for (int m=0;m<4;++m)
-		{
-			if (f4_vv[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_vv[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
-			if (f4_vi[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_vi[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
-			if (f4_iv[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_iv[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
-			if (f4_ii[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_ii[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
-		}
+		if (!equal( f4_vv[n][pos1[0]][pos1[1]][pos1[2]], f4_vv[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
+		if (!equal( f4_vi[n][pos1[0]][pos1[1]][pos1[2]], f4_vi[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
+		if (!equal( f4_iv[n][pos1[0]][pos1[1]][pos1[2]], f4_iv[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
+		if (!equal( f4_ii[n][pos1[0]][pos1[1]][pos1[2]], f4_ii[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
+
+//		for (int m=0;m<4;++m)
+//		{
+//			if (f4_vv[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_vv[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
+//			if (f4_vi[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_vi[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
+//			if (f4_iv[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_iv[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
+//			if (f4_ii[n][pos1[0]][pos1[1]][pos1[2]].f[m] != f4_ii[n][pos2[0]][pos2[1]][pos2[2]].f[m])	return false;
+//		}
 	}
 	return true;
 }
@@ -201,8 +222,8 @@ bool Operator_SSE_Compressed::CompressOperator()
 					if (found)
 					{
 						m_Op_index[pos[0]][pos[1]][pos[2]] = *it;
-						fifo.erase(it);
 						fifo.push_front(*it);	//push already existing value to the front
+						fifo.erase(it);
 						it = fifo.end();
 						++it;
 						break;
@@ -242,13 +263,10 @@ bool Operator_SSE_Compressed::CompressOperator()
 
 		for (unsigned int m=0;m<m_Op_Count;++m)
 		{
-			for (unsigned int v=0;v<4;++v)
-			{
-				f4_vv_Compressed[n][m].f[v] = f4_vv[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].f[v];
-				f4_vi_Compressed[n][m].f[v] = f4_vi[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].f[v];
-				f4_ii_Compressed[n][m].f[v] = f4_ii[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].f[v];
-				f4_iv_Compressed[n][m].f[v] = f4_iv[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].f[v];
-			}
+			f4_vv_Compressed[n][m].v = f4_vv[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].v;
+			f4_vi_Compressed[n][m].v = f4_vi[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].v;
+			f4_ii_Compressed[n][m].v = f4_ii[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].v;
+			f4_iv_Compressed[n][m].v = f4_iv[n][index_list[0].at(m)][index_list[1].at(m)][index_list[2].at(m)].v;
 		}
 	}
 
