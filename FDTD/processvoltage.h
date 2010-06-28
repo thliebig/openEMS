@@ -27,7 +27,7 @@ public:
 	ProcessVoltage(Operator* op, Engine* eng);
 	virtual ~ProcessVoltage();
 
-	virtual void Init();
+	virtual void InitProcess();
 	virtual void FlushData();
 
 	virtual int Process();

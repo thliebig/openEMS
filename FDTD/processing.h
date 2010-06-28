@@ -31,7 +31,9 @@ public:
 	Processing(Operator* op, Engine* eng);
 	virtual ~Processing();
 
-	virtual void Init() {};
+	virtual void SetName(string val) {m_Name=val;}
+
+	virtual void InitProcess() {};
 	virtual void Reset();
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
@@ -62,14 +64,14 @@ public:
 	//! Set the dump precision
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
-	virtual void OpenFile( string outfile );
-
 	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
 
 protected:
 	Operator* Op;
 	Engine* Eng;
 	unsigned int m_precision;
+
+	string m_Name;
 
 	bool m_Flush;
 
@@ -102,6 +104,8 @@ protected:
 
 	ofstream file;
 	string m_filename;
+
+	virtual void OpenFile(string outfile);
 
 	double CalcLineIntegral(unsigned int* start, unsigned int* stop, int field) const;
 	double CalcLineIntegral_I(unsigned int* start, unsigned int* stop) const;

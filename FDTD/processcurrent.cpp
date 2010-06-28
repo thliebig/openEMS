@@ -46,8 +46,10 @@ void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 	}
 }
 
-void ProcessCurrent::Init()
+void ProcessCurrent::InitProcess()
 {
+	m_filename = m_Name;
+	OpenFile(m_filename);
 	FD_currents.clear();
 	for (size_t n=0;n<m_FD_Samples.size();++n)
 		FD_currents.push_back(0);

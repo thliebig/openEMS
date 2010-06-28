@@ -28,7 +28,7 @@ public:
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
-	virtual void Init();
+	virtual void InitProcess();
 	virtual void FlushData();
 	virtual int Process();
 

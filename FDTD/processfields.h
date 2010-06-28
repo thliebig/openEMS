@@ -43,7 +43,7 @@ public:
 	void SetFilePattern(string fp) {m_filename=filePattern=fp;}
 
 	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType
-	void SetFileName(string fn) {m_filename=m_fileName=fn;}
+	void SetFileName(string fn) {m_filename=fn;}
 
 	//! Define the Dump-Mode
 	void SetDumpMode(DumpMode mode) {m_DumpMode=mode;}
@@ -87,7 +87,6 @@ protected:
 	DumpType m_DumpType;
 	MeshType m_Mesh_Type;
 	string filePattern;
-	string m_fileName;
 	FileType m_fileType;
 
 	//! field dump sub-sampling

@@ -387,11 +387,11 @@ int ProcessFieldsTD::Process()
 	else if (m_fileType==HDF5_FILETYPE)
 	{
 		if (m_DumpMode==NO_INTERPOLATION)
-			DumpNoInterpol(m_fileName);
+			DumpNoInterpol(m_filename);
 		if (m_DumpMode==NODE_INTERPOLATE)
-			DumpNodeInterpol(m_fileName);
+			DumpNodeInterpol(m_filename);
 		if (m_DumpMode==CELL_INTERPOLATE)
-			DumpCellInterpol(m_fileName);
+			DumpCellInterpol(m_filename);
 	}
 	return GetNextInterval();
 }

@@ -28,8 +28,10 @@ ProcessVoltage::~ProcessVoltage()
 	ProcessVoltage::FlushData();
 }
 
-void ProcessVoltage::Init()
+void ProcessVoltage::InitProcess()
 {
+	m_filename = m_Name;
+	OpenFile(m_filename);
 	FD_voltages.clear();
 	for (size_t n=0;n<m_FD_Samples.size();++n)
 		FD_voltages.push_back(0);

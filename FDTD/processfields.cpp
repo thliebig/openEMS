@@ -77,8 +77,8 @@ void ProcessFields::InitProcess()
 		else
 			return;
 
-		m_fileName+= ".h5";
-		H5::H5File* file = new H5::H5File( m_fileName , H5F_ACC_TRUNC );
+		m_filename+= ".h5";
+		H5::H5File* file = new H5::H5File( m_filename , H5F_ACC_TRUNC );
 
 		H5::Group* group = new H5::Group( file->createGroup( "/Mesh" ));
 		for (int n=0;n<3;++n)

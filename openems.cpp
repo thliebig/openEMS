@@ -315,13 +315,11 @@ int openEMS::SetupFDTD(const char* file)
 				if (pb->GetProbeType()==0)
 				{
 					ProcessVoltage* procVolt = new ProcessVoltage(FDTD_Op,FDTD_Eng);
-					procVolt->OpenFile(pb->GetName());
 					proc=procVolt;
 				}
 				else if (pb->GetProbeType()==1)
 				{
 					ProcessCurrent* procCurr = new ProcessCurrent(FDTD_Op,FDTD_Eng);
-					procCurr->OpenFile(pb->GetName());
 					proc=procCurr;
 				}
 				else
@@ -333,7 +331,8 @@ int openEMS::SetupFDTD(const char* file)
 				proc->AddFrequency(pb->GetFDSamples());
 				proc->DefineStartStopCoord(start,stop);
 				proc->SetWeight(pb->GetWeighting());
-				proc->Init();
+				proc->SetName(pb->GetName());
+				proc->InitProcess();
 				PA->AddProcessing(proc);
 				prim->SetPrimitiveUsed(true);
 			}
