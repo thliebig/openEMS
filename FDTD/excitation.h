@@ -34,7 +34,6 @@ public:
 
 	//! Get the excitation timestep with the (first) max amplitude
 	virtual unsigned int GetMaxExcitationTimestep() const;
-	unsigned int CalcNyquistNum(double fmax) const;
 
 	void setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,
 								 vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir );

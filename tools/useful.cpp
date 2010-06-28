@@ -15,29 +15,17 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSCURRENT_H
-#define PROCESSCURRENT_H
+#include "useful.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <climits>
 
-#include "processing.h"
-
-class ProcessCurrent : public Processing
+unsigned int CalcNyquistNum(double fmax, double dT)
 {
-public:
-	ProcessCurrent(Operator* op, Engine* eng);
-	virtual ~ProcessCurrent();
+	if (fmax==0) return UINT_MAX;
+	if (dT==0) return 1;
+	double T0 = 1/fmax;
+	return floor(T0/2/dT);
+}
 
-	virtual void DefineStartStopCoord(double* dstart, double* dstop);
-
-	virtual void Init();
-	virtual void FlushData();
-	virtual int Process();
-
-	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
-protected:
-	vector<FDTD_FLOAT> v_current;
-
-	vector<_Complex double> FD_currents;
-	void WriteFDCurrents();
-};
-
-#endif // PROCESSCURRENT_H

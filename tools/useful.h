@@ -15,29 +15,10 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSCURRENT_H
-#define PROCESSCURRENT_H
+#ifndef USEFUL_H
+#define USEFUL_H
 
-#include "processing.h"
+//! Calc the nyquist number of timesteps for a given frequency and timestep
+unsigned int CalcNyquistNum(double fmax, double dT);
 
-class ProcessCurrent : public Processing
-{
-public:
-	ProcessCurrent(Operator* op, Engine* eng);
-	virtual ~ProcessCurrent();
-
-	virtual void DefineStartStopCoord(double* dstart, double* dstop);
-
-	virtual void Init();
-	virtual void FlushData();
-	virtual int Process();
-
-	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
-protected:
-	vector<FDTD_FLOAT> v_current;
-
-	vector<_Complex double> FD_currents;
-	void WriteFDCurrents();
-};
-
-#endif // PROCESSCURRENT_H
+#endif // USEFUL_H

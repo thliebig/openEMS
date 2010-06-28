@@ -20,6 +20,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <complex>
+#include <cmath>
 #include "operator.h"
 #include "engine.h"
 
@@ -29,6 +31,7 @@ public:
 	Processing(Operator* op, Engine* eng);
 	virtual ~Processing();
 
+	virtual void Init() {};
 	virtual void Reset();
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
@@ -37,6 +40,9 @@ public:
 
 	void AddStep(unsigned int step);
 	void AddSteps(vector<unsigned int> steps);
+
+	void AddFrequency(double freq);
+	void AddFrequency(vector<double>  freqs);
 
 	bool CheckTimestep();
 	virtual int Process() {return GetNextInterval();}
@@ -49,16 +55,23 @@ public:
 	virtual void SetWeight(double weight) {m_weight=weight;}
 	virtual double GetWeight() {return m_weight;}
 
+	//! Invoke this flag to flush all stored data to disk
+	virtual void FlushNext() {m_Flush = true;}
+	virtual void FlushData() {};
+
 	//! Set the dump precision
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
 	virtual void OpenFile( string outfile );
 
 	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
+
 protected:
 	Operator* Op;
 	Engine* Eng;
 	unsigned int m_precision;
+
+	bool m_Flush;
 
 	double m_weight;
 
@@ -69,6 +82,15 @@ protected:
 
 	size_t m_PS_pos; //! current position in list of processing steps
 	vector<unsigned int> m_ProcessSteps; //! list of processing steps
+
+	//! Vector of frequency samples
+	vector<double> m_FD_Samples;
+	//! Number of samples already processed
+	unsigned int m_FD_SampleCount;
+	//! Sampling interval needed for the FD_Samples
+	unsigned int m_FD_Interval;
+
+	void Dump_FD_Data(vector<_Complex double> value, double factor, string filename);
 
 	//! define/store snapped start/stop coords as mesh index
 	unsigned int start[3];
@@ -93,6 +115,9 @@ public:
 	~ProcessingArray() {};
 
 	void AddProcessing(Processing* proc);
+
+	//! Invoke this flag to flush all stored data to disk for all processings on next Process()
+	void FlushNext();
 
 	void Reset();
 

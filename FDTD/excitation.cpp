@@ -16,6 +16,7 @@
 */
 
 #include "tools/array_ops.h"
+#include "tools/useful.h"
 #include "fparser.hh"
 #include "tinyxml.h"
 #include "excitation.h"
@@ -100,13 +101,6 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 	return true;
 }
 
-unsigned int Excitation::CalcNyquistNum(double fmax) const
-{
-	if (dT==0) return 1;
-	double T0 = 1/fmax;
-	return floor(T0/2/dT);
-}
-
 unsigned int Excitation::GetMaxExcitationTimestep() const
 {
 	FDTD_FLOAT maxAmp=0;
@@ -147,7 +141,7 @@ void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 		Signal_curr[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
 	}
 
-	SetNyquistNum( CalcNyquistNum(f0+fc) );
+	SetNyquistNum( CalcNyquistNum(f0+fc,dT) );
 }
 
 void Excitation::CalcDiracPulsExcitation()
@@ -216,7 +210,7 @@ void Excitation::CalcCustomExcitation(double f0, int nTS, string signal)
 		Signal_curr[n] = fParse.Eval(vars);
 	}
 
-	SetNyquistNum( CalcNyquistNum(f0) );
+	SetNyquistNum( CalcNyquistNum(f0,dT) );
 }
 
 void Excitation::CalcSinusExcitation(double f0, int nTS)
@@ -240,7 +234,7 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 		Signal_curr[n] = sin(2.0*PI*f0*t);
 	}
 
-	SetNyquistNum( CalcNyquistNum(f0) );
+	SetNyquistNum( CalcNyquistNum(f0,dT) );
 }
 
 void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,

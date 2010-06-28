@@ -16,6 +16,7 @@
 */
 
 #include "processvoltage.h"
+#include <complex.h>
 #include <iomanip>
 
 ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : Processing(op, eng)
@@ -24,16 +25,53 @@ ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : Processing(op, eng)
 
 ProcessVoltage::~ProcessVoltage()
 {
+	ProcessVoltage::FlushData();
+}
+
+void ProcessVoltage::Init()
+{
+	FD_voltages.clear();
+	for (size_t n=0;n<m_FD_Samples.size();++n)
+		FD_voltages.push_back(0);
 }
 
 int ProcessVoltage::Process()
 {
 	if (Enabled==false) return -1;
 	if (CheckTimestep()==false) return GetNextInterval();
+
 	FDTD_FLOAT voltage=CalcLineIntegral(start,stop,0);
-//	cerr << voltage << endl;
 	voltage*=m_weight;
-	voltages.push_back(voltage);
-	file << setprecision(m_precision) << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << voltage << endl;
+
+	if (ProcessInterval)
+	{
+		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
+		{
+			voltages.push_back(voltage);
+			file << setprecision(m_precision) << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << voltage << endl;
+		}
+	}
+
+	if (m_FD_Interval)
+	{
+		if (Eng->GetNumberOfTimesteps()%m_FD_Interval==0)
+		{
+			double T = (double)Eng->GetNumberOfTimesteps() * Op->GetTimestep();
+			for (size_t n=0;n<m_FD_Samples.size();++n)
+			{
+				FD_voltages.at(n) += voltage * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+			}
+			++m_FD_SampleCount;
+			if (m_Flush)
+					FlushData();
+			m_Flush = false;
+		}
+	}
+
 	return GetNextInterval();
+}
+
+void ProcessVoltage::FlushData()
+{
+	Dump_FD_Data(FD_voltages,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
 }

@@ -56,7 +56,8 @@ SOURCES += main.cpp \
     FDTD/operator_sse_compressed.cpp \
     FDTD/engine_sse_compressed.cpp \
     FDTD/operator_multithread.cpp \
-    tools/global.cpp
+    tools/global.cpp \
+    tools/useful.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -83,7 +84,8 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_sse_compressed.h \
     FDTD/engine_sse_compressed.h \
     FDTD/operator_multithread.h \
-    tools/global.h
+    tools/global.h \
+    tools/useful.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native

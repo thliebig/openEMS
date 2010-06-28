@@ -27,10 +27,16 @@ public:
 	ProcessVoltage(Operator* op, Engine* eng);
 	virtual ~ProcessVoltage();
 
+	virtual void Init();
+	virtual void FlushData();
+
 	virtual int Process();
 
 protected:
 	vector<FDTD_FLOAT> voltages;
+
+	vector<_Complex double> FD_voltages;
+	void WriteFDVoltages();
 };
 
 #endif // PROCESSVOLTAGE_H

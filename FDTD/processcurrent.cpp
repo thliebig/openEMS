@@ -18,6 +18,7 @@
 #include "tools/global.h"
 #include "processcurrent.h"
 #include <iomanip>
+#include <complex.h>
 
 ProcessCurrent::ProcessCurrent(Operator* op, Engine* eng) : Processing(op, eng)
 {
@@ -25,6 +26,7 @@ ProcessCurrent::ProcessCurrent(Operator* op, Engine* eng) : Processing(op, eng)
 
 ProcessCurrent::~ProcessCurrent()
 {
+	ProcessCurrent::FlushData();
 }
 
 void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
@@ -43,6 +45,14 @@ void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 	}
 }
+
+void ProcessCurrent::Init()
+{
+	FD_currents.clear();
+	for (size_t n=0;n<m_FD_Samples.size();++n)
+		FD_currents.push_back(0);
+}
+
 
 int ProcessCurrent::Process()
 {
@@ -142,15 +152,44 @@ int ProcessCurrent::Process()
 		break;
 	}
 
-//	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
+	//	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
 	current*=m_weight;
-	v_current.push_back(current);
-	//current is sampled half a timestep later then the voltages
-	file  << setprecision(m_precision) << (0.5 + (double)Eng->GetNumberOfTimesteps())*Op->GetTimestep() << "\t" << current << endl;
+
+	if (ProcessInterval)
+	{
+		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
+		{
+			v_current.push_back(current);
+			//current is sampled half a timestep later then the voltages
+			file  << setprecision(m_precision) << (0.5 + (double)Eng->GetNumberOfTimesteps())*Op->GetTimestep() << "\t" << current << endl;
+		}
+	}
+
+	if (m_FD_Interval)
+	{
+		if (Eng->GetNumberOfTimesteps()%m_FD_Interval==0)
+		{
+			double T = ((double)Eng->GetNumberOfTimesteps() + 0.5) * Op->GetTimestep();
+			for (size_t n=0;n<m_FD_Samples.size();++n)
+			{
+				FD_currents.at(n) += current * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+			}
+			++m_FD_SampleCount;
+			if (m_Flush)
+					FlushData();
+			m_Flush = false;
+		}
+	}
+
 	return GetNextInterval();
 }
 
 void ProcessCurrent::DumpBox2File( string vtkfilenameprefix, bool /*dualMesh*/ ) const
 {
 	Processing::DumpBox2File( vtkfilenameprefix, true );
+}
+
+void ProcessCurrent::FlushData()
+{
+	Dump_FD_Data(FD_currents,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
 }

@@ -16,7 +16,10 @@
 */
 
 #include "tools/global.h"
+#include "tools/useful.h"
 #include "processing.h"
+#include <complex.h>
+#include <climits>
 
 Processing::Processing(Operator* op, Engine* eng)
 {
@@ -26,7 +29,10 @@ Processing::Processing(Operator* op, Engine* eng)
 	m_PS_pos = 0;
 	SetPrecision(12);
 	ProcessInterval=0;
+	m_FD_SampleCount=0;
+	m_FD_Interval=0;
 	m_weight=1;
+	m_Flush = false;
 }
 
 Processing::~Processing()
@@ -53,21 +59,36 @@ bool Processing::CheckTimestep()
 	{
 		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0) return true;
 	}
+
+	if (m_FD_Interval)
+	{
+		if (Eng->GetNumberOfTimesteps()%m_FD_Interval==0) return true;
+	}
 	return false;
 }
 
 int Processing::GetNextInterval() const
 {
 	if (Enabled==false) return -1;
-	unsigned int next=-1;
+	int next=INT_MAX;
 	if (m_ProcessSteps.size()>m_PS_pos)
 	{
-		next = m_ProcessSteps.at(m_PS_pos)-Eng->GetNumberOfTimesteps();
+		next = (int)m_ProcessSteps.at(m_PS_pos)-(int)Eng->GetNumberOfTimesteps();
 	}
-	if (ProcessInterval==0) return next;
-	unsigned int next_Interval = ProcessInterval - Eng->GetNumberOfTimesteps()%ProcessInterval;
-	if (next_Interval<next)
-		next = next_Interval;
+	if (ProcessInterval!=0)
+	{
+		int next_Interval = (int)ProcessInterval - (int)Eng->GetNumberOfTimesteps()%ProcessInterval;
+		if (next_Interval<next)
+			next = next_Interval;
+	}
+
+	//check for FD sample interval
+	if (m_FD_Interval!=0)
+	{
+		int next_Interval = (int)m_FD_Interval - (int)Eng->GetNumberOfTimesteps()%m_FD_Interval;
+		if (next_Interval<next)
+			next = next_Interval;
+	}
 	return next;
 }
 
@@ -84,6 +105,36 @@ void Processing::AddSteps(vector<unsigned int> steps)
 	for (size_t n=0;n<steps.size();++n)
 	{
 		AddStep(steps.at(n));
+	}
+}
+
+void Processing::AddFrequency(double freq)
+{
+	unsigned int nyquistTS = CalcNyquistNum(freq,Op->GetTimestep());
+
+	if (nyquistTS == 0)
+	{
+		cerr << "Processing::AddFrequency: Requested frequency " << freq << " is too high for the current timestep used... skipping..." << endl;
+		return;
+	}
+	else if (nyquistTS<Op->Exc->GetNyquistNum())
+	{
+		cerr << "Processing::AddFrequency: Warning: Requested frequency " << freq << " is higher than maximum excited frequency..." << endl;
+	}
+
+	if (m_FD_Interval==0)
+		m_FD_Interval = Op->Exc->GetNyquistNum();
+	if (m_FD_Interval>nyquistTS)
+		m_FD_Interval = nyquistTS;
+
+	m_FD_Samples.push_back(freq);
+}
+
+void Processing::AddFrequency(vector<double>  freqs)
+{
+	for (size_t n=0;n<freqs.size();++n)
+	{
+		AddFrequency(freqs.at(n));
 	}
 }
 
@@ -222,9 +273,31 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 	file.close();
 }
 
+void Processing::Dump_FD_Data(vector<_Complex double> value, double factor, string filename)
+{
+	ofstream file;
+	file.open( filename.c_str() );
+	if (!file.is_open())
+		cerr << "Can't open file: " << filename << endl;
+
+	for (size_t n=0;n<value.size();++n)
+	{
+		file << m_FD_Samples.at(n) << "\t" << 2.0 * creal(value.at(n))*factor << "\t" << 2.0 * cimag(value.at(n))*factor << "\n";
+	}
+	file.close();
+}
+
 void ProcessingArray::AddProcessing(Processing* proc)
 {
 	ProcessArray.push_back(proc);
+}
+
+void ProcessingArray::FlushNext()
+{
+	for (size_t i=0;i<ProcessArray.size();++i)
+	{
+		ProcessArray.at(i)->FlushNext();
+	}
 }
 
 void ProcessingArray::Reset()

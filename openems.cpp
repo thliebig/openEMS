@@ -330,8 +330,10 @@ int openEMS::SetupFDTD(const char* file)
 					continue;
 				}
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
+				proc->AddFrequency(pb->GetFDSamples());
 				proc->DefineStartStopCoord(start,stop);
 				proc->SetWeight(pb->GetWeighting());
+				proc->Init();
 				PA->AddProcessing(proc);
 				prim->SetPrimitiveUsed(true);
 			}
@@ -467,6 +469,8 @@ void openEMS::RunFDTD()
 			cout << " --- Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (decrement: " << setw(6)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
 			prevTime=currTime;
 			prevTS=currTS;
+
+			PA->FlushNext();
 		}
 	}
 
