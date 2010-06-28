@@ -15,21 +15,26 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSVOLTAGE_H
-#define PROCESSVOLTAGE_H
+#ifndef PROCESSINTEGRAL_H
+#define PROCESSINTEGRAL_H
 
-#include "processintegral.h"
+#include "processing.h"
 
-//! Process voltage along a line from start to stop coordinates. ATM integration along the axis e.g.: in x, then y then z direction (Future: diagonal integration)
-class ProcessVoltage : public ProcessIntegral
+//! Abstract base class for integral parameter processing
+class ProcessIntegral : public Processing
 {
 public:
-	ProcessVoltage(Operator* op, Engine* eng);
-	virtual ~ProcessVoltage();
+	virtual ~ProcessIntegral();
 
-	virtual int Process();
+	virtual void InitProcess();
+	virtual void FlushData();
 
 protected:
+	ProcessIntegral(Operator* op, Engine* eng);
+
+	vector<FDTD_FLOAT> TD_Values;
+
+	vector<_Complex double> FD_Values;
 };
 
-#endif // PROCESSVOLTAGE_H
+#endif // PROCESSINTEGRAL_H

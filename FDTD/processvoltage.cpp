@@ -19,22 +19,12 @@
 #include <complex.h>
 #include <iomanip>
 
-ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : Processing(op, eng)
+ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : ProcessIntegral(op, eng)
 {
 }
 
 ProcessVoltage::~ProcessVoltage()
 {
-	ProcessVoltage::FlushData();
-}
-
-void ProcessVoltage::InitProcess()
-{
-	m_filename = m_Name;
-	OpenFile(m_filename);
-	FD_voltages.clear();
-	for (size_t n=0;n<m_FD_Samples.size();++n)
-		FD_voltages.push_back(0);
 }
 
 int ProcessVoltage::Process()
@@ -49,7 +39,7 @@ int ProcessVoltage::Process()
 	{
 		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
 		{
-			voltages.push_back(voltage);
+			TD_Values.push_back(voltage);
 			file << setprecision(m_precision) << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() << "\t" << voltage << endl;
 		}
 	}
@@ -61,7 +51,7 @@ int ProcessVoltage::Process()
 			double T = (double)Eng->GetNumberOfTimesteps() * Op->GetTimestep();
 			for (size_t n=0;n<m_FD_Samples.size();++n)
 			{
-				FD_voltages.at(n) += voltage * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+				FD_Values.at(n) += voltage * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
 			}
 			++m_FD_SampleCount;
 			if (m_Flush)
@@ -71,9 +61,4 @@ int ProcessVoltage::Process()
 	}
 
 	return GetNextInterval();
-}
-
-void ProcessVoltage::FlushData()
-{
-	Dump_FD_Data(FD_voltages,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
 }

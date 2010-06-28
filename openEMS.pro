@@ -38,6 +38,7 @@ SOURCES += main.cpp \
     tools/array_ops.cpp \
     FDTD/processvoltage.cpp \
     FDTD/processing.cpp \
+    FDTD/processintegral.cpp \
     FDTD/processfields.cpp \
     FDTD/processfields_td.cpp \
     FDTD/processcurrent.cpp \
@@ -66,6 +67,7 @@ HEADERS += tools/ErrorMsg.h \
     tools/array_ops.h \
     FDTD/processvoltage.h \
     FDTD/processing.h \
+    FDTD/processintegral.h \
     FDTD/processfields.h \
     FDTD/processfields_td.h \
     FDTD/processcurrent.h \

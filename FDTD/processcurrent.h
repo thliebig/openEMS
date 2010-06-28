@@ -18,9 +18,9 @@
 #ifndef PROCESSCURRENT_H
 #define PROCESSCURRENT_H
 
-#include "processing.h"
+#include "processintegral.h"
 
-class ProcessCurrent : public Processing
+class ProcessCurrent : public ProcessIntegral
 {
 public:
 	ProcessCurrent(Operator* op, Engine* eng);
@@ -28,16 +28,11 @@ public:
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
-	virtual void InitProcess();
-	virtual void FlushData();
 	virtual int Process();
 
 	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
-protected:
-	vector<FDTD_FLOAT> v_current;
 
-	vector<_Complex double> FD_currents;
-	void WriteFDCurrents();
+protected:
 };
 
 #endif // PROCESSCURRENT_H

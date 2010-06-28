@@ -275,11 +275,21 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 
 void Processing::Dump_FD_Data(vector<_Complex double> value, double factor, string filename)
 {
+	if (value.size()==0) 
+		return;
+	if (value.size()!=m_FD_Samples.size()) 
+	{
+		cerr << "Processing::Dump_FD_Data: Error: Complex value and frequency vector have different size! This should never happend!!!" << endl;
+		return;
+	}
 	ofstream file;
 	file.open( filename.c_str() );
 	if (!file.is_open())
 		cerr << "Can't open file: " << filename << endl;
 
+	time_t rawTime;
+	time(&rawTime);
+	file << "%dump by openEMS @" << ctime(&rawTime) << "%frequency\treal\timag\n";
 	for (size_t n=0;n<value.size();++n)
 	{
 		file << m_FD_Samples.at(n) << "\t" << 2.0 * creal(value.at(n))*factor << "\t" << 2.0 * cimag(value.at(n))*factor << "\n";

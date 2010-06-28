@@ -15,21 +15,30 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSVOLTAGE_H
-#define PROCESSVOLTAGE_H
-
 #include "processintegral.h"
 
-//! Process voltage along a line from start to stop coordinates. ATM integration along the axis e.g.: in x, then y then z direction (Future: diagonal integration)
-class ProcessVoltage : public ProcessIntegral
+ProcessIntegral::ProcessIntegral(Operator* op, Engine* eng)  : Processing(op, eng)
 {
-public:
-	ProcessVoltage(Operator* op, Engine* eng);
-	virtual ~ProcessVoltage();
+}
 
-	virtual int Process();
+ProcessIntegral::~ProcessIntegral()
+{
+	ProcessIntegral::FlushData();
+}
 
-protected:
-};
 
-#endif // PROCESSVOLTAGE_H
+void ProcessIntegral::InitProcess()
+{
+	m_filename = m_Name;
+	OpenFile(m_filename);
+	FD_Values.clear();
+	for (size_t n=0;n<m_FD_Samples.size();++n)
+		FD_Values.push_back(0);
+}
+
+void ProcessIntegral::FlushData()
+{
+	if (m_FD_Samples.size())
+		Dump_FD_Data(FD_Values,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
+}
+

@@ -20,13 +20,12 @@
 #include <iomanip>
 #include <complex.h>
 
-ProcessCurrent::ProcessCurrent(Operator* op, Engine* eng) : Processing(op, eng)
+ProcessCurrent::ProcessCurrent(Operator* op, Engine* eng) : ProcessIntegral(op, eng)
 {
 }
 
 ProcessCurrent::~ProcessCurrent()
 {
-	ProcessCurrent::FlushData();
 }
 
 void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
@@ -45,16 +44,6 @@ void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 	}
 }
-
-void ProcessCurrent::InitProcess()
-{
-	m_filename = m_Name;
-	OpenFile(m_filename);
-	FD_currents.clear();
-	for (size_t n=0;n<m_FD_Samples.size();++n)
-		FD_currents.push_back(0);
-}
-
 
 int ProcessCurrent::Process()
 {
@@ -157,11 +146,12 @@ int ProcessCurrent::Process()
 	//	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
 	current*=m_weight;
 
+
 	if (ProcessInterval)
 	{
 		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
 		{
-			v_current.push_back(current);
+			TD_Values.push_back(current);
 			//current is sampled half a timestep later then the voltages
 			file  << setprecision(m_precision) << (0.5 + (double)Eng->GetNumberOfTimesteps())*Op->GetTimestep() << "\t" << current << endl;
 		}
@@ -174,7 +164,7 @@ int ProcessCurrent::Process()
 			double T = ((double)Eng->GetNumberOfTimesteps() + 0.5) * Op->GetTimestep();
 			for (size_t n=0;n<m_FD_Samples.size();++n)
 			{
-				FD_currents.at(n) += current * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+				FD_Values.at(n) += current * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
 			}
 			++m_FD_SampleCount;
 			if (m_Flush)
@@ -191,7 +181,3 @@ void ProcessCurrent::DumpBox2File( string vtkfilenameprefix, bool /*dualMesh*/ )
 	Processing::DumpBox2File( vtkfilenameprefix, true );
 }
 
-void ProcessCurrent::FlushData()
-{
-	Dump_FD_Data(FD_currents,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
-}
