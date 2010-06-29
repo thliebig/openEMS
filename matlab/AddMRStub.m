@@ -7,8 +7,8 @@ function CSX = AddMRStub( CSX, materialname, prio, MSL_width, len, alpha, resolu
 % CSX: CSX-object created by InitCSX()
 % materialname: property for the MSL (created by AddMetal() or AddMaterial())
 % prio: priority
-% MSL_width: width of the MSL to connect the stub to (m)
-% len: length of the radial stub (m)
+% MSL_width: width of the MSL to connect the stub to
+% len: length of the radial stub
 % alpha: angle subtended by the radial stub (degrees) 
 % resolution: discrete angle spacing (degrees)
 % orientation: angle of main direction of the radial stub (degrees)
