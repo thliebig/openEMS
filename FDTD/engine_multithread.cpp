@@ -94,7 +94,12 @@ void Engine_Multithread::Init()
 	m_stopThreads = false;
 	if (m_numThreads == 0)
 		m_numThreads = boost::thread::hardware_concurrency();
-	cout << "Multithreaded engine using " << m_numThreads << " threads." << std::endl;
+
+	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
+	if ((m_numThreads-1) * linesPerThread >= numLines[0])
+		--m_numThreads;
+
+	cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
 	m_barrier_VoltUpdate = new boost::barrier(m_numThreads); // numThread workers
 	m_barrier_VoltExcite = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
 	m_barrier_CurrUpdate = new boost::barrier(m_numThreads); // numThread workers
@@ -108,7 +113,6 @@ void Engine_Multithread::Init()
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 
-	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
 	for (unsigned int n=0; n<m_numThreads; n++) {
 		unsigned int start = n * linesPerThread;
 		unsigned int stop = (n+1) * linesPerThread - 1;
@@ -117,8 +121,11 @@ void Engine_Multithread::Init()
 			// last thread
 			stop = numLines[0]-1;
 			stop_h = stop-1;
+			cout << stop-start+1 << ")" << endl;
 		}
-		//NS_Engine_Multithread::DBG().cout() << "###DEBUG## Thread " << n << ": start=" << start << " stop=" << stop  << " stop_h=" << stop_h << std::endl;
+		else
+			cout << stop-start+1 << ";";
+//		NS_Engine_Multithread::DBG().cout() << "###DEBUG## Thread " << n << ": start=" << start << " stop=" << stop  << " stop_h=" << stop_h << std::endl;
 		boost::thread *t = new boost::thread( NS_Engine_Multithread::thread(this,start,stop,stop_h,n) );
 		m_thread_group.add_thread( t );
 	}

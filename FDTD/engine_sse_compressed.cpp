@@ -93,7 +93,7 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 
 void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
-	unsigned int pos[5];
+	unsigned int pos[3];
 	f4vector temp;
 
 	pos[0] = startX;
