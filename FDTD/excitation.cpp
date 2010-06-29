@@ -95,6 +95,9 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 
 	if (GetNyquistNum() == 0) {
 		cerr << "openEMS: excitation setup failed!!" << endl;
+		cerr << "  Frequent causes include:" << endl;
+		cerr << "   - invalid excitation type (curently supported: 0,1,2,3,10)" << endl;
+		cerr << "   - missing/invalid attributes for selected excitation type" << endl;
 		return false;
 	}
 
