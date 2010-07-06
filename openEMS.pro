@@ -58,7 +58,11 @@ SOURCES += main.cpp \
     FDTD/engine_sse_compressed.cpp \
     FDTD/operator_multithread.cpp \
     tools/global.cpp \
-    tools/useful.cpp
+    tools/useful.cpp \
+    FDTD/operator_ext_dispersive.cpp \
+    FDTD/operator_ext_lorentzmaterial.cpp \
+    FDTD/engine_ext_dispersive.cpp \
+    FDTD/engine_ext_lorentzmaterial.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -87,7 +91,11 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/engine_sse_compressed.h \
     FDTD/operator_multithread.h \
     tools/global.h \
-    tools/useful.h
+    tools/useful.h \
+    FDTD/operator_ext_dispersive.h \
+    FDTD/operator_ext_lorentzmaterial.h \
+    FDTD/engine_ext_dispersive.h \
+    FDTD/engine_ext_lorentzmaterial.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native

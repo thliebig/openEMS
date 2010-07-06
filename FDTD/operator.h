@@ -30,6 +30,7 @@ class Engine;
 class Operator
 {
 	friend class Engine;
+	friend class Operator_Ext_LorentzMaterial; //we need to find a way around this... friend class Operator_Extension only would be nice
 public:
 	//! Create a new operator
 	static Operator* New();

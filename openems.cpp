@@ -28,6 +28,8 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "FDTD/operator_ext_lorentzmaterial.h"
+
 //external libs
 #include "tinyxml.h"
 #include "ContinuousStructure.h"
@@ -260,6 +262,9 @@ int openEMS::SetupFDTD(const char* file)
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
 	}
+
+	if (CSX.GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
+		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 
 	FDTD_Op->CalcECOperator();
 	
