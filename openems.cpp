@@ -50,6 +50,7 @@ openEMS::openEMS()
 	Enable_Dumps = true;
 	DebugMat = false;
 	DebugOp = false;
+	m_debugCSX = false;
 	m_debugBox = m_debugPEC = false;
 	endCrit = 1e-6;
 	m_OverSampling = 4;
@@ -107,6 +108,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - dumping PEC info to 'PEC_dump.vtk'" << endl;
 		m_debugPEC = true;
+		return true;
+	}
+	else if (strcmp(argv,"--debug-CSX")==0)
+	{
+		cout << "openEMS - dumping CSX geometry to 'debugCSX.xml'" << endl;
+		m_debugCSX = true;
 		return true;
 	}
 	else if (strcmp(argv,"--engine=multithreaded")==0)
@@ -223,6 +230,9 @@ int openEMS::SetupFDTD(const char* file)
 		cerr << EC << endl;
 //		return(-2);
 	}
+
+	if (m_debugCSX)
+		CSX.Write2XML("debugCSX.xml");
 
 	//*************** setup operator ************//
 	if (CylinderCoords)

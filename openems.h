@@ -52,6 +52,7 @@ protected:
 	bool Enable_Dumps;
 	bool DebugMat;
 	bool DebugOp;
+	bool m_debugCSX;
 	bool m_debugBox, m_debugPEC;
 	double endCrit;
 	int m_OverSampling;

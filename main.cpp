@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
 		cout << "\t--debug-material\tDump material distribution to a vtk file for debugging" << endl;
 		cout << "\t--debug-operator\tDump operator to vtk file for debugging" << endl;
 		cout << "\t--debug-boxes\t\tDump e.g. probe boxes to vtk file for debugging" << endl;
+		cout << "\t--debug-CSX\t\tWrite CSX geometry file to debugCSX.xml" << endl;
 		cout << "\t--engine=<type>\t\tChoose engine type" << endl;
 		cout << "\t\t--engine=fastest\t\tfastest available engine" << endl;
 		cout << "\t\t--engine=sse\t\t\tengine using sse vector extensions" << endl;
