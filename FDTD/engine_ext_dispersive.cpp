@@ -17,6 +17,8 @@
 
 #include "engine_ext_dispersive.h"
 #include "operator_ext_dispersive.h"
+#include "engine.h"
+#include "engine_sse.h"
 
 Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_disp) : Engine_Extension(op_ext_disp)
 {
@@ -58,13 +60,40 @@ void Engine_Ext_Dispersive::Apply2Voltages()
 	if (m_Op_Ext_Disp->m_volt_ADE_On==false) return;
 
 	unsigned int **pos = m_Op_Ext_Disp->m_LM_pos;
-	for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
-	{
-		m_Eng->GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[0][i];
-		m_Eng->GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[1][i];
-		m_Eng->GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[2][i];
-	}
 
+	//switch for different engine types to access faster inline engine functions
+	switch (m_Eng->GetType())
+	{
+	case Engine::BASIC:
+		{
+			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			{
+				m_Eng->Engine::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[0][i];
+				m_Eng->Engine::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[1][i];
+				m_Eng->Engine::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[2][i];
+			}
+			break;
+		}
+	case Engine::SSE:
+		{
+			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
+			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			{
+				eng_sse->Engine_sse::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[0][i];
+				eng_sse->Engine_sse::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[1][i];
+				eng_sse->Engine_sse::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[2][i];
+			}
+			break;
+		}
+	default:
+		for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+		{
+			m_Eng->GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[0][i];
+			m_Eng->GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[1][i];
+			m_Eng->GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) -= volt_ADE[2][i];
+		}
+		break;
+	}
 }
 
 void Engine_Ext_Dispersive::Apply2Current()
@@ -72,11 +101,39 @@ void Engine_Ext_Dispersive::Apply2Current()
 	if (m_Op_Ext_Disp->m_curr_ADE_On==false) return;
 
 	unsigned int **pos = m_Op_Ext_Disp->m_LM_pos;
-	for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+
+	//switch for different engine types to access faster inline engine functions
+	switch (m_Eng->GetType())
 	{
-		m_Eng->GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[0][i];
-		m_Eng->GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[1][i];
-		m_Eng->GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[2][i];
+	case Engine::BASIC:
+		{
+			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			{
+				m_Eng->Engine::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[0][i];
+				m_Eng->Engine::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[1][i];
+				m_Eng->Engine::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[2][i];
+			}
+			break;
+		}
+	case Engine::SSE:
+		{
+			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
+			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			{
+				eng_sse->Engine_sse::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[0][i];
+				eng_sse->Engine_sse::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[1][i];
+				eng_sse->Engine_sse::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[2][i];
+			}
+			break;
+		}
+	default:
+		for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+		{
+			m_Eng->GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[0][i];
+			m_Eng->GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[1][i];
+			m_Eng->GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) -= curr_ADE[2][i];
+		}
+		break;
 	}
 
 }
