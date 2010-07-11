@@ -143,9 +143,10 @@ void Operator_SSE_Compressed::ShowStat() const
 {
 	Operator_sse::ShowStat();
 
-	cout << "SSE compression enabled\t: " << m_Use_Compression << endl;
+	string yes_no[2] = {"no","yes"};
+	cout << "SSE compression enabled\t: " << yes_no[m_Use_Compression] << endl;
 	cout << "Unique SSE operator\t: " << m_Op_Count << endl;
-	cout << "Optimal compression\t: " << m_Max_Compression << endl;
+	cout << "Optimal compression\t: " << yes_no[m_Max_Compression] << endl;
 	cout << "-----------------------------------" << endl;
 }
 
