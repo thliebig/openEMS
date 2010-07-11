@@ -175,3 +175,8 @@ Engine_Extension* Operator_Ext_LorentzMaterial::CreateEngineExtention()
 	Engine_Ext_LorentzMaterial* eng_ext_lor = new Engine_Ext_LorentzMaterial(this);
 	return eng_ext_lor;
 }
+
+void Operator_Ext_LorentzMaterial::ShowStat(ostream &ostr)  const
+{
+	Operator_Ext_Dispersive::ShowStat(ostr);
+}

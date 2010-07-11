@@ -39,3 +39,12 @@ Operator_Ext_Dispersive::~Operator_Ext_Dispersive()
 	m_LM_pos[1]=NULL;
 	m_LM_pos[2]=NULL;
 }
+
+void Operator_Ext_Dispersive::ShowStat(ostream &ostr)  const
+{
+	Operator_Extension::ShowStat(ostr);
+	string On_Off[2] = {"Off", "On"};
+	ostr << " Active cells\t\t: " << 	m_LM_Count << endl;
+	ostr << " Voltage ADE is \t: " << On_Off[m_volt_ADE_On] << endl;
+	ostr << " Current ADE is \t: " << On_Off[m_curr_ADE_On] << endl;
+}

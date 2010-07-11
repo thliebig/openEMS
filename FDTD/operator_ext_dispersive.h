@@ -28,7 +28,9 @@ class Operator_Ext_Dispersive : public Operator_Extension
 public:
 	virtual ~Operator_Ext_Dispersive();
 
-	virtual string GetExtensionName() {return string("Dispersive Material Abstract Base class");}
+	virtual string GetExtensionName() const {return string("Dispersive Material Abstract Base class");}
+
+	virtual void ShowStat(ostream &ostr) const;
 
 protected:
 	Operator_Ext_Dispersive(Operator* op);

@@ -17,9 +17,11 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() {return true;}
+	virtual bool IsCylinderCoordsSave() const {return true;}
 
-	virtual std::string GetExtensionName() {return std::string("Extension for the Cylinder-Coords Operator");}
+	virtual std::string GetExtensionName() const {return std::string("Extension for the Cylinder-Coords Operator");}
+
+	virtual void ShowStat(ostream &ostr) const;
 
 protected:
 	Operator_Cylinder* m_Op_Cyl;

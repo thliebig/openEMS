@@ -35,9 +35,11 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() {if (m_ny==2) return true; else return false;}
+	virtual bool IsCylinderCoordsSave() const {if (m_ny==2) return true; else return false;}
 
-	virtual string GetExtensionName() {return string("Mur ABC extension");}
+	virtual string GetExtensionName() const {return string("Mur ABC Extension");}
+
+	virtual void ShowStat(ostream &ostr) const;
 
 protected:
 	int m_ny;

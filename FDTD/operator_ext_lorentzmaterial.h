@@ -32,9 +32,11 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() {return false;}
+	virtual bool IsCylinderCoordsSave() const {return false;}
 
-	virtual std::string GetExtensionName() {return std::string("Lorentz Dispersive Material Extension");}
+	virtual std::string GetExtensionName() const {return std::string("Lorentz Dispersive Material Extension");}
+
+	virtual void ShowStat(ostream &ostr) const;
 
 protected:
 

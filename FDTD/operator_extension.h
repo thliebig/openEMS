@@ -20,6 +20,13 @@
 
 #include <string>
 
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+
+using namespace std;
+
+
 class Operator;
 class Engine_Extension;
 
@@ -32,9 +39,11 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}
 
-	virtual bool IsCylinderCoordsSave() {return false;}
+	virtual bool IsCylinderCoordsSave() const {return false;}
 
-	virtual std::string GetExtensionName() {return std::string("Abstract Operator Extension Base Class");}
+	virtual std::string GetExtensionName() const {return std::string("Abstract Operator Extension Base Class");}
+
+	virtual void ShowStat(ostream &ostr) const;
 
 protected:
 	Operator_Extension(Operator* op);

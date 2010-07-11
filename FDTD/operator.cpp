@@ -308,6 +308,13 @@ void Operator::ShowStat() const
 	cout << "-----------------------------------" << endl;
 }
 
+void Operator::ShowExtStat() const
+{
+	cout << "-----------------------------------" << endl;
+	for (size_t n=0;n<m_Op_exts.size();++n)
+		m_Op_exts.at(n)->ShowStat(cout);
+	cout << "-----------------------------------" << endl;
+}
 
 void Operator::DumpOperator2File(string filename)
 {

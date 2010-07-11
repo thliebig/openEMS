@@ -58,3 +58,12 @@ Engine_Extension* Operator_Ext_Cylinder::CreateEngineExtention()
 	Engine_Ext_Cylinder* eng_ext = new Engine_Ext_Cylinder(this);
 	return eng_ext;
 }
+
+
+void Operator_Ext_Cylinder::ShowStat(ostream &ostr)  const
+{
+	Operator_Extension::ShowStat(ostr);
+	string On_Off[2] = {"Off", "On"};
+	ostr << " Zeroth Radius\t\t: "   << On_Off[CC_R0_included] << endl;
+	ostr << " Closed Rotation\t: " << On_Off[CC_closedAlpha] << endl;
+}

@@ -298,6 +298,7 @@ int openEMS::SetupFDTD(const char* file)
 	gettimeofday(&OpDoneTime,NULL);
 
 	FDTD_Op->ShowStat();
+	FDTD_Op->ShowExtStat();
 
 	cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
 

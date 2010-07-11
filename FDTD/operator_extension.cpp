@@ -23,3 +23,8 @@ Operator_Extension::Operator_Extension(Operator* op)
 {
 	m_Op = op;
 }
+
+void Operator_Extension::ShowStat(ostream &ostr) const
+{
+	ostr << "--- " << GetExtensionName() << " ---" << endl;
+}

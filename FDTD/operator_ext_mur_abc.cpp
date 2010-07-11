@@ -139,3 +139,11 @@ Engine_Extension* Operator_Ext_Mur_ABC::CreateEngineExtention()
 	Engine_Ext_Mur_ABC* eng_ext = new Engine_Ext_Mur_ABC(this);
 	return eng_ext;
 }
+
+
+void Operator_Ext_Mur_ABC::ShowStat(ostream &ostr)  const
+{
+	Operator_Extension::ShowStat(ostr);
+	string XYZ[3] = {"x","y","z"};
+	ostr << " Active direction: " << XYZ[m_ny] << " at line: " << m_LineNr << endl;
+}

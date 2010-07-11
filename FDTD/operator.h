@@ -62,6 +62,7 @@ public:
 	virtual unsigned int GetOriginalNumLines(int ny) const {return numLines[ny];}
 
 	virtual void ShowStat() const;
+	virtual void ShowExtStat() const;
 
 	virtual void DumpOperator2File(string filename);
 	virtual void DumpMaterial2File(string filename);
