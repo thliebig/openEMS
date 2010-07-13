@@ -12,6 +12,10 @@ INCLUDEPATH += ../CSXCAD \
     ../tinyxml
 LIBS += -L../CSXCAD -lCSXCAD
 
+# the SSE engine defaults to flush-to-zero mode, because of speed advantages
+# to restore the correct handling of denormals and to comply to IEEE 754 uncomment:
+# DEFINES += SSE_CORRECT_DENORMALS
+
 win32 {
     INCLUDEPATH += ../hdf5/include ../boost/include/boost-1_42
     LIBS +=  ../hdf5/lib/libhdf5_cpp.a ../hdf5/lib/libhdf5.a

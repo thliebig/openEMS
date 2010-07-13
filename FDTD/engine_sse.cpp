@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <xmmintrin.h>
 #include "engine_sse.h"
 
 //! \brief construct an Engine_sse instance
@@ -34,10 +35,18 @@ Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 	f4_volt = 0;
 	f4_curr = 0;
 	numVectors =  ceil((double)numLines[2]/4.0);
+
+	// speed up the calculation of denormal floating point values (flush-to-zero)
+#ifndef SSE_CORRECT_DENORMALS
+	int oldMXCSR = _mm_getcsr(); //read the old MXCSR setting
+	int newMXCSR = oldMXCSR | 0x8040; // set DAZ and FZ bits
+	_mm_setcsr( newMXCSR ); //write the new MXCSR setting to the MXCSR
+#endif
 }
 
 Engine_sse::~Engine_sse()
 {
+	//_mm_setcsr( oldMXCSR ); // restore old setting
 	Reset();
 }
 
