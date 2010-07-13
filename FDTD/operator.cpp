@@ -301,6 +301,7 @@ void Operator::ShowStat() const
 	cout << "in " << GetDirName(2) << " direction\t\t: " << m_Nr_PEC[2] << endl;
 	cout << "-----------------------------------" << endl;
 	cout << "Timestep (s)\t\t: " << dT << endl;
+	cout << "Timestep method name\t: " << m_Used_TS_Name << endl;
 	cout << "Nyquist criteria (TS)\t: " << Exc->GetNyquistNum() << endl;
 	cout << "Nyquist criteria (s)\t: " << Exc->GetNyquistNum()*dT << endl;
 	cout << "Excitation Length (TS)\t: " << Exc->Length << endl;
@@ -310,6 +311,7 @@ void Operator::ShowStat() const
 
 void Operator::ShowExtStat() const
 {
+	if (m_Op_exts.size()==0) return;
 	cout << "-----------------------------------" << endl;
 	for (size_t n=0;n<m_Op_exts.size();++n)
 		m_Op_exts.at(n)->ShowStat(cout);
@@ -832,8 +834,8 @@ bool Operator::Calc_EC()
 
 double Operator::CalcTimestep()
 {
-#if 1  //use the old timestep-calc (1) or the new one (0)
-	return CalcTimestep_Var3();
+#if 1  //use the new timestep-calc (1) or the old one (0)
+	return CalcTimestep_Var3(); //the biggest one for cartesian meshes
 #else
 	return CalcTimestep_Var1();
 #endif
@@ -842,7 +844,8 @@ double Operator::CalcTimestep()
 ////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52
 double Operator::CalcTimestep_Var1()
 {
-	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 66, eq. 4.52" << endl;
+	m_Used_TS_Name = string("Rennings_1");
+//	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 66, eq. 4.52" << endl;
 	dT=1e200;
 	double newT;
 	unsigned int pos[3];
@@ -896,7 +899,8 @@ double min(double* val, unsigned int count)
 double Operator::CalcTimestep_Var3()
 {
 	dT=1e200;
-	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 76, eq. 4.77 ff." << endl;
+	m_Used_TS_Name = string("Rennings_2");
+//	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 76, eq. 4.77 ff." << endl;
 	double newT;
 	unsigned int pos[3];
 	unsigned int ipos;

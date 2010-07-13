@@ -116,6 +116,7 @@ protected:
 	//Calc timestep only internal use
 	virtual double CalcTimestep();
 	double dT; //FDTD timestep!
+	string m_Used_TS_Name;
 
 	double CalcTimestep_Var1();
 	double CalcTimestep_Var3();
