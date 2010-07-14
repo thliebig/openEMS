@@ -24,7 +24,7 @@ openEMS_opts = '';
 % openEMS_opts = [openEMS_opts ' --debug-operator'];
 
 % openEMS_opts = [openEMS_opts ' --disable-dumps --engine=fastest'];
-openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
+openEMS_opts = [openEMS_opts ' --engine=fastest'];
 
 Sim_Path = 'tmp';
 Sim_CSX = 'coax.xml';
@@ -101,25 +101,18 @@ CSX = AddBox(CSX,'it1', 0 ,start,stop);
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
 %% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-savePath = pwd();
-cd(Sim_Path); %cd to working dir
-args = [Sim_CSX ' ' openEMS_opts];
-invoke_openEMS(args)
-cd(savePath);
+RunOpenEMS(Sim_Path,Sim_CSX,openEMS_opts);
 
 %% postproc & do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-UI = ReadUI({'ut1_1','ut1_2','it1'},'tmp/');
+UI = ReadUI({'ut1_1','ut1_2','it1'},Sim_Path);
 u_f = (UI.FD{1}.val + UI.FD{2}.val)/2;          %averaging voltages to fit current
 i_f = UI.FD{3}.val;
-
-delta_t = UI.TD{3}.t(1) - UI.TD{1}.t(1);        % half time-step (s) 
-i_f2 = i_f .* exp(-1i*2*pi*UI.FD{1}.f*delta_t); % compensate half time-step advance of H-field
 
 ZL = Z0/2/pi/sqrt(epsR)*log(coax_rad_ai/coax_rad_i); %analytic line-impedance of a coax
 plot(UI.FD{1}.f,ZL*ones(size(u_f)),'g');
 hold on;
 grid on;
-Z = u_f./i_f2;
+Z = u_f./i_f;
 plot(UI.FD{1}.f,real(Z),'Linewidth',2);
 plot(UI.FD{1}.f,imag(Z),'r','Linewidth',2);
 xlim([0 2*f0]);

@@ -127,9 +127,6 @@ RunOpenEMS(Sim_Path, Sim_CSX, openEMS_opts);
 U = ReadUI('ut1','tmp/');
 I = ReadUI('it1','tmp/');
 
-delta_t_2 = I.TD{1}.t(1) - U.TD{1}.t(1);                        % half time-step (s) 
-I.FD{1}.val = I.FD{1}.val .* exp(-1i*2*pi*I.FD{1}.f*delta_t_2); % compensate half time-step advance of H-field
-
 Z = U.FD{1}.val./I.FD{1}.val;
 f = U.FD{1}.f;
 L = imag(Z)./(f*2*pi);
