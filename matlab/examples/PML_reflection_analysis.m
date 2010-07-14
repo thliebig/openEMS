@@ -10,9 +10,9 @@
 % profile and not a pml
 %
 
-%close all
-%clear
-%clc
+close all
+% clear
+clc
 
 physical_constants
 
@@ -35,12 +35,13 @@ f_max = 8e9;
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD( max_timesteps, min_decrement );
 FDTD = SetGaussExcite( FDTD, f_max/2, f_max/2 );
-BC = [0 2 1 1 0 0];
+BC = [0 0 1 1 0 0];
 FDTD = SetBoundaryCond( FDTD, BC );
 
 %% mesh grading
-pml_delta = cumsum(mesh_res(1) * 1.0 .^ (1:5));
-pml_delta = cumsum([200 200 200 200 200]);
+N_pml = 8;
+pml_delta = cumsum(mesh_res(1) * 1.0 .^ (1:N_pml));
+% pml_delta = cumsum([200 200 200 200 200]);
 
 %% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = InitCSX();
@@ -54,24 +55,24 @@ CSX = DefineRectGrid( CSX, drawingunit, mesh );
 g = 2; % 2..3
 R0 = 1e-6; % requested analytical reflection coefficient
 Zm = sqrt(MUE0/(EPS0*epr)); % calculate reflection for substrate/pml interface
-delta = pml_delta(5) * drawingunit;
+delta = pml_delta(end) * drawingunit;
 deltal = mean(diff(pml_delta)) * drawingunit;
 kappa0 = -log(R0)*log(g)/( 2*Zm*deltal*(g^(delta/deltal)-1) );
 
-kappa0 = 1.05;
+% kappa0 = 1.05;
 CSX = AddMaterial( CSX, 'pml_xmin' );
 CSX = SetMaterialProperty( CSX, 'pml_xmin', 'Epsilon', epr );
 CSX = SetMaterialProperty( CSX, 'pml_xmin', 'Kappa', kappa0 );
 CSX = SetMaterialProperty( CSX, 'pml_xmin', 'Sigma', kappa0 * MUE0/(EPS0*epr) );
-CSX = SetMaterialWeight( CSX, 'pml_xmin', 'Kappa', [num2str(g) '^((abs(x)-' num2str(abs(mesh.x(6))) ')/(' num2str(deltal) '/' num2str(drawingunit) '))'] ); % g^(rho/deltal)*kappa0
-CSX = SetMaterialWeight( CSX, 'pml_xmin', 'Sigma', [num2str(g) '^((abs(x)-' num2str(abs(mesh.x(6))) ')/(' num2str(deltal) '/' num2str(drawingunit) '))'] );
+CSX = SetMaterialWeight( CSX, 'pml_xmin', 'Kappa', [num2str(g) '^((abs(x-100)-' num2str(abs(mesh.x(N_pml+1))) ')/(' num2str(deltal) '/' num2str(drawingunit) '))'] ); % g^(rho/deltal)*kappa0
+CSX = SetMaterialWeight( CSX, 'pml_xmin', 'Sigma', [num2str(g) '^((abs(x-100)-' num2str(abs(mesh.x(N_pml+1))) ')/(' num2str(deltal) '/' num2str(drawingunit) '))'] );
 start = [mesh.x(1), mesh.y(1),   mesh.z(1)];
-stop  = [mesh.x(6), mesh.y(end), mesh.z(end)];
+stop  = [100, mesh.y(end), mesh.z(end)];
 CSX = AddBox( CSX, 'pml_xmin', 1, start, stop );
 
 figure
-x = [-fliplr(pml_delta) 0];
-plot( x, kappa0 * g.^((abs(x)-abs(mesh.x(6)))./(deltal/drawingunit)) );
+x = [-fliplr(pml_delta) 50];
+plot( x, kappa0 * g.^((abs(x-50)-abs(mesh.x(N_pml+1)))./(deltal/drawingunit)) ,'x-');
 xlabel( 'x / m' );
 ylabel( 'kappa' );
 figure
@@ -189,7 +190,7 @@ title( 'Reflection Coefficient' );
 
 if exist('ref_1','var')
     hold on
-    plot( f/1e9, ref_1,'Linewidth',2, 'Color', [1 0 0]);
+    plot( f/1e9, ref_1,'--','Linewidth',2, 'Color', [1 0 0]);
     hold off
 end
 ref_1 = 20*log10(abs(gamma));
