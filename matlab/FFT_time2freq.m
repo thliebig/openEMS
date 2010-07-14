@@ -1,4 +1,7 @@
 function [f,val] = FFT_time2freq( t, val )
+% [f,val] = FFT_time2freq( t, val )
+%
+% See also DFT_time2freq
 
 dt=t(2)-t(1); % timestep
 L=numel(val); % signal length
