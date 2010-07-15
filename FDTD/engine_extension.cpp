@@ -24,3 +24,7 @@ Engine_Extension::Engine_Extension(Operator_Extension* op_ext)
 	m_Op_ext = op_ext;
 	m_Eng = NULL;
 }
+
+Engine_Extension::~Engine_Extension()
+{
+}

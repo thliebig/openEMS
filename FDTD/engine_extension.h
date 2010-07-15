@@ -25,6 +25,8 @@ class Engine;
 class Engine_Extension
 {
 public:
+	virtual ~Engine_Extension();
+
 	//! This methode will be called __before__ the main engine does the usual voltage updates. This methode may __not__ change the engine voltages!!!
 	virtual void DoPreVoltageUpdates() {}
 	//! This methode will be called __after__ the main engine does the usual voltage updates. This methode may __not__ change the engine voltages!!!
