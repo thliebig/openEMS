@@ -1,18 +1,19 @@
 function field_FD = GetField_TD2FD(field_TD, freq)
 % function field_FD = GetField_TD2FD(field_TD, freq)
 %
-% transform time-domain field data into frequency domain
+% Transforms time-domain field data into the frequency domain
+% Autocorrects the half-timestep offset of the H-field
 % 
 % example:
-%   freq = linspace(0,1e9,100); %target frequency vector
+%   freq = linspace(0,1e9,100); %target frequency vector (Hz)
 %   field = ReadHDF5FieldData('tmp/Ht.h5');
 %   field_FD = GetField_TD2FD(field, freq);
-%
-% See also ReadHDF5FieldData
 %
 % openEMS matlab interface
 % -----------------------
 % author: Thorsten Liebig
+%
+% See also ReadHDF5FieldData
 
 t = field_TD.time;
 
@@ -28,6 +29,10 @@ for n=1:numTS
     for nf = 1:numel(freq)
         f = freq(nf);
         field_FD.values{nf} = field_FD.values{nf} + 2/numTS * field_TD.values{n}.*exp(-1i*2*pi*f*t(n));
+        % t(n) is absolute time and therefore the half-timestep offset of
+        % the H-field is automatically compensated
+        % openEMS output: E-fields start at t=0
+        % openEMS output: H-fields start at t=delta_t/2
     end
 end
 
