@@ -72,13 +72,16 @@ public:
 	virtual string GetDirName(int ny) const;
 
 	virtual double GetGridDelta() const {return gridDelta;}
-	//! Get the mesh delta times the grid delta for a 3D position
+	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
 	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;
+	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
 	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const;
 
-	//! Get the disc line in n direction
+	//! Get the disc line in n direction (in drawing units)
 	virtual double GetDiscLine(int n, int pos, bool dualMesh=false) const;
+	//! Get the disc line in n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
+
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 
 	virtual void AddExtension(Operator_Extension* op_ext);

@@ -353,7 +353,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	}
 
 	A_n = fabs(deltaP*deltaPP);
-	if (n==0) //z-direction n==0 -> r; nP==1 -> alpha; nPP==2 -> z
+	if (n==0) //x-direction n==0 -> r; nP==1 -> alpha; nPP==2 -> z
 	{
 		A_n = A_n * coord[0];
 	}
