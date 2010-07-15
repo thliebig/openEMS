@@ -320,6 +320,12 @@ void Operator::ShowExtStat() const
 
 void Operator::DumpOperator2File(string filename)
 {
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discLines_scaling = 1;
+#else
+	double discLines_scaling = GetGridDelta();
+#endif
+
 	ofstream file(filename.c_str(),ios_base::out);
 	if (file.is_open()==false)
 	{
@@ -338,7 +344,7 @@ void Operator::DumpOperator2File(string filename)
 	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
 	FDTD_FLOAT**** array[] = {vv,vi,iv,ii,exc};
 
-	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines, 6, "Operator dump" , (ProcessFields::MeshType)m_MeshType);
+	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines, 6, "Operator dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
 
 	Delete_N_3DArray(exc,numLines);
 
@@ -376,7 +382,12 @@ void Operator::DumpPEC2File( string filename )
 		}
 	}
 
-	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines, 6, "PEC dump" , (ProcessFields::MeshType)m_MeshType );
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discLines_scaling = 1;
+#else
+	double discLines_scaling = GetGridDelta();
+#endif
+	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines, 6, "PEC dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling );
 
 	file.close();
 
@@ -385,6 +396,12 @@ void Operator::DumpPEC2File( string filename )
 
 void Operator::DumpMaterial2File(string filename)
 {
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discLines_scaling = 1;
+#else
+	double discLines_scaling = GetGridDelta();
+#endif
+
 	ofstream file(filename.c_str(),ios_base::out);
 	if (file.is_open()==false)
 	{
@@ -429,7 +446,7 @@ void Operator::DumpMaterial2File(string filename)
 
 	string names[] = {"epsilon","mue","kappa","sigma"};
 	FDTD_FLOAT*** array[] = {epsilon,mue,kappa,sigma};
-	ProcessFields::DumpMultiScalarArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType);
+	ProcessFields::DumpMultiScalarArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
 	Delete3DArray(epsilon,numLines);
 	Delete3DArray(mue,numLines);
 	Delete3DArray(kappa,numLines);

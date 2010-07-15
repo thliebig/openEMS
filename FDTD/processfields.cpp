@@ -91,7 +91,13 @@ void ProcessFields::InitProcess()
 			//convert to float...
 			float* array = new float[NrLines[n]];
 			for (unsigned int i=0;i<NrLines[n];++i)
+			{
+#ifdef OUTPUT_IN_DRAWINGUNITS
 				array[i] = Lines[n][i];
+#else
+				array[i] = Lines[n][i] * Op->GetGridDelta();
+#endif
+			}
 			//write to dataset
 			dataset.write( array, H5::PredType::NATIVE_FLOAT );
 		}
@@ -255,17 +261,17 @@ void  ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
 	else subSample[dir]=subSampleRate;
 }
 
-void ProcessFields::WriteVTKHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT)
+void ProcessFields::WriteVTKHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
 	if (meshT==CARTESIAN_MESH)
-		WriteVTKCartesianGridHeader(file, discLines, numLines, precision, header_info);
+		WriteVTKCartesianGridHeader(file, discLines, numLines, precision, header_info, discLines_scaling);
 	else if (meshT==CYLINDRICAL_MESH)
-		WriteVTKCylindricalGridHeader(file, discLines, numLines, precision, header_info);
+		WriteVTKCylindricalGridHeader(file, discLines, numLines, precision, header_info, discLines_scaling);
 	else
 		cerr << "ProcessFields::WriteVTKHeader: Warning: unknown mesh type, skipping header -> file will be invalid..." << endl;
 }
 
-void ProcessFields::WriteVTKCartesianGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info)
+void ProcessFields::WriteVTKCartesianGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, double discLines_scaling)
 {
 	file << "# vtk DataFile Version 2.0" << endl;
 	file << "Rectilinear Grid openEMS_ProcessFields";
@@ -277,20 +283,20 @@ void ProcessFields::WriteVTKCartesianGridHeader(ofstream &file, double const* co
 	file << "DIMENSIONS " << numLines[0] << " " << numLines[1] << " " << numLines[2] << endl;
 	file << "X_COORDINATES " << numLines[0] << " float" << endl;
 	for (unsigned int i=0;i<numLines[0];++i)
-		file << setprecision(precision) << discLines[0][i] << " ";
+		file << setprecision(precision) << discLines[0][i] * discLines_scaling << " ";
 	file << endl;
 	file << "Y_COORDINATES " << numLines[1] << " float" << endl;
 	for (unsigned int i=0;i<numLines[1];++i)
-		file << setprecision(precision) << discLines[1][i] << " ";
+		file << setprecision(precision) << discLines[1][i] * discLines_scaling << " ";
 	file << endl;
 	file << "Z_COORDINATES " << numLines[2] << " float" << endl;
 	for (unsigned int i=0;i<numLines[2];++i)
-		file << setprecision(precision) << discLines[2][i] << " ";
+		file << setprecision(precision) << discLines[2][i] * discLines_scaling << " ";
 	file << endl << endl;
 	file << "POINT_DATA " << numLines[0]*numLines[1]*numLines[2] << endl;
 }
 
-void ProcessFields::WriteVTKCylindricalGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info)
+void ProcessFields::WriteVTKCylindricalGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, double discLines_scaling)
 {
 	file << "# vtk DataFile Version 3.0" << endl;
 	file << "Structured Grid from openEMS_ProcessFields";
@@ -305,7 +311,9 @@ void ProcessFields::WriteVTKCylindricalGridHeader(ofstream &file, double const* 
 		for (unsigned int j=0;j<numLines[1];++j)
 			for (unsigned int i=0;i<numLines[0];++i)
 			{
-				file << setprecision(precision) << discLines[0][i] * cos(discLines[1][j]) << " " << discLines[0][i] * sin(discLines[1][j])  << " " << discLines[2][k] << endl;
+				file << setprecision(precision) << discLines[0][i] * cos(discLines[1][j]) * discLines_scaling << " "
+												<< discLines[0][i] * sin(discLines[1][j]) * discLines_scaling << " "
+												<< discLines[2][k] * discLines_scaling << endl;
 			}
 	file << endl;
 	file << endl << endl;
@@ -336,16 +344,16 @@ void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT 
 }
 
 
-bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT)
+bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
-	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
 	WriteVTKVectorArray(file, name, array, numLines, precision);
 	return true;
 }
 
-bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT)
+bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
-	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
 	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKVectorArray(file, names[n], array[n], numLines, precision);
@@ -375,16 +383,16 @@ void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT 
 	}
 }
 
-bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT)
+bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
-	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
 	WriteVTKScalarArray(file, name, array, numLines, precision);
 	return true;
 }
 
-bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT)
+bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
-	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT);
+	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
 	for (unsigned int n=0;n<numFields;++n)
 	{
 		WriteVTKScalarArray(file, names[n], array[n], numLines, precision);

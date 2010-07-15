@@ -86,6 +86,12 @@ void Operator_sse::InitOperator()
 
 void Operator_sse::DumpOperator2File(string filename)
 {
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discLines_scaling = 1;
+#else
+	double discLines_scaling = GetGridDelta();
+#endif
+
 	ofstream file(filename.c_str(),ios_base::out);
 	if (file.is_open()==false)
 	{
@@ -128,7 +134,7 @@ void Operator_sse::DumpOperator2File(string filename)
 	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
 	FDTD_FLOAT**** array[] = {vv,vi,iv,ii,exc};
 
-	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines,  6, "Operator dump" , (ProcessFields::MeshType)m_MeshType);
+	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines,  6, "Operator dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
 
 	Delete_N_3DArray(exc,numLines);
 	Delete_N_3DArray(vv,numLines);vv=NULL;

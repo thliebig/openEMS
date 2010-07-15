@@ -31,6 +31,12 @@ ProcessFieldsTD::~ProcessFieldsTD()
 
 void ProcessFieldsTD::DumpNodeInterpol(string filename)
 {
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discLines_scaling = 1;
+#else
+	double discLines_scaling =	Op->GetGridDelta();
+#endif
+
 	if (m_DumpType==H_FIELD_DUMP)
 	{
 		//create array
@@ -77,7 +83,7 @@ void ProcessFieldsTD::DumpNodeInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type);
+			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -133,7 +139,7 @@ void ProcessFieldsTD::DumpNodeInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type);
+			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -151,6 +157,12 @@ void ProcessFieldsTD::DumpNodeInterpol(string filename)
 
 void ProcessFieldsTD::DumpCellInterpol(string filename)
 {
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discLines_scaling = 1;
+#else
+	double discLines_scaling = Op->GetGridDelta();
+#endif
+
 	if (m_DumpType==E_FIELD_DUMP)
 	{
 		//create array
@@ -197,7 +209,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type);
+			DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -253,7 +265,7 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type);
+			DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -271,6 +283,12 @@ void ProcessFieldsTD::DumpCellInterpol(string filename)
 
 void ProcessFieldsTD::DumpNoInterpol(string filename)
 {
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discLines_scaling = 1;
+#else
+	double discLines_scaling = Op->GetGridDelta();
+#endif
+
 	unsigned int pos[3];
 	unsigned int OpPos[3];
 	double delta[3];
@@ -303,7 +321,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type);
+			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)
@@ -349,7 +367,7 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 		{
 			ofstream file(filename.c_str());
 			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type);
+			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
 			file.close();
 		}
 		else if (m_fileType==HDF5_FILETYPE)

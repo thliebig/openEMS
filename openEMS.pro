@@ -12,9 +12,19 @@ INCLUDEPATH += ../CSXCAD \
     ../tinyxml
 LIBS += -L../CSXCAD -lCSXCAD
 
+###############################################################################
+# CONFIG SECTION
+
 # the SSE engine defaults to flush-to-zero mode, because of speed advantages
 # to restore the correct handling of denormals and to comply to IEEE 754 uncomment:
 # DEFINES += SSE_CORRECT_DENORMALS
+
+# openEMS defaults to output length in unit meters; to recover the old behaviour
+# to output length in terms of the drawing unit, uncomment:
+# DEFINES += OUTPUT_IN_DRAWINGUNITS
+
+# CONFIG SECTION
+###############################################################################
 
 win32 {
     INCLUDEPATH += ../hdf5/include ../boost/include/boost-1_42
