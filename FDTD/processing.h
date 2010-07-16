@@ -20,7 +20,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <complex>
 #include <cmath>
 #include "operator.h"
 #include "engine.h"

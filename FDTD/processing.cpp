@@ -146,7 +146,7 @@ void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 
 	if (g_settings.showProbeDiscretization()) {
-		cerr << m_filename << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], false ) << ","
+		cerr << m_Name << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], false ) << ","
 				<< Op->GetDiscLine( 1, start[1], false ) << "," << Op->GetDiscLine( 2, start[2], false ) << ") -> ("
 				<< Op->GetDiscLine( 0, stop[0], false ) << ","<< Op->GetDiscLine( 1, stop[1], false ) << ","
 				<< Op->GetDiscLine( 2, stop[2], false ) << ")";

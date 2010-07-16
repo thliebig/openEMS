@@ -24,6 +24,7 @@
 #include "FDTD/operator_ext_mur_abc.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
+#include "FDTD/process_efield.h"
 #include "FDTD/processfields_td.h"
 #include <sys/time.h>
 #include <time.h>
@@ -338,6 +339,10 @@ int openEMS::SetupFDTD(const char* file)
 					ProcessCurrent* procCurr = new ProcessCurrent(FDTD_Op,FDTD_Eng);
 					proc=procCurr;
 				}
+				else if (pb->GetProbeType()==2)
+					proc = new ProcessEField(FDTD_Op,FDTD_Eng);
+//				else if (pb->GetProbeType()==3)
+//					proc = new ProcessHField(FDTD_Op,FDTD_Eng);
 				else
 				{
 					cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
@@ -345,9 +350,9 @@ int openEMS::SetupFDTD(const char* file)
 				}
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->AddFrequency(pb->GetFDSamples());
+				proc->SetName(pb->GetName());
 				proc->DefineStartStopCoord(start,stop);
 				proc->SetWeight(pb->GetWeighting());
-				proc->SetName(pb->GetName());
 				proc->InitProcess();
 				PA->AddProcessing(proc);
 				prim->SetPrimitiveUsed(true);

@@ -51,7 +51,8 @@ SOURCES += main.cpp \
     FDTD/operator.cpp \
     tools/array_ops.cpp \
     FDTD/processvoltage.cpp \
-    FDTD/processing.cpp \
+	FDTD/process_efield.cpp \
+	FDTD/processing.cpp \
     FDTD/processintegral.cpp \
     FDTD/processfields.cpp \
     FDTD/processfields_td.cpp \
@@ -84,7 +85,8 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator.h \
     tools/array_ops.h \
     FDTD/processvoltage.h \
-    FDTD/processing.h \
+	FDTD/process_efield.h \
+	FDTD/processing.h \
     FDTD/processintegral.h \
     FDTD/processfields.h \
     FDTD/processfields_td.h \
