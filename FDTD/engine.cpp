@@ -54,6 +54,7 @@ void Engine::Init()
 	curr = Create_N_3DArray<FDTD_FLOAT>(numLines);
 
 	file_et.open( "et" );
+	file_ht.open( "ht" );
 
 	InitExtensions();
 }
@@ -80,6 +81,7 @@ void Engine::Reset()
 	curr=NULL;
 
 	file_et.close();
+	file_ht.close();
 
 	for (size_t n=0;n<m_Eng_exts.size();++n)
 		delete m_Eng_exts.at(n);
@@ -132,7 +134,7 @@ void Engine::ApplyVoltageExcite()
 		GetVolt(Op->Exc->E_dir[n],Op->Exc->E_index[0][n],Op->Exc->E_index[1][n],Op->Exc->E_index[2][n]) += Op->Exc->E_amp[n]*Op->Exc->Signal_volt[exc_pos];
 	}
 
-	// write the first excitation into the file "et1"
+	// write the first excitation into the file "et"
 	if (numTS < Op->Exc->Length)
 		file_et << numTS * Op->GetTimestep() << "\t" << Op->Exc->Signal_volt[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
 	else
@@ -177,7 +179,15 @@ void Engine::ApplyCurrentExcite()
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
 		GetCurr(Op->Exc->Curr_dir[n],Op->Exc->Curr_index[0][n],Op->Exc->Curr_index[1][n],Op->Exc->Curr_index[2][n]) += Op->Exc->Curr_amp[n]*Op->Exc->Signal_curr[exc_pos];
+		if (numTS == 0)
+			cout << "Engine::ApplyCurrentExcite(): n=" << n << " dir=" << Op->Exc->Curr_dir[n] << " coords=" << Op->Exc->Curr_index[0][n] << "," << Op->Exc->Curr_index[1][n] << "," << Op->Exc->Curr_index[2][n] << " amp=" << Op->Exc->Curr_amp[n] << endl;
 	}
+
+	// write the first excitation into the file "ht"
+	if (numTS < Op->Exc->Length)
+		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t" << Op->Exc->Curr_amp[0]*Op->Exc->Signal_curr[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
+	else
+		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t0" << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
 
 bool Engine::IterateTS(unsigned int iterTS)
