@@ -73,8 +73,8 @@ void openEMS::Reset()
 }
 
 //! \brief processes a command line argument
-//! returns true if argument is known
-//! returns false if argument is unknown
+//! \return true if argument is known
+//! \return false if argument is unknown
 bool openEMS::parseCommandLineArgument( const char *argv )
 {
 	if (!argv)

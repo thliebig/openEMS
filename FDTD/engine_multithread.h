@@ -86,7 +86,7 @@ public:
 	virtual void Init();
 	virtual void Reset();
 
-	//!Iterate a number of timesteps
+	//! Iterate \a iterTS number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
 protected:

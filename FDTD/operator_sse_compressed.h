@@ -50,14 +50,14 @@ protected:
 	bool m_Max_Compression; //reached maximal compression?
 	unsigned int m_Op_Count;
 
-	//! Compression ratio threshold. If this ratio is exceeded, compression will be disabled. \sa SetCompressionThreshold
+	//! Compression ratio threshold. If this ratio is exceeded, compression will be disabled. \sa SetCompressionThreshold()
 	double m_Compression_Threshold; //default is 0.8
 
 	virtual void Init();
 	virtual void Reset();
 	virtual void InitOperator();
 
-	//! Compression cache size, default is 1000 \sa SetCacheSize
+	//! Compression cache size, default is 1000 \sa SetCacheSize()
 	unsigned int m_max_fifo;
 
 	bool CompareOperators(unsigned int pos1[3], unsigned int pos2[3]);

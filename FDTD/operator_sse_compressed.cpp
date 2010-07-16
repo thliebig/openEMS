@@ -58,7 +58,7 @@ Engine* Operator_SSE_Compressed::CreateEngine() const
 {
 	if (m_Use_Compression==false)
 	{
-		//!create a default sse-engine
+		//! create a default sse-engine
 		Engine_sse* eng = Engine_sse::New(this);
 		return eng;
 	}

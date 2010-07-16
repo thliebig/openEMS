@@ -28,7 +28,7 @@ public:
 	Operator_Ext_Mur_ABC(Operator* op);
 	~Operator_Ext_Mur_ABC();
 
-	//! Define the direction of this ABC: ny=0,1,2 -> x,y,z and if at bottom_ny -> e.g. x=0 or x=end
+	//! Define the direction of this ABC: \a ny=0,1,2 -> x,y,z and if at bottom_ny -> e.g. x=0 or x=end
 	void SetDirection(int ny, bool top_ny);
 
 	virtual bool BuildExtension();

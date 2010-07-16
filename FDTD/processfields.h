@@ -36,13 +36,13 @@ public:
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
-	//! Define a field dump sub sampling rate for a given direction (default: dir = -1 means all directions)
+	//! Define a field dump sub sampling rate for a given direction (default: \a dir = -1 means all directions)
 	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
 
-	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType
+	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType()
 	void SetFilePattern(string fp) {m_filename=filePattern=fp;}
 
-	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType
+	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType()
 	void SetFileName(string fn) {m_filename=fn;}
 
 	//! Define the Dump-Mode
@@ -61,9 +61,9 @@ public:
 	static void WriteVTKCartesianGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), double discLines_scaling = 1);
 	//! Write a vtk header to an already open file (cylindrical grid)
 	static void WriteVTKCylindricalGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), double discLines_scaling = 1);
-	//! Append a vtk vector array to an already open vtk file, write a header first! \sa WriteVTKHeader
+	//! Append a vtk vector array to an already open vtk file, write a header first! \sa WriteVTKHeader()
 	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, unsigned int precision=12);
-	//! Append a vtk scalar array to an already open vtk file, write a header first! \sa WriteVTKHeader
+	//! Append a vtk scalar array to an already open vtk file, write a header first! \sa WriteVTKHeader()
 	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, unsigned int precision=12);
 
 	static bool DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const * const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);

@@ -56,9 +56,9 @@ public:
 	double GetTimestep() const {return dT;};
 	double GetNumberCells() const;
 
-	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines)
+	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines())
 	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
-	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetOriginalNumLines)
+	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetOriginalNumLines())
 	virtual unsigned int GetOriginalNumLines(int ny) const {return numLines[ny];}
 
 	virtual void ShowStat() const;
@@ -77,9 +77,9 @@ public:
 	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
 	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const;
 
-	//! Get the disc line in n direction (in drawing units)
+	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, int pos, bool dualMesh=false) const;
-	//! Get the disc line in n direction (in drawing units)
+	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
 
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
@@ -124,7 +124,7 @@ protected:
 	double CalcTimestep_Var1();
 	double CalcTimestep_Var3();
 
-	//! Calc operator at certain pos
+	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
 
 	//EC elements, internal only!

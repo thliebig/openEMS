@@ -68,9 +68,9 @@ protected:
 
 	//! Calculate a custom signal
 	virtual void CalcCustomExcitation(double f0, int nTS, string signal);
-	//! Calculate an excitation with center of f0 and the half bandwidth fc
+	//! Calculate an excitation with center of \a f0 and the half bandwidth \a fc
 	virtual void CalcGaussianPulsExcitation(double f0, double fc, int nTS);
-	//! Calculate a sinusoidal excitation with frequency f0 and a duration of nTS number of timesteps
+	//! Calculate a sinusoidal excitation with frequency \a f0 and a duration of \a nTS number of timesteps
 	virtual void CalcSinusExcitation(double f0, int nTS);
 	//! Calculate a dirac impuls excitation
 	virtual void CalcDiracPulsExcitation();
