@@ -22,6 +22,7 @@
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
 #include "FDTD/operator_ext_mur_abc.h"
+#include "FDTD/operator_ext_pml_sf.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/process_efield.h"
@@ -266,13 +267,14 @@ int openEMS::SetupFDTD(const char* file)
 	//Mur-ABC, defined as extension to the operator
 	for (int n=0;n<6;++n)
 	{
-		if (bounds[n]==2)
+		if (bounds[n]==2) //Mur-ABC
 		{
 			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
 			op_ext_mur->SetDirection(n/2,n%2);
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
 	}
+	Build_Split_Field_PML(FDTD_Op,bounds);
 
 	if (CSX.GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));

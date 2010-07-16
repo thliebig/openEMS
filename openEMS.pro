@@ -77,7 +77,9 @@ SOURCES += main.cpp \
     FDTD/operator_ext_dispersive.cpp \
     FDTD/operator_ext_lorentzmaterial.cpp \
     FDTD/engine_ext_dispersive.cpp \
-    FDTD/engine_ext_lorentzmaterial.cpp
+    FDTD/engine_ext_lorentzmaterial.cpp \
+    FDTD/operator_ext_pml_sf.cpp \
+    FDTD/engine_ext_pml_sf.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -111,7 +113,9 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_ext_dispersive.h \
     FDTD/operator_ext_lorentzmaterial.h \
     FDTD/engine_ext_dispersive.h \
-    FDTD/engine_ext_lorentzmaterial.h
+    FDTD/engine_ext_lorentzmaterial.h \
+    FDTD/operator_ext_pml_sf.h \
+    FDTD/engine_ext_pml_sf.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native

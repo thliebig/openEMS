@@ -562,8 +562,11 @@ int Operator::CalcECOperator()
 		delete[] EC_R[n];EC_R[n]=NULL;
 	}
 
-	//Always apply PEC to all boundary's
+	//Apply PEC to all boundary's
 	bool PEC[6]={1,1,1,1,1,1};
+	//exception for pml boundaries
+	for (int n=0;n<6;++n)
+		PEC[n] = m_BC[n]!=3;
 	ApplyElectricBC(PEC);
 
 	InitExcitation();
@@ -597,9 +600,11 @@ void Operator::ApplyElectricBC(bool* dirs)
 				GetVI(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
 				GetVV(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
 				GetVI(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
+
 				pos[n]=numLines[n]-1;
-				GetVV(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
-				GetVI(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
+				GetVV(n,pos[0],pos[1],pos[2]) = 0; // these are outside the FDTD-domain as defined by the main disc
+				GetVI(n,pos[0],pos[1],pos[2]) = 0; // these are outside the FDTD-domain as defined by the main disc
+
 				GetVV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
 				GetVI(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
 				GetVV(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];

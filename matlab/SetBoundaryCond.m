@@ -2,7 +2,7 @@ function FDTD = SetBoundaryCond(FDTD,BC)
 % FDTD = SetBoundaryCond(FDTD,BC)
 %
 % BC = [xmin xmax ymin ymax zmin zmax];
-% ?min/?max: 0=PEC 1=PMC 2=MUR-ABC
+% ?min/?max: 0=PEC 1=PMC 2=MUR-ABC 3=PML-ABC
 % 
 % openEMS matlab interface
 % -----------------------
