@@ -26,6 +26,7 @@
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/process_efield.h"
+#include "FDTD/process_hfield.h"
 #include "FDTD/processfields_td.h"
 #include <sys/time.h>
 #include <time.h>
@@ -343,8 +344,8 @@ int openEMS::SetupFDTD(const char* file)
 				}
 				else if (pb->GetProbeType()==2)
 					proc = new ProcessEField(FDTD_Op,FDTD_Eng);
-//				else if (pb->GetProbeType()==3)
-//					proc = new ProcessHField(FDTD_Op,FDTD_Eng);
+				else if (pb->GetProbeType()==3)
+					proc = new ProcessHField(FDTD_Op,FDTD_Eng);
 				else
 				{
 					cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
