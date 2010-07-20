@@ -8,12 +8,13 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % Sim_File = 'helix.xml'; %should be created by WriteOpenEMS
 % opts = '--engine=fastest';
 % 
-% optinal:  
+% optional:  
 % (ssh only on unix with working ssh client)
 % Settings.SSH.host = '<hostname or ip>'
 % Settings.SSH.bin = '<path_to_openEMS>/openEMS.sh'
 %
 % Settings.LogFile = 'openEMS.log'
+% Settings.Silent  = 0
 %
 % RunOpenEMS(Sim_Path,Sim_File,opts,Settings)
 %
@@ -57,13 +58,13 @@ if (isfield(Settings,'SSH') && isunix)
     else
         append_unix = [];
     end
-	status = unix(['ssh ' Settings.SSH.host ' "cd /tmp/' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix])
+	status = unix(['ssh ' Settings.SSH.host ' "cd /tmp/' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix]);
     if (status~=0)
         disp(result);
         error('openEMS:RunOpenEMS','ssh openEMS failed!');
     end
 
-    disp(['Remote simulation done... copying back results and cleaning up...']);
+    disp( 'Remote simulation done... copying back results and cleaning up...' );
 
     [stat, res] = unix(['scp -r ' Settings.SSH.host ':/tmp/' ssh_work_path '/* ' pwd '/']);
     if (stat~=0);
@@ -78,8 +79,12 @@ if (isfield(Settings,'SSH') && isunix)
     end       
 else
     args = [Sim_File ' ' opts];
-    if isfield(Settings,'LogFile')
+    if isfield(Settings,'LogFile') && isfield(Settings,'Silent')
+        invoke_openEMS(args,Settings.LogFile,Settings.Silent);
+    elseif isfield(Settings,'LogFile')
         invoke_openEMS(args,Settings.LogFile);
+    elseif isfield(Settings,'Silent')
+        invoke_openEMS(args,[],Settings.Silent);
     else
         invoke_openEMS(args);
     end
