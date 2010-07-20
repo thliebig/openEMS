@@ -10,15 +10,17 @@ pass = 1;
 physical_constants;
 
 
-ENABLE_PLOTS = 1;
+ENABLE_PLOTS = 0;
 CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
-VERBOSE = 1;
+VERBOSE = 0;
 
 % LIMITS
-limit_max_time_diff = 1e-15;
-limit_max_amp_diff  = 1e-13;
-limit_min_z_amp     = 5e-3;
+limit_max_time_diff  = 1e-15;
+limit_max_amp_diff   = 1e-13;
+limit_min_z_amp      = 5e-3;
+limit_max_h_amp_diff = 1e-17;
+limit_min_h_amp      = 1e-7;
 
 
 % setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -287,20 +289,20 @@ for n=1:6
     end
     
     % difference
-    if any( abs(field_x - Ht_probe{n}(:,2)) > limit_max_amp_diff ) || ...
-       any( abs(field_y - Ht_probe{n}(:,3)) > limit_max_amp_diff ) || ...
-       any( abs(field_z - Ht_probe{n}(:,4)) > limit_max_amp_diff )
+    if any( abs(field_x - Ht_probe{n}(:,2)) > limit_max_h_amp_diff ) || ...
+       any( abs(field_y - Ht_probe{n}(:,3)) > limit_max_h_amp_diff ) || ...
+       any( abs(field_z - Ht_probe{n}(:,4)) > limit_max_h_amp_diff )
         pass = 0;
         disp( 'probes/fieldprobes.m (amplitudes differ too much):  * FAILED *' );
         break
     end
     
     % check absolute field strength of z component
-%     if max(abs(field_z)) < limit_min_z_amp
-%         pass = 0;
-%         disp( 'probes/fieldprobes.m (amplitude of z-component too small):  * FAILED *' );
-%         break
-%     end
+    if (max(abs(field_x)) < limit_min_h_amp) || (max(abs(field_y)) < limit_min_h_amp)
+        pass = 0;
+        disp( 'probes/fieldprobes.m (amplitude of x- or y-component too small):  * FAILED *' );
+        break
+    end
 end
 
 
