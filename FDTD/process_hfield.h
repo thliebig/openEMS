@@ -33,6 +33,7 @@ public:
 	ProcessHField(Operator* op, Engine* eng);
 	virtual ~ProcessHField();
 
+	virtual void InitProcess();
 	void DefineStartStopCoord(double* dstart, double* dstop);
 	virtual int Process();
 };

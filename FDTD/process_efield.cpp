@@ -33,6 +33,12 @@ void ProcessEField::InitProcess()
 	OpenFile(m_Name);
 	for (int n=0; n<3; n++)
 		FD_Values[n].assign(m_FD_Samples.size(),0);
+
+	file << "% time-domain E-field probe by openEMS " GIT_VERSION << endl;
+	file << "% coords: (" << Op->GetDiscLine(0,start[0])*Op->GetGridDelta() << ","
+						  << Op->GetDiscLine(1,start[1])*Op->GetGridDelta() << ","
+						  << Op->GetDiscLine(2,start[2])*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
+	file << "% t/s\tEx/(V/m)\tEy/(V/m)\tEz/(V/m)" << endl;
 }
 
 void ProcessEField::FlushData()

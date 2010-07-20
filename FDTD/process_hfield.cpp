@@ -28,6 +28,19 @@ ProcessHField::~ProcessHField()
 {
 }
 
+void ProcessHField::InitProcess()
+{
+	OpenFile(m_Name);
+	for (int n=0; n<3; n++)
+		FD_Values[n].assign(m_FD_Samples.size(),0);
+
+	file << "% time-domain H-field probe by openEMS " GIT_VERSION << endl;
+	file << "% coords: (" << Op->GetDiscLine(0,start[0],true)*Op->GetGridDelta() << ","
+						  << Op->GetDiscLine(1,start[1],true)*Op->GetGridDelta() << ","
+						  << Op->GetDiscLine(2,start[2],true)*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
+	file << "% t/s\tEx/(A/m)\tEy/(A/m)\tEz/(A/m)" << endl;
+}
+
 void ProcessHField::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	if (Op->SnapToMesh(dstart,start,true,m_start_inside)==false)
@@ -59,7 +72,7 @@ int ProcessHField::Process()
 		// time-domain processing
 		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
 		{
-			file << setprecision(m_precision) << (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep();
+			file << setprecision(m_precision) << ((double)Eng->GetNumberOfTimesteps()+0.5)*Op->GetTimestep();
 			for (int n=0; n<3; n++)
 			{
 				FDTD_FLOAT field = Eng->GetCurr(n,start) / Op->GetMeshDelta(n,start,true);
