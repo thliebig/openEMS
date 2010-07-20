@@ -15,10 +15,10 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "processfields.h"
-
 #include <iomanip>
 #include <H5Cpp.h>
+#include "tools/global.h"
+#include "processfields.h"
 
 ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 {
@@ -222,6 +222,18 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 				discDLines[n][i] = lines.at(i);
 		}
 	}
+
+	if (g_settings.showProbeDiscretization()) {
+		// FIXME the information E-Field / H-Field and therefore which mesh to use is missing
+		bool dualMesh = false;
+		cerr << m_filename << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], dualMesh ) << ","
+				<< Op->GetDiscLine( 1, start[1], dualMesh ) << "," << Op->GetDiscLine( 2, start[2], dualMesh ) << ") -> ("
+				<< Op->GetDiscLine( 0, stop[0], dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], dualMesh ) << ","
+				<< Op->GetDiscLine( 2, stop[2], dualMesh ) << ")";
+		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
+				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+	}
+
 }
 
 double ProcessFields::CalcTotalEnergy() const
