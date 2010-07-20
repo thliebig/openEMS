@@ -139,24 +139,34 @@ string ProcessFields::GetInterpolationNameByType(DumpMode mode)
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	vector<double> lines;
+
+	// determine mesh type
+	bool dualMesh = false;
+	if (m_DumpType == H_FIELD_DUMP)
+		dualMesh = true;
+
 	if (m_DumpMode==NO_INTERPOLATION)
 	{
-		if (Op->SnapToMesh(dstart,start)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
-		if (Op->SnapToMesh(dstop,stop)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
-		//create dual mesh
+		if (!Op->SnapToMesh(dstart,start,dualMesh))
+			cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
+		if (!Op->SnapToMesh(dstop,stop,dualMesh))
+			cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
+
 		for (int n=0;n<3;++n)
 		{
-	//		cerr << "start " << start[n] << "stop " << stop[n];
+			// normalize order of start and stop
 			if (start[n]>stop[n])
 			{
 				unsigned int help = start[n];
 				start[n]=stop[n];
 				stop[n]=help;
 			}
+
+			// construct new discLines
 			lines.clear();
 			for (unsigned int i=start[n];i<=stop[n];i+=subSample[n])
 			{
-				lines.push_back(Op->GetDiscLine(n,i));//Op->discLines[n][i]);
+				lines.push_back(Op->GetDiscLine(n,i,dualMesh));
 			}
 			numLines[n] = lines.size();
 			delete[] discLines[n];
