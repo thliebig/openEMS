@@ -138,12 +138,14 @@ double Operator::GetDiscLine(int n, int pos, bool dualMesh) const
 	if (dualMesh==false)
 		return discLines[n][pos];
 	else
-	{
-		if (pos<(int)numLines[n]-1)
-			return 0.5*(discLines[n][pos+1]+discLines[n][pos]);
-		else
-			return 0.5*(discLines[n][pos]+discLines[n][pos-1]);
-	}
+		return (discLines[n][pos] + 0.5*fabs(MainOp->GetIndexDelta(n,pos)));
+}
+
+double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
+{
+	int nyP = (ny+1)%3;
+	int nyPP = (ny+2)%3;
+	return GetMeshDelta(nyP,pos,!dualMesh) * GetMeshDelta(nyPP,pos,!dualMesh);
 }
 
 bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, bool* inside)
@@ -645,7 +647,7 @@ void Operator::ApplyMagneticBC(bool* dirs)
 }
 
 
-bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
+bool Operator::Calc_ECPos(int n, const unsigned int* pos, double* inEC) const
 {
 	double coord[3];
 	double shiftCoord[3];
@@ -778,26 +780,15 @@ bool Operator::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	return true;
 }
 
-bool Operator::Calc_EffMatPos(int n, unsigned int* pos, double* inMat)
+bool Operator::Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const
 {
-	int nP = (n+1)%3;
-	int nPP = (n+2)%3;
-
-	double delta=MainOp->GetIndexDelta(n,pos[n]);
-	double deltaP=MainOp->GetIndexDelta(nP,pos[nP]);
-	double deltaPP=MainOp->GetIndexDelta(nPP,pos[nPP]);
-
-	double delta_M=MainOp->GetIndexDelta(n,pos[n]-1);
-	double deltaP_M=MainOp->GetIndexDelta(nP,pos[nP]-1);
-	double deltaPP_M=MainOp->GetIndexDelta(nPP,pos[nPP]-1);
-
 	this->Calc_ECPos(n,pos,inMat);
 
-	inMat[0] *= fabs(delta)/(0.25*(fabs(deltaP_M) + fabs(deltaP))*(fabs(deltaPP_M) + fabs(deltaPP)))/gridDelta;
-	inMat[1] *= fabs(delta)/(0.25*(fabs(deltaP_M) + fabs(deltaP))*(fabs(deltaPP_M) + fabs(deltaPP)))/gridDelta;
+	inMat[0] *= GetMeshDelta(n,pos)/GetNodeArea(n,pos);
+	inMat[1] *= GetMeshDelta(n,pos)/GetNodeArea(n,pos);
 
-	inMat[2] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
-	inMat[3] *= 0.5*(fabs(delta_M) + fabs(delta)) / fabs(deltaP*deltaPP) / gridDelta;
+	inMat[2] *= GetMeshDelta(n,pos,true)/GetNodeArea(n,pos,true);
+	inMat[3] *= GetMeshDelta(n,pos,true)/GetNodeArea(n,pos,true);
 
 	return true;
 }

@@ -83,6 +83,11 @@ public:
 	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
 
+	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,(const int*)pos,dualMesh);}
+	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeArea(int ny, const int pos[3], bool dualMesh = false) const;
+
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 
 	virtual void AddExtension(Operator_Extension* op_ext);
@@ -131,8 +136,8 @@ protected:
 	//EC elements, internal only!
 	virtual void Init_EC();
 	virtual bool Calc_EC();
-	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
-	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
+	virtual bool Calc_ECPos(int n, const unsigned int* pos, double* inEC) const;
+	virtual bool Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const;
 	double* EC_C[3];
 	double* EC_G[3];
 	double* EC_L[3];

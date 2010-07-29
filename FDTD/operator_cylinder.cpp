@@ -88,6 +88,28 @@ double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) con
 	return delta;
 }
 
+double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
+{
+	if (ny==2)
+	{
+		double da = __OP_CYLINDER_BASE_CLASS__::GetMeshDelta(1,pos,dualMesh)/gridDelta;
+		double r1,r2;
+		if (!dualMesh)
+		{
+			r1 = (discLines[0][pos[0]] - fabs(MainOp->GetIndexDelta(0,pos[0]-1))/2.0)*gridDelta;
+			r2 = (discLines[0][pos[0]] + fabs(MainOp->GetIndexDelta(0,pos[0]  ))/2.0)*gridDelta;
+		}
+		else
+		{
+			r1 =  discLines[0][pos[0]]*gridDelta;
+			r2 = (discLines[0][pos[0]] + fabs(MainOp->GetIndexDelta(0,pos[0])))*gridDelta;
+		}
+		if (r1<0)
+			return da * pow(r2,2);
+		return da/2* (pow(r2,2) - pow(r1,2));
+	}
+	return __OP_CYLINDER_BASE_CLASS__::GetNodeArea(ny,pos,dualMesh);
+}
 
 bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 {
@@ -138,8 +160,16 @@ void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 	}
 	if (CC_R0_included)
 	{
-		// no special treatment necessary
-		// operator for z-direction at r=0 will be calculated and set separately
+		// E in alpha direction ( aka volt[1][x][y][z] ) is not defined for r==0 --> always zero...
+		unsigned int pos[3] = {0,0,0};
+		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		{
+			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			{
+				GetVV(1,pos[0],pos[1],pos[2]) = 0;
+				GetVI(1,pos[0],pos[1],pos[2]) = 0;
+			}
+		}
 	}
 	__OP_CYLINDER_BASE_CLASS__::ApplyElectricBC(dirs);
 }
@@ -158,7 +188,7 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 	__OP_CYLINDER_BASE_CLASS__::ApplyMagneticBC(dirs);
 }
 
-bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
+bool Operator_Cylinder::Calc_ECPos(int n, const unsigned int* pos, double* inEC) const
 {
 	double coord[3];
 	double shiftCoord[3];
@@ -296,12 +326,6 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 		inEC[1] += 0;
 	}
 
-	if (CC_R0_included && (n==1) && (pos[0]==0))
-	{
-		inEC[0]=0;
-		inEC[1]=0;
-	}
-
 	//******************************* mu,sigma averaging *****************************//
 	//shift down
 	shiftCoord[n] = coord[n]-delta_M*0.25;
@@ -372,10 +396,25 @@ bool Operator_Cylinder::Calc_ECPos(int n, unsigned int* pos, double* inEC)
 	return true;
 }
 
-bool Operator_Cylinder::Calc_EffMatPos(int /*n*/, unsigned int* /*pos*/, double* /*inMat*/)
+bool Operator_Cylinder::Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const
 {
-	cerr << "Operator_Cylinder::Calc_EffMatPos: Warning! method not implemented yet..." << endl;
-	return false;
+	__OP_CYLINDER_BASE_CLASS__::Calc_EffMatPos(n, pos, inMat);
+
+	// H_rho is not defined at position r==0
+	if (CC_R0_included && (n==0) && (pos[0]==0))
+	{
+		inMat[2] = 0;
+		inMat[3] = 0;
+	}
+
+	// E_alpha is not defined at position r==0
+	if (CC_R0_included && (n==1) && (pos[0]==0))
+	{
+		inMat[0]=0;
+		inMat[1]=0;
+	}
+
+	return true;
 }
 
 void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)

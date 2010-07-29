@@ -47,13 +47,18 @@ public:
 	//! Get the mesh delta times the grid delta for a 3D position, including radius corrected alpha-mesh width
 	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;
 
+	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,(const int*)pos,dualMesh);}
+	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeArea(int n, const int* pos, bool dualMesh=false) const;
+
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
-	virtual bool Calc_ECPos(int n, unsigned int* pos, double* inEC);
-	virtual bool Calc_EffMatPos(int n, unsigned int* pos, double* inMat);
+	virtual bool Calc_ECPos(int n, const unsigned int* pos, double* inEC) const;
+	virtual bool Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const;
 
 protected:
 	Operator_Cylinder();
