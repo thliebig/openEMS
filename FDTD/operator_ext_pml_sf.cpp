@@ -17,6 +17,7 @@
 
 #include "operator_ext_pml_sf.h"
 #include "engine_ext_pml_sf.h"
+#include "operator_cylinder.h"
 
 #include "tools/array_ops.h"
 
@@ -126,18 +127,32 @@ bool Operator_Ext_PML_SF::BuildExtension()
 				for (pos[2]=0;pos[2]<m_numLines[2];++pos[2])
 				{
 					Calc_ECPos(0,n,pos,inEC);
-					GetVV(0,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[1]/2/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
-					GetII(0,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[3]/2/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
+					if (inEC[0]>0)
+						GetVV(0,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[1]/2/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
+					if (inEC[2]>0)
+						GetII(0,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[3]/2/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
 
-					GetVI(0,n,pos[0],pos[1],pos[2]) = (dT/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
-					GetIV(0,n,pos[0],pos[1],pos[2]) = (dT/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
+					if (inEC[0]>0)
+						GetVI(0,n,pos[0],pos[1],pos[2]) = (dT/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
+					if (inEC[2]>0)
+						GetIV(0,n,pos[0],pos[1],pos[2]) = (dT/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
+
+//					if (n==0)
+//						cerr << pos[0] << " " << pos[1] << " " << pos[2] << " " << inEC[1] << endl;
 
 					Calc_ECPos(1,n,pos,inEC);
-					GetVV(1,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[1]/2/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
-					GetII(1,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[3]/2/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
+					if (inEC[0]>0)
+						GetVV(1,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[1]/2/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
+					if (inEC[2]>0)
+						GetII(1,n,pos[0],pos[1],pos[2]) = (1-dT*inEC[3]/2/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
 
-					GetVI(1,n,pos[0],pos[1],pos[2]) = (dT/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
-					GetIV(1,n,pos[0],pos[1],pos[2]) = (dT/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
+					if (inEC[0]>0)
+						GetVI(1,n,pos[0],pos[1],pos[2]) = (dT/inEC[0])/(1+dT*inEC[1]/2/inEC[0]);
+					if (inEC[2]>0)
+						GetIV(1,n,pos[0],pos[1],pos[2]) = (dT/inEC[2])/(1+dT*inEC[3]/2/inEC[2]);
+
+//					if (n==0)
+//						cerr << pos[0] << " " << pos[1] << " " << pos[2] << " " << inEC[1] << endl;
 				}
 			}
 		}
@@ -206,13 +221,8 @@ double Operator_Ext_PML_SF_Plane::GetNodeArea(int ny, unsigned int pos[3], bool 
 {
 	unsigned int l_pos[] = {pos[0],pos[1],pos[2]};
 	l_pos[m_ny] = m_LineNr;
-	if (ny==m_ny)
-		return m_Op->GetMeshDelta(m_nyP,l_pos,dualMesh)*m_Op->GetMeshDelta(m_nyPP,l_pos,dualMesh);
-	if (ny==m_nyP)
-		return m_Op->GetMeshDelta(m_ny,l_pos,dualMesh)*m_Op->GetMeshDelta(m_nyPP,l_pos,dualMesh);
-	if (ny==m_nyPP)
-		return m_Op->GetMeshDelta(m_nyP,l_pos,dualMesh)*m_Op->GetMeshDelta(m_ny,l_pos,dualMesh);
-	return 0.0;
+
+	return m_Op->GetNodeArea(ny,l_pos,dualMesh);
 }
 
 double Operator_Ext_PML_SF_Plane::GetNodeLength(int ny, unsigned int pos[3], bool dualMesh) const
@@ -245,8 +255,6 @@ bool Operator_Ext_PML_SF_Plane::Calc_ECPos(int nP, int n, unsigned int* pos, dou
 	double inMat[4];
 	m_Op->Calc_EffMatPos(n,l_pos,inMat);
 
-	UNUSED(nP);
-
 	double Zm = sqrt(inMat[2] / inMat[0]); // Zm = sqrt(mue/eps)
 	double kappa = 0;
 	double sigma = 0;
@@ -265,15 +273,23 @@ bool Operator_Ext_PML_SF_Plane::Calc_ECPos(int nP, int n, unsigned int* pos, dou
 			kappa = GetKappaGraded(depth) / Zm ;
 			sigma = GetKappaGraded(depth-0.5*m_pml_delta) * Zm;
 		}
-//		if ((pos[0]==0) && (pos[1]==0))
-//			cerr  << n << "\t" <<  pos[m_ny] << "\t"<< depth  << "\t" << kappa << "\t" << sigma << endl;
+		if ((inMat[0]<=0) || (inMat[2]<=0)) //check if material properties are valid (necessary for cylindrical coords)
+		{
+			kappa = sigma = 0;
+		}
 	}
 
-	inEC[0] = inMat[0] * GetNodeArea(n,pos) / GetNodeLength(n,pos);
-	inEC[1] = (inMat[1]+kappa) * GetNodeArea(n,pos) / GetNodeLength(n,pos);
+	double geomFactor = GetNodeArea(n,pos) / GetNodeLength(n,pos);
+	if (geomFactor<=0 || isnan(geomFactor) || isinf(geomFactor)) //check if geomFactor is positive, not zero and a valid number (necessary for cylindrical coords)
+		geomFactor = 0;
+	inEC[0] = inMat[0] * geomFactor;
+	inEC[1] = (inMat[1]+kappa) * geomFactor;
 
-	inEC[2] = inMat[2] * GetNodeArea(n,pos,true) / GetNodeLength(n,pos,true);
-	inEC[3] = (inMat[3]+sigma) * GetNodeArea(n,pos,true) / GetNodeLength(n,pos,true);
+	geomFactor = GetNodeArea(n,pos) / GetNodeLength(n,pos);
+	if (geomFactor<=0 || isnan(geomFactor) || isinf(geomFactor)) //check if geomFactor is positive, not zero and a valid number (necessary for cylindrical coords)
+		geomFactor = 0;
+	inEC[2] = inMat[2] * geomFactor;
+	inEC[3] = (inMat[3]+sigma) * geomFactor;
 
 	return true;
 }
@@ -344,11 +360,31 @@ Engine_Extension* Operator_Ext_PML_SF_Plane::CreateEngineExtention()
 	return eng_ext;
 }
 
+bool Operator_Ext_PML_SF_Plane::IsCylinderCoordsSave()  const
+{
+	if (m_ny==2)
+	{
+		Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(m_Op);
+		if (op_cyl==NULL)
+		{
+			cerr << "Operator_Ext_PML_SF_Plane::IsCylinderCoordsSave(): Error!!! Sanity check failed!!! ==> Developer is not sane.... this should never have happend.. exit..." << endl;
+			exit(0);
+		}
+		if (op_cyl->GetClosedAlpha())
+		{
+			cerr << "Operator_Ext_PML_SF_Plane::IsCylinderCoordsSave(): Warning... this extension can not handle a closed alpha cylinder operator... " << endl;
+			return false;
+		}
+		return true;
+	}
+	return false;
+}
+
 void Operator_Ext_PML_SF_Plane::ShowStat(ostream &ostr)  const
 {
 	Operator_Extension::ShowStat(ostr);
 	string XYZ[3] = {"x","y","z"};
-	string top_bot[2] = {"top", "bottom"};
+	string top_bot[2] = {"bottom", "top"};
 	ostr << " Active direction\t: " << XYZ[m_ny] << " (" << top_bot[m_top] << ")" << endl;
 	ostr << " PML width (cells)\t: " << m_numLines[m_ny] << endl;
 }

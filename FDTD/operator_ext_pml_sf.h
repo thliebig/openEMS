@@ -94,7 +94,7 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() const {return false;}
+	virtual bool IsCylinderCoordsSave() const;
 
 	virtual string GetExtensionName() const {return string("Split Field PML Plane Extension");}
 
