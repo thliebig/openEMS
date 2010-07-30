@@ -8,9 +8,26 @@ function FDTD = SetBoundaryCond(FDTD,BC)
 % -----------------------
 % author: Thorsten Liebig
 
-FDTD.BoundaryCond.ATTRIBUTE.xmin=BC(1);
-FDTD.BoundaryCond.ATTRIBUTE.xmax=BC(2);
-FDTD.BoundaryCond.ATTRIBUTE.ymin=BC(3);
-FDTD.BoundaryCond.ATTRIBUTE.ymax=BC(4);
-FDTD.BoundaryCond.ATTRIBUTE.zmin=BC(5);
-FDTD.BoundaryCond.ATTRIBUTE.zmax=BC(6);
+if (numel(BC)~=6)
+    error('openEMS:SetBoundaryCond','wrong number of boundary conditions');
+end
+
+if isnumeric(BC)
+    FDTD.BoundaryCond.ATTRIBUTE.xmin=BC(1);
+    FDTD.BoundaryCond.ATTRIBUTE.xmax=BC(2);
+    FDTD.BoundaryCond.ATTRIBUTE.ymin=BC(3);
+    FDTD.BoundaryCond.ATTRIBUTE.ymax=BC(4);
+    FDTD.BoundaryCond.ATTRIBUTE.zmin=BC(5);
+    FDTD.BoundaryCond.ATTRIBUTE.zmax=BC(6);
+elseif iscell(BC)
+    FDTD.BoundaryCond.ATTRIBUTE.xmin=BC{1};
+    FDTD.BoundaryCond.ATTRIBUTE.xmax=BC{2};
+    FDTD.BoundaryCond.ATTRIBUTE.ymin=BC{3};
+    FDTD.BoundaryCond.ATTRIBUTE.ymax=BC{4};
+    FDTD.BoundaryCond.ATTRIBUTE.zmin=BC{5};
+    FDTD.BoundaryCond.ATTRIBUTE.zmax=BC{6};
+else
+    error('openEMS:SetBoundaryCond','unknown boundary condition type');
+end
+
+        
