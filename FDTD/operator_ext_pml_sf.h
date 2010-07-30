@@ -22,7 +22,7 @@
 #include "operator_extension.h"
 
 //! Insert split field pml planes, edges and corner as necessary by the given boundary conditions
-bool Build_Split_Field_PML(Operator* op, int BC[6]);
+bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6]);
 
 //! This is the abstract operator extension for truncating the FDTD domain with a split field pml
 class Operator_Ext_PML_SF : public Operator_Extension

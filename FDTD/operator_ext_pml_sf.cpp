@@ -21,7 +21,7 @@
 
 #include "tools/array_ops.h"
 
-bool Build_Split_Field_PML(Operator* op, int BC[6])
+bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6])
 {
 	for (int n=0;n<6;++n)
 	{
@@ -30,7 +30,7 @@ bool Build_Split_Field_PML(Operator* op, int BC[6])
 			cerr << "Build_Split_Field_PML:: Warning, currently only pml planes are implemented... edges and corner coming soon..." << endl;
 			Operator_Ext_PML_SF_Plane* op_pml_sf = new Operator_Ext_PML_SF_Plane(op);
 			op_pml_sf->SetDirection(n/2,n%2);
-			op_pml_sf->SetPMLLength(8);
+			op_pml_sf->SetPMLLength(size[n]);
 			op_pml_sf->SetBoundaryCondition(BC);
 			op->AddExtension(op_pml_sf);
 		}

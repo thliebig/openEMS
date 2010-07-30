@@ -63,6 +63,9 @@ protected:
 	enum EngineType {EngineType_Standard, EngineType_SSE, EngineType_SSE_Compressed, EngineType_Multithreaded};
 	EngineType m_engine;
 	unsigned int m_engine_numThreads;
+
+	//! Read boundary conditions from xml element and apply to FDTD operator
+	bool SetupBoundaryConditions(TiXmlElement* BC);
 };
 
 #endif // OPENEMS_H

@@ -153,11 +153,63 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
+bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
+{
+	int EC; //error code of tinyxml
+	int bounds[6] = {0,0,0,0,0,0};   //default boundary cond. (PEC)
+	int pml_size[6] = {8,8,8,8,8,8}; //default pml size
+	string s_bc;
+
+	string bound_names[] = {"xmin","xmax","ymin","ymax","zmin","zmax"};
+
+	for (int n=0;n<6;++n)
+	{
+		EC = BC->QueryIntAttribute(bound_names[n].c_str(),&bounds[n]);
+		if (EC==TIXML_SUCCESS)
+			continue;
+		if (EC==TIXML_WRONG_TYPE)
+		{
+			s_bc = string(BC->Attribute(bound_names[n].c_str()));
+			if (s_bc=="PEC")
+				bounds[n] = 0;
+			else if (s_bc=="PMC")
+				bounds[n] = 1;
+			else if (s_bc=="MUR")
+				bounds[n] = 2;
+			else if(strncmp(s_bc.c_str(),"PML_=",4)==0)
+			{
+				bounds[n] = 3;
+				pml_size[n] = atoi(s_bc.c_str()+4);
+			}
+			else
+				cerr << "openEMS::SetupBoundaryConditions: Warning,  boundary condition for \"" << bound_names[n] << "\" unknown... set to PEC " << endl;
+		}
+		else
+			cerr << "openEMS::SetupBoundaryConditions: Warning, boundary condition for \"" << bound_names[n] << "\" not found... set to PEC " << endl;
+	}
+
+	FDTD_Op->SetBoundaryCondition(bounds); //operator only knows about PEC and PMC, everything else is defined by extensions (see below)
+
+	/**************************** create all operator/engine extensions here !!!! **********************************/
+	//Mur-ABC, defined as extension to the operator
+	for (int n=0;n<6;++n)
+	{
+		if (bounds[n]==2) //Mur-ABC
+		{
+			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
+			op_ext_mur->SetDirection(n/2,n%2);
+			FDTD_Op->AddExtension(op_ext_mur);
+		}
+	}
+	Build_Split_Field_PML(FDTD_Op,bounds,pml_size);
+
+	return true;
+}
+
 int openEMS::SetupFDTD(const char* file)
 {
 	if (file==NULL) return -1;
 	Reset();
-	int bounds[6];
 
 	timeval startTime;
 	gettimeofday(&startTime,NULL);
@@ -218,12 +270,6 @@ int openEMS::SetupFDTD(const char* file)
 		cerr << "Can't read openEMS boundary cond Settings... " << endl;
 		exit(-3);
 	}
-	BC->QueryIntAttribute("xmin",&bounds[0]);
-	BC->QueryIntAttribute("xmax",&bounds[1]);
-	BC->QueryIntAttribute("ymin",&bounds[2]);
-	BC->QueryIntAttribute("ymax",&bounds[3]);
-	BC->QueryIntAttribute("zmin",&bounds[4]);
-	BC->QueryIntAttribute("zmax",&bounds[5]);
 
 	cout << "Read Geometry..." << endl;
 	ContinuousStructure CSX;
@@ -262,20 +308,7 @@ int openEMS::SetupFDTD(const char* file)
 
 	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(2);
 
-	FDTD_Op->SetBoundaryCondition(bounds); //operator only knows about PEC and PMC, everything else is defined by extensions (see below)
-
-	/**************************** create all operator/engine extensions here !!!! **********************************/
-	//Mur-ABC, defined as extension to the operator
-	for (int n=0;n<6;++n)
-	{
-		if (bounds[n]==2) //Mur-ABC
-		{
-			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
-			op_ext_mur->SetDirection(n/2,n%2);
-			FDTD_Op->AddExtension(op_ext_mur);
-		}
-	}
-	Build_Split_Field_PML(FDTD_Op,bounds);
+	SetupBoundaryConditions(BC);
 
 	if (CSX.GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
