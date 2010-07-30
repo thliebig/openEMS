@@ -18,8 +18,8 @@
 #include "operator_ext_pml_sf.h"
 #include "engine_ext_pml_sf.h"
 #include "operator_cylinder.h"
-
 #include "tools/array_ops.h"
+#include "fparser.hh"
 
 bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6])
 {
@@ -54,10 +54,16 @@ Operator_Ext_PML_SF::Operator_Ext_PML_SF(Operator* op) : Operator_Extension(op)
 
 	for (int n=0;n<6;++n)
 		m_BC[n]=0;
+
+	m_GradingFunction = new FunctionParser();
+	//default grading function
+	SetGradingFunction(" -log(1e-6)*log(2.5)/(2*dl*pow(2.5,W/dl)-1) * pow(2.5, D/dl) / Z ");
 }
 
 Operator_Ext_PML_SF::~Operator_Ext_PML_SF()
 {
+	delete m_GradingFunction;
+	m_GradingFunction = NULL;
 	DeleteOP();
 }
 
@@ -102,6 +108,16 @@ void Operator_Ext_PML_SF::DeleteOP()
 	iv[0] = NULL;
 	Delete_N_3DArray<FDTD_FLOAT>(iv[1],m_numLines);
 	iv[1] = NULL;
+}
+
+bool Operator_Ext_PML_SF::SetGradingFunction(string func)
+{
+	int res = m_GradingFunction->Parse(func.c_str(), "D,dl,W,Z,N");
+	if(res < 0) return true;
+
+	cerr << "Operator_Ext_PML_SF::SetGradingFunction: Warning, an error occured parsing the pml grading function (see below) ..." << endl;
+	cerr << func << "\n" << string(res, ' ') << "^\n" << m_GradingFunction->ErrorMsg() << "\n";
+	return false;
 }
 
 bool Operator_Ext_PML_SF::BuildExtension()
@@ -240,11 +256,8 @@ double Operator_Ext_PML_SF_Plane::GetKappaGraded(double depth, double Zm) const
 	if (depth<0)
 		return 0.0;
 
-	//todo: use fparser to allow arbitrary, user-defined profiles and parameter
-	double g = 2.5;
-	double R0 = 1e-6;
-	double kappa0 = -log(R0)*log(g)/(2*m_pml_delta * pow(g,m_pml_width/m_pml_delta) -1);
-	return pow(g,depth/m_pml_delta)*kappa0 / Zm;
+	double vars[5] = {depth, m_pml_delta, m_pml_width, Zm, m_numLines[m_ny]};
+	return m_GradingFunction->Eval(vars);
 }
 
 bool Operator_Ext_PML_SF_Plane::Calc_ECPos(int nP, int n, unsigned int* pos, double* inEC) const

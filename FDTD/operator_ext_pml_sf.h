@@ -21,6 +21,8 @@
 #include "operator.h"
 #include "operator_extension.h"
 
+class FunctionParser;
+
 //! Insert split field pml planes, edges and corner as necessary by the given boundary conditions
 bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6]);
 
@@ -45,6 +47,19 @@ public:
 	//! This will resturn the pml parameter grading
 	virtual double GetKappaGraded(double depth, double Zm) const {UNUSED(depth);UNUSED(Zm);return 0.0;}
 
+	//! Set the grading function for the pml
+	/*!
+		Define the pml grading grading function.
+		Predefined variables in this grading function are:
+			D  = depth in the pml in meter
+			dl = mesh delta inside the pml in meter
+			W  = width (length) of the pml in meter
+			N  = number of cells for the pml
+			Z  = wave impedance at the current depth and position
+		example: SetGradingFunction("-log(1e-6)*log(2.5)/(2*dl*pow(2.5,W/dl)-1) * pow(2.5, D/dl) / Z");
+	*/
+	virtual bool SetGradingFunction(string func);
+
 	virtual bool BuildExtension();
 
 	virtual string GetExtensionName() const {return string("Split Field PML Extension");}
@@ -62,6 +77,8 @@ protected:
 	bool m_SetupDone;
 
 	int m_BC[6];
+
+	FunctionParser* m_GradingFunction;
 
 	void InitOP();
 	void DeleteOP();
