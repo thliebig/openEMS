@@ -1,8 +1,33 @@
-function FDTD = SetBoundaryCond(FDTD,BC)
-% FDTD = SetBoundaryCond(FDTD,BC)
+function FDTD = SetBoundaryCond(FDTD, BC, varargin)
+% FDTD = SetBoundaryCond(FDTD, BC, varargin)
 %
 % BC = [xmin xmax ymin ymax zmin zmax];
-% ?min/?max: 0=PEC 1=PMC 2=MUR-ABC 3=PML-ABC
+% or BC = {xmin xmax ymin ymax zmin zmax};
+% ?min/?max: 
+%   0 = PEC      or  'PEC'
+%   1 = PMC      or  'PMC'
+%   2 = MUR-ABC  or  'MUR'
+%   3 = PML-ABC  or  'PML_x' with pml size x => 4..50
+% 
+% example:
+% BC = [ 1     1     0     0     2     3     ]  %using numbers or
+% BC = {'PMC' 'PMC' 'PEC' 'PEC' 'MUR' 'PML_8'}  %usign equivalent strings
+%
+% pml definitions
+% 	arguments:  'PML_Grading','gradFunction'
+% 		Define the pml grading grading function.
+% 		Predefined variables in this grading function are:
+% 			D  = depth in the pml in meter
+% 			dl = mesh delta inside the pml in meter
+% 			W  = width (length) of the pml in meter
+% 			N  = number of cells for the pml
+% 			Z  = wave impedance at the current depth and position
+% 
+% example: 
+% FDTD = SetBoundaryCond(FDTD,BC); 
+% or
+% FDTD = SetBoundaryCond(FDTD,BC,'PML_Grading','-log(1e-6)*log(2.5)/(2*dl*pow(2.5,W/dl)-1) * pow(2.5, D/dl) / Z');
+%
 % 
 % openEMS matlab interface
 % -----------------------
@@ -30,4 +55,8 @@ else
     error('openEMS:SetBoundaryCond','unknown boundary condition type');
 end
 
+
+for n=1:(nargin-2)/2
+    FDTD.BoundaryCond.ATTRIBUTE.(varargin{2*n-1}) = varargin{2*n};
+end
         
