@@ -235,7 +235,7 @@ double Operator_Ext_PML_SF_Plane::GetNodeLength(int ny, unsigned int pos[3], boo
 	return m_Op->GetMeshDelta(ny,l_pos,dualMesh);
 }
 
-double Operator_Ext_PML_SF_Plane::GetKappaGraded(double depth) const
+double Operator_Ext_PML_SF_Plane::GetKappaGraded(double depth, double Zm) const
 {
 	if (depth<0)
 		return 0.0;
@@ -244,7 +244,7 @@ double Operator_Ext_PML_SF_Plane::GetKappaGraded(double depth) const
 	double g = 2.5;
 	double R0 = 1e-6;
 	double kappa0 = -log(R0)*log(g)/(2*m_pml_delta * pow(g,m_pml_width/m_pml_delta) -1);
-	return pow(g,depth/m_pml_delta)*kappa0;
+	return pow(g,depth/m_pml_delta)*kappa0 / Zm;
 }
 
 bool Operator_Ext_PML_SF_Plane::Calc_ECPos(int nP, int n, unsigned int* pos, double* inEC) const
@@ -255,7 +255,8 @@ bool Operator_Ext_PML_SF_Plane::Calc_ECPos(int nP, int n, unsigned int* pos, dou
 	double inMat[4];
 	m_Op->Calc_EffMatPos(n,l_pos,inMat);
 
-	double Zm = sqrt(inMat[2] / inMat[0]); // Zm = sqrt(mue/eps)
+	double Zm2 = inMat[2] / inMat[0]; // Zm^2 = mue/eps
+	double Zm = sqrt(Zm2);			  // Zm   = sqrt(Zm^2) = sqrt(mue/eps)
 	double kappa = 0;
 	double sigma = 0;
 	double depth = 0;
@@ -264,14 +265,14 @@ bool Operator_Ext_PML_SF_Plane::Calc_ECPos(int nP, int n, unsigned int* pos, dou
 		if (m_top)
 		{
 			depth = pos[m_ny]*m_pml_delta - 0.5*m_pml_delta;
-			kappa = GetKappaGraded(depth) / Zm;
-			sigma = GetKappaGraded(depth + 0.5*m_pml_delta) * Zm;
+			kappa = GetKappaGraded(depth, Zm);
+			sigma = GetKappaGraded(depth + 0.5*m_pml_delta, Zm) * Zm2;
 		}
 		else
 		{
 			depth = m_pml_width - (pos[m_ny])*m_pml_delta;
-			kappa = GetKappaGraded(depth) / Zm ;
-			sigma = GetKappaGraded(depth-0.5*m_pml_delta) * Zm;
+			kappa = GetKappaGraded(depth, Zm) ;
+			sigma = GetKappaGraded(depth-0.5*m_pml_delta, Zm) * Zm2;
 		}
 		if ((inMat[0]<=0) || (inMat[2]<=0)) //check if material properties are valid (necessary for cylindrical coords)
 		{

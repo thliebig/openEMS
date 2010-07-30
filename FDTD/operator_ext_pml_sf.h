@@ -43,7 +43,7 @@ public:
 	virtual double GetNodeLength(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny);UNUSED(pos);UNUSED(dualMesh);return 0.0;}
 
 	//! This will resturn the pml parameter grading
-	virtual double GetKappaGraded(double depth) const {UNUSED(depth);return 0.0;}
+	virtual double GetKappaGraded(double depth, double Zm) const {UNUSED(depth);UNUSED(Zm);return 0.0;}
 
 	virtual bool BuildExtension();
 
@@ -88,7 +88,7 @@ public:
 	virtual double GetNodeArea(int ny, unsigned int pos[3], bool dualMesh = false) const;
 	virtual double GetNodeLength(int ny, unsigned int pos[3], bool dualMesh = false) const;
 
-	virtual double GetKappaGraded(double depth) const;
+	virtual double GetKappaGraded(double depth, double Zm) const;
 
 	virtual bool Calc_ECPos(int nP, int n, unsigned int* pos, double* inEC) const;
 
