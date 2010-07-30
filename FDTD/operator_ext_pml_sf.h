@@ -24,7 +24,7 @@
 class FunctionParser;
 
 //! Insert split field pml planes, edges and corner as necessary by the given boundary conditions
-bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6]);
+bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6], string gradFunc);
 
 //! This is the abstract operator extension for truncating the FDTD domain with a split field pml
 class Operator_Ext_PML_SF : public Operator_Extension
@@ -57,6 +57,8 @@ public:
 			N  = number of cells for the pml
 			Z  = wave impedance at the current depth and position
 		example: SetGradingFunction("-log(1e-6)*log(2.5)/(2*dl*pow(2.5,W/dl)-1) * pow(2.5, D/dl) / Z");
+
+		An empty function string will be ignored.
 	*/
 	virtual bool SetGradingFunction(string func);
 
@@ -78,6 +80,7 @@ protected:
 
 	int m_BC[6];
 
+	string m_GradFunc;
 	FunctionParser* m_GradingFunction;
 
 	void InitOP();

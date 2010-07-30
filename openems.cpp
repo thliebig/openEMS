@@ -159,6 +159,10 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 	int bounds[6] = {0,0,0,0,0,0};   //default boundary cond. (PEC)
 	int pml_size[6] = {8,8,8,8,8,8}; //default pml size
 	string s_bc;
+	const char* tmp = BC->Attribute("PML_Grading");
+	string pml_gradFunc;
+	if (tmp)
+		pml_gradFunc = string(tmp);
 
 	string bound_names[] = {"xmin","xmax","ymin","ymax","zmin","zmax"};
 
@@ -169,7 +173,9 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 			continue;
 		if (EC==TIXML_WRONG_TYPE)
 		{
-			s_bc = string(BC->Attribute(bound_names[n].c_str()));
+			tmp = BC->Attribute(bound_names[n].c_str());
+			if (tmp)
+				s_bc = string(tmp);
 			if (s_bc=="PEC")
 				bounds[n] = 0;
 			else if (s_bc=="PMC")
@@ -201,7 +207,7 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
 	}
-	Build_Split_Field_PML(FDTD_Op,bounds,pml_size);
+	Build_Split_Field_PML(FDTD_Op,bounds,pml_size,pml_gradFunc);
 
 	return true;
 }

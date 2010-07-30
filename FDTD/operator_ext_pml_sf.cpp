@@ -21,17 +21,31 @@
 #include "tools/array_ops.h"
 #include "fparser.hh"
 
-bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6])
+bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6], string gradFunc)
 {
 	for (int n=0;n<6;++n)
 	{
 		if (BC[n]==3) //split field PML
 		{
-			cerr << "Build_Split_Field_PML:: Warning, currently only pml planes are implemented... edges and corner coming soon..." << endl;
 			Operator_Ext_PML_SF_Plane* op_pml_sf = new Operator_Ext_PML_SF_Plane(op);
 			op_pml_sf->SetDirection(n/2,n%2);
+			if ((size[n]<4) || (size[n]>50))
+			{
+				cerr << "Build_Split_Field_PML: Warning, pml size invalid, skipping pml..." << endl;
+				delete op_pml_sf;
+				continue;
+			}
 			op_pml_sf->SetPMLLength(size[n]);
 			op_pml_sf->SetBoundaryCondition(BC);
+
+			if (!op_pml_sf->SetGradingFunction(gradFunc))
+			{
+				cerr << "Build_Split_Field_PML: Warning, pml grading function invalid, skipping pml..." << endl;
+				delete op_pml_sf;
+				continue;
+			}
+
+			cerr << "Build_Split_Field_PML:: Warning, currently only pml planes are implemented... edges and corner coming soon..." << endl;
 			op->AddExtension(op_pml_sf);
 		}
 	}
@@ -112,7 +126,11 @@ void Operator_Ext_PML_SF::DeleteOP()
 
 bool Operator_Ext_PML_SF::SetGradingFunction(string func)
 {
-	int res = m_GradingFunction->Parse(func.c_str(), "D,dl,W,Z,N");
+	if (func.empty())
+		return true;
+
+	m_GradFunc = func;
+	int res = m_GradingFunction->Parse(m_GradFunc.c_str(), "D,dl,W,Z,N");
 	if(res < 0) return true;
 
 	cerr << "Operator_Ext_PML_SF::SetGradingFunction: Warning, an error occured parsing the pml grading function (see below) ..." << endl;
@@ -401,4 +419,5 @@ void Operator_Ext_PML_SF_Plane::ShowStat(ostream &ostr)  const
 	string top_bot[2] = {"bottom", "top"};
 	ostr << " Active direction\t: " << XYZ[m_ny] << " (" << top_bot[m_top] << ")" << endl;
 	ostr << " PML width (cells)\t: " << m_numLines[m_ny] << endl;
+	ostr << " Grading function\t: \"" << m_GradFunc << "\"" << endl;
 }
