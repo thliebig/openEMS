@@ -1061,6 +1061,8 @@ bool Operator::CalcFieldExcitation()
 				//magnetic field excite
 				for (int n=0;n<3;++n)
 				{
+					if ((pos[0]>=numLines[0]-1) || (pos[1]>=numLines[1]-1) || (pos[2]>=numLines[2]-1))
+						continue;  //skip the last H-Line which is outside the FDTD-domain
 					int nP = (n+1)%3;
 					int nPP = (n+2)%3;
 					curr_coord[0] = discLines[0][pos[0]];
@@ -1076,7 +1078,7 @@ bool Operator::CalcFieldExcitation()
 							elec=NULL;
 						if (elec!=NULL)
 						{
-							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))//&& (pos[n]<numLines[n]-1))
+							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 							{
 								amp = elec->GetWeightedExcitation(n,curr_coord)*GetMeshDelta(n,pos,true);// delta[n]*gridDelta;
 								if (amp!=0)
