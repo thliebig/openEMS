@@ -218,6 +218,28 @@ void Engine_Ext_PML_SF_Plane::Apply2Current()
 		}
 	}
 
+	pos[m_ny] = 0;
+	pml_pos[m_ny] = m_Op_PML_SF_PL->m_numLines[m_ny]-1;
+	// copy (back again) voltage data from main engine to pml engine (lowest main line to highest pml line)
+	// this is necessary to catch the voltage excitation on the lowest main voltage line...
+	if (m_Op_PML_SF_PL->m_top==false)
+	{
+		for (pos[m_nyP]=0;pos[m_nyP]<m_Op_PML_SF_PL->m_numLines[m_nyP]-1;++pos[m_nyP])
+		{
+			pml_pos[m_nyP] = pos[m_nyP];
+			for (pos[m_nyPP]=0;pos[m_nyPP]<m_Op_PML_SF_PL->m_numLines[m_nyPP]-1;++pos[m_nyPP])
+			{
+				pml_pos[m_nyPP] = pos[m_nyPP];
+				volt[0][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] = m_Eng->GetVolt(0,pos);
+				volt[1][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] = 0;
+				volt[0][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] = m_Eng->GetVolt(1,pos);
+				volt[1][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] = 0;
+				volt[0][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] = m_Eng->GetVolt(2,pos);
+				volt[1][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] = 0;
+			}
+		}
+	}
+
 	UpdateCurrents(0,m_Op_PML_SF->m_numLines[0]-1);
 
 	pos[m_ny] = m_Op_PML_SF_PL->m_LineNr;
