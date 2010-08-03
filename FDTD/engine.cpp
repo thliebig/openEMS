@@ -179,8 +179,6 @@ void Engine::ApplyCurrentExcite()
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
 		GetCurr(Op->Exc->Curr_dir[n],Op->Exc->Curr_index[0][n],Op->Exc->Curr_index[1][n],Op->Exc->Curr_index[2][n]) += Op->Exc->Curr_amp[n]*Op->Exc->Signal_curr[exc_pos];
-		if (numTS == 0)
-			cout << "Engine::ApplyCurrentExcite(): n=" << n << " dir=" << Op->Exc->Curr_dir[n] << " coords=" << Op->Exc->Curr_index[0][n] << "," << Op->Exc->Curr_index[1][n] << "," << Op->Exc->Curr_index[2][n] << " amp=" << Op->Exc->Curr_amp[n] << endl;
 	}
 
 	// write the first excitation into the file "ht"
