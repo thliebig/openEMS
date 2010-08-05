@@ -95,7 +95,10 @@ void ProcessFields::InitProcess()
 #ifdef OUTPUT_IN_DRAWINGUNITS
 				array[i] = Lines[n][i];
 #else
-				array[i] = Lines[n][i] * Op->GetGridDelta();
+				if ((m_Mesh_Type==CYLINDRICAL_MESH) && (n==1)) //check for alpha-direction
+					array[i] = Lines[n][i];
+				else
+					array[i] = Lines[n][i] * Op->GetGridDelta();
 #endif
 			}
 			//write to dataset
