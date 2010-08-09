@@ -32,33 +32,34 @@ if (nargin<4)
     Settings = [];
 end
 
-
 savePath = pwd;
 cd(Sim_Path);
     
 if (isfield(Settings,'SSH') && isunix)
-    ssh_work_path = ['openEMS_' int2str(randi([1e8 9e8],1))];
-
-    disp(['Running remote openEMS on ' Settings.SSH.host ' at working dir: ' ssh_work_path]);
-
- 	[status, result] = unix(['ssh ' Settings.SSH.host ' "mkdir /tmp/' ssh_work_path '"']);
+    % create a tmp working dir
+ 	[status, result] = unix(['ssh ' Settings.SSH.host ' "mktemp -d /tmp/openEMS_XXXXXXXXXXXX"']);
     if (status~=0)
         disp(result);
-        error('openEMS:RunOpenEMS','mkdir failed!');
+        error('openEMS:RunOpenEMS','mktemp failed to create tmp directory!');
     end
+    ssh_work_path = strtrim(result); %remove tailing \n
     
-    [stat, res] = unix(['scp ' Sim_File ' ' Settings.SSH.host ':/tmp/' ssh_work_path '/' Sim_File]);
+    disp(['Running remote openEMS on ' Settings.SSH.host ' at working dir: ' ssh_work_path]);
+    
+    %copy openEMS simulation file to the ssh host
+    [stat, res] = unix(['scp ' Sim_File ' ' Settings.SSH.host ':' ssh_work_path '/' Sim_File]);
     if (stat~=0)
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');
     end
 
+    %run openEMS (with log file if requested)
     if isfield(Settings,'LogFile')
         append_unix = [' 2>&1 | tee ' Settings.LogFile];
     else
         append_unix = [];
     end
-	status = unix(['ssh ' Settings.SSH.host ' "cd /tmp/' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix]);
+	status = unix(['ssh ' Settings.SSH.host ' "cd ' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix]);
     if (status~=0)
         disp(result);
         error('openEMS:RunOpenEMS','ssh openEMS failed!');
@@ -66,16 +67,18 @@ if (isfield(Settings,'SSH') && isunix)
 
     disp( 'Remote simulation done... copying back results and cleaning up...' );
 
-    [stat, res] = unix(['scp -r ' Settings.SSH.host ':/tmp/' ssh_work_path '/* ' pwd '/']);
+    %copy back all results
+    [stat, res] = unix(['scp -r ' Settings.SSH.host ':' ssh_work_path '/* ' pwd '/']);
     if (stat~=0);
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');
     end 
     
-    [stat, res] = unix(['ssh ' Settings.SSH.host ' rm -r /tmp/' ssh_work_path]);
+    %cleanup
+    [stat, res] = unix(['ssh ' Settings.SSH.host ' rm -r ' ssh_work_path]);
     if (stat~=0);
         disp(res);
-        error('openEMS:RunOpenEMS','remote cleanup failed!');
+        warning('openEMS:RunOpenEMS','remote cleanup failed!');
     end       
 else
     args = [Sim_File ' ' opts];
