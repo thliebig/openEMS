@@ -17,6 +17,7 @@
 
 #include <complex.h>
 #include <iomanip>
+#include "time.h"
 #include "process_efield.h"
 
 ProcessEField::ProcessEField(Operator* op, Engine* eng) : Processing(op, eng)
