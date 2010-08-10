@@ -31,6 +31,9 @@ public:
 	//! Define the direction of this ABC: \a ny=0,1,2 -> x,y,z and if at bottom_ny -> e.g. x=0 or x=end
 	void SetDirection(int ny, bool top_ny);
 
+	//! Set (override) the expected phase velocity of the incoming wave
+	void SetPhaseVelocity(double c_phase) {m_v_phase=c_phase;};
+
 	virtual bool BuildExtension();
 
 	virtual Engine_Extension* CreateEngineExtention();
@@ -46,6 +49,8 @@ protected:
 	int m_nyP,m_nyPP;
 	unsigned int m_LineNr;
 	int m_LineNr_Shift;
+
+	double m_v_phase;
 
 	unsigned int m_numLines[2];
 

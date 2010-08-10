@@ -204,6 +204,9 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 		{
 			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
 			op_ext_mur->SetDirection(n/2,n%2);
+			double v_ph = 0;
+			if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&v_ph) == TIXML_SUCCESS)
+				op_ext_mur->SetPhaseVelocity(v_ph);
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
 	}

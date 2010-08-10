@@ -13,6 +13,12 @@ function FDTD = SetBoundaryCond(FDTD, BC, varargin)
 % BC = [ 1     1     0     0     2     3     ]  %using numbers or
 % BC = {'PMC' 'PMC' 'PEC' 'PEC' 'MUR' 'PML_8'}  %usign equivalent strings
 %
+% mur-abc definitions
+% define a phase-velocity to be used by the mur-abc
+% useful e.g. for dispersive waveguides
+% FDTD = SetBoundaryCond(FDTD,BC,'MUR_PhaseVelocity',299792457.93272);
+% 
+% 
 % pml definitions
 % 	arguments:  'PML_Grading','gradFunction'
 % 		Define the pml grading grading function.
