@@ -63,7 +63,11 @@ public:
 	//! Set the dump precision
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
-	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
+	//! Dump probe geometry to file (will obay main or dual mesh property)
+	virtual void DumpBox2File( string vtkfilenameprefix) const {DumpBox2File(vtkfilenameprefix,m_dualMesh);}
+
+	//! Dump probe geometry to file
+	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh) const;
 
 protected:
 	Operator* Op;
@@ -92,6 +96,9 @@ protected:
 	unsigned int m_FD_Interval;
 
 	void Dump_FD_Data(vector<_Complex double> value, double factor, string filename);
+
+	//! define if given coords are on main or dualMesh (default is false)
+	bool m_dualMesh;
 
 	//! define/store snapped start/stop coords as mesh index
 	unsigned int start[3];

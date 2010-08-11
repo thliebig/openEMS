@@ -27,7 +27,7 @@ public:
 	ProcessVoltage(Operator* op, Engine* eng);
 	virtual ~ProcessVoltage();
 
-	virtual int Process();
+	virtual double CalcIntegral();
 
 protected:
 };

@@ -34,6 +34,7 @@ Processing::Processing(Operator* op, Engine* eng)
 	m_FD_Interval=0;
 	m_weight=1;
 	m_Flush = false;
+	m_dualMesh = false;
 }
 
 Processing::~Processing()
@@ -141,16 +142,16 @@ void Processing::AddFrequency(vector<double>  freqs)
 
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	if (Op->SnapToMesh(dstart,start)==false)
+	if (Op->SnapToMesh(dstart,start,m_dualMesh,m_start_inside)==false)
 		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
-	if (Op->SnapToMesh(dstop,stop)==false)
+	if (Op->SnapToMesh(dstop,stop,m_dualMesh,m_stop_inside)==false)
 		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 
 	if (g_settings.showProbeDiscretization()) {
-		cerr << m_Name << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], false ) << ","
-				<< Op->GetDiscLine( 1, start[1], false ) << "," << Op->GetDiscLine( 2, start[2], false ) << ") -> ("
-				<< Op->GetDiscLine( 0, stop[0], false ) << ","<< Op->GetDiscLine( 1, stop[1], false ) << ","
-				<< Op->GetDiscLine( 2, stop[2], false ) << ")";
+		cerr << m_Name << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], m_dualMesh ) << ","
+				<< Op->GetDiscLine( 1, start[1], m_dualMesh ) << "," << Op->GetDiscLine( 2, start[2], m_dualMesh ) << ") -> ("
+				<< Op->GetDiscLine( 0, stop[0], m_dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], m_dualMesh ) << ","
+				<< Op->GetDiscLine( 2, stop[2], m_dualMesh ) << ")";
 		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
 				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 	}

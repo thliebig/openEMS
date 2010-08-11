@@ -16,9 +16,12 @@
 */
 
 #include "processintegral.h"
+#include <complex.h>
+#include <iomanip>
 
 ProcessIntegral::ProcessIntegral(Operator* op, Engine* eng)  : Processing(op, eng)
 {
+	m_TimeShift = 0.0;
 }
 
 ProcessIntegral::~ProcessIntegral()
@@ -40,5 +43,43 @@ void ProcessIntegral::FlushData()
 {
 	if (m_FD_Samples.size())
 		Dump_FD_Data(FD_Values,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
+}
+
+int ProcessIntegral::Process()
+{
+	if (Enabled==false) return -1;
+	if (CheckTimestep()==false) return GetNextInterval();
+
+	FDTD_FLOAT integral=CalcIntegral();
+	integral*=m_weight;
+
+	double time = (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() + m_TimeShift;
+
+	if (ProcessInterval)
+	{
+		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
+		{
+			TD_Values.push_back(integral);
+			file << setprecision(m_precision) << time << "\t" << integral << endl;
+		}
+	}
+
+	if (m_FD_Interval)
+	{
+		if (Eng->GetNumberOfTimesteps()%m_FD_Interval==0)
+		{
+			double T = time;
+			for (size_t n=0;n<m_FD_Samples.size();++n)
+			{
+				FD_Values.at(n) += integral * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+			}
+			++m_FD_SampleCount;
+			if (m_Flush)
+					FlushData();
+			m_Flush = false;
+		}
+	}
+
+	return GetNextInterval();
 }
 

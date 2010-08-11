@@ -27,13 +27,23 @@ public:
 	virtual ~ProcessIntegral();
 
 	virtual void InitProcess();
+
+	//! Flush FD data to disk
 	virtual void FlushData();
+
+	//! This method should calculate the integral parameter and must be overloaded for each derived class
+	virtual double CalcIntegral() {return 0;}
+
+	//! This method will write the TD and FD dump files using CalcIntegral() to calculate the integral parameter
+	virtual int Process();
 
 protected:
 	ProcessIntegral(Operator* op, Engine* eng);
 
-	vector<FDTD_FLOAT> TD_Values;
+	//! timeshift to be used in TD and FD data, e.g. 0.5*dT in case of current based parameter
+	double m_TimeShift;
 
+	vector<FDTD_FLOAT> TD_Values;
 	vector<_Complex double> FD_Values;
 };
 

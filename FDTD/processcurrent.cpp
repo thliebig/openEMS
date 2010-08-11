@@ -22,33 +22,16 @@
 
 ProcessCurrent::ProcessCurrent(Operator* op, Engine* eng) : ProcessIntegral(op, eng)
 {
+	m_TimeShift = op->GetTimestep()/2.0;
+	m_dualMesh = true;
 }
 
 ProcessCurrent::~ProcessCurrent()
 {
 }
 
-void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
+double ProcessCurrent::CalcIntegral()
 {
-	if (Op->SnapToMesh(dstart,start,true,m_start_inside)==false)
-		cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
-	if (Op->SnapToMesh(dstop,stop,true,m_stop_inside)==false)
-		cerr << "ProcessCurrent::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
-
-	if (g_settings.showProbeDiscretization()) {
-		cerr << m_Name << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], true ) << ","
-				<< Op->GetDiscLine( 1, start[1], true ) << "," << Op->GetDiscLine( 2, start[2], true ) << ") -> ("
-				<< Op->GetDiscLine( 0, stop[0], true ) << ","<< Op->GetDiscLine( 1, stop[1], true ) << ","
-				<< Op->GetDiscLine( 2, stop[2], true ) << ")";
-		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
-				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
-	}
-}
-
-int ProcessCurrent::Process()
-{
-	if (Enabled==false) return -1;
-	if (CheckTimestep()==false) return GetNextInterval();
 	FDTD_FLOAT current=0;
 
 	int Dump_Dim = 0;
@@ -78,7 +61,7 @@ int ProcessCurrent::Process()
 	{
 		cerr << "ProcessCurrent::Process(): Warning Current Integration Box \"" << m_filename << "\" is not a surface (found dimension: " << Dump_Dim << ") --> i = 0" << endl;
 		current = 0;
-		return -1;
+		return 0.0;
 	}
 
 	switch (NormDir)
@@ -139,45 +122,9 @@ int ProcessCurrent::Process()
 		break;
 	default:
 		//this cannot happen...
-		return -2;
+		return 0.0;
 		break;
 	}
 
-	//	cerr << "ts: " << Eng->numTS << " i: " << current << endl;
-	current*=m_weight;
-
-
-	if (ProcessInterval)
-	{
-		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
-		{
-			TD_Values.push_back(current);
-			//current is sampled half a timestep later then the voltages
-			file  << setprecision(m_precision) << (0.5 + (double)Eng->GetNumberOfTimesteps())*Op->GetTimestep() << "\t" << current << endl;
-		}
-	}
-
-	if (m_FD_Interval)
-	{
-		if (Eng->GetNumberOfTimesteps()%m_FD_Interval==0)
-		{
-			double T = ((double)Eng->GetNumberOfTimesteps() + 0.5) * Op->GetTimestep();
-			for (size_t n=0;n<m_FD_Samples.size();++n)
-			{
-				FD_Values.at(n) += current * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
-			}
-			++m_FD_SampleCount;
-			if (m_Flush)
-					FlushData();
-			m_Flush = false;
-		}
-	}
-
-	return GetNextInterval();
+	return current;
 }
-
-void ProcessCurrent::DumpBox2File( string vtkfilenameprefix, bool /*dualMesh*/ ) const
-{
-	Processing::DumpBox2File( vtkfilenameprefix, true );
-}
-

@@ -26,11 +26,8 @@ public:
 	ProcessCurrent(Operator* op, Engine* eng);
 	virtual ~ProcessCurrent();
 
-	virtual void DefineStartStopCoord(double* dstart, double* dstop);
-
-	virtual int Process();
-
-	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh = false ) const; //!< dump geometry to file
+	//! Integrate currents flowing through an area
+	virtual double CalcIntegral();
 
 protected:
 };
