@@ -133,11 +133,11 @@ void Processing::AddFrequency(double freq)
 	m_FD_Samples.push_back(freq);
 }
 
-void Processing::AddFrequency(vector<double>  freqs)
+void Processing::AddFrequency(vector<double> *freqs)
 {
-	for (size_t n=0;n<freqs.size();++n)
+	for (size_t n=0;n<freqs->size();++n)
 	{
-		AddFrequency(freqs.at(n));
+		AddFrequency(freqs->at(n));
 	}
 }
 

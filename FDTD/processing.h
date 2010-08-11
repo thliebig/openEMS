@@ -45,7 +45,7 @@ public:
 	void AddSteps(vector<unsigned int> steps);
 
 	void AddFrequency(double freq);
-	void AddFrequency(vector<double>  freqs);
+	void AddFrequency(vector<double> *freqs);
 
 	bool CheckTimestep();
 	virtual int Process() {return GetNextInterval();}
