@@ -183,7 +183,7 @@ void Engine::ApplyCurrentExcite()
 
 	// write the first excitation into the file "ht"
 	if (numTS < Op->Exc->Length)
-		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t" << Op->Exc->Curr_amp[0]*Op->Exc->Signal_curr[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
+		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t" << Op->Exc->Signal_curr[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
 	else
 		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t0" << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
