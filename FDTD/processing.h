@@ -30,6 +30,8 @@ public:
 	Processing(Operator* op, Engine* eng);
 	virtual ~Processing();
 
+	enum MeshType { CARTESIAN_MESH, CYLINDRICAL_MESH};
+
 	virtual void SetName(string val) {m_Name=val;}
 
 	virtual void InitProcess() {};
@@ -60,6 +62,8 @@ public:
 	virtual void FlushNext() {m_Flush = true;}
 	virtual void FlushData() {};
 
+	void SetMeshType(MeshType meshType) {m_Mesh_Type=meshType;}
+
 	//! Set the dump precision
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
@@ -72,6 +76,8 @@ public:
 protected:
 	Operator* Op;
 	Engine* Eng;
+	MeshType m_Mesh_Type;
+
 	unsigned int m_precision;
 
 	string m_Name;

@@ -35,6 +35,7 @@ Processing::Processing(Operator* op, Engine* eng)
 	m_weight=1;
 	m_Flush = false;
 	m_dualMesh = false;
+	m_Mesh_Type = CARTESIAN_MESH;
 }
 
 Processing::~Processing()

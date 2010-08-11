@@ -26,7 +26,6 @@ ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 	m_DumpType = E_FIELD_DUMP;
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
-	m_Mesh_Type = CARTESIAN_MESH;
 	SetSubSampling(1);
 	SetPrecision(6);
 

@@ -30,7 +30,6 @@ public:
 	enum FileType { VTK_FILETYPE, HDF5_FILETYPE};
 	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP};
 	enum DumpMode { NO_INTERPOLATION, NODE_INTERPOLATE, CELL_INTERPOLATE};
-	enum MeshType { CARTESIAN_MESH, CYLINDRICAL_MESH};
 
 	virtual void InitProcess();
 
@@ -76,7 +75,6 @@ public:
 	double CalcTotalEnergy() const;
 
 	void SetFileType(FileType fileType) {m_fileType=fileType;}
-	void SetMeshType(MeshType meshType) {m_Mesh_Type=meshType;}
 
 	static string GetFieldNameByType(DumpType type);
 	static string GetInterpolationNameByType(DumpMode mode);
@@ -85,7 +83,6 @@ public:
 protected:
 	DumpMode m_DumpMode;
 	DumpType m_DumpType;
-	MeshType m_Mesh_Type;
 	string filePattern;
 	FileType m_fileType;
 

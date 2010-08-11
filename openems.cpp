@@ -393,6 +393,8 @@ int openEMS::SetupFDTD(const char* file)
 					cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
 					continue;
 				}
+				if (CylinderCoords)
+					proc->SetMeshType(Processing::CYLINDRICAL_MESH);
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->AddFrequency(pb->GetFDSamples());
 				proc->SetName(pb->GetName());
@@ -432,7 +434,7 @@ int openEMS::SetupFDTD(const char* file)
 				ProcTD->SetDumpMode((ProcessFields::DumpMode)db->GetDumpMode());
 				ProcTD->SetFileType((ProcessFields::FileType)db->GetFileType());
 				if (CylinderCoords)
-					ProcTD->SetMeshType(ProcessFields::CYLINDRICAL_MESH);
+					ProcTD->SetMeshType(Processing::CYLINDRICAL_MESH);
 				for (int n=0;n<3;++n)
 					ProcTD->SetSubSampling(db->GetSubSampling(n),n);
 				ProcTD->SetFilePattern(db->GetName());
