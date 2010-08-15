@@ -18,9 +18,6 @@
 #ifndef OPERATOR_CYLINDER_H
 #define OPERATOR_CYLINDER_H
 
-//! define the base class for the cylindrical coordinate FDTD
-#define __OP_CYLINDER_BASE_CLASS__ Operator_Multithread
-
 #include "operator_multithread.h"
 
 //! This class creates an operator for a cylindrical FDTD.
@@ -28,7 +25,7 @@
 This class creates an operator for a cylindrical FDTD. No special engine is necessary,
 all special cases e.g. a closed alpha mesh or an included r=0 case is treated by an operator/engine extension \sa operator_ext_cylinder.
 */
-class Operator_Cylinder : public __OP_CYLINDER_BASE_CLASS__
+class Operator_Cylinder : public Operator_Multithread
 {
 public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
