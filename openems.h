@@ -53,7 +53,7 @@ protected:
 	bool DebugMat;
 	bool DebugOp;
 	bool m_debugCSX;
-	bool m_debugBox, m_debugPEC;
+	bool m_debugBox, m_debugPEC, m_no_simulation;
 	double endCrit;
 	int m_OverSampling;
 	Operator* FDTD_Op;

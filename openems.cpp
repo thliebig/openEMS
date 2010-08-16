@@ -54,7 +54,7 @@ openEMS::openEMS()
 	DebugMat = false;
 	DebugOp = false;
 	m_debugCSX = false;
-	m_debugBox = m_debugPEC = false;
+	m_debugBox = m_debugPEC = m_no_simulation = false;
 	endCrit = 1e-6;
 	m_OverSampling = 4;
 
@@ -147,6 +147,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - enabled multithreading engine" << endl;
 		m_engine = EngineType_Multithreaded;
+		return true;
+	}
+	else if (strcmp(argv,"--no-simulation")==0)
+	{
+		cout << "openEMS - disabling simulation => preprocessing only" << endl;
+		m_no_simulation = true;
 		return true;
 	}
 
@@ -252,6 +258,10 @@ int openEMS::SetupFDTD(const char* file)
 		NrTS=0;
 	else
 		NrTS = help;
+
+	// if the command line switch --no-simulation is used, fix NrTS
+	if (m_no_simulation)
+		NrTS = 0;
 
 	help = 0;
 	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
