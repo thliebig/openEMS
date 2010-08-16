@@ -27,6 +27,7 @@
 #include "FDTD/processcurrent.h"
 #include "FDTD/process_efield.h"
 #include "FDTD/process_hfield.h"
+#include "FDTD/processmodematch.h"
 #include "FDTD/processfields_td.h"
 #include <sys/time.h>
 #include <time.h>
@@ -388,6 +389,15 @@ int openEMS::SetupFDTD(const char* file)
 					proc = new ProcessEField(FDTD_Op,FDTD_Eng);
 				else if (pb->GetProbeType()==3)
 					proc = new ProcessHField(FDTD_Op,FDTD_Eng);
+				else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
+				{
+					ProcessModeMatch* pmm = new ProcessModeMatch(FDTD_Op,FDTD_Eng);
+					pmm->SetFieldType(pb->GetProbeType()-10);
+					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
+					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
+					pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+					proc = pmm;
+				}
 				else
 				{
 					cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;

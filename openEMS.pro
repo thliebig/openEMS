@@ -51,9 +51,9 @@ SOURCES += main.cpp \
     FDTD/operator.cpp \
     tools/array_ops.cpp \
     FDTD/processvoltage.cpp \
-	FDTD/process_efield.cpp \
-	FDTD/process_hfield.cpp \
-	FDTD/processing.cpp \
+    FDTD/process_efield.cpp \
+    FDTD/process_hfield.cpp \
+    FDTD/processing.cpp \
     FDTD/processintegral.cpp \
     FDTD/processfields.cpp \
     FDTD/processfields_td.cpp \
@@ -80,7 +80,8 @@ SOURCES += main.cpp \
     FDTD/engine_ext_dispersive.cpp \
     FDTD/engine_ext_lorentzmaterial.cpp \
     FDTD/operator_ext_pml_sf.cpp \
-    FDTD/engine_ext_pml_sf.cpp
+    FDTD/engine_ext_pml_sf.cpp \
+    FDTD/processmodematch.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -88,9 +89,9 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator.h \
     tools/array_ops.h \
     FDTD/processvoltage.h \
-	FDTD/process_efield.h \
-	FDTD/process_hfield.h \
-	FDTD/processing.h \
+    FDTD/process_efield.h \
+    FDTD/process_hfield.h \
+    FDTD/processing.h \
     FDTD/processintegral.h \
     FDTD/processfields.h \
     FDTD/processfields_td.h \
@@ -117,7 +118,8 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/engine_ext_dispersive.h \
     FDTD/engine_ext_lorentzmaterial.h \
     FDTD/operator_ext_pml_sf.h \
-    FDTD/engine_ext_pml_sf.h
+    FDTD/engine_ext_pml_sf.h \
+    FDTD/processmodematch.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native
