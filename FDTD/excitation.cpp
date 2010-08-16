@@ -244,7 +244,9 @@ void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[
 										 vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir )
 {
 	E_Count = volt_vIndex[0].size();
-	for (int n=0; n<3; n++) {
+	for (int n=0; n<3; n++)
+	{
+		Volt_Count_Dir[n]=0;
 		delete[] E_index[n];
 		E_index[n] = new unsigned int[E_Count];
 	}
@@ -261,10 +263,12 @@ void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[
 	for (int n=0; n<3; n++)
 		for (unsigned int i=0; i<E_Count; i++)
 			E_index[n][i] = volt_vIndex[n].at(i);
-	for (unsigned int i=0; i<E_Count; i++) {
+	for (unsigned int i=0; i<E_Count; i++)
+	{
 		E_delay[i] = volt_vDelay.at(i);
 		E_amp[i]   = volt_vExcit.at(i);
 		E_dir[i]   = volt_vDir.at(i);
+		++Volt_Count_Dir[E_dir[i]];
 	}
 }
 
@@ -272,7 +276,9 @@ void Excitation::setupCurrentExcitation( vector<unsigned int> const curr_vIndex[
 										 vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir )
 {
 	Curr_Count = curr_vIndex[0].size();
-	for (int n=0; n<3; n++) {
+	for (int n=0; n<3; n++)
+	{
+		Curr_Count_Dir[n]=0;
 		delete[] Curr_index[n];
 		Curr_index[n] = new unsigned int[Curr_Count];
 	}
@@ -289,10 +295,12 @@ void Excitation::setupCurrentExcitation( vector<unsigned int> const curr_vIndex[
 	for (int n=0;n<3;++n)
 		for (unsigned int i=0; i<Curr_Count; i++)
 			Curr_index[n][i] = curr_vIndex[n].at(i);
-	for (unsigned int i=0; i<Curr_Count; i++) {
+	for (unsigned int i=0; i<Curr_Count; i++)
+	{
 		Curr_delay[i] = curr_vDelay.at(i);
 		Curr_amp[i]   = curr_vExcit.at(i);
 		Curr_dir[i]   = curr_vDir.at(i);
+		++Curr_Count_Dir[Curr_dir[i]];
 	}
 
 }

@@ -294,8 +294,8 @@ void Operator::ShowStat() const
 	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MiB) " << endl;
 	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MiB) " << endl;
 	cout << "-----------------------------------" << endl;
-	cout << "Voltage excitations\t: " << Exc->E_Count << endl;
-	cout << "Current excitations\t: " << Exc->Curr_Count << endl;
+	cout << "Voltage excitations\t: " << Exc->E_Count    << "\t (" << Exc->Volt_Count_Dir[0] << ", " << Exc->Volt_Count_Dir[1] << ", " << Exc->Volt_Count_Dir[2] << ")" << endl;
+	cout << "Current excitations\t: " << Exc->Curr_Count << "\t (" << Exc->Curr_Count_Dir[0] << ", " << Exc->Curr_Count_Dir[1] << ", " << Exc->Curr_Count_Dir[2] << ")" << endl;
 	cout << "-----------------------------------" << endl;
 	cout << "Number of PEC edges\t: " << m_Nr_PEC[0]+m_Nr_PEC[1]+m_Nr_PEC[2] << endl;
 	cout << "in " << GetDirName(0) << " direction\t\t: " << m_Nr_PEC[0] << endl;

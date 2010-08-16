@@ -50,6 +50,7 @@ public:
 
 	//E-Field/voltage Excitation
 	unsigned int E_Count;
+	unsigned int Volt_Count_Dir[3];
 	unsigned int* E_index[3];
 	unsigned short* E_dir;
 	FDTD_FLOAT* E_amp; //represented as edge-voltages!!
@@ -57,6 +58,7 @@ public:
 
 	//H-Field/current Excitation
 	unsigned int Curr_Count;
+	unsigned int Curr_Count_Dir[3];
 	unsigned int* Curr_index[3];
 	unsigned short* Curr_dir;
 	FDTD_FLOAT* Curr_amp; //represented as edge-currents!!
