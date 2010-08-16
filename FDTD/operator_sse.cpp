@@ -104,8 +104,8 @@ void Operator_sse::DumpOperator2File(string filename)
 
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (Exc) {
-		for (unsigned int n=0;n<Exc->E_Count;++n)
-			exc[Exc->E_dir[n]][Exc->E_index[0][n]][Exc->E_index[1][n]][Exc->E_index[2][n]] = Exc->E_amp[n];
+		for (unsigned int n=0;n<Exc->Volt_Count;++n)
+			exc[Exc->Volt_dir[n]][Exc->Volt_index[0][n]][Exc->Volt_index[1][n]][Exc->Volt_index[2][n]] = Exc->Volt_amp[n];
 	}
 
 	vv = Create_N_3DArray<FDTD_FLOAT>(numLines);

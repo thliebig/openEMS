@@ -40,12 +40,12 @@ Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) : Engine_Ex
 
 	//find if some excitation is on this mur-abc and find the max length of this excite, so that the abc can start after the excitation is done...
 	int maxDelay=-1;
-	for (unsigned int n=0;n<m_Op_mur->m_Op->Exc->E_Count;++n)
+	for (unsigned int n=0;n<m_Op_mur->m_Op->Exc->Volt_Count;++n)
 	{
-		if ( ((m_Op_mur->m_Op->Exc->E_dir[n]==m_nyP) || (m_Op_mur->m_Op->Exc->E_dir[n]==m_nyPP)) && (m_Op_mur->m_Op->Exc->E_index[m_ny][n]==m_LineNr) )
+		if ( ((m_Op_mur->m_Op->Exc->Volt_dir[n]==m_nyP) || (m_Op_mur->m_Op->Exc->Volt_dir[n]==m_nyPP)) && (m_Op_mur->m_Op->Exc->Volt_index[m_ny][n]==m_LineNr) )
 		{
-			if ((int)m_Op_mur->m_Op->Exc->E_delay[n]>maxDelay)
-				maxDelay = (int)m_Op_mur->m_Op->Exc->E_delay[n];
+			if ((int)m_Op_mur->m_Op->Exc->Volt_delay[n]>maxDelay)
+				maxDelay = (int)m_Op_mur->m_Op->Exc->Volt_delay[n];
 		}
 	}
 	m_start_TS = 0;

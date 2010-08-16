@@ -498,8 +498,8 @@ void openEMS::RunFDTD()
 
 	//add all timesteps to end-crit field processing with max excite amplitude
 	unsigned int maxExcite = FDTD_Op->Exc->GetMaxExcitationTimestep();
-	for (unsigned int n=0;n<FDTD_Op->Exc->E_Count;++n)
-		ProcField->AddStep(FDTD_Op->Exc->E_delay[n]+maxExcite);
+	for (unsigned int n=0;n<FDTD_Op->Exc->Volt_Count;++n)
+		ProcField->AddStep(FDTD_Op->Exc->Volt_delay[n]+maxExcite);
 
 	double change=1;
 	int prevTS=0,currTS=0;

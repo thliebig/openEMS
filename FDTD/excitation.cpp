@@ -25,15 +25,15 @@ Excitation::Excitation( double timestep )
 {
 	Signal_volt = 0;
 	Signal_curr = 0;
-	E_delay = 0;
-	E_amp = 0;
-	E_dir = 0;
+	Volt_delay = 0;
+	Volt_amp = 0;
+	Volt_dir = 0;
 	Curr_delay = 0;
 	Curr_amp = 0;
 	Curr_dir = 0;
 
 	for (int n=0;n<3;++n) {
-		E_index[n] = 0;
+		Volt_index[n] = 0;
 		Curr_index[n] = 0;
 	}
 
@@ -45,14 +45,14 @@ Excitation::~Excitation()
 {
 	delete[] Signal_volt;
 	delete[] Signal_curr;
-	delete[] E_delay;
-	delete[] E_dir;
-	delete[] E_amp;
+	delete[] Volt_delay;
+	delete[] Volt_dir;
+	delete[] Volt_amp;
 	delete[] Curr_delay;
 	delete[] Curr_dir;
 	delete[] Curr_amp;
 	for (int n=0;n<3;++n) {
-		delete[] E_index[n];
+		delete[] Volt_index[n];
 		delete[] Curr_index[n];
 	}
 
@@ -243,32 +243,32 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,
 										 vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir )
 {
-	E_Count = volt_vIndex[0].size();
+	Volt_Count = volt_vIndex[0].size();
 	for (int n=0; n<3; n++)
 	{
 		Volt_Count_Dir[n]=0;
-		delete[] E_index[n];
-		E_index[n] = new unsigned int[E_Count];
+		delete[] Volt_index[n];
+		Volt_index[n] = new unsigned int[Volt_Count];
 	}
-	delete[] E_delay;
-	delete[] E_amp;
-	delete[] E_dir;
-	E_delay = new unsigned int[E_Count];
-	E_amp = new FDTD_FLOAT[E_Count];
-	E_dir = new unsigned short[E_Count];
+	delete[] Volt_delay;
+	delete[] Volt_amp;
+	delete[] Volt_dir;
+	Volt_delay = new unsigned int[Volt_Count];
+	Volt_amp = new FDTD_FLOAT[Volt_Count];
+	Volt_dir = new unsigned short[Volt_Count];
 
-//	cerr << "Excitation::setupVoltageExcitation(): Number of voltage excitation points: " << E_Count << endl;
-//	if (E_Count==0)
+//	cerr << "Excitation::setupVoltageExcitation(): Number of voltage excitation points: " << Volt_Count << endl;
+//	if (Volt_Count==0)
 //		cerr << "No E-Field/voltage excitation found!" << endl;
 	for (int n=0; n<3; n++)
-		for (unsigned int i=0; i<E_Count; i++)
-			E_index[n][i] = volt_vIndex[n].at(i);
-	for (unsigned int i=0; i<E_Count; i++)
+		for (unsigned int i=0; i<Volt_Count; i++)
+			Volt_index[n][i] = volt_vIndex[n].at(i);
+	for (unsigned int i=0; i<Volt_Count; i++)
 	{
-		E_delay[i] = volt_vDelay.at(i);
-		E_amp[i]   = volt_vExcit.at(i);
-		E_dir[i]   = volt_vDir.at(i);
-		++Volt_Count_Dir[E_dir[i]];
+		Volt_delay[i] = volt_vDelay.at(i);
+		Volt_amp[i]   = volt_vExcit.at(i);
+		Volt_dir[i]   = volt_vDir.at(i);
+		++Volt_Count_Dir[Volt_dir[i]];
 	}
 }
 

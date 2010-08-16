@@ -294,7 +294,7 @@ void Operator::ShowStat() const
 	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MiB) " << endl;
 	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MiB) " << endl;
 	cout << "-----------------------------------" << endl;
-	cout << "Voltage excitations\t: " << Exc->E_Count    << "\t (" << Exc->Volt_Count_Dir[0] << ", " << Exc->Volt_Count_Dir[1] << ", " << Exc->Volt_Count_Dir[2] << ")" << endl;
+	cout << "Voltage excitations\t: " << Exc->Volt_Count    << "\t (" << Exc->Volt_Count_Dir[0] << ", " << Exc->Volt_Count_Dir[1] << ", " << Exc->Volt_Count_Dir[2] << ")" << endl;
 	cout << "Current excitations\t: " << Exc->Curr_Count << "\t (" << Exc->Curr_Count_Dir[0] << ", " << Exc->Curr_Count_Dir[1] << ", " << Exc->Curr_Count_Dir[2] << ")" << endl;
 	cout << "-----------------------------------" << endl;
 	cout << "Number of PEC edges\t: " << m_Nr_PEC[0]+m_Nr_PEC[1]+m_Nr_PEC[2] << endl;
@@ -339,8 +339,8 @@ void Operator::DumpOperator2File(string filename)
 
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (Exc) {
-		for (unsigned int n=0;n<Exc->E_Count;++n)
-			exc[Exc->E_dir[n]][Exc->E_index[0][n]][Exc->E_index[1][n]][Exc->E_index[2][n]] = Exc->E_amp[n];
+		for (unsigned int n=0;n<Exc->Volt_Count;++n)
+			exc[Exc->Volt_dir[n]][Exc->Volt_index[0][n]][Exc->Volt_index[1][n]][Exc->Volt_index[2][n]] = Exc->Volt_amp[n];
 	}
 
 	string names[] = {"vv", "vi", "iv" , "ii", "exc"};

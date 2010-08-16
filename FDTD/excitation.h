@@ -49,12 +49,12 @@ public:
 	FDTD_FLOAT* Signal_curr;
 
 	//E-Field/voltage Excitation
-	unsigned int E_Count;
+	unsigned int Volt_Count;
 	unsigned int Volt_Count_Dir[3];
-	unsigned int* E_index[3];
-	unsigned short* E_dir;
-	FDTD_FLOAT* E_amp; //represented as edge-voltages!!
-	unsigned int* E_delay;
+	unsigned int* Volt_index[3];
+	unsigned short* Volt_dir;
+	FDTD_FLOAT* Volt_amp; //represented as edge-voltages!!
+	unsigned int* Volt_delay;
 
 	//H-Field/current Excitation
 	unsigned int Curr_Count;

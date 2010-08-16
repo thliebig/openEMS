@@ -126,12 +126,12 @@ void Engine::ApplyVoltageExcite()
 {
 	int exc_pos;
 	//soft voltage excitation here (E-field excite)
-	for (unsigned int n=0;n<Op->Exc->E_Count;++n)
+	for (unsigned int n=0;n<Op->Exc->Volt_Count;++n)
 	{
-		exc_pos = (int)numTS - (int)Op->Exc->E_delay[n];
+		exc_pos = (int)numTS - (int)Op->Exc->Volt_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		GetVolt(Op->Exc->E_dir[n],Op->Exc->E_index[0][n],Op->Exc->E_index[1][n],Op->Exc->E_index[2][n]) += Op->Exc->E_amp[n]*Op->Exc->Signal_volt[exc_pos];
+		GetVolt(Op->Exc->Volt_dir[n],Op->Exc->Volt_index[0][n],Op->Exc->Volt_index[1][n],Op->Exc->Volt_index[2][n]) += Op->Exc->Volt_amp[n]*Op->Exc->Signal_volt[exc_pos];
 	}
 
 	// write the first excitation into the file "et"
