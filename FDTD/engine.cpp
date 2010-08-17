@@ -125,13 +125,19 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 void Engine::ApplyVoltageExcite()
 {
 	int exc_pos;
+	unsigned int ny;
+	unsigned int pos[3];
 	//soft voltage excitation here (E-field excite)
 	for (unsigned int n=0;n<Op->Exc->Volt_Count;++n)
 	{
 		exc_pos = (int)numTS - (int)Op->Exc->Volt_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		GetVolt(Op->Exc->Volt_dir[n],Op->Exc->Volt_index[0][n],Op->Exc->Volt_index[1][n],Op->Exc->Volt_index[2][n]) += Op->Exc->Volt_amp[n]*Op->Exc->Signal_volt[exc_pos];
+		ny = Op->Exc->Volt_dir[n];
+		pos[0]=Op->Exc->Volt_index[0][n];
+		pos[1]=Op->Exc->Volt_index[1][n];
+		pos[2]=Op->Exc->Volt_index[2][n];
+		SetVolt(ny,pos, GetVolt(ny,pos) + Op->Exc->Volt_amp[n]*Op->Exc->Signal_volt[exc_pos]);
 	}
 
 	// write the first excitation into the file "et"
@@ -172,13 +178,19 @@ void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 void Engine::ApplyCurrentExcite()
 {
 	int exc_pos;
+	unsigned int ny;
+	unsigned int pos[3];
 	//soft current excitation here (H-field excite)
 	for (unsigned int n=0;n<Op->Exc->Curr_Count;++n)
 	{
 		exc_pos = (int)numTS - (int)Op->Exc->Curr_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
 //			if (n==0) cerr << numTS << " => " << Op->ExciteSignal[exc_pos] << endl;
-		GetCurr(Op->Exc->Curr_dir[n],Op->Exc->Curr_index[0][n],Op->Exc->Curr_index[1][n],Op->Exc->Curr_index[2][n]) += Op->Exc->Curr_amp[n]*Op->Exc->Signal_curr[exc_pos];
+		ny = Op->Exc->Curr_dir[n];
+		pos[0]=Op->Exc->Curr_index[0][n];
+		pos[1]=Op->Exc->Curr_index[1][n];
+		pos[2]=Op->Exc->Curr_index[2][n];
+		SetCurr(ny,pos, GetCurr(ny,pos) + Op->Exc->Curr_amp[n]*Op->Exc->Signal_curr[exc_pos]);
 	}
 
 	// write the first excitation into the file "ht"
