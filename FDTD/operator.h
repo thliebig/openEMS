@@ -54,6 +54,8 @@ public:
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 
+	//! Set a forced timestep to use by the operator
+	virtual void SetTimestep(double ts) {dT = ts;}
 	double GetTimestep() const {return dT;};
 	double GetNumberCells() const;
 
