@@ -25,6 +25,7 @@
 
 class Operator_Extension;
 class Engine;
+class TiXmlElement;
 
 //! Abstract base-class for the FDTD-operator
 class Operator
@@ -43,6 +44,8 @@ public:
 	virtual ContinuousStructure* GetGeometryCSX() {return CSX;}
 
 	virtual int CalcECOperator();
+
+	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return Exc->setupExcitation(Excite,maxTS);};
 
 	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }

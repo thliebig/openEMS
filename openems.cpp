@@ -351,7 +351,7 @@ int openEMS::SetupFDTD(const char* file)
 	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
 		NrTS = maxTime_TS;
 
-	if (!FDTD_Op->Exc->setupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
+	if (!FDTD_Op->SetupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
 		exit(2);
 
 	if (DebugMat)
