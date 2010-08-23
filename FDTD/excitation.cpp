@@ -91,13 +91,14 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 			Excite->QueryDoubleAttribute("f0",&f0);
 			CalcCustomExcitation(f0,maxTS,Excite->Attribute("Function"));
 			break;
+		default:
+			cerr << "Excitation::setupExcitation: Unknown excitation type: \"" << Excit_Type<< "\" !!" << endl;
+			return false;
 	}
 
-	if (GetNyquistNum() == 0) {
-		cerr << "openEMS: excitation setup failed!!" << endl;
-		cerr << "  Frequent causes include:" << endl;
-		cerr << "   - invalid excitation type (curently supported: 0,1,2,3,10)" << endl;
-		cerr << "   - missing/invalid attributes for selected excitation type" << endl;
+	if (GetNyquistNum() == 0)
+	{
+		cerr << "Excitation::setupExcitation: Unknown error... excitation setup failed!!" << endl;
 		return false;
 	}
 
