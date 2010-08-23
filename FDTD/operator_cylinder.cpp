@@ -55,9 +55,6 @@ void Operator_Cylinder::Reset()
 void Operator_Cylinder::InitOperator()
 {
 	__OP_CYLINDER_BASE_CLASS__::InitOperator();
-
-	if (CC_closedAlpha || CC_R0_included)
-		this->AddExtension(new Operator_Ext_Cylinder(this));
 }
 
 inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
@@ -147,6 +144,9 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 		cout << "Operator_Cylinder::SetGeometryCSX: r=0 included..." << endl;
 		CC_R0_included= true;  //also needed for correct ec-calculation
 	}
+
+	if (CC_closedAlpha || CC_R0_included)
+		this->AddExtension(new Operator_Ext_Cylinder(this));
 
 	return true;
 }
