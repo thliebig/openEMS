@@ -762,7 +762,7 @@ bool Operator::Calc_ECPos(int n, const unsigned int* pos, double* inEC) const
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[2] += mat->GetMue(n)*fabs(delta);
+		inEC[2] += fabs(delta)/mat->GetMueWeighted(n,shiftCoord);
 		if (mat->GetSigmaWeighted(n,shiftCoord))
 			inEC[3] += fabs(delta)/mat->GetSigmaWeighted(n,shiftCoord);
 		else
@@ -770,7 +770,7 @@ bool Operator::Calc_ECPos(int n, const unsigned int* pos, double* inEC) const
 	}
 	else
 	{
-		inEC[2] += 1*fabs(delta);
+		inEC[2] += fabs(delta);
 		inEC[3] = 0;
 	}
 

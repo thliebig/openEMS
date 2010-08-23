@@ -364,7 +364,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, const unsigned int* pos, double* inEC)
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[2] += mat->GetMue(n)*delta_n;
+		inEC[2] += delta_n / mat->GetMueWeighted(n,shiftCoord);
 		if (mat->GetSigmaWeighted(n,shiftCoord))
 			inEC[3] += delta_n/mat->GetSigmaWeighted(n,shiftCoord);
 		else
@@ -372,7 +372,7 @@ bool Operator_Cylinder::Calc_ECPos(int n, const unsigned int* pos, double* inEC)
 	}
 	else
 	{
-		inEC[2] += 1*delta_n;
+		inEC[2] += delta_n;
 		inEC[3] = 0;
 	}
 
