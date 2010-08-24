@@ -300,6 +300,9 @@ int openEMS::SetupFDTD(const char* file)
 //		return(-2);
 	}
 
+	if (CylinderCoords)
+		CSX.SetCoordInputType(1); //tell CSX to use cylinder-coords
+
 	if (m_debugCSX)
 		CSX.Write2XML("debugCSX.xml");
 
@@ -307,7 +310,6 @@ int openEMS::SetupFDTD(const char* file)
 	if (CylinderCoords)
 	{
 		FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
-		CSX.SetCoordInputType(1); //tell CSX to use cylinder-coords
 	}
 	else if (m_engine == EngineType_SSE)
 	{
