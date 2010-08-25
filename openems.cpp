@@ -160,6 +160,16 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
+string openEMS::GetExtLibsInfo()
+{
+	stringstream str;
+
+	str << "\tUsed external libraries:" << endl;
+	str << "\t\t" << ContinuousStructure::GetInfoLine(true) << endl;
+
+	return str.str();
+}
+
 bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 {
 	int EC; //error code of tinyxml

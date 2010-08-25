@@ -37,7 +37,8 @@ int main(int argc, char *argv[])
 	cout << " -------------------------------------------------------------------- " << endl;
 	cout << " | openEMS version " GIT_VERSION << endl;
 	cout << " | (C) 2010 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
-	cout << " -------------------------------------------------------------------- " << endl << endl;
+	cout << " -------------------------------------------------------------------- " << endl;
+	cout << openEMS::GetExtLibsInfo() << endl;
 
 	if (argc<=1)
 	{

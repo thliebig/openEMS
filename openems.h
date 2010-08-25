@@ -18,6 +18,10 @@
 #ifndef OPENEMS_H
 #define OPENEMS_H
 
+#include <sstream>
+
+using namespace std;
+
 class Operator;
 class Engine;
 class ProcessingArray;
@@ -43,6 +47,9 @@ public:
 	void DebugMaterial() {DebugMat=true;}
 	void DebugOperator() {DebugOp=true;}
 	void DebugBox() {m_debugBox=true;}
+
+	//! Get informations about external libs used by openEMS
+	static string GetExtLibsInfo();
 
 protected:
 	bool CylinderCoords;
