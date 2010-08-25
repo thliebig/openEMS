@@ -79,6 +79,10 @@ int Operator_Multithread::CalcECOperator()
 	if (m_numThreads == 0)
 		m_numThreads = boost::thread::hardware_concurrency();
 
+	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
+	if ((m_numThreads-1) * linesPerThread >= numLines[0])
+		--m_numThreads;
+
 	cout << "Multithreaded operator using " << m_numThreads << " threads." << std::endl;
 
 	m_thread_group.join_all();
@@ -88,7 +92,6 @@ int Operator_Multithread::CalcECOperator()
 	delete m_CalcPEC_Start;m_CalcPEC_Start = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	delete m_CalcPEC_Stop;m_CalcPEC_Stop = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 
-	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
 	for (unsigned int n=0; n<m_numThreads; n++)
 	{
 		unsigned int start = n * linesPerThread;
