@@ -44,7 +44,7 @@ Operator_SSE_Compressed::~Operator_SSE_Compressed()
 
 Engine* Operator_SSE_Compressed::CreateEngine() const
 {
-        if (!m_Use_Compression)
+	if (!m_Use_Compression)
 	{
 		//! create a default sse-engine
 		Engine_sse* eng = Engine_sse::New(this);
@@ -75,9 +75,9 @@ void Operator_SSE_Compressed::Reset()
 	if (m_Op_index)
 	{
 		unsigned int pos[3];
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
 				delete[] m_Op_index[pos[0]][pos[1]];
 			}
@@ -87,13 +87,13 @@ void Operator_SSE_Compressed::Reset()
 		m_Op_index = NULL;
 	}
 
-        for (int n=0; n<3; n++)
-        {
-                f4_vv_Compressed[n].clear();
-                f4_vi_Compressed[n].clear();
-                f4_iv_Compressed[n].clear();
-                f4_ii_Compressed[n].clear();
-        }
+	for (int n=0; n<3; n++)
+	{
+		f4_vv_Compressed[n].clear();
+		f4_vi_Compressed[n].clear();
+		f4_iv_Compressed[n].clear();
+		f4_ii_Compressed[n].clear();
+	}
 }
 
 void Operator_SSE_Compressed::InitOperator()
@@ -102,13 +102,13 @@ void Operator_SSE_Compressed::InitOperator()
 
 	unsigned int pos[3];
 	m_Op_index = new unsigned int**[numLines[0]];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		m_Op_index[pos[0]] = new unsigned int*[numLines[1]];
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			m_Op_index[pos[0]][pos[1]] = new unsigned int[numVectors];
-			for (pos[2]=0;pos[2]<numVectors;++pos[2])
+			for (pos[2]=0; pos[2]<numVectors; ++pos[2])
 			{
 				m_Op_index[pos[0]][pos[1]][pos[2]] = 0;
 			}
@@ -120,8 +120,8 @@ void Operator_SSE_Compressed::ShowStat() const
 {
 	Operator_sse::ShowStat();
 
-        cout << "SSE compression enabled\t: " << (m_Use_Compression?"yes":"no") << endl;
-        cout << "Unique SSE operators\t: " << f4_vv_Compressed->size() << endl;
+	cout << "SSE compression enabled\t: " << (m_Use_Compression?"yes":"no") << endl;
+	cout << "Unique SSE operators\t: " << f4_vv_Compressed->size() << endl;
 	cout << "-----------------------------------" << endl;
 }
 
@@ -130,22 +130,22 @@ void Operator_SSE_Compressed::ShowStat() const
 INLINE int equal(f4vector v1, f4vector v2)
 {
 #if defined(__SSE__)
-  v4sf compare = __builtin_ia32_cmpeqps( v1.v, v2.v ); // hmm should return v4si...
-  return __builtin_ia32_movmskps( compare ) == 0x0f;
+	v4sf compare = __builtin_ia32_cmpeqps( v1.v, v2.v ); // hmm should return v4si...
+	return __builtin_ia32_movmskps( compare ) == 0x0f;
 #else
-  return (
-	  v1.f[0] == v2.f[0] &&
-	  v1.f[1] == v2.f[1] &&
-	  v1.f[2] == v2.f[2] &&
-	  v1.f[3] == v2.f[3]
-	  );
+	return (
+	           v1.f[0] == v2.f[0] &&
+	           v1.f[1] == v2.f[1] &&
+	           v1.f[2] == v2.f[2] &&
+	           v1.f[3] == v2.f[3]
+	       );
 #endif
 }
 
 bool Operator_SSE_Compressed::CompareOperators(unsigned int pos1[3], unsigned int pos2[3])
 {
 //	cerr << pos1[0] << " " << pos1[1] << " " << pos1[2] << endl;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		if (!equal( f4_vv[n][pos1[0]][pos1[1]][pos1[2]], f4_vv[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
 		if (!equal( f4_vi[n][pos1[0]][pos1[1]][pos1[2]], f4_vi[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
@@ -159,43 +159,43 @@ bool Operator_SSE_Compressed::CompressOperator()
 {
 	cout << "Compressing the FDTD operator... this may take a while..." << endl;
 
-        map<SSE_coeff,unsigned int> lookUpMap;
+	map<SSE_coeff,unsigned int> lookUpMap;
 
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numVectors;++pos[2])
+			for (pos[2]=0; pos[2]<numVectors; ++pos[2])
 			{
-                                f4vector vv[3] = { f4_vv[0][pos[0]][pos[1]][pos[2]], f4_vv[1][pos[0]][pos[1]][pos[2]], f4_vv[2][pos[0]][pos[1]][pos[2]] };
-                                f4vector vi[3] = { f4_vi[0][pos[0]][pos[1]][pos[2]], f4_vi[1][pos[0]][pos[1]][pos[2]], f4_vi[2][pos[0]][pos[1]][pos[2]] };
-                                f4vector iv[3] = { f4_iv[0][pos[0]][pos[1]][pos[2]], f4_iv[1][pos[0]][pos[1]][pos[2]], f4_iv[2][pos[0]][pos[1]][pos[2]] };
-                                f4vector ii[3] = { f4_ii[0][pos[0]][pos[1]][pos[2]], f4_ii[1][pos[0]][pos[1]][pos[2]], f4_ii[2][pos[0]][pos[1]][pos[2]] };
-                                SSE_coeff c( vv, vi, iv, ii );
+				f4vector vv[3] = { f4_vv[0][pos[0]][pos[1]][pos[2]], f4_vv[1][pos[0]][pos[1]][pos[2]], f4_vv[2][pos[0]][pos[1]][pos[2]] };
+				f4vector vi[3] = { f4_vi[0][pos[0]][pos[1]][pos[2]], f4_vi[1][pos[0]][pos[1]][pos[2]], f4_vi[2][pos[0]][pos[1]][pos[2]] };
+				f4vector iv[3] = { f4_iv[0][pos[0]][pos[1]][pos[2]], f4_iv[1][pos[0]][pos[1]][pos[2]], f4_iv[2][pos[0]][pos[1]][pos[2]] };
+				f4vector ii[3] = { f4_ii[0][pos[0]][pos[1]][pos[2]], f4_ii[1][pos[0]][pos[1]][pos[2]], f4_ii[2][pos[0]][pos[1]][pos[2]] };
+				SSE_coeff c( vv, vi, iv, ii );
 
-                                map<SSE_coeff,unsigned int>::iterator it;
-                                it = lookUpMap.find(c);
-                                if (it == lookUpMap.end())
-                                {
-                                        // not found -> insert
-                                        unsigned int index = f4_vv_Compressed[0].size();
-                                        for (int n=0; n<3; n++)
-                                        {
-                                                f4_vv_Compressed[n].push_back( vv[n] );
-                                                f4_vi_Compressed[n].push_back( vi[n] );
-                                                f4_iv_Compressed[n].push_back( iv[n] );
-                                                f4_ii_Compressed[n].push_back( ii[n] );
-                                        }
-                                        lookUpMap[c] = index;
-                                        m_Op_index[pos[0]][pos[1]][pos[2]] = index;
-                                }
-                                else
-                                {
-                                        // this operator is already in the list
-                                        unsigned int index = (*it).second;
-                                        m_Op_index[pos[0]][pos[1]][pos[2]] = index;
-                                }
+				map<SSE_coeff,unsigned int>::iterator it;
+				it = lookUpMap.find(c);
+				if (it == lookUpMap.end())
+				{
+					// not found -> insert
+					unsigned int index = f4_vv_Compressed[0].size();
+					for (int n=0; n<3; n++)
+					{
+						f4_vv_Compressed[n].push_back( vv[n] );
+						f4_vi_Compressed[n].push_back( vi[n] );
+						f4_iv_Compressed[n].push_back( iv[n] );
+						f4_ii_Compressed[n].push_back( ii[n] );
+					}
+					lookUpMap[c] = index;
+					m_Op_index[pos[0]][pos[1]][pos[2]] = index;
+				}
+				else
+				{
+					// this operator is already in the list
+					unsigned int index = (*it).second;
+					m_Op_index[pos[0]][pos[1]][pos[2]] = index;
+				}
 			}
 		}
 	}
@@ -219,67 +219,68 @@ bool Operator_SSE_Compressed::CompressOperator()
 
 SSE_coeff::SSE_coeff( f4vector vv[3], f4vector vi[3], f4vector iv[3], f4vector ii[3] )
 {
-        for (int n=0; n<3; n++) {
-                m_vv[n] = vv[n];
-                m_vi[n] = vi[n];
-                m_iv[n] = iv[n];
-                m_ii[n] = ii[n];
-        }
+	for (int n=0; n<3; n++)
+	{
+		m_vv[n] = vv[n];
+		m_vi[n] = vi[n];
+		m_iv[n] = iv[n];
+		m_ii[n] = ii[n];
+	}
 }
 
 bool SSE_coeff::operator==( const SSE_coeff& other ) const
 {
-        for (int n=0; n<3; n++)
-        {
-                if (memcmp( &(m_vv[n]), &(other.m_vv[n]), sizeof(f4vector) ) != 0) return false;
-                if (memcmp( &(m_vi[n]), &(other.m_vi[n]), sizeof(f4vector) ) != 0) return false;
-                if (memcmp( &(m_iv[n]), &(other.m_iv[n]), sizeof(f4vector) ) != 0) return false;
-                if (memcmp( &(m_ii[n]), &(other.m_ii[n]), sizeof(f4vector) ) != 0) return false;
-        }
-        return true;
+	for (int n=0; n<3; n++)
+	{
+		if (memcmp( &(m_vv[n]), &(other.m_vv[n]), sizeof(f4vector) ) != 0) return false;
+		if (memcmp( &(m_vi[n]), &(other.m_vi[n]), sizeof(f4vector) ) != 0) return false;
+		if (memcmp( &(m_iv[n]), &(other.m_iv[n]), sizeof(f4vector) ) != 0) return false;
+		if (memcmp( &(m_ii[n]), &(other.m_ii[n]), sizeof(f4vector) ) != 0) return false;
+	}
+	return true;
 }
 bool SSE_coeff::operator!=( const SSE_coeff& other ) const
 {
-        return !(*this == other);
+	return !(*this == other);
 }
 bool SSE_coeff::operator<( const SSE_coeff& other ) const
 {
-        for (int n=0; n<3; n++)
-        {
-                for (int c=0; c<4; c++)
-                {
-                        if (m_vv[n].f[c] > other.m_vv[n].f[c]) return false;
-                        if (m_vv[n].f[c] < other.m_vv[n].f[c]) return true;
-                        if (m_vi[n].f[c] > other.m_vi[n].f[c]) return false;
-                        if (m_vi[n].f[c] < other.m_vi[n].f[c]) return true;
-                        if (m_iv[n].f[c] > other.m_iv[n].f[c]) return false;
-                        if (m_iv[n].f[c] < other.m_iv[n].f[c]) return true;
-                        if (m_ii[n].f[c] > other.m_ii[n].f[c]) return false;
-                        if (m_ii[n].f[c] < other.m_ii[n].f[c]) return true;
-                }
-        }
-        return false;
+	for (int n=0; n<3; n++)
+	{
+		for (int c=0; c<4; c++)
+		{
+			if (m_vv[n].f[c] > other.m_vv[n].f[c]) return false;
+			if (m_vv[n].f[c] < other.m_vv[n].f[c]) return true;
+			if (m_vi[n].f[c] > other.m_vi[n].f[c]) return false;
+			if (m_vi[n].f[c] < other.m_vi[n].f[c]) return true;
+			if (m_iv[n].f[c] > other.m_iv[n].f[c]) return false;
+			if (m_iv[n].f[c] < other.m_iv[n].f[c]) return true;
+			if (m_ii[n].f[c] > other.m_ii[n].f[c]) return false;
+			if (m_ii[n].f[c] < other.m_ii[n].f[c]) return true;
+		}
+	}
+	return false;
 }
 
 void SSE_coeff::print( ostream& stream ) const
 {
-        stream << "SSE_coeff: (" << endl;
-        for (int n=0; n<3; n++)
-        {
-                stream << "n=" << n << ":" << endl;
-                stream << "vv=";
-                for (int c=0; c<4; c++)
-                        stream << m_vv[n].f[c] << " ";
-                stream << endl << "vi=";
-                for (int c=0; c<4; c++)
-                        stream << m_vi[n].f[c] << " ";
-                stream << endl << "iv=";
-                for (int c=0; c<4; c++)
-                        stream << m_iv[n].f[c] << " ";
-                stream << endl << "ii=";
-                for (int c=0; c<4; c++)
-                        stream << m_ii[n].f[c] << " ";
-                stream << endl;
-        }
-        stream << ")" << endl;
+	stream << "SSE_coeff: (" << endl;
+	for (int n=0; n<3; n++)
+	{
+		stream << "n=" << n << ":" << endl;
+		stream << "vv=";
+		for (int c=0; c<4; c++)
+			stream << m_vv[n].f[c] << " ";
+		stream << endl << "vi=";
+		for (int c=0; c<4; c++)
+			stream << m_vi[n].f[c] << " ";
+		stream << endl << "iv=";
+		for (int c=0; c<4; c++)
+			stream << m_iv[n].f[c] << " ";
+		stream << endl << "ii=";
+		for (int c=0; c<4; c++)
+			stream << m_ii[n].f[c] << " ";
+		stream << endl;
+	}
+	stream << ")" << endl;
 }
