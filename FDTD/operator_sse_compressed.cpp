@@ -74,17 +74,8 @@ void Operator_SSE_Compressed::Reset()
 
 	if (m_Op_index)
 	{
-		unsigned int pos[3];
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-		{
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-			{
-				delete[] m_Op_index[pos[0]][pos[1]];
-			}
-			delete[] m_Op_index[pos[0]];
-		}
-		delete[] m_Op_index;
-		m_Op_index = NULL;
+		Delete3DArray<unsigned int>( m_Op_index, numLines );
+		m_Op_index = 0;
 	}
 
 	for (int n=0; n<3; n++)
@@ -100,20 +91,7 @@ void Operator_SSE_Compressed::InitOperator()
 {
 	Operator_sse::InitOperator();
 
-	unsigned int pos[3];
-	m_Op_index = new unsigned int**[numLines[0]];
-	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-	{
-		m_Op_index[pos[0]] = new unsigned int*[numLines[1]];
-		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-		{
-			m_Op_index[pos[0]][pos[1]] = new unsigned int[numVectors];
-			for (pos[2]=0; pos[2]<numVectors; ++pos[2])
-			{
-				m_Op_index[pos[0]][pos[1]][pos[2]] = 0;
-			}
-		}
-	}
+	m_Op_index = Create3DArray<unsigned int>( numLines );
 }
 
 void Operator_SSE_Compressed::ShowStat() const
