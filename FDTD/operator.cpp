@@ -304,7 +304,10 @@ void Operator::ShowStat() const
 	cout << "in " << GetDirName(1) << " direction\t\t: " << m_Nr_PEC[1] << endl;
 	cout << "in " << GetDirName(2) << " direction\t\t: " << m_Nr_PEC[2] << endl;
 	cout << "-----------------------------------" << endl;
-	cout << "Timestep (s)\t\t: " << dT << endl;
+	cout << "Timestep (s)\t\t: " << dT ;
+	if (opt_dT)
+		cout <<"\t(" << opt_dT << ")";
+	cout << endl;
 	cout << "Timestep method name\t: " << m_Used_TS_Name << endl;
 	cout << "Nyquist criteria (TS)\t: " << Exc->GetNyquistNum() << endl;
 	cout << "Nyquist criteria (s)\t: " << Exc->GetNyquistNum()*dT << endl;
@@ -533,10 +536,12 @@ int Operator::CalcECOperator()
 	if (Calc_EC()==0)
 		return -1;
 
+	opt_dT = 0;
 	if (dT>0)
 	{
 		double save_dT = dT;
 		CalcTimestep();
+		opt_dT = dT;
 		if (dT<save_dT)
 			cerr << "Operator::CalcECOperator: Warning, forced timestep: " << save_dT << "s is larger than calculated timestep: " << dT << "s! It is not recommended using this timestep!! " << endl;
 		dT = save_dT;
