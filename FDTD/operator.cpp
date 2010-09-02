@@ -413,17 +413,17 @@ void Operator::DumpMaterial2File(string filename)
 
 	cout << "Dumping material information to vtk file: " << filename << " ..."  << flush;
 
-	FDTD_FLOAT*** epsilon;
-	FDTD_FLOAT*** mue;
-	FDTD_FLOAT*** kappa;
-	FDTD_FLOAT*** sigma;
+	FDTD_FLOAT**** epsilon;
+	FDTD_FLOAT**** mue;
+	FDTD_FLOAT**** kappa;
+	FDTD_FLOAT**** sigma;
 	unsigned int pos[3];
 	double inMat[4];
 
-	epsilon = Create3DArray<FDTD_FLOAT>( numLines);
-	mue = Create3DArray<FDTD_FLOAT>( numLines);
-	kappa = Create3DArray<FDTD_FLOAT>( numLines);
-	sigma = Create3DArray<FDTD_FLOAT>( numLines);
+	epsilon = Create_N_3DArray<FDTD_FLOAT>( numLines);
+	mue = Create_N_3DArray<FDTD_FLOAT>( numLines);
+	kappa = Create_N_3DArray<FDTD_FLOAT>( numLines);
+	sigma = Create_N_3DArray<FDTD_FLOAT>( numLines);
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 	{
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
@@ -433,26 +433,22 @@ void Operator::DumpMaterial2File(string filename)
 				for (int n=0;n<3;++n)
 				{
 					Calc_EffMatPos(n, pos, inMat);
-					epsilon[pos[0]][pos[1]][pos[2]]+=inMat[0]/__EPS0__;
-					mue[pos[0]][pos[1]][pos[2]]+=inMat[2]/__MUE0__;
-					kappa[pos[0]][pos[1]][pos[2]]+=inMat[1];
-					sigma[pos[0]][pos[1]][pos[2]]+=inMat[3];
+					epsilon[n][pos[0]][pos[1]][pos[2]]	=inMat[0]/__EPS0__;
+					mue[n][pos[0]][pos[1]][pos[2]]		=inMat[2]/__MUE0__;
+					kappa[n][pos[0]][pos[1]][pos[2]]	=inMat[1];
+					sigma[n][pos[0]][pos[1]][pos[2]]	=inMat[3];
 				}
-				epsilon[pos[0]][pos[1]][pos[2]]/=3;
-				mue[pos[0]][pos[1]][pos[2]]/=3;
-				kappa[pos[0]][pos[1]][pos[2]]/=3;
-				sigma[pos[0]][pos[1]][pos[2]]/=3;
 			}
 		}
 	}
 
 	string names[] = {"epsilon","mue","kappa","sigma"};
-	FDTD_FLOAT*** array[] = {epsilon,mue,kappa,sigma};
-	ProcessFields::DumpMultiScalarArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
-	Delete3DArray(epsilon,numLines);
-	Delete3DArray(mue,numLines);
-	Delete3DArray(kappa,numLines);
-	Delete3DArray(sigma,numLines);
+	FDTD_FLOAT**** array[] = {epsilon,mue,kappa,sigma};
+	ProcessFields::DumpMultiVectorArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
+	Delete_N_3DArray(epsilon,numLines);
+	Delete_N_3DArray(mue,numLines);
+	Delete_N_3DArray(kappa,numLines);
+	Delete_N_3DArray(sigma,numLines);
 	file.close();
 
 	cout << " done!" << endl;
