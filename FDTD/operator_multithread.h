@@ -24,6 +24,7 @@
 
 class Operator_Multithread : public Operator_SSE_Compressed
 {
+	friend class Engine_Multithread;
 	friend class Operator_Thread;
 public:
 	//! Create a new operator

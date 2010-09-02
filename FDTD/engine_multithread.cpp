@@ -44,8 +44,9 @@ Engine_Multithread* Engine_Multithread::New(const Operator_Multithread* op, unsi
 	return e;
 }
 
-Engine_Multithread::Engine_Multithread(const Operator_SSE_Compressed* op) : Engine_SSE_Compressed(op)
+Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : Engine_SSE_Compressed(op)
 {
+	m_Op_MT = op;
 	m_type = SSE;
 	m_barrier_VoltUpdate = 0;
 	m_barrier_VoltExcite = 0;

@@ -90,7 +90,8 @@ public:
 	virtual bool IterateTS(unsigned int iterTS);
 
 protected:
-	Engine_Multithread(const Operator_SSE_Compressed* op);
+	Engine_Multithread(const Operator_Multithread* op);
+	const Operator_Multithread* m_Op_MT;
 	boost::thread_group m_thread_group;
 	boost::barrier *m_startBarrier, *m_stopBarrier;
 	boost::barrier *m_barrier_VoltUpdate, *m_barrier_VoltExcite, *m_barrier_PreVolt, *m_barrier_PostVolt;
