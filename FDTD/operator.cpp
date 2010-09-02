@@ -145,7 +145,7 @@ double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
 {
 	int nyP = (ny+1)%3;
 	int nyPP = (ny+2)%3;
-	return GetMeshDelta(nyP,pos,!dualMesh) * GetMeshDelta(nyPP,pos,!dualMesh);
+	return GetNodeWidth(nyP,pos,dualMesh) * GetNodeWidth(nyPP,pos,dualMesh);
 }
 
 bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, bool* inside)
@@ -646,9 +646,51 @@ void Operator::ApplyMagneticBC(bool* dirs)
 	}
 }
 
-
-bool Operator::Calc_ECPos(int n, const unsigned int* pos, double* inEC) const
+bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC) const
 {
+	double EffMat[4];
+	Calc_EffMatPos(ny,pos,EffMat);
+
+
+	double delta = GetEdgeLength(ny,pos);
+	double area  = GetEdgeArea(ny,pos);
+
+//	if (isnan(EffMat[0]))
+//	{
+//		cerr << ny << " " << pos[0] << " " << pos[1] << " " << pos[2] << " : " << EffMat[0] << endl;
+//	}
+
+	if (delta)
+	{
+		EC[0] = EffMat[0] * area/delta;
+		EC[1] = EffMat[1] * area/delta;
+	}
+	else
+	{
+		EC[0] = 0;
+		EC[1] = 0;
+	}
+
+	delta = GetEdgeLength(ny,pos,true);
+	area  = GetEdgeArea(ny,pos,true);
+
+	if (delta)
+	{
+		EC[2] = EffMat[2] * area/delta;
+		EC[3] = EffMat[3] * area/delta;
+	}
+	else
+	{
+		EC[2] = 0;
+		EC[3] = 0;
+	}
+
+	return true;
+}
+
+bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const
+{
+	int n=ny;
 	double coord[3];
 	double shiftCoord[3];
 	int nP = (n+1)%3;
@@ -663,132 +705,158 @@ bool Operator::Calc_ECPos(int n, const unsigned int* pos, double* inEC) const
 	double deltaP_M=MainOp->GetIndexDelta(nP,pos[nP]-1);
 	double deltaPP_M=MainOp->GetIndexDelta(nPP,pos[nPP]-1);
 
+	int loc_pos[3]={pos[0],pos[1],pos[2]};
+	double A_n;
+	double area = 0;
+
 	//******************************* epsilon,kappa averaging *****************************//
 	//shift up-right
 	shiftCoord[n] = coord[n]+delta*0.5;
 	shiftCoord[nP] = coord[nP]+deltaP*0.25;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
+	A_n = GetNodeArea(ny,loc_pos,true);
+//	{
+//		cerr << ny << " " << pos[0] << " " <<  pos[1] << " " <<  pos[2] << ": " << A_n << endl;
+//		exit(0);
+//	}
 	CSProperties* prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] = mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
-		inEC[1] = mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP);
+		EffMat[0] = mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
+		EffMat[1] = mat->GetKappaWeighted(n,shiftCoord)*A_n;
 	}
 	else
 	{
-		inEC[0] = 1*fabs(deltaP*deltaPP);
-		inEC[1] = 0;
+		EffMat[0] = 1*A_n;
+		EffMat[1] = 0;
 	}
+	area+=A_n;
+
 	//shift up-left
 	shiftCoord[n] = coord[n]+delta*0.5;
 	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
+
+	--loc_pos[nP];
+	A_n = GetNodeArea(ny,loc_pos,true);
+//	cerr << A_n << endl;
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP);
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP);
+		EffMat[0] += mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
+		EffMat[1] += mat->GetKappaWeighted(n,shiftCoord)*A_n;
 	}
 	else
 	{
-		inEC[0] += 1*fabs(deltaP_M*deltaPP);
-		inEC[1] += 0;
+		EffMat[0] += 1*A_n;
+		EffMat[1] += 0;
 	}
+	area+=A_n;
 
 	//shift down-right
 	shiftCoord[n] = coord[n]+delta*0.5;
 	shiftCoord[nP] = coord[nP]+deltaP*0.25;
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
+	++loc_pos[nP];
+	--loc_pos[nPP];
+	A_n = GetNodeArea(ny,loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP*deltaPP_M);
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP*deltaPP_M);
+		EffMat[0] += mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
+		EffMat[1] += mat->GetKappaWeighted(n,shiftCoord)*A_n;
 	}
 	else
 	{
-		inEC[0] += 1*fabs(deltaP*deltaPP_M);
-		inEC[1] += 0;
+		EffMat[0] += 1*A_n;
+		EffMat[1] += 0;
 	}
+	area+=A_n;
 
 	//shift down-left
 	shiftCoord[n] = coord[n]+delta*0.5;
 	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
+	--loc_pos[nP];
+	A_n = GetNodeArea(ny,loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP_M);
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*fabs(deltaP_M*deltaPP_M);
+		EffMat[0] += mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
+		EffMat[1] += mat->GetKappaWeighted(n,shiftCoord)*A_n;
 	}
 	else
 	{
-		inEC[0] += 1*fabs(deltaP_M*deltaPP_M);
-		inEC[1] += 0;
+		EffMat[0] += 1*A_n;
+		EffMat[1] += 0;
 	}
+	area+=A_n;
 
-	inEC[0]*=gridDelta/fabs(delta)/4.0*__EPS0__;
-	inEC[1]*=gridDelta/fabs(delta)/4.0;
+	EffMat[0]*=__EPS0__/area;
+	EffMat[1]/=area;
 
 	//******************************* mu,sigma averaging *****************************//
+	loc_pos[0]=pos[0];loc_pos[1]=pos[1];loc_pos[2]=pos[2];
+	double length=0;
 	//shift down
 	shiftCoord[n] = coord[n]-delta_M*0.25;
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
+	--loc_pos[n];
+	double delta_ny = GetNodeWidth(n,loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[2] = fabs(delta_M) / mat->GetMueWeighted(n,shiftCoord);
-		if (mat->GetSigma(n))
-			inEC[3] = fabs(delta_M) / mat->GetSigmaWeighted(n,shiftCoord);
+		EffMat[2] = delta_ny / mat->GetMueWeighted(n,shiftCoord);
+		if (mat->GetSigmaWeighted(n,shiftCoord))
+			EffMat[3] = delta_ny / mat->GetSigmaWeighted(n,shiftCoord);
 		else
-			inEC[3] = 0;
+			EffMat[3] = 0;
 	}
 	else
 	{
-		inEC[2] = fabs(delta_M);
-		inEC[3] = 0;
+		EffMat[2] = delta_ny;
+		EffMat[3] = 0;
 	}
+	length=delta_ny;
+
 	//shift up
 	shiftCoord[n] = coord[n]+delta*0.25;
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
+	++loc_pos[n];
+	delta_ny = GetNodeWidth(n,loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[2] += fabs(delta)/mat->GetMueWeighted(n,shiftCoord);
+		EffMat[2] += delta_ny / mat->GetMueWeighted(n,shiftCoord);
 		if (mat->GetSigmaWeighted(n,shiftCoord))
-			inEC[3] += fabs(delta)/mat->GetSigmaWeighted(n,shiftCoord);
+			EffMat[3] += delta_ny/mat->GetSigmaWeighted(n,shiftCoord);
 		else
-			inEC[3] = 0;
+			EffMat[3] = 0;
 	}
 	else
 	{
-		inEC[2] += fabs(delta);
-		inEC[3] = 0;
+		EffMat[2] += 1*delta_ny;
+		EffMat[3] = 0;
 	}
+	length+=delta_ny;
 
-	inEC[2] = gridDelta * fabs(deltaP*deltaPP) * 2.0 * __MUE0__ / inEC[2];
-	if (inEC[3]) inEC[3]=gridDelta*fabs(deltaP*deltaPP) * 2.0 / inEC[3];
+	EffMat[2] = length * __MUE0__ / EffMat[2];
+	if (EffMat[3]) EffMat[3]=length / EffMat[3];
 
-	return true;
-}
-
-bool Operator::Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const
-{
-	this->Calc_ECPos(n,pos,inMat);
-
-	inMat[0] *= GetMeshDelta(n,pos)/GetNodeArea(n,pos);
-	inMat[1] *= GetMeshDelta(n,pos)/GetNodeArea(n,pos);
-
-	inMat[2] *= GetMeshDelta(n,pos,true)/GetNodeArea(n,pos,true);
-	inMat[3] *= GetMeshDelta(n,pos,true)/GetNodeArea(n,pos,true);
+	for (int n=0;n<4;++n)
+		if (isnan(EffMat[n]) || isinf(EffMat[n]))
+		{
+			cerr << "Operator::Calc_EffMatPos: An effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
+			exit(0);
+		}
 
 	return true;
 }

@@ -36,6 +36,13 @@ public:
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
+
+//	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
+//
+//
+//	//! Calculate the effective/averaged material properties at the given position and direction ny.
+//	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
+
 	virtual void ApplyElectricBC(bool* dirs);
 	virtual void ApplyMagneticBC(bool* dirs);
 
@@ -47,18 +54,28 @@ public:
 	//! Get the mesh delta times the grid delta for a 3D position, including radius corrected alpha-mesh width
 	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;
 
+	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeWidth(int ny, const int pos[3], bool dualMesh = false) const;
+
 	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,(const int*)pos,dualMesh);}
 	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeArea(int n, const int* pos, bool dualMesh=false) const;
 
+	//! Get the length of an FDTD edge.
+	virtual double GetEdgeLength(int ny, const int pos[3], bool dualMesh = false) const;
+
+	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos
+	/*!
+		This will return the area around an edge with a given direction, measured at the middle of the edge.
+		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.
+	*/
+	virtual double GetEdgeArea(int ny, const int pos[3], bool dualMesh = false) const;
+
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
 	virtual void AddExtension(Operator_Extension* op_ext);
-
-	virtual bool Calc_ECPos(int n, const unsigned int* pos, double* inEC) const;
-	virtual bool Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const;
 
 protected:
 	Operator_Cylinder();

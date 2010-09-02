@@ -44,6 +44,12 @@ public:
 
 	virtual int CalcECOperator();
 
+	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
+	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
+
+	//! Calculate the effective/averaged material properties at the given position and direction ny.
+	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
+
 	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }
 
@@ -83,10 +89,29 @@ public:
 	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
 
+	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeWidth(ny,(const int*)pos,dualMesh);}
+	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeWidth(int ny, const int pos[3], bool dualMesh = false) const {return GetMeshDelta(ny,pos,!dualMesh);}
+
 	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,(const int*)pos,dualMesh);}
 	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeArea(int ny, const int pos[3], bool dualMesh = false) const;
+
+	//! Get the length of an FDTD edge.
+	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetEdgeLength(ny,(const int*)pos,dualMesh);}
+	//! Get the length of an FDTD edge.
+	virtual double GetEdgeLength(int ny, const int pos[3], bool dualMesh = false) const {return GetMeshDelta(ny,pos,dualMesh);}
+
+	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos
+	/*!
+		This will return the area around an edge with a given direction, measured at the middle of the edge.
+		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.
+	*/
+	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetEdgeArea(ny,(const int*)pos,dualMesh);}
+	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos \sa GetEdgeArea
+	virtual double GetEdgeArea(int ny, const int pos[3], bool dualMesh = false) const  {return GetNodeArea(ny,(const int*)pos,dualMesh);};
 
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 
@@ -136,8 +161,6 @@ protected:
 	//EC elements, internal only!
 	virtual void Init_EC();
 	virtual bool Calc_EC();
-	virtual bool Calc_ECPos(int n, const unsigned int* pos, double* inEC) const;
-	virtual bool Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const;
 	double* EC_C[3];
 	double* EC_G[3];
 	double* EC_L[3];

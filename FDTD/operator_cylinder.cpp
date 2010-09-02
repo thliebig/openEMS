@@ -85,6 +85,20 @@ double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) con
 	return delta;
 }
 
+double Operator_Cylinder::GetNodeWidth(int ny, const int pos[3], bool dualMesh) const
+{
+	if ((ny<0) || (ny>2)) return 0.0;
+	double width = 0;
+	if (dualMesh)
+		width = fabs(MainOp->GetIndexDelta(ny,pos[ny]))*gridDelta;
+	else
+		width = fabs(MainOp->GetIndexWidth(ny,pos[ny]))*gridDelta;
+	if (ny==1)
+		width *= GetDiscLine(0,pos[0],dualMesh);
+	return width;
+}
+
+
 double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
 {
 	if (ny==2)
@@ -105,7 +119,31 @@ double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) c
 			return da * pow(r2,2);
 		return da/2* (pow(r2,2) - pow(r1,2));
 	}
+
+	if (ny==0)
+	{
+		if (dualMesh)
+			return fabs(MainOp->GetIndexDelta(1,pos[1]) * MainOp->GetIndexDelta(2,pos[2]) * GetDiscLine(0,pos[0],true) * gridDelta * gridDelta);
+		else
+			return fabs(MainOp->GetIndexDelta(1,pos[1]) * MainOp->GetIndexDelta(2,pos[2]) * GetDiscLine(0,pos[0],false) * gridDelta * gridDelta);
+	}
 	return __OP_CYLINDER_BASE_CLASS__::GetNodeArea(ny,pos,dualMesh);
+}
+
+double Operator_Cylinder::GetEdgeLength(int ny, const int pos[3], bool dualMesh) const
+{
+	double length = __OP_CYLINDER_BASE_CLASS__::GetMeshDelta(ny,pos,dualMesh);
+	if (ny!=1)
+		return length;
+	return length * GetDiscLine(0,pos[0],dualMesh);
+}
+
+double Operator_Cylinder::GetEdgeArea(int ny, const int pos[3], bool dualMesh) const
+{
+	if (ny!=0)
+		return GetNodeArea(ny,pos,dualMesh);
+
+	return GetEdgeLength(1,pos,!dualMesh) * GetEdgeLength(2,pos,!dualMesh);
 }
 
 bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
@@ -186,235 +224,6 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 		dirs[0]=0;  //no PMC in r_min directions...
 	}
 	__OP_CYLINDER_BASE_CLASS__::ApplyMagneticBC(dirs);
-}
-
-bool Operator_Cylinder::Calc_ECPos(int n, const unsigned int* pos, double* inEC) const
-{
-	double coord[3];
-	double shiftCoord[3];
-	int nP = (n+1)%3;
-	int nPP = (n+2)%3;
-	coord[0] = discLines[0][pos[0]];
-	coord[1] = discLines[1][pos[1]];
-	coord[2] = discLines[2][pos[2]];
-	double delta=MainOp->GetIndexDelta(n,pos[n]);
-	double deltaP=MainOp->GetIndexDelta(nP,pos[nP]);
-	double deltaPP=MainOp->GetIndexDelta(nPP,pos[nPP]);
-	double delta_M=MainOp->GetIndexDelta(n,pos[n]-1);
-	double deltaP_M=MainOp->GetIndexDelta(nP,pos[nP]-1);
-	double deltaPP_M=MainOp->GetIndexDelta(nPP,pos[nPP]-1);
-	double geom_factor=0,A_n=0;
-
-	//******************************* epsilon,kappa averaging *****************************//
-	//shift up-right
-	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]+deltaP*0.25;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
-	CSProperties* prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
-	switch (n)
-	{
-	case 0:
-		geom_factor = fabs((deltaPP*deltaP/delta)*(coord[0]+fabs(delta)/2))*0.25;
-		break;
-	case 1:
-		geom_factor = fabs(deltaP*deltaPP/(delta*coord[0]))*0.25;
-		break;
-	case 2:
-		geom_factor = fabs((deltaPP/delta) * (pow(coord[0]+fabs(deltaP)/2.0,2.0) - pow(coord[0],2.0)))*0.25;
-		break;
-	}
-	geom_factor*=gridDelta;
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] = mat->GetEpsilonWeighted(n,shiftCoord)*geom_factor*__EPS0__;
-		inEC[1] = mat->GetKappaWeighted(n,shiftCoord)*geom_factor;
-	}
-	else
-	{
-		inEC[0] = 1*geom_factor*__EPS0__;
-		inEC[1] = 0;
-	}
-
-	//shift up-left
-	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
-	switch (n)
-	{
-	case 0:
-		geom_factor = fabs((deltaPP*deltaP_M/delta)*(coord[0]+fabs(delta)/2))*0.25;
-		break;
-	case 1:
-		geom_factor = fabs(deltaP_M*deltaPP/(delta*coord[0]))*0.25;
-		break;
-	case 2:
-		geom_factor = fabs((deltaPP/delta) * (pow(coord[0],2.0) - pow(coord[0]-fabs(deltaP_M)/2.0,2.0)))*0.25;
-		break;
-	}
-	geom_factor*=gridDelta;
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*geom_factor*__EPS0__;
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*geom_factor;
-	}
-	else
-	{
-		inEC[0] += 1*geom_factor*__EPS0__;
-		inEC[1] += 0;
-	}
-
-	//shift down-right
-	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]+deltaP*0.25;
-	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
-	switch (n)
-	{
-	case 0:
-		geom_factor = fabs((deltaPP_M*deltaP/delta)*(coord[0]+fabs(delta)/2))*0.25;
-		break;
-	case 1:
-		geom_factor = fabs(deltaP*deltaPP_M/(delta*coord[0]))*0.25;
-		break;
-	case 2:
-		geom_factor = fabs((deltaPP_M/delta) * (pow(coord[0]+fabs(deltaP)/2.0,2.0) - pow(coord[0],2.0)))*0.25;
-		break;
-	}
-	geom_factor*=gridDelta;
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*geom_factor*__EPS0__;
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*geom_factor;
-	}
-	else
-	{
-		inEC[0] += 1*geom_factor*__EPS0__;
-		inEC[1] += 0;
-	}
-
-	//shift down-left
-	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
-	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
-	switch (n)
-	{
-	case 0:
-		geom_factor = fabs((deltaPP_M*deltaP_M/delta)*(coord[0]+fabs(delta)/2))*0.25;
-		break;
-	case 1:
-		geom_factor = fabs(deltaP_M*deltaPP_M/(delta*coord[0]))*0.25;
-		break;
-	case 2:
-		geom_factor = fabs((deltaPP_M/delta) * (pow(coord[0],2.0) - pow(coord[0]-fabs(deltaP_M)/2.0,2.0)))*0.25;
-		break;
-	}
-	geom_factor*=gridDelta;
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[0] += mat->GetEpsilonWeighted(n,shiftCoord)*geom_factor*__EPS0__;
-		inEC[1] += mat->GetKappaWeighted(n,shiftCoord)*geom_factor;
-	}
-	else
-	{
-		inEC[0] += 1*geom_factor*__EPS0__;
-		inEC[1] += 0;
-	}
-
-	//******************************* mu,sigma averaging *****************************//
-	//shift down
-	shiftCoord[n] = coord[n]-delta_M*0.25;
-	shiftCoord[nP] = coord[nP]+deltaP*0.5;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
-	double delta_n = fabs(delta_M);
-	if (n==1)
-	{
-		delta_n = delta_n * fabs(coord[0]+0.5*fabs(deltaPP)); //multiply delta-angle by radius
-	}
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[2] = delta_n / mat->GetMueWeighted(n,shiftCoord);
-		if (mat->GetSigma(n))
-			inEC[3] = delta_n / mat->GetSigmaWeighted(n,shiftCoord);
-		else
-			inEC[3] = 0;
-	}
-	else
-	{
-		inEC[2] = delta_n;
-		inEC[3] = 0;
-	}
-	//shift up
-	shiftCoord[n] = coord[n]+delta*0.25;
-	shiftCoord[nP] = coord[nP]+deltaP*0.5;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
-	delta_n = fabs(delta);
-	if (n==1)
-	{
-		delta_n = delta_n * fabs(coord[0]+0.5*fabs(deltaPP)); //multiply delta-angle by radius
-	}
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		inEC[2] += delta_n / mat->GetMueWeighted(n,shiftCoord);
-		if (mat->GetSigmaWeighted(n,shiftCoord))
-			inEC[3] += delta_n/mat->GetSigmaWeighted(n,shiftCoord);
-		else
-			inEC[3] = 0;
-	}
-	else
-	{
-		inEC[2] += delta_n;
-		inEC[3] = 0;
-	}
-
-	A_n = fabs(deltaP*deltaPP);
-	if (n==0) //x-direction n==0 -> r; nP==1 -> alpha; nPP==2 -> z
-	{
-		A_n = A_n * coord[0];
-	}
-	if (n==2) //z-direction n==2 -> z; nP==0 -> r; nPP==1 -> alpha
-	{
-		A_n = fabs(deltaPP) * (pow(coord[0]+fabs(deltaP),2.0) - pow(coord[0],2.0))*0.5;
-	}
-
-	inEC[2] = gridDelta * A_n * 2 * __MUE0__ / inEC[2];
-	if (inEC[3]) inEC[3]=gridDelta * A_n * 2 / inEC[3];
-
-//	if ((n==1) && (pos[1]==0) && (pos[2]==0))
-//		cerr <<  inEC[2]/(coord[0]) <<  endl;
-//	cerr << n << " -> " <<  pos[0] << " " << pos[1] << " " << pos[2] << " " << inEC[2] << endl;
-
-	return true;
-}
-
-bool Operator_Cylinder::Calc_EffMatPos(int n, const unsigned int* pos, double* inMat) const
-{
-	__OP_CYLINDER_BASE_CLASS__::Calc_EffMatPos(n, pos, inMat);
-
-	// H_rho is not defined at position r==0
-	if (CC_R0_included && (n==0) && (pos[0]==0))
-	{
-		inMat[2] = 0;
-		inMat[3] = 0;
-	}
-
-	// E_alpha is not defined at position r==0
-	if (CC_R0_included && (n==1) && (pos[0]==0))
-	{
-		inMat[0]=0;
-		inMat[1]=0;
-	}
-
-	return true;
 }
 
 void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)

@@ -41,8 +41,8 @@ public:
 	inline virtual FDTD_FLOAT& GetII(unsigned int nP, unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return ii[nP][n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetIV(unsigned int nP, unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return iv[nP][n][x][y][z]; }
 
-	virtual double GetNodeArea(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny);UNUSED(pos);UNUSED(dualMesh);return 0.0;}
-	virtual double GetNodeLength(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny);UNUSED(pos);UNUSED(dualMesh);return 0.0;}
+	virtual double GetEdgeArea(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny);UNUSED(pos);UNUSED(dualMesh);return 0.0;}
+	virtual double GetEdgeLength(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny);UNUSED(pos);UNUSED(dualMesh);return 0.0;}
 
 	//! This will resturn the pml parameter grading
 	virtual double GetKappaGraded(double depth, double Zm) const {UNUSED(depth);UNUSED(Zm);return 0.0;}
@@ -105,8 +105,8 @@ public:
 	void SetDirection(int ny, bool top_ny);
 	void SetPMLLength(int width);
 
-	virtual double GetNodeArea(int ny, unsigned int pos[3], bool dualMesh = false) const;
-	virtual double GetNodeLength(int ny, unsigned int pos[3], bool dualMesh = false) const;
+	virtual double GetEdgeArea(int ny, unsigned int pos[3], bool dualMesh = false) const;
+	virtual double GetEdgeLength(int ny, unsigned int pos[3], bool dualMesh = false) const;
 
 	virtual double GetKappaGraded(double depth, double Zm) const;
 

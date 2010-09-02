@@ -251,22 +251,22 @@ void Operator_Ext_PML_SF_Plane::SetPMLLength(int width)
 
 }
 
-double Operator_Ext_PML_SF_Plane::GetNodeArea(int ny, unsigned int pos[3], bool dualMesh) const
+double Operator_Ext_PML_SF_Plane::GetEdgeArea(int ny, unsigned int pos[3], bool dualMesh) const
 {
 	unsigned int l_pos[] = {pos[0],pos[1],pos[2]};
 	l_pos[m_ny] = m_LineNr;
 
-	return m_Op->GetNodeArea(ny,l_pos,dualMesh);
+	return m_Op->GetEdgeArea(ny,l_pos,dualMesh);
 }
 
-double Operator_Ext_PML_SF_Plane::GetNodeLength(int ny, unsigned int pos[3], bool dualMesh) const
+double Operator_Ext_PML_SF_Plane::GetEdgeLength(int ny, unsigned int pos[3], bool dualMesh) const
 {
 	if (ny==m_ny)
 		return m_pml_delta;
 
 	unsigned int l_pos[] = {pos[0],pos[1],pos[2]};
 	l_pos[m_ny] = m_LineNr;
-	return m_Op->GetMeshDelta(ny,l_pos,dualMesh);
+	return m_Op->GetEdgeLength(ny,l_pos,dualMesh);
 }
 
 double Operator_Ext_PML_SF_Plane::GetKappaGraded(double depth, double Zm) const
@@ -311,13 +311,13 @@ bool Operator_Ext_PML_SF_Plane::Calc_ECPos(int nP, int n, unsigned int* pos, dou
 		}
 	}
 
-	double geomFactor = GetNodeArea(n,pos) / GetNodeLength(n,pos);
+	double geomFactor = GetEdgeArea(n,pos) / GetEdgeLength(n,pos);
 	if (geomFactor<=0 || isnan(geomFactor) || isinf(geomFactor)) //check if geomFactor is positive, not zero and a valid number (necessary for cylindrical coords)
 		geomFactor = 0;
 	inEC[0] = inMat[0] * geomFactor;
 	inEC[1] = (inMat[1]+kappa) * geomFactor;
 
-	geomFactor = GetNodeArea(n,pos) / GetNodeLength(n,pos);
+	geomFactor = GetEdgeArea(n,pos,true) / GetEdgeLength(n,pos,true);
 	if (geomFactor<=0 || isnan(geomFactor) || isinf(geomFactor)) //check if geomFactor is positive, not zero and a valid number (necessary for cylindrical coords)
 		geomFactor = 0;
 	inEC[2] = inMat[2] * geomFactor;
