@@ -80,6 +80,7 @@ protected:
 	unsigned int numTS;
 
 	virtual void InitExtensions();
+	virtual void ClearExtensions();
 	vector<Engine_Extension*> m_Eng_exts;
 
 	ofstream file_et, file_ht; //excite signal dump file

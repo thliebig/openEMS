@@ -73,6 +73,13 @@ void Engine::InitExtensions()
 	}
 }
 
+void Engine::ClearExtensions()
+{
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		delete m_Eng_exts.at(n);
+	m_Eng_exts.clear();
+}
+
 void Engine::Reset()
 {
 	Delete_N_3DArray(volt,numLines);
@@ -83,9 +90,7 @@ void Engine::Reset()
 	file_et.close();
 	file_ht.close();
 
-	for (size_t n=0;n<m_Eng_exts.size();++n)
-		delete m_Eng_exts.at(n);
-	m_Eng_exts.clear();
+	ClearExtensions();
 }
 
 void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)

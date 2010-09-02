@@ -133,8 +133,9 @@ void Engine_Multithread::Init()
 
 void Engine_Multithread::Reset()
 {
-	if (!m_stopThreads) {
-		// prevent multiple invocations
+	if (!m_stopThreads) // prevent multiple invocations
+	{
+		ClearExtensions(); //prevent extensions from interfering with thread reset...
 
 		// stop the threads
 		//NS_Engine_Multithread::DBG().cout() << "stopping all threads" << endl;
