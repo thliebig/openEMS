@@ -345,6 +345,11 @@ int openEMS::SetupFDTD(const char* file)
 	if (CSX.GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 
+	double timestep=0;
+	FDTD_Opts->QueryDoubleAttribute("TimeStep",&timestep);
+	if (timestep)
+		FDTD_Op->SetTimestep(timestep);
+
 	FDTD_Op->CalcECOperator();
 	
 	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
