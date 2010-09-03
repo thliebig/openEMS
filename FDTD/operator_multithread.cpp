@@ -74,14 +74,32 @@ void Operator_Multithread::Reset()
 	delete m_CalcPEC_Stop;m_CalcPEC_Stop=NULL;
 }
 
+void Operator_Multithread::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
+{
+	unsigned int linesPerThread = round((float)numLines[0] / (float)numThreads);
+	if ((numThreads-1) * linesPerThread >= numLines[0])
+		--numThreads;
+
+	start.resize(numThreads);
+	stop.resize(numThreads);
+
+	for (unsigned int n=0; n<numThreads; n++)
+	{
+		start.at(n) = n * linesPerThread;
+		stop.at(n) = (n+1) * linesPerThread - 1;
+		if (n == numThreads-1) // last thread
+			stop.at(n) = numLines[0]-1;
+	}
+}
+
 int Operator_Multithread::CalcECOperator()
 {
 	if (m_numThreads == 0)
 		m_numThreads = boost::thread::hardware_concurrency();
 
-	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
-	if ((m_numThreads-1) * linesPerThread >= numLines[0])
-		--m_numThreads;
+	vector<unsigned int> m_Start_Lines;
+	vector<unsigned int> m_Stop_Lines;
+	CalcStartStopLines( m_numThreads, m_Start_Lines, m_Stop_Lines );
 
 	cout << "Multithreaded operator using " << m_numThreads << " threads." << std::endl;
 
@@ -94,12 +112,7 @@ int Operator_Multithread::CalcECOperator()
 
 	for (unsigned int n=0; n<m_numThreads; n++)
 	{
-		unsigned int start = n * linesPerThread;
-		unsigned int stop = (n+1) * linesPerThread - 1;
-		if (n == m_numThreads-1) // last thread
-			stop = numLines[0]-1;
-
-		boost::thread *t = new boost::thread( Operator_Thread(this,start,stop,n) );
+		boost::thread *t = new boost::thread( Operator_Thread(this,m_Start_Lines.at(n),m_Stop_Lines.at(n),n) );
 		m_thread_group.add_thread( t );
 	}
 
