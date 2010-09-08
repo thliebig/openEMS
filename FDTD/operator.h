@@ -60,6 +60,7 @@ public:
 	//! Set a forced timestep to use by the operator
 	virtual void SetTimestep(double ts) {dT = ts;}
 	double GetTimestep() const {return dT;};
+	bool GetTimestepValid() const {return !m_InvaildTimestep;}
 	virtual double GetNumberCells() const;
 
 	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines())
@@ -131,6 +132,7 @@ protected:
 	virtual double CalcTimestep();
 	double dT; //FDTD timestep!
 	double opt_dT;
+	bool m_InvaildTimestep;
 	string m_Used_TS_Name;
 
 	double CalcTimestep_Var1();

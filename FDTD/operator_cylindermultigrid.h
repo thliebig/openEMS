@@ -60,6 +60,7 @@ protected:
 	virtual void Reset();
 
 	double m_Split_Rad;
+	vector<double> m_Split_Radii;
 	unsigned int m_Split_Pos;
 
 	Operator_Cylinder* m_InnerOp;

@@ -36,6 +36,7 @@ Operator::Operator()
 	m_MeshType = ProcessFields::CARTESIAN_MESH;
 	Exc = 0;
 	dT = 0;
+	m_InvaildTimestep = false;
 }
 
 Operator::~Operator()
@@ -535,6 +536,7 @@ int Operator::CalcECOperator()
 	if (Calc_EC()==0)
 		return -1;
 
+	m_InvaildTimestep = false;
 	opt_dT = 0;
 	if (dT>0)
 	{
@@ -542,7 +544,11 @@ int Operator::CalcECOperator()
 		CalcTimestep();
 		opt_dT = dT;
 		if (dT<save_dT)
+		{
 			cerr << "Operator::CalcECOperator: Warning, forced timestep: " << save_dT << "s is larger than calculated timestep: " << dT << "s! It is not recommended using this timestep!! " << endl;
+			m_InvaildTimestep = true;
+		}
+
 		dT = save_dT;
 	}
 	else

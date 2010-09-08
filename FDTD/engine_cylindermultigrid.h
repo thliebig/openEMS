@@ -41,8 +41,6 @@ public:
 	//! Iterate \a iterTS number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
-	virtual void InitExtensions();
-
 protected:
 	Engine_CylinderMultiGrid(const Operator_CylinderMultiGrid* op);
 	const Operator_CylinderMultiGrid* Op_CMG;
@@ -62,18 +60,18 @@ protected:
 	boost::barrier *m_WaitOnSync;
 
 	Engine_Ext_CylinderMultiGrid* m_Eng_Ext_MG;
-	Engine_Ext_CylinderMultiGrid* m_InnerEng_Ext_MG;
 };
 
 
 class Engine_CylinderMultiGrid_Thread
 {
 public:
-	Engine_CylinderMultiGrid_Thread( Engine_Multithread* engine, boost::barrier *start, boost::barrier *stop, volatile unsigned int* numTS);
+	Engine_CylinderMultiGrid_Thread( Engine_Multithread* engine, boost::barrier *start, boost::barrier *stop, volatile unsigned int* numTS, bool isBase);
 	void operator()();
 
 protected:
 	Engine_Multithread *m_Eng;
+	bool m_isBase;
 	boost::barrier *m_startBarrier;
 	boost::barrier *m_stopBarrier;
 	volatile unsigned int *m_numTS;

@@ -21,8 +21,9 @@
 
 Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radii) : Operator_Cylinder()
 {
-	m_Split_Rad = Split_Radii.back();
-	Split_Radii.pop_back();
+	m_Split_Radii = Split_Radii;
+	m_Split_Rad = m_Split_Radii.back();
+	m_Split_Radii.pop_back();
 }
 
 Operator_CylinderMultiGrid::~Operator_CylinderMultiGrid()
@@ -60,6 +61,18 @@ bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
 	if (numLines[1]%2 != 1)
 	{
 		cerr << "Operator_CylinderMultiGrid::SetGeometryCSX: Error, number of line in alpha direction must be odd... found: " << numLines[1] << endl;
+		exit(0);
+	}
+
+	//check if mesh is homogenous in alpha-direction
+	double diff=discLines[1][1]-discLines[1][0];
+	for (unsigned int n=2;n<numLines[1];++n)
+	{
+		if ( fabs((discLines[1][n]-discLines[1][n-1]) - diff)/diff > 1e-10)
+		{
+			cerr << "Operator_CylinderMultiGrid::SetGeometryCSX: Error, mesh has to be homogenous in alpha direction for multi grid engine, violation found at: " << n << endl;
+			exit(0);
+		}
 	}
 
 	m_Split_Pos = 0;
@@ -105,7 +118,11 @@ bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
 void Operator_CylinderMultiGrid::Init()
 {
 	Operator_Cylinder::Init();
-	m_InnerOp = Operator_Cylinder::New(m_numThreads);
+
+	if (m_Split_Radii.empty())
+		m_InnerOp = Operator_Cylinder::New(m_numThreads);
+	else
+		m_InnerOp = Operator_CylinderMultiGrid::New(m_Split_Radii,m_numThreads);
 }
 
 void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
@@ -132,6 +149,7 @@ void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, ve
 
 int Operator_CylinderMultiGrid::CalcECOperator()
 {
+	int retCode=0;
 	if (dT)
 		m_InnerOp->SetTimestep(dT);
 
@@ -140,12 +158,22 @@ int Operator_CylinderMultiGrid::CalcECOperator()
 
 	dT = m_InnerOp->GetTimestep();
 
-	return Operator_Cylinder::CalcECOperator();
+	retCode = Operator_Cylinder::CalcECOperator();
+	if (GetTimestepValid()==false)
+	{
+		cerr << "Operator_CylinderMultiGrid::CalcECOperator(): Warning, timestep invalid... resetting..." << endl;
+		dT = opt_dT;
+		m_InnerOp->SetTimestep(dT);
+		m_InnerOp->CalcECOperator();
+		return Operator_Cylinder::CalcECOperator();
+	}
+
+	return retCode;
 }
 
 bool Operator_CylinderMultiGrid::SetupExcitation(TiXmlElement* Excite, unsigned int maxTS)
 {
-	if (!m_InnerOp->Exc->setupExcitation(Excite,maxTS))
+	if (!m_InnerOp->SetupExcitation(Excite,maxTS))
 		return false;
 	return Exc->setupExcitation(Excite,maxTS);
 }
