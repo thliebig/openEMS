@@ -127,8 +127,8 @@ void Operator_CylinderMultiGrid::Init()
 
 void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
 {
-	if (numLines[0]<numThreads) //in case more threads requested as lines in r-direction, reduce number of worker threads
-		numThreads = numLines[0];
+	if ((numLines[0] - m_Split_Pos + 1)<numThreads) //in case more threads requested as lines in r-direction, reduce number of worker threads
+		numThreads = numLines[0] - m_Split_Pos + 1;
 
 	unsigned int linesPerThread = round((float)(numLines[0] - m_Split_Pos + 1) / (float)numThreads);
 	if ((numThreads-1) * linesPerThread >= (numLines[0] - m_Split_Pos + 1))
