@@ -22,6 +22,33 @@
 
 Operator_Ext_Mur_ABC::Operator_Ext_Mur_ABC(Operator* op) : Operator_Extension(op)
 {
+	Initialize();
+}
+
+Operator_Ext_Mur_ABC::~Operator_Ext_Mur_ABC()
+{
+	Delete2DArray(m_Mur_Coeff_nyP,m_numLines);
+	m_Mur_Coeff_nyP = NULL;
+	Delete2DArray(m_Mur_Coeff_nyPP,m_numLines);
+	m_Mur_Coeff_nyPP = NULL;
+}
+
+Operator_Ext_Mur_ABC::Operator_Ext_Mur_ABC(Operator* op, Operator_Ext_Mur_ABC* op_ext) : Operator_Extension(op, op_ext)
+{
+	Initialize();
+	m_v_phase = op_ext->m_v_phase;
+	SetDirection(op_ext->m_ny,op_ext->m_top);
+}
+
+Operator_Extension* Operator_Ext_Mur_ABC::Clone(Operator* op)
+{
+	if (dynamic_cast<Operator_Ext_Mur_ABC*>(this)==NULL)
+		return NULL;
+	return new Operator_Ext_Mur_ABC(op, this);
+}
+
+void Operator_Ext_Mur_ABC::Initialize()
+{
 	m_ny = -1;
 	m_nyP = -1;
 	m_nyPP = -1;
@@ -37,14 +64,6 @@ Operator_Ext_Mur_ABC::Operator_Ext_Mur_ABC(Operator* op) : Operator_Extension(op
 	m_numLines[1]=0;
 }
 
-Operator_Ext_Mur_ABC::~Operator_Ext_Mur_ABC()
-{
-	Delete2DArray(m_Mur_Coeff_nyP,m_numLines);
-	m_Mur_Coeff_nyP = NULL;
-	Delete2DArray(m_Mur_Coeff_nyPP,m_numLines);
-	m_Mur_Coeff_nyPP = NULL;
-}
-
 void Operator_Ext_Mur_ABC::SetDirection(int ny, bool top_ny)
 {
 	if ((ny<0) || (ny>2))
@@ -54,6 +73,7 @@ void Operator_Ext_Mur_ABC::SetDirection(int ny, bool top_ny)
 	Delete2DArray(m_Mur_Coeff_nyPP,m_numLines);
 
 	m_ny = ny;
+	m_top = top_ny;
 	m_nyP = (ny+1)%3;
 	m_nyPP = (ny+2)%3;
 	if (!top_ny)

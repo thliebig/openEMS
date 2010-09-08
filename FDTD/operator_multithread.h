@@ -24,6 +24,7 @@
 
 class Operator_Multithread : public Operator_SSE_Compressed
 {
+	friend class Engine_Multithread;
 	friend class Operator_Thread;
 public:
 	//! Create a new operator
@@ -55,6 +56,14 @@ protected:
 
 	boost::thread_group m_thread_group;
 	unsigned int m_numThreads; // number of worker threads
+
+	//! Calculate the start/stop lines for the multithreading operator and engine.
+	/*!
+		It depends on the number of threads and number of lines to simulate.
+		This method is also used by the multithreading engine!
+		This method may also reduce the usable number of thread in case of too few lines or otherwise bad utilization.
+	*/
+	virtual void CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const;
 };
 
 class Operator_Thread

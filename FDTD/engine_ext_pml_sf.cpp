@@ -181,9 +181,9 @@ void Engine_Ext_PML_SF_Plane::Apply2Voltages()
 			for (pos[m_nyPP]=0;pos[m_nyPP]<m_Op_PML_SF_PL->m_numLines[m_nyPP];++pos[m_nyPP])
 			{
 				pml_pos[m_nyPP] = pos[m_nyPP];
-				m_Eng->GetVolt(0,pos) = volt[0][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] + volt[1][0][pml_pos[0]][pml_pos[1]][pml_pos[2]];
-				m_Eng->GetVolt(1,pos) = volt[0][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] + volt[1][1][pml_pos[0]][pml_pos[1]][pml_pos[2]];
-				m_Eng->GetVolt(2,pos) = volt[0][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] + volt[1][2][pml_pos[0]][pml_pos[1]][pml_pos[2]];
+				m_Eng->SetVolt(0,pos, volt[0][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] + volt[1][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] );
+				m_Eng->SetVolt(1,pos, volt[0][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] + volt[1][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] );
+				m_Eng->SetVolt(2,pos, volt[0][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] + volt[1][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] );
 			}
 		}
 	}
@@ -254,9 +254,9 @@ void Engine_Ext_PML_SF_Plane::Apply2Current()
 			{
 				pml_pos[m_nyPP] = pos[m_nyPP];
 
-				m_Eng->GetCurr(0,pos) = curr[0][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] + curr[1][0][pml_pos[0]][pml_pos[1]][pml_pos[2]];
-				m_Eng->GetCurr(1,pos) = curr[0][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] + curr[1][1][pml_pos[0]][pml_pos[1]][pml_pos[2]];
-				m_Eng->GetCurr(2,pos) = curr[0][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] + curr[1][2][pml_pos[0]][pml_pos[1]][pml_pos[2]];
+				m_Eng->SetCurr(0,pos, curr[0][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] + curr[1][0][pml_pos[0]][pml_pos[1]][pml_pos[2]] );
+				m_Eng->SetCurr(1,pos, curr[0][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] + curr[1][1][pml_pos[0]][pml_pos[1]][pml_pos[2]] );
+				m_Eng->SetCurr(2,pos, curr[0][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] + curr[1][2][pml_pos[0]][pml_pos[1]][pml_pos[2]] );
 			}
 		}
 	}

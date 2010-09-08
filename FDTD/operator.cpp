@@ -35,6 +35,8 @@ Operator::Operator()
 {
 	m_MeshType = ProcessFields::CARTESIAN_MESH;
 	Exc = 0;
+	dT = 0;
+	m_InvaildTimestep = false;
 }
 
 Operator::~Operator()
@@ -77,6 +79,7 @@ void Operator::Init()
 		m_BC[n]=0;
 
 	Exc = 0;
+	dT = 0;
 }
 
 void Operator::Reset()
@@ -302,7 +305,10 @@ void Operator::ShowStat() const
 	cout << "in " << GetDirName(1) << " direction\t\t: " << m_Nr_PEC[1] << endl;
 	cout << "in " << GetDirName(2) << " direction\t\t: " << m_Nr_PEC[2] << endl;
 	cout << "-----------------------------------" << endl;
-	cout << "Timestep (s)\t\t: " << dT << endl;
+	cout << "Timestep (s)\t\t: " << dT ;
+	if (opt_dT)
+		cout <<"\t(" << opt_dT << ")";
+	cout << endl;
 	cout << "Timestep method name\t: " << m_Used_TS_Name << endl;
 	cout << "Nyquist criteria (TS)\t: " << Exc->GetNyquistNum() << endl;
 	cout << "Nyquist criteria (s)\t: " << Exc->GetNyquistNum()*dT << endl;
@@ -458,7 +464,6 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 {
 	if (geo==NULL) return false;
 
-	Reset();
 	CSX = geo;
 
 	CSRectGrid* grid=CSX->GetGrid();
@@ -527,7 +532,23 @@ int Operator::CalcECOperator()
 	if (Calc_EC()==0)
 		return -1;
 
-	CalcTimestep();
+	m_InvaildTimestep = false;
+	opt_dT = 0;
+	if (dT>0)
+	{
+		double save_dT = dT;
+		CalcTimestep();
+		opt_dT = dT;
+		if (dT<save_dT)
+		{
+			cerr << "Operator::CalcECOperator: Warning, forced timestep: " << save_dT << "s is larger than calculated timestep: " << dT << "s! It is not recommended using this timestep!! " << endl;
+			m_InvaildTimestep = true;
+		}
+
+		dT = save_dT;
+	}
+	else
+		CalcTimestep();
 
 	InitOperator();
 
@@ -564,7 +585,8 @@ int Operator::CalcECOperator()
 	bool PEC[6]={1,1,1,1,1,1};
 	//exception for pml boundaries
 	for (int n=0;n<6;++n)
-		PEC[n] = m_BC[n]!=3;
+		if ((m_BC[n]==3) || (m_BC[n]==-1))
+			PEC[n] = false;
 	ApplyElectricBC(PEC);
 
 	InitExcitation();
@@ -600,8 +622,8 @@ void Operator::ApplyElectricBC(bool* dirs)
 				GetVI(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
 
 				pos[n]=numLines[n]-1;
-				GetVV(n,pos[0],pos[1],pos[2]) = 0; // these are outside the FDTD-domain as defined by the main disc
-				GetVI(n,pos[0],pos[1],pos[2]) = 0; // these are outside the FDTD-domain as defined by the main disc
+				GetVV(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1]; // these are outside the FDTD-domain as defined by the main disc
+				GetVI(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1]; // these are outside the FDTD-domain as defined by the main disc
 
 				GetVV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
 				GetVI(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];

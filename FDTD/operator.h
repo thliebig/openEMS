@@ -25,6 +25,7 @@
 
 class Operator_Extension;
 class Engine;
+class TiXmlElement;
 
 //! Abstract base-class for the FDTD-operator
 class Operator
@@ -50,6 +51,8 @@ public:
 	//! Calculate the effective/averaged material properties at the given position and direction ny.
 	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
 
+	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return Exc->setupExcitation(Excite,maxTS);};
+
 	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }
 
@@ -60,8 +63,11 @@ public:
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 
+	//! Set a forced timestep to use by the operator
+	virtual void SetTimestep(double ts) {dT = ts;}
 	double GetTimestep() const {return dT;};
-	double GetNumberCells() const;
+	bool GetTimestepValid() const {return !m_InvaildTimestep;}
+	virtual double GetNumberCells() const;
 
 	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines())
 	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
@@ -150,6 +156,8 @@ protected:
 	//Calc timestep only internal use
 	virtual double CalcTimestep();
 	double dT; //FDTD timestep!
+	double opt_dT;
+	bool m_InvaildTimestep;
 	string m_Used_TS_Name;
 
 	double CalcTimestep_Var1();

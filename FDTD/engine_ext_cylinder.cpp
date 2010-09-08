@@ -40,18 +40,18 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 		pos[0] = 0;
 		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 		{
-			m_Eng->GetVolt(2,0,0,pos[2]) *= cyl_Op->vv_R0[pos[2]];
+			m_Eng->SetVolt(2,0,0,pos[2], m_Eng->GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]]);
 			for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
 			{
-					m_Eng->GetVolt(2,0,0,pos[2]) += cyl_Op->vi_R0[pos[2]] *  m_Eng->GetCurr(1,0,pos[1],pos[2]);
+					m_Eng->SetVolt(2,0,0,pos[2], m_Eng->GetVolt(2,0,0,pos[2]) + cyl_Op->vi_R0[pos[2]] *  m_Eng->GetCurr(1,0,pos[1],pos[2]) );
 			}
 		}
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
 			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 			{
-				m_Eng->GetVolt(1,0,pos[1],pos[2]) = 0; //no voltage in alpha-direction at r=0
-				m_Eng->GetVolt(2,0,pos[1],pos[2]) = m_Eng->GetVolt(2,0,0,pos[2]);
+				m_Eng->SetVolt(1,0,pos[1],pos[2], 0); //no voltage in alpha-direction at r=0
+				m_Eng->SetVolt(2,0,pos[1],pos[2], m_Eng->GetVolt(2,0,0,pos[2]) );
 			}
 		}
 	}
@@ -64,9 +64,9 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 	{
 		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 		{
-			m_Eng->GetVolt(0,pos[0],0,pos[2]) = m_Eng->GetVolt(0,pos[0],last_A_Line,pos[2]);
-			m_Eng->GetVolt(1,pos[0],0,pos[2]) = m_Eng->GetVolt(1,pos[0],last_A_Line,pos[2]);
-			m_Eng->GetVolt(2,pos[0],0,pos[2]) = m_Eng->GetVolt(2,pos[0],last_A_Line,pos[2]);
+			m_Eng->SetVolt(0,pos[0],0,pos[2], m_Eng->GetVolt(0,pos[0],last_A_Line,pos[2]) );
+			m_Eng->SetVolt(1,pos[0],0,pos[2], m_Eng->GetVolt(1,pos[0],last_A_Line,pos[2]) );
+			m_Eng->SetVolt(2,pos[0],0,pos[2], m_Eng->GetVolt(2,pos[0],last_A_Line,pos[2]) );
 		}
 	}
 }
@@ -83,9 +83,9 @@ void Engine_Ext_Cylinder::Apply2Current()
 		unsigned int last_A_Line = numLines[1]-1;
 		for (pos[2]=0;pos[2]<numLines[2]-1;++pos[2])
 		{
-			m_Eng->GetCurr(0,pos[0],last_A_Line,pos[2]) = m_Eng->GetCurr(0,pos[0],0,pos[2]);
-			m_Eng->GetCurr(1,pos[0],last_A_Line,pos[2]) = m_Eng->GetCurr(1,pos[0],0,pos[2]);
-			m_Eng->GetCurr(2,pos[0],last_A_Line,pos[2]) = m_Eng->GetCurr(2,pos[0],0,pos[2]);
+			m_Eng->SetCurr(0,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(0,pos[0],0,pos[2]) );
+			m_Eng->SetCurr(1,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(1,pos[0],0,pos[2]) );
+			m_Eng->SetCurr(2,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(2,pos[0],0,pos[2]) );
 		}
 	}
 }

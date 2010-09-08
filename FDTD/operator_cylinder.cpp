@@ -30,31 +30,31 @@ Operator_Cylinder* Operator_Cylinder::New(unsigned int numThreads)
 	return op;
 }
 
-Operator_Cylinder::Operator_Cylinder() : __OP_CYLINDER_BASE_CLASS__()
+Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 {
 	m_MeshType = ProcessFields::CYLINDRICAL_MESH;
 }
 
 Operator_Cylinder::~Operator_Cylinder()
 {
-	__OP_CYLINDER_BASE_CLASS__::Reset();
+	Operator_Multithread::Reset();
 }
 
 void Operator_Cylinder::Init()
 {
 	CC_closedAlpha = false;
 	CC_R0_included = false;
-	__OP_CYLINDER_BASE_CLASS__::Init();
+	Operator_Multithread::Init();
 }
 
 void Operator_Cylinder::Reset()
 {
-	__OP_CYLINDER_BASE_CLASS__::Reset();
+	Operator_Multithread::Reset();
 }
 
 void Operator_Cylinder::InitOperator()
 {
-	__OP_CYLINDER_BASE_CLASS__::InitOperator();
+	Operator_Multithread::InitOperator();
 }
 
 inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
@@ -76,7 +76,7 @@ string Operator_Cylinder::GetDirName(int ny) const
 
 double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) const
 {
-	double delta = __OP_CYLINDER_BASE_CLASS__::GetMeshDelta(n,pos,dualMesh);
+	double delta = Operator_Multithread::GetMeshDelta(n,pos,dualMesh);
 	if (delta==0) return delta;
 	if (n==1)
 	{
@@ -103,7 +103,7 @@ double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) c
 {
 	if (ny==2)
 	{
-		double da = __OP_CYLINDER_BASE_CLASS__::GetMeshDelta(1,pos,dualMesh)/gridDelta;
+		double da = Operator_Multithread::GetMeshDelta(1,pos,dualMesh)/gridDelta;
 		double r1,r2;
 		if (!dualMesh)
 		{
@@ -127,12 +127,12 @@ double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) c
 		else
 			return fabs(MainOp->GetIndexDelta(1,pos[1]) * MainOp->GetIndexDelta(2,pos[2]) * GetDiscLine(0,pos[0],false) * gridDelta * gridDelta);
 	}
-	return __OP_CYLINDER_BASE_CLASS__::GetNodeArea(ny,pos,dualMesh);
+	return Operator_Multithread::GetNodeArea(ny,pos,dualMesh);
 }
 
 double Operator_Cylinder::GetEdgeLength(int ny, const int pos[3], bool dualMesh) const
 {
-	double length = __OP_CYLINDER_BASE_CLASS__::GetMeshDelta(ny,pos,dualMesh);
+	double length = Operator_Multithread::GetMeshDelta(ny,pos,dualMesh);
 	if (ny!=1)
 		return length;
 	return length * GetDiscLine(0,pos[0],dualMesh);
@@ -148,7 +148,7 @@ double Operator_Cylinder::GetEdgeArea(int ny, const int pos[3], bool dualMesh) c
 
 bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 {
-	if (__OP_CYLINDER_BASE_CLASS__::SetGeometryCSX(geo)==false) return false;
+	if (Operator_Multithread::SetGeometryCSX(geo)==false) return false;
 
 	double minmaxA = fabs(discLines[1][numLines[1]-1]-discLines[1][0]);
 	if (fabs(minmaxA-2*PI) < (2*PI)/10/numLines[1]) //check minmaxA smaller then a tenth of average alpha-width
@@ -209,7 +209,7 @@ void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 			}
 		}
 	}
-	__OP_CYLINDER_BASE_CLASS__::ApplyElectricBC(dirs);
+	Operator_Multithread::ApplyElectricBC(dirs);
 }
 
 void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
@@ -223,7 +223,7 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 	{
 		dirs[0]=0;  //no PMC in r_min directions...
 	}
-	__OP_CYLINDER_BASE_CLASS__::ApplyMagneticBC(dirs);
+	Operator_Multithread::ApplyMagneticBC(dirs);
 }
 
 void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)

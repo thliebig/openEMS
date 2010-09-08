@@ -44,8 +44,9 @@ Engine_Multithread* Engine_Multithread::New(const Operator_Multithread* op, unsi
 	return e;
 }
 
-Engine_Multithread::Engine_Multithread(const Operator_SSE_Compressed* op) : Engine_SSE_Compressed(op)
+Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : Engine_SSE_Compressed(op)
 {
+	m_Op_MT = op;
 	m_type = SSE;
 	m_barrier_VoltUpdate = 0;
 	m_barrier_VoltExcite = 0;
@@ -95,6 +96,10 @@ void Engine_Multithread::Init()
 	if (m_numThreads == 0)
 		m_numThreads = boost::thread::hardware_concurrency();
 
+	vector<unsigned int> m_Start_Lines;
+	vector<unsigned int> m_Stop_Lines;
+	m_Op_MT->CalcStartStopLines( m_numThreads, m_Start_Lines, m_Stop_Lines );
+
 	cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
 	m_barrier_VoltUpdate = new boost::barrier(m_numThreads); // numThread workers
 	m_barrier_VoltExcite = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
@@ -109,15 +114,14 @@ void Engine_Multithread::Init()
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 
-	unsigned int linesPerThread = round((float)numLines[0] / (float)m_numThreads);
 	for (unsigned int n=0; n<m_numThreads; n++)
 	{
-		unsigned int start = n * linesPerThread;
-		unsigned int stop = (n+1) * linesPerThread - 1;
+		unsigned int start = m_Start_Lines.at(n);
+		unsigned int stop = m_Stop_Lines.at(n);
 		unsigned int stop_h = stop;
-		if (n == m_numThreads-1) {
+		if (n == m_numThreads-1)
+		{
 			// last thread
-			stop = numLines[0]-1;
 			stop_h = stop-1;
 			cout << stop-start+1 << ")" << endl;
 		}
@@ -133,8 +137,9 @@ void Engine_Multithread::Init()
 
 void Engine_Multithread::Reset()
 {
-	if (!m_stopThreads) {
-		// prevent multiple invocations
+	if (!m_stopThreads) // prevent multiple invocations
+	{
+		ClearExtensions(); //prevent extensions from interfering with thread reset...
 
 		// stop the threads
 		//NS_Engine_Multithread::DBG().cout() << "stopping all threads" << endl;

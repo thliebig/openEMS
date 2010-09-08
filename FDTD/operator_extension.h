@@ -35,6 +35,13 @@ class Operator_Extension
 {
 	friend class Engine_Extension;
 public:
+	//! Create a clone of this extension, will return NULL if this is impossible
+	/*!
+		Create a clone of this extension, will return NULL if this is impossible (e.g. derived extension has no clone method and copy-constructor)...
+		BuildExtension has to be called separatly!
+	*/
+	virtual Operator_Extension* Clone(Operator* op);
+
 	virtual bool BuildExtension() {return true;}
 
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}
@@ -47,6 +54,8 @@ public:
 
 protected:
 	Operator_Extension(Operator* op);
+	//! Copy constructor, returns NULL if extension cannot be copied...
+	Operator_Extension(Operator* op, Operator_Extension* op_ext);
 	Operator* m_Op;
 };
 

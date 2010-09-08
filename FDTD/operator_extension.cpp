@@ -24,7 +24,20 @@ Operator_Extension::Operator_Extension(Operator* op)
 	m_Op = op;
 }
 
+Operator_Extension::Operator_Extension(Operator* op, Operator_Extension* op_ext)
+{
+	UNUSED(op_ext);
+	m_Op = op;
+}
+
 void Operator_Extension::ShowStat(ostream &ostr) const
 {
 	ostr << "--- " << GetExtensionName() << " ---" << endl;
+}
+
+Operator_Extension* Operator_Extension::Clone(Operator* op)
+{
+	if (dynamic_cast<Operator_Extension*>(this)==NULL)
+		return NULL;
+	return new Operator_Extension(op, this);
 }

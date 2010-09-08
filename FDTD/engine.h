@@ -47,10 +47,15 @@ public:
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
 	//this access functions muss be overloaded by any new engine using a different storage model
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return volt[n][x][y][z]; }
-	inline virtual FDTD_FLOAT& GetVolt( unsigned int n, unsigned int pos[3] ) { return volt[n][pos[0]][pos[1]][pos[2]]; }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) { return curr[n][x][y][z]; }
-	inline virtual FDTD_FLOAT& GetCurr( unsigned int n, unsigned int pos[3] ) { return curr[n][pos[0]][pos[1]][pos[2]]; }
+	inline virtual FDTD_FLOAT GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z )		const { return volt[n][x][y][z]; }
+	inline virtual FDTD_FLOAT GetVolt( unsigned int n, const unsigned int pos[3] )							const { return volt[n][pos[0]][pos[1]][pos[2]]; }
+	inline virtual FDTD_FLOAT GetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z )		const { return curr[n][x][y][z]; }
+	inline virtual FDTD_FLOAT GetCurr( unsigned int n, const unsigned int pos[3] )							const { return curr[n][pos[0]][pos[1]][pos[2]]; }
+
+	inline virtual void SetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)	{ volt[n][x][y][z]=value; }
+	inline virtual void SetVolt( unsigned int n, const unsigned int pos[3], FDTD_FLOAT value )						{ volt[n][pos[0]][pos[1]][pos[2]]=value; }
+	inline virtual void SetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)	{ curr[n][x][y][z]=value; }
+	inline virtual void SetCurr( unsigned int n, const unsigned int pos[3], FDTD_FLOAT value )						{ curr[n][pos[0]][pos[1]][pos[2]]=value; }
 
 	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
 	virtual void ApplyVoltageExcite();
@@ -75,6 +80,7 @@ protected:
 	unsigned int numTS;
 
 	virtual void InitExtensions();
+	virtual void ClearExtensions();
 	vector<Engine_Extension*> m_Eng_exts;
 
 	ofstream file_et, file_ht; //excite signal dump file

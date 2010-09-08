@@ -78,6 +78,7 @@ class Engine_Multithread : public Engine_SSE_Compressed
 {
 	friend class NS_Engine_Multithread::thread;
 	friend class NS_Engine_Multithread::thread_e_excitation;
+	friend class Engine_CylinderMultiGrid;
 public:
 	static Engine_Multithread* New(const Operator_Multithread* op, unsigned int numThreads = 0);
 	virtual ~Engine_Multithread();
@@ -90,7 +91,8 @@ public:
 	virtual bool IterateTS(unsigned int iterTS);
 
 protected:
-	Engine_Multithread(const Operator_SSE_Compressed* op);
+	Engine_Multithread(const Operator_Multithread* op);
+	const Operator_Multithread* m_Op_MT;
 	boost::thread_group m_thread_group;
 	boost::barrier *m_startBarrier, *m_stopBarrier;
 	boost::barrier *m_barrier_VoltUpdate, *m_barrier_VoltExcite, *m_barrier_PreVolt, *m_barrier_PostVolt;

@@ -18,9 +18,6 @@
 #ifndef OPERATOR_CYLINDER_H
 #define OPERATOR_CYLINDER_H
 
-//! define the base class for the cylindrical coordinate FDTD
-#define __OP_CYLINDER_BASE_CLASS__ Operator_Multithread
-
 #include "operator_multithread.h"
 
 //! This class creates an operator for a cylindrical FDTD.
@@ -28,20 +25,14 @@
 This class creates an operator for a cylindrical FDTD. No special engine is necessary,
 all special cases e.g. a closed alpha mesh or an included r=0 case is treated by an operator/engine extension \sa operator_ext_cylinder.
 */
-class Operator_Cylinder : public __OP_CYLINDER_BASE_CLASS__
+class Operator_Cylinder : public Operator_Multithread
 {
+	friend class Operator_CylinderMultiGrid;
 public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
 	virtual ~Operator_Cylinder();
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
-
-
-//	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
-//
-//
-//	//! Calculate the effective/averaged material properties at the given position and direction ny.
-//	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
 
 	virtual void ApplyElectricBC(bool* dirs);
 	virtual void ApplyMagneticBC(bool* dirs);
