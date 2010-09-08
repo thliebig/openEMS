@@ -60,7 +60,7 @@ public:
 	//! Set a forced timestep to use by the operator
 	virtual void SetTimestep(double ts) {dT = ts;}
 	double GetTimestep() const {return dT;};
-	double GetNumberCells() const;
+	virtual double GetNumberCells() const;
 
 	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines())
 	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}

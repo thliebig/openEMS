@@ -27,6 +27,7 @@ all special cases e.g. a closed alpha mesh or an included r=0 case is treated by
 */
 class Operator_Cylinder : public Operator_Multithread
 {
+	friend class Operator_CylinderMultiGrid;
 public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
 	virtual ~Operator_Cylinder();

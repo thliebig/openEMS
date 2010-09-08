@@ -81,7 +81,10 @@ SOURCES += main.cpp \
     FDTD/engine_ext_lorentzmaterial.cpp \
     FDTD/operator_ext_pml_sf.cpp \
     FDTD/engine_ext_pml_sf.cpp \
-    FDTD/processmodematch.cpp
+    FDTD/processmodematch.cpp \
+    FDTD/operator_cylindermultigrid.cpp \
+    FDTD/engine_cylindermultigrid.cpp \
+    FDTD/engine_ext_cylindermultigrid.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -119,7 +122,10 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/engine_ext_lorentzmaterial.h \
     FDTD/operator_ext_pml_sf.h \
     FDTD/engine_ext_pml_sf.h \
-    FDTD/processmodematch.h
+    FDTD/processmodematch.h \
+    FDTD/operator_cylindermultigrid.h \
+    FDTD/engine_cylindermultigrid.h \
+    FDTD/engine_ext_cylindermultigrid.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native

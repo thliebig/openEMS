@@ -76,6 +76,9 @@ void Operator_Multithread::Reset()
 
 void Operator_Multithread::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
 {
+	if (numLines[0]<numThreads) //in case more threads requested as lines in x-direction, reduce number of worker threads
+		numThreads = numLines[0];
+
 	unsigned int linesPerThread = round((float)numLines[0] / (float)numThreads);
 	if ((numThreads-1) * linesPerThread >= numLines[0])
 		--numThreads;

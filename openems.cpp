@@ -19,6 +19,7 @@
 #include <iomanip>
 #include "tools/array_ops.h"
 #include "FDTD/operator_cylinder.h"
+#include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
 #include "FDTD/operator_ext_mur_abc.h"
@@ -293,7 +294,6 @@ int openEMS::SetupFDTD(const char* file)
 	double maxTime=0;
 	FDTD_Opts->QueryDoubleAttribute("MaxTime",&maxTime);
 
-
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
 	{
@@ -319,7 +319,15 @@ int openEMS::SetupFDTD(const char* file)
 	//*************** setup operator ************//
 	if (CylinderCoords)
 	{
-		FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
+		const char* radii = FDTD_Opts->Attribute("MultiGrid");
+		if (radii)
+		{
+			string rad(radii);
+			FDTD_Op = Operator_CylinderMultiGrid::New(SplitString2Double(rad,','),m_engine_numThreads);
+		}
+		else
+			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
+		CSX.SetCoordInputType(1); //tell CSX to use cylinder-coords
 	}
 	else if (m_engine == EngineType_SSE)
 	{

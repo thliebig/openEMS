@@ -467,7 +467,6 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 {
 	if (geo==NULL) return false;
 
-	Reset();
 	CSX = geo;
 
 	CSRectGrid* grid=CSX->GetGrid();
@@ -584,7 +583,8 @@ int Operator::CalcECOperator()
 	bool PEC[6]={1,1,1,1,1,1};
 	//exception for pml boundaries
 	for (int n=0;n<6;++n)
-		PEC[n] = m_BC[n]!=3;
+		if ((m_BC[n]==3) || (m_BC[n]==-1))
+			PEC[n] = false;
 	ApplyElectricBC(PEC);
 
 	InitExcitation();
@@ -620,8 +620,8 @@ void Operator::ApplyElectricBC(bool* dirs)
 				GetVI(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
 
 				pos[n]=numLines[n]-1;
-				GetVV(n,pos[0],pos[1],pos[2]) = 0; // these are outside the FDTD-domain as defined by the main disc
-				GetVI(n,pos[0],pos[1],pos[2]) = 0; // these are outside the FDTD-domain as defined by the main disc
+				GetVV(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1]; // these are outside the FDTD-domain as defined by the main disc
+				GetVI(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1]; // these are outside the FDTD-domain as defined by the main disc
 
 				GetVV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
 				GetVI(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];

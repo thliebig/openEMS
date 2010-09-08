@@ -52,6 +52,7 @@ protected:
 
 	unsigned int numVectors;
 
+public: //public access to the sse arrays for efficient extensions access... use careful...
 	f4vector**** f4_volt;
 	f4vector**** f4_curr;
 };
