@@ -27,6 +27,9 @@ ProcessModeMatch::ProcessModeMatch(Operator* op, Engine* eng) : ProcessIntegral(
 		m_ModeDist[n] = NULL;
 	}
 	m_dualMesh = false;
+
+	delete[] m_Results;
+	m_Results = new double[2];
 }
 
 ProcessModeMatch::~ProcessModeMatch()
@@ -232,9 +235,11 @@ double ProcessModeMatch::GetHField(int ny, unsigned int pos[3])
 }
 
 
-double ProcessModeMatch::CalcIntegral()
+double* ProcessModeMatch::CalcMultipleIntegrals()
 {
 	double value = 0;
+	double field = 0;
+	double purity = 0;
 	double area = 0;
 
 	int nP = (m_ny+1)%3;
@@ -253,10 +258,16 @@ double ProcessModeMatch::CalcIntegral()
 
 			for (int n=0;n<2;++n)
 			{
-				value += GetField((m_ny+n+1)%3,pos) * m_ModeDist[n][posP][posPP] * area;
+				field = GetField((m_ny+n+1)%3,pos);
+				value += field * m_ModeDist[n][posP][posPP] * area;
+				purity += field*field * area;
 			}
 		}
 	}
-
-	return value;
+	if (purity!=0)
+		m_Results[1] = value*value/purity;
+	else
+		m_Results[1] = 0;
+	m_Results[0] = value;
+	return m_Results;
 }

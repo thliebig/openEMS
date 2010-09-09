@@ -33,7 +33,9 @@ public:
 
 	void SetFieldType(int type);
 	void SetModeFunction(int ny, string function);
-	virtual double CalcIntegral();
+
+	virtual int GetNumberOfIntegrals() const {return 2;}
+	virtual double* CalcMultipleIntegrals();
 
 protected:
 	//normal direction of the mode plane

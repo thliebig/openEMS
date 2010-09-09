@@ -21,6 +21,9 @@
 #include "processing.h"
 
 //! Abstract base class for integral parameter processing
+/*!
+  \todo Weighting is applied equally to all integral parameter --> todo: weighting for each result individually
+  */
 class ProcessIntegral : public Processing
 {
 public:
@@ -30,6 +33,16 @@ public:
 
 	//! Flush FD data to disk
 	virtual void FlushData();
+
+	//! This method can calculate multiple integral parameter and must be overloaded for each derived class. \sa GetNumberOfIntegrals
+	/*!
+	  This method will store its integral results internally with a size given by GetNumberOfIntegrals()
+	  It will return the result for the CalcIntegral() as default.
+	  */
+	virtual double* CalcMultipleIntegrals();
+
+	//! Number of calculated results produced by this integral processing. \sa CalcMultipleIntegrals
+	virtual int GetNumberOfIntegrals() const {return 1;}
 
 	//! This method should calculate the integral parameter and must be overloaded for each derived class
 	virtual double CalcIntegral() {return 0;}
@@ -45,6 +58,8 @@ protected:
 
 	vector<FDTD_FLOAT> TD_Values;
 	vector<_Complex double> FD_Values;
+
+	double *m_Results;
 };
 
 #endif // PROCESSINTEGRAL_H

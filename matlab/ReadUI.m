@@ -39,9 +39,13 @@ for n=1:numel(filenames)
     tmp = load( fullfile(path,filenames{n}) );
     t = tmp(:,1)';
     val = tmp(:,2)';
-
+    
     UI.TD{n}.t = t;
     UI.TD{n}.val = val;
+
+    if (numel(tmp(1,:))>2)
+        UI.TD{n}.additional = tmp(:,3:end)';
+    end    
     
     if (nargin<3)
         [UI.FD{n}.f,UI.FD{n}.val] = FFT_time2freq( t,val );

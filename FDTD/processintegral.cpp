@@ -22,10 +22,13 @@
 ProcessIntegral::ProcessIntegral(Operator* op, Engine* eng)  : Processing(op, eng)
 {
 	m_TimeShift = 0.0;
+	m_Results=NULL;
 }
 
 ProcessIntegral::~ProcessIntegral()
 {
+	delete[] m_Results;
+	m_Results = NULL;
 	ProcessIntegral::FlushData();
 }
 
@@ -50,8 +53,9 @@ int ProcessIntegral::Process()
 	if (Enabled==false) return -1;
 	if (CheckTimestep()==false) return GetNextInterval();
 
-	FDTD_FLOAT integral=CalcIntegral();
-	integral*=m_weight;
+	CalcMultipleIntegrals();
+	int NrInt = GetNumberOfIntegrals();
+	double integral = m_Results[0] * m_weight;
 
 	double time = (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() + m_TimeShift;
 
@@ -60,7 +64,10 @@ int ProcessIntegral::Process()
 		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
 		{
 			TD_Values.push_back(integral);
-			file << setprecision(m_precision) << time << "\t" << integral << endl;
+			file << setprecision(m_precision) << time;
+			for (int n=0;n<NrInt;++n)
+				file << "\t" << m_Results[n] * m_weight;
+			file << endl;
 		}
 	}
 
@@ -83,3 +90,10 @@ int ProcessIntegral::Process()
 	return GetNextInterval();
 }
 
+double* ProcessIntegral::CalcMultipleIntegrals()
+{
+	if (m_Results==NULL)
+		m_Results = new double[1];
+	m_Results[0] = CalcIntegral();
+	return m_Results;
+}
