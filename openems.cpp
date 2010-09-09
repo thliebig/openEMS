@@ -575,10 +575,10 @@ void openEMS::RunFDTD()
 			if (currE>maxE)
 				maxE=currE;
 			cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
-			cout << " with currently " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MCells/s" ;
+			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 			if (maxE)
 				change = currE/maxE;
-			cout << " --- Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (decrement: " << setw(6)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
+			cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
 			prevTime=currTime;
 			prevTS=currTS;
 
