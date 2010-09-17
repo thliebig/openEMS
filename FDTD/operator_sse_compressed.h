@@ -19,6 +19,7 @@
 #define OPERATOR_SSE_COMPRESSED_H
 
 #include "operator_sse.h"
+#include "tools/aligned_allocator.h"
 
 class SSE_coeff
 {
@@ -70,10 +71,10 @@ protected:
 	// engine needs access
 public:
 	unsigned int*** m_Op_index;
-	vector<f4vector> f4_vv_Compressed[3]; //!< coefficient: calc new voltage from old voltage
-	vector<f4vector> f4_vi_Compressed[3]; //!< coefficient: calc new voltage from old current
-	vector<f4vector> f4_iv_Compressed[3]; //!< coefficient: calc new current from old voltage
-	vector<f4vector> f4_ii_Compressed[3]; //!< coefficient: calc new current from old current
+	vector<f4vector,aligned_allocator<f4vector> > f4_vv_Compressed[3]; //!< coefficient: calc new voltage from old voltage
+	vector<f4vector,aligned_allocator<f4vector> > f4_vi_Compressed[3]; //!< coefficient: calc new voltage from old current
+	vector<f4vector,aligned_allocator<f4vector> > f4_iv_Compressed[3]; //!< coefficient: calc new current from old voltage
+	vector<f4vector,aligned_allocator<f4vector> > f4_ii_Compressed[3]; //!< coefficient: calc new current from old current
 
 };
 

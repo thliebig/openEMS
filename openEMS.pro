@@ -125,7 +125,8 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/processmodematch.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
-    FDTD/engine_ext_cylindermultigrid.h
+    FDTD/engine_ext_cylindermultigrid.h \
+    tools/aligned_allocator.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native
