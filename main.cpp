@@ -34,8 +34,14 @@ int main(int argc, char *argv[])
 {
 	openEMS FDTD;
 
+#ifdef _LP64
+	string bits = "64bit";
+#else
+	string bits = "32bit";
+#endif
+
 	cout << " -------------------------------------------------------------------- " << endl;
-	cout << " | openEMS version " GIT_VERSION << endl;
+	cout << " | openEMS " << bits << " -- version " GIT_VERSION << endl;
 	cout << " | (C) 2010 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
 	cout << " -------------------------------------------------------------------- " << endl;
 	cout << openEMS::GetExtLibsInfo() << endl;

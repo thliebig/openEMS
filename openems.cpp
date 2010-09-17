@@ -32,6 +32,7 @@
 #include "FDTD/processfields_td.h"
 #include <sys/time.h>
 #include <time.h>
+#include <H5Cpp.h> // only for H5get_libversion()
 
 #include "FDTD/operator_ext_lorentzmaterial.h"
 
@@ -167,6 +168,14 @@ string openEMS::GetExtLibsInfo()
 
 	str << "\tUsed external libraries:" << endl;
 	str << "\t\t" << ContinuousStructure::GetInfoLine(true) << endl;
+
+	// libhdf5
+	unsigned int major, minor, release;
+	if (H5get_libversion( &major, &minor, &release ) >= 0)
+	{
+		str << "\t\t" << "hdf5   -- Version: " << major << '.' << minor << '.' << release << endl;
+		str << "\t\t" << "          compiled against: " H5_VERS_INFO << endl;
+	}
 
 	return str.str();
 }
