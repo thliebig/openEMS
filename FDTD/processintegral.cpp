@@ -16,7 +16,6 @@
 */
 
 #include "processintegral.h"
-#include <complex.h>
 #include <iomanip>
 
 ProcessIntegral::ProcessIntegral(Operator* op, Engine* eng)  : Processing(op, eng)
@@ -78,7 +77,7 @@ int ProcessIntegral::Process()
 			double T = time;
 			for (size_t n=0;n<m_FD_Samples.size();++n)
 			{
-				FD_Values.at(n) += integral * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+				FD_Values.at(n) += (double)integral * std::exp( -2.0 * II * M_PI * m_FD_Samples.at(n) * T );
 			}
 			++m_FD_SampleCount;
 			if (m_Flush)

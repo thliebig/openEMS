@@ -172,9 +172,9 @@ bits64 {
 }
 bits32 { 
     QMAKE_CXXFLAGS_RELEASE += -m32 \
-        -march=i686
+		-march=pentium3
     QMAKE_LFLAGS_RELEASE += -m32 \
-        -march=i686
+		-march=pentium3
     OBJECTS_DIR = ABI2-32
     LIBS = ../CSXCAD/ABI2-32/libCSXCAD.so
     LIBS += ../fparser/ABI2-32/libfparser.so

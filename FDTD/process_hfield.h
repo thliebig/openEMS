@@ -20,8 +20,6 @@
 
 #include "process_efield.h"
 
-typedef _Complex double complexdouble;
-
 /*! \brief Process H-field at a point
 
 	This class calculates the E-field at a point in the FDTD lattice.

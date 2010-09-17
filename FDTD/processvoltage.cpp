@@ -16,7 +16,6 @@
 */
 
 #include "processvoltage.h"
-#include <complex.h>
 #include <iomanip>
 
 ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : ProcessIntegral(op, eng)

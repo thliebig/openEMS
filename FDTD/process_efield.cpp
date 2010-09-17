@@ -15,7 +15,6 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <complex.h>
 #include <iomanip>
 #include "time.h"
 #include "process_efield.h"
@@ -33,7 +32,7 @@ void ProcessEField::InitProcess()
 {
 	OpenFile(m_Name);
 	for (int n=0; n<3; n++)
-		FD_Values[n].assign(m_FD_Samples.size(),0);
+		FD_Values[n].assign(m_FD_Samples.size(),double_complex(0.0,0.0));
 
 	file << "% time-domain E-field probe by openEMS " GIT_VERSION << endl;
 	file << "% coords: (" << Op->GetDiscLine(0,start[0])*Op->GetGridDelta() << ","
@@ -48,7 +47,7 @@ void ProcessEField::FlushData()
 		Dump_FD_Data(FD_Values,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
 }
 
-void ProcessEField::Dump_FD_Data(vector<complexdouble> value[3], double factor, string filename)
+void ProcessEField::Dump_FD_Data(vector<double_complex> value[3], double factor, string filename)
 {
 	if (value[0].size()==0)
 		return;
@@ -68,9 +67,9 @@ void ProcessEField::Dump_FD_Data(vector<complexdouble> value[3], double factor, 
 	for (size_t n=0;n<value[0].size();++n)
 	{
 		file << m_FD_Samples.at(n)
-			 << "\t" << 2.0 * creal(value[0].at(n))*factor << "\t" << 2.0 * cimag(value[0].at(n))*factor
-			 << "\t" << 2.0 * creal(value[1].at(n))*factor << "\t" << 2.0 * cimag(value[1].at(n))*factor
-			 << "\t" << 2.0 * creal(value[2].at(n))*factor << "\t" << 2.0 * cimag(value[2].at(n))*factor << "\n";
+			 << "\t" << 2.0 * std::real(value[0].at(n))*factor << "\t" << 2.0 * std::imag(value[0].at(n))*factor
+			 << "\t" << 2.0 * std::real(value[1].at(n))*factor << "\t" << 2.0 * std::imag(value[1].at(n))*factor
+			 << "\t" << 2.0 * std::real(value[2].at(n))*factor << "\t" << 2.0 * std::imag(value[2].at(n))*factor << "\n";
 	}
 	file.close();
 }
@@ -112,7 +111,7 @@ int ProcessEField::Process()
 				field *= m_weight;
 				for (size_t n=0;n<m_FD_Samples.size();++n)
 				{
-					FD_Values[pol].at(n) += field * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+					FD_Values[pol].at(n) += (double)field * std::exp( -2.0 * II * M_PI * m_FD_Samples.at(n) * T );
 				}
 				++m_FD_SampleCount;
 			}

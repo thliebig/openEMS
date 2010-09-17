@@ -57,7 +57,7 @@ protected:
 	double m_TimeShift;
 
 	vector<FDTD_FLOAT> TD_Values;
-	vector<_Complex double> FD_Values;
+	vector<double_complex> FD_Values;
 
 	double *m_Results;
 };

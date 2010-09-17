@@ -18,6 +18,10 @@
 #ifndef PROCESSING_H
 #define PROCESSING_H
 
+#include <complex>
+typedef std::complex<double> double_complex;
+#define II double_complex(0.0,1.0)
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -101,7 +105,7 @@ protected:
 	//! Sampling interval needed for the FD_Samples
 	unsigned int m_FD_Interval;
 
-	void Dump_FD_Data(vector<_Complex double> value, double factor, string filename);
+	void Dump_FD_Data(vector<double_complex> value, double factor, string filename);
 
 	//! define if given coords are on main or dualMesh (default is false)
 	bool m_dualMesh;

@@ -15,7 +15,6 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <complex.h>
 #include <iomanip>
 #include "tools/global.h"
 #include "process_hfield.h"
@@ -32,7 +31,7 @@ void ProcessHField::InitProcess()
 {
 	OpenFile(m_Name);
 	for (int n=0; n<3; n++)
-		FD_Values[n].assign(m_FD_Samples.size(),0);
+		FD_Values[n].assign(m_FD_Samples.size(),double_complex(0.0,0.0));
 
 	file << "% time-domain H-field probe by openEMS " GIT_VERSION << endl;
 	file << "% coords: (" << Op->GetDiscLine(0,start[0],true)*Op->GetGridDelta() << ","
@@ -96,7 +95,7 @@ int ProcessHField::Process()
 				field *= m_weight;
 				for (size_t n=0;n<m_FD_Samples.size();++n)
 				{
-					FD_Values[pol].at(n) += field * cexp( -2.0 * 1.0i * M_PI * m_FD_Samples.at(n) * T );
+					FD_Values[pol].at(n) += (double)field * std::exp( -2.0 * II * M_PI * m_FD_Samples.at(n) * T );
 				}
 				++m_FD_SampleCount;
 			}

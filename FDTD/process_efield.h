@@ -20,8 +20,6 @@
 
 #include "processing.h"
 
-typedef _Complex double complexdouble;
-
 /*! \brief Process E-field at a point
 
 	This class calculates the E-field at a point in the FDTD lattice.
@@ -35,11 +33,11 @@ public:
 
 	virtual void InitProcess();
 	virtual void FlushData();
-	void Dump_FD_Data(vector<complexdouble> value[3], double factor, string filename);
+	void Dump_FD_Data(vector<double_complex> value[3], double factor, string filename);
 	virtual int Process();
 
 protected:
-	vector<complexdouble> FD_Values[3];
+	vector<double_complex> FD_Values[3];
 };
 
 #endif // PROCESS_EFIELD_H

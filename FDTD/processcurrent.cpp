@@ -18,7 +18,6 @@
 #include "tools/global.h"
 #include "processcurrent.h"
 #include <iomanip>
-#include <complex.h>
 
 ProcessCurrent::ProcessCurrent(Operator* op, Engine* eng) : ProcessIntegral(op, eng)
 {

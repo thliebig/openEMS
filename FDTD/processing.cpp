@@ -19,7 +19,6 @@
 #include "tools/useful.h"
 #include "processing.h"
 #include "time.h"
-#include <complex.h>
 #include <climits>
 
 Processing::Processing(Operator* op, Engine* eng)
@@ -276,7 +275,7 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 	file.close();
 }
 
-void Processing::Dump_FD_Data(vector<_Complex double> value, double factor, string filename)
+void Processing::Dump_FD_Data(vector<double_complex> value, double factor, string filename)
 {
 	if (value.size()==0) 
 		return;
@@ -295,7 +294,7 @@ void Processing::Dump_FD_Data(vector<_Complex double> value, double factor, stri
 	file << "%dump by openEMS @" << ctime(&rawTime) << "%frequency\treal\timag\n";
 	for (size_t n=0;n<value.size();++n)
 	{
-		file << m_FD_Samples.at(n) << "\t" << 2.0 * creal(value.at(n))*factor << "\t" << 2.0 * cimag(value.at(n))*factor << "\n";
+		file << m_FD_Samples.at(n) << "\t" << 2.0 * std::real(value.at(n))*factor << "\t" << 2.0 * std::imag(value.at(n))*factor << "\n";
 	}
 	file.close();
 }
