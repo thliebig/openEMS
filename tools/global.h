@@ -18,6 +18,8 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include <sstream>
+
 class Global
 {
 public:
@@ -26,8 +28,14 @@ public:
 
 	bool showProbeDiscretization() const {return m_showProbeDiscretization;}
 
+	//! Returns true if native field dumps are requested...
+	bool NativeFieldDumps() const {return m_nativeFieldDumps;}
+
+	void ShowArguments(std::ostream& ostr, std::string front=std::string());
+
 protected:
 	bool m_showProbeDiscretization;
+	bool m_nativeFieldDumps;
 };
 
 extern Global g_settings;

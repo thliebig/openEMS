@@ -27,6 +27,13 @@ Global g_settings;
 Global::Global()
 {
 	m_showProbeDiscretization = false;
+	m_nativeFieldDumps = false;
+}
+
+void Global::ShowArguments(ostream& ostr, string front)
+{
+	ostr << front << "--showProbeDiscretization\tShow probe discretization information" << endl;
+	ostr << front << "--nativeFieldDumps\tDump all fields using the native field components" << endl;
 }
 
 //! \brief This function initializes the object
@@ -41,6 +48,11 @@ bool Global::parseCommandLineArgument( const char *argv )
 		m_showProbeDiscretization = true;
 		return true;
 	}
-
+	else if (strcmp(argv,"--nativeFieldDumps")==0)
+	{
+		cout << "openEMS - dumping all fields using the native field components" << endl;
+		m_nativeFieldDumps = true;
+		return true;
+	}
 	return false;
 }

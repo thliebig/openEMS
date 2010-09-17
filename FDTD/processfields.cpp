@@ -345,23 +345,42 @@ void ProcessFields::WriteVTKCylindricalGridHeader(ofstream &file, double const* 
 }
 
 
-void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, unsigned int precision)
+void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, MeshType meshT)
 {
 	file << "VECTORS " << name << " float " << endl;
+
+	if (g_settings.NativeFieldDumps())
+		meshT = CARTESIAN_MESH; //dump field components as they are...
 
 	unsigned int pos[3];
 	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 	{
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 		{
+			double cos_a = cos(discLines[1][pos[1]]); //needed only for CYLINDRICAL_MESH
+			double sin_a = sin(discLines[1][pos[1]]); //needed only for CYLINDRICAL_MESH
 			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 			{
-				//in x
-				file << setprecision(precision) << array[0][pos[0]][pos[1]][pos[2]] << " ";
-				//in y
-				file << setprecision(precision) << array[1][pos[0]][pos[1]][pos[2]] << " ";
-				//in z
-				file << setprecision(precision) << array[2][pos[0]][pos[1]][pos[2]] << endl;
+				switch (meshT)
+				{
+				case CARTESIAN_MESH:
+					UNUSED(discLines); //disclines not needed for the original cartesian mesh
+					//in x
+					file << setprecision(precision) << array[0][pos[0]][pos[1]][pos[2]] << " ";
+					//in y
+					file << setprecision(precision) << array[1][pos[0]][pos[1]][pos[2]] << " ";
+					//in z
+					file << setprecision(precision) << array[2][pos[0]][pos[1]][pos[2]] << endl;
+					break;
+				case CYLINDRICAL_MESH:
+					//in x : F_x = F_r * cos(a) - F_a * sin(a);
+					file << setprecision(precision) << array[0][pos[0]][pos[1]][pos[2]] * cos_a - array[1][pos[0]][pos[1]][pos[2]] * sin_a << " ";
+					//in y : F_y = F_r * sin(a) + F_a * cos(a);
+					file << setprecision(precision) << array[0][pos[0]][pos[1]][pos[2]] * sin_a + array[1][pos[0]][pos[1]][pos[2]] * cos_a << " ";
+					//in z
+					file << setprecision(precision) << array[2][pos[0]][pos[1]][pos[2]] << endl;
+					break;
+				}
 			}
 		}
 	}
@@ -371,7 +390,7 @@ void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT 
 bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
 	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
-	WriteVTKVectorArray(file, name, array, numLines, precision);
+	WriteVTKVectorArray(file, name, array, discLines, numLines, precision, meshT);
 	return true;
 }
 
@@ -380,7 +399,7 @@ bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDT
 	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
 	for (unsigned int n=0;n<numFields;++n)
 	{
-		WriteVTKVectorArray(file, names[n], array[n], numLines, precision);
+		WriteVTKVectorArray(file, names[n], array[n], discLines, numLines, precision, meshT);
 		file << endl;
 	}
 	return true;

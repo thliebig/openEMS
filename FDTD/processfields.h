@@ -61,7 +61,7 @@ public:
 	//! Write a vtk header to an already open file (cylindrical grid)
 	static void WriteVTKCylindricalGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), double discLines_scaling = 1);
 	//! Append a vtk vector array to an already open vtk file, write a header first! \sa WriteVTKHeader()
-	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, unsigned int precision=12);
+	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, MeshType meshT = CARTESIAN_MESH);
 	//! Append a vtk scalar array to an already open vtk file, write a header first! \sa WriteVTKHeader()
 	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, unsigned int precision=12);
 

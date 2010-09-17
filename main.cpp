@@ -62,6 +62,8 @@ int main(int argc, char *argv[])
 		cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + multithreading" << endl;
 		cout << "\t--numThreads=<n>\tForce use n threads for multithreaded engine (needs: --engine=multithreaded)" << endl;
 		cout << "\t--no-simulation\tonly run preprocessing; do not simulate" << endl;
+		cout << "\n\t Additional global arguments " << endl;
+		g_settings.ShowArguments(cout,"\t");
 		cout << endl;
 		exit(-1);
 	}
