@@ -116,13 +116,7 @@ string Operator::GetDirName(int ny) const
 double Operator::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
 {
 	if ((n<0) || (n>2)) return 0.0;
-	int i_pos[] = {pos[0],pos[1],pos[2]};
-	return GetMeshDelta(n,i_pos,dualMesh);
-}
-
-double Operator::GetMeshDelta(int n, const int* pos, bool dualMesh) const
-{
-	if ((n<0) || (n>2)) return 0.0;
+	if (pos[n]>=numLines[n]) return 0.0;
 	if (dualMesh==false)
 		return fabs(MainOp->GetIndexDelta(n,pos[n]))*gridDelta;
 	else
@@ -131,20 +125,15 @@ double Operator::GetMeshDelta(int n, const int* pos, bool dualMesh) const
 
 double Operator::GetDiscLine(int n, unsigned int pos, bool dualMesh) const
 {
-	return GetDiscLine(n,(int)pos,dualMesh);
-}
-
-double Operator::GetDiscLine(int n, int pos, bool dualMesh) const
-{
 	if ((n<0) || (n>2)) return 0.0;
-	if ((pos<0) || (pos>=(int)numLines[n])) return 0.0;
+	if (pos>=numLines[n]) return 0.0;
 	if (dualMesh==false)
 		return discLines[n][pos];
 	else
 		return (discLines[n][pos] + 0.5*fabs(MainOp->GetIndexDelta(n,pos)));
 }
 
-double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
+double Operator::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	int nyP = (ny+1)%3;
 	int nyPP = (ny+2)%3;
@@ -738,7 +727,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[n] = coord[n]+delta*0.5;
 	shiftCoord[nP] = coord[nP]+deltaP*0.25;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
-	A_n = GetNodeArea(ny,loc_pos,true);
+	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
 //	{
 //		cerr << ny << " " << pos[0] << " " <<  pos[1] << " " <<  pos[2] << ": " << A_n << endl;
 //		exit(0);
@@ -763,7 +752,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
 
 	--loc_pos[nP];
-	A_n = GetNodeArea(ny,loc_pos,true);
+	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
 //	cerr << A_n << endl;
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
@@ -785,7 +774,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	++loc_pos[nP];
 	--loc_pos[nPP];
-	A_n = GetNodeArea(ny,loc_pos,true);
+	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
@@ -805,7 +794,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	--loc_pos[nP];
-	A_n = GetNodeArea(ny,loc_pos,true);
+	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
@@ -831,7 +820,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	--loc_pos[n];
-	double delta_ny = GetNodeWidth(n,loc_pos,true);
+	double delta_ny = GetNodeWidth(n,(unsigned int*)loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{
@@ -854,7 +843,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	++loc_pos[n];
-	delta_ny = GetNodeWidth(n,loc_pos,true);
+	delta_ny = GetNodeWidth(n,(unsigned int*)loc_pos,true);
 	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
 	if (prop)
 	{

@@ -86,38 +86,26 @@ public:
 
 	virtual double GetGridDelta() const {return gridDelta;}
 	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
-	virtual double GetMeshDelta(int n, const int* pos, bool dualMesh=false) const;
-	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
 	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const;
 
-	//! Get the disc line in \a n direction (in drawing units)
-	virtual double GetDiscLine(int n, int pos, bool dualMesh=false) const;
 	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
 
 	//! Get the node width for a given direction \a n and a given mesh position \a pos
-	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeWidth(ny,(const int*)pos,dualMesh);}
-	//! Get the node width for a given direction \a n and a given mesh position \a pos
-	virtual double GetNodeWidth(int ny, const int pos[3], bool dualMesh = false) const {return GetMeshDelta(ny,pos,!dualMesh);}
+	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetMeshDelta(ny,pos,!dualMesh);}
 
 	//! Get the node area for a given direction \a n and a given mesh position \a pos
-	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,(const int*)pos,dualMesh);}
-	//! Get the node area for a given direction \a n and a given mesh position \a pos
-	virtual double GetNodeArea(int ny, const int pos[3], bool dualMesh = false) const;
+	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 
 	//! Get the length of an FDTD edge (unit is meter).
-	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetEdgeLength(ny,(const int*)pos,dualMesh);}
-	//! Get the length of an FDTD edge (unit is meter).
-	virtual double GetEdgeLength(int ny, const int pos[3], bool dualMesh = false) const {return GetMeshDelta(ny,pos,dualMesh);}
+	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetMeshDelta(ny,pos,dualMesh);}
 
 	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos
 	/*!
 		This will return the area around an edge with a given direction, measured at the middle of the edge.
 		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.
 	*/
-	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetEdgeArea(ny,(const int*)pos,dualMesh);}
-	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos \sa GetEdgeArea
-	virtual double GetEdgeArea(int ny, const int pos[3], bool dualMesh = false) const  {return GetNodeArea(ny,(const int*)pos,dualMesh);};
+	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,pos,dualMesh);}
 
 	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
 

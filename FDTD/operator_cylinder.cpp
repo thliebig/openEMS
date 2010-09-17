@@ -74,7 +74,7 @@ string Operator_Cylinder::GetDirName(int ny) const
 	return "";
 }
 
-double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) const
+double Operator_Cylinder::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
 {
 	double delta = Operator_Multithread::GetMeshDelta(n,pos,dualMesh);
 	if (delta==0) return delta;
@@ -85,9 +85,10 @@ double Operator_Cylinder::GetMeshDelta(int n, const int* pos, bool dualMesh) con
 	return delta;
 }
 
-double Operator_Cylinder::GetNodeWidth(int ny, const int pos[3], bool dualMesh) const
+double Operator_Cylinder::GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	if ((ny<0) || (ny>2)) return 0.0;
+	if (pos[ny]>=numLines[ny]) return 0.0;
 	double width = 0;
 	if (dualMesh)
 		width = fabs(MainOp->GetIndexDelta(ny,pos[ny]))*gridDelta;
@@ -99,8 +100,10 @@ double Operator_Cylinder::GetNodeWidth(int ny, const int pos[3], bool dualMesh) 
 }
 
 
-double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
+double Operator_Cylinder::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
 {
+	if (pos[ny]>=numLines[ny]) return 0.0;
+	if (pos[0]>=numLines[0]) return 0.0;
 	if (ny==2)
 	{
 		double da = Operator_Multithread::GetMeshDelta(1,pos,dualMesh)/gridDelta;
@@ -130,7 +133,7 @@ double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) c
 	return Operator_Multithread::GetNodeArea(ny,pos,dualMesh);
 }
 
-double Operator_Cylinder::GetEdgeLength(int ny, const int pos[3], bool dualMesh) const
+double Operator_Cylinder::GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	double length = Operator_Multithread::GetMeshDelta(ny,pos,dualMesh);
 	if (ny!=1)
@@ -138,7 +141,7 @@ double Operator_Cylinder::GetEdgeLength(int ny, const int pos[3], bool dualMesh)
 	return length * GetDiscLine(0,pos[0],dualMesh);
 }
 
-double Operator_Cylinder::GetEdgeArea(int ny, const int pos[3], bool dualMesh) const
+double Operator_Cylinder::GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	if (ny!=0)
 		return GetNodeArea(ny,pos,dualMesh);
