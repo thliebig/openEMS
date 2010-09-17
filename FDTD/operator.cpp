@@ -378,24 +378,29 @@ void Operator::DumpPEC2File( string filename )
 	unsigned int pos[3];
 
 #ifdef OUTPUT_IN_DRAWINGUNITS
-	double scaling = 1;
+	double scaling = 1.0/GetGridDelta();
 #else
-	double scaling = GetGridDelta();
+	double scaling = 1;
 #endif
 
 	for (pos[0]=0; pos[0]<numLines[0]; pos[0]++) {
 		for (pos[1]=0; pos[1]<numLines[1]; pos[1]++) {
 			for (pos[2]=0; pos[2]<numLines[2]; pos[2]++) {
 				if ((GetVV(0,pos[0],pos[1],pos[2]) == 0) && (GetVI(0,pos[0],pos[1],pos[2]) == 0))
-					pec[0][pos[0]][pos[1]][pos[2]] = MainOp->GetIndexDelta( 0, pos[0] ) * scaling; // PEC-x found
+					pec[0][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 0, pos ) * scaling; // PEC-x found
 				if ((GetVV(1,pos[0],pos[1],pos[2]) == 0) && (GetVI(1,pos[0],pos[1],pos[2]) == 0))
-					pec[1][pos[0]][pos[1]][pos[2]] = MainOp->GetIndexDelta( 1, pos[1] ) * scaling; // PEC-y found
+					pec[1][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 1, pos ) * scaling; // PEC-y found
 				if ((GetVV(2,pos[0],pos[1],pos[2]) == 0) && (GetVI(2,pos[0],pos[1],pos[2]) == 0))
-					pec[2][pos[0]][pos[1]][pos[2]] = MainOp->GetIndexDelta( 2, pos[2] ) * scaling; // PEC-z found
+					pec[2][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 2, pos ) * scaling; // PEC-z found
 			}
 		}
 	}
 
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	scaling = 1;
+#else
+	scaling = GetGridDelta();
+#endif
 	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines, 6, "PEC dump" , (ProcessFields::MeshType)m_MeshType, scaling );
 
 	file.close();
