@@ -144,11 +144,9 @@ void Engine::ApplyVoltageExcite()
 		SetVolt(ny,pos, GetVolt(ny,pos) + Op->Exc->Volt_amp[n]*Op->Exc->Signal_volt[exc_pos]);
 	}
 
-	// write the first excitation into the file "et"
+	// write the voltage excitation function into the file "et"
 	if (numTS < Op->Exc->Length)
 		file_et << numTS * Op->GetTimestep() << "\t" << Op->Exc->Signal_volt[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
-	else
-		file_et << numTS * Op->GetTimestep() << "\t0" << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
 
 void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
@@ -197,11 +195,9 @@ void Engine::ApplyCurrentExcite()
 		SetCurr(ny,pos, GetCurr(ny,pos) + Op->Exc->Curr_amp[n]*Op->Exc->Signal_curr[exc_pos]);
 	}
 
-	// write the first excitation into the file "ht"
+	// write the current excitation function into the file "ht"
 	if (numTS < Op->Exc->Length)
 		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t" << Op->Exc->Signal_curr[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
-	else
-		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t0" << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
 
 bool Engine::IterateTS(unsigned int iterTS)
