@@ -122,6 +122,7 @@ public:
 	void deallocate(T * const p, const size_t n) const {
 //		std::cout << "Deallocating " << n << (n == 1 ? " object" : "objects") << " of size " << sizeof(T) << "." << std::endl;
 		// aligned_allocator wraps free().
+		UNUSED(n);
 		FREE(p);
 	}
 
