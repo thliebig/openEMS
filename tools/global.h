@@ -20,6 +20,8 @@
 
 #include <sstream>
 
+#define UNUSED(x) (void)(x);
+
 class Global
 {
 public:

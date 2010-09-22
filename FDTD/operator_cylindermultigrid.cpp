@@ -195,16 +195,20 @@ void Operator_CylinderMultiGrid::SetBoundaryCondition(int* BCs)
 
 void Operator_CylinderMultiGrid::AddExtension(Operator_Extension* op_ext)
 {
-	if (dynamic_cast<Operator_Ext_Cylinder*>(op_ext))
+	//check whether extension is save to use in multi-grid
+	if (op_ext->IsCylindricalMultiGridSave(false)==false)
 	{
-		if (op_ext->IsCylindricalMultiGridSave(false)==false)
-			return;
-		else
-			cerr << "Operator_CylinderMultiGrid::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylindrical multi-grids!! skipping...!" << endl;
-		Operator_Cylinder::AddExtension(op_ext);
+		cerr << "Operator_CylinderMultiGrid::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylindrical multi-grids!! skipping...!" << endl;
 		return;
 	}
 
+	Operator_Cylinder::AddExtension(op_ext);
+
+	// cylinder extension does not need to be cloned, it will be created by each operator of its own...
+	if (dynamic_cast<Operator_Ext_Cylinder*>(op_ext))
+		return;
+
+	//check whether extension is save to use in child multi-grid
 	if (op_ext->IsCylindricalMultiGridSave(true))
 	{
 		Operator_Extension* child_Ext = op_ext->Clone(m_InnerOp);
@@ -216,8 +220,6 @@ void Operator_CylinderMultiGrid::AddExtension(Operator_Extension* op_ext)
 		//give the copy to child
 		m_InnerOp->AddExtension(child_Ext);
 	}
-
-	Operator_Cylinder::AddExtension(op_ext);
 }
 
 void Operator_CylinderMultiGrid::ShowStat() const
