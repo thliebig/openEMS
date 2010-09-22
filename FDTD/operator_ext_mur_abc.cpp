@@ -47,6 +47,25 @@ Operator_Extension* Operator_Ext_Mur_ABC::Clone(Operator* op)
 	return new Operator_Ext_Mur_ABC(op, this);
 }
 
+bool Operator_Ext_Mur_ABC::IsCylinderCoordsSave() const
+{
+	if (m_ny==2)
+		return true;
+	if ((m_ny==0) && (m_top))
+		return true;
+	return false;
+}
+
+bool Operator_Ext_Mur_ABC::IsCylindricalMultiGridSave(bool child) const
+{
+	if (m_ny==2) //always allow in z-direction
+		return true;
+	if ((m_ny==0) && (m_top) && (!child)) //if top r-direction and is not a child grid allow Mur...
+		return true;
+	//in all other cases this ABC is not save to use in CylindricalMultiGrid
+	return false;
+}
+
 void Operator_Ext_Mur_ABC::Initialize()
 {
 	m_ny = -1;

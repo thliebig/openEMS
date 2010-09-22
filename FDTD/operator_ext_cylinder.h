@@ -35,6 +35,7 @@ public:
 	virtual Engine_Extension* CreateEngineExtention();
 
 	virtual bool IsCylinderCoordsSave() const {return true;}
+	virtual bool IsCylindricalMultiGridChildSave(bool child) const {UNUSED(child);return true;}
 
 	virtual std::string GetExtensionName() const {return std::string("Extension for the Cylinder-Coords Operator");}
 

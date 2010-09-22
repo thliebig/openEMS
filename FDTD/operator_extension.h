@@ -26,7 +26,6 @@
 
 using namespace std;
 
-
 class Operator;
 class Engine_Extension;
 
@@ -46,7 +45,11 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}
 
+	//! The cylindrical operator will check whether the extension is save to use. Default is false. Derive this method to override.
 	virtual bool IsCylinderCoordsSave() const {return false;}
+
+	//! The cylindrical multi grid operator will check whether the extension is save to use. Default is false. Derive this method to override.
+	virtual bool IsCylindricalMultiGridSave(bool /*child*/) const {return false;}
 
 	virtual std::string GetExtensionName() const {return std::string("Abstract Operator Extension Base Class");}
 

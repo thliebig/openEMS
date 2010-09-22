@@ -187,26 +187,37 @@ void Operator_CylinderMultiGrid::Reset()
 void Operator_CylinderMultiGrid::SetBoundaryCondition(int* BCs)
 {
 	Operator_Cylinder::SetBoundaryCondition(BCs);
+	int oldBC = BCs[1];
 	BCs[1] = 0; //always PEC in +r-direction
 	m_InnerOp->SetBoundaryCondition(BCs);
+	BCs[1] = oldBC;
 }
 
 void Operator_CylinderMultiGrid::AddExtension(Operator_Extension* op_ext)
 {
 	if (dynamic_cast<Operator_Ext_Cylinder*>(op_ext))
 	{
+		if (op_ext->IsCylindricalMultiGridSave(false)==false)
+			return;
+		else
+			cerr << "Operator_CylinderMultiGrid::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylindrical multi-grids!! skipping...!" << endl;
 		Operator_Cylinder::AddExtension(op_ext);
 		return;
 	}
-	Operator_Extension* child_Ext = op_ext->Clone(m_InnerOp);
-	if (child_Ext==NULL)
+
+	if (op_ext->IsCylindricalMultiGridSave(true))
 	{
-		cerr << "Operator_CylinderMultiGrid::AddExtension: Warning, extension: " << op_ext->GetExtensionName() << " can not be cloned for the child operator. Skipping Extension... " << endl;
-		return;
+		Operator_Extension* child_Ext = op_ext->Clone(m_InnerOp);
+		if (child_Ext==NULL)
+		{
+			cerr << "Operator_CylinderMultiGrid::AddExtension: Warning, extension: " << op_ext->GetExtensionName() << " can not be cloned for the child operator. Skipping Extension... " << endl;
+			return;
+		}
+		//give the copy to child
+		m_InnerOp->AddExtension(child_Ext);
 	}
+
 	Operator_Cylinder::AddExtension(op_ext);
-	//give the copy to child
-	m_InnerOp->AddExtension(child_Ext);
 }
 
 void Operator_CylinderMultiGrid::ShowStat() const
