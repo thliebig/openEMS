@@ -23,6 +23,9 @@ Engine_Ext_CylinderMultiGrid::Engine_Ext_CylinderMultiGrid(Operator_Extension* o
 {
 	m_IsBase = isBase;
 	m_Eng_MG = NULL;
+
+	// the multi-grid should be applies last?
+	m_Priority = -1000;
 }
 
 Engine_Ext_CylinderMultiGrid::~Engine_Ext_CylinderMultiGrid()

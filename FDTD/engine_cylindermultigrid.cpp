@@ -100,6 +100,9 @@ void Engine_CylinderMultiGrid::Init()
 
 	t = new boost::thread( Engine_CylinderMultiGrid_Thread(m_InnerEngine,m_startBarrier,m_stopBarrier,&m_Thread_NumTS, false) );
 	m_IteratorThread_Group.add_thread( t );
+
+	m_InnerEngine->SortExtensionByPriority();
+	SortExtensionByPriority();
 }
 
 bool Engine_CylinderMultiGrid::IterateTS(unsigned int iterTS)

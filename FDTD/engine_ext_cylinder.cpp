@@ -28,6 +28,9 @@ Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine
 
 	for (int n=0;n<3;++n)
 		numLines[n] = op_ext->m_Op->GetOriginalNumLines(n);
+
+	//this cylindrical extension should be executed first?
+	m_Priority = 2000;
 }
 
 void Engine_Ext_Cylinder::Apply2Voltages()

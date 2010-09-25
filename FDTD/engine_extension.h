@@ -43,11 +43,22 @@ public:
 
 	//! Set the Engine to this extention. This will usually done automatically by Engine::AddExtension
 	virtual void SetEngine(Engine* eng) {m_Eng=eng;}
+
+	//! Get the priority for this extension
+	virtual int GetPriority() const {return m_Priority;}
+
+	//! Set the priority for this extension
+	virtual void SetPriority(int val) {m_Priority=val;}
+
+	virtual bool operator< (const Engine_Extension& other);
+
 protected:
 	Engine_Extension(Operator_Extension* op_ext);
 
 	Operator_Extension* m_Op_ext;
 	Engine* m_Eng;
+
+	int m_Priority;
 };
 
 #endif // ENGINE_EXTENSION_H

@@ -23,8 +23,14 @@ Engine_Extension::Engine_Extension(Operator_Extension* op_ext)
 {
 	m_Op_ext = op_ext;
 	m_Eng = NULL;
+	m_Priority = 0;
 }
 
 Engine_Extension::~Engine_Extension()
 {
+}
+
+bool Engine_Extension::operator< (const Engine_Extension& other)
+{
+	return (GetPriority()<other.GetPriority());
 }

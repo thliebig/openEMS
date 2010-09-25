@@ -64,6 +64,7 @@ public:
 
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
+	virtual void SortExtensionByPriority();
 
 	EngineType GetType() const {return m_type;}
 

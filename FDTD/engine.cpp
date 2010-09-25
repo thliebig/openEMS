@@ -56,6 +56,7 @@ void Engine::Init()
 	file_ht.open( "ht" );
 
 	InitExtensions();
+	SortExtensionByPriority();
 }
 
 void Engine::InitExtensions()
@@ -77,6 +78,17 @@ void Engine::ClearExtensions()
 	for (size_t n=0;n<m_Eng_exts.size();++n)
 		delete m_Eng_exts.at(n);
 	m_Eng_exts.clear();
+}
+
+bool CompareExtensions(Engine_Extension* i, Engine_Extension* j)
+{
+	return (*i<*j);
+}
+
+void Engine::SortExtensionByPriority()
+{
+	stable_sort(m_Eng_exts.begin(),m_Eng_exts.end(), CompareExtensions);
+	reverse(m_Eng_exts.begin(),m_Eng_exts.end());
 }
 
 void Engine::Reset()
