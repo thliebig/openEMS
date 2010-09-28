@@ -16,7 +16,7 @@ function hdf_fielddata = ReadHDF5FieldData(file)
 % -----------------------
 % author: Thorsten Liebig
 %
-% See also ReadHDF5Mesh
+% See also ReadHDF5Mesh ReadHDF5Dump
 
 info = hdf5info(file);
 
