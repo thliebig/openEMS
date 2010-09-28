@@ -15,6 +15,10 @@ function [field_i mesh_i] = GetField_Interpolation(field, mesh, numLines, vararg
 %
 % See also ReadHDF5Dump ReadHDF5FieldData ReadHDF5Mesh
 
+if (~isnumeric(numLines) || numel(numLines)~=3)
+    error('openEMS:GetField_Interpolation: numLines for interpolation must be a vector...');
+end
+    
 x = mesh.lines{1};
 y = mesh.lines{2};
 z = mesh.lines{3};
