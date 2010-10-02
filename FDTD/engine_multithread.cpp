@@ -102,14 +102,14 @@ void Engine_Multithread::Init()
 
 	cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
 	m_barrier_VoltUpdate = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_VoltExcite = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
+	m_barrier_VoltExcite = new boost::barrier(m_numThreads); // numThread workers
 	m_barrier_CurrUpdate = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_CurrExcite = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
+	m_barrier_CurrExcite = new boost::barrier(m_numThreads); // numThread workers
 
 	m_barrier_PreVolt = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_PostVolt = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
+	m_barrier_PostVolt = new boost::barrier(m_numThreads); // numThread workers
 	m_barrier_PreCurr = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_PostCurr = new boost::barrier(m_numThreads+1); // numThread workers + 1 excitation thread
+	m_barrier_PostCurr = new boost::barrier(m_numThreads); // numThread workers
 
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
@@ -131,8 +131,6 @@ void Engine_Multithread::Init()
 		boost::thread *t = new boost::thread( NS_Engine_Multithread::thread(this,start,stop,stop_h,n) );
 		m_thread_group.add_thread( t );
 	}
-	boost::thread *t = new boost::thread( NS_Engine_Multithread::thread_e_excitation(this) );
-	m_thread_group.add_thread( t );
 }
 
 void Engine_Multithread::Reset()
@@ -232,9 +230,11 @@ void thread::operator()()
 			}
 			m_enginePtr->m_barrier_PostVolt->wait();
 
-			// e-field excitation (thread thread_e_excitation)
+			// voltage excitation (E-field excite) by the first thread
+			if (m_threadID==0)
+				m_enginePtr->ApplyVoltageExcite();
 			m_enginePtr->m_barrier_VoltExcite->wait();
-			// e_excitation finished
+			// voltage excitation finished
 
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
@@ -262,9 +262,12 @@ void thread::operator()()
 			}
 			m_enginePtr->m_barrier_PostCurr->wait();
 
-			//soft current excitation here (H-field excite)
+			// current excitation (H-field excite) by the first thread
+			if (m_threadID==0)
+				m_enginePtr->ApplyCurrentExcite();
+
 			m_enginePtr->m_barrier_CurrExcite->wait();
-			// excitation finished
+			// current excitation finished
 
 			if (m_threadID == 0)
 				++m_enginePtr->numTS; // only the first thread increments numTS
@@ -278,37 +281,3 @@ void thread::operator()()
 
 } // namespace
 
-//
-// *************************************************************************************************************************
-//
-namespace NS_Engine_Multithread {
-
-thread_e_excitation::thread_e_excitation( Engine_Multithread* ptr )
-{
-	m_enginePtr = ptr;
-}
-
-void thread_e_excitation::operator()()
-{
-	//std::cout << "thread_e_excitation::operator()" << std::endl;
-	//DBG().cout() << "Thread e_excitation (" << boost::this_thread::get_id() << ") started." << endl;
-
-	while (!m_enginePtr->m_stopThreads)
-	{
-		m_enginePtr->m_barrier_PostVolt->wait(); // waiting on NS_Engine_Multithread::thread
-
-		m_enginePtr->ApplyVoltageExcite();
-
-		m_enginePtr->m_barrier_VoltExcite->wait(); // continue NS_Engine_Multithread::thread
-
-		m_enginePtr->m_barrier_PostCurr->wait(); // waiting on NS_Engine_Multithread::thread
-
-		m_enginePtr->ApplyCurrentExcite();
-
-		m_enginePtr->m_barrier_CurrExcite->wait(); // continue NS_Engine_Multithread::thread
-	}
-
-	//DBG().cout() << "Thread e_excitation (" << boost::this_thread::get_id() << ") finished." << endl;
-}
-
-} // namespace

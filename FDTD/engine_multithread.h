@@ -62,22 +62,12 @@ namespace NS_Engine_Multithread {
 		unsigned int m_start, m_stop, m_stop_h, m_threadID;
 		Engine_Multithread *m_enginePtr;
 	};
-
-	class thread_e_excitation {
-	public:
-		thread_e_excitation( Engine_Multithread* ptr);
-		void operator()();
-
-	protected:
-		Engine_Multithread *m_enginePtr;
-	};
 } // namespace
 
 
 class Engine_Multithread : public Engine_SSE_Compressed
 {
 	friend class NS_Engine_Multithread::thread;
-	friend class NS_Engine_Multithread::thread_e_excitation;
 	friend class Engine_CylinderMultiGrid;
 public:
 	static Engine_Multithread* New(const Operator_Multithread* op, unsigned int numThreads = 0);
