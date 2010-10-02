@@ -54,6 +54,17 @@ Engine* Operator_SSE_Compressed::CreateEngine() const
 	return eng;
 }
 
+void Operator_SSE_Compressed::DumpOperator2File(string filename)
+{
+	if (m_Use_Compression)
+	{
+		cerr << "Operator_SSE_Compressed::DumpOperator2File: Warning: Operator dump not implemented for a compressed operator yet, try disabling operator compression." << endl;
+		return;
+	}
+	else
+		Operator_sse::DumpOperator2File(filename);
+}
+
 int Operator_SSE_Compressed::CalcECOperator()
 {
 	Operator_sse::CalcECOperator();

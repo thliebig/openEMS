@@ -99,7 +99,7 @@ void Operator_sse::DumpOperator2File(string filename)
 		return;
 	}
 
-	cout << "Dumping FDTD operator information to vtk file: " << filename << " ..." << flush ;
+	cout << "Operator_sse::Dumping FDTD operator information to vtk file: " << filename << " ..." << flush ;
 
 
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
