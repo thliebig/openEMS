@@ -212,34 +212,59 @@ void Engine::ApplyCurrentExcite()
 		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t" << Op->Exc->Signal_curr[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
 
+void Engine::DoPreVoltageUpdates()
+{
+	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+		m_Eng_exts.at(n)->DoPreVoltageUpdates();
+
+}
+
+void Engine::DoPostVoltageUpdates()
+{
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		m_Eng_exts.at(n)->DoPostVoltageUpdates();
+}
+
+void Engine::Apply2Voltages()
+{
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		m_Eng_exts.at(n)->Apply2Voltages();
+}
+
+void Engine::DoPreCurrentUpdates()
+{
+	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+		m_Eng_exts.at(n)->DoPreCurrentUpdates();
+}
+
+void Engine::DoPostCurrentUpdates()
+{
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		m_Eng_exts.at(n)->DoPostCurrentUpdates();
+}
+
+void Engine::Apply2Current()
+{
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		m_Eng_exts.at(n)->Apply2Current();
+}
+
 bool Engine::IterateTS(unsigned int iterTS)
 {
 	for (unsigned int iter=0;iter<iterTS;++iter)
 	{
 		//voltage updates with extensions
-		for (size_t n=0;n<m_Eng_exts.size();++n)
-			m_Eng_exts.at(n)->DoPreVoltageUpdates();
-
+		DoPreVoltageUpdates();
 		UpdateVoltages(0,numLines[0]);
-
-		for (size_t n=0;n<m_Eng_exts.size();++n)
-			m_Eng_exts.at(n)->DoPostVoltageUpdates();
-		for (size_t n=0;n<m_Eng_exts.size();++n)
-			m_Eng_exts.at(n)->Apply2Voltages();
-
+		DoPostVoltageUpdates();
+		Apply2Voltages();
 		ApplyVoltageExcite();
 
 		//current updates with extensions
-		for (size_t n=0;n<m_Eng_exts.size();++n)
-			m_Eng_exts.at(n)->DoPreCurrentUpdates();
-
+		DoPreCurrentUpdates();
 		UpdateCurrents(0,numLines[0]-1);
-
-		for (size_t n=0;n<m_Eng_exts.size();++n)
-			m_Eng_exts.at(n)->DoPostCurrentUpdates();
-		for (size_t n=0;n<m_Eng_exts.size();++n)
-			m_Eng_exts.at(n)->Apply2Current();
-
+		DoPostCurrentUpdates();
+		Apply2Current();
 		ApplyCurrentExcite();
 
 		++numTS;

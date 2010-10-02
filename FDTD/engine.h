@@ -62,6 +62,14 @@ public:
 	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
 	virtual void ApplyCurrentExcite();
 
+	virtual void DoPreVoltageUpdates();
+	virtual void DoPostVoltageUpdates();
+	virtual void Apply2Voltages();
+
+	virtual void DoPreCurrentUpdates();
+	virtual void DoPostCurrentUpdates();
+	virtual void Apply2Current();
+
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
 	virtual void SortExtensionByPriority();

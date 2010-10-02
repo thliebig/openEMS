@@ -207,8 +207,8 @@ void thread::operator()()
 		for (unsigned int iter=0;iter<m_enginePtr->m_iterTS;++iter)
 		{
 			// pre voltage stuff...
-			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->GetExtension(n)->DoPreVoltageUpdates();
+			if (m_threadID==0)
+				m_enginePtr->DoPreVoltageUpdates();
 
 			m_enginePtr->m_barrier_PreVolt->wait();
 
@@ -225,8 +225,11 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//post voltage stuff...
-			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->GetExtension(n)->DoPostVoltageUpdates();
+			if (m_threadID==0)
+			{
+				m_enginePtr->DoPostVoltageUpdates();
+				m_enginePtr->Apply2Voltages();
+			}
 			m_enginePtr->m_barrier_PostVolt->wait();
 
 			// e-field excitation (thread thread_e_excitation)
@@ -237,8 +240,8 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//pre current stuff
-			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->GetExtension(n)->DoPreCurrentUpdates();
+			if (m_threadID==0)
+				m_enginePtr->DoPreCurrentUpdates();
 			m_enginePtr->m_barrier_PreCurr->wait();
 
 			//current updates
@@ -252,8 +255,11 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//post current stuff
-			for (size_t n=m_threadID;n<m_enginePtr->GetExtensionCount();n+=m_enginePtr->m_numThreads)
-				m_enginePtr->GetExtension(n)->DoPostCurrentUpdates();
+			if (m_threadID==0)
+			{
+				m_enginePtr->DoPostCurrentUpdates();
+				m_enginePtr->Apply2Current();
+			}
 			m_enginePtr->m_barrier_PostCurr->wait();
 
 			//soft current excitation here (H-field excite)
@@ -291,18 +297,11 @@ void thread_e_excitation::operator()()
 	{
 		m_enginePtr->m_barrier_PostVolt->wait(); // waiting on NS_Engine_Multithread::thread
 
-		for (size_t n=0;n<m_enginePtr->GetExtensionCount();++n)
-			m_enginePtr->GetExtension(n)->Apply2Voltages();
-
 		m_enginePtr->ApplyVoltageExcite();
 
 		m_enginePtr->m_barrier_VoltExcite->wait(); // continue NS_Engine_Multithread::thread
 
-
 		m_enginePtr->m_barrier_PostCurr->wait(); // waiting on NS_Engine_Multithread::thread
-
-		for (size_t n=0;n<m_enginePtr->GetExtensionCount();++n)
-			m_enginePtr->GetExtension(n)->Apply2Current();
 
 		m_enginePtr->ApplyCurrentExcite();
 
