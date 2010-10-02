@@ -214,6 +214,7 @@ void Engine::ApplyCurrentExcite()
 
 void Engine::DoPreVoltageUpdates()
 {
+	//execute extensions in reverse order -> highest priority gets access to the voltages last
 	for (int n=m_Eng_exts.size()-1;n>=0;--n)
 		m_Eng_exts.at(n)->DoPreVoltageUpdates();
 
@@ -221,30 +222,35 @@ void Engine::DoPreVoltageUpdates()
 
 void Engine::DoPostVoltageUpdates()
 {
+	//execute extensions in normal order -> highest priority gets access to the voltages first
 	for (size_t n=0;n<m_Eng_exts.size();++n)
 		m_Eng_exts.at(n)->DoPostVoltageUpdates();
 }
 
 void Engine::Apply2Voltages()
 {
+	//execute extensions in normal order -> highest priority gets access to the voltages first
 	for (size_t n=0;n<m_Eng_exts.size();++n)
 		m_Eng_exts.at(n)->Apply2Voltages();
 }
 
 void Engine::DoPreCurrentUpdates()
 {
+	//execute extensions in reverse order -> highest priority gets access to the currents last
 	for (int n=m_Eng_exts.size()-1;n>=0;--n)
 		m_Eng_exts.at(n)->DoPreCurrentUpdates();
 }
 
 void Engine::DoPostCurrentUpdates()
 {
+	//execute extensions in normal order -> highest priority gets access to the currents first
 	for (size_t n=0;n<m_Eng_exts.size();++n)
 		m_Eng_exts.at(n)->DoPostCurrentUpdates();
 }
 
 void Engine::Apply2Current()
 {
+	//execute extensions in normal order -> highest priority gets access to the currents first
 	for (size_t n=0;n<m_Eng_exts.size();++n)
 		m_Eng_exts.at(n)->Apply2Current();
 }
