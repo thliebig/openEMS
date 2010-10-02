@@ -24,6 +24,10 @@ Operator_Extension::Operator_Extension(Operator* op)
 	m_Op = op;
 }
 
+Operator_Extension::~Operator_Extension()
+{
+}
+
 Operator_Extension::Operator_Extension(Operator* op, Operator_Extension* op_ext)
 {
 	UNUSED(op_ext);
