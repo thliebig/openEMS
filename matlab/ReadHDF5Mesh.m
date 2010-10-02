@@ -14,6 +14,12 @@ function hdf_mesh = ReadHDF5Mesh(file)
 %
 % See also ReadHDF5FieldData
 
+isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
+if isOctave
+    hdf_mesh = ReadHDF5Mesh_octave(file);
+    return
+end
+
 info = hdf5info(file);
 
 for n=1:numel(info.GroupHierarchy.Groups)
@@ -38,3 +44,16 @@ if (strcmp(names{1},'/Mesh/alpha'))
 end
 
 hdf_mesh.type=0;
+
+
+function hdf_mesh = ReadHDF5Mesh_octave(file)
+hdf = load( '-hdf5', file );
+hdf_mesh.names = fieldnames(hdf.Mesh);
+hdf_mesh.type = 0; % cartesian mesh
+for n=1:numel(hdf_mesh.names)
+    hdf_mesh.lines{n} = hdf.Mesh.(hdf_mesh.names{n});
+    hdf_mesh.names{n} = ['/Mesh/' hdf_mesh.names{n}];
+    if strcmp(hdf_mesh.names{n},'/Mesh/alpha')
+        hdf_mesh.type = 1; % cylindrical mesh
+    end
+end

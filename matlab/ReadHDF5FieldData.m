@@ -18,6 +18,12 @@ function hdf_fielddata = ReadHDF5FieldData(file)
 %
 % See also ReadHDF5Mesh ReadHDF5Dump
 
+isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
+if isOctave
+    hdf_fielddata = ReadHDF5FieldData_octave(file);
+    return
+end
+
 info = hdf5info(file);
 
 for n=1:numel(info.GroupHierarchy.Groups)
@@ -32,4 +38,14 @@ end
 hdf_fielddata.names = names;
 for n=1:numel(names)
     hdf_fielddata.values{n} = double(hdf5read(file,names{n}));
+end
+
+
+
+function hdf_fielddata = ReadHDF5FieldData_octave(file)
+hdf = load( '-hdf5', file );
+hdf_fielddata.names = fieldnames(hdf.FieldData);
+for n=1:numel(hdf_fielddata.names)
+    hdf_fielddata.time(n) = str2double(hdf_fielddata.names{n}(2:end));
+    hdf_fielddata.values{n} = hdf.FieldData.(hdf_fielddata.names{n});
 end
