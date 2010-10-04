@@ -305,15 +305,15 @@ void ProcessFields::WriteVTKCartesianGridHeader(ofstream &file, double const* co
 	file << "ASCII" << endl;
 	file << "DATASET RECTILINEAR_GRID " << endl;
 	file << "DIMENSIONS " << numLines[0] << " " << numLines[1] << " " << numLines[2] << endl;
-	file << "X_COORDINATES " << numLines[0] << " float" << endl;
+	file << "X_COORDINATES " << numLines[0] << " " << __VTK_DATA_TYPE__ << endl;
 	for (unsigned int i=0;i<numLines[0];++i)
 		file << setprecision(precision) << discLines[0][i] * discLines_scaling << " ";
 	file << endl;
-	file << "Y_COORDINATES " << numLines[1] << " float" << endl;
+	file << "Y_COORDINATES " << numLines[1] << " " << __VTK_DATA_TYPE__ << endl;
 	for (unsigned int i=0;i<numLines[1];++i)
 		file << setprecision(precision) << discLines[1][i] * discLines_scaling << " ";
 	file << endl;
-	file << "Z_COORDINATES " << numLines[2] << " float" << endl;
+	file << "Z_COORDINATES " << numLines[2] << " " << __VTK_DATA_TYPE__ << endl;
 	for (unsigned int i=0;i<numLines[2];++i)
 		file << setprecision(precision) << discLines[2][i] * discLines_scaling << " ";
 	file << endl << endl;
@@ -330,7 +330,7 @@ void ProcessFields::WriteVTKCylindricalGridHeader(ofstream &file, double const* 
 	file << "ASCII" << endl;
 	file << "DATASET STRUCTURED_GRID " << endl;
 	file << "DIMENSIONS " << numLines[0] << " " << numLines[1] << " " << numLines[2] << endl;
-	file << "POINTS " << numLines[0]*numLines[1]*numLines[2] << " float" << endl;
+	file << "POINTS " << numLines[0]*numLines[1]*numLines[2] << " " << __VTK_DATA_TYPE__ << endl;
 	for (unsigned int k=0;k<numLines[2];++k)
 		for (unsigned int j=0;j<numLines[1];++j)
 			for (unsigned int i=0;i<numLines[0];++i)
@@ -347,7 +347,7 @@ void ProcessFields::WriteVTKCylindricalGridHeader(ofstream &file, double const* 
 
 void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision, MeshType meshT)
 {
-	file << "VECTORS " << name << " float " << endl;
+	file << "VECTORS " << name << " " << __VTK_DATA_TYPE__ << endl;
 
 	if (g_settings.NativeFieldDumps())
 		meshT = CARTESIAN_MESH; //dump field components as they are...
@@ -407,7 +407,7 @@ bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDT
 
 void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, unsigned int precision)
 {
-	file << "SCALARS " << name << " float " << 1 << endl;
+	file << "SCALARS " << name << " " << __VTK_DATA_TYPE__ << 1 << endl;
 	file << "LOOKUP_TABLE default" << endl;
 	unsigned int pos[3];
 	int count=0;

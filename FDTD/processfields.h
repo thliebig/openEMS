@@ -21,6 +21,8 @@
 #include "processing.h"
 #include "tools/array_ops.h"
 
+#define __VTK_DATA_TYPE__ "double"
+
 class ProcessFields : public Processing
 {
 public:
