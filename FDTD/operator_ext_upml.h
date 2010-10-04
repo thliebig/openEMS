@@ -38,7 +38,10 @@ public:
 	//! Returns always true, Create_UPML method will take care of creating a valid pml for the cylindrical fdtd
 	virtual bool IsCylinderCoordsSave() const {return true;}
 
-	void SetBoundaryCondition(int* BCs, unsigned int size[6]);
+	//! Returns always true if base grid, Create_UPML will create proper child pml extensions.
+	virtual bool IsCylindricalMultiGridSave(bool child) const {if (child) return false; return true;}
+
+	void SetBoundaryCondition(const int* BCs, const unsigned int size[6]);
 
 	void SetRange(const unsigned int start[3], const unsigned int stop[3]);
 
@@ -66,7 +69,7 @@ public:
 	virtual void ShowStat(ostream &ostr) const;
 
 	//! Create the UPML
-	static bool Create_UPML(Operator* op, int BC[6], unsigned int size[6], string gradFunc);
+	static bool Create_UPML(Operator* op, const int ui_BC[6], const unsigned int ui_size[6], const string gradFunc);
 
 protected:
 	Operator_Ext_UPML(Operator* op);

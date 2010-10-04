@@ -16,7 +16,7 @@
 */
 
 #include "operator_ext_upml.h"
-#include "operator_cylinder.h"
+#include "operator_cylindermultigrid.h"
 #include "engine_ext_upml.h"
 #include "tools/array_ops.h"
 #include "fparser.hh"
@@ -53,7 +53,7 @@ Operator_Ext_UPML::~Operator_Ext_UPML()
 	DeleteOp();
 }
 
-void Operator_Ext_UPML::SetBoundaryCondition(int* BCs, unsigned int size[6])
+void Operator_Ext_UPML::SetBoundaryCondition(const int* BCs, const unsigned int size[6])
 {
 	for (int n=0;n<6;++n)
 	{
@@ -71,8 +71,11 @@ void Operator_Ext_UPML::SetRange(const unsigned int start[3], const unsigned int
 	}
 }
 
-bool Operator_Ext_UPML::Create_UPML(Operator* op, int BC[6], unsigned int size[6], string gradFunc)
+bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsigned int ui_size[6], string gradFunc)
 {
+	int BC[6]={ui_BC[0],ui_BC[1],ui_BC[2],ui_BC[3],ui_BC[4],ui_BC[5]};
+	unsigned int size[6]={ui_size[0],ui_size[1],ui_size[2],ui_size[3],ui_size[4],ui_size[5]};
+
 	//check if mesh is large enough to support the pml
 	for (int n=0;n<3;++n)
 		if ( (size[2*n]*(BC[2*n]==3)+size[2*n+1]*(BC[2*n+1]==3)) >= op->GetOriginalNumLines(n) )
@@ -163,6 +166,11 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, int BC[6], unsigned int size[6
 	start[1]=(size[2]+1)*(BC[2]==3);
 	stop[1] =op->GetOriginalNumLines(1)-1-(size[3]+1)*(BC[3]==3);
 
+	//exclude x-lines that does not belong to the base multi-grid operator;
+	Operator_CylinderMultiGrid* op_cyl_MG = dynamic_cast<Operator_CylinderMultiGrid*>(op);
+	if (op_cyl_MG)
+		start[0] = op_cyl_MG->GetSplitPos()-1;
+
 	if (BC[4]==3)
 	{
 		op_ext_upml = new Operator_Ext_UPML(op);
@@ -182,6 +190,44 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, int BC[6], unsigned int size[6
 		op_ext_upml->SetBoundaryCondition(BC, size);
 		op_ext_upml->SetRange(start,stop);
 		op->AddExtension(op_ext_upml);
+	}
+
+	BC[1]=0;
+	size[1]=0;
+	//create pml extensions (in z-direction only) for child operators in cylindrical multigrid operators
+	while (op_cyl_MG)
+	{
+		Operator_Cylinder* op_child = op_cyl_MG->GetInnerOperator();
+		op_cyl_MG = dynamic_cast<Operator_CylinderMultiGrid*>(op_child);
+		for (int n=0;n<2;++n)
+		{
+			start[n]=0;
+			stop[n]=op_child->GetOriginalNumLines(n)-1;
+		}
+
+		if (op_cyl_MG)
+			start[0] = op_cyl_MG->GetSplitPos()-1;
+
+		if (BC[4]==3)
+		{
+			op_ext_upml = new Operator_Ext_UPML(op_child);
+			op_ext_upml->SetGradingFunction(gradFunc);
+			start[2]=0;
+			stop[2] =size[4];
+			op_ext_upml->SetBoundaryCondition(BC, size);
+			op_ext_upml->SetRange(start,stop);
+			op_child->AddExtension(op_ext_upml);
+		}
+		if (BC[5]==3)
+		{
+			op_ext_upml = new Operator_Ext_UPML(op_child);
+			op_ext_upml->SetGradingFunction(gradFunc);
+			start[2]=op->GetOriginalNumLines(2)-1-size[5];
+			stop[2] =op->GetOriginalNumLines(2)-1;
+			op_ext_upml->SetBoundaryCondition(BC, size);
+			op_ext_upml->SetRange(start,stop);
+			op_child->AddExtension(op_ext_upml);
+		}
 	}
 
 	return true;
