@@ -35,9 +35,12 @@ class Operator_Ext_UPML : public Operator_Extension
 public:
 	virtual ~Operator_Ext_UPML();
 
-	void SetBoundaryCondition(int* BCs, unsigned int size[6]) {for (int n=0;n<6;++n) {m_BC[n]=BCs[n];m_Size[n]=size[n];}}
+	//! Returns always true, Create_UPML method will take care of creating a valid pml for the cylindrical fdtd
+	virtual bool IsCylinderCoordsSave() const {return true;}
 
-	void SetRange(const unsigned int start[3], const unsigned int stop[3]) {for (int n=0;n<3;++n) {m_StartPos[n]=start[n];m_numLines[n]=stop[n]-start[n]+1;}}
+	void SetBoundaryCondition(int* BCs, unsigned int size[6]);
+
+	void SetRange(const unsigned int start[3], const unsigned int stop[3]);
 
 	//! Set the grading function for the pml
 	/*!
