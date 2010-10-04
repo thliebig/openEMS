@@ -319,3 +319,12 @@ Engine_Extension* Operator_Ext_UPML::CreateEngineExtention()
 	Engine_Ext_UPML* eng_ext = new Engine_Ext_UPML(this);
 	return eng_ext;
 }
+
+void Operator_Ext_UPML::ShowStat(ostream &ostr)  const
+{
+	Operator_Extension::ShowStat(ostr);
+
+	ostr << " PML range\t\t: " << "[" << m_StartPos[0]<< "," << m_StartPos[1]<< "," << m_StartPos[2]<< "] to ["
+			<<  m_StartPos[0]+m_numLines[0]-1 << "," << m_StartPos[1]+m_numLines[1]-1 << "," << m_StartPos[2]+m_numLines[2]-1 << "]" << endl;
+	ostr << " Grading function\t: \"" << m_GradFunc << "\"" << endl;
+}

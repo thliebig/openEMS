@@ -60,6 +60,8 @@ public:
 
 	virtual string GetExtensionName() const {return string("Uniaxial PML Extension");}
 
+	virtual void ShowStat(ostream &ostr) const;
+
 	//! Create the UPML
 	static bool Create_UPML(Operator* op, int BC[6], unsigned int size[6], string gradFunc);
 
