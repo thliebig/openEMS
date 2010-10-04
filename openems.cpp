@@ -33,6 +33,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <H5Cpp.h> // only for H5get_libversion()
+#include <boost/version.hpp> // only for BOOST_LIB_VERSION
 
 #include "FDTD/operator_ext_lorentzmaterial.h"
 
@@ -176,6 +177,12 @@ string openEMS::GetExtLibsInfo()
 		str << "\t\t" << "hdf5   -- Version: " << major << '.' << minor << '.' << release << endl;
 		str << "\t\t" << "          compiled against: " H5_VERS_INFO << endl;
 	}
+
+	// tinyxml
+	str << "\t\t" << "tinyxml -- compiled against: " << TIXML_MAJOR_VERSION << '.' << TIXML_MINOR_VERSION << '.' << TIXML_PATCH_VERSION << endl;
+
+	// boost
+	str << "\t\t" << "boost  -- compiled against: " BOOST_LIB_VERSION << endl;
 
 	return str.str();
 }
