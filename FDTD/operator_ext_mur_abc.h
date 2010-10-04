@@ -28,7 +28,6 @@ public:
 	Operator_Ext_Mur_ABC(Operator* op);
 	~Operator_Ext_Mur_ABC();
 
-	Operator_Ext_Mur_ABC(Operator* op, Operator_Ext_Mur_ABC* op_ext);
 	virtual Operator_Extension* Clone(Operator* op);
 
 	//! Define the direction of this ABC: \a ny=0,1,2 -> x,y,z and if at bottom_ny -> e.g. x=0 or x=end
@@ -49,6 +48,7 @@ public:
 	virtual void ShowStat(ostream &ostr) const;
 
 protected:
+	Operator_Ext_Mur_ABC(Operator* op, Operator_Ext_Mur_ABC* op_ext);
 	void Initialize();
 	int m_ny;
 	int m_nyP,m_nyPP;
