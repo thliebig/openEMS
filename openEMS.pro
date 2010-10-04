@@ -84,7 +84,9 @@ SOURCES += main.cpp \
     FDTD/processmodematch.cpp \
     FDTD/operator_cylindermultigrid.cpp \
     FDTD/engine_cylindermultigrid.cpp \
-    FDTD/engine_ext_cylindermultigrid.cpp
+    FDTD/engine_ext_cylindermultigrid.cpp \
+    FDTD/operator_ext_upml.cpp \
+    FDTD/engine_ext_upml.cpp
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
@@ -126,7 +128,9 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
     FDTD/engine_ext_cylindermultigrid.h \
-    tools/aligned_allocator.h
+    tools/aligned_allocator.h \
+    FDTD/operator_ext_upml.h \
+    FDTD/engine_ext_upml.h
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native

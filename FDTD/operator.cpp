@@ -563,6 +563,25 @@ int Operator::CalcECOperator()
 		}
 	}
 
+	//Apply PEC to all boundary's
+	bool PEC[6]={1,1,1,1,1,1};
+	//make an exception for BC == -1
+	for (int n=0;n<6;++n)
+		if ((m_BC[n]==-1))
+			PEC[n] = false;
+	ApplyElectricBC(PEC);
+
+	CalcPEC();
+
+	bool PMC[6];
+	for (int n=0;n<6;++n)
+		PMC[n] = m_BC[n]==1;
+	ApplyMagneticBC(PMC);
+
+	InitExcitation();
+
+	if (CalcFieldExcitation()==false) return -1;
+
 	//all information available for extension... create now...
 	for (size_t n=0;n<m_Op_exts.size();++n)
 		m_Op_exts.at(n)->BuildExtension();
@@ -575,25 +594,6 @@ int Operator::CalcECOperator()
 		delete[] EC_L[n];EC_L[n]=NULL;
 		delete[] EC_R[n];EC_R[n]=NULL;
 	}
-
-	//Apply PEC to all boundary's
-	bool PEC[6]={1,1,1,1,1,1};
-	//exception for pml boundaries
-	for (int n=0;n<6;++n)
-		if ((m_BC[n]==3) || (m_BC[n]==-1))
-			PEC[n] = false;
-	ApplyElectricBC(PEC);
-
-	InitExcitation();
-
-	if (CalcFieldExcitation()==false) return -1;
-
-	CalcPEC();
-
-	bool PMC[6];
-	for (int n=0;n<6;++n)
-		PMC[n] = m_BC[n]==1;
-	ApplyMagneticBC(PMC);
 
 	return 0;
 }
@@ -654,6 +654,15 @@ void Operator::ApplyMagneticBC(bool* dirs)
 				GetIV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
 				GetII(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
 				GetIV(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
+
+				//the last current lines are outside the FDTD domain and cannot be iterated by the FDTD engine
+				pos[n]=numLines[n]-1;
+				GetII(n,pos[0],pos[1],pos[2])   = 0;
+				GetIV(n,pos[0],pos[1],pos[2])   = 0;
+				GetII(nP,pos[0],pos[1],pos[2])  = 0;
+				GetIV(nP,pos[0],pos[1],pos[2])  = 0;
+				GetII(nPP,pos[0],pos[1],pos[2]) = 0;
+				GetIV(nPP,pos[0],pos[1],pos[2]) = 0;
 			}
 		}
 	}

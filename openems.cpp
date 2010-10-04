@@ -24,6 +24,7 @@
 #include "FDTD/operator_multithread.h"
 #include "FDTD/operator_ext_mur_abc.h"
 #include "FDTD/operator_ext_pml_sf.h"
+#include "FDTD/operator_ext_upml.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/process_efield.h"
@@ -191,7 +192,7 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 {
 	int EC; //error code of tinyxml
 	int bounds[6] = {0,0,0,0,0,0};   //default boundary cond. (PEC)
-	int pml_size[6] = {8,8,8,8,8,8}; //default pml size
+	unsigned int pml_size[6] = {8,8,8,8,8,8}; //default pml size
 	string s_bc;
 	const char* tmp = BC->Attribute("PML_Grading");
 	string pml_gradFunc;
@@ -244,7 +245,9 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
 	}
-	Build_Split_Field_PML(FDTD_Op,bounds,pml_size,pml_gradFunc);
+
+	//create the upml
+	Operator_Ext_UPML::Create_UPML(FDTD_Op,bounds,pml_size,pml_gradFunc);
 
 	return true;
 }
