@@ -1,18 +1,32 @@
 function [S11,beta,ZL] = calcMSLPort( portstruct, SimDir, f, ref_shift )
-% [S11,beta,ZL] = calcMSLPort( portstruct, SimDir, [f], [ref_shift] )
+%[S11,beta,ZL] = calcMSLPort( portstruct, SimDir, [f], [ref_shift] )
 %
-% portstruct: return value of AddMSLPort()
-% SimDir: directory, where the simulation files are
-% f: (optional) frequency vector for DFT
-% ref_shift: (optional) reference plane shift measured from start of port (in drawing units)
+% Calculate the reflection coefficient S11, the propagation constant beta
+% of the MSL-port and the characteristic impedance ZL of the MSL-port.
+% The port is to be created by AddMSLPort().
 %
-% reference: W. K. Gwarek, "A Differential Method of Reflection Coefficient Extraction From FDTD Simulations", IEEE Microwave and Guided Wave Letters, Vol. 6, No. 5, May 1996
+% input:
+%   portstruct: return value of AddMSLPort()
+%   SimDir:     directory, where the simulation files are
+%   f:          (optional) frequency vector for DFT
+%   ref_shift:  (optional) reference plane shift measured from start of port (in drawing units)
 %
+% output:
+%   S11:  reflection coefficient
+%   beta: propagation constant
+%   ZL:   characteristic line impedance
+%
+% reference: W. K. Gwarek, "A Differential Method of Reflection Coefficient Extraction From FDTD Simulations",
+%            IEEE Microwave and Guided Wave Letters, Vol. 6, No. 5, May 1996
+%
+% openEMS matlab interface
+% -----------------------
+% Sebastian Held <sebastian.held@uni-due.de>
 % See also AddMSLPort
 
 % check
 if portstruct.v_delta(1) ~= portstruct.v_delta(2)
-	warning( 'mesh is not equidistant; expect degraded accuracy' );
+	warning( 'openEMS:calcMSLPort:mesh', 'mesh is not equidistant; expect degraded accuracy' );
 end
 
 % read time domain data
@@ -23,14 +37,15 @@ I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir );
 
 if (nargin > 2) && ~isempty(f)
 	% freq vector given: use DFT
-	for n=1:numel(U.FD)
-		U.FD{n}.f = f;
-		U.FD{n}.val = DFT_time2freq( U.TD{n}.t, U.TD{n}.val, f );
-	end
-	for n=1:numel(I.FD)
-		I.FD{n}.f = f;
-		I.FD{n}.val = DFT_time2freq( I.TD{n}.t, I.TD{n}.val, f );
-	end
+    f = reshape( f, 1, [] ); % make it a row vector
+    for n=1:numel(U.FD)
+        U.FD{n}.f = f;
+        U.FD{n}.val = DFT_time2freq( U.TD{n}.t, U.TD{n}.val, f );
+    end
+    for n=1:numel(I.FD)
+        I.FD{n}.f = f;
+        I.FD{n}.val = DFT_time2freq( I.TD{n}.t, I.TD{n}.val, f );
+    end
 end
 
 delta_t = I.TD{1}.t(1) - U.TD{1}.t(1);
