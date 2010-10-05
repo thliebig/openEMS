@@ -20,6 +20,9 @@
 #include <cstdlib>
 #include <cmath>
 #include <climits>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
 
 unsigned int CalcNyquistNum(double fmax, double dT)
 {
@@ -29,3 +32,34 @@ unsigned int CalcNyquistNum(double fmax, double dT)
 	return floor(T0/2/dT);
 }
 
+std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty)
+{
+	std::vector<unsigned int> jpt; //jobs per thread
+
+	unsigned int ui_jpt = jobs/nrThreads;
+	for (unsigned int n=0;n<nrThreads;++n)
+	{
+		jpt.push_back(ui_jpt);
+		jobs-=ui_jpt;
+	}
+
+	for (unsigned int n=0;n<nrThreads;++n)
+	{
+		if (jobs>0)
+		{
+			++jpt.at(n);
+			--jobs;
+		}
+	}
+
+	if (jobs>0)
+		std::cerr << "AssignJobs2Threads: Error, " << jobs << " remain to be assigned, this should not have happend..." << std::endl;
+
+	if (RemoveEmpty)
+	{
+		while (jpt.back()==0)
+			jpt.pop_back();
+	}
+
+	return jpt;
+}

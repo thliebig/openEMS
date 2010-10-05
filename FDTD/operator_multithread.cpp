@@ -17,6 +17,7 @@
 
 #include "operator_multithread.h"
 #include "engine_multithread.h"
+#include "tools/useful.h"
 
 Operator_Multithread* Operator_Multithread::New(unsigned int numThreads)
 {
@@ -76,22 +77,20 @@ void Operator_Multithread::Reset()
 
 void Operator_Multithread::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
 {
-	if (numLines[0]<numThreads) //in case more threads requested as lines in x-direction, reduce number of worker threads
-		numThreads = numLines[0];
+	vector<unsigned int> jpt = AssignJobs2Threads(numLines[0], numThreads, true);
 
-	unsigned int linesPerThread = round((float)numLines[0] / (float)numThreads);
-	if ((numThreads-1) * linesPerThread >= numLines[0])
-		--numThreads;
+	numThreads = jpt.size();
 
 	start.resize(numThreads);
 	stop.resize(numThreads);
 
-	for (unsigned int n=0; n<numThreads; n++)
+	start.at(0)=0;
+	stop.at(0)=jpt.at(0)-1;
+
+	for (unsigned int n=1; n<numThreads; n++)
 	{
-		start.at(n) = n * linesPerThread;
-		stop.at(n) = (n+1) * linesPerThread - 1;
-		if (n == numThreads-1) // last thread
-			stop.at(n) = numLines[0]-1;
+		start.at(n) = stop.at(n-1)+1;
+		stop.at(n) = start.at(n) + jpt.at(n) - 1;
 	}
 }
 

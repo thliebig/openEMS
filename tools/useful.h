@@ -18,7 +18,12 @@
 #ifndef USEFUL_H
 #define USEFUL_H
 
+#include <vector>
+
 //! Calc the nyquist number of timesteps for a given frequency and timestep
 unsigned int CalcNyquistNum(double fmax, double dT);
+
+//! Calculate an optimal job distribution to a given number of threads. Will return a vector with the jobs for each thread.
+std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty=false);
 
 #endif // USEFUL_H

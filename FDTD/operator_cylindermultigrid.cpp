@@ -18,6 +18,7 @@
 #include "operator_cylindermultigrid.h"
 #include "engine_cylindermultigrid.h"
 #include "operator_ext_cylinder.h"
+#include "tools/useful.h"
 
 Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radii) : Operator_Cylinder()
 {
@@ -127,22 +128,20 @@ void Operator_CylinderMultiGrid::Init()
 
 void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
 {
-	if ((numLines[0] - m_Split_Pos + 1)<numThreads) //in case more threads requested as lines in r-direction, reduce number of worker threads
-		numThreads = numLines[0] - m_Split_Pos + 1;
+	vector<unsigned int> jpt = AssignJobs2Threads(numLines[0]- m_Split_Pos + 1, numThreads, true);
 
-	unsigned int linesPerThread = round((float)(numLines[0] - m_Split_Pos + 1) / (float)numThreads);
-	if ((numThreads-1) * linesPerThread >= (numLines[0] - m_Split_Pos + 1))
-		--numThreads;
+	numThreads = jpt.size();
 
 	start.resize(numThreads);
 	stop.resize(numThreads);
 
-	for (unsigned int n=0; n<numThreads; n++)
+	start.at(0)= m_Split_Pos-1;
+	stop.at(0)= jpt.at(0)-1  + m_Split_Pos-1;
+
+	for (unsigned int n=1; n<numThreads; n++)
 	{
-		start.at(n) = n * linesPerThread + m_Split_Pos - 1;
-		stop.at(n) = (n+1) * linesPerThread - 1 + m_Split_Pos - 1;
-		if (n == numThreads-1) // last thread
-			stop.at(n) = numLines[0]-1;
+		start.at(n) = stop.at(n-1)+1;
+		stop.at(n) = start.at(n) + jpt.at(n) - 1;
 	}
 }
 
