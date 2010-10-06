@@ -257,6 +257,8 @@ int openEMS::SetupFDTD(const char* file)
 	if (file==NULL) return -1;
 	Reset();
 
+	cout << "Read openEMS xml file: " << file << " ..." << endl;
+
 	timeval startTime;
 	gettimeofday(&startTime,NULL);
 
