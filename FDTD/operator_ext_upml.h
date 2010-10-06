@@ -82,7 +82,7 @@ protected:
 	string m_GradFunc;
 	FunctionParser* m_GradingFunction;
 
-	void CalcGradingKappa(int ny, unsigned int pos[3], double Zm[3], double kappa_v[3], double kappa_i[3]);
+	void CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3]);
 
 	void DeleteOp();
 	FDTD_FLOAT**** vv;   //calc new voltage from old voltage

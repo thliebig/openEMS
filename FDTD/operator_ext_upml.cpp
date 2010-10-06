@@ -265,7 +265,7 @@ bool Operator_Ext_UPML::SetGradingFunction(string func)
 	return false;
 }
 
-void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm[3], double kappa_v[3], double kappa_i[3])
+void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3])
 {
 	double depth=0;
 	double width=0;
@@ -278,7 +278,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm[
 
 			if (n==ny)
 				depth-=m_Op->GetMeshDelta(n,pos)/2;
-			double vars[5] = {depth, width/m_Size[2*n], width, Zm[n], m_Size[2*n]};
+			double vars[5] = {depth, width/m_Size[2*n], width, Zm, m_Size[2*n]};
 			if (depth>0)
 				kappa_v[n] = m_GradingFunction->Eval(vars);
 			else
@@ -303,7 +303,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm[
 
 			if (n==ny)
 				depth+=m_Op->GetMeshDelta(n,pos)/2;
-			double vars[5] = {depth, width/(m_Size[2*n]), width, Zm[n], m_Size[2*n]};
+			double vars[5] = {depth, width/(m_Size[2*n]), width, Zm, m_Size[2*n]};
 			if (depth>0)
 				kappa_v[n] = m_GradingFunction->Eval(vars);
 			else
@@ -352,8 +352,7 @@ bool Operator_Ext_UPML::BuildExtension()
 	int nP,nPP;
 	double kappa_v[3]={0,0,0};
 	double kappa_i[3]={0,0,0};
-	double eff_Mat[3][4];
-	double Zm[3];
+	double eff_Mat[4];
 	double dT = m_Op->GetTimestep();
 
 	for (loc_pos[0]=0;loc_pos[0]<m_numLines[0];++loc_pos[0])
@@ -365,16 +364,10 @@ bool Operator_Ext_UPML::BuildExtension()
 			for (loc_pos[2]=0;loc_pos[2]<m_numLines[2];++loc_pos[2])
 			{
 				pos[2] = loc_pos[2] + m_StartPos[2];
-				//calc kappa here for all dir ...
-				m_Op->Calc_EffMatPos(0,pos,eff_Mat[0]);
-				m_Op->Calc_EffMatPos(1,pos,eff_Mat[1]);
-				m_Op->Calc_EffMatPos(2,pos,eff_Mat[2]);
-				Zm[0] = sqrt(eff_Mat[0][2]/eff_Mat[0][0]);
-				Zm[1] = sqrt(eff_Mat[1][2]/eff_Mat[1][0]);
-				Zm[2] = sqrt(eff_Mat[2][2]/eff_Mat[2][0]);
 				for (int n=0;n<3;++n)
 				{
-					CalcGradingKappa(n, pos,Zm,kappa_v,kappa_i);
+					m_Op->Calc_EffMatPos(0,pos,eff_Mat);
+					CalcGradingKappa(n, pos,__Z0__ ,kappa_v ,kappa_i);
 					nP = (n+1)%3;
 					nPP = (n+2)%3;
 					//check if pos is on PEC
@@ -389,8 +382,8 @@ bool Operator_Ext_UPML::BuildExtension()
 
 						//operators needed by eq. (7.88) to calculate new voltages from old voltages and old and new "voltage fluxes"
 						vv  [n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ - kappa_v[nPP]*dT) / (2*__EPS0__ + kappa_v[nPP]*dT);
-						vvfn[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ + kappa_v[n]*dT)   / (2*__EPS0__ + kappa_v[nPP]*dT)/eff_Mat[n][0];
-						vvfo[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ - kappa_v[n]*dT)   / (2*__EPS0__ + kappa_v[nPP]*dT)/eff_Mat[n][0];
+						vvfn[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ + kappa_v[n]*dT)   / (2*__EPS0__ + kappa_v[nPP]*dT)/eff_Mat[0];
+						vvfo[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ - kappa_v[n]*dT)   / (2*__EPS0__ + kappa_v[nPP]*dT)/eff_Mat[0];
 					}
 
 					//check if pos is on PMC
@@ -404,8 +397,8 @@ bool Operator_Ext_UPML::BuildExtension()
 
 						//operators needed by eq. (7.90) to calculate new currents from old currents and old and new "current fluxes"
 						ii  [n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ - kappa_i[nPP]*dT) / (2*__EPS0__ + kappa_i[nPP]*dT);
-						iifn[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ + kappa_i[n]*dT)   / (2*__EPS0__ + kappa_i[nPP]*dT)/eff_Mat[n][2];
-						iifo[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ - kappa_i[n]*dT)   / (2*__EPS0__ + kappa_i[nPP]*dT)/eff_Mat[n][2];
+						iifn[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ + kappa_i[n]*dT)   / (2*__EPS0__ + kappa_i[nPP]*dT)/eff_Mat[2];
+						iifo[n][loc_pos[0]][loc_pos[1]][loc_pos[2]] = (2*__EPS0__ - kappa_i[n]*dT)   / (2*__EPS0__ + kappa_i[nPP]*dT)/eff_Mat[2];
 					}
 				}
 			}
