@@ -27,19 +27,27 @@ class Engine_Extension
 public:
 	virtual ~Engine_Extension();
 
+	virtual void SetNumberOfThreads(int nrThread);
+
 	//! This methode will be called __before__ the main engine does the usual voltage updates. This methode may __not__ change the engine voltages!!!
 	virtual void DoPreVoltageUpdates() {}
+	virtual void DoPreVoltageUpdates(int threadID);
 	//! This methode will be called __after__ the main engine does the usual voltage updates. This methode may __not__ change the engine voltages!!!
 	virtual void DoPostVoltageUpdates() {}
+	virtual void DoPostVoltageUpdates(int threadID);
 	//! This methode will be called __after__ all updates to the voltages and extensions and may add/set its results to the engine voltages, but may __not__ rely on the current value of the engine voltages!!!
 	virtual void Apply2Voltages() {}
+	virtual void Apply2Voltages(int threadID);
 
 	//! This methode will be called __before__ the main engine does the usual current updates. This methode may __not__ change the engine current!!!
 	virtual void DoPreCurrentUpdates() {}
+	virtual void DoPreCurrentUpdates(int threadID);
 	//! This methode will be called __after__ the main engine does the usual current updates. This methode may __not__ change the engine current!!!
 	virtual void DoPostCurrentUpdates() {}
+	virtual void DoPostCurrentUpdates(int threadID);
 	//! This methode will be called __after__ all updates to the current and extensions and may add/set its results to the engine current, but may __not__ rely on the current value of the engine current!!!
 	virtual void Apply2Current() {}
+	virtual void Apply2Current(int threadID);
 
 	//! Set the Engine to this extention. This will usually done automatically by Engine::AddExtension
 	virtual void SetEngine(Engine* eng) {m_Eng=eng;}
@@ -59,6 +67,8 @@ protected:
 	Engine* m_Eng;
 
 	int m_Priority;
+
+	int m_NrThreads;
 };
 
 #endif // ENGINE_EXTENSION_H

@@ -24,10 +24,60 @@ Engine_Extension::Engine_Extension(Operator_Extension* op_ext)
 	m_Op_ext = op_ext;
 	m_Eng = NULL;
 	m_Priority = 0;
+	m_NrThreads = 1;
 }
 
 Engine_Extension::~Engine_Extension()
 {
+}
+
+void Engine_Extension::SetNumberOfThreads(int nrThread)
+{
+	if (nrThread<1)
+		return;
+	m_NrThreads=nrThread;
+}
+
+void Engine_Extension::DoPreVoltageUpdates(int threadID)
+{
+	//if this method gets called the derived extension obviously doesn't support multithrading, calling non-MT method...
+	if (threadID==0)
+		DoPreVoltageUpdates();
+}
+
+void Engine_Extension::DoPostVoltageUpdates(int threadID)
+{
+	//if this method gets called the derived extension obviously doesn't support multithrading, calling non-MT method...
+	if (threadID==0)
+		DoPostVoltageUpdates();
+}
+
+void Engine_Extension::Apply2Voltages(int threadID)
+{
+	//if this method gets called the derived extension obviously doesn't support multithrading, calling non-MT method...
+	if (threadID==0)
+		Apply2Voltages();
+}
+
+void Engine_Extension::DoPreCurrentUpdates(int threadID)
+{
+	//if this method gets called the derived extension obviously doesn't support multithrading, calling non-MT method...
+	if (threadID==0)
+		DoPreCurrentUpdates();
+}
+
+void Engine_Extension::DoPostCurrentUpdates(int threadID)
+{
+	//if this method gets called the derived extension obviously doesn't support multithrading, calling non-MT method...
+	if (threadID==0)
+		DoPostCurrentUpdates();
+}
+
+void Engine_Extension::Apply2Current(int threadID)
+{
+	//if this method gets called the derived extension obviously doesn't support multithrading, calling non-MT method...
+	if (threadID==0)
+		Apply2Current();
 }
 
 bool Engine_Extension::operator< (const Engine_Extension& other)

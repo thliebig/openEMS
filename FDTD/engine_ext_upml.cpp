@@ -20,6 +20,7 @@
 #include "engine.h"
 #include "engine_sse.h"
 #include "tools/array_ops.h"
+#include "tools/useful.h"
 
 Engine_Ext_UPML::Engine_Ext_UPML(Operator_Ext_UPML* op_ext) : Engine_Extension(op_ext)
 {
@@ -32,6 +33,8 @@ Engine_Ext_UPML::Engine_Ext_UPML(Operator_Ext_UPML* op_ext) : Engine_Extension(o
 	volt_flux = Create_N_3DArray<FDTD_FLOAT>(m_Op_UPML->m_numLines);
 	curr = Create_N_3DArray<FDTD_FLOAT>(m_Op_UPML->m_numLines);
 	curr_flux = Create_N_3DArray<FDTD_FLOAT>(m_Op_UPML->m_numLines);
+
+	SetNumberOfThreads(1);
 }
 
 Engine_Ext_UPML::~Engine_Ext_UPML()
@@ -46,9 +49,24 @@ Engine_Ext_UPML::~Engine_Ext_UPML()
 	curr_flux=NULL;
 }
 
-void Engine_Ext_UPML::DoPreVoltageUpdates()
+void Engine_Ext_UPML::SetNumberOfThreads(int nrThread)
+{
+	Engine_Extension::SetNumberOfThreads(nrThread);
+
+	m_numX = AssignJobs2Threads(m_Op_UPML->m_numLines[0],m_NrThreads,false);
+	m_start.resize(m_NrThreads,0);
+	m_start.at(0)=0;
+	for (size_t n=1;n<m_numX.size();++n)
+		m_start.at(n) = m_start.at(n-1) + m_numX.at(n-1);
+}
+
+
+void Engine_Ext_UPML::DoPreVoltageUpdates(int threadID)
 {
 	if (m_Eng==NULL)
+		return;
+
+	if (threadID>=m_NrThreads)
 		return;
 
 	unsigned int pos[3];
@@ -57,8 +75,9 @@ void Engine_Ext_UPML::DoPreVoltageUpdates()
 	{
 	case Engine::BASIC:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -85,37 +104,39 @@ void Engine_Ext_UPML::DoPreVoltageUpdates()
 		}
 	case Engine::SSE:
 		{
-		Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-		for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
-		{
-			pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-			for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
+			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
-				pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-				for (loc_pos[2]=0;loc_pos[2]<m_Op_UPML->m_numLines[2];++loc_pos[2])
+				loc_pos[0]=lineX+m_start.at(threadID);
+				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
+				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
-					pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
+					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
+					for (loc_pos[2]=0;loc_pos[2]<m_Op_UPML->m_numLines[2];++loc_pos[2])
+					{
+						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
 
-					volt[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Op_UPML->vv[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(0,pos)
-																- m_Op_UPML->vvfo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-					eng_sse->Engine_sse::SetVolt(0,pos, volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+						volt[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Op_UPML->vv[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(0,pos)
+																	- m_Op_UPML->vvfo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+						eng_sse->Engine_sse::SetVolt(0,pos, volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
 
-					volt[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Op_UPML->vv[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(1,pos)
-																- m_Op_UPML->vvfo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-					eng_sse->Engine_sse::SetVolt(1,pos, volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+						volt[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Op_UPML->vv[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(1,pos)
+																	- m_Op_UPML->vvfo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+						eng_sse->Engine_sse::SetVolt(1,pos, volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
 
-					volt[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Op_UPML->vv[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(2,pos)
-																- m_Op_UPML->vvfo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-					eng_sse->Engine_sse::SetVolt(2,pos, volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+						volt[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Op_UPML->vv[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(2,pos)
+																	- m_Op_UPML->vvfo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+						eng_sse->Engine_sse::SetVolt(2,pos, volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+					}
 				}
 			}
-		}
-		break;
+			break;
 		}
 	default:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -143,9 +164,11 @@ void Engine_Ext_UPML::DoPreVoltageUpdates()
 
 }
 
-void Engine_Ext_UPML::DoPostVoltageUpdates()
+void Engine_Ext_UPML::DoPostVoltageUpdates(int threadID)
 {
 	if (m_Eng==NULL)
+		return;
+	if (threadID>=m_NrThreads)
 		return;
 
 	unsigned int pos[3];
@@ -155,8 +178,9 @@ void Engine_Ext_UPML::DoPostVoltageUpdates()
 	{
 	case Engine::BASIC:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -181,8 +205,9 @@ void Engine_Ext_UPML::DoPostVoltageUpdates()
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -206,8 +231,9 @@ void Engine_Ext_UPML::DoPostVoltageUpdates()
 		}
 	default:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -232,9 +258,11 @@ void Engine_Ext_UPML::DoPostVoltageUpdates()
 
 }
 
-void Engine_Ext_UPML::DoPreCurrentUpdates()
+void Engine_Ext_UPML::DoPreCurrentUpdates(int threadID)
 {
 	if (m_Eng==NULL)
+		return;
+	if (threadID>=m_NrThreads)
 		return;
 
 	unsigned int pos[3];
@@ -245,8 +273,9 @@ void Engine_Ext_UPML::DoPreCurrentUpdates()
 	{
 	case Engine::BASIC:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -274,8 +303,9 @@ void Engine_Ext_UPML::DoPreCurrentUpdates()
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -303,8 +333,9 @@ void Engine_Ext_UPML::DoPreCurrentUpdates()
 		}
 	default:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -331,9 +362,11 @@ void Engine_Ext_UPML::DoPreCurrentUpdates()
 	}
 }
 
-void Engine_Ext_UPML::DoPostCurrentUpdates()
+void Engine_Ext_UPML::DoPostCurrentUpdates(int threadID)
 {
 	if (m_Eng==NULL)
+		return;
+	if (threadID>=m_NrThreads)
 		return;
 
 	unsigned int pos[3];
@@ -343,8 +376,9 @@ void Engine_Ext_UPML::DoPostCurrentUpdates()
 	{
 	case Engine::BASIC:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -369,8 +403,9 @@ void Engine_Ext_UPML::DoPostCurrentUpdates()
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{
@@ -394,8 +429,9 @@ void Engine_Ext_UPML::DoPostCurrentUpdates()
 		}
 	default:
 		{
-			for (loc_pos[0]=0;loc_pos[0]<m_Op_UPML->m_numLines[0];++loc_pos[0])
+			for (unsigned int lineX=0;lineX<m_numX.at(threadID);++lineX)
 			{
+				loc_pos[0]=lineX+m_start.at(threadID);
 				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
 				for (loc_pos[1]=0;loc_pos[1]<m_Op_UPML->m_numLines[1];++loc_pos[1])
 				{

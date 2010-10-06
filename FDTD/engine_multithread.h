@@ -80,13 +80,20 @@ public:
 	//! Iterate \a iterTS number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
+	virtual void DoPreVoltageUpdates(int threadID);
+	virtual void DoPostVoltageUpdates(int threadID);
+	virtual void Apply2Voltages(int threadID);
+
+	virtual void DoPreCurrentUpdates(int threadID);
+	virtual void DoPostCurrentUpdates(int threadID);
+	virtual void Apply2Current(int threadID);
+
 protected:
 	Engine_Multithread(const Operator_Multithread* op);
 	const Operator_Multithread* m_Op_MT;
 	boost::thread_group m_thread_group;
 	boost::barrier *m_startBarrier, *m_stopBarrier;
-	boost::barrier *m_barrier_VoltUpdate, *m_barrier_VoltExcite, *m_barrier_PreVolt, *m_barrier_PostVolt;
-	boost::barrier *m_barrier_CurrUpdate, *m_barrier_CurrExcite, *m_barrier_PreCurr, *m_barrier_PostCurr;
+	boost::barrier *m_IterateBarrier;
 	volatile unsigned int m_iterTS;
 	unsigned int m_numThreads; //!< number of worker threads
 	volatile bool m_stopThreads;

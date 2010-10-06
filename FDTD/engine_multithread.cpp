@@ -48,14 +48,7 @@ Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : Engine_
 {
 	m_Op_MT = op;
 	m_type = SSE;
-	m_barrier_VoltUpdate = 0;
-	m_barrier_VoltExcite = 0;
-	m_barrier_PreVolt = 0;
-	m_barrier_PostVolt = 0;
-	m_barrier_CurrUpdate = 0;
-	m_barrier_CurrExcite = 0;
-	m_barrier_PreCurr = 0;
-	m_barrier_PostCurr = 0;
+	m_IterateBarrier = 0;
 	m_startBarrier = 0;
 	m_stopBarrier = 0;
 }
@@ -101,15 +94,7 @@ void Engine_Multithread::Init()
 	m_Op_MT->CalcStartStopLines( m_numThreads, m_Start_Lines, m_Stop_Lines );
 
 	cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
-	m_barrier_VoltUpdate = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_VoltExcite = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_CurrUpdate = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_CurrExcite = new boost::barrier(m_numThreads); // numThread workers
-
-	m_barrier_PreVolt = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_PostVolt = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_PreCurr = new boost::barrier(m_numThreads); // numThread workers
-	m_barrier_PostCurr = new boost::barrier(m_numThreads); // numThread workers
+	m_IterateBarrier = new boost::barrier(m_numThreads); // numThread workers
 
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
@@ -131,6 +116,9 @@ void Engine_Multithread::Init()
 		boost::thread *t = new boost::thread( NS_Engine_Multithread::thread(this,start,stop,stop_h,n) );
 		m_thread_group.add_thread( t );
 	}
+
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+		m_Eng_exts.at(n)->SetNumberOfThreads(m_numThreads);
 }
 
 void Engine_Multithread::Reset()
@@ -146,14 +134,7 @@ void Engine_Multithread::Reset()
 		m_stopThreads = true;
 		m_stopBarrier->wait(); // wait for the threads to finish
 		m_thread_group.join_all(); // wait for termination
-		delete m_barrier_VoltUpdate; m_barrier_VoltUpdate = 0;
-		delete m_barrier_VoltExcite; m_barrier_VoltExcite = 0;
-		delete m_barrier_PreVolt; m_barrier_PreVolt = 0;
-		delete m_barrier_PostVolt; m_barrier_PostVolt = 0;
-		delete m_barrier_CurrUpdate; m_barrier_CurrUpdate = 0;
-		delete m_barrier_CurrExcite; m_barrier_CurrExcite = 0;
-		delete m_barrier_PreCurr; m_barrier_PreCurr = 0;
-		delete m_barrier_PostCurr; m_barrier_PostCurr = 0;
+		delete m_IterateBarrier; m_IterateBarrier = 0;
 		delete m_startBarrier; m_startBarrier = 0;
 		delete m_stopBarrier; m_stopBarrier = 0;
 	}
@@ -172,6 +153,67 @@ bool Engine_Multithread::IterateTS(unsigned int iterTS)
 
 	m_stopBarrier->wait(); // wait for the threads to finish <iterTS> time steps
 	return true;
+}
+
+void Engine_Multithread::DoPreVoltageUpdates(int threadID)
+{
+	//execute extensions in reverse order -> highest priority gets access to the voltages last
+	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+	{
+		m_Eng_exts.at(n)->DoPreVoltageUpdates(threadID);
+		m_IterateBarrier->wait();
+	}
+
+}
+
+void Engine_Multithread::DoPostVoltageUpdates(int threadID)
+{
+	//execute extensions in normal order -> highest priority gets access to the voltages first
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+	{
+		m_Eng_exts.at(n)->DoPostVoltageUpdates(threadID);
+		m_IterateBarrier->wait();
+	}
+}
+
+void Engine_Multithread::Apply2Voltages(int threadID)
+{
+	//execute extensions in normal order -> highest priority gets access to the voltages first
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+	{
+		m_Eng_exts.at(n)->Apply2Voltages(threadID);
+		m_IterateBarrier->wait();
+	}
+}
+
+void Engine_Multithread::DoPreCurrentUpdates(int threadID)
+{
+	//execute extensions in reverse order -> highest priority gets access to the currents last
+	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+	{
+		m_Eng_exts.at(n)->DoPreCurrentUpdates(threadID);
+		m_IterateBarrier->wait();
+	}
+}
+
+void Engine_Multithread::DoPostCurrentUpdates(int threadID)
+{
+	//execute extensions in normal order -> highest priority gets access to the currents first
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+	{
+		m_Eng_exts.at(n)->DoPostCurrentUpdates(threadID);
+		m_IterateBarrier->wait();
+	}
+}
+
+void Engine_Multithread::Apply2Current(int threadID)
+{
+	//execute extensions in normal order -> highest priority gets access to the currents first
+	for (size_t n=0;n<m_Eng_exts.size();++n)
+	{
+		m_Eng_exts.at(n)->Apply2Current(threadID);
+		m_IterateBarrier->wait();
+	}
 }
 
 //
@@ -205,10 +247,7 @@ void thread::operator()()
 		for (unsigned int iter=0;iter<m_enginePtr->m_iterTS;++iter)
 		{
 			// pre voltage stuff...
-			if (m_threadID==0)
-				m_enginePtr->DoPreVoltageUpdates();
-
-			m_enginePtr->m_barrier_PreVolt->wait();
+			m_enginePtr->DoPreVoltageUpdates(m_threadID);
 
 			//voltage updates
 			m_enginePtr->UpdateVoltages(m_start,m_stop-m_start+1);
@@ -217,56 +256,46 @@ void thread::operator()()
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//cout << "Thread " << boost::this_thread::get_id() << " m_barrier1 waiting..." << endl;
-			m_enginePtr->m_barrier_VoltUpdate->wait();
+			m_enginePtr->m_IterateBarrier->wait();
 
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//post voltage stuff...
-			if (m_threadID==0)
-			{
-				m_enginePtr->DoPostVoltageUpdates();
-				m_enginePtr->Apply2Voltages();
-			}
-			m_enginePtr->m_barrier_PostVolt->wait();
+			m_enginePtr->DoPostVoltageUpdates(m_threadID);
+			m_enginePtr->Apply2Voltages(m_threadID);
 
 			// voltage excitation (E-field excite) by the first thread
 			if (m_threadID==0)
 				m_enginePtr->ApplyVoltageExcite();
-			m_enginePtr->m_barrier_VoltExcite->wait();
+			m_enginePtr->m_IterateBarrier->wait();
 			// voltage excitation finished
 
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//pre current stuff
-			if (m_threadID==0)
-				m_enginePtr->DoPreCurrentUpdates();
-			m_enginePtr->m_barrier_PreCurr->wait();
+			m_enginePtr->DoPreCurrentUpdates(m_threadID);
 
 			//current updates
 			m_enginePtr->UpdateCurrents(m_start,m_stop_h-m_start+1);
 
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
-			m_enginePtr->m_barrier_CurrUpdate->wait();
+			m_enginePtr->m_IterateBarrier->wait();
 
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
 			//post current stuff
-			if (m_threadID==0)
-			{
-				m_enginePtr->DoPostCurrentUpdates();
-				m_enginePtr->Apply2Current();
-			}
-			m_enginePtr->m_barrier_PostCurr->wait();
+			m_enginePtr->DoPostCurrentUpdates(m_threadID);
+			m_enginePtr->Apply2Current(m_threadID);
 
 			// current excitation (H-field excite) by the first thread
 			if (m_threadID==0)
 				m_enginePtr->ApplyCurrentExcite();
 
-			m_enginePtr->m_barrier_CurrExcite->wait();
+			m_enginePtr->m_IterateBarrier->wait();
 			// current excitation finished
 
 			if (m_threadID == 0)

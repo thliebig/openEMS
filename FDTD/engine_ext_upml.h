@@ -30,14 +30,23 @@ public:
 	Engine_Ext_UPML(Operator_Ext_UPML* op_ext);
 	virtual ~Engine_Ext_UPML();
 
-	virtual void DoPreVoltageUpdates();
-	virtual void DoPostVoltageUpdates();
+	virtual void SetNumberOfThreads(int nrThread);
 
-	virtual void DoPreCurrentUpdates();
-	virtual void DoPostCurrentUpdates();
+	virtual void DoPreVoltageUpdates() {Engine_Ext_UPML::DoPreVoltageUpdates(0);};
+	virtual void DoPreVoltageUpdates(int threadID);
+	virtual void DoPostVoltageUpdates() {Engine_Ext_UPML::DoPostVoltageUpdates(0);};
+	virtual void DoPostVoltageUpdates(int threadID);
+
+	virtual void DoPreCurrentUpdates() {Engine_Ext_UPML::DoPreCurrentUpdates(0);};
+	virtual void DoPreCurrentUpdates(int threadID);
+	virtual void DoPostCurrentUpdates() {Engine_Ext_UPML::DoPostCurrentUpdates(0);};
+	virtual void DoPostCurrentUpdates(int threadID);
 
 protected:
 	Operator_Ext_UPML* m_Op_UPML;
+
+	vector<unsigned int> m_start;
+	vector<unsigned int> m_numX;
 
 	FDTD_FLOAT**** volt;
 	FDTD_FLOAT**** curr;
