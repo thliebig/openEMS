@@ -25,10 +25,12 @@ mesh = ReadHDF5Mesh(file);
 fields = ReadHDF5FieldData(file);
 
 if (mesh.type==0)
-    % matlab is building a meshgrid incorrect, adressing it like X(y,x,z)
-    % ??it's not a bug, it's a feature??
-    % check if this workaround is correct  (TL)
-    [X Y Z] = meshgrid(mesh.lines{2},mesh.lines{1},mesh.lines{3});
+    % cartesian mesh
+    [X Y Z] = meshgrid(mesh.lines{1},mesh.lines{2},mesh.lines{3});
+    for n=1:numel(fields.values)
+        % since Matlab 7.1SP3 the field needs to be reordered
+        fields.values{n} = permute(fields.values{n},[2 1 3 4]); % reorder: y,x,z (or y,x)
+    end
 else
     disp(['PlotHDF5FieldData:: Error: unknown mesh type ' num2str(mesh.type)]);
 end
@@ -61,8 +63,17 @@ if (max_amp==0)
 end
 
 for n=1:numel(Field)
-    hsurfaces = slice(X,Y,Z, Field{n} , PlotArgs.slice{:});
-    set(hsurfaces,'FaceColor','interp','EdgeColor','none');
+    if size(Field{n},3) > 1
+        % Field is a volume
+        hsurfaces = slice(X,Y,Z, Field{n} , PlotArgs.slice{:});
+        set(hsurfaces,'FaceColor','interp','EdgeColor','none');
+    else
+        % Field is already a 2D cut
+        pcolor(X,Y,Field{n});
+        shading( 'interp' );
+        xlabel( 'x' );
+        ylabel( 'y' );
+    end
     title(fields.names{n});
     %view(3)
     axis equal
