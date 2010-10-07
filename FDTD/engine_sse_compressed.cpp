@@ -16,7 +16,9 @@
 */
 
 #include "engine_sse_compressed.h"
-
+#ifdef __SSE2__
+	#include <emmintrin.h>
+#endif
 
 Engine_SSE_Compressed* Engine_SSE_Compressed::New(const Operator_SSE_Compressed* op)
 {
@@ -68,18 +70,26 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 			// for pos[2] = 0
 			// x-polarization
 			index = Op->m_Op_index[pos[0]][pos[1]][0];
+#ifdef __SSE2__
+			temp.v = (__m128)_mm_slli_si128( (__m128i)f4_curr[1][pos[0]][pos[1]][numVectors-1].v, 4 );
+#else
 			temp.f[0] = 0;
 			temp.f[1] = f4_curr[1][pos[0]][pos[1]][numVectors-1].f[0];
 			temp.f[2] = f4_curr[1][pos[0]][pos[1]][numVectors-1].f[1];
 			temp.f[3] = f4_curr[1][pos[0]][pos[1]][numVectors-1].f[2];
+#endif
 			f4_volt[0][pos[0]][pos[1]][0].v *= Op->f4_vv_Compressed[0][index].v;
 			f4_volt[0][pos[0]][pos[1]][0].v += Op->f4_vi_Compressed[0][index].v * ( f4_curr[2][pos[0]][pos[1]][0].v - f4_curr[2][pos[0]][pos[1]-shift[1]][0].v - f4_curr[1][pos[0]][pos[1]][0].v + temp.v );
 
 			// y-polarization
+#ifdef __SSE2__
+			temp.v = (__m128)_mm_slli_si128( (__m128i)f4_curr[0][pos[0]][pos[1]][numVectors-1].v, 4 );
+#else
 			temp.f[0] = 0;
 			temp.f[1] = f4_curr[0][pos[0]][pos[1]][numVectors-1].f[0];
 			temp.f[2] = f4_curr[0][pos[0]][pos[1]][numVectors-1].f[1];
 			temp.f[3] = f4_curr[0][pos[0]][pos[1]][numVectors-1].f[2];
+#endif
 			f4_volt[1][pos[0]][pos[1]][0].v *= Op->f4_vv_Compressed[1][index].v;
 			f4_volt[1][pos[0]][pos[1]][0].v += Op->f4_vi_Compressed[1][index].v * ( f4_curr[0][pos[0]][pos[1]][0].v - temp.v - f4_curr[2][pos[0]][pos[1]][0].v + f4_curr[2][pos[0]-shift[0]][pos[1]][0].v);
 
@@ -121,18 +131,26 @@ void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int num
 			index = Op->m_Op_index[pos[0]][pos[1]][numVectors-1];
 			// for pos[2] = numVectors-1
 			// x-pol
+#ifdef __SSE2__
+			temp.v = (__m128)_mm_srli_si128( (__m128i)f4_volt[1][pos[0]][pos[1]][0].v, 4 );
+#else
 			temp.f[0] = f4_volt[1][pos[0]][pos[1]][0].f[1];
 			temp.f[1] = f4_volt[1][pos[0]][pos[1]][0].f[2];
 			temp.f[2] = f4_volt[1][pos[0]][pos[1]][0].f[3];
 			temp.f[3] = 0;
+#endif
 			f4_curr[0][pos[0]][pos[1]][numVectors-1].v *= Op->f4_ii_Compressed[0][index].v;
 			f4_curr[0][pos[0]][pos[1]][numVectors-1].v += Op->f4_iv_Compressed[0][index].v * ( f4_volt[2][pos[0]][pos[1]][numVectors-1].v - f4_volt[2][pos[0]][pos[1]+1][numVectors-1].v - f4_volt[1][pos[0]][pos[1]][numVectors-1].v + temp.v);
 
 			// y-pol
+#ifdef __SSE2__
+			temp.v = (__m128)_mm_srli_si128( (__m128i)f4_volt[0][pos[0]][pos[1]][0].v, 4 );
+#else
 			temp.f[0] = f4_volt[0][pos[0]][pos[1]][0].f[1];
 			temp.f[1] = f4_volt[0][pos[0]][pos[1]][0].f[2];
 			temp.f[2] = f4_volt[0][pos[0]][pos[1]][0].f[3];
 			temp.f[3] = 0;
+#endif
 			f4_curr[1][pos[0]][pos[1]][numVectors-1].v *= Op->f4_ii_Compressed[1][index].v;
 			f4_curr[1][pos[0]][pos[1]][numVectors-1].v += Op->f4_iv_Compressed[1][index].v * ( f4_volt[0][pos[0]][pos[1]][numVectors-1].v - temp.v - f4_volt[2][pos[0]][pos[1]][numVectors-1].v + f4_volt[2][pos[0]+1][pos[1]][numVectors-1].v);
 
