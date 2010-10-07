@@ -48,8 +48,6 @@ protected:
 	vector<unsigned int> m_start;
 	vector<unsigned int> m_numX;
 
-	FDTD_FLOAT**** volt;
-	FDTD_FLOAT**** curr;
 	FDTD_FLOAT**** volt_flux;
 	FDTD_FLOAT**** curr_flux;
 };
