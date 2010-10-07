@@ -6,7 +6,9 @@ function pass = cavity
 CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
 
-engines = {'' '--engine=sse' '--engine=sse-compressed' '--engine=multithreaded'};
+% engines = {'' '--engine=sse' '--engine=sse-compressed' '--engine=multithreaded' '--engine=sse-compressed-linear'};
+engines = {'--engine=sse-compressed' '--engine=sse-compressed-linear'};
+engines = {'' '--engine=sse-compressed'};
 
 isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
 if isOctave
@@ -62,16 +64,16 @@ f_stop = 10e9;
 [status,message,messageid] = mkdir(Sim_Path);
 
 % setup FDTD parameter
-FDTD = InitFDTD( 2000,1e-6 );
+FDTD = InitFDTD( 1000, 0 );
 FDTD = SetGaussExcite(FDTD,(f_stop-f_start)/2,(f_stop-f_start)/2);
 BC = {'PEC' 'PEC' 'PEC' 'PEC' 'PEC' 'PEC'}; % PEC boundaries
 FDTD = SetBoundaryCond(FDTD,BC);
 
 % setup CSXCAD geometry
 CSX = InitCSX();
-mesh.x = linspace(0,a,26);
+mesh.x = linspace(0,a,27);
 mesh.y = linspace(0,b,11);
-mesh.z = linspace(0,d,32);
+mesh.z = linspace(0,d,33);
 CSX = DefineRectGrid(CSX, 1,mesh);
 
 % excitation
@@ -84,6 +86,12 @@ p(2,2) = mesh.y(floor(end*2/3)+1);
 p(3,2) = mesh.z(floor(end*2/3)+1);
 CSX = AddCurve( CSX, 'excite1', 0, p );
  
+% material
+CSX = AddMaterial( CSX, 'RO4350B', 'Epsilon', 3.66 );
+start = [mesh.x(3) mesh.y(3) mesh.z(3)];
+stop  = [mesh.x(5) mesh.y(4) mesh.z(6)];
+CSX = AddBox( CSX, 'RO4350B', 100, start, stop );
+
 % dump
 CSX = AddDump( CSX, 'Et', 'DumpType', 0, 'DumpMode', 0, 'FileType', 1 ); % hdf5 E-field dump without interpolation
 pos1 = [mesh.x(1) mesh.y(1) mesh.z(1)];
@@ -124,7 +132,8 @@ for n=2:numel(results)
         EHfield = EHfields{m};
         for o=1:numel(results{1}.(EHfield).data.values)
             % iterate over all timesteps
-            if results{1}.(EHfield).data.values{o} ~= results{n}.(EHfield).data.values{o}
+            cmp_result = results{1}.(EHfield).data.values{o} ~= results{n}.(EHfield).data.values{o};
+            if any(cmp_result(:))
                 disp( ['compare error: n=' num2str(n) '  field=' EHfield '  timestep:' num2str(o) '=' results{1}.(EHfield).data.names{o}] );
                 disp( '  coords:' );
                 find( results{1}.(EHfield).data.values{o} ~= results{n}.(EHfield).data.values{o} )
