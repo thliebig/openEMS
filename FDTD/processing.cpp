@@ -249,6 +249,15 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 		}
 	}
 
+	// rescale coordinates
+#ifndef OUTPUT_IN_DRAWINGUNITS
+	double scaling = Op->GetGridDelta();
+	for (int i=0; i<3; i++) {
+		s1[i] *= scaling;
+		s2[i] *= scaling;
+	}
+#endif
+
 	file << "# vtk DataFile Version 2.0" << endl;
 	file << "" << endl;
 	file << "ASCII" << endl;
