@@ -1,5 +1,5 @@
-function [field_i mesh_i] = GetField_Interpolation(field, mesh, numLines, varargin)
-% [field_i mesh_i] = GetField_Interpolation(field, mesh, numLines, varargin)
+function [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
+% [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 %
 %   example:
 %   [field mesh] = ReadHDF5Dump('Et.h5');
@@ -15,7 +15,7 @@ function [field_i mesh_i] = GetField_Interpolation(field, mesh, numLines, vararg
 %
 % See also ReadHDF5Dump ReadHDF5FieldData ReadHDF5Mesh
 
-if (~isnumeric(numLines) || numel(numLines)~=3)
+if ((~iscell(lines) && ~isnumeric(lines)) || numel(lines)~=3)
     error('openEMS:GetField_Interpolation: numLines for interpolation must be a vector...');
 end
     
@@ -23,9 +23,15 @@ x = mesh.lines{1};
 y = mesh.lines{2};
 z = mesh.lines{3};
 
-x_i = linspace(x(1),x(end),numLines(1));
-y_i = linspace(y(1),y(end),numLines(2));
-z_i = linspace(z(1),z(end),numLines(3));
+if (isnumeric(lines))
+    x_i = linspace(x(1),x(end),lines(1));
+    y_i = linspace(y(1),y(end),lines(2));
+    z_i = linspace(z(1),z(end),lines(3));
+else
+    x_i = lines{1};
+    y_i = lines{2};
+    z_i = lines{3};
+end
 
 field_i = field;
 mesh_i = mesh;
