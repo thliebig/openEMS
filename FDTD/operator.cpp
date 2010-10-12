@@ -265,6 +265,27 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 		currFoot=minFoot;
 		path.dir.push_back(minDir);
 	}
+
+	//close missing edges, if currPos is not equal to uiStopPos
+	for (int n=0;n<3;++n)
+	{
+		if (currPos[n]>uiStop[n])
+		{
+			--currPos[n];
+			path.posPath[0].push_back(currPos[0]);
+			path.posPath[1].push_back(currPos[1]);
+			path.posPath[2].push_back(currPos[2]);
+			path.dir.push_back(n);
+		}
+		else if (currPos[n]<uiStop[n])
+		{
+			path.posPath[0].push_back(currPos[0]);
+			path.posPath[1].push_back(currPos[1]);
+			path.posPath[2].push_back(currPos[2]);
+			path.dir.push_back(n);
+		}
+	}
+
 	return path;
 }
 
