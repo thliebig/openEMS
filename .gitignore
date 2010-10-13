@@ -6,5 +6,5 @@ tmp*
 Makefile*
 *~
 *.so*
-*.pro.user
+*.pro.user*
 openEMS
