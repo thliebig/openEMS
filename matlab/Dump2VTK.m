@@ -27,23 +27,23 @@ if (mesh.type==0) %write cartesian mesh to vtk
     fprintf(fid,'DIMENSIONS %d %d %d\n',numel(x),numel(y),numel(z));
 
     fprintf(fid,'X_COORDINATES %d float\n',numel(x));
-    fprintf(fid,'%f',x(1));
+    fprintf(fid,'%e',x(1));
     for n=2:numel(x)
-        fprintf(fid,' %f',x(n));
+        fprintf(fid,' %e',x(n));
     end
     fprintf(fid,'\n');
 
     fprintf(fid,'Y_COORDINATES %d float\n',numel(y));
-    fprintf(fid,'%f',y(1));
+    fprintf(fid,'%e',y(1));
     for n=2:numel(y)
-        fprintf(fid,' %f',y(n));
+        fprintf(fid,' %e',y(n));
     end
     fprintf(fid,'\n');
 
     fprintf(fid,'Z_COORDINATES %d float\n',numel(z));
-    fprintf(fid,'%f',z(1));
+    fprintf(fid,'%e',z(1));
     for n=2:numel(z)
-        fprintf(fid,' %f',z(n));
+        fprintf(fid,' %e',z(n));
     end
 
 elseif (mesh.type==1) %write cylindrical mesh to vtk
@@ -59,7 +59,7 @@ elseif (mesh.type==1) %write cylindrical mesh to vtk
     for nz=1:numel(z)
         for ny=1:numel(y)
             for nx=1:numel(x)
-                fprintf(fid,'%f %f %f\n',x(nx)*cos(y(ny)),x(nx)*sin(y(ny)),z(nz));
+                fprintf(fid,'%e %e %e\n',x(nx)*cos(y(ny)),x(nx)*sin(y(ny)),z(nz));
             end
         end
     end
@@ -86,7 +86,7 @@ end
 for nz=1:numel(z)
     for ny=1:numel(y)
         for nx=1:numel(x)
-            fprintf(fid,'%f %f %f\n',fields(nx,ny,nz,1),fields(nx,ny,nz,2),fields(nx,ny,nz,3));
+            fprintf(fid,'%e %e %e\n',fields(nx,ny,nz,1),fields(nx,ny,nz,2),fields(nx,ny,nz,3));
         end
     end
 end
