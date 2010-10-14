@@ -233,6 +233,11 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 
 	/**************************** create all operator/engine extensions here !!!! **********************************/
 	//Mur-ABC, defined as extension to the operator
+	double mur_v_ph = 0;
+	//read general mur phase velocity
+	if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&mur_v_ph) != TIXML_SUCCESS)
+		mur_v_ph = -1;
+	string mur_v_ph_names[6] = {"MUR_PhaseVelocity_xmin", "MUR_PhaseVelocity_xmax", "MUR_PhaseVelocity_ymin", "MUR_PhaseVelocity_ymax", "MUR_PhaseVelocity_zmin", "MUR_PhaseVelocity_zmax"};
 	for (int n=0;n<6;++n)
 	{
 		if (bounds[n]==2) //Mur-ABC
@@ -240,8 +245,11 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
 			op_ext_mur->SetDirection(n/2,n%2);
 			double v_ph = 0;
-			if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&v_ph) == TIXML_SUCCESS)
+			//read special mur phase velocity or assign general phase velocity
+			if (BC->QueryDoubleAttribute(mur_v_ph_names[n].c_str(),&v_ph) == TIXML_SUCCESS)
 				op_ext_mur->SetPhaseVelocity(v_ph);
+			else if (mur_v_ph>0)
+				op_ext_mur->SetPhaseVelocity(mur_v_ph);
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
 	}
