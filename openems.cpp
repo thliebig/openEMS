@@ -65,6 +65,8 @@ openEMS::openEMS()
 
 	m_engine = EngineType_Standard;
 	m_engine_numThreads = 0;
+
+	m_Abort = false;
 }
 
 openEMS::~openEMS()
@@ -551,6 +553,23 @@ string FormatTime(int sec)
 	return ss.str();
 }
 
+bool openEMS::CheckAbortCond()
+{
+	if (m_Abort) //abort was set externally
+		return true;
+
+	//check whether the file "ABORT" exist in current working directory
+	ifstream ifile("ABORT");
+	if (ifile)
+	{
+		ifile.close();
+		cerr << "openEMS::CheckAbortCond(): Found file \"ABORT\", aborting simulation..." << endl;
+		return true;
+	}
+
+	return false;
+}
+
 void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
@@ -579,7 +598,7 @@ void openEMS::RunFDTD()
 
 	int step=PA->Process();
 	if ((step<0) || (step>(int)NrTS)) step=NrTS;
-	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit))
+	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit) && !CheckAbortCond())
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();

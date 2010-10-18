@@ -51,6 +51,11 @@ public:
 	//! Get informations about external libs used by openEMS
 	static string GetExtLibsInfo();
 
+	//! Set this to about FDTD iteration process
+	void SetAbort(bool val) {m_Abort=val;}
+	//! Check for abort conditions
+	bool CheckAbortCond();
+
 protected:
 	bool CylinderCoords;
 
@@ -66,6 +71,8 @@ protected:
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;
+
+	bool m_Abort;
 
 	enum EngineType {EngineType_Standard, EngineType_SSE, EngineType_SSE_Compressed, EngineType_Multithreaded};
 	EngineType m_engine;
