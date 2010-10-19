@@ -762,7 +762,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 //		cerr << ny << " " << pos[0] << " " <<  pos[1] << " " <<  pos[2] << ": " << A_n << endl;
 //		exit(0);
 //	}
-	CSProperties* prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
+	CSProperties* prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
@@ -784,7 +784,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
 //	cerr << A_n << endl;
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
+	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
@@ -805,7 +805,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	++loc_pos[nP];
 	--loc_pos[nPP];
 	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
+	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
@@ -825,7 +825,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
+	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
@@ -851,7 +851,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	--loc_pos[n];
 	double delta_ny = GetNodeWidth(n,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
+	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
@@ -874,7 +874,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	++loc_pos[n];
 	delta_ny = GetNodeWidth(n,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL);
+	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
 	if (prop)
 	{
 		CSPropMaterial* mat = prop->ToMaterial();
@@ -1143,9 +1143,9 @@ bool Operator::CalcFieldExcitation()
 					{
 						prop = vec_prop.at(p);
 						elec = prop->ToElectrode();
-						if (prop->CheckCoordInPrimitive(volt_coord,priority)==false)
-							elec=NULL;
-						if (elec!=NULL)
+						if (elec==NULL)
+							continue;
+						if (prop->CheckCoordInPrimitive(volt_coord,priority,true))
 						{
 							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 							{
@@ -1185,9 +1185,9 @@ bool Operator::CalcFieldExcitation()
 					{
 						prop = vec_prop.at(p);
 						elec = prop->ToElectrode();
-						if (prop->CheckCoordInPrimitive(curr_coord,priority)==false)
-							elec=NULL;
-						if (elec!=NULL)
+						if (elec==NULL)
+							continue;
+						if (prop->CheckCoordInPrimitive(curr_coord,priority,true))
 						{
 							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 							{
@@ -1316,7 +1316,7 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 					coord[2] = discLines[2][pos[2]];
 					delta=MainOp->GetIndexDelta(n,pos[n]);
 					coord[n]= discLines[n][pos[n]] + delta*0.5;
-					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), true);
 					if (prop)
 					{
 						if (prop->GetType()==CSProperties::METAL) //set to PEC

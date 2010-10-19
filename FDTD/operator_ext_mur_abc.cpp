@@ -144,7 +144,7 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 		for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
 		{
 			coord[m_nyPP] = m_Op->GetDiscLine(m_nyPP,pos[m_nyPP]);
-			CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::MATERIAL);
+			CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, CSProperties::MATERIAL, false);
 			if (prop)
 			{
 				CSPropMaterial* mat = prop->ToMaterial();
