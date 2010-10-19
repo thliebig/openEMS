@@ -1,5 +1,5 @@
 function [CSX,port] = AddMSLPort( CSX, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
-% [CSX,port] = AddMSLPort( CSX, portnr, materialname, start, stop, dir, evec, excitename )
+% [CSX,port] = AddMSLPort( CSX, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
 %
 % CSX: CSX-object created by InitCSX()
 % portnr: (integer) number of the port
@@ -152,6 +152,7 @@ port.direction = direction;
 % port.idx_height = idx_height;
 port.excite = 0;
 port.refplaneshift = 0;
+port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop));
 
 if (nargin >= 8) && (~isempty(refplaneshift))
     % refplaneshift counts from start of port

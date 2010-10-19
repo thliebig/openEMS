@@ -12,7 +12,7 @@ function [S11,beta,ZL] = calcMSLPort( portstruct, SimDir, f, ref_shift )
 %   ref_shift:  (optional) reference plane shift measured from start of port (in drawing units)
 %
 % output:
-%   S11:  reflection coefficient
+%   S11:  reflection coefficient (normalized to ZL)
 %   beta: propagation constant
 %   ZL:   characteristic line impedance
 %
@@ -21,7 +21,7 @@ function [S11,beta,ZL] = calcMSLPort( portstruct, SimDir, f, ref_shift )
 %
 % openEMS matlab interface
 % -----------------------
-% Sebastian Held <sebastian.held@uni-due.de>
+% (C) 2010 Sebastian Held <sebastian.held@uni-due.de>
 % See also AddMSLPort
 
 % check
@@ -90,15 +90,10 @@ S11 = (-1i * dEt + Et .* temp) ./ (Et .* temp + 1i * dEt); % solution 1
 % determine ZL
 ZL = sqrt(Et .* dEt ./ (Ht .* dHt));
 
-% reference plane shift
+% reference plane shift (lossless)
 if (nargin > 3)
     % renormalize the shift to the measurement plane
-    if (portstruct.stop(portstruct.idx_prop) - portstruct.start(portstruct.idx_prop) > 0)
-        dir = +1;
-    else
-        dir = -1;
-    end
-    ref_shift = ref_shift - dir*(portstruct.v2_start(portstruct.idx_prop) - portstruct.start(portstruct.idx_prop));
+    ref_shift = ref_shift - portstruct.measplanepos;
     ref_shift = ref_shift * portstruct.drawingunit;
     S11 = S11 .* exp(2i*real(beta)*ref_shift);
     S11_corrected = S11_corrected .* exp(2i*real(beta)*ref_shift);

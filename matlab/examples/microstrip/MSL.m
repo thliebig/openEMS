@@ -180,8 +180,6 @@ xlabel( 'frequency f / MHz' );
 ylabel( 'characteristic impedance Z / Ohm' );
 legend( 'real', 'imag' );
 
-
-
 %% visualize electric and magnetic fields
 % you will find vtk dump files in the simulation folder (tmp/)
 % use paraview to visualize them
