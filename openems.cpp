@@ -302,10 +302,6 @@ int openEMS::SetupFDTD(const char* file)
 	else
 		NrTS = help;
 
-	// if the command line switch --no-simulation is used, fix NrTS
-	if (m_no_simulation)
-		NrTS = 0;
-
 	help = 0;
 	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
 	if (help==1)
@@ -398,10 +394,9 @@ int openEMS::SetupFDTD(const char* file)
 	if (!FDTD_Op->SetupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
 		exit(2);
 
+	// create debug output, if requested
 	if (DebugMat)
-	{
 		FDTD_Op->DumpMaterial2File("material_dump.vtk");
-	}
 	if (DebugOp)
 		FDTD_Op->DumpOperator2File("operator_dump.vtk");
 	if (m_debugPEC)
@@ -414,6 +409,11 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Op->ShowExtStat();
 
 	cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
+
+	if (m_no_simulation) {
+		// simulation was disabled (to generate debug output only)
+		return 1;
+	}
 
 	//create FDTD engine
 	FDTD_Eng = FDTD_Op->CreateEngine();
