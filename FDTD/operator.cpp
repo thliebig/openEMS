@@ -393,15 +393,51 @@ void Operator::DumpPEC2File( string filename )
 	double scaling = 1;
 #endif
 
-	for (pos[0]=0; pos[0]<numLines[0]; pos[0]++) {
-		for (pos[1]=0; pos[1]<numLines[1]; pos[1]++) {
-			for (pos[2]=0; pos[2]<numLines[2]; pos[2]++) {
-				if ((GetVV(0,pos[0],pos[1],pos[2]) == 0) && (GetVI(0,pos[0],pos[1],pos[2]) == 0))
-					pec[0][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 0, pos ) * scaling; // PEC-x found
-				if ((GetVV(1,pos[0],pos[1],pos[2]) == 0) && (GetVI(1,pos[0],pos[1],pos[2]) == 0))
-					pec[1][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 1, pos ) * scaling; // PEC-y found
-				if ((GetVV(2,pos[0],pos[1],pos[2]) == 0) && (GetVI(2,pos[0],pos[1],pos[2]) == 0))
-					pec[2][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 2, pos ) * scaling; // PEC-z found
+	for (pos[0]=0; pos[0]<numLines[0]-1; pos[0]++) {
+		for (pos[1]=0; pos[1]<numLines[1]-1; pos[1]++) {
+			for (pos[2]=0; pos[2]<numLines[2]-1; pos[2]++) {
+				if ((pos[1] != 0) && (pos[2] != 0))
+				{
+					// PEC surrounds the computational area; do not output this
+					if ((GetVV(0,pos[0],pos[1],pos[2]) == 0) && (GetVI(0,pos[0],pos[1],pos[2]) == 0))
+						pec[0][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 0, pos ) * scaling; // PEC-x found
+				}
+				if ((pos[0] != 0) && (pos[2] != 0))
+				{
+					// PEC surrounds the computational area; do not output this
+					if ((GetVV(1,pos[0],pos[1],pos[2]) == 0) && (GetVI(1,pos[0],pos[1],pos[2]) == 0))
+						pec[1][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 1, pos ) * scaling; // PEC-y found
+				}
+				if ((pos[0] != 0) && (pos[1] != 0))
+				{
+					// PEC surrounds the computational area; do not output this
+					if ((GetVV(2,pos[0],pos[1],pos[2]) == 0) && (GetVI(2,pos[0],pos[1],pos[2]) == 0))
+						pec[2][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 2, pos ) * scaling; // PEC-z found
+				}
+			}
+		}
+	}
+
+	// evaluate boundary conditions
+	for (int n=0; n<3; n++)
+	{
+		int nP = (n+1)%3;
+		int nPP = (n+2)%3;
+		for (pos[nP]=0; pos[nP]<numLines[nP]; pos[nP]++)
+		{
+			for (pos[nPP]=0; pos[nPP]<numLines[nPP]; pos[nPP]++)
+			{
+				pos[n] = 0;
+				if ((pos[nP] != numLines[nP]-1) && (m_BC[2*n] == 0))
+					pec[nP ][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nP,  pos ) * scaling;
+				if ((pos[nPP] != numLines[nPP]-1) && (m_BC[2*n] == 0))
+					pec[nPP][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nPP, pos ) * scaling;
+
+				pos[n] = numLines[n]-1;
+				if ((pos[nP] != numLines[nP]-1) && (m_BC[2*n+1] == 0))
+					pec[nP ][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nP,  pos ) * scaling;
+				if ((pos[nPP] != numLines[nPP]-1) && (m_BC[2*n+1] == 0))
+					pec[nPP][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nPP, pos ) * scaling;
 			}
 		}
 	}
