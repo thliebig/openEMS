@@ -20,7 +20,7 @@
 
 #include <complex>
 typedef std::complex<double> double_complex;
-#define II double_complex(0.0,1.0)
+#define _I double_complex(0.0,1.0)
 
 #include <iostream>
 #include <fstream>

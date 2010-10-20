@@ -1,139 +1,114 @@
 %
-% microstrip line example
+% EXAMPLE / microstrip / MSL2
 %
-% this example shows how to use a MSL port
-%
+% This example shows how to use the MSL-port.
 % The MSL is excited at the center of the computational volume. The
 % boundary at xmin is an absorbing boundary (Mur) and at xmax an electric
 % wall. The reflection coefficient at this wall is S11 = -1.
+% Direction of propagation is x.
 %
-
+% This example demonstrates:
+%  - simple microstrip geometry (made of PEC)
+%  - MSL port
+%  - MSL analysis
+% 
+%
+% Tested with
+%  - Matlab 2009b
+%  - Octave 3.3.52
+%  - openEMS v0.0.14
+%
+% (C) 2010 Sebastian Held <sebastian.held@uni-due.de>
 
 close all
 clear
 clc
 
-physical_constants
-
-
-postprocessing_only = 0;
-
+%% switches
+postproc_only = 0;
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-drawingunits = 1e-6; % specify everything in um
-MSL_length   = 10000;
-MSL_width    = 1000;
+physical_constants;
+unit = 1e-6; % specify everything in um
+MSL_length    = 10000;
+MSL_width     = 1000;
 substrate_thickness = 254;
+substrate_epr = 3.66;
 
-mesh_res      = [200 0 0];
-max_timesteps = 20000;
-min_decrement = 1e-6;
-f_max         = 8e9;
+% mesh_res      = [200 0 0];
+
+%% prepare simulation folder
+Sim_Path = 'tmp';
+Sim_CSX = 'msl2.xml';
+if ~postproc_only
+    [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
+    [status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
+end
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+max_timesteps = 20000;
+min_decrement = 1e-6;
+f_max         = 7e9;
 FDTD = InitFDTD( max_timesteps, min_decrement, 'OverSampling', 10 );
 FDTD = SetGaussExcite( FDTD, f_max/2, f_max/2 );
-BC   = [2 0 0 0 0 1];
+BC   = {'MUR' 'PEC' 'PEC' 'PEC' 'PEC' 'PMC'};
 FDTD = SetBoundaryCond( FDTD, BC );
 
 %% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = InitCSX();
-mesh.x = -MSL_length : mesh_res(1) : MSL_length;
-mesh.y = linspace(-MSL_width/2,MSL_width/2,10); % discretize the width of the MSL with 10 cells
-temp1 = linspace(-4*MSL_width,mesh.y(1),20);
-temp2 = linspace(mesh.y(end),4*MSL_width,20);
-mesh.y = [temp1(1:end-1), mesh.y, temp2(2:end)]; % add coarser discretization
-mesh.z = linspace(0,substrate_thickness,5); % discretize the substrate with 5 cells
-temp1 = linspace(substrate_thickness,2*substrate_thickness,5);
-mesh.z = [mesh.z temp1(2:end)]; % add same space above the strip
-temp1 = linspace(2*substrate_thickness,5*substrate_thickness,10);
-mesh.z = [mesh.z temp1(2:end)]; % coarser discretization
-CSX = DefineRectGrid( CSX, drawingunits, mesh );
-
-%% Material definitions
-CSX = AddMetal( CSX, 'PEC' );
-CSX = AddMaterial( CSX, 'RO4350B' );
+resolution = c0/(f_max*sqrt(substrate_epr))/unit /50; % resolution of lambda/50
+mesh.x = SmoothMeshLines( [-MSL_length MSL_length], resolution );
+mesh.y = SmoothMeshLines( [-4*MSL_width -MSL_width/2 MSL_width/2 4*MSL_width], resolution );
+mesh.z = SmoothMeshLines( [linspace(0,substrate_thickness,5) 10*substrate_thickness], resolution );
+CSX = DefineRectGrid( CSX, unit, mesh );
 
 %% substrate
-CSX = SetMaterialProperty( CSX, 'RO4350B', 'Epsilon', 3.66 );
+CSX = AddMaterial( CSX, 'RO4350B' );
+CSX = SetMaterialProperty( CSX, 'RO4350B', 'Epsilon', substrate_epr );
 start = [mesh.x(1),   mesh.y(1),   0];
 stop  = [mesh.x(end), mesh.y(end), substrate_thickness];
 CSX = AddBox( CSX, 'RO4350B', 0, start, stop );
 
 %% MSL port
-CSX = AddExcitation( CSX, 'excite', 0, [0 0 1]);
+CSX = AddMetal( CSX, 'PEC' );
 portstart = [          0, -MSL_width/2, substrate_thickness];
-portstop =  [ MSL_length,  MSL_width/2, 0];
-[CSX,portstruct] = AddMSLPort( CSX, 1, 'PEC', portstart, portstop, [1 0 0], [0 0 1], 'excite' );
+portstop  = [ MSL_length,  MSL_width/2, 0];
+[CSX,portstruct] = AddMSLPort( CSX, 1, 'PEC', portstart, portstop, [1 0 0], [0 0 1], [], 'excite' );
 
 %% MSL
 start = [-MSL_length, -MSL_width/2, substrate_thickness];
 stop  = [          0,  MSL_width/2, substrate_thickness];
-CSX = AddBox( CSX, 'PEC', 0, start, stop );
+CSX = AddBox( CSX, 'PEC', 999, start, stop ); % priority needs to be higher than 
 
-%% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-CSX = AddDump(CSX,'Et_','DumpType',0,'DumpMode',0);
-start = [mesh.x(1)  , mesh.y(1),   substrate_thickness/2];
+%% define dump boxes
+start = [mesh.x(1),   mesh.y(1),   substrate_thickness/2];
 stop  = [mesh.x(end), mesh.y(end), substrate_thickness/2];
-CSX = AddBox(CSX,'Et_',0 , start,stop);
-
-CSX = AddDump(CSX,'Ht_','DumpType',1,'DumpMode',0);
-CSX = AddBox(CSX,'Ht_',0,start,stop);
+CSX = AddDump( CSX, 'Et_', 'DumpType', 0,'DumpMode', 2 ); % cell interpolated
+CSX = AddBox( CSX, 'Et_', 0, start, stop );
+CSX = AddDump( CSX, 'Ht_', 'DumpType', 1,'DumpMode', 2 ); % cell interpolated
+CSX = AddBox( CSX, 'Ht_', 0, start, stop );
  
-
-%% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_opts = '';
-openEMS_opts = [openEMS_opts ' --disable-dumps'];
-% openEMS_opts = [openEMS_opts ' --debug-material'];
-% openEMS_opts = [openEMS_opts ' --debug-operator'];
-% openEMS_opts = [openEMS_opts ' --debug-boxes'];
-% openEMS_opts = [openEMS_opts ' --engine=sse-compressed'];
-% openEMS_opts = [openEMS_opts ' --engine=multithreaded'];
-openEMS_opts = [openEMS_opts ' --engine=fastest'];
-
-Sim_Path = 'tmp';
-Sim_CSX = 'MSL2.xml';
-
-if ~postprocessing_only
-    rmdir(Sim_Path,'s');
-end
-mkdir(Sim_Path);
-
-%% Write openEMS compatible xml-file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% write openEMS compatible xml-file
 WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 
-%% cd to working dir and run openEMS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-savePath = pwd;
-cd(Sim_Path); %cd to working dir
-args = [Sim_CSX ' ' openEMS_opts];
-if ~postprocessing_only
-    invoke_openEMS(args);
-end
-cd(savePath);
+%% show the structure
+CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
 
-
-
-%% postproc & do the plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-U = ReadUI({'port_ut1A','port_ut1B','et'},'tmp/');
-I = ReadUI({'port_it1A','port_it1B'},'tmp/');
-delta_t_2 = I.TD{1}.t(1) - U.TD{1}.t(1); % half time-step (s) 
-
-% create finer frequency resolution
-f = linspace( 0, f_max, 1601 );
-for n=1:numel(U.FD)
-	U.FD{n}.f = f;
-	U.FD{n}.val = DFT_time2freq( U.TD{n}.t, U.TD{n}.val, f );
-end
-for n=1:numel(I.FD)
-	I.FD{n}.f = f;
-	I.FD{n}.val = DFT_time2freq( I.TD{n}.t, I.TD{n}.val, f );
-	I.FD{n}.val = I.FD{n}.val .* exp(-1i*2*pi*I.FD{n}.f*delta_t_2); % compensate half time-step advance of H-field
+%% run openEMS
+openEMS_opts = '';
+openEMS_opts = [openEMS_opts ' --engine=fastest'];
+% openEMS_opts = [openEMS_opts ' --debug-material'];
+% openEMS_opts = [openEMS_opts ' --debug-boxes'];
+% openEMS_opts = [openEMS_opts ' --debug-PEC'];
+if ~postproc_only
+    RunOpenEMS( Sim_Path, Sim_CSX, openEMS_opts );
 end
 
-% interpolate et to the time spacing of the voltage probes
-et = interp1( U.TD{3}.t, U.TD{3}.val, U.TD{1}.t );
 
-f = U.FD{1}.f;
+%% postprocess
+f = linspace( 1e6, f_max, 1601 );
+U = ReadUI( {'port_ut1A','port_ut1B','et'}, 'tmp/', f );
+I = ReadUI( {'port_it1A','port_it1B'}, 'tmp/', f );
 
 % Z = (U.FD{1}.val+U.FD{2}.val)/2 ./ I.FD{1}.val;
 % plot( f*1e-9, [real(Z);imag(Z)],'Linewidth',2);
@@ -143,23 +118,30 @@ f = U.FD{1}.f;
 % legend( {'real','imaginary'}, 'location', 'northwest' )
 % title( 'line impedance (will fail in case of reflections!)' );
 
-% figure
-% plotyy(U.TD{1}.t/1e-6,[U.TD{1}.val;U.TD{2}.val],U.TD{1}.t/1e-6,et);
-% xlabel('time (us)');
-% ylabel('amplitude (V)');
-% grid on;
-% title( 'Time domain voltage probes and excitation signal' );
-% 
-% figure
-% plot(I.TD{1}.t/1e-6,[I.TD{1}.val;I.TD{2}.val]);
-% xlabel('time (us)');
-% ylabel('amplitude (A)');
-% grid on;
-% title( 'Time domain current probes' );
+figure
+ax = plotyy( U.TD{1}.t/1e-6, [U.TD{1}.val;U.TD{2}.val], U.TD{3}.t/1e-6, U.TD{3}.val );
+xlabel( 'time (us)' );
+ylabel( 'amplitude (V)' );
+grid on
+title( 'Time domain voltage probes and excitation signal' );
+legend( {'ut1A','ut1B','excitation'} );
+% now make the y-axis symmetric to y=0 (align zeros of y1 and y2)
+y1 = ylim(ax(1));
+y2 = ylim(ax(2));
+ylim( ax(1), [-max(abs(y1)) max(abs(y1))] );
+ylim( ax(2), [-max(abs(y2)) max(abs(y2))] );
 
+figure
+plot( I.TD{1}.t/1e-6, [I.TD{1}.val;I.TD{2}.val] );
+xlabel( 'time (us)' );
+ylabel( 'amplitude (A)' );
+grid on
+title( 'Time domain current probes' );
+legend( {'it1A','it1B'} );
 
-%% port analysis
+% port analysis
 [S11,beta,ZL] = calcMSLPort( portstruct, Sim_Path, f );
+% attention! the reflection coefficient S11 is normalized to ZL!
 
 figure
 plot( sin(0:0.01:2*pi), cos(0:0.01:2*pi), 'Color', [.7 .7 .7] );
@@ -180,8 +162,9 @@ title( 'Reflection coefficient S11 at the measurement plane' );
 
 figure
 plotyy( f/1e9, 20*log10(abs(S11)), f/1e9, angle(S11)/pi*180 );
-legend( {'abs(S11)', 'angle(S11)'} );
+legend( {'|S11|', 'angle(S11)'} );
 xlabel( 'frequency (GHz)' );
+ylabel( '|S11| (dB)' );
 title( 'Reflection coefficient S11 at the measurement plane' );
 
 figure
@@ -198,7 +181,6 @@ ylabel('impedance (Ohm)');
 grid on;
 legend( {'real','imaginary'}, 'location', 'northeast' )
 title( 'Characteristic line impedance ZL' );
-ylim( [-2*mean(real(ZL)) 2*mean(real(ZL))] );
 
 % reference plane shift (to the end of the port)
 ref_shift = abs(portstop(1) - portstart(1));
@@ -219,3 +201,7 @@ plot( S11, 'k' );
 plot( real(S11(1)), imag(S11(1)), '*r' );
 axis equal
 title( 'Reflection coefficient S11 at the reference plane (at the electric wall)' );
+
+%% visualize electric and magnetic fields
+% you will find vtk dump files in the simulation folder (tmp/)
+% use paraview to visualize them

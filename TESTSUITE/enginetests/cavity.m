@@ -6,9 +6,9 @@ function pass = cavity
 CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
 
-% engines = {'' '--engine=sse' '--engine=sse-compressed' '--engine=multithreaded' '--engine=sse-compressed-linear'};
-engines = {'--engine=sse-compressed' '--engine=sse-compressed-linear'};
-engines = {'' '--engine=sse-compressed'};
+engines = {'' '--engine=sse' '--engine=sse-compressed' '--engine=multithreaded'};
+% engines = {'--engine=sse-compressed' '--engine=sse-compressed-linear'};
+% engines = {'' '--engine=sse-compressed'};
 
 isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
 if isOctave
@@ -66,7 +66,7 @@ f_stop = 10e9;
 % setup FDTD parameter
 FDTD = InitFDTD( 1000, 0 );
 FDTD = SetGaussExcite(FDTD,(f_stop-f_start)/2,(f_stop-f_start)/2);
-BC = {'PEC' 'PEC' 'PEC' 'PEC' 'PEC' 'PEC'}; % PEC boundaries
+BC = {'MUR' 'PML_8' 'PEC' 'PEC' 'PEC' 'PEC'}; % PEC boundaries
 FDTD = SetBoundaryCond(FDTD,BC);
 
 % setup CSXCAD geometry

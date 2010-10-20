@@ -63,7 +63,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 			C+=inEC[0]*0.5;
 			G+=inEC[1]*0.5;
 		}
-		m_Op->GetVV(2,0,0,pos[2]) = 1;
+		m_Op->SetVV(2,0,0,pos[2], 1);
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 	}

@@ -111,7 +111,7 @@ int ProcessEField::Process()
 				field *= m_weight;
 				for (size_t n=0;n<m_FD_Samples.size();++n)
 				{
-					FD_Values[pol].at(n) += (double)field * std::exp( -2.0 * II * M_PI * m_FD_Samples.at(n) * T );
+					FD_Values[pol].at(n) += (double)field * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * T );
 				}
 				++m_FD_SampleCount;
 			}
