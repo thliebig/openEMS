@@ -378,8 +378,8 @@ bool Operator_Ext_UPML::BuildExtension()
 							//modify the original operator to perform eq. (7.85) by the main engine (EC-FDTD: equation is multiplied by delta_n)
 							//the engine extension will replace the original voltages with the "voltage flux" (volt*eps0) prior to the voltage updates
 							//after the updates are done the extension will calculate the new voltages (see below) and place them back into the main field domain
-							m_Op->GetVV(n,pos[0],pos[1],pos[2]) = (2*__EPS0__ - kappa_v[nP]*dT) / (2*__EPS0__ + kappa_v[nP]*dT);
-							m_Op->GetVI(n,pos[0],pos[1],pos[2]) = (2*__EPS0__*dT) / (2*__EPS0__ + kappa_v[nP]*dT) * m_Op->GetEdgeLength(n,pos) / m_Op->GetEdgeArea(n,pos);
+							m_Op->SetVV(n,pos[0],pos[1],pos[2], (2*__EPS0__ - kappa_v[nP]*dT) / (2*__EPS0__ + kappa_v[nP]*dT) );
+							m_Op->SetVI(n,pos[0],pos[1],pos[2], (2*__EPS0__*dT) / (2*__EPS0__ + kappa_v[nP]*dT) * m_Op->GetEdgeLength(n,pos) / m_Op->GetEdgeArea(n,pos) );
 
 
 							//operators needed by eq. (7.88) to calculate new voltages from old voltages and old and new "voltage fluxes"
@@ -392,7 +392,7 @@ bool Operator_Ext_UPML::BuildExtension()
 					{
 						//disable upml
 						GetVV(n,loc_pos) = m_Op->GetVV(n,pos[0],pos[1],pos[2]);
-						m_Op->GetVV(n,pos[0],pos[1],pos[2]) = 0;
+						m_Op->SetVV(n,pos[0],pos[1],pos[2], 0 );
 						GetVVFO(n,loc_pos) = 0;
 						GetVVFN(n,loc_pos) = 1;
 					}
@@ -405,8 +405,8 @@ bool Operator_Ext_UPML::BuildExtension()
 							//modify the original operator to perform eq. (7.89) by the main engine (EC-FDTD: equation is multiplied by delta_n)
 							//the engine extension will replace the original currents with the "current flux" (curr*mu0) prior to the current updates
 							//after the updates are done the extension will calculate the new currents (see below) and place them back into the main field domain
-							m_Op->GetII(n,pos[0],pos[1],pos[2]) = (2*__EPS0__ - kappa_i[nP]*dT) / (2*__EPS0__ + kappa_i[nP]*dT);
-							m_Op->GetIV(n,pos[0],pos[1],pos[2]) = (2*__EPS0__*dT) / (2*__EPS0__ + kappa_i[nP]*dT) * m_Op->GetEdgeLength(n,pos,true) / m_Op->GetEdgeArea(n,pos,true);
+							m_Op->SetII(n,pos[0],pos[1],pos[2], (2*__EPS0__ - kappa_i[nP]*dT) / (2*__EPS0__ + kappa_i[nP]*dT) );
+							m_Op->SetIV(n,pos[0],pos[1],pos[2], (2*__EPS0__*dT) / (2*__EPS0__ + kappa_i[nP]*dT) * m_Op->GetEdgeLength(n,pos,true) / m_Op->GetEdgeArea(n,pos,true) );
 
 							//operators needed by eq. (7.90) to calculate new currents from old currents and old and new "current fluxes"
 							GetII(n,loc_pos)   = (2*__EPS0__ - kappa_i[nPP]*dT) / (2*__EPS0__ + kappa_i[nPP]*dT);
@@ -418,7 +418,7 @@ bool Operator_Ext_UPML::BuildExtension()
 					{
 						//disable upml
 						GetII(n,loc_pos) = m_Op->GetII(n,pos[0],pos[1],pos[2]);
-						m_Op->GetII(n,pos[0],pos[1],pos[2]) = 0;
+						m_Op->SetII(n,pos[0],pos[1],pos[2], 0 );
 						GetIIFO(n,loc_pos) = 0;
 						GetIIFN(n,loc_pos) = 1;
 					}

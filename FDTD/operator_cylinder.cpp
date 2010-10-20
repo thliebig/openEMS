@@ -207,8 +207,8 @@ void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 		{
 			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 			{
-				GetVV(1,pos[0],pos[1],pos[2]) = 0;
-				GetVI(1,pos[0],pos[1],pos[2]) = 0;
+				SetVV(1,pos[0],pos[1],pos[2], 0 );
+				SetVI(1,pos[0],pos[1],pos[2], 0 );
 			}
 		}
 	}

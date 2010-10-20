@@ -32,11 +32,15 @@ public:
 
 	virtual void DumpOperator2File(string filename);
 
-	inline virtual FDTD_FLOAT& GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vv[n][x][y][z%numVectors].f[z/numVectors]; }
-	inline virtual FDTD_FLOAT& GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vi[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vv[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vi[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_ii[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_iv[n][x][y][z%numVectors].f[z/numVectors]; }
 
-	inline virtual FDTD_FLOAT& GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_ii[n][x][y][z%numVectors].f[z/numVectors]; }
-	inline virtual FDTD_FLOAT& GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_iv[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual void SetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_vv[n][x][y][z%numVectors].f[z/numVectors] = value; }
+	inline virtual void SetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_vi[n][x][y][z%numVectors].f[z/numVectors] = value; }
+	inline virtual void SetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_ii[n][x][y][z%numVectors].f[z/numVectors] = value; }
+	inline virtual void SetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_iv[n][x][y][z%numVectors].f[z/numVectors] = value; }
 
 protected:
 	//! use New() for creating a new Operator

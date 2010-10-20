@@ -521,23 +521,23 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
 	if (EC_C[n][i]>0)
 	{
-		GetVV(n,pos[0],pos[1],pos[2]) = (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
-		GetVI(n,pos[0],pos[1],pos[2]) = (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]);
+		SetVV(n,pos[0],pos[1],pos[2], (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]) );
+		SetVI(n,pos[0],pos[1],pos[2], (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]) );
 	}
 	else
 	{
-		GetVV(n,pos[0],pos[1],pos[2]) = 0;
-		GetVI(n,pos[0],pos[1],pos[2]) = 0;
+		SetVV(n,pos[0],pos[1],pos[2], 0 );
+		SetVI(n,pos[0],pos[1],pos[2], 0 );
 	}
 	if (EC_L[n][i]>0)
 	{
-		GetII(n,pos[0],pos[1],pos[2]) = (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
-		GetIV(n,pos[0],pos[1],pos[2]) = (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]);
+		SetII(n,pos[0],pos[1],pos[2], (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]) );
+		SetIV(n,pos[0],pos[1],pos[2], (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]) );
 	}
 	else
 	{
-		GetII(n,pos[0],pos[1],pos[2]) = 0;
-		GetIV(n,pos[0],pos[1],pos[2]) = 0;
+		SetII(n,pos[0],pos[1],pos[2], 0 );
+		SetIV(n,pos[0],pos[1],pos[2], 0 );
 	}
 }
 
@@ -632,19 +632,19 @@ void Operator::ApplyElectricBC(bool* dirs)
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
 				pos[n]=0;
-				GetVV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetVI(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetVV(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetVI(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
+				SetVV(nP, pos[0],pos[1],pos[2], GetVV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetVI(nP, pos[0],pos[1],pos[2], GetVI(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetVV(nPP,pos[0],pos[1],pos[2], GetVV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetVI(nPP,pos[0],pos[1],pos[2], GetVI(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
 
 				pos[n]=numLines[n]-1;
-				GetVV(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1]; // these are outside the FDTD-domain as defined by the main disc
-				GetVI(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1]; // these are outside the FDTD-domain as defined by the main disc
+				SetVV(n,  pos[0],pos[1],pos[2], GetVV(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] ); // these are outside the FDTD-domain as defined by the main disc
+				SetVI(n,  pos[0],pos[1],pos[2], GetVI(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] ); // these are outside the FDTD-domain as defined by the main disc
 
-				GetVV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
-				GetVI(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
-				GetVV(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
-				GetVI(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
+				SetVV(nP, pos[0],pos[1],pos[2], GetVV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+				SetVI(nP, pos[0],pos[1],pos[2], GetVI(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+				SetVV(nPP,pos[0],pos[1],pos[2], GetVV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+				SetVI(nPP,pos[0],pos[1],pos[2], GetVI(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
 			}
 		}
 	}
@@ -663,27 +663,27 @@ void Operator::ApplyMagneticBC(bool* dirs)
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
 				pos[n]=0;
-				GetII(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetIV(n,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetII(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetIV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetII(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
-				GetIV(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n];
+				SetII(n,  pos[0],pos[1],pos[2], GetII(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetIV(n,  pos[0],pos[1],pos[2], GetIV(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetII(nP, pos[0],pos[1],pos[2], GetII(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetIV(nP, pos[0],pos[1],pos[2], GetIV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetII(nPP,pos[0],pos[1],pos[2], GetII(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				SetIV(nPP,pos[0],pos[1],pos[2], GetIV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
 
 				pos[n]=numLines[n]-2;
-				GetII(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
-				GetIV(nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
-				GetII(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
-				GetIV(nPP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!dirs[2*n+1];
+				SetII(nP, pos[0],pos[1],pos[2], GetII(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+				SetIV(nP, pos[0],pos[1],pos[2], GetIV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+				SetII(nPP,pos[0],pos[1],pos[2], GetII(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+				SetIV(nPP,pos[0],pos[1],pos[2], GetIV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
 
-				//the last current lines are outside the FDTD domain and cannot be iterated by the FDTD engine
+				// the last current lines are outside the FDTD domain and cannot be iterated by the FDTD engine
 				pos[n]=numLines[n]-1;
-				GetII(n,pos[0],pos[1],pos[2])   = 0;
-				GetIV(n,pos[0],pos[1],pos[2])   = 0;
-				GetII(nP,pos[0],pos[1],pos[2])  = 0;
-				GetIV(nP,pos[0],pos[1],pos[2])  = 0;
-				GetII(nPP,pos[0],pos[1],pos[2]) = 0;
-				GetIV(nPP,pos[0],pos[1],pos[2]) = 0;
+				SetII(n,  pos[0],pos[1],pos[2], 0 );
+				SetIV(n,  pos[0],pos[1],pos[2], 0 );
+				SetII(nP, pos[0],pos[1],pos[2], 0 );
+				SetIV(nP, pos[0],pos[1],pos[2], 0 );
+				SetII(nPP,pos[0],pos[1],pos[2], 0 );
+				SetIV(nPP,pos[0],pos[1],pos[2], 0 );
 			}
 		}
 	}
@@ -1161,8 +1161,8 @@ bool Operator::CalcFieldExcitation()
 								}
 								if (elec->GetExcitType()==1) //hard excite
 								{
-									GetVV(n,pos[0],pos[1],pos[2]) = 0;
-									GetVI(n,pos[0],pos[1],pos[2]) = 0;
+									SetVV(n,pos[0],pos[1],pos[2], 0 );
+									SetVI(n,pos[0],pos[1],pos[2], 0 );
 								}
 							}
 						}
@@ -1203,8 +1203,8 @@ bool Operator::CalcFieldExcitation()
 								}
 								if (elec->GetExcitType()==3) //hard excite
 								{
-									GetII(n,pos[0],pos[1],pos[2]) = 0;
-									GetIV(n,pos[0],pos[1],pos[2]) = 0;
+									SetII(n,pos[0],pos[1],pos[2], 0 );
+									SetIV(n,pos[0],pos[1],pos[2], 0 );
 								}
 							}
 						}
@@ -1266,8 +1266,8 @@ bool Operator::CalcFieldExcitation()
 								}
 								if (elec->GetExcitType()==1) //hard excite
 								{
-									GetVV(n,pos[0],pos[1],pos[2]) = 0;
-									GetVI(n,pos[0],pos[1],pos[2]) = 0;
+									SetVV(n,pos[0],pos[1],pos[2], 0 );
+									SetVI(n,pos[0],pos[1],pos[2], 0 );
 								}
 							}
 						}
@@ -1321,8 +1321,8 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 					{
 						if (prop->GetType()==CSProperties::METAL) //set to PEC
 						{
-							GetVV(n,pos[0],pos[1],pos[2]) = 0;
-							GetVI(n,pos[0],pos[1],pos[2]) = 0;
+							SetVV(n,pos[0],pos[1],pos[2], 0 );
+							SetVI(n,pos[0],pos[1],pos[2], 0 );
 							++counter[n];
 				//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
 						}
@@ -1359,8 +1359,8 @@ void Operator::CalcPEC_Curves()
 					for (size_t t=0;t<path.dir.size();++t)
 					{
 //						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
-						GetVV(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t)) = 0;
-						GetVI(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t)) = 0;
+						SetVV(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t), 0 );
+						SetVI(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t), 0 );
 						++m_Nr_PEC[path.dir.at(t)];
 					}
 //					cerr << "found path size: " << path.dir.size() << endl;
