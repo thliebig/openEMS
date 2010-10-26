@@ -67,6 +67,7 @@ void Operator_SSE_Compressed::DumpOperator2File(string filename)
 
 int Operator_SSE_Compressed::CalcECOperator()
 {
+	m_Use_Compression = false;
 	Operator_sse::CalcECOperator();
 	m_Use_Compression = CompressOperator();
 
@@ -89,6 +90,7 @@ void Operator_SSE_Compressed::Reset()
 		m_Op_index = 0;
 	}
 
+	m_Use_Compression = false;
 	for (int n=0; n<3; n++)
 	{
 		f4_vv_Compressed[n].clear();
@@ -100,6 +102,16 @@ void Operator_SSE_Compressed::Reset()
 
 void Operator_SSE_Compressed::InitOperator()
 {
+	//cleanup compression
+	m_Use_Compression = false;
+	for (int n=0; n<3; n++)
+	{
+		f4_vv_Compressed[n].clear();
+		f4_vi_Compressed[n].clear();
+		f4_iv_Compressed[n].clear();
+		f4_ii_Compressed[n].clear();
+	}
+
 	Operator_sse::InitOperator();
 
 	m_Op_index = Create3DArray<unsigned int>( numLines );
