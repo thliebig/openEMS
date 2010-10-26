@@ -43,9 +43,9 @@ protected:
 
 	int m_ModeFieldType;
 
-	double GetField(int ny, unsigned int pos[3]);
-	double GetEField(int ny, unsigned int pos[3]);
-	double GetHField(int ny, unsigned int pos[3]);
+	double GetField(int ny, const unsigned int pos[3]);
+	double GetEField(int ny, const unsigned int pos[3]);
+	double GetHField(int ny, const unsigned int pos[3]);
 
 	string m_ModeFunction[3];
 	CSFunctionParser* m_ModeParser[2];

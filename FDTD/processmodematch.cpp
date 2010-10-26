@@ -61,6 +61,12 @@ void ProcessModeMatch::InitProcess()
 			stop[n]=help;
 		}
 
+		//exclude boundaries from mode-matching
+		if (start[n]==0)
+			++start[n];
+		if (stop[n]==Op->GetNumberOfLines(n)-1)
+			--stop[n];
+
 		if (stop[n]>start[n])
 			++Dump_Dim;
 
@@ -185,7 +191,7 @@ void ProcessModeMatch::SetFieldType(int type)
 		cerr << "ProcessModeMatch::SetFieldType: Warning, unknown field type..." << endl;
 }
 
-double ProcessModeMatch::GetField(int ny, unsigned int pos[3])
+double ProcessModeMatch::GetField(int ny, const unsigned int pos[3])
 {
 	if (m_ModeFieldType==0)
 		return GetEField(ny,pos);
@@ -194,7 +200,7 @@ double ProcessModeMatch::GetField(int ny, unsigned int pos[3])
 	return 0;
 }
 
-double ProcessModeMatch::GetEField(int ny, unsigned int pos[3])
+double ProcessModeMatch::GetEField(int ny, const unsigned int pos[3])
 {
 	if ((pos[ny]==0) || (pos[ny]==Op->GetNumberOfLines(ny)-1))
 		return 0.0;
@@ -210,7 +216,7 @@ double ProcessModeMatch::GetEField(int ny, unsigned int pos[3])
 	return 0.0;
 }
 
-double ProcessModeMatch::GetHField(int ny, unsigned int pos[3])
+double ProcessModeMatch::GetHField(int ny, const unsigned int pos[3])
 {
 	if ((pos[ny]==0) || (pos[ny]>=Op->GetNumberOfLines(ny)-1))
 		return 0.0;
@@ -218,18 +224,18 @@ double ProcessModeMatch::GetHField(int ny, unsigned int pos[3])
 	unsigned int EngPos[] = {pos[0],pos[1],pos[2]};
 
 	int nyP = (ny+1)%3;
-	if (pos[nyP] >= Op->GetNumberOfLines(nyP)-1)
+	if (pos[nyP] == 0)
 		return 0.0;
 	int nyPP = (ny+2)%3;
-	if (pos[nyPP] >= Op->GetNumberOfLines(nyPP)-1)
+	if (pos[nyPP] == 0)
 		return 0.0;
 
 	double hfield = Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
-	EngPos[nyP]++;
-	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
-	EngPos[nyPP]++;
-	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
 	EngPos[nyP]--;
+	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
+	EngPos[nyPP]--;
+	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
+	EngPos[nyP]++;
 	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
 	return hfield/4.0;
 }
