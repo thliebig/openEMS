@@ -41,7 +41,7 @@ public:
 
 	virtual unsigned int GetSplitPos() const {return m_Split_Pos;}
 
-	virtual int CalcECOperator( DebugFlags );
+	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS);
 

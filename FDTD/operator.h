@@ -45,7 +45,7 @@ public:
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 	virtual ContinuousStructure* GetGeometryCSX() {return CSX;}
 
-	virtual int CalcECOperator( DebugFlags );
+	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
 	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;

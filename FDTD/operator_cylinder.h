@@ -32,6 +32,8 @@ public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
 	virtual ~Operator_Cylinder();
 
+	virtual int CalcECOperator( DebugFlags debugFlags = None );
+
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
 	virtual void ApplyElectricBC(bool* dirs);

@@ -57,6 +57,17 @@ void Operator_Cylinder::InitOperator()
 	Operator_Multithread::InitOperator();
 }
 
+int Operator_Cylinder::CalcECOperator( DebugFlags debugFlags )
+{
+	// debugs only work with the native vector dumps
+	bool natDump = g_settings.NativeFieldDumps();
+	g_settings.SetNativeFieldDumps(true);
+	int rc = Operator_Multithread::CalcECOperator(debugFlags);
+	// reset original settings
+	g_settings.SetNativeFieldDumps(natDump);
+	return rc;
+}
+
 inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
 {
 	//this is necessary for a correct field processing... cylindrical engine has to reset this by adding +1

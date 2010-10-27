@@ -153,7 +153,7 @@ int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
 		m_InnerOp->SetTimestep(dT);
 
 	//calc inner child first
-	m_InnerOp->CalcECOperator( debugFlags );
+	m_InnerOp->CalcECOperator();
 
 	dT = m_InnerOp->GetTimestep();
 
@@ -163,7 +163,7 @@ int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
 		cerr << "Operator_CylinderMultiGrid::CalcECOperator(): Warning, timestep invalid... resetting..." << endl;
 		dT = opt_dT;
 		m_InnerOp->SetTimestep(dT);
-		m_InnerOp->CalcECOperator( debugFlags );
+		m_InnerOp->CalcECOperator();
 		return Operator_Cylinder::CalcECOperator( debugFlags );
 	}
 

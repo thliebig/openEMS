@@ -32,6 +32,8 @@ public:
 
 	//! Returns true if native field dumps are requested...
 	bool NativeFieldDumps() const {return m_nativeFieldDumps;}
+	//! Set dumps to use native fields.
+	void SetNativeFieldDumps(bool val) {m_nativeFieldDumps=val;}
 
 	void ShowArguments(std::ostream& ostr, std::string front=std::string());
 
