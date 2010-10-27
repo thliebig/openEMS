@@ -146,25 +146,25 @@ void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, ve
 }
 
 
-int Operator_CylinderMultiGrid::CalcECOperator()
+int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
 {
 	int retCode=0;
 	if (dT)
 		m_InnerOp->SetTimestep(dT);
 
 	//calc inner child first
-	m_InnerOp->CalcECOperator();
+	m_InnerOp->CalcECOperator( debugFlags );
 
 	dT = m_InnerOp->GetTimestep();
 
-	retCode = Operator_Cylinder::CalcECOperator();
+	retCode = Operator_Cylinder::CalcECOperator( debugFlags );
 	if (GetTimestepValid()==false)
 	{
 		cerr << "Operator_CylinderMultiGrid::CalcECOperator(): Warning, timestep invalid... resetting..." << endl;
 		dT = opt_dT;
 		m_InnerOp->SetTimestep(dT);
-		m_InnerOp->CalcECOperator();
-		return Operator_Cylinder::CalcECOperator();
+		m_InnerOp->CalcECOperator( debugFlags );
+		return Operator_Cylinder::CalcECOperator( debugFlags );
 	}
 
 	return retCode;

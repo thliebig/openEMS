@@ -31,7 +31,7 @@ public:
 	static Operator_Multithread* New(unsigned int numThreads = 0);
 	virtual ~Operator_Multithread();
 
-	virtual int CalcECOperator();
+	virtual int CalcECOperator( DebugFlags );
 
 	virtual void setNumThreads( unsigned int numThreads );
 

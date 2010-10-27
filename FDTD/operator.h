@@ -33,7 +33,9 @@ class Operator
 	friend class Engine;
 	friend class Operator_Ext_LorentzMaterial; //we need to find a way around this... friend class Operator_Extension only would be nice
 	friend class Operator_Ext_PML_SF_Plane;
-public:
+public:	
+	enum DebugFlags {None=0,debugMaterial=1,debugOperator=2,debugPEC=4};
+
 	//! Create a new operator
 	static Operator* New();
 	virtual ~Operator();
@@ -43,7 +45,7 @@ public:
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 	virtual ContinuousStructure* GetGeometryCSX() {return CSX;}
 
-	virtual int CalcECOperator();
+	virtual int CalcECOperator( DebugFlags );
 
 	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
 	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
@@ -58,6 +60,12 @@ public:
 	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }
 	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return ii[n][x][y][z]; }
 	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return iv[n][x][y][z]; }
+
+	// convenient access functions
+	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int pos[3] ) const { return GetVV(n,pos[0],pos[1],pos[2]); }
+	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int pos[3] ) const { return GetVI(n,pos[0],pos[1],pos[2]); }
+	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int pos[3] ) const { return GetII(n,pos[0],pos[1],pos[2]); }
+	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int pos[3] ) const { return GetIV(n,pos[0],pos[1],pos[2]); }
 
 	// the next four functions need to be reimplemented in a derived class
 	inline virtual void SetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { vv[n][x][y][z] = value; }
@@ -82,10 +90,6 @@ public:
 
 	virtual void ShowStat() const;
 	virtual void ShowExtStat() const;
-
-	virtual void DumpOperator2File(string filename);
-	virtual void DumpMaterial2File(string filename);
-	virtual void DumpPEC2File( string filename );
 
 	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
 	virtual string GetDirName(int ny) const;
@@ -142,6 +146,11 @@ protected:
 	//! Calculate the field excitations.
 	virtual bool CalcFieldExcitation();
 
+	// debug
+	virtual void DumpOperator2File(string filename);
+	virtual void DumpMaterial2File(string filename);
+	virtual void DumpPEC2File( string filename );
+
 	unsigned int m_Nr_PEC[3]; //count PEC edges
 	virtual bool CalcPEC();
 	virtual void CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned int* counter);	//internal to CalcPEC
@@ -187,5 +196,8 @@ public:
 
 	Excitation* Exc;
 };
+
+inline Operator::DebugFlags operator|( Operator::DebugFlags a, Operator::DebugFlags b ) { return static_cast<Operator::DebugFlags>(static_cast<int>(a) | static_cast<int>(b)); }
+inline Operator::DebugFlags& operator|=( Operator::DebugFlags& a, const Operator::DebugFlags& b ) { return a = a | b; }
 
 #endif // OPERATOR_H

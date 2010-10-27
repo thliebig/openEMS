@@ -30,8 +30,6 @@ public:
 
 	virtual Engine* CreateEngine() const;
 
-	virtual void DumpOperator2File(string filename);
-
 	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vv[n][x][y][z%numVectors].f[z/numVectors]; }
 	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vi[n][x][y][z%numVectors].f[z/numVectors]; }
 	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_ii[n][x][y][z%numVectors].f[z/numVectors]; }

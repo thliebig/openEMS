@@ -345,25 +345,47 @@ void Operator::DumpOperator2File(string filename)
 #endif
 
 	ofstream file(filename.c_str(),ios_base::out);
-	if (file.is_open()==false)
+	if (!file.is_open())
 	{
-		cerr << "Operator::DumpOperator2File: Can't open file: " << filename << endl;
+		cerr << "Operator::DumpOperator2File(): Can't open file: " << filename << endl;
 		return;
 	}
 
-	cout << "Operator::Dumping FDTD operator information to vtk file: " << filename << " ..." << flush ;
+	cout << "Operator: Dumping FDTD operator information to vtk file: " << filename << " ..." << flush;
 
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	if (Exc) {
+	if (Exc)
+	{
 		for (unsigned int n=0;n<Exc->Volt_Count;++n)
 			exc[Exc->Volt_dir[n]][Exc->Volt_index[0][n]][Exc->Volt_index[1][n]][Exc->Volt_index[2][n]] = Exc->Volt_amp[n];
 	}
 
+	FDTD_FLOAT**** vv_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	FDTD_FLOAT**** vi_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	FDTD_FLOAT**** iv_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	FDTD_FLOAT**** ii_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
+
+	unsigned int pos[3], n;
+	for (n=0; n<3; n++)
+		for (pos[0]=0; pos[0]<numLines[0]; pos[0]++)
+			for (pos[1]=0; pos[1]<numLines[1]; pos[1]++)
+				for (pos[2]=0; pos[2]<numLines[2]; pos[2]++)
+				{
+					vv_temp[n][pos[0]][pos[1]][pos[2]] = GetVV(n,pos);
+					vi_temp[n][pos[0]][pos[1]][pos[2]] = GetVI(n,pos);
+					iv_temp[n][pos[0]][pos[1]][pos[2]] = GetIV(n,pos);
+					ii_temp[n][pos[0]][pos[1]][pos[2]] = GetII(n,pos);
+				}
+
 	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
-	FDTD_FLOAT**** array[] = {vv,vi,iv,ii,exc};
+	FDTD_FLOAT**** array[] = {vv_temp,vi_temp,iv_temp,ii_temp,exc};
 
 	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines, 6, "Operator dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
 
+	Delete_N_3DArray(ii_temp,numLines);
+	Delete_N_3DArray(iv_temp,numLines);
+	Delete_N_3DArray(vi_temp,numLines);
+	Delete_N_3DArray(vv_temp,numLines);
 	Delete_N_3DArray(exc,numLines);
 
 	file.close();
@@ -377,12 +399,13 @@ void Operator::DumpOperator2File(string filename)
 void Operator::DumpPEC2File( string filename )
 {
 	ofstream file( filename.c_str() );
-	if (!file.is_open()) {
-		cerr << "Operator::DumpPEC2File: Can't open file: " << filename << endl;
+	if (!file.is_open())
+	{
+		cerr << "Operator::DumpPEC2File(): Can't open file: " << filename << endl;
 		return;
 	}
 
-	cout << "Dumping PEC information to vtk file: " << filename << " ..." << flush;
+	cout << "Operator: Dumping PEC information to vtk file: " << filename << " ..." << flush;
 
 	FDTD_FLOAT**** pec = Create_N_3DArray<FDTD_FLOAT>( numLines );
 	unsigned int pos[3];
@@ -399,19 +422,19 @@ void Operator::DumpPEC2File( string filename )
 				if ((pos[1] != 0) && (pos[2] != 0))
 				{
 					// PEC surrounds the computational area; do not output this
-					if ((GetVV(0,pos[0],pos[1],pos[2]) == 0) && (GetVI(0,pos[0],pos[1],pos[2]) == 0))
+					if ((GetVV(0,pos) == 0) && (GetVI(0,pos) == 0))
 						pec[0][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 0, pos ) * scaling; // PEC-x found
 				}
 				if ((pos[0] != 0) && (pos[2] != 0))
 				{
 					// PEC surrounds the computational area; do not output this
-					if ((GetVV(1,pos[0],pos[1],pos[2]) == 0) && (GetVI(1,pos[0],pos[1],pos[2]) == 0))
+					if ((GetVV(1,pos) == 0) && (GetVI(1,pos) == 0))
 						pec[1][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 1, pos ) * scaling; // PEC-y found
 				}
 				if ((pos[0] != 0) && (pos[1] != 0))
 				{
 					// PEC surrounds the computational area; do not output this
-					if ((GetVV(2,pos[0],pos[1],pos[2]) == 0) && (GetVI(2,pos[0],pos[1],pos[2]) == 0))
+					if ((GetVV(2,pos) == 0) && (GetVI(2,pos) == 0))
 						pec[2][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 2, pos ) * scaling; // PEC-z found
 				}
 			}
@@ -463,25 +486,20 @@ void Operator::DumpMaterial2File(string filename)
 #endif
 
 	ofstream file(filename.c_str(),ios_base::out);
-	if (file.is_open()==false)
+	if (!file.is_open())
 	{
-		cerr << "Operator::DumpMaterial2File: Can't open file: " << filename << endl;
+		cerr << "Operator::DumpMaterial2File(): Can't open file: " << filename << endl;
 		return;
 	}
 
-	cout << "Dumping material information to vtk file: " << filename << " ..."  << flush;
+	cout << "Operator: Dumping material information to vtk file: " << filename << " ..."  << flush;
 
-	FDTD_FLOAT**** epsilon;
-	FDTD_FLOAT**** mue;
-	FDTD_FLOAT**** kappa;
-	FDTD_FLOAT**** sigma;
+	FDTD_FLOAT**** epsilon = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	FDTD_FLOAT**** mue     = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	FDTD_FLOAT**** kappa   = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	FDTD_FLOAT**** sigma   = Create_N_3DArray<FDTD_FLOAT>(numLines);
+
 	unsigned int pos[3];
-	double inMat[4];
-
-	epsilon = Create_N_3DArray<FDTD_FLOAT>( numLines);
-	mue = Create_N_3DArray<FDTD_FLOAT>( numLines);
-	kappa = Create_N_3DArray<FDTD_FLOAT>( numLines);
-	sigma = Create_N_3DArray<FDTD_FLOAT>( numLines);
 	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 	{
 		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
@@ -490,11 +508,12 @@ void Operator::DumpMaterial2File(string filename)
 			{
 				for (int n=0;n<3;++n)
 				{
+					double inMat[4];
 					Calc_EffMatPos(n, pos, inMat);
-					epsilon[n][pos[0]][pos[1]][pos[2]]	=inMat[0]/__EPS0__;
-					mue[n][pos[0]][pos[1]][pos[2]]		=inMat[2]/__MUE0__;
-					kappa[n][pos[0]][pos[1]][pos[2]]	=inMat[1];
-					sigma[n][pos[0]][pos[1]][pos[2]]	=inMat[3];
+					epsilon[n][pos[0]][pos[1]][pos[2]] = inMat[0]/__EPS0__;
+					mue[n][pos[0]][pos[1]][pos[2]]     = inMat[2]/__MUE0__;
+					kappa[n][pos[0]][pos[1]][pos[2]]   = inMat[1];
+					sigma[n][pos[0]][pos[1]][pos[2]]   = inMat[3];
 				}
 			}
 		}
@@ -502,11 +521,14 @@ void Operator::DumpMaterial2File(string filename)
 
 	string names[] = {"epsilon","mue","kappa","sigma"};
 	FDTD_FLOAT**** array[] = {epsilon,mue,kappa,sigma};
+
 	ProcessFields::DumpMultiVectorArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
+
 	Delete_N_3DArray(epsilon,numLines);
 	Delete_N_3DArray(mue,numLines);
 	Delete_N_3DArray(kappa,numLines);
 	Delete_N_3DArray(sigma,numLines);
+
 	file.close();
 
 	cout << " done!" << endl;
@@ -577,7 +599,7 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 	}
 }
 
-int Operator::CalcECOperator()
+int Operator::CalcECOperator( DebugFlags debugFlags )
 {
 	Init_EC();
 
@@ -642,6 +664,13 @@ int Operator::CalcECOperator()
 	//all information available for extension... create now...
 	for (size_t n=0;n<m_Op_exts.size();++n)
 		m_Op_exts.at(n)->BuildExtension();
+
+	if (debugFlags & debugMaterial)
+		DumpMaterial2File( "material_dump.vtk" );
+	if (debugFlags & debugOperator)
+		DumpOperator2File( "operator_dump.vtk" );
+	if (debugFlags & debugPEC)
+		DumpPEC2File( "PEC_dump.vtk" );
 
 	//cleanup
 	for (int n=0;n<3;++n)

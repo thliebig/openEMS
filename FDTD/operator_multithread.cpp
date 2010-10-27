@@ -94,7 +94,7 @@ void Operator_Multithread::CalcStartStopLines(unsigned int &numThreads, vector<u
 	}
 }
 
-int Operator_Multithread::CalcECOperator()
+int Operator_Multithread::CalcECOperator( DebugFlags debugFlags )
 {
 	if (m_numThreads == 0)
 		m_numThreads = boost::thread::hardware_concurrency();
@@ -118,7 +118,7 @@ int Operator_Multithread::CalcECOperator()
 		m_thread_group.add_thread( t );
 	}
 
-	return Operator_SSE_Compressed::CalcECOperator();
+	return Operator_SSE_Compressed::CalcECOperator( debugFlags );
 }
 
 bool Operator_Multithread::Calc_EC()

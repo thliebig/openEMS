@@ -385,7 +385,14 @@ int openEMS::SetupFDTD(const char* file)
 	if (timestep)
 		FDTD_Op->SetTimestep(timestep);
 
-	FDTD_Op->CalcECOperator();
+	Operator::DebugFlags debugFlags = Operator::None;
+	if (DebugMat)
+		debugFlags |= Operator::debugMaterial;
+	if (DebugOp)
+		debugFlags |= Operator::debugOperator;
+	if (m_debugPEC)
+		debugFlags |= Operator::debugPEC;
+	FDTD_Op->CalcECOperator( debugFlags );
 	
 	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
 	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
@@ -393,14 +400,6 @@ int openEMS::SetupFDTD(const char* file)
 
 	if (!FDTD_Op->SetupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
 		exit(2);
-
-	// create debug output, if requested
-	if (DebugMat)
-		FDTD_Op->DumpMaterial2File("material_dump.vtk");
-	if (DebugOp)
-		FDTD_Op->DumpOperator2File("operator_dump.vtk");
-	if (m_debugPEC)
-		FDTD_Op->DumpPEC2File("PEC_dump.vtk");
 
 	timeval OpDoneTime;
 	gettimeofday(&OpDoneTime,NULL);
