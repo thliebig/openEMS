@@ -28,13 +28,17 @@ Excitation::Excitation( double timestep )
 	Volt_delay = 0;
 	Volt_amp = 0;
 	Volt_dir = 0;
+	Volt_Count = 0;
 	Curr_delay = 0;
 	Curr_amp = 0;
 	Curr_dir = 0;
+	Curr_Count = 0;
 
 	for (int n=0;n<3;++n) {
 		Volt_index[n] = 0;
 		Curr_index[n] = 0;
+		Volt_Count_Dir[n] = 0;
+		Curr_Count_Dir[n] = 0;
 	}
 
 	dT = timestep;
