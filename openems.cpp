@@ -330,14 +330,19 @@ int openEMS::SetupFDTD(const char* file)
 
 	cout << "Read Geometry..." << endl;
 	ContinuousStructure CSX;
-	if (CylinderCoords)
-		CSX.SetCoordInputType(CYLINDRICAL); //tell CSX to use cylinder-coords
 	string EC(CSX.ReadFromXML(openEMSxml));
 	if (EC.empty()==false)
 	{
 		cerr << EC << endl;
 //		return(-2);
 	}
+
+	if (CylinderCoords)
+		if (CSX.GetCoordInputType()!=CYLINDRICAL)
+		{
+		cerr << "openEMS::SetupFDTD: Warning: Coordinate system found in the CSX file is not a cylindrical. Forcing to cylindrical coordinate system!" << endl;
+			CSX.SetCoordInputType(CYLINDRICAL); //tell CSX to use cylinder-coords
+		}
 
 	if (m_debugCSX)
 		CSX.Write2XML("debugCSX.xml");
