@@ -30,9 +30,14 @@ public:
 	Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext);
 	virtual ~Engine_Ext_Mur_ABC();
 
-	virtual void DoPreVoltageUpdates();
-	virtual void DoPostVoltageUpdates();
-	virtual void Apply2Voltages();
+	virtual void SetNumberOfThreads(int nrThread);
+
+	virtual void DoPreVoltageUpdates() {Engine_Ext_Mur_ABC::DoPreVoltageUpdates(0);}
+	virtual void DoPreVoltageUpdates(int threadID);
+	virtual void DoPostVoltageUpdates() {Engine_Ext_Mur_ABC::DoPostVoltageUpdates(0);}
+	virtual void DoPostVoltageUpdates(int threadID);
+	virtual void Apply2Voltages() {Engine_Ext_Mur_ABC::Apply2Voltages(0);}
+	virtual void Apply2Voltages(int threadID);
 
 protected:
 	Operator_Ext_Mur_ABC* m_Op_mur;
@@ -45,6 +50,9 @@ protected:
 	unsigned int m_LineNr;
 	int m_LineNr_Shift;
 	unsigned int m_numLines[2];
+
+	vector<unsigned int> m_start;
+	vector<unsigned int> m_numX;
 
 	FDTD_FLOAT** m_Mur_Coeff_nyP;
 	FDTD_FLOAT** m_Mur_Coeff_nyPP;
