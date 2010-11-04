@@ -686,7 +686,9 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 
 void Operator::ApplyElectricBC(bool* dirs)
 {
-	if (dirs==NULL) return;
+	if (!dirs)
+		return;
+
 	unsigned int pos[3];
 	for (int n=0;n<3;++n)
 	{
@@ -696,20 +698,28 @@ void Operator::ApplyElectricBC(bool* dirs)
 		{
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
-				pos[n]=0;
-				SetVV(nP, pos[0],pos[1],pos[2], GetVV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetVI(nP, pos[0],pos[1],pos[2], GetVI(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetVV(nPP,pos[0],pos[1],pos[2], GetVV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetVI(nPP,pos[0],pos[1],pos[2], GetVI(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				if (dirs[2*n])
+				{
+					// set to PEC
+					pos[n] = 0;
+					SetVV(nP, pos[0],pos[1],pos[2], 0 );
+					SetVI(nP, pos[0],pos[1],pos[2], 0 );
+					SetVV(nPP,pos[0],pos[1],pos[2], 0 );
+					SetVI(nPP,pos[0],pos[1],pos[2], 0 );
+				}
 
-				pos[n]=numLines[n]-1;
-				SetVV(n,  pos[0],pos[1],pos[2], GetVV(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] ); // these are outside the FDTD-domain as defined by the main disc
-				SetVI(n,  pos[0],pos[1],pos[2], GetVI(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] ); // these are outside the FDTD-domain as defined by the main disc
+				if (dirs[2*n+1])
+				{
+					// set to PEC
+					pos[n] = numLines[n]-1;
+					SetVV(n,  pos[0],pos[1],pos[2], 0 ); // these are outside the FDTD-domain as defined by the main disc
+					SetVI(n,  pos[0],pos[1],pos[2], 0 ); // these are outside the FDTD-domain as defined by the main disc
 
-				SetVV(nP, pos[0],pos[1],pos[2], GetVV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
-				SetVI(nP, pos[0],pos[1],pos[2], GetVI(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
-				SetVV(nPP,pos[0],pos[1],pos[2], GetVV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
-				SetVI(nPP,pos[0],pos[1],pos[2], GetVI(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+					SetVV(nP, pos[0],pos[1],pos[2], 0 );
+					SetVI(nP, pos[0],pos[1],pos[2], 0 );
+					SetVV(nPP,pos[0],pos[1],pos[2], 0 );
+					SetVI(nPP,pos[0],pos[1],pos[2], 0 );
+				}
 			}
 		}
 	}
@@ -717,7 +727,9 @@ void Operator::ApplyElectricBC(bool* dirs)
 
 void Operator::ApplyMagneticBC(bool* dirs)
 {
-	if (dirs==NULL) return;
+	if (!dirs)
+		return;
+
 	unsigned int pos[3];
 	for (int n=0;n<3;++n)
 	{
@@ -727,22 +739,30 @@ void Operator::ApplyMagneticBC(bool* dirs)
 		{
 			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
 			{
-				pos[n]=0;
-				SetII(n,  pos[0],pos[1],pos[2], GetII(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetIV(n,  pos[0],pos[1],pos[2], GetIV(n,  pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetII(nP, pos[0],pos[1],pos[2], GetII(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetIV(nP, pos[0],pos[1],pos[2], GetIV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetII(nPP,pos[0],pos[1],pos[2], GetII(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
-				SetIV(nPP,pos[0],pos[1],pos[2], GetIV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n] );
+				if (dirs[2*n])
+				{
+					// set to PMC
+					pos[n] = 0;
+					SetII(n,  pos[0],pos[1],pos[2], 0 );
+					SetIV(n,  pos[0],pos[1],pos[2], 0 );
+					SetII(nP, pos[0],pos[1],pos[2], 0 );
+					SetIV(nP, pos[0],pos[1],pos[2], 0 );
+					SetII(nPP,pos[0],pos[1],pos[2], 0 );
+					SetIV(nPP,pos[0],pos[1],pos[2], 0 );
+				}
 
-				pos[n]=numLines[n]-2;
-				SetII(nP, pos[0],pos[1],pos[2], GetII(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
-				SetIV(nP, pos[0],pos[1],pos[2], GetIV(nP, pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
-				SetII(nPP,pos[0],pos[1],pos[2], GetII(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
-				SetIV(nPP,pos[0],pos[1],pos[2], GetIV(nPP,pos[0],pos[1],pos[2]) * (FDTD_FLOAT)!dirs[2*n+1] );
+				if (dirs[2*n+1])
+				{
+					// set to PMC
+					pos[n] = numLines[n]-2;
+					SetII(nP, pos[0],pos[1],pos[2], 0 );
+					SetIV(nP, pos[0],pos[1],pos[2], 0 );
+					SetII(nPP,pos[0],pos[1],pos[2], 0 );
+					SetIV(nPP,pos[0],pos[1],pos[2], 0 );
+				}
 
 				// the last current lines are outside the FDTD domain and cannot be iterated by the FDTD engine
-				pos[n]=numLines[n]-1;
+				pos[n] = numLines[n]-1;
 				SetII(n,  pos[0],pos[1],pos[2], 0 );
 				SetIV(n,  pos[0],pos[1],pos[2], 0 );
 				SetII(nP, pos[0],pos[1],pos[2], 0 );
