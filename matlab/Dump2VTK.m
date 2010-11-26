@@ -77,18 +77,36 @@ end
 fprintf(fid,'\n\n');
 
 fprintf(fid,'POINT_DATA %d\n',numel(x)*numel(y)*numel(z));
-if (nargin>3)
-    fprintf(fid,['VECTORS ' fieldname ' float\n']);
-else
-    fprintf(fid,'VECTORS field float\n');
+% dump vector field data
+if (ndims(fields)==4)
+    if (nargin>3)
+        fprintf(fid,['VECTORS ' fieldname ' float\n']);
+    else
+        fprintf(fid,'VECTORS field float\n');
+    end
+    fclose(fid);
+    field_x = fields(:,:,:,1);
+    field_y = fields(:,:,:,2);
+    field_z = fields(:,:,:,3);
+    clear fields
+    dumpField(:,1) = field_x(:);
+    dumpField(:,2) = field_y(:);
+    dumpField(:,3) = field_z(:);
+    save('-ascii','-append',filename,'dumpField')
+    return
 end
 
-for nz=1:numel(z)
-    for ny=1:numel(y)
-        for nx=1:numel(x)
-            fprintf(fid,'%e %e %e\n',fields(nx,ny,nz,1),fields(nx,ny,nz,2),fields(nx,ny,nz,3));
-        end
+% dump scalar field data
+if (ndims(fields)==3)
+    if (nargin>3)
+        fprintf(fid,['SCALARS ' fieldname ' float 1\nLOOKUP_TABLE default\n']);
+    else
+        fprintf(fid,'SCALARS field float 1\nLOOKUP_TABLE default\n');
     end
+    fclose(fid);
+    dumpField = fields(:);
+    save('-ascii','-append',filename,'dumpField')
+    return
 end
 
 fclose(fid);
