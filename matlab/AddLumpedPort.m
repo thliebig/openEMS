@@ -87,7 +87,7 @@ kappa_cell{1} = kappa*dir(1);
 kappa_cell{2} = kappa*dir(2);
 kappa_cell{3} = kappa*dir(3);
 CSX = SetMaterialProperty( CSX, ['port' num2str(portnr) '_sheet_resistance'], 'Kappa', kappa_cell );
-CSX = AddBox( CSX, ['port' num2str(portnr) '_sheet_resistance'], 0, m_start, m_stop );
+CSX = AddBox( CSX, ['port' num2str(portnr) '_sheet_resistance'], 999, m_start, m_stop );
 
 % calculate position of the voltage probe
 v_start(idx_plane) = start(idx_plane);
