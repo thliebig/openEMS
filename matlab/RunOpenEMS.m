@@ -51,8 +51,8 @@ if (isfield(Settings,'SSH') && isunix)
     
     disp(['Running remote openEMS on ' Settings.SSH.host ' at working dir: ' ssh_work_path]);
     
-    %copy openEMS simulation file to the ssh host
-    [stat, res] = unix(['scp ' scp_options ' ' Sim_File ' ' Settings.SSH.host ':' ssh_work_path '/' Sim_File]);
+    %copy openEMS all simulation files to the ssh host
+    [stat, res] = unix(['scp ' scp_options ' * ' Settings.SSH.host ':' ssh_work_path '/']);
     if (stat~=0)
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');
