@@ -28,6 +28,7 @@ Global::Global()
 {
 	m_showProbeDiscretization = false;
 	m_nativeFieldDumps = false;
+	m_VerboseLevel = 0;
 }
 
 void Global::ShowArguments(ostream& ostr, string front)
@@ -52,6 +53,12 @@ bool Global::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - dumping all fields using the native field components" << endl;
 		m_nativeFieldDumps = true;
+		return true;
+	}
+	else if (strcmp(argv,"-v")==0)
+	{
+		cout << "openEMS - verbose level 1" << endl;
+		m_VerboseLevel = 1;
 		return true;
 	}
 	return false;

@@ -37,9 +37,13 @@ public:
 
 	void ShowArguments(std::ostream& ostr, std::string front=std::string());
 
+	void SetVerboseLevel(int level) {m_VerboseLevel=level;}
+	int GetVerboseLevel() const {return m_VerboseLevel;}
+
 protected:
 	bool m_showProbeDiscretization;
 	bool m_nativeFieldDumps;
+	int m_VerboseLevel;
 };
 
 extern Global g_settings;
