@@ -20,7 +20,7 @@
 #include <sstream>
 #include <string>
 
-ProcessFieldsTD::ProcessFieldsTD(Operator* op, Engine* eng) : ProcessFields(op, eng)
+ProcessFieldsTD::ProcessFieldsTD(Operator* op) : ProcessFields(op)
 {
 	pad_length = 8;
 }
@@ -40,7 +40,7 @@ int ProcessFieldsTD::Process()
 	if (m_fileType==VTK_FILETYPE)
 	{
 		stringstream ss;
-		ss << filePattern << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps() << ".vtk";
+		ss << filePattern << std::setw( pad_length ) << std::setfill( '0' ) << m_Eng_Interface->GetNumberOfTimesteps() << ".vtk";
 		filename = ss.str();
 	}
 	else
@@ -107,8 +107,8 @@ int ProcessFieldsTD::Process()
 	else if (m_fileType==HDF5_FILETYPE)
 	{
 		stringstream ss;
-		ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-		DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),field,numLines,(0.5+Eng->GetNumberOfTimesteps())*Op->GetTimestep());
+		ss << std::setw( pad_length ) << std::setfill( '0' ) << m_Eng_Interface->GetNumberOfTimesteps();
+		DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),field,numLines,(0.5+m_Eng_Interface->GetNumberOfTimesteps())*Op->GetTimestep());
 	}
 	else
 		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;

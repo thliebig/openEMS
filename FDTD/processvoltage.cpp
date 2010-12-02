@@ -18,7 +18,7 @@
 #include "processvoltage.h"
 #include <iomanip>
 
-ProcessVoltage::ProcessVoltage(Operator* op, Engine* eng) : ProcessIntegral(op, eng)
+ProcessVoltage::ProcessVoltage(Operator* op) : ProcessIntegral(op)
 {
 }
 
@@ -29,5 +29,5 @@ ProcessVoltage::~ProcessVoltage()
 double ProcessVoltage::CalcIntegral()
 {
 	//integrate voltages from start to stop on a line
-	return CalcLineIntegral(start,stop,0);
+	return m_Eng_Interface->CalcVoltageIntegral(start,stop);
 }

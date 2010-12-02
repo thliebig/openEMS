@@ -161,3 +161,24 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 
 	return out;
 }
+
+double Engine_Interface_FDTD::CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const
+{
+	double result=0;
+	for (int n=0;n<3;++n)
+	{
+		if (start[n]<stop[n])
+		{
+			unsigned int pos[3]={start[0],start[1],start[2]};
+			for (;pos[n]<stop[n];++pos[n])
+				result += m_Eng->GetVolt(n,pos[0],pos[1],pos[2]);
+		}
+		else
+		{
+			unsigned int pos[3]={stop[0],stop[1],stop[2]};
+			for (;pos[n]<start[n];++pos[n])
+				result -= m_Eng->GetVolt(n,pos[0],pos[1],pos[2]);
+		}
+	}
+	return result;
+}

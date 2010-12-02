@@ -24,7 +24,7 @@
 class ProcessVoltage : public ProcessIntegral
 {
 public:
-	ProcessVoltage(Operator* op, Engine* eng);
+	ProcessVoltage(Operator* op);
 	virtual ~ProcessVoltage();
 
 	virtual double CalcIntegral();

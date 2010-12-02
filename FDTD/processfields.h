@@ -26,7 +26,7 @@
 class ProcessFields : public Processing
 {
 public:
-	ProcessFields(Operator* op, Engine* eng);
+	ProcessFields(Operator* op);
 	virtual ~ProcessFields();
 
 	enum FileType { VTK_FILETYPE, HDF5_FILETYPE};

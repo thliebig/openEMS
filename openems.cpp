@@ -447,12 +447,12 @@ int openEMS::SetupFDTD(const char* file)
 			{
 				if (pb->GetProbeType()==0)
 				{
-					ProcessVoltage* procVolt = new ProcessVoltage(FDTD_Op,FDTD_Eng);
+					ProcessVoltage* procVolt = new ProcessVoltage(FDTD_Op);
 					proc=procVolt;
 				}
 				else if (pb->GetProbeType()==1)
 				{
-					ProcessCurrent* procCurr = new ProcessCurrent(FDTD_Op,FDTD_Eng);
+					ProcessCurrent* procCurr = new ProcessCurrent(FDTD_Op);
 					proc=procCurr;
 				}
 				else if (pb->GetProbeType()==2)
@@ -461,7 +461,7 @@ int openEMS::SetupFDTD(const char* file)
 					proc = new ProcessHField(FDTD_Op,FDTD_Eng);
 				else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
 				{
-					ProcessModeMatch* pmm = new ProcessModeMatch(FDTD_Op,FDTD_Eng);
+					ProcessModeMatch* pmm = new ProcessModeMatch(FDTD_Op);
 					pmm->SetFieldType(pb->GetProbeType()-10);
 					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
 					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
@@ -493,7 +493,7 @@ int openEMS::SetupFDTD(const char* file)
 	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
 	for (size_t i=0;i<DumpProps.size();++i)
 	{
-		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(FDTD_Op,FDTD_Eng);
+		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(FDTD_Op);
 		ProcTD->SetEnable(Enable_Dumps);
 		ProcTD->SetProcessInterval(Nyquist/m_OverSampling);
 
@@ -581,7 +581,8 @@ void openEMS::RunFDTD()
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
 	//special handling of a field processing, needed to realize the end criteria...
-	ProcessFields* ProcField = new ProcessFields(FDTD_Op,FDTD_Eng);
+	ProcessFields* ProcField = new ProcessFields(FDTD_Op);
+	ProcField->SetEngineInterface(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 	PA->AddProcessing(ProcField);
 	double maxE=0,currE=0;
 

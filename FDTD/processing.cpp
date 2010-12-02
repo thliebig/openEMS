@@ -21,10 +21,9 @@
 #include "time.h"
 #include <climits>
 
-Processing::Processing(Operator* op, Engine* eng)
+Processing::Processing(Operator* op)
 {
 	Op=op;
-	Eng=eng;
 	Enabled = true;
 	m_PS_pos = 0;
 	SetPrecision(12);
@@ -59,7 +58,7 @@ bool Processing::CheckTimestep()
 {
 	if (m_ProcessSteps.size()>m_PS_pos)
 	{
-		if (m_ProcessSteps.at(m_PS_pos)==Eng->GetNumberOfTimesteps())
+		if (m_ProcessSteps.at(m_PS_pos)==m_Eng_Interface->GetNumberOfTimesteps())
 		{
 			++m_PS_pos;
 			return true;
@@ -67,12 +66,12 @@ bool Processing::CheckTimestep()
 	}
 	if (ProcessInterval)
 	{
-		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0) return true;
+		if (m_Eng_Interface->GetNumberOfTimesteps()%ProcessInterval==0) return true;
 	}
 
 	if (m_FD_Interval)
 	{
-		if (Eng->GetNumberOfTimesteps()%m_FD_Interval==0) return true;
+		if (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval==0) return true;
 	}
 	return false;
 }
@@ -83,11 +82,11 @@ int Processing::GetNextInterval() const
 	int next=INT_MAX;
 	if (m_ProcessSteps.size()>m_PS_pos)
 	{
-		next = (int)m_ProcessSteps.at(m_PS_pos)-(int)Eng->GetNumberOfTimesteps();
+		next = (int)m_ProcessSteps.at(m_PS_pos)-(int)m_Eng_Interface->GetNumberOfTimesteps();
 	}
 	if (ProcessInterval!=0)
 	{
-		int next_Interval = (int)ProcessInterval - (int)Eng->GetNumberOfTimesteps()%ProcessInterval;
+		int next_Interval = (int)ProcessInterval - (int)m_Eng_Interface->GetNumberOfTimesteps()%ProcessInterval;
 		if (next_Interval<next)
 			next = next_Interval;
 	}
@@ -95,7 +94,7 @@ int Processing::GetNextInterval() const
 	//check for FD sample interval
 	if (m_FD_Interval!=0)
 	{
-		int next_Interval = (int)m_FD_Interval - (int)Eng->GetNumberOfTimesteps()%m_FD_Interval;
+		int next_Interval = (int)m_FD_Interval - (int)m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval;
 		if (next_Interval<next)
 			next = next_Interval;
 	}
@@ -163,58 +162,6 @@ void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
 				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 	}
-}
-
-double Processing::CalcLineIntegral(unsigned int* start, unsigned int* stop, int field) const
-{
-	switch (field) {
-	case 0:
-		return CalcLineIntegral_V( start, stop );
-	case 1:
-		return CalcLineIntegral_I( start, stop );
-	}
-	return 0;
-}
-
-double Processing::CalcLineIntegral_I(unsigned int* start, unsigned int* stop) const
-{
-	double result=0;
-	for (int n=0;n<3;++n)
-	{
-		if (start[n]<stop[n])
-		{
-			unsigned int pos[3]={start[0],start[1],start[2]};
-			for (;pos[n]<stop[n];++pos[n])
-				result += Eng->GetCurr(n,pos[0],pos[1],pos[2]);
-		}
-		else
-		{
-			unsigned int pos[3]={stop[0],stop[1],stop[2]};
-			for (;pos[n]<start[n];++pos[n])
-				result -= Eng->GetCurr(n,pos[0],pos[1],pos[2]);
-		}
-	}
-	return result;
-}
-double Processing::CalcLineIntegral_V(unsigned int* start, unsigned int* stop) const
-{
-	double result=0;
-	for (int n=0;n<3;++n)
-	{
-		if (start[n]<stop[n])
-		{
-			unsigned int pos[3]={start[0],start[1],start[2]};
-			for (;pos[n]<stop[n];++pos[n])
-				result += Eng->GetVolt(n,pos[0],pos[1],pos[2]);
-		}
-		else
-		{
-			unsigned int pos[3]={stop[0],stop[1],stop[2]};
-			for (;pos[n]<start[n];++pos[n])
-				result -= Eng->GetVolt(n,pos[0],pos[1],pos[2]);
-		}
-	}
-	return result;
 }
 
 void Processing::OpenFile( string outfile )

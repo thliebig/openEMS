@@ -44,8 +44,17 @@ public:
 	//! Get the (interpolated) magnetic field at \p pos. \sa SetInterpolationType
 	virtual double* GetHField(const unsigned int* pos, double* out) const {UNUSED(pos);return out;}
 
+	//! Calculate the electric field integral along a given line
+	virtual double CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const {UNUSED(start);UNUSED(stop);return 0.0;}
+
 	//! Convert the interpolation type into a string.
 	static std::string GetInterpolationNameByType(InterpolationType mode);
+
+	//! Get the current simulation time
+	virtual double GetTime(bool dualTime=false) const {UNUSED(dualTime);return 0.0;}
+
+	//! Get the current number of timesteps
+	virtual unsigned int GetNumberOfTimesteps() const {return 0;}
 
 protected:
     Engine_Interface_Base();

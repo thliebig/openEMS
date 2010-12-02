@@ -19,8 +19,9 @@
 #include <H5Cpp.h>
 #include "tools/global.h"
 #include "processfields.h"
+#include "engine_interface_fdtd.h"
 
-ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
+ProcessFields::ProcessFields(Operator* op) : Processing(op)
 {
 	m_DumpType = E_FIELD_DUMP;
 	// vtk-file is default
@@ -212,30 +213,35 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 
 double ProcessFields::CalcTotalEnergy() const
 {
-	if (!Eng)
-		return 0;
+	double energy=0.0;
 
-	double energy=0;
-	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<Op->GetNumberOfLines(0);++pos[0])
+	Engine_Interface_FDTD* EI_FDTD = dynamic_cast<Engine_Interface_FDTD*>(m_Eng_Interface);
+
+	if (EI_FDTD)
 	{
-		for (pos[1]=0;pos[1]<Op->GetNumberOfLines(1);++pos[1])
+		const Engine* Eng = EI_FDTD->GetFDTDEngine();
+
+		unsigned int pos[3];
+		for (pos[0]=0;pos[0]<Op->GetNumberOfLines(0);++pos[0])
 		{
-			for (pos[2]=0;pos[2]<Op->GetNumberOfLines(2);++pos[2])
+			for (pos[1]=0;pos[1]<Op->GetNumberOfLines(1);++pos[1])
 			{
-				energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
-				energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
-				energy+=fabs(Eng->GetVolt(1,pos[0],pos[1],pos[2]) * Eng->GetCurr(0,pos[0],pos[1],pos[2]));
-				energy+=fabs(Eng->GetVolt(1,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
-				energy+=fabs(Eng->GetVolt(2,pos[0],pos[1],pos[2]) * Eng->GetCurr(0,pos[0],pos[1],pos[2]));
-				energy+=fabs(Eng->GetVolt(2,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
+				for (pos[2]=0;pos[2]<Op->GetNumberOfLines(2);++pos[2])
+				{
+					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
+					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
+					energy+=fabs(Eng->GetVolt(1,pos[0],pos[1],pos[2]) * Eng->GetCurr(0,pos[0],pos[1],pos[2]));
+					energy+=fabs(Eng->GetVolt(1,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
+					energy+=fabs(Eng->GetVolt(2,pos[0],pos[1],pos[2]) * Eng->GetCurr(0,pos[0],pos[1],pos[2]));
+					energy+=fabs(Eng->GetVolt(2,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
+				}
 			}
 		}
 	}
 	return energy*0.5;
 }
 
-void  ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
+void ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
 {
 	if (dir>2) return;
 	if (dir<0)

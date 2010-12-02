@@ -19,8 +19,9 @@
 #include "time.h"
 #include "process_efield.h"
 
-ProcessEField::ProcessEField(Operator* op, Engine* eng) : Processing(op, eng)
+ProcessEField::ProcessEField(Operator* op, Engine* eng) : Processing(op)
 {
+	Eng = eng;
 }
 
 ProcessEField::~ProcessEField()

@@ -18,7 +18,7 @@
 #include "processintegral.h"
 #include <iomanip>
 
-ProcessIntegral::ProcessIntegral(Operator* op, Engine* eng)  : Processing(op, eng)
+ProcessIntegral::ProcessIntegral(Operator* op)  : Processing(op)
 {
 	m_TimeShift = 0.0;
 	m_Results=NULL;
@@ -56,11 +56,11 @@ int ProcessIntegral::Process()
 	int NrInt = GetNumberOfIntegrals();
 	double integral = m_Results[0] * m_weight;
 
-	double time = (double)Eng->GetNumberOfTimesteps()*Op->GetTimestep() + m_TimeShift;
+	double time = m_Eng_Interface->GetTime(false) + m_TimeShift;
 
 	if (ProcessInterval)
 	{
-		if (Eng->GetNumberOfTimesteps()%ProcessInterval==0)
+		if (m_Eng_Interface->GetNumberOfTimesteps()%ProcessInterval==0)
 		{
 			TD_Values.push_back(integral);
 			file << setprecision(m_precision) << time;
@@ -72,7 +72,7 @@ int ProcessIntegral::Process()
 
 	if (m_FD_Interval)
 	{
-		if (Eng->GetNumberOfTimesteps()%m_FD_Interval==0)
+		if (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval==0)
 		{
 			double T = time;
 			for (size_t n=0;n<m_FD_Samples.size();++n)

@@ -19,7 +19,7 @@
 #include "CSFunctionParser.h"
 #include "tools/array_ops.h"
 
-ProcessModeMatch::ProcessModeMatch(Operator* op, Engine* eng) : ProcessIntegral(op, eng)
+ProcessModeMatch::ProcessModeMatch(Operator* op) : ProcessIntegral(op)
 {
 	for (int n=0;n<2;++n)
 	{

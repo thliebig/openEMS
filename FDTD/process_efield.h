@@ -37,6 +37,7 @@ public:
 	virtual int Process();
 
 protected:
+	Engine* Eng;
 	vector<double_complex> FD_Values[3];
 };
 

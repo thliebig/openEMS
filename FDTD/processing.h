@@ -33,7 +33,7 @@ typedef std::complex<double> double_complex;
 class Processing
 {
 public:
-	Processing(Operator* op, Engine* eng);
+	Processing(Operator* op);
 	virtual ~Processing();
 
 	//! Set the interface to the engine. Each processing needs its own engine interface. This class will take ownership and cleanup the interface on deletion!
@@ -85,7 +85,6 @@ public:
 protected:
 	Engine_Interface_Base* m_Eng_Interface;
 	Operator* Op;
-	Engine* Eng;
 	MeshType m_Mesh_Type;
 
 	unsigned int m_precision;
@@ -128,10 +127,6 @@ protected:
 	string m_filename;
 
 	virtual void OpenFile(string outfile);
-
-	double CalcLineIntegral(unsigned int* start, unsigned int* stop, int field) const;
-	double CalcLineIntegral_I(unsigned int* start, unsigned int* stop) const;
-	double CalcLineIntegral_V(unsigned int* start, unsigned int* stop) const;
 };
 
 class ProcessingArray

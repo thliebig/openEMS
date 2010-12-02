@@ -23,7 +23,7 @@
 class ProcessFieldsTD : public ProcessFields
 {
 public:
-	ProcessFieldsTD(Operator* op, Engine* eng);
+	ProcessFieldsTD(Operator* op);
 	virtual ~ProcessFieldsTD();
 
 	virtual int Process();

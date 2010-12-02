@@ -25,7 +25,7 @@ class CSFunctionParser;
 class ProcessModeMatch : public ProcessIntegral
 {
 public:
-	ProcessModeMatch(Operator* op, Engine* eng);
+	ProcessModeMatch(Operator* op);
 	virtual ~ProcessModeMatch();
 
 	virtual void InitProcess();

@@ -23,7 +23,7 @@
 class ProcessCurrent : public ProcessIntegral
 {
 public:
-	ProcessCurrent(Operator* op, Engine* eng);
+	ProcessCurrent(Operator* op);
 	virtual ~ProcessCurrent();
 
 	//! Integrate currents flowing through an area

@@ -44,6 +44,11 @@ public:
 	virtual double* GetEField(const unsigned int* pos, double* out) const;
 	virtual double* GetHField(const unsigned int* pos, double* out) const;
 
+	virtual double CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const;
+
+	virtual double GetTime(bool dualTime=false) const {return ((double)m_Eng->GetNumberOfTimesteps() + (double)dualTime*0.5)*m_Op->GetTimestep();};
+	virtual unsigned int GetNumberOfTimesteps() const {return m_Eng->GetNumberOfTimesteps();}
+
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;
