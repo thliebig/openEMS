@@ -48,4 +48,7 @@ protected:
 
 extern Global g_settings;
 
+// declare a parameter as unused
+#define UNUSED(x) (void)(x);
+
 #endif // GLOBAL_H

@@ -25,14 +25,19 @@ typedef std::complex<double> double_complex;
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include "Common/engine_interface_base.h"
 #include "operator.h"
 #include "engine.h"
+
 
 class Processing
 {
 public:
 	Processing(Operator* op, Engine* eng);
 	virtual ~Processing();
+
+	//! Set the interface to the engine. Each processing needs its own engine interface. This class will take ownership and cleanup the interface on deletion!
+	void SetEngineInterface(Engine_Interface_Base* eng_if);
 
 	enum MeshType { CARTESIAN_MESH, CYLINDRICAL_MESH};
 
@@ -78,6 +83,7 @@ public:
 	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh) const;
 
 protected:
+	Engine_Interface_Base* m_Eng_Interface;
 	Operator* Op;
 	Engine* Eng;
 	MeshType m_Mesh_Type;

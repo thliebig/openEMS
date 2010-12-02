@@ -31,7 +31,6 @@ public:
 
 	enum FileType { VTK_FILETYPE, HDF5_FILETYPE};
 	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP};
-	enum DumpMode { NO_INTERPOLATION, NODE_INTERPOLATE, CELL_INTERPOLATE};
 
 	virtual void InitProcess();
 
@@ -47,11 +46,11 @@ public:
 	void SetFileName(string fn) {m_filename=fn;}
 
 	//! Define the Dump-Mode
-	void SetDumpMode(DumpMode mode) {m_DumpMode=mode;}
+	void SetDumpMode(Engine_Interface_Base::InterpolationType mode) {m_Eng_Interface->SetInterpolationType(mode);}
 	//! This methode will dump all fields on a main cell node using 2 E-field and 4 H-fields per direction.
-	void SetDumpMode2Node() {m_DumpMode=NODE_INTERPOLATE;}
+	void SetDumpMode2Node() {m_Eng_Interface->SetInterpolationType(Engine_Interface_Base::NODE_INTERPOLATE);}
 	//! This methode will dump all fields in the center of a main cell (dual-node) using 4 E-field and 2 H-fields per direction.
-	void SetDumpMode2Cell() {m_DumpMode=CELL_INTERPOLATE;}
+	void SetDumpMode2Cell() {m_Eng_Interface->SetInterpolationType(Engine_Interface_Base::CELL_INTERPOLATE);}
 
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
 	void SetDumpType(DumpType type) {m_DumpType=type;}
@@ -79,11 +78,9 @@ public:
 	void SetFileType(FileType fileType) {m_fileType=fileType;}
 
 	static string GetFieldNameByType(DumpType type);
-	static string GetInterpolationNameByType(DumpMode mode);
 
 //	virtual void Process();
 protected:
-	DumpMode m_DumpMode;
 	DumpType m_DumpType;
 	string filePattern;
 	FileType m_fileType;
@@ -94,9 +91,6 @@ protected:
 	//! dump mesh
 	unsigned int numLines[3];
 	double* discLines[3];
-	//! dual dump mesh
-	unsigned int numDLines[3];
-	double* discDLines[3];
 };
 
 #endif // PROCESSFIELDS_H

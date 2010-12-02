@@ -25,6 +25,7 @@
 #include "FDTD/operator_ext_mur_abc.h"
 #include "FDTD/operator_ext_pml_sf.h"
 #include "FDTD/operator_ext_upml.h"
+#include "FDTD/engine_interface_fdtd.h"
 #include "FDTD/processvoltage.h"
 #include "FDTD/processcurrent.h"
 #include "FDTD/process_efield.h"
@@ -422,6 +423,7 @@ int openEMS::SetupFDTD(const char* file)
 
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;
+
 	unsigned int Nyquist = FDTD_Op->Exc->GetNyquistNum();
 	PA = new ProcessingArray(Nyquist);
 
@@ -473,6 +475,7 @@ int openEMS::SetupFDTD(const char* file)
 				}
 				if (CylinderCoords)
 					proc->SetMeshType(Processing::CYLINDRICAL_MESH);
+				proc->SetEngineInterface(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->AddFrequency(pb->GetFDSamples());
 				proc->SetName(pb->GetName());
@@ -508,8 +511,9 @@ int openEMS::SetupFDTD(const char* file)
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 			if (db)
 			{
+				ProcTD->SetEngineInterface(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 				ProcTD->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
-				ProcTD->SetDumpMode((ProcessFields::DumpMode)db->GetDumpMode());
+				ProcTD->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
 				ProcTD->SetFileType((ProcessFields::FileType)db->GetFileType());
 				if (CylinderCoords)
 					ProcTD->SetMeshType(Processing::CYLINDRICAL_MESH);

@@ -24,6 +24,7 @@ using namespace std;
 
 class Operator;
 class Engine;
+class Engine_Interface_FDTD;
 class ProcessingArray;
 class TiXmlElement;
 

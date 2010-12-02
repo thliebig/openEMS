@@ -51,6 +51,14 @@ void ProcessModeMatch::InitProcess()
 		m_TimeShift = Op->GetTimestep()/2.0;
 	}
 
+	if (m_Eng_Interface==NULL)
+	{
+		cerr << "ProcessModeMatch::InitProcess: Error, Engine_Interface is NULL, abort mode mathcing..." << endl;
+		Enabled=false;
+		return;
+	}
+	m_Eng_Interface->SetInterpolationType(Engine_Interface_Base::NODE_INTERPOLATE);
+
 	int Dump_Dim=0;
 	for (int n=0;n<3;++n)
 	{
@@ -191,56 +199,6 @@ void ProcessModeMatch::SetFieldType(int type)
 		cerr << "ProcessModeMatch::SetFieldType: Warning, unknown field type..." << endl;
 }
 
-double ProcessModeMatch::GetField(int ny, const unsigned int pos[3])
-{
-	if (m_ModeFieldType==0)
-		return GetEField(ny,pos);
-	if (m_ModeFieldType==1)
-		return GetHField(ny,pos);
-	return 0;
-}
-
-double ProcessModeMatch::GetEField(int ny, const unsigned int pos[3])
-{
-	if ((pos[ny]==0) || (pos[ny]==Op->GetNumberOfLines(ny)-1))
-		return 0.0;
-	unsigned int DownPos[] = {pos[0],pos[1],pos[2]};
-	--DownPos[ny];
-	double delta = Op->GetMeshDelta(ny,pos);
-	double deltaDown = Op->GetMeshDelta(ny,DownPos);
-	double deltaRel = delta / (delta+deltaDown);
-	if (delta*deltaDown)
-	{
-		return (double)Eng->GetVolt(ny,pos)*(1.0-deltaRel)/delta + (double)Eng->GetVolt(ny,DownPos)/deltaDown*deltaRel;
-	}
-	return 0.0;
-}
-
-double ProcessModeMatch::GetHField(int ny, const unsigned int pos[3])
-{
-	if ((pos[ny]==0) || (pos[ny]>=Op->GetNumberOfLines(ny)-1))
-		return 0.0;
-
-	unsigned int EngPos[] = {pos[0],pos[1],pos[2]};
-
-	int nyP = (ny+1)%3;
-	if (pos[nyP] == 0)
-		return 0.0;
-	int nyPP = (ny+2)%3;
-	if (pos[nyPP] == 0)
-		return 0.0;
-
-	double hfield = Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
-	EngPos[nyP]--;
-	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
-	EngPos[nyPP]--;
-	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
-	EngPos[nyP]++;
-	hfield += Eng->GetCurr(ny,EngPos) / Op->GetMeshDelta(ny,EngPos,true);
-	return hfield/4.0;
-}
-
-
 double* ProcessModeMatch::CalcMultipleIntegrals()
 {
 	double value = 0;
@@ -254,6 +212,8 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 	unsigned int pos[3] = {0,0,0};
 	pos[m_ny] = start[m_ny];
 
+	double out[3]={0,0,0};
+
 	for (unsigned int posP = 0;posP<m_numLines[0];++posP)
 	{
 		pos[nP] = start[nP] + posP;
@@ -261,10 +221,14 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 		{
 			pos[nPP] = start[nPP] + posPP;
 			area = Op->GetNodeArea(m_ny,pos,m_dualMesh);
+			if (m_ModeFieldType==0)
+				m_Eng_Interface->GetEField(pos,out);
+			if (m_ModeFieldType==1)
+				m_Eng_Interface->GetHField(pos,out);
 
 			for (int n=0;n<2;++n)
 			{
-				field = GetField((m_ny+n+1)%3,pos);
+				field = out[(m_ny+n+1)%3];
 				value += field * m_ModeDist[n][posP][posPP] * area;
 				purity += field*field * area;
 			}

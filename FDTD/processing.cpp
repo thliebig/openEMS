@@ -35,16 +35,24 @@ Processing::Processing(Operator* op, Engine* eng)
 	m_Flush = false;
 	m_dualMesh = false;
 	m_Mesh_Type = CARTESIAN_MESH;
+	m_Eng_Interface = NULL;
 }
 
 Processing::~Processing()
 {
+	SetEngineInterface(NULL);
 	file.close();
 }
 
 void Processing::Reset()
 {
 	m_PS_pos=0;
+}
+
+void Processing::SetEngineInterface(Engine_Interface_Base* eng_if)
+{
+	delete m_Eng_Interface;
+	m_Eng_Interface = eng_if;
 }
 
 bool Processing::CheckTimestep()

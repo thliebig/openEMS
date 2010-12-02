@@ -22,7 +22,6 @@
 
 ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 {
-	m_DumpMode = NO_INTERPOLATION;
 	m_DumpType = E_FIELD_DUMP;
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
@@ -32,7 +31,6 @@ ProcessFields::ProcessFields(Operator* op, Engine* eng) : Processing(op, eng)
 	for (int n=0;n<3;++n)
 	{
 		numLines[n]=0;
-		discDLines[n]=NULL;
 		discLines[n]=NULL;
 	}
 }
@@ -41,8 +39,6 @@ ProcessFields::~ProcessFields()
 {
 	for (int n=0;n<3;++n)
 	{
-		delete[] discDLines[n];
-		discDLines[n]=NULL;
 		delete[] discLines[n];
 		discLines[n]=NULL;
 	}
@@ -55,49 +51,29 @@ void ProcessFields::InitProcess()
 	string names[] = {Op->GetDirName(0),Op->GetDirName(1),Op->GetDirName(2)};
 	if (m_fileType==HDF5_FILETYPE)
 	{
-		unsigned int* NrLines;
-		double** Lines;
-
-		if (m_DumpMode==NO_INTERPOLATION)
-		{
-			NrLines = numLines;
-			Lines = discLines;
-		}
-		else if (m_DumpMode==NODE_INTERPOLATE)
-		{
-			NrLines = numLines;
-			Lines = discLines;
-		}
-		else if (m_DumpMode==CELL_INTERPOLATE)
-		{
-			NrLines = numDLines;
-			Lines = discDLines;
-		}
-		else
-			return;
-
 		m_filename+= ".h5";
+
 		H5::H5File* file = new H5::H5File( m_filename , H5F_ACC_TRUNC );
 
 		H5::Group* group = new H5::Group( file->createGroup( "/Mesh" ));
 		for (int n=0;n<3;++n)
 		{
 			hsize_t dimsf[1];              // dataset dimensions
-			dimsf[0] = NrLines[n];
+			dimsf[0] = numLines[n];
 			H5::DataSpace dataspace( 1, dimsf );
 			H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
 			H5::DataSet dataset = group->createDataSet( names[n].c_str(), datatype, dataspace );
 			//convert to float...
-			float* array = new float[NrLines[n]];
-			for (unsigned int i=0;i<NrLines[n];++i)
+			float* array = new float[numLines[n]];
+			for (unsigned int i=0;i<numLines[n];++i)
 			{
 #ifdef OUTPUT_IN_DRAWINGUNITS
 				array[i] = Lines[n][i];
 #else
 				if ((m_Mesh_Type==CYLINDRICAL_MESH) && (n==1)) //check for alpha-direction
-					array[i] = Lines[n][i];
+					array[i] = discLines[n][i];
 				else
-					array[i] = Lines[n][i] * Op->GetGridDelta();
+					array[i] = discLines[n][i] * Op->GetGridDelta();
 #endif
 			}
 			//write to dataset
@@ -123,21 +99,6 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 	return "unknown field";
 }
 
-string ProcessFields::GetInterpolationNameByType(DumpMode mode)
-{
-	switch (mode)
-	{
-	case NO_INTERPOLATION:
-		return string("Interpolation: None");
-	case NODE_INTERPOLATE:
-		return string("Interpolation: Node");
-	case CELL_INTERPOLATE:
-		return string("Interpolation: Cell");
-	}
-	return string();
-}
-
-
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	vector<double> lines;
@@ -147,7 +108,8 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 	if (m_DumpType == H_FIELD_DUMP)
 		dualMesh = true;
 
-	if (m_DumpMode==NO_INTERPOLATION)
+	Engine_Interface_Base::InterpolationType m_DumpMode = m_Eng_Interface->GetInterpolationType();
+	if (m_DumpMode==Engine_Interface_Base::NO_INTERPOLATION)
 	{
 		if (!Op->SnapToMesh(dstart,start,dualMesh))
 			cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
@@ -177,7 +139,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 				discLines[n][i] = lines.at(i);
 		}
 	}
-	else if (m_DumpMode==NODE_INTERPOLATE)
+	else if (m_DumpMode==Engine_Interface_Base::NODE_INTERPOLATE)
 	{
 		if (Op->SnapToMesh(dstart,start)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
 		if (Op->SnapToMesh(dstop,stop)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
@@ -191,8 +153,8 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 				start[n]=stop[n];
 				stop[n]=help;
 			}
-			if (stop[n]==Op->GetNumberOfLines(n)-1)
-				--stop[n];
+//			if (stop[n]==Op->GetNumberOfLines(n)-1)
+//				--stop[n];
 //			cerr << "start " << start[n] << "stop " << stop[n];
 			lines.clear();
 			for (unsigned int i=start[n];i<=stop[n];i+=subSample[n])
@@ -206,7 +168,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 				discLines[n][i] = lines.at(i);
 		}
 	}
-	else if (m_DumpMode==CELL_INTERPOLATE)
+	else if (m_DumpMode==Engine_Interface_Base::CELL_INTERPOLATE)
 	{
 		if (Op->SnapToMesh(dstart,start,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
 		if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
@@ -227,11 +189,11 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			{
 				lines.push_back(Op->GetDiscLine(n,i,true));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
 			}
-			numDLines[n] = lines.size();
-			delete[] discDLines[n];
-			discDLines[n] = new double[numDLines[n]];
-			for (unsigned int i=0;i<numDLines[n];++i)
-				discDLines[n][i] = lines.at(i);
+			numLines[n] = lines.size();
+			delete[] discLines[n];
+			discLines[n] = new double[numLines[n]];
+			for (unsigned int i=0;i<numLines[n];++i)
+				discLines[n][i] = lines.at(i);
 		}
 	}
 

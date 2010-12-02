@@ -29,270 +29,23 @@ ProcessFieldsTD::~ProcessFieldsTD()
 {
 }
 
-void ProcessFieldsTD::DumpNodeInterpol(string filename)
+int ProcessFieldsTD::Process()
 {
-#ifdef OUTPUT_IN_DRAWINGUNITS
-	double discLines_scaling = 1;
-#else
-	double discLines_scaling =	Op->GetGridDelta();
-#endif
+	if (Enabled==false) return -1;
+	if (filePattern.empty()) return -1;
+	if (CheckTimestep()==false) return GetNextInterval();
 
-	if (m_DumpType==H_FIELD_DUMP)
+	string filename;
+
+	if (m_fileType==VTK_FILETYPE)
 	{
-		//create array
-		FDTD_FLOAT**** H_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
-		unsigned int pos[3] = {start[0],start[1],start[2]};
-		unsigned int OpPos[3];
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
-		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
-			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
-				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-
-					//in x
-					H_T[0][pos[0]][pos[1]][pos[2]]  = Eng->GetCurr(0,OpPos) / Op->GetMeshDelta(0,OpPos,true);
-					OpPos[1]++;
-					H_T[0][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(0,OpPos) / Op->GetMeshDelta(0,OpPos,true);
-					OpPos[2]++;
-					H_T[0][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(0,OpPos) / Op->GetMeshDelta(0,OpPos,true);
-					OpPos[1]--;
-					H_T[0][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(0,OpPos) / Op->GetMeshDelta(0,OpPos,true);
-					OpPos[2]--;
-					H_T[0][pos[0]][pos[1]][pos[2]] /= 4.0;
-
-					//in y
-					H_T[1][pos[0]][pos[1]][pos[2]]  = Eng->GetCurr(1,OpPos) / Op->GetMeshDelta(1,OpPos,true);
-					OpPos[0]++;
-					H_T[1][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(1,OpPos) / Op->GetMeshDelta(1,OpPos,true);
-					OpPos[2]++;
-					H_T[1][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(1,OpPos) / Op->GetMeshDelta(1,OpPos,true);
-					OpPos[0]--;
-					H_T[1][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(1,OpPos) / Op->GetMeshDelta(1,OpPos,true);
-					OpPos[2]--;
-					H_T[1][pos[0]][pos[1]][pos[2]] /= 4.0;
-
-					//in z
-					H_T[2][pos[0]][pos[1]][pos[2]]  = Eng->GetCurr(2,OpPos) / Op->GetMeshDelta(2,OpPos,true);
-					OpPos[1]++;
-					H_T[2][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(2,OpPos) / Op->GetMeshDelta(2,OpPos,true);
-					OpPos[0]++;
-					H_T[2][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(2,OpPos) / Op->GetMeshDelta(2,OpPos,true);
-					OpPos[1]--;
-					H_T[2][pos[0]][pos[1]][pos[2]] += Eng->GetCurr(2,OpPos) / Op->GetMeshDelta(2,OpPos,true);
-					OpPos[0]--;
-					H_T[2][pos[0]][pos[1]][pos[2]] /= 4.0;
-				}
-			}
-		}
-
-		if (m_fileType==VTK_FILETYPE)
-		{
-			ofstream file(filename.c_str());
-			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
-			file.close();
-		}
-		else if (m_fileType==HDF5_FILETYPE)
-		{
-			stringstream ss;
-			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numLines,Eng->GetNumberOfTimesteps()*Op->GetTimestep());
-		}
-		else
-			cerr << "ProcessFieldsTD::DumpNodeInterpol: unknown File-Type" << endl;
-		Delete_N_3DArray(H_T,numLines);
-		H_T = NULL;
+		stringstream ss;
+		ss << filePattern << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps() << ".vtk";
+		filename = ss.str();
 	}
+	else
+		filename = m_filename;
 
-	if (m_DumpType==E_FIELD_DUMP)
-	{
-		//create array
-		FDTD_FLOAT**** E_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
-		unsigned int pos[3] = {start[0],start[1],start[2]};
-		unsigned int OpPos[3];
-		unsigned int OpPosUp[3];
-		double delta, deltaUp, deltaRel;
-//		cerr << "processing h-fields... " << endl;
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
-		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			OpPosUp[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
-			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				OpPosUp[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
-				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-					OpPosUp[2]=start[2]+pos[2]*subSample[2];
-
-					for (int n=0;n<3;++n)
-					{
-						delta = Op->GetMeshDelta(n,OpPos);
-						++OpPosUp[n];
-						deltaUp = Op->GetMeshDelta(n,OpPos);
-						deltaRel = delta / (delta+deltaUp);
-						if (delta*deltaUp)
-						{
-							E_T[n][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(n,OpPos)*(1-deltaRel)/delta + Eng->GetVolt(n,OpPosUp)/deltaUp*deltaRel;
-						}
-						--OpPosUp[n];
-					}
-				}
-			}
-		}
-		if (m_fileType==VTK_FILETYPE)
-		{
-			ofstream file(filename.c_str());
-			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
-			file.close();
-		}
-		else if (m_fileType==HDF5_FILETYPE)
-		{
-			stringstream ss;
-			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numLines,(0.5+Eng->GetNumberOfTimesteps())*Op->GetTimestep());
-		}
-		else
-			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
-		Delete_N_3DArray(E_T,numLines);
-		E_T = NULL;
-	}
-}
-
-void ProcessFieldsTD::DumpCellInterpol(string filename)
-{
-#ifdef OUTPUT_IN_DRAWINGUNITS
-	double discLines_scaling = 1;
-#else
-	double discLines_scaling = Op->GetGridDelta();
-#endif
-
-	if (m_DumpType==E_FIELD_DUMP)
-	{
-		//create array
-		FDTD_FLOAT**** E_T = Create_N_3DArray<FDTD_FLOAT>(numDLines);
-		unsigned int pos[3] = {start[0],start[1],start[2]};
-		unsigned int OpPos[3];
-		double delta;
-//		cerr << "processing e-fields... " << endl;
-		for (pos[0]=0;pos[0]<numDLines[0];++pos[0])
-		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0;pos[1]<numDLines[1];++pos[1])
-			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0;pos[2]<numDLines[2];++pos[2])
-				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-					//in x
-					delta  = Op->GetMeshDelta(0,OpPos); //Op->discLines[0][OpPos[0]+1] - Op->discLines[0][OpPos[0]];
-					if (delta)
-					{
-						E_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(0,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetVolt(0,OpPos[0],OpPos[1]+1,OpPos[2]) + Eng->GetVolt(0,OpPos[0],OpPos[1],OpPos[2]+1) + Eng->GetVolt(0,OpPos[0],OpPos[1]+1,OpPos[2]+1);
-						E_T[0][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
-					}
-					//in y
-					delta  = Op->GetMeshDelta(1,OpPos); //Op->discLines[1][OpPos[1]+1] - Op->discLines[1][OpPos[1]];
-					if (delta)
-					{
-						E_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(1,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetVolt(1,OpPos[0]+1,OpPos[1],OpPos[2]) + Eng->GetVolt(1,OpPos[0],OpPos[1],OpPos[2]+1) + Eng->GetVolt(1,OpPos[0]+1,OpPos[1],OpPos[2]+1);
-						E_T[1][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
-					}
-					//in z
-					delta  = Op->GetMeshDelta(2,OpPos); //Op->discLines[2][OpPos[2]+1] - Op->discLines[2][OpPos[2]];
-					if (delta)
-					{
-						E_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(2,OpPos[0],OpPos[1],OpPos[2]) + Eng->GetVolt(2,OpPos[0],OpPos[1]+1,OpPos[2]) + Eng->GetVolt(2,OpPos[0]+1,OpPos[1],OpPos[2]) + Eng->GetVolt(2,OpPos[0]+1,OpPos[1]+1,OpPos[2]);
-						E_T[2][pos[0]][pos[1]][pos[2]] /= (4*delta);//*Op->gridDelta);
-					}
-				}
-			}
-		}
-
-		if (m_fileType==VTK_FILETYPE)
-		{
-			ofstream file(filename.c_str());
-			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discDLines,numDLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
-			file.close();
-		}
-		else if (m_fileType==HDF5_FILETYPE)
-		{
-			stringstream ss;
-			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numDLines,Eng->GetNumberOfTimesteps()*Op->GetTimestep());
-		}
-		else
-			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
-		Delete_N_3DArray(E_T,numDLines);
-		E_T = NULL;
-	}
-
-	if (m_DumpType==1)
-	{
-		//create array
-		FDTD_FLOAT**** H_T = Create_N_3DArray<FDTD_FLOAT>(numDLines);
-		unsigned int pos[3] = {start[0],start[1],start[2]};
-		unsigned int OpPos[3];
-		unsigned int OpPosUp[3];
-		double delta, deltaUp, deltaRel;
-//		cerr << "processing h-fields... " << endl;
-		for (pos[0]=0;pos[0]<numDLines[0];++pos[0])
-		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			OpPosUp[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0;pos[1]<numDLines[1];++pos[1])
-			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				OpPosUp[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0;pos[2]<numDLines[2];++pos[2])
-				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-					OpPosUp[2]=start[2]+pos[2]*subSample[2];
-
-					for (int n=0;n<3;++n)
-					{
-						delta = Op->GetMeshDelta(n,OpPos,true);
-						++OpPosUp[n];
-						deltaUp = Op->GetMeshDelta(n,OpPos,true);
-						deltaRel = delta / (delta+deltaUp);
-						if (delta*deltaUp)
-						{
-							H_T[n][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(n,OpPos)*(1-deltaRel)/delta + Eng->GetCurr(n,OpPosUp)/deltaUp*deltaRel;
-						}
-						--OpPosUp[n];
-					}
-				}
-			}
-		}
-		if (m_fileType==VTK_FILETYPE)
-		{
-			ofstream file(filename.c_str());
-			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discDLines,numDLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
-			file.close();
-		}
-		else if (m_fileType==HDF5_FILETYPE)
-		{
-			stringstream ss;
-			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numDLines,(0.5+Eng->GetNumberOfTimesteps())*Op->GetTimestep());
-		}
-		else
-			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
-		Delete_N_3DArray(H_T,numDLines);
-		H_T = NULL;
-	}
-}
-
-void ProcessFieldsTD::DumpNoInterpol(string filename)
-{
 #ifdef OUTPUT_IN_DRAWINGUNITS
 	double discLines_scaling = 1;
 #else
@@ -301,125 +54,67 @@ void ProcessFieldsTD::DumpNoInterpol(string filename)
 
 	unsigned int pos[3];
 	unsigned int OpPos[3];
-	double delta[3];
+	double out[3];
+	//create array
+	FDTD_FLOAT**** field = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (m_DumpType==E_FIELD_DUMP)
 	{
-		//create array
-		FDTD_FLOAT**** E_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
-			delta[0]=Op->GetMeshDelta(0,OpPos);//fabs(Op->MainOp->GetIndexDelta(0,OpPos[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
 				OpPos[1]=start[1]+pos[1]*subSample[1];
-				delta[1]=Op->GetMeshDelta(1,OpPos);//fabs(Op->MainOp->GetIndexDelta(1,OpPos[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
-					delta[2]=Op->GetMeshDelta(2,OpPos);//fabs(Op->MainOp->GetIndexDelta(2,OpPos[2]));
-					if (delta[0])
-						E_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(0,OpPos[0],OpPos[1],OpPos[2])/delta[0];// /Op->gridDelta;
-					if (delta[1])
-						E_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(1,OpPos[0],OpPos[1],OpPos[2])/delta[1];// /Op->gridDelta;
-					if (delta[2])
-						E_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetVolt(2,OpPos[0],OpPos[1],OpPos[2])/delta[2];// /Op->gridDelta;
+					m_Eng_Interface->GetEField(OpPos,out);
+					field[0][pos[0]][pos[1]][pos[2]] = out[0];
+					field[1][pos[0]][pos[1]][pos[2]] = out[1];
+					field[2][pos[0]][pos[1]][pos[2]] = out[2];
 				}
 			}
 		}
-		if (m_fileType==VTK_FILETYPE)
-		{
-			ofstream file(filename.c_str());
-			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("E-Field"),E_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
-			file.close();
-		}
-		else if (m_fileType==HDF5_FILETYPE)
-		{
-			stringstream ss;
-			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),E_T,numLines,Eng->GetNumberOfTimesteps()*Op->GetTimestep());
-		}
-		else
-			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
-
-		Delete_N_3DArray(E_T,numLines);
-		E_T = NULL;
 	}
 
 	if (m_DumpType==H_FIELD_DUMP)
 	{
-		//create array
-		FDTD_FLOAT**** H_T = Create_N_3DArray<FDTD_FLOAT>(numLines);
 		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
-			delta[0]=Op->GetMeshDelta(0,OpPos,true);//fabs(Op->MainOp->GetIndexWidth(0,OpPos[0]));
 			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
 			{
 				OpPos[1]=start[1]+pos[1]*subSample[1];
-				delta[1]=Op->GetMeshDelta(1,OpPos,true);//fabs(Op->MainOp->GetIndexWidth(1,OpPos[1]));
 				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
-					delta[2]=Op->GetMeshDelta(2,OpPos,true);//fabs(Op->MainOp->GetIndexWidth(2,OpPos[2]));
-					//in x
-					if (delta[0])
-						H_T[0][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(0,OpPos[0],OpPos[1],OpPos[2])/delta[0];// /Op->gridDelta;
-					if (delta[1])
-						H_T[1][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(1,OpPos[0],OpPos[1],OpPos[2])/delta[1];// /Op->gridDelta;
-					if (delta[2])
-						H_T[2][pos[0]][pos[1]][pos[2]] = Eng->GetCurr(2,OpPos[0],OpPos[1],OpPos[2])/delta[2];// /Op->gridDelta;
+					m_Eng_Interface->GetHField(OpPos,out);
+					field[0][pos[0]][pos[1]][pos[2]] = out[0];
+					field[1][pos[0]][pos[1]][pos[2]] = out[1];
+					field[2][pos[0]][pos[1]][pos[2]] = out[2];
 				}
 			}
 		}
-		if (m_fileType==VTK_FILETYPE)
-		{
-			ofstream file(filename.c_str());
-			if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
-			DumpVectorArray2VTK(file,string("H-Field"),H_T,discLines,numLines,m_precision,GetInterpolationNameByType(m_DumpMode), m_Mesh_Type, discLines_scaling);
-			file.close();
-		}
-		else if (m_fileType==HDF5_FILETYPE)
-		{
-			stringstream ss;
-			ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
-			DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),H_T,numLines,(0.5+Eng->GetNumberOfTimesteps())*Op->GetTimestep());
-		}
-		else
-			cerr << "ProcessFieldsTD::DumpCellInterpol: unknown File-Type" << endl;
-
-		Delete_N_3DArray(H_T,numLines);
-		H_T = NULL;
 	}
-}
-
-int ProcessFieldsTD::Process()
-{
-	if (Enabled==false) return -1;
-	if (filePattern.empty()) return -1;
-	if (CheckTimestep()==false) return GetNextInterval();
-	stringstream ss;
-	ss << filePattern << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
 
 	if (m_fileType==VTK_FILETYPE)
 	{
-		ss << ".vtk";
-		if (m_DumpMode==NO_INTERPOLATION)
-			DumpNoInterpol(ss.str());
-		if (m_DumpMode==NODE_INTERPOLATE)
-			DumpNodeInterpol(ss.str());
-		if (m_DumpMode==CELL_INTERPOLATE)
-			DumpCellInterpol(ss.str());
+		ofstream file(filename.c_str());
+		if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
+		DumpVectorArray2VTK(file,GetFieldNameByType(m_DumpType),field,discLines,numLines,m_precision,string("Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString(), m_Mesh_Type, discLines_scaling);
+		file.close();
 	}
 	else if (m_fileType==HDF5_FILETYPE)
 	{
-		if (m_DumpMode==NO_INTERPOLATION)
-			DumpNoInterpol(m_filename);
-		if (m_DumpMode==NODE_INTERPOLATE)
-			DumpNodeInterpol(m_filename);
-		if (m_DumpMode==CELL_INTERPOLATE)
-			DumpCellInterpol(m_filename);
+		stringstream ss;
+		ss << std::setw( pad_length ) << std::setfill( '0' ) << Eng->GetNumberOfTimesteps();
+		DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),field,numLines,(0.5+Eng->GetNumberOfTimesteps())*Op->GetTimestep());
 	}
+	else
+		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;
+
+	Delete_N_3DArray(field,numLines);
+
+
 	return GetNextInterval();
 }
