@@ -63,7 +63,7 @@ openEMS::openEMS()
 	endCrit = 1e-6;
 	m_OverSampling = 4;
 
-	m_engine = EngineType_Standard;
+	m_engine = EngineType_Multithreaded; //default engine type
 	m_engine_numThreads = 0;
 
 	m_Abort = false;
@@ -129,16 +129,10 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 		m_debugCSX = true;
 		return true;
 	}
-	else if (strcmp(argv,"--engine=multithreaded")==0)
+	else if (strcmp(argv,"--engine=basic")==0)
 	{
-		cout << "openEMS - enabled multithreading" << endl;
-		m_engine = EngineType_Multithreaded;
-		return true;
-	}
-	else if (strncmp(argv,"--numThreads=",13)==0)
-	{
-		m_engine_numThreads = atoi(argv+13);
-		cout << "openEMS - fixed number of threads: " << m_engine_numThreads << endl;
+		cout << "openEMS - enabled basic engine" << endl;
+		m_engine = EngineType_Basic;
 		return true;
 	}
 	else if (strcmp(argv,"--engine=sse")==0)
@@ -151,6 +145,18 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - enabled compressed sse engine" << endl;
 		m_engine = EngineType_SSE_Compressed;
+		return true;
+	}
+	else if (strcmp(argv,"--engine=multithreaded")==0)
+	{
+		cout << "openEMS - enabled multithreading" << endl;
+		m_engine = EngineType_Multithreaded;
+		return true;
+	}
+	else if (strncmp(argv,"--numThreads=",13)==0)
+	{
+		m_engine_numThreads = atoi(argv+13);
+		cout << "openEMS - fixed number of threads: " << m_engine_numThreads << endl;
 		return true;
 	}
 	else if (strcmp(argv,"--engine=fastest")==0)
