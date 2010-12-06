@@ -43,7 +43,7 @@ double ProcessCurrent::CalcIntegral()
 		int Dump_Dim = 0;
 		int NormDir = 0;
 
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			if (start[n]>stop[n])
 			{
@@ -75,55 +75,55 @@ double ProcessCurrent::CalcIntegral()
 		case 0:
 			//y-current
 			if (m_stop_inside[0] && m_start_inside[2])
-				for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				for (unsigned int i=start[1]+1; i<=stop[1]; ++i)
 					current+=Eng->GetCurr(1,stop[0],i,start[2]);
 			//z-current
 			if (m_stop_inside[0] && m_stop_inside[1])
-				for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				for (unsigned int i=start[2]+1; i<=stop[2]; ++i)
 					current+=Eng->GetCurr(2,stop[0],stop[1],i);
 			//y-current
 			if (m_start_inside[0] && m_stop_inside[2])
-				for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				for (unsigned int i=start[1]+1; i<=stop[1]; ++i)
 					current-=Eng->GetCurr(1,start[0],i,stop[2]);
 			//z-current
 			if (m_start_inside[0] && m_start_inside[1])
-				for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				for (unsigned int i=start[2]+1; i<=stop[2]; ++i)
 					current-=Eng->GetCurr(2,start[0],start[1],i);
 			break;
 		case 1:
 			//z-current
 			if (m_start_inside[0] && m_start_inside[1])
-				for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				for (unsigned int i=start[2]+1; i<=stop[2]; ++i)
 					current+=Eng->GetCurr(2,start[0],start[1],i);
 			//x-current
 			if (m_stop_inside[1] && m_stop_inside[2])
-				for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				for (unsigned int i=start[0]+1; i<=stop[0]; ++i)
 					current+=Eng->GetCurr(0,i,stop[1],stop[2]);
 			//z-current
 			if (m_stop_inside[0] && m_stop_inside[1])
-				for (unsigned int i=start[2]+1;i<=stop[2];++i)
+				for (unsigned int i=start[2]+1; i<=stop[2]; ++i)
 					current-=Eng->GetCurr(2,stop[0],stop[1],i);
 			//x-current
 			if (m_start_inside[1] && m_start_inside[2])
-				for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				for (unsigned int i=start[0]+1; i<=stop[0]; ++i)
 					current-=Eng->GetCurr(0,i,start[1],start[2]);
 			break;
 		case 2:
 			//x-current
 			if (m_start_inside[1] && m_start_inside[2])
-				for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				for (unsigned int i=start[0]+1; i<=stop[0]; ++i)
 					current+=Eng->GetCurr(0,i,start[1],start[2]);
 			//y-current
 			if (m_stop_inside[0] && m_start_inside[2])
-				for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				for (unsigned int i=start[1]+1; i<=stop[1]; ++i)
 					current+=Eng->GetCurr(1,stop[0],i,start[2]);
 			//x-current
 			if (m_stop_inside[1] && m_stop_inside[2])
-				for (unsigned int i=start[0]+1;i<=stop[0];++i)
+				for (unsigned int i=start[0]+1; i<=stop[0]; ++i)
 					current-=Eng->GetCurr(0,i,stop[1],stop[2]);
 			//y-current
 			if (m_start_inside[0] && m_stop_inside[2])
-				for (unsigned int i=start[1]+1;i<=stop[1];++i)
+				for (unsigned int i=start[1]+1; i<=stop[1]; ++i)
 					current-=Eng->GetCurr(1,start[0],i,stop[2]);
 			break;
 		default:

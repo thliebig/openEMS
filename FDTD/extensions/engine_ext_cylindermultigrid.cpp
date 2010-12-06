@@ -96,7 +96,11 @@ void Engine_Ext_CylinderMultiGrid::SyncVoltages()
 	unsigned int pos[3];
 	pos[0] = m_Eng_MG->Op_CMG->GetSplitPos()-1;
 	unsigned int pos1_half = 0;
-	f4vector v_null; v_null.f[0] = 0;v_null.f[1] = 0;v_null.f[2] = 0;v_null.f[3] = 0;
+	f4vector v_null;
+	v_null.f[0] = 0;
+	v_null.f[1] = 0;
+	v_null.f[2] = 0;
+	v_null.f[3] = 0;
 	for (pos[1]=0; pos[1]<numLines[1]-1; pos[1]+=2)
 	{
 		pos1_half = pos[1]/2;

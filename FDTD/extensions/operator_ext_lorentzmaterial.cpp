@@ -20,7 +20,7 @@
 
 Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Operator_Ext_Dispersive(op)
 {
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		v_int_ADE[n] = NULL;
 		v_ext_ADE[n] = NULL;
@@ -31,7 +31,7 @@ Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Opera
 
 Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 {
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		delete[] v_int_ADE[n];
 		v_int_ADE[n] = NULL;
@@ -61,16 +61,16 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	vector<double> i_ext[3];
 	vector<unsigned int> v_pos[3];
 
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				unsigned int index = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
 				//calc epsilon lorentz material
 				b_pos_on = false;
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 				{
 					L_D[n]=0;
 					coord[0] = m_Op->GetDiscLine(0,pos[0]);
@@ -91,7 +91,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					}
 				}
 
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 				{
 					C_D[n]=0;
 					coord[0] = m_Op->GetDiscLine(0,pos[0],true);
@@ -114,7 +114,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 
 				if (b_pos_on) //this position has active lorentz material
 				{
-					for (unsigned int n=0;n<3;++n)
+					for (unsigned int n=0; n<3; ++n)
 					{
 						v_pos[n].push_back(pos[n]);
 						v_int[n].push_back(1);
@@ -137,17 +137,17 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	//copy all vectors into the array's
 	m_LM_Count = v_pos[0].size();
 
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		m_LM_pos[n] = new unsigned int[m_LM_Count];
-		for (unsigned int i=0;i<m_LM_Count;++i)
+		for (unsigned int i=0; i<m_LM_Count; ++i)
 			m_LM_pos[n][i] = v_pos[n].at(i);
 		if (m_volt_ADE_On)
 		{
 			v_int_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
 			v_ext_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
 
-			for (unsigned int i=0;i<m_LM_Count;++i)
+			for (unsigned int i=0; i<m_LM_Count; ++i)
 			{
 				v_int_ADE[n][i] = v_int[n].at(i);
 				v_ext_ADE[n][i] = v_ext[n].at(i);
@@ -158,7 +158,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 			i_int_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
 			i_ext_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
 
-			for (unsigned int i=0;i<m_LM_Count;++i)
+			for (unsigned int i=0; i<m_LM_Count; ++i)
 			{
 				i_int_ADE[n][i] = i_int[n].at(i);
 				i_ext_ADE[n][i] = i_ext[n].at(i);

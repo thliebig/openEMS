@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 
 	if (argc>=3)
 	{
-		for (int n=2;n<argc;++n)
+		for (int n=2; n<argc; ++n)
 		{
 			if (g_settings.parseCommandLineArgument(argv[n]))
 				continue;

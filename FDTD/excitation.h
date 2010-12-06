@@ -36,9 +36,9 @@ public:
 	virtual unsigned int GetMaxExcitationTimestep() const;
 
 	void setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,
-								 vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir );
+	                             vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir );
 	void setupCurrentExcitation( vector<unsigned int> const curr_vIndex[3], vector<FDTD_FLOAT> const& curr_vExcit,
-								 vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir );
+	                             vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir );
 
 	void SetNyquistNum(unsigned int nyquist) {m_nyquistTS=nyquist;}
 	unsigned int GetNyquistNum() const {return m_nyquistTS;}

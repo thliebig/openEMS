@@ -183,14 +183,22 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 		}
 	}
 	else if (minmaxA>2*PI)
-		{cerr << "Operator_Cylinder::SetGeometryCSX: Alpha Max-Min must not be larger than 2*PI!!!" << endl; Reset(); return false;}
+	{
+		cerr << "Operator_Cylinder::SetGeometryCSX: Alpha Max-Min must not be larger than 2*PI!!!" << endl;
+		Reset();
+		return false;
+	}
 	else
 	{
 		CC_closedAlpha=false;
 	}
 
 	if (discLines[0][0]<0)
-		{cerr << "Operator_Cylinder::SetGeometryCSX: r<0 not allowed in Cylinder Coordinates!!!" << endl; Reset(); return false;}
+	{
+		cerr << "Operator_Cylinder::SetGeometryCSX: r<0 not allowed in Cylinder Coordinates!!!" << endl;
+		Reset();
+		return false;
+	}
 	else if (discLines[0][0]==0.0)
 	{
 		cout << "Operator_Cylinder::SetGeometryCSX: r=0 included..." << endl;
@@ -208,15 +216,16 @@ void Operator_Cylinder::ApplyElectricBC(bool* dirs)
 	if (dirs==NULL) return;
 	if (CC_closedAlpha)
 	{
-		dirs[2]=0;dirs[3]=0; //no PEC in alpha directions...
+		dirs[2]=0;
+		dirs[3]=0; //no PEC in alpha directions...
 	}
 	if (CC_R0_included)
 	{
 		// E in alpha direction ( aka volt[1][x][y][z] ) is not defined for r==0 --> always zero...
 		unsigned int pos[3] = {0,0,0};
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				SetVV(1,pos[0],pos[1],pos[2], 0 );
 				SetVI(1,pos[0],pos[1],pos[2], 0 );
@@ -231,7 +240,8 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 	if (dirs==NULL) return;
 	if (CC_closedAlpha)
 	{
-		dirs[2]=0;dirs[3]=0; //no PMC in alpha directions...
+		dirs[2]=0;
+		dirs[3]=0; //no PMC in alpha directions...
 	}
 	if (CC_R0_included)
 	{

@@ -34,18 +34,18 @@ class Operator_Ext_PML_SF : public Operator_Extension
 public:
 	~Operator_Ext_PML_SF();
 
-	virtual void SetBoundaryCondition(int* BCs) {for (int n=0;n<6;++n) m_BC[n]=BCs[n];}
+	virtual void SetBoundaryCondition(int* BCs) {for (int n=0; n<6; ++n) m_BC[n]=BCs[n];}
 
 	inline virtual FDTD_FLOAT& GetVV(unsigned int nP, unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[nP][n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetVI(unsigned int nP, unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[nP][n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetII(unsigned int nP, unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return ii[nP][n][x][y][z]; }
 	inline virtual FDTD_FLOAT& GetIV(unsigned int nP, unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return iv[nP][n][x][y][z]; }
 
-	virtual double GetEdgeArea(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny);UNUSED(pos);UNUSED(dualMesh);return 0.0;}
-	virtual double GetEdgeLength(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny);UNUSED(pos);UNUSED(dualMesh);return 0.0;}
+	virtual double GetEdgeArea(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
+	virtual double GetEdgeLength(int ny, unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
 
 	//! This will resturn the pml parameter grading
-	virtual double GetKappaGraded(double depth, double Zm) const {UNUSED(depth);UNUSED(Zm);return 0.0;}
+	virtual double GetKappaGraded(double depth, double Zm) const {UNUSED(depth); UNUSED(Zm); return 0.0;}
 
 	//! Set the grading function for the pml
 	/*!
@@ -73,7 +73,7 @@ protected:
 
 	virtual void ApplyBC() {};
 
-	virtual bool Calc_ECPos(int nP, int n, unsigned int* pos, double* inEC) const {UNUSED(n);UNUSED(nP);UNUSED(pos);UNUSED(inEC);return true;};
+	virtual bool Calc_ECPos(int nP, int n, unsigned int* pos, double* inEC) const {UNUSED(n); UNUSED(nP); UNUSED(pos); UNUSED(inEC); return true;};
 
 	unsigned int m_numLines[3];
 	bool m_SetupDone;

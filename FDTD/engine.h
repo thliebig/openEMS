@@ -21,8 +21,9 @@
 #include <fstream>
 #include "operator.h"
 
-namespace NS_Engine_Multithread {
-	class thread; // evil hack to access numTS from multithreading context
+namespace NS_Engine_Multithread
+{
+class thread; // evil hack to access numTS from multithreading context
 }
 
 class Engine_Extension;

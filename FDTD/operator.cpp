@@ -39,7 +39,7 @@ Operator::Operator() : Operator_Base()
 
 Operator::~Operator()
 {
-	for (size_t n=0;n<m_Op_exts.size();++n)
+	for (size_t n=0; n<m_Op_exts.size(); ++n)
 		delete m_Op_exts.at(n);
 	m_Op_exts.clear();
 	Reset();
@@ -65,7 +65,7 @@ void Operator::Init()
 	MainOp=NULL;
 	DualOp=NULL;
 
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		EC_C[n]=NULL;
 		EC_G[n]=NULL;
@@ -84,7 +84,7 @@ void Operator::Reset()
 	Delete_N_3DArray(ii,numLines);
 	delete MainOp;
 	delete DualOp;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		delete[] EC_C[n];
 		delete[] EC_G[n];
@@ -128,7 +128,7 @@ bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, boo
 {
 	bool ok=true;
 	unsigned int numLines[3];
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		numLines[n] = GetNumberOfLines(n);
 		if (inside) //set defaults
@@ -136,7 +136,8 @@ bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, boo
 		uicoord[n]=0;
 		if (dcoord[n]<discLines[n][0])
 		{
-			ok=false;uicoord[n]=0;
+			ok=false;
+			uicoord[n]=0;
 			if (inside) inside[n] = false;
 		}
 		else if (dcoord[n]==discLines[n][0])
@@ -154,7 +155,7 @@ bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, boo
 			if (lower) uicoord[n]=numLines[n]-2;
 		}
 		else
-			for (unsigned int i=1;i<numLines[n];++i)
+			for (unsigned int i=1; i<numLines[n]; ++i)
 			{
 				if (dcoord[n]<discLines[n][i])
 				{
@@ -201,7 +202,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	while (minFoot<stopFoot)
 	{
 		minDist=1e300;
-		for (int n=0;n<3;++n) //check all 6 surrounding points
+		for (int n=0; n<3; ++n) //check all 6 surrounding points
 		{
 			P[0] = discLines[0][currPos[0]];
 			P[1] = discLines[1][currPos[1]];
@@ -251,7 +252,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	}
 
 	//close missing edges, if currPos is not equal to uiStopPos
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		if (currPos[n]>uiStop[n])
 		{
@@ -315,7 +316,7 @@ void Operator::ShowExtStat() const
 {
 	if (m_Op_exts.size()==0) return;
 	cout << "-----------------------------------" << endl;
-	for (size_t n=0;n<m_Op_exts.size();++n)
+	for (size_t n=0; n<m_Op_exts.size(); ++n)
 		m_Op_exts.at(n)->ShowStat(cout);
 	cout << "-----------------------------------" << endl;
 }
@@ -340,7 +341,7 @@ void Operator::DumpOperator2File(string filename)
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (Exc)
 	{
-		for (unsigned int n=0;n<Exc->Volt_Count;++n)
+		for (unsigned int n=0; n<Exc->Volt_Count; ++n)
 			exc[Exc->Volt_dir[n]][Exc->Volt_index[0][n]][Exc->Volt_index[1][n]][Exc->Volt_index[2][n]] = Exc->Volt_amp[n];
 	}
 
@@ -400,9 +401,12 @@ void Operator::DumpPEC2File( string filename )
 	double scaling = 1;
 #endif
 
-	for (pos[0]=0; pos[0]<numLines[0]-1; pos[0]++) {
-		for (pos[1]=0; pos[1]<numLines[1]-1; pos[1]++) {
-			for (pos[2]=0; pos[2]<numLines[2]-1; pos[2]++) {
+	for (pos[0]=0; pos[0]<numLines[0]-1; pos[0]++)
+	{
+		for (pos[1]=0; pos[1]<numLines[1]-1; pos[1]++)
+		{
+			for (pos[2]=0; pos[2]<numLines[2]-1; pos[2]++)
+			{
 				if ((pos[1] != 0) && (pos[2] != 0))
 				{
 					// PEC surrounds the computational area; do not output this
@@ -484,13 +488,13 @@ void Operator::DumpMaterial2File(string filename)
 	FDTD_FLOAT**** sigma   = Create_N_3DArray<FDTD_FLOAT>(numLines);
 
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 				{
 					double inMat[4];
 					Calc_EffMatPos(n, pos, inMat);
@@ -525,15 +529,25 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 	CSX = geo;
 
 	CSRectGrid* grid=CSX->GetGrid();
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		discLines[n] = grid->GetLines(n,discLines[n],numLines[n],true);
 		if (n==1)
-		if (numLines[n]<3) {cerr << "CartOperator::SetGeometryCSX: you need at least 3 disc-lines in every direction (3D!)!!!" << endl; Reset(); return false;}
+			if (numLines[n]<3)
+			{
+				cerr << "CartOperator::SetGeometryCSX: you need at least 3 disc-lines in every direction (3D!)!!!" << endl;
+				Reset();
+				return false;
+			}
 	}
 	MainOp = new AdrOp(numLines[0],numLines[1],numLines[2]);
 	MainOp->SetGrid(discLines[0],discLines[1],discLines[2]);
-	if (grid->GetDeltaUnit()<=0)  {cerr << "CartOperator::SetGeometryCSX: grid delta unit must not be <=0 !!!" << endl; Reset(); return false;}
+	if (grid->GetDeltaUnit()<=0)
+	{
+		cerr << "CartOperator::SetGeometryCSX: grid delta unit must not be <=0 !!!" << endl;
+		Reset();
+		return false;
+	}
 	else gridDelta=grid->GetDeltaUnit();
 	MainOp->SetGridDelta(1);
 	MainOp->AddCellAdrOp();
@@ -612,13 +626,13 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 
 	unsigned int pos[3];
 
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
-				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
 					Calc_ECOperatorPos(n,pos);
 				}
@@ -629,7 +643,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	//Apply PEC to all boundary's
 	bool PEC[6]={1,1,1,1,1,1};
 	//make an exception for BC == -1
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 		if ((m_BC[n]==-1))
 			PEC[n] = false;
 	ApplyElectricBC(PEC);
@@ -637,7 +651,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	CalcPEC();
 
 	bool PMC[6];
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 		PMC[n] = m_BC[n]==1;
 	ApplyMagneticBC(PMC);
 
@@ -646,7 +660,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	if (CalcFieldExcitation()==false) return -1;
 
 	//all information available for extension... create now...
-	for (size_t n=0;n<m_Op_exts.size();++n)
+	for (size_t n=0; n<m_Op_exts.size(); ++n)
 		m_Op_exts.at(n)->BuildExtension();
 
 	if (debugFlags & debugMaterial)
@@ -657,12 +671,16 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 		DumpPEC2File( "PEC_dump.vtk" );
 
 	//cleanup
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
-		delete[] EC_C[n];EC_C[n]=NULL;
-		delete[] EC_G[n];EC_G[n]=NULL;
-		delete[] EC_L[n];EC_L[n]=NULL;
-		delete[] EC_R[n];EC_R[n]=NULL;
+		delete[] EC_C[n];
+		EC_C[n]=NULL;
+		delete[] EC_G[n];
+		EC_G[n]=NULL;
+		delete[] EC_L[n];
+		EC_L[n]=NULL;
+		delete[] EC_R[n];
+		EC_R[n]=NULL;
 	}
 
 	return 0;
@@ -674,13 +692,13 @@ void Operator::ApplyElectricBC(bool* dirs)
 		return;
 
 	unsigned int pos[3];
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		int nP = (n+1)%3;
 		int nPP = (n+2)%3;
-		for (pos[nP]=0;pos[nP]<numLines[nP];++pos[nP])
+		for (pos[nP]=0; pos[nP]<numLines[nP]; ++pos[nP])
 		{
-			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
+			for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 			{
 				if (dirs[2*n])
 				{
@@ -715,13 +733,13 @@ void Operator::ApplyMagneticBC(bool* dirs)
 		return;
 
 	unsigned int pos[3];
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		int nP = (n+1)%3;
 		int nPP = (n+2)%3;
-		for (pos[nP]=0;pos[nP]<numLines[nP];++pos[nP])
+		for (pos[nP]=0; pos[nP]<numLines[nP]; ++pos[nP])
 		{
-			for (pos[nPP]=0;pos[nPP]<numLines[nPP];++pos[nPP])
+			for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 			{
 				if (dirs[2*n])
 				{
@@ -912,7 +930,9 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	EffMat[1]/=area;
 
 	//******************************* mu,sigma averaging *****************************//
-	loc_pos[0]=pos[0];loc_pos[1]=pos[1];loc_pos[2]=pos[2];
+	loc_pos[0]=pos[0];
+	loc_pos[1]=pos[1];
+	loc_pos[2]=pos[2];
 	double length=0;
 	//shift down
 	shiftCoord[n] = coord[n]-delta_M*0.25;
@@ -963,7 +983,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	EffMat[2] = length * __MUE0__ / EffMat[2];
 	if (EffMat[3]) EffMat[3]=length / EffMat[3];
 
-	for (int n=0;n<4;++n)
+	for (int n=0; n<4; ++n)
 		if (isnan(EffMat[n]) || isinf(EffMat[n]))
 		{
 			cerr << "Operator::Calc_EffMatPos: An effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
@@ -975,7 +995,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 
 void Operator::Init_EC()
 {
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		//init x-cell-array
 		delete[] EC_C[n];
@@ -986,7 +1006,7 @@ void Operator::Init_EC()
 		EC_G[n] = new double[MainOp->GetSize()];
 		EC_L[n] = new double[MainOp->GetSize()];
 		EC_R[n] = new double[MainOp->GetSize()];
-		for (unsigned int i=0;i<MainOp->GetSize();i++) //init all
+		for (unsigned int i=0; i<MainOp->GetSize(); i++) //init all
 		{
 			EC_C[n][i]=0;
 			EC_G[n][i]=0;
@@ -998,17 +1018,21 @@ void Operator::Init_EC()
 
 bool Operator::Calc_EC()
 {
-	if (CSX==NULL) {cerr << "CartOperator::Calc_EC: CSX not given or invalid!!!" << endl; return false;}
+	if (CSX==NULL)
+	{
+		cerr << "CartOperator::Calc_EC: CSX not given or invalid!!!" << endl;
+		return false;
+	}
 	unsigned int ipos;
 	unsigned int pos[3];
 	double inEC[4];
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
-		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
-				for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+				for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 				{
 					Calc_ECPos(n,pos,inEC);
 					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
@@ -1046,16 +1070,16 @@ double Operator::CalcTimestep_Var1()
 	unsigned int ipos_PM;
 	unsigned int ipos_PPM;
 	MainOp->SetReflection2Cell();
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		int nP = (n+1)%3;
 		int nPP = (n+2)%3;
 
-		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
-				for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+				for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 				{
 					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
 					ipos_PM = MainOp->Shift(nP,-1);
@@ -1082,7 +1106,7 @@ double min(double* val, unsigned int count)
 	if (count==0)
 		return 0.0;
 	double min = val[0];
-	for (unsigned int n=1;n<count;++n)
+	for (unsigned int n=1; n<count; ++n)
 		if (val[n]<min)
 			min = val[n];
 	return min;
@@ -1101,16 +1125,16 @@ double Operator::CalcTimestep_Var3()
 	double wqp=0,wt1=0,wt2=0;
 	double wt_4[4]={0,0,0,0};
 	MainOp->SetReflection2Cell();
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		int nP = (n+1)%3;
 		int nPP = (n+2)%3;
 
-		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
-				for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+				for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 				{
 					MainOp->ResetShift();
 					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
@@ -1191,24 +1215,24 @@ bool Operator::CalcFieldExcitation()
 	CSProperties* prop=NULL;
 	int priority=0;
 
-	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 	{
 		delta[2]=fabs(MainOp->GetIndexDelta(2,pos[2]));
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			delta[1]=fabs(MainOp->GetIndexDelta(1,pos[1]));
-			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 			{
 				delta[0]=fabs(MainOp->GetIndexDelta(0,pos[0]));
 
 				//electric field excite
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 				{
 					volt_coord[0] = discLines[0][pos[0]];
 					volt_coord[1] = discLines[1][pos[1]];
 					volt_coord[2] = discLines[2][pos[2]];
 					volt_coord[n]+=delta[n]*0.5;
-					for (size_t p=0;p<vec_prop.size();++p)
+					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);
 						elec = prop->ToElectrode();
@@ -1239,7 +1263,7 @@ bool Operator::CalcFieldExcitation()
 				}
 
 				//magnetic field excite
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 				{
 					if ((pos[0]>=numLines[0]-1) || (pos[1]>=numLines[1]-1) || (pos[2]>=numLines[2]-1))
 						continue;  //skip the last H-Line which is outside the FDTD-domain
@@ -1250,7 +1274,7 @@ bool Operator::CalcFieldExcitation()
 					curr_coord[2] = discLines[2][pos[2]];
 					curr_coord[nP] +=delta[nP]*0.5;
 					curr_coord[nPP] +=delta[nPP]*0.5;
-					for (size_t p=0;p<vec_prop.size();++p)
+					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);
 						elec = prop->ToElectrode();
@@ -1289,24 +1313,24 @@ bool Operator::CalcFieldExcitation()
 	double p2[3];
 	double deltaN=0.0;
 	struct Grid_Path path;
-	for (size_t p=0;p<vec_prop.size();++p)
+	for (size_t p=0; p<vec_prop.size(); ++p)
 	{
 		prop = vec_prop.at(p);
 		elec = prop->ToElectrode();
-		for (size_t n=0;n<prop->GetQtyPrimitives();++n)
+		for (size_t n=0; n<prop->GetQtyPrimitives(); ++n)
 		{
 			CSPrimitives* prim = prop->GetPrimitive(n);
 			CSPrimCurve* curv = prim->ToCurve();
 			if (curv)
 			{
-				for (size_t i=1;i<curv->GetNumberOfPoints();++i)
+				for (size_t i=1; i<curv->GetNumberOfPoints(); ++i)
 				{
 					curv->GetPoint(i-1,p1);
 					curv->GetPoint(i,p2);
 					path = FindPath(p1,p2);
 					if (path.dir.size()>0)
 						prim->SetPrimitiveUsed(true);
-					for (size_t t=0;t<path.dir.size();++t)
+					for (size_t t=0; t<path.dir.size(); ++t)
 					{
 						n = path.dir.at(t);
 						pos[0] = path.posPath[0].at(t);
@@ -1358,7 +1382,9 @@ bool Operator::CalcFieldExcitation()
 
 bool Operator::CalcPEC()
 {
-	m_Nr_PEC[0]=0;	m_Nr_PEC[1]=0;	m_Nr_PEC[2]=0;
+	m_Nr_PEC[0]=0;
+	m_Nr_PEC[1]=0;
+	m_Nr_PEC[2]=0;
 
 	CalcPEC_Range(0,numLines[0]-1,m_Nr_PEC);
 
@@ -1372,13 +1398,13 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 	double coord[3];
 	double delta;
 	unsigned int pos[3];
-	for (pos[0]=startX;pos[0]<=stopX;++pos[0])
+	for (pos[0]=startX; pos[0]<=stopX; ++pos[0])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 				{
 					coord[0] = discLines[0][pos[0]];
 					coord[1] = discLines[1][pos[1]];
@@ -1393,7 +1419,7 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 							SetVV(n,pos[0],pos[1],pos[2], 0 );
 							SetVI(n,pos[0],pos[1],pos[2], 0 );
 							++counter[n];
-				//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
+							//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
 						}
 					}
 				}
@@ -1409,23 +1435,23 @@ void Operator::CalcPEC_Curves()
 	double p2[3];
 	struct Grid_Path path;
 	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::METAL);
-	for (size_t p=0;p<vec_prop.size();++p)
+	for (size_t p=0; p<vec_prop.size(); ++p)
 	{
 		CSProperties* prop = vec_prop.at(p);
-		for (size_t n=0;n<prop->GetQtyPrimitives();++n)
+		for (size_t n=0; n<prop->GetQtyPrimitives(); ++n)
 		{
 			CSPrimitives* prim = prop->GetPrimitive(n);
 			CSPrimCurve* curv = prim->ToCurve();
 			if (curv)
 			{
-				for (size_t i=1;i<curv->GetNumberOfPoints();++i)
+				for (size_t i=1; i<curv->GetNumberOfPoints(); ++i)
 				{
 					curv->GetPoint(i-1,p1);
 					curv->GetPoint(i,p2);
 					path = FindPath(p1,p2);
 					if (path.dir.size()>0)
 						prim->SetPrimitiveUsed(true);
-					for (size_t t=0;t<path.dir.size();++t)
+					for (size_t t=0; t<path.dir.size(); ++t)
 					{
 //						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
 						SetVV(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t), 0 );

@@ -25,7 +25,7 @@
 class Global
 {
 public:
-    Global();
+	Global();
 	bool parseCommandLineArgument( const char *argv );
 
 	bool showProbeDiscretization() const {return m_showProbeDiscretization;}

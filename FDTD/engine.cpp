@@ -35,7 +35,7 @@ Engine::Engine(const Operator* op)
 	m_type = BASIC;
 	numTS = 0;
 	Op = op;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 		numLines[n] = Op->GetOriginalNumLines(n);
 	volt=NULL;
 	curr=NULL;
@@ -61,7 +61,7 @@ void Engine::Init()
 
 void Engine::InitExtensions()
 {
-	for (size_t n=0;n<Op->GetNumberOfExtentions();++n)
+	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
 	{
 		Operator_Extension* op_ext = Op->GetExtension(n);
 		Engine_Extension* eng_ext = op_ext->CreateEngineExtention();
@@ -75,7 +75,7 @@ void Engine::InitExtensions()
 
 void Engine::ClearExtensions()
 {
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		delete m_Eng_exts.at(n);
 	m_Eng_exts.clear();
 }
@@ -111,13 +111,13 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 
 	pos[0] = startX;
 	//voltage updates
-	for (unsigned int posX=0;posX<numX;++posX)
+	for (unsigned int posX=0; posX<numX; ++posX)
 	{
 		shift[0]=pos[0];
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			shift[1]=pos[1];
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				shift[2]=pos[2];
 				//do the updates here
@@ -144,7 +144,7 @@ void Engine::ApplyVoltageExcite()
 	unsigned int ny;
 	unsigned int pos[3];
 	//soft voltage excitation here (E-field excite)
-	for (unsigned int n=0;n<Op->Exc->Volt_Count;++n)
+	for (unsigned int n=0; n<Op->Exc->Volt_Count; ++n)
 	{
 		exc_pos = (int)numTS - (int)Op->Exc->Volt_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
@@ -165,11 +165,11 @@ void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
 	unsigned int pos[3];
 	pos[0] = startX;
-	for (unsigned int posX=0;posX<numX;++posX)
+	for (unsigned int posX=0; posX<numX; ++posX)
 	{
-		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2]-1;++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]-1; ++pos[2])
 			{
 				//do the updates here
 				//for x
@@ -195,7 +195,7 @@ void Engine::ApplyCurrentExcite()
 	unsigned int ny;
 	unsigned int pos[3];
 	//soft current excitation here (H-field excite)
-	for (unsigned int n=0;n<Op->Exc->Curr_Count;++n)
+	for (unsigned int n=0; n<Op->Exc->Curr_Count; ++n)
 	{
 		exc_pos = (int)numTS - (int)Op->Exc->Curr_delay[n];
 		exc_pos *= (exc_pos>0 && exc_pos<=(int)Op->Exc->Length);
@@ -215,7 +215,7 @@ void Engine::ApplyCurrentExcite()
 void Engine::DoPreVoltageUpdates()
 {
 	//execute extensions in reverse order -> highest priority gets access to the voltages last
-	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+	for (int n=m_Eng_exts.size()-1; n>=0; --n)
 		m_Eng_exts.at(n)->DoPreVoltageUpdates();
 
 }
@@ -223,41 +223,41 @@ void Engine::DoPreVoltageUpdates()
 void Engine::DoPostVoltageUpdates()
 {
 	//execute extensions in normal order -> highest priority gets access to the voltages first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		m_Eng_exts.at(n)->DoPostVoltageUpdates();
 }
 
 void Engine::Apply2Voltages()
 {
 	//execute extensions in normal order -> highest priority gets access to the voltages first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		m_Eng_exts.at(n)->Apply2Voltages();
 }
 
 void Engine::DoPreCurrentUpdates()
 {
 	//execute extensions in reverse order -> highest priority gets access to the currents last
-	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+	for (int n=m_Eng_exts.size()-1; n>=0; --n)
 		m_Eng_exts.at(n)->DoPreCurrentUpdates();
 }
 
 void Engine::DoPostCurrentUpdates()
 {
 	//execute extensions in normal order -> highest priority gets access to the currents first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		m_Eng_exts.at(n)->DoPostCurrentUpdates();
 }
 
 void Engine::Apply2Current()
 {
 	//execute extensions in normal order -> highest priority gets access to the currents first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		m_Eng_exts.at(n)->Apply2Current();
 }
 
 bool Engine::IterateTS(unsigned int iterTS)
 {
-	for (unsigned int iter=0;iter<iterTS;++iter)
+	for (unsigned int iter=0; iter<iterTS; ++iter)
 	{
 		//voltage updates with extensions
 		DoPreVoltageUpdates();

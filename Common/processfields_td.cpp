@@ -60,13 +60,13 @@ int ProcessFieldsTD::Process()
 	FDTD_FLOAT**** field = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (m_DumpType==E_FIELD_DUMP)
 	{
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
 				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
 					m_Eng_Interface->GetEField(OpPos,out);
@@ -80,13 +80,13 @@ int ProcessFieldsTD::Process()
 
 	if (m_DumpType==H_FIELD_DUMP)
 	{
-		for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 		{
 			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
 				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
 					OpPos[2]=start[2]+pos[2]*subSample[2];
 					m_Eng_Interface->GetHField(OpPos,out);
@@ -101,7 +101,10 @@ int ProcessFieldsTD::Process()
 	if (m_fileType==VTK_FILETYPE)
 	{
 		ofstream file(filename.c_str());
-		if (file.is_open()==false) { cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;};
+		if (file.is_open()==false)
+		{
+			cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;
+		};
 		DumpVectorArray2VTK(file,GetFieldNameByType(m_DumpType),field,discLines,numLines,m_precision,string("Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString(), m_Mesh_Type, discLines_scaling);
 		file.close();
 	}

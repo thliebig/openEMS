@@ -26,7 +26,7 @@ Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine
 	CC_closedAlpha = op_ext->CC_closedAlpha;
 	CC_R0_included = op_ext->CC_R0_included;
 
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 		numLines[n] = op_ext->m_Op->GetOriginalNumLines(n);
 
 	//this cylindrical extension should be executed first?
@@ -41,17 +41,17 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 	{
 		unsigned int pos[3];
 		pos[0] = 0;
-		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
 			m_Eng->SetVolt(2,0,0,pos[2], m_Eng->GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]]);
-			for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
+			for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
 			{
-					m_Eng->SetVolt(2,0,0,pos[2], m_Eng->GetVolt(2,0,0,pos[2]) + cyl_Op->vi_R0[pos[2]] *  m_Eng->GetCurr(1,0,pos[1],pos[2]) );
+				m_Eng->SetVolt(2,0,0,pos[2], m_Eng->GetVolt(2,0,0,pos[2]) + cyl_Op->vi_R0[pos[2]] *  m_Eng->GetCurr(1,0,pos[1],pos[2]) );
 			}
 		}
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				m_Eng->SetVolt(1,0,pos[1],pos[2], 0); //no voltage in alpha-direction at r=0
 				m_Eng->SetVolt(2,0,pos[1],pos[2], m_Eng->GetVolt(2,0,0,pos[2]) );
@@ -63,9 +63,9 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 	unsigned int pos[3];
 	// copy voltages from last alpha-plane to first
 	unsigned int last_A_Line = numLines[1]-1;
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
-		for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
 			m_Eng->SetVolt(0,pos[0],0,pos[2], m_Eng->GetVolt(0,pos[0],last_A_Line,pos[2]) );
 			m_Eng->SetVolt(1,pos[0],0,pos[2], m_Eng->GetVolt(1,pos[0],last_A_Line,pos[2]) );
@@ -81,10 +81,10 @@ void Engine_Ext_Cylinder::Apply2Current()
 	//close alpha
 	unsigned int pos[3];
 	// copy currents from first alpha-plane to last
-	for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]-1; ++pos[0])
 	{
 		unsigned int last_A_Line = numLines[1]-1;
-		for (pos[2]=0;pos[2]<numLines[2]-1;++pos[2])
+		for (pos[2]=0; pos[2]<numLines[2]-1; ++pos[2])
 		{
 			m_Eng->SetCurr(0,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(0,pos[0],0,pos[2]) );
 			m_Eng->SetCurr(1,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(1,pos[0],0,pos[2]) );

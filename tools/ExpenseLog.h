@@ -40,7 +40,7 @@ ExpenseModule* AdrOpExpense=EL.AddModule("Adress Operator");
 
 class ExpenseModule
 {
-friend class ExpenseLog;
+	friend class ExpenseLog;
 public:
 	ExpenseModule(const char* moduleName);
 	~ExpenseModule();

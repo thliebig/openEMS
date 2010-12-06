@@ -20,7 +20,12 @@
 AdrOp::AdrOp(unsigned int muiImax, unsigned int muiJmax, unsigned int muiKmax, unsigned int muiLmax)
 {
 	//error-handling...
-	error = new ErrorMsg(9); if (error==NULL) { fprintf(stderr,"Memory allocation failed!! exiting..."); exit(1); }
+	error = new ErrorMsg(9);
+	if (error==NULL)
+	{
+		fprintf(stderr,"Memory allocation failed!! exiting...");
+		exit(1);
+	}
 	error->SetMsg(1,"Adress Operator: Memory allocation failed!! exiting...");
 	error->SetMsg(2,"Adress Operator: Invalid Adress requested!! exiting...");
 	error->SetMsg(3,"Adress Operator: Invalid Position set!! exiting...");
@@ -30,12 +35,12 @@ AdrOp::AdrOp(unsigned int muiImax, unsigned int muiJmax, unsigned int muiKmax, u
 	error->SetMsg(7,"Adress Operator: Cells not added to Adress Operator!! exiting...");
 	error->SetMsg(8,"Adress Operator: Invalid Node!! exiting...");
 	error->SetMsg(9,"Adress Operator: Grid invalid!! exiting...");
-	
+
 	//if (muiImax<0) muiImax=0;
 	//if (muiJmax<0) muiJmax=0;
 	//if (muiKmax<0) muiKmax=0;
 	//if (muiLmax<0) muiLmax=0;
-	
+
 	uiDimension=0;
 	if (muiImax>0) uiDimension++;
 	else exit(-1);
@@ -43,7 +48,7 @@ AdrOp::AdrOp(unsigned int muiImax, unsigned int muiJmax, unsigned int muiKmax, u
 	else exit(-2);
 	if (muiKmax>0) uiDimension++;
 	if ( (muiLmax>0) && (muiKmax>0) ) uiDimension++;
-//	cout << "\n-----Adress Operator created: Dimension: " << uiDimension << "----" <<endl; 
+//	cout << "\n-----Adress Operator created: Dimension: " << uiDimension << "----" <<endl;
 	uiImax=muiImax;
 	uiJmax=muiJmax;
 	uiKmax=muiKmax;
@@ -58,16 +63,19 @@ AdrOp::AdrOp(unsigned int muiImax, unsigned int muiJmax, unsigned int muiKmax, u
 	reflect=false;
 	uiTypeOffset=0;
 	clCellAdr=NULL;
-	dGrid[0]=NULL;dGrid[1]=NULL;dGrid[2]=NULL;dGrid[3]=NULL;
+	dGrid[0]=NULL;
+	dGrid[1]=NULL;
+	dGrid[2]=NULL;
+	dGrid[3]=NULL;
 	dDeltaUnit=1;
 	bDebug=false;
 }
 
 AdrOp::AdrOp(AdrOp* origOP)
 {
-	clCellAdr=NULL;	
+	clCellAdr=NULL;
 	error=NULL; // has to be done!!!
-	
+
 	uiDimension=origOP->uiDimension;
 	uiSize=origOP->uiSize;
 	uiImax=origOP->uiImax;
@@ -78,19 +86,19 @@ AdrOp::AdrOp(AdrOp* origOP)
 	uiJpos=origOP->uiJpos;
 	uiKpos=origOP->uiKpos;
 	uiLpos=origOP->uiLpos;
-	for (int ii=0;ii<4;++ii) dGrid[ii]=origOP->dGrid[ii];
+	for (int ii=0; ii<4; ++ii) dGrid[ii]=origOP->dGrid[ii];
 	dDeltaUnit=origOP->dDeltaUnit;
 	iIshift=origOP->iIshift;
 	iJshift=origOP->iJshift;
 	iKshift=origOP->iKshift;
-	for (int ii=0;ii<3;++ii) iCellShift[ii]=origOP->iCellShift[ii];
+	for (int ii=0; ii<3; ++ii) iCellShift[ii]=origOP->iCellShift[ii];
 	i=origOP->i;
 	j=origOP->j;
 	k=origOP->k;
 	l=origOP->l;
 	reflect=origOP->reflect;
 	uiTypeOffset=origOP->uiTypeOffset;
-	 
+
 	bPosSet=origOP->bPosSet;
 	bDebug=origOP->bDebug;
 //	return;
@@ -100,8 +108,10 @@ AdrOp::AdrOp(AdrOp* origOP)
 AdrOp::~AdrOp()
 {
 //	cerr << "\n------Adress Operator deconstructed-----\n" << endl;
-	delete error; error=NULL;
-	delete clCellAdr; clCellAdr=NULL;
+	delete error;
+	error=NULL;
+	delete clCellAdr;
+	clCellAdr=NULL;
 }
 
 unsigned int AdrOp::SetPos(unsigned int muiIpos, unsigned int muiJpos, unsigned int muiKpos, unsigned int muiLpos)
@@ -173,16 +183,16 @@ unsigned int AdrOp::GetPos(int muiIrel, int muiJrel, int muiKrel, int /*muiLrel*
 	if (bPosSet==false) error->Error(6);
 	if (reflect)
 	{
-		#if EXPENSE_LOG==1
-			if (muiIrel+(int)uiIpos<0) ADRESSEXPENSE(2,1,0,0,1,0)
+#if EXPENSE_LOG==1
+		if (muiIrel+(int)uiIpos<0) ADRESSEXPENSE(2,1,0,0,1,0)
 			if (muiIrel+(int)uiIpos>(int)uiImax-1) ADRESSEXPENSE(4,1,0,0,1,0)
-			if (muiJrel+(int)uiJpos<0) ADRESSEXPENSE(2,1,0,0,1,0)
-			if (muiJrel+(int)uiJpos>(int)uiJmax-1) ADRESSEXPENSE(4,1,0,0,1,0)
-			if (muiKrel+(int)uiKpos<0) ADRESSEXPENSE(2,1,0,0,1,0)
-			if (muiKrel+(int)uiKpos>(int)uiKmax-1) ADRESSEXPENSE(4,1,0,0,1,0)
-		#endif
+				if (muiJrel+(int)uiJpos<0) ADRESSEXPENSE(2,1,0,0,1,0)
+					if (muiJrel+(int)uiJpos>(int)uiJmax-1) ADRESSEXPENSE(4,1,0,0,1,0)
+						if (muiKrel+(int)uiKpos<0) ADRESSEXPENSE(2,1,0,0,1,0)
+							if (muiKrel+(int)uiKpos>(int)uiKmax-1) ADRESSEXPENSE(4,1,0,0,1,0)
+#endif
 
-		if (muiIrel+(int)uiIpos<0) muiIrel=-2*uiIpos-muiIrel-uiTypeOffset;
+								if (muiIrel+(int)uiIpos<0) muiIrel=-2*uiIpos-muiIrel-uiTypeOffset;
 		if (muiIrel+(int)uiIpos>(int)uiImax-1) muiIrel=2*(uiImax-1-uiIpos)-muiIrel+uiTypeOffset;
 		if (muiJrel+(int)uiJpos<0) muiJrel=-2*uiJpos-muiJrel-uiTypeOffset;
 		if (muiJrel+(int)uiJpos>(int)uiJmax-1) muiJrel=2*(uiJmax-1-uiJpos)-muiJrel+uiTypeOffset;
@@ -193,7 +203,7 @@ unsigned int AdrOp::GetPos(int muiIrel, int muiJrel, int muiKrel, int /*muiLrel*
 	{
 		ADRESSEXPENSE(7,1,0,0,0,7)
 		if ( (muiIrel+uiIpos<uiImax) && (muiJrel+uiJpos<uiJmax) )
-		return (muiIrel+uiIpos)+(muiJrel+uiJpos)*uiImax;
+			return (muiIrel+uiIpos)+(muiJrel+uiJpos)*uiImax;
 		else error->Error(2);
 		return 0;
 	}
@@ -201,7 +211,7 @@ unsigned int AdrOp::GetPos(int muiIrel, int muiJrel, int muiKrel, int /*muiLrel*
 	{
 		ADRESSEXPENSE(9,3,0,0,0,11)
 		if ( (muiIrel+uiIpos<uiImax) && (muiJrel+uiJpos<uiJmax) && (muiKrel+uiKpos<uiKmax) )
-		return (muiIrel+uiIpos) + (muiJrel+uiJpos)*uiImax + (muiKrel+uiKpos)*uiJmax*uiImax;
+			return (muiIrel+uiIpos) + (muiJrel+uiJpos)*uiImax + (muiKrel+uiKpos)*uiJmax*uiImax;
 		else error->Error(2);
 		return 0;
 	}
@@ -217,7 +227,7 @@ unsigned int AdrOp::GetPosFromNode(int ny, unsigned int uiNode)
 	help=help/uiImax;
 	j=help%uiJmax;
 	help=help/uiJmax;
-	if (uiKmax>0) 
+	if (uiKmax>0)
 	{
 		k=help%uiKmax;
 		help=help/uiKmax;
@@ -227,22 +237,22 @@ unsigned int AdrOp::GetPosFromNode(int ny, unsigned int uiNode)
 	ADRESSEXPENSE(0,7,0,0,13,4)
 	switch (ny)
 	{
-		case 0: 
+	case 0:
 		{
 			return i;
 			break;
 		}
-		case 1: 
+	case 1:
 		{
 			return j;
 			break;
 		}
-		case 2: 
+	case 2:
 		{
 			return k;
 			break;
 		}
-		case 3: 
+	case 3:
 		{
 			return l;
 			break;
@@ -253,22 +263,34 @@ unsigned int AdrOp::GetPosFromNode(int ny, unsigned int uiNode)
 
 double AdrOp::GetNodeVolume(unsigned int uiNode)
 {
-	for (unsigned int n=0;n<uiDimension;n++) if (dGrid[n]==NULL) error->Error(9);
+	for (unsigned int n=0; n<uiDimension; n++) if (dGrid[n]==NULL) error->Error(9);
 	double dVol=1;
 	unsigned int uiMax[4]={uiImax,uiJmax,uiKmax,uiLmax};
 	unsigned int uiPos[4]={GetPosFromNode(0,uiNode),GetPosFromNode(1,uiNode),GetPosFromNode(2,uiNode),GetPosFromNode(3,uiNode)};
-	for (unsigned int n=0;n<uiDimension;n++)
+	for (unsigned int n=0; n<uiDimension; n++)
 	{
-		if ((uiPos[n]>0) && (uiPos[n]<uiMax[n]-1)) { dVol*=0.5*dDeltaUnit*(dGrid[n][uiPos[n]+1]-dGrid[n][uiPos[n]-1]); 	ADRESSEXPENSE(4,0,1,3,0,4) }
-		else if ((uiPos[n]==0) && (uiPos[n]<uiMax[n]-1)) { dVol*=dDeltaUnit*(dGrid[n][uiPos[n]+1]-dGrid[n][uiPos[n]]);  ADRESSEXPENSE(3,0,1,2,0,4) }
-		else if ((uiPos[n]>0) && (uiPos[n]==uiMax[n]-1)) { dVol*=dDeltaUnit*(dGrid[n][uiPos[n]]-dGrid[n][uiPos[n]-1]);  ADRESSEXPENSE(3,0,1,2,0,4) }
+		if ((uiPos[n]>0) && (uiPos[n]<uiMax[n]-1))
+		{
+			dVol*=0.5*dDeltaUnit*(dGrid[n][uiPos[n]+1]-dGrid[n][uiPos[n]-1]);
+			ADRESSEXPENSE(4,0,1,3,0,4)
+		}
+		else if ((uiPos[n]==0) && (uiPos[n]<uiMax[n]-1))
+		{
+			dVol*=dDeltaUnit*(dGrid[n][uiPos[n]+1]-dGrid[n][uiPos[n]]);
+			ADRESSEXPENSE(3,0,1,2,0,4)
+		}
+		else if ((uiPos[n]>0) && (uiPos[n]==uiMax[n]-1))
+		{
+			dVol*=dDeltaUnit*(dGrid[n][uiPos[n]]-dGrid[n][uiPos[n]-1]);
+			ADRESSEXPENSE(3,0,1,2,0,4)
+		}
 	}
 	return dVol;
 }
 
 double AdrOp::GetIndexWidth(int ny, int index)
 {
-	for (unsigned int n=0;n<uiDimension;n++) if (dGrid[n]==NULL) error->Error(9);
+	for (unsigned int n=0; n<uiDimension; n++) if (dGrid[n]==NULL) error->Error(9);
 	double width=0;
 	while (ny<0) ny+=uiDimension;
 	ny=ny%uiDimension;
@@ -282,7 +304,7 @@ double AdrOp::GetIndexWidth(int ny, int index)
 
 double AdrOp::GetIndexCoord(int ny, int index)
 {
-	for (unsigned int n=0;n<uiDimension;n++) if (dGrid[n]==NULL) error->Error(9);
+	for (unsigned int n=0; n<uiDimension; n++) if (dGrid[n]==NULL) error->Error(9);
 	while (ny<0) ny+=uiDimension;
 	ny=ny%uiDimension;
 	unsigned int uiMax[4]={uiImax,uiJmax,uiKmax,uiLmax};
@@ -296,7 +318,7 @@ double AdrOp::GetIndexDelta(int ny, int index)
 	if (index<0) return GetIndexCoord(ny, 0) - GetIndexCoord(ny, 1);
 	unsigned int uiMax[4]={uiImax,uiJmax,uiKmax,uiLmax};
 	if (index>=(int)uiMax[ny]-1) return GetIndexCoord(ny, (int)uiMax[ny]-2) - GetIndexCoord(ny, (int)uiMax[ny]-1);
-    return GetIndexCoord(ny, index+1) - GetIndexCoord(ny, index);
+	return GetIndexCoord(ny, index+1) - GetIndexCoord(ny, index);
 }
 
 
@@ -307,21 +329,21 @@ unsigned int AdrOp::Shift(int ny, int step)
 	ny=ny%uiDimension;
 	switch (ny)
 	{
-		case 0: 
+	case 0:
 		{
 			iIshift=step;
 //			if ((int)uiIpos+step<0) iIshift=-2*uiIpos-iIshift;
 //			else if ((int)uiIpos+step>=(int)uiImax) iIshift=-1*iIshift+2*(uiImax-1-uiIpos);
 			break;
 		}
-		case 1: 
+	case 1:
 		{
 			iJshift=step;
 //			if ((int)uiJpos+iJshift<0) iJshift=-2*uiJpos-iJshift;
 //			else if ((int)uiJpos+iJshift>=(int)uiJmax) iJshift=-1*iJshift+2*(uiJmax-1-uiJpos);
 			break;
 		}
-		case 2: 
+	case 2:
 		{
 			iKshift=step;
 //			if ((int)uiKpos+iKshift<0) iKshift=-2*uiKpos-iKshift;
@@ -363,18 +385,18 @@ void AdrOp::ResetShift()
 
 unsigned int AdrOp::Iterate(int jump)
 {
-	if (abs(jump)>=(int)uiImax) error->Error(4); 
+	if (abs(jump)>=(int)uiImax) error->Error(4);
 	i=uiIpos+jump;
-	if (i>=uiImax) 
+	if (i>=uiImax)
 	{
 		i=i-uiImax;
 		j=uiJpos+1;
 		if (j>=uiJmax)
 		{
 			j=0;
-			if (uiDimension==3) 
+			if (uiDimension==3)
 			{
-				k=uiKpos+1; 
+				k=uiKpos+1;
 				if (k>=uiKmax) k=0;
 				uiKpos=k;
 			}
@@ -387,7 +409,7 @@ unsigned int AdrOp::Iterate(int jump)
 	{
 		uiIpos=i;
 		return GetPos();
-	}	
+	}
 }
 
 unsigned int AdrOp::GetSize()
@@ -416,21 +438,22 @@ void AdrOp::SetReflectionOff()
 AdrOp* AdrOp::AddCellAdrOp()
 {
 	if (clCellAdr!=NULL) return clCellAdr;
- 	if (uiDimension==3) clCellAdr = new AdrOp(uiImax-1,uiJmax-1,uiKmax-1);
- 	else if (uiDimension==2) clCellAdr = new AdrOp(uiImax-1,uiJmax-1);
- 	else clCellAdr=NULL;
- 	if (clCellAdr!=NULL) 
- 	{
- 		clCellAdr->SetPos(0,0,0);
- 		clCellAdr->SetReflection2Cell();
- 	}
- 	iCellShift[0]=iCellShift[1]=iCellShift[2]=0;	
+	if (uiDimension==3) clCellAdr = new AdrOp(uiImax-1,uiJmax-1,uiKmax-1);
+	else if (uiDimension==2) clCellAdr = new AdrOp(uiImax-1,uiJmax-1);
+	else clCellAdr=NULL;
+	if (clCellAdr!=NULL)
+	{
+		clCellAdr->SetPos(0,0,0);
+		clCellAdr->SetReflection2Cell();
+	}
+	iCellShift[0]=iCellShift[1]=iCellShift[2]=0;
 	return clCellAdr;
 }
 
 AdrOp* AdrOp::DeleteCellAdrOp()
 {
-	delete clCellAdr; clCellAdr=NULL;
+	delete clCellAdr;
+	clCellAdr=NULL;
 	return NULL;
 }
 
@@ -459,11 +482,11 @@ unsigned int AdrOp::GetCellPos(bool incShift)
 {
 	if (bPosSet==false) error->Error(6);
 	if (clCellAdr==NULL) error->Error(7);
-	#if EXPENSE_LOG==1  
-		if (incShift) ADRESSEXPENSE(3,0,0,0,0,2)  
-	#endif
-	if (incShift) return clCellAdr->GetPos(uiIpos+iCellShift[0],uiJpos+iCellShift[1],uiKpos+iCellShift[2]);
-	else return clCellAdr->GetPos(uiIpos,uiJpos,uiKpos);
+#if EXPENSE_LOG==1
+	if (incShift) ADRESSEXPENSE(3,0,0,0,0,2)
+#endif
+		if (incShift) return clCellAdr->GetPos(uiIpos+iCellShift[0],uiJpos+iCellShift[1],uiKpos+iCellShift[2]);
+		else return clCellAdr->GetPos(uiIpos,uiJpos,uiKpos);
 }
 
 unsigned int AdrOp::GetCellPos(int i, int j, int k)
@@ -475,14 +498,14 @@ unsigned int AdrOp::GetCellPos(int i, int j, int k)
 
 double AdrOp::GetShiftCellVolume(int ny, int step)
 {
-	for (unsigned int n=0;n<uiDimension;n++) if (dGrid[n]==NULL) error->Error(9);
+	for (unsigned int n=0; n<uiDimension; n++) if (dGrid[n]==NULL) error->Error(9);
 	int uiMax[4]={uiImax-1,uiJmax-1,uiKmax-1,uiLmax-1};
 	while (ny<0) ny+=uiDimension;
 	ny=ny%uiDimension;
 	iCellShift[ny]=step;
 	int uiPos[4]={uiIpos+iCellShift[0],uiJpos+iCellShift[1],uiKpos+iCellShift[2]};
 	double dVol=1;
-	for (unsigned int n=0;n<uiDimension;++n)
+	for (unsigned int n=0; n<uiDimension; ++n)
 	{
 		if (uiMax[n]>0)
 		{
@@ -517,7 +540,12 @@ unsigned int deltaAdrOp::GetAdr(int pos)
 	if (uiMax==1) return 0;
 	if (pos<0)	pos=pos*-1;
 	else if (pos>(int)uiMax-1) pos=2*(uiMax-1)-pos+1;
-	if ((pos<0) || (pos>(int)uiMax-1)) {fprintf(stderr," Error exiting... "); getchar(); exit(-1);}
+	if ((pos<0) || (pos>(int)uiMax-1))
+	{
+		fprintf(stderr," Error exiting... ");
+		getchar();
+		exit(-1);
+	}
 	return pos;
 }
 

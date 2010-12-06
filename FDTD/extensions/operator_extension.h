@@ -53,7 +53,7 @@ public:
 	virtual bool IsCylinderCoordsSave() const {return false;}
 
 	//! The cylindrical multi grid operator will check whether the extension is save to use. Default is false. Derive this method to override.
-	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child);return false;}
+	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return false;}
 
 	virtual std::string GetExtensionName() const {return std::string("Abstract Operator Extension Base Class");}
 

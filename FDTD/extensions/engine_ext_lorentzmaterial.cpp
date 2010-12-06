@@ -40,7 +40,7 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates()
 	{
 	case Engine::BASIC:
 		{
-			for (unsigned int i=0;i<m_Op_Ext_Lor->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count; ++i)
 			{
 				volt_ADE[0][i] *= m_Op_Ext_Lor->v_int_ADE[0][i];
 				volt_ADE[0][i] += m_Op_Ext_Lor->v_ext_ADE[0][i] * m_Eng->Engine::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
@@ -56,7 +56,7 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates()
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int i=0;i<m_Op_Ext_Lor->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count; ++i)
 			{
 				volt_ADE[0][i] *= m_Op_Ext_Lor->v_int_ADE[0][i];
 				volt_ADE[0][i] += m_Op_Ext_Lor->v_ext_ADE[0][i] * eng_sse->Engine_sse::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
@@ -70,7 +70,7 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates()
 			break;
 		}
 	default:
-		for (unsigned int i=0;i<m_Op_Ext_Lor->m_LM_Count;++i)
+		for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count; ++i)
 		{
 			volt_ADE[0][i] *= m_Op_Ext_Lor->v_int_ADE[0][i];
 			volt_ADE[0][i] += m_Op_Ext_Lor->v_ext_ADE[0][i] * m_Eng->GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
@@ -96,7 +96,7 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates()
 	{
 	case Engine::BASIC:
 		{
-			for (unsigned int i=0;i<m_Op_Ext_Lor->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count; ++i)
 			{
 				curr_ADE[0][i] *= m_Op_Ext_Lor->i_int_ADE[0][i];
 				curr_ADE[0][i] += m_Op_Ext_Lor->i_ext_ADE[0][i] * m_Eng->Engine::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);
@@ -112,7 +112,7 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates()
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int i=0;i<m_Op_Ext_Lor->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count; ++i)
 			{
 				curr_ADE[0][i] *= m_Op_Ext_Lor->i_int_ADE[0][i];
 				curr_ADE[0][i] += m_Op_Ext_Lor->i_ext_ADE[0][i] * eng_sse->Engine_sse::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);
@@ -126,7 +126,7 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates()
 			break;
 		}
 	default:
-		for (unsigned int i=0;i<m_Op_Ext_Lor->m_LM_Count;++i)
+		for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count; ++i)
 		{
 			curr_ADE[0][i] *= m_Op_Ext_Lor->i_int_ADE[0][i];
 			curr_ADE[0][i] += m_Op_Ext_Lor->i_ext_ADE[0][i] * m_Eng->GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);

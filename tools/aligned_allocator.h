@@ -26,17 +26,18 @@
 
 
 #ifdef WIN32
-	#define __MSVCRT_VERSION__ 0x0700
-	#include <malloc.h>
-	#define MEMALIGN( array, alignment, size ) !(*array = _aligned_malloc( size, alignment ))
-	#define FREE( array ) _aligned_free( array )
+#define __MSVCRT_VERSION__ 0x0700
+#include <malloc.h>
+#define MEMALIGN( array, alignment, size ) !(*array = _aligned_malloc( size, alignment ))
+#define FREE( array ) _aligned_free( array )
 #else
-	#define MEMALIGN( array, alignment, size ) posix_memalign( array, alignment, size )
-	#define FREE( array ) free( array )
+#define MEMALIGN( array, alignment, size ) posix_memalign( array, alignment, size )
+#define FREE( array ) free( array )
 #endif
 
 
-template <typename T> class aligned_allocator {
+template <typename T> class aligned_allocator
+{
 public:
 	// The following will be the same for virtually all allocators.
 	typedef T * pointer;
@@ -47,30 +48,36 @@ public:
 	typedef size_t size_type;
 	typedef ptrdiff_t difference_type;
 
-	T * address(T& r) const {
+	T * address(T& r) const
+	{
 		return &r;
 	}
 
-	const T * address(const T& s) const {
+	const T * address(const T& s) const
+	{
 		return &s;
 	}
 
-	size_t max_size() const {
+	size_t max_size() const
+	{
 		// The following has been carefully written to be independent of
 		// the definition of size_t and to avoid signed/unsigned warnings.
 		return (static_cast<size_t>(0) - static_cast<size_t>(1)) / sizeof(T);
 	}
 
 	// The following must be the same for all allocators.
-	template <typename U> struct rebind {
+	template <typename U> struct rebind
+	{
 		typedef aligned_allocator<U> other;
 	};
 
-	bool operator!=(const aligned_allocator& other) const {
+	bool operator!=(const aligned_allocator& other) const
+	{
 		return !(*this == other);
 	}
 
-	void construct(T * const p, const T& t) const {
+	void construct(T * const p, const T& t) const
+	{
 		void * const pv = static_cast<void *>(p);
 		new (pv) T(t);
 	}
@@ -80,7 +87,8 @@ public:
 	// Returns true if and only if storage allocated from *this
 	// can be deallocated from other, and vice versa.
 	// Always returns true for stateless allocators.
-	bool operator==(const aligned_allocator& other) const {
+	bool operator==(const aligned_allocator& other) const
+	{
 		return true;
 	}
 
@@ -92,7 +100,8 @@ public:
 	~aligned_allocator() { }
 
 	// The following will be different for each allocator.
-	T * allocate(const size_t n) const {
+	T * allocate(const size_t n) const
+	{
 //		std::cout << "Allocating " << n << (n == 1 ? " object" : "objects")	<< " of size " << sizeof(T) << "." << std::endl;
 		// The return value of allocate(0) is unspecified.
 		// aligned_allocator returns NULL in order to avoid depending
@@ -100,14 +109,16 @@ public:
 		// (the implementation can define malloc(0) to return NULL,
 		// in which case the bad_alloc check below would fire).
 		// All allocators can return NULL in this case.
-		if (n == 0) {
+		if (n == 0)
+		{
 			return NULL;
 		}
 
 		// All allocators should contain an integer overflow check.
 		// The Standardization Committee recommends that std::length_error
 		// be thrown in the case of integer overflow.
-		if (n > max_size()) {
+		if (n > max_size())
+		{
 			throw std::length_error("aligned_allocator<T>::allocate() - Integer overflow.");
 		}
 
@@ -119,7 +130,8 @@ public:
 		return static_cast<T *>(pv);
 	}
 
-	void deallocate(T * const p, const size_t n) const {
+	void deallocate(T * const p, const size_t n) const
+	{
 //		std::cout << "Deallocating " << n << (n == 1 ? " object" : "objects") << " of size " << sizeof(T) << "." << std::endl;
 		// aligned_allocator wraps free().
 		UNUSED(n);
@@ -127,7 +139,8 @@ public:
 	}
 
 	// The following will be the same for all allocators that ignore hints.
-	template <typename U> T * allocate(const size_t n, const U * /* const hint */) const {
+	template <typename U> T * allocate(const size_t n, const U * /* const hint */) const
+	{
 		return allocate(n);
 	}
 
@@ -145,15 +158,16 @@ private:
 
 // A compiler bug causes it to believe that p->~T() doesn't reference p.
 #ifdef _MSC_VER
-	#pragma warning(push)
-	#pragma warning(disable: 4100) // unreferenced formal parameter
+#pragma warning(push)
+#pragma warning(disable: 4100) // unreferenced formal parameter
 #endif
 
 // The definition of destroy() must be the same for all allocators.
-template <typename T> void aligned_allocator<T>::destroy(T * const p) const {
+template <typename T> void aligned_allocator<T>::destroy(T * const p) const
+{
 	p->~T();
 }
 
 #ifdef _MSC_VER
-	#pragma warning(pop)
+#pragma warning(pop)
 #endif

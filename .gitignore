@@ -7,4 +7,5 @@ Makefile*
 *~
 *.so*
 *.pro.user*
+*.orig
 openEMS

@@ -37,13 +37,13 @@ std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrT
 	std::vector<unsigned int> jpt; //jobs per thread
 
 	unsigned int ui_jpt = jobs/nrThreads;
-	for (unsigned int n=0;n<nrThreads;++n)
+	for (unsigned int n=0; n<nrThreads; ++n)
 	{
 		jpt.push_back(ui_jpt);
 		jobs-=ui_jpt;
 	}
 
-	for (unsigned int n=0;n<nrThreads;++n)
+	for (unsigned int n=0; n<nrThreads; ++n)
 	{
 		if (jobs>0)
 		{

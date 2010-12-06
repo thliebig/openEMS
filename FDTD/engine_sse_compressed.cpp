@@ -17,7 +17,7 @@
 
 #include "engine_sse_compressed.h"
 #ifdef __SSE2__
-	#include <emmintrin.h>
+#include <emmintrin.h>
 #endif
 
 Engine_SSE_Compressed* Engine_SSE_Compressed::New(const Operator_SSE_Compressed* op)
@@ -45,13 +45,13 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 
 	pos[0] = startX;
 	unsigned int index=0;
-	for (unsigned int posX=0;posX<numX;++posX)
+	for (unsigned int posX=0; posX<numX; ++posX)
 	{
 		shift[0]=pos[0];
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			shift[1]=pos[1];
-			for (pos[2]=1;pos[2]<numVectors;++pos[2])
+			for (pos[2]=1; pos[2]<numVectors; ++pos[2])
 			{
 				index = Op->m_Op_index[pos[0]][pos[1]][pos[2]];
 				// x-polarization
@@ -108,11 +108,11 @@ void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int num
 
 	pos[0] = startX;
 	unsigned int index;
-	for (unsigned int posX=0;posX<numX;++posX)
+	for (unsigned int posX=0; posX<numX; ++posX)
 	{
-		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numVectors-1;++pos[2])
+			for (pos[2]=0; pos[2]<numVectors-1; ++pos[2])
 			{
 				index = Op->m_Op_index[pos[0]][pos[1]][pos[2]];
 				// x-pol

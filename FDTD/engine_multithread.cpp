@@ -18,9 +18,9 @@
 //#define ENABLE_DEBUG_TIME
 
 #ifdef ENABLE_DEBUG_TIME
-	#define DEBUG_TIME(x) x;
+#define DEBUG_TIME(x) x;
 #else
-	#define DEBUG_TIME(x) ;
+#define DEBUG_TIME(x) ;
 #endif
 
 
@@ -58,10 +58,12 @@ Engine_Multithread::~Engine_Multithread()
 #ifdef ENABLE_DEBUG_TIME
 	NS_Engine_Multithread::DBG().cout() << "Engine_Multithread::~Engine_Multithread()" << endl;
 	std::map<boost::thread::id, std::vector<double> >::iterator it;
-	for (it=m_timer_list.begin(); it!=m_timer_list.end(); it++) {
+	for (it=m_timer_list.begin(); it!=m_timer_list.end(); it++)
+	{
 		NS_Engine_Multithread::DBG().cout() << "*** DEBUG Thread: " << it->first << std::endl;
 		std::vector<double>::iterator it2;
-		for (it2=it->second.begin(); it2<it->second.end();) {
+		for (it2=it->second.begin(); it2<it->second.end();)
+		{
 			NS_Engine_Multithread::DBG().cout() << "after voltage update, before barrier1: " << fixed << setprecision(6) << *(it2++) << std::endl;
 			NS_Engine_Multithread::DBG().cout() << "after barrier1, before barrier2: "       << fixed << setprecision(6) << *(it2++) << std::endl;
 			NS_Engine_Multithread::DBG().cout() << "after barrier2, before current update: " << fixed << setprecision(6) << *(it2++) << std::endl;
@@ -117,7 +119,7 @@ void Engine_Multithread::Init()
 		m_thread_group.add_thread( t );
 	}
 
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		m_Eng_exts.at(n)->SetNumberOfThreads(m_numThreads);
 }
 
@@ -134,9 +136,12 @@ void Engine_Multithread::Reset()
 		m_stopThreads = true;
 		m_stopBarrier->wait(); // wait for the threads to finish
 		m_thread_group.join_all(); // wait for termination
-		delete m_IterateBarrier; m_IterateBarrier = 0;
-		delete m_startBarrier; m_startBarrier = 0;
-		delete m_stopBarrier; m_stopBarrier = 0;
+		delete m_IterateBarrier;
+		m_IterateBarrier = 0;
+		delete m_startBarrier;
+		m_startBarrier = 0;
+		delete m_stopBarrier;
+		m_stopBarrier = 0;
 	}
 
 	Engine_SSE_Compressed::Reset();
@@ -158,7 +163,7 @@ bool Engine_Multithread::IterateTS(unsigned int iterTS)
 void Engine_Multithread::DoPreVoltageUpdates(int threadID)
 {
 	//execute extensions in reverse order -> highest priority gets access to the voltages last
-	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+	for (int n=m_Eng_exts.size()-1; n>=0; --n)
 	{
 		m_Eng_exts.at(n)->DoPreVoltageUpdates(threadID);
 		m_IterateBarrier->wait();
@@ -169,7 +174,7 @@ void Engine_Multithread::DoPreVoltageUpdates(int threadID)
 void Engine_Multithread::DoPostVoltageUpdates(int threadID)
 {
 	//execute extensions in normal order -> highest priority gets access to the voltages first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
 		m_Eng_exts.at(n)->DoPostVoltageUpdates(threadID);
 		m_IterateBarrier->wait();
@@ -179,7 +184,7 @@ void Engine_Multithread::DoPostVoltageUpdates(int threadID)
 void Engine_Multithread::Apply2Voltages(int threadID)
 {
 	//execute extensions in normal order -> highest priority gets access to the voltages first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
 		m_Eng_exts.at(n)->Apply2Voltages(threadID);
 		m_IterateBarrier->wait();
@@ -189,7 +194,7 @@ void Engine_Multithread::Apply2Voltages(int threadID)
 void Engine_Multithread::DoPreCurrentUpdates(int threadID)
 {
 	//execute extensions in reverse order -> highest priority gets access to the currents last
-	for (int n=m_Eng_exts.size()-1;n>=0;--n)
+	for (int n=m_Eng_exts.size()-1; n>=0; --n)
 	{
 		m_Eng_exts.at(n)->DoPreCurrentUpdates(threadID);
 		m_IterateBarrier->wait();
@@ -199,7 +204,7 @@ void Engine_Multithread::DoPreCurrentUpdates(int threadID)
 void Engine_Multithread::DoPostCurrentUpdates(int threadID)
 {
 	//execute extensions in normal order -> highest priority gets access to the currents first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
 		m_Eng_exts.at(n)->DoPostCurrentUpdates(threadID);
 		m_IterateBarrier->wait();
@@ -209,7 +214,7 @@ void Engine_Multithread::DoPostCurrentUpdates(int threadID)
 void Engine_Multithread::Apply2Current(int threadID)
 {
 	//execute extensions in normal order -> highest priority gets access to the currents first
-	for (size_t n=0;n<m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
 		m_Eng_exts.at(n)->Apply2Current(threadID);
 		m_IterateBarrier->wait();
@@ -219,7 +224,8 @@ void Engine_Multithread::Apply2Current(int threadID)
 //
 // *************************************************************************************************************************
 //
-namespace NS_Engine_Multithread {
+namespace NS_Engine_Multithread
+{
 
 thread::thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int stop_h, unsigned int threadID )
 {
@@ -236,7 +242,8 @@ void thread::operator()()
 	//DBG().cout() << "Thread " << m_threadID << " (" << boost::this_thread::get_id() << ") started." << endl;
 
 
-	while (!m_enginePtr->m_stopThreads) {
+	while (!m_enginePtr->m_stopThreads)
+	{
 		// wait for start
 		//DBG().cout() << "Thread " << m_threadID << " (" << boost::this_thread::get_id() << ") waiting..." << endl;
 		m_enginePtr->m_startBarrier->wait();
@@ -244,7 +251,7 @@ void thread::operator()()
 
 		DEBUG_TIME( Timer timer1 );
 
-		for (unsigned int iter=0;iter<m_enginePtr->m_iterTS;++iter)
+		for (unsigned int iter=0; iter<m_enginePtr->m_iterTS; ++iter)
 		{
 			// pre voltage stuff...
 			m_enginePtr->DoPreVoltageUpdates(m_threadID);

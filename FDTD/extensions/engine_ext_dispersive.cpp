@@ -22,12 +22,12 @@
 Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_disp) : Engine_Extension(op_ext_disp)
 {
 	m_Op_Ext_Disp = op_ext_disp;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		if (m_Op_Ext_Disp->m_curr_ADE_On==true)
 		{
 			curr_ADE[n] = new FDTD_FLOAT[m_Op_Ext_Disp->m_LM_Count];
-			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 				curr_ADE[n][i]=0.0;
 		}
 		else
@@ -35,7 +35,7 @@ Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_dis
 		if (m_Op_Ext_Disp->m_volt_ADE_On==true)
 		{
 			volt_ADE[n] = new FDTD_FLOAT[m_Op_Ext_Disp->m_LM_Count];
-			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 				volt_ADE[n][i]=0.0;
 		}
 		else
@@ -45,7 +45,7 @@ Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_dis
 
 Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
 {
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		delete[] curr_ADE[n];
 		curr_ADE[n] = NULL;
@@ -65,7 +65,7 @@ void Engine_Ext_Dispersive::Apply2Voltages()
 	{
 	case Engine::BASIC:
 		{
-			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 			{
 				m_Eng->Engine::SetVolt(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[0][i]);
 				m_Eng->Engine::SetVolt(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[1][i]);
@@ -76,7 +76,7 @@ void Engine_Ext_Dispersive::Apply2Voltages()
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 			{
 				eng_sse->Engine_sse::SetVolt(0,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[0][i]);
 				eng_sse->Engine_sse::SetVolt(1,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[1][i]);
@@ -85,7 +85,7 @@ void Engine_Ext_Dispersive::Apply2Voltages()
 			break;
 		}
 	default:
-		for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+		for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 		{
 			m_Eng->SetVolt(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[0][i]);
 			m_Eng->SetVolt(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[1][i]);
@@ -106,7 +106,7 @@ void Engine_Ext_Dispersive::Apply2Current()
 	{
 	case Engine::BASIC:
 		{
-			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 			{
 				m_Eng->Engine::SetCurr(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[0][i]);
 				m_Eng->Engine::SetCurr(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[1][i]);
@@ -117,7 +117,7 @@ void Engine_Ext_Dispersive::Apply2Current()
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 			{
 				eng_sse->Engine_sse::SetCurr(0,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[0][i]);
 				eng_sse->Engine_sse::SetCurr(1,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[1][i]);
@@ -126,7 +126,7 @@ void Engine_Ext_Dispersive::Apply2Current()
 			break;
 		}
 	default:
-		for (unsigned int i=0;i<m_Op_Ext_Disp->m_LM_Count;++i)
+		for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count; ++i)
 		{
 			m_Eng->SetCurr(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[0][i]);
 			m_Eng->SetCurr(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[1][i]);

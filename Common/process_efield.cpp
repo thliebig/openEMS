@@ -37,8 +37,8 @@ void ProcessEField::InitProcess()
 
 	file << "% time-domain E-field probe by openEMS " GIT_VERSION << endl;
 	file << "% coords: (" << Op->GetDiscLine(0,start[0])*Op->GetGridDelta() << ","
-						  << Op->GetDiscLine(1,start[1])*Op->GetGridDelta() << ","
-						  << Op->GetDiscLine(2,start[2])*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
+	<< Op->GetDiscLine(1,start[1])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(2,start[2])*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
 	file << "% t/s\tEx/(V/m)\tEy/(V/m)\tEz/(V/m)" << endl;
 }
 
@@ -65,12 +65,12 @@ void ProcessEField::Dump_FD_Data(vector<double_complex> value[3], double factor,
 	time_t rawTime;
 	time(&rawTime);
 	file << "%dump by openEMS @" << ctime(&rawTime) << "%frequency\treal_x\timag_x\treal_y\timag_y\treal_z\timag_z\n";
-	for (size_t n=0;n<value[0].size();++n)
+	for (size_t n=0; n<value[0].size(); ++n)
 	{
 		file << m_FD_Samples.at(n)
-			 << "\t" << 2.0 * std::real(value[0].at(n))*factor << "\t" << 2.0 * std::imag(value[0].at(n))*factor
-			 << "\t" << 2.0 * std::real(value[1].at(n))*factor << "\t" << 2.0 * std::imag(value[1].at(n))*factor
-			 << "\t" << 2.0 * std::real(value[2].at(n))*factor << "\t" << 2.0 * std::imag(value[2].at(n))*factor << "\n";
+		<< "\t" << 2.0 * std::real(value[0].at(n))*factor << "\t" << 2.0 * std::imag(value[0].at(n))*factor
+		<< "\t" << 2.0 * std::real(value[1].at(n))*factor << "\t" << 2.0 * std::imag(value[1].at(n))*factor
+		<< "\t" << 2.0 * std::real(value[2].at(n))*factor << "\t" << 2.0 * std::imag(value[2].at(n))*factor << "\n";
 	}
 	file.close();
 }
@@ -110,14 +110,14 @@ int ProcessEField::Process()
 			{
 				FDTD_FLOAT field = Eng->GetVolt(pol,start) / Op->GetMeshDelta(pol,start);
 				field *= m_weight;
-				for (size_t n=0;n<m_FD_Samples.size();++n)
+				for (size_t n=0; n<m_FD_Samples.size(); ++n)
 				{
 					FD_Values[pol].at(n) += (double)field * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * T );
 				}
 				++m_FD_SampleCount;
 			}
 			if (m_Flush)
-					FlushData();
+				FlushData();
 			m_Flush = false;
 		}
 	}

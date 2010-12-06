@@ -34,7 +34,8 @@ Excitation::Excitation( double timestep )
 	Curr_dir = 0;
 	Curr_Count = 0;
 
-	for (int n=0;n<3;++n) {
+	for (int n=0; n<3; ++n)
+	{
 		Volt_index[n] = 0;
 		Curr_index[n] = 0;
 		Volt_Count_Dir[n] = 0;
@@ -55,7 +56,8 @@ Excitation::~Excitation()
 	delete[] Curr_delay;
 	delete[] Curr_dir;
 	delete[] Curr_amp;
-	for (int n=0;n<3;++n) {
+	for (int n=0; n<3; ++n)
+	{
 		delete[] Volt_index[n];
 		delete[] Curr_index[n];
 	}
@@ -64,7 +66,8 @@ Excitation::~Excitation()
 
 bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 {
-	if (!Excite) {
+	if (!Excite)
+	{
 		cerr << "Can't read openEMS excitation settings... " << endl;
 		return false;
 	}
@@ -76,28 +79,28 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 
 	switch (Excit_Type)
 	{
-		case 0:
-			Excite->QueryDoubleAttribute("f0",&f0);
-			Excite->QueryDoubleAttribute("fc",&fc);
-			CalcGaussianPulsExcitation(f0,fc,maxTS);
-			break;
-		case 1:
-			Excite->QueryDoubleAttribute("f0",&f0);
-			CalcSinusExcitation(f0,maxTS);
-			break;
-		case 2:
-			CalcDiracPulsExcitation();
-			break;
-		case 3:
-			CalcStepExcitation();
-			break;
-		case 10:
-			Excite->QueryDoubleAttribute("f0",&f0);
-			CalcCustomExcitation(f0,maxTS,Excite->Attribute("Function"));
-			break;
-		default:
-			cerr << "Excitation::setupExcitation: Unknown excitation type: \"" << Excit_Type<< "\" !!" << endl;
-			return false;
+	case 0:
+		Excite->QueryDoubleAttribute("f0",&f0);
+		Excite->QueryDoubleAttribute("fc",&fc);
+		CalcGaussianPulsExcitation(f0,fc,maxTS);
+		break;
+	case 1:
+		Excite->QueryDoubleAttribute("f0",&f0);
+		CalcSinusExcitation(f0,maxTS);
+		break;
+	case 2:
+		CalcDiracPulsExcitation();
+		break;
+	case 3:
+		CalcStepExcitation();
+		break;
+	case 10:
+		Excite->QueryDoubleAttribute("f0",&f0);
+		CalcCustomExcitation(f0,maxTS,Excite->Attribute("Function"));
+		break;
+	default:
+		cerr << "Excitation::setupExcitation: Unknown excitation type: \"" << Excit_Type<< "\" !!" << endl;
+		return false;
 	}
 
 	if (GetNyquistNum() == 0)
@@ -113,7 +116,7 @@ unsigned int Excitation::GetMaxExcitationTimestep() const
 {
 	FDTD_FLOAT maxAmp=0;
 	unsigned int maxStep=0;
-	for (unsigned int n=1;n<Length+1;++n)
+	for (unsigned int n=1; n<Length+1; ++n)
 	{
 		if (fabs(Signal_volt[n])>maxAmp)
 		{
@@ -141,7 +144,7 @@ void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 	Signal_curr = new FDTD_FLOAT[Length+1];
 	Signal_volt[0]=0.0;
 	Signal_curr[0]=0.0;
-	for (unsigned int n=1;n<Length+1;++n)
+	for (unsigned int n=1; n<Length+1; ++n)
 	{
 		double t = (n-1)*dT;
 		Signal_volt[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
@@ -210,7 +213,7 @@ void Excitation::CalcCustomExcitation(double f0, int nTS, string signal)
 		exit(1);
 	}
 	double vars[1];
-	for (unsigned int n=1;n<Length+1;++n)
+	for (unsigned int n=1; n<Length+1; ++n)
 	{
 		vars[0] = (n-1)*dT;
 		Signal_volt[n] = fParse.Eval(vars);
@@ -234,7 +237,7 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 	Signal_curr = new FDTD_FLOAT[Length+1];
 	Signal_volt[0]=0.0;
 	Signal_curr[0]=0.0;
-	for (unsigned int n=1;n<Length+1;++n)
+	for (unsigned int n=1; n<Length+1; ++n)
 	{
 		double t = (n-1)*dT;
 		Signal_volt[n] = sin(2.0*PI*f0*t);
@@ -246,7 +249,7 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 }
 
 void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,
-										 vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir )
+        vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir )
 {
 	Volt_Count = volt_vIndex[0].size();
 	for (int n=0; n<3; n++)
@@ -278,7 +281,7 @@ void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[
 }
 
 void Excitation::setupCurrentExcitation( vector<unsigned int> const curr_vIndex[3], vector<FDTD_FLOAT> const& curr_vExcit,
-										 vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir )
+        vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir )
 {
 	Curr_Count = curr_vIndex[0].size();
 	for (int n=0; n<3; n++)
@@ -297,7 +300,7 @@ void Excitation::setupCurrentExcitation( vector<unsigned int> const curr_vIndex[
 //	cerr << "Excitation::setupCurrentExcitation(): Number of current excitation points: " << Curr_Count << endl;
 //	if (Curr_Count==0)
 //		cerr << "No H-Field/current excitation found!" << endl;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 		for (unsigned int i=0; i<Curr_Count; i++)
 			Curr_index[n][i] = curr_vIndex[n].at(i);
 	for (unsigned int i=0; i<Curr_Count; i++)

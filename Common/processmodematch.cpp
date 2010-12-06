@@ -22,7 +22,7 @@
 
 ProcessModeMatch::ProcessModeMatch(Operator_Base* op) : ProcessIntegral(op)
 {
-	for (int n=0;n<2;++n)
+	for (int n=0; n<2; ++n)
 	{
 		m_ModeParser[n] = new CSFunctionParser();
 		m_ModeDist[n] = NULL;
@@ -35,7 +35,7 @@ ProcessModeMatch::ProcessModeMatch(Operator_Base* op) : ProcessIntegral(op)
 
 ProcessModeMatch::~ProcessModeMatch()
 {
-	for (int n=0;n<2;++n)
+	for (int n=0; n<2; ++n)
 	{
 		delete m_ModeParser[n];
 		m_ModeParser[n] = NULL;
@@ -61,7 +61,7 @@ void ProcessModeMatch::InitProcess()
 	m_Eng_Interface->SetInterpolationType(Engine_Interface_Base::NODE_INTERPOLATE);
 
 	int Dump_Dim=0;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		if (start[n]>stop[n])
 		{
@@ -96,7 +96,7 @@ void ProcessModeMatch::InitProcess()
 		return;
 	}
 
-	for (int n=0;n<2;++n)
+	for (int n=0; n<2; ++n)
 	{
 		int ny = (m_ny+n+1)%3;
 		int res = m_ModeParser[n]->Parse(m_ModeFunction[ny], "x,y,z,rho,a,r,t");
@@ -109,7 +109,7 @@ void ProcessModeMatch::InitProcess()
 		}
 	}
 
-	for (int n=0;n<2;++n)
+	for (int n=0; n<2; ++n)
 	{
 		m_ModeDist[n] = Create2DArray<double>(m_numLines);
 	}
@@ -122,11 +122,11 @@ void ProcessModeMatch::InitProcess()
 	discLine[m_ny] = Op->GetDiscLine(m_ny,pos[m_ny],m_dualMesh);
 	double norm = 0;
 	double area = 0;
-	for (unsigned int posP = 0;posP<m_numLines[0];++posP)
+	for (unsigned int posP = 0; posP<m_numLines[0]; ++posP)
 	{
 		pos[nP] = start[nP] + posP;
 		discLine[nP] = Op->GetDiscLine(nP,pos[nP],m_dualMesh);
-		for (unsigned int posPP = 0;posPP<m_numLines[1];++posPP)
+		for (unsigned int posPP = 0; posPP<m_numLines[1]; ++posPP)
 		{
 			pos[nPP] = start[nPP] + posPP;
 			discLine[nPP] = Op->GetDiscLine(nPP,pos[nPP],m_dualMesh);
@@ -149,7 +149,7 @@ void ProcessModeMatch::InitProcess()
 				var[6] = asin(1)-atan(var[2]/var[3]); //theta (t)
 			}
 			area = Op->GetNodeArea(m_ny,pos,m_dualMesh);
-			for (int n=0;n<2;++n)
+			for (int n=0; n<2; ++n)
 			{
 				m_ModeDist[n][posP][posPP] = m_ModeParser[n]->Eval(var); //calc mode template
 				if ((isnan(m_ModeDist[n][posP][posPP])) || (isinf(m_ModeDist[n][posP][posPP])))
@@ -163,10 +163,10 @@ void ProcessModeMatch::InitProcess()
 	norm = sqrt(norm);
 //	cerr << norm << endl;
 	// normalize template function...
-	for (unsigned int posP = 0;posP<m_numLines[0];++posP)
-		for (unsigned int posPP = 0;posPP<m_numLines[1];++posPP)
+	for (unsigned int posP = 0; posP<m_numLines[0]; ++posP)
+		for (unsigned int posPP = 0; posPP<m_numLines[1]; ++posPP)
 		{
-			for (int n=0;n<2;++n)
+			for (int n=0; n<2; ++n)
 			{
 				m_ModeDist[n][posP][posPP] /= norm;
 			}
@@ -179,7 +179,7 @@ void ProcessModeMatch::InitProcess()
 void ProcessModeMatch::Reset()
 {
 	ProcessIntegral::Reset();
-	for (int n=0;n<2;++n)
+	for (int n=0; n<2; ++n)
 	{
 		Delete2DArray<double>(m_ModeDist[n],m_numLines);
 		m_ModeDist[n] = NULL;
@@ -215,10 +215,10 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 
 	double out[3]={0,0,0};
 
-	for (unsigned int posP = 0;posP<m_numLines[0];++posP)
+	for (unsigned int posP = 0; posP<m_numLines[0]; ++posP)
 	{
 		pos[nP] = start[nP] + posP;
-		for (unsigned int posPP = 0;posPP<m_numLines[1];++posPP)
+		for (unsigned int posPP = 0; posPP<m_numLines[1]; ++posPP)
 		{
 			pos[nPP] = start[nPP] + posPP;
 			area = Op->GetNodeArea(m_ny,pos,m_dualMesh);
@@ -227,7 +227,7 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 			if (m_ModeFieldType==1)
 				m_Eng_Interface->GetHField(pos,out);
 
-			for (int n=0;n<2;++n)
+			for (int n=0; n<2; ++n)
 			{
 				field = out[(m_ny+n+1)%3];
 				value += field * m_ModeDist[n][posP][posPP] * area;

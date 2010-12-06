@@ -28,7 +28,7 @@ class Engine_CylinderMultiGrid : public Engine_Multithread
 {
 	friend class Engine_Ext_CylinderMultiGrid;
 public:
-    Engine_CylinderMultiGrid();
+	Engine_CylinderMultiGrid();
 
 	static Engine_CylinderMultiGrid* New(const Operator_CylinderMultiGrid* op, unsigned int numThreads = 0);
 	virtual ~Engine_CylinderMultiGrid();
@@ -53,7 +53,7 @@ protected:
 	boost::barrier *m_stopBarrier;
 	Engine_CylinderMultiGrid_Thread* m_IteratorThread;
 	Engine_CylinderMultiGrid_Thread* m_InnerIteratorThread;
-	
+
 	//extension barrier
 	boost::barrier *m_WaitOnBase;
 	boost::barrier *m_WaitOnChild;

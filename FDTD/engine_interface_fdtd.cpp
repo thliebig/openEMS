@@ -42,7 +42,7 @@ double* Engine_Interface_FDTD::GetEField(const unsigned int* pos, double* out) c
 	{
 	default:
 	case NO_INTERPOLATION:
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			delta =  m_Op->GetEdgeLength(n,pos,false);
 			if (delta)
@@ -52,7 +52,7 @@ double* Engine_Interface_FDTD::GetEField(const unsigned int* pos, double* out) c
 		}
 		break;
 	case NODE_INTERPOLATE:
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			delta = m_Op->GetMeshDelta(n,iPos);
 			out[n] = m_Eng->GetVolt(n,iPos);
@@ -74,7 +74,7 @@ double* Engine_Interface_FDTD::GetEField(const unsigned int* pos, double* out) c
 		}
 		break;
 	case CELL_INTERPOLATE:
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			nP = (n+1)%3;
 			nPP = (n+2)%3;
@@ -120,7 +120,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 		out[2] = m_Eng->GetCurr(2,pos) / m_Op->GetEdgeLength(2,pos,true);
 		break;
 	case NODE_INTERPOLATE:
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			nP = (n+1)%3;
 			nPP = (n+2)%3;
@@ -141,7 +141,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 		}
 		break;
 	case CELL_INTERPOLATE:
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			delta = m_Op->GetMeshDelta(n,iPos,true);
 			out[n] = m_Eng->GetCurr(n,iPos);
@@ -165,18 +165,18 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 double Engine_Interface_FDTD::CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const
 {
 	double result=0;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		if (start[n]<stop[n])
 		{
 			unsigned int pos[3]={start[0],start[1],start[2]};
-			for (;pos[n]<stop[n];++pos[n])
+			for (; pos[n]<stop[n]; ++pos[n])
 				result += m_Eng->GetVolt(n,pos[0],pos[1],pos[2]);
 		}
 		else
 		{
 			unsigned int pos[3]={stop[0],stop[1],stop[2]};
-			for (;pos[n]<start[n];++pos[n])
+			for (; pos[n]<start[n]; ++pos[n])
 				result -= m_Eng->GetVolt(n,pos[0],pos[1],pos[2]);
 		}
 	}

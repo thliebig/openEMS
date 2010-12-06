@@ -47,7 +47,7 @@ Engine_CylinderMultiGrid::Engine_CylinderMultiGrid(const Operator_CylinderMultiG
 	m_InnerEng_Ext_MG->SetBarrier(m_WaitOnBase, m_WaitOnChild, m_WaitOnSync);
 
 	// if already has a base extension, switch places ... seems to be faster...
-	for (size_t n=0;n<m_InnerEngine->m_Eng_exts.size();++n)
+	for (size_t n=0; n<m_InnerEngine->m_Eng_exts.size(); ++n)
 	{
 		Engine_Ext_CylinderMultiGrid* eng_mg = dynamic_cast<Engine_Ext_CylinderMultiGrid*>(m_InnerEngine->m_Eng_exts.at(n));
 		if (eng_mg)
@@ -114,9 +114,9 @@ bool Engine_CylinderMultiGrid::IterateTS(unsigned int iterTS)
 	m_stopBarrier->wait();  //tell base and child to wait for another start event...
 
 	//interpolate child data to base mesh...
-	for (unsigned int n=0;n<Op_CMG->m_Split_Pos-1;++n)
+	for (unsigned int n=0; n<Op_CMG->m_Split_Pos-1; ++n)
 		InterpolVoltChild2Base(n);
-	for (unsigned int n=0;n<Op_CMG->m_Split_Pos-2;++n)
+	for (unsigned int n=0; n<Op_CMG->m_Split_Pos-2; ++n)
 		InterpolCurrChild2Base(n);
 
 	return true;
@@ -131,7 +131,7 @@ void Engine_CylinderMultiGrid::InterpolVoltChild2Base(unsigned int rzPlane)
 	pos[0] = rzPlane;
 	bool isOdd, isEven;
 	f4vector half, one_eighth, three_eighth;
-	for (int n=0;n<4;++n)
+	for (int n=0; n<4; ++n)
 	{
 		half.f[n]=0.5;
 		one_eighth.f[n]   = 1.0/8.0;
@@ -195,7 +195,7 @@ void Engine_CylinderMultiGrid::InterpolCurrChild2Base(unsigned int rzPlane)
 	pos[0] = rzPlane;
 	bool isOdd, isEven;
 	f4vector one_fourth, three_fourth;
-	for (int n=0;n<4;++n)
+	for (int n=0; n<4; ++n)
 	{
 		one_fourth.f[n] = 1.0/4.0;
 		three_fourth.f[n] = 3.0/4.0;
@@ -263,7 +263,7 @@ void Engine_CylinderMultiGrid_Thread::operator()()
 {
 	m_startBarrier->wait(); //wait for Base engine to start the iterations...
 
-	while(*m_numTS>0)	//m_numTS==0 request to terminate this thread...
+	while (*m_numTS>0)	//m_numTS==0 request to terminate this thread...
 	{
 		if (m_isBase)
 			m_Eng->Engine_Multithread::IterateTS(*m_numTS);

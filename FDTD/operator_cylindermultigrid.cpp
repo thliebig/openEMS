@@ -67,7 +67,7 @@ bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
 
 	//check if mesh is homogenous in alpha-direction
 	double diff=discLines[1][1]-discLines[1][0];
-	for (unsigned int n=2;n<numLines[1];++n)
+	for (unsigned int n=2; n<numLines[1]; ++n)
 	{
 		if ( fabs((discLines[1][n]-discLines[1][n-1]) - diff)/diff > 1e-10)
 		{
@@ -77,7 +77,7 @@ bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
 	}
 
 	m_Split_Pos = 0;
-	for (unsigned int n=0;n<numLines[0];++n)
+	for (unsigned int n=0; n<numLines[0]; ++n)
 	{
 		if (m_Split_Rad < discLines[0][n])
 		{
@@ -97,7 +97,7 @@ bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
 
 	grid->ClearLines(0);
 	grid->ClearLines(1);
-	for (unsigned int n=0; n<m_Split_Pos ;++n)
+	for (unsigned int n=0; n<m_Split_Pos ; ++n)
 		grid->AddDiscLine(0,discLines[0][n]);
 	for (unsigned int n=0; n<numLines[1]; n+=2)
 		grid->AddDiscLine(1,discLines[1][n]);

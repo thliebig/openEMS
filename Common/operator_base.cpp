@@ -39,15 +39,15 @@ std::string Operator_Base::GetDirName(int ny) const
 void Operator_Base::Init()
 {
 	dT = 0;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 		discLines[n]=NULL;
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 		m_BC[n]=0;
 }
 
 void Operator_Base::Reset()
 {
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 		delete[] discLines[n];
 	Init();
 }

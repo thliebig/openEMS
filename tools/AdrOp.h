@@ -34,7 +34,8 @@
 
 using namespace std;
 
-class AdrOp{
+class AdrOp
+{
 public:
 	///Constructor, define dimension/size here
 	AdrOp(unsigned int muiImax, unsigned int muiYmax, unsigned int muiKmax=0, unsigned int muiLmax=0);
@@ -67,7 +68,7 @@ public:
 //	double GetCellVolume(unsigned int uiCell);
 
 	unsigned int GetPosFromNode(int ny, unsigned int uiNode);
-		///Set a shift in ny direction (e.g. 0 for i-direction)
+	///Set a shift in ny direction (e.g. 0 for i-direction)
 	/*!Shift set by this methode will be ignored by methode GetPos*/
 	unsigned int Shift(int ny, int step);
 	///Set a checked shift in ny direction (e.g. 0 for i-direction)

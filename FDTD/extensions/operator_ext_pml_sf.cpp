@@ -23,7 +23,7 @@
 
 bool Build_Split_Field_PML(Operator* op, int BC[6], int size[6], string gradFunc)
 {
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 	{
 		if (BC[n]==3) //split field PML
 		{
@@ -61,12 +61,16 @@ Operator_Ext_PML_SF::Operator_Ext_PML_SF(Operator* op) : Operator_Extension(op)
 	m_numLines[1]=0;
 	m_numLines[2]=0;
 
-	vv[0] = NULL;	vv[1] = NULL;
-	vi[0] = NULL;	vi[1] = NULL;
-	ii[0] = NULL;	ii[1] = NULL;
-	iv[0] = NULL;	iv[1] = NULL;
+	vv[0] = NULL;
+	vv[1] = NULL;
+	vi[0] = NULL;
+	vi[1] = NULL;
+	ii[0] = NULL;
+	ii[1] = NULL;
+	iv[0] = NULL;
+	iv[1] = NULL;
 
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 		m_BC[n]=0;
 
 	m_GradingFunction = new FunctionParser();
@@ -131,7 +135,7 @@ bool Operator_Ext_PML_SF::SetGradingFunction(string func)
 
 	m_GradFunc = func;
 	int res = m_GradingFunction->Parse(m_GradFunc.c_str(), "D,dl,W,Z,N");
-	if(res < 0) return true;
+	if (res < 0) return true;
 
 	cerr << "Operator_Ext_PML_SF::SetGradingFunction: Warning, an error occured parsing the pml grading function (see below) ..." << endl;
 	cerr << func << "\n" << string(res, ' ') << "^\n" << m_GradingFunction->ErrorMsg() << "\n";
@@ -152,13 +156,13 @@ bool Operator_Ext_PML_SF::BuildExtension()
 
 	double inEC[4];
 
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
-		for (pos[0]=0;pos[0]<m_numLines[0];++pos[0])
+		for (pos[0]=0; pos[0]<m_numLines[0]; ++pos[0])
 		{
-			for (pos[1]=0;pos[1]<m_numLines[1];++pos[1])
+			for (pos[1]=0; pos[1]<m_numLines[1]; ++pos[1])
 			{
-				for (pos[2]=0;pos[2]<m_numLines[2];++pos[2])
+				for (pos[2]=0; pos[2]<m_numLines[2]; ++pos[2])
 				{
 					Calc_ECPos(0,n,pos,inEC);
 					if (inEC[0]>0)
@@ -334,7 +338,7 @@ void Operator_Ext_PML_SF_Plane::ApplyBC()
 	if (m_top==false)
 		PEC[2*m_ny+1] = 0;
 
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 	{
 		PMC[n] = (m_BC[n] == 1);
 		if (n/2 == m_ny)
@@ -343,15 +347,15 @@ void Operator_Ext_PML_SF_Plane::ApplyBC()
 
 	//apply BC
 	unsigned int pos[3] = {0,0,0};
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		int nP = (n+1)%3;
 		int nPP = (n+2)%3;
-		for (pos[nP]=0;pos[nP]<m_numLines[nP];++pos[nP])
+		for (pos[nP]=0; pos[nP]<m_numLines[nP]; ++pos[nP])
 		{
-			for (pos[nPP]=0;pos[nPP]<m_numLines[nPP];++pos[nPP])
+			for (pos[nPP]=0; pos[nPP]<m_numLines[nPP]; ++pos[nPP])
 			{
-				for (int m=0;m<2;++m)
+				for (int m=0; m<2; ++m)
 				{
 					pos[n]=0;
 					GetVV(m,nP,pos[0],pos[1],pos[2]) *= (FDTD_FLOAT)!PEC[2*n];

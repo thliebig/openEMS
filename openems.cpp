@@ -77,9 +77,12 @@ openEMS::~openEMS()
 void openEMS::Reset()
 {
 	if (PA) PA->DeleteAll();
-	delete PA; PA=0;
-	delete FDTD_Eng; FDTD_Eng=0;
-	delete FDTD_Op; FDTD_Op=0;
+	delete PA;
+	PA=0;
+	delete FDTD_Eng;
+	FDTD_Eng=0;
+	delete FDTD_Op;
+	FDTD_Op=0;
 }
 
 //! \brief processes a command line argument
@@ -203,7 +206,7 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 
 	string bound_names[] = {"xmin","xmax","ymin","ymax","zmin","zmax"};
 
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 	{
 		EC = BC->QueryIntAttribute(bound_names[n].c_str(),&bounds[n]);
 		if (EC==TIXML_SUCCESS)
@@ -219,7 +222,7 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 				bounds[n] = 1;
 			else if (s_bc=="MUR")
 				bounds[n] = 2;
-			else if(strncmp(s_bc.c_str(),"PML_=",4)==0)
+			else if (strncmp(s_bc.c_str(),"PML_=",4)==0)
 			{
 				bounds[n] = 3;
 				pml_size[n] = atoi(s_bc.c_str()+4);
@@ -240,7 +243,7 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 	if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&mur_v_ph) != TIXML_SUCCESS)
 		mur_v_ph = -1;
 	string mur_v_ph_names[6] = {"MUR_PhaseVelocity_xmin", "MUR_PhaseVelocity_xmax", "MUR_PhaseVelocity_ymin", "MUR_PhaseVelocity_ymax", "MUR_PhaseVelocity_zmin", "MUR_PhaseVelocity_zmax"};
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 	{
 		if (bounds[n]==2) //Mur-ABC
 		{
@@ -340,7 +343,7 @@ int openEMS::SetupFDTD(const char* file)
 	if (CylinderCoords)
 		if (CSX.GetCoordInputType()!=CYLINDRICAL)
 		{
-		cerr << "openEMS::SetupFDTD: Warning: Coordinate system found in the CSX file is not a cylindrical. Forcing to cylindrical coordinate system!" << endl;
+			cerr << "openEMS::SetupFDTD: Warning: Coordinate system found in the CSX file is not a cylindrical. Forcing to cylindrical coordinate system!" << endl;
 			CSX.SetCoordInputType(CYLINDRICAL); //tell CSX to use cylinder-coords
 		}
 
@@ -396,7 +399,7 @@ int openEMS::SetupFDTD(const char* file)
 	if (m_debugPEC)
 		debugFlags |= Operator::debugPEC;
 	FDTD_Op->CalcECOperator( debugFlags );
-	
+
 	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
 	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
 		NrTS = maxTime_TS;
@@ -412,7 +415,8 @@ int openEMS::SetupFDTD(const char* file)
 
 	cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
 
-	if (m_no_simulation) {
+	if (m_no_simulation)
+	{
 		// simulation was disabled (to generate debug output only)
 		return 1;
 	}
@@ -429,7 +433,7 @@ int openEMS::SetupFDTD(const char* file)
 	double start[3];
 	double stop[3];
 	vector<CSProperties*> Probes = CSX.GetPropertyByType(CSProperties::PROBEBOX);
-	for (size_t i=0;i<Probes.size();++i)
+	for (size_t i=0; i<Probes.size(); ++i)
 	{
 		//only looking for one prim atm
 		CSPrimitives* prim = Probes.at(i)->GetPrimitive(0);
@@ -438,8 +442,12 @@ int openEMS::SetupFDTD(const char* file)
 			bool acc;
 			double bnd[6] = {0,0,0,0,0,0};
 			acc = prim->GetBoundBox(bnd,true);
-			start[0]= bnd[0];start[1]=bnd[2];start[2]=bnd[4];
-			stop[0] = bnd[1];stop[1] =bnd[3];stop[2] =bnd[5];
+			start[0]= bnd[0];
+			start[1]=bnd[2];
+			start[2]=bnd[4];
+			stop[0] = bnd[1];
+			stop[1] =bnd[3];
+			stop[2] =bnd[5];
 			CSPropProbeBox* pb = Probes.at(i)->ToProbeBox();
 			Processing* proc = NULL;
 			if (pb)
@@ -490,7 +498,7 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
-	for (size_t i=0;i<DumpProps.size();++i)
+	for (size_t i=0; i<DumpProps.size(); ++i)
 	{
 		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(FDTD_Op);
 		ProcTD->SetEnable(Enable_Dumps);
@@ -505,8 +513,12 @@ int openEMS::SetupFDTD(const char* file)
 			bool acc;
 			double bnd[6] = {0,0,0,0,0,0};
 			acc = prim->GetBoundBox(bnd,true);
-			start[0]= bnd[0];start[1]=bnd[2];start[2]=bnd[4];
-			stop[0] = bnd[1];stop[1] =bnd[3];stop[2] =bnd[5];
+			start[0]= bnd[0];
+			start[1]=bnd[2];
+			start[2]=bnd[4];
+			stop[0] = bnd[1];
+			stop[1] =bnd[3];
+			stop[2] =bnd[5];
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 			if (db)
 			{
@@ -516,7 +528,7 @@ int openEMS::SetupFDTD(const char* file)
 				ProcTD->SetFileType((ProcessFields::FileType)db->GetFileType());
 				if (CylinderCoords)
 					ProcTD->SetMeshType(Processing::CYLINDRICAL_MESH);
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 					ProcTD->SetSubSampling(db->GetSubSampling(n),n);
 				ProcTD->SetFilePattern(db->GetName());
 				ProcTD->SetFileName(db->GetName());
@@ -587,7 +599,7 @@ void openEMS::RunFDTD()
 
 	//add all timesteps to end-crit field processing with max excite amplitude
 	unsigned int maxExcite = FDTD_Op->Exc->GetMaxExcitationTimestep();
-	for (unsigned int n=0;n<FDTD_Op->Exc->Volt_Count;++n)
+	for (unsigned int n=0; n<FDTD_Op->Exc->Volt_Count; ++n)
 		ProcField->AddStep(FDTD_Op->Exc->Volt_delay[n]+maxExcite);
 
 	double change=1;

@@ -35,8 +35,8 @@ void ProcessHField::InitProcess()
 
 	file << "% time-domain H-field probe by openEMS " GIT_VERSION << endl;
 	file << "% coords: (" << Op->GetDiscLine(0,start[0],true)*Op->GetGridDelta() << ","
-						  << Op->GetDiscLine(1,start[1],true)*Op->GetGridDelta() << ","
-						  << Op->GetDiscLine(2,start[2],true)*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
+	<< Op->GetDiscLine(1,start[1],true)*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(2,start[2],true)*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
 	file << "% t/s\tEx/(A/m)\tEy/(A/m)\tEz/(A/m)" << endl;
 }
 
@@ -47,13 +47,14 @@ void ProcessHField::DefineStartStopCoord(double* dstart, double* dstop)
 	if (Op->SnapToMesh(dstop,stop,true,m_stop_inside)==false)
 		cerr << "ProcessHField::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 
-	if (g_settings.showProbeDiscretization()) {
+	if (g_settings.showProbeDiscretization())
+	{
 		cerr << m_Name << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], true ) << ","
-				<< Op->GetDiscLine( 1, start[1], true ) << "," << Op->GetDiscLine( 2, start[2], true ) << ") -> ("
-				<< Op->GetDiscLine( 0, stop[0], true ) << ","<< Op->GetDiscLine( 1, stop[1], true ) << ","
-				<< Op->GetDiscLine( 2, stop[2], true ) << ")";
+		     << Op->GetDiscLine( 1, start[1], true ) << "," << Op->GetDiscLine( 2, start[2], true ) << ") -> ("
+		     << Op->GetDiscLine( 0, stop[0], true ) << ","<< Op->GetDiscLine( 1, stop[1], true ) << ","
+		     << Op->GetDiscLine( 2, stop[2], true ) << ")";
 		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
-				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+		     << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 	}
 }
 
@@ -93,14 +94,14 @@ int ProcessHField::Process()
 			{
 				FDTD_FLOAT field = Eng->GetCurr(pol,start) / Op->GetMeshDelta(pol,start,true);
 				field *= m_weight;
-				for (size_t n=0;n<m_FD_Samples.size();++n)
+				for (size_t n=0; n<m_FD_Samples.size(); ++n)
 				{
 					FD_Values[pol].at(n) += (double)field * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * T );
 				}
 				++m_FD_SampleCount;
 			}
 			if (m_Flush)
-					FlushData();
+				FlushData();
 			m_Flush = false;
 		}
 	}

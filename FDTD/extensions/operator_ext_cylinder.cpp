@@ -32,14 +32,18 @@ Operator_Ext_Cylinder::Operator_Ext_Cylinder(Operator_Cylinder* op) : Operator_E
 
 Operator_Ext_Cylinder::~Operator_Ext_Cylinder()
 {
-	delete[] vv_R0;vv_R0=NULL;
-	delete[] vi_R0;vi_R0=NULL;
+	delete[] vv_R0;
+	vv_R0=NULL;
+	delete[] vi_R0;
+	vi_R0=NULL;
 }
 
 bool Operator_Ext_Cylinder::BuildExtension()
 {
-	delete[] vv_R0;vv_R0=NULL;
-	delete[] vi_R0;vi_R0=NULL;
+	delete[] vv_R0;
+	vv_R0=NULL;
+	delete[] vi_R0;
+	vi_R0=NULL;
 
 	//if r=0 is not included -> obviously no special treatment for r=0
 	//if alpha direction is not closed, PEC-BC at r=0 necessary and already set...
@@ -53,11 +57,11 @@ bool Operator_Ext_Cylinder::BuildExtension()
 	double inEC[4];
 	double dT = m_Op->GetTimestep();
 	pos[0]=0;
-	for (pos[2]=0;pos[2]<m_Op->GetOriginalNumLines(2);++pos[2])
+	for (pos[2]=0; pos[2]<m_Op->GetOriginalNumLines(2); ++pos[2])
 	{
 		double C=0;
 		double G=0;
-		for (pos[1]=0;pos[1]<m_Op->GetOriginalNumLines(1)-1;++pos[1])
+		for (pos[1]=0; pos[1]<m_Op->GetOriginalNumLines(1)-1; ++pos[1])
 		{
 			m_Op_Cyl->Calc_ECPos(2,pos,inEC);
 			C+=inEC[0]*0.5;

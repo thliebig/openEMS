@@ -138,10 +138,10 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 	else
 		coord[m_ny] = m_Op->GetDiscLine(m_ny,pos[m_ny]) - delta/2 / m_Op->GetGridDelta();
 
-	for (pos[m_nyP]=0;pos[m_nyP]<m_numLines[0];++pos[m_nyP])
+	for (pos[m_nyP]=0; pos[m_nyP]<m_numLines[0]; ++pos[m_nyP])
 	{
 		coord[m_nyP] = m_Op->GetDiscLine(m_nyP,pos[m_nyP]);
-		for (pos[m_nyPP]=0;pos[m_nyPP]<m_numLines[1];++pos[m_nyPP])
+		for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
 		{
 			coord[m_nyPP] = m_Op->GetDiscLine(m_nyPP,pos[m_nyPP]);
 			CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, CSProperties::MATERIAL, false);

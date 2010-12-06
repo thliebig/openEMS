@@ -34,34 +34,38 @@
 
 class Engine_Multithread;
 
-namespace NS_Engine_Multithread {
+namespace NS_Engine_Multithread
+{
 
-	class DBG { // debug
-	public:
-		DBG() {}
-		~DBG() { std::cout << os.str();}
-		std::ostringstream& cout() {return os;}
-	protected:
-		std::ostringstream os;
-	};
+class DBG   // debug
+{
+public:
+	DBG() {}
+	~DBG() { std::cout << os.str();}
+	std::ostringstream& cout() {return os;}
+protected:
+	std::ostringstream os;
+};
 
-	class Timer { //debug
-	public:
-		Timer() {gettimeofday(&t1,NULL);}
-		double elapsed() {gettimeofday(&t2,NULL); return (t2.tv_sec-t1.tv_sec) + (t2.tv_usec-t1.tv_usec)*1e-6;}
-	protected:
-		timeval t1,t2;
-	};
+class Timer   //debug
+{
+public:
+	Timer() {gettimeofday(&t1,NULL);}
+	double elapsed() {gettimeofday(&t2,NULL); return (t2.tv_sec-t1.tv_sec) + (t2.tv_usec-t1.tv_usec)*1e-6;}
+protected:
+	timeval t1,t2;
+};
 
-	class thread {
-	public:
-		thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int stop_h, unsigned int threadID );
-		void operator()();
+class thread
+{
+public:
+	thread( Engine_Multithread* ptr, unsigned int start, unsigned int stop, unsigned int stop_h, unsigned int threadID );
+	void operator()();
 
-	protected:
-		unsigned int m_start, m_stop, m_stop_h, m_threadID;
-		Engine_Multithread *m_enginePtr;
-	};
+protected:
+	unsigned int m_start, m_stop, m_stop_h, m_threadID;
+	Engine_Multithread *m_enginePtr;
+};
 } // namespace
 
 

@@ -113,7 +113,7 @@ void Processing::AddStep(unsigned int step)
 
 void Processing::AddSteps(vector<unsigned int> steps)
 {
-	for (size_t n=0;n<steps.size();++n)
+	for (size_t n=0; n<steps.size(); ++n)
 	{
 		AddStep(steps.at(n));
 	}
@@ -143,7 +143,7 @@ void Processing::AddFrequency(double freq)
 
 void Processing::AddFrequency(vector<double> *freqs)
 {
-	for (size_t n=0;n<freqs->size();++n)
+	for (size_t n=0; n<freqs->size(); ++n)
 	{
 		AddFrequency(freqs->at(n));
 	}
@@ -156,13 +156,14 @@ void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 	if (Op->SnapToMesh(dstop,stop,m_dualMesh,m_stop_inside)==false)
 		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
 
-	if (g_settings.showProbeDiscretization()) {
+	if (g_settings.showProbeDiscretization())
+	{
 		cerr << m_Name << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], m_dualMesh ) << ","
-				<< Op->GetDiscLine( 1, start[1], m_dualMesh ) << "," << Op->GetDiscLine( 2, start[2], m_dualMesh ) << ") -> ("
-				<< Op->GetDiscLine( 0, stop[0], m_dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], m_dualMesh ) << ","
-				<< Op->GetDiscLine( 2, stop[2], m_dualMesh ) << ")";
+		     << Op->GetDiscLine( 1, start[1], m_dualMesh ) << "," << Op->GetDiscLine( 2, start[2], m_dualMesh ) << ") -> ("
+		     << Op->GetDiscLine( 0, stop[0], m_dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], m_dualMesh ) << ","
+		     << Op->GetDiscLine( 2, stop[2], m_dualMesh ) << ")";
 		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
-				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+		     << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 	}
 }
 
@@ -191,15 +192,18 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 
 	// normalize coordinates
 	double s1[3], s2[3];
-	for (int i=0; i<3; i++) {
+	for (int i=0; i<3; i++)
+	{
 		s1[i] = min(Op->GetDiscLine(i,start[i],dualMesh),Op->GetDiscLine(i,stop[i],dualMesh));
 		s2[i] = max(Op->GetDiscLine(i,start[i],dualMesh),Op->GetDiscLine(i,stop[i],dualMesh));
 	}
 
 	// fix degenerate box/plane -> line (paraview display problem)
-	if (((s1[0] == s2[0]) && (s1[1] == s2[1])) || ((s1[0] == s2[0]) && (s1[2] == s2[2])) || ((s1[2] == s2[2]) && (s1[1] == s2[1]))) {
+	if (((s1[0] == s2[0]) && (s1[1] == s2[1])) || ((s1[0] == s2[0]) && (s1[2] == s2[2])) || ((s1[2] == s2[2]) && (s1[1] == s2[1])))
+	{
 		// line are not displayed correctly -> enlarge
-		for (int i=0; i<3; i++) {
+		for (int i=0; i<3; i++)
+		{
 			double delta = min( Op->GetMeshDelta( i, start,dualMesh ), Op->GetMeshDelta( i, stop,dualMesh ) ) / Op->GetGridDelta() / 4.0;
 			s1[i] -= delta;
 			s2[i] += delta;
@@ -209,7 +213,8 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 	// rescale coordinates
 #ifndef OUTPUT_IN_DRAWINGUNITS
 	double scaling = Op->GetGridDelta();
-	for (int i=0; i<3; i++) {
+	for (int i=0; i<3; i++)
+	{
 		s1[i] *= scaling;
 		s2[i] *= scaling;
 	}
@@ -243,9 +248,9 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 
 void Processing::Dump_FD_Data(vector<double_complex> value, double factor, string filename)
 {
-	if (value.size()==0) 
+	if (value.size()==0)
 		return;
-	if (value.size()!=m_FD_Samples.size()) 
+	if (value.size()!=m_FD_Samples.size())
 	{
 		cerr << "Processing::Dump_FD_Data: Error: Complex value and frequency vector have different size! This should never happend!!!" << endl;
 		return;
@@ -258,7 +263,7 @@ void Processing::Dump_FD_Data(vector<double_complex> value, double factor, strin
 	time_t rawTime;
 	time(&rawTime);
 	file << "%dump by openEMS @" << ctime(&rawTime) << "%frequency\treal\timag\n";
-	for (size_t n=0;n<value.size();++n)
+	for (size_t n=0; n<value.size(); ++n)
 	{
 		file << m_FD_Samples.at(n) << "\t" << 2.0 * std::real(value.at(n))*factor << "\t" << 2.0 * std::imag(value.at(n))*factor << "\n";
 	}
@@ -272,7 +277,7 @@ void ProcessingArray::AddProcessing(Processing* proc)
 
 void ProcessingArray::FlushNext()
 {
-	for (size_t i=0;i<ProcessArray.size();++i)
+	for (size_t i=0; i<ProcessArray.size(); ++i)
 	{
 		ProcessArray.at(i)->FlushNext();
 	}
@@ -280,7 +285,7 @@ void ProcessingArray::FlushNext()
 
 void ProcessingArray::Reset()
 {
-	for (size_t i=0;i<ProcessArray.size();++i)
+	for (size_t i=0; i<ProcessArray.size(); ++i)
 	{
 		ProcessArray.at(i)->Reset();
 	}
@@ -288,7 +293,7 @@ void ProcessingArray::Reset()
 
 void ProcessingArray::DeleteAll()
 {
-	for (size_t i=0;i<ProcessArray.size();++i)
+	for (size_t i=0; i<ProcessArray.size(); ++i)
 	{
 		delete ProcessArray.at(i);
 	}
@@ -299,7 +304,7 @@ int ProcessingArray::Process()
 {
 	int nextProcess=maxInterval;
 	//this could be done nicely in parallel??
-	for (size_t i=0;i<ProcessArray.size();++i)
+	for (size_t i=0; i<ProcessArray.size(); ++i)
 	{
 		int step = ProcessArray.at(i)->Process();
 		if ((step>0) && (step<nextProcess))
@@ -310,6 +315,6 @@ int ProcessingArray::Process()
 
 void ProcessingArray::DumpBoxes2File( string vtkfilenameprefix ) const
 {
-	for (size_t i=0;i<ProcessArray.size();++i)
+	for (size_t i=0; i<ProcessArray.size(); ++i)
 		ProcessArray.at(i)->DumpBox2File( vtkfilenameprefix );
 }

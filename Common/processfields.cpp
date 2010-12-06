@@ -29,7 +29,7 @@ ProcessFields::ProcessFields(Operator_Base* op) : Processing(op)
 	SetSubSampling(1);
 	SetPrecision(6);
 
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		numLines[n]=0;
 		discLines[n]=NULL;
@@ -38,7 +38,7 @@ ProcessFields::ProcessFields(Operator_Base* op) : Processing(op)
 
 ProcessFields::~ProcessFields()
 {
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		delete[] discLines[n];
 		discLines[n]=NULL;
@@ -57,7 +57,7 @@ void ProcessFields::InitProcess()
 		H5::H5File* file = new H5::H5File( m_filename , H5F_ACC_TRUNC );
 
 		H5::Group* group = new H5::Group( file->createGroup( "/Mesh" ));
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			hsize_t dimsf[1];              // dataset dimensions
 			dimsf[0] = numLines[n];
@@ -66,7 +66,7 @@ void ProcessFields::InitProcess()
 			H5::DataSet dataset = group->createDataSet( names[n].c_str(), datatype, dataspace );
 			//convert to float...
 			float* array = new float[numLines[n]];
-			for (unsigned int i=0;i<numLines[n];++i)
+			for (unsigned int i=0; i<numLines[n]; ++i)
 			{
 #ifdef OUTPUT_IN_DRAWINGUNITS
 				array[i] = Lines[n][i];
@@ -92,10 +92,10 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 {
 	switch (type)
 	{
-		case E_FIELD_DUMP:
-			return "E-Field";
-		case H_FIELD_DUMP:
-			return "H-Field";
+	case E_FIELD_DUMP:
+		return "E-Field";
+	case H_FIELD_DUMP:
+		return "H-Field";
 	}
 	return "unknown field";
 }
@@ -117,7 +117,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 		if (!Op->SnapToMesh(dstop,stop,dualMesh))
 			cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
 
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			// normalize order of start and stop
 			if (start[n]>stop[n])
@@ -129,14 +129,14 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 
 			// construct new discLines
 			lines.clear();
-			for (unsigned int i=start[n];i<=stop[n];i+=subSample[n])
+			for (unsigned int i=start[n]; i<=stop[n]; i+=subSample[n])
 			{
 				lines.push_back(Op->GetDiscLine(n,i,dualMesh));
 			}
 			numLines[n] = lines.size();
 			delete[] discLines[n];
 			discLines[n] = new double[numLines[n]];
-			for (unsigned int i=0;i<numLines[n];++i)
+			for (unsigned int i=0; i<numLines[n]; ++i)
 				discLines[n][i] = lines.at(i);
 		}
 	}
@@ -146,7 +146,7 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 		if (Op->SnapToMesh(dstop,stop)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
 
 		//create mesh
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
 			if (start[n]>stop[n])
 			{
@@ -158,14 +158,14 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 //				--stop[n];
 //			cerr << "start " << start[n] << "stop " << stop[n];
 			lines.clear();
-			for (unsigned int i=start[n];i<=stop[n];i+=subSample[n])
+			for (unsigned int i=start[n]; i<=stop[n]; i+=subSample[n])
 			{
 				lines.push_back(Op->GetDiscLine(n,i));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
 			}
 			numLines[n] = lines.size();
 			delete[] discLines[n];
 			discLines[n] = new double[numLines[n]];
-			for (unsigned int i=0;i<numLines[n];++i)
+			for (unsigned int i=0; i<numLines[n]; ++i)
 				discLines[n][i] = lines.at(i);
 		}
 	}
@@ -175,9 +175,9 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 		if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
 
 		//create dual mesh
-		for (int n=0;n<3;++n)
+		for (int n=0; n<3; ++n)
 		{
-	//		cerr << "start " << start[n] << "stop " << stop[n];
+			//		cerr << "start " << start[n] << "stop " << stop[n];
 			if (start[n]>stop[n])
 			{
 				unsigned int help = start[n];
@@ -186,27 +186,28 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 			}
 			++stop[n];
 			lines.clear();
-			for (unsigned int i=start[n];i<stop[n];i+=subSample[n])
+			for (unsigned int i=start[n]; i<stop[n]; i+=subSample[n])
 			{
 				lines.push_back(Op->GetDiscLine(n,i,true));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
 			}
 			numLines[n] = lines.size();
 			delete[] discLines[n];
 			discLines[n] = new double[numLines[n]];
-			for (unsigned int i=0;i<numLines[n];++i)
+			for (unsigned int i=0; i<numLines[n]; ++i)
 				discLines[n][i] = lines.at(i);
 		}
 	}
 
-	if (g_settings.showProbeDiscretization()) {
+	if (g_settings.showProbeDiscretization())
+	{
 		// FIXME the information E-Field / H-Field and therefore which mesh to use is missing
 		bool dualMesh = false;
 		cerr << m_filename << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], dualMesh ) << ","
-				<< Op->GetDiscLine( 1, start[1], dualMesh ) << "," << Op->GetDiscLine( 2, start[2], dualMesh ) << ") -> ("
-				<< Op->GetDiscLine( 0, stop[0], dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], dualMesh ) << ","
-				<< Op->GetDiscLine( 2, stop[2], dualMesh ) << ")";
+		     << Op->GetDiscLine( 1, start[1], dualMesh ) << "," << Op->GetDiscLine( 2, start[2], dualMesh ) << ") -> ("
+		     << Op->GetDiscLine( 0, stop[0], dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], dualMesh ) << ","
+		     << Op->GetDiscLine( 2, stop[2], dualMesh ) << ")";
 		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
-				<< stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+		     << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 	}
 
 }
@@ -222,11 +223,11 @@ double ProcessFields::CalcTotalEnergy() const
 		const Engine* Eng = EI_FDTD->GetFDTDEngine();
 
 		unsigned int pos[3];
-		for (pos[0]=0;pos[0]<Op->GetNumberOfLines(0);++pos[0])
+		for (pos[0]=0; pos[0]<Op->GetNumberOfLines(0); ++pos[0])
 		{
-			for (pos[1]=0;pos[1]<Op->GetNumberOfLines(1);++pos[1])
+			for (pos[1]=0; pos[1]<Op->GetNumberOfLines(1); ++pos[1])
 			{
-				for (pos[2]=0;pos[2]<Op->GetNumberOfLines(2);++pos[2])
+				for (pos[2]=0; pos[2]<Op->GetNumberOfLines(2); ++pos[2])
 				{
 					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
 					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
@@ -274,15 +275,15 @@ void ProcessFields::WriteVTKCartesianGridHeader(ofstream &file, double const* co
 	file << "DATASET RECTILINEAR_GRID " << endl;
 	file << "DIMENSIONS " << numLines[0] << " " << numLines[1] << " " << numLines[2] << endl;
 	file << "X_COORDINATES " << numLines[0] << " " << __VTK_DATA_TYPE__ << endl;
-	for (unsigned int i=0;i<numLines[0];++i)
+	for (unsigned int i=0; i<numLines[0]; ++i)
 		file << setprecision(precision) << discLines[0][i] * discLines_scaling << " ";
 	file << endl;
 	file << "Y_COORDINATES " << numLines[1] << " " << __VTK_DATA_TYPE__ << endl;
-	for (unsigned int i=0;i<numLines[1];++i)
+	for (unsigned int i=0; i<numLines[1]; ++i)
 		file << setprecision(precision) << discLines[1][i] * discLines_scaling << " ";
 	file << endl;
 	file << "Z_COORDINATES " << numLines[2] << " " << __VTK_DATA_TYPE__ << endl;
-	for (unsigned int i=0;i<numLines[2];++i)
+	for (unsigned int i=0; i<numLines[2]; ++i)
 		file << setprecision(precision) << discLines[2][i] * discLines_scaling << " ";
 	file << endl << endl;
 	file << "POINT_DATA " << numLines[0]*numLines[1]*numLines[2] << endl;
@@ -299,13 +300,13 @@ void ProcessFields::WriteVTKCylindricalGridHeader(ofstream &file, double const* 
 	file << "DATASET STRUCTURED_GRID " << endl;
 	file << "DIMENSIONS " << numLines[0] << " " << numLines[1] << " " << numLines[2] << endl;
 	file << "POINTS " << numLines[0]*numLines[1]*numLines[2] << " " << __VTK_DATA_TYPE__ << endl;
-	for (unsigned int k=0;k<numLines[2];++k)
-		for (unsigned int j=0;j<numLines[1];++j)
-			for (unsigned int i=0;i<numLines[0];++i)
+	for (unsigned int k=0; k<numLines[2]; ++k)
+		for (unsigned int j=0; j<numLines[1]; ++j)
+			for (unsigned int i=0; i<numLines[0]; ++i)
 			{
 				file << setprecision(precision) << discLines[0][i] * cos(discLines[1][j]) * discLines_scaling << " "
-												<< discLines[0][i] * sin(discLines[1][j]) * discLines_scaling << " "
-												<< discLines[2][k] * discLines_scaling << endl;
+				<< discLines[0][i] * sin(discLines[1][j]) * discLines_scaling << " "
+				<< discLines[2][k] * discLines_scaling << endl;
 			}
 	file << endl;
 	file << endl << endl;
@@ -321,13 +322,13 @@ void ProcessFields::WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT 
 		meshT = CARTESIAN_MESH; //dump field components as they are...
 
 	unsigned int pos[3];
-	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			double cos_a = cos(discLines[1][pos[1]]); //needed only for CYLINDRICAL_MESH
 			double sin_a = sin(discLines[1][pos[1]]); //needed only for CYLINDRICAL_MESH
-			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 			{
 				switch (meshT)
 				{
@@ -365,7 +366,7 @@ bool ProcessFields::DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT 
 bool ProcessFields::DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
 	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
-	for (unsigned int n=0;n<numFields;++n)
+	for (unsigned int n=0; n<numFields; ++n)
 	{
 		WriteVTKVectorArray(file, names[n], array[n], discLines, numLines, precision, meshT);
 		file << endl;
@@ -379,11 +380,11 @@ void ProcessFields::WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT 
 	file << "LOOKUP_TABLE default" << endl;
 	unsigned int pos[3];
 	int count=0;
-	for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 			{
 				file << setprecision(precision) << array[pos[0]][pos[1]][pos[2]] << " ";
 				++count;
@@ -404,7 +405,7 @@ bool ProcessFields::DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT 
 bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
 {
 	WriteVTKHeader(file, discLines, numLines, precision, header_info, meshT, discLines_scaling);
-	for (unsigned int n=0;n<numFields;++n)
+	for (unsigned int n=0; n<numFields; ++n)
 	{
 		WriteVTKScalarArray(file, names[n], array[n], numLines, precision);
 		file << endl;
@@ -443,13 +444,13 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOA
 	// at least it is save in case FDTD_FLOAT was defined as double...
 	// why does hdf5 write the dimensions backwards??? or matlab???
 	float hdf5array[3][numLines[2]][numLines[1]][numLines[0]];
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
-		for (unsigned int i=0;i<numLines[0];++i)
+		for (unsigned int i=0; i<numLines[0]; ++i)
 		{
-			for (unsigned int j=0;j<numLines[1];++j)
+			for (unsigned int j=0; j<numLines[1]; ++j)
 			{
-				for (unsigned int k=0;k<numLines[2];++k)
+				for (unsigned int k=0; k<numLines[2]; ++k)
 				{
 					hdf5array[n][k][j][i] = array[n][i][j][k];
 				}

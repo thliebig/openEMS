@@ -79,13 +79,13 @@ void Engine_sse::UpdateVoltages(unsigned int startX, unsigned int numX)
 	f4vector temp;
 
 	pos[0] = startX;
-	for (unsigned int posX=0;posX<numX;++posX)
+	for (unsigned int posX=0; posX<numX; ++posX)
 	{
 		shift[0]=pos[0];
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			shift[1]=pos[1];
-			for (pos[2]=1;pos[2]<numVectors;++pos[2])
+			for (pos[2]=1; pos[2]<numVectors; ++pos[2])
 			{
 				// x-polarization
 				f4_volt[0][pos[0]][pos[1]][pos[2]].v *= Op->f4_vv[0][pos[0]][pos[1]][pos[2]].v;
@@ -131,11 +131,11 @@ void Engine_sse::UpdateCurrents(unsigned int startX, unsigned int numX)
 	f4vector temp;
 
 	pos[0] = startX;
-	for (unsigned int posX=0;posX<numX;++posX)
+	for (unsigned int posX=0; posX<numX; ++posX)
 	{
-		for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numVectors-1;++pos[2])
+			for (pos[2]=0; pos[2]<numVectors-1; ++pos[2])
 			{
 				// x-pol
 				f4_curr[0][pos[0]][pos[1]][pos[2]].v *= Op->f4_ii[0][pos[0]][pos[1]][pos[2]].v;

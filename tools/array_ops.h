@@ -20,7 +20,7 @@
 
 #ifdef __SIZEOF_FLOAT__
 #if __SIZEOF_FLOAT__ != 4
-	#error wrong size of float
+#error wrong size of float
 #endif
 #endif
 
@@ -38,8 +38,8 @@ typedef   int v4si __attribute__ ((vector_size (4*sizeof(int)))); // vector of f
 
 union f4vector
 {
-  v4sf v;
-  float f[4];
+	v4sf v;
+	float f[4];
 };
 
 void Delete1DArray_v4sf(f4vector* array);
@@ -58,10 +58,10 @@ T** Create2DArray(const unsigned int* numLines)
 	T** array=NULL;
 	unsigned int pos[3];
 	array = new T*[numLines[0]];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		array[pos[0]] = new T[numLines[1]];
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			array[pos[0]][pos[1]] = 0;
 		}
@@ -74,7 +74,7 @@ void Delete2DArray(T** array, const unsigned int* numLines)
 {
 	if (array==NULL) return;
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		delete[] array[pos[0]];
 	}
@@ -99,13 +99,13 @@ T*** Create3DArray(const unsigned int* numLines)
 	T*** array=NULL;
 	unsigned int pos[3];
 	array = new T**[numLines[0]];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		array[pos[0]] = new T*[numLines[1]];
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			array[pos[0]][pos[1]] = new T[numLines[2]];
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				array[pos[0]][pos[1]][pos[2]] = 0;
 			}
@@ -119,7 +119,7 @@ T**** Create_N_3DArray(const unsigned int* numLines)
 {
 	T**** array=NULL;
 	array = new T***[3];
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		array[n]=Create3DArray<T>( numLines );
 	}
@@ -131,9 +131,9 @@ void Delete3DArray(T*** array, const unsigned int* numLines)
 {
 	if (!array) return;
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			delete[] array[pos[0]][pos[1]];
 		}
@@ -146,7 +146,7 @@ template <typename T>
 void Delete_N_3DArray(T**** array, const unsigned int* numLines)
 {
 	if (!array) return;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		Delete3DArray<T>(array[n],numLines);
 	}
@@ -157,14 +157,14 @@ template <typename T>
 void Dump_N_3DArray2File(ostream &file, T**** array, const unsigned int* numLines)
 {
 	unsigned int pos[3];
-	for (pos[0]=0;pos[0]<numLines[0];++pos[0])
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
-		for (pos[1]=0;pos[1]<numLines[1];++pos[1])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[2]=0;pos[2]<numLines[2];++pos[2])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				file << pos[0] << "\t" << pos[1] << "\t" << pos[2];
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 					file << "\t" << (float)array[n][pos[0]][pos[1]][pos[2]];
 				file << endl;
 			}

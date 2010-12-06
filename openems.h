@@ -31,7 +31,7 @@ class TiXmlElement;
 class openEMS
 {
 public:
-    openEMS();
+	openEMS();
 	~openEMS();
 
 	bool parseCommandLineArgument( const char *argv );

@@ -27,12 +27,12 @@ Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 	//default grading function
 	SetGradingFunction(" -log(1e-6)*log(2.5)/(2*dl*pow(2.5,W/dl)-1) * pow(2.5, D/dl) / Z ");
 
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 	{
 		m_BC[n]=0;
 		m_Size[n]=0;
 	}
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		m_StartPos[n]=0;
 		m_numLines[n]=0;
@@ -55,7 +55,7 @@ Operator_Ext_UPML::~Operator_Ext_UPML()
 
 void Operator_Ext_UPML::SetBoundaryCondition(const int* BCs, const unsigned int size[6])
 {
-	for (int n=0;n<6;++n)
+	for (int n=0; n<6; ++n)
 	{
 		m_BC[n]=BCs[n];
 		m_Size[n]=size[n];
@@ -64,7 +64,7 @@ void Operator_Ext_UPML::SetBoundaryCondition(const int* BCs, const unsigned int 
 
 void Operator_Ext_UPML::SetRange(const unsigned int start[3], const unsigned int stop[3])
 {
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		m_StartPos[n]=start[n];
 		m_numLines[n]=stop[n]-start[n]+1;
@@ -77,7 +77,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 	unsigned int size[6]={ui_size[0],ui_size[1],ui_size[2],ui_size[3],ui_size[4],ui_size[5]};
 
 	//check if mesh is large enough to support the pml
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 		if ( (size[2*n]*(BC[2*n]==3)+size[2*n+1]*(BC[2*n+1]==3)) >= op->GetOriginalNumLines(n) )
 		{
 			cerr << "Operator_Ext_UPML::Create_UPML: Warning: Not enough lines in direction: " << n << ", resetting to PEC" << endl;
@@ -199,7 +199,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 	{
 		Operator_Cylinder* op_child = op_cyl_MG->GetInnerOperator();
 		op_cyl_MG = dynamic_cast<Operator_CylinderMultiGrid*>(op_child);
-		for (int n=0;n<2;++n)
+		for (int n=0; n<2; ++n)
 		{
 			start[n]=0;
 			stop[n]=op_child->GetOriginalNumLines(n)-1;
@@ -258,7 +258,7 @@ bool Operator_Ext_UPML::SetGradingFunction(string func)
 
 	m_GradFunc = func;
 	int res = m_GradingFunction->Parse(m_GradFunc.c_str(), "D,dl,W,Z,N");
-	if(res < 0) return true;
+	if (res < 0) return true;
 
 	cerr << "Operator_Ext_UPML::SetGradingFunction: Warning, an error occured parsing the pml grading function (see below) ..." << endl;
 	cerr << func << "\n" << string(res, ' ') << "^\n" << m_GradingFunction->ErrorMsg() << "\n";
@@ -269,7 +269,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 {
 	double depth=0;
 	double width=0;
-	for (int n=0;n<3;++n)
+	for (int n=0; n<3; ++n)
 	{
 		if ((pos[n] <= m_Size[2*n]) && (m_BC[2*n]==3))  //lower pml in n-dir
 		{
@@ -355,16 +355,16 @@ bool Operator_Ext_UPML::BuildExtension()
 	double eff_Mat[4];
 	double dT = m_Op->GetTimestep();
 
-	for (loc_pos[0]=0;loc_pos[0]<m_numLines[0];++loc_pos[0])
+	for (loc_pos[0]=0; loc_pos[0]<m_numLines[0]; ++loc_pos[0])
 	{
 		pos[0] = loc_pos[0] + m_StartPos[0];
-		for (loc_pos[1]=0;loc_pos[1]<m_numLines[1];++loc_pos[1])
+		for (loc_pos[1]=0; loc_pos[1]<m_numLines[1]; ++loc_pos[1])
 		{
 			pos[1] = loc_pos[1] + m_StartPos[1];
-			for (loc_pos[2]=0;loc_pos[2]<m_numLines[2];++loc_pos[2])
+			for (loc_pos[2]=0; loc_pos[2]<m_numLines[2]; ++loc_pos[2])
 			{
 				pos[2] = loc_pos[2] + m_StartPos[2];
-				for (int n=0;n<3;++n)
+				for (int n=0; n<3; ++n)
 				{
 					m_Op->Calc_EffMatPos(0,pos,eff_Mat);
 					CalcGradingKappa(n, pos,__Z0__ ,kappa_v ,kappa_i);
@@ -440,6 +440,6 @@ void Operator_Ext_UPML::ShowStat(ostream &ostr)  const
 	Operator_Extension::ShowStat(ostr);
 
 	ostr << " PML range\t\t: " << "[" << m_StartPos[0]<< "," << m_StartPos[1]<< "," << m_StartPos[2]<< "] to ["
-			<<  m_StartPos[0]+m_numLines[0]-1 << "," << m_StartPos[1]+m_numLines[1]-1 << "," << m_StartPos[2]+m_numLines[2]-1 << "]" << endl;
+	<<  m_StartPos[0]+m_numLines[0]-1 << "," << m_StartPos[1]+m_numLines[1]-1 << "," << m_StartPos[2]+m_numLines[2]-1 << "]" << endl;
 	ostr << " Grading function\t: \"" << m_GradFunc << "\"" << endl;
 }

@@ -37,7 +37,7 @@ void ProcessIntegral::InitProcess()
 	m_filename = m_Name;
 	OpenFile(m_filename);
 	FD_Values.clear();
-	for (size_t n=0;n<m_FD_Samples.size();++n)
+	for (size_t n=0; n<m_FD_Samples.size(); ++n)
 		FD_Values.push_back(0);
 }
 
@@ -64,7 +64,7 @@ int ProcessIntegral::Process()
 		{
 			TD_Values.push_back(integral);
 			file << setprecision(m_precision) << time;
-			for (int n=0;n<NrInt;++n)
+			for (int n=0; n<NrInt; ++n)
 				file << "\t" << m_Results[n] * m_weight;
 			file << endl;
 		}
@@ -75,13 +75,13 @@ int ProcessIntegral::Process()
 		if (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval==0)
 		{
 			double T = time;
-			for (size_t n=0;n<m_FD_Samples.size();++n)
+			for (size_t n=0; n<m_FD_Samples.size(); ++n)
 			{
 				FD_Values.at(n) += (double)integral * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * T );
 			}
 			++m_FD_SampleCount;
 			if (m_Flush)
-					FlushData();
+				FlushData();
 			m_Flush = false;
 		}
 	}

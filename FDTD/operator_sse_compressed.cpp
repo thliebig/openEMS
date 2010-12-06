@@ -120,13 +120,13 @@ void Operator_SSE_Compressed::ShowStat() const
 INLINE int equal(f4vector v1, f4vector v2)
 {
 #if defined(__SSE__)
-	#if (__GNUC__ == 4) && (__GNUC_MINOR__ < 4)
-		v4si compare = __builtin_ia32_cmpeqps( v1.v, v2.v );
-		return __builtin_ia32_movmskps( (v4sf)compare ) == 0x0f;
-	#else
-		v4sf compare = __builtin_ia32_cmpeqps( v1.v, v2.v );
-		return __builtin_ia32_movmskps( compare ) == 0x0f;
-	#endif
+#if (__GNUC__ == 4) && (__GNUC_MINOR__ < 4)
+	v4si compare = __builtin_ia32_cmpeqps( v1.v, v2.v );
+	return __builtin_ia32_movmskps( (v4sf)compare ) == 0x0f;
+#else
+	v4sf compare = __builtin_ia32_cmpeqps( v1.v, v2.v );
+	return __builtin_ia32_movmskps( compare ) == 0x0f;
+#endif
 #else
 	return (
 	           v1.f[0] == v2.f[0] &&
