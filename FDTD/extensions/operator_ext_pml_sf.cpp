@@ -17,7 +17,7 @@
 
 #include "operator_ext_pml_sf.h"
 #include "engine_ext_pml_sf.h"
-#include "operator_cylinder.h"
+#include "FDTD/operator_cylinder.h"
 #include "tools/array_ops.h"
 #include "fparser.hh"
 

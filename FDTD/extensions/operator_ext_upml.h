@@ -18,7 +18,7 @@
 #ifndef OPERATOR_EXT_UPML_H
 #define OPERATOR_EXT_UPML_H
 
-#include "operator.h"
+#include "FDTD/operator.h"
 #include "operator_extension.h"
 
 class FunctionParser;

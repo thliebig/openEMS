@@ -17,8 +17,7 @@
 
 #include "engine_ext_lorentzmaterial.h"
 #include "operator_ext_lorentzmaterial.h"
-#include "engine.h"
-#include "engine_sse.h"
+#include "FDTD/engine_sse.h"
 
 Engine_Ext_LorentzMaterial::Engine_Ext_LorentzMaterial(Operator_Ext_LorentzMaterial* op_ext_lorentz) : Engine_Ext_Dispersive(op_ext_lorentz)
 {

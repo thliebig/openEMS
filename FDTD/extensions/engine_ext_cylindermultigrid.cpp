@@ -15,9 +15,9 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "engine.h"
+#include "FDTD/engine.h"
 #include "engine_ext_cylindermultigrid.h"
-#include "engine_cylindermultigrid.h"
+#include "FDTD/engine_cylindermultigrid.h"
 
 Engine_Ext_CylinderMultiGrid::Engine_Ext_CylinderMultiGrid(Operator_Extension* op_ext, bool isBase) : Engine_Extension(op_ext)
 {

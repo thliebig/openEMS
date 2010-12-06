@@ -17,7 +17,7 @@
 
 #include "operator_cylindermultigrid.h"
 #include "engine_cylindermultigrid.h"
-#include "operator_ext_cylinder.h"
+#include "extensions/operator_ext_cylinder.h"
 #include "tools/useful.h"
 
 Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radii) : Operator_Cylinder()

@@ -18,8 +18,8 @@
 #ifndef OPERATOR_EXT_PML_SF_H
 #define OPERATOR_EXT_PML_SF_H
 
-#include "operator.h"
 #include "operator_extension.h"
+#include "FDTD/operator.h"
 
 class FunctionParser;
 

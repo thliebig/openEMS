@@ -18,7 +18,7 @@
 #ifndef OPERATOR_EXT_MUR_ABC_H
 #define OPERATOR_EXT_MUR_ABC_H
 
-#include "operator.h"
+#include "FDTD/operator.h"
 #include "operator_extension.h"
 
 class Operator_Ext_Mur_ABC : public Operator_Extension

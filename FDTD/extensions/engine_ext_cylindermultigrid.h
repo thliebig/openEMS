@@ -18,9 +18,9 @@
 #ifndef ENGINE_EXT_CYLINDERMULTIGRID_H
 #define ENGINE_EXT_CYLINDERMULTIGRID_H
 
-#include "engine_cylindermultigrid.h"
+#include "FDTD/engine_cylindermultigrid.h"
 #include "engine_extension.h"
-#include "operator_cylindermultigrid.h"
+#include "FDTD/operator_cylindermultigrid.h"
 
 class Operator_Ext_CylinderMultiGrid;
 

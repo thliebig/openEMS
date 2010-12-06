@@ -17,8 +17,8 @@
 
 #include "engine_ext_upml.h"
 #include "operator_ext_upml.h"
-#include "engine.h"
-#include "engine_sse.h"
+#include "FDTD/engine.h"
+#include "FDTD/engine_sse.h"
 #include "tools/array_ops.h"
 #include "tools/useful.h"
 

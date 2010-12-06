@@ -15,33 +15,32 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "operator_extension.h"
+#ifndef ENGINE_EXT_DISPERSIVE_H
+#define ENGINE_EXT_DISPERSIVE_H
 
-#include "operator.h"
+#include "engine_extension.h"
+#include "FDTD/engine.h"
+#include "FDTD/operator.h"
 
-Operator_Extension::Operator_Extension(Operator* op)
+class Operator_Ext_Dispersive;
+
+class Engine_Ext_Dispersive : public Engine_Extension
 {
-	m_Op = op;
-}
+public:
+	Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_disp);
+	virtual ~Engine_Ext_Dispersive();
 
-Operator_Extension::~Operator_Extension()
-{
-}
+	virtual void Apply2Voltages();
+	virtual void Apply2Current();
 
-Operator_Extension::Operator_Extension(Operator* op, Operator_Extension* op_ext)
-{
-	UNUSED(op_ext);
-	m_Op = op;
-}
+protected:
+	Operator_Ext_Dispersive* m_Op_Ext_Disp;
 
-void Operator_Extension::ShowStat(ostream &ostr) const
-{
-	ostr << "--- " << GetExtensionName() << " ---" << endl;
-}
+	//! ADE currents
+	FDTD_FLOAT *curr_ADE[3];
 
-Operator_Extension* Operator_Extension::Clone(Operator* op)
-{
-	if (dynamic_cast<Operator_Extension*>(this)==NULL)
-		return NULL;
-	return new Operator_Extension(op, this);
-}
+	//! ADE voltages
+	FDTD_FLOAT *volt_ADE[3];
+};
+
+#endif // ENGINE_EXT_DISPERSIVE_H

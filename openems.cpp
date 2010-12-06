@@ -22,9 +22,10 @@
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
-#include "FDTD/operator_ext_mur_abc.h"
-#include "FDTD/operator_ext_pml_sf.h"
-#include "FDTD/operator_ext_upml.h"
+#include "FDTD/extensions/operator_ext_mur_abc.h"
+#include "FDTD/extensions/operator_ext_pml_sf.h"
+#include "FDTD/extensions/operator_ext_upml.h"
+#include "FDTD/extensions/operator_ext_lorentzmaterial.h"
 #include "FDTD/engine_interface_fdtd.h"
 #include "Common/processvoltage.h"
 #include "Common/processcurrent.h"
@@ -36,8 +37,6 @@
 #include <time.h>
 #include <H5Cpp.h> // only for H5get_libversion()
 #include <boost/version.hpp> // only for BOOST_LIB_VERSION
-
-#include "FDTD/operator_ext_lorentzmaterial.h"
 
 //external libs
 #include "tinyxml.h"

@@ -18,9 +18,9 @@
 #ifndef ENGINE_CYLINDER_H
 #define ENGINE_CYLINDER_H
 
-#include "engine.h"
+#include "FDTD/engine.h"
 #include "engine_extension.h"
-#include "operator_cylinder.h"
+#include "FDTD/operator_cylinder.h"
 
 class Operator_Ext_Cylinder;
 

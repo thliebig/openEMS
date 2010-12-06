@@ -16,7 +16,7 @@
 */
 
 #include "operator_ext_cylinder.h"
-#include "operator_cylinder.h"
+#include "FDTD/operator_cylinder.h"
 #include "engine_ext_cylinder.h"
 
 Operator_Ext_Cylinder::Operator_Ext_Cylinder(Operator_Cylinder* op) : Operator_Extension(op)

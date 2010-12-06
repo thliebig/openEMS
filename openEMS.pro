@@ -44,6 +44,7 @@ win32 {
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
+
 SOURCES += main.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \
@@ -55,30 +56,33 @@ SOURCES += main.cpp \
     FDTD/operator_cylinder.cpp \
     FDTD/engine_sse.cpp \
     FDTD/operator_sse.cpp \
-    FDTD/operator_extension.cpp \
-    FDTD/engine_extension.cpp \
-    FDTD/engine_ext_mur_abc.cpp \
-    FDTD/operator_ext_mur_abc.cpp \
-    FDTD/excitation.cpp \
-    FDTD/operator_ext_cylinder.cpp \
-    FDTD/engine_ext_cylinder.cpp \
     FDTD/operator_sse_compressed.cpp \
     FDTD/engine_sse_compressed.cpp \
     FDTD/operator_multithread.cpp \
     tools/global.cpp \
     tools/useful.cpp \
-    FDTD/operator_ext_dispersive.cpp \
-    FDTD/operator_ext_lorentzmaterial.cpp \
-    FDTD/engine_ext_dispersive.cpp \
-    FDTD/engine_ext_lorentzmaterial.cpp \
-    FDTD/operator_ext_pml_sf.cpp \
-    FDTD/engine_ext_pml_sf.cpp \
+    FDTD/excitation.cpp \
     FDTD/operator_cylindermultigrid.cpp \
     FDTD/engine_cylindermultigrid.cpp \
-    FDTD/engine_ext_cylindermultigrid.cpp \
-    FDTD/operator_ext_upml.cpp \
-    FDTD/engine_ext_upml.cpp \
     FDTD/engine_interface_fdtd.cpp
+
+# FDTD/extensions source files
+SOURCES += FDTD/extensions/engine_extension.cpp \
+    FDTD/extensions/operator_ext_dispersive.cpp \
+    FDTD/extensions/operator_ext_lorentzmaterial.cpp \
+    FDTD/extensions/engine_ext_dispersive.cpp \
+    FDTD/extensions/engine_ext_lorentzmaterial.cpp \
+    FDTD/extensions/operator_ext_pml_sf.cpp \
+    FDTD/extensions/engine_ext_pml_sf.cpp \
+    FDTD/extensions/engine_ext_cylindermultigrid.cpp \
+    FDTD/extensions/operator_ext_upml.cpp \
+    FDTD/extensions/engine_ext_upml.cpp \
+    FDTD/extensions/operator_extension.cpp \
+    FDTD/extensions/engine_ext_mur_abc.cpp \
+    FDTD/extensions/operator_ext_mur_abc.cpp \
+    FDTD/extensions/operator_ext_cylinder.cpp \
+    FDTD/extensions/engine_ext_cylinder.cpp
+
 # Common source files
 SOURCES += Common/operator_base.cpp \
     Common/engine_interface_base.cpp \
@@ -103,31 +107,34 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_cylinder.h \
     FDTD/engine_sse.h \
     FDTD/operator_sse.h \
-    FDTD/operator_extension.h \
-    FDTD/engine_extension.h \
-    FDTD/engine_ext_mur_abc.h \
-    FDTD/operator_ext_mur_abc.h \
     FDTD/excitation.h \
-    FDTD/operator_ext_cylinder.h \
-    FDTD/engine_ext_cylinder.h \
     FDTD/operator_sse_compressed.h \
     FDTD/engine_sse_compressed.h \
     FDTD/operator_multithread.h \
     tools/global.h \
     tools/useful.h \
-    FDTD/operator_ext_dispersive.h \
-    FDTD/operator_ext_lorentzmaterial.h \
-    FDTD/engine_ext_dispersive.h \
-    FDTD/engine_ext_lorentzmaterial.h \
-    FDTD/operator_ext_pml_sf.h \
-    FDTD/engine_ext_pml_sf.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
-    FDTD/engine_ext_cylindermultigrid.h \
     tools/aligned_allocator.h \
-    FDTD/operator_ext_upml.h \
-    FDTD/engine_ext_upml.h \
-    FDTD/engine_interface_fdtd.h     
+    FDTD/engine_interface_fdtd.h  
+
+# FDTD/extensions header files   
+HEADERS += FDTD/operator_extension.h \
+    FDTD/extensions/engine_extension.h \
+    FDTD/extensions/engine_ext_mur_abc.h \
+    FDTD/extensions/operator_ext_mur_abc.h \
+    FDTD/extensions/operator_ext_cylinder.h \
+    FDTD/extensions/engine_ext_cylinder.h \
+    FDTD/extensions/operator_ext_dispersive.h \
+    FDTD/extensions/operator_ext_lorentzmaterial.h \
+    FDTD/extensions/engine_ext_dispersive.h \
+    FDTD/extensions/engine_ext_lorentzmaterial.h \
+    FDTD/extensions/operator_ext_pml_sf.h \
+    FDTD/extensions/engine_ext_pml_sf.h \
+    FDTD/extensions/engine_ext_cylindermultigrid.h \
+    FDTD/extensions/operator_ext_upml.h \
+    FDTD/extensions/engine_ext_upml.h
+
 # Common header files
 HEADERS += Common/operator_base.h \
     Common/engine_interface_base.h \

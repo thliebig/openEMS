@@ -17,8 +17,7 @@
 
 #include "engine_ext_pml_sf.h"
 #include "operator_ext_pml_sf.h"
-#include "engine.h"
-#include "engine_sse.h"
+#include "FDTD/engine_sse.h"
 #include "tools/array_ops.h"
 
 /************************************************  Engine_Ext_PML_SF  **************************************************************************/

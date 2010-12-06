@@ -18,8 +18,8 @@
 #include "engine.h"
 #include "Common/processfields.h"
 #include "operator_cylinder.h"
-#include "operator_extension.h"
-#include "operator_ext_cylinder.h"
+#include "extensions/operator_extension.h"
+#include "extensions/operator_ext_cylinder.h"
 
 Operator_Cylinder* Operator_Cylinder::New(unsigned int numThreads)
 {

@@ -15,42 +15,35 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPERATOR_EXT_CYLINDER_H
-#define OPERATOR_EXT_CYLINDER_H
+#ifndef OPERATOR_EXT_LORENTZMATERIAL_H
+#define OPERATOR_EXT_LORENTZMATERIAL_H
 
-#include "operator_extension.h"
-#include "operator.h"
+#include "FDTD/operator.h"
+#include "operator_ext_dispersive.h"
 
-class Operator_Cylinder;
-
-class Operator_Ext_Cylinder : public Operator_Extension
+class Operator_Ext_LorentzMaterial : public Operator_Ext_Dispersive
 {
-	friend class Engine_Ext_Cylinder;
+	friend class Engine_Ext_LorentzMaterial;
 public:
-	Operator_Ext_Cylinder(Operator_Cylinder* op);
-	~Operator_Ext_Cylinder();
+	Operator_Ext_LorentzMaterial(Operator* op);
+	virtual ~Operator_Ext_LorentzMaterial();
 
 	virtual bool BuildExtension();
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() const {return true;}
-	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child);return true;}
+	virtual bool IsCylinderCoordsSave() const {return false;}
 
-	virtual std::string GetExtensionName() const {return std::string("Extension for the Cylinder-Coords Operator");}
+	virtual std::string GetExtensionName() const {return std::string("Lorentz Dispersive Material Extension");}
 
 	virtual void ShowStat(ostream &ostr) const;
 
 protected:
-	Operator_Cylinder* m_Op_Cyl;
 
-	bool CC_closedAlpha;
-	bool CC_R0_included;
-
-	//special EC operator for R0
-	FDTD_FLOAT* vv_R0; //calc new voltage from old voltage
-	FDTD_FLOAT* vi_R0; //calc new voltage from old current
-
+	FDTD_FLOAT *v_int_ADE[3];
+	FDTD_FLOAT *v_ext_ADE[3];
+	FDTD_FLOAT *i_int_ADE[3];
+	FDTD_FLOAT *i_ext_ADE[3];
 };
 
-#endif // OPERATOR_EXT_CYLINDER_H
+#endif // OPERATOR_EXT_LORENTZMATERIAL_H

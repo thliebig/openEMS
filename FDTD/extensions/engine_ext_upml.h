@@ -19,8 +19,8 @@
 #define ENGINE_EXT_UPML_H
 
 #include "engine_extension.h"
-#include "engine.h"
-#include "operator.h"
+#include "FDTD/engine.h"
+#include "FDTD/operator.h"
 
 class Operator_Ext_UPML;
 

@@ -17,8 +17,7 @@
 
 #include "engine_ext_dispersive.h"
 #include "operator_ext_dispersive.h"
-#include "engine.h"
-#include "engine_sse.h"
+#include "FDTD/engine_sse.h"
 
 Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_disp) : Engine_Extension(op_ext_disp)
 {

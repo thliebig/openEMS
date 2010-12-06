@@ -17,7 +17,7 @@
 
 #include "engine_cylindermultigrid.h"
 #include "operator_cylindermultigrid.h"
-#include "engine_ext_cylindermultigrid.h"
+#include "extensions/engine_ext_cylindermultigrid.h"
 
 Engine_CylinderMultiGrid* Engine_CylinderMultiGrid::New(const Operator_CylinderMultiGrid* op, unsigned int numThreads)
 {

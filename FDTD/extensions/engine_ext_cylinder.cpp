@@ -15,7 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "engine.h"
+#include "FDTD/engine.h"
 #include "engine_ext_cylinder.h"
 #include "operator_ext_cylinder.h"
 

@@ -17,7 +17,7 @@
 
 #include "engine_extension.h"
 
-#include "engine.h"
+#include "FDTD/engine.h"
 
 Engine_Extension::Engine_Extension(Operator_Extension* op_ext)
 {

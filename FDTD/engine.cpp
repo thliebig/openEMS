@@ -16,8 +16,8 @@
 */
 
 #include "engine.h"
-#include "engine_extension.h"
-#include "operator_extension.h"
+#include "extensions/engine_extension.h"
+#include "extensions/operator_extension.h"
 #include "tools/array_ops.h"
 
 //! \brief construct an Engine instance

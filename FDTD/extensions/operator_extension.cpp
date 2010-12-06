@@ -15,33 +15,32 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPERATOR_EXT_DISPERSIVE_H
-#define OPERATOR_EXT_DISPERSIVE_H
-
-#include "operator.h"
 #include "operator_extension.h"
+#include "FDTD/operator.h"
 
-//! Abstract base class for all dispersive material models, based on an ADE (additional differential equation)
-class Operator_Ext_Dispersive : public Operator_Extension
+Operator_Extension::Operator_Extension(Operator* op)
 {
-	friend class Engine_Ext_Dispersive;
-public:
-	virtual ~Operator_Ext_Dispersive();
+	m_Op = op;
+}
 
-	virtual string GetExtensionName() const {return string("Dispersive Material Abstract Base class");}
+Operator_Extension::~Operator_Extension()
+{
+}
 
-	virtual void ShowStat(ostream &ostr) const;
+Operator_Extension::Operator_Extension(Operator* op, Operator_Extension* op_ext)
+{
+	UNUSED(op_ext);
+	m_Op = op;
+}
 
-protected:
-	Operator_Ext_Dispersive(Operator* op);
+void Operator_Extension::ShowStat(ostream &ostr) const
+{
+	ostr << "--- " << GetExtensionName() << " ---" << endl;
+}
 
-	//! Lorentz material count
-	unsigned int m_LM_Count;
-	//! Index with dispersive material
-	unsigned int *m_LM_pos[3];
-
-	bool m_curr_ADE_On;
-	bool m_volt_ADE_On;
-};
-
-#endif // OPERATOR_EXT_DISPERSIVE_H
+Operator_Extension* Operator_Extension::Clone(Operator* op)
+{
+	if (dynamic_cast<Operator_Extension*>(this)==NULL)
+		return NULL;
+	return new Operator_Extension(op, this);
+}
