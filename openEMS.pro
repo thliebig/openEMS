@@ -50,14 +50,6 @@ SOURCES += main.cpp \
     FDTD/engine.cpp \
     FDTD/operator.cpp \
     tools/array_ops.cpp \
-    FDTD/processvoltage.cpp \
-    FDTD/process_efield.cpp \
-    FDTD/process_hfield.cpp \
-    FDTD/processing.cpp \
-    FDTD/processintegral.cpp \
-    FDTD/processfields.cpp \
-    FDTD/processfields_td.cpp \
-    FDTD/processcurrent.cpp \
     openems.cpp \
     FDTD/engine_multithread.cpp \
     FDTD/operator_cylinder.cpp \
@@ -81,29 +73,31 @@ SOURCES += main.cpp \
     FDTD/engine_ext_lorentzmaterial.cpp \
     FDTD/operator_ext_pml_sf.cpp \
     FDTD/engine_ext_pml_sf.cpp \
-    FDTD/processmodematch.cpp \
     FDTD/operator_cylindermultigrid.cpp \
     FDTD/engine_cylindermultigrid.cpp \
     FDTD/engine_ext_cylindermultigrid.cpp \
     FDTD/operator_ext_upml.cpp \
     FDTD/engine_ext_upml.cpp \
+    FDTD/engine_interface_fdtd.cpp
+# Common source files
+SOURCES += Common/operator_base.cpp \
     Common/engine_interface_base.cpp \
-    FDTD/engine_interface_fdtd.cpp \
-    Common/operator_base.cpp
+    Common/processmodematch.cpp \
+    Common/processvoltage.cpp \
+    Common/process_efield.cpp \
+    Common/process_hfield.cpp \
+    Common/processing.cpp \
+    Common/processintegral.cpp \
+    Common/processfields.cpp \
+    Common/processfields_td.cpp \
+    Common/processcurrent.cpp
+
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
     tools/constants.h \
     FDTD/engine.h \
     FDTD/operator.h \
     tools/array_ops.h \
-    FDTD/processvoltage.h \
-    FDTD/process_efield.h \
-    FDTD/process_hfield.h \
-    FDTD/processing.h \
-    FDTD/processintegral.h \
-    FDTD/processfields.h \
-    FDTD/processfields_td.h \
-    FDTD/processcurrent.h \
     openems.h \
     FDTD/engine_multithread.h \
     FDTD/operator_cylinder.h \
@@ -127,16 +121,26 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/engine_ext_lorentzmaterial.h \
     FDTD/operator_ext_pml_sf.h \
     FDTD/engine_ext_pml_sf.h \
-    FDTD/processmodematch.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
     FDTD/engine_ext_cylindermultigrid.h \
     tools/aligned_allocator.h \
     FDTD/operator_ext_upml.h \
     FDTD/engine_ext_upml.h \
+    FDTD/engine_interface_fdtd.h     
+# Common header files
+HEADERS += Common/operator_base.h \
     Common/engine_interface_base.h \
-    FDTD/engine_interface_fdtd.h \
-    Common/operator_base.h
+    Common/processvoltage.h \
+    Common/process_efield.h \
+    Common/process_hfield.h \
+    Common/processing.h \
+    Common/processintegral.h \
+    Common/processfields.h \
+    Common/processfields_td.h \
+    Common/processcurrent.h \
+    Common/processmodematch.h 
+
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
 	-march=native

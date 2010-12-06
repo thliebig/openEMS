@@ -19,7 +19,7 @@
 #define OPERATOR_BASE_H
 
 #include "tools/global.h"
-#include "FDTD/processing.h"
+#include "Common/processing.h"
 #include "string"
 
 class Operator_Base

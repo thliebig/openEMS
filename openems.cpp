@@ -26,12 +26,12 @@
 #include "FDTD/operator_ext_pml_sf.h"
 #include "FDTD/operator_ext_upml.h"
 #include "FDTD/engine_interface_fdtd.h"
-#include "FDTD/processvoltage.h"
-#include "FDTD/processcurrent.h"
-#include "FDTD/process_efield.h"
-#include "FDTD/process_hfield.h"
-#include "FDTD/processmodematch.h"
-#include "FDTD/processfields_td.h"
+#include "Common/processvoltage.h"
+#include "Common/processcurrent.h"
+#include "Common/process_efield.h"
+#include "Common/process_hfield.h"
+#include "Common/processmodematch.h"
+#include "Common/processfields_td.h"
 #include <sys/time.h>
 #include <time.h>
 #include <H5Cpp.h> // only for H5get_libversion()

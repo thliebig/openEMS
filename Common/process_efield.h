@@ -19,7 +19,7 @@
 #define PROCESS_EFIELD_H
 
 #include "processing.h"
-#include "engine.h"
+#include "FDTD/engine.h"
 
 /*! \brief Process E-field at a point
 

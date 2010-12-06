@@ -19,7 +19,7 @@
 #include <H5Cpp.h>
 #include "tools/global.h"
 #include "processfields.h"
-#include "engine_interface_fdtd.h"
+#include "FDTD/engine_interface_fdtd.h"
 
 ProcessFields::ProcessFields(Operator_Base* op) : Processing(op)
 {

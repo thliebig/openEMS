@@ -17,7 +17,7 @@
 
 #include "tools/global.h"
 #include "processcurrent.h"
-#include "engine_interface_fdtd.h"
+#include "FDTD/engine_interface_fdtd.h"
 #include <iomanip>
 
 ProcessCurrent::ProcessCurrent(Operator_Base* op) : ProcessIntegral(op)

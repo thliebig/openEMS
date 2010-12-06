@@ -19,7 +19,7 @@
 #include "operator.h"
 #include "engine.h"
 #include "operator_extension.h"
-#include "processfields.h"
+#include "Common/processfields.h"
 #include "tools/array_ops.h"
 #include "fparser.hh"
 
