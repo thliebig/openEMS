@@ -17,9 +17,10 @@
 
 #include "processmodematch.h"
 #include "CSFunctionParser.h"
+#include "Common/operator_base.h"
 #include "tools/array_ops.h"
 
-ProcessModeMatch::ProcessModeMatch(Operator* op) : ProcessIntegral(op)
+ProcessModeMatch::ProcessModeMatch(Operator_Base* op) : ProcessIntegral(op)
 {
 	for (int n=0;n<2;++n)
 	{

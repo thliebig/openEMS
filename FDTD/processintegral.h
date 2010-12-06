@@ -51,12 +51,12 @@ public:
 	virtual int Process();
 
 protected:
-	ProcessIntegral(Operator* op);
+	ProcessIntegral(Operator_Base* op);
 
 	//! timeshift to be used in TD and FD data, e.g. 0.5*dT in case of current based parameter
 	double m_TimeShift;
 
-	vector<FDTD_FLOAT> TD_Values;
+	vector<double> TD_Values;
 	vector<double_complex> FD_Values;
 
 	double *m_Results;

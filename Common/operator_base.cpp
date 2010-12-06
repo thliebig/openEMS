@@ -15,21 +15,39 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSCURRENT_H
-#define PROCESSCURRENT_H
+#include "operator_base.h"
 
-#include "processintegral.h"
-
-class ProcessCurrent : public ProcessIntegral
+Operator_Base::Operator_Base()
 {
-public:
-	ProcessCurrent(Operator_Base* op);
-	virtual ~ProcessCurrent();
+	Init();
+	m_MeshType = Processing::CARTESIAN_MESH;
+}
 
-	//! Integrate currents flowing through an area
-	virtual double CalcIntegral();
+Operator_Base::~Operator_Base()
+{
 
-protected:
-};
+}
 
-#endif // PROCESSCURRENT_H
+std::string Operator_Base::GetDirName(int ny) const
+{
+	if (ny==0) return "x";
+	if (ny==1) return "y";
+	if (ny==2) return "z";
+	return "";
+}
+
+void Operator_Base::Init()
+{
+	dT = 0;
+	for (int n=0;n<3;++n)
+		discLines[n]=NULL;
+	for (int n=0;n<6;++n)
+		m_BC[n]=0;
+}
+
+void Operator_Base::Reset()
+{
+	for (int n=0;n<3;++n)
+		delete[] discLines[n];
+	Init();
+}

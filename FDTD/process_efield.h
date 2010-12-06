@@ -19,6 +19,7 @@
 #define PROCESS_EFIELD_H
 
 #include "processing.h"
+#include "engine.h"
 
 /*! \brief Process E-field at a point
 
@@ -28,7 +29,7 @@
 class ProcessEField : public Processing
 {
 public:
-	ProcessEField(Operator* op, Engine* eng);
+	ProcessEField(Operator_Base* op, Engine* eng);
 	virtual ~ProcessEField();
 
 	virtual void InitProcess();

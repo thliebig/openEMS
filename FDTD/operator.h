@@ -22,13 +22,14 @@
 #include "tools/AdrOp.h"
 #include "tools/constants.h"
 #include "excitation.h"
+#include "Common/operator_base.h"
 
 class Operator_Extension;
 class Engine;
 class TiXmlElement;
 
 //! Abstract base-class for the FDTD-operator
-class Operator
+class Operator : public Operator_Base
 {
 	friend class Engine;
 	friend class Operator_Ext_LorentzMaterial; //we need to find a way around this... friend class Operator_Extension only would be nice
@@ -73,26 +74,21 @@ public:
 	inline virtual void SetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { ii[n][x][y][z] = value; }
 	inline virtual void SetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { iv[n][x][y][z] = value; }
 
-	virtual void SetBoundaryCondition(int* BCs) {for (int n=0;n<6;++n) m_BC[n]=BCs[n];}
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
 
 	//! Set a forced timestep to use by the operator
 	virtual void SetTimestep(double ts) {dT = ts;}
-	double GetTimestep() const {return dT;};
 	bool GetTimestepValid() const {return !m_InvaildTimestep;}
 	virtual double GetNumberCells() const;
 
-	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines())
-	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
-	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetOriginalNumLines())
+	unsigned int GetNumberOfNyquistTimesteps() const {return Exc->GetNyquistNum();}
+
+	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetNumLines())
 	virtual unsigned int GetOriginalNumLines(int ny) const {return numLines[ny];}
 
 	virtual void ShowStat() const;
 	virtual void ShowExtStat() const;
-
-	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
-	virtual string GetDirName(int ny) const;
 
 	virtual double GetGridDelta() const {return gridDelta;}
 	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
@@ -141,8 +137,6 @@ protected:
 
 	ContinuousStructure* CSX;
 
-	int m_BC[6];
-
 	//! Calculate the field excitations.
 	virtual bool CalcFieldExcitation();
 
@@ -158,7 +152,6 @@ protected:
 
 	//Calc timestep only internal use
 	virtual double CalcTimestep();
-	double dT; //FDTD timestep!
 	double opt_dT;
 	bool m_InvaildTimestep;
 	string m_Used_TS_Name;
@@ -177,10 +170,6 @@ protected:
 	double* EC_L[3];
 	double* EC_R[3];
 
-	int m_MeshType;
-	unsigned int numLines[3];
-	double* discLines[3];
-	double gridDelta;
 	AdrOp* MainOp;
 	AdrOp* DualOp;
 

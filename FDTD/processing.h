@@ -25,21 +25,28 @@ typedef std::complex<double> double_complex;
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include "Common/engine_interface_base.h"
-#include "operator.h"
-#include "engine.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <string>
+#include <vector>
 
+#include "Common/engine_interface_base.h"
+
+class Operator_Base;
+
+using namespace std;
 
 class Processing
 {
 public:
-	Processing(Operator* op);
+	Processing(Operator_Base* op);
 	virtual ~Processing();
+
+	enum MeshType { CARTESIAN_MESH, CYLINDRICAL_MESH};
 
 	//! Set the interface to the engine. Each processing needs its own engine interface. This class will take ownership and cleanup the interface on deletion!
 	void SetEngineInterface(Engine_Interface_Base* eng_if);
-
-	enum MeshType { CARTESIAN_MESH, CYLINDRICAL_MESH};
 
 	virtual void SetName(string val) {m_Name=val;}
 
@@ -84,7 +91,7 @@ public:
 
 protected:
 	Engine_Interface_Base* m_Eng_Interface;
-	Operator* Op;
+	Operator_Base* Op;
 	MeshType m_Mesh_Type;
 
 	unsigned int m_precision;

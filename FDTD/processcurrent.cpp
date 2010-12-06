@@ -20,7 +20,7 @@
 #include "engine_interface_fdtd.h"
 #include <iomanip>
 
-ProcessCurrent::ProcessCurrent(Operator* op) : ProcessIntegral(op)
+ProcessCurrent::ProcessCurrent(Operator_Base* op) : ProcessIntegral(op)
 {
 	m_TimeShift = op->GetTimestep()/2.0;
 	m_dualMesh = true;

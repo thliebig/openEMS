@@ -17,11 +17,13 @@
 
 #include "tools/global.h"
 #include "tools/useful.h"
+#include "Common/operator_base.h"
+#include <algorithm>
 #include "processing.h"
 #include "time.h"
 #include <climits>
 
-Processing::Processing(Operator* op)
+Processing::Processing(Operator_Base* op)
 {
 	Op=op;
 	Enabled = true;
@@ -126,13 +128,13 @@ void Processing::AddFrequency(double freq)
 		cerr << "Processing::AddFrequency: Requested frequency " << freq << " is too high for the current timestep used... skipping..." << endl;
 		return;
 	}
-	else if (nyquistTS<Op->Exc->GetNyquistNum())
+	else if (nyquistTS<Op->GetNumberOfNyquistTimesteps())
 	{
 		cerr << "Processing::AddFrequency: Warning: Requested frequency " << freq << " is higher than maximum excited frequency..." << endl;
 	}
 
 	if (m_FD_Interval==0)
-		m_FD_Interval = Op->Exc->GetNyquistNum();
+		m_FD_Interval = Op->GetNumberOfNyquistTimesteps();
 	if (m_FD_Interval>nyquistTS)
 		m_FD_Interval = nyquistTS;
 

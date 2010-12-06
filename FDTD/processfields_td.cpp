@@ -16,11 +16,12 @@
 */
 
 #include "processfields_td.h"
+#include "Common/operator_base.h"
 #include <iomanip>
 #include <sstream>
 #include <string>
 
-ProcessFieldsTD::ProcessFieldsTD(Operator* op) : ProcessFields(op)
+ProcessFieldsTD::ProcessFieldsTD(Operator_Base* op) : ProcessFields(op)
 {
 	pad_length = 8;
 }

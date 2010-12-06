@@ -31,11 +31,9 @@ Operator* Operator::New()
 	return op;
 }
 
-Operator::Operator()
+Operator::Operator() : Operator_Base()
 {
-	m_MeshType = ProcessFields::CARTESIAN_MESH;
 	Exc = 0;
-	dT = 0;
 	m_InvaildTimestep = false;
 }
 
@@ -55,14 +53,14 @@ Engine* Operator::CreateEngine() const
 
 void Operator::Init()
 {
+	Operator_Base::Init();
+
 	CSX = NULL;
 
 	vv=NULL;
 	vi=NULL;
 	iv=NULL;
 	ii=NULL;
-	for (int n=0;n<3;++n)
-		discLines[n]=NULL;
 
 	MainOp=NULL;
 	DualOp=NULL;
@@ -75,11 +73,7 @@ void Operator::Init()
 		EC_R[n]=NULL;
 	}
 
-	for (int n=0;n<6;++n)
-		m_BC[n]=0;
-
 	Exc = 0;
-	dT = 0;
 }
 
 void Operator::Reset()
@@ -88,8 +82,6 @@ void Operator::Reset()
 	Delete_N_3DArray(vi,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
-	for (int n=0;n<3;++n)
-		delete[] discLines[n];
 	delete MainOp;
 	delete DualOp;
 	for (int n=0;n<3;++n)
@@ -102,15 +94,7 @@ void Operator::Reset()
 
 	delete Exc;
 
-	Init();
-}
-
-string Operator::GetDirName(int ny) const
-{
-	if (ny==0) return "x";
-	if (ny==1) return "y";
-	if (ny==2) return "z";
-	return "";
+	Operator_Base::Reset();
 }
 
 double Operator::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
