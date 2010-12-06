@@ -22,6 +22,11 @@
 
 class CSFunctionParser;
 
+//! Processing class to match a mode to a given analytic function and return the integral value.
+/*!
+  The analytric function has to be definied in drawing units.
+  It will return the integral value and the mode purity as a secondary value.
+  */
 class ProcessModeMatch : public ProcessIntegral
 {
 public:
@@ -31,7 +36,9 @@ public:
 	virtual void InitProcess();
 	virtual void Reset();
 
+	//! Set the field type (0 electric field, 1 magnetic field)
 	void SetFieldType(int type);
+	//! Set the mode function in the given direction ny. For example: SetModeFunction(0,"cos(pi/1000*x)*sin(pi/500*y)");
 	void SetModeFunction(int ny, string function);
 
 	virtual int GetNumberOfIntegrals() const {return 2;}

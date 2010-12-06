@@ -116,7 +116,7 @@ void ProcessModeMatch::InitProcess()
 
 	unsigned int pos[3] = {0,0,0};
 	double discLine[3] = {0,0,0};
-	double gridDelta = Op->GetGridDelta();
+	double gridDelta = 1; // 1 -> mode-matching function is definied in drawing units...
 	double var[7];
 	pos[m_ny] = start[m_ny];
 	discLine[m_ny] = Op->GetDiscLine(m_ny,pos[m_ny],m_dualMesh);
