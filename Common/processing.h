@@ -40,7 +40,7 @@ using namespace std;
 class Processing
 {
 public:
-	Processing(Operator_Base* op);
+	Processing(Engine_Interface_Base* eng_if);
 	virtual ~Processing();
 
 	enum MeshType { CARTESIAN_MESH, CYLINDRICAL_MESH};
@@ -91,7 +91,7 @@ public:
 
 protected:
 	Engine_Interface_Base* m_Eng_Interface;
-	Operator_Base* Op;
+	const Operator_Base* Op;
 	MeshType m_Mesh_Type;
 
 	unsigned int m_precision;

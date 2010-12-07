@@ -23,9 +23,11 @@
 #include "time.h"
 #include <climits>
 
-Processing::Processing(Operator_Base* op)
+Processing::Processing(Engine_Interface_Base* eng_if)
 {
-	Op=op;
+	m_Eng_Interface = NULL;
+	SetEngineInterface(eng_if);
+
 	Enabled = true;
 	m_PS_pos = 0;
 	SetPrecision(12);
@@ -36,7 +38,6 @@ Processing::Processing(Operator_Base* op)
 	m_Flush = false;
 	m_dualMesh = false;
 	m_Mesh_Type = CARTESIAN_MESH;
-	m_Eng_Interface = NULL;
 }
 
 Processing::~Processing()
@@ -54,6 +55,10 @@ void Processing::SetEngineInterface(Engine_Interface_Base* eng_if)
 {
 	delete m_Eng_Interface;
 	m_Eng_Interface = eng_if;
+	if (m_Eng_Interface)
+		Op=m_Eng_Interface->GetOperator();
+	else
+		Op=NULL;
 }
 
 bool Processing::CheckTimestep()

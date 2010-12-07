@@ -18,8 +18,9 @@
 #include "engine_interface_base.h"
 #include "string"
 
-Engine_Interface_Base::Engine_Interface_Base()
+Engine_Interface_Base::Engine_Interface_Base(Operator_Base* base_op)
 {
+	m_Op_Base = base_op;
 	m_InterpolType = NO_INTERPOLATION;
 }
 

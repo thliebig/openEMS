@@ -27,14 +27,13 @@
 class Engine_Interface_FDTD : public Engine_Interface_Base
 {
 public:
-	Engine_Interface_FDTD();
 	Engine_Interface_FDTD(Operator* op, Engine* eng);
 	virtual ~Engine_Interface_FDTD();
 
 	//! Set the FDTD operator
-	virtual void SetOperator(Operator* op) {m_Op=op;}
+	virtual void SetFDTDOperator(Operator* op) {SetOperator(op); m_Op=op;}
 	//! Set the FDTD engine
-	virtual void SetEngine(Engine* eng) {m_Eng=eng;}
+	virtual void SetFDTDEngine(Engine* eng) {m_Eng=eng;}
 
 	//! Get the FDTD engine in case direct access is needed. Direct access is not recommended!
 	const Engine* GetFDTDEngine() const {return m_Eng;}

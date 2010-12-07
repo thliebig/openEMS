@@ -18,7 +18,7 @@
 #include "processintegral.h"
 #include <iomanip>
 
-ProcessIntegral::ProcessIntegral(Operator_Base* op)  : Processing(op)
+ProcessIntegral::ProcessIntegral(Engine_Interface_Base* eng_if)  : Processing(eng_if)
 {
 	m_TimeShift = 0.0;
 	m_Results=NULL;

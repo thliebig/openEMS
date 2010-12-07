@@ -19,7 +19,7 @@
 #include "tools/global.h"
 #include "process_hfield.h"
 
-ProcessHField::ProcessHField(Operator_Base* op, Engine* eng) : ProcessEField(op, eng)
+ProcessHField::ProcessHField(Engine_Interface_Base* eng_if, Engine* eng) : ProcessEField(eng_if, eng)
 {
 }
 

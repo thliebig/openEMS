@@ -460,21 +460,21 @@ int openEMS::SetupFDTD(const char* file)
 			{
 				if (pb->GetProbeType()==0)
 				{
-					ProcessVoltage* procVolt = new ProcessVoltage(FDTD_Op);
+					ProcessVoltage* procVolt = new ProcessVoltage(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 					proc=procVolt;
 				}
 				else if (pb->GetProbeType()==1)
 				{
-					ProcessCurrent* procCurr = new ProcessCurrent(FDTD_Op);
+					ProcessCurrent* procCurr = new ProcessCurrent(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 					proc=procCurr;
 				}
 				else if (pb->GetProbeType()==2)
-					proc = new ProcessEField(FDTD_Op,FDTD_Eng);
+					proc = new ProcessEField(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),FDTD_Eng);
 				else if (pb->GetProbeType()==3)
-					proc = new ProcessHField(FDTD_Op,FDTD_Eng);
+					proc = new ProcessHField(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),FDTD_Eng);
 				else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
 				{
-					ProcessModeMatch* pmm = new ProcessModeMatch(FDTD_Op);
+					ProcessModeMatch* pmm = new ProcessModeMatch(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 					pmm->SetFieldType(pb->GetProbeType()-10);
 					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
 					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
@@ -488,7 +488,6 @@ int openEMS::SetupFDTD(const char* file)
 				}
 				if (CylinderCoords)
 					proc->SetMeshType(Processing::CYLINDRICAL_MESH);
-				proc->SetEngineInterface(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->AddFrequency(pb->GetFDSamples());
 				proc->SetName(pb->GetName());
@@ -506,7 +505,7 @@ int openEMS::SetupFDTD(const char* file)
 	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
 	for (size_t i=0; i<DumpProps.size(); ++i)
 	{
-		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(FDTD_Op);
+		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 		ProcTD->SetEnable(Enable_Dumps);
 		ProcTD->SetProcessInterval(Nyquist/m_OverSampling);
 
@@ -528,7 +527,6 @@ int openEMS::SetupFDTD(const char* file)
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 			if (db)
 			{
-				ProcTD->SetEngineInterface(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 				ProcTD->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
 				ProcTD->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
 				ProcTD->SetFileType((ProcessFields::FileType)db->GetFileType());
@@ -598,8 +596,7 @@ void openEMS::RunFDTD()
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
 	//special handling of a field processing, needed to realize the end criteria...
-	ProcessFields* ProcField = new ProcessFields(FDTD_Op);
-	ProcField->SetEngineInterface(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+	ProcessFields* ProcField = new ProcessFields(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 	PA->AddProcessing(ProcField);
 	double maxE=0,currE=0;
 

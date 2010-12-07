@@ -17,16 +17,10 @@
 
 #include "engine_interface_fdtd.h"
 
-Engine_Interface_FDTD::Engine_Interface_FDTD() : Engine_Interface_Base()
+Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op, Engine* eng) : Engine_Interface_Base(op)
 {
-	m_Op = NULL;
-	m_Eng = NULL;
-}
-
-Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op, Engine* eng) : Engine_Interface_Base()
-{
-	SetOperator(op);
-	SetEngine(eng);
+	m_Op = op;
+	m_Eng = eng;
 }
 
 Engine_Interface_FDTD::~Engine_Interface_FDTD()

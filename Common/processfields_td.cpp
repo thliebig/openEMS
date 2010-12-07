@@ -21,7 +21,7 @@
 #include <sstream>
 #include <string>
 
-ProcessFieldsTD::ProcessFieldsTD(Operator_Base* op) : ProcessFields(op)
+ProcessFieldsTD::ProcessFieldsTD(Engine_Interface_Base* eng_if) : ProcessFields(eng_if)
 {
 	pad_length = 8;
 }

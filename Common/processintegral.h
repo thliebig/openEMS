@@ -51,7 +51,7 @@ public:
 	virtual int Process();
 
 protected:
-	ProcessIntegral(Operator_Base* op);
+	ProcessIntegral(Engine_Interface_Base* eng_if);
 
 	//! timeshift to be used in TD and FD data, e.g. 0.5*dT in case of current based parameter
 	double m_TimeShift;

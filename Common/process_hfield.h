@@ -28,7 +28,7 @@
 class ProcessHField : public ProcessEField
 {
 public:
-	ProcessHField(Operator_Base* op, Engine* eng);
+	ProcessHField(Engine_Interface_Base* eng_if, Engine* eng);
 	virtual ~ProcessHField();
 
 	virtual void InitProcess();

@@ -29,7 +29,7 @@
 class ProcessEField : public Processing
 {
 public:
-	ProcessEField(Operator_Base* op, Engine* eng);
+	ProcessEField(Engine_Interface_Base* eng_if, Engine* eng);
 	virtual ~ProcessEField();
 
 	virtual void InitProcess();

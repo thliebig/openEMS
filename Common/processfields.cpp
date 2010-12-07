@@ -21,7 +21,7 @@
 #include "processfields.h"
 #include "FDTD/engine_interface_fdtd.h"
 
-ProcessFields::ProcessFields(Operator_Base* op) : Processing(op)
+ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 {
 	m_DumpType = E_FIELD_DUMP;
 	// vtk-file is default

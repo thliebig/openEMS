@@ -20,6 +20,8 @@
 
 #include "tools/global.h"
 
+class Operator_Base;
+
 //! This is the abstact base for all Engine Interface classes.
 /*!
 	 This is the abstact base for all Engine Interface classes. It will provide unified access to the field information of the corresponding engine.
@@ -29,6 +31,11 @@ class Engine_Interface_Base
 {
 public:
 	enum InterpolationType { NO_INTERPOLATION, NODE_INTERPOLATE, CELL_INTERPOLATE };
+
+	//! Set the operator used for this engine interface.
+	virtual void SetOperator(Operator_Base* base_op) {m_Op_Base=base_op;}
+	//! Get the operator used for this engine interface.
+	virtual const Operator_Base* GetOperator() const {return m_Op_Base;}
 
 	//! Set the current interpolation type \sa GetInterpolationType
 	void SetInterpolationType(InterpolationType type) {m_InterpolType=type;}
@@ -57,7 +64,9 @@ public:
 	virtual unsigned int GetNumberOfTimesteps() const =0;
 
 protected:
-	Engine_Interface_Base();
+	Engine_Interface_Base(Operator_Base* base_op);
+
+	Operator_Base* m_Op_Base;
 
 	InterpolationType m_InterpolType;
 };

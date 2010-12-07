@@ -18,7 +18,7 @@
 #include "processvoltage.h"
 #include <iomanip>
 
-ProcessVoltage::ProcessVoltage(Operator_Base* op) : ProcessIntegral(op)
+ProcessVoltage::ProcessVoltage(Engine_Interface_Base* eng_if) : ProcessIntegral(eng_if)
 {
 }
 
