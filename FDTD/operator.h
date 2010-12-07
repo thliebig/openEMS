@@ -28,7 +28,7 @@ class Operator_Extension;
 class Engine;
 class TiXmlElement;
 
-//! Abstract base-class for the FDTD-operator
+//! Basic FDTD-operator
 class Operator : public Operator_Base
 {
 	friend class Engine;
@@ -82,7 +82,9 @@ public:
 	bool GetTimestepValid() const {return !m_InvaildTimestep;}
 	virtual double GetNumberCells() const;
 
-	unsigned int GetNumberOfNyquistTimesteps() const {return Exc->GetNyquistNum();}
+	virtual unsigned int GetNumberOfNyquistTimesteps() const {return Exc->GetNyquistNum();}
+
+	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
 
 	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetNumLines())
 	virtual unsigned int GetOriginalNumLines(int ny) const {return numLines[ny];}
@@ -113,7 +115,7 @@ public:
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,pos,dualMesh);}
 
-	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL);
+	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL) const;
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}

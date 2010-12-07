@@ -124,7 +124,7 @@ double Operator::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) c
 	return GetNodeWidth(nyP,pos,dualMesh) * GetNodeWidth(nyPP,pos,dualMesh);
 }
 
-bool Operator::SnapToMesh(double* dcoord, unsigned int* uicoord, bool lower, bool* inside)
+bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool lower, bool* inside) const
 {
 	bool ok=true;
 	unsigned int numLines[3];

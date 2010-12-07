@@ -1,6 +1,6 @@
-readme for openEMS/Commen
+readme for openEMS/Common
 
-- This folder contains all classes common for all numerical solver included in openEMS (currently only FDTD)
+- This folder contains all classes common for all numerical solver included in openEMS (currently only EC-FDTD)
 	- Operator-Base class
 	- Engine-Interface classes
-	- Commen processing classes
+	- Common processing classes

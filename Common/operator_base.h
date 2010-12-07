@@ -22,51 +22,52 @@
 #include "Common/processing.h"
 #include "string"
 
+//! Abstract base-class for a common operator
 class Operator_Base
 {
 public:
 	//! Get the timestep used by this operator
-	double GetTimestep() const {return dT;};
+	virtual double GetTimestep() const {return dT;};
 
 	//! Get the number of cells or nodes defined by this operator
-	virtual double GetNumberCells() const {return 0;}
+	virtual double GetNumberCells() const =0;
 
 	//! Get the number of timesteps satisfying the nyquist condition (may depend on the excitation)
-	unsigned int GetNumberOfNyquistTimesteps() const {return 0;}
+	virtual unsigned int GetNumberOfNyquistTimesteps() const =0;
 
 	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines())
-	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
+	virtual unsigned int GetNumberOfLines(int ny) const =0;
 
 	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
 	virtual std::string GetDirName(int ny) const;
 
 	//! Get the grid drawing unit in m
-	virtual double GetGridDelta() const {return 0;}
+	virtual double GetGridDelta() const =0;
 
 	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
-	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const {UNUSED(n); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
+	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const =0;
 
 	//! Get the disc line in \a n direction (in drawing units)
-	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const {UNUSED(n); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
+	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const =0;
 
 	//! Get the node width for a given direction \a n and a given mesh position \a pos
-	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
+	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 
 	//! Get the node area for a given direction \a n and a given mesh position \a pos
-	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
+	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 
 	//! Get the length of an FDTD edge (unit is meter).
-	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
+	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 
 	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos
 	/*!
 		This will return the area around an edge with a given direction, measured at the middle of the edge.
 		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.
 	*/
-	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {UNUSED(ny); UNUSED(pos); UNUSED(dualMesh); return 0.0;}
+	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 
 	//! Snap the given coodinates to mesh indices
-	virtual bool SnapToMesh(double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL) {UNUSED(coord); UNUSED(uicoord); UNUSED(lower); UNUSED(inside); return false;};
+	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL) const =0;
 
 	//! Set the boundary conditions
 	virtual void SetBoundaryCondition(int* BCs) {for (int n=0; n<6; ++n) m_BC[n]=BCs[n];}
