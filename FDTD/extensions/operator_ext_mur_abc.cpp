@@ -124,7 +124,7 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 	double dT = m_Op->GetTimestep();
 	unsigned int pos[] = {0,0,0};
 	pos[m_ny] = m_LineNr;
-	double delta = fabs(m_Op->GetMeshDelta(m_ny,pos));
+	double delta = fabs(m_Op->GetEdgeLength(m_ny,pos));
 	double coord[] = {0,0,0};
 	coord[0] = m_Op->GetDiscLine(0,pos[0]);
 	coord[1] = m_Op->GetDiscLine(1,pos[1]);

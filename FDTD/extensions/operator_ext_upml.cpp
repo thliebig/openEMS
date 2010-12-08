@@ -277,17 +277,17 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 			depth = width - (m_Op->GetDiscLine(n,pos[n]) - m_Op->GetDiscLine(n,0))*m_Op->GetGridDelta();
 
 			if (n==ny)
-				depth-=m_Op->GetMeshDelta(n,pos)/2;
+				depth-=m_Op->GetEdgeLength(n,pos)/2;
 			double vars[5] = {depth, width/m_Size[2*n], width, Zm, m_Size[2*n]};
 			if (depth>0)
 				kappa_v[n] = m_GradingFunction->Eval(vars);
 			else
 				kappa_v[n]=0;
 			if (n==ny)
-				depth+=m_Op->GetMeshDelta(n,pos)/2;
+				depth+=m_Op->GetEdgeLength(n,pos)/2;
 
 			if (n!=ny)
-				depth-=m_Op->GetMeshDelta(n,pos)/2;
+				depth-=m_Op->GetEdgeLength(n,pos)/2;
 			if (depth<0)
 				depth=0;
 			vars[0]=depth;
@@ -302,17 +302,17 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 			depth = width - (m_Op->GetDiscLine(n,m_Op->GetOriginalNumLines(n)-1) - m_Op->GetDiscLine(n,pos[n]))*m_Op->GetGridDelta();
 
 			if (n==ny)
-				depth+=m_Op->GetMeshDelta(n,pos)/2;
+				depth+=m_Op->GetEdgeLength(n,pos)/2;
 			double vars[5] = {depth, width/(m_Size[2*n]), width, Zm, m_Size[2*n]};
 			if (depth>0)
 				kappa_v[n] = m_GradingFunction->Eval(vars);
 			else
 				kappa_v[n]=0;
 			if (n==ny)
-				depth-=m_Op->GetMeshDelta(n,pos)/2;
+				depth-=m_Op->GetEdgeLength(n,pos)/2;
 
 			if (n!=ny)
-				depth+=m_Op->GetMeshDelta(n,pos)/2;
+				depth+=m_Op->GetEdgeLength(n,pos)/2;
 			if (depth>width)
 				depth=0;
 			vars[0]=depth;

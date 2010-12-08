@@ -48,7 +48,7 @@ double* Engine_Interface_FDTD::GetEField(const unsigned int* pos, double* out) c
 	case NODE_INTERPOLATE:
 		for (int n=0; n<3; ++n)
 		{
-			delta = m_Op->GetMeshDelta(n,iPos);
+			delta = m_Op->GetEdgeLength(n,iPos);
 			out[n] = m_Eng->GetVolt(n,iPos);
 			if (delta==0)
 			{
@@ -61,7 +61,7 @@ double* Engine_Interface_FDTD::GetEField(const unsigned int* pos, double* out) c
 				continue;
 			}
 			--iPos[n];
-			double deltaDown = m_Op->GetMeshDelta(n,iPos);
+			double deltaDown = m_Op->GetEdgeLength(n,iPos);
 			double deltaRel = delta / (delta+deltaDown);
 			out[n] = out[n]*(1.0-deltaRel)/delta + (double)m_Eng->GetVolt(n,iPos)/deltaDown*deltaRel;
 			++iPos[n];
@@ -77,19 +77,19 @@ double* Engine_Interface_FDTD::GetEField(const unsigned int* pos, double* out) c
 				out[n] = 0; //electric field outside the field domain is always zero
 				continue;
 			}
-			delta = m_Op->GetMeshDelta(n,iPos);
+			delta = m_Op->GetEdgeLength(n,iPos);
 			if (delta)
 				out[n]=m_Eng->GetVolt(n,iPos)/delta;
 			++iPos[nP];
-			delta = m_Op->GetMeshDelta(n,iPos);
+			delta = m_Op->GetEdgeLength(n,iPos);
 			if (delta)
 				out[n]+=m_Eng->GetVolt(n,iPos)/delta;
 			++iPos[nPP];
-			delta = m_Op->GetMeshDelta(n,iPos);
+			delta = m_Op->GetEdgeLength(n,iPos);
 			if (delta)
 				out[n]+=m_Eng->GetVolt(n,iPos)/delta;
 			--iPos[nP];
-			delta = m_Op->GetMeshDelta(n,iPos);
+			delta = m_Op->GetEdgeLength(n,iPos);
 			if (delta)
 				out[n]+=m_Eng->GetVolt(n,iPos)/delta;
 			--iPos[nPP];
@@ -123,13 +123,13 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 				out[n] = 0;
 				continue;
 			}
-			out[n]=m_Eng->GetCurr(n,iPos)/m_Op->GetMeshDelta(n,iPos,true);
+			out[n]=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
 			--iPos[nP];
-			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetMeshDelta(n,iPos,true);
+			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
 			--iPos[nPP];
-			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetMeshDelta(n,iPos,true);
+			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
 			++iPos[nP];
-			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetMeshDelta(n,iPos,true);
+			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
 			++iPos[nPP];
 			out[n]/=4;
 		}
@@ -137,7 +137,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 	case CELL_INTERPOLATE:
 		for (int n=0; n<3; ++n)
 		{
-			delta = m_Op->GetMeshDelta(n,iPos,true);
+			delta = m_Op->GetEdgeLength(n,iPos,true);
 			out[n] = m_Eng->GetCurr(n,iPos);
 			if ((pos[n]>=m_Op->GetNumberOfLines(n)-1))
 			{
@@ -145,7 +145,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 				continue;
 			}
 			++iPos[n];
-			double deltaUp = m_Op->GetMeshDelta(n,iPos,true);
+			double deltaUp = m_Op->GetEdgeLength(n,iPos,true);
 			double deltaRel = delta / (delta+deltaUp);
 			out[n] = out[n]*(1.0-deltaRel)/delta + (double)m_Eng->GetCurr(n,iPos)/deltaUp*deltaRel;
 			--iPos[n];

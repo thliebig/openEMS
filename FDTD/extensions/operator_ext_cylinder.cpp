@@ -64,8 +64,8 @@ bool Operator_Ext_Cylinder::BuildExtension()
 		for (pos[1]=0; pos[1]<m_Op->GetOriginalNumLines(1)-1; ++pos[1])
 		{
 			m_Op_Cyl->Calc_ECPos(2,pos,inEC);
-			C+=inEC[0]*0.5;
-			G+=inEC[1]*0.5;
+			C+=inEC[0];
+			G+=inEC[1];
 		}
 		m_Op->SetVV(2,0,0,pos[2], 1);
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);

@@ -44,16 +44,13 @@ public:
 	//! Get the name for the given direction: 0 -> rho, 1 -> alpha, 2 -> z
 	virtual string GetDirName(int ny) const;
 
-	//! Get the mesh delta times the grid delta for a 3D position, including radius corrected alpha-mesh width
-	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const;
-
 	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 
 	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeArea(int n, const unsigned int* pos, bool dualMesh=false) const;
 
-	//! Get the length of an FDTD edge.
+	//! Get the length of an FDTD edge, including radius corrected alpha-mesh width.
 	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 
 	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos

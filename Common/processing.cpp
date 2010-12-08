@@ -209,7 +209,7 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 		// line are not displayed correctly -> enlarge
 		for (int i=0; i<3; i++)
 		{
-			double delta = min( Op->GetMeshDelta( i, start,dualMesh ), Op->GetMeshDelta( i, stop,dualMesh ) ) / Op->GetGridDelta() / 4.0;
+			double delta = min( Op->GetEdgeLength( i, start,dualMesh ), Op->GetEdgeLength( i, stop,dualMesh ) ) / Op->GetGridDelta() / 4.0;
 			s1[i] -= delta;
 			s2[i] += delta;
 		}

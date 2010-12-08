@@ -85,31 +85,15 @@ string Operator_Cylinder::GetDirName(int ny) const
 	return "";
 }
 
-double Operator_Cylinder::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
-{
-	double delta = Operator_Multithread::GetMeshDelta(n,pos,dualMesh);
-	if (delta==0) return delta;
-	if (n==1)
-	{
-		return delta * GetDiscLine(0,pos[0],dualMesh);
-	}
-	return delta;
-}
-
 double Operator_Cylinder::GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	if ((ny<0) || (ny>2)) return 0.0;
 	if (pos[ny]>=numLines[ny]) return 0.0;
-	double width = 0;
-	if (dualMesh)
-		width = fabs(MainOp->GetIndexDelta(ny,pos[ny]))*gridDelta;
-	else
-		width = fabs(MainOp->GetIndexWidth(ny,pos[ny]))*gridDelta;
+	double width = Operator_Multithread::GetEdgeLength(ny,pos,!dualMesh);
 	if (ny==1)
 		width *= GetDiscLine(0,pos[0],dualMesh);
 	return width;
 }
-
 
 double Operator_Cylinder::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
 {
@@ -117,36 +101,32 @@ double Operator_Cylinder::GetNodeArea(int ny, const unsigned int pos[3], bool du
 	if (pos[0]>=numLines[0]) return 0.0;
 	if (ny==2)
 	{
-		double da = Operator_Multithread::GetMeshDelta(1,pos,dualMesh)/gridDelta;
+		double da = Operator_Multithread::GetEdgeLength(1,pos,dualMesh)/gridDelta;
 		double r1,r2;
-		if (!dualMesh)
+
+		if (dualMesh)
 		{
-			r1 = (discLines[0][pos[0]] - fabs(MainOp->GetIndexDelta(0,pos[0]-1))/2.0)*gridDelta;
-			r2 = (discLines[0][pos[0]] + fabs(MainOp->GetIndexDelta(0,pos[0]  ))/2.0)*gridDelta;
+			r1 = GetDiscLine(0,pos[0],false)*gridDelta;
+			r2 = r1 + GetEdgeLength(0,pos,false);
 		}
 		else
 		{
-			r1 =  discLines[0][pos[0]]*gridDelta;
-			r2 = (discLines[0][pos[0]] + fabs(MainOp->GetIndexDelta(0,pos[0])))*gridDelta;
+			r2 = GetDiscLine(0,pos[0],!dualMesh)*gridDelta;
+			r1 = r2 - GetEdgeLength(0,pos,true);
 		}
-		if (r1<0)
-			return da * pow(r2,2);
-		return da/2* (pow(r2,2) - pow(r1,2));
+
+		if (r1<=0)
+			return da/2 * pow(r2,2);
+		else
+			return da/2* (pow(r2,2) - pow(r1,2));
 	}
 
-	if (ny==0)
-	{
-		if (dualMesh)
-			return fabs(MainOp->GetIndexDelta(1,pos[1]) * MainOp->GetIndexDelta(2,pos[2]) * GetDiscLine(0,pos[0],true) * gridDelta * gridDelta);
-		else
-			return fabs(MainOp->GetIndexDelta(1,pos[1]) * MainOp->GetIndexDelta(2,pos[2]) * GetDiscLine(0,pos[0],false) * gridDelta * gridDelta);
-	}
 	return Operator_Multithread::GetNodeArea(ny,pos,dualMesh);
 }
 
 double Operator_Cylinder::GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh) const
 {
-	double length = Operator_Multithread::GetMeshDelta(ny,pos,dualMesh);
+	double length = Operator_Multithread::GetEdgeLength(ny,pos,dualMesh);
 	if (ny!=1)
 		return length;
 	return length * GetDiscLine(0,pos[0],dualMesh);

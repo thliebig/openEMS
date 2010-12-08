@@ -44,9 +44,6 @@ public:
 	//! Get the grid drawing unit in m
 	virtual double GetGridDelta() const =0;
 
-	//! Get the mesh delta times the grid delta for a 3D position (unit is meter)
-	virtual double GetMeshDelta(int n, const unsigned int* pos, bool dualMesh=false) const =0;
-
 	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const =0;
 

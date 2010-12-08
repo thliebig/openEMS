@@ -227,7 +227,7 @@ void Operator_Ext_PML_SF_Plane::SetDirection(int ny, bool top_ny)
 	m_LineNr = (unsigned int)((int)m_top * (int)(m_Op->GetNumberOfLines(m_ny)-1));
 	pos[m_ny] = m_LineNr;
 
-	m_pml_delta = m_Op->GetMeshDelta(m_ny,pos);
+	m_pml_delta = m_Op->GetEdgeLength(m_ny,pos);
 }
 
 void Operator_Ext_PML_SF_Plane::SetPMLLength(int width)

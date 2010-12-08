@@ -97,24 +97,43 @@ void Operator::Reset()
 	Operator_Base::Reset();
 }
 
-double Operator::GetMeshDelta(int n, const unsigned int* pos, bool dualMesh) const
-{
-	if ((n<0) || (n>2)) return 0.0;
-	if (pos[n]>=numLines[n]) return 0.0;
-	if (dualMesh==false)
-		return fabs(MainOp->GetIndexDelta(n,pos[n]))*gridDelta;
-	else
-		return fabs(MainOp->GetIndexWidth(n,pos[n]))*gridDelta;
-}
-
 double Operator::GetDiscLine(int n, unsigned int pos, bool dualMesh) const
 {
 	if ((n<0) || (n>2)) return 0.0;
 	if (pos>=numLines[n]) return 0.0;
 	if (dualMesh==false)
 		return discLines[n][pos];
+
+	// return dual mesh node
+	if (pos<numLines[n]-1)
+		return 0.5*(discLines[n][pos] + discLines[n][pos+1]);
+
+	// dual node for the last line (outside the field domain)
+	return discLines[n][pos] + 0.5*(discLines[n][pos] - discLines[n][pos-1]);
+
+}
+
+double Operator::GetEdgeLength(int n, const unsigned int* pos, bool dualMesh) const
+{
+	if ((n<0) || (n>2)) return 0.0;
+	if (pos[n]>=numLines[n]) return 0.0;
+	double delta=0;
+	if (dualMesh==false)
+	{
+		if (pos[n]<numLines[n]-1)
+			delta = GetDiscLine(n,pos[n]+1,false) - GetDiscLine(n,pos[n],false);
+		else
+			delta = GetDiscLine(n,pos[n],false) - GetDiscLine(n,pos[n]-1,false);
+		return delta*gridDelta;
+	}
 	else
-		return (discLines[n][pos] + 0.5*fabs(MainOp->GetIndexDelta(n,pos)));
+	{
+		if (pos[n]>0)
+			delta = GetDiscLine(n,pos[n],true) - GetDiscLine(n,pos[n]-1,true);
+		else
+			delta = GetDiscLine(n,1,false) - GetDiscLine(n,0,false);
+		return delta*gridDelta;
+	}
 }
 
 double Operator::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
@@ -1242,7 +1261,7 @@ bool Operator::CalcFieldExcitation()
 						{
 							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 							{
-								amp = elec->GetWeightedExcitation(n,volt_coord)*GetMeshDelta(n,pos);// delta[n]*gridDelta;
+								amp = elec->GetWeightedExcitation(n,volt_coord)*GetEdgeLength(n,pos);// delta[n]*gridDelta;
 								if (amp!=0)
 								{
 									volt_vExcit.push_back(amp);
@@ -1284,7 +1303,7 @@ bool Operator::CalcFieldExcitation()
 						{
 							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 							{
-								amp = elec->GetWeightedExcitation(n,curr_coord)*GetMeshDelta(n,pos,true);// delta[n]*gridDelta;
+								amp = elec->GetWeightedExcitation(n,curr_coord)*GetEdgeLength(n,pos,true);// delta[n]*gridDelta;
 								if (amp!=0)
 								{
 									curr_vExcit.push_back(amp);

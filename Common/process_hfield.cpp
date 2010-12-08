@@ -75,7 +75,7 @@ int ProcessHField::Process()
 			file << setprecision(m_precision) << ((double)Eng->GetNumberOfTimesteps()+0.5)*Op->GetTimestep();
 			for (int n=0; n<3; n++)
 			{
-				FDTD_FLOAT field = Eng->GetCurr(n,start) / Op->GetMeshDelta(n,start,true);
+				FDTD_FLOAT field = Eng->GetCurr(n,start) / Op->GetEdgeLength(n,start,true);
 				field *= m_weight;
 //				TD_Values.push_back(voltage);
 				file << "\t" << field;
@@ -92,7 +92,7 @@ int ProcessHField::Process()
 			double T = (double)Eng->GetNumberOfTimesteps() * Op->GetTimestep();
 			for (int pol=0; pol<3; pol++)
 			{
-				FDTD_FLOAT field = Eng->GetCurr(pol,start) / Op->GetMeshDelta(pol,start,true);
+				FDTD_FLOAT field = Eng->GetCurr(pol,start) / Op->GetEdgeLength(pol,start,true);
 				field *= m_weight;
 				for (size_t n=0; n<m_FD_Samples.size(); ++n)
 				{
