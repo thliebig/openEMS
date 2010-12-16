@@ -1,4 +1,4 @@
-function pass = fieldprobes
+function pass = fieldprobes( openEMS_options, options )
 %
 % infinitesimal dipole in free-space
 %
@@ -10,10 +10,24 @@ pass = 1;
 physical_constants;
 
 
-ENABLE_PLOTS = 0;
+ENABLE_PLOTS = 1;
 CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
-VERBOSE = 0;
+VERBOSE = 1;
+SILENT = 0;         % 0=show openEMS output
+
+if nargin < 1
+    openEMS_options = '';
+end
+if nargin < 2
+    options = '';
+end
+if any(strcmp( options, 'run_testsuite' ))
+    ENABLE_PLOTS = 0;
+    STOP_IF_FAILED = 0;
+    SILENT = 1;
+    VERBOSE = 0;
+end
 
 % LIMITS
 limit_max_time_diff  = 1e-15;
@@ -25,7 +39,7 @@ limit_min_h_amp      = 1e-7;
 
 % setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 drawingunit = 1e-6; % specify everything in um
-Sim_Path = 'tmp';
+Sim_Path = 'tmp_fieldprobes';
 Sim_CSX = 'tmp.xml';
 
 f_max = 1e9;
@@ -101,21 +115,11 @@ FDTD = SetBoundaryCond( FDTD, BC );
 [~,~,~] = mkdir(Sim_Path);
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
-% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_opts = '';
-% openEMS_opts = [openEMS_opts ' --disable-dumps'];
-% openEMS_opts = [openEMS_opts ' --debug-material'];
-% openEMS_opts = [openEMS_opts ' --debug-operator'];
-% openEMS_opts = [openEMS_opts ' --debug-PEC'];
-% openEMS_opts = [openEMS_opts ' --debug-boxes'];
-openEMS_opts = [openEMS_opts ' --showProbeDiscretization'];
-openEMS_opts = [openEMS_opts ' --engine=fastest'];
-settings = [];
-if ~VERBOSE, settings.Silent = 1; end
-RunOpenEMS( Sim_Path, Sim_CSX, openEMS_opts, settings );
-
-
-
+% run openEMS
+folder = fileparts( mfilename('fullpath') );
+Settings.LogFile = [folder '/' Sim_Path '/openEMS.log'];
+Settings.Silent = SILENT;
+RunOpenEMS( Sim_Path, Sim_CSX, openEMS_options, Settings );
 
 
 %% POSTPROCESS

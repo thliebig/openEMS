@@ -1,30 +1,40 @@
-function pass = cavity
-%pass = cavity
+function pass = cavity( openEMS_options, options )
+%pass = cavity( openEMS_options, options )
 % 
 % Checks, if different engines produces identical results
 
 CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
 global ENABLE_PLOTS;
-ENABLE_PLOTS = 0;
+ENABLE_PLOTS = 1;
+SILENT = 0;         % 0=show openEMS output
 
-engines = {'' '--engine=sse' '--engine=sse-compressed' '--engine=multithreaded'};
+if nargin < 1
+    openEMS_options = '';
+end
+if nargin < 2
+    options = '';
+end
+if any(strcmp( options, 'run_testsuite' ))
+    ENABLE_PLOTS = 0;
+    STOP_IF_FAILED = 0;
+    SILENT = 1;
+end
+% clean openEMS_options
+openEMS_options = regexprep( openEMS_options, '--engine=\w+', '' );
+
+engines = {'--engine=basic' '--engine=sse' '--engine=sse-compressed' '--engine=multithreaded'};
 % engines = [engines {'--engine=sse-compressed-linear' '--engine=multithreaded-linear'}];
 
-isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
-if isOctave
-    old_crr = confirm_recursive_rmdir(0);
-end
-
 global Sim_Path Sim_CSX
-Sim_Path = 'tmp';
+Sim_Path = 'tmp_cavity';
 Sim_CSX = 'cavity.xml';
 
 for n=1:numel(engines)
-    result{n} = sim( engines{n} );
+    result{n} = sim( [engines{n} ' ' openEMS_options], SILENT );
 end
 
-pass = compare( result );
+pass = compare( result, SILENT );
 
 if pass
     disp( 'enginetests/cavity.m (engine comparison):  pass' );
@@ -39,13 +49,10 @@ if ~pass && STOP_IF_FAILED
     error 'test failed'
 end
 
-if isOctave
-    confirm_recursive_rmdir(old_crr);
-end
 return
 
 
-function result = sim( openEMS_options )
+function result = sim( openEMS_options, SILENT )
 global Sim_Path Sim_CSX
 physical_constants;
 
@@ -118,7 +125,10 @@ CSX = AddBox( CSX, 'Ht', 0, pos1, pos2 );
 WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 
 % cd to working dir and run openEMS
-RunOpenEMS( Sim_Path, Sim_CSX, openEMS_options );
+folder = fileparts( mfilename('fullpath') );
+Settings.LogFile = [folder '/' Sim_Path '/openEMS.log'];
+Settings.Silent = SILENT;
+RunOpenEMS( Sim_Path, Sim_CSX, openEMS_options, Settings );
 
 % collect result
 E.mesh = ReadHDF5Mesh( [Sim_Path '/Et.h5'] );
@@ -131,7 +141,7 @@ result.probes = ReadUI( {'E_probe','H_probe'}, Sim_Path );
 
 
 
-function pass = compare( results )
+function pass = compare( results, SILENT )
 pass = 0;
 % n=1: reference simulation
 for n=2:numel(results)
@@ -151,7 +161,9 @@ for n=2:numel(results)
             end
         end
     end
-    disp( ['simulation ' num2str(n) ' is identical to simulation 1'] );
+    if ~SILENT
+        disp( ['simulation ' num2str(n) ' is identical to simulation 1'] );
+    end
 end
 
 global ENABLE_PLOTS;

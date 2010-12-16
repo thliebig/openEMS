@@ -1,4 +1,4 @@
-function pass = cavity
+function pass = cavity( openEMS_options, options )
 
 physical_constants;
 
@@ -6,6 +6,19 @@ physical_constants;
 ENABLE_PLOTS = 1;
 CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
 STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
+SILENT = 0;         % 0=show openEMS output
+
+if nargin < 1
+    openEMS_options = '';
+end
+if nargin < 2
+    options = '';
+end
+if any(strcmp( options, 'run_testsuite' ))
+    ENABLE_PLOTS = 0;
+    STOP_IF_FAILED = 0;
+    SILENT = 1;
+end
 
 % LIMITS - inside
 lower_rel_limit = 1.3e-3;    % -0.13%
@@ -31,7 +44,7 @@ end
 f_start = 1e9;
 f_stop = 10e9;
 
-Sim_Path = 'tmp';
+Sim_Path = 'tmp_cavity';
 Sim_CSX = 'cavity.xml';
 
 [status,message,messageid]=rmdir(Sim_Path,'s');
@@ -101,12 +114,12 @@ CSX = AddBox(CSX,'ut1z', 0 ,pos1,pos2);
 %Write openEMS compatible xml-file
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
-%cd to working dir and run openEMS
-savePath = pwd();
-cd(Sim_Path); %cd to working dir
-invoke_openEMS( Sim_CSX );
-UI = ReadUI( {'ut1x', 'ut1y', 'ut1z'} );
-cd(savePath);
+% run openEMS
+folder = fileparts( mfilename('fullpath') );
+Settings.LogFile = [folder '/' Sim_Path '/openEMS.log'];
+Settings.Silent = SILENT;
+RunOpenEMS( Sim_Path, Sim_CSX, openEMS_options, Settings );
+UI = ReadUI( {[Sim_Path '/ut1x'], [Sim_Path '/ut1y'], [Sim_Path '/ut1z']} );
 
 
 

@@ -47,7 +47,7 @@ for n=1:numel(filenames)
         UI.TD{n}.additional = tmp(:,3:end)';
     end    
     
-    if (nargin<3)
+    if (nargin<3) || isempty(freq)
         [UI.FD{n}.f,UI.FD{n}.val] = FFT_time2freq( t,val );
     else
         UI.FD{n}.f = freq;
