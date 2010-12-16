@@ -1,4 +1,4 @@
-function [S11,beta,ZL] = calcMSLPort( portstruct, SimDir, f, ref_shift )
+function [S11,beta,ZL] = calcPort( portstruct, SimDir, f, ref_shift )
 %[S11,beta,ZL] = calcMSLPort( portstruct, SimDir, [f], [ref_shift] )
 %
 % Calculate the reflection coefficient S11, the propagation constant beta
@@ -24,38 +24,30 @@ function [S11,beta,ZL] = calcMSLPort( portstruct, SimDir, f, ref_shift )
 % (C) 2010 Sebastian Held <sebastian.held@uni-due.de>
 % See also AddMSLPort
 
+%DEBUG
+% save('/tmp/test.mat', 'portstruct', 'SimDir', 'f', 'nargin' )
+% load('/tmp/test.mat')
+
 % check
 if portstruct.v_delta(1) ~= portstruct.v_delta(2)
-	warning( 'openEMS:calcMSLPort:mesh', 'mesh is not equidistant; expect degraded accuracy' );
+	warning( 'openEMS:calcPort:mesh', 'mesh is not equidistant; expect degraded accuracy' );
+end
+
+if nargin < 3
+    f = [];
 end
 
 % read time domain data
-filename = ['/port_ut' num2str(portstruct.nr)];
-U = ReadUI( {[filename 'A'],[filename 'B'],[filename 'C']}, SimDir );
-filename = ['/port_it' num2str(portstruct.nr)];
-I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir );
+filename = ['port_ut' num2str(portstruct.nr)];
+U = ReadUI( {[filename 'A'],[filename 'B'],[filename 'C']}, SimDir, f );
+filename = ['port_it' num2str(portstruct.nr)];
+I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir, f );
 
-if (nargin > 2) && ~isempty(f)
-	% freq vector given: use DFT
-    f = reshape( f, 1, [] ); % make it a row vector
-    for n=1:numel(U.FD)
-        U.FD{n}.f = f;
-        U.FD{n}.val = DFT_time2freq( U.TD{n}.t, U.TD{n}.val, f );
-    end
-    for n=1:numel(I.FD)
-        I.FD{n}.f = f;
-        I.FD{n}.val = DFT_time2freq( I.TD{n}.t, I.TD{n}.val, f );
-    end
-end
-
-delta_t = I.TD{1}.t(1) - U.TD{1}.t(1);
 f = U.FD{2}.f;
 Et = U.FD{2}.val;
 dEt = (U.FD{3}.val - U.FD{1}.val) / (sum(abs(portstruct.v_delta(1:2))) * portstruct.drawingunit);
 Ht = (I.FD{1}.val + I.FD{2}.val)/2; % space averaging: Ht is now defined at the same pos as Et
-Ht = Ht .* exp( -1i*2*pi*f * delta_t/2 ); % compensate time shift of Ht with respect to Et
 dHt = (I.FD{2}.val - I.FD{1}.val) / (abs(portstruct.i_delta(1)) * portstruct.drawingunit);
-dHt = dHt .* exp( -1i*2*pi*f * delta_t/2 ); % compensate time shift
 
 beta = sqrt( - dEt .* dHt ./ (Ht .* Et) );
 beta(real(beta) < 0) = -beta(real(beta) < 0); % determine correct sign (unlike the paper)
