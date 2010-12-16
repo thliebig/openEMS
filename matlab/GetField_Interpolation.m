@@ -1,10 +1,21 @@
 function [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 % [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 %
+%   Get an interpolated field, e.g. read by ReadHDF5Dump 
+% 
+%   homogen interpolation given by a 3x1 vector: e.g. [21,1,101]
+% 
+%   abitrary interpolation on a given mesh:
+%               e.g.:   mesh_interp.lines{1} = linspace(0,  1,101) * 1e-3;
+%                       mesh_interp.lines{2} = linspace(0,0.5, 51) * 1e-3;
+%                       mesh_interp.lines{3} = linspace(0,0.2, 21) * 1e-3;
+% 
 %   example:
 %   [field mesh] = ReadHDF5Dump('Et.h5');
 %   %interpolate on a mesh with 21x21x101 lines
 %   [field_i mesh_i] = GetField_Interpolation(field, mesh, [21 21 101]);
+%   or
+%   [field_i mesh_i] = GetField_Interpolation(field, mesh, mesh_interp);
 %   
 %   %or both steps in one with the same result:
 %   [field_i mesh_i] = ReadHDF5Dump('Et.h5','Interpolation', [21 21 101]);
@@ -14,7 +25,6 @@ function [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 % author: Thorsten Liebig
 %
 % See also ReadHDF5Dump ReadHDF5FieldData ReadHDF5Mesh
-
 if ((~iscell(lines) && ~isnumeric(lines)) || numel(lines)~=3)
     error('openEMS:GetField_Interpolation: numLines for interpolation must be a vector...');
 end
