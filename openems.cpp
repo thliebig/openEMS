@@ -617,6 +617,7 @@ void openEMS::RunFDTD()
 
 	//*************** simulate ************//
 
+	PA->PreProcess();
 	int step=PA->Process();
 	if ((step<0) || (step>(int)NrTS)) step=NrTS;
 	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit) && !CheckAbortCond())
@@ -654,6 +655,7 @@ void openEMS::RunFDTD()
 			PA->FlushNext();
 		}
 	}
+	PA->PostProcess();
 
 	//*************** postproc ************//
 	prevTime = currTime;

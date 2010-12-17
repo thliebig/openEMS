@@ -64,7 +64,15 @@ public:
 	void AddFrequency(vector<double> *freqs);
 
 	bool CheckTimestep();
+
+	//! Process data prior to the simulation run.
+	virtual void PreProcess() {};
+
+	//! Process data during simulation run.
 	virtual int Process() {return GetNextInterval();}
+
+	//! Process data after simulation has finished.
+	virtual void PostProcess() {};
 
 	//! If disabled, Process() will do nothing...
 	virtual void SetEnable(bool val) {Enabled=val;}
@@ -152,7 +160,14 @@ public:
 	//! Deletes all given processing's, can be helpful, but use carefull!!!
 	void DeleteAll();
 
+	//! Invoke PreProcess() on all Processings.
+	void PreProcess();
+
+	//! Invoke Process() on all Processings. Will return the smallest next iteration interval.
 	int Process();
+
+	//! Invoke PostProcess() on all Processings.
+	void PostProcess();
 
 	void DumpBoxes2File( string vtkfilenameprefix ) const;
 

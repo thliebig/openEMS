@@ -305,6 +305,11 @@ void ProcessingArray::DeleteAll()
 	ProcessArray.clear();
 }
 
+void ProcessingArray::PreProcess()
+{
+	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->PreProcess();
+}
+
 int ProcessingArray::Process()
 {
 	int nextProcess=maxInterval;
@@ -316,6 +321,11 @@ int ProcessingArray::Process()
 			nextProcess=step;
 	}
 	return nextProcess;
+}
+
+void ProcessingArray::PostProcess()
+{
+	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->PostProcess();
 }
 
 void ProcessingArray::DumpBoxes2File( string vtkfilenameprefix ) const
