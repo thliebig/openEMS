@@ -53,50 +53,7 @@ int ProcessFieldsTD::Process()
 	double discLines_scaling = Op->GetGridDelta();
 #endif
 
-	unsigned int pos[3];
-	unsigned int OpPos[3];
-	double out[3];
-	//create array
-	FDTD_FLOAT**** field = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	if (m_DumpType==E_FIELD_DUMP)
-	{
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-					m_Eng_Interface->GetEField(OpPos,out);
-					field[0][pos[0]][pos[1]][pos[2]] = out[0];
-					field[1][pos[0]][pos[1]][pos[2]] = out[1];
-					field[2][pos[0]][pos[1]][pos[2]] = out[2];
-				}
-			}
-		}
-	}
-
-	if (m_DumpType==H_FIELD_DUMP)
-	{
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-					m_Eng_Interface->GetHField(OpPos,out);
-					field[0][pos[0]][pos[1]][pos[2]] = out[0];
-					field[1][pos[0]][pos[1]][pos[2]] = out[1];
-					field[2][pos[0]][pos[1]][pos[2]] = out[2];
-				}
-			}
-		}
-	}
+	FDTD_FLOAT**** field = CalcField();
 
 	if (m_fileType==VTK_FILETYPE)
 	{
@@ -118,7 +75,6 @@ int ProcessFieldsTD::Process()
 		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;
 
 	Delete_N_3DArray(field,numLines);
-
 
 	return GetNextInterval();
 }

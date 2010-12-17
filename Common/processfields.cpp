@@ -460,3 +460,53 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOA
 	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
 	return true;
 }
+
+FDTD_FLOAT**** ProcessFields::CalcField()
+{
+	unsigned int pos[3];
+	unsigned int OpPos[3];
+	double out[3];
+	//create array
+	FDTD_FLOAT**** field = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	if (m_DumpType==E_FIELD_DUMP)
+	{
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+		{
+			OpPos[0]=start[0]+pos[0]*subSample[0];
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			{
+				OpPos[1]=start[1]+pos[1]*subSample[1];
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				{
+					OpPos[2]=start[2]+pos[2]*subSample[2];
+					m_Eng_Interface->GetEField(OpPos,out);
+					field[0][pos[0]][pos[1]][pos[2]] = out[0];
+					field[1][pos[0]][pos[1]][pos[2]] = out[1];
+					field[2][pos[0]][pos[1]][pos[2]] = out[2];
+				}
+			}
+		}
+	}
+
+	if (m_DumpType==H_FIELD_DUMP)
+	{
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+		{
+			OpPos[0]=start[0]+pos[0]*subSample[0];
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			{
+				OpPos[1]=start[1]+pos[1]*subSample[1];
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				{
+					OpPos[2]=start[2]+pos[2]*subSample[2];
+					m_Eng_Interface->GetHField(OpPos,out);
+					field[0][pos[0]][pos[1]][pos[2]] = out[0];
+					field[1][pos[0]][pos[1]][pos[2]] = out[1];
+					field[2][pos[0]][pos[1]][pos[2]] = out[2];
+				}
+			}
+		}
+	}
+	return field;
+}
+

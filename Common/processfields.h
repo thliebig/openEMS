@@ -91,6 +91,9 @@ protected:
 	//! dump mesh
 	unsigned int numLines[3];
 	double* discLines[3];
+
+	//! Calculate and return the defined field. Caller has to cleanup the array.
+	FDTD_FLOAT**** CalcField();
 };
 
 #endif // PROCESSFIELDS_H
