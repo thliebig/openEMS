@@ -28,6 +28,7 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	m_fileType = VTK_FILETYPE;
 	SetSubSampling(1);
 	SetPrecision(6);
+	m_dualTime = false;
 
 	for (int n=0; n<3; ++n)
 	{
@@ -83,6 +84,8 @@ void ProcessFields::InitProcess()
 		delete group;
 
 		group = new H5::Group( file->createGroup( "/FieldData" ));
+		delete group;
+		group = new H5::Group( file->createGroup( "/FieldData/FD" ));
 		delete group;
 		delete file;
 	}
@@ -461,6 +464,76 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOA
 	return true;
 }
 
+bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency)
+{
+	const H5std_string FILE_NAME(filename);
+	const H5std_string DATASET_NAME_RE( name + "_real");
+	const H5std_string DATASET_NAME_IM( name + "_imag");
+
+	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
+
+	H5::Group group( file.openGroup( "/FieldData/FD" ));
+
+	hsize_t t_dimsf[] = {1};
+	H5::DataSpace t_dataspace( 1, t_dimsf );
+
+	hsize_t dimsf[4];              // dataset dimensions
+	dimsf[0] = 3;
+	dimsf[1] = numLines[2];
+	dimsf[2] = numLines[1];
+	dimsf[3] = numLines[0];
+
+	H5::DataSpace dataspace( 4, dimsf );
+	H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
+
+	//create and write real part
+	H5::DataSet dataset = group.createDataSet( DATASET_NAME_RE, datatype, dataspace );
+	H5::Attribute attr = dataset.createAttribute("frequency",H5::PredType::NATIVE_FLOAT,t_dataspace);
+	attr.write( H5::PredType::NATIVE_FLOAT , &frequency);
+	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
+	// at least it is save in case FDTD_FLOAT was defined as double...
+	// why does hdf5 write the dimensions backwards??? or matlab???
+	float hdf5array[3][numLines[2]][numLines[1]][numLines[0]];
+	for (int n=0; n<3; ++n)
+	{
+		for (unsigned int i=0; i<numLines[0]; ++i)
+		{
+			for (unsigned int j=0; j<numLines[1]; ++j)
+			{
+				for (unsigned int k=0; k<numLines[2]; ++k)
+				{
+					hdf5array[n][k][j][i] = array[n][i][j][k].real() * weight;
+				}
+			}
+		}
+	}
+	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
+
+	//create and write imaginary part
+	dataset = group.createDataSet( DATASET_NAME_IM, datatype, dataspace );
+	attr = dataset.createAttribute("frequency",H5::PredType::NATIVE_FLOAT,t_dataspace);
+	attr.write( H5::PredType::NATIVE_FLOAT , &frequency);
+	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
+	// at least it is save in case FDTD_FLOAT was defined as double...
+	// why does hdf5 write the dimensions backwards??? or matlab???
+	for (int n=0; n<3; ++n)
+	{
+		for (unsigned int i=0; i<numLines[0]; ++i)
+		{
+			for (unsigned int j=0; j<numLines[1]; ++j)
+			{
+				for (unsigned int k=0; k<numLines[2]; ++k)
+				{
+					hdf5array[n][k][j][i] = array[n][i][j][k].imag() * weight;
+				}
+			}
+		}
+	}
+	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
+
+	return true;
+}
+
 FDTD_FLOAT**** ProcessFields::CalcField()
 {
 	unsigned int pos[3];
@@ -486,6 +559,7 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 				}
 			}
 		}
+		return field;
 	}
 
 	if (m_DumpType==H_FIELD_DUMP)
@@ -506,7 +580,10 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 				}
 			}
 		}
+		return field;
 	}
+
+	cerr << "ProcessFields::CalcField(): Error, unknown dump type..." << endl;
 	return field;
 }
 

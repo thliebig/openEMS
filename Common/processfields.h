@@ -71,7 +71,11 @@ public:
 	static bool DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
 	static bool DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
 
+	//! Dump a time-domain vector dump to an HDF5 file
 	static bool DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, float time=0);
+
+	//! Dump a frequency-domain complex-vector dump to an HDF5 file
+	static bool DumpVectorArray2HDF5(string filename, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency);
 
 	double CalcTotalEnergy() const;
 

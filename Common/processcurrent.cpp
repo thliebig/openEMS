@@ -22,8 +22,6 @@
 
 ProcessCurrent::ProcessCurrent(Engine_Interface_Base* eng_if) : ProcessIntegral(eng_if)
 {
-	m_TimeShift = Op->GetTimestep()/2.0;
-	m_dualMesh = true;
 }
 
 ProcessCurrent::~ProcessCurrent()

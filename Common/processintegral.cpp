@@ -20,7 +20,6 @@
 
 ProcessIntegral::ProcessIntegral(Engine_Interface_Base* eng_if)  : Processing(eng_if)
 {
-	m_TimeShift = 0.0;
 	m_Results=NULL;
 }
 
@@ -56,7 +55,7 @@ int ProcessIntegral::Process()
 	int NrInt = GetNumberOfIntegrals();
 	double integral = m_Results[0] * m_weight;
 
-	double time = m_Eng_Interface->GetTime(false) + m_TimeShift;
+	double time = m_Eng_Interface->GetTime(m_dualTime);
 
 	if (ProcessInterval)
 	{

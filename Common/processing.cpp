@@ -37,6 +37,7 @@ Processing::Processing(Engine_Interface_Base* eng_if)
 	m_weight=1;
 	m_Flush = false;
 	m_dualMesh = false;
+	m_dualTime = false;
 	m_Mesh_Type = CARTESIAN_MESH;
 }
 

@@ -53,9 +53,6 @@ public:
 protected:
 	ProcessIntegral(Engine_Interface_Base* eng_if);
 
-	//! timeshift to be used in TD and FD data, e.g. 0.5*dT in case of current based parameter
-	double m_TimeShift;
-
 	vector<double> TD_Values;
 	vector<double_complex> FD_Values;
 

@@ -33,6 +33,7 @@
 #include "Common/process_hfield.h"
 #include "Common/processmodematch.h"
 #include "Common/processfields_td.h"
+#include "Common/processfields_fd.h"
 #include <sys/time.h>
 #include <time.h>
 #include <H5Cpp.h> // only for H5get_libversion()
@@ -488,6 +489,11 @@ int openEMS::SetupFDTD(const char* file)
 				}
 				if (CylinderCoords)
 					proc->SetMeshType(Processing::CYLINDRICAL_MESH);
+				if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3) || (pb->GetProbeType()==11))
+				{
+					proc->SetDualTime(true);
+					proc->SetDualMesh(true);
+				}
 				proc->SetProcessInterval(Nyquist/m_OverSampling);
 				proc->AddFrequency(pb->GetFDSamples());
 				proc->SetName(pb->GetName());
@@ -505,15 +511,11 @@ int openEMS::SetupFDTD(const char* file)
 	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
 	for (size_t i=0; i<DumpProps.size(); ++i)
 	{
-		ProcessFieldsTD* ProcTD = new ProcessFieldsTD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
-		ProcTD->SetEnable(Enable_Dumps);
-		ProcTD->SetProcessInterval(Nyquist/m_OverSampling);
+		ProcessFields* ProcField=NULL;
 
 		//only looking for one prim atm
 		CSPrimitives* prim = DumpProps.at(i)->GetPrimitive(0);
-		if (prim==NULL)
-			delete 	ProcTD;
-		else
+		if (prim!=NULL)
 		{
 			bool acc;
 			double bnd[6] = {0,0,0,0,0,0};
@@ -527,22 +529,42 @@ int openEMS::SetupFDTD(const char* file)
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 			if (db)
 			{
-				ProcTD->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
-				ProcTD->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
-				ProcTD->SetFileType((ProcessFields::FileType)db->GetFileType());
-				if (CylinderCoords)
-					ProcTD->SetMeshType(Processing::CYLINDRICAL_MESH);
-				for (int n=0; n<3; ++n)
-					ProcTD->SetSubSampling(db->GetSubSampling(n),n);
-				ProcTD->SetFilePattern(db->GetName());
-				ProcTD->SetFileName(db->GetName());
-				ProcTD->DefineStartStopCoord(start,stop);
-				ProcTD->InitProcess();
-				PA->AddProcessing(ProcTD);
-				prim->SetPrimitiveUsed(true);
+				if ((db->GetDumpType()>=0) && (db->GetDumpType()<2))
+					ProcField = new ProcessFieldsTD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+				else if  ((db->GetDumpType()>=10) && (db->GetDumpType()<12))
+					ProcField = new ProcessFieldsFD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+				else
+					cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
+				if (ProcField)
+				{
+					ProcField->SetEnable(Enable_Dumps);
+					ProcField->SetProcessInterval(Nyquist/m_OverSampling);
+					if ((db->GetDumpType()==1) || (db->GetDumpType()==11))
+					{
+						ProcField->SetDualTime(true);
+						ProcField->SetDualMesh(true);
+					}
+					if ((db->GetDumpType()==10) || (db->GetDumpType()==11))
+						ProcField->AddFrequency(db->GetFDSamples());
+					if (db->GetDumpType()>=10)
+						ProcField->SetDumpType((ProcessFields::DumpType)(db->GetDumpType()-10));
+					else
+						ProcField->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
+
+					ProcField->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
+					ProcField->SetFileType((ProcessFields::FileType)db->GetFileType());
+					if (CylinderCoords)
+						ProcField->SetMeshType(Processing::CYLINDRICAL_MESH);
+					for (int n=0; n<3; ++n)
+						ProcField->SetSubSampling(db->GetSubSampling(n),n);
+					ProcField->SetFilePattern(db->GetName());
+					ProcField->SetFileName(db->GetName());
+					ProcField->DefineStartStopCoord(start,stop);
+					ProcField->InitProcess();
+					PA->AddProcessing(ProcField);
+					prim->SetPrimitiveUsed(true);
+				}
 			}
-			else
-				delete 	ProcTD;
 		}
 	}
 

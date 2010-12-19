@@ -69,7 +69,7 @@ int ProcessFieldsTD::Process()
 	{
 		stringstream ss;
 		ss << std::setw( pad_length ) << std::setfill( '0' ) << m_Eng_Interface->GetNumberOfTimesteps();
-		DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),field,numLines,(0.5+m_Eng_Interface->GetNumberOfTimesteps())*Op->GetTimestep());
+		DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),field,numLines,m_Eng_Interface->GetTime(m_dualTime));
 	}
 	else
 		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;

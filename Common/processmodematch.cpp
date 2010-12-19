@@ -27,8 +27,6 @@ ProcessModeMatch::ProcessModeMatch(Engine_Interface_Base* eng_if) : ProcessInteg
 		m_ModeParser[n] = new CSFunctionParser();
 		m_ModeDist[n] = NULL;
 	}
-	m_dualMesh = false;
-
 	delete[] m_Results;
 	m_Results = new double[2];
 }
@@ -46,11 +44,6 @@ ProcessModeMatch::~ProcessModeMatch()
 void ProcessModeMatch::InitProcess()
 {
 	if (!Enabled) return;
-
-	if (m_ModeFieldType==1)
-	{
-		m_TimeShift = Op->GetTimestep()/2.0;
-	}
 
 	if (m_Eng_Interface==NULL)
 	{

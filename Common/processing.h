@@ -97,6 +97,9 @@ public:
 	//! Dump probe geometry to file
 	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh) const;
 
+	virtual void SetDualMesh(bool val) {m_dualMesh=val;}
+	virtual void SetDualTime(bool val) {m_dualTime=val;}
+
 protected:
 	Engine_Interface_Base* m_Eng_Interface;
 	const Operator_Base* Op;
@@ -129,6 +132,9 @@ protected:
 
 	//! define if given coords are on main or dualMesh (default is false)
 	bool m_dualMesh;
+
+	//! define if given processing uses the dual time concept (default is false);
+	bool m_dualTime;
 
 	//! define/store snapped start/stop coords as mesh index
 	unsigned int start[3];
