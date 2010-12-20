@@ -27,9 +27,9 @@ fields = ReadHDF5FieldData(file);
 if (mesh.type==0)
     % cartesian mesh
     [X Y Z] = meshgrid(mesh.lines{1},mesh.lines{2},mesh.lines{3});
-    for n=1:numel(fields.values)
+    for n=1:numel(fields.TD.values)
         % since Matlab 7.1SP3 the field needs to be reordered
-        fields.values{n} = permute(fields.values{n},[2 1 3 4]); % reorder: y,x,z (or y,x)
+        fields.TD.values{n} = permute(fields.TD.values{n},[2 1 3 4]); % reorder: y,x,z (or y,x)
     end
 else
     disp(['PlotHDF5FieldData:: Error: unknown mesh type ' num2str(mesh.type)]);
@@ -38,14 +38,14 @@ end
 max_amp = 0;
 
 if (component>0)
-    for n=1:numel(fields.values)
-        Field{n} = fields.values{n}(:,:,:,component);
+    for n=1:numel(fields.TD.values)
+        Field{n} = fields.TD.values{n}(:,:,:,component);
     end
 else 
-    for n=1:numel(fields.values)
-        fx = fields.values{n}(:,:,:,1);
-        fy = fields.values{n}(:,:,:,2);
-        fz = fields.values{n}(:,:,:,3);
+    for n=1:numel(fields.TD.values)
+        fx = fields.TD.values{n}(:,:,:,1);
+        fy = fields.TD.values{n}(:,:,:,2);
+        fz = fields.TD.values{n}(:,:,:,3);
         Field{n} = sqrt(fx.^2 + fy.^2 + fz.^2);
     end        
 end

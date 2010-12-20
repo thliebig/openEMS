@@ -49,11 +49,19 @@ mesh_i.lines{1} = x_i;
 mesh_i.lines{2} = y_i;
 mesh_i.lines{3} = z_i;
 
-NULL = zeros(numel(x_i),numel(y_i),numel(z_i),3);
-for n=1:numel(field.values)
-    field_i.values{n} = NULL;
+if (isfield(field,'TD'))
+    field_i.TD = interpolate_fields(field.TD,x,y,z, x_i, y_i, z_i);
+    field_i.TD.time = field.TD.time;
 end
-clear NULL;
+
+if (isfield(field,'FD'))
+    field_i.FD = interpolate_fields(field.FD,x,y,z, x_i, y_i, z_i);
+    field_i.FD.freq = field.FD.freq;
+end
+
+return
+
+function field_i = interpolate_fields(field, x,y,z, x_i, y_i, z_i)
 
 % matlab cannot handle 3D data to be 2D data, workaround for these cases
 if (numel(x)==1)

@@ -87,6 +87,8 @@ void ProcessFields::InitProcess()
 		delete group;
 		group = new H5::Group( file->createGroup( "/FieldData/FD" ));
 		delete group;
+		group = new H5::Group( file->createGroup( "/FieldData/TD" ));
+		delete group;
 		delete file;
 	}
 }
@@ -423,7 +425,7 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOA
 
 	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
 
-	H5::Group group( file.openGroup( "/FieldData" ));
+	H5::Group group( file.openGroup( "/FieldData/TD" ));
 
 	hsize_t dimsf[4];              // dataset dimensions
 
