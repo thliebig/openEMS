@@ -150,13 +150,13 @@ for n=2:numel(results)
     for m=1:numel(EHfields)
         % iterate over all fields (E, H)
         EHfield = EHfields{m};
-        for o=1:numel(results{1}.(EHfield).data.values)
+        for o=1:numel(results{1}.(EHfield).data.TD.values)
             % iterate over all timesteps
-            cmp_result = results{1}.(EHfield).data.values{o} ~= results{n}.(EHfield).data.values{o};
+            cmp_result = results{1}.(EHfield).data.TD.values{o} ~= results{n}.(EHfield).data.TD.values{o};
             if any(cmp_result(:))
                 disp( ['compare error: n=' num2str(n) '  field=' EHfield '  timestep:' num2str(o) '=' results{1}.(EHfield).data.names{o}] );
                 disp( '  coords:' );
-                find( results{1}.(EHfield).data.values{o} ~= results{n}.(EHfield).data.values{o} )
+                find( results{1}.(EHfield).data.TD.values{o} ~= results{n}.(EHfield).data.TD.values{o} )
                 return
             end
         end

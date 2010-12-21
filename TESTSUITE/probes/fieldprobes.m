@@ -167,15 +167,15 @@ for n=1:6
                num2str(x_idx) ',' num2str(y_idx) ',' num2str(z_idx) ')'] );
     end
     
-    field_x = zeros(numel(Et{n}.values),1);
-    field_y = zeros(numel(Et{n}.values),1);
-    field_z = zeros(numel(Et{n}.values),1);
-    for t=1:numel(Et{n}.values)
-        field_x(t) = squeeze(Et{n}.values{t}(x_idx,y_idx,z_idx,1));
-        field_y(t) = squeeze(Et{n}.values{t}(x_idx,y_idx,z_idx,2));
-        field_z(t) = squeeze(Et{n}.values{t}(x_idx,y_idx,z_idx,3));
+    field_x = zeros(numel(Et{n}.TD.values),1);
+    field_y = zeros(numel(Et{n}.TD.values),1);
+    field_z = zeros(numel(Et{n}.TD.values),1);
+    for t=1:numel(Et{n}.TD.values)
+        field_x(t) = squeeze(Et{n}.TD.values{t}(x_idx,y_idx,z_idx,1));
+        field_y(t) = squeeze(Et{n}.TD.values{t}(x_idx,y_idx,z_idx,2));
+        field_z(t) = squeeze(Et{n}.TD.values{t}(x_idx,y_idx,z_idx,3));
     end
-    field_t = reshape( Et{n}.time, [], 1 );
+    field_t = reshape( Et{n}.TD.time, [], 1 );
     
     % check vector length
     if numel(field_x) ~= size(Et_probe{n},1)
@@ -252,15 +252,15 @@ for n=1:6
                num2str(x_idx) ',' num2str(y_idx) ',' num2str(z_idx) ')'] );
     end
     
-    field_x = zeros(numel(Ht{n}.values),1);
-    field_y = zeros(numel(Ht{n}.values),1);
-    field_z = zeros(numel(Ht{n}.values),1);
-    for t=1:numel(Ht{n}.values)
-        field_x(t) = squeeze(Ht{n}.values{t}(x_idx,y_idx,z_idx,1));
-        field_y(t) = squeeze(Ht{n}.values{t}(x_idx,y_idx,z_idx,2));
-        field_z(t) = squeeze(Ht{n}.values{t}(x_idx,y_idx,z_idx,3));
+    field_x = zeros(numel(Ht{n}.TD.values),1);
+    field_y = zeros(numel(Ht{n}.TD.values),1);
+    field_z = zeros(numel(Ht{n}.TD.values),1);
+    for t=1:numel(Ht{n}.TD.values)
+        field_x(t) = squeeze(Ht{n}.TD.values{t}(x_idx,y_idx,z_idx,1));
+        field_y(t) = squeeze(Ht{n}.TD.values{t}(x_idx,y_idx,z_idx,2));
+        field_z(t) = squeeze(Ht{n}.TD.values{t}(x_idx,y_idx,z_idx,3));
     end
-    field_t = reshape( Ht{n}.time, [], 1 );
+    field_t = reshape( Ht{n}.TD.time, [], 1 );
     
     % check vector length
     if numel(field_x) ~= size(Ht_probe{n},1)
