@@ -9,7 +9,7 @@ clc
 drawnow
 
 
-postprocessing_only = 0;
+postprocessing_only = 1;
 
 
 
@@ -72,18 +72,7 @@ CSX = AddBox( CSX, 'infDipole', 1, start, stop );
 % NFFF contour
 s1 = [-4.5, -4.5, -4.5] * g.dipole_length/2;
 s2 = [ 4.5,  4.5,  4.5] * g.dipole_length/2;
-CSX = AddBox( AddDump(CSX,'Et_xn','DumpType',0,'DumpMode',2,'FileType',1), 'Et_xn', 0, s1, [s1(1) s2(2) s2(3)] );
-CSX = AddBox( AddDump(CSX,'Et_xp','DumpType',0,'DumpMode',2,'FileType',1), 'Et_xp', 0, [s2(1) s1(2) s1(3)], s2 );
-CSX = AddBox( AddDump(CSX,'Et_yn','DumpType',0,'DumpMode',2,'FileType',1), 'Et_yn', 0, s1, [s2(1) s1(2) s2(3)] );
-CSX = AddBox( AddDump(CSX,'Et_yp','DumpType',0,'DumpMode',2,'FileType',1), 'Et_yp', 0, [s1(1) s2(2) s1(3)], s2 );
-CSX = AddBox( AddDump(CSX,'Et_zn','DumpType',0,'DumpMode',2,'FileType',1), 'Et_zn', 0, s1, [s2(1) s2(2) s1(3)] );
-CSX = AddBox( AddDump(CSX,'Et_zp','DumpType',0,'DumpMode',2,'FileType',1), 'Et_zp', 0, [s1(1) s1(2) s2(3)], s2 );
-CSX = AddBox( AddDump(CSX,'Ht_xn','DumpType',1,'DumpMode',2,'FileType',1), 'Ht_xn', 0, s1, [s1(1) s2(2) s2(3)] );
-CSX = AddBox( AddDump(CSX,'Ht_xp','DumpType',1,'DumpMode',2,'FileType',1), 'Ht_xp', 0, [s2(1) s1(2) s1(3)], s2 );
-CSX = AddBox( AddDump(CSX,'Ht_yn','DumpType',1,'DumpMode',2,'FileType',1), 'Ht_yn', 0, s1, [s2(1) s1(2) s2(3)] );
-CSX = AddBox( AddDump(CSX,'Ht_yp','DumpType',1,'DumpMode',2,'FileType',1), 'Ht_yp', 0, [s1(1) s2(2) s1(3)], s2 );
-CSX = AddBox( AddDump(CSX,'Ht_zn','DumpType',1,'DumpMode',2,'FileType',1), 'Ht_zn', 0, s1, [s2(1) s2(2) s1(3)] );
-CSX = AddBox( AddDump(CSX,'Ht_zp','DumpType',1,'DumpMode',2,'FileType',1), 'Ht_zp', 0, [s1(1) s1(2) s2(3)], s2 );
+[CSX g.nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', s1, s2);
 
 
 
@@ -125,15 +114,11 @@ disp( ' ' );
 disp( ' ********************************************************** ' );
 disp( ' ' );
 
-% NFFF contour
-filenames_E = {'Et_xn.h5','Et_xp.h5','Et_yn.h5','Et_yp.h5','Et_zn.h5','Et_zp.h5'};
-filenames_H = {'Ht_xn.h5','Ht_xp.h5','Ht_yn.h5','Ht_yp.h5','Ht_zn.h5','Ht_zp.h5'};
-
 % calculate the far field at phi=0 degrees and at phi=90 degrees
 thetaRange = 0:2:359;
 r = 1; % evaluate fields at radius r
 disp( 'calculating far field at phi=[0 90] deg...' );
-[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNFFF2( g.Sim_Path, filenames_E, filenames_H, g.f_max, thetaRange, [0 90], r );
+[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( g.Sim_Path, g.nf2ff, g.f_max, thetaRange, [0 90], r );
 
 
 % display power and directivity
@@ -175,7 +160,7 @@ legend( 'e-field magnitude', 'Location', 'BestOutside' );
 phiRange = 0:2:359;
 r = 1; % evaluate fields at radius r
 disp( 'calculating far field at theta=90 deg...' );
-[E_far_theta,E_far_phi] = AnalyzeNFFF2( g.Sim_Path, filenames_E, filenames_H, g.f_max, 90, phiRange, r );
+[E_far_theta,E_far_phi] = AnalyzeNF2FF( g.Sim_Path, g.nf2ff, g.f_max, 90, phiRange, r );
 
 E_theta90_far = zeros(1,numel(phiRange));
 for n=1:numel(phiRange)
@@ -197,7 +182,7 @@ phiRange = 0:15:360;
 thetaRange = 0:10:180;
 r = 1; % evaluate fields at radius r
 disp( 'calculating 3D far field...' );
-[E_far_theta,E_far_phi] = AnalyzeNFFF2( g.Sim_Path, filenames_E, filenames_H, g.f_max, thetaRange, phiRange, r );
+[E_far_theta,E_far_phi] = AnalyzeNF2FF( g.Sim_Path, g.nf2ff, g.f_max, thetaRange, phiRange, r );
 E_far = sqrt( abs(E_far_theta).^2 + abs(E_far_phi).^2 );
 E_far_normalized = E_far / max(E_far(:));
 [theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);

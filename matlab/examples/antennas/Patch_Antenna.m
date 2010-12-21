@@ -37,7 +37,7 @@ feed.width = 0.5;
 feed.R = 50; % feed resistance
 
 % size of the simulation box
-SimBox = [120 120 32];
+SimBox = [200 200 50];
 
 %% prepare simulation folder
 Sim_Path = 'tmp';
@@ -62,15 +62,15 @@ max_res = c0 / (f0+fc) / unit / 20; % cell size: lambda/20
 CSX = InitCSX();
 mesh.x = [-SimBox(1)/2 SimBox(1)/2 -substrate.width/2 substrate.width/2 feed.pos-feed.width/2 feed.pos+feed.width/2];
 % add patch mesh with 2/3 - 1/3 rule
-mesh.x = [mesh.x -patch.width/2-max_res*0.66 -patch.width/2+max_res*0.33 patch.width/2+max_res*0.66 patch.width/2-max_res*0.33];
-mesh.x = SmoothMeshLines( mesh.x, max_res ); % create a smooth mesh between specified mesh lines
+mesh.x = [mesh.x -patch.width/2-max_res/2*0.66 -patch.width/2+max_res/2*0.33 patch.width/2+max_res/2*0.66 patch.width/2-max_res/2*0.33];
+mesh.x = SmoothMeshLines( mesh.x, max_res, 1.4); % create a smooth mesh between specified mesh lines
 mesh.y = [-SimBox(2)/2 SimBox(2)/2 -substrate.length/2 substrate.length/2 -feed.width/2 feed.width/2];
 % add patch mesh with 2/3 - 1/3 rule
-mesh.y = [mesh.y -patch.length/2-max_res*0.66 -patch.length/2+max_res*0.33 patch.length/2+max_res*0.66 patch.length/2-max_res*0.33];
-mesh.y = SmoothMeshLines( mesh.y, max_res );
-mesh.z = [linspace(0,substrate.thickness,substrate.cells) SimBox(3) SimBox(3)];
-mesh.z = SmoothMeshLines( mesh.z, max_res );
-mesh = AddPML( mesh, [8 8 8 8 0 8] ); % add equidistant cells (air around the structure)
+mesh.y = [mesh.y -patch.length/2-max_res/2*0.66 -patch.length/2+max_res/2*0.33 patch.length/2+max_res/2*0.66 patch.length/2-max_res/2*0.33];
+mesh.y = SmoothMeshLines( mesh.y, max_res, 1.4 );
+mesh.z = [-SimBox(3)/2 linspace(0,substrate.thickness,substrate.cells) SimBox(3) ];
+mesh.z = SmoothMeshLines( mesh.z, max_res, 1.4 );
+mesh = AddPML( mesh, [8 8 8 8 8 8] ); % add equidistant cells (air around the structure)
 CSX = DefineRectGrid( CSX, unit, mesh );
 
 %% create patch
@@ -85,6 +85,12 @@ CSX = SetMaterialProperty( CSX, 'substrate', 'Epsilon', substrate.epsR );
 start = [-substrate.width/2 -substrate.length/2 0];
 stop  = [ substrate.width/2  substrate.length/2 substrate.thickness];
 CSX = AddBox( CSX, 'substrate', 0, start, stop );
+
+%% create ground (same size as substrate)
+CSX = AddMetal( CSX, 'gnd' ); % create a perfect electric conductor (PEC)
+start(3)=0;
+stop(3) =0;
+CSX = AddBox(CSX,'gnd',10,start,stop);
 
 %% apply the excitation & resist as a current source
 % this creates a "port"
@@ -115,6 +121,9 @@ CSX = AddDump( CSX, 'Ht_', 'DumpType', 1, 'DumpMode', 2 ); % cell interpolated
 start = [-patch.width -patch.length substrate.thickness+1];
 stop  = [ patch.width  patch.length substrate.thickness+1];
 CSX = AddBox( CSX, 'Ht_', 0, start, stop );
+
+%%nf2ff calc
+[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', -SimBox/2, SimBox/2);
 
 %% write openEMS compatible xml-file
 WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
@@ -174,6 +183,66 @@ grid on
 title( 'reflection coefficient S_{11}' );
 xlabel( 'frequency f / MHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
+
+
+%% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+f0 = freq(find(s11==min(s11)));
+
+% calculate the far field at phi=0 degrees and at phi=90 degrees
+thetaRange = 0:2:359;
+r = 1; % evaluate fields at radius r
+disp( 'calculating far field at phi=[0 90] deg...' );
+[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f0, thetaRange, [0 90], r );
+
+% display power and directivity
+disp( ['radiated power: Prad = ' num2str(Prad)] );
+disp( ['directivity: Dmax = ' num2str(Dmax)] );
+
+% calculate the e-field magnitude for phi = 0 deg
+E_phi0_far = zeros(1,numel(thetaRange));
+for n=1:numel(thetaRange)
+    E_phi0_far(n) = norm( [E_far_theta(n,1) E_far_phi(n,1)] );
+end
+
+% display polar plot
+figure
+polar( thetaRange/180*pi, E_phi0_far );
+ylabel( 'theta / deg' );
+title( ['electrical far field (V/m) @r=' num2str(r) ' m  phi=0 deg'] );
+legend( 'e-field magnitude', 'Location', 'BestOutside' );
+
+% calculate the e-field magnitude for phi = 90 deg
+E_phi90_far = zeros(1,numel(thetaRange));
+for n=1:numel(thetaRange)
+    E_phi90_far(n) = norm([E_far_theta(n,2) E_far_phi(n,2)]);
+end
+
+% display polar plot
+figure
+polar( thetaRange/180*pi, E_phi90_far );
+ylabel( 'theta / deg' );
+title( ['electrical far field (V/m) @r=' num2str(r) ' m  phi=90 deg'] );
+legend( 'e-field magnitude', 'Location', 'BestOutside' );
+
+%% calculate 3D pattern
+phiRange = 0:15:360;
+thetaRange = 0:10:180;
+r = 1; % evaluate fields at radius r
+disp( 'calculating 3D far field...' );
+[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f0, thetaRange, phiRange, r );
+E_far = sqrt( abs(E_far_theta).^2 + abs(E_far_phi).^2 );
+E_far_normalized = E_far / max(E_far(:));
+[theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
+x = E_far_normalized .* sin(theta) .* cos(phi);
+y = E_far_normalized .* sin(theta) .* sin(phi);
+z = E_far_normalized .* cos(theta);
+figure
+surf( x,y,z, E_far_normalized );
+axis equal
+xlabel( 'x' );
+ylabel( 'y' );
+zlabel( 'z' );
+
 
 %% visualize magnetic fields
 % you will find vtk dump files in the simulation folder (tmp/)

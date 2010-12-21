@@ -1,12 +1,11 @@
-function [E_theta,E_phi,Prad,Dmax] = AnalyzeNFFF2( Sim_Path, filenames_E, filenames_H, f, theta, phi, r )
+function [E_theta,E_phi,Prad,Dmax] = AnalyzeNFFF2( Sim_Path, nf2ff, f, theta, phi, r )
 % [E_theta,E_phi,Prad,Dmax] = AnalyzeNFFF2( Sim_Path, filenames_E, filenames_H, f, theta, phi, r )
 %
 % calculates the farfield via a near field to far field transformation
 %
 % input:
 %   Sim_Path:    simulation directory
-%   filenames_E: cell array of filenames for the time domain fields on the NFFF contour (6 E-planes; hdf5)
-%   filenames_H: cell array of filenames for the time domain fields on the NFFF contour (6 H-planes; hdf5)
+%   nf2ff:       structure on filenames etc. as created by CreateNF2FFBox 
 %   f:           frequency (Hz) for far field calculation
 %   theta:       (degrees) vector of discrete theta values to calculate the far field for
 %   phi:         (degrees) vector of discrete phi values to calculate the far field for
@@ -20,16 +19,19 @@ function [E_theta,E_phi,Prad,Dmax] = AnalyzeNFFF2( Sim_Path, filenames_E, filena
 %
 % example:
 %   see examples/NF2FF/infDipol.m
+% 
+% See also CreateNF2FFBox
 %
 % (C) 2010 Sebastian Held <sebastian.held@gmx.de>
 
 % check arguments
-error( nargchk(7,7,nargin) );
+error( nargchk(6,6,nargin) );
 if ~isscalar(f)
     error 'Currently only one frequency is supported. Call this function multiple times.'
 end
 
-
+filenames_E = nf2ff.filenames_E;
+filenames_H = nf2ff.filenames_H;
 
 % read time domain field data and transform into frequency domain
 for n=1:numel(filenames_E)
