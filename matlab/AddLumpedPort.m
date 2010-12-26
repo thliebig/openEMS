@@ -1,5 +1,5 @@
 function [CSX,port] = AddLumpedPort( CSX, portnr, R, start, stop, dir, excitename )
-% [CSX,port] = AddLumpedPort( CSX, portnr, materialname, start, stop, dir, evec, excitename )
+% [CSX,port] = AddLumpedPort( CSX, portnr, R, start, stop, dir, excitename )
 %
 % CSX: CSX-object created by InitCSX()
 % portnr: (integer) number of the port
