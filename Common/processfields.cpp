@@ -26,7 +26,9 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	m_DumpType = E_FIELD_DUMP;
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
-	SetSubSampling(1);
+	subSample[0]=1;
+	subSample[1]=1;
+	subSample[2]=1;
 	m_SampleType = NONE;
 	SetPrecision(6);
 	m_dualTime = false;

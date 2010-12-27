@@ -552,8 +552,9 @@ int openEMS::SetupFDTD(const char* file)
 					ProcField->SetFileType((ProcessFields::FileType)db->GetFileType());
 					if (CylinderCoords)
 						ProcField->SetMeshType(Processing::CYLINDRICAL_MESH);
-					for (int n=0; n<3; ++n)
-						ProcField->SetSubSampling(db->GetSubSampling(n),n);
+					if (db->GetSubSampling())
+						for (int n=0; n<3; ++n)
+							ProcField->SetSubSampling(db->GetSubSampling(n),n);
 					ProcField->SetFilePattern(db->GetName());
 					ProcField->SetFileName(db->GetName());
 					ProcField->DefineStartStopCoord(start,stop);
