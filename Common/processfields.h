@@ -32,6 +32,8 @@ public:
 	enum FileType { VTK_FILETYPE, HDF5_FILETYPE};
 	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP};
 
+	virtual void InitProcess();
+
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
 	//! Define a field dump sub sampling rate for a given direction (default: \a dir = -1 means all directions)
@@ -44,11 +46,11 @@ public:
 	void SetFileName(string fn) {m_filename=fn;}
 
 	//! Define the Dump-Mode
-	void SetDumpMode(Engine_Interface_Base::InterpolationType mode) {m_Eng_Interface->SetInterpolationType(mode);}
+	void SetDumpMode(Engine_Interface_Base::InterpolationType mode);
 	//! This methode will dump all fields on a main cell node using 2 E-field and 4 H-fields per direction.
-	void SetDumpMode2Node() {m_Eng_Interface->SetInterpolationType(Engine_Interface_Base::NODE_INTERPOLATE);}
+	void SetDumpMode2Node() {SetDumpMode(Engine_Interface_Base::NODE_INTERPOLATE);}
 	//! This methode will dump all fields in the center of a main cell (dual-node) using 4 E-field and 2 H-fields per direction.
-	void SetDumpMode2Cell() {m_Eng_Interface->SetInterpolationType(Engine_Interface_Base::CELL_INTERPOLATE);}
+	void SetDumpMode2Cell() {SetDumpMode(Engine_Interface_Base::CELL_INTERPOLATE);}
 
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
 	void SetDumpType(DumpType type) {m_DumpType=type;}
@@ -84,18 +86,21 @@ public:
 
 	static string GetFieldNameByType(DumpType type);
 
-//	virtual void Process();
 protected:
 	DumpType m_DumpType;
 	string filePattern;
 	FileType m_fileType;
 
-	//! field dump sub-sampling
+	enum SampleType {NONE, SUBSAMPLE} m_SampleType;
+	virtual void CalcMeshPos();
+
+	//! field dump sub-sampling (if enabled)
 	unsigned int subSample[3];
 
-	//! dump mesh
-	unsigned int numLines[3];
-	double* discLines[3];
+	//! dump mesh information
+	unsigned int numLines[3];	//number of lines to dump
+	unsigned int* posLines[3];	//grid positions to dump
+	double* discLines[3];		//mesh disc lines to dump
 
 	//! Calculate and return the defined field. Caller has to cleanup the array.
 	FDTD_FLOAT**** CalcField();

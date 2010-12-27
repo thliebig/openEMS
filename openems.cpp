@@ -540,10 +540,7 @@ int openEMS::SetupFDTD(const char* file)
 					ProcField->SetEnable(Enable_Dumps);
 					ProcField->SetProcessInterval(Nyquist/m_OverSampling);
 					if ((db->GetDumpType()==1) || (db->GetDumpType()==11))
-					{
 						ProcField->SetDualTime(true);
-						ProcField->SetDualMesh(true);
-					}
 					if ((db->GetDumpType()==10) || (db->GetDumpType()==11))
 						ProcField->AddFrequency(db->GetFDSamples());
 					if (db->GetDumpType()>=10)

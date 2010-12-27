@@ -27,12 +27,14 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
 	SetSubSampling(1);
+	m_SampleType = NONE;
 	SetPrecision(6);
 	m_dualTime = false;
 
 	for (int n=0; n<3; ++n)
 	{
 		numLines[n]=0;
+		posLines[n]=NULL;
 		discLines[n]=NULL;
 	}
 }
@@ -41,6 +43,8 @@ ProcessFields::~ProcessFields()
 {
 	for (int n=0; n<3; ++n)
 	{
+		delete[] posLines[n];
+		posLines[n]=NULL;
 		delete[] discLines[n];
 		discLines[n]=NULL;
 	}
@@ -58,116 +62,34 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 	return "unknown field";
 }
 
+void ProcessFields::InitProcess()
+{
+	CalcMeshPos();
+}
+
+void ProcessFields::SetDumpMode(Engine_Interface_Base::InterpolationType mode)
+{
+	m_Eng_Interface->SetInterpolationType(mode);
+	if (mode==Engine_Interface_Base::CELL_INTERPOLATE)
+		m_dualMesh=true;
+	else
+		m_dualMesh=false;
+}
+
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	vector<double> lines;
+	Processing::DefineStartStopCoord(dstart,dstop);
 
-	// determine mesh type
-	bool dualMesh = false;
-	if (m_DumpType == H_FIELD_DUMP)
-		dualMesh = true;
-
-	Engine_Interface_Base::InterpolationType m_DumpMode = m_Eng_Interface->GetInterpolationType();
-	if (m_DumpMode==Engine_Interface_Base::NO_INTERPOLATION)
+	// normalize order of start and stop
+	for (int n=0; n<3; ++n)
 	{
-		if (!Op->SnapToMesh(dstart,start,dualMesh))
-			cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
-		if (!Op->SnapToMesh(dstop,stop,dualMesh))
-			cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
-
-		for (int n=0; n<3; ++n)
+		if (start[n]>stop[n])
 		{
-			// normalize order of start and stop
-			if (start[n]>stop[n])
-			{
-				unsigned int help = start[n];
-				start[n]=stop[n];
-				stop[n]=help;
-			}
-
-			// construct new discLines
-			lines.clear();
-			for (unsigned int i=start[n]; i<=stop[n]; i+=subSample[n])
-			{
-				lines.push_back(Op->GetDiscLine(n,i,dualMesh));
-			}
-			numLines[n] = lines.size();
-			delete[] discLines[n];
-			discLines[n] = new double[numLines[n]];
-			for (unsigned int i=0; i<numLines[n]; ++i)
-				discLines[n][i] = lines.at(i);
+			unsigned int help = start[n];
+			start[n]=stop[n];
+			stop[n]=help;
 		}
 	}
-	else if (m_DumpMode==Engine_Interface_Base::NODE_INTERPOLATE)
-	{
-		if (Op->SnapToMesh(dstart,start)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
-		if (Op->SnapToMesh(dstop,stop)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
-
-		//create mesh
-		for (int n=0; n<3; ++n)
-		{
-			if (start[n]>stop[n])
-			{
-				unsigned int help = start[n];
-				start[n]=stop[n];
-				stop[n]=help;
-			}
-//			if (stop[n]==Op->GetNumberOfLines(n)-1)
-//				--stop[n];
-//			cerr << "start " << start[n] << "stop " << stop[n];
-			lines.clear();
-			for (unsigned int i=start[n]; i<=stop[n]; i+=subSample[n])
-			{
-				lines.push_back(Op->GetDiscLine(n,i));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
-			}
-			numLines[n] = lines.size();
-			delete[] discLines[n];
-			discLines[n] = new double[numLines[n]];
-			for (unsigned int i=0; i<numLines[n]; ++i)
-				discLines[n][i] = lines.at(i);
-		}
-	}
-	else if (m_DumpMode==Engine_Interface_Base::CELL_INTERPOLATE)
-	{
-		if (Op->SnapToMesh(dstart,start,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check start value!!" << endl;
-		if (Op->SnapToMesh(dstop,stop,true)==false) cerr << "ProcessFields::DefineStartStopCoord: Warning: Snapping problem, check stop value!!" << endl;
-
-		//create dual mesh
-		for (int n=0; n<3; ++n)
-		{
-			//		cerr << "start " << start[n] << "stop " << stop[n];
-			if (start[n]>stop[n])
-			{
-				unsigned int help = start[n];
-				start[n]=stop[n];
-				stop[n]=help;
-			}
-			++stop[n];
-			lines.clear();
-			for (unsigned int i=start[n]; i<stop[n]; i+=subSample[n])
-			{
-				lines.push_back(Op->GetDiscLine(n,i,true));//0.5*(Op->discLines[n][i+1] +  Op->discLines[n][i]));
-			}
-			numLines[n] = lines.size();
-			delete[] discLines[n];
-			discLines[n] = new double[numLines[n]];
-			for (unsigned int i=0; i<numLines[n]; ++i)
-				discLines[n][i] = lines.at(i);
-		}
-	}
-
-	if (g_settings.showProbeDiscretization())
-	{
-		// FIXME the information E-Field / H-Field and therefore which mesh to use is missing
-		bool dualMesh = false;
-		cerr << m_filename << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], dualMesh ) << ","
-		     << Op->GetDiscLine( 1, start[1], dualMesh ) << "," << Op->GetDiscLine( 2, start[2], dualMesh ) << ") -> ("
-		     << Op->GetDiscLine( 0, stop[0], dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], dualMesh ) << ","
-		     << Op->GetDiscLine( 2, stop[2], dualMesh ) << ")";
-		cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
-		     << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
-	}
-
 }
 
 double ProcessFields::CalcTotalEnergy() const
@@ -210,6 +132,34 @@ void ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
 		subSample[2]=subSampleRate;
 	}
 	else subSample[dir]=subSampleRate;
+	m_SampleType = SUBSAMPLE;
+}
+
+void ProcessFields::CalcMeshPos()
+{
+	if ((m_SampleType==SUBSAMPLE) || (m_SampleType==NONE))
+	{
+		vector<unsigned int> tmp_pos;
+
+		for (int n=0; n<3; ++n)
+		{
+			// construct new discLines
+			tmp_pos.clear();
+			for (unsigned int i=start[n]; i<=stop[n]; i+=subSample[n])
+				tmp_pos.push_back(i);
+
+			numLines[n] = tmp_pos.size();
+			delete[] discLines[n];
+			discLines[n] = new double[numLines[n]];
+			delete[] posLines[n];
+			posLines[n] = new unsigned int[numLines[n]];
+			for (unsigned int i=0; i<numLines[n]; ++i)
+			{
+				posLines[n][i] = tmp_pos.at(i);
+				discLines[n][i] = Op->GetDiscLine(n,tmp_pos.at(i),m_dualMesh);
+			}
+		}
+	}
 }
 
 void ProcessFields::WriteVTKHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision, string header_info, MeshType meshT, double discLines_scaling)
@@ -535,25 +485,25 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 FDTD_FLOAT**** ProcessFields::CalcField()
 {
 	unsigned int pos[3];
-	unsigned int OpPos[3];
 	double out[3];
 	//create array
 	FDTD_FLOAT**** field = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	if (m_DumpType==E_FIELD_DUMP)
 	{
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+		for (unsigned int i=0; i<numLines[0]; ++i)
 		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			pos[0]=posLines[0][i];
+			for (unsigned int j=0; j<numLines[1]; ++j)
 			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				pos[1]=posLines[1][j];
+				for (unsigned int k=0; k<numLines[2]; ++k)
 				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-					m_Eng_Interface->GetEField(OpPos,out);
-					field[0][pos[0]][pos[1]][pos[2]] = out[0];
-					field[1][pos[0]][pos[1]][pos[2]] = out[1];
-					field[2][pos[0]][pos[1]][pos[2]] = out[2];
+					pos[2]=posLines[2][k];
+
+					m_Eng_Interface->GetEField(pos,out);
+					field[0][i][j][k] = out[0];
+					field[1][i][j][k] = out[1];
+					field[2][i][j][k] = out[2];
 				}
 			}
 		}
@@ -562,19 +512,20 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 
 	if (m_DumpType==H_FIELD_DUMP)
 	{
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+		for (unsigned int i=0; i<numLines[0]; ++i)
 		{
-			OpPos[0]=start[0]+pos[0]*subSample[0];
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			pos[0]=posLines[0][i];
+			for (unsigned int j=0; j<numLines[1]; ++j)
 			{
-				OpPos[1]=start[1]+pos[1]*subSample[1];
-				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				pos[1]=posLines[1][j];
+				for (unsigned int k=0; k<numLines[2]; ++k)
 				{
-					OpPos[2]=start[2]+pos[2]*subSample[2];
-					m_Eng_Interface->GetHField(OpPos,out);
-					field[0][pos[0]][pos[1]][pos[2]] = out[0];
-					field[1][pos[0]][pos[1]][pos[2]] = out[1];
-					field[2][pos[0]][pos[1]][pos[2]] = out[2];
+					pos[2]=posLines[2][k];
+
+					m_Eng_Interface->GetHField(pos,out);
+					field[0][i][j][k] = out[0];
+					field[1][i][j][k] = out[1];
+					field[2][i][j][k] = out[2];
 				}
 			}
 		}
