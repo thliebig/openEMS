@@ -17,6 +17,7 @@
 
 #include "processfields_fd.h"
 #include "Common/operator_base.h"
+#include <H5Cpp.h>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -47,6 +48,26 @@ void ProcessFieldsFD::InitProcess()
 
 	//setup the hdf5 file
 	ProcessFields::InitProcess();
+
+	if (m_fileType==HDF5_FILETYPE)
+	{
+		//create	 hdf5 file & necessary groups
+		m_filename+= ".h5";
+		H5::H5File* file = new H5::H5File( m_filename , H5F_ACC_TRUNC );
+		H5::Group* group = new H5::Group( file->createGroup( "/FieldData" ));
+		delete group;
+		group = new H5::Group( file->createGroup( "/FieldData/FD" ));
+		delete group;
+		delete file;
+
+		//write mesh information in main root-group
+		#ifdef OUTPUT_IN_DRAWINGUNITS
+		double discScaling = 1;
+		#else
+		double discScaling = Op->GetGridDelta();
+		#endif
+		ProcessFields::WriteMesh2HDF5(m_filename,"/",numLines,discLines,m_Mesh_Type, discScaling);
+	}
 
 	//create data structures...
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
@@ -196,7 +217,7 @@ void ProcessFieldsFD::DumpFDData()
 		{
 			stringstream ss;
 			ss << "f" << n;
-			DumpVectorArray2HDF5(m_filename.c_str(), ss.str(), m_FD_Fields.at(n),numLines,1.0/(float)m_FD_SampleCount,m_FD_Samples.at(n));
+			DumpVectorArray2HDF5(m_filename.c_str(), "/FieldData/FD", ss.str(), m_FD_Fields.at(n),numLines,1.0/(float)m_FD_SampleCount,m_FD_Samples.at(n));
 		}
 		return;
 	}

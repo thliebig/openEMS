@@ -26,6 +26,8 @@ public:
 	ProcessFieldsTD(Engine_Interface_Base* eng_if);
 	virtual ~ProcessFieldsTD();
 
+	virtual void InitProcess();
+
 	virtual int Process();
 
 	//! Set the length of the filename timestep pad filled with zeros (default is 8)

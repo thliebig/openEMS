@@ -17,6 +17,7 @@
 
 #include "processfields_td.h"
 #include "Common/operator_base.h"
+#include <H5Cpp.h>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -28,6 +29,31 @@ ProcessFieldsTD::ProcessFieldsTD(Engine_Interface_Base* eng_if) : ProcessFields(
 
 ProcessFieldsTD::~ProcessFieldsTD()
 {
+}
+
+void ProcessFieldsTD::InitProcess()
+{
+	ProcessFields::InitProcess();
+
+	if (m_fileType==HDF5_FILETYPE)
+	{
+		//create hdf5 file & necessary groups
+		m_filename+= ".h5";
+		H5::H5File* file = new H5::H5File( m_filename, H5F_ACC_TRUNC );
+		H5::Group* group = new H5::Group( file->createGroup( "/FieldData" ));
+		delete group;
+		group = new H5::Group( file->createGroup( "/FieldData/TD" ));
+		delete group;
+		delete file;
+
+		//write mesh information in main root-group
+		#ifdef OUTPUT_IN_DRAWINGUNITS
+		double discScaling = 1;
+		#else
+		double discScaling = Op->GetGridDelta();
+		#endif
+		ProcessFields::WriteMesh2HDF5(m_filename,"/",numLines,discLines,m_Mesh_Type, discScaling);
+	}
 }
 
 int ProcessFieldsTD::Process()
@@ -69,7 +95,7 @@ int ProcessFieldsTD::Process()
 	{
 		stringstream ss;
 		ss << std::setw( pad_length ) << std::setfill( '0' ) << m_Eng_Interface->GetNumberOfTimesteps();
-		DumpVectorArray2HDF5(filename.c_str(),string( ss.str() ),field,numLines,m_Eng_Interface->GetTime(m_dualTime));
+		DumpVectorArray2HDF5(filename.c_str(), "/FieldData/TD", string( ss.str() ), field, numLines, m_Eng_Interface->GetTime(m_dualTime));
 	}
 	else
 		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;

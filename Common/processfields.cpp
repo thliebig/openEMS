@@ -46,53 +46,6 @@ ProcessFields::~ProcessFields()
 	}
 }
 
-void ProcessFields::InitProcess()
-{
-	if (Enabled==false) return;
-	//get the correct direction names for all coordinate systems
-	string names[] = {Op->GetDirName(0),Op->GetDirName(1),Op->GetDirName(2)};
-	if (m_fileType==HDF5_FILETYPE)
-	{
-		m_filename+= ".h5";
-
-		H5::H5File* file = new H5::H5File( m_filename , H5F_ACC_TRUNC );
-
-		H5::Group* group = new H5::Group( file->createGroup( "/Mesh" ));
-		for (int n=0; n<3; ++n)
-		{
-			hsize_t dimsf[1];              // dataset dimensions
-			dimsf[0] = numLines[n];
-			H5::DataSpace dataspace( 1, dimsf );
-			H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
-			H5::DataSet dataset = group->createDataSet( names[n].c_str(), datatype, dataspace );
-			//convert to float...
-			float* array = new float[numLines[n]];
-			for (unsigned int i=0; i<numLines[n]; ++i)
-			{
-#ifdef OUTPUT_IN_DRAWINGUNITS
-				array[i] = Lines[n][i];
-#else
-				if ((m_Mesh_Type==CYLINDRICAL_MESH) && (n==1)) //check for alpha-direction
-					array[i] = discLines[n][i];
-				else
-					array[i] = discLines[n][i] * Op->GetGridDelta();
-#endif
-			}
-			//write to dataset
-			dataset.write( array, H5::PredType::NATIVE_FLOAT );
-		}
-		delete group;
-
-		group = new H5::Group( file->createGroup( "/FieldData" ));
-		delete group;
-		group = new H5::Group( file->createGroup( "/FieldData/FD" ));
-		delete group;
-		group = new H5::Group( file->createGroup( "/FieldData/TD" ));
-		delete group;
-		delete file;
-	}
-}
-
 string ProcessFields::GetFieldNameByType(DumpType type)
 {
 	switch (type)
@@ -418,14 +371,57 @@ bool ProcessFields::DumpMultiScalarArray2VTK(ofstream &file, string names[], FDT
 	return true;
 }
 
-bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, float time)
+
+bool ProcessFields::WriteMesh2HDF5(string filename, string groupName, unsigned int const* numLines, double const* const* discLines, MeshType meshT, double discLines_scaling)
+{
+	H5::H5File file( filename, H5F_ACC_RDWR );
+
+	H5::Group hdf_group( file.openGroup( groupName ));
+
+	string names[] = {"x","y","z"};
+	if (meshT==CYLINDRICAL_MESH)
+	{
+		names[0]="rho";
+		names[1]="alpha";
+	}
+
+	H5::Group* group = new H5::Group( hdf_group.createGroup( "/Mesh" ));
+	for (int n=0; n<3; ++n)
+	{
+		hsize_t dimsf[1];              // dataset dimensions
+		dimsf[0] = numLines[n];
+		H5::DataSpace dataspace( 1, dimsf );
+		H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
+		H5::DataSet dataset = group->createDataSet( names[n].c_str(), datatype, dataspace );
+		//convert to float...
+		float* array = new float[numLines[n]];
+		for (unsigned int i=0; i<numLines[n]; ++i)
+		{
+#ifdef OUTPUT_IN_DRAWINGUNITS
+			array[i] = Lines[n][i];
+#else
+			if ((meshT==CYLINDRICAL_MESH) && (n==1)) //check for alpha-direction
+				array[i] = discLines[n][i];
+			else
+				array[i] = discLines[n][i] * discLines_scaling;
+#endif
+		}
+		//write to dataset
+		dataset.write( array, H5::PredType::NATIVE_FLOAT );
+	}
+	delete group;
+
+	return true;
+}
+
+bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, float time)
 {
 	const H5std_string FILE_NAME(filename);
 	const H5std_string DATASET_NAME( name );
 
 	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
 
-	H5::Group group( file.openGroup( "/FieldData/TD" ));
+	H5::Group group( file.openGroup( groupName ));
 
 	hsize_t dimsf[4];              // dataset dimensions
 
@@ -466,7 +462,7 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, FDTD_FLOA
 	return true;
 }
 
-bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency)
+bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency)
 {
 	const H5std_string FILE_NAME(filename);
 	const H5std_string DATASET_NAME_RE( name + "_real");
@@ -474,7 +470,7 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string name, std::comp
 
 	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
 
-	H5::Group group( file.openGroup( "/FieldData/FD" ));
+	H5::Group group( file.openGroup( groupName ));
 
 	hsize_t t_dimsf[] = {1};
 	H5::DataSpace t_dataspace( 1, t_dimsf );
