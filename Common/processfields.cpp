@@ -29,6 +29,9 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	subSample[0]=1;
 	subSample[1]=1;
 	subSample[2]=1;
+	optResolution[0]=0;
+	optResolution[1]=0;
+	optResolution[2]=0;
 	m_SampleType = NONE;
 	SetPrecision(6);
 	m_dualTime = false;
@@ -137,6 +140,19 @@ void ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
 	m_SampleType = SUBSAMPLE;
 }
 
+void ProcessFields::SetOptResolution(double optRes, int dir)
+{
+	if (dir>2) return;
+	if (dir<0)
+	{
+		optResolution[0]=optRes;
+		optResolution[1]=optRes;
+		optResolution[2]=optRes;
+	}
+	else optResolution[dir]=optRes;
+	m_SampleType = OPT_RESOLUTION;
+}
+
 void ProcessFields::CalcMeshPos()
 {
 	if ((m_SampleType==SUBSAMPLE) || (m_SampleType==NONE))
@@ -150,6 +166,38 @@ void ProcessFields::CalcMeshPos()
 			for (unsigned int i=start[n]; i<=stop[n]; i+=subSample[n])
 				tmp_pos.push_back(i);
 
+			numLines[n] = tmp_pos.size();
+			delete[] discLines[n];
+			discLines[n] = new double[numLines[n]];
+			delete[] posLines[n];
+			posLines[n] = new unsigned int[numLines[n]];
+			for (unsigned int i=0; i<numLines[n]; ++i)
+			{
+				posLines[n][i] = tmp_pos.at(i);
+				discLines[n][i] = Op->GetDiscLine(n,tmp_pos.at(i),m_dualMesh);
+			}
+		}
+	}
+	if ((m_SampleType==OPT_RESOLUTION))
+	{
+		vector<unsigned int> tmp_pos;
+		double oldPos=0;
+		for (int n=0; n<3; ++n)
+		{
+			// construct new discLines
+			tmp_pos.clear();
+			tmp_pos.push_back(start[n]);
+			oldPos=Op->GetDiscLine(n,start[n],m_dualMesh);
+			for (unsigned int i=start[n]+1; i<=stop[n]-1; ++i)
+			{
+				if ( (Op->GetDiscLine(n,i+1,m_dualMesh)-oldPos) >= optResolution[n])
+				{
+					tmp_pos.push_back(i);
+					oldPos=Op->GetDiscLine(n,i,m_dualMesh);
+				}
+			}
+			if (start[n]!=stop[n])
+				tmp_pos.push_back(stop[n]);
 			numLines[n] = tmp_pos.size();
 			delete[] discLines[n];
 			discLines[n] = new double[numLines[n]];

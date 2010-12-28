@@ -39,6 +39,9 @@ public:
 	//! Define a field dump sub sampling rate for a given direction (default: \a dir = -1 means all directions)
 	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
 
+	//! Define a field dump optimal resolution for a given direction (default: \a dir = -1 means all directions)
+	virtual void SetOptResolution(double optRes, int dir=-1);
+
 	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType()
 	void SetFilePattern(string fp) {m_filename=filePattern=fp;}
 
@@ -91,11 +94,14 @@ protected:
 	string filePattern;
 	FileType m_fileType;
 
-	enum SampleType {NONE, SUBSAMPLE} m_SampleType;
+	enum SampleType {NONE, SUBSAMPLE, OPT_RESOLUTION} m_SampleType;
 	virtual void CalcMeshPos();
 
 	//! field dump sub-sampling (if enabled)
 	unsigned int subSample[3];
+
+	//! field dump optimal resolution (if enabled)
+	double optResolution[3];
 
 	//! dump mesh information
 	unsigned int numLines[3];	//number of lines to dump

@@ -555,6 +555,9 @@ int openEMS::SetupFDTD(const char* file)
 					if (db->GetSubSampling())
 						for (int n=0; n<3; ++n)
 							ProcField->SetSubSampling(db->GetSubSampling(n),n);
+					if (db->GetOptResolution())
+						for (int n=0; n<3; ++n)
+							ProcField->SetOptResolution(db->GetOptResolution(n),n);
 					ProcField->SetFilePattern(db->GetName());
 					ProcField->SetFileName(db->GetName());
 					ProcField->DefineStartStopCoord(start,stop);
