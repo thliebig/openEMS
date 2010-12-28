@@ -1,8 +1,8 @@
 %
-% EXAMPLE / antennas / patch antenna
+% EXAMPLE / antennas / patch antenna array
 %
 % This example demonstrates how to:
-%  - calculate the reflection coefficient of a patch antenna
+%  - calculate the reflection coefficient of a patch antenna array
 % 
 %
 % Tested with
@@ -18,7 +18,7 @@ clc
 
 %% switches & options...
 postprocessing_only = 0;
-draw_3d_pattern = 1; % this may take a while...
+draw_3d_pattern = 1; % this may take a (very long) while...
 use_pml = 0;         % use pml boundaries instead of mur
 openEMS_opts = '';
 
@@ -32,10 +32,16 @@ unit = 1e-3; % all length in mm
 patch.width  = 32.86; % resonant length
 patch.length = 41.37;
 
+% define array size and dimensions
+array.xn = 4;
+array.yn = 4;
+array.x_spacing = patch.width * 3;
+array.y_spacing = patch.length * 3;
+
 substrate.epsR   = 3.38;
 substrate.kappa  = 1e-3 * 2*pi*2.45e9 * EPS0*substrate.epsR;
-substrate.width  = 60;
-substrate.length = 60;
+substrate.width  = 60 + (array.xn-1) * array.x_spacing;
+substrate.length = 60 + (array.yn-1) * array.y_spacing;
 substrate.thickness = 1.524;
 substrate.cells = 4;
 
@@ -43,12 +49,12 @@ feed.pos = -5.5;
 feed.width = 2;
 feed.R = 50; % feed resistance
 
-% size of the simulation box
-SimBox = [100 100 25];
+% size of the simulation box around the array
+SimBox = [50+substrate.width 50+substrate.length 25];
 
 %% prepare simulation folder
 Sim_Path = 'tmp';
-Sim_CSX = 'patch_ant.xml';
+Sim_CSX = 'patch_array.xml';
 if (postprocessing_only==0)
     [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
     [status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
@@ -71,28 +77,36 @@ FDTD = SetBoundaryCond( FDTD, BC );
 % currently, openEMS cannot automatically generate a mesh
 max_res = c0 / (f0+fc) / unit / 20; % cell size: lambda/20
 CSX = InitCSX();
-mesh.x = [-SimBox(1)/2 SimBox(1)/2 -substrate.width/2 substrate.width/2 feed.pos];
-% add patch mesh with 2/3 - 1/3 rule
-mesh.x = [mesh.x -patch.width/2-max_res/2*0.66 -patch.width/2+max_res/2*0.33 patch.width/2+max_res/2*0.66 patch.width/2-max_res/2*0.33];
-mesh.x = SmoothMeshLines( mesh.x, max_res, 1.4); % create a smooth mesh between specified mesh lines
-mesh.y = [-SimBox(2)/2 SimBox(2)/2 -substrate.length/2 substrate.length/2 -feed.width/2 feed.width/2];
-% add patch mesh with 2/3 - 1/3 rule
-mesh.y = [mesh.y -patch.length/2-max_res/2*0.66 -patch.length/2+max_res/2*0.33 patch.length/2+max_res/2*0.66 patch.length/2-max_res/2*0.33];
-mesh.y = SmoothMeshLines( mesh.y, max_res, 1.4 );
+mesh.x = [-SimBox(1)/2 SimBox(1)/2 -substrate.width/2 substrate.width/2];
+mesh.y = [-SimBox(2)/2 SimBox(2)/2 -substrate.length/2 substrate.length/2];
+
 mesh.z = [-SimBox(3)/2 linspace(0,substrate.thickness,substrate.cells) SimBox(3) ];
 mesh.z = SmoothMeshLines( mesh.z, max_res, 1.4 );
+
+for xn=1:array.xn
+    for yn=1:array.yn
+        midX = (array.xn/2 - xn + 1/2) * array.x_spacing;
+        midY = (array.yn/2 - yn + 1/2) * array.y_spacing;
+        
+        % feeding mesh
+        mesh.x = [mesh.x midX+feed.pos];
+        mesh.y = [mesh.y midY-feed.width/2 midY+feed.width/2];
+         
+        % add patch mesh with 2/3 - 1/3 rule
+        mesh.x = [mesh.x midX-patch.width/2-max_res/2*0.66  midX-patch.width/2+max_res/2*0.33  midX+patch.width/2+max_res/2*0.66  midX+patch.width/2-max_res/2*0.33];
+        % add patch mesh with 2/3 - 1/3 rule
+        mesh.y = [mesh.y midY-patch.length/2-max_res/2*0.66 midY-patch.length/2+max_res/2*0.33 midY+patch.length/2+max_res/2*0.66 midY+patch.length/2-max_res/2*0.33];
+    end
+end
+mesh.x = SmoothMeshLines( mesh.x, max_res, 1.4); % create a smooth mesh between specified mesh lines
+mesh.y = SmoothMeshLines( mesh.y, max_res, 1.4 );
+
 mesh = AddPML( mesh, [8 8 8 8 8 8] ); % add equidistant cells (air around the structure)
 CSX = DefineRectGrid( CSX, unit, mesh );
 
-%% create patch
-CSX = AddMetal( CSX, 'patch' ); % create a perfect electric conductor (PEC)
-start = [-patch.width/2 -patch.length/2 substrate.thickness];
-stop  = [ patch.width/2  patch.length/2 substrate.thickness];
-CSX = AddBox(CSX,'patch',10,start,stop);
-
 %% create substrate
 CSX = AddMaterial( CSX, 'substrate' );
-CSX = SetMaterialProperty( CSX, 'substrate', 'Epsilon', substrate.epsR, 'Kappa', substrate.kappa );
+CSX = SetMaterialProperty( CSX, 'substrate', 'Epsilon', substrate.epsR, 'Kappa', substrate.kappa);
 start = [-substrate.width/2 -substrate.length/2 0];
 stop  = [ substrate.width/2  substrate.length/2 substrate.thickness];
 CSX = AddBox( CSX, 'substrate', 0, start, stop );
@@ -102,17 +116,27 @@ CSX = AddMetal( CSX, 'gnd' ); % create a perfect electric conductor (PEC)
 start(3)=0;
 stop(3) =0;
 CSX = AddBox(CSX,'gnd',10,start,stop);
+%%
+CSX = AddMetal( CSX, 'patch' ); % create a perfect electric conductor (PEC)
+number = 1;
+for xn=1:array.xn
+    for yn=1:array.yn
+        
+        midX = (array.xn/2 - xn + 1/2) * array.x_spacing;
+        midY = (array.yn/2 - yn + 1/2) * array.y_spacing;
+        
+        % create patch
+        start = [midX-patch.width/2 midY-patch.length/2 substrate.thickness];
+        stop  = [midX+patch.width/2 midY+patch.length/2 substrate.thickness];
+        CSX = AddBox(CSX,'patch',10,start,stop);
 
-%% apply the excitation & resist as a current source
-start = [feed.pos -feed.width/2 0];
-stop  = [feed.pos +feed.width/2 substrate.thickness];
-[CSX port] = AddLumpedPort(CSX,1,feed.R, start, stop,[0 0 1],'excite');
-
-%% dump magnetic field over the patch antenna
-CSX = AddDump( CSX, 'Ht_', 'DumpType', 1, 'DumpMode', 2); % cell interpolated
-start = [-patch.width -patch.length substrate.thickness+1];
-stop  = [ patch.width  patch.length substrate.thickness+1];
-CSX = AddBox( CSX, 'Ht_', 0, start, stop );
+        % apply the excitation & resist as a current source
+        start = [midX+feed.pos midY-feed.width/2 0];
+        stop  = [midX+feed.pos midY+feed.width/2 substrate.thickness];
+        [CSX port] = AddLumpedPort(CSX,number,feed.R, start, stop,[0 0 1],['excite_' int2str(xn) '_' int2str(yn)]);
+        number=number+1;
+    end
+end
 
 %%nf2ff calc
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', -SimBox/2, SimBox/2);
@@ -176,7 +200,20 @@ title( 'reflection coefficient S_{11}' );
 xlabel( 'frequency f / MHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
 
-P_in = 0.5*U.FD{1}.val .* conj( I.FD{1}.val );
+%%
+number = 1;
+P_in = 0;
+for xn=1:array.xn
+    for yn=1:array.yn
+        
+        U = ReadUI( ['port_ut' int2str(number)], 'tmp/', freq ); % time domain/freq domain voltage
+        I = ReadUI( ['port_it' int2str(number)], 'tmp/', freq ); % time domain/freq domain current (half time step is corrected)
+
+        P_in = P_in + 0.5*U.FD{1}.val .* conj( I.FD{1}.val );
+        number=number+1;
+    end
+end
+
 
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 f_res_ind = find(s11==min(s11));
@@ -204,7 +241,7 @@ end
 E_phi0_far_log = 20*log10(abs(E_phi0_far)/max(abs(E_phi0_far)));
 E_phi0_far_log = E_phi0_far_log + Dlog;
 
-% display polar plot
+% display radiation pattern
 figure
 plot( thetaRange, E_phi0_far_log ,'k-' );
 xlabel( 'theta (deg)' );
@@ -221,22 +258,24 @@ end
 E_phi90_far_log = 20*log10(abs(E_phi90_far)/max(abs(E_phi90_far)));
 E_phi90_far_log = E_phi90_far_log + Dlog;
 
-% display polar plot
 plot( thetaRange, E_phi90_far_log ,'r-' );
 legend('phi=0','phi=90')
+
+drawnow
 
 if (draw_3d_pattern==0)
     return
 end
 %% calculate 3D pattern
-phiRange = 0:15:360;
-thetaRange = 0:10:180;
+tic
+phiRange = 0:3:360;
+thetaRange = unique([0:0.5:15 10:3:180]);
 r = 1; % evaluate fields at radius r
 disp( 'calculating 3D far field...' );
 [E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_res, thetaRange, phiRange, r );
 E_far = sqrt( abs(E_far_theta).^2 + abs(E_far_phi).^2 );
-E_far_normalized = E_far / max(E_far(:)) * Dmax;
 
+E_far_normalized = E_far / max(E_far(:)) * Dmax;
 [theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
 x = E_far_normalized .* sin(theta) .* cos(phi);
 y = E_far_normalized .* sin(theta) .* sin(phi);
@@ -247,7 +286,7 @@ axis equal
 xlabel( 'x' );
 ylabel( 'y' );
 zlabel( 'z' );
-
+toc
 
 %% visualize magnetic fields
 % you will find vtk dump files in the simulation folder (tmp/)
