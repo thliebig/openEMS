@@ -74,7 +74,7 @@ for n=1:numel(Field)
         xlabel( 'x' );
         ylabel( 'y' );
     end
-    title(fields.names{n});
+    title(fields.TD.names{n});
     %view(3)
     axis equal
     if (isfield(PlotArgs,'Limit'))

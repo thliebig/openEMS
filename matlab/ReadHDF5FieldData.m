@@ -36,7 +36,7 @@ for n=1:numel(info.GroupHierarchy.Groups)
             %search and read TD data
             if strcmp(info.GroupHierarchy.Groups(n).Groups(nGroup).Name,'/FieldData/TD')
                 for m=1:numel(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets)
-                    TD.names{m} = info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Name;
+                    hdf_fielddata.TD.names{m} = info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Name;
                     hdf_fielddata.TD.time(m) = double(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes.Value);
                 end
             end
@@ -52,9 +52,9 @@ for n=1:numel(info.GroupHierarchy.Groups)
     end
 end
 
-if (numel(TD.names)>0)
-    for n=1:numel(TD.names)
-        hdf_fielddata.TD.values{n} = double(hdf5read(file,TD.names{n}));
+if (numel(hdf_fielddata.TD.names)>0)
+    for n=1:numel(hdf_fielddata.TD.names)
+        hdf_fielddata.TD.values{n} = double(hdf5read(file,hdf_fielddata.TD.names{n}));
     end
 end
 
