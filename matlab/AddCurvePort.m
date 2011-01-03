@@ -1,5 +1,5 @@
 function [CSX,port] = AddCurvePort( CSX, portnr, R, start, stop, excitename )
-%[CSX,port] = AddCurvePort( CSX, portnr, materialname, start, stop [, excitename] )
+%[CSX,port] = AddCurvePort( CSX, portnr, R, start, stop [, excitename] )
 %
 % Creates a curve port (1-dimensional).
 % The mesh must already be initialized.
