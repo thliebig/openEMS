@@ -53,9 +53,9 @@ public:
 protected:
 	ProcessIntegral(Engine_Interface_Base* eng_if);
 
-	vector<double> TD_Values;
-	vector<double_complex> FD_Values;
+	void Dump_FD_Data(double factor, string filename);
 
+	vector<double_complex> *m_FD_Results;
 	double *m_Results;
 };
 

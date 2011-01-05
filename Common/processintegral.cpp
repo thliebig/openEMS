@@ -21,29 +21,68 @@
 ProcessIntegral::ProcessIntegral(Engine_Interface_Base* eng_if)  : Processing(eng_if)
 {
 	m_Results=NULL;
+	m_FD_Results=NULL;
 }
 
 ProcessIntegral::~ProcessIntegral()
 {
 	delete[] m_Results;
+	delete[] m_FD_Results;
 	m_Results = NULL;
-	ProcessIntegral::FlushData();
+	m_FD_Results = NULL;
 }
 
 
 void ProcessIntegral::InitProcess()
 {
+	delete[] m_Results;
+	delete[] m_FD_Results;
+	m_Results = new double[GetNumberOfIntegrals()];
+	m_FD_Results = new vector<double_complex>[GetNumberOfIntegrals()];
+
 	m_filename = m_Name;
 	OpenFile(m_filename);
-	FD_Values.clear();
-	for (size_t n=0; n<m_FD_Samples.size(); ++n)
-		FD_Values.push_back(0);
+
+	for (int i=0;i<GetNumberOfIntegrals();++i)
+	{
+		for (size_t n=0; n<m_FD_Samples.size(); ++n)
+		{
+			m_FD_Results[i].push_back(0);
+		}
+	}
 }
 
 void ProcessIntegral::FlushData()
 {
 	if (m_FD_Samples.size())
-		Dump_FD_Data(FD_Values,1.0/(double)m_FD_SampleCount,m_filename + "_FD");
+		Dump_FD_Data(1.0/(double)m_FD_SampleCount,m_filename + "_FD");
+}
+
+
+void ProcessIntegral::Dump_FD_Data(double factor, string filename)
+{
+	if (m_FD_Samples.size()==0)
+		return;
+	ofstream file;
+	file.open( filename.c_str() );
+	if (!file.is_open())
+		cerr << "ProcessIntegral::Dump_FD_Data: Error: Can't open file: " << filename << endl;
+	time_t rawTime;
+	time(&rawTime);
+	file << "%dump by openEMS @" << ctime(&rawTime) << "%frequency";
+	for (int i = 0; i < GetNumberOfIntegrals();++i)
+		file << "\treal\timag";
+	file << "\n";
+
+	for (size_t n=0; n<m_FD_Samples.size(); ++n)
+	{
+		file << m_FD_Samples.at(n) ;
+		for (int i = 0; i < GetNumberOfIntegrals();++i)
+			file << "\t" << std::real(m_FD_Results[i].at(n))*factor << "\t" << std::imag(m_FD_Results[i].at(n))*factor;
+		file << "\n";
+	}
+
+	file.close();
 }
 
 int ProcessIntegral::Process()
@@ -53,15 +92,12 @@ int ProcessIntegral::Process()
 
 	CalcMultipleIntegrals();
 	int NrInt = GetNumberOfIntegrals();
-	double integral = m_Results[0] * m_weight;
-
 	double time = m_Eng_Interface->GetTime(m_dualTime);
 
 	if (ProcessInterval)
 	{
 		if (m_Eng_Interface->GetNumberOfTimesteps()%ProcessInterval==0)
 		{
-			TD_Values.push_back(integral);
 			file << setprecision(m_precision) << time;
 			for (int n=0; n<NrInt; ++n)
 				file << "\t" << m_Results[n] * m_weight;
@@ -73,10 +109,10 @@ int ProcessIntegral::Process()
 	{
 		if (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval==0)
 		{
-			double T = time;
 			for (size_t n=0; n<m_FD_Samples.size(); ++n)
 			{
-				FD_Values.at(n) += (double)integral * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * T );
+				for (int i=0; i<NrInt; ++i)
+					m_FD_Results[i].at(n) += (double)m_Results[i] * m_weight * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * time );
 			}
 			++m_FD_SampleCount;
 			if (m_Flush)
@@ -90,8 +126,6 @@ int ProcessIntegral::Process()
 
 double* ProcessIntegral::CalcMultipleIntegrals()
 {
-	if (m_Results==NULL)
-		m_Results = new double[1];
 	m_Results[0] = CalcIntegral();
 	return m_Results;
 }

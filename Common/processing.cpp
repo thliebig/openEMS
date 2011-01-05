@@ -185,6 +185,11 @@ void Processing::OpenFile( string outfile )
 	m_filename = outfile;
 }
 
+void Processing::PostProcess()
+{
+	FlushData();
+}
+
 void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 {
 	string vtkfilename = vtkfilenameprefix + m_filename + ".vtk";
@@ -249,30 +254,6 @@ void Processing::DumpBox2File( string vtkfilenameprefix, bool dualMesh ) const
 	file << "4 0 4 7 3" << endl;
 	file << "4 5 6 2 1" << endl;
 
-	file.close();
-}
-
-void Processing::Dump_FD_Data(vector<double_complex> value, double factor, string filename)
-{
-	if (value.size()==0)
-		return;
-	if (value.size()!=m_FD_Samples.size())
-	{
-		cerr << "Processing::Dump_FD_Data: Error: Complex value and frequency vector have different size! This should never happend!!!" << endl;
-		return;
-	}
-	ofstream file;
-	file.open( filename.c_str() );
-	if (!file.is_open())
-		cerr << "Can't open file: " << filename << endl;
-
-	time_t rawTime;
-	time(&rawTime);
-	file << "%dump by openEMS @" << ctime(&rawTime) << "%frequency\treal\timag\n";
-	for (size_t n=0; n<value.size(); ++n)
-	{
-		file << m_FD_Samples.at(n) << "\t" << 2.0 * std::real(value.at(n))*factor << "\t" << 2.0 * std::imag(value.at(n))*factor << "\n";
-	}
 	file.close();
 }
 

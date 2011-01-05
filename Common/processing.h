@@ -72,7 +72,7 @@ public:
 	virtual int Process() {return GetNextInterval();}
 
 	//! Process data after simulation has finished.
-	virtual void PostProcess() {};
+	virtual void PostProcess();
 
 	//! If disabled, Process() will do nothing...
 	virtual void SetEnable(bool val) {Enabled=val;}
@@ -127,8 +127,6 @@ protected:
 	unsigned int m_FD_SampleCount;
 	//! Sampling interval needed for the FD_Samples
 	unsigned int m_FD_Interval;
-
-	void Dump_FD_Data(vector<double_complex> value, double factor, string filename);
 
 	//! define if given coords are on main or dualMesh (default is false)
 	bool m_dualMesh;
