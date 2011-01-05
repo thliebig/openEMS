@@ -77,8 +77,9 @@ void ProcessFields::SetDumpMode(Engine_Interface_Base::InterpolationType mode)
 	m_Eng_Interface->SetInterpolationType(mode);
 	if (mode==Engine_Interface_Base::CELL_INTERPOLATE)
 		m_dualMesh=true;
-	else
+	else if (mode==Engine_Interface_Base::NODE_INTERPOLATE)
 		m_dualMesh=false;
+	//else keep the preset/user defined case
 }
 
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
