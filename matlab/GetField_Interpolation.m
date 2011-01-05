@@ -6,9 +6,9 @@ function [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 %   homogen interpolation given by a 3x1 vector: e.g. [21,1,101]
 % 
 %   abitrary interpolation on a given mesh:
-%               e.g.:   mesh_interp.lines{1} = linspace(0,  1,101) * 1e-3;
-%                       mesh_interp.lines{2} = linspace(0,0.5, 51) * 1e-3;
-%                       mesh_interp.lines{3} = linspace(0,0.2, 21) * 1e-3;
+%               e.g.:   mesh_interp{1} = linspace(0,  1,101) * 1e-3;
+%                       mesh_interp{2} = linspace(0,0.5, 51) * 1e-3;
+%                       mesh_interp{3} = linspace(0,0.2, 21) * 1e-3;
 % 
 %   example:
 %   [field mesh] = ReadHDF5Dump('Et.h5');
@@ -52,6 +52,7 @@ mesh_i.lines{3} = z_i;
 if (isfield(field,'TD'))
     field_i.TD = interpolate_fields(field.TD,x,y,z, x_i, y_i, z_i);
     field_i.TD.time = field.TD.time;
+    field_i.TD.names= field.TD.names;
 end
 
 if (isfield(field,'FD'))
