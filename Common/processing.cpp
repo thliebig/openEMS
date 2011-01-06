@@ -20,7 +20,6 @@
 #include "Common/operator_base.h"
 #include <algorithm>
 #include "processing.h"
-#include "time.h"
 #include <climits>
 
 Processing::Processing(Engine_Interface_Base* eng_if)

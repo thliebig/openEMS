@@ -16,6 +16,7 @@
 */
 
 #include "processintegral.h"
+#include "time.h"
 #include <iomanip>
 
 ProcessIntegral::ProcessIntegral(Engine_Interface_Base* eng_if)  : Processing(eng_if)
