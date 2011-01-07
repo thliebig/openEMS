@@ -42,6 +42,7 @@ public:
 
 	virtual double* GetEField(const unsigned int* pos, double* out) const;
 	virtual double* GetHField(const unsigned int* pos, double* out) const;
+	virtual double* GetJField(const unsigned int* pos, double* out) const;
 
 	virtual double CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const;
 
@@ -51,6 +52,9 @@ public:
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;
+
+	double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type = 0) const;
+	double GetRawField(unsigned int n, const unsigned int* pos, int type = 0) const;
 };
 
 #endif // ENGINE_INTERFACE_FDTD_H

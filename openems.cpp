@@ -398,6 +398,9 @@ int openEMS::SetupFDTD(const char* file)
 	if (timestep)
 		FDTD_Op->SetTimestep(timestep);
 
+	//save kappa material properties, maybe used for dump
+	FDTD_Op->SetMaterialStoreFlags(1,true);
+
 	Operator::DebugFlags debugFlags = Operator::None;
 	if (DebugMat)
 		debugFlags |= Operator::debugMaterial;
@@ -406,6 +409,9 @@ int openEMS::SetupFDTD(const char* file)
 	if (m_debugPEC)
 		debugFlags |= Operator::debugPEC;
 	FDTD_Op->CalcECOperator( debugFlags );
+
+	//reset flag for kappa material properties, if no dump-box resets it to true, it will be cleaned up...
+	FDTD_Op->SetMaterialStoreFlags(1,false);
 
 	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
 	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
@@ -529,9 +535,9 @@ int openEMS::SetupFDTD(const char* file)
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 			if (db)
 			{
-				if ((db->GetDumpType()>=0) && (db->GetDumpType()<2))
+				if ((db->GetDumpType()>=0) && (db->GetDumpType()<=2))
 					ProcField = new ProcessFieldsTD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
-				else if  ((db->GetDumpType()>=10) && (db->GetDumpType()<12))
+				else if  ((db->GetDumpType()>=10) && (db->GetDumpType()<=12))
 					ProcField = new ProcessFieldsFD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 				else
 					cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
@@ -545,12 +551,16 @@ int openEMS::SetupFDTD(const char* file)
 						//make dualMesh the default mesh for h-field dumps, maybe overwritten by interpolation type (node-interpolation)
 						ProcField->SetDualMesh(true);
 					}
-					if ((db->GetDumpType()==10) || (db->GetDumpType()==11))
-						ProcField->AddFrequency(db->GetFDSamples());
 					if (db->GetDumpType()>=10)
+					{
+						ProcField->AddFrequency(db->GetFDSamples());
 						ProcField->SetDumpType((ProcessFields::DumpType)(db->GetDumpType()-10));
+					}
 					else
 						ProcField->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
+
+					if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12)) && Enable_Dumps )
+						FDTD_Op->SetMaterialStoreFlags(1,true); //keep kappa material data (prevent cleanup)
 
 					ProcField->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
 					ProcField->SetFileType((ProcessFields::FileType)db->GetFileType());
@@ -572,6 +582,8 @@ int openEMS::SetupFDTD(const char* file)
 			}
 		}
 	}
+
+	FDTD_Op->CleanupMaterialStorage();
 
 	CSX.WarnUnusedPrimitves(cerr);
 

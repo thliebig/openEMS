@@ -50,6 +50,8 @@ public:
 	virtual double* GetEField(const unsigned int* pos, double* out) const =0;
 	//! Get the (interpolated) magnetic field at \p pos. \sa SetInterpolationType
 	virtual double* GetHField(const unsigned int* pos, double* out) const =0;
+	//! Get the (interpolated) electric current density field at \p pos. \sa SetInterpolationType
+	virtual double* GetJField(const unsigned int* pos, double* out) const =0;
 
 	//! Calculate the electric field integral along a given line
 	virtual double CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const =0;

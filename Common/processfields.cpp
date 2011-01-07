@@ -63,6 +63,8 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 		return "E-Field";
 	case H_FIELD_DUMP:
 		return "H-Field";
+	case J_FIELD_DUMP:
+		return "J-Field";
 	}
 	return "unknown field";
 }
@@ -539,8 +541,9 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 	double out[3];
 	//create array
 	FDTD_FLOAT**** field = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	if (m_DumpType==E_FIELD_DUMP)
+	switch (m_DumpType)
 	{
+	case E_FIELD_DUMP:
 		for (unsigned int i=0; i<numLines[0]; ++i)
 		{
 			pos[0]=posLines[0][i];
@@ -559,10 +562,7 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 			}
 		}
 		return field;
-	}
-
-	if (m_DumpType==H_FIELD_DUMP)
-	{
+	case H_FIELD_DUMP:
 		for (unsigned int i=0; i<numLines[0]; ++i)
 		{
 			pos[0]=posLines[0][i];
@@ -574,6 +574,25 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 					pos[2]=posLines[2][k];
 
 					m_Eng_Interface->GetHField(pos,out);
+					field[0][i][j][k] = out[0];
+					field[1][i][j][k] = out[1];
+					field[2][i][j][k] = out[2];
+				}
+			}
+		}
+		return field;
+	case J_FIELD_DUMP:
+		for (unsigned int i=0; i<numLines[0]; ++i)
+		{
+			pos[0]=posLines[0][i];
+			for (unsigned int j=0; j<numLines[1]; ++j)
+			{
+				pos[1]=posLines[1][j];
+				for (unsigned int k=0; k<numLines[2]; ++k)
+				{
+					pos[2]=posLines[2][k];
+
+					m_Eng_Interface->GetJField(pos,out);
 					field[0][i][j][k] = out[0];
 					field[1][i][j][k] = out[1];
 					field[2][i][j][k] = out[2];
