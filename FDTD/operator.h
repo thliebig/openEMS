@@ -119,6 +119,8 @@ public:
 	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}
 	virtual Operator_Extension* GetExtension(size_t index) const {return m_Op_exts.at(index);}
 
+	virtual void CleanupMaterialStorage();
+
 protected:
 	//! use New() for creating a new Operator
 	Operator();
@@ -126,6 +128,7 @@ protected:
 	virtual void Init();
 	virtual void Reset();
 	virtual void InitOperator();
+	virtual void InitDataStorage();
 	virtual void InitExcitation();
 
 	struct Grid_Path
@@ -161,6 +164,12 @@ protected:
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
+
+	//store material properties for post-processing
+	float**** m_epsR;
+	float**** m_kappa;
+	float**** m_mueR;
+	float**** m_sigma;
 
 	//EC elements, internal only!
 	virtual void Init_EC();

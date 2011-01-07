@@ -62,6 +62,11 @@ void Operator::Init()
 	iv=NULL;
 	ii=NULL;
 
+	m_epsR=NULL;
+	m_kappa=NULL;
+	m_mueR=NULL;
+	m_sigma=NULL;
+
 	MainOp=NULL;
 	DualOp=NULL;
 
@@ -93,6 +98,11 @@ void Operator::Reset()
 	}
 
 	delete Exc;
+
+	Delete_N_3DArray(m_epsR,numLines);
+	Delete_N_3DArray(m_kappa,numLines);
+	Delete_N_3DArray(m_mueR,numLines);
+	Delete_N_3DArray(m_sigma,numLines);
 
 	Operator_Base::Reset();
 }
@@ -585,6 +595,70 @@ void Operator::InitOperator()
 	ii = Create_N_3DArray<FDTD_FLOAT>(numLines);
 }
 
+void Operator::InitDataStorage()
+{
+	if (m_StoreMaterial[0])
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::InitDataStorage(): Storing epsR material data..." << endl;
+		Delete_N_3DArray(m_epsR,numLines);
+		m_epsR = Create_N_3DArray<float>(numLines);
+	}
+	if (m_StoreMaterial[1])
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::InitDataStorage(): Storing kappa material data..." << endl;
+		Delete_N_3DArray(m_kappa,numLines);
+		m_kappa = Create_N_3DArray<float>(numLines);
+	}
+	if (m_StoreMaterial[2])
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::InitDataStorage(): Storing muR material data..." << endl;
+		Delete_N_3DArray(m_mueR,numLines);
+		m_mueR = Create_N_3DArray<float>(numLines);
+	}
+	if (m_StoreMaterial[3])
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::InitDataStorage(): Storing sigma material data..." << endl;
+		Delete_N_3DArray(m_sigma,numLines);
+		m_sigma = Create_N_3DArray<float>(numLines);
+	}
+}
+
+void Operator::CleanupMaterialStorage()
+{
+	if (!m_StoreMaterial[0] && m_epsR)
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::CleanupMaterialStorage(): Delete epsR material data..." << endl;
+		Delete_N_3DArray(m_epsR,numLines);
+		m_epsR = NULL;
+	}
+	if (!m_StoreMaterial[1] && m_kappa)
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::CleanupMaterialStorage(): Delete kappa material data..." << endl;
+		Delete_N_3DArray(m_kappa,numLines);
+		m_kappa = NULL;
+	}
+	if (!m_StoreMaterial[2] && m_mueR)
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::CleanupMaterialStorage(): Delete mueR material data..." << endl;
+		Delete_N_3DArray(m_mueR,numLines);
+		m_mueR = NULL;
+	}
+	if (!m_StoreMaterial[3] && m_sigma)
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::CleanupMaterialStorage(): Delete sigma material data..." << endl;
+		Delete_N_3DArray(m_sigma,numLines);
+		m_sigma = NULL;
+	}
+}
+
 void Operator::InitExcitation()
 {
 	delete Exc;
@@ -619,6 +693,7 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 int Operator::CalcECOperator( DebugFlags debugFlags )
 {
 	Init_EC();
+	InitDataStorage();
 
 	if (Calc_EC()==0)
 		return -1;
@@ -800,6 +875,14 @@ bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC) const
 	double EffMat[4];
 	Calc_EffMatPos(ny,pos,EffMat);
 
+	if (m_epsR)
+		m_epsR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[0];
+	if (m_kappa)
+		m_kappa[ny][pos[0]][pos[1]][pos[2]] =  EffMat[1];
+	if (m_mueR)
+		m_mueR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[2];
+	if (m_sigma)
+		m_sigma[ny][pos[0]][pos[1]][pos[2]] =  EffMat[3];
 
 	double delta = GetEdgeLength(ny,pos);
 	double area  = GetEdgeArea(ny,pos);

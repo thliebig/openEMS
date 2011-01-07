@@ -69,6 +69,12 @@ public:
 	//! Set the boundary conditions
 	virtual void SetBoundaryCondition(int* BCs) {for (int n=0; n<6; ++n) m_BC[n]=BCs[n];}
 
+	//! Set flags to store material data for post-processing
+	virtual void SetMaterialStoreFlags(int type, bool val);
+
+	//! Check storage flags and cleanup
+	virtual void CleanupMaterialStorage() = 0;
+
 protected:
 	Operator_Base();
 	virtual ~Operator_Base();
@@ -81,6 +87,9 @@ protected:
 
 	//! The operator timestep
 	double dT;
+
+	//! bool flag array to store material data for post-processing
+	bool m_StoreMaterial[4];
 
 	Processing::MeshType m_MeshType;
 	unsigned int numLines[3];

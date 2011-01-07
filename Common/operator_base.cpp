@@ -21,6 +21,10 @@ Operator_Base::Operator_Base()
 {
 	Init();
 	m_MeshType = Processing::CARTESIAN_MESH;
+	m_StoreMaterial[0]=false;
+	m_StoreMaterial[1]=false;
+	m_StoreMaterial[2]=false;
+	m_StoreMaterial[3]=false;
 }
 
 Operator_Base::~Operator_Base()
@@ -50,4 +54,11 @@ void Operator_Base::Reset()
 	for (int n=0; n<3; ++n)
 		delete[] discLines[n];
 	Init();
+}
+
+void Operator_Base::SetMaterialStoreFlags(int type, bool val)
+{
+	if ((type<0) || (type>4))
+		return;
+	m_StoreMaterial[type]=val;
 }
