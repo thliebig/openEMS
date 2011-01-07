@@ -47,13 +47,7 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 	default:
 	case NO_INTERPOLATION:
 		for (int n=0; n<3; ++n)
-		{
-			delta =  m_Op->GetEdgeLength(n,pos,false);
-			if (delta)
-				out[n] = GetRawField(n,pos,type) / delta;
-			else
-				out[n] = 0.0;
-		}
+			out[n] = GetRawField(n,pos,type);
 		break;
 	case NODE_INTERPOLATE:
 		for (int n=0; n<3; ++n)
@@ -67,13 +61,13 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 			}
 			if (pos[n]==0)
 			{
-				out[n] /= (delta * 2.0); //make it consistant with upper PEC boundary
+				out[n] *= 0.5; //make it consistant with upper PEC boundary
 				continue;
 			}
 			--iPos[n];
 			double deltaDown = m_Op->GetEdgeLength(n,iPos);
 			double deltaRel = delta / (delta+deltaDown);
-			out[n] = out[n]*(1.0-deltaRel)/delta + (double)GetRawField(n,iPos)/deltaDown*deltaRel;
+			out[n] = out[n]*(1.0-deltaRel) + (double)GetRawField(n,iPos)*deltaRel;
 			++iPos[n];
 		}
 		break;
@@ -87,21 +81,13 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 				out[n] = 0; //electric field outside the field domain is always zero
 				continue;
 			}
-			delta = m_Op->GetEdgeLength(n,iPos);
-			if (delta)
-				out[n]=GetRawField(n,iPos)/delta;
+			out[n]=GetRawField(n,iPos);
 			++iPos[nP];
-			delta = m_Op->GetEdgeLength(n,iPos);
-			if (delta)
-				out[n]+=GetRawField(n,iPos)/delta;
+			out[n]+=GetRawField(n,iPos);
 			++iPos[nPP];
-			delta = m_Op->GetEdgeLength(n,iPos);
-			if (delta)
-				out[n]+=GetRawField(n,iPos)/delta;
+			out[n]+=GetRawField(n,iPos);
 			--iPos[nP];
-			delta = m_Op->GetEdgeLength(n,iPos);
-			if (delta)
-				out[n]+=GetRawField(n,iPos)/delta;
+			out[n]+=GetRawField(n,iPos);
 			--iPos[nPP];
 			out[n]/=4;
 		}
@@ -191,10 +177,11 @@ double Engine_Interface_FDTD::CalcVoltageIntegral(const unsigned int* start, con
 double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* pos, int type) const
 {
 	double value = m_Eng->GetVolt(n,pos[0],pos[1],pos[2]);
-	if (type==0)
-		return value;
-	if ((type==1) && (m_Op->m_kappa))
-		return value*m_Op->m_kappa[n][pos[0]][pos[1]][pos[2]];
+	double delta = m_Op->GetEdgeLength(n,pos);
+	if ((type==0) && (delta))
+		return value/delta;
+	if ((type==1) && (m_Op->m_kappa) && (delta))
+		return value*m_Op->m_kappa[n][pos[0]][pos[1]][pos[2]]/delta;
 
 	return 0.0;
 }
