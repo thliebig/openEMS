@@ -53,8 +53,8 @@ protected:
 	Operator* m_Op;
 	Engine* m_Eng;
 
-	double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type = 0) const;
-	double GetRawField(unsigned int n, const unsigned int* pos, int type = 0) const;
+	double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;
+	double GetRawField(unsigned int n, const unsigned int* pos, int type) const;
 };
 
 #endif // ENGINE_INTERFACE_FDTD_H

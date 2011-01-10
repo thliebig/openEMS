@@ -53,7 +53,7 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 		for (int n=0; n<3; ++n)
 		{
 			delta = m_Op->GetEdgeLength(n,iPos);
-			out[n] = GetRawField(n,iPos);
+			out[n] = GetRawField(n,iPos,type);
 			if (delta==0)
 			{
 				out[n]=0;
@@ -67,7 +67,7 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 			--iPos[n];
 			double deltaDown = m_Op->GetEdgeLength(n,iPos);
 			double deltaRel = delta / (delta+deltaDown);
-			out[n] = out[n]*(1.0-deltaRel) + (double)GetRawField(n,iPos)*deltaRel;
+			out[n] = out[n]*(1.0-deltaRel) + (double)GetRawField(n,iPos,type)*deltaRel;
 			++iPos[n];
 		}
 		break;
@@ -81,13 +81,13 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 				out[n] = 0; //electric field outside the field domain is always zero
 				continue;
 			}
-			out[n]=GetRawField(n,iPos);
+			out[n]=GetRawField(n,iPos,type);
 			++iPos[nP];
-			out[n]+=GetRawField(n,iPos);
+			out[n]+=GetRawField(n,iPos,type);
 			++iPos[nPP];
-			out[n]+=GetRawField(n,iPos);
+			out[n]+=GetRawField(n,iPos,type);
 			--iPos[nP];
-			out[n]+=GetRawField(n,iPos);
+			out[n]+=GetRawField(n,iPos,type);
 			--iPos[nPP];
 			out[n]/=4;
 		}
