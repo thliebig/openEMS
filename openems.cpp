@@ -372,9 +372,9 @@ bool openEMS::SetupProcessing(ContinuousStructure& CSX)
 			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 			if (db)
 			{
-				if ((db->GetDumpType()>=0) && (db->GetDumpType()<=2))
+				if ((db->GetDumpType()>=0) && (db->GetDumpType()<=3))
 					ProcField = new ProcessFieldsTD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
-				else if  ((db->GetDumpType()>=10) && (db->GetDumpType()<=12))
+				else if  ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
 					ProcField = new ProcessFieldsFD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 				else
 					cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;

@@ -34,9 +34,10 @@ public:
 
 	//! Dump type definitions.
 	/*!
-	  Current dump types are electric field (E_FIELD_DUMP), magnetic field (H_FIELD_DUMP) and (conduction) electric current density (kappa*E) (J_FIELD_DUMP).
+	  Current dump types are electric field (E_FIELD_DUMP), magnetic field (H_FIELD_DUMP),
+	  (conduction) electric current density (kappa*E) (J_FIELD_DUMP) and total current density (rotH)
 	  */
-	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP, J_FIELD_DUMP};
+	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP, J_FIELD_DUMP, ROTH_FIELD_DUMP};
 
 	virtual void InitProcess();
 

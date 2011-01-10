@@ -65,6 +65,8 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 		return "H-Field";
 	case J_FIELD_DUMP:
 		return "J-Field";
+	case ROTH_FIELD_DUMP:
+		return "RotH-Field";
 	}
 	return "unknown field";
 }
@@ -600,8 +602,26 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 			}
 		}
 		return field;
-	}
+	case ROTH_FIELD_DUMP:
+		for (unsigned int i=0; i<numLines[0]; ++i)
+		{
+			pos[0]=posLines[0][i];
+			for (unsigned int j=0; j<numLines[1]; ++j)
+			{
+				pos[1]=posLines[1][j];
+				for (unsigned int k=0; k<numLines[2]; ++k)
+				{
+					pos[2]=posLines[2][k];
 
+					m_Eng_Interface->GetRotHField(pos,out);
+					field[0][i][j][k] = out[0];
+					field[1][i][j][k] = out[1];
+					field[2][i][j][k] = out[2];
+				}
+			}
+		}
+		return field;
+	}
 	cerr << "ProcessFields::CalcField(): Error, unknown dump type..." << endl;
 	return field;
 }

@@ -37,6 +37,11 @@ double* Engine_Interface_FDTD::GetJField(const unsigned int* pos, double* out) c
 	return GetRawInterpolatedField(pos, out, 1);
 }
 
+double* Engine_Interface_FDTD::GetRotHField(const unsigned int* pos, double* out) const
+{
+	return GetRawInterpolatedField(pos, out, 2);
+}
+
 double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const
 {
 	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
@@ -182,6 +187,27 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 		return value/delta;
 	if ((type==1) && (m_Op->m_kappa) && (delta))
 		return value*m_Op->m_kappa[n][pos[0]][pos[1]][pos[2]]/delta;
+	if (type==2) //calc rot(H)
+	{
+		int nP = (n+1)%3;
+		int nPP = (n+2)%3;
+		unsigned int locPos[] = {pos[0],pos[1],pos[2]};
+		double area = m_Op->GetEdgeArea(n,pos);
+		value  = m_Eng->GetCurr(nPP,pos);
+		value -= m_Eng->GetCurr(nP,pos);
+		if (pos[nPP]>0)
+		{
+			--locPos[nPP];
+			value += m_Eng->GetCurr(nP,locPos);
+			++locPos[nPP];
+		}
+		if (pos[nP]>0)
+		{
+			--locPos[nP];
+			value -= m_Eng->GetCurr(nPP,locPos);
+		}
+		return value/area;
+	}
 
 	return 0.0;
 }

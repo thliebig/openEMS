@@ -43,6 +43,7 @@ public:
 	virtual double* GetEField(const unsigned int* pos, double* out) const;
 	virtual double* GetHField(const unsigned int* pos, double* out) const;
 	virtual double* GetJField(const unsigned int* pos, double* out) const;
+	virtual double* GetRotHField(const unsigned int* pos, double* out) const;
 
 	virtual double CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const;
 
