@@ -272,171 +272,8 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 	return true;
 }
 
-int openEMS::SetupFDTD(const char* file)
+bool openEMS::SetupProcessing(ContinuousStructure& CSX)
 {
-	if (file==NULL) return -1;
-	Reset();
-
-	cout << "Read openEMS xml file: " << file << " ..." << endl;
-
-	timeval startTime;
-	gettimeofday(&startTime,NULL);
-
-
-	TiXmlDocument doc(file);
-	if (!doc.LoadFile())
-	{
-		cerr << "openEMS: Error File-Loading failed!!! File: " << file << endl;
-		exit(-1);
-	}
-
-	cout << "Read openEMS Settings..." << endl;
-	TiXmlElement* openEMSxml = doc.FirstChildElement("openEMS");
-	if (openEMSxml==NULL)
-	{
-		cerr << "Can't read openEMS ... " << endl;
-		exit(-1);
-	}
-
-	TiXmlElement* FDTD_Opts = openEMSxml->FirstChildElement("FDTD");
-
-	if (FDTD_Opts==NULL)
-	{
-		cerr << "Can't read openEMS FDTD Settings... " << endl;
-		exit(-1);
-	}
-	int help=0;
-	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&help);
-	if (help<0)
-		NrTS=0;
-	else
-		NrTS = help;
-
-	help = 0;
-	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
-	if (help==1)
-	{
-//		cout << "Using a cylinder coordinate FDTD..." << endl;
-		CylinderCoords = true;
-	}
-
-	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
-	if (endCrit==0)
-		endCrit=1e-6;
-
-	FDTD_Opts->QueryIntAttribute("OverSampling",&m_OverSampling);
-	if (m_OverSampling<2)
-		m_OverSampling=2;
-
-	double maxTime=0;
-	FDTD_Opts->QueryDoubleAttribute("MaxTime",&maxTime);
-
-	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
-	if (BC==NULL)
-	{
-		cerr << "Can't read openEMS boundary cond Settings... " << endl;
-		exit(-3);
-	}
-
-	cout << "Read Geometry..." << endl;
-	ContinuousStructure CSX;
-	string EC(CSX.ReadFromXML(openEMSxml));
-	if (EC.empty()==false)
-	{
-		cerr << EC << endl;
-//		return(-2);
-	}
-
-	if (CylinderCoords)
-		if (CSX.GetCoordInputType()!=CYLINDRICAL)
-		{
-			cerr << "openEMS::SetupFDTD: Warning: Coordinate system found in the CSX file is not a cylindrical. Forcing to cylindrical coordinate system!" << endl;
-			CSX.SetCoordInputType(CYLINDRICAL); //tell CSX to use cylinder-coords
-		}
-
-	if (m_debugCSX)
-		CSX.Write2XML("debugCSX.xml");
-
-	//*************** setup operator ************//
-	if (CylinderCoords)
-	{
-		const char* radii = FDTD_Opts->Attribute("MultiGrid");
-		if (radii)
-		{
-			string rad(radii);
-			FDTD_Op = Operator_CylinderMultiGrid::New(SplitString2Double(rad,','),m_engine_numThreads);
-		}
-		else
-			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
-	}
-	else if (m_engine == EngineType_SSE)
-	{
-		FDTD_Op = Operator_sse::New();
-	}
-	else if (m_engine == EngineType_SSE_Compressed)
-	{
-		FDTD_Op = Operator_SSE_Compressed::New();
-	}
-	else if (m_engine == EngineType_Multithreaded)
-	{
-		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
-	}
-	else
-	{
-		FDTD_Op = Operator::New();
-	}
-
-	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(2);
-
-	SetupBoundaryConditions(BC);
-
-	if (CSX.GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
-		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
-
-	double timestep=0;
-	FDTD_Opts->QueryDoubleAttribute("TimeStep",&timestep);
-	if (timestep)
-		FDTD_Op->SetTimestep(timestep);
-
-	//save kappa material properties, maybe used for dump
-	FDTD_Op->SetMaterialStoreFlags(1,true);
-
-	Operator::DebugFlags debugFlags = Operator::None;
-	if (DebugMat)
-		debugFlags |= Operator::debugMaterial;
-	if (DebugOp)
-		debugFlags |= Operator::debugOperator;
-	if (m_debugPEC)
-		debugFlags |= Operator::debugPEC;
-	FDTD_Op->CalcECOperator( debugFlags );
-
-	//reset flag for kappa material properties, if no dump-box resets it to true, it will be cleaned up...
-	FDTD_Op->SetMaterialStoreFlags(1,false);
-
-	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
-	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
-		NrTS = maxTime_TS;
-
-	if (!FDTD_Op->SetupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
-		exit(2);
-
-	timeval OpDoneTime;
-	gettimeofday(&OpDoneTime,NULL);
-
-	FDTD_Op->ShowStat();
-	FDTD_Op->ShowExtStat();
-
-	cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
-
-	if (m_no_simulation)
-	{
-		// simulation was disabled (to generate debug output only)
-		return 1;
-	}
-
-	//create FDTD engine
-	FDTD_Eng = FDTD_Op->CreateEngine();
-
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;
 
@@ -583,8 +420,206 @@ int openEMS::SetupFDTD(const char* file)
 		}
 	}
 
+	return true;
+}
+
+bool openEMS::SetupMaterialStorages(ContinuousStructure& CSX)
+{
+	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
+	for (size_t i=0; i<DumpProps.size(); ++i)
+	{
+		CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
+		if (!db)
+			continue;
+		if (db->GetQtyPrimitives()==0)
+			continue;
+		//check for current density dump types
+		if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12)) && Enable_Dumps )
+			FDTD_Op->SetMaterialStoreFlags(1,true); //tell operator to store kappa material data
+	}
+	return true;
+}
+
+
+int openEMS::SetupFDTD(const char* file)
+{
+	if (file==NULL) return -1;
+	Reset();
+
+	cout << "Read openEMS xml file: " << file << " ..." << endl;
+
+	timeval startTime;
+	gettimeofday(&startTime,NULL);
+
+
+	TiXmlDocument doc(file);
+	if (!doc.LoadFile())
+	{
+		cerr << "openEMS: Error File-Loading failed!!! File: " << file << endl;
+		exit(-1);
+	}
+
+	cout << "Read openEMS Settings..." << endl;
+	TiXmlElement* openEMSxml = doc.FirstChildElement("openEMS");
+	if (openEMSxml==NULL)
+	{
+		cerr << "Can't read openEMS ... " << endl;
+		exit(-1);
+	}
+
+	TiXmlElement* FDTD_Opts = openEMSxml->FirstChildElement("FDTD");
+
+	if (FDTD_Opts==NULL)
+	{
+		cerr << "Can't read openEMS FDTD Settings... " << endl;
+		exit(-1);
+	}
+	int help=0;
+	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&help);
+	if (help<0)
+		NrTS=0;
+	else
+		NrTS = help;
+
+	help = 0;
+	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
+	if (help==1)
+	{
+//		cout << "Using a cylinder coordinate FDTD..." << endl;
+		CylinderCoords = true;
+	}
+
+	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
+	if (endCrit==0)
+		endCrit=1e-6;
+
+	FDTD_Opts->QueryIntAttribute("OverSampling",&m_OverSampling);
+	if (m_OverSampling<2)
+		m_OverSampling=2;
+
+	double maxTime=0;
+	FDTD_Opts->QueryDoubleAttribute("MaxTime",&maxTime);
+
+	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
+	if (BC==NULL)
+	{
+		cerr << "Can't read openEMS boundary cond Settings... " << endl;
+		exit(-3);
+	}
+
+	cout << "Read Geometry..." << endl;
+	ContinuousStructure CSX;
+	string EC(CSX.ReadFromXML(openEMSxml));
+	if (EC.empty()==false)
+	{
+		cerr << EC << endl;
+//		return(-2);
+	}
+
+	if (CylinderCoords)
+		if (CSX.GetCoordInputType()!=CYLINDRICAL)
+		{
+			cerr << "openEMS::SetupFDTD: Warning: Coordinate system found in the CSX file is not a cylindrical. Forcing to cylindrical coordinate system!" << endl;
+			CSX.SetCoordInputType(CYLINDRICAL); //tell CSX to use cylinder-coords
+		}
+
+	if (m_debugCSX)
+		CSX.Write2XML("debugCSX.xml");
+
+	//*************** setup operator ************//
+	if (CylinderCoords)
+	{
+		const char* radii = FDTD_Opts->Attribute("MultiGrid");
+		if (radii)
+		{
+			string rad(radii);
+			FDTD_Op = Operator_CylinderMultiGrid::New(SplitString2Double(rad,','),m_engine_numThreads);
+		}
+		else
+			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
+	}
+	else if (m_engine == EngineType_SSE)
+	{
+		FDTD_Op = Operator_sse::New();
+	}
+	else if (m_engine == EngineType_SSE_Compressed)
+	{
+		FDTD_Op = Operator_SSE_Compressed::New();
+	}
+	else if (m_engine == EngineType_Multithreaded)
+	{
+		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
+	}
+	else
+	{
+		FDTD_Op = Operator::New();
+	}
+
+	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(2);
+
+	SetupBoundaryConditions(BC);
+
+	if (CSX.GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
+		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
+
+	double timestep=0;
+	FDTD_Opts->QueryDoubleAttribute("TimeStep",&timestep);
+	if (timestep)
+		FDTD_Op->SetTimestep(timestep);
+
+	//check all properties to request material storage during operator creation...
+	SetupMaterialStorages(CSX);
+
+	/*******************   create the EC-FDTD operator *****************************/
+	Operator::DebugFlags debugFlags = Operator::None;
+	if (DebugMat)
+		debugFlags |= Operator::debugMaterial;
+	if (DebugOp)
+		debugFlags |= Operator::debugOperator;
+	if (m_debugPEC)
+		debugFlags |= Operator::debugPEC;
+
+	FDTD_Op->CalcECOperator( debugFlags );
+	/*******************************************************************************/
+
+	//reset flags for material storage, if no dump-box resets it to true, it will be cleaned up...
+	FDTD_Op->SetMaterialStoreFlags(0,false);
+	FDTD_Op->SetMaterialStoreFlags(1,false);
+	FDTD_Op->SetMaterialStoreFlags(2,false);
+	FDTD_Op->SetMaterialStoreFlags(3,false);
+
+	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
+	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
+		NrTS = maxTime_TS;
+
+	if (!FDTD_Op->SetupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
+		exit(2);
+
+	timeval OpDoneTime;
+	gettimeofday(&OpDoneTime,NULL);
+
+	FDTD_Op->ShowStat();
+	FDTD_Op->ShowExtStat();
+
+	cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
+
+	if (m_no_simulation)
+	{
+		// simulation was disabled (to generate debug output only)
+		return 1;
+	}
+
+	//create FDTD engine
+	FDTD_Eng = FDTD_Op->CreateEngine();
+
+	//setup all processing classes
+	if (SetupProcessing(CSX)==false)
+		return 2;
+
+	// Cleanup all unused material storages...
 	FDTD_Op->CleanupMaterialStorage();
 
+	//check and warn for unused properties and primitives
 	CSX.WarnUnusedPrimitves(cerr);
 
 	// dump all boxes (voltage, current, fields, ...)

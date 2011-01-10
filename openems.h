@@ -27,6 +27,7 @@ class Engine;
 class Engine_Interface_FDTD;
 class ProcessingArray;
 class TiXmlElement;
+class ContinuousStructure;
 
 class openEMS
 {
@@ -81,6 +82,12 @@ protected:
 
 	//! Read boundary conditions from xml element and apply to FDTD operator
 	bool SetupBoundaryConditions(TiXmlElement* BC);
+
+	//! Check whether or not the FDTD-Operator has to store material data.
+	bool SetupMaterialStorages(ContinuousStructure& CSX);
+
+	//! Setup all processings.
+	bool SetupProcessing(ContinuousStructure& CSX);
 };
 
 #endif // OPENEMS_H
