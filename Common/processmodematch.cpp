@@ -41,6 +41,31 @@ ProcessModeMatch::~ProcessModeMatch()
 	Reset();
 }
 
+string ProcessModeMatch::GetIntegralName(int row) const
+{
+	if (row==0)
+	{
+		if (m_ModeFieldType==0)
+			return "voltage";
+		if (m_ModeFieldType==1)
+			return "current";
+	}
+	if (row==1)
+	{
+		return "mode_purity";
+	}
+	return "unknown";
+}
+
+string ProcessModeMatch::GetProcessingName() const
+{
+	if (m_ModeFieldType==0)
+		return "voltage mode matching";
+	if (m_ModeFieldType==1)
+		return "current mode matching";
+	return "unknown mode matching";
+}
+
 void ProcessModeMatch::InitProcess()
 {
 	if (!Enabled) return;

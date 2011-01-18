@@ -40,7 +40,6 @@ using namespace std;
 class Processing
 {
 public:
-	Processing(Engine_Interface_Base* eng_if);
 	virtual ~Processing();
 
 	enum MeshType { CARTESIAN_MESH, CYLINDRICAL_MESH};
@@ -49,6 +48,9 @@ public:
 	void SetEngineInterface(Engine_Interface_Base* eng_if);
 
 	virtual void SetName(string val) {m_Name=val;}
+
+	//! Get the name for this processing, will be used in file description.
+	virtual string GetProcessingName() const = 0;
 
 	virtual void InitProcess() {};
 	virtual void Reset();
@@ -101,6 +103,7 @@ public:
 	virtual void SetDualTime(bool val) {m_dualTime=val;}
 
 protected:
+	Processing(Engine_Interface_Base* eng_if);
 	Engine_Interface_Base* m_Eng_Interface;
 	const Operator_Base* Op;
 	MeshType m_Mesh_Type;

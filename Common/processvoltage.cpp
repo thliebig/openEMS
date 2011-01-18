@@ -26,6 +26,13 @@ ProcessVoltage::~ProcessVoltage()
 {
 }
 
+string ProcessVoltage::GetIntegralName(int row) const
+{
+	if (row==0)
+		return "voltage";
+	return "unknown";
+}
+
 double ProcessVoltage::CalcIntegral()
 {
 	//integrate voltages from start to stop on a line

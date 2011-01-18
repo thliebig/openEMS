@@ -27,6 +27,17 @@ ProcessHField::~ProcessHField()
 {
 }
 
+string ProcessHField::GetIntegralName(int row) const
+{
+	if (row==0)
+		return "Hx/(A/m)";
+	if (row==1)
+		return "Hy/(A/m)";
+	if (row==2)
+		return "Hz/(A/m)";
+	return "unknown";
+}
+
 void ProcessHField::InitProcess()
 {
 	OpenFile(m_Name);

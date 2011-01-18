@@ -31,6 +31,10 @@ public:
 	ProcessHField(Engine_Interface_Base* eng_if, Engine* eng);
 	virtual ~ProcessHField();
 
+	virtual string GetProcessingName() const {return "magnetic field probe";}
+
+	virtual string GetIntegralName(int row) const;
+
 	virtual void InitProcess();
 	void DefineStartStopCoord(double* dstart, double* dstop);
 	virtual int Process();

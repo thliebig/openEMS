@@ -28,6 +28,13 @@ ProcessCurrent::~ProcessCurrent()
 {
 }
 
+string ProcessCurrent::GetIntegralName(int row) const
+{
+	if (row==0)
+		return "current";
+	return "unknown";
+}
+
 double ProcessCurrent::CalcIntegral()
 {
 	FDTD_FLOAT current=0;

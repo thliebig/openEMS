@@ -32,6 +32,10 @@ public:
 	ProcessEField(Engine_Interface_Base* eng_if, Engine* eng);
 	virtual ~ProcessEField();
 
+	virtual string GetProcessingName() const {return "electric field probe";}
+
+	virtual string GetIntegralName(int row) const;
+
 	virtual void InitProcess();
 	virtual void FlushData();
 	void Dump_FD_Data(vector<double_complex> value[3], double factor, string filename);

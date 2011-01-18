@@ -26,6 +26,8 @@ public:
 	ProcessFieldsFD(Engine_Interface_Base* eng_if);
 	virtual ~ProcessFieldsFD();
 
+	virtual string GetProcessingName() const {return "frequency domain field dump";}
+
 	virtual void InitProcess();
 
 	virtual int Process();

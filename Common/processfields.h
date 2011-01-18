@@ -39,6 +39,8 @@ public:
 	  */
 	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP, J_FIELD_DUMP, ROTH_FIELD_DUMP};
 
+	virtual string GetProcessingName() const {return "common field processing";}
+
 	virtual void InitProcess();
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);

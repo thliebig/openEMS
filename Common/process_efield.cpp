@@ -29,6 +29,17 @@ ProcessEField::~ProcessEField()
 	FlushData();
 }
 
+string ProcessEField::GetIntegralName(int row) const
+{
+	if (row==0)
+		return "Ex/(V/m)";
+	if (row==1)
+		return "Ey/(V/m)";
+	if (row==2)
+		return "Ez/(V/m)";
+	return "unknown";
+}
+
 void ProcessEField::InitProcess()
 {
 	OpenFile(m_Name);

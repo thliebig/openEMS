@@ -16,6 +16,7 @@
 */
 
 #include "processintegral.h"
+#include "Common/operator_base.h"
 #include "time.h"
 #include <iomanip>
 
@@ -44,6 +45,25 @@ void ProcessIntegral::InitProcess()
 	m_filename = m_Name;
 	OpenFile(m_filename);
 
+	//write header
+	time_t rawTime;
+	time(&rawTime);
+	file << "% time-domain " << GetProcessingName() << " by openEMS " << GIT_VERSION << " @" << ctime(&rawTime);
+	file << "% start-coordinates: ("
+	<< Op->GetDiscLine(0,start[0])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(1,start[1])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(2,start[2])*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
+	file << "% stop-coordinates: ("
+	<< Op->GetDiscLine(0,stop[0])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(1,stop[1])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(2,stop[2])*Op->GetGridDelta() << ") m -> [" << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+	file << "% t/s";
+	for (int n=0;n<GetNumberOfIntegrals();++n)
+	{
+		file << "\t" << GetIntegralName(n);
+	}
+	file << endl;
+
 	for (int i=0;i<GetNumberOfIntegrals();++i)
 	{
 		for (size_t n=0; n<m_FD_Samples.size(); ++n)
@@ -68,12 +88,28 @@ void ProcessIntegral::Dump_FD_Data(double factor, string filename)
 	file.open( filename.c_str() );
 	if (!file.is_open())
 		cerr << "ProcessIntegral::Dump_FD_Data: Error: Can't open file: " << filename << endl;
+
+	//write header
 	time_t rawTime;
 	time(&rawTime);
-	file << "%dump by openEMS @" << ctime(&rawTime) << "%frequency";
+	file << "% frequency-domain " << GetProcessingName() << " by openEMS " << GIT_VERSION << " @" << ctime(&rawTime);
+	file << "% start-coordinates: ("
+	<< Op->GetDiscLine(0,start[0])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(1,start[1])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(2,start[2])*Op->GetGridDelta() << ") m -> [" << start[0] << "," << start[1] << "," << start[2] << "]" << endl;
+	file << "% stop-coordinates: ("
+	<< Op->GetDiscLine(0,stop[0])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(1,stop[1])*Op->GetGridDelta() << ","
+	<< Op->GetDiscLine(2,stop[2])*Op->GetGridDelta() << ") m -> [" << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+	file << "% f/Hz";
+	for (int n=0;n<GetNumberOfIntegrals();++n)
+	{
+		file << "\t" << GetIntegralName(n) << "\t";
+	}
+	file << endl << "%";
 	for (int i = 0; i < GetNumberOfIntegrals();++i)
 		file << "\treal\timag";
-	file << "\n";
+	file << endl;
 
 	for (size_t n=0; n<m_FD_Samples.size(); ++n)
 	{

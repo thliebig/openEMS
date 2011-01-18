@@ -26,6 +26,10 @@ public:
 	ProcessCurrent(Engine_Interface_Base* eng_if);
 	virtual ~ProcessCurrent();
 
+	virtual string GetProcessingName() const {return "current integration";}
+
+	virtual string GetIntegralName(int row) const;
+
 	//! Integrate currents flowing through an area
 	virtual double CalcIntegral();
 

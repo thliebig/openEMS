@@ -31,6 +31,8 @@ public:
 
 	virtual void InitProcess();
 
+	virtual string GetProcessingName() const = 0;
+
 	//! Flush FD data to disk
 	virtual void FlushData();
 
@@ -40,6 +42,9 @@ public:
 	  It will return the result for the CalcIntegral() as default.
 	  */
 	virtual double* CalcMultipleIntegrals();
+
+	//! Get the name of the integral for the given row. The names will be used in the file header.
+	virtual string GetIntegralName(int row) const = 0;
 
 	//! Number of calculated results produced by this integral processing. \sa CalcMultipleIntegrals
 	virtual int GetNumberOfIntegrals() const {return 1;}

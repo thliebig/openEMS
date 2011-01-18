@@ -33,6 +33,10 @@ public:
 	ProcessModeMatch(Engine_Interface_Base* eng_if);
 	virtual ~ProcessModeMatch();
 
+	virtual string GetProcessingName() const;
+
+	virtual string GetIntegralName(int row) const;
+
 	virtual void InitProcess();
 	virtual void Reset();
 
