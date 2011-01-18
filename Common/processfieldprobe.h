@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2010 Sebastian Held (sebastian.held@gmx.de)
+*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -15,29 +15,29 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESS_HFIELD_H
-#define PROCESS_HFIELD_H
+#ifndef PROCESSFIELDPROBE_H
+#define PROCESSFIELDPROBE_H
 
-#include "process_efield.h"
+#include "processintegral.h"
 
-/*! \brief Process H-field at a point
-
-	This class calculates the E-field at a point in the FDTD lattice.
-	Other primitives than \c Point are not supported.
-*/
-class ProcessHField : public ProcessEField
+class ProcessFieldProbe : public ProcessIntegral
 {
 public:
-	ProcessHField(Engine_Interface_Base* eng_if, Engine* eng);
-	virtual ~ProcessHField();
+	ProcessFieldProbe(Engine_Interface_Base* eng_if, int type=0);
+	virtual ~ProcessFieldProbe();
 
-	virtual string GetProcessingName() const {return "magnetic field probe";}
+	virtual string GetProcessingName() const;
 
 	virtual string GetIntegralName(int row) const;
 
-	virtual void InitProcess();
-	void DefineStartStopCoord(double* dstart, double* dstop);
-	virtual int Process();
+	//! Set the field type (0 electric field, 1 magnetic field)
+	void SetFieldType(int type);
+
+	virtual int GetNumberOfIntegrals() const {return 3;}
+	virtual double* CalcMultipleIntegrals();
+
+protected:
+	int m_ModeFieldType;
 };
 
-#endif // PROCESS_HFIELD_H
+#endif // PROCESSFIELDPROBE_H

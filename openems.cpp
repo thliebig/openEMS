@@ -29,8 +29,7 @@
 #include "FDTD/engine_interface_fdtd.h"
 #include "Common/processvoltage.h"
 #include "Common/processcurrent.h"
-#include "Common/process_efield.h"
-#include "Common/process_hfield.h"
+#include "Common/processfieldprobe.h"
 #include "Common/processmodematch.h"
 #include "Common/processfields_td.h"
 #include "Common/processfields_fd.h"
@@ -313,9 +312,9 @@ bool openEMS::SetupProcessing(ContinuousStructure& CSX)
 					proc=procCurr;
 				}
 				else if (pb->GetProbeType()==2)
-					proc = new ProcessEField(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),FDTD_Eng);
+					proc = new ProcessFieldProbe(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),0);
 				else if (pb->GetProbeType()==3)
-					proc = new ProcessHField(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),FDTD_Eng);
+					proc = new ProcessFieldProbe(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),1);
 				else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
 				{
 					ProcessModeMatch* pmm = new ProcessModeMatch(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));

@@ -64,8 +64,7 @@ SOURCES += main.cpp \
     FDTD/excitation.cpp \
     FDTD/operator_cylindermultigrid.cpp \
     FDTD/engine_cylindermultigrid.cpp \
-    FDTD/engine_interface_fdtd.cpp \
-    Common/processfields_fd.cpp
+	FDTD/engine_interface_fdtd.cpp
 
 # FDTD/extensions source files
 SOURCES += FDTD/extensions/engine_extension.cpp \
@@ -89,13 +88,13 @@ SOURCES += Common/operator_base.cpp \
     Common/engine_interface_base.cpp \
     Common/processmodematch.cpp \
     Common/processvoltage.cpp \
-    Common/process_efield.cpp \
-    Common/process_hfield.cpp \
     Common/processing.cpp \
     Common/processintegral.cpp \
     Common/processfields.cpp \
     Common/processfields_td.cpp \
-    Common/processcurrent.cpp
+	Common/processcurrent.cpp \
+	Common/processfields_fd.cpp \
+	Common/processfieldprobe.cpp
 
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
@@ -117,8 +116,7 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
     tools/aligned_allocator.h \
-    FDTD/engine_interface_fdtd.h \
-    Common/processfields_fd.h
+	FDTD/engine_interface_fdtd.h
 
 # FDTD/extensions header files
 HEADERS += FDTD/operator_extension.h \
@@ -141,14 +139,14 @@ HEADERS += FDTD/operator_extension.h \
 HEADERS += Common/operator_base.h \
     Common/engine_interface_base.h \
     Common/processvoltage.h \
-    Common/process_efield.h \
-    Common/process_hfield.h \
     Common/processing.h \
     Common/processintegral.h \
     Common/processfields.h \
     Common/processfields_td.h \
     Common/processcurrent.h \
-    Common/processmodematch.h 
+	Common/processmodematch.h \
+	Common/processfields_fd.h \
+	Common/processfieldprobe.h
 
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
