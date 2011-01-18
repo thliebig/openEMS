@@ -30,10 +30,9 @@ if any(strcmp( options, 'run_testsuite' ))
 end
 
 % LIMITS
-limit_max_time_diff  = 1e-15;
-limit_max_amp_diff   = 1e-13;
-limit_min_z_amp      = 5e-3;
-limit_max_h_amp_diff = 1e-17;
+limit_max_time_diff  = 1e-13;
+limit_max_amp_diff   = 1e-7;  %relative amplitude difference
+limit_min_e_amp      = 5e-3;
 limit_min_h_amp      = 1e-7;
 
 
@@ -200,24 +199,24 @@ for n=1:6
         subplot(2,3,3);
         plot( field_t, [field_z Et_probe{n}(:,4)] );
         subplot(2,3,4);
-        plot( field_t, field_x - Et_probe{n}(:,2) );
+        plot( field_t, (field_x - Et_probe{n}(:,2))./field_x );
         subplot(2,3,5);
-        plot( field_t, field_y - Et_probe{n}(:,3) );
+        plot( field_t, (field_y - Et_probe{n}(:,3))./field_y );
         subplot(2,3,6);
-        plot( field_t, field_z - Et_probe{n}(:,4) );
+        plot( field_t, (field_z - Et_probe{n}(:,4))./field_z );
     end
     
     % difference
-    if any( abs(field_x - Et_probe{n}(:,2)) > limit_max_amp_diff ) || ...
-       any( abs(field_y - Et_probe{n}(:,3)) > limit_max_amp_diff ) || ...
-       any( abs(field_z - Et_probe{n}(:,4)) > limit_max_amp_diff )
+    if any( abs( (field_x - Et_probe{n}(:,2))./field_x) > limit_max_amp_diff ) || ...
+       any( abs( (field_y - Et_probe{n}(:,3))./field_y) > limit_max_amp_diff ) || ...
+       any( abs( (field_z - Et_probe{n}(:,4))./field_z) > limit_max_amp_diff )
         pass = 0;
         disp( 'probes/fieldprobes.m (amplitudes differ too much):  * FAILED *' );
         break
     end
     
     % check absolute field strength of z component
-    if max(abs(field_z)) < limit_min_z_amp
+    if max(abs(field_z)) < limit_min_e_amp
         pass = 0;
         disp( 'probes/fieldprobes.m (amplitude of z-component too small):  * FAILED *' );
         break
@@ -285,17 +284,17 @@ for n=1:6
         subplot(2,3,3);
         plot( field_t, [field_z Ht_probe{n}(:,4)] );
         subplot(2,3,4);
-        plot( field_t, field_x - Ht_probe{n}(:,2) );
+        plot( field_t, (field_x - Ht_probe{n}(:,2))./field_x );
         subplot(2,3,5);
-        plot( field_t, field_y - Ht_probe{n}(:,3) );
+        plot( field_t, (field_y - Ht_probe{n}(:,3))./field_y );
         subplot(2,3,6);
-        plot( field_t, field_z - Ht_probe{n}(:,4) );
+        plot( field_t, (field_z - Ht_probe{n}(:,4))./field_z );
     end
     
     % difference
-    if any( abs(field_x - Ht_probe{n}(:,2)) > limit_max_h_amp_diff ) || ...
-       any( abs(field_y - Ht_probe{n}(:,3)) > limit_max_h_amp_diff ) || ...
-       any( abs(field_z - Ht_probe{n}(:,4)) > limit_max_h_amp_diff )
+    if any( abs( (field_x - Ht_probe{n}(:,2))./field_x) > limit_max_amp_diff ) || ...
+       any( abs( (field_y - Ht_probe{n}(:,3))./field_y) > limit_max_amp_diff ) || ...
+       any( abs( (field_z - Ht_probe{n}(:,4))./field_z) > limit_max_amp_diff )
         pass = 0;
         disp( 'probes/fieldprobes.m (amplitudes differ too much):  * FAILED *' );
         break
