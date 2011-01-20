@@ -449,7 +449,8 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
 	// at least it is save in case FDTD_FLOAT was defined as double...
 	// why does hdf5 write the dimensions backwards??? or matlab???
-	float hdf5array[3][numLines[2]][numLines[1]][numLines[0]];
+	unsigned int reverse_numLines[] = {numLines[2], numLines[1], numLines[0]};
+	float ****hdf5array = Create_N_3DArray<float>(reverse_numLines);
 	for (int n=0; n<3; ++n)
 	{
 		for (unsigned int i=0; i<numLines[0]; ++i)
@@ -464,6 +465,7 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 		}
 	}
 	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
+	Delete_N_3DArray(hdf5array,reverse_numLines);
 	return true;
 }
 
@@ -496,7 +498,8 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
 	// at least it is save in case FDTD_FLOAT was defined as double...
 	// why does hdf5 write the dimensions backwards??? or matlab???
-	float hdf5array[3][numLines[2]][numLines[1]][numLines[0]];
+	unsigned int reverse_numLines[] = {numLines[2], numLines[1], numLines[0]};
+	float ****hdf5array = Create_N_3DArray<float>(reverse_numLines);
 	for (int n=0; n<3; ++n)
 	{
 		for (unsigned int i=0; i<numLines[0]; ++i)
@@ -533,6 +536,7 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 		}
 	}
 	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
+	Delete_N_3DArray(hdf5array,reverse_numLines);
 
 	return true;
 }
