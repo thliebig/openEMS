@@ -157,9 +157,9 @@ void Processing::AddFrequency(vector<double> *freqs)
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	if (Op->SnapToMesh(dstart,start,m_dualMesh,m_start_inside)==false)
-		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+		cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Snapped start line outside field domain!!" << endl;
 	if (Op->SnapToMesh(dstop,stop,m_dualMesh,m_stop_inside)==false)
-		cerr << "Processing::DefineStartStopCoord: Warning: Snapped line outside field domain!!" << endl;
+		cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Snapped stop line outside field domain!!" << endl;
 
 	if (g_settings.showProbeDiscretization())
 	{
