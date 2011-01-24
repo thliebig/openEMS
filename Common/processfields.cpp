@@ -413,6 +413,7 @@ bool ProcessFields::WriteMesh2HDF5(string filename, string groupName, unsigned i
 		}
 		//write to dataset
 		dataset.write( array, H5::PredType::NATIVE_FLOAT );
+		delete[] array;
 	}
 	delete group;
 

@@ -68,8 +68,6 @@ public:
 protected:
 	Operator_Cylinder();
 	virtual void Init();
-	virtual void InitOperator();
-	virtual void Reset();
 
 	//Calc timestep only internal use
 	virtual double CalcTimestep();

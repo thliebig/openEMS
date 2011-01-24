@@ -29,7 +29,7 @@ Operator_Base::Operator_Base()
 
 Operator_Base::~Operator_Base()
 {
-
+	Delete();
 }
 
 std::string Operator_Base::GetDirName(int ny) const
@@ -49,11 +49,21 @@ void Operator_Base::Init()
 		m_BC[n]=0;
 }
 
-void Operator_Base::Reset()
+void Operator_Base::Delete()
 {
 	for (int n=0; n<3; ++n)
+	{
 		delete[] discLines[n];
-	Init();
+		discLines[n]=0;
+	}
+	for (int n=0; n<6; ++n)
+		m_BC[n]=0;
+	dT = 0;
+}
+
+void Operator_Base::Reset()
+{
+	Delete();
 }
 
 void Operator_Base::SetMaterialStoreFlags(int type, bool val)

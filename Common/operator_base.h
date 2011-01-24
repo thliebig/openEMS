@@ -26,6 +26,8 @@
 class Operator_Base
 {
 public:
+	virtual ~Operator_Base();
+
 	//! Get the timestep used by this operator
 	virtual double GetTimestep() const {return dT;};
 
@@ -77,9 +79,10 @@ public:
 
 protected:
 	Operator_Base();
-	virtual ~Operator_Base();
 
 	virtual void Init();
+	//! Cleanup data and reset
+	void Delete();
 	virtual void Reset();
 
 	//! boundary conditions

@@ -29,6 +29,7 @@ Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radi
 
 Operator_CylinderMultiGrid::~Operator_CylinderMultiGrid()
 {
+	Delete();
 }
 
 Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(vector<double> Split_Radii, unsigned int numThreads)
@@ -177,10 +178,16 @@ bool Operator_CylinderMultiGrid::SetupExcitation(TiXmlElement* Excite, unsigned 
 	return Exc->setupExcitation(Excite,maxTS);
 }
 
+void Operator_CylinderMultiGrid::Delete()
+{
+	delete m_InnerOp;
+	m_InnerOp=0;
+}
+
 void Operator_CylinderMultiGrid::Reset()
 {
+	Delete();
 	Operator_Cylinder::Reset();
-	m_InnerOp->Reset();
 }
 
 void Operator_CylinderMultiGrid::SetBoundaryCondition(int* BCs)

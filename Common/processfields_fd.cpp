@@ -107,6 +107,7 @@ int ProcessFieldsFD::Process()
 			}
 		}
 	}
+	Delete_N_3DArray<FDTD_FLOAT>(field_td,numLines);
 	++m_FD_SampleCount;
 	return GetNextInterval();
 }

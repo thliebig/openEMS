@@ -34,12 +34,12 @@ Operator_SSE_Compressed* Operator_SSE_Compressed::New()
 Operator_SSE_Compressed::Operator_SSE_Compressed() : Operator_sse()
 {
 	m_Op_index = NULL;
-	m_Use_Compression = false;
+	m_Use_Compression = false;	
 }
 
 Operator_SSE_Compressed::~Operator_SSE_Compressed()
 {
-	Reset();
+	Delete();
 }
 
 Engine* Operator_SSE_Compressed::CreateEngine() const
@@ -66,13 +66,12 @@ int Operator_SSE_Compressed::CalcECOperator( DebugFlags debugFlags )
 void Operator_SSE_Compressed::Init()
 {
 	Operator_sse::Init();
+	m_Use_Compression = false;
 	m_Op_index = NULL;
 }
 
-void Operator_SSE_Compressed::Reset()
+void Operator_SSE_Compressed::Delete()
 {
-	Operator_sse::Reset();
-
 	if (m_Op_index)
 	{
 		Delete3DArray<unsigned int>( m_Op_index, numLines );
@@ -89,6 +88,12 @@ void Operator_SSE_Compressed::Reset()
 	}
 }
 
+void Operator_SSE_Compressed::Reset()
+{
+	Delete();
+	Operator_sse::Reset();
+}
+
 void Operator_SSE_Compressed::InitOperator()
 {
 	//cleanup compression
@@ -102,7 +107,6 @@ void Operator_SSE_Compressed::InitOperator()
 	}
 
 	Operator_sse::InitOperator();
-
 	m_Op_index = Create3DArray<unsigned int>( numLines );
 }
 

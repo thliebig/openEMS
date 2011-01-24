@@ -45,6 +45,7 @@ protected:
 	Operator_sse();
 
 	virtual void Init();
+	void Delete();
 	virtual void Reset();
 	virtual void InitOperator();
 

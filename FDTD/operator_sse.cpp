@@ -38,7 +38,7 @@ Operator_sse::Operator_sse() : Operator()
 
 Operator_sse::~Operator_sse()
 {
-	Reset();
+	Delete();
 }
 
 Engine* Operator_sse::CreateEngine() const
@@ -57,7 +57,7 @@ void Operator_sse::Init()
 	f4_ii = 0;
 }
 
-void Operator_sse::Reset()
+void Operator_sse::Delete()
 {
 	Delete_N_3DArray_v4sf(f4_vv,numLines);
 	Delete_N_3DArray_v4sf(f4_vi,numLines);
@@ -67,8 +67,14 @@ void Operator_sse::Reset()
 	f4_vi = 0;
 	f4_iv = 0;
 	f4_ii = 0;
+}
+
+void Operator_sse::Reset()
+{
+	Delete();
 	Operator::Reset();
 }
+
 
 void Operator_sse::InitOperator()
 {

@@ -42,7 +42,8 @@ Operator::~Operator()
 	for (size_t n=0; n<m_Op_exts.size(); ++n)
 		delete m_Op_exts.at(n);
 	m_Op_exts.clear();
-	Reset();
+
+	Delete();
 }
 
 Engine* Operator::CreateEngine() const
@@ -81,29 +82,40 @@ void Operator::Init()
 	Exc = 0;
 }
 
-void Operator::Reset()
+void Operator::Delete()
 {
+	CSX = NULL;
+
 	Delete_N_3DArray(vv,numLines);
 	Delete_N_3DArray(vi,numLines);
 	Delete_N_3DArray(iv,numLines);
 	Delete_N_3DArray(ii,numLines);
-	delete MainOp;
-	delete DualOp;
+	vv=vi=iv=ii=0;
+	delete MainOp; MainOp=0;
+	delete DualOp; DualOp=0;
 	for (int n=0; n<3; ++n)
 	{
-		delete[] EC_C[n];
-		delete[] EC_G[n];
-		delete[] EC_L[n];
-		delete[] EC_R[n];
+		delete[] EC_C[n];EC_C[n]=0;
+		delete[] EC_G[n];EC_G[n]=0;
+		delete[] EC_L[n];EC_L[n]=0;
+		delete[] EC_R[n];EC_R[n]=0;
 	}
 
-	delete Exc;
+	delete Exc;Exc=0;
 
 	Delete_N_3DArray(m_epsR,numLines);
+	m_epsR=0;
 	Delete_N_3DArray(m_kappa,numLines);
+	m_kappa=0;
 	Delete_N_3DArray(m_mueR,numLines);
+	m_mueR=0;
 	Delete_N_3DArray(m_sigma,numLines);
+	m_sigma=0;
+}
 
+void Operator::Reset()
+{
+	Delete();
 	Operator_Base::Reset();
 }
 

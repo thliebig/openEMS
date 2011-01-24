@@ -30,6 +30,7 @@ Operator_Multithread* Operator_Multithread::New(unsigned int numThreads)
 
 Operator_Multithread::~Operator_Multithread()
 {
+	Delete();
 }
 
 void Operator_Multithread::setNumThreads( unsigned int numThreads )
@@ -55,6 +56,7 @@ Operator_Multithread::Operator_Multithread()
 void Operator_Multithread::Init()
 {
 	Operator_SSE_Compressed::Init();
+
 	m_CalcEC_Start=NULL;
 	m_CalcEC_Stop=NULL;
 
@@ -62,10 +64,8 @@ void Operator_Multithread::Init()
 	m_CalcPEC_Stop=NULL;
 }
 
-void Operator_Multithread::Reset()
+void Operator_Multithread::Delete()
 {
-	Operator_SSE_Compressed::Reset();
-
 	m_thread_group.join_all();
 
 	delete m_CalcEC_Start;
@@ -77,6 +77,12 @@ void Operator_Multithread::Reset()
 	m_CalcPEC_Start=NULL;
 	delete m_CalcPEC_Stop;
 	m_CalcPEC_Stop=NULL;
+}
+
+void Operator_Multithread::Reset()
+{
+	Delete();
+	Operator_SSE_Compressed::Reset();
 }
 
 void Operator_Multithread::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const

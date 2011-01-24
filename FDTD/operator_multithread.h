@@ -40,6 +40,7 @@ public:
 protected:
 	Operator_Multithread();
 	virtual void Init();
+	void Delete();
 	virtual void Reset();
 
 	virtual bool Calc_EC(); //this method is using multi-threading

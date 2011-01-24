@@ -100,7 +100,7 @@ int ProcessFieldsTD::Process()
 	else
 		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;
 
-	Delete_N_3DArray(field,numLines);
+	Delete_N_3DArray<FDTD_FLOAT>(field,numLines);
 
 	return GetNextInterval();
 }

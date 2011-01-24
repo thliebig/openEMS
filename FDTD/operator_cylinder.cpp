@@ -37,7 +37,6 @@ Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 
 Operator_Cylinder::~Operator_Cylinder()
 {
-	Operator_Multithread::Reset();
 }
 
 void Operator_Cylinder::Init()
@@ -45,16 +44,6 @@ void Operator_Cylinder::Init()
 	CC_closedAlpha = false;
 	CC_R0_included = false;
 	Operator_Multithread::Init();
-}
-
-void Operator_Cylinder::Reset()
-{
-	Operator_Multithread::Reset();
-}
-
-void Operator_Cylinder::InitOperator()
-{
-	Operator_Multithread::InitOperator();
 }
 
 int Operator_Cylinder::CalcECOperator( DebugFlags debugFlags )

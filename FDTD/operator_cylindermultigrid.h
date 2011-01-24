@@ -56,7 +56,7 @@ public:
 protected:
 	Operator_CylinderMultiGrid(vector<double> Split_Radii);
 	virtual void Init();
-//	virtual void InitOperator();
+	void Delete();
 	virtual void Reset();
 
 	double m_Split_Rad;
