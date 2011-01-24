@@ -449,21 +449,23 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
 	// at least it is save in case FDTD_FLOAT was defined as double...
 	// why does hdf5 write the dimensions backwards??? or matlab???
-	float hdf5array[3][numLines[2]][numLines[1]][numLines[0]];
+	unsigned long pos = 0;
+	float *hdf5array = new float[3*numLines[0]*numLines[1]*numLines[2]];
 	for (int n=0; n<3; ++n)
 	{
-		for (unsigned int i=0; i<numLines[0]; ++i)
+		for (unsigned int k=0; k<numLines[2]; ++k)
 		{
 			for (unsigned int j=0; j<numLines[1]; ++j)
 			{
-				for (unsigned int k=0; k<numLines[2]; ++k)
+				for (unsigned int i=0; i<numLines[0]; ++i)
 				{
-					hdf5array[n][k][j][i] = array[n][i][j][k];
+					hdf5array[pos++] = array[n][i][j][k];
 				}
 			}
 		}
 	}
 	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
+	delete[] hdf5array;
 	return true;
 }
 
@@ -496,16 +498,17 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
 	// at least it is save in case FDTD_FLOAT was defined as double...
 	// why does hdf5 write the dimensions backwards??? or matlab???
-	float hdf5array[3][numLines[2]][numLines[1]][numLines[0]];
+	unsigned long pos = 0;
+	float *hdf5array = new float[3*numLines[0]*numLines[1]*numLines[2]];
 	for (int n=0; n<3; ++n)
 	{
-		for (unsigned int i=0; i<numLines[0]; ++i)
+		for (unsigned int k=0; k<numLines[2]; ++k)
 		{
 			for (unsigned int j=0; j<numLines[1]; ++j)
 			{
-				for (unsigned int k=0; k<numLines[2]; ++k)
+				for (unsigned int i=0; i<numLines[0]; ++i)
 				{
-					hdf5array[n][k][j][i] = array[n][i][j][k].real() * weight;
+					hdf5array[pos++] = array[n][i][j][k].real() * weight;
 				}
 			}
 		}
@@ -519,21 +522,22 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
 	// at least it is save in case FDTD_FLOAT was defined as double...
 	// why does hdf5 write the dimensions backwards??? or matlab???
+	pos=0;
 	for (int n=0; n<3; ++n)
 	{
-		for (unsigned int i=0; i<numLines[0]; ++i)
+		for (unsigned int k=0; k<numLines[2]; ++k)
 		{
 			for (unsigned int j=0; j<numLines[1]; ++j)
 			{
-				for (unsigned int k=0; k<numLines[2]; ++k)
+				for (unsigned int i=0; i<numLines[0]; ++i)
 				{
-					hdf5array[n][k][j][i] = array[n][i][j][k].imag() * weight;
+					hdf5array[pos++] = array[n][i][j][k].imag() * weight;
 				}
 			}
 		}
 	}
 	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
-
+	delete[] hdf5array;
 	return true;
 }
 
