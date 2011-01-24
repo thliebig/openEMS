@@ -54,6 +54,7 @@ end
 
 if (numel(TD.names)>0)
     hdf_fielddata.TD.names=TD.names;
+    hdf_fielddata.TD.time=TD.time;
     for n=1:numel(hdf_fielddata.TD.names)
         hdf_fielddata.TD.values{n} = double(hdf5read(file,hdf_fielddata.TD.names{n}));
     end
