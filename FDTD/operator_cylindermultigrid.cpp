@@ -147,6 +147,36 @@ void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, ve
 }
 
 
+void Operator_CylinderMultiGrid::FillMissingDataStorage()
+{
+	unsigned int pos[3];
+
+	double EffMat[4];
+
+	for (int ny=0; ny<3; ++ny)
+	{
+		for (pos[0]=0; pos[0]<m_Split_Pos-1; ++pos[0])
+		{
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			{
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				{
+					Calc_EffMatPos(ny,pos,EffMat);
+
+					if (m_epsR)
+						m_epsR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[0];
+					if (m_kappa)
+						m_kappa[ny][pos[0]][pos[1]][pos[2]] =  EffMat[1];
+					if (m_mueR)
+						m_mueR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[2];
+					if (m_sigma)
+						m_sigma[ny][pos[0]][pos[1]][pos[2]] =  EffMat[3];
+				}
+			}
+		}
+	}
+}
+
 int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
 {
 	int retCode=0;
@@ -165,9 +195,11 @@ int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
 		dT = opt_dT;
 		m_InnerOp->SetTimestep(dT);
 		m_InnerOp->CalcECOperator();
-		return Operator_Cylinder::CalcECOperator( debugFlags );
+		retCode = Operator_Cylinder::CalcECOperator( debugFlags );
 	}
 
+	//the data storage will only be filled up to m_Split_Pos-1, fill the remaining area here...
+	FillMissingDataStorage();
 	return retCode;
 }
 

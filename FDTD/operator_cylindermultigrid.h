@@ -59,6 +59,9 @@ protected:
 	void Delete();
 	virtual void Reset();
 
+	//! The material data storage in the sub-grid area's will not be filled by the base-operator. Check and do this here!
+	void FillMissingDataStorage();
+
 	double m_Split_Rad;
 	vector<double> m_Split_Radii;
 	unsigned int m_Split_Pos;
