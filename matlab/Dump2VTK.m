@@ -63,14 +63,16 @@ elseif (mesh.type==1) %write cylindrical mesh to vtk
             end
         end
     end
-    [R A Z] = ndgrid(x,y,z);
-    sinA = sin(A);
-    cosA = cos(A);
-    field_CC(:,:,:,1) = fields(:,:,:,1) .* cosA - fields(:,:,:,2) .* sinA;
-    field_CC(:,:,:,2) = fields(:,:,:,1) .* sinA + fields(:,:,:,2) .* cosA;
-    field_CC(:,:,:,3) = fields(:,:,:,3);
-    fields = field_CC;
-    clear R A Z sinA cosA field_CC
+    if (ndims(fields)==4)
+        [R A Z] = ndgrid(x,y,z);
+        sinA = sin(A);
+        cosA = cos(A);
+        field_CC(:,:,:,1) = fields(:,:,:,1) .* cosA - fields(:,:,:,2) .* sinA;
+        field_CC(:,:,:,2) = fields(:,:,:,1) .* sinA + fields(:,:,:,2) .* cosA;
+        field_CC(:,:,:,3) = fields(:,:,:,3);
+        fields = field_CC;
+        clear R A Z sinA cosA field_CC
+    end
 end
 
     
