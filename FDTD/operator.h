@@ -18,7 +18,6 @@
 #ifndef OPERATOR_H
 #define OPERATOR_H
 
-#include "ContinuousStructure.h"
 #include "tools/AdrOp.h"
 #include "tools/constants.h"
 #include "excitation.h"
@@ -45,7 +44,6 @@ public:
 	virtual Engine* CreateEngine() const;
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
-	virtual ContinuousStructure* GetGeometryCSX() {return CSX;}
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
@@ -139,8 +137,6 @@ protected:
 		vector<unsigned short> dir;
 	};
 	struct Grid_Path FindPath(double start[], double stop[]);
-
-	ContinuousStructure* CSX;
 
 	//! Calculate the field excitations.
 	virtual bool CalcFieldExcitation();

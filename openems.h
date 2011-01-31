@@ -61,6 +61,8 @@ public:
 protected:
 	bool CylinderCoords;
 
+	ContinuousStructure* m_CSX;
+
 	//! Number of Timesteps
 	unsigned int NrTS;
 	bool Enable_Dumps;
@@ -84,10 +86,10 @@ protected:
 	bool SetupBoundaryConditions(TiXmlElement* BC);
 
 	//! Check whether or not the FDTD-Operator has to store material data.
-	bool SetupMaterialStorages(ContinuousStructure& CSX);
+	bool SetupMaterialStorages();
 
 	//! Setup all processings.
-	bool SetupProcessing(ContinuousStructure& CSX);
+	bool SetupProcessing();
 };
 
 #endif // OPENEMS_H

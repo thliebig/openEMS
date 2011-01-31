@@ -53,6 +53,7 @@ openEMS::openEMS()
 {
 	FDTD_Op=NULL;
 	FDTD_Eng=NULL;
+	m_CSX=NULL;
 	PA=NULL;
 	CylinderCoords = false;
 	Enable_Dumps = true;
@@ -83,6 +84,8 @@ void openEMS::Reset()
 	FDTD_Eng=0;
 	delete FDTD_Op;
 	FDTD_Op=0;
+	delete m_CSX;
+	m_CSX=0;
 }
 
 //! \brief processes a command line argument
@@ -271,7 +274,7 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 	return true;
 }
 
-bool openEMS::SetupProcessing(ContinuousStructure& CSX)
+bool openEMS::SetupProcessing()
 {
 	//*************** setup processing ************//
 	cout << "Setting up processing..." << endl;
@@ -281,7 +284,7 @@ bool openEMS::SetupProcessing(ContinuousStructure& CSX)
 
 	double start[3];
 	double stop[3];
-	vector<CSProperties*> Probes = CSX.GetPropertyByType(CSProperties::PROBEBOX);
+	vector<CSProperties*> Probes = m_CSX->GetPropertyByType(CSProperties::PROBEBOX);
 	for (size_t i=0; i<Probes.size(); ++i)
 	{
 		//only looking for one prim atm
@@ -350,7 +353,7 @@ bool openEMS::SetupProcessing(ContinuousStructure& CSX)
 		}
 	}
 
-	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
+	vector<CSProperties*> DumpProps = m_CSX->GetPropertyByType(CSProperties::DUMPBOX);
 	for (size_t i=0; i<DumpProps.size(); ++i)
 	{
 		ProcessFields* ProcField=NULL;
@@ -423,9 +426,9 @@ bool openEMS::SetupProcessing(ContinuousStructure& CSX)
 	return true;
 }
 
-bool openEMS::SetupMaterialStorages(ContinuousStructure& CSX)
+bool openEMS::SetupMaterialStorages()
 {
-	vector<CSProperties*> DumpProps = CSX.GetPropertyByType(CSProperties::DUMPBOX);
+	vector<CSProperties*> DumpProps = m_CSX->GetPropertyByType(CSProperties::DUMPBOX);
 	for (size_t i=0; i<DumpProps.size(); ++i)
 	{
 		CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
@@ -508,8 +511,8 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	cout << "Read Geometry..." << endl;
-	ContinuousStructure CSX;
-	string EC(CSX.ReadFromXML(openEMSxml));
+	m_CSX = new ContinuousStructure();
+	string EC(m_CSX->ReadFromXML(openEMSxml));
 	if (EC.empty()==false)
 	{
 		cerr << EC << endl;
@@ -517,14 +520,14 @@ int openEMS::SetupFDTD(const char* file)
 	}
 
 	if (CylinderCoords)
-		if (CSX.GetCoordInputType()!=CYLINDRICAL)
+		if (m_CSX->GetCoordInputType()!=CYLINDRICAL)
 		{
 			cerr << "openEMS::SetupFDTD: Warning: Coordinate system found in the CSX file is not a cylindrical. Forcing to cylindrical coordinate system!" << endl;
-			CSX.SetCoordInputType(CYLINDRICAL); //tell CSX to use cylinder-coords
+			m_CSX->SetCoordInputType(CYLINDRICAL); //tell CSX to use cylinder-coords
 		}
 
 	if (m_debugCSX)
-		CSX.Write2XML("debugCSX.xml");
+		m_CSX->Write2XML("debugm_CSX->xml");
 
 	//*************** setup operator ************//
 	if (CylinderCoords)
@@ -555,11 +558,11 @@ int openEMS::SetupFDTD(const char* file)
 		FDTD_Op = Operator::New();
 	}
 
-	if (FDTD_Op->SetGeometryCSX(&CSX)==false) return(2);
+	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
 
 	SetupBoundaryConditions(BC);
 
-	if (CSX.GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
+	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 
 	double timestep=0;
@@ -568,7 +571,7 @@ int openEMS::SetupFDTD(const char* file)
 		FDTD_Op->SetTimestep(timestep);
 
 	//check all properties to request material storage during operator creation...
-	SetupMaterialStorages(CSX);
+	SetupMaterialStorages();
 
 	/*******************   create the EC-FDTD operator *****************************/
 	Operator::DebugFlags debugFlags = Operator::None;
@@ -613,14 +616,14 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Eng = FDTD_Op->CreateEngine();
 
 	//setup all processing classes
-	if (SetupProcessing(CSX)==false)
+	if (SetupProcessing()==false)
 		return 2;
 
 	// Cleanup all unused material storages...
 	FDTD_Op->CleanupMaterialStorage();
 
 	//check and warn for unused properties and primitives
-	CSX.WarnUnusedPrimitves(cerr);
+	m_CSX->WarnUnusedPrimitves(cerr);
 
 	// dump all boxes (voltage, current, fields, ...)
 	if (m_debugBox)

@@ -56,8 +56,6 @@ void Operator::Init()
 {
 	Operator_Base::Init();
 
-	CSX = NULL;
-
 	vv=NULL;
 	vi=NULL;
 	iv=NULL;

@@ -32,6 +32,14 @@ Operator_Base::~Operator_Base()
 	Delete();
 }
 
+bool Operator_Base::SetGeometryCSX(ContinuousStructure* geo)
+{
+	if (geo==NULL) return false;
+	CSX = geo;
+
+	return true;
+}
+
 std::string Operator_Base::GetDirName(int ny) const
 {
 	if (ny==0) return "x";
@@ -42,6 +50,8 @@ std::string Operator_Base::GetDirName(int ny) const
 
 void Operator_Base::Init()
 {
+	CSX = NULL;
+
 	dT = 0;
 	for (int n=0; n<3; ++n)
 		discLines[n]=NULL;

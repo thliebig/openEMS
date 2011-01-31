@@ -18,6 +18,7 @@
 #ifndef OPERATOR_BASE_H
 #define OPERATOR_BASE_H
 
+#include "ContinuousStructure.h"
 #include "tools/global.h"
 #include "Common/processing.h"
 #include "string"
@@ -27,6 +28,9 @@ class Operator_Base
 {
 public:
 	virtual ~Operator_Base();
+
+	virtual bool SetGeometryCSX(ContinuousStructure* geo);
+	virtual ContinuousStructure* GetGeometryCSX() const {return CSX;}
 
 	//! Get the timestep used by this operator
 	virtual double GetTimestep() const {return dT;};
@@ -77,8 +81,11 @@ public:
 	//! Check storage flags and cleanup
 	virtual void CleanupMaterialStorage() = 0;
 
+
 protected:
 	Operator_Base();
+
+	ContinuousStructure* CSX;
 
 	virtual void Init();
 	//! Cleanup data and reset
