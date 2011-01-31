@@ -67,6 +67,8 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 		return "J-Field";
 	case ROTH_FIELD_DUMP:
 		return "RotH-Field";
+	case SAR_LOCAL_DUMP:
+		return "SAR-local";
 	}
 	return "unknown field";
 }
@@ -470,6 +472,55 @@ bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, stri
 	return true;
 }
 
+bool ProcessFields:: DumpScalarArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, string attr_name, float attr_value)
+{
+	const H5std_string FILE_NAME(filename);
+	const H5std_string DATASET_NAME( name );
+
+	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
+
+	H5::Group group( file.openGroup( groupName ));
+
+	hsize_t dimsf[3];              // dataset dimensions
+
+	dimsf[0] = numLines[2];
+	dimsf[1] = numLines[1];
+	dimsf[2] = numLines[0];
+
+	H5::DataSpace dataspace( 3, dimsf );
+
+	H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
+//	datatype.setOrder( H5T_ORDER_LE );
+	H5::DataSet dataset = group.createDataSet( DATASET_NAME, datatype, dataspace );
+
+	if (!attr_name.empty())
+	{
+		hsize_t t_dimsf[] = {1};
+		H5::DataSpace t_dataspace( 1, t_dimsf );
+		H5::Attribute attr = dataset.createAttribute(attr_name,H5::PredType::NATIVE_FLOAT,t_dataspace);
+		attr.write( H5::PredType::NATIVE_FLOAT , &attr_value);
+	}
+
+	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
+	// at least it is save in case FDTD_FLOAT was defined as double...
+	// why does hdf5 write the dimensions backwards??? or matlab???
+	unsigned long pos = 0;
+	float *hdf5array = new float[numLines[0]*numLines[1]*numLines[2]];
+	for (unsigned int k=0; k<numLines[2]; ++k)
+	{
+		for (unsigned int j=0; j<numLines[1]; ++j)
+		{
+			for (unsigned int i=0; i<numLines[0]; ++i)
+			{
+				hdf5array[pos++] = array[i][j][k];
+			}
+		}
+	}
+	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
+	delete[] hdf5array;
+	return true;
+}
+
 bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency)
 {
 	const H5std_string FILE_NAME(filename);
@@ -551,6 +602,7 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 	switch (m_DumpType)
 	{
 	case E_FIELD_DUMP:
+	case SAR_LOCAL_DUMP:
 		for (unsigned int i=0; i<numLines[0]; ++i)
 		{
 			pos[0]=posLines[0][i];

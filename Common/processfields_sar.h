@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2010 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -15,29 +15,25 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSFIELDS_FD_H
-#define PROCESSFIELDS_FD_H
+#ifndef PROCESSFIELDS_SAR_H
+#define PROCESSFIELDS_SAR_H
 
-#include "processfields.h"
+#include "processfields_fd.h"
 
-class ProcessFieldsFD : public ProcessFields
+class ProcessFieldsSAR : public ProcessFieldsFD
 {
 public:
-	ProcessFieldsFD(Engine_Interface_Base* eng_if);
-	virtual ~ProcessFieldsFD();
+	ProcessFieldsSAR(Engine_Interface_Base* eng_if);
+	virtual ~ProcessFieldsSAR();
 
-	virtual string GetProcessingName() const {return "frequency domain field dump";}
+	virtual string GetProcessingName() const {return "SAR dump";}
 
 	virtual void InitProcess();
-
-	virtual int Process();
-	virtual void PostProcess();
 
 protected:
 	virtual void DumpFDData();
 
-	//! frequency domain field storage
-	vector<std::complex<float>****> m_FD_Fields;
+	double GetKappaDensityRatio(const unsigned int* pos);
 };
 
-#endif // PROCESSFIELDS_FD_H
+#endif // PROCESSFIELDS_SAR_H

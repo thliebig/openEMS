@@ -33,6 +33,7 @@
 #include "Common/processmodematch.h"
 #include "Common/processfields_td.h"
 #include "Common/processfields_fd.h"
+#include "Common/processfields_sar.h"
 #include <sys/time.h>
 #include <time.h>
 #include <H5Cpp.h> // only for H5get_libversion()
@@ -376,8 +377,10 @@ bool openEMS::SetupProcessing()
 			{
 				if ((db->GetDumpType()>=0) && (db->GetDumpType()<=3))
 					ProcField = new ProcessFieldsTD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
-				else if  ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
+				else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
 					ProcField = new ProcessFieldsFD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+				else if (db->GetDumpType()==20)
+					ProcField = new ProcessFieldsSAR(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 				else
 					cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
 				if (ProcField)
@@ -398,8 +401,14 @@ bool openEMS::SetupProcessing()
 					else
 						ProcField->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
 
-					if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12)) && Enable_Dumps )
-						FDTD_Op->SetMaterialStoreFlags(1,true); //keep kappa material data (prevent cleanup)
+					if (db->GetDumpType()==20)
+					{
+						ProcField->SetDumpType(ProcessFields::SAR_LOCAL_DUMP);
+					}
+
+					//SetupMaterialStorages() has previewed storage needs... refresh here to prevent cleanup!!!
+					if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12) || (db->GetDumpType()==20)) && Enable_Dumps )
+						FDTD_Op->SetMaterialStoreFlags(1,true);
 
 					ProcField->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
 					ProcField->SetFileType((ProcessFields::FileType)db->GetFileType());
@@ -437,7 +446,7 @@ bool openEMS::SetupMaterialStorages()
 		if (db->GetQtyPrimitives()==0)
 			continue;
 		//check for current density dump types
-		if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12)) && Enable_Dumps )
+		if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12) || (db->GetDumpType()==20)) && Enable_Dumps )
 			FDTD_Op->SetMaterialStoreFlags(1,true); //tell operator to store kappa material data
 	}
 	return true;

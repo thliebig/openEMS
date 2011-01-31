@@ -92,9 +92,10 @@ SOURCES += Common/operator_base.cpp \
     Common/processintegral.cpp \
     Common/processfields.cpp \
     Common/processfields_td.cpp \
-	Common/processcurrent.cpp \
-	Common/processfields_fd.cpp \
-	Common/processfieldprobe.cpp
+    Common/processcurrent.cpp \
+    Common/processfields_fd.cpp \
+	Common/processfieldprobe.cpp \
+	Common/processfields_sar.cpp
 
 HEADERS += tools/ErrorMsg.h \
     tools/AdrOp.h \
@@ -144,9 +145,10 @@ HEADERS += Common/operator_base.h \
     Common/processfields.h \
     Common/processfields_td.h \
     Common/processcurrent.h \
-	Common/processmodematch.h \
-	Common/processfields_fd.h \
-	Common/processfieldprobe.h
+    Common/processmodematch.h \
+    Common/processfields_fd.h \
+	Common/processfieldprobe.h \
+	Common/processfields_sar.h
 
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \

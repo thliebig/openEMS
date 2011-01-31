@@ -37,7 +37,7 @@ public:
 	  Current dump types are electric field (E_FIELD_DUMP), magnetic field (H_FIELD_DUMP),
 	  (conduction) electric current density (kappa*E) (J_FIELD_DUMP) and total current density (rotH)
 	  */
-	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP, J_FIELD_DUMP, ROTH_FIELD_DUMP};
+	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP, J_FIELD_DUMP, ROTH_FIELD_DUMP, SAR_LOCAL_DUMP};
 
 	virtual string GetProcessingName() const {return "common field processing";}
 
@@ -88,6 +88,9 @@ public:
 
 	//! Dump a time-domain vector dump to an HDF5 file
 	static bool DumpVectorArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, float time=0);
+
+	//! Dump a scalar field to an HDF5 file
+	static bool DumpScalarArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, string attr_name=string(), float attr_value=0);
 
 	//! Dump a frequency-domain complex-vector dump to an HDF5 file
 	static bool DumpVectorArray2HDF5(string filename, string groupName, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency);
