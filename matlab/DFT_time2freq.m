@@ -22,11 +22,13 @@ end
 
 % convert absolute time into relative time
 t = t - t(1);
+dt = t(2)-t(1);
 
 f_val = zeros(1,numel(freq));
 for f_idx=1:numel(freq)
     f_val(f_idx) = sum( val .* exp( -1i * 2*pi*freq(f_idx) * t ) );
 end
-f_val = f_val / numel(t);
 
+f_val = f_val * dt;
+ 
 f_val = f_val * 2; % single-sided spectrum
