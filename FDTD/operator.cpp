@@ -669,6 +669,30 @@ void Operator::CleanupMaterialStorage()
 	}
 }
 
+double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) const
+{
+	switch (type)
+	{
+	case 0:
+		if (m_epsR==0)
+			return 0;
+		return m_epsR[n][pos[0]][pos[1]][pos[2]];
+	case 1:
+		if (m_kappa==0)
+			return 0;
+		return m_kappa[n][pos[0]][pos[1]][pos[2]];
+	case 2:
+		if (m_mueR==0)
+			return 0;
+		return m_mueR[n][pos[0]][pos[1]][pos[2]];
+	case 3:
+		if (m_sigma==0)
+			return 0;
+		return m_sigma[n][pos[0]][pos[1]][pos[2]];
+	}
+	return 0;
+}
+
 void Operator::InitExcitation()
 {
 	delete Exc;

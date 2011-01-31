@@ -120,6 +120,8 @@ public:
 
 	virtual void CleanupMaterialStorage();
 
+	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const;
+
 protected:
 	//! use New() for creating a new Operator
 	Operator();

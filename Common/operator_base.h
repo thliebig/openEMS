@@ -81,6 +81,8 @@ public:
 	//! Check storage flags and cleanup
 	virtual void CleanupMaterialStorage() = 0;
 
+	//! Get stored discrete material (if storage is enabled).
+	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const = 0;
 
 protected:
 	Operator_Base();
