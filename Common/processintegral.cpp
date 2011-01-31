@@ -76,7 +76,7 @@ void ProcessIntegral::InitProcess()
 void ProcessIntegral::FlushData()
 {
 	if (m_FD_Samples.size())
-		Dump_FD_Data(1.0/(double)m_FD_SampleCount,m_filename + "_FD");
+		Dump_FD_Data(1.0,m_filename + "_FD");
 }
 
 
@@ -149,7 +149,7 @@ int ProcessIntegral::Process()
 			for (size_t n=0; n<m_FD_Samples.size(); ++n)
 			{
 				for (int i=0; i<NrInt; ++i)
-					m_FD_Results[i].at(n) += (double)m_Results[i] * m_weight * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * time );
+					m_FD_Results[i].at(n) += (double)m_Results[i] * m_weight * std::exp( -2.0 * _I * M_PI * m_FD_Samples.at(n) * time ) * 2.0 * Op->GetTimestep();
 			}
 			++m_FD_SampleCount;
 			if (m_Flush)

@@ -92,7 +92,9 @@ int ProcessFieldsFD::Process()
 	unsigned int pos[3];
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
-		std::complex<float> exp_jwt = std::exp( (std::complex<float>)(-2.0 * _I * M_PI * m_FD_Samples.at(n) * T) );
+		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * _I * M_PI * m_FD_Samples.at(n) * T) );
+		exp_jwt_2_dt *= 2; // *2 for single-sided spectrum
+		exp_jwt_2_dt *= Op->GetTimestep(); // multiply with timestep
 		field_fd = m_FD_Fields.at(n);
 		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 		{
@@ -100,9 +102,9 @@ int ProcessFieldsFD::Process()
 			{
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
-					field_fd[0][pos[0]][pos[1]][pos[2]] += field_td[0][pos[0]][pos[1]][pos[2]] * exp_jwt;
-					field_fd[1][pos[0]][pos[1]][pos[2]] += field_td[1][pos[0]][pos[1]][pos[2]] * exp_jwt;
-					field_fd[2][pos[0]][pos[1]][pos[2]] += field_td[2][pos[0]][pos[1]][pos[2]] * exp_jwt;
+					field_fd[0][pos[0]][pos[1]][pos[2]] += field_td[0][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
+					field_fd[1][pos[0]][pos[1]][pos[2]] += field_td[1][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
+					field_fd[2][pos[0]][pos[1]][pos[2]] += field_td[2][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
 				}
 			}
 		}
@@ -147,9 +149,9 @@ void ProcessFieldsFD::DumpFDData()
 					{
 						for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 						{
-							field[0][pos[0]][pos[1]][pos[2]] = real(field_fd[0][pos[0]][pos[1]][pos[2]] * exp_jwt)/(float)m_FD_SampleCount;
-							field[1][pos[0]][pos[1]][pos[2]] = real(field_fd[1][pos[0]][pos[1]][pos[2]] * exp_jwt)/(float)m_FD_SampleCount;
-							field[2][pos[0]][pos[1]][pos[2]] = real(field_fd[2][pos[0]][pos[1]][pos[2]] * exp_jwt)/(float)m_FD_SampleCount;
+							field[0][pos[0]][pos[1]][pos[2]] = real(field_fd[0][pos[0]][pos[1]][pos[2]] * exp_jwt);
+							field[1][pos[0]][pos[1]][pos[2]] = real(field_fd[1][pos[0]][pos[1]][pos[2]] * exp_jwt);
+							field[2][pos[0]][pos[1]][pos[2]] = real(field_fd[2][pos[0]][pos[1]][pos[2]] * exp_jwt);
 						}
 					}
 				}
@@ -170,9 +172,9 @@ void ProcessFieldsFD::DumpFDData()
 					{
 						for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 						{
-							field[0][pos[0]][pos[1]][pos[2]] = abs(field_fd[0][pos[0]][pos[1]][pos[2]])/(float)m_FD_SampleCount;
-							field[1][pos[0]][pos[1]][pos[2]] = abs(field_fd[1][pos[0]][pos[1]][pos[2]])/(float)m_FD_SampleCount;
-							field[2][pos[0]][pos[1]][pos[2]] = abs(field_fd[2][pos[0]][pos[1]][pos[2]])/(float)m_FD_SampleCount;
+							field[0][pos[0]][pos[1]][pos[2]] = abs(field_fd[0][pos[0]][pos[1]][pos[2]]);
+							field[1][pos[0]][pos[1]][pos[2]] = abs(field_fd[1][pos[0]][pos[1]][pos[2]]);
+							field[2][pos[0]][pos[1]][pos[2]] = abs(field_fd[2][pos[0]][pos[1]][pos[2]]);
 						}
 					}
 				}
@@ -218,7 +220,7 @@ void ProcessFieldsFD::DumpFDData()
 		{
 			stringstream ss;
 			ss << "f" << n;
-			DumpVectorArray2HDF5(m_filename.c_str(), "/FieldData/FD", ss.str(), m_FD_Fields.at(n),numLines,1.0/(float)m_FD_SampleCount,m_FD_Samples.at(n));
+			DumpVectorArray2HDF5(m_filename.c_str(), "/FieldData/FD", ss.str(), m_FD_Fields.at(n),numLines,1.0,m_FD_Samples.at(n));
 		}
 		return;
 	}
