@@ -94,7 +94,7 @@ int ProcessFieldsFD::Process()
 	{
 		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * _I * M_PI * m_FD_Samples.at(n) * T) );
 		exp_jwt_2_dt *= 2; // *2 for single-sided spectrum
-		exp_jwt_2_dt *= Op->GetTimestep(); // multiply with timestep
+		exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
 		field_fd = m_FD_Fields.at(n);
 		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 		{
