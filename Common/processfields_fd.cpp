@@ -57,6 +57,14 @@ void ProcessFieldsFD::InitProcess()
 		H5::Group* group = new H5::Group( file->createGroup( "/FieldData" ));
 		delete group;
 		group = new H5::Group( file->createGroup( "/FieldData/FD" ));
+
+		//set number of frequencies
+		hsize_t t_dimsf[] = {1};
+		H5::DataSpace t_dataspace( 1, t_dimsf );
+		H5::Attribute attr = group->createAttribute("Number_of_Frequencies",H5::PredType::NATIVE_INT,t_dataspace);
+		int count = m_FD_Samples.size();
+		attr.write( H5::PredType::NATIVE_INT , &count);
+
 		delete group;
 		delete file;
 
