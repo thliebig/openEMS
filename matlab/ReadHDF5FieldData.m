@@ -61,15 +61,21 @@ if (numel(TD.names)>0)
 end
 
 if (numel(FD.names)>0)
-    Nr_freq = numel(FD.names)/2;
+    Nr_freq = numel(FD.names)
     for n=1:Nr_freq
         name = ['/FieldData/FD/f' int2str(n-1) '_real'];
         ind = find(strcmp(FD.names,name));
-        hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
-        hdf_fielddata.FD.freq(n) = FD.freq(ind);
-        name = ['/FieldData/FD/f' int2str(n-1) '_imag'];
-        ind = find(strcmp(FD.names,name));
-        hdf_fielddata.FD.values{n} = hdf_fielddata.FD.values{n} + 1j*double(hdf5read(file,FD.names{ind}));
+        if isempty(ind)
+            ind = find(strcmp(FD.names,['/FieldData/FD/f' int2str(n-1)]));
+            hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
+            hdf_fielddata.FD.freq(n) = FD.freq(ind);
+        else
+            hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
+            hdf_fielddata.FD.freq(n) = FD.freq(ind);
+            name = ['/FieldData/FD/f' int2str(n-1) '_imag'];
+            ind = find(strcmp(FD.names,name));
+            hdf_fielddata.FD.values{n} = hdf_fielddata.FD.values{n} + 1j*double(hdf5read(file,FD.names{ind}));
+        end
     end
 end
 
