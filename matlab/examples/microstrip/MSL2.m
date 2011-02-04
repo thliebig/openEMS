@@ -11,7 +11,9 @@
 %  - simple microstrip geometry (made of PEC)
 %  - MSL port
 %  - MSL analysis
-% 
+%
+% You may modify the PEC boundary condition at xmax to become a MUR
+% boundary. This resembles a matched microstrip line.
 %
 % Tested with
 %  - Matlab 2009b
@@ -92,7 +94,9 @@ CSX = AddBox( CSX, 'Ht_', 0, start, stop );
 WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 
 %% show the structure
-CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
+if ~postproc_only
+    CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
+end
 
 %% run openEMS
 openEMS_opts = '';
@@ -107,7 +111,7 @@ end
 
 %% postprocess
 f = linspace( 1e6, f_max, 1601 );
-U = ReadUI( {'port_ut1A','port_ut1B','et'}, 'tmp/', f );
+U = ReadUI( {'port_ut1A','port_ut1B','port_ut1C','et'}, 'tmp/', f );
 I = ReadUI( {'port_it1A','port_it1B'}, 'tmp/', f );
 
 % Z = (U.FD{1}.val+U.FD{2}.val)/2 ./ I.FD{1}.val;
@@ -119,12 +123,12 @@ I = ReadUI( {'port_it1A','port_it1B'}, 'tmp/', f );
 % title( 'line impedance (will fail in case of reflections!)' );
 
 figure
-ax = plotyy( U.TD{1}.t/1e-6, [U.TD{1}.val;U.TD{2}.val], U.TD{3}.t/1e-6, U.TD{3}.val );
+ax = plotyy( U.TD{1}.t/1e-6, [U.TD{1}.val;U.TD{2}.val;U.TD{3}.val], U.TD{4}.t/1e-6, U.TD{4}.val );
 xlabel( 'time (us)' );
 ylabel( 'amplitude (V)' );
 grid on
 title( 'Time domain voltage probes and excitation signal' );
-legend( {'ut1A','ut1B','excitation'} );
+legend( {'ut1A','ut1B','ut1C','excitation'} );
 % now make the y-axis symmetric to y=0 (align zeros of y1 and y2)
 y1 = ylim(ax(1));
 y2 = ylim(ax(2));
@@ -139,8 +143,26 @@ grid on
 title( 'Time domain current probes' );
 legend( {'it1A','it1B'} );
 
+figure
+ax = plotyy( U.FD{1}.f/1e9, abs([U.FD{1}.val;U.FD{2}.val;U.FD{3}.val]), U.FD{1}.f/1e9, angle([U.FD{1}.val;U.FD{2}.val;U.FD{3}.val])/pi*180 );
+xlabel( 'frequency (GHz)' );
+ylabel( ax(1), 'amplitude (A)' );
+ylabel( ax(2), 'phase (deg)' );
+grid on
+title( 'Frequency domain voltage probes' );
+legend( {'abs(uf1A)','abs(uf1B)','abs(uf1C)','angle(uf1A)','angle(uf1B)','angle(uf1C)'} );
+
+figure
+ax = plotyy( I.FD{1}.f/1e9, abs([I.FD{1}.val;I.FD{2}.val]), I.FD{1}.f/1e9, angle([I.FD{1}.val;I.FD{2}.val])/pi*180 );
+xlabel( 'frequency (GHz)' );
+ylabel( ax(1), 'amplitude (A)' );
+ylabel( ax(2), 'phase (deg)' );
+grid on
+title( 'Frequency domain current probes' );
+legend( {'abs(if1A)','abs(if1B)','angle(if1A)','angle(if1B)'} );
+
 % port analysis
-[S11,beta,ZL] = calcMSLPort( portstruct, Sim_Path, f );
+[S11,beta,ZL,vi] = calcPort( portstruct, Sim_Path, f );
 % attention! the reflection coefficient S11 is normalized to ZL!
 
 figure
@@ -152,6 +174,18 @@ plot( S11, 'k' );
 plot( real(S11(1)), imag(S11(1)), '*r' );
 axis equal
 title( 'Reflection coefficient S11 at the measurement plane' );
+
+figure
+plot( sin(0:0.01:2*pi), cos(0:0.01:2*pi), 'Color', [.7 .7 .7] );
+hold on
+plot( 0.5+0.5*sin(0:0.01:2*pi), 0.5*cos(0:0.01:2*pi), 'Color', [.7 .7 .7] );
+plot( [-1 1], [0 0], 'Color', [.7 .7 .7] );
+Z = vi.FD.v.val ./ vi.FD.i.val;
+S11_ = (Z-ZL) ./ (Z+ZL);
+plot( S11_, 'k' );
+plot( real(S11_(1)), imag(S11_(1)), '*r' );
+axis equal
+title( {'Reflection coefficient S11 at the measurement plane' 'calculated from voltages and currents'} );
 
 figure
 plot( f/1e9, [real(S11);imag(S11)], 'Linewidth',2 );
@@ -184,7 +218,7 @@ title( 'Characteristic line impedance ZL' );
 
 % reference plane shift (to the end of the port)
 ref_shift = abs(portstop(1) - portstart(1));
-[S11,beta,ZL] = calcMSLPort( portstruct, Sim_Path, f, ref_shift );
+[S11,beta,ZL,vi] = calcPort( portstruct, Sim_Path, f, ref_shift );
 
 figure
 plotyy( f/1e9, 20*log10(abs(S11)), f/1e9, angle(S11)/pi*180 );
@@ -201,6 +235,18 @@ plot( S11, 'k' );
 plot( real(S11(1)), imag(S11(1)), '*r' );
 axis equal
 title( 'Reflection coefficient S11 at the reference plane (at the electric wall)' );
+
+figure
+plot( sin(0:0.01:2*pi), cos(0:0.01:2*pi), 'Color', [.7 .7 .7] );
+hold on
+plot( 0.5+0.5*sin(0:0.01:2*pi), 0.5*cos(0:0.01:2*pi), 'Color', [.7 .7 .7] );
+plot( [-1 1], [0 0], 'Color', [.7 .7 .7] );
+Z = vi.FD.v.val_shifted ./ vi.FD.i.val_shifted;
+S11_ = (Z-ZL) ./ (Z+ZL);
+plot( S11_, 'k' );
+plot( real(S11_(1)), imag(S11_(1)), '*r' );
+axis equal
+title( {'Reflection coefficient S11 at the reference plane (at the electric wall)' 'calculated from shifted voltages and currents'} );
 
 %% visualize electric and magnetic fields
 % you will find vtk dump files in the simulation folder (tmp/)

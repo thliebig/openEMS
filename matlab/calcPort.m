@@ -1,5 +1,5 @@
-function [S11,beta,ZL] = calcPort( portstruct, SimDir, f, ref_shift )
-%[S11,beta,ZL] = calcMSLPort( portstruct, SimDir, [f], [ref_shift] )
+function [S11,beta,ZL,vi] = calcPort( portstruct, SimDir, f, ref_shift )
+%[S11,beta,ZL,vi] = calcPort( portstruct, SimDir, [f], [ref_shift] )
 %
 % Calculate the reflection coefficient S11, the propagation constant beta
 % of the MSL-port and the characteristic impedance ZL of the MSL-port.
@@ -15,6 +15,9 @@ function [S11,beta,ZL] = calcPort( portstruct, SimDir, f, ref_shift )
 %   S11:  reflection coefficient (normalized to ZL)
 %   beta: propagation constant
 %   ZL:   characteristic line impedance
+%   vi:   structure of voltages and currents
+%         vi.TD.v.{val,t}; vi.TD.i.{val,t};
+%         vi.FD.v.{val,val_shifted,f}; vi.FD.i.{val,val_shifted,f}; 
 %
 % reference: W. K. Gwarek, "A Differential Method of Reflection Coefficient Extraction From FDTD Simulations",
 %            IEEE Microwave and Guided Wave Letters, Vol. 6, No. 5, May 1996
@@ -42,6 +45,16 @@ filename = ['port_ut' num2str(portstruct.nr)];
 U = ReadUI( {[filename 'A'],[filename 'B'],[filename 'C']}, SimDir, f );
 filename = ['port_it' num2str(portstruct.nr)];
 I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir, f );
+
+% store the original time domain waveforms
+vi.TD.v = U.TD{2};
+vi.TD.i.t = I.TD{1}.t;
+vi.TD.i.val = (I.TD{1}.val + I.TD{2}.val) / 2; % shift to same position as v
+
+% store the original frequency domain waveforms
+vi.FD.v = U.FD{2};
+vi.FD.i = I.FD{1};
+vi.FD.i.val = (I.FD{1}.val + I.FD{2}.val) / 2; % shift to same position as v
 
 f = U.FD{2}.f;
 Et = U.FD{2}.val;
@@ -89,4 +102,9 @@ if (nargin > 3)
     ref_shift = ref_shift * portstruct.drawingunit;
     S11 = S11 .* exp(2i*real(beta)*ref_shift);
     S11_corrected = S11_corrected .* exp(2i*real(beta)*ref_shift);
+    
+    % store the shifted frequency domain waveforms
+    phase = real(beta)*ref_shift;
+    vi.FD.v.val_shifted = vi.FD.v.val .* cos(-phase) + 1i * vi.FD.i.val.*ZL .* sin(-phase);
+    vi.FD.i.val_shifted = vi.FD.i.val .* cos(-phase) + 1i * vi.FD.v.val./ZL .* sin(-phase);
 end
