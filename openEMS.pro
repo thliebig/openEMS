@@ -27,8 +27,8 @@ LIBS += -L../CSXCAD -lCSXCAD
 ###############################################################################
 
 win32 {
-    INCLUDEPATH += ../hdf5/include ../boost/include/boost-1_42
-    LIBS +=  ../hdf5/lib/libhdf5_cpp.a ../hdf5/lib/libhdf5.a
+    INCLUDEPATH += ../hdf5/include ../hdf5/include/cpp ../boost/include/boost-1_42
+    LIBS +=  ../hdf5/lib/hdf5_cpp.lib ../hdf5/lib/hdf5.lib
     LIBS += ../boost/lib/libboost_thread-mgw44-mt.lib
     LIBS += -L../CSXCAD/release
     LIBS += ../fparser/release/libfparser4.a
