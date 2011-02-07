@@ -784,8 +784,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	ApplyMagneticBC(PMC);
 
 	InitExcitation();
-
-	if (CalcFieldExcitation()==false) return -1;
+	CalcFieldExcitation();
 
 	//all information available for extension... create now...
 	for (size_t n=0; n<m_Op_exts.size(); ++n)

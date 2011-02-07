@@ -56,11 +56,11 @@ Engine* Operator_SSE_Compressed::CreateEngine() const
 
 int Operator_SSE_Compressed::CalcECOperator( DebugFlags debugFlags )
 {
-	Operator_sse::CalcECOperator( debugFlags );
+	int ErrCode = Operator_sse::CalcECOperator( debugFlags );
 	m_Use_Compression = false;
 	m_Use_Compression = CompressOperator();
 
-	return 0;
+	return ErrCode;
 }
 
 void Operator_SSE_Compressed::Init()
