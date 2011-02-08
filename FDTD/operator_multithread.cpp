@@ -44,7 +44,7 @@ Engine* Operator_Multithread::CreateEngine() const
 	return e;
 }
 
-Operator_Multithread::Operator_Multithread()
+Operator_Multithread::Operator_Multithread() : Operator_SSE_Compressed()
 {
 	m_CalcEC_Start=NULL;
 	m_CalcEC_Stop=NULL;
