@@ -75,7 +75,7 @@ CSX = AddBox( CSX, 'RO4350B', 0, start, stop );
 CSX = AddMetal( CSX, 'PEC' );
 portstart = [          0, -MSL_width/2, substrate_thickness];
 portstop  = [ MSL_length,  MSL_width/2, 0];
-[CSX,portstruct] = AddMSLPort( CSX, 1, 'PEC', portstart, portstop, [1 0 0], [0 0 1], [], 'excite' );
+[CSX,portstruct] = AddMSLPort( CSX, 999, 1, 'PEC', portstart, portstop, [1 0 0], [0 0 1], [], 'excite' );
 
 %% MSL
 start = [-MSL_length, -MSL_width/2, substrate_thickness];

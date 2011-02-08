@@ -133,7 +133,7 @@ for xn=1:array.xn
         % apply the excitation & resist as a current source
         start = [midX+feed.pos midY-feed.width/2 0];
         stop  = [midX+feed.pos midY+feed.width/2 substrate.thickness];
-        [CSX port] = AddLumpedPort(CSX,number,feed.R, start, stop,[0 0 1],['excite_' int2str(xn) '_' int2str(yn)]);
+        [CSX port] = AddLumpedPort(CSX, 5, number,feed.R, start, stop,[0 0 1],['excite_' int2str(xn) '_' int2str(yn)]);
         number=number+1;
     end
 end

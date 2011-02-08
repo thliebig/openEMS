@@ -106,7 +106,7 @@ CSX = AddBox(CSX,'gnd',10,start,stop);
 %% apply the excitation & resist as a current source
 start = [feed.pos -feed.width/2 0];
 stop  = [feed.pos +feed.width/2 substrate.thickness];
-[CSX port] = AddLumpedPort(CSX,1,feed.R, start, stop,[0 0 1],'excite');
+[CSX port] = AddLumpedPort(CSX,5,1,feed.R, start, stop,[0 0 1],'excite');
 
 %% dump magnetic field over the patch antenna
 CSX = AddDump( CSX, 'Ht_', 'DumpType', 1, 'DumpMode', 2); % cell interpolated

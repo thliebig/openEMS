@@ -1,13 +1,14 @@
-function [CSX,port] = AddMSLPort( CSX, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
-% [CSX,port] = AddMSLPort( CSX, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
+function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
+% [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
 %
-% CSX: CSX-object created by InitCSX()
-% portnr: (integer) number of the port
+% CSX:          CSX-object created by InitCSX()
+% prio:         priority for excitation and probe boxes
+% portnr:       (integer) number of the port
 % materialname: property for the MSL (created by AddMetal() or AddMaterial())
-% start: 3D start rowvector for port definition
-% stop:  3D end rowvector for port definition
-% dir: direction of wave propagation (choices: [1 0 0], [0 1 0] or [0 0 1])
-% evec: excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
+% start:        3D start rowvector for port definition
+% stop:         3D end rowvector for port definition
+% dir:          direction of wave propagation (choices: [1 0 0], [0 1 0] or [0 0 1])
+% evec:         excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
 % refplaneshift (optional): if not specified or empty, the measurement
 %    plane is used; if specified, reference plane is shifted by
 %    <refplaneshift> starting from <start> (thus refplaneshift is normally
@@ -63,7 +64,7 @@ end
 MSL_start = start;
 MSL_stop = stop;
 MSL_stop(idx_height) = MSL_start(idx_height);
-CSX = AddBox( CSX, materialname, 999, MSL_start, MSL_stop );
+CSX = AddBox( CSX, materialname, prio, MSL_start, MSL_stop );
 
 % FIXME
 % openEMS v0.0.7 does not snap PEC
@@ -112,20 +113,20 @@ i2_stop(idx_prop)    = i2_start(idx_prop);
 name = ['port_ut' num2str(portnr) 'A'];
 weight = sum(evec);
 CSX = AddProbe( CSX, name, 0, weight );
-CSX = AddBox( CSX, name, 999, v1_start, v1_stop );
+CSX = AddBox( CSX, name, prio, v1_start, v1_stop );
 name = ['port_ut' num2str(portnr) 'B'];
 CSX = AddProbe( CSX, name, 0, weight );
-CSX = AddBox( CSX, name, 999, v2_start, v2_stop );
+CSX = AddBox( CSX, name, prio, v2_start, v2_stop );
 name = ['port_ut' num2str(portnr) 'C'];
 CSX = AddProbe( CSX, name, 0, weight );
-CSX = AddBox( CSX, name, 999, v3_start, v3_stop );
+CSX = AddBox( CSX, name, prio, v3_start, v3_stop );
 name = ['port_it' num2str(portnr) 'A'];
 weight = direction;
 CSX = AddProbe( CSX, name, 1, weight );
-CSX = AddBox( CSX, name, 999, i1_start, i1_stop );
+CSX = AddBox( CSX, name, prio, i1_start, i1_stop );
 name = ['port_it' num2str(portnr) 'B'];
 CSX = AddProbe( CSX, name, 1, weight );
-CSX = AddBox( CSX, name, 999, i2_start, i2_stop );
+CSX = AddBox( CSX, name, prio, i2_start, i2_stop );
 
 % create port structure
 port.nr = portnr;
@@ -171,5 +172,5 @@ if nargin >= 9
 	ex_stop(idx_width)   = nstop(idx_width);
 	ex_stop(idx_height)  = nstop(idx_height);
     CSX = AddExcitation( CSX, excitename, 0, evec );
-	CSX = AddBox( CSX, excitename, 999, ex_start, ex_stop );
+	CSX = AddBox( CSX, excitename, prio, ex_start, ex_stop );
 end

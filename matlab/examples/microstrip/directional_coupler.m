@@ -132,19 +132,19 @@ portexcite{simnr} = 'excite';
 % port 1: input port
 start = [-msl1.w/2, 0, pcb1.t];
 stop  = [-msl1.w/2, 0, 0];
-[CSX ports{1}] = AddCurvePort( CSX, 1, 50, start, stop, portexcite{1} );
+[CSX ports{1}] = AddCurvePort( CSX, 999, 1, 50, start, stop, portexcite{1} );
 % port 2: output port
 start = [msl1.w/2, 0, pcb1.t];
 stop  = [msl1.w/2, 0, 0];
-[CSX ports{2}] = AddCurvePort( CSX, 2, 50, start, stop, portexcite{2} );
+[CSX ports{2}] = AddCurvePort( CSX, 999, 2, 50, start, stop, portexcite{2} );
 % port 3: coupled port
 start = [-msl2.w/2+msl2.h/2, -pcb2.h/2, pcb1.t+pcb2.t];
 stop  = [-msl2.w/2+msl2.h/2, -pcb2.h/2, 0];
-[CSX ports{3}] = AddCurvePort( CSX, 3, 50, start, stop, portexcite{3} );
+[CSX ports{3}] = AddCurvePort( CSX, 999, 3, 50, start, stop, portexcite{3} );
 % port 4: isolated port
 start = [msl2.w/2-msl2.h/2, -pcb2.h/2, pcb1.t+pcb2.t];
 stop  = [msl2.w/2-msl2.h/2, -pcb2.h/2, 0];
-[CSX ports{4}] = AddCurvePort( CSX, 4, 50, start, stop, portexcite{4} );
+[CSX ports{4}] = AddCurvePort( CSX, 999, 4, 50, start, stop, portexcite{4} );
 
 %% setup FDTD parameters & excitation function
 max_timesteps = 50000;

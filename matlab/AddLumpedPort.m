@@ -1,12 +1,13 @@
-function [CSX,port] = AddLumpedPort( CSX, portnr, R, start, stop, dir, excitename )
-% [CSX,port] = AddLumpedPort( CSX, portnr, R, start, stop, dir, excitename )
+function [CSX,port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excitename )
+% [CSX,port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excitename )
 %
-% CSX: CSX-object created by InitCSX()
-% portnr: (integer) number of the port
-% R: internal resistance of the port
-% start: 3D start rowvector for port definition
-% stop:  3D end rowvector for port definition
-% dir: direction of of port (choices: [1 0 0], [0 1 0] or [0 0 1])
+% CSX:      CSX-object created by InitCSX()
+% prio:     priority for substrate and probe boxes
+% portnr:   (integer) number of the port
+% R:        internal resistance of the port
+% start:    3D start rowvector for port definition
+% stop:     3D end rowvector for port definition
+% dir:      direction of of port (choices: [1 0 0], [0 1 0] or [0 0 1])
 % excitename (optional): if specified, the port will be switched on (see AddExcitation())
 %
 % the mesh must be already initialized
@@ -26,6 +27,10 @@ if ~(dir(1) == dir(2) == 0) && ~(dir(1) == dir(3) == 0) && ~(dir(2) == dir(3) ==
 	error 'dir must have exactly one component ~= 0'
 end
 dir = dir ./ sum(dir); % dir is now a unit vector
+
+if (~isfield(CSX,'RectilinearGrid'))
+    error('openEMS:AddLumpedPort','Mesh not found in CSX structure... use DefineRectGrid() first!!');
+end
 
 % get grid
 mesh{1} = sort(CSX.RectilinearGrid.XLines);
@@ -87,7 +92,7 @@ kappa_cell{1} = kappa*dir(1);
 kappa_cell{2} = kappa*dir(2);
 kappa_cell{3} = kappa*dir(3);
 CSX = SetMaterialProperty( CSX, ['port' num2str(portnr) '_sheet_resistance'], 'Kappa', kappa_cell );
-CSX = AddBox( CSX, ['port' num2str(portnr) '_sheet_resistance'], 999, m_start, m_stop );
+CSX = AddBox( CSX, ['port' num2str(portnr) '_sheet_resistance'], prio, m_start, m_stop );
 
 % calculate position of the voltage probe
 v_start(idx_plane) = start(idx_plane);
@@ -115,11 +120,11 @@ i_stop(idx_plane)  = nstop(idx_plane) + delta2_p/2;
 name = ['port_ut' num2str(portnr)];
 weight = -direction;
 CSX = AddProbe( CSX, name, 0, weight );
-CSX = AddBox( CSX, name, 999, v_start, v_stop );
+CSX = AddBox( CSX, name, prio, v_start, v_stop );
 name = ['port_it' num2str(portnr)];
 weight = direction;
 CSX = AddProbe( CSX, name, 1, weight );
-CSX = AddBox( CSX, name, 999, i_start, i_stop );
+CSX = AddBox( CSX, name, prio, i_start, i_stop );
 
 % create port structure
 port.nr = portnr;
@@ -146,5 +151,5 @@ if (nargin >= 7) && ~isempty(excitename)
     e_start(idx_plane) = start(idx_plane); % excitation-plane is determined by start vector
     e_stop(idx_plane)  = start(idx_plane);
     CSX = AddExcitation( CSX, excitename, 0, -dir*direction);
-	CSX = AddBox( CSX, excitename, 999, e_start, e_stop );
+	CSX = AddBox( CSX, excitename, prio, e_start, e_stop );
 end

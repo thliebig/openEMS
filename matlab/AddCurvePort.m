@@ -1,15 +1,16 @@
-function [CSX,port] = AddCurvePort( CSX, portnr, R, start, stop, excitename )
-%[CSX,port] = AddCurvePort( CSX, portnr, R, start, stop [, excitename] )
+function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excitename )
+%[CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop [, excitename] )
 %
 % Creates a curve port (1-dimensional).
 % The mesh must already be initialized.
 %
 % input:
-%   CSX: CSX-object created by InitCSX()
+%   CSX:    CSX-object created by InitCSX()
+%   prio:   priority for excitation, metal, sheet and probe boxes
 %   portnr: (integer) number of the port
-%   R: internal resistance of the port
-%   start: 3D start rowvector for port definition
-%   stop:  3D end rowvector for port definition
+%   R:      internal resistance of the port
+%   start:  3D start rowvector for port definition
+%   stop:   3D end rowvector for port definition
 %   excitename (optional): if specified, the port will be switched on (see AddExcitation())
 %
 % output:
@@ -75,8 +76,8 @@ if abs(start_idx(dir) - stop_idx(dir)) ~= 1
     port_stop_idx(dir2)  = idx2;
     metalname = ['port' num2str(portnr) '_PEC'];
     CSX = AddMetal( CSX, metalname );
-    CSX = AddCurve( CSX, metalname, 999, [nstart.' [mesh{1}(port_start_idx(1));mesh{2}(port_start_idx(2));mesh{3}(port_start_idx(3))]] );
-    CSX = AddCurve( CSX, metalname, 999, [nstop.' [mesh{1}(port_stop_idx(1));mesh{2}(port_stop_idx(2));mesh{3}(port_stop_idx(3))]] );
+    CSX = AddCurve( CSX, metalname, prio, [nstart.' [mesh{1}(port_start_idx(1));mesh{2}(port_start_idx(2));mesh{3}(port_start_idx(3))]] );
+    CSX = AddCurve( CSX, metalname, prio, [nstop.' [mesh{1}(port_stop_idx(1));mesh{2}(port_stop_idx(2));mesh{3}(port_stop_idx(3))]] );
 end
 
 % calculate position of resistive material
@@ -106,7 +107,7 @@ CSX = AddMaterial( CSX, materialname );%, 'Isotropy', 0 );
 % kappa_cell{dir} = kappa;
 kappa_cell = kappa;
 CSX = SetMaterialProperty( CSX, materialname, 'Kappa', kappa_cell );
-CSX = AddBox( CSX, materialname, 999, m_start, m_stop );
+CSX = AddBox( CSX, materialname, prio, m_start, m_stop );
 
 % calculate position of the voltage probe
 v_start = [mesh{1}(port_start_idx(1)), mesh{2}(port_start_idx(2)), mesh{3}(port_start_idx(3))];
@@ -122,11 +123,11 @@ i_stop(dir)  = i_start(dir);
 name = ['port_ut' num2str(portnr)];
 weight = -1;
 CSX = AddProbe( CSX, name, 0, weight );
-CSX = AddBox( CSX, name, 999, v_start, v_stop );
+CSX = AddBox( CSX, name, prio, v_start, v_stop );
 name = ['port_it' num2str(portnr)];
 weight = 1;
 CSX = AddProbe( CSX, name, 1, weight );
-CSX = AddBox( CSX, name, 999, i_start, i_stop );
+CSX = AddBox( CSX, name, prio, i_start, i_stop );
 
 % create port structure
 port.nr = portnr;
@@ -151,5 +152,5 @@ if (nargin >= 6) && ~isempty(excitename)
     e_start = v_start;
     e_stop  = v_stop;
     CSX = AddExcitation( CSX, excitename, 0, start_idx ~= stop_idx );
-	CSX = AddBox( CSX, excitename, 999, e_start, e_stop );
+	CSX = AddBox( CSX, excitename, prio, e_start, e_stop );
 end
