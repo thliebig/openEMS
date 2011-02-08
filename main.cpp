@@ -21,6 +21,10 @@
 #include <fstream>
 #include <sstream>
 
+#ifdef MPI_SUPPORT
+#include "mpi.h"
+#endif
+
 #include "openems.h"
 #include "tools/global.h"
 
@@ -32,6 +36,11 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
+#ifdef MPI_SUPPORT
+	//init MPI
+	MPI::Init(argc,argv);
+#endif
+
 	openEMS FDTD;
 
 #ifdef _LP64
@@ -60,6 +69,9 @@ int main(int argc, char *argv[])
 		cout << "\t\t--engine=sse\t\t\tengine using sse vector extensions" << endl;
 		cout << "\t\t--engine=sse_compressed\t\tengine using compressed operator + sse vector extensions" << endl;
 		cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + multithreading" << endl;
+#ifdef MPI_SUPPORT
+		cout << "\t\t--engine=MPI\t\tengine using compressed operator + sse vector extensions + MPI parallel processing" << endl;
+#endif
 		cout << "\t--numThreads=<n>\tForce use n threads for multithreaded engine (needs: --engine=multithreaded)" << endl;
 		cout << "\t--no-simulation\tonly run preprocessing; do not simulate" << endl;
 		cout << "\n\t Additional global arguments " << endl;
@@ -83,6 +95,10 @@ int main(int argc, char *argv[])
 	int EC = FDTD.SetupFDTD(argv[1]);
 	if (EC) return EC;
 	FDTD.RunFDTD();
+
+#ifdef MPI_SUPPORT
+	MPI::Finalize();
+#endif
 
 	return 0;
 }

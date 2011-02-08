@@ -23,6 +23,9 @@ LIBS += -L../CSXCAD -lCSXCAD
 # to output length in terms of the drawing unit, uncomment:
 # DEFINES += OUTPUT_IN_DRAWINGUNITS
 
+# enable MPI support
+!win32:CONFIG += MPI_SUPPORT
+
 # CONFIG SECTION
 ###############################################################################
 
@@ -149,6 +152,16 @@ HEADERS += Common/operator_base.h \
     Common/processfields_fd.h \
 	Common/processfieldprobe.h \
 	Common/processfields_sar.h
+
+MPI_SUPPORT { 
+    DEFINES += MPI_SUPPORT
+    INCLUDEPATH += /usr/include/mpich2
+	LIBS += -lmpich -lmpichcxx
+    HEADERS += FDTD/operator_mpi.h \
+        FDTD/engine_mpi.h
+    SOURCES += FDTD/operator_mpi.cpp \
+        FDTD/engine_mpi.cpp
+}
 
 QMAKE_CXXFLAGS_RELEASE = -O3 \
     -g \
