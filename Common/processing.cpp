@@ -156,6 +156,18 @@ void Processing::AddFrequency(vector<double> *freqs)
 
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
+	for (int n=0;n<3;++n)
+	{
+		double min = Op->GetDiscLine(n,0);
+		double max = Op->GetDiscLine(n,Op->GetNumberOfLines(n)-1);
+		if ( ((dstart[n]<min) && (dstop[n]<min)) || ((dstart[n]>max) && (dstop[n]>max)) )
+		{
+			cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Box is outside the field domain!! Disabling" << endl;
+			Enabled = false;
+			return;
+		}
+	}
+
 	if (Op->SnapToMesh(dstart,start,m_dualMesh,m_start_inside)==false)
 		cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Snapped start line outside field domain!!" << endl;
 	if (Op->SnapToMesh(dstop,stop,m_dualMesh,m_stop_inside)==false)

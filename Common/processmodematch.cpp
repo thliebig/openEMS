@@ -79,6 +79,7 @@ void ProcessModeMatch::InitProcess()
 	m_Eng_Interface->SetInterpolationType(Engine_Interface_Base::NODE_INTERPOLATE);
 
 	int Dump_Dim=0;
+	m_ny = -1;
 	for (int n=0; n<3; ++n)
 	{
 		if (start[n]>stop[n])
@@ -94,25 +95,25 @@ void ProcessModeMatch::InitProcess()
 		if (stop[n]==Op->GetNumberOfLines(n)-1)
 			--stop[n];
 
-		if (stop[n]>start[n])
+		if (stop[n]!=start[n])
 			++Dump_Dim;
 
 		if (stop[n] == start[n])
 			m_ny = n;
 	}
 
-	int nP = (m_ny+1)%3;
-	int nPP = (m_ny+2)%3;
-	m_numLines[0] = stop[nP] - start[nP] + 1;
-	m_numLines[1] = stop[nPP] - start[nPP] + 1;
-
-	if (Dump_Dim!=2)
+	if ((Dump_Dim!=2) || (m_ny<0))
 	{
 		cerr << "ProcessModeMatch::InitProcess(): Warning Mode Matching Integration Box \"" << m_filename << "\" is not a surface (found dimension: " << Dump_Dim << ")" << endl;
 		SetEnable(false);
 		Reset();
 		return;
 	}
+
+	int nP = (m_ny+1)%3;
+	int nPP = (m_ny+2)%3;
+	m_numLines[0] = stop[nP] - start[nP] + 1;
+	m_numLines[1] = stop[nPP] - start[nPP] + 1;
 
 	for (int n=0; n<2; ++n)
 	{
