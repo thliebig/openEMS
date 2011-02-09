@@ -75,6 +75,8 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 
 void ProcessFields::InitProcess()
 {
+	if (Enabled==false) return;
+
 	CalcMeshPos();
 }
 

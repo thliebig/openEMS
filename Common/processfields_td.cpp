@@ -33,6 +33,8 @@ ProcessFieldsTD::~ProcessFieldsTD()
 
 void ProcessFieldsTD::InitProcess()
 {
+	if (Enabled==false) return;
+	
 	ProcessFields::InitProcess();
 
 	if (m_fileType==HDF5_FILETYPE)
