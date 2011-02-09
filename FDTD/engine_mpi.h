@@ -20,6 +20,7 @@
 
 #include "operator_mpi.h"
 #include "engine_sse_compressed.h"
+#include "mpi.h"
 
 class Engine_MPI : public Engine_SSE_Compressed
 {
@@ -32,10 +33,23 @@ public:
 	virtual void Init();
 	virtual void Reset();
 
+	virtual bool IterateTS(unsigned int iterTS);
+
 protected:
 	Engine_MPI(const Operator_MPI* op);
 	const Operator_MPI* m_Op_MPI;
 
+	MPI_Status stat;
+	MPI_Request Send_Request[3];
+	MPI_Request Recv_Request[3];
+
+	//field buffer for MPI transfer...
+	unsigned int m_BufferSize[3];
+	float* m_BufferUp[3];
+	float* m_BufferDown[3];
+
+	void SendReceiveVoltages();
+	void SendReceiveCurrents();
 };
 
 #endif // ENGINE_MPI_H

@@ -22,10 +22,16 @@
 
 class Operator_MPI : public Operator_SSE_Compressed
 {
+	friend class Engine_MPI;
 public:
 	//! Create a new operator
 	static Operator_MPI* New();
 	virtual ~Operator_MPI();
+
+	virtual bool SetGeometryCSX(ContinuousStructure* geo);
+
+	virtual void SetBoundaryCondition(int* BCs);
+	virtual void ApplyElectricBC(bool* dirs);
 
 	virtual Engine* CreateEngine() const;
 
@@ -34,6 +40,15 @@ protected:
 	virtual void Init();
 	void Delete();
 	virtual void Reset();
+
+	int m_MyID;
+	int m_NumProc;
+	int m_MyTag;
+	char* m_Processor_Name;
+
+	//the up and down neighbors, -1 if non for the given direction
+	int m_NeighborUp[3];
+	int m_NeighborDown[3];
 };
 
 #endif // OPERATOR_MPI_H
