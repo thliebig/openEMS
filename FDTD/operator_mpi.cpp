@@ -33,6 +33,10 @@ Operator_MPI* Operator_MPI::New()
 
 Operator_MPI::Operator_MPI() : Operator_SSE_Compressed()
 {
+	m_NumProc = MPI::COMM_WORLD.Get_size();
+
+	//enabled only if more than one process is active
+	m_MPI_Enabled = m_NumProc>0;
 }
 
 Operator_MPI::~Operator_MPI()
@@ -44,7 +48,7 @@ bool Operator_MPI::SetGeometryCSX(ContinuousStructure* geo)
 {
 	//manipulate geometry for this part...
 
-	if (m_NumProc>1)
+	if (m_MPI_Enabled)
 	{
 		CSRectGrid* grid = geo->GetGrid();
 		int nz = grid->GetQtyLines(2);
@@ -71,8 +75,28 @@ bool Operator_MPI::SetGeometryCSX(ContinuousStructure* geo)
 	return Operator_SSE_Compressed::SetGeometryCSX(geo);
 }
 
+double Operator_MPI::CalcTimestep()
+{
+	double ret = Operator::CalcTimestep();
+
+	if (!m_MPI_Enabled)
+		return ret;
+
+	double local_dT = dT;
+	//find the smallest time-step requestes by all processings
+	MPI_Reduce(&local_dT, &dT, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+	//send the smallest time-step to all
+	MPI_Bcast(&dT, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	return ret;
+}
+
+
 void Operator_MPI::SetBoundaryCondition(int* BCs)
 {
+	if (!m_MPI_Enabled)
+		return Operator_SSE_Compressed::SetBoundaryCondition(BCs);
+
 	//set boundary conditions on MPI interfaces to PEC, ApplyElectricBC will handle proper interface handling...
 	for (int n=0;n<3;++n)
 	{
@@ -86,6 +110,9 @@ void Operator_MPI::SetBoundaryCondition(int* BCs)
 
 void Operator_MPI::ApplyElectricBC(bool* dirs)
 {
+	if (!m_MPI_Enabled)
+		return Operator_SSE_Compressed::ApplyElectricBC(dirs);
+
 	for (int n=0;n<3;++n)
 	{
 		//do not delete operator at upper inteface
@@ -97,7 +124,7 @@ void Operator_MPI::ApplyElectricBC(bool* dirs)
 
 Engine* Operator_MPI::CreateEngine() const
 {
-	if (m_NumProc>1)
+	if (m_MPI_Enabled)
 		return Engine_MPI::New(this);
 	else
 		return Engine_SSE_Compressed::New(this);
@@ -122,7 +149,8 @@ void Operator_MPI::Init()
 	m_Processor_Name = new char[MPI_MAX_PROCESSOR_NAME];
 	MPI::Get_processor_name(m_Processor_Name,namelen);
 
-	cerr << "Operator_MPI::Init(): Running on " << m_Processor_Name << endl;
+	if (m_MPI_Enabled)
+		cerr << "Operator_MPI::Init(): Running on " << m_Processor_Name << endl;
 }
 
 void Operator_MPI::Delete()

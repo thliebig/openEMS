@@ -28,6 +28,8 @@ public:
 	static Operator_MPI* New();
 	virtual ~Operator_MPI();
 
+	bool GetMPIEnabled() const {return m_MPI_Enabled;}
+
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
 	virtual void SetBoundaryCondition(int* BCs);
@@ -37,9 +39,12 @@ public:
 
 protected:
 	Operator_MPI();
+	bool m_MPI_Enabled;
 	virtual void Init();
 	void Delete();
 	virtual void Reset();
+
+	virtual double CalcTimestep();
 
 	int m_MyID;
 	int m_NumProc;

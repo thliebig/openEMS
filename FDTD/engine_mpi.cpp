@@ -46,7 +46,7 @@ void Engine_MPI::Init()
 		m_BufferSize[i]=0;
 	}
 
-	if (m_Op_MPI->m_NumProc>1)
+	if (m_Op_MPI->GetMPIEnabled())
 	{
 		// init buffers, nx*ny*2 for the tangential electric or magnetic fields at the interface
 		m_BufferSize[2] = m_Op_MPI->numLines[0]*m_Op_MPI->numLines[1]*2;
@@ -178,6 +178,11 @@ void Engine_MPI::SendReceiveCurrents()
 
 bool Engine_MPI::IterateTS(unsigned int iterTS)
 {
+	if (!m_Op_MPI->GetMPIEnabled())
+	{
+		return Engine_SSE_Compressed::IterateTS(iterTS);
+	}
+
 	for (unsigned int iter=0; iter<iterTS; ++iter)
 	{
 		//voltage updates with extensions
