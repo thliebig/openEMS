@@ -23,9 +23,11 @@
 
 #ifdef MPI_SUPPORT
 #include "mpi.h"
+#include "FDTD/openems_fdtd_mpi.h"
+#else
+#include "openems.h"
 #endif
 
-#include "openems.h"
 #include "tools/global.h"
 
 #ifndef GIT_VERSION
@@ -39,9 +41,10 @@ int main(int argc, char *argv[])
 #ifdef MPI_SUPPORT
 	//init MPI
 	MPI::Init(argc,argv);
-#endif
-
+	openEMS_FDTD_MPI FDTD;
+#else
 	openEMS FDTD;
+#endif
 
 #ifdef _LP64
 	string bits = "64bit";

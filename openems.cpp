@@ -34,14 +34,8 @@
 #include "Common/processfields_td.h"
 #include "Common/processfields_fd.h"
 #include "Common/processfields_sar.h"
-#include <sys/time.h>
-#include <time.h>
 #include <H5Cpp.h> // only for H5get_libversion()
 #include <boost/version.hpp> // only for BOOST_LIB_VERSION
-
-#ifdef MPI_SUPPORT
-#include "FDTD/operator_mpi.h"
-#endif
 
 //external libs
 #include "tinyxml.h"
@@ -161,14 +155,6 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 		m_engine = EngineType_Multithreaded;
 		return true;
 	}
-#ifdef MPI_SUPPORT
-	else if (strcmp(argv,"--engine=MPI")==0)
-	{
-		cout << "openEMS - enabled MPI parallel processing" << endl;
-		m_engine = EngineType_MPI;
-		return true;
-	}
-#endif
 	else if (strncmp(argv,"--numThreads=",13)==0)
 	{
 		m_engine_numThreads = atoi(argv+13);
@@ -462,6 +448,38 @@ bool openEMS::SetupMaterialStorages()
 	return true;
 }
 
+bool openEMS::SetupOperator(TiXmlElement* FDTD_Opts)
+{
+	if (CylinderCoords)
+	{
+		const char* radii = FDTD_Opts->Attribute("MultiGrid");
+		if (radii)
+		{
+			string rad(radii);
+			FDTD_Op = Operator_CylinderMultiGrid::New(SplitString2Double(rad,','),m_engine_numThreads);
+		}
+		else
+			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
+	}
+	else if (m_engine == EngineType_SSE)
+	{
+		FDTD_Op = Operator_sse::New();
+	}
+	else if (m_engine == EngineType_SSE_Compressed)
+	{
+		FDTD_Op = Operator_SSE_Compressed::New();
+	}
+	else if (m_engine == EngineType_Multithreaded)
+	{
+		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
+	}
+	else
+	{
+		FDTD_Op = Operator::New();
+	}
+	return true;
+}
+
 
 int openEMS::SetupFDTD(const char* file)
 {
@@ -549,39 +567,7 @@ int openEMS::SetupFDTD(const char* file)
 		m_CSX->Write2XML("debugm_CSX->xml");
 
 	//*************** setup operator ************//
-	if (CylinderCoords)
-	{
-		const char* radii = FDTD_Opts->Attribute("MultiGrid");
-		if (radii)
-		{
-			string rad(radii);
-			FDTD_Op = Operator_CylinderMultiGrid::New(SplitString2Double(rad,','),m_engine_numThreads);
-		}
-		else
-			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
-	}
-	else if (m_engine == EngineType_SSE)
-	{
-		FDTD_Op = Operator_sse::New();
-	}
-	else if (m_engine == EngineType_SSE_Compressed)
-	{
-		FDTD_Op = Operator_SSE_Compressed::New();
-	}
-	else if (m_engine == EngineType_Multithreaded)
-	{
-		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
-	}
-#ifdef MPI_SUPPORT
-	else if (m_engine == EngineType_MPI)
-	{
-		FDTD_Op = Operator_MPI::New();
-	}
-#endif
-	else
-	{
-		FDTD_Op = Operator::New();
-	}
+	SetupOperator(FDTD_Opts);
 
 	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
 

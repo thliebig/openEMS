@@ -19,6 +19,8 @@
 #define OPENEMS_H
 
 #include <sstream>
+#include <sys/time.h>
+#include <time.h>
 
 using namespace std;
 
@@ -29,17 +31,20 @@ class ProcessingArray;
 class TiXmlElement;
 class ContinuousStructure;
 
+double CalcDiffTime(timeval t1, timeval t2);
+string FormatTime(int sec);
+
 class openEMS
 {
 public:
 	openEMS();
-	~openEMS();
+	virtual ~openEMS();
 
-	bool parseCommandLineArgument( const char *argv );
+	virtual bool parseCommandLineArgument( const char *argv );
 
 	int SetupFDTD(const char* file);
 
-	void RunFDTD();
+	virtual void RunFDTD();
 
 	void Reset();
 
@@ -85,6 +90,9 @@ protected:
 #endif
 	EngineType m_engine;
 	unsigned int m_engine_numThreads;
+
+	//! Setup an operator matching the requested engine
+	virtual bool SetupOperator(TiXmlElement* FDTD_Opts);
 
 	//! Read boundary conditions from xml element and apply to FDTD operator
 	bool SetupBoundaryConditions(TiXmlElement* BC);

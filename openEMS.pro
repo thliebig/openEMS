@@ -158,9 +158,11 @@ MPI_SUPPORT {
     INCLUDEPATH += /usr/include/mpich2
 	LIBS += -lmpich -lmpichcxx
     HEADERS += FDTD/operator_mpi.h \
-        FDTD/engine_mpi.h
+		FDTD/engine_mpi.h \
+	FDTD/openems_fdtd_mpi.h
     SOURCES += FDTD/operator_mpi.cpp \
-        FDTD/engine_mpi.cpp
+		FDTD/engine_mpi.cpp \
+		FDTD/openems_fdtd_mpi.cpp
 }
 
 QMAKE_CXXFLAGS_RELEASE = -O3 \
