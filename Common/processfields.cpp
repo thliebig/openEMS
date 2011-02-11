@@ -113,11 +113,11 @@ double ProcessFields::CalcTotalEnergy() const
 		const Engine* Eng = EI_FDTD->GetFDTDEngine();
 
 		unsigned int pos[3];
-		for (pos[0]=0; pos[0]<Op->GetNumberOfLines(0); ++pos[0])
+		for (pos[0]=0; pos[0]<Op->GetNumberOfLines(0)-1; ++pos[0])
 		{
-			for (pos[1]=0; pos[1]<Op->GetNumberOfLines(1); ++pos[1])
+			for (pos[1]=0; pos[1]<Op->GetNumberOfLines(1)-1; ++pos[1])
 			{
-				for (pos[2]=0; pos[2]<Op->GetNumberOfLines(2); ++pos[2])
+				for (pos[2]=0; pos[2]<Op->GetNumberOfLines(2)-1; ++pos[2])
 				{
 					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
 					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
