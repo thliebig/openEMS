@@ -155,8 +155,8 @@ HEADERS += Common/operator_base.h \
 
 MPI_SUPPORT { 
     DEFINES += MPI_SUPPORT
-    INCLUDEPATH += /usr/include/mpich2
-	LIBS += -lmpich -lmpichcxx
+	INCLUDEPATH += /usr/include/mpi
+	LIBS += -lmpi -lmpi++
     HEADERS += FDTD/operator_mpi.h \
 		FDTD/engine_mpi.h \
 	FDTD/openems_fdtd_mpi.h
