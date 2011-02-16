@@ -20,6 +20,7 @@
 #include "FDTD/operator_mpi.h"
 #include "FDTD/engine_mpi.h"
 #include "Common/processfields.h"
+#include "Common/processintegral.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -146,6 +147,61 @@ double openEMS_FDTD_MPI::CalcEnergy()
 	return energy;
 }
 
+bool openEMS_FDTD_MPI::SetupProcessing()
+{
+	bool ret = openEMS::SetupProcessing();
+
+	//search for active processings in different processes
+	size_t numProc = PA->GetNumberOfProcessings();
+	int active=0;
+	bool deactivate = false;
+	bool rename = false;
+	for (size_t n=0;n<numProc;++n)
+	{
+		Processing* proc = PA->GetProcessing(n);
+		int isActive = (int)proc->GetEnable();
+		//sum of all active processings
+		MPI_Reduce(&isActive, &active, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		deactivate = false;
+		rename = false;
+		if ((m_MyID==0) && (active>1)) //more than one active processing...
+		{
+			deactivate = true; //default
+			if (dynamic_cast<ProcessIntegral*>(proc)!=NULL)
+			{
+				//type is integral processing --> disable! Needs to be fixed!
+				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Warning: Processing: " << proc->GetName() << " occures multiple times and is being deactivated..." << endl;
+				deactivate = true;
+				rename = false;
+			}
+			if (dynamic_cast<ProcessFields*>(proc)!=NULL)
+			{
+				//type is field processing --> renameing! Needs to be fixed!
+				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Warning: Processing: " << proc->GetName() << " occures multiple times and is being renamed..." << endl;
+				deactivate = false;
+				rename = true;
+			}
+		}
+		//broadcast informations to all
+		MPI_Bcast(&deactivate, 1, MPI::BOOL, 0, MPI_COMM_WORLD);
+		MPI_Bcast(&rename, 1, MPI::BOOL, 0, MPI_COMM_WORLD);
+		if (deactivate)
+			proc->SetEnable(false);
+		if (rename)
+		{
+			ProcessFields* ProcField = dynamic_cast<ProcessFields*>(proc);
+			if (ProcField)
+			{
+				stringstream name_ss;
+				name_ss << "ID" << m_MyID << "_" << ProcField->GetName();
+				ProcField->SetName(name_ss.str());
+				ProcField->SetFilePattern(name_ss.str());
+				ProcField->SetFileName(name_ss.str());
+			}
+		}
+	}
+}
+
 void openEMS_FDTD_MPI::RunFDTD()
 {
 	if (m_engine != EngineType_MPI)
@@ -161,6 +217,9 @@ void openEMS_FDTD_MPI::RunFDTD()
 	//special handling of a field processing, needed to realize the end criteria...
 	m_ProcField = new ProcessFields(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 	PA->AddProcessing(m_ProcField);
+
+	//init processings
+	PA->InitAll();
 
 	double currE=0;
 

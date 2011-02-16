@@ -49,6 +49,8 @@ protected:
 	bool CheckEnergyCalc();
 	//! Calc energy in all processes and add up
 	double CalcEnergy();
+
+	virtual bool SetupProcessing();
 };
 
 #endif // OPENEMS_FDTD_MPI_H

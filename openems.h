@@ -101,7 +101,7 @@ protected:
 	bool SetupMaterialStorages();
 
 	//! Setup all processings.
-	bool SetupProcessing();
+	virtual bool SetupProcessing();
 };
 
 #endif // OPENEMS_H
