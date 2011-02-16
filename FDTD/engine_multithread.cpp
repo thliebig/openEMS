@@ -44,7 +44,7 @@ Engine_Multithread* Engine_Multithread::New(const Operator_Multithread* op, unsi
 	return e;
 }
 
-Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : Engine_SSE_Compressed(op)
+Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : ENGINE_MULTITHREAD_BASE(op)
 {
 	m_Op_MT = op;
 	m_type = SSE;
@@ -84,7 +84,7 @@ void Engine_Multithread::setNumThreads( unsigned int numThreads )
 void Engine_Multithread::Init()
 {
 	m_stopThreads = true;
-	Engine_SSE_Compressed::Init();
+	ENGINE_MULTITHREAD_BASE::Init();
 
 	// initialize threads
 	m_stopThreads = false;
@@ -144,7 +144,7 @@ void Engine_Multithread::Reset()
 		m_stopBarrier = 0;
 	}
 
-	Engine_SSE_Compressed::Reset();
+	ENGINE_MULTITHREAD_BASE::Reset();
 }
 
 bool Engine_Multithread::IterateTS(unsigned int iterTS)
@@ -241,7 +241,6 @@ void thread::operator()()
 	//std::cout << "thread::operator() Parameters: " << m_start << " " << m_stop << std::endl;
 	//DBG().cout() << "Thread " << m_threadID << " (" << boost::this_thread::get_id() << ") started." << endl;
 
-
 	while (!m_enginePtr->m_stopThreads)
 	{
 		// wait for start
@@ -278,6 +277,12 @@ void thread::operator()()
 			m_enginePtr->m_IterateBarrier->wait();
 			// voltage excitation finished
 
+#ifdef MPI_SUPPORT
+			if (m_threadID==0)
+				m_enginePtr->SendReceiveVoltages();
+			m_enginePtr->m_IterateBarrier->wait();
+#endif
+
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
@@ -304,6 +309,12 @@ void thread::operator()()
 
 			m_enginePtr->m_IterateBarrier->wait();
 			// current excitation finished
+
+#ifdef MPI_SUPPORT
+			if (m_threadID==0)
+				m_enginePtr->SendReceiveCurrents();
+			m_enginePtr->m_IterateBarrier->wait();
+#endif
 
 			if (m_threadID == 0)
 				++m_enginePtr->numTS; // only the first thread increments numTS

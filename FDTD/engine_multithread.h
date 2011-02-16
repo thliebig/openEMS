@@ -32,6 +32,14 @@
 
 #include <sys/time.h>
 
+#ifdef MPI_SUPPORT
+	#define ENGINE_MULTITHREAD_BASE Engine_MPI
+	#include "engine_mpi.h"
+#else
+	#define ENGINE_MULTITHREAD_BASE Engine_SSE_Compressed
+#endif
+
+
 class Engine_Multithread;
 
 namespace NS_Engine_Multithread
@@ -69,7 +77,7 @@ protected:
 } // namespace
 
 
-class Engine_Multithread : public Engine_SSE_Compressed
+class Engine_Multithread : public ENGINE_MULTITHREAD_BASE
 {
 	friend class NS_Engine_Multithread::thread;
 	friend class Engine_CylinderMultiGrid;

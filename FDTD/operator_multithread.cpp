@@ -44,7 +44,7 @@ Engine* Operator_Multithread::CreateEngine() const
 	return e;
 }
 
-Operator_Multithread::Operator_Multithread() : Operator_SSE_Compressed()
+Operator_Multithread::Operator_Multithread() : OPERATOR_MULTITHREAD_BASE()
 {
 	m_CalcEC_Start=NULL;
 	m_CalcEC_Stop=NULL;
@@ -55,7 +55,7 @@ Operator_Multithread::Operator_Multithread() : Operator_SSE_Compressed()
 
 void Operator_Multithread::Init()
 {
-	Operator_SSE_Compressed::Init();
+	OPERATOR_MULTITHREAD_BASE::Init();
 
 	m_CalcEC_Start=NULL;
 	m_CalcEC_Stop=NULL;
@@ -82,7 +82,7 @@ void Operator_Multithread::Delete()
 void Operator_Multithread::Reset()
 {
 	Delete();
-	Operator_SSE_Compressed::Reset();
+	OPERATOR_MULTITHREAD_BASE::Reset();
 }
 
 void Operator_Multithread::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
@@ -132,7 +132,7 @@ int Operator_Multithread::CalcECOperator( DebugFlags debugFlags )
 		m_thread_group.add_thread( t );
 	}
 
-	return Operator_SSE_Compressed::CalcECOperator( debugFlags );
+	return OPERATOR_MULTITHREAD_BASE::CalcECOperator( debugFlags );
 }
 
 bool Operator_Multithread::Calc_EC()
