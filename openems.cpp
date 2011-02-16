@@ -345,7 +345,6 @@ bool openEMS::SetupProcessing()
 				proc->SetName(pb->GetName());
 				proc->DefineStartStopCoord(start,stop);
 				proc->SetWeight(pb->GetWeighting());
-				proc->InitProcess();
 				PA->AddProcessing(proc);
 				prim->SetPrimitiveUsed(true);
 			}
@@ -424,7 +423,6 @@ bool openEMS::SetupProcessing()
 					ProcField->SetFilePattern(db->GetName());
 					ProcField->SetFileName(db->GetName());
 					ProcField->DefineStartStopCoord(start,stop);
-					ProcField->InitProcess();
 					PA->AddProcessing(ProcField);
 					prim->SetPrimitiveUsed(true);
 				}
@@ -685,6 +683,9 @@ void openEMS::RunFDTD()
 	ProcessFields* ProcField = new ProcessFields(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
 	PA->AddProcessing(ProcField);
 	double maxE=0,currE=0;
+
+	//init processings
+	PA->InitAll();
 
 	//add all timesteps to end-crit field processing with max excite amplitude
 	unsigned int maxExcite = FDTD_Op->Exc->GetMaxExcitationTimestep();

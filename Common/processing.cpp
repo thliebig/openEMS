@@ -273,6 +273,14 @@ void ProcessingArray::AddProcessing(Processing* proc)
 	ProcessArray.push_back(proc);
 }
 
+void ProcessingArray::InitAll()
+{
+	for (size_t i=0; i<ProcessArray.size(); ++i)
+	{
+		ProcessArray.at(i)->InitProcess();
+	}
+}
+
 void ProcessingArray::FlushNext()
 {
 	for (size_t i=0; i<ProcessArray.size(); ++i)

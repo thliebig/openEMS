@@ -53,9 +53,11 @@ public:
 
 	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType()
 	void SetFilePattern(string fp) {m_filename=filePattern=fp;}
+	string GetFilePattern() const {return filePattern;}
 
 	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType()
 	void SetFileName(string fn) {m_filename=fn;}
+	string SetFileName() const {return m_filename;}
 
 	//! Define the Dump-Mode
 	void SetDumpMode(Engine_Interface_Base::InterpolationType mode);

@@ -48,6 +48,7 @@ public:
 	void SetEngineInterface(Engine_Interface_Base* eng_if);
 
 	virtual void SetName(string val) {m_Name=val;}
+	virtual string GetName() const {return m_Name;}
 
 	//! Get the name for this processing, will be used in file description.
 	virtual string GetProcessingName() const = 0;
@@ -159,6 +160,8 @@ public:
 
 	void AddProcessing(Processing* proc);
 
+	void InitAll();
+
 	//! Invoke this flag to flush all stored data to disk for all processings on next Process()
 	void FlushNext();
 
@@ -177,6 +180,10 @@ public:
 	void PostProcess();
 
 	void DumpBoxes2File( string vtkfilenameprefix ) const;
+
+	size_t GetNumberOfProcessings() const {return ProcessArray.size();}
+
+	Processing* GetProcessing(size_t number) {return ProcessArray.at(number);}
 
 protected:
 	unsigned int maxInterval;
