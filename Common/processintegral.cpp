@@ -37,8 +37,12 @@ ProcessIntegral::~ProcessIntegral()
 
 void ProcessIntegral::InitProcess()
 {
-	delete[] m_Results;
-	delete[] m_FD_Results;
+	delete[] m_Results; m_Results = NULL;
+	delete[] m_FD_Results; m_FD_Results = NULL;
+
+	if (!Enabled)
+		return;
+
 	m_Results = new double[GetNumberOfIntegrals()];
 	m_FD_Results = new vector<double_complex>[GetNumberOfIntegrals()];
 
@@ -75,6 +79,8 @@ void ProcessIntegral::InitProcess()
 
 void ProcessIntegral::FlushData()
 {
+	if (!Enabled)
+		return;
 	if (m_FD_Samples.size())
 		Dump_FD_Data(1.0,m_filename + "_FD");
 }
