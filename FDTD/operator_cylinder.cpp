@@ -229,5 +229,6 @@ void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)
 
 double Operator_Cylinder::CalcTimestep()
 {
-	return CalcTimestep_Var1();
+	m_TimeStepVar = 1;
+	return Operator_Multithread::CalcTimestep();
 }

@@ -35,6 +35,7 @@ Operator::Operator() : Operator_Base()
 {
 	Exc = 0;
 	m_InvaildTimestep = false;
+	m_TimeStepVar = 3;
 }
 
 Operator::~Operator()
@@ -1192,11 +1193,11 @@ bool Operator::Calc_EC()
 
 double Operator::CalcTimestep()
 {
-#if 1  //use the new timestep-calc (1) or the old one (0)
-	return CalcTimestep_Var3(); //the biggest one for cartesian meshes
-#else
+	if (m_TimeStepVar==3)
+		return CalcTimestep_Var3(); //the biggest one for cartesian meshes
+
+	//variant 1 is default
 	return CalcTimestep_Var1();
-#endif
 }
 
 ////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52

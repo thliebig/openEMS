@@ -156,6 +156,7 @@ protected:
 	virtual void CalcPEC_Curves();	//internal to CalcPEC
 
 	//Calc timestep only internal use
+	int m_TimeStepVar;
 	virtual double CalcTimestep();
 	double opt_dT;
 	bool m_InvaildTimestep;
