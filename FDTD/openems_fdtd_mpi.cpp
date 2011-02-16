@@ -40,6 +40,11 @@ openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
 	m_MaxEnergy = 0;
 	m_EnergyDecrement = 1;
 
+	if (m_NumProc>1)
+		m_MPI_Enabled=true;
+	else
+		m_MPI_Enabled=false;
+
 	if (m_MyID==0)
 	{
 		m_Gather_Buffer = new int[m_NumProc];
@@ -82,14 +87,7 @@ bool openEMS_FDTD_MPI::SetupOperator(TiXmlElement* FDTD_Opts)
 {
 	if (m_engine == EngineType_MPI)
 	{
-		if (m_MyID>0)
-		{
-			//higher ranks never abort the simulation
-			endCrit = 0;
-		}
-
 		FDTD_Op = Operator_MPI::New();
-
 		return true;
 	}
 	else
@@ -200,11 +198,12 @@ bool openEMS_FDTD_MPI::SetupProcessing()
 			}
 		}
 	}
+	return ret;
 }
 
 void openEMS_FDTD_MPI::RunFDTD()
 {
-	if (m_engine != EngineType_MPI)
+	if (!m_MPI_Enabled)
 		return openEMS::RunFDTD();
 
 	cout << "Running MPI-FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
@@ -255,6 +254,9 @@ void openEMS_FDTD_MPI::RunFDTD()
 
 		if (CheckEnergyCalc())
 			currE = CalcEnergy();
+
+		//make sure all processes are at the same simulation time
+		MPI_Bcast(&t_diff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		if (t_diff>4)
 		{

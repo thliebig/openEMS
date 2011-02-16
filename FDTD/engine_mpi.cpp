@@ -78,6 +78,9 @@ void Engine_MPI::Reset()
 
 void Engine_MPI::SendReceiveVoltages()
 {
+	if (!m_Op_MPI->GetMPIEnabled())
+		return;
+
 	unsigned int pos[3];
 
 	//non-blocking prepare for receive...
@@ -95,9 +98,9 @@ void Engine_MPI::SendReceiveVoltages()
 		pos[n]=numLines[n]-1;
 		if (m_Op_MPI->m_NeighborUp[n]>=0)
 		{
-			for (pos[nP]=0; pos[nP]<numLines[nP]-1; ++pos[nP])
+			for (pos[nP]=0; pos[nP]<numLines[nP]; ++pos[nP])
 			{
-				for (pos[nPP]=0; pos[nPP]<numLines[nPP]-1; ++pos[nPP])
+				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 				{
 					m_BufferUp[n][iPos++] = Engine_SSE_Compressed::GetVolt(nP ,pos);
 					m_BufferUp[n][iPos++] = Engine_SSE_Compressed::GetVolt(nPP,pos);
@@ -113,9 +116,9 @@ void Engine_MPI::SendReceiveVoltages()
 		{
 			//wait for receive to finish...
 			MPI_Wait(&Recv_Request[n],&stat);
-			for (pos[nP]=0; pos[nP]<numLines[nP]-1; ++pos[nP])
+			for (pos[nP]=0; pos[nP]<numLines[nP]; ++pos[nP])
 			{
-				for (pos[nPP]=0; pos[nPP]<numLines[nPP]-1; ++pos[nPP])
+				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 				{
 					Engine_SSE_Compressed::SetVolt(nP ,pos,m_BufferDown[n][iPos++]);
 					Engine_SSE_Compressed::SetVolt(nPP,pos,m_BufferDown[n][iPos++]);
@@ -128,6 +131,9 @@ void Engine_MPI::SendReceiveVoltages()
 
 void Engine_MPI::SendReceiveCurrents()
 {
+	if (!m_Op_MPI->GetMPIEnabled())
+		return;
+
 	unsigned int pos[3];
 
 	//non-blocking prepare for receive...
@@ -145,9 +151,9 @@ void Engine_MPI::SendReceiveCurrents()
 		pos[n]=0;
 		if (m_Op_MPI->m_NeighborDown[n]>=0)
 		{
-			for (pos[nP]=0; pos[nP]<numLines[nP]-1; ++pos[nP])
+			for (pos[nP]=0; pos[nP]<numLines[nP]; ++pos[nP])
 			{
-				for (pos[nPP]=0; pos[nPP]<numLines[nPP]-1; ++pos[nPP])
+				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 				{
 					m_BufferDown[n][iPos++] = Engine_SSE_Compressed::GetCurr(nP ,pos);
 					m_BufferDown[n][iPos++] = Engine_SSE_Compressed::GetCurr(nPP,pos);
@@ -163,9 +169,9 @@ void Engine_MPI::SendReceiveCurrents()
 		{
 			//wait for receive to finish...
 			MPI_Wait(&Recv_Request[n],&stat);
-			for (pos[nP]=0; pos[nP]<numLines[nP]-1; ++pos[nP])
+			for (pos[nP]=0; pos[nP]<numLines[nP]; ++pos[nP])
 			{
-				for (pos[nPP]=0; pos[nPP]<numLines[nPP]-1; ++pos[nPP])
+				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 				{
 					Engine_SSE_Compressed::SetCurr(nP ,pos,m_BufferUp[n][iPos++]);
 					Engine_SSE_Compressed::SetCurr(nPP,pos,m_BufferUp[n][iPos++]);

@@ -35,6 +35,7 @@ public:
 protected:
 	int m_MyID;
 	int m_NumProc;
+	bool m_MPI_Enabled;
 	unsigned int m_NumberCells;
 	virtual bool SetupOperator(TiXmlElement* FDTD_Opts);
 

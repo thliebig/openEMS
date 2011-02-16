@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
 	FDTD.RunFDTD();
 
 #ifdef MPI_SUPPORT
+	FDTD.Reset(); //make sure everything is cleaned-up before calling MPI::Finalize()
 	MPI::Finalize();
 #endif
 
