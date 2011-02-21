@@ -175,3 +175,28 @@ void Operator_MPI::Reset()
 	Delete();
 	Operator_SSE_Compressed::Reset();
 }
+
+string Operator_MPI::PrependRank(string name)
+{
+	stringstream out_name;
+	if (m_MPI_Enabled)
+		out_name << "ID" << m_MyID << "_" << name;
+	else
+		out_name << name;
+	return out_name.str();
+}
+
+void Operator_MPI::DumpOperator2File(string filename)
+{
+	Operator_SSE_Compressed::DumpOperator2File(PrependRank(filename));
+}
+
+void Operator_MPI::DumpMaterial2File(string filename)
+{
+	Operator_SSE_Compressed::DumpMaterial2File(PrependRank(filename));
+}
+
+void Operator_MPI::DumpPEC2File( string filename )
+{
+	Operator_SSE_Compressed::DumpPEC2File(PrependRank(filename));
+}

@@ -54,6 +54,12 @@ protected:
 	//the up and down neighbors, -1 if non for the given direction
 	int m_NeighborUp[3];
 	int m_NeighborDown[3];
+
+	string PrependRank(string name);
+
+	virtual void DumpOperator2File(string filename);
+	virtual void DumpMaterial2File(string filename);
+	virtual void DumpPEC2File( string filename );
 };
 
 #endif // OPERATOR_MPI_H
