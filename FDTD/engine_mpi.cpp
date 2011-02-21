@@ -49,14 +49,20 @@ void Engine_MPI::Init()
 	if (m_Op_MPI->GetMPIEnabled())
 	{
 		// init buffers, nx*ny*2 for the tangential electric or magnetic fields at the interface
-		m_BufferSize[2] = m_Op_MPI->numLines[0]*m_Op_MPI->numLines[1];
-		if (m_Op_MPI->m_NeighborDown[2]>=0)
+		for (int n=0;n<3;++n)
 		{
-			m_BufferDown[2] = new float[m_BufferSize[2]*3];
-		}
-		if (m_Op_MPI->m_NeighborUp[2]>=0)
-		{
-			m_BufferUp[2] = new float[m_BufferSize[2]*3];
+			int nP  = (n+1)%3;
+			int nPP = (n+2)%3;
+			m_BufferSize[n] = m_Op_MPI->numLines[nP]*m_Op_MPI->numLines[nPP];
+
+			if (m_Op_MPI->m_NeighborDown[n]>=0)
+			{
+				m_BufferDown[n] = new float[m_BufferSize[n]*3];
+			}
+			if (m_Op_MPI->m_NeighborUp[n]>=0)
+			{
+				m_BufferUp[n] = new float[m_BufferSize[n]*3];
+			}
 		}
 	}
 }
