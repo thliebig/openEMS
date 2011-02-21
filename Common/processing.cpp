@@ -38,6 +38,12 @@ Processing::Processing(Engine_Interface_Base* eng_if)
 	m_dualMesh = false;
 	m_dualTime = false;
 	m_Mesh_Type = CARTESIAN_MESH;
+
+	for (int n=0;n<3;++n)
+	{
+		start[n]=0;
+		stop[n]=0;
+	}
 }
 
 Processing::~Processing()

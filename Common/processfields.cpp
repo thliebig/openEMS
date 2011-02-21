@@ -26,12 +26,6 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	m_DumpType = E_FIELD_DUMP;
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
-	subSample[0]=1;
-	subSample[1]=1;
-	subSample[2]=1;
-	optResolution[0]=0;
-	optResolution[1]=0;
-	optResolution[2]=0;
 	m_SampleType = NONE;
 	SetPrecision(6);
 	m_dualTime = false;
@@ -41,6 +35,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 		numLines[n]=0;
 		posLines[n]=NULL;
 		discLines[n]=NULL;
+		subSample[n]=1;
+		optResolution[n]=0;
 	}
 }
 
