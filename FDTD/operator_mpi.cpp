@@ -53,14 +53,26 @@ bool Operator_MPI::SetGeometryCSX(ContinuousStructure* geo)
 		CSRectGrid* grid = geo->GetGrid();
 		int nz = grid->GetQtyLines(2);
 		std::vector<unsigned int> jobs = AssignJobs2Threads(nz, m_NumProc);
-		double z_lines[jobs.at(m_MyID)];
-		unsigned int z_start=0;
-		for (int n=0;n<m_MyID;++n)
-			z_start+=jobs.at(n);
-		for (unsigned int n=0;n<jobs.at(m_MyID);++n)
-			z_lines[n] = grid->GetLine(2,z_start+n);
-		grid->ClearLines(2);
-		grid->AddDiscLines(2,jobs.at(m_MyID),z_lines);
+		double z_lines[jobs.at(m_MyID)+1];
+
+		if (m_MyID==0)
+		{
+			for (unsigned int n=0;n<jobs.at(0);++n)
+				z_lines[n] = grid->GetLine(2,n);
+			grid->ClearLines(2);
+			grid->AddDiscLines(2,jobs.at(0),z_lines);
+
+		}
+		else
+		{
+			unsigned int z_start=0;
+			for (int n=0;n<m_MyID;++n)
+				z_start+=jobs.at(n);
+			for (unsigned int n=0;n<=jobs.at(m_MyID);++n)
+				z_lines[n] = grid->GetLine(2,z_start+n-1);
+			grid->ClearLines(2);
+			grid->AddDiscLines(2,jobs.at(m_MyID)+1,z_lines);
+		}
 
 		//lower neighbor is ID-1
 		if (m_MyID>0)
