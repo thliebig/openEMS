@@ -49,17 +49,16 @@ void Engine_MPI::Init()
 	if (m_Op_MPI->GetMPIEnabled())
 	{
 		// init buffers, nx*ny*2 for the tangential electric or magnetic fields at the interface
-		m_BufferSize[2] = m_Op_MPI->numLines[0]*m_Op_MPI->numLines[1]*2;
+		m_BufferSize[2] = m_Op_MPI->numLines[0]*m_Op_MPI->numLines[1];
 		if (m_Op_MPI->m_NeighborDown[2]>=0)
 		{
-			m_BufferDown[2] = new float[m_BufferSize[2]];
+			m_BufferDown[2] = new float[m_BufferSize[2]*3];
 		}
 		if (m_Op_MPI->m_NeighborUp[2]>=0)
 		{
-			m_BufferUp[2] = new float[m_BufferSize[2]];
+			m_BufferUp[2] = new float[m_BufferSize[2]*3];
 		}
 	}
-
 }
 
 void Engine_MPI::Reset()
@@ -86,7 +85,7 @@ void Engine_MPI::SendReceiveVoltages()
 	//non-blocking prepare for receive...
 	for (int n=0;n<3;++n)
 		if (m_Op_MPI->m_NeighborDown[n]>=0)
-			MPI_Irecv( m_BufferDown[n] , m_BufferSize[n], MPI_FLOAT, m_Op_MPI->m_NeighborDown[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Recv_Request[n]);
+			MPI_Irecv( m_BufferDown[n] , m_BufferSize[n]*2, MPI_FLOAT, m_Op_MPI->m_NeighborDown[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Recv_Request[n]);
 
 	for (int n=0;n<3;++n)
 	{
@@ -106,7 +105,7 @@ void Engine_MPI::SendReceiveVoltages()
 					m_BufferUp[n][iPos++] = Engine_SSE_Compressed::GetVolt(nPP,pos);
 				}
 			}
-			MPI_Isend( m_BufferUp[n] , m_BufferSize[n], MPI_FLOAT, m_Op_MPI->m_NeighborUp[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Send_Request[n]);
+			MPI_Isend( m_BufferUp[n] , m_BufferSize[n]*2, MPI_FLOAT, m_Op_MPI->m_NeighborUp[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Send_Request[n]);
 		}
 
 		//receive voltages
@@ -131,6 +130,14 @@ void Engine_MPI::SendReceiveVoltages()
 
 void Engine_MPI::SendReceiveCurrents()
 {
+	/*
+	TODO:
+	  the FDTD engine could update the normal currents (e.g. i_z at z_max) (magnetic fields) on the last line, but the default engine does not need to...
+	  workaround: transfer all three current components
+	  drawback: data transfer is larger than necessary
+	  future fix: update normal currents
+	  */
+
 	if (!m_Op_MPI->GetMPIEnabled())
 		return;
 
@@ -139,7 +146,7 @@ void Engine_MPI::SendReceiveCurrents()
 	//non-blocking prepare for receive...
 	for (int n=0;n<3;++n)
 		if (m_Op_MPI->m_NeighborUp[n]>=0)
-			MPI_Irecv( m_BufferUp[n] , m_BufferSize[n], MPI_FLOAT, m_Op_MPI->m_NeighborUp[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Recv_Request[n]);
+			MPI_Irecv( m_BufferUp[n] , m_BufferSize[n]*3, MPI_FLOAT, m_Op_MPI->m_NeighborUp[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Recv_Request[n]);
 
 	for (int n=0;n<3;++n)
 	{
@@ -155,11 +162,12 @@ void Engine_MPI::SendReceiveCurrents()
 			{
 				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 				{
+					m_BufferDown[n][iPos++] = Engine_SSE_Compressed::GetCurr(n ,pos);
 					m_BufferDown[n][iPos++] = Engine_SSE_Compressed::GetCurr(nP ,pos);
 					m_BufferDown[n][iPos++] = Engine_SSE_Compressed::GetCurr(nPP,pos);
 				}
 			}
-			MPI_Isend( m_BufferDown[n] , m_BufferSize[n], MPI_FLOAT, m_Op_MPI->m_NeighborDown[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Send_Request[n]);
+			MPI_Isend( m_BufferDown[n] , m_BufferSize[n]*3, MPI_FLOAT, m_Op_MPI->m_NeighborDown[n], m_Op_MPI->m_MyTag, MPI_COMM_WORLD, &Send_Request[n]);
 		}
 
 		//receive currents
@@ -173,6 +181,7 @@ void Engine_MPI::SendReceiveCurrents()
 			{
 				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
 				{
+					Engine_SSE_Compressed::SetCurr(n  ,pos,m_BufferUp[n][iPos++]);
 					Engine_SSE_Compressed::SetCurr(nP ,pos,m_BufferUp[n][iPos++]);
 					Engine_SSE_Compressed::SetCurr(nPP,pos,m_BufferUp[n][iPos++]);
 				}

@@ -48,7 +48,9 @@ protected:
 	float* m_BufferUp[3];
 	float* m_BufferDown[3];
 
+	//! Transfer all tangential voltages at the upper bounds to the lower bounds of the neighbouring MPI-processes
 	void SendReceiveVoltages();
+	//! Transfer all tangential currents at the lower bounds to the upper bounds of the neighbouring MPI-processes
 	void SendReceiveCurrents();
 };
 
