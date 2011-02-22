@@ -118,10 +118,12 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 
 		//lower neighbor is ID-1
 		if (m_MyID>0)
-			m_MPI_Op->m_NeighborDown[2]=m_MyID-1;
+			m_MPI_Op->SetNeighborDown(2,m_MyID-1);
 		//upper neighbor is ID+1
 		if (m_MyID<m_NumProc-1)
-			m_MPI_Op->m_NeighborUp[2]=m_MyID+1;
+			m_MPI_Op->SetNeighborUp(2,m_MyID+1);
+
+		m_MPI_Op->SetTag(0);
 	}
 	else
 		cerr << "openEMS_FDTD_MPI::SetupMPI: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;

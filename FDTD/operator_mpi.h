@@ -23,7 +23,6 @@
 class Operator_MPI : public Operator_SSE_Compressed
 {
 	friend class Engine_MPI;
-	friend class openEMS_FDTD_MPI;
 public:
 	//! Create a new operator
 	static Operator_MPI* New();
@@ -35,6 +34,11 @@ public:
 	virtual void ApplyElectricBC(bool* dirs);
 
 	virtual Engine* CreateEngine() const;
+
+	virtual void SetTag(int tag) {m_MyTag=tag;}
+
+	virtual void SetNeighborUp(int ny, int id);
+	virtual void SetNeighborDown(int ny, int id);
 
 protected:
 	Operator_MPI();

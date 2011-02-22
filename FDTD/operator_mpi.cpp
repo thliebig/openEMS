@@ -99,6 +99,20 @@ Engine* Operator_MPI::CreateEngine() const
 		return Engine_SSE_Compressed::New(this);
 }
 
+void Operator_MPI::SetNeighborUp(int ny, int id)
+{
+	if ((ny<0) || (ny>2))
+		return;
+	m_NeighborUp[ny]=id;
+}
+
+void Operator_MPI::SetNeighborDown(int ny, int id)
+{
+	if ((ny<0) || (ny>2))
+		return;
+	m_NeighborDown[ny]=id;
+}
+
 void Operator_MPI::Init()
 {
 	Operator_SSE_Compressed::Init();
