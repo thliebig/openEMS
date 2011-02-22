@@ -44,49 +44,6 @@ Operator_MPI::~Operator_MPI()
 	Delete();
 }
 
-bool Operator_MPI::SetGeometryCSX(ContinuousStructure* geo)
-{
-	//manipulate geometry for this part...
-
-	if (m_MPI_Enabled)
-	{
-		CSRectGrid* grid = geo->GetGrid();
-		int nz = grid->GetQtyLines(2);
-		std::vector<unsigned int> jobs = AssignJobs2Threads(nz, m_NumProc);
-		double z_lines[jobs.at(m_MyID)+1];
-
-		if (m_MyID==0)
-		{
-			for (unsigned int n=0;n<jobs.at(0);++n)
-				z_lines[n] = grid->GetLine(2,n);
-			grid->ClearLines(2);
-			grid->AddDiscLines(2,jobs.at(0),z_lines);
-
-		}
-		else
-		{
-			unsigned int z_start=0;
-			for (int n=0;n<m_MyID;++n)
-				z_start+=jobs.at(n);
-			for (unsigned int n=0;n<=jobs.at(m_MyID);++n)
-				z_lines[n] = grid->GetLine(2,z_start+n-1);
-			grid->ClearLines(2);
-			grid->AddDiscLines(2,jobs.at(m_MyID)+1,z_lines);
-		}
-
-		//lower neighbor is ID-1
-		if (m_MyID>0)
-			m_NeighborDown[2]=m_MyID-1;
-		//upper neighbor is ID+1
-		if (m_MyID<m_NumProc-1)
-			m_NeighborUp[2]=m_MyID+1;
-	}
-	else
-		cerr << "Operator_MPI::SetGeometryCSX: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;
-
-	return Operator_SSE_Compressed::SetGeometryCSX(geo);
-}
-
 double Operator_MPI::CalcTimestep()
 {
 	double ret = Operator::CalcTimestep();

@@ -31,6 +31,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include "mpi.h"
+#include "tools/useful.h"
 
 openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
 {
@@ -39,6 +40,7 @@ openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
 
 	m_MaxEnergy = 0;
 	m_EnergyDecrement = 1;
+	m_MPI_Op = NULL;
 
 	if (m_NumProc>1)
 		m_MPI_Enabled=true;
@@ -83,17 +85,75 @@ bool openEMS_FDTD_MPI::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
+bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
+{
+	//manipulate geometry for this part...
+	UNUSED(FDTD_Opts);
+
+	if (m_MPI_Enabled)
+	{
+		CSRectGrid* grid = m_CSX->GetGrid();
+		int nz = grid->GetQtyLines(2);
+		std::vector<unsigned int> jobs = AssignJobs2Threads(nz, m_NumProc);
+		double z_lines[jobs.at(m_MyID)+1];
+
+		if (m_MyID==0)
+		{
+			for (unsigned int n=0;n<jobs.at(0);++n)
+				z_lines[n] = grid->GetLine(2,n);
+			grid->ClearLines(2);
+			grid->AddDiscLines(2,jobs.at(0),z_lines);
+
+		}
+		else
+		{
+			unsigned int z_start=0;
+			for (int n=0;n<m_MyID;++n)
+				z_start+=jobs.at(n);
+			for (unsigned int n=0;n<=jobs.at(m_MyID);++n)
+				z_lines[n] = grid->GetLine(2,z_start+n-1);
+			grid->ClearLines(2);
+			grid->AddDiscLines(2,jobs.at(m_MyID)+1,z_lines);
+		}
+
+		//lower neighbor is ID-1
+		if (m_MyID>0)
+			m_MPI_Op->m_NeighborDown[2]=m_MyID-1;
+		//upper neighbor is ID+1
+		if (m_MyID<m_NumProc-1)
+			m_MPI_Op->m_NeighborUp[2]=m_MyID+1;
+	}
+	else
+		cerr << "openEMS_FDTD_MPI::SetupMPI: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;
+
+	return true;
+}
+
+
 bool openEMS_FDTD_MPI::SetupOperator(TiXmlElement* FDTD_Opts)
 {
+	bool ret = true;
 	if (m_engine == EngineType_MPI)
 	{
 		FDTD_Op = Operator_MPI::New();
-		return true;
 	}
 	else
 	{
-		return openEMS::SetupOperator(FDTD_Opts);
+		ret = openEMS::SetupOperator(FDTD_Opts);
 	}
+
+	m_MPI_Op = dynamic_cast<Operator_MPI*>(FDTD_Op);
+
+	if ((m_MPI_Enabled) && (m_MPI_Op==NULL))
+	{
+		cerr << "openEMS_FDTD_MPI::SetupOperator: Error: MPI is enabled but requested engine does not support MPI... EXIT!!!" << endl;
+		MPI_Barrier(MPI_COMM_WORLD);
+		exit(0);
+	}
+
+	ret &=SetupMPI(FDTD_Opts);
+
+	return ret;
 }
 
 unsigned int openEMS_FDTD_MPI::GetNextStep()

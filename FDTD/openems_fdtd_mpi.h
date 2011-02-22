@@ -21,6 +21,7 @@
 #include "openems.h"
 
 class ProcessFields;
+class Operator_MPI;
 
 class openEMS_FDTD_MPI : public openEMS
 {
@@ -33,10 +34,13 @@ public:
 	virtual bool parseCommandLineArgument( const char *argv );
 
 protected:
+	Operator_MPI* m_MPI_Op;
 	int m_MyID;
 	int m_NumProc;
 	bool m_MPI_Enabled;
 	unsigned int m_NumberCells;
+
+	virtual bool SetupMPI(TiXmlElement* FDTD_Opts);
 	virtual bool SetupOperator(TiXmlElement* FDTD_Opts);
 
 	int* m_Gather_Buffer;

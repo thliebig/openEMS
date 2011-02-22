@@ -23,14 +23,13 @@
 class Operator_MPI : public Operator_SSE_Compressed
 {
 	friend class Engine_MPI;
+	friend class openEMS_FDTD_MPI;
 public:
 	//! Create a new operator
 	static Operator_MPI* New();
 	virtual ~Operator_MPI();
 
 	bool GetMPIEnabled() const {return m_MPI_Enabled;}
-
-	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
 	virtual void SetBoundaryCondition(int* BCs);
 	virtual void ApplyElectricBC(bool* dirs);
