@@ -110,6 +110,15 @@ protected:
 	unsigned int m_numThreads; //!< number of worker threads
 	volatile bool m_stopThreads;
 
+#ifdef MPI_SUPPORT
+	/*! Workaround needed for subgridding scheme... (see Engine_CylinderMultiGrid)
+	 Some engines may need an additional barrier for synchronizing MPI communication.
+	 This engine will not initialize or cleanup this barrier, but check for it and wait before executing any MPI sync.
+	 Make sure to cleanup (delete) this barriere before Engine_Multithread::Reset() is called.
+	 */
+	boost::barrier *m_MPI_Barrier;
+#endif
+
 #ifdef ENABLE_DEBUG_TIME
 	std::map<boost::thread::id, std::vector<double> > m_timer_list;
 #endif

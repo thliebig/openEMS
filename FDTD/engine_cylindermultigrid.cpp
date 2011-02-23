@@ -62,6 +62,11 @@ Engine_CylinderMultiGrid::Engine_CylinderMultiGrid(const Operator_CylinderMultiG
 
 Engine_CylinderMultiGrid::~Engine_CylinderMultiGrid()
 {
+#ifdef MPI_SUPPORT
+	delete m_InnerEngine->m_MPI_Barrier;
+	m_InnerEngine->m_MPI_Barrier = NULL;
+#endif
+
 	m_Thread_NumTS = 0;
 	m_startBarrier->wait();
 
@@ -81,7 +86,6 @@ Engine_CylinderMultiGrid::~Engine_CylinderMultiGrid()
 	m_startBarrier = NULL;
 	delete m_stopBarrier;
 	m_stopBarrier = NULL;
-
 }
 
 void Engine_CylinderMultiGrid::Init()
@@ -103,6 +107,11 @@ void Engine_CylinderMultiGrid::Init()
 
 	m_InnerEngine->SortExtensionByPriority();
 	SortExtensionByPriority();
+
+#ifdef MPI_SUPPORT
+	//assign an MPI barrier to inner Engine
+	m_InnerEngine->m_MPI_Barrier  = new boost::barrier(2);
+#endif
 }
 
 bool Engine_CylinderMultiGrid::IterateTS(unsigned int iterTS)
@@ -246,8 +255,28 @@ void Engine_CylinderMultiGrid::InterpolCurrChild2Base(unsigned int rzPlane)
 			f4_curr[2][pos[0]][pos[1]][pos[2]].v  = m_InnerEngine->f4_curr[2][pos[0]][pos[1]/2][pos[2]].v + one_fourth.v * m_InnerEngine->f4_curr[2][pos[0]][pos[1]/2][pos[2]].v - one_fourth.v * m_InnerEngine->f4_curr[2][pos[0]][pos[1]/2-1][pos[2]].v;
 		}
 	}
-
 }
+
+#ifdef MPI_SUPPORT
+	void Engine_CylinderMultiGrid::SendReceiveVoltages()
+	{
+		//do the local voltage sync, child is waiting...
+		Engine_Multithread::SendReceiveVoltages();
+
+		//run inner voltage sync
+		m_InnerEngine->m_MPI_Barrier->wait();
+	}
+
+	void Engine_CylinderMultiGrid::SendReceiveCurrents()
+	{
+		//do the local current sync, child is waiting...
+		Engine_Multithread::SendReceiveCurrents();
+
+		//run inner voltage sync
+		m_InnerEngine->m_MPI_Barrier->wait();
+	}
+
+#endif
 
 /****************************************************************************************/
 Engine_CylinderMultiGrid_Thread::Engine_CylinderMultiGrid_Thread( Engine_Multithread* engine, boost::barrier *start, boost::barrier *stop, volatile unsigned int* numTS, bool isBase)

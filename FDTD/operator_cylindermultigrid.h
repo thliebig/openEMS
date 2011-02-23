@@ -53,6 +53,12 @@ public:
 
 	virtual void ShowStat() const;
 
+#ifdef MPI_SUPPORT
+	virtual void SetTag(int tag);
+	virtual void SetNeighborUp(int ny, int id);
+	virtual void SetNeighborDown(int ny, int id);
+#endif
+
 protected:
 	Operator_CylinderMultiGrid(vector<double> Split_Radii);
 	virtual void Init();

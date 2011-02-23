@@ -127,6 +127,26 @@ void Operator_CylinderMultiGrid::Init()
 		m_InnerOp = Operator_CylinderMultiGrid::New(m_Split_Radii,m_numThreads);
 }
 
+#ifdef MPI_SUPPORT
+void Operator_CylinderMultiGrid::SetTag(int tag)
+{
+	m_MyTag = tag;
+	m_InnerOp->SetTag(tag+1);
+}
+
+void Operator_CylinderMultiGrid::SetNeighborUp(int ny, int id)
+{
+	Operator_Cylinder::SetNeighborUp(ny,id);
+	m_InnerOp->SetNeighborUp(ny,id);
+}
+
+void Operator_CylinderMultiGrid::SetNeighborDown(int ny, int id)
+{
+	Operator_Cylinder::SetNeighborDown(ny,id);
+	m_InnerOp->SetNeighborDown(ny,id);
+}
+#endif
+
 void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
 {
 	vector<unsigned int> jpt = AssignJobs2Threads(numLines[0]- m_Split_Pos + 1, numThreads, true);

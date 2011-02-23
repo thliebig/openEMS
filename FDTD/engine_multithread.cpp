@@ -51,6 +51,10 @@ Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : ENGINE_
 	m_IterateBarrier = 0;
 	m_startBarrier = 0;
 	m_stopBarrier = 0;
+
+#ifdef ENABLE_DEBUG_TIME
+	m_MPI_Barrier = 0;
+#endif
 }
 
 Engine_Multithread::~Engine_Multithread()
@@ -100,6 +104,9 @@ void Engine_Multithread::Init()
 
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
+#ifdef MPI_SUPPORT
+	m_MPI_Barrier = 0;
+#endif
 
 	for (unsigned int n=0; n<m_numThreads; n++)
 	{
@@ -279,7 +286,11 @@ void thread::operator()()
 
 #ifdef MPI_SUPPORT
 			if (m_threadID==0)
+			{
+				if (m_enginePtr->m_MPI_Barrier)
+					m_enginePtr->m_MPI_Barrier->wait();
 				m_enginePtr->SendReceiveVoltages();
+			}
 			m_enginePtr->m_IterateBarrier->wait();
 #endif
 
@@ -312,7 +323,11 @@ void thread::operator()()
 
 #ifdef MPI_SUPPORT
 			if (m_threadID==0)
+			{
+				if (m_enginePtr->m_MPI_Barrier)
+					m_enginePtr->m_MPI_Barrier->wait();
 				m_enginePtr->SendReceiveCurrents();
+			}
 			m_enginePtr->m_IterateBarrier->wait();
 #endif
 
