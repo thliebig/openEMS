@@ -3,14 +3,19 @@ function RunOpenEMS_MPI(Sim_Path, Sim_File, NrProc, opts, Settings, copy_bin)
 %
 % Run an openEMS simulation with MPI support
 %
-% example:
+% %example:
 % Sim_Path = 'MySimPath';
 % Sim_File = 'helix.xml'; %should be created by WriteOpenEMS
 % 
 % NrProc = 2; % set the number of processes to start
 % 
 % % mpi binary path on all nodes needed
-% Settings.MPI_Binary = '~/devel/openEMS/openEMS_MPI';
+% Settings.MPI.Binary = '~/devel/openEMS/openEMS_MPI';
+% 
+% % optional:
+% % define a hostfile and number of host to boot the mpd daemon:
+% Settings.MPI.HostFile = '/home/thorsten/ate-pc9x.hosts';
+% Settings.MPI.TotalNum = 2;
 % 
 % opts = '--engine=MPI';
 % 
@@ -18,9 +23,9 @@ function RunOpenEMS_MPI(Sim_Path, Sim_File, NrProc, opts, Settings, copy_bin)
 % Settings.LogFile = 'openEMS.log'
 % Settings.Silent  = 0
 %
-% copy_bin = 1; %copy openEMS binary to <Settings.MPI_Binary> on all nodes (mainly for developers)
+% copy_bin = 1; %copy openEMS binary to <Settings.MPI.Binary> on all nodes (mainly for developers)
 %
-% RunOpenEMS(Sim_Path,Sim_File, NrProc, opts, Settings)
+% RunOpenEMS_MPI(Sim_Path, Sim_File, NrProc, opts, Settings, copy_bin)
 %
 % See also WriteOpenEMS, RunOpenEMS
 %
@@ -42,8 +47,22 @@ if (NrProc<2)
     return;
 end
 
+if ~isfield(Settings,'MPI')
+    warning('openEMS:RunOpenEMS_MPI','MPI settings not found... running non-MPI openEMS');
+    RunOpenEMS(Sim_Path,Sim_File,opts,Settings);
+    return;
+end
+
 if nargin < 6
     copy_bin = 0;
+end
+
+if isfield(Settings.MPI,'HostFile')
+    [status, result] = unix(['mpdboot -v --file=' Settings.MPI.HostFile ' --totalnum=' int2str(Settings.MPI.TotalNum)]);
+    if (status~=0)
+        disp(result);
+        error('openEMS:RunOpenEMS','mpdboot failed to boot mpi daemon!');
+    end
 end
 
 savePath = pwd;
@@ -67,7 +86,7 @@ if (copy_bin>0)
     dir = fileparts( filename );
     openEMS_Path = [dir filesep '..' filesep];
 
-    [stat, res] = unix(['cp ' openEMS_Path 'openEMS ' Settings.MPI_Binary]);
+    [stat, res] = unix(['cp ' openEMS_Path 'openEMS ' Settings.MPI.Binary]);
     if (stat~=0)
         disp(res);
         error('openEMS:RunOpenEMS','host copy failed!');
@@ -105,7 +124,7 @@ for n=1:numel(Remote_Nodes)
     
     %copy openEMS & all simulation files to the ssh host
     if (copy_bin>0)
-        [stat, res] = unix(['scp ' scp_options ' ' Settings.MPI_Binary ' ' remote_name ':' Settings.MPI_Binary]);
+        [stat, res] = unix(['scp ' scp_options ' ' Settings.MPI.Binary ' ' remote_name ':' Settings.MPI.Binary]);
         if (stat~=0)
             disp(res);
             error('openEMS:RunOpenEMS',['scp to remote ' remote_name ' failed!']);
@@ -127,7 +146,7 @@ else
     append_unix = [];
 end
 
-status = system(['LD_LIBRARY_PATH= mpirun -l -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI_Binary ' ' Sim_File ' ' opts ' ' append_unix]);
+status = system(['LD_LIBRARY_PATH= mpirun -l -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
 if (status~=0)
     disp(result);
     error('openEMS:RunOpenEMS','mpirun openEMS failed!');
@@ -155,6 +174,7 @@ end
     
 for n=1:numel(Remote_Nodes)
     remote_name = Remote_Nodes{n};
+    disp(['Copy data from remote node: ' remote_name]);
     [stat, res] = unix(['scp -r ' scp_options ' ' remote_name ':' work_path '/* ' pwd '/']);
     if (stat~=0);
         disp(res);
