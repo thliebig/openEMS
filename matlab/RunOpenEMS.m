@@ -13,6 +13,9 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % Settings.SSH.host = '<hostname or ip>'
 % Settings.SSH.bin = '<path_to_openEMS>/openEMS.sh'
 %
+% optional MPI:
+% Settings.MPI.xxx --> help RunOpenEMS_MPI
+% 
 % Settings.LogFile = 'openEMS.log'
 % Settings.Silent  = 0
 %
@@ -30,6 +33,13 @@ end
 
 if (nargin<4)
     Settings = [];
+end
+
+if (isfield(Settings,'MPI'))
+    if (Settings.MPI.NrProc>1)
+        RunOpenEMS_MPI(Sim_Path, Sim_File, opts, Settings);
+        return;
+    end
 end
 
 savePath = pwd;
