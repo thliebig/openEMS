@@ -32,6 +32,7 @@
 #include <time.h>
 #include "mpi.h"
 #include "tools/useful.h"
+#include "tinyxml.h"
 
 openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
 {
@@ -57,12 +58,18 @@ openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
 		m_Gather_Buffer = NULL;
 		m_Energy_Buffer = NULL;
 	}
+
+	m_Original_Grid = NULL;
 }
 
 openEMS_FDTD_MPI::~openEMS_FDTD_MPI()
 {
 	delete[] m_Gather_Buffer;
+	m_Gather_Buffer = NULL;
 	delete[] m_Energy_Buffer;
+	m_Energy_Buffer = NULL;
+	delete m_Original_Grid;
+	m_Original_Grid = NULL;
 }
 
 bool openEMS_FDTD_MPI::parseCommandLineArgument( const char *argv )
@@ -90,43 +97,107 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 	//manipulate geometry for this part...
 	UNUSED(FDTD_Opts);
 
-	if (m_MPI_Enabled)
+	if (!m_MPI_Enabled)
 	{
-		CSRectGrid* grid = m_CSX->GetGrid();
-		int nz = grid->GetQtyLines(2);
-		std::vector<unsigned int> jobs = AssignJobs2Threads(nz, m_NumProc);
-		double z_lines[jobs.at(m_MyID)+1];
-
-		if (m_MyID==0)
-		{
-			for (unsigned int n=0;n<jobs.at(0);++n)
-				z_lines[n] = grid->GetLine(2,n);
-			grid->ClearLines(2);
-			grid->AddDiscLines(2,jobs.at(0),z_lines);
-
-		}
-		else
-		{
-			unsigned int z_start=0;
-			for (int n=0;n<m_MyID;++n)
-				z_start+=jobs.at(n);
-			for (unsigned int n=0;n<=jobs.at(m_MyID);++n)
-				z_lines[n] = grid->GetLine(2,z_start+n-1);
-			grid->ClearLines(2);
-			grid->AddDiscLines(2,jobs.at(m_MyID)+1,z_lines);
-		}
-
-		//lower neighbor is ID-1
-		if (m_MyID>0)
-			m_MPI_Op->SetNeighborDown(2,m_MyID-1);
-		//upper neighbor is ID+1
-		if (m_MyID<m_NumProc-1)
-			m_MPI_Op->SetNeighborUp(2,m_MyID+1);
-
-		m_MPI_Op->SetTag(0);
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "openEMS_FDTD_MPI::SetupMPI: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;
+		return true;
 	}
-	else
-		cerr << "openEMS_FDTD_MPI::SetupMPI: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;
+
+	TiXmlElement* MPI_Elem = FDTD_Opts->FirstChildElement("MPI");
+
+	CSRectGrid* grid = m_CSX->GetGrid();
+	delete m_Original_Grid;
+	m_Original_Grid = CSRectGrid::Clone(grid);
+
+	vector<unsigned int> SplitNumber[3];
+
+	string argNames[] = {"SplitPos_X", "SplitPos_Y", "SplitPos_Z"};
+	const char* tmp = NULL;
+	for (int n=0;n<3;++n)
+	{
+		SplitNumber[n].push_back(0);
+		tmp = MPI_Elem->Attribute(argNames[n].c_str());
+		if (tmp)
+		{
+			vector<double> SplitLines = SplitString2Double(tmp, ',');
+			bool inside;
+			unsigned int line;
+			for (size_t lineN = 0; lineN<SplitLines.size();++lineN)
+			{
+				line = m_Original_Grid->Snap2LineNumber(n, SplitLines.at(lineN), inside);
+				if (inside)
+					SplitNumber[n].push_back(line);
+			}
+		}
+
+		SplitNumber[n].push_back(m_Original_Grid->GetQtyLines(n)-1);
+		unique(SplitNumber[n].begin(), SplitNumber[n].end());
+	}
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	//validate number of processes
+	int numProcs = (SplitNumber[0].size()-1)*(SplitNumber[1].size()-1)*(SplitNumber[2].size()-1);
+	if (numProcs!=m_NumProc)
+	{
+		if (m_MyID==0)
+			cerr << "openEMS_FDTD_MPI::SetupMPI: Error: Requested splits require " << numProcs << " processes, but only " << m_NumProc << " were found! Exit! " << endl;
+		exit(10);
+	}
+
+	//create process table
+	unsigned int procN = 0;
+	int procTable[SplitNumber[0].size()-1][SplitNumber[1].size()-1][SplitNumber[2].size()-1];
+	for (size_t i=0;i<SplitNumber[0].size()-1;++i)
+		for (size_t j=0;j<SplitNumber[1].size()-1;++j)
+			for (size_t k=0;k<SplitNumber[2].size()-1;++k)
+			{
+				procTable[i][j][k] = procN;
+				++procN;
+			}
+
+	//assign mesh and neighbors to this process
+	for (size_t i=0;i<SplitNumber[0].size()-1;++i)
+	{
+		for (size_t j=0;j<SplitNumber[1].size()-1;++j)
+		{
+			for (size_t k=0;k<SplitNumber[2].size()-1;++k)
+			{
+				if (procTable[i][j][k] == m_MyID)
+				{
+					grid->ClearLines(0);
+					grid->ClearLines(1);
+					grid->ClearLines(2);
+
+					for (unsigned int n=SplitNumber[0].at(i);n<=SplitNumber[0].at(i+1);++n)
+						grid->AddDiscLine(0, m_Original_Grid->GetLine(0,n) );
+					for (unsigned int n=SplitNumber[1].at(j);n<=SplitNumber[1].at(j+1);++n)
+						grid->AddDiscLine(1, m_Original_Grid->GetLine(1,n) );
+					for (unsigned int n=SplitNumber[2].at(k);n<=SplitNumber[2].at(k+1);++n)
+						grid->AddDiscLine(2, m_Original_Grid->GetLine(2,n) );
+
+					if (i>0)
+						m_MPI_Op->SetNeighborDown(0,procTable[i-1][j][k]);
+					if (i<SplitNumber[0].size()-2)
+						m_MPI_Op->SetNeighborUp(0,procTable[i+1][j][k]);
+
+					if (j>0)
+						m_MPI_Op->SetNeighborDown(1,procTable[i][j-1][k]);
+					if (j<SplitNumber[1].size()-2)
+						m_MPI_Op->SetNeighborUp(1,procTable[i][j+1][k]);
+
+					if (k>0)
+						m_MPI_Op->SetNeighborDown(2,procTable[i][j][k-1]);
+					if (k<SplitNumber[2].size()-2)
+						m_MPI_Op->SetNeighborUp(2,procTable[i][j][k+1]);
+
+				}
+			}
+		}
+	}
+
+	m_MPI_Op->SetTag(0);
 
 	return true;
 }

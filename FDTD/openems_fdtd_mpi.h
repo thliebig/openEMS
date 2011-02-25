@@ -22,6 +22,7 @@
 
 class ProcessFields;
 class Operator_MPI;
+class CSRectGrid;
 
 class openEMS_FDTD_MPI : public openEMS
 {
@@ -35,6 +36,7 @@ public:
 
 protected:
 	Operator_MPI* m_MPI_Op;
+	CSRectGrid* m_Original_Grid;
 	int m_MyID;
 	int m_NumProc;
 	bool m_MPI_Enabled;
