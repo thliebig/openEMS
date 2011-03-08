@@ -36,7 +36,7 @@ Operator_MPI::Operator_MPI() : Operator_SSE_Compressed()
 	m_NumProc = MPI::COMM_WORLD.Get_size();
 
 	//enabled only if more than one process is active
-	m_MPI_Enabled = m_NumProc>0;
+	m_MPI_Enabled = m_NumProc>1;
 }
 
 Operator_MPI::~Operator_MPI()
