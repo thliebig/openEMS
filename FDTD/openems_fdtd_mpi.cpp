@@ -60,6 +60,19 @@ openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
 	}
 
 	m_Original_Grid = NULL;
+
+	//redirect output to file for all ranks > 0
+	if ((m_MyID>0) && (g_settings.GetVerboseLevel()==0))
+	{
+		stringstream out_name;
+		out_name << "ID" << m_MyID << "_" << "output.txt";
+		m_Output = new ofstream();
+		m_Output->open(out_name.str().c_str());
+		cout.rdbuf(m_Output->rdbuf());
+		cerr.rdbuf(m_Output->rdbuf());
+	}
+	else
+		m_Output = NULL;
 }
 
 openEMS_FDTD_MPI::~openEMS_FDTD_MPI()
@@ -70,6 +83,8 @@ openEMS_FDTD_MPI::~openEMS_FDTD_MPI()
 	m_Energy_Buffer = NULL;
 	delete m_Original_Grid;
 	m_Original_Grid = NULL;
+	delete m_Output;
+	m_Output=NULL;
 }
 
 bool openEMS_FDTD_MPI::parseCommandLineArgument( const char *argv )

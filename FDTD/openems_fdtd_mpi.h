@@ -58,6 +58,9 @@ protected:
 	double CalcEnergy();
 
 	virtual bool SetupProcessing();
+
+	//output redirection to file for ranks > 0
+	ofstream* m_Output;
 };
 
 #endif // OPENEMS_FDTD_MPI_H

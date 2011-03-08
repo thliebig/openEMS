@@ -62,7 +62,7 @@ ssh_options = [scp_options ' -x'];
 if isfield(Settings.MPI,'HostFile')
     [status, result] = unix(['mpirun -machinefile ' Settings.MPI.HostFile ' -n  ' int2str(NrProc) '  hostname']);
 else
-    [status, result] = unix(['mpirun -n ' int2str(NrProc) '  hostname'])
+    [status, result] = unix(['mpirun -n ' int2str(NrProc) '  hostname']);
 end
 
 if (status~=0)
@@ -108,10 +108,14 @@ end
 
 disp(['Running remote openEMS_MPI in working dir: ' work_path]);
 
+if ~isfield(Settings.MPI,'GlobalArgs')
+    Settings.MPI.GlobalArgs = '';
+end
+
 if isfield(Settings.MPI,'HostFile')
     [status]  = system(['LD_LIBRARY_PATH= mpirun -machinefile ' Settings.MPI.HostFile ' -l -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
 else
-    [status]  = system(['LD_LIBRARY_PATH= mpirun -l -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
+    [status]  = system(['LD_LIBRARY_PATH= mpirun ' Settings.MPI.GlobalArgs ' -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
 end
 if (status~=0)
     error('openEMS:RunOpenEMS','mpirun openEMS failed!');
