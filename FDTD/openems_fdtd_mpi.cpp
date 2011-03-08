@@ -87,6 +87,26 @@ openEMS_FDTD_MPI::~openEMS_FDTD_MPI()
 	m_Output=NULL;
 }
 
+string openEMS_FDTD_MPI::GetExtLibsInfo()
+{
+	stringstream str;
+
+	str << openEMS::GetExtLibsInfo();
+
+	// MPI
+	str << "\t\t" << "MPI version: " << MPI_VERSION << "." << MPI_SUBVERSION << " -- compiled against: ";
+#ifdef MPICH2_VERSION
+	str << "MPICH2 " MPICH2_VERSION << endl;
+#endif
+
+#ifdef OMPI_MAJOR_VERSION
+	str << "openMPI: " OMPI_MAJOR_VERSION << "." << OMPI_MINOR_VERSION << "." << OMPI_RELEASE_VERSION << endl;
+#endif
+
+	return str.str();
+}
+
+
 bool openEMS_FDTD_MPI::parseCommandLineArgument( const char *argv )
 {
 	if (!argv)

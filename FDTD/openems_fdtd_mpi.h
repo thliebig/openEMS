@@ -34,6 +34,8 @@ public:
 
 	virtual bool parseCommandLineArgument( const char *argv );
 
+	static string GetExtLibsInfo();
+
 protected:
 	Operator_MPI* m_MPI_Op;
 	CSRectGrid* m_Original_Grid;

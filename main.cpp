@@ -63,7 +63,11 @@ int main(int argc, char *argv[])
 	cout << " | openEMS " << bits << " -- version " GIT_VERSION << endl;
 	cout << " | (C) 2010 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
 	cout << " -------------------------------------------------------------------- " << endl;
+#ifdef MPI_SUPPORT
+	cout << openEMS_FDTD_MPI::GetExtLibsInfo() << endl;
+#else
 	cout << openEMS::GetExtLibsInfo() << endl;
+#endif
 
 	if (argc<=1)
 	{
@@ -75,12 +79,14 @@ int main(int argc, char *argv[])
 		cout << "\t--debug-boxes\t\tDump e.g. probe boxes to vtk file for debugging" << endl;
 		cout << "\t--debug-CSX\t\tWrite CSX geometry file to debugCSX.xml" << endl;
 		cout << "\t--engine=<type>\t\tChoose engine type" << endl;
-		cout << "\t\t--engine=fastest\t\tfastest available engine" << endl;
+		cout << "\t\t--engine=fastest\t\tfastest available engine (default)" << endl;
 		cout << "\t\t--engine=sse\t\t\tengine using sse vector extensions" << endl;
 		cout << "\t\t--engine=sse_compressed\t\tengine using compressed operator + sse vector extensions" << endl;
-		cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + multithreading" << endl;
 #ifdef MPI_SUPPORT
-		cout << "\t\t--engine=MPI\t\tengine using compressed operator + sse vector extensions + MPI parallel processing" << endl;
+		cout << "\t\t--engine=MPI\t\t\tengine using compressed operator + sse vector extensions + MPI parallel processing" << endl;
+		cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + MPI + multithreading" << endl;
+#else
+		cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + multithreading" << endl;
 #endif
 		cout << "\t--numThreads=<n>\tForce use n threads for multithreaded engine (needs: --engine=multithreaded)" << endl;
 		cout << "\t--no-simulation\tonly run preprocessing; do not simulate" << endl;
