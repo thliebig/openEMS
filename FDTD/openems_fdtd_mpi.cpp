@@ -136,14 +136,16 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 			int SplitN=0;
 			if (MPI_Elem->QueryIntAttribute( arg_N_Names[n].c_str(), &SplitN) == TIXML_SUCCESS)
 			{
-				if (SplitN<=1)
-					break;
-				vector<unsigned int> jobs = AssignJobs2Threads(m_Original_Grid->GetQtyLines(n)-1, SplitN, true);
-				unsigned int line=0;
-				for (size_t i = 0; i<jobs.size()-1;++i)
+				if (SplitN>1)
 				{
-					line += jobs.at(i);
-					SplitNumber[n].push_back(line);
+
+					vector<unsigned int> jobs = AssignJobs2Threads(m_Original_Grid->GetQtyLines(n)-1, SplitN, true);
+					unsigned int line=0;
+					for (size_t i = 0; i<jobs.size()-1;++i)
+					{
+						line += jobs.at(i);
+						SplitNumber[n].push_back(line);
+					}
 				}
 			}
 		}
