@@ -93,8 +93,6 @@ protected:
 	virtual void ClearExtensions();
 	vector<Engine_Extension*> m_Eng_exts;
 
-	ofstream file_et, file_ht; //excite signal dump file
-
 	friend class NS_Engine_Multithread::thread; // evil hack to access numTS from multithreading context
 };
 

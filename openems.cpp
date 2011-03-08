@@ -605,6 +605,8 @@ int openEMS::SetupFDTD(const char* file)
 	if (!FDTD_Op->SetupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
 		exit(2);
 
+	FDTD_Op->DumpExciationSignals();
+
 	timeval OpDoneTime;
 	gettimeofday(&OpDoneTime,NULL);
 

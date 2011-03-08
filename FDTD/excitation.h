@@ -43,6 +43,12 @@ public:
 	void SetNyquistNum(unsigned int nyquist) {m_nyquistTS=nyquist;}
 	unsigned int GetNyquistNum() const {return m_nyquistTS;}
 
+	//! Dump voltage excitation signal to ASCII file
+	void DumpVoltageExcite(string filename);
+
+	//! Dump current excitation signal to ASCII file
+	void DumpCurrentExcite(string filename);
+
 	//Excitation time-signal
 	unsigned int Length;
 	FDTD_FLOAT* Signal_volt;

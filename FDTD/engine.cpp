@@ -52,9 +52,6 @@ void Engine::Init()
 	volt = Create_N_3DArray<FDTD_FLOAT>(numLines);
 	curr = Create_N_3DArray<FDTD_FLOAT>(numLines);
 
-	file_et.open( "et" );
-	file_ht.open( "ht" );
-
 	InitExtensions();
 	SortExtensionByPriority();
 }
@@ -97,9 +94,6 @@ void Engine::Reset()
 	volt=NULL;
 	Delete_N_3DArray(curr,numLines);
 	curr=NULL;
-
-	file_et.close();
-	file_ht.close();
 
 	ClearExtensions();
 }
@@ -155,10 +149,6 @@ void Engine::ApplyVoltageExcite()
 		pos[2]=Op->Exc->Volt_index[2][n];
 		SetVolt(ny,pos, GetVolt(ny,pos) + Op->Exc->Volt_amp[n]*Op->Exc->Signal_volt[exc_pos]);
 	}
-
-	// write the voltage excitation function into the file "et"
-	if (numTS < Op->Exc->Length)
-		file_et << numTS * Op->GetTimestep() << "\t" << Op->Exc->Signal_volt[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
 
 void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
@@ -206,10 +196,6 @@ void Engine::ApplyCurrentExcite()
 		pos[2]=Op->Exc->Curr_index[2][n];
 		SetCurr(ny,pos, GetCurr(ny,pos) + Op->Exc->Curr_amp[n]*Op->Exc->Signal_curr[exc_pos]);
 	}
-
-	// write the current excitation function into the file "ht"
-	if (numTS < Op->Exc->Length)
-		file_ht << (numTS+0.5) * Op->GetTimestep() << "\t" << Op->Exc->Signal_curr[numTS] << "\n"; // do not use std::endl here, because it will do an implicit flush
 }
 
 void Engine::DoPreVoltageUpdates()

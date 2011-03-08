@@ -17,6 +17,8 @@
 
 #include "tools/array_ops.h"
 #include "tools/useful.h"
+#include <iostream>
+#include <fstream>
 #include "fparser.hh"
 #include "tinyxml.h"
 #include "excitation.h"
@@ -246,6 +248,28 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 	}
 
 	SetNyquistNum( CalcNyquistNum(f0,dT) );
+}
+
+void Excitation::DumpVoltageExcite(string filename)
+{
+	ofstream file;
+	file.open( filename.c_str() );
+	if (file.fail())
+		return;
+	for (unsigned int n=1; n<Length+1; ++n)
+		file << (n-1)*dT << "\t" << Signal_volt[n] << "\n";
+	file.close();
+}
+
+void Excitation::DumpCurrentExcite(string filename)
+{
+	ofstream file;
+	file.open( filename.c_str() );
+	if (file.fail())
+		return;
+	for (unsigned int n=1; n<Length+1; ++n)
+		file << (n-1)*dT + 0.5*dT << "\t" << Signal_curr[n] << "\n";
+	file.close();
 }
 
 void Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,

@@ -1128,6 +1128,12 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	return true;
 }
 
+void Operator::DumpExciationSignals()
+{
+	Exc->DumpVoltageExcite("et");
+	Exc->DumpCurrentExcite("ht");
+}
+
 void Operator::Init_EC()
 {
 	for (int n=0; n<3; ++n)
