@@ -112,13 +112,14 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 
 	vector<unsigned int> SplitNumber[3];
 
-	string argNames[] = {"SplitPos_X", "SplitPos_Y", "SplitPos_Z"};
+	string arg_Pos_Names[] = {"SplitPos_X", "SplitPos_Y", "SplitPos_Z"};
+	string arg_N_Names[] = {"SplitN_X", "SplitN_Y", "SplitN_Z"};
 	const char* tmp = NULL;
 	for (int n=0;n<3;++n)
 	{
 		SplitNumber[n].push_back(0);
-		tmp = MPI_Elem->Attribute(argNames[n].c_str());
-		if (tmp)
+		tmp = MPI_Elem->Attribute(arg_Pos_Names[n].c_str());
+		if (tmp) //check if a split position is requested
 		{
 			vector<double> SplitLines = SplitString2Double(tmp, ',');
 			bool inside;
@@ -128,6 +129,22 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 				line = m_Original_Grid->Snap2LineNumber(n, SplitLines.at(lineN), inside);
 				if (inside)
 					SplitNumber[n].push_back(line);
+			}
+		}
+		else //check if a number of splits is requested
+		{
+			int SplitN=0;
+			if (MPI_Elem->QueryIntAttribute( arg_N_Names[n].c_str(), &SplitN) == TIXML_SUCCESS)
+			{
+				if (SplitN<=1)
+					break;
+				vector<unsigned int> jobs = AssignJobs2Threads(m_Original_Grid->GetQtyLines(n)-1, SplitN, true);
+				unsigned int line=0;
+				for (size_t i = 0; i<jobs.size()-1;++i)
+				{
+					line += jobs.at(i);
+					SplitNumber[n].push_back(line);
+				}
 			}
 		}
 
