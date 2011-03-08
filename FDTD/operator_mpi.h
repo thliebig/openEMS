@@ -40,6 +40,8 @@ public:
 	virtual void SetNeighborUp(int ny, int id);
 	virtual void SetNeighborDown(int ny, int id);
 
+	virtual void DumpExciationSignals();
+
 protected:
 	Operator_MPI();
 	bool m_MPI_Enabled;

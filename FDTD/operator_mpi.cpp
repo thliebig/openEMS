@@ -113,6 +113,12 @@ void Operator_MPI::SetNeighborDown(int ny, int id)
 	m_NeighborDown[ny]=id;
 }
 
+void Operator_MPI::DumpExciationSignals()
+{
+	if (m_MyID==0)
+		Operator_SSE_Compressed::DumpExciationSignals();
+}
+
 void Operator_MPI::Init()
 {
 	Operator_SSE_Compressed::Init();
