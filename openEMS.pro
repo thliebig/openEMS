@@ -153,8 +153,15 @@ HEADERS += Common/operator_base.h \
 	Common/processfieldprobe.h \
 	Common/processfields_sar.h
 
-MPI_SUPPORT { 
-    DEFINES += MPI_SUPPORT
+QMAKE_CXXFLAGS_RELEASE = -O3 \
+	-g \
+	-march=native
+QMAKE_CXXFLAGS_DEBUG = -O0 \
+	-g \
+	-march=native
+
+MPI_SUPPORT {
+	DEFINES += MPI_SUPPORT
 	INCLUDEPATH += /usr/include/mpi
 	LIBS += -lmpi -lmpi++
     HEADERS += FDTD/operator_mpi.h \
@@ -163,14 +170,9 @@ MPI_SUPPORT {
     SOURCES += FDTD/operator_mpi.cpp \
 		FDTD/engine_mpi.cpp \
 		FDTD/openems_fdtd_mpi.cpp
-}
 
-QMAKE_CXXFLAGS_RELEASE = -O3 \
-    -g \
-	-march=native
-QMAKE_CXXFLAGS_DEBUG = -O0 \
-    -g \
-	-march=native
+	QMAKE_CXXFLAGS_RELEASE += -Wno-unused-parameter #needed because mpich2 produces tons of unused parameter
+}
 
 # add git revision
 QMAKE_CXXFLAGS += -DGIT_VERSION=\\\"`git describe --tags`\\\"
