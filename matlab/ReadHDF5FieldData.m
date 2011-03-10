@@ -61,7 +61,7 @@ if (numel(TD.names)>0)
 end
 
 if (numel(FD.names)>0)
-    Nr_freq = numel(FD.names)
+    Nr_freq = numel(FD.names);
     for n=1:Nr_freq
         name = ['/FieldData/FD/f' int2str(n-1) '_real'];
         ind = find(strcmp(FD.names,name));
