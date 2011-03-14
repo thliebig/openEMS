@@ -18,6 +18,8 @@
 #ifndef OPERATOR_CYLINDERMULTIGRID_H
 #define OPERATOR_CYLINDERMULTIGRID_H
 
+#define CYLIDINDERMULTIGRID_LIMIT 20
+
 #include "operator_cylinder.h"
 
 //! This is a cylindrical FDTD operator using a simple multi-grid approach.

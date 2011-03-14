@@ -457,6 +457,8 @@ bool openEMS::SetupOperator(TiXmlElement* FDTD_Opts)
 		{
 			string rad(radii);
 			FDTD_Op = Operator_CylinderMultiGrid::New(SplitString2Double(rad,','),m_engine_numThreads);
+			if (FDTD_Op==NULL)
+				FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
 		}
 		else
 			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
