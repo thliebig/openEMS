@@ -42,6 +42,9 @@ public:
 
 	virtual void DumpExciationSignals();
 
+	virtual void SetSplitPos(int ny, unsigned int pos) {m_SplitPos[ny]=pos;}
+	virtual void SetOriginalMesh(CSRectGrid* orig_Mesh);
+
 protected:
 	Operator_MPI();
 	bool m_MPI_Enabled;
@@ -59,6 +62,10 @@ protected:
 	//the up and down neighbors, -1 if non for the given direction
 	int m_NeighborUp[3];
 	int m_NeighborDown[3];
+
+	double* m_OrigDiscLines[3];
+	unsigned int m_OrigNumLines[3];
+	unsigned int m_SplitPos[3];
 
 	string PrependRank(string name);
 

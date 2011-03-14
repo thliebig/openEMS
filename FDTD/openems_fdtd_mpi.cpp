@@ -18,6 +18,7 @@
 #include "openems_fdtd_mpi.h"
 #include "FDTD/engine_interface_fdtd.h"
 #include "FDTD/operator_mpi.h"
+#include "FDTD/operator_cylinder.h"
 #include "FDTD/engine_mpi.h"
 #include "Common/processfields.h"
 #include "Common/processintegral.h"
@@ -231,6 +232,10 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 					for (unsigned int n=SplitNumber[2].at(k);n<=SplitNumber[2].at(k+1);++n)
 						grid->AddDiscLine(2, m_Original_Grid->GetLine(2,n) );
 
+					m_MPI_Op->SetSplitPos(0,SplitNumber[0].at(i));
+					m_MPI_Op->SetSplitPos(1,SplitNumber[1].at(i));
+					m_MPI_Op->SetSplitPos(2,SplitNumber[2].at(i));
+
 					if (i>0)
 						m_MPI_Op->SetNeighborDown(0,procTable[i-1][j][k]);
 					if (i<SplitNumber[0].size()-2)
@@ -250,6 +255,8 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 			}
 		}
 	}
+
+	m_MPI_Op->SetOriginalMesh(m_Original_Grid);
 
 	m_MPI_Op->SetTag(0);
 

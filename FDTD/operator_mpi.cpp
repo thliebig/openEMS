@@ -129,6 +129,7 @@ void Operator_MPI::Init()
 	{
 		m_NeighborUp[i]=-1;
 		m_NeighborDown[i]=-1;
+		m_OrigDiscLines[i]=NULL;
 	}
 
 	int  namelen;
@@ -145,12 +146,29 @@ void Operator_MPI::Init()
 void Operator_MPI::Delete()
 {
 	delete[] m_Processor_Name;
+	m_Processor_Name = NULL;
+	for (int i=0;i<3;++i)
+	{
+		delete[] m_OrigDiscLines[i];
+		m_OrigDiscLines[i] = NULL;
+	}
+
 }
 
 void Operator_MPI::Reset()
 {
 	Delete();
 	Operator_SSE_Compressed::Reset();
+}
+
+void Operator_MPI::SetOriginalMesh(CSRectGrid* orig_Mesh)
+{
+	for (int n=0;n<3;++n)
+	{
+		delete[] m_OrigDiscLines[n];
+		m_OrigDiscLines[n] = NULL;
+		orig_Mesh->GetLines(n,m_OrigDiscLines[n],m_OrigNumLines[n]);
+	}
 }
 
 string Operator_MPI::PrependRank(string name)
