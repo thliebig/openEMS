@@ -558,6 +558,9 @@ int openEMS::SetupFDTD(const char* file)
 //		return(-2);
 	}
 
+	if (g_settings.GetVerboseLevel()>0)
+		m_CSX->ShowPropertyStatus(cerr);
+
 	if (CylinderCoords)
 		if (m_CSX->GetCoordInputType()!=CYLINDRICAL)
 		{
