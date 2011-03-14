@@ -50,6 +50,14 @@ public:
 	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
 	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
 
+	//! Get the FDTD raw disc delta, needed by Calc_EffMatPos() \sa Calc_EffMatPos
+	/*!
+	  Get the raw disc delta for a given position and direction.
+	  The result will be positive if a disc delta inside the simulation domain is requested.
+	  The result will be the negative value of the first or last disc delta respectivly if the position is outside the field domain.
+	  */
+	virtual double GetRawDiscDelta(int ny, const int pos) const;
+
 	//! Calculate the effective/averaged material properties at the given position and direction ny.
 	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
 
@@ -183,7 +191,6 @@ protected:
 	double* EC_R[3];
 
 	AdrOp* MainOp;
-	AdrOp* DualOp;
 
 	vector<Operator_Extension*> m_Op_exts;
 

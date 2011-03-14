@@ -68,7 +68,6 @@ void Operator::Init()
 	m_sigma=NULL;
 
 	MainOp=NULL;
-	DualOp=NULL;
 
 	for (int n=0; n<3; ++n)
 	{
@@ -91,7 +90,6 @@ void Operator::Delete()
 	Delete_N_3DArray(ii,numLines);
 	vv=vi=iv=ii=0;
 	delete MainOp; MainOp=0;
-	delete DualOp; DualOp=0;
 	for (int n=0; n<3; ++n)
 	{
 		delete[] EC_C[n];EC_C[n]=0;
@@ -954,6 +952,18 @@ bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC) const
 	return true;
 }
 
+double Operator::GetRawDiscDelta(int ny, const int pos) const
+{
+	//numLines[ny] is expected to be larger then 1 !
+
+	if (pos<0)
+		return (discLines[ny][0] - discLines[ny][1]);
+	if (pos>=(int)numLines[ny]-1)
+		return (discLines[ny][numLines[ny]-2] - discLines[ny][numLines[ny]-1]);
+
+	return (discLines[ny][pos+1] - discLines[ny][pos]);
+}
+
 bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const
 {
 	int n=ny;
@@ -964,12 +974,12 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	coord[0] = discLines[0][pos[0]];
 	coord[1] = discLines[1][pos[1]];
 	coord[2] = discLines[2][pos[2]];
-	double delta=MainOp->GetIndexDelta(n,pos[n]);
-	double deltaP=MainOp->GetIndexDelta(nP,pos[nP]);
-	double deltaPP=MainOp->GetIndexDelta(nPP,pos[nPP]);
-	double delta_M=MainOp->GetIndexDelta(n,pos[n]-1);
-	double deltaP_M=MainOp->GetIndexDelta(nP,pos[nP]-1);
-	double deltaPP_M=MainOp->GetIndexDelta(nPP,pos[nPP]-1);
+	double delta=GetRawDiscDelta(n,pos[n]);
+	double deltaP=GetRawDiscDelta(nP,pos[nP]);
+	double deltaPP=GetRawDiscDelta(nPP,pos[nPP]);
+	double delta_M=GetRawDiscDelta(n,pos[n]-1);
+	double deltaP_M=GetRawDiscDelta(nP,pos[nP]-1);
+	double deltaPP_M=GetRawDiscDelta(nPP,pos[nPP]-1);
 
 	int loc_pos[3]={pos[0],pos[1],pos[2]};
 	double A_n;
