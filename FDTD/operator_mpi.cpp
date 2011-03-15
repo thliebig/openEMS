@@ -77,20 +77,6 @@ void Operator_MPI::SetBoundaryCondition(int* BCs)
 	Operator_SSE_Compressed::SetBoundaryCondition(BCs);
 }
 
-void Operator_MPI::ApplyElectricBC(bool* dirs)
-{
-	if (!m_MPI_Enabled)
-		return Operator_SSE_Compressed::ApplyElectricBC(dirs);
-
-	for (int n=0;n<3;++n)
-	{
-		//do not delete operator at upper inteface
-		if (m_NeighborUp[n]>=0)
-			dirs[2*n+1] = false;
-	}
-	Operator_SSE_Compressed::ApplyElectricBC(dirs);
-}
-
 Engine* Operator_MPI::CreateEngine() const
 {
 	if (m_MPI_Enabled)
@@ -169,6 +155,14 @@ void Operator_MPI::SetOriginalMesh(CSRectGrid* orig_Mesh)
 		m_OrigDiscLines[n] = NULL;
 		orig_Mesh->GetLines(n,m_OrigDiscLines[n],m_OrigNumLines[n]);
 	}
+}
+
+unsigned int Operator_MPI::GetNumberOfLines(int ny) const
+{
+	if ((!m_MPI_Enabled) || (m_NeighborUp[ny]<0))
+		return Operator_SSE_Compressed::GetNumberOfLines(ny);
+
+	return Operator_SSE_Compressed::GetNumberOfLines(ny)-1;
 }
 
 string Operator_MPI::PrependRank(string name)

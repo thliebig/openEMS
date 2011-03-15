@@ -239,17 +239,29 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 					if (i>0)
 						m_MPI_Op->SetNeighborDown(0,procTable[i-1][j][k]);
 					if (i<SplitNumber[0].size()-2)
+					{
+						//add one additional line
+						grid->AddDiscLine(0, m_Original_Grid->GetLine(0,SplitNumber[0].at(i+1)+1 ));
 						m_MPI_Op->SetNeighborUp(0,procTable[i+1][j][k]);
+					}
 
 					if (j>0)
 						m_MPI_Op->SetNeighborDown(1,procTable[i][j-1][k]);
 					if (j<SplitNumber[1].size()-2)
+					{
+						//add one additional line
+						grid->AddDiscLine(1, m_Original_Grid->GetLine(1,SplitNumber[1].at(j+1)+1 ));
 						m_MPI_Op->SetNeighborUp(1,procTable[i][j+1][k]);
+					}
 
 					if (k>0)
 						m_MPI_Op->SetNeighborDown(2,procTable[i][j][k-1]);
 					if (k<SplitNumber[2].size()-2)
+					{
+						//add one additional line
+						grid->AddDiscLine(2, m_Original_Grid->GetLine(2,SplitNumber[2].at(k+1)+1 ));
 						m_MPI_Op->SetNeighborUp(2,procTable[i][j][k+1]);
+					}
 
 				}
 			}

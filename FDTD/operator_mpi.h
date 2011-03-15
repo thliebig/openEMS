@@ -31,7 +31,6 @@ public:
 	bool GetMPIEnabled() const {return m_MPI_Enabled;}
 
 	virtual void SetBoundaryCondition(int* BCs);
-	virtual void ApplyElectricBC(bool* dirs);
 
 	virtual Engine* CreateEngine() const;
 
@@ -44,6 +43,8 @@ public:
 
 	virtual void SetSplitPos(int ny, unsigned int pos) {m_SplitPos[ny]=pos;}
 	virtual void SetOriginalMesh(CSRectGrid* orig_Mesh);
+
+	virtual unsigned int GetNumberOfLines(int ny) const;
 
 protected:
 	Operator_MPI();

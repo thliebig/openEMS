@@ -61,9 +61,9 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
 {
 	//this is necessary for a correct field processing... cylindrical engine has to reset this by adding +1
 	if (CC_closedAlpha && ny==1)
-		return numLines[1]-1;
+		return Operator_Multithread::GetNumberOfLines(ny)-1;
 
-	return numLines[ny];
+	return Operator_Multithread::GetNumberOfLines(ny);
 }
 
 string Operator_Cylinder::GetDirName(int ny) const
