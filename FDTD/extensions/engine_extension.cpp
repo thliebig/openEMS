@@ -16,6 +16,7 @@
 */
 
 #include "engine_extension.h"
+#include "operator_extension.h"
 
 #include "FDTD/engine.h"
 
@@ -23,7 +24,7 @@ Engine_Extension::Engine_Extension(Operator_Extension* op_ext)
 {
 	m_Op_ext = op_ext;
 	m_Eng = NULL;
-	m_Priority = 0;
+	m_Priority = ENG_EXT_PRIO_DEFAULT;
 	m_NrThreads = 1;
 }
 
@@ -36,6 +37,14 @@ void Engine_Extension::SetNumberOfThreads(int nrThread)
 	if (nrThread<1)
 		return;
 	m_NrThreads=nrThread;
+}
+
+string Engine_Extension::GetExtensionName() const
+{
+	if (m_Op_ext)
+		return m_Op_ext->GetExtensionName();
+	else
+		return "Unknown Extension";
 }
 
 void Engine_Extension::DoPreVoltageUpdates(int threadID)

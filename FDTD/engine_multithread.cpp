@@ -278,12 +278,6 @@ void thread::operator()()
 			m_enginePtr->DoPostVoltageUpdates(m_threadID);
 			m_enginePtr->Apply2Voltages(m_threadID);
 
-			// voltage excitation (E-field excite) by the first thread
-			if (m_threadID==0)
-				m_enginePtr->ApplyVoltageExcite();
-			m_enginePtr->m_IterateBarrier->wait();
-			// voltage excitation finished
-
 #ifdef MPI_SUPPORT
 			if (m_threadID==0)
 			{
@@ -313,13 +307,6 @@ void thread::operator()()
 			//post current stuff
 			m_enginePtr->DoPostCurrentUpdates(m_threadID);
 			m_enginePtr->Apply2Current(m_threadID);
-
-			// current excitation (H-field excite) by the first thread
-			if (m_threadID==0)
-				m_enginePtr->ApplyCurrentExcite();
-
-			m_enginePtr->m_IterateBarrier->wait();
-			// current excitation finished
 
 #ifdef MPI_SUPPORT
 			if (m_threadID==0)

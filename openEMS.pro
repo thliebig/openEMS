@@ -84,7 +84,9 @@ SOURCES += FDTD/extensions/engine_extension.cpp \
     FDTD/extensions/engine_ext_mur_abc.cpp \
     FDTD/extensions/operator_ext_mur_abc.cpp \
     FDTD/extensions/operator_ext_cylinder.cpp \
-    FDTD/extensions/engine_ext_cylinder.cpp
+    FDTD/extensions/engine_ext_cylinder.cpp \
+    FDTD/extensions/operator_ext_excitation.cpp \
+    FDTD/extensions/engine_ext_excitation.cpp
 
 # Common source files
 SOURCES += Common/operator_base.cpp \
@@ -123,7 +125,7 @@ HEADERS += tools/ErrorMsg.h \
 	FDTD/engine_interface_fdtd.h
 
 # FDTD/extensions header files
-HEADERS += FDTD/operator_extension.h \
+HEADERS += FDTD/extensions/operator_extension.h \
     FDTD/extensions/engine_extension.h \
     FDTD/extensions/engine_ext_mur_abc.h \
     FDTD/extensions/operator_ext_mur_abc.h \
@@ -137,7 +139,9 @@ HEADERS += FDTD/operator_extension.h \
     FDTD/extensions/engine_ext_pml_sf.h \
     FDTD/extensions/engine_ext_cylindermultigrid.h \
     FDTD/extensions/operator_ext_upml.h \
-    FDTD/extensions/engine_ext_upml.h
+    FDTD/extensions/engine_ext_upml.h \
+    FDTD/extensions/operator_ext_excitation.h \
+    FDTD/extensions/engine_ext_excitation.h
 
 # Common header files
 HEADERS += Common/operator_base.h \

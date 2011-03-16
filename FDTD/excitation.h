@@ -49,6 +49,9 @@ public:
 	//! Dump current excitation signal to ASCII file
 	void DumpCurrentExcite(string filename);
 
+	//! Get the used timestep
+	double GetTimestep() const {return dT;}
+
 	//Excitation time-signal
 	unsigned int Length;
 	FDTD_FLOAT* Signal_volt;

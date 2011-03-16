@@ -34,6 +34,7 @@ class Operator : public Operator_Base
 	friend class Engine_Interface_FDTD;
 	friend class Operator_Ext_LorentzMaterial; //we need to find a way around this... friend class Operator_Extension only would be nice
 	friend class Operator_Ext_PML_SF_Plane;
+	friend class Operator_Ext_Excitation;
 public:
 	enum DebugFlags {None=0,debugMaterial=1,debugOperator=2,debugPEC=4};
 
@@ -152,9 +153,6 @@ protected:
 		vector<unsigned short> dir;
 	};
 	struct Grid_Path FindPath(double start[], double stop[]);
-
-	//! Calculate the field excitations.
-	virtual bool CalcFieldExcitation();
 
 	// debug
 	virtual void DumpOperator2File(string filename);

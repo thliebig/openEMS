@@ -27,7 +27,7 @@ Engine_Ext_UPML::Engine_Ext_UPML(Operator_Ext_UPML* op_ext) : Engine_Extension(o
 	m_Op_UPML = op_ext;
 
 	//this ABC extension should be executed first!
-	m_Priority = 1e6;
+	m_Priority = ENG_EXT_PRIO_UPML;
 
 	volt_flux = Create_N_3DArray<FDTD_FLOAT>(m_Op_UPML->m_numLines);
 	curr_flux = Create_N_3DArray<FDTD_FLOAT>(m_Op_UPML->m_numLines);

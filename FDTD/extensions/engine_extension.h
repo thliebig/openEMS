@@ -18,6 +18,16 @@
 #ifndef ENGINE_EXTENSION_H
 #define ENGINE_EXTENSION_H
 
+#define ENG_EXT_PRIO_DEFAULT 0 //default engine extension priority
+
+// priority definitions for some important extensions
+#define ENG_EXT_PRIO_UPML				1e6; //unaxial pml extension priority
+#define ENG_EXT_PRIO_EXCITATION			3000 //excitation priority
+#define ENG_EXT_PRIO_CYLINDER			2000 //cylindrial extension priority
+#define ENG_EXT_PRIO_CYLINDERMULTIGRID	-1000; //cylindrial multi-grid extension priority
+
+#include <string>
+
 class Operator_Extension;
 class Engine;
 
@@ -59,6 +69,8 @@ public:
 	virtual void SetPriority(int val) {m_Priority=val;}
 
 	virtual bool operator< (const Engine_Extension& other);
+
+	virtual std::string GetExtensionName() const;
 
 protected:
 	Engine_Extension(Operator_Extension* op_ext);

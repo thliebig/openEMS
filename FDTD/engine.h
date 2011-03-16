@@ -66,8 +66,6 @@ public:
 	virtual void DoPostVoltageUpdates();
 	//! Apply extension voltage changes
 	virtual void Apply2Voltages();
-	//! Apply voltage excitations
-	virtual void ApplyVoltageExcite();
 
 	//! Execute Pre-Current extension updates
 	virtual void DoPreCurrentUpdates();
@@ -77,8 +75,6 @@ public:
 	virtual void DoPostCurrentUpdates();
 	//! Apply extension current changes
 	virtual void Apply2Current();
-	//! Apply current excitations
-	virtual void ApplyCurrentExcite();
 
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}

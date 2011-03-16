@@ -201,7 +201,6 @@ bool Engine_MPI::IterateTS(unsigned int iterTS)
 		UpdateVoltages(0,numLines[0]);
 		DoPostVoltageUpdates();
 		Apply2Voltages();
-		ApplyVoltageExcite();
 		SendReceiveVoltages();
 
 		//current updates with extensions
@@ -209,7 +208,6 @@ bool Engine_MPI::IterateTS(unsigned int iterTS)
 		UpdateCurrents(0,numLines[0]-1);
 		DoPostCurrentUpdates();
 		Apply2Current();
-		ApplyCurrentExcite();
 		SendReceiveCurrents();
 
 		++numTS;

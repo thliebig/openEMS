@@ -19,6 +19,7 @@
 #include "operator.h"
 #include "engine.h"
 #include "extensions/operator_extension.h"
+#include "extensions/operator_ext_excitation.h"
 #include "Common/processfields.h"
 #include "tools/array_ops.h"
 #include "fparser.hh"
@@ -351,9 +352,6 @@ void Operator::ShowStat() const
 	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MiB) " << endl;
 	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MiB) " << endl;
 	cout << "-----------------------------------" << endl;
-	cout << "Voltage excitations\t: " << Exc->Volt_Count    << "\t (" << Exc->Volt_Count_Dir[0] << ", " << Exc->Volt_Count_Dir[1] << ", " << Exc->Volt_Count_Dir[2] << ")" << endl;
-	cout << "Current excitations\t: " << Exc->Curr_Count << "\t (" << Exc->Curr_Count_Dir[0] << ", " << Exc->Curr_Count_Dir[1] << ", " << Exc->Curr_Count_Dir[2] << ")" << endl;
-	cout << "-----------------------------------" << endl;
 	cout << "Number of PEC edges\t: " << m_Nr_PEC[0]+m_Nr_PEC[1]+m_Nr_PEC[2] << endl;
 	cout << "in " << GetDirName(0) << " direction\t\t: " << m_Nr_PEC[0] << endl;
 	cout << "in " << GetDirName(1) << " direction\t\t: " << m_Nr_PEC[1] << endl;
@@ -366,8 +364,6 @@ void Operator::ShowStat() const
 	cout << "Timestep method name\t: " << m_Used_TS_Name << endl;
 	cout << "Nyquist criteria (TS)\t: " << Exc->GetNyquistNum() << endl;
 	cout << "Nyquist criteria (s)\t: " << Exc->GetNyquistNum()*dT << endl;
-	cout << "Excitation Length (TS)\t: " << Exc->Length << endl;
-	cout << "Excitation Length (s)\t: " << Exc->Length*dT << endl;
 	cout << "-----------------------------------" << endl;
 }
 
@@ -717,6 +713,8 @@ void Operator::InitExcitation()
 {
 	delete Exc;
 	Exc = new Excitation( dT );
+
+	this->AddExtension(new Operator_Ext_Excitation(this,Exc));
 }
 
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
@@ -804,7 +802,6 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	ApplyMagneticBC(PMC);
 
 	InitExcitation();
-	CalcFieldExcitation();
 
 	//all information available for extension... create now...
 	for (size_t n=0; n<m_Op_exts.size(); ++n)
@@ -1350,184 +1347,6 @@ double Operator::CalcTimestep_Var3()
 	}
 //	cerr << "Operator Timestep: " << dT << endl;
 	return 0;
-}
-
-bool Operator::CalcFieldExcitation()
-{
-	if (dT==0)
-		return false;
-	if (Exc==0)
-		return false;
-
-	unsigned int pos[3];
-	double amp=0;
-
-	vector<unsigned int> volt_vIndex[3];
-	vector<FDTD_FLOAT> volt_vExcit;
-	vector<unsigned int> volt_vDelay;
-	vector<unsigned int> volt_vDir;
-	double volt_coord[3];
-
-	vector<unsigned int> curr_vIndex[3];
-	vector<FDTD_FLOAT> curr_vExcit;
-	vector<unsigned int> curr_vDelay;
-	vector<unsigned int> curr_vDir;
-	double curr_coord[3];
-
-	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::ELECTRODE);
-
-	if (vec_prop.size()==0)
-	{
-		cerr << "Operator::CalcFieldExcitation: Warning, no excitation properties found" << endl;
-		return false;
-	}
-
-	CSPropElectrode* elec=NULL;
-	CSProperties* prop=NULL;
-	int priority=0;
-
-	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-	{
-		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-		{
-			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-			{
-				//electric field excite
-				for (int n=0; n<3; ++n)
-				{
-					GetYeeCoords(n,pos,volt_coord,false);
-					for (size_t p=0; p<vec_prop.size(); ++p)
-					{
-						prop = vec_prop.at(p);
-						elec = prop->ToElectrode();
-						if (elec==NULL)
-							continue;
-						if (prop->CheckCoordInPrimitive(volt_coord,priority,true))
-						{
-							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
-							{
-								amp = elec->GetWeightedExcitation(n,volt_coord)*GetEdgeLength(n,pos);// delta[n]*gridDelta;
-								if (amp!=0)
-								{
-									volt_vExcit.push_back(amp);
-									volt_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-									volt_vDir.push_back(n);
-									volt_vIndex[0].push_back(pos[0]);
-									volt_vIndex[1].push_back(pos[1]);
-									volt_vIndex[2].push_back(pos[2]);
-								}
-								if (elec->GetExcitType()==1) //hard excite
-								{
-									SetVV(n,pos[0],pos[1],pos[2], 0 );
-									SetVI(n,pos[0],pos[1],pos[2], 0 );
-								}
-							}
-						}
-					}
-				}
-
-				//magnetic field excite
-				for (int n=0; n<3; ++n)
-				{
-					if ((pos[0]>=numLines[0]-1) || (pos[1]>=numLines[1]-1) || (pos[2]>=numLines[2]-1))
-						continue;  //skip the last H-Line which is outside the FDTD-domain
-					GetYeeCoords(n,pos,curr_coord,true);
-					for (size_t p=0; p<vec_prop.size(); ++p)
-					{
-						prop = vec_prop.at(p);
-						elec = prop->ToElectrode();
-						if (elec==NULL)
-							continue;
-						if (prop->CheckCoordInPrimitive(curr_coord,priority,true))
-						{
-							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
-							{
-								amp = elec->GetWeightedExcitation(n,curr_coord)*GetEdgeLength(n,pos,true);// delta[n]*gridDelta;
-								if (amp!=0)
-								{
-									curr_vExcit.push_back(amp);
-									curr_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-									curr_vDir.push_back(n);
-									curr_vIndex[0].push_back(pos[0]);
-									curr_vIndex[1].push_back(pos[1]);
-									curr_vIndex[2].push_back(pos[2]);
-								}
-								if (elec->GetExcitType()==3) //hard excite
-								{
-									SetII(n,pos[0],pos[1],pos[2], 0 );
-									SetIV(n,pos[0],pos[1],pos[2], 0 );
-								}
-							}
-						}
-					}
-				}
-
-			}
-		}
-	}
-
-	//special treatment for primitives of type curve (treated as wires) see also Calc_PEC
-	double p1[3];
-	double p2[3];
-	struct Grid_Path path;
-	for (size_t p=0; p<vec_prop.size(); ++p)
-	{
-		prop = vec_prop.at(p);
-		elec = prop->ToElectrode();
-		for (size_t n=0; n<prop->GetQtyPrimitives(); ++n)
-		{
-			CSPrimitives* prim = prop->GetPrimitive(n);
-			CSPrimCurve* curv = prim->ToCurve();
-			if (curv)
-			{
-				for (size_t i=1; i<curv->GetNumberOfPoints(); ++i)
-				{
-					curv->GetPoint(i-1,p1);
-					curv->GetPoint(i,p2);
-					path = FindPath(p1,p2);
-					if (path.dir.size()>0)
-						prim->SetPrimitiveUsed(true);
-					for (size_t t=0; t<path.dir.size(); ++t)
-					{
-						n = path.dir.at(t);
-						pos[0] = path.posPath[0].at(t);
-						pos[1] = path.posPath[1].at(t);
-						pos[2] = path.posPath[2].at(t);
-						GetYeeCoords(n,pos,volt_coord,false);
-						if (elec!=NULL)
-						{
-							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))
-							{
-								amp = elec->GetWeightedExcitation(n,volt_coord)*GetEdgeLength(n,pos);
-								if (amp!=0)
-								{
-									volt_vExcit.push_back(amp);
-									volt_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-									volt_vDir.push_back(n);
-									volt_vIndex[0].push_back(pos[0]);
-									volt_vIndex[1].push_back(pos[1]);
-									volt_vIndex[2].push_back(pos[2]);
-								}
-								if (elec->GetExcitType()==1) //hard excite
-								{
-									SetVV(n,pos[0],pos[1],pos[2], 0 );
-									SetVI(n,pos[0],pos[1],pos[2], 0 );
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// set voltage excitations
-	Exc->setupVoltageExcitation( volt_vIndex, volt_vExcit, volt_vDelay, volt_vDir );
-
-	// set current excitations
-	Exc->setupCurrentExcitation( curr_vIndex, curr_vExcit, curr_vDelay, curr_vDir );
-
-	return true;
 }
 
 bool Operator::CalcPEC()
