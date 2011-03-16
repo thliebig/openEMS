@@ -129,7 +129,28 @@ double Operator::GetDiscLine(int n, unsigned int pos, bool dualMesh) const
 
 	// dual node for the last line (outside the field domain)
 	return discLines[n][pos] + 0.5*(discLines[n][pos] - discLines[n][pos-1]);
+}
 
+bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const
+{
+	for (int n=0;n<3;++n)
+		coords[n]=GetDiscLine(n,pos[n],dualMesh);
+	if (dualMesh==false) //main grid
+	{
+		coords[ny]+=0.5*fabs(GetRawDiscDelta(ny,pos[ny]));
+		if (pos[ny]>=numLines[ny]-1)
+			return false;
+	}
+	else	//dual grid
+	{
+		int nP = (ny+1)%3;
+		int nPP = (ny+2)%3;
+		coords[nP] +=0.5*fabs(GetRawDiscDelta(nP ,pos[nP] ));
+		coords[nPP]+=0.5*fabs(GetRawDiscDelta(nPP,pos[nPP]));
+		if ((pos[nP]>=numLines[nP]-1) || (pos[nPP]>=numLines[nPP]-1))
+			return false;
+	}
+	return true;
 }
 
 double Operator::GetEdgeLength(int n, const unsigned int* pos, bool dualMesh) const
@@ -1200,7 +1221,6 @@ bool Operator::Calc_EC()
 	return true;
 }
 
-
 double Operator::CalcTimestep()
 {
 	if (m_TimeStepVar==3)
@@ -1340,7 +1360,6 @@ bool Operator::CalcFieldExcitation()
 		return false;
 
 	unsigned int pos[3];
-	double delta[3];
 	double amp=0;
 
 	vector<unsigned int> volt_vIndex[3];
@@ -1369,21 +1388,14 @@ bool Operator::CalcFieldExcitation()
 
 	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 	{
-		delta[2]=fabs(MainOp->GetIndexDelta(2,pos[2]));
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			delta[1]=fabs(MainOp->GetIndexDelta(1,pos[1]));
 			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 			{
-				delta[0]=fabs(MainOp->GetIndexDelta(0,pos[0]));
-
 				//electric field excite
 				for (int n=0; n<3; ++n)
 				{
-					volt_coord[0] = discLines[0][pos[0]];
-					volt_coord[1] = discLines[1][pos[1]];
-					volt_coord[2] = discLines[2][pos[2]];
-					volt_coord[n]+=delta[n]*0.5;
+					GetYeeCoords(n,pos,volt_coord,false);
 					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);
@@ -1419,13 +1431,7 @@ bool Operator::CalcFieldExcitation()
 				{
 					if ((pos[0]>=numLines[0]-1) || (pos[1]>=numLines[1]-1) || (pos[2]>=numLines[2]-1))
 						continue;  //skip the last H-Line which is outside the FDTD-domain
-					int nP = (n+1)%3;
-					int nPP = (n+2)%3;
-					curr_coord[0] = discLines[0][pos[0]];
-					curr_coord[1] = discLines[1][pos[1]];
-					curr_coord[2] = discLines[2][pos[2]];
-					curr_coord[nP] +=delta[nP]*0.5;
-					curr_coord[nPP] +=delta[nPP]*0.5;
+					GetYeeCoords(n,pos,curr_coord,true);
 					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);
@@ -1463,7 +1469,6 @@ bool Operator::CalcFieldExcitation()
 	//special treatment for primitives of type curve (treated as wires) see also Calc_PEC
 	double p1[3];
 	double p2[3];
-	double deltaN=0.0;
 	struct Grid_Path path;
 	for (size_t p=0; p<vec_prop.size(); ++p)
 	{
@@ -1488,18 +1493,12 @@ bool Operator::CalcFieldExcitation()
 						pos[0] = path.posPath[0].at(t);
 						pos[1] = path.posPath[1].at(t);
 						pos[2] = path.posPath[2].at(t);
-						MainOp->SetPos(pos[0],pos[1],pos[2]);
-						deltaN=fabs(MainOp->GetIndexDelta(n,pos[n]));
-						volt_coord[0] = discLines[0][pos[0]];
-						volt_coord[1] = discLines[1][pos[1]];
-						volt_coord[2] = discLines[2][pos[2]];
-						volt_coord[n] += 0.5*deltaN;
-//						cerr << n << " " << coord[0] << " " << coord[1] << " " << coord[2] << endl;
+						GetYeeCoords(n,pos,volt_coord,false);
 						if (elec!=NULL)
 						{
 							if ((elec->GetActiveDir(n)) && (pos[n]<numLines[n]-1) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))
 							{
-								amp = elec->GetWeightedExcitation(n,volt_coord)*deltaN*gridDelta;
+								amp = elec->GetWeightedExcitation(n,volt_coord)*GetEdgeLength(n,pos);
 								if (amp!=0)
 								{
 									volt_vExcit.push_back(amp);
@@ -1521,7 +1520,6 @@ bool Operator::CalcFieldExcitation()
 			}
 		}
 	}
-
 
 	// set voltage excitations
 	Exc->setupVoltageExcitation( volt_vIndex, volt_vExcit, volt_vDelay, volt_vDir );
@@ -1548,7 +1546,6 @@ bool Operator::CalcPEC()
 void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned int* counter)
 {
 	double coord[3];
-	double delta;
 	unsigned int pos[3];
 	for (pos[0]=startX; pos[0]<=stopX; ++pos[0])
 	{
@@ -1558,11 +1555,7 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 			{
 				for (int n=0; n<3; ++n)
 				{
-					coord[0] = discLines[0][pos[0]];
-					coord[1] = discLines[1][pos[1]];
-					coord[2] = discLines[2][pos[2]];
-					delta=MainOp->GetIndexDelta(n,pos[n]);
-					coord[n]= discLines[n][pos[n]] + delta*0.5;
+					GetYeeCoords(n,pos,coord,false);
 					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), true);
 					if (prop)
 					{
@@ -1571,7 +1564,6 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 							SetVV(n,pos[0],pos[1],pos[2], 0 );
 							SetVI(n,pos[0],pos[1],pos[2], 0 );
 							++counter[n];
-							//							cerr << "CartOperator::CalcPEC: PEC found at " << pos[0] << " ; "  << pos[1] << " ; " << pos[2] << endl;
 						}
 					}
 				}
@@ -1605,12 +1597,10 @@ void Operator::CalcPEC_Curves()
 						prim->SetPrimitiveUsed(true);
 					for (size_t t=0; t<path.dir.size(); ++t)
 					{
-//						cerr << path.dir.at(t) << " " << path.posPath[0].at(t) << " " << path.posPath[1].at(t) << " " << path.posPath[2].at(t) << endl;
 						SetVV(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t), 0 );
 						SetVI(path.dir.at(t),path.posPath[0].at(t),path.posPath[1].at(t),path.posPath[2].at(t), 0 );
 						++m_Nr_PEC[path.dir.at(t)];
 					}
-//					cerr << "found path size: " << path.dir.size() << endl;
 				}
 			}
 		}

@@ -44,6 +44,9 @@ public:
 	//! Get the name for the given direction: 0 -> rho, 1 -> alpha, 2 -> z
 	virtual string GetDirName(int ny) const;
 
+	//! Get the coordinates for a given node index and component, according to the cylindrical yee-algorithm. Returns true if inside the FDTD domain.
+	virtual bool GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const;
+
 	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 

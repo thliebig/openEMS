@@ -106,6 +106,9 @@ public:
 	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const;
 
+	//! Get the coordinates for a given node index and component, according to the yee-algorithm. Returns true if inside the FDTD domain.
+	virtual bool GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const;
+
 	//! Get the node width for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetEdgeLength(ny,pos,!dualMesh);}
 
