@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
 		cout << " <options>" << endl;
 		cout << "\t--disable-dumps\t\tDisable all field dumps for faster simulation" << endl;
 		cout << "\t--debug-material\tDump material distribution to a vtk file for debugging" << endl;
+		cout << "\t--debug-PEC\tDump metal distribution to a vtk file for debugging" << endl;
 		cout << "\t--debug-operator\tDump operator to vtk file for debugging" << endl;
 		cout << "\t--debug-boxes\t\tDump e.g. probe boxes to vtk file for debugging" << endl;
 		cout << "\t--debug-CSX\t\tWrite CSX geometry file to debugCSX.xml" << endl;
