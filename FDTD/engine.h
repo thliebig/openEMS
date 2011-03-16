@@ -58,18 +58,27 @@ public:
 	inline virtual void SetCurr( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)	{ curr[n][x][y][z]=value; }
 	inline virtual void SetCurr( unsigned int n, const unsigned int pos[3], FDTD_FLOAT value )						{ curr[n][pos[0]][pos[1]][pos[2]]=value; }
 
-	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
-	virtual void ApplyVoltageExcite();
-	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
-	virtual void ApplyCurrentExcite();
-
+	//! Execute Pre-Voltage extension updates
 	virtual void DoPreVoltageUpdates();
+	//! Main FDTD engine voltage updates
+	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
+	//! Execute Post-Voltage extension updates
 	virtual void DoPostVoltageUpdates();
+	//! Apply extension voltage changes
 	virtual void Apply2Voltages();
+	//! Apply voltage excitations
+	virtual void ApplyVoltageExcite();
 
+	//! Execute Pre-Current extension updates
 	virtual void DoPreCurrentUpdates();
+	//! Main FDTD engine current updates
+	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
+	//! Execute Post-Current extension updates
 	virtual void DoPostCurrentUpdates();
+	//! Apply extension current changes
 	virtual void Apply2Current();
+	//! Apply current excitations
+	virtual void ApplyCurrentExcite();
 
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
