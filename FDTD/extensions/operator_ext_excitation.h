@@ -30,14 +30,14 @@ public:
 	Operator_Ext_Excitation(Operator* op, Excitation* exc);
 	~Operator_Ext_Excitation();
 
-	virtual Operator_Extension* Clone(Operator* op) {return NULL;}
+	virtual Operator_Extension* Clone(Operator* op) {UNUSED(op);return NULL;}
 
 	virtual bool BuildExtension();
 
 	virtual Engine_Extension* CreateEngineExtention();
 
 	virtual bool IsCylinderCoordsSave() const {return true;}
-	virtual bool IsCylindricalMultiGridSave(bool child) const {return true;}
+	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 
 	virtual string GetExtensionName() const {return string("Excitation Extension");}
 

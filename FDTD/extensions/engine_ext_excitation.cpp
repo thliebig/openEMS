@@ -101,7 +101,7 @@ void Engine_Ext_Excitation::Apply2Current()
 	{
 	case Engine::BASIC:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Volt_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Curr_Count; ++n)
 			{
 				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Curr_delay[n];
 				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
@@ -115,7 +115,7 @@ void Engine_Ext_Excitation::Apply2Current()
 		}
 	case Engine::SSE:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Volt_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Curr_Count; ++n)
 			{
 				Engine_sse* eng_sse = (Engine_sse*) m_Eng;
 				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Curr_delay[n];
@@ -130,7 +130,7 @@ void Engine_Ext_Excitation::Apply2Current()
 		}
 	default:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Volt_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Curr_Count; ++n)
 			{
 				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Curr_delay[n];
 				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
