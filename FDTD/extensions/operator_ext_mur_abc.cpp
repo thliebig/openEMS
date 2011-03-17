@@ -102,12 +102,12 @@ void Operator_Ext_Mur_ABC::SetDirection(int ny, bool top_ny)
 	}
 	else
 	{
-		m_LineNr = m_Op->GetNumberOfLines(m_ny)-1;
-		m_LineNr_Shift = m_Op->GetNumberOfLines(m_ny) - 2;
+		m_LineNr = m_Op->GetOriginalNumLines(m_ny)-1;
+		m_LineNr_Shift = m_Op->GetOriginalNumLines(m_ny) - 2;
 	}
 
-	m_numLines[0] = m_Op->GetNumberOfLines(m_nyP);
-	m_numLines[1] = m_Op->GetNumberOfLines(m_nyPP);
+	m_numLines[0] = m_Op->GetOriginalNumLines(m_nyP);
+	m_numLines[1] = m_Op->GetOriginalNumLines(m_nyPP);
 
 	m_Mur_Coeff_nyP = Create2DArray<FDTD_FLOAT>(m_numLines);
 	m_Mur_Coeff_nyPP = Create2DArray<FDTD_FLOAT>(m_numLines);

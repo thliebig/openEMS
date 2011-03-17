@@ -112,8 +112,9 @@ void Engine_Ext_Mur_ABC::DoPreVoltageUpdates(int threadID)
 	case Engine::SSE:
 		{
 			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (pos[m_nyP]=0; pos[m_nyP]<m_numLines[0]; ++pos[m_nyP])
+			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
 			{
+				pos[m_nyP]=lineX+m_start.at(threadID);
 				pos_shift[m_nyP] = pos[m_nyP];
 				for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
 				{
