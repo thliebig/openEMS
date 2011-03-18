@@ -18,10 +18,12 @@
 #include "FDTD/engine.h"
 #include "engine_ext_cylinder.h"
 #include "operator_ext_cylinder.h"
+#include "FDTD/engine_sse.h"
 
 Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine_Extension(op_ext)
 {
 	cyl_Op = op_ext;
+	m_Eng_SSE = NULL;
 
 	CC_closedAlpha = op_ext->CC_closedAlpha;
 	CC_R0_included = op_ext->CC_R0_included;
@@ -31,6 +33,12 @@ Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine
 
 	//this cylindrical extension should be executed first?
 	m_Priority = ENG_EXT_PRIO_CYLINDER;
+}
+
+void Engine_Ext_Cylinder::SetEngine(Engine* eng)
+{
+	Engine_Extension::SetEngine(eng);
+	m_Eng_SSE = dynamic_cast<Engine_sse*>(m_Eng);
 }
 
 void Engine_Ext_Cylinder::Apply2Voltages()
@@ -43,18 +51,18 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 		pos[0] = 0;
 		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			m_Eng->SetVolt(2,0,0,pos[2], m_Eng->GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]]);
+			m_Eng_SSE->Engine_sse::SetVolt(2,0,0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]]);
 			for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
 			{
-				m_Eng->SetVolt(2,0,0,pos[2], m_Eng->GetVolt(2,0,0,pos[2]) + cyl_Op->vi_R0[pos[2]] *  m_Eng->GetCurr(1,0,pos[1],pos[2]) );
+				m_Eng_SSE->Engine_sse::SetVolt(2,0,0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2]) + cyl_Op->vi_R0[pos[2]] *  m_Eng_SSE->Engine_sse::GetCurr(1,0,pos[1],pos[2]) );
 			}
 		}
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
-				m_Eng->SetVolt(1,0,pos[1],pos[2], 0); //no voltage in alpha-direction at r=0
-				m_Eng->SetVolt(2,0,pos[1],pos[2], m_Eng->GetVolt(2,0,0,pos[2]) );
+				m_Eng_SSE->Engine_sse::SetVolt(1,0,pos[1],pos[2], 0); //no voltage in alpha-direction at r=0
+				m_Eng_SSE->Engine_sse::SetVolt(2,0,pos[1],pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2]) );
 			}
 		}
 	}
@@ -67,8 +75,8 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 	{
 		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			m_Eng->SetVolt(0,pos[0],0,pos[2], m_Eng->GetVolt(0,pos[0],last_A_Line,pos[2]) );
-			m_Eng->SetVolt(2,pos[0],0,pos[2], m_Eng->GetVolt(2,pos[0],last_A_Line,pos[2]) );
+			m_Eng_SSE->Engine_sse::SetVolt(0,pos[0],0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(0,pos[0],last_A_Line,pos[2]) );
+			m_Eng_SSE->Engine_sse::SetVolt(2,pos[0],0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,pos[0],last_A_Line,pos[2]) );
 		}
 	}
 }
@@ -85,8 +93,8 @@ void Engine_Ext_Cylinder::Apply2Current()
 		unsigned int last_A_Line = numLines[1]-2;
 		for (pos[2]=0; pos[2]<numLines[2]-1; ++pos[2])
 		{
-			m_Eng->SetCurr(0,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(0,pos[0],0,pos[2]) );
-			m_Eng->SetCurr(2,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(2,pos[0],0,pos[2]) );
+			m_Eng_SSE->Engine_sse::SetCurr(0,pos[0],last_A_Line,pos[2], m_Eng_SSE->Engine_sse::GetCurr(0,pos[0],0,pos[2]) );
+			m_Eng_SSE->Engine_sse::SetCurr(2,pos[0],last_A_Line,pos[2], m_Eng_SSE->Engine_sse::GetCurr(2,pos[0],0,pos[2]) );
 		}
 	}
 }
