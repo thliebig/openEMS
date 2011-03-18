@@ -43,8 +43,6 @@ public:
 
 	virtual unsigned int GetSplitPos() const {return m_Split_Pos;}
 
-	virtual int CalcECOperator( DebugFlags debugFlags = None );
-
 	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS);
 
 	virtual void SetBoundaryCondition(int* BCs);
@@ -66,6 +64,10 @@ protected:
 	virtual void Init();
 	void Delete();
 	virtual void Reset();
+
+	virtual bool SetupCSXGrid(CSRectGrid* grid);
+
+	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	//! The material data storage in the sub-grid area's will not be filled by the base-operator. Check and do this here!
 	void FillMissingDataStorage();

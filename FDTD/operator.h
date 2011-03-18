@@ -35,6 +35,8 @@ class Operator : public Operator_Base
 	friend class Operator_Ext_LorentzMaterial; //we need to find a way around this... friend class Operator_Extension only would be nice
 	friend class Operator_Ext_PML_SF_Plane;
 	friend class Operator_Ext_Excitation;
+	friend class Operator_Ext_UPML;
+	friend class Operator_Ext_Cylinder;
 public:
 	enum DebugFlags {None=0,debugMaterial=1,debugOperator=2,debugPEC=4};
 
@@ -47,20 +49,6 @@ public:
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
-
-	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
-	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
-
-	//! Get the FDTD raw disc delta, needed by Calc_EffMatPos() \sa Calc_EffMatPos
-	/*!
-	  Get the raw disc delta for a given position and direction.
-	  The result will be positive if a disc delta inside the simulation domain is requested.
-	  The result will be the negative value of the first or last disc delta respectivly if the position is outside the field domain.
-	  */
-	virtual double GetRawDiscDelta(int ny, const int pos) const;
-
-	//! Calculate the effective/averaged material properties at the given position and direction ny.
-	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
 
 	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return Exc->setupExcitation(Excite,maxTS);};
 
@@ -112,9 +100,13 @@ public:
 
 	//! Get the node width for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetEdgeLength(ny,pos,!dualMesh);}
+	//! Get the node width for a given direction \a n and a given mesh position \a pos
+	virtual double GetNodeWidth(int ny, const int pos[3], bool dualMesh = false) const;
 
 	//! Get the node area for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const;
+	//! Get the node area for a given direction \a n and a given mesh position \a pos
+	virtual double GetNodeArea(int ny, const int pos[3], bool dualMesh = false) const;
 
 	//! Get the length of an FDTD edge (unit is meter).
 	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const;
@@ -147,6 +139,8 @@ protected:
 	virtual void InitDataStorage();
 	virtual void InitExcitation();
 
+	virtual bool SetupCSXGrid(CSRectGrid* grid);
+
 	struct Grid_Path
 	{
 		vector<unsigned int> posPath[3];
@@ -173,6 +167,23 @@ protected:
 
 	double CalcTimestep_Var1();
 	double CalcTimestep_Var3();
+
+	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
+	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
+
+	//! Get the FDTD raw disc delta, needed by Calc_EffMatPos() \sa Calc_EffMatPos
+	/*!
+	  Get the raw disc delta for a given position and direction.
+	  The result will be positive if a disc delta inside the simulation domain is requested.
+	  The result will be the negative value of the first or last disc delta respectivly if the position is outside the field domain.
+	  */
+	virtual double GetRawDiscDelta(int ny, const int pos) const;
+
+	//! Get the material at a given coordinate, direction and type from CSX (internal use only)
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, bool markAsUsed=true) const;
+
+	//! Calculate the effective/averaged material properties at the given position and direction ny.
+	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);

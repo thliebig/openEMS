@@ -56,6 +56,8 @@ Engine* Operator::CreateEngine() const
 
 void Operator::Init()
 {
+	CSX = NULL;
+
 	Operator_Base::Init();
 
 	vv=NULL;
@@ -177,11 +179,29 @@ double Operator::GetEdgeLength(int n, const unsigned int* pos, bool dualMesh) co
 	}
 }
 
+double Operator::GetNodeWidth(int ny, const int pos[3], bool dualMesh) const
+{
+	if ( (pos[0]<0) || (pos[1]<0) || (pos[2]<0) )
+		return 0.0;
+
+	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
+	return GetNodeWidth(ny, uiPos, dualMesh);
+}
+
 double Operator::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	int nyP = (ny+1)%3;
 	int nyPP = (ny+2)%3;
 	return GetNodeWidth(nyP,pos,dualMesh) * GetNodeWidth(nyPP,pos,dualMesh);
+}
+
+double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
+{
+	if ( (pos[0]<0) || (pos[1]<0) || (pos[2]<0) )
+		return 0.0;
+
+	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
+	return GetNodeArea(ny, uiPos, dualMesh);
 }
 
 bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool lower, bool* inside) const
@@ -577,6 +597,35 @@ void Operator::DumpMaterial2File(string filename)
 	cout << " done!" << endl;
 }
 
+ bool Operator::SetupCSXGrid(CSRectGrid* grid)
+ {
+	 for (int n=0; n<3; ++n)
+	 {
+		 discLines[n] = grid->GetLines(n,discLines[n],numLines[n],true);
+		 if (numLines[n]<3)
+		 {
+			 cerr << "CartOperator::SetupCSXGrid: you need at least 3 disc-lines in every direction (3D!)!!!" << endl;
+			 Reset();
+			 return false;
+		 }
+	 }
+	 MainOp = new AdrOp(numLines[0],numLines[1],numLines[2]);
+	 MainOp->SetGrid(discLines[0],discLines[1],discLines[2]);
+	 if (grid->GetDeltaUnit()<=0)
+	 {
+		 cerr << "CartOperator::SetupCSXGrid: grid delta unit must not be <=0 !!!" << endl;
+		 Reset();
+		 return false;
+	 }
+	 else gridDelta=grid->GetDeltaUnit();
+	 MainOp->SetGridDelta(1);
+	 MainOp->AddCellAdrOp();
+
+	 //delete the grid clone...
+	 delete grid;
+	 return true;
+ }
+
 bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 {
 	if (geo==NULL) return false;
@@ -584,29 +633,8 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 	CSX = geo;
 
 	CSRectGrid* grid=CSX->GetGrid();
-	for (int n=0; n<3; ++n)
-	{
-		discLines[n] = grid->GetLines(n,discLines[n],numLines[n],true);
-		if (n==1)
-			if (numLines[n]<3)
-			{
-				cerr << "CartOperator::SetGeometryCSX: you need at least 3 disc-lines in every direction (3D!)!!!" << endl;
-				Reset();
-				return false;
-			}
-	}
-	MainOp = new AdrOp(numLines[0],numLines[1],numLines[2]);
-	MainOp->SetGrid(discLines[0],discLines[1],discLines[2]);
-	if (grid->GetDeltaUnit()<=0)
-	{
-		cerr << "CartOperator::SetGeometryCSX: grid delta unit must not be <=0 !!!" << endl;
-		Reset();
-		return false;
-	}
-	else gridDelta=grid->GetDeltaUnit();
-	MainOp->SetGridDelta(1);
-	MainOp->AddCellAdrOp();
-	return true;
+
+	return SetupCSXGrid(CSRectGrid::Clone(grid));
 }
 
 void Operator::InitOperator()
@@ -982,6 +1010,44 @@ double Operator::GetRawDiscDelta(int ny, const int pos) const
 	return (discLines[ny][pos+1] - discLines[ny][pos]);
 }
 
+double Operator::GetMaterial(int ny, const double* coords, int MatType, bool markAsUsed) const
+{
+	CSProperties* prop = CSX->GetPropertyByCoordPriority(coords,CSProperties::MATERIAL,markAsUsed);
+	CSPropMaterial* mat = dynamic_cast<CSPropMaterial*>(prop);
+	if (mat)
+	{
+		switch (MatType)
+		{
+		case 0:
+			return mat->GetEpsilonWeighted(ny,coords);
+		case 1:
+			return mat->GetKappaWeighted(ny,coords);
+		case 2:
+			return mat->GetMueWeighted(ny,coords);
+		case 3:
+			return mat->GetSigmaWeighted(ny,coords);
+		default:
+			cerr << "Operator::GetMaterial: Error: unknown material type" << endl;
+			return 0;
+		}
+	}
+
+	switch (MatType)
+	{
+	case 0:
+		return 1;
+	case 1:
+		return 0;
+	case 2:
+		return 1;
+	case 3:
+		return 0;
+	default:
+		cerr << "Operator::GetMaterial: Error: unknown material type" << endl;
+		return 0;
+	}
+}
+
 bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const
 {
 	int n=ny;
@@ -1008,23 +1074,9 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[n] = coord[n]+delta*0.5;
 	shiftCoord[nP] = coord[nP]+deltaP*0.25;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
-	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
-//	{
-//		cerr << ny << " " << pos[0] << " " <<  pos[1] << " " <<  pos[2] << ": " << A_n << endl;
-//		exit(0);
-//	}
-	CSProperties* prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		EffMat[0] = mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
-		EffMat[1] = mat->GetKappaWeighted(n,shiftCoord)*A_n;
-	}
-	else
-	{
-		EffMat[0] = 1*A_n;
-		EffMat[1] = 0;
-	}
+	A_n = GetNodeArea(ny,loc_pos,true);
+	EffMat[0] = GetMaterial(n, shiftCoord, 0)*A_n;
+	EffMat[1] = GetMaterial(n, shiftCoord, 1)*A_n;
 	area+=A_n;
 
 	//shift up-left
@@ -1033,20 +1085,9 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
 
 	--loc_pos[nP];
-	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
-//	cerr << A_n << endl;
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		EffMat[0] += mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
-		EffMat[1] += mat->GetKappaWeighted(n,shiftCoord)*A_n;
-	}
-	else
-	{
-		EffMat[0] += 1*A_n;
-		EffMat[1] += 0;
-	}
+	A_n = GetNodeArea(ny,loc_pos,true);
+	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
+	EffMat[1] += GetMaterial(n, shiftCoord, 1)*A_n;
 	area+=A_n;
 
 	//shift down-right
@@ -1055,19 +1096,9 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	++loc_pos[nP];
 	--loc_pos[nPP];
-	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		EffMat[0] += mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
-		EffMat[1] += mat->GetKappaWeighted(n,shiftCoord)*A_n;
-	}
-	else
-	{
-		EffMat[0] += 1*A_n;
-		EffMat[1] += 0;
-	}
+	A_n = GetNodeArea(ny,loc_pos,true);
+	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
+	EffMat[1] += GetMaterial(n, shiftCoord, 1)*A_n;
 	area+=A_n;
 
 	//shift down-left
@@ -1075,19 +1106,9 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	--loc_pos[nP];
-	A_n = GetNodeArea(ny,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		EffMat[0] += mat->GetEpsilonWeighted(n,shiftCoord)*A_n;
-		EffMat[1] += mat->GetKappaWeighted(n,shiftCoord)*A_n;
-	}
-	else
-	{
-		EffMat[0] += 1*A_n;
-		EffMat[1] += 0;
-	}
+	A_n = GetNodeArea(ny,loc_pos,true);
+	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
+	EffMat[1] += GetMaterial(n, shiftCoord, 1)*A_n;
 	area+=A_n;
 
 	EffMat[0]*=__EPS0__/area;
@@ -1098,27 +1119,19 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	loc_pos[1]=pos[1];
 	loc_pos[2]=pos[2];
 	double length=0;
+
 	//shift down
 	shiftCoord[n] = coord[n]-delta_M*0.25;
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	--loc_pos[n];
-	double delta_ny = GetNodeWidth(n,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		EffMat[2] = delta_ny / mat->GetMueWeighted(n,shiftCoord);
-		if (mat->GetSigmaWeighted(n,shiftCoord))
-			EffMat[3] = delta_ny / mat->GetSigmaWeighted(n,shiftCoord);
-		else
-			EffMat[3] = 0;
-	}
+	double delta_ny = GetNodeWidth(n,loc_pos,true);
+	EffMat[2] = delta_ny / GetMaterial(n, shiftCoord, 2);
+	double sigma = GetMaterial(n, shiftCoord, 3);
+	if (sigma)
+		EffMat[3] = delta_ny / sigma;
 	else
-	{
-		EffMat[2] = delta_ny;
 		EffMat[3] = 0;
-	}
 	length=delta_ny;
 
 	//shift up
@@ -1126,22 +1139,13 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	++loc_pos[n];
-	delta_ny = GetNodeWidth(n,(unsigned int*)loc_pos,true);
-	prop = CSX->GetPropertyByCoordPriority(shiftCoord,CSProperties::MATERIAL,true);
-	if (prop)
-	{
-		CSPropMaterial* mat = prop->ToMaterial();
-		EffMat[2] += delta_ny / mat->GetMueWeighted(n,shiftCoord);
-		if (mat->GetSigmaWeighted(n,shiftCoord))
-			EffMat[3] += delta_ny/mat->GetSigmaWeighted(n,shiftCoord);
-		else
-			EffMat[3] = 0;
-	}
+	delta_ny = GetNodeWidth(n,loc_pos,true);
+	EffMat[2] += delta_ny / GetMaterial(n, shiftCoord, 2);
+	sigma = GetMaterial(n, shiftCoord, 3);
+	if (sigma)
+		EffMat[3] += delta_ny / sigma;
 	else
-	{
-		EffMat[2] += 1*delta_ny;
 		EffMat[3] = 0;
-	}
 	length+=delta_ny;
 
 	EffMat[2] = length * __MUE0__ / EffMat[2];

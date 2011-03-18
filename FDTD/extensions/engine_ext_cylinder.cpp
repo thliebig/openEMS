@@ -61,14 +61,13 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 
 	//close alpha
 	unsigned int pos[3];
-	// copy voltages from last alpha-plane to first
-	unsigned int last_A_Line = numLines[1]-1;
+	// copy tangential voltages from last alpha-plane to first
+	unsigned int last_A_Line = numLines[1]-2;
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
 			m_Eng->SetVolt(0,pos[0],0,pos[2], m_Eng->GetVolt(0,pos[0],last_A_Line,pos[2]) );
-			m_Eng->SetVolt(1,pos[0],0,pos[2], m_Eng->GetVolt(1,pos[0],last_A_Line,pos[2]) );
 			m_Eng->SetVolt(2,pos[0],0,pos[2], m_Eng->GetVolt(2,pos[0],last_A_Line,pos[2]) );
 		}
 	}
@@ -80,14 +79,13 @@ void Engine_Ext_Cylinder::Apply2Current()
 
 	//close alpha
 	unsigned int pos[3];
-	// copy currents from first alpha-plane to last
+	// copy tangential currents from first alpha-plane to last
 	for (pos[0]=0; pos[0]<numLines[0]-1; ++pos[0])
 	{
-		unsigned int last_A_Line = numLines[1]-1;
+		unsigned int last_A_Line = numLines[1]-2;
 		for (pos[2]=0; pos[2]<numLines[2]-1; ++pos[2])
 		{
 			m_Eng->SetCurr(0,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(0,pos[0],0,pos[2]) );
-			m_Eng->SetCurr(1,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(1,pos[0],0,pos[2]) );
 			m_Eng->SetCurr(2,pos[0],last_A_Line,pos[2], m_Eng->GetCurr(2,pos[0],0,pos[2]) );
 		}
 	}

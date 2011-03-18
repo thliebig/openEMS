@@ -38,8 +38,6 @@ public:
 	static Operator_Multithread* New(unsigned int numThreads = 0);
 	virtual ~Operator_Multithread();
 
-	virtual int CalcECOperator( DebugFlags debugFlags = None );
-
 	virtual void setNumThreads( unsigned int numThreads );
 
 	virtual Engine* CreateEngine() const;
@@ -54,6 +52,8 @@ protected:
 
 	unsigned int (*m_Nr_PEC_thread)[3]; //count PEC edges per thread
 	virtual bool CalcPEC(); //this method is using multi-threading
+
+	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	//Calc_EC barrier
 	boost::barrier* m_CalcEC_Start;

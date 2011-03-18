@@ -60,14 +60,14 @@ double Operator_CylinderMultiGrid::GetNumberCells() const
 	return 0;
 }
 
-bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
+bool Operator_CylinderMultiGrid::SetupCSXGrid(CSRectGrid* grid)
 {
-	if (Operator_Cylinder::SetGeometryCSX(geo)==false)
+	if (Operator_Cylinder::SetupCSXGrid(grid)==false)
 		return false;
 
-	if (numLines[1]%2 != 1)
+	if ((numLines[1]-CC_closedAlpha)%2 != 1)
 	{
-		cerr << "Operator_CylinderMultiGrid::SetGeometryCSX: Error, number of line in alpha direction must be odd... found: " << numLines[1] << endl;
+		cerr << "Operator_CylinderMultiGrid::SetupCSXGrid: Error, number of line in alpha direction must be odd... found: " << numLines[1] << endl;
 		exit(0);
 	}
 
@@ -77,7 +77,7 @@ bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
 	{
 		if ( fabs((discLines[1][n]-discLines[1][n-1]) - diff)/diff > 1e-10)
 		{
-			cerr << "Operator_CylinderMultiGrid::SetGeometryCSX: Error, mesh has to be homogenous in alpha direction for multi grid engine, violation found at: " << n << endl;
+			cerr << "Operator_CylinderMultiGrid::SetupCSXGrid: Error, mesh has to be homogenous in alpha direction for multi grid engine, violation found at: " << n << endl;
 			exit(0);
 		}
 	}
@@ -88,16 +88,23 @@ bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
 		if (m_Split_Rad < discLines[0][n])
 		{
 			m_Split_Pos = n;
-			cout << "Operator_CylinderMultiGrid::SetGeometryCSX: Found mesh split position @" << m_Split_Pos << endl;
+			cout << "Operator_CylinderMultiGrid::SetupCSXGrid: Found mesh split position @" << m_Split_Pos << endl;
 			m_Split_Rad = discLines[0][n];
 			break;
 		}
 	}
 	if ((m_Split_Pos<4) || (m_Split_Pos>numLines[0]-4))
 	{
-		cerr << "Operator_CylinderMultiGrid::SetGeometryCSX: Error, split invalid..." << endl;
+		cerr << "Operator_CylinderMultiGrid::SetupCSXGrid: Error, split invalid..." << endl;
 		return false;
 	}
+	return true;
+}
+
+bool Operator_CylinderMultiGrid::SetGeometryCSX(ContinuousStructure* geo)
+{
+	if (Operator_Cylinder::SetGeometryCSX(geo)==false)
+		return false;
 
 	CSRectGrid* grid = geo->GetGrid();
 

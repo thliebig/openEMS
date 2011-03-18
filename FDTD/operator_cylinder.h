@@ -18,6 +18,8 @@
 #ifndef OPERATOR_CYLINDER_H
 #define OPERATOR_CYLINDER_H
 
+#define OPERATOR_CYLINDER_CLOSED_ALPHA_THRESHOLD 1e-6
+
 #include "operator_multithread.h"
 
 //! This class creates an operator for a cylindrical FDTD.
@@ -32,11 +34,6 @@ public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
 	virtual ~Operator_Cylinder();
 
-	virtual int CalcECOperator( DebugFlags debugFlags = None );
-
-	virtual bool SetGeometryCSX(ContinuousStructure* geo);
-
-	virtual void ApplyElectricBC(bool* dirs);
 	virtual void ApplyMagneticBC(bool* dirs);
 
 	virtual unsigned int GetNumberOfLines(int ny) const;
@@ -49,9 +46,13 @@ public:
 
 	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const;
+	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeWidth(int ny, const int pos[3], bool dualMesh = false) const;
 
 	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
 	virtual double GetNodeArea(int n, const unsigned int* pos, bool dualMesh=false) const;
+	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
+	virtual double GetNodeArea(int ny, const int pos[3], bool dualMesh = false) const;
 
 	//! Get the length of an FDTD edge, including radius corrected alpha-mesh width.
 	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const;
@@ -74,6 +75,14 @@ protected:
 
 	//Calc timestep only internal use
 	virtual double CalcTimestep();
+
+	virtual bool SetupCSXGrid(CSRectGrid* grid);
+
+	virtual double GetRawDiscDelta(int ny, const int pos) const;
+
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, bool markAsUsed=true) const;
+
+	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	bool CC_closedAlpha;
 	bool CC_R0_included;

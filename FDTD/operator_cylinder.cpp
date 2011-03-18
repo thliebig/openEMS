@@ -46,6 +46,27 @@ void Operator_Cylinder::Init()
 	Operator_Multithread::Init();
 }
 
+double Operator_Cylinder::GetRawDiscDelta(int ny, const int pos) const
+{
+	if (CC_closedAlpha && ny==1 && pos==-1)
+	{
+//		cerr << (discLines[1][numLines[1]-2] - discLines[1][numLines[1]-3]) << " vs "  << Operator_Multithread::GetRawDiscDelta(ny,pos) << endl;
+		return (discLines[1][numLines[1]-2] - discLines[1][numLines[1]-3]);
+	}
+
+	return Operator_Multithread::GetRawDiscDelta(ny,pos);
+}
+
+double Operator_Cylinder::GetMaterial(int ny, const double* coords, int MatType, bool markAsUsed) const
+{
+	double l_coords[] = {coords[0],coords[1],coords[2]};
+	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
+		l_coords[1]-=2*PI;
+	if (CC_closedAlpha && (coords[1]<GetDiscLine(1,0,false)))
+		l_coords[1] += 2*PI;
+	return Operator_Multithread::GetMaterial(ny,l_coords,MatType,markAsUsed);
+}
+
 int Operator_Cylinder::CalcECOperator( DebugFlags debugFlags )
 {
 	// debugs only work with the native vector dumps
@@ -61,7 +82,7 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny) const
 {
 	//this is necessary for a correct field processing... cylindrical engine has to reset this by adding +1
 	if (CC_closedAlpha && ny==1)
-		return Operator_Multithread::GetNumberOfLines(ny)-1;
+		return Operator_Multithread::GetNumberOfLines(ny)-2;
 
 	return Operator_Multithread::GetNumberOfLines(ny);
 }
@@ -76,16 +97,12 @@ string Operator_Cylinder::GetDirName(int ny) const
 
 bool Operator_Cylinder::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const
 {
-	bool ret = Operator_Multithread::GetYeeCoords(ny,pos,coords,dualMesh);
-	if ((CC_closedAlpha==false) || (ny!=1))
-		return ret;
-
-	if (coords[1]>GetDiscLine(1,0,false)+2*PI)
-	{
+	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
 		coords[1]-=2*PI;
-	}
+	if (CC_closedAlpha && (coords[1]<GetDiscLine(1,0,false)))
+		coords[1]+=2*PI;
 
-	return ret;
+	return Operator_Multithread::GetYeeCoords(ny,pos,coords,dualMesh);
 }
 
 double Operator_Cylinder::GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh) const
@@ -96,6 +113,18 @@ double Operator_Cylinder::GetNodeWidth(int ny, const unsigned int pos[3], bool d
 	if (ny==1)
 		width *= GetDiscLine(0,pos[0],dualMesh);
 	return width;
+}
+
+double Operator_Cylinder::GetNodeWidth(int ny, const int pos[3], bool dualMesh) const
+{
+	if ( (pos[0]<0) || (pos[1]<0 && CC_closedAlpha==false) || (pos[2]<0) )
+		return 0.0;
+
+	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
+	if (pos[1]<0 && CC_closedAlpha==true)
+		uiPos[1]+=numLines[1]-2;
+
+	return GetNodeWidth(ny, uiPos, dualMesh);
 }
 
 double Operator_Cylinder::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
@@ -127,6 +156,18 @@ double Operator_Cylinder::GetNodeArea(int ny, const unsigned int pos[3], bool du
 	return Operator_Multithread::GetNodeArea(ny,pos,dualMesh);
 }
 
+double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
+{
+	if ( (pos[0]<0) || (pos[1]<0 && CC_closedAlpha==false) || (pos[2]<0) )
+		return 0.0;
+
+	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
+	if (pos[1]<0 && CC_closedAlpha==true)
+		uiPos[1]+=numLines[1]-2;
+
+	return GetNodeArea(ny, uiPos, dualMesh);
+}
+
 double Operator_Cylinder::GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	double length = Operator_Multithread::GetEdgeLength(ny,pos,dualMesh);
@@ -143,31 +184,23 @@ double Operator_Cylinder::GetEdgeArea(int ny, const unsigned int pos[3], bool du
 	return GetEdgeLength(1,pos,!dualMesh) * GetEdgeLength(2,pos,!dualMesh);
 }
 
-bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
+bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 {
-	if (Operator_Multithread::SetGeometryCSX(geo)==false) return false;
+	unsigned int alphaNum;
+	double* alphaLines = NULL;
+	alphaLines = grid->GetLines(1,alphaLines,alphaNum,true);
 
-	double minmaxA = fabs(discLines[1][numLines[1]-1]-discLines[1][0]);
-	if (fabs(minmaxA-2*PI) < (2*PI)/10/numLines[1]) //check minmaxA smaller then a tenth of average alpha-width
+	double minmaxA = fabs(alphaLines[alphaNum-1]-alphaLines[0]);
+	if (fabs(minmaxA-2*PI) < OPERATOR_CYLINDER_CLOSED_ALPHA_THRESHOLD)
 	{
-		cout << "Operator_Cylinder::SetGeometryCSX: Alpha is a full 2*PI => closed Cylinder..." << endl;
+		cout << "Operator_Cylinder::SetupCSXGrid: Alpha is a full 2*PI => closed Cylinder..." << endl;
 		CC_closedAlpha = true;
-		discLines[1][numLines[1]-1] = discLines[1][0] + 2*PI;
-		cerr << "Operator_Cylinder::SetGeometryCSX: Warning, not handling the disc-line width and material averaging correctly yet for a closed cylinder..." << endl;
-		if (MainOp->GetIndexDelta(1,0)-MainOp->GetIndexDelta(1,numLines[1]-2) > (2*PI)/10/numLines[1])
-		{
-			cerr << "Operator_Cylinder::SetGeometryCSX: first and last angle delta must be the same... deviation to large..." << MainOp->GetIndexDelta(1,0) - MainOp->GetIndexDelta(1,numLines[1]-2) << endl;
-			exit(1);
-		}
-		if (MainOp->GetIndexDelta(1,0)-MainOp->GetIndexDelta(1,numLines[1]-2) > 0)
-		{
-			cerr << "Operator_Cylinder::SetGeometryCSX: first and last angle delta must be the same... auto correction of deviation: " << MainOp->GetIndexDelta(1,0) - MainOp->GetIndexDelta(1,numLines[1]-2) << endl;
-			discLines[1][numLines[1]-2] = discLines[1][numLines[1]-1]-MainOp->GetIndexDelta(1,0);
-		}
+		grid->SetLine(1,alphaNum-1,2*PI+alphaLines[0]);
+		grid->AddDiscLine(1,2*PI+alphaLines[1]);
 	}
 	else if (minmaxA>2*PI)
 	{
-		cerr << "Operator_Cylinder::SetGeometryCSX: Alpha Max-Min must not be larger than 2*PI!!!" << endl;
+		cerr << "Operator_Cylinder::SetupCSXGrid: Alpha Max-Min must not be larger than 2*PI!!!" << endl;
 		Reset();
 		return false;
 	}
@@ -176,46 +209,25 @@ bool Operator_Cylinder::SetGeometryCSX(ContinuousStructure* geo)
 		CC_closedAlpha=false;
 	}
 
-	if (discLines[0][0]<0)
+	if (grid->GetLine(0,0)<0)
 	{
-		cerr << "Operator_Cylinder::SetGeometryCSX: r<0 not allowed in Cylinder Coordinates!!!" << endl;
+		cerr << "Operator_Cylinder::SetupCSXGrid: r<0 not allowed in Cylinder Coordinates!!!" << endl;
 		Reset();
 		return false;
 	}
-	else if (discLines[0][0]==0.0)
+	else if (grid->GetLine(0,0)==0.0)
 	{
-		cout << "Operator_Cylinder::SetGeometryCSX: r=0 included..." << endl;
+		cout << "Operator_Cylinder::SetupCSXGrid: r=0 included..." << endl;
 		CC_R0_included= true;  //also needed for correct ec-calculation
 	}
+
+	if (Operator_Multithread::SetupCSXGrid(grid)==false)
+		return false;
 
 	if (CC_closedAlpha || CC_R0_included)
 		this->AddExtension(new Operator_Ext_Cylinder(this));
 
 	return true;
-}
-
-void Operator_Cylinder::ApplyElectricBC(bool* dirs)
-{
-	if (dirs==NULL) return;
-	if (CC_closedAlpha)
-	{
-		dirs[2]=0;
-		dirs[3]=0; //no PEC in alpha directions...
-	}
-	if (CC_R0_included)
-	{
-		// E in alpha direction ( aka volt[1][x][y][z] ) is not defined for r==0 --> always zero...
-		unsigned int pos[3] = {0,0,0};
-		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-		{
-			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-			{
-				SetVV(1,pos[0],pos[1],pos[2], 0 );
-				SetVI(1,pos[0],pos[1],pos[2], 0 );
-			}
-		}
-	}
-	Operator_Multithread::ApplyElectricBC(dirs);
 }
 
 void Operator_Cylinder::ApplyMagneticBC(bool* dirs)

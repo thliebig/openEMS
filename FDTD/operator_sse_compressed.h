@@ -45,8 +45,6 @@ public:
 
 	virtual Engine* CreateEngine() const;
 
-	virtual int CalcECOperator( DebugFlags debugFlags = None );
-
 	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { if (m_Use_Compression) return f4_vv_Compressed[n][m_Op_index[x][y][z%numVectors]].f[z/numVectors]; else return Operator_sse::GetVV(n,x,y,z);}
 	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { if (m_Use_Compression) return f4_vi_Compressed[n][m_Op_index[x][y][z%numVectors]].f[z/numVectors]; else return Operator_sse::GetVI(n,x,y,z);}
 	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { if (m_Use_Compression) return f4_ii_Compressed[n][m_Op_index[x][y][z%numVectors]].f[z/numVectors]; else return Operator_sse::GetII(n,x,y,z);}
@@ -72,6 +70,8 @@ protected:
 	virtual void InitOperator();
 
 	bool CompareOperators(unsigned int pos1[3], unsigned int pos2[3]);
+
+	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	// engine needs access
 public:
