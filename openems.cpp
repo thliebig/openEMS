@@ -572,7 +572,8 @@ int openEMS::SetupFDTD(const char* file)
 		m_CSX->Write2XML("debugm_CSX->xml");
 
 	//*************** setup operator ************//
-	SetupOperator(FDTD_Opts);
+	if (SetupOperator(FDTD_Opts)==false)
+		return 2;
 
 	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
 
