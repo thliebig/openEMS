@@ -35,7 +35,7 @@ if (nargin<4)
     Settings = [];
 end
 
-if (isfield(Settings,'MPI'))
+if (isfield(Settings,'MPI') && isunix)
     if (Settings.MPI.NrProc>1)
         RunOpenEMS_MPI(Sim_Path, Sim_File, opts, Settings);
         return;
