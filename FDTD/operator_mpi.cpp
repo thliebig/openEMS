@@ -60,7 +60,6 @@ double Operator_MPI::CalcTimestep()
 	return ret;
 }
 
-
 void Operator_MPI::SetBoundaryCondition(int* BCs)
 {
 	if (!m_MPI_Enabled)
