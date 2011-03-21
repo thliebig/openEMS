@@ -61,7 +61,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 	{
 		double C=0;
 		double G=0;
-		for (pos[1]=0; pos[1]<m_Op->GetOriginalNumLines(1)-1; ++pos[1])
+		for (pos[1]=0; pos[1]<m_Op->GetOriginalNumLines(1)-2; ++pos[1])
 		{
 			m_Op_Cyl->Calc_ECPos(2,pos,inEC);
 			C+=inEC[0];
