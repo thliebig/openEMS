@@ -117,6 +117,11 @@ void Operator_MPI::Init()
 		m_OrigDiscLines[i]=NULL;
 	}
 
+	m_ProcTable = NULL;
+	m_SplitNumber[0]=0;
+	m_SplitNumber[1]=0;
+	m_SplitNumber[2]=0;
+
 	int  namelen;
 	m_NumProc = MPI::COMM_WORLD.Get_size();
 	m_MyID = MPI::COMM_WORLD.Get_rank();
@@ -137,7 +142,8 @@ void Operator_MPI::Delete()
 		delete[] m_OrigDiscLines[i];
 		m_OrigDiscLines[i] = NULL;
 	}
-
+	Delete3DArray(m_ProcTable,m_SplitNumber);
+	m_ProcTable=NULL;
 }
 
 void Operator_MPI::Reset()
@@ -151,8 +157,7 @@ void Operator_MPI::SetOriginalMesh(CSRectGrid* orig_Mesh)
 	for (int n=0;n<3;++n)
 	{
 		delete[] m_OrigDiscLines[n];
-		m_OrigDiscLines[n] = NULL;
-		orig_Mesh->GetLines(n,m_OrigDiscLines[n],m_OrigNumLines[n]);
+		m_OrigDiscLines[n] = orig_Mesh->GetLines(n,NULL,m_OrigNumLines[n]);
 	}
 }
 

@@ -193,7 +193,7 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//validate number of processes
-	int numProcs = (SplitNumber[0].size()-1)*(SplitNumber[1].size()-1)*(SplitNumber[2].size()-1);
+	unsigned int numProcs = (SplitNumber[0].size()-1)*(SplitNumber[1].size()-1)*(SplitNumber[2].size()-1);
 	if (numProcs!=m_NumProc)
 	{
 		if (m_MyID==0)
@@ -203,7 +203,11 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 
 	//create process table
 	unsigned int procN = 0;
-	int procTable[SplitNumber[0].size()-1][SplitNumber[1].size()-1][SplitNumber[2].size()-1];
+	unsigned int splits[] = {SplitNumber[0].size()-1, SplitNumber[1].size()-1, SplitNumber[2].size()-1};
+	m_MPI_Op->SetSplitNumbers(0,splits[0]);
+	m_MPI_Op->SetSplitNumbers(1,splits[1]);
+	m_MPI_Op->SetSplitNumbers(2,splits[2]);
+	unsigned int*** procTable=Create3DArray<unsigned int>(splits);
 	for (size_t i=0;i<SplitNumber[0].size()-1;++i)
 		for (size_t j=0;j<SplitNumber[1].size()-1;++j)
 			for (size_t k=0;k<SplitNumber[2].size()-1;++k)
@@ -211,6 +215,7 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 				procTable[i][j][k] = procN;
 				++procN;
 			}
+	m_MPI_Op->SetProcessTable(procTable);
 
 	//assign mesh and neighbors to this process
 	for (size_t i=0;i<SplitNumber[0].size()-1;++i)
@@ -221,6 +226,10 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 			{
 				if (procTable[i][j][k] == m_MyID)
 				{
+					m_MPI_Op->SetProcessTablePosition(0,i);
+					m_MPI_Op->SetProcessTablePosition(1,j);
+					m_MPI_Op->SetProcessTablePosition(2,k);
+
 					grid->ClearLines(0);
 					grid->ClearLines(1);
 					grid->ClearLines(2);

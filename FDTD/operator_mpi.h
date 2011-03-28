@@ -36,11 +36,19 @@ public:
 
 	virtual void SetTag(int tag) {m_MyTag=tag;}
 
+	//! Set the number of splits for a given direction. This also defines the size of the process table. \sa SetProcessTable
+	virtual void SetSplitNumbers(int ny, unsigned int splits) {m_SplitNumber[ny]=splits;}
+	//! Set the table containing a list of all MPI rank ID's and there mesh affiliation. \sa SetProcessTablePosition
+	virtual void SetProcessTable(unsigned int*** procTable) {m_ProcTable=procTable;}
+	//! Save the position for this rank in the process table. \sa SetProcessTable
+	virtual void SetProcessTablePosition(int ny, unsigned int pos) {m_ProcTablePos[ny]=pos;}
+
 	virtual void SetNeighborUp(int ny, int id);
 	virtual void SetNeighborDown(int ny, int id);
 
 	virtual void DumpExciationSignals();
 
+	//! Set the lower original mesh position
 	virtual void SetSplitPos(int ny, unsigned int pos) {m_SplitPos[ny]=pos;}
 	virtual void SetOriginalMesh(CSRectGrid* orig_Mesh);
 
@@ -55,14 +63,18 @@ protected:
 
 	virtual double CalcTimestep();
 
-	int m_MyID;
-	int m_NumProc;
+	unsigned int m_MyID;
+	unsigned int m_NumProc;
 	int m_MyTag;
 	char* m_Processor_Name;
 
 	//the up and down neighbors, -1 if non for the given direction
 	int m_NeighborUp[3];
 	int m_NeighborDown[3];
+
+	unsigned int m_SplitNumber[3];
+	unsigned int m_ProcTablePos[3];
+	unsigned int*** m_ProcTable;
 
 	double* m_OrigDiscLines[3];
 	unsigned int m_OrigNumLines[3];
