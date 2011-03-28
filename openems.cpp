@@ -569,7 +569,7 @@ int openEMS::SetupFDTD(const char* file)
 		}
 
 	if (m_debugCSX)
-		m_CSX->Write2XML("debugm_CSX->xml");
+		m_CSX->Write2XML("debugCSX.xml");
 
 	//*************** setup operator ************//
 	if (SetupOperator(FDTD_Opts)==false)
