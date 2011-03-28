@@ -30,6 +30,7 @@ all special cases e.g. a closed alpha mesh or an included r=0 case is treated by
 class Operator_Cylinder : public Operator_Multithread
 {
 	friend class Operator_CylinderMultiGrid;
+	friend class Operator_Ext_Cylinder;
 public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
 	virtual ~Operator_Cylinder();
@@ -86,6 +87,10 @@ protected:
 
 	bool CC_closedAlpha;
 	bool CC_R0_included;
+
+#ifdef MPI_SUPPORT
+	bool CC_MPI_Alpha;
+#endif
 };
 
 #endif // OPERATOR_CYLINDER_H

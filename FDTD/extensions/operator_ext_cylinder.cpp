@@ -47,7 +47,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 
 	//if r=0 is not included -> obviously no special treatment for r=0
 	//if alpha direction is not closed, PEC-BC at r=0 necessary and already set...
-	if ((CC_R0_included==false) || (CC_closedAlpha==false))
+	if (CC_R0_included==false)
 		return true;
 
 	vv_R0 = new FDTD_FLOAT[m_Op->GetOriginalNumLines(2)];
