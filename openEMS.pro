@@ -42,19 +42,25 @@ win32 {
     LIBS += ../tinyxml/libtinyxml.so
     LIBS += -lboost_thread
     LIBS += -lhdf5 -lhdf5_cpp
+	### vtk ###
+    INCLUDEPATH += /usr/include/vtk-5.2 \
+        /usr/include/vtk-5.4 \
+        /usr/include/vtk-5.6
+    LIBS += -lvtkCommon \
+        -lvtkIO \
+        -lvtksys
 }
-
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
 
+#### SOURCES ################################################################
 SOURCES += main.cpp \
-    tools/ErrorMsg.cpp \
-    tools/AdrOp.cpp \
-    FDTD/engine.cpp \
+	openems.cpp
+
+# FDTD
+SOURCES += FDTD/engine.cpp \
     FDTD/operator.cpp \
-    tools/array_ops.cpp \
-    openems.cpp \
     FDTD/engine_multithread.cpp \
     FDTD/operator_cylinder.cpp \
     FDTD/engine_sse.cpp \
@@ -62,8 +68,6 @@ SOURCES += main.cpp \
     FDTD/operator_sse_compressed.cpp \
     FDTD/engine_sse_compressed.cpp \
     FDTD/operator_multithread.cpp \
-    tools/global.cpp \
-    tools/useful.cpp \
     FDTD/excitation.cpp \
     FDTD/operator_cylindermultigrid.cpp \
     FDTD/engine_cylindermultigrid.cpp \
@@ -99,16 +103,24 @@ SOURCES += Common/operator_base.cpp \
     Common/processfields_td.cpp \
     Common/processcurrent.cpp \
     Common/processfields_fd.cpp \
-	Common/processfieldprobe.cpp \
-	Common/processfields_sar.cpp
+    Common/processfieldprobe.cpp \
+    Common/processfields_sar.cpp
 
-HEADERS += tools/ErrorMsg.h \
-    tools/AdrOp.h \
-    tools/constants.h \
-    FDTD/engine.h \
+# tools
+ SOURCES += tools/global.cpp \
+	tools/useful.cpp \
+	tools/array_ops.cpp \
+	tools/ErrorMsg.cpp \
+	tools/AdrOp.cpp \
+	tools/vtk_file_io.cpp \
+	tools/base_file_io.cpp
+
+#### HEADERS ################################################################
+HEADERS += openems.h
+
+# FDTD
+HEADERS += FDTD/engine.h \
     FDTD/operator.h \
-    tools/array_ops.h \
-    openems.h \
     FDTD/engine_multithread.h \
     FDTD/operator_cylinder.h \
     FDTD/engine_sse.h \
@@ -117,11 +129,8 @@ HEADERS += tools/ErrorMsg.h \
     FDTD/operator_sse_compressed.h \
     FDTD/engine_sse_compressed.h \
     FDTD/operator_multithread.h \
-    tools/global.h \
-    tools/useful.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
-    tools/aligned_allocator.h \
 	FDTD/engine_interface_fdtd.h
 
 # FDTD/extensions header files
@@ -154,8 +163,19 @@ HEADERS += Common/operator_base.h \
     Common/processcurrent.h \
     Common/processmodematch.h \
     Common/processfields_fd.h \
-	Common/processfieldprobe.h \
-	Common/processfields_sar.h
+    Common/processfieldprobe.h \
+    Common/processfields_sar.h
+
+# tools
+HEADERS += tools/ErrorMsg.h \
+	tools/AdrOp.h \
+	tools/constants.h \
+	tools/array_ops.h \
+	tools/global.h \
+	tools/useful.h \
+	tools/aligned_allocator.h \
+	tools/vtk_file_io.h \
+	tools/base_file_io.h
 
 QMAKE_CXXFLAGS_RELEASE = -O3 \
 	-g \
