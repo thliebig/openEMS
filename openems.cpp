@@ -418,7 +418,6 @@ bool openEMS::SetupProcessing()
 						for (int n=0; n<3; ++n)
 							ProcField->SetOptResolution(db->GetOptResolution(n),n);
 					ProcField->SetName(db->GetName());
-					ProcField->SetFilePattern(db->GetName());
 					ProcField->SetFileName(db->GetName());
 					ProcField->DefineStartStopCoord(start,stop);
 					PA->AddProcessing(ProcField);

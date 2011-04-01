@@ -17,6 +17,7 @@
 
 #include "processfields_td.h"
 #include "Common/operator_base.h"
+#include "tools/vtk_file_io.h"
 #include <H5Cpp.h>
 #include <iomanip>
 #include <sstream>
@@ -37,6 +38,15 @@ void ProcessFieldsTD::InitProcess()
 	
 	ProcessFields::InitProcess();
 
+	if (m_Dump_File)
+		m_Dump_File->SetHeader(string("openEMS TD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
+
+	#ifdef OUTPUT_IN_DRAWINGUNITS
+	double discScaling = 1;
+	#else
+	double discScaling = Op->GetGridDelta();
+	#endif
+
 	if (m_fileType==HDF5_FILETYPE)
 	{
 		//create hdf5 file & necessary groups
@@ -49,11 +59,6 @@ void ProcessFieldsTD::InitProcess()
 		delete file;
 
 		//write mesh information in main root-group
-		#ifdef OUTPUT_IN_DRAWINGUNITS
-		double discScaling = 1;
-		#else
-		double discScaling = Op->GetGridDelta();
-		#endif
 		ProcessFields::WriteMesh2HDF5(m_filename,"/",numLines,discLines,m_Mesh_Type, discScaling);
 	}
 }
@@ -61,37 +66,19 @@ void ProcessFieldsTD::InitProcess()
 int ProcessFieldsTD::Process()
 {
 	if (Enabled==false) return -1;
-	if (filePattern.empty()) return -1;
 	if (CheckTimestep()==false) return GetNextInterval();
 
-	string filename;
+	string filename = m_filename;
+
+	float**** field = CalcField();
 
 	if (m_fileType==VTK_FILETYPE)
 	{
-		stringstream ss;
-		ss << filePattern << std::setw( pad_length ) << std::setfill( '0' ) << m_Eng_Interface->GetNumberOfTimesteps() << ".vtk";
-		filename = ss.str();
-	}
-	else
-		filename = m_filename;
-
-#ifdef OUTPUT_IN_DRAWINGUNITS
-	double discLines_scaling = 1;
-#else
-	double discLines_scaling = Op->GetGridDelta();
-#endif
-
-	FDTD_FLOAT**** field = CalcField();
-
-	if (m_fileType==VTK_FILETYPE)
-	{
-		ofstream file(filename.c_str());
-		if (file.is_open()==false)
-		{
-			cerr << "ProcessFieldsTD::Process: can't open file '" << filename << "' for writing... abort! " << endl;
-		};
-		DumpVectorArray2VTK(file,GetFieldNameByType(m_DumpType),field,discLines,numLines,m_precision,string("Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString(), m_Mesh_Type, discLines_scaling);
-		file.close();
+		m_Dump_File->SetTimestep(m_Eng_Interface->GetNumberOfTimesteps());
+		m_Dump_File->ClearAllFields();
+		m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
+		if (m_Dump_File->Write()==false)
+			cerr << "ProcessFieldsTD::Process: can't dump to file... abort! " << endl;
 	}
 	else if (m_fileType==HDF5_FILETYPE)
 	{

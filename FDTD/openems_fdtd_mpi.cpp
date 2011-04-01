@@ -408,7 +408,6 @@ bool openEMS_FDTD_MPI::SetupProcessing()
 				stringstream name_ss;
 				name_ss << "ID" << m_MyID << "_" << ProcField->GetName();
 				ProcField->SetName(name_ss.str());
-				ProcField->SetFilePattern(name_ss.str());
 				ProcField->SetFileName(name_ss.str());
 			}
 		}

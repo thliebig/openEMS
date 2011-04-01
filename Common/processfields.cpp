@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <H5Cpp.h>
 #include "tools/global.h"
+#include "tools/vtk_file_io.h"
 #include "processfields.h"
 #include "FDTD/engine_interface_fdtd.h"
 
@@ -27,6 +28,7 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
 	m_SampleType = NONE;
+	m_Dump_File = NULL;
 	SetPrecision(6);
 	m_dualTime = false;
 
@@ -42,6 +44,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 
 ProcessFields::~ProcessFields()
 {
+	delete m_Dump_File;
+	m_Dump_File = NULL;
 	for (int n=0; n<3; ++n)
 	{
 		delete[] posLines[n];
@@ -74,6 +78,19 @@ void ProcessFields::InitProcess()
 	if (Enabled==false) return;
 
 	CalcMeshPos();
+
+	if (m_fileType==VTK_FILETYPE)
+	{
+		delete m_Dump_File;
+		m_Dump_File = new VTK_File_IO(m_filename,(int)m_Mesh_Type);
+
+		#ifdef OUTPUT_IN_DRAWINGUNITS
+		double discScaling = 1;
+		#else
+		double discScaling = Op->GetGridDelta();
+		#endif
+		m_Dump_File->SetMeshLines(discLines,numLines,discScaling);
+	}
 }
 
 void ProcessFields::SetDumpMode(Engine_Interface_Base::InterpolationType mode)

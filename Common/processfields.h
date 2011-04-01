@@ -23,6 +23,8 @@
 
 #define __VTK_DATA_TYPE__ "double"
 
+class Base_File_IO;
+
 class ProcessFields : public Processing
 {
 public:
@@ -50,10 +52,6 @@ public:
 
 	//! Define a field dump optimal resolution for a given direction (default: \a dir = -1 means all directions)
 	virtual void SetOptResolution(double optRes, int dir=-1);
-
-	//! Used file pattern e.g. pattern="tmp/efield_" --> "tmp/efield_000045.vtk" for timestep 45 or "tmp/efield_2.40000e9.vtk" for 2.4GHz E-field dump. (VTK FileType only) \sa SetFileType()
-	void SetFilePattern(string fp) {m_filename=filePattern=fp;}
-	string GetFilePattern() const {return filePattern;}
 
 	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType()
 	void SetFileName(string fn) {m_filename=fn;}
@@ -105,8 +103,9 @@ public:
 
 protected:
 	DumpType m_DumpType;
-	string filePattern;
 	FileType m_fileType;
+
+	Base_File_IO* m_Dump_File;
 
 	enum SampleType {NONE, SUBSAMPLE, OPT_RESOLUTION} m_SampleType;
 	virtual void CalcMeshPos();

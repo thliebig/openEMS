@@ -17,6 +17,7 @@
 
 #include "processfields_fd.h"
 #include "Common/operator_base.h"
+#include "tools/vtk_file_io.h"
 #include <H5Cpp.h>
 #include <iomanip>
 #include <sstream>
@@ -48,6 +49,9 @@ void ProcessFieldsFD::InitProcess()
 
 	//setup the hdf5 file
 	ProcessFields::InitProcess();
+
+	if (m_Dump_File)
+		m_Dump_File->SetHeader(string("openEMS FD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
 
 	if (m_fileType==HDF5_FILETYPE)
 	{
@@ -129,12 +133,6 @@ void ProcessFieldsFD::PostProcess()
 
 void ProcessFieldsFD::DumpFDData()
 {
-#ifdef OUTPUT_IN_DRAWINGUNITS
-	double discLines_scaling = 1;
-#else
-	double discLines_scaling = Op->GetGridDelta();
-#endif
-
 	if (m_fileType==VTK_FILETYPE)
 	{
 		unsigned int pos[3];
@@ -164,12 +162,13 @@ void ProcessFieldsFD::DumpFDData()
 					}
 				}
 				stringstream ss;
-				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_p=" << std::setw( 3 ) << std::setfill( '0' ) <<(int)(angle * 180 / M_PI) << ".vtk";
-				ofstream file(ss.str().c_str());
-				if (file.is_open()==false)
-					cerr << "ProcessFieldsFD::DumpFDData: can't open file '" << ss.str() << "' for writing... abort! " << endl;
-				DumpVectorArray2VTK(file,GetFieldNameByType(m_DumpType),field,discLines,numLines,m_precision,string("Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString(), m_Mesh_Type, discLines_scaling);
-				file.close();
+				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_p=" << std::setw( 3 ) << std::setfill( '0' ) <<(int)(angle * 180 / M_PI);
+
+				m_Dump_File->SetFilename(ss.str());
+				m_Dump_File->ClearAllFields();
+				m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
+				if (m_Dump_File->Write()==false)
+					cerr << "ProcessFieldsFD::Process: can't dump to file... abort! " << endl;
 			}
 
 			{
@@ -187,12 +186,12 @@ void ProcessFieldsFD::DumpFDData()
 					}
 				}
 				stringstream ss;
-				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_abs" << ".vtk";
-				ofstream file(ss.str().c_str());
-				if (file.is_open()==false)
-					cerr << "ProcessFieldsFD::DumpFDData: can't open file '" << ss.str() << "' for writing... abort! " << endl;
-				DumpVectorArray2VTK(file,GetFieldNameByType(m_DumpType),field,discLines,numLines,m_precision,string("Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString(), m_Mesh_Type, discLines_scaling);
-				file.close();
+				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_abs";
+				m_Dump_File->SetFilename(ss.str());
+				m_Dump_File->ClearAllFields();
+				m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
+				if (m_Dump_File->Write()==false)
+					cerr << "ProcessFieldsFD::Process: can't dump to file... abort! " << endl;
 			}
 
 			{
@@ -210,12 +209,12 @@ void ProcessFieldsFD::DumpFDData()
 					}
 				}
 				stringstream ss;
-				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_arg" << ".vtk";
-				ofstream file(ss.str().c_str());
-				if (file.is_open()==false)
-					cerr << "ProcessFieldsFD::DumpFDData: can't open file '" << ss.str() << "' for writing... abort! " << endl;
-				DumpVectorArray2VTK(file,GetFieldNameByType(m_DumpType),field,discLines,numLines,m_precision,string("Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString(), m_Mesh_Type, discLines_scaling);
-				file.close();
+				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_arg";
+				m_Dump_File->SetFilename(ss.str());
+				m_Dump_File->ClearAllFields();
+				m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
+				if (m_Dump_File->Write()==false)
+					cerr << "ProcessFieldsFD::Process: can't dump to file... abort! " << endl;
 			}
 		}
 		Delete_N_3DArray(field,numLines);
