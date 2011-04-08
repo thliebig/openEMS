@@ -67,8 +67,10 @@ if (numel(FD.names)>0)
         ind = find(strcmp(FD.names,name));
         if isempty(ind)
             ind = find(strcmp(FD.names,['/FieldData/FD/f' int2str(n-1)]));
-            hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
-            hdf_fielddata.FD.freq(n) = FD.freq(ind);
+            if ~isempty(ind)
+                hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
+                hdf_fielddata.FD.freq(n) = FD.freq(ind);
+            end
         else
             hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
             hdf_fielddata.FD.freq(n) = FD.freq(ind);
