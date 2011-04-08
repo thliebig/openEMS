@@ -48,7 +48,8 @@ win32 {
         /usr/include/vtk-5.6
     LIBS += -lvtkCommon \
         -lvtkIO \
-        -lvtksys
+		-lvtksys \
+		-lvtkFiltering
 }
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'

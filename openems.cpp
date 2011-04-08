@@ -36,6 +36,7 @@
 #include "Common/processfields_sar.h"
 #include <H5Cpp.h> // only for H5get_libversion()
 #include <boost/version.hpp> // only for BOOST_LIB_VERSION
+#include <vtkVersion.h>
 
 //external libs
 #include "tinyxml.h"
@@ -196,7 +197,11 @@ string openEMS::GetExtLibsInfo()
 	str << "\t\t" << "tinyxml -- compiled against: " << TIXML_MAJOR_VERSION << '.' << TIXML_MINOR_VERSION << '.' << TIXML_PATCH_VERSION << endl;
 
 	// boost
-	str << "\t\t" << "boost  -- compiled against: " BOOST_LIB_VERSION << endl;
+	str << "\t\t" << "boost  -- compiled against: " << BOOST_LIB_VERSION << endl;
+
+	//vtk
+	str << "\t\t" << "vtk -- Version: " << vtkVersion::GetVTKMajorVersion() << "." << vtkVersion::GetVTKMinorVersion() << "." << vtkVersion::GetVTKBuildVersion() << endl;
+	str << "\t\t" << "       compiled against: " << VTK_VERSION << endl;
 
 	return str.str();
 }
