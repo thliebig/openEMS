@@ -36,6 +36,17 @@ win32 {
     LIBS += -L../CSXCAD/release
     LIBS += ../fparser/release/libfparser4.a
     LIBS += ../tinyxml/release/libtinyxml2.a
+
+	### vtk ###
+	 INCLUDEPATH +=   ..\vtk \
+		..\vtk\Common \
+		..\vtk\Filtering \
+		..\vtk\IO
+	 LIBS += ..\vtk\bin\libvtkIO.dll \
+		..\vtk\bin\libvtkFiltering.dll \
+		..\vtk\bin\libvtkCommon.dll \
+		..\vtk\bin\libvtksys.dll \
+		..\vtk\bin\libvtkzlib.dll
 }
 !win32 {
     LIBS += ../fparser/libfparser.so
