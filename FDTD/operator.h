@@ -188,6 +188,9 @@ protected:
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
 
+	//! Calculate and setup lumped elements
+	virtual bool Calc_LumpedElements();
+
 	//store material properties for post-processing
 	float**** m_epsR;
 	float**** m_kappa;

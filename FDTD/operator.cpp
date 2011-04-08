@@ -824,6 +824,8 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 
 	CalcPEC();
 
+	Calc_LumpedElements();
+
 	bool PMC[6];
 	for (int n=0; n<6; ++n)
 		PMC[n] = m_BC[n]==1;
@@ -1158,6 +1160,165 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 			exit(0);
 		}
 
+	return true;
+}
+
+bool Operator::Calc_LumpedElements()
+{
+	vector<CSProperties*> props = CSX->GetPropertyByType(CSProperties::LUMPED_ELEMENT);
+	for (size_t i=0;i<props.size();++i)
+	{
+		CSPropLumpedElement* PLE = dynamic_cast<CSPropLumpedElement*>(props.at(i));
+		if (PLE==NULL)
+			return false; //sanity check: this should never happen!
+		vector<CSPrimitives*> prims = PLE->GetAllPrimitives();
+		for (size_t bn=0;bn<prims.size();++bn)
+		{
+			CSPrimBox* box = dynamic_cast<CSPrimBox*>(prims.at(bn));
+			if (box)
+			{	//calculate lumped element parameter
+
+				double C = PLE->GetCapacity();
+				if (C<=0)
+					C = NAN;
+				double R = PLE->GetResistance();
+				if (R<0)
+					R = NAN;
+
+				if ((isnan(R)) && (isnan(C)))
+				{
+					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element R or C not specified! skipping. "
+							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
+					break;
+				}
+
+				int ny = PLE->GetDirection();
+				if ((ny<0) || (ny>2))
+				{
+					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element direction is invalid! skipping. "
+							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
+					break;
+				}
+				int nyP = (ny+1)%3;
+				int nyPP = (ny+2)%3;
+
+				unsigned int uiStart[3];
+				unsigned int uiStop[3];
+				// snap to the native coordinate system
+				SnapToMesh(box->GetStartCoord()->GetNativeCoords(),uiStart);
+				SnapToMesh(box->GetStopCoord()->GetNativeCoords(),uiStop);
+
+				for (int n=0;n<3;++n)
+				{
+					if (uiStop[n]<uiStart[n])
+					{
+						unsigned int help = uiStart[n];
+						uiStart[n]=uiStop[n];
+						uiStop[n]=help;
+					}
+				}
+
+				if (uiStart[ny]==uiStop[ny])
+				{
+					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element with zero (snapped) length is invalid! skipping. "
+							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
+					break;
+				}
+
+				//calculate geometric property for this lumped element
+				unsigned int pos[3];
+				double unitGC=0;
+				int ipos=0;
+				for (pos[ny]=uiStart[ny];pos[ny]<uiStop[ny];++pos[ny])
+				{
+					double unitGC_Plane=0;
+					for (pos[nyP]=uiStart[nyP];pos[nyP]<=uiStop[nyP];++pos[nyP])
+					{
+						for (pos[nyPP]=uiStart[nyPP];pos[nyPP]<=uiStop[nyPP];++pos[nyPP])
+						{
+							// capacity/conductivity in parallel: add values
+							unitGC_Plane += GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos);
+						}
+					}
+
+					//capacity/conductivity in series: add reciprocal values
+					unitGC += 1/unitGC_Plane;
+				}
+				unitGC = 1/unitGC;
+
+				bool caps = PLE->GetCaps();
+				double kappa = 0;
+				double epsilon = 0;
+				if (R>0)
+					kappa = 1 / R / unitGC;
+				if (C>0)
+					epsilon =  C / unitGC;
+
+				if (epsilon< __EPS0__)
+				{
+					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element capacity is too small for its size! skipping. "
+							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
+					C = 0;
+					if (isnan(R))
+						break;
+				}
+
+				for (pos[ny]=uiStart[ny];pos[ny]<uiStop[ny];++pos[ny])
+				{
+					for (pos[nyP]=uiStart[nyP];pos[nyP]<=uiStop[nyP];++pos[nyP])
+					{
+						for (pos[nyPP]=uiStart[nyPP];pos[nyPP]<=uiStop[nyPP];++pos[nyPP])
+						{
+							ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
+							if (C>0)
+								EC_C[ny][ipos] = epsilon * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos);
+							if (R>0)
+								EC_G[ny][ipos] = kappa * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos);
+							if (R==0) //make lumped element a PEC if resistance is zero
+							{
+								SetVV(ny,pos[0],pos[1],pos[2], 0 );
+								SetVI(ny,pos[0],pos[1],pos[2], 0 );
+							}
+							else //recalculate operator inside the lumped element
+								Calc_ECOperatorPos(ny,pos);
+						}
+					}
+				}
+
+				// setup metal caps
+				if (caps)
+				{
+					for (pos[nyP]=uiStart[nyP];pos[nyP]<=uiStop[nyP];++pos[nyP])
+					{
+						for (pos[nyPP]=uiStart[nyPP];pos[nyPP]<=uiStop[nyPP];++pos[nyPP])
+						{
+							pos[ny]=uiStart[ny];
+							SetVV(nyP,pos[0],pos[1],pos[2], 0 );
+							SetVI(nyP,pos[0],pos[1],pos[2], 0 );
+							++m_Nr_PEC[nyP];
+
+							SetVV(nyPP,pos[0],pos[1],pos[2], 0 );
+							SetVI(nyPP,pos[0],pos[1],pos[2], 0 );
+							++m_Nr_PEC[nyPP];
+
+							pos[ny]=uiStop[ny];
+							SetVV(nyP,pos[0],pos[1],pos[2], 0 );
+							SetVI(nyP,pos[0],pos[1],pos[2], 0 );
+							++m_Nr_PEC[nyP];
+
+							SetVV(nyPP,pos[0],pos[1],pos[2], 0 );
+							SetVI(nyPP,pos[0],pos[1],pos[2], 0 );
+							++m_Nr_PEC[nyPP];
+						}
+					}
+				}
+
+			}
+			else
+				cerr << "Operator::Calc_LumpedElements(): Warning: Primitves other than boxes are not supported for lumped elements! skipping "
+						<< prims.at(bn)->GetTypeName() << " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
+		}
+	}
 	return true;
 }
 
