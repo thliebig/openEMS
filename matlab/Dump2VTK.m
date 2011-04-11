@@ -26,21 +26,21 @@ if (mesh.type==0) %write cartesian mesh to vtk
 
     fprintf(fid,'DIMENSIONS %d %d %d\n',numel(x),numel(y),numel(z));
 
-    fprintf(fid,'X_COORDINATES %d float\n',numel(x));
+    fprintf(fid,'X_COORDINATES %d double\n',numel(x));
     fprintf(fid,'%e',x(1));
     for n=2:numel(x)
         fprintf(fid,' %e',x(n));
     end
     fprintf(fid,'\n');
 
-    fprintf(fid,'Y_COORDINATES %d float\n',numel(y));
+    fprintf(fid,'Y_COORDINATES %d double\n',numel(y));
     fprintf(fid,'%e',y(1));
     for n=2:numel(y)
         fprintf(fid,' %e',y(n));
     end
     fprintf(fid,'\n');
 
-    fprintf(fid,'Z_COORDINATES %d float\n',numel(z));
+    fprintf(fid,'Z_COORDINATES %d double\n',numel(z));
     fprintf(fid,'%e',z(1));
     for n=2:numel(z)
         fprintf(fid,' %e',z(n));
@@ -54,7 +54,7 @@ elseif (mesh.type==1) %write cylindrical mesh to vtk
 
     fprintf(fid,'DIMENSIONS %d %d %d\n',numel(x),numel(y),numel(z));
 
-    fprintf(fid,'POINTS %d float\n',numel(x)*numel(y)*numel(z));
+    fprintf(fid,'POINTS %d double\n',numel(x)*numel(y)*numel(z));
     
     for nz=1:numel(z)
         for ny=1:numel(y)
@@ -82,9 +82,9 @@ fprintf(fid,'POINT_DATA %d\n',numel(x)*numel(y)*numel(z));
 % dump vector field data
 if (ndims(fields)==4)
     if (nargin>3)
-        fprintf(fid,['VECTORS ' fieldname ' float\n']);
+        fprintf(fid,['VECTORS ' fieldname ' double\n']);
     else
-        fprintf(fid,'VECTORS field float\n');
+        fprintf(fid,'VECTORS field double\n');
     end
     fclose(fid);
     field_x = fields(:,:,:,1);
@@ -101,9 +101,9 @@ end
 % dump scalar field data
 if (ndims(fields)==3)
     if (nargin>3)
-        fprintf(fid,['SCALARS ' fieldname ' float 1\nLOOKUP_TABLE default\n']);
+        fprintf(fid,['SCALARS ' fieldname ' double 1\nLOOKUP_TABLE default\n']);
     else
-        fprintf(fid,'SCALARS field float 1\nLOOKUP_TABLE default\n');
+        fprintf(fid,'SCALARS field double 1\nLOOKUP_TABLE default\n');
     end
     fclose(fid);
     dumpField = fields(:);

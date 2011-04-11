@@ -21,6 +21,7 @@ if (~isfield(field,'TD'))
 end
 
 t = field.TD.time;
+dt = t(2)-t(1);
 
 clear field.FD
 
@@ -35,7 +36,7 @@ numTS = numel(field.TD.values);
 for n=1:numTS
     for nf = 1:numel(freq)
         f = freq(nf);
-        field.FD.values{nf} = field.FD.values{nf} + 2/numTS * field.TD.values{n}.*exp(-1i*2*pi*f*t(n));
+        field.FD.values{nf} = field.FD.values{nf} + field.TD.values{n}.*exp(-1i*2*pi*f*t(n)) * 2 * dt;
         % t(n) is absolute time and therefore the half-timestep offset of
         % the H-field is automatically compensated
         % openEMS output: E-fields start at t=0
