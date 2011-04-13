@@ -21,6 +21,7 @@ Base_File_IO::Base_File_IO(std::string filename, int meshType)
 {
 	SetFilename(filename);
 	m_MeshType = meshType;
+	m_NativeDump = false;
 	m_Binary = true;
 	m_Compress = true;
 	m_AppendMode = false;

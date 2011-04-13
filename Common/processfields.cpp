@@ -90,6 +90,7 @@ void ProcessFields::InitProcess()
 		double discScaling = Op->GetGridDelta();
 		#endif
 		m_Dump_File->SetMeshLines(discLines,numLines,discScaling);
+		m_Dump_File->SetNativeDump(g_settings.NativeFieldDumps());
 	}
 }
 

@@ -46,6 +46,8 @@ public:
 protected:
 	vtkDataSet* m_GridData;
 
+	std::vector<double> m_MeshLines[3];
+
 	virtual std::string GetTimestepFilename(int pad_length=10) const;
 };
 

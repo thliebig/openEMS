@@ -69,9 +69,14 @@ void VTK_File_IO::SetMeshLines(double const* const* lines, unsigned int const* c
 		vtkDoubleArray *Coords[3];
 		for (int n=0;n<3;++n)
 		{
-				Coords[n] = vtkDoubleArray::New();
+			m_MeshLines[n].clear();
+			m_MeshLines[n].reserve(count[n]);
+			Coords[n] = vtkDoubleArray::New();
 			for (unsigned int i=0; i<count[n]; i++)
+			{
 				Coords[n]->InsertNextValue(lines[n][i]*scaling);
+				m_MeshLines[n].push_back(lines[n][i]*scaling);
+			}
 		}
 		RectGrid->SetXCoordinates(Coords[0]);
 		RectGrid->SetYCoordinates(Coords[1]);
@@ -87,6 +92,18 @@ void VTK_File_IO::SetMeshLines(double const* const* lines, unsigned int const* c
 			cerr << "VTK_File_IO::SetMeshLines: Error, grid invalid, this should not have happend! " << endl;
 			exit(1);
 		}
+
+		for (int n=0;n<3;++n)
+		{
+			m_MeshLines[n].clear();
+			m_MeshLines[n].reserve(count[n]);
+			double scale=1;
+			if (n!=1)
+				scale*=scaling;
+			for (unsigned int i=0; i<count[n]; i++)
+				m_MeshLines[n].push_back(lines[n][i]*scale);
+		}
+
 		StructGrid->SetDimensions(count[0],count[1],count[2]);
 		vtkPoints *points = vtkPoints::New();
 		points->SetNumberOfPoints(count[0]*count[1]*count[2]);
@@ -157,13 +174,24 @@ void VTK_File_IO::AddVectorField(string fieldname, double const* const* const* c
 	array->SetNumberOfTuples(size[0]*size[1]*size[2]);
 	array->SetName(fieldname.c_str());
 	int id=0;
+	double out[3];
 	for (unsigned int k=0;k<size[2];++k)
 	{
 		for (unsigned int j=0;j<size[1];++j)
 		{
+			double cos_a = cos(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
+			double sin_a = sin(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
 			for (unsigned int i=0;i<size[0];++i)
 			{
-				array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
+				if ((m_MeshType==0) || (m_NativeDump))
+					array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
+				else
+				{
+					out[0] = field[0][i][j][k] * cos_a - field[1][i][j][k] * sin_a;
+					out[1] = field[0][i][j][k] * sin_a + field[1][i][j][k] * cos_a;
+					out[2] = field[2][i][j][k];
+					array->SetTuple3(id++,out[0],out[1],out[2]);
+				}
 			}
 		}
 	}
@@ -178,13 +206,24 @@ void VTK_File_IO::AddVectorField(string fieldname, float const* const* const* co
 	array->SetNumberOfTuples(size[0]*size[1]*size[2]);
 	array->SetName(fieldname.c_str());
 	int id=0;
+	float out[3];
 	for (unsigned int k=0;k<size[2];++k)
 	{
 		for (unsigned int j=0;j<size[1];++j)
 		{
+			float cos_a = cos(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
+			float sin_a = sin(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
 			for (unsigned int i=0;i<size[0];++i)
 			{
-				array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
+				if ((m_MeshType==0) || (m_NativeDump))
+					array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
+				else
+				{
+					out[0] = field[0][i][j][k] * cos_a - field[1][i][j][k] * sin_a;
+					out[1] = field[0][i][j][k] * sin_a + field[1][i][j][k] * cos_a;
+					out[2] = field[2][i][j][k];
+					array->SetTuple3(id++,out[0],out[1],out[2]);
+				}
 			}
 		}
 	}

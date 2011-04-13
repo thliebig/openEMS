@@ -45,6 +45,8 @@ public:
 	//! Set the mesh lines for the given mesh type.
 	virtual void SetMeshLines(double const* const* lines, unsigned int const* count, double scaling=1) = 0 ;
 
+	void SetNativeDump(bool val) {m_NativeDump=val;};
+
 	//! Add a scalar field. \sa GetNumberOfFields \sa ClearAllFields
 	virtual void AddScalarField(std::string fieldname, double const* const* const* field, unsigned int const* size) = 0;
 	//! Add a scalar field. \sa GetNumberOfFields \sa ClearAllFields
@@ -77,6 +79,7 @@ protected:
 	unsigned int m_timestep;
 
 	int m_MeshType;
+	bool m_NativeDump;
 
 	bool m_AppendMode;
 	bool m_Binary;
