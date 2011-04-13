@@ -67,22 +67,6 @@ public:
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
 	void SetDumpType(DumpType type) {m_DumpType=type;}
 
-	//! Write a vtk header to an already open file with given mesh-type
-	static void WriteVTKHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
-	//! Write a vtk header to an already open file (cartesian grid)
-	static void WriteVTKCartesianGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), double discLines_scaling = 1);
-	//! Write a vtk header to an already open file (cylindrical grid)
-	static void WriteVTKCylindricalGridHeader(ofstream &file, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), double discLines_scaling = 1);
-	//! Append a vtk vector array to an already open vtk file, write a header first! \sa WriteVTKHeader()
-	static void WriteVTKVectorArray(ofstream &file, string name, FDTD_FLOAT const* const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, MeshType meshT = CARTESIAN_MESH);
-	//! Append a vtk scalar array to an already open vtk file, write a header first! \sa WriteVTKHeader()
-	static void WriteVTKScalarArray(ofstream &file, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, unsigned int precision=12);
-
-	static bool DumpVectorArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const * const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
-	static bool DumpMultiVectorArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
-	static bool DumpScalarArray2VTK(ofstream &file, string name, FDTD_FLOAT const* const* const* array, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
-	static bool DumpMultiScalarArray2VTK(ofstream &file, string names[], FDTD_FLOAT const* const* const* const* array, unsigned int numFields, double const* const* discLines, unsigned int const* numLines, unsigned int precision=12, string header_info = string(), MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
-
 	//! Write a mesh information to the given hdf5-group
 	static bool WriteMesh2HDF5(string filename, string groupName, unsigned int const* numLines, double const* const* discLines, MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
 

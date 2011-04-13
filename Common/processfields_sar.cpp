@@ -17,6 +17,7 @@
 
 #include "processfields_sar.h"
 #include "operator_base.h"
+#include "tools/vtk_file_io.h"
 
 ProcessFieldsSAR::ProcessFieldsSAR(Engine_Interface_Base* eng_if) : ProcessFieldsFD(eng_if)
 {
@@ -81,12 +82,6 @@ double ProcessFieldsSAR::GetKappaDensityRatio(const unsigned int* pos)
 
 void ProcessFieldsSAR::DumpFDData()
 {
-#ifdef OUTPUT_IN_DRAWINGUNITS
-	double discLines_scaling = 1;
-#else
-	double discLines_scaling = Op->GetGridDelta();
-#endif
-
 	unsigned int pos[3];
 	FDTD_FLOAT*** SAR = Create3DArray<float>(numLines);
 	std::complex<float>**** field_fd = NULL;
@@ -112,12 +107,13 @@ void ProcessFieldsSAR::DumpFDData()
 		if (m_fileType==VTK_FILETYPE)
 		{
 			stringstream ss;
-			ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << ".vtk";
-			ofstream file(ss.str().c_str());
-			if (file.is_open()==false)
-				cerr << "ProcessFieldsSAR::DumpFDData: can't open file '" << ss.str() << "' for writing... abort! " << endl;
-			DumpScalarArray2VTK(file,GetFieldNameByType(m_DumpType),SAR,discLines,numLines,m_precision,string("Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString(), m_Mesh_Type, discLines_scaling);
-			file.close();
+			ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n);
+
+			m_Dump_File->SetFilename(ss.str());
+			m_Dump_File->ClearAllFields();
+			m_Dump_File->AddScalarField(GetFieldNameByType(m_DumpType),SAR,numLines);
+			if (m_Dump_File->Write()==false)
+				cerr << "ProcessFieldsSAR::Process: can't dump to file... abort! " << endl;
 		}
 		else if (m_fileType==HDF5_FILETYPE)
 		{

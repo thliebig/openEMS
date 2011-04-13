@@ -22,6 +22,7 @@
 #include "extensions/operator_ext_excitation.h"
 #include "Common/processfields.h"
 #include "tools/array_ops.h"
+#include "tools/vtk_file_io.h"
 #include "fparser.hh"
 
 Operator* Operator::New()
@@ -404,13 +405,6 @@ void Operator::DumpOperator2File(string filename)
 	double discLines_scaling = GetGridDelta();
 #endif
 
-	ofstream file(filename.c_str(),ios_base::out);
-	if (!file.is_open())
-	{
-		cerr << "Operator::DumpOperator2File(): Can't open file: " << filename << endl;
-		return;
-	}
-
 	cout << "Operator: Dumping FDTD operator information to vtk file: " << filename << " ..." << flush;
 
 	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
@@ -437,18 +431,23 @@ void Operator::DumpOperator2File(string filename)
 					ii_temp[n][pos[0]][pos[1]][pos[2]] = GetII(n,pos);
 				}
 
-	string names[] = {"vv", "vi", "iv" , "ii", "exc"};
-	FDTD_FLOAT**** array[] = {vv_temp,vi_temp,iv_temp,ii_temp,exc};
+	VTK_File_IO* vtk_io = new VTK_File_IO(filename.c_str(), m_MeshType);
+	vtk_io->SetMeshLines(discLines,numLines,discLines_scaling);
+	vtk_io->SetHeader("openEMS - Operator dump");
 
-	ProcessFields::DumpMultiVectorArray2VTK(file, names , array , 5, discLines, numLines, 6, "Operator dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
-
-	Delete_N_3DArray(ii_temp,numLines);
-	Delete_N_3DArray(iv_temp,numLines);
-	Delete_N_3DArray(vi_temp,numLines);
+	vtk_io->AddVectorField("vv",vv_temp,numLines);
 	Delete_N_3DArray(vv_temp,numLines);
+	vtk_io->AddVectorField("vi",vi_temp,numLines);
+	Delete_N_3DArray(vi_temp,numLines);
+	vtk_io->AddVectorField("iv",iv_temp,numLines);
+	Delete_N_3DArray(iv_temp,numLines);
+	vtk_io->AddVectorField("ii",ii_temp,numLines);
+	Delete_N_3DArray(ii_temp,numLines);
+	vtk_io->AddVectorField("exc",exc,numLines);
 	Delete_N_3DArray(exc,numLines);
 
-	file.close();
+	if (vtk_io->Write()==false)
+		cerr << "Operator::DumpOperator2File: Error: Can't write file... skipping!" << endl;
 
 	cout << " done!" << endl;
 }
@@ -458,13 +457,6 @@ void Operator::DumpOperator2File(string filename)
 //! visualize only one component (x, y or z)
 void Operator::DumpPEC2File( string filename )
 {
-	ofstream file( filename.c_str() );
-	if (!file.is_open())
-	{
-		cerr << "Operator::DumpPEC2File(): Can't open file: " << filename << endl;
-		return;
-	}
-
 	cout << "Operator: Dumping PEC information to vtk file: " << filename << " ..." << flush;
 
 	FDTD_FLOAT**** pec = Create_N_3DArray<FDTD_FLOAT>( numLines );
@@ -533,9 +525,16 @@ void Operator::DumpPEC2File( string filename )
 #else
 	scaling = GetGridDelta();
 #endif
-	ProcessFields::DumpVectorArray2VTK( file, "PEC", pec, discLines, numLines, 6, "PEC dump" , (ProcessFields::MeshType)m_MeshType, scaling );
 
-	file.close();
+	VTK_File_IO* vtk_io = new VTK_File_IO(filename.c_str(), m_MeshType);
+	vtk_io->SetMeshLines(discLines,numLines,scaling);
+	vtk_io->SetHeader("openEMS - PEC dump");
+
+	vtk_io->AddVectorField("PEC",pec,numLines);
+	Delete_N_3DArray(pec,numLines);
+
+	if (vtk_io->Write()==false)
+		cerr << "Operator::DumpPEC2File: Error: Can't write file... skipping!" << endl;
 
 	cout << " done!" << endl;
 }
@@ -547,13 +546,6 @@ void Operator::DumpMaterial2File(string filename)
 #else
 	double discLines_scaling = GetGridDelta();
 #endif
-
-	ofstream file(filename.c_str(),ios_base::out);
-	if (!file.is_open())
-	{
-		cerr << "Operator::DumpMaterial2File(): Can't open file: " << filename << endl;
-		return;
-	}
 
 	cout << "Operator: Dumping material information to vtk file: " << filename << " ..."  << flush;
 
@@ -582,17 +574,21 @@ void Operator::DumpMaterial2File(string filename)
 		}
 	}
 
-	string names[] = {"epsilon","mue","kappa","sigma"};
-	FDTD_FLOAT**** array[] = {epsilon,mue,kappa,sigma};
+	VTK_File_IO* vtk_io = new VTK_File_IO(filename.c_str(), m_MeshType);
+	vtk_io->SetMeshLines(discLines,numLines,discLines_scaling);
+	vtk_io->SetHeader("openEMS - material dump");
 
-	ProcessFields::DumpMultiVectorArray2VTK(file, names, array, 4, discLines, numLines,  6, "Material dump" , (ProcessFields::MeshType)m_MeshType, discLines_scaling);
-
+	vtk_io->AddVectorField("epsilon",epsilon,numLines);
 	Delete_N_3DArray(epsilon,numLines);
+	vtk_io->AddVectorField("mue",mue,numLines);
 	Delete_N_3DArray(mue,numLines);
+	vtk_io->AddVectorField("kappa",kappa,numLines);
 	Delete_N_3DArray(kappa,numLines);
+	vtk_io->AddVectorField("sigma",sigma,numLines);
 	Delete_N_3DArray(sigma,numLines);
 
-	file.close();
+	if (vtk_io->Write()==false)
+		cerr << "Operator::DumpMaterial2File: Error: Can't write file... skipping!" << endl;
 
 	cout << " done!" << endl;
 }
@@ -838,11 +834,11 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 		m_Op_exts.at(n)->BuildExtension();
 
 	if (debugFlags & debugMaterial)
-		DumpMaterial2File( "material_dump.vtk" );
+		DumpMaterial2File( "material_dump" );
 	if (debugFlags & debugOperator)
-		DumpOperator2File( "operator_dump.vtk" );
+		DumpOperator2File( "operator_dump" );
 	if (debugFlags & debugPEC)
-		DumpPEC2File( "PEC_dump.vtk" );
+		DumpPEC2File( "PEC_dump" );
 
 	//cleanup
 	for (int n=0; n<3; ++n)
