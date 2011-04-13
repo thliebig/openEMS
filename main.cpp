@@ -38,17 +38,10 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-	//read global command line arguments first
-	for (int n=2; n<argc; ++n)
-	{
-		if (g_settings.parseCommandLineArgument(argv[n]))
-			continue;
-	}
-
 #ifdef MPI_SUPPORT
 	//init MPI
 	MPI::Init(argc,argv);
-	openEMS_FDTD_MPI FDTD;
+	openEMS_FDTD_MPI FDTD(false);
 #else
 	openEMS FDTD;
 #endif
@@ -102,7 +95,7 @@ int main(int argc, char *argv[])
 	{
 		for (int n=2; n<argc; ++n)
 		{
-			if (!FDTD.parseCommandLineArgument(argv[n]))
+			if ( (!FDTD.parseCommandLineArgument(argv[n])) && (!g_settings.parseCommandLineArgument(argv[n])))
 				cout << "openEMS - unknown argument: " << argv[n] << endl;
 		}
 	}

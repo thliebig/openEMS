@@ -35,7 +35,7 @@
 #include "tools/useful.h"
 #include "tinyxml.h"
 
-openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
+openEMS_FDTD_MPI::openEMS_FDTD_MPI(bool m_MPI_Debug) : openEMS()
 {
 	m_MyID = MPI::COMM_WORLD.Get_rank();
 	m_NumProc = MPI::COMM_WORLD.Get_size();
@@ -63,7 +63,7 @@ openEMS_FDTD_MPI::openEMS_FDTD_MPI() : openEMS()
 	m_Original_Grid = NULL;
 
 	//redirect output to file for all ranks > 0
-	if ((m_MyID>0) && (g_settings.GetVerboseLevel()==0))
+	if ((m_MyID>0) && (m_MPI_Debug==false))
 	{
 		stringstream out_name;
 		out_name << "ID" << m_MyID << "_" << "output.txt";

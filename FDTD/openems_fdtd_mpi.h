@@ -27,7 +27,7 @@ class CSRectGrid;
 class openEMS_FDTD_MPI : public openEMS
 {
 public:
-    openEMS_FDTD_MPI();
+	openEMS_FDTD_MPI(bool m_MPI_Debug=false);
 	virtual ~openEMS_FDTD_MPI();
 
 	virtual void RunFDTD();
