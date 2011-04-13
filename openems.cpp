@@ -27,6 +27,7 @@
 #include "FDTD/extensions/operator_ext_upml.h"
 #include "FDTD/extensions/operator_ext_lorentzmaterial.h"
 #include "FDTD/engine_interface_fdtd.h"
+#include "FDTD/engine_interface_cylindrical_fdtd.h"
 #include "Common/processvoltage.h"
 #include "Common/processcurrent.h"
 #include "Common/processfieldprobe.h"
@@ -278,6 +279,14 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 	return true;
 }
 
+Engine_Interface_FDTD* openEMS::NewEngineInterface()
+{
+	Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(FDTD_Op);
+	if (op_cyl)
+		return new Engine_Interface_Cylindrical_FDTD(FDTD_Op,FDTD_Eng);
+	return new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng);
+}
+
 bool openEMS::SetupProcessing()
 {
 	//*************** setup processing ************//
@@ -310,21 +319,21 @@ bool openEMS::SetupProcessing()
 			{
 				if (pb->GetProbeType()==0)
 				{
-					ProcessVoltage* procVolt = new ProcessVoltage(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+					ProcessVoltage* procVolt = new ProcessVoltage(NewEngineInterface());
 					proc=procVolt;
 				}
 				else if (pb->GetProbeType()==1)
 				{
-					ProcessCurrent* procCurr = new ProcessCurrent(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+					ProcessCurrent* procCurr = new ProcessCurrent(NewEngineInterface());
 					proc=procCurr;
 				}
 				else if (pb->GetProbeType()==2)
-					proc = new ProcessFieldProbe(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),0);
+					proc = new ProcessFieldProbe(NewEngineInterface(),0);
 				else if (pb->GetProbeType()==3)
-					proc = new ProcessFieldProbe(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng),1);
+					proc = new ProcessFieldProbe(NewEngineInterface(),1);
 				else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
 				{
-					ProcessModeMatch* pmm = new ProcessModeMatch(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+					ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
 					pmm->SetFieldType(pb->GetProbeType()-10);
 					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
 					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
@@ -378,11 +387,11 @@ bool openEMS::SetupProcessing()
 			if (db)
 			{
 				if ((db->GetDumpType()>=0) && (db->GetDumpType()<=3))
-					ProcField = new ProcessFieldsTD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+					ProcField = new ProcessFieldsTD(NewEngineInterface());
 				else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
-					ProcField = new ProcessFieldsFD(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+					ProcField = new ProcessFieldsFD(NewEngineInterface());
 				else if (db->GetDumpType()==20)
-					ProcField = new ProcessFieldsSAR(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+					ProcField = new ProcessFieldsSAR(NewEngineInterface());
 				else
 					cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
 				if (ProcField)
@@ -696,7 +705,7 @@ void openEMS::RunFDTD()
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
 	//special handling of a field processing, needed to realize the end criteria...
-	ProcessFields* ProcField = new ProcessFields(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+	ProcessFields* ProcField = new ProcessFields(NewEngineInterface());
 	PA->AddProcessing(ProcField);
 	double maxE=0,currE=0;
 

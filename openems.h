@@ -30,6 +30,7 @@ class Engine_Interface_FDTD;
 class ProcessingArray;
 class TiXmlElement;
 class ContinuousStructure;
+class Engine_Interface_FDTD;
 
 double CalcDiffTime(timeval t1, timeval t2);
 string FormatTime(int sec);
@@ -62,6 +63,8 @@ public:
 	void SetAbort(bool val) {m_Abort=val;}
 	//! Check for abort conditions
 	bool CheckAbortCond();
+
+	Engine_Interface_FDTD* NewEngineInterface();
 
 protected:
 	bool CylinderCoords;

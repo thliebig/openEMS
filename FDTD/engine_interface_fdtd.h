@@ -54,8 +54,10 @@ protected:
 	Operator* m_Op;
 	Engine* m_Eng;
 
-	double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;
-	double GetRawField(unsigned int n, const unsigned int* pos, int type) const;
+	//! Internal method to get an interpolated field of a given type. (0: E, 1: J, 2: rotH)
+	virtual double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;
+	//! Internal method to get a raw field of a given type. (0: E, 1: J, 2: rotH)
+	virtual double GetRawField(unsigned int n, const unsigned int* pos, int type) const;
 };
 
 #endif // ENGINE_INTERFACE_FDTD_H
