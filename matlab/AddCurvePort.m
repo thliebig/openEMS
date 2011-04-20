@@ -146,7 +146,7 @@ port.drawingunit = unit;
 port.excite = 0;
 
 % create excitation
-if (nargin >= 6) && ~isempty(excitename)
+if (nargin >= 7) && ~isempty(excitename)
 	% excitation of this port is enabled
 	port.excite = 1;
     e_start = v_start;

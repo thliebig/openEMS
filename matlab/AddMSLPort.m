@@ -155,13 +155,13 @@ port.excite = 0;
 port.refplaneshift = 0;
 port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop));
 
-if (nargin >= 8) && (~isempty(refplaneshift))
+if (nargin >= 9) && (~isempty(refplaneshift))
     % refplaneshift counts from start of port
     port.refplaneshift = refplaneshift - direction*(v2_start(idx_prop) - start(idx_prop));
 end
 
 % create excitation
-if nargin >= 9
+if nargin >= 10
 	% excitation of this port is enabled
 	port.excite = 1;
     meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop), 'nearest' );
