@@ -118,7 +118,9 @@ public:
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,pos,dualMesh);}
 
-	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL) const;
+	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false) const;
+
+	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool* inside=NULL) const;
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}

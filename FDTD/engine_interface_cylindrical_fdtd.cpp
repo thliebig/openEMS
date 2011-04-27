@@ -37,10 +37,30 @@ double* Engine_Interface_Cylindrical_FDTD::GetHField(const unsigned int* pos, do
 		return Engine_Interface_FDTD::GetHField(pos, out);
 
 	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
+	if (iPos[1]==0)
+		iPos[1]=m_Op->GetNumberOfLines(1)-1;
 
-	if (pos[1]==m_Op->GetNumberOfLines(1)-1)
-		iPos[1]=0;
-	return Engine_Interface_FDTD::GetHField(iPos, out);
+	int nP,nPP;
+	for (int n=0; n<3; ++n)
+	{
+		nP = (n+1)%3;
+		nPP = (n+2)%3;
+		if ((iPos[0]==m_Op->GetNumberOfLines(0)-1) || (iPos[2]==m_Op->GetNumberOfLines(2)-1) || (iPos[nP]==0) || (iPos[nPP]==0))
+		{
+			out[n] = 0;
+			continue;
+		}
+		out[n]=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+		--iPos[nP];
+		out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+		--iPos[nPP];
+		out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+		++iPos[nP];
+		out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+		++iPos[nPP];
+		out[n]/=4;
+	}
+	return out;
 }
 
 double* Engine_Interface_Cylindrical_FDTD::GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const

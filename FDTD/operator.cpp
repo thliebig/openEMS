@@ -205,49 +205,44 @@ double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
 	return GetNodeArea(ny, uiPos, dualMesh);
 }
 
-bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool lower, bool* inside) const
+unsigned int Operator::SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh) const
+{
+	inside = false;
+	if ((ny<0) || (ny>2))
+		return 0;
+	if (coord<GetDiscLine(ny,0))
+		return 0;
+	unsigned int numLines = GetNumberOfLines(ny);
+	if (coord>GetDiscLine(ny,numLines-1))
+		return numLines-1;
+	inside=true;
+	if (dualMesh==false)
+	{
+		for (unsigned int n=0;n<numLines;++n)
+		{
+			if (coord<=GetDiscLine(ny,n,true))
+				return n;
+		}
+	}
+	else
+	{
+		for (unsigned int n=1;n<numLines;++n)
+		{
+			if (coord<=GetDiscLine(ny,n,false))
+				return n-1;
+		}
+	}
+	//should not happen
+	return 0;
+}
+
+bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool dualMesh, bool* inside) const
 {
 	bool ok=true;
-	unsigned int numLines[3];
 	for (int n=0; n<3; ++n)
 	{
-		numLines[n] = GetNumberOfLines(n);
-		if (inside) //set defaults
-			inside[n] = true;
-		uicoord[n]=0;
-		if (dcoord[n]<discLines[n][0])
-		{
-			ok=false;
-			uicoord[n]=0;
-			if (inside) inside[n] = false;
-		}
-		else if (dcoord[n]==discLines[n][0])
-			uicoord[n]=0;
-		else if (dcoord[n]>discLines[n][numLines[n]-1])
-		{
-			ok=false;
-			uicoord[n]=numLines[n]-1;
-			if (lower) uicoord[n]=numLines[n]-2;
-			if (inside) inside[n] = false;
-		}
-		else if (dcoord[n]==discLines[n][numLines[n]-1])
-		{
-			uicoord[n]=numLines[n]-1;
-			if (lower) uicoord[n]=numLines[n]-2;
-		}
-		else
-			for (unsigned int i=1; i<numLines[n]; ++i)
-			{
-				if (dcoord[n]<discLines[n][i])
-				{
-					if (fabs(dcoord[n]-discLines[n][i])<(fabs(dcoord[n]-discLines[n][i-1])))
-						uicoord[n]=i;
-					else
-						uicoord[n]=i-1;
-					if (lower) uicoord[n]=i-1;
-					i = numLines[n];
-				}
-			}
+		uicoord[n] = SnapToMeshLine(n,dcoord[n],inside[n],dualMesh);
+		ok &= inside[n];
 	}
 //	cerr << "Operator::SnapToMesh Wish: " << dcoord[0] << " " << dcoord[1] << " " << dcoord[2] << endl;
 //	cerr << "Operator::SnapToMesh Found: " << discLines[0][uicoord[0]] << " " << discLines[1][uicoord[1]] << " " << discLines[2][uicoord[2]] << endl;
