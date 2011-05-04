@@ -39,40 +39,14 @@ if ~isfield(Settings,'MPI')
     error('openEMS:RunOpenEMS_MPI','MPI settings not found...');
 end
 
-if isfield(Settings.MPI,'HostFile')
-    [status, result] = unix(['mpdboot -v --file=' Settings.MPI.HostFile ' --totalnum=' int2str(Settings.MPI.TotalNum)]);
-    if (status~=0)
-        disp(result);
-        error('openEMS:RunOpenEMS','mpdboot failed to boot mpi daemon!');
-    end
-else
-    [status, result] = unix(['mpdboot -v']);
-    if (status~=0)
-        disp(result);
-        error('openEMS:RunOpenEMS','mpdboot failed to boot mpi daemon!');
-    end
-end
-
 savePath = pwd;
 cd(Sim_Path);
 
 scp_options = '-C -o "PasswordAuthentication no" -o "StrictHostKeyChecking no"';
 ssh_options = [scp_options ' -x'];
 
-if isfield(Settings.MPI,'HostFile')
-    [status, result] = unix(['mpirun -machinefile ' Settings.MPI.HostFile ' -n  ' int2str(NrProc) '  hostname']);
-else
-    [status, result] = unix(['mpirun -n ' int2str(NrProc) '  hostname']);
-end
-
-if (status~=0)
-    disp(result);
-    error('openEMS:RunOpenEMS',['mpirun failed ...']);
-end
-
-Remote_Nodes = regexp(result, '([^ \n][^\n]*)', 'match'); %get the names of all mpi nodes
-Remote_Nodes = unique(Remote_Nodes);
-
+Remote_Nodes = Settings.MPI.Hosts;
+HostList = '';
 for n=1:numel(Remote_Nodes)
     remote_name = Remote_Nodes{n};
     
@@ -83,12 +57,14 @@ for n=1:numel(Remote_Nodes)
             error('openEMS:RunOpenEMS','mktemp failed to create tmp directory!');
         end
         work_path = strtrim(result); %remove tailing \n
+        HostList = remote_name;
     else
         [status, result] = unix(['ssh ' ssh_options ' ' remote_name ' "mkdir ' work_path '"']);       
         if (status~=0)
             disp(result);
             error('openEMS:RunOpenEMS',['mkdir failed to create tmp directory on remote ' remote_name ' !']);
         end
+        HostList = [HostList ',' remote_name]; 
     end
       
     [stat, res] = unix(['scp ' scp_options ' * ' remote_name ':' work_path '/']);
@@ -112,10 +88,10 @@ if ~isfield(Settings.MPI,'GlobalArgs')
     Settings.MPI.GlobalArgs = '';
 end
 
-if isfield(Settings.MPI,'HostFile')
-    [status]  = system(['LD_LIBRARY_PATH= mpirun -machinefile ' Settings.MPI.HostFile ' -l -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
+if isfield(Settings.MPI,'Hosts')
+    [status]  = system(['mpiexec -host ' HostList ' -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
 else
-    [status]  = system(['LD_LIBRARY_PATH= mpirun ' Settings.MPI.GlobalArgs ' -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
+    [status]  = system(['mpiexec ' Settings.MPI.GlobalArgs ' -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
 end
 if (status~=0)
     error('openEMS:RunOpenEMS','mpirun openEMS failed!');
