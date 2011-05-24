@@ -83,7 +83,7 @@ if (isfield(Settings,'SSH') && isunix)
     disp( 'Remote simulation done... copying back results and cleaning up...' );
 
     %copy back all results
-    [stat, res] = unix(['scp -r ' scp_options ' ' Settings.SSH.host ':' ssh_work_path '/* ' pwd '/']);
+    [stat, res] = unix(['scp -r ' scp_options ' ' Settings.SSH.host ':' ssh_work_path '/* ''' pwd '''/']);
     if (stat~=0);
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');

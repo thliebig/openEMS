@@ -106,7 +106,7 @@ end
 for n=1:numel(Remote_Nodes)
     remote_name = Remote_Nodes{n};
     disp(['Copy data from remote node: ' remote_name]);
-    [stat, res] = unix(['scp -r ' scp_options ' ' remote_name ':' work_path '/* ' pwd '/']);
+    [stat, res] = unix(['scp -r ' scp_options ' ' remote_name ':' work_path '/* ''' pwd '''/']);
     if (stat~=0);
         disp(res);
         error('openEMS:RunOpenEMS','remote scp failed!');
