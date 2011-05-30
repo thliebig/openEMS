@@ -29,7 +29,7 @@ mesh = ReadHDF5Mesh(file);
 if (nargin>1)
     for n=1:2:(nargin-1)
         if (strcmp(varargin{n},'Range')==1);
-            [field mesh] = GetField_Range(field, mesh, varargin{n+1})
+            [field mesh] = GetField_Range(field, mesh, varargin{n+1});
         end
     end
     
