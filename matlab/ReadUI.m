@@ -53,7 +53,4 @@ for n=1:numel(filenames)
         UI.FD{n}.f = freq;
         UI.FD{n}.val = DFT_time2freq( t, val, freq );
     end
-    
-    %correct phase error for time-shifted signals
-    UI.FD{n}.val = UI.FD{n}.val .* exp(-1j*2*pi*UI.FD{n}.f * t(1)); 
 end

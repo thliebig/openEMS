@@ -11,3 +11,6 @@ val = fft( val, NFFT)*dt;
 f = 1/(2*dt) * linspace(0,1,NFFT/2+1);
 
 val = 2*val(1:NFFT/2+1); % single-sided spectrum
+
+%correct phase for time-shifted signals
+val = val .* exp(-1j*2*pi*f * t(1));

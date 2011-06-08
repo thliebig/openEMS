@@ -20,8 +20,6 @@ if numel(t) ~= numel(val)
     error 'numel(t) ~= numel(val)'
 end
 
-% convert absolute time into relative time
-t = t - t(1);
 dt = t(2)-t(1);
 
 f_val = zeros(1,numel(freq));
