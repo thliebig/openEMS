@@ -1,5 +1,5 @@
-function UI = ReadUI(files, path, freq)
-% function UI = ReadUI(files, path, freq)
+function UI = ReadUI(files, path, freq, AR_order)
+% function UI = ReadUI(files, path, freq, AR_order)
 %
 % read current and voltages from multiple files found in path
 %
@@ -14,6 +14,8 @@ function UI = ReadUI(files, path, freq)
 % freq (optional):
 %     frequency-domain values will be calculated according to 'freq'
 %     if 'freq' is not given, a FFT will be used
+% AR_order (optional):
+%     order to use within an auto-regressive model to improve FD accuracy
 %
 % e.g.
 % U = ReadUI({'ut1_1','ut1_2'},'tmp' );
@@ -22,6 +24,8 @@ function UI = ReadUI(files, path, freq)
 % openEMS matlab interface
 % -----------------------
 % author: Thorsten Liebig
+%
+% See also DFT_time2freq, AR_estimate
 
 if (nargin<2)
     path ='';
@@ -51,6 +55,10 @@ for n=1:numel(filenames)
         [UI.FD{n}.f,UI.FD{n}.val] = FFT_time2freq( t,val );
     else
         UI.FD{n}.f = freq;
-        UI.FD{n}.val = DFT_time2freq( t, val, freq );
-    end
+        if (nargin<4)
+            UI.FD{n}.val = DFT_time2freq( t, val, freq );
+        else
+            [val_ar t_ar UI.FD{n}.val] = AR_estimate( t, val, freq, AR_order);
+        end
+    end   
 end
