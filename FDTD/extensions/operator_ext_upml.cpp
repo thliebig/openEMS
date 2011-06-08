@@ -25,7 +25,7 @@ Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 {
 	m_GradingFunction = new FunctionParser();
 	//default grading function
-	SetGradingFunction(" -log(1e-6)*log(2.5)/(2*dl*pow(2.5,W/dl)-1) * pow(2.5, D/dl) / Z ");
+	SetGradingFunction(" -log(1e-6)*log(2.5)/(2*dl*Z*(pow(2.5,W/dl)-1)) * pow(2.5, D/dl) ");
 
 	for (int n=0; n<6; ++n)
 	{

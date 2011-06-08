@@ -54,7 +54,7 @@ public:
 			W  = width (length) of the pml in meter
 			N  = number of cells for the pml
 			Z  = wave impedance at the current depth and position
-		example: SetGradingFunction("-log(1e-6)*log(2.5)/(2*dl*pow(2.5,W/dl)-1) * pow(2.5, D/dl) / Z");
+		example: SetGradingFunction(" -log(1e-6)*log(2.5)/(2*dl*Z*(pow(2.5,W/dl)-1)) * pow(2.5, D/dl) ");
 
 		An empty function string will be ignored.
 	*/
