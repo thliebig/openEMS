@@ -31,6 +31,10 @@ if (nargin<2)
     path ='';
 end
 
+if (nargin<4)
+    AR_order = 0;
+end
+
 if (ischar(files))
     filenames{1}=files;
 else
@@ -55,7 +59,7 @@ for n=1:numel(filenames)
         [UI.FD{n}.f,UI.FD{n}.val] = FFT_time2freq( t,val );
     else
         UI.FD{n}.f = freq;
-        if (nargin<4)
+        if (AR_order<=0)
             UI.FD{n}.val = DFT_time2freq( t, val, freq );
         else
             [val_ar t_ar UI.FD{n}.val] = AR_estimate( t, val, freq, AR_order);
