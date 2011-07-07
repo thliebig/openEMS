@@ -211,14 +211,17 @@ void ProcessFields::CalcMeshPos()
 			tmp_pos.clear();
 			tmp_pos.push_back(start[n]);
 			oldPos=Op->GetDiscLine(n,start[n],m_dualMesh);
-			for (unsigned int i=start[n]+1; i<=stop[n]-1; ++i)
-			{
-				if ( (Op->GetDiscLine(n,i+1,m_dualMesh)-oldPos) >= optResolution[n])
+			if (stop[n]==0)
+				tmp_pos.push_back(stop[n]);
+			else
+				for (unsigned int i=start[n]+1; i<=stop[n]-1; ++i)
 				{
-					tmp_pos.push_back(i);
-					oldPos=Op->GetDiscLine(n,i,m_dualMesh);
+					if ( (Op->GetDiscLine(n,i+1,m_dualMesh)-oldPos) >= optResolution[n])
+					{
+						tmp_pos.push_back(i);
+						oldPos=Op->GetDiscLine(n,i,m_dualMesh);
+					}
 				}
-			}
 			if (start[n]!=stop[n])
 				tmp_pos.push_back(stop[n]);
 			numLines[n] = tmp_pos.size();
