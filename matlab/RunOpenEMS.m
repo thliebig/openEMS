@@ -12,6 +12,8 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % (ssh only on unix with working ssh client)
 % Settings.SSH.host = '<hostname or ip>'
 % Settings.SSH.bin = '<path_to_openEMS>/openEMS.sh'
+% ssh optional: 
+% Settings.SSH.host_list = {'list','of','hosts'}; %searches for a free host
 %
 % optional MPI:
 % Settings.MPI.xxx --> help RunOpenEMS_MPI
@@ -21,7 +23,7 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 %
 % RunOpenEMS(Sim_Path,Sim_File,opts,Settings)
 %
-% See also WriteOpenEMS
+% See also WriteOpenEMS FindFreeSSH
 %
 % openEMS matlab interface
 % -----------------------
@@ -50,6 +52,15 @@ if (isfield(Settings,'SSH') && isunix)
     % host checking
     scp_options = '-C -o "PasswordAuthentication no" -o "StrictHostKeyChecking no"';
     ssh_options = [scp_options ' -x'];
+    
+    if isfield(Settings.SSH,'host_list')
+        host = FindFreeSSH(Settings.SSH.host_list);
+        if ~isempty(host)
+            Settings.SSH.host = host;
+        else
+            error('openEMS:RunOpenEMS', 'unable to find host, abort openEMS');
+        end
+    end
     
     % create a tmp working dir
  	[status, result] = unix(['ssh ' ssh_options ' ' Settings.SSH.host ' "mktemp -d /tmp/openEMS_XXXXXXXXXXXX"']);
