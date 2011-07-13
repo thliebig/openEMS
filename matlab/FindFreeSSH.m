@@ -21,7 +21,7 @@ function host = FindFreeSSH(host_list, wait_time, command)
 
 if (nargin<3)
     % command which should return an empty string if host is available
-    command = 'ps -e user,args | grep openEMS';
+    command = 'ps -e | grep openEMS';
 end
 
 if (nargin<2)
