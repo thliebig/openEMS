@@ -238,11 +238,14 @@ unsigned int Operator::SnapToMeshLine(int ny, double coord, bool &inside, bool d
 
 bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool dualMesh, bool* inside) const
 {
+	bool meshInside=false;
 	bool ok=true;
 	for (int n=0; n<3; ++n)
 	{
-		uicoord[n] = SnapToMeshLine(n,dcoord[n],inside[n],dualMesh);
-		ok &= inside[n];
+		uicoord[n] = SnapToMeshLine(n,dcoord[n],meshInside,dualMesh);
+		ok &= meshInside;
+		if (inside)
+			inside[n]=meshInside;
 	}
 //	cerr << "Operator::SnapToMesh Wish: " << dcoord[0] << " " << dcoord[1] << " " << dcoord[2] << endl;
 //	cerr << "Operator::SnapToMesh Found: " << discLines[0][uicoord[0]] << " " << discLines[1][uicoord[1]] << " " << discLines[2][uicoord[2]] << endl;
@@ -1243,15 +1246,15 @@ bool Operator::Calc_LumpedElements()
 				if (R>0)
 					kappa = 1 / R / unitGC;
 				if (C>0)
+				{
 					epsilon =  C / unitGC;
 
-				if (epsilon< __EPS0__)
-				{
-					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element capacity is too small for its size! skipping. "
-							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
-					C = 0;
-					if (isnan(R))
-						break;
+					if (epsilon< __EPS0__)
+					{
+						cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element capacity is too small for its size! skipping. "
+								<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
+						C = 0;
+					}
 				}
 
 				for (pos[ny]=uiStart[ny];pos[ny]<uiStop[ny];++pos[ny])
@@ -1303,6 +1306,7 @@ bool Operator::Calc_LumpedElements()
 						}
 					}
 				}
+				box->SetPrimitiveUsed(true);
 
 			}
 			else
