@@ -356,6 +356,8 @@ bool openEMS::SetupProcessing()
 				proc->AddFrequency(pb->GetFDSamples());
 				proc->SetName(pb->GetName());
 				proc->DefineStartStopCoord(start,stop);
+				if (g_settings.showProbeDiscretization())
+					proc->ShowSnappedCoords();
 				proc->SetWeight(pb->GetWeighting());
 				PA->AddProcessing(proc);
 				prim->SetPrimitiveUsed(true);

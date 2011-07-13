@@ -30,10 +30,13 @@ public:
 
 	virtual string GetIntegralName(int row) const;
 
+	virtual void DefineStartStopCoord(double* dstart, double* dstop);
+
 	//! Integrate currents flowing through an area
 	virtual double CalcIntegral();
 
 protected:
+	int m_normDir; //current box has to be 2D plane, this is the normal direction
 };
 
 #endif // PROCESSCURRENT_H

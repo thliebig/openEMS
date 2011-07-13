@@ -58,6 +58,8 @@ public:
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 
+	virtual void ShowSnappedCoords();
+
 	void SetProcessInterval(unsigned int interval) {ProcessInterval=max((unsigned int)1,interval);}
 
 	void AddStep(unsigned int step);
