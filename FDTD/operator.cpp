@@ -433,6 +433,8 @@ void Operator::DumpOperator2File(string filename)
 	vtk_io->SetMeshLines(discLines,numLines,discLines_scaling);
 	vtk_io->SetHeader("openEMS - Operator dump");
 
+	vtk_io->SetNativeDump(true);
+
 	vtk_io->AddVectorField("vv",vv_temp,numLines);
 	Delete_N_3DArray(vv_temp,numLines);
 	vtk_io->AddVectorField("vi",vi_temp,numLines);
@@ -528,6 +530,8 @@ void Operator::DumpPEC2File( string filename )
 	vtk_io->SetMeshLines(discLines,numLines,scaling);
 	vtk_io->SetHeader("openEMS - PEC dump");
 
+	vtk_io->SetNativeDump(true);
+
 	vtk_io->AddVectorField("PEC",pec,numLines);
 	Delete_N_3DArray(pec,numLines);
 
@@ -575,6 +579,8 @@ void Operator::DumpMaterial2File(string filename)
 	VTK_File_IO* vtk_io = new VTK_File_IO(filename.c_str(), m_MeshType);
 	vtk_io->SetMeshLines(discLines,numLines,discLines_scaling);
 	vtk_io->SetHeader("openEMS - material dump");
+
+	vtk_io->SetNativeDump(true);
 
 	vtk_io->AddVectorField("epsilon",epsilon,numLines);
 	Delete_N_3DArray(epsilon,numLines);
