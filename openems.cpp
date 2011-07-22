@@ -436,6 +436,8 @@ bool openEMS::SetupProcessing()
 					ProcField->SetName(db->GetName());
 					ProcField->SetFileName(db->GetName());
 					ProcField->DefineStartStopCoord(start,stop);
+					if (g_settings.showProbeDiscretization())
+						ProcField->ShowSnappedCoords();
 					PA->AddProcessing(ProcField);
 					prim->SetPrimitiveUsed(true);
 				}
