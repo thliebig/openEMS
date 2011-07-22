@@ -80,7 +80,7 @@ fprintf(fid,'\n\n');
 
 fprintf(fid,'POINT_DATA %d\n',numel(x)*numel(y)*numel(z));
 % dump vector field data
-if (ndims(fields)==4)
+if (size(fields,4)>1)
     if (nargin>3)
         fprintf(fid,['VECTORS ' fieldname ' double\n']);
     else
@@ -96,10 +96,7 @@ if (ndims(fields)==4)
     dumpField(:,3) = field_z(:);
     save('-ascii','-append',filename,'dumpField')
     return
-end
-
-% dump scalar field data
-if (ndims(fields)==3)
+elseif (size(fields,4)==1) % scalar field
     if (nargin>3)
         fprintf(fid,['SCALARS ' fieldname ' double 1\nLOOKUP_TABLE default\n']);
     else

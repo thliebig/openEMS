@@ -70,7 +70,7 @@ if (numel(x)==1)
     [Y_I Z_I] = ndgrid(y_i,z_i);
     for n=1:numel(field.values)
         field_i.values{n}(1,:,:,1) = interpn(Y,Z,squeeze(field.values{n}(1,:,:,1)),Y_I,Z_I);
-        if (size(field_i.values{n},4)>1)
+        if (size(field.values{n},4)>1)
             field_i.values{n}(1,:,:,2) = interpn(Y,Z,squeeze(field.values{n}(1,:,:,2)),Y_I,Z_I);
             field_i.values{n}(1,:,:,3) = interpn(Y,Z,squeeze(field.values{n}(1,:,:,3)),Y_I,Z_I);
         end
@@ -83,7 +83,7 @@ if (numel(y)==1)
     [X_I Z_I] = ndgrid(x_i,z_i);
     for n=1:numel(field.values)
         field_i.values{n}(:,1,:,1) = interpn(X,Z,squeeze(field.values{n}(:,1,:,1)),X_I,Z_I);
-        if (size(field_i.values{n},4)>1)
+        if (size(field.values{n},4)>1)
             field_i.values{n}(:,1,:,2) = interpn(X,Z,squeeze(field.values{n}(:,1,:,2)),X_I,Z_I);
             field_i.values{n}(:,1,:,3) = interpn(X,Z,squeeze(field.values{n}(:,1,:,3)),X_I,Z_I);
         end
@@ -96,7 +96,7 @@ if (numel(z)==1)
     [X_I Y_I] = ndgrid(x_i,y_i);
     for n=1:numel(field.values)
         field_i.values{n}(:,:,1,1) = interpn(X,Y,squeeze(field.values{n}(:,:,1,1)),X_I,Y_I);
-        if (size(field_i.values{n},4)>1)
+        if (size(field.values{n},4)>1)
             field_i.values{n}(:,:,1,2) = interpn(X,Y,squeeze(field.values{n}(:,:,1,2)),X_I,Y_I);
             field_i.values{n}(:,:,1,3) = interpn(X,Y,squeeze(field.values{n}(:,:,1,3)),X_I,Y_I);
         end
@@ -110,7 +110,7 @@ end
 [X_I Y_I Z_I] = ndgrid(x_i,y_i,z_i);
 for n=1:numel(field.values)
     field_i.values{n}(:,:,:,1) = interpn(X,Y,Z,field.values{n}(:,:,:,1),X_I,Y_I,Z_I);
-    if (size(field_i.values{n},4)>1)
+    if (size(field.values{n},4)>1)
         field_i.values{n}(:,:,:,2) = interpn(X,Y,Z,field.values{n}(:,:,:,2),X_I,Y_I,Z_I);
         field_i.values{n}(:,:,:,3) = interpn(X,Y,Z,field.values{n}(:,:,:,3),X_I,Y_I,Z_I);
     end
