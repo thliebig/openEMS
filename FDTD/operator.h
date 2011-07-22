@@ -120,7 +120,11 @@ public:
 
 	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false) const;
 
+	//! Snap the given coodinates to mesh indices
 	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool* inside=NULL) const;
+
+	//! Snap a given box to the FDTD mesh
+	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}

@@ -16,6 +16,7 @@
 */
 
 #include <fstream>
+#include <algorithm>
 #include "operator.h"
 #include "engine.h"
 #include "extensions/operator_extension.h"
@@ -251,6 +252,69 @@ bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool dual
 //	cerr << "Operator::SnapToMesh Found: " << discLines[0][uicoord[0]] << " " << discLines[1][uicoord[1]] << " " << discLines[2][uicoord[2]] << endl;
 //	cerr << "Operator::SnapToMesh Index: " << uicoord[0] << " " << uicoord[1] << " " << uicoord[2] << endl;
 	return ok;
+}
+
+int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh, int SnapMethod, bool* bStartIn, bool* bStopIn) const
+{
+	double l_start[3], l_stop[3];
+	for (int n=0;n<3;++n)
+	{
+		l_start[n] = fmin(start[n],stop[n]);
+		l_stop[n] = fmax(start[n], stop[n]);
+		double min = GetDiscLine(n,0);
+		double max = GetDiscLine(n,GetNumberOfLines(n)-1);
+		if ( ((l_start[n]<min) && (l_stop[n]<min)) || ((l_start[n]>max) && (l_stop[n]>max)) )
+		{
+			return -1;
+		}
+	}
+
+	SnapToMesh(l_start, uiStart, dualMesh, bStartIn);
+	SnapToMesh(l_stop, uiStop, dualMesh, bStopIn);
+	int iDim = 0;
+
+	if (SnapMethod==0)
+	{
+		for (int n=0;n<3;++n)
+			if (uiStop[n]>uiStart[n])
+				++iDim;
+		return iDim;
+	}
+	else if (SnapMethod==1)
+	{
+		for (int n=0;n<3;++n)
+		{
+			if (uiStop[n]>uiStart[n])
+			{
+				if ((GetDiscLine( n, uiStart[n], dualMesh ) > l_start[n]) && (uiStart[n]>0))
+					--uiStart[n];
+				if ((GetDiscLine( n, uiStop[n], dualMesh ) < l_stop[n]) && (uiStop[n]<GetNumberOfLines(n)-1))
+					++uiStop[n];
+			}
+			if (uiStop[n]>uiStart[n])
+				++iDim;
+		}
+		return iDim;
+	}
+	else if (SnapMethod==2)
+	{
+		for (int n=0;n<3;++n)
+		{
+			if (uiStop[n]>uiStart[n])
+			{
+				if ((GetDiscLine( n, uiStart[n], dualMesh ) < l_start[n]) && (uiStart[n]<GetNumberOfLines(n)-1))
+					++uiStart[n];
+				if ((GetDiscLine( n, uiStop[n], dualMesh ) > l_stop[n]) && (uiStop[n]>0))
+					--uiStop[n];
+			}
+			if (uiStop[n]>uiStart[n])
+				++iDim;
+		}
+		return iDim;
+	}
+	else
+		cerr << "Operator::SnapBox2Mesh: Unknown snapping method!" << endl;
+	return -1;
 }
 
 struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
@@ -1205,18 +1269,8 @@ bool Operator::Calc_LumpedElements()
 				unsigned int uiStart[3];
 				unsigned int uiStop[3];
 				// snap to the native coordinate system
-				SnapToMesh(box->GetStartCoord()->GetNativeCoords(),uiStart);
-				SnapToMesh(box->GetStopCoord()->GetNativeCoords(),uiStop);
-
-				for (int n=0;n<3;++n)
-				{
-					if (uiStop[n]<uiStart[n])
-					{
-						unsigned int help = uiStart[n];
-						uiStart[n]=uiStop[n];
-						uiStop[n]=help;
-					}
-				}
+				if (Operator::SnapBox2Mesh(box->GetStartCoord()->GetNativeCoords(), box->GetStopCoord()->GetNativeCoords(), uiStart, uiStop)<=0)
+					return false;
 
 				if (uiStart[ny]==uiStop[ny])
 				{

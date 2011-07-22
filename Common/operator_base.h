@@ -69,8 +69,20 @@ public:
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 
-	//! Snap the given coodinates to mesh indices
-	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool lower=false, bool* inside=NULL) const =0;
+	//! Snap the given coodinates to mesh indices, return box dimension
+	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool* inside=NULL) const =0;
+
+	//! Snap a given box to the operator mesh, uiStart will be always <= uiStop
+	/*!
+	  \param[in] start the box-start coorindate
+	  \param[in] stop  the box-stopt coorindate
+	  \param[out] uiStart the snapped box-start coorindate index
+	  \param[out] uiStop the snapped box-stop coorindate index
+	  \param[in] dualMesh snap to main or dual mesh (default is main mesh)
+	  \param[in] SnapMethod Snapping method, 0=snap to closest line, 1/(2)=snap such that given box is inside (outside) the snapped lines
+	  \return returns the box dimension or -1 if box is not inside the simulation domain
+	  */
+	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const =0;
 
 	//! Set the boundary conditions
 	virtual void SetBoundaryCondition(int* BCs) {for (int n=0; n<6; ++n) m_BC[n]=BCs[n];}
