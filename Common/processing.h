@@ -140,6 +140,12 @@ protected:
 	//! define if given processing uses the dual time concept (default is false);
 	bool m_dualTime;
 
+	//! define the snap method used for this processing
+	int m_SnapMethod;
+
+	//! dimension of the snapped box
+	int m_Dimension;
+
 	//! define/store snapped start/stop coords as mesh index
 	unsigned int start[3];
 	unsigned int stop[3];

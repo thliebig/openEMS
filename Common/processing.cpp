@@ -37,6 +37,7 @@ Processing::Processing(Engine_Interface_Base* eng_if)
 	m_Flush = false;
 	m_dualMesh = false;
 	m_dualTime = false;
+	m_SnapMethod = 0;
 	m_Mesh_Type = CARTESIAN_MESH;
 
 	for (int n=0;n<3;++n)
@@ -162,22 +163,13 @@ void Processing::AddFrequency(vector<double> *freqs)
 
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	for (int n=0;n<3;++n)
+	m_Dimension = Op->SnapBox2Mesh(dstart,dstop,start,stop,m_dualMesh,m_SnapMethod, m_start_inside, m_stop_inside);
+	if (m_Dimension<0)
 	{
-		double min = Op->GetDiscLine(n,0);
-		double max = Op->GetDiscLine(n,Op->GetNumberOfLines(n)-1);
-		if ( ((dstart[n]<min) && (dstop[n]<min)) || ((dstart[n]>max) && (dstop[n]>max)) )
-		{
-			cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Box is outside the field domain!! Disabling" << endl;
-			Enabled = false;
-			return;
-		}
+		cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Box is outside the field domain!! Disabling" << endl;
+		Enabled = false;
+		return;
 	}
-
-	if (Op->SnapToMesh(dstart,start,m_dualMesh,m_start_inside)==false)
-		cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Snapped start line outside field domain!!" << endl;
-	if (Op->SnapToMesh(dstop,stop,m_dualMesh,m_stop_inside)==false)
-		cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Snapped stop line outside field domain!!" << endl;
 }
 
 void Processing::ShowSnappedCoords()

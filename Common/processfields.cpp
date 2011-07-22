@@ -32,6 +32,9 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	SetPrecision(6);
 	m_dualTime = false;
 
+	// dump box should be always inside the snapped lines
+	m_SnapMethod = 1;
+
 	for (int n=0; n<3; ++n)
 	{
 		numLines[n]=0;

@@ -22,6 +22,7 @@
 
 ProcessCurrent::ProcessCurrent(Engine_Interface_Base* eng_if) : ProcessIntegral(eng_if)
 {
+	m_SnapMethod=1;
 }
 
 ProcessCurrent::~ProcessCurrent()
@@ -39,37 +40,23 @@ void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	ProcessIntegral::DefineStartStopCoord(dstart, dstop);
 
-	int Dump_Dim = 0;
-
+	m_normDir = -1;
 	for (int n=0; n<3; ++n)
 	{
-		if (start[n]>stop[n])
-		{
-			unsigned int help=start[n];
-			start[n]=stop[n];
-			stop[n]=help;
-			bool b_help=m_start_inside[n];
-			m_start_inside[n] = m_stop_inside[n];
-			m_stop_inside[n] = b_help;
-		}
-		if (m_stop_inside[n]==false) // integrate up to the wall, Operator::SnapToMesh would give numLines[n]-2
-			stop[n]=Op->GetNumberOfLines(n)-1;
-
-		if (stop[n]>start[n])
-		{
-			++Dump_Dim;
-			if ((Op->GetDiscLine( n, start[n], m_dualMesh ) > min(dstart[n],dstop[n])) && (start[n]>0))
-				--start[n];
-			if ((Op->GetDiscLine( n, stop[n], m_dualMesh ) < max(dstart[n],dstop[n])) && (stop[n]<Op->GetNumberOfLines(n)-1))
-				++stop[n];
-		}
 		if (stop[n] == start[n])
 			m_normDir = n;
 	}
 
-	if (Dump_Dim!=2)
+	if (m_normDir<0)
 	{
-		cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" is not a surface (found dimension: " << Dump_Dim << ") --> disabled" << endl;
+		cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" has an invalid normal direction --> disabled" << endl;
+		SetEnable(false);
+		return;
+	}
+
+	if (m_Dimension!=2)
+	{
+		cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" is not a surface (found dimension: " << m_Dimension << ") --> disabled" << endl;
 		SetEnable(false);
 		return;
 	}
