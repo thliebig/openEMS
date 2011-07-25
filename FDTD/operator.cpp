@@ -1653,3 +1653,15 @@ void Operator::AddExtension(Operator_Extension* op_ext)
 {
 	m_Op_exts.push_back(op_ext);
 }
+
+void Operator::DeleteExtension(Operator_Extension* op_ext)
+{
+	for (size_t n=0;n<m_Op_exts.size();++n)
+	{
+		if (m_Op_exts.at(n)==op_ext)
+		{
+			m_Op_exts.erase(m_Op_exts.begin()+n);
+			return;
+		}
+	}
+}

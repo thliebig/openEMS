@@ -127,6 +127,7 @@ public:
 	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
 
 	virtual void AddExtension(Operator_Extension* op_ext);
+	virtual void DeleteExtension(Operator_Extension* op_ext);
 	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}
 	virtual Operator_Extension* GetExtension(size_t index) const {return m_Op_exts.at(index);}
 
