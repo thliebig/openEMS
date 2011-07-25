@@ -63,7 +63,43 @@ Excitation::~Excitation()
 		delete[] Volt_index[n];
 		delete[] Curr_index[n];
 	}
+}
 
+void Excitation::Reset( double timestep )
+{
+	delete[] Signal_volt;
+	Signal_volt = 0;
+	delete[] Signal_curr;
+	Signal_curr = 0;
+	delete[] Volt_delay;
+	Volt_delay = 0;
+	delete[] Volt_dir;
+	Volt_dir = 0;
+	delete[] Volt_amp;
+	Volt_amp = 0;
+	delete[] Curr_delay;
+	Curr_delay = 0;
+	delete[] Curr_dir;
+	Curr_dir = 0;
+	delete[] Curr_amp;
+	Curr_amp = 0;
+
+	Volt_Count = 0;
+	Curr_Count = 0;
+
+	for (int n=0; n<3; ++n)
+	{
+		delete[] Volt_index[n];
+		Volt_index[n] = 0;
+		delete[] Curr_index[n];
+		Curr_index[n] = 0;
+
+		Volt_Count_Dir[n] = 0;
+		Curr_Count_Dir[n] = 0;
+	}
+
+	dT = timestep;
+	m_nyquistTS = 0;
 }
 
 bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )

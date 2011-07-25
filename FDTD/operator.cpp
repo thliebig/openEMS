@@ -803,10 +803,13 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 
 void Operator::InitExcitation()
 {
-	delete Exc;
-	Exc = new Excitation( dT );
-
-	this->AddExtension(new Operator_Ext_Excitation(this,Exc));
+	if (Exc!=NULL)
+		Exc->Reset(dT);
+	else
+	{
+		Exc = new Excitation( dT );
+		this->AddExtension(new Operator_Ext_Excitation(this,Exc));
+	}
 }
 
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)

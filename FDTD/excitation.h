@@ -30,6 +30,8 @@ public:
 	Excitation( double timestep );
 	virtual ~Excitation();
 
+	virtual void Reset( double timestep );
+
 	bool setupExcitation( TiXmlElement* Excite, unsigned int maxTS );
 
 	//! Get the excitation timestep with the (first) max amplitude
