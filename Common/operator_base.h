@@ -115,7 +115,7 @@ protected:
 	//! bool flag array to store material data for post-processing
 	bool m_StoreMaterial[4];
 
-	Processing::MeshType m_MeshType;
+	CoordinateSystem m_MeshType;
 	unsigned int numLines[3];
 	double* discLines[3];
 	double gridDelta;

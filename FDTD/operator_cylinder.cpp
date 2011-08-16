@@ -32,7 +32,7 @@ Operator_Cylinder* Operator_Cylinder::New(unsigned int numThreads)
 
 Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 {
-	m_MeshType = ProcessFields::CYLINDRICAL_MESH;
+	m_MeshType = CYLINDRICAL;
 }
 
 Operator_Cylinder::~Operator_Cylinder()

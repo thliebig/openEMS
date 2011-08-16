@@ -20,7 +20,7 @@
 Operator_Base::Operator_Base()
 {
 	Init();
-	m_MeshType = Processing::CARTESIAN_MESH;
+	m_MeshType = CARTESIAN;
 	m_StoreMaterial[0]=false;
 	m_StoreMaterial[1]=false;
 	m_StoreMaterial[2]=false;
