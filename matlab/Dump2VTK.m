@@ -17,7 +17,21 @@ y = mesh.lines{2};
 z = mesh.lines{3};
 
 fid = fopen(filename,'w+');
-    
+
+% set nan values to zero
+ind = find(isnan(fields));
+if (~isempty(ind))
+    warning('openEMS:Dump2VTK','field contains nan, setting to zero');
+    fields(ind)=0;
+end
+
+% set inf values to zero
+ind = find(isinf(fields));
+if (~isempty(ind))
+    warning('openEMS:Dump2VTK','field contains inf, setting to zero');
+    fields(ind)=0;
+end
+
 if (mesh.type==0) %write cartesian mesh to vtk
     fprintf(fid,'# vtk DataFile Version 2.0\n');
     fprintf(fid,'Rectilinear Grid by matlab-interface of openEMS\n');
