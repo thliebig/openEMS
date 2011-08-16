@@ -1272,8 +1272,14 @@ bool Operator::Calc_LumpedElements()
 				unsigned int uiStart[3];
 				unsigned int uiStop[3];
 				// snap to the native coordinate system
-				if (Operator::SnapBox2Mesh(box->GetStartCoord()->GetNativeCoords(), box->GetStopCoord()->GetNativeCoords(), uiStart, uiStop)<=0)
-					return false;
+				int Snap_Dimension = Operator::SnapBox2Mesh(box->GetStartCoord()->GetCoords(m_MeshType), box->GetStopCoord()->GetCoords(m_MeshType), uiStart, uiStop);
+				if (Snap_Dimension<=0)
+				{
+					if (g_settings.GetVerboseLevel()>0)
+						cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element snapping failed! Dimension is: " << Snap_Dimension << " skipping. "
+								<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
+					break;
+				}
 
 				if (uiStart[ny]==uiStop[ny])
 				{
