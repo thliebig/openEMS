@@ -68,6 +68,13 @@ void Processing::SetEngineInterface(Engine_Interface_Base* eng_if)
 		Op=NULL;
 }
 
+void Processing::SetName(string val, int number)
+{
+	stringstream ss;
+	ss << val << "_" << number;
+	SetName(ss.str());
+}
+
 bool Processing::CheckTimestep()
 {
 	if (m_ProcessSteps.size()>m_PS_pos)

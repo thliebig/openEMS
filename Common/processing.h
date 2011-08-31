@@ -48,6 +48,7 @@ public:
 	void SetEngineInterface(Engine_Interface_Base* eng_if);
 
 	virtual void SetName(string val) {m_Name=val;}
+	virtual void SetName(string val, int number);
 	virtual string GetName() const {return m_Name;}
 
 	//! Get the name for this processing, will be used in file description.

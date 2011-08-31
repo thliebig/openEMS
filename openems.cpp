@@ -297,73 +297,82 @@ bool openEMS::SetupProcessing()
 
 	double start[3];
 	double stop[3];
+	bool l_MultiBox = false;
 	vector<CSProperties*> Probes = m_CSX->GetPropertyByType(CSProperties::PROBEBOX);
 	for (size_t i=0; i<Probes.size(); ++i)
 	{
-		//only looking for one prim atm
-		CSPrimitives* prim = Probes.at(i)->GetPrimitive(0);
-		if (prim!=NULL)
+		//check whether one or more probe boxes are defined
+		l_MultiBox =  (Probes.at(i)->GetQtyPrimitives()>1);
+
+		for (size_t nb=0; nb<Probes.at(i)->GetQtyPrimitives(); ++nb)
 		{
-			bool acc;
-			double bnd[6] = {0,0,0,0,0,0};
-			acc = prim->GetBoundBox(bnd,true);
-			start[0]= bnd[0];
-			start[1]=bnd[2];
-			start[2]=bnd[4];
-			stop[0] = bnd[1];
-			stop[1] =bnd[3];
-			stop[2] =bnd[5];
-			CSPropProbeBox* pb = Probes.at(i)->ToProbeBox();
-			Processing* proc = NULL;
-			if (pb)
+			CSPrimitives* prim = Probes.at(i)->GetPrimitive(nb);
+			if (prim!=NULL)
 			{
-				if (pb->GetProbeType()==0)
+				bool acc;
+				double bnd[6] = {0,0,0,0,0,0};
+				acc = prim->GetBoundBox(bnd,true);
+				start[0]= bnd[0];
+				start[1]=bnd[2];
+				start[2]=bnd[4];
+				stop[0] = bnd[1];
+				stop[1] =bnd[3];
+				stop[2] =bnd[5];
+				CSPropProbeBox* pb = Probes.at(i)->ToProbeBox();
+				Processing* proc = NULL;
+				if (pb)
 				{
-					ProcessVoltage* procVolt = new ProcessVoltage(NewEngineInterface());
-					proc=procVolt;
-				}
-				else if (pb->GetProbeType()==1)
-				{
-					ProcessCurrent* procCurr = new ProcessCurrent(NewEngineInterface());
-					proc=procCurr;
-				}
-				else if (pb->GetProbeType()==2)
-					proc = new ProcessFieldProbe(NewEngineInterface(),0);
-				else if (pb->GetProbeType()==3)
-					proc = new ProcessFieldProbe(NewEngineInterface(),1);
-				else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
-				{
-					ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
-					pmm->SetFieldType(pb->GetProbeType()-10);
-					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
-					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
-					pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
-					proc = pmm;
+					if (pb->GetProbeType()==0)
+					{
+						ProcessVoltage* procVolt = new ProcessVoltage(NewEngineInterface());
+						proc=procVolt;
+					}
+					else if (pb->GetProbeType()==1)
+					{
+						ProcessCurrent* procCurr = new ProcessCurrent(NewEngineInterface());
+						proc=procCurr;
+					}
+					else if (pb->GetProbeType()==2)
+						proc = new ProcessFieldProbe(NewEngineInterface(),0);
+					else if (pb->GetProbeType()==3)
+						proc = new ProcessFieldProbe(NewEngineInterface(),1);
+					else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
+					{
+						ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
+						pmm->SetFieldType(pb->GetProbeType()-10);
+						pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
+						pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
+						pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+						proc = pmm;
+					}
+					else
+					{
+						cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
+						continue;
+					}
+					if (CylinderCoords)
+						proc->SetMeshType(Processing::CYLINDRICAL_MESH);
+					if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3) || (pb->GetProbeType()==11))
+					{
+						proc->SetDualTime(true);
+						proc->SetDualMesh(true);
+					}
+					proc->SetProcessInterval(Nyquist/m_OverSampling);
+					proc->AddFrequency(pb->GetFDSamples());
+					if (l_MultiBox==false)
+						proc->SetName(pb->GetName());
+					else
+						proc->SetName(pb->GetName(),nb);
+					proc->DefineStartStopCoord(start,stop);
+					if (g_settings.showProbeDiscretization())
+						proc->ShowSnappedCoords();
+					proc->SetWeight(pb->GetWeighting());
+					PA->AddProcessing(proc);
+					prim->SetPrimitiveUsed(true);
 				}
 				else
-				{
-					cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
-					continue;
-				}
-				if (CylinderCoords)
-					proc->SetMeshType(Processing::CYLINDRICAL_MESH);
-				if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3) || (pb->GetProbeType()==11))
-				{
-					proc->SetDualTime(true);
-					proc->SetDualMesh(true);
-				}
-				proc->SetProcessInterval(Nyquist/m_OverSampling);
-				proc->AddFrequency(pb->GetFDSamples());
-				proc->SetName(pb->GetName());
-				proc->DefineStartStopCoord(start,stop);
-				if (g_settings.showProbeDiscretization())
-					proc->ShowSnappedCoords();
-				proc->SetWeight(pb->GetWeighting());
-				PA->AddProcessing(proc);
-				prim->SetPrimitiveUsed(true);
+					delete 	proc;
 			}
-			else
-				delete 	proc;
 		}
 	}
 
@@ -372,74 +381,85 @@ bool openEMS::SetupProcessing()
 	{
 		ProcessFields* ProcField=NULL;
 
-		//only looking for one prim atm
-		CSPrimitives* prim = DumpProps.at(i)->GetPrimitive(0);
-		if (prim!=NULL)
+		//check whether one or more probe boxes are defined
+		l_MultiBox =  (DumpProps.at(i)->GetQtyPrimitives()>1);
+
+		for (size_t nb=0; nb<DumpProps.at(i)->GetQtyPrimitives(); ++nb)
 		{
-			bool acc;
-			double bnd[6] = {0,0,0,0,0,0};
-			acc = prim->GetBoundBox(bnd,true);
-			start[0]= bnd[0];
-			start[1]=bnd[2];
-			start[2]=bnd[4];
-			stop[0] = bnd[1];
-			stop[1] =bnd[3];
-			stop[2] =bnd[5];
-			CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
-			if (db)
+
+			CSPrimitives* prim = DumpProps.at(i)->GetPrimitive(nb);
+			if (prim!=NULL)
 			{
-				if ((db->GetDumpType()>=0) && (db->GetDumpType()<=3))
-					ProcField = new ProcessFieldsTD(NewEngineInterface());
-				else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
-					ProcField = new ProcessFieldsFD(NewEngineInterface());
-				else if (db->GetDumpType()==20)
-					ProcField = new ProcessFieldsSAR(NewEngineInterface());
-				else
-					cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
-				if (ProcField)
+				bool acc;
+				double bnd[6] = {0,0,0,0,0,0};
+				acc = prim->GetBoundBox(bnd,true);
+				start[0]= bnd[0];
+				start[1]=bnd[2];
+				start[2]=bnd[4];
+				stop[0] = bnd[1];
+				stop[1] =bnd[3];
+				stop[2] =bnd[5];
+				CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
+				if (db)
 				{
-					ProcField->SetEnable(Enable_Dumps);
-					ProcField->SetProcessInterval(Nyquist/m_OverSampling);
-					if ((db->GetDumpType()==1) || (db->GetDumpType()==11))
-					{
-						ProcField->SetDualTime(true);
-						//make dualMesh the default mesh for h-field dumps, maybe overwritten by interpolation type (node-interpolation)
-						ProcField->SetDualMesh(true);
-					}
-					if (db->GetDumpType()>=10)
-					{
-						ProcField->AddFrequency(db->GetFDSamples());
-						ProcField->SetDumpType((ProcessFields::DumpType)(db->GetDumpType()-10));
-					}
+					if ((db->GetDumpType()>=0) && (db->GetDumpType()<=3))
+						ProcField = new ProcessFieldsTD(NewEngineInterface());
+					else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
+						ProcField = new ProcessFieldsFD(NewEngineInterface());
+					else if (db->GetDumpType()==20)
+						ProcField = new ProcessFieldsSAR(NewEngineInterface());
 					else
-						ProcField->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
-
-					if (db->GetDumpType()==20)
+						cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
+					if (ProcField)
 					{
-						ProcField->SetDumpType(ProcessFields::SAR_LOCAL_DUMP);
+						ProcField->SetEnable(Enable_Dumps);
+						ProcField->SetProcessInterval(Nyquist/m_OverSampling);
+						if ((db->GetDumpType()==1) || (db->GetDumpType()==11))
+						{
+							ProcField->SetDualTime(true);
+							//make dualMesh the default mesh for h-field dumps, maybe overwritten by interpolation type (node-interpolation)
+							ProcField->SetDualMesh(true);
+						}
+						if (db->GetDumpType()>=10)
+						{
+							ProcField->AddFrequency(db->GetFDSamples());
+							ProcField->SetDumpType((ProcessFields::DumpType)(db->GetDumpType()-10));
+						}
+						else
+							ProcField->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
+
+						if (db->GetDumpType()==20)
+						{
+							ProcField->SetDumpType(ProcessFields::SAR_LOCAL_DUMP);
+						}
+
+						//SetupMaterialStorages() has previewed storage needs... refresh here to prevent cleanup!!!
+						if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12) || (db->GetDumpType()==20)) && Enable_Dumps )
+							FDTD_Op->SetMaterialStoreFlags(1,true);
+
+						ProcField->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
+						ProcField->SetFileType((ProcessFields::FileType)db->GetFileType());
+						if (CylinderCoords)
+							ProcField->SetMeshType(Processing::CYLINDRICAL_MESH);
+						if (db->GetSubSampling())
+							for (int n=0; n<3; ++n)
+								ProcField->SetSubSampling(db->GetSubSampling(n),n);
+						if (db->GetOptResolution())
+							for (int n=0; n<3; ++n)
+								ProcField->SetOptResolution(db->GetOptResolution(n),n);
+
+						if (l_MultiBox==false)
+							ProcField->SetName(db->GetName());
+						else
+							ProcField->SetName(db->GetName(),nb);
+
+						ProcField->SetFileName(ProcField->GetName());
+						ProcField->DefineStartStopCoord(start,stop);
+						if (g_settings.showProbeDiscretization())
+							ProcField->ShowSnappedCoords();
+						PA->AddProcessing(ProcField);
+						prim->SetPrimitiveUsed(true);
 					}
-
-					//SetupMaterialStorages() has previewed storage needs... refresh here to prevent cleanup!!!
-					if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12) || (db->GetDumpType()==20)) && Enable_Dumps )
-						FDTD_Op->SetMaterialStoreFlags(1,true);
-
-					ProcField->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
-					ProcField->SetFileType((ProcessFields::FileType)db->GetFileType());
-					if (CylinderCoords)
-						ProcField->SetMeshType(Processing::CYLINDRICAL_MESH);
-					if (db->GetSubSampling())
-						for (int n=0; n<3; ++n)
-							ProcField->SetSubSampling(db->GetSubSampling(n),n);
-					if (db->GetOptResolution())
-						for (int n=0; n<3; ++n)
-							ProcField->SetOptResolution(db->GetOptResolution(n),n);
-					ProcField->SetName(db->GetName());
-					ProcField->SetFileName(db->GetName());
-					ProcField->DefineStartStopCoord(start,stop);
-					if (g_settings.showProbeDiscretization())
-						ProcField->ShowSnappedCoords();
-					PA->AddProcessing(ProcField);
-					prim->SetPrimitiveUsed(true);
 				}
 			}
 		}
