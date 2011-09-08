@@ -2,7 +2,7 @@ function FDTD = SetGaussExcite(FDTD,f0,fc)
 % function FDTD = SetGaussExcite(FDTD,f0,fc);
 %
 % f0 : center frequency
-% fc : 3dB cutoff frequency --> bandwidth is 2*fc
+% fc : 20dB cutoff frequency --> bandwidth is 2*fc
 %
 % see also SetSinusExcite SetCustomExcite
 %
