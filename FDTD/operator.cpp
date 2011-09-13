@@ -148,10 +148,10 @@ bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool du
 	}
 	else	//dual grid
 	{
+		coords[ny]-=0.5*fabs(GetRawDiscDelta(ny, pos[ny]-1));
+
 		int nP = (ny+1)%3;
 		int nPP = (ny+2)%3;
-		coords[nP] +=0.5*fabs(GetRawDiscDelta(nP ,pos[nP] ));
-		coords[nPP]+=0.5*fabs(GetRawDiscDelta(nPP,pos[nPP]));
 		if ((pos[nP]>=numLines[nP]-1) || (pos[nPP]>=numLines[nPP]-1))
 			return false;
 	}
