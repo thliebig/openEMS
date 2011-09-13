@@ -29,8 +29,12 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % -----------------------
 % author: Thorsten Liebig
 
-if nargin < 3
+if nargin < 2
     error 'specify the Sim_Path and Sim_file to simulate'
+end
+
+if nargin < 3
+    opts = '';
 end
 
 if (nargin<4)
