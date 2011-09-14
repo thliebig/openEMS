@@ -1,13 +1,11 @@
 %
-% EXAMPLE / antennas / patch antenna simple
+% Tutorials / simple patch antenna
 %
-% This example demonstrates how to:
-%  - calculate the reflection coefficient of a patch antenna
-% 
+% Describtion at:
+% http://openems.de/index.php/Tutorial:_Simple_Patch_Antenna
 %
 % Tested with
 %  - Matlab 2009b
-%  - Octave 3.3.52
 %  - openEMS v0.0.23
 %
 % (C) 2010,2011 Thorsten Liebig <thorsten.liebig@uni-due.de>
