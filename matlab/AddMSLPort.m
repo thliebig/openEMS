@@ -188,7 +188,7 @@ CSX = AddProbe( CSX, name, 0, weight );
 CSX = AddBox( CSX, name, prio, v3_start, v3_stop );
 name = ['port_it' num2str(portnr) 'A'];
 
-weight = direction
+weight = direction;
 CSX = AddProbe( CSX, name, 1, weight );
 CSX = AddBox( CSX, name, prio, i1_start, i1_stop );
 name = ['port_it' num2str(portnr) 'B'];
@@ -205,22 +205,23 @@ port.excite = 0;
 port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop));
 
 % create excitation
+% excitation of this port is enabled
+port.excite = 1;
+meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop) + feed_shift*direction, 'nearest' );
+ex_start(idx_prop)   = mesh{idx_prop}(meshline) ;
+ex_start(idx_width)  = nstart(idx_width);
+ex_start(idx_height) = nstart(idx_height);
+ex_stop(idx_prop)    = ex_start(idx_prop);
+ex_stop(idx_width)   = nstop(idx_width);
+ex_stop(idx_height)  = nstop(idx_height);
+
 if ~isempty(excitename)
-	% excitation of this port is enabled
-	port.excite = 1;
-    meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop) + feed_shift*direction, 'nearest' );
-    ex_start(idx_prop)   = mesh{idx_prop}(meshline) ;
-	ex_start(idx_width)  = nstart(idx_width);
-	ex_start(idx_height) = nstart(idx_height);
-	ex_stop(idx_prop)    = ex_start(idx_prop);
-	ex_stop(idx_width)   = nstop(idx_width);
-	ex_stop(idx_height)  = nstop(idx_height);
     CSX = AddExcitation( CSX, excitename, 0, evec );
-	CSX = AddBox( CSX, excitename, prio, ex_start, ex_stop );
-    
-    if feed_R > 0
-        CSX = AddLumpedElement( CSX, [excitename '_R'], idx_height-1, 'R', feed_R );
-        CSX = AddBox( CSX, [excitename '_R'], prio, ex_start, ex_stop );
-        port.Feed_R = port_R;
-    end
+    CSX = AddBox( CSX, excitename, prio, ex_start, ex_stop );
+end
+if feed_R > 0
+    CSX = AddLumpedElement( CSX, [excitename '_R'], idx_height-1, 'R', feed_R );
+    CSX = AddBox( CSX, [excitename '_R'], prio, ex_start, ex_stop );
+    port.Feed_R = feed_R;
+end
 end
