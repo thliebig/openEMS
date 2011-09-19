@@ -1,3 +1,15 @@
+%
+% Tutorials / MSL_NotchFilter
+%
+% Describtion at:
+% http://openems.de/index.php/Tutorial:_Microstrip_Notch_Filter
+%
+% Tested with
+%  - Matlab 2009b
+%  - openEMS v0.0.23
+%
+% (C) 2011 Thorsten Liebig <thorsten.liebig@gmx.de>
+
 close all
 clear
 clc
