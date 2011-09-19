@@ -53,7 +53,7 @@ min_decrement = 1e-6;
 f_max         = 7e9;
 FDTD = InitFDTD( max_timesteps, min_decrement, 'OverSampling', 10 );
 FDTD = SetGaussExcite( FDTD, f_max/2, f_max/2 );
-BC   = {'MUR' 'PEC' 'PEC' 'PEC' 'PEC' 'PMC'};
+BC   = {'MUR' 'MUR' 'PEC' 'PEC' 'PEC' 'PMC'};
 FDTD = SetBoundaryCond( FDTD, BC );
 
 %% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -161,9 +161,9 @@ grid on
 title( 'Frequency domain current probes' );
 legend( {'abs(if1A)','abs(if1B)','angle(if1A)','angle(if1B)'} );
 
-% port analysis
-[S11,beta,ZL,vi] = calcPort( portstruct, Sim_Path, f );
-% attention! the reflection coefficient S11 is normalized to ZL!
+%% port analysis
+[U,I,beta,ZL] = calcPort( portstruct, Sim_Path, f );
+%% attention! the reflection coefficient S11 is normalized to ZL!
 
 figure
 plot( sin(0:0.01:2*pi), cos(0:0.01:2*pi), 'Color', [.7 .7 .7] );
@@ -216,9 +216,10 @@ grid on;
 legend( {'real','imaginary'}, 'location', 'northeast' )
 title( 'Characteristic line impedance ZL' );
 
-% reference plane shift (to the end of the port)
+%% reference plane shift (to the end of the port)
 ref_shift = abs(portstop(1) - portstart(1));
-[S11,beta,ZL,vi] = calcPort( portstruct, Sim_Path, f, ref_shift );
+[U, I,beta,ZL] = calcPort( portstruct, Sim_Path, f );
+%%
 
 figure
 plotyy( f/1e9, 20*log10(abs(S11)), f/1e9, angle(S11)/pi*180 );

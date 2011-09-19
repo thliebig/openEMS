@@ -1,38 +1,58 @@
-function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
-% [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, dir, evec, refplaneshift, excitename )
+function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, dir, evec, varargin )
+% [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, dir, evec, varargin )
 %
 % CSX:          CSX-object created by InitCSX()
 % prio:         priority for excitation and probe boxes
 % portnr:       (integer) number of the port
-% materialname: property for the MSL (created by AddMetal() or AddMaterial())
+% materialname: property for the MSL (created by AddMetal())
 % start:        3D start rowvector for port definition
 % stop:         3D end rowvector for port definition
-% dir:          direction of wave propagation (choices: [1 0 0], [0 1 0] or [0 0 1])
+% dir:          direction of wave propagation (choices: 0 1 2)
 % evec:         excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
-% refplaneshift (optional): if not specified or empty, the measurement
-%    plane is used; if specified, reference plane is shifted by
-%    <refplaneshift> starting from <start> (thus refplaneshift is normally
-%    positive)
-% excitename (optional): if specified, the port will be switched on (see AddExcitation())
-%
+% 
+% variable input:
+% 'ExcitePort'  necessary excitation name to make the port an active feeding port
+% 'FeedShift'   shift to port from start by a given distance in drawing
+%               units. Default is 0. Only active if 'ExcitePort' is set!
+% 'Feed_R'      Specifiy a lumped port resistance. Default is no lumped
+%               port resistance --> port has to end in an ABC.
+%               Only active if 'ExcitePort' is set!
+% 'MeasPlaneShift'  Shift the measurement plane from start t a given distance 
+%               in drawing units. Default is the middle of start/stop.
+%               Only active if 'ExcitePort' is set!
+% 
 % the mesh must be already initialized
 %
 % example:
-%   start = [0 0 height]; stop = [length width 0]; dir = [1 0 0]; evec = [0 0 -1]
-%   this defines a MSL in x-direction (dir) with an e-field excitation in -z-direction (evec)
-%   the excitation is placed at x=start(1); the wave travels towards x=stop(1)
-%   the MSL-metal is created in xy-plane at z=start(3)
+%   start = [0 0 height]; 
+%   stop = [length width 0]; 
+%   CSX = AddMetal( CSX, 'metal' ); %create a PEC called 'metal'
+%   [CSX,port] = AddMSLPort( CSX, 0, 1, 'metal', start, stop,  ...
+%                0, [0 0 -1] , 'ExcitePort', 'excite', 'Feed_R', 50 )
+% 
+%   this defines a MSL in x-direction (dir=0) with an e-field excitation 
+%   in -z-direction (evec=[0 0 -1]) the excitation is placed at x=start(1); 
+%   the wave travels towards x=stop(1) the MSL-metal is created 
+%   in xy-plane at z=start(3)
 %
-% Sebastian Held <sebastian.held@gmx.de>
-% May 13 2010
+% Sebastian Held <sebastian.held@gmx.de> May 13 2010
+% Thorsten Liebig <thorsten.liebig@gmx.de> Sept 16 2011
 %
-% See also InitCSX AddMetal AddMaterial AddExcitation calcMSLPort
+% See also InitCSX AddMetal AddMaterial AddExcitation calcPort
+
+%% validate arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%check mesh
+if ~isfield(CSX,'RectilinearGrid')
+    error 'mesh needs to be defined! Use DefineRectGrid() first!';
+    if (~isfield(CSX.RectilinearGrid,'XLines') || ~isfield(CSX.RectilinearGrid,'YLines') || ~isfield(CSX.RectilinearGrid,'ZLines'))
+        error 'mesh needs to be defined! Use DefineRectGrid() first!';
+    end
+end
 
 % check dir
-if ~(dir(1) == dir(2) == 0) && ~(dir(1) == dir(3) == 0) && ~(dir(2) == dir(3) == 0) || (sum(dir) == 0)
+if ~( (dir >= 0) && (dir <= 2) )
 	error 'dir must have exactly one component ~= 0'
 end
-dir = dir ./ sum(dir); % dir is now a unit vector
 
 % check evec
 if ~(evec(1) == evec(2) == 0) && ~(evec(1) == evec(3) == 0) && ~(evec(2) == evec(3) == 0) || (sum(evec) == 0)
@@ -40,14 +60,56 @@ if ~(evec(1) == evec(2) == 0) && ~(evec(1) == evec(3) == 0) && ~(evec(2) == evec
 end
 evec0 = evec ./ sum(evec); % evec0 is a unit vector
 
+%% read optional arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+n_conv_arg = 8; % number of conventional arguments
+
+%set defaults
+feed_shift = 0;
+feed_R = 0;
+excitename = '';
+measplanepos = nan;
+
+if (nargin>n_conv_arg)
+    for n=1:2:(nargin-n_conv_arg)
+        if (strcmp(varargin{n},'FeedShift')==1);
+            feed_shift = varargin{n+1};
+            if (numel(feed_shift)>1)
+                error 'FeedShift must be a scalar value'
+            end
+        end
+        
+        if (strcmp(varargin{n},'Feed_R')==1);
+            feed_R = varargin{n+1};
+            if (numel(feed_shift)>1)
+                error 'Feed_R must be a scalar value'
+            end
+        end
+        
+        if (strcmp(varargin{n},'MeasPlaneShift')==1);
+            measplanepos = varargin{n+1};
+            if (numel(feed_shift)>1)
+                error 'MeasPlaneShift must be a scalar value'
+            end
+        end
+                
+        if (strcmp(varargin{n},'ExcitePort')==1);
+            excitename = varargin{n+1};
+        end
+    end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % normalize start and stop
 nstart = min( [start;stop] );
 nstop  = max( [start;stop] );
 
 % determine index (1, 2 or 3) of propagation (length of MSL)
-idx_prop = dir * [1;2;3];
+idx_prop = dir + 1;
 
 % determine index (1, 2 or 3) of width of MSL
+dir = [0 0 0];
+dir(idx_prop) = 1;
 idx_width = abs(cross(dir,evec0)) * [1;2;3];
 
 % determine index (1, 2 or 3) of height
@@ -66,14 +128,17 @@ MSL_stop = stop;
 MSL_stop(idx_height) = MSL_start(idx_height);
 CSX = AddBox( CSX, materialname, prio, MSL_start, MSL_stop );
 
-% FIXME
-% openEMS v0.0.7 does not snap PEC
+if isnan(measplanepos)
+    measplanepos = (nstart(idx_prop)+nstop(idx_prop))/2;
+else
+    measplanepos = start(idx_prop)+direction*measplanepos;
+end
 
 % calculate position of the voltage probes
 mesh{1} = sort(CSX.RectilinearGrid.XLines);
 mesh{2} = sort(CSX.RectilinearGrid.YLines);
 mesh{3} = sort(CSX.RectilinearGrid.ZLines);
-meshlines = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), (nstart(idx_prop)+nstop(idx_prop))/2, 'nearest' );
+meshlines = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), measplanepos, 'nearest' );
 meshlines = mesh{idx_prop}(meshlines-1:meshlines+1); % get three lines (approx. at center)
 if direction == -1
     meshlines = fliplr(meshlines);
@@ -82,9 +147,9 @@ MSL_w2 = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), (nstart(idx_width)+
 MSL_w2 = mesh{idx_width}(MSL_w2); % get e-line at center of MSL (MSL_width/2)
 v1_start(idx_prop)   = meshlines(1);
 v1_start(idx_width)  = MSL_w2;
-v1_start(idx_height) = nstop(idx_height);
+v1_start(idx_height) = start(idx_height);
 v1_stop  = v1_start;
-v1_stop(idx_height)  = nstart(idx_height);
+v1_stop(idx_height)  = stop(idx_height);
 v2_start = v1_start;
 v2_stop  = v1_stop;
 v2_start(idx_prop)   = meshlines(2);
@@ -111,7 +176,8 @@ i2_stop(idx_prop)    = i2_start(idx_prop);
 
 % create the probes
 name = ['port_ut' num2str(portnr) 'A'];
-weight = sum(evec);
+% weight = sign(stop(idx_height)-start(idx_height))
+weight = -1;
 CSX = AddProbe( CSX, name, 0, weight );
 CSX = AddBox( CSX, name, prio, v1_start, v1_stop );
 name = ['port_ut' num2str(portnr) 'B'];
@@ -121,7 +187,8 @@ name = ['port_ut' num2str(portnr) 'C'];
 CSX = AddProbe( CSX, name, 0, weight );
 CSX = AddBox( CSX, name, prio, v3_start, v3_stop );
 name = ['port_it' num2str(portnr) 'A'];
-weight = direction;
+
+weight = direction
 CSX = AddProbe( CSX, name, 1, weight );
 CSX = AddBox( CSX, name, prio, i1_start, i1_stop );
 name = ['port_it' num2str(portnr) 'B'];
@@ -131,41 +198,18 @@ CSX = AddBox( CSX, name, prio, i2_start, i2_stop );
 % create port structure
 port.nr = portnr;
 port.drawingunit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
-% port.start = start;
-% port.stop = stop;
-% port.v1_start = v1_start;
-% port.v1_stop = v1_stop;
-% port.v2_start = v2_start;
-% port.v2_stop = v2_stop;
-% port.v3_start = v3_start;
-% port.v3_stop = v3_stop;
 port.v_delta = diff(meshlines);
-% port.i1_start = i1_start;
-% port.i1_stop = i1_stop;
-% port.i2_start = i2_start;
-% port.i2_stop = i2_stop;
 port.i_delta = diff( meshlines(1:end-1) + diff(meshlines)/2 );
 port.direction = direction;
-% port.dir = dir;
-% port.evec = evec;
-% port.idx_prop = idx_prop;
-% port.idx_width = idx_width;
-% port.idx_height = idx_height;
 port.excite = 0;
-port.refplaneshift = 0;
 port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop));
 
-if (nargin >= 9) && (~isempty(refplaneshift))
-    % refplaneshift counts from start of port
-    port.refplaneshift = refplaneshift - direction*(v2_start(idx_prop) - start(idx_prop));
-end
-
 % create excitation
-if nargin >= 10
+if ~isempty(excitename)
 	% excitation of this port is enabled
 	port.excite = 1;
-    meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop), 'nearest' );
-    ex_start(idx_prop)   = mesh{idx_prop}(meshline+direction);
+    meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop) + feed_shift*direction, 'nearest' );
+    ex_start(idx_prop)   = mesh{idx_prop}(meshline) ;
 	ex_start(idx_width)  = nstart(idx_width);
 	ex_start(idx_height) = nstart(idx_height);
 	ex_stop(idx_prop)    = ex_start(idx_prop);
@@ -173,4 +217,10 @@ if nargin >= 10
 	ex_stop(idx_height)  = nstop(idx_height);
     CSX = AddExcitation( CSX, excitename, 0, evec );
 	CSX = AddBox( CSX, excitename, prio, ex_start, ex_stop );
+    
+    if feed_R > 0
+        CSX = AddLumpedElement( CSX, [excitename '_R'], idx_height-1, 'R', feed_R );
+        CSX = AddBox( CSX, [excitename '_R'], prio, ex_start, ex_stop );
+        port.Feed_R = port_R;
+    end
 end

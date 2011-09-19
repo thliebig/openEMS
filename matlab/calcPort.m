@@ -1,24 +1,34 @@
-function [S11,beta,ZL,vi] = calcPort( portstruct, SimDir, f, ref_shift )
-%[S11,beta,ZL,vi] = calcPort( portstruct, SimDir, [f], [ref_shift] )
+function [port] = calcPort( port, SimDir, f, varargin)
+% [port] = calcPort( port, SimDir, f, [ref_ZL], [ref_shift])
 %
-% Calculate the reflection coefficient S11, the propagation constant beta
-% of the MSL-port and the characteristic impedance ZL of the MSL-port.
-% The port is to be created by AddMSLPort().
+% Calculate voltages and currents, the propagation constant beta
+% and the characteristic impedance ZL of the given port.
+% The port has to be created by e.g. AddMSLPort().
 %
 % input:
-%   portstruct: return value of AddMSLPort()
+%   port:       return value of AddMSLPort()
 %   SimDir:     directory, where the simulation files are
-%   f:          (optional) frequency vector for DFT
-%   ref_shift:  (optional) reference plane shift measured from start of port (in drawing units)
+%   f:          frequency vector for DFT
+% 
+% variable input:
+%   'RefImpedance': use a given reference impedance to calculate inc and
+%                   ref voltages and currents
+%                   default is given port or calculated line impedance
+%   'RefPlaneShift': use a given reference plane shift from port beginning
+%                   for a desired phase correction
+%                   default is the measurement plane 
 %
-% output:
-%   S11:  reflection coefficient (normalized to ZL)
-%   beta: propagation constant
-%   ZL:   characteristic line impedance
-%   vi:   structure of voltages and currents
-%         vi.TD.v.{val,t}; vi.TD.i.{val,t};
-%         vi.FD.v.{val,val_shifted,f}; vi.FD.i.{val,val_shifted,f}; 
+% output: 
+%   port.f                  the given frequency fector
+%   port.uf.tot/inc/ref     total, incoming and reflected voltage
+%   port.if.tot/inc/ref     total, incoming and reflected current
+%   port.beta:              propagation constant
+%   port.ZL:                characteristic line impedance
 %
+% example:
+%   port{1} = calcPort( port{1}, Sim_Path, f, 'RefImpedance', 50);
+%  or 
+% 
 % reference: W. K. Gwarek, "A Differential Method of Reflection Coefficient Extraction From FDTD Simulations",
 %            IEEE Microwave and Guided Wave Letters, Vol. 6, No. 5, May 1996
 %
@@ -28,83 +38,96 @@ function [S11,beta,ZL,vi] = calcPort( portstruct, SimDir, f, ref_shift )
 % See also AddMSLPort
 
 %DEBUG
-% save('/tmp/test.mat', 'portstruct', 'SimDir', 'f', 'nargin' )
+% save('/tmp/test.mat', 'port', 'SimDir', 'f', 'nargin' )
 % load('/tmp/test.mat')
 
 % check
-if portstruct.v_delta(1) ~= portstruct.v_delta(2)
+if abs((port.v_delta(1) - port.v_delta(2)) / port.v_delta(1))>1e-6
 	warning( 'openEMS:calcPort:mesh', 'mesh is not equidistant; expect degraded accuracy' );
 end
 
-if nargin < 3
-    f = [];
+
+%% read optional arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+n_conv_arg = 3; % number of conventional arguments
+
+%set defaults
+ref_ZL = 0;
+ref_shift = nan;
+
+if (nargin>n_conv_arg)
+    for n=1:2:(nargin-n_conv_arg)
+        if (strcmp(varargin{n},'RefPlaneShift')==1);
+            ref_shift = varargin{n+1};
+        end
+        
+        if (strcmp(varargin{n},'RefImpedance')==1);
+            ref_ZL = varargin{n+1};
+        end
+    end
 end
 
 % read time domain data
-filename = ['port_ut' num2str(portstruct.nr)];
+filename = ['port_ut' num2str(port.nr)];
 U = ReadUI( {[filename 'A'],[filename 'B'],[filename 'C']}, SimDir, f );
-filename = ['port_it' num2str(portstruct.nr)];
+filename = ['port_it' num2str(port.nr)];
 I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir, f );
 
-% store the original time domain waveforms
-vi.TD.v = U.TD{2};
-vi.TD.i.t = I.TD{1}.t;
-vi.TD.i.val = (I.TD{1}.val + I.TD{2}.val) / 2; % shift to same position as v
-
 % store the original frequency domain waveforms
-vi.FD.v = U.FD{2};
-vi.FD.i = I.FD{1};
-vi.FD.i.val = (I.FD{1}.val + I.FD{2}.val) / 2; % shift to same position as v
+u_f = U.FD{2}.val;
+i_f = (I.FD{1}.val + I.FD{2}.val) / 2; % shift to same position as v
 
 f = U.FD{2}.f;
 Et = U.FD{2}.val;
-dEt = (U.FD{3}.val - U.FD{1}.val) / (sum(abs(portstruct.v_delta(1:2))) * portstruct.drawingunit);
+dEt = (U.FD{3}.val - U.FD{1}.val) / (sum(abs(port.v_delta(1:2))) * port.drawingunit);
 Ht = (I.FD{1}.val + I.FD{2}.val)/2; % space averaging: Ht is now defined at the same pos as Et
-dHt = (I.FD{2}.val - I.FD{1}.val) / (abs(portstruct.i_delta(1)) * portstruct.drawingunit);
+dHt = (I.FD{2}.val - I.FD{1}.val) / (abs(port.i_delta(1)) * port.drawingunit);
 
 beta = sqrt( - dEt .* dHt ./ (Ht .* Et) );
 beta(real(beta) < 0) = -beta(real(beta) < 0); % determine correct sign (unlike the paper)
-
-% determine S11
-A = sqrt( Et .* dHt ./ (Ht .* dEt) );
-A(imag(A) > 0) = -A(imag(A) > 0); % determine correct sign (unlike the paper)
-S11 = (A - 1) ./ (A + 1);
-
-% determine S11_corrected
-delta_e = sum(portstruct.v_delta(1:2))/2 * portstruct.drawingunit;
-delta_h = portstruct.i_delta(1) * portstruct.drawingunit;
-S11_corrected = sqrt( Et .* (dHt ./ (sin(beta.*delta_h*.5)/(beta*delta_h*.5))) ./ ((Ht ./ cos(beta*delta_h*.5)) .* (dEt ./ (sin(beta*delta_e)./(beta*delta_e)))));
-S11_corrected(imag(S11_corrected) > 0) = -S11_corrected(imag(S11_corrected) > 0); % determine correct sign (unlike the paper)
-S11_corrected = (S11_corrected-1) ./ (S11_corrected+1);
-
-% my own solution...
-temp = sqrt(-dHt .* dEt ./ (Ht .* Et));
-S11 = (-1i * dEt + Et .* temp) ./ (Et .* temp + 1i * dEt); % solution 1
-% S11 = (-1i * dEt - Et .* temp) ./ (-Et .* temp + 1i * dEt); % solution 2
-
-% % determine ZL
-% Et_forward = Et ./ (1 + S11);
-% Ht_forward = Ht ./ (1 - S11);
-% ZL = Et_forward ./ Ht_forward;
-% 
-% % determine ZL_corrected
-% Et_forward_corrected = Et ./ (1 + S11_corrected);
-% Ht_forward_corrected = Ht ./ (1 - S11_corrected);
-% ZL_corrected = Et_forward_corrected ./ Ht_forward_corrected;
 
 % determine ZL
 ZL = sqrt(Et .* dEt ./ (Ht .* dHt));
 
 % reference plane shift (lossless)
-if (nargin > 3)
+if ~isnan(ref_shift)
     % renormalize the shift to the measurement plane
-    ref_shift = ref_shift - portstruct.measplanepos;
-    ref_shift = ref_shift * portstruct.drawingunit;
-    S11 = S11 .* exp(2i*real(beta)*ref_shift);
-    S11_corrected = S11_corrected .* exp(2i*real(beta)*ref_shift);
+    ref_shift = ref_shift - port.measplanepos * port.drawingunit;
+%     ref_shift = ref_shift * port.drawingunit;
     
     % store the shifted frequency domain waveforms
     phase = real(beta)*ref_shift;
-    vi.FD.v.val_shifted = vi.FD.v.val .* cos(-phase) + 1i * vi.FD.i.val.*ZL .* sin(-phase);
-    vi.FD.i.val_shifted = vi.FD.i.val .* cos(-phase) + 1i * vi.FD.v.val./ZL .* sin(-phase);
+    U.FD{1}.val = u_f .* cos(-phase) + 1i * i_f.*ZL .* sin(-phase);
+    I.FD{1}.val = i_f .* cos(-phase) + 1i * u_f./ZL .* sin(-phase);
+    
+    u_f = U.FD{1}.val;
+    i_f = I.FD{1}.val;
 end
+
+if (ref_ZL == 0)
+    if isfield(port,'Feed_R')
+        ref_ZL = port.Feed_R;
+    else
+        ref_ZL = ZL;
+    end
+end
+
+port.ZL =  ZL;
+port.beta = beta;
+
+port.f = f;
+uf_inc = 0.5 * ( u_f + i_f .* ref_ZL );
+if_inc = 0.5 * ( i_f + u_f ./ ref_ZL );
+
+uf_ref = u_f - uf_inc;
+if_ref = if_inc - i_f; 
+
+port.uf.tot = u_f;
+port.uf.inc = uf_inc;
+port.uf.ref = uf_ref;
+
+port.if.tot = i_f;
+port.if.inc = if_inc;
+port.if.ref = if_ref;
+
+port.raw.U = U;
+port.raw.I = I;
