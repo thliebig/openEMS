@@ -21,7 +21,7 @@ unit = 1e-6; % specify everything in um
 feed_length = 20000;
 
 substrate_thickness = [1524 101 254];
-substrate_epr = [3.48 3.48 3.48];
+substrate_epsr = [3.48 3.48 3.48];
 
 N_Cells = 8;        %number of CRLH unit cells
 
@@ -54,7 +54,7 @@ FDTD = SetBoundaryCond( FDTD, BC );
 
 %% Setup a basic mesh and create the CRLH unit cell
 CSX = InitCSX();
-resolution = c0/(f_stop*sqrt(max(substrate_epr)))/unit /30; % resolution of lambda/30
+resolution = c0/(f_stop*sqrt(max(substrate_epsr)))/unit /30; % resolution of lambda/30
 
 mesh.x = [-feed_length-(N_Cells*CRLH.LL)/2-Air_Spacer -feed_length-(N_Cells*CRLH.LL)/2 0 feed_length+(N_Cells*CRLH.LL)/2 feed_length+(N_Cells*CRLH.LL)/2+Air_Spacer];
 mesh.y = [-Air_Spacer-substrate_width/2 0 Air_Spacer+substrate_width/2];
@@ -78,7 +78,7 @@ CSX = DefineRectGrid( CSX, unit, mesh );
 substratelines = [0 substratelines];
 for n=1:numel(substrate_thickness)
     CSX = AddMaterial( CSX, ['substrate' int2str(n)] );
-    CSX = SetMaterialProperty( CSX, ['substrate' int2str(n)], 'Epsilon', substrate_epr(n) );
+    CSX = SetMaterialProperty( CSX, ['substrate' int2str(n)], 'Epsilon', substrate_epsr(n) );
     start = [-feed_length-(N_Cells*CRLH.LL)/2, -substrate_width/2, substratelines(n)];
     stop  = [+feed_length+(N_Cells*CRLH.LL)/2,  substrate_width/2, substratelines(n+1)];
     CSX = AddBox( CSX, ['substrate' int2str(n)], 0, start, stop );
