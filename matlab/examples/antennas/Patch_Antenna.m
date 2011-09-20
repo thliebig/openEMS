@@ -8,9 +8,9 @@
 % Tested with
 %  - Matlab 2009b
 %  - Octave 3.3.52
-%  - openEMS v0.0.17
+%  - openEMS v0.0.23
 %
-% (C) 2010 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2010,2011 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear
@@ -18,7 +18,7 @@ clc
 
 %% switches & options...
 postprocessing_only = 0;
-draw_3d_pattern = 1; % this may take a while...
+draw_3d_pattern = 0; % this may take a while...
 use_pml = 0;         % use pml boundaries instead of mur
 openEMS_opts = '';
 
@@ -58,7 +58,7 @@ end
 max_timesteps = 30000;
 min_decrement = 1e-5; % equivalent to -50 dB
 f0 = 0e9; % center frequency
-fc = 3e9; % 10 dB corner frequency (in this case 0 Hz - 3e9 Hz)
+fc = 3e9; % 20 dB corner frequency (in this case 0 Hz - 3e9 Hz)
 FDTD = InitFDTD( max_timesteps, min_decrement );
 FDTD = SetGaussExcite( FDTD, f0, fc );
 BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions

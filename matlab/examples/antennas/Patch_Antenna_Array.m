@@ -8,7 +8,7 @@
 % Tested with
 %  - Matlab 2009b
 %  - Octave 3.3.52
-%  - openEMS v0.0.17
+%  - openEMS v0.0.23
 %
 % (C) 2010 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
@@ -18,7 +18,7 @@ clc
 
 %% switches & options...
 postprocessing_only = 0;
-draw_3d_pattern = 1; % this may take a (very long) while...
+draw_3d_pattern = 0; % this may take a (very long) while...
 use_pml = 0;         % use pml boundaries instead of mur
 openEMS_opts = '';
 
@@ -131,9 +131,9 @@ for xn=1:array.xn
         CSX = AddBox(CSX,'patch',10,start,stop);
 
         % apply the excitation & resist as a current source
-        start = [midX+feed.pos midY-feed.width/2 0];
-        stop  = [midX+feed.pos midY+feed.width/2 substrate.thickness];
-        [CSX port] = AddLumpedPort(CSX, 5, number,feed.R, start, stop,[0 0 1],['excite_' int2str(xn) '_' int2str(yn)]);
+        start = [midX+feed.pos-feed.width/2 midY-feed.width/2 0];
+        stop  = [midX+feed.pos+feed.width/2 midY+feed.width/2 substrate.thickness];
+        [CSX] = AddLumpedPort(CSX, 5, number,feed.R, start, stop,[0 0 1],['excite_' int2str(xn) '_' int2str(yn)]);
         number=number+1;
     end
 end
@@ -280,6 +280,8 @@ E_far_normalized = E_far / max(E_far(:)) * Dmax;
 x = E_far_normalized .* sin(theta) .* cos(phi);
 y = E_far_normalized .* sin(theta) .* sin(phi);
 z = E_far_normalized .* cos(theta);
+
+%%
 figure
 surf( x,y,z, E_far_normalized );
 axis equal

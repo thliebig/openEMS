@@ -109,8 +109,8 @@ mesh.z = mesh_h5.lines{3};
 X = X';
 Z = Z';
 
-for n=1:numel(field_FD.values)
-    Ec{n} = squeeze(field_FD.values{n}/ef(n));
+for n=1:numel(field_FD.FD.values)
+    Ec{n} = squeeze(field_FD.FD.values{n}/ef(n));
 end
 
 %%
