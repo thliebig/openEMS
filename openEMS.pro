@@ -11,6 +11,7 @@ INCLUDEPATH += ../CSXCAD \
     ../fparser \
     ../tinyxml
 LIBS += -L../CSXCAD -lCSXCAD
+CONFIG = debug_and_release
 
 ###############################################################################
 # CONFIG SECTION
@@ -24,7 +25,7 @@ LIBS += -L../CSXCAD -lCSXCAD
 # DEFINES += OUTPUT_IN_DRAWINGUNITS
 
 # enable MPI support
-!win32:CONFIG += MPI_SUPPORT
+#!win32:CONFIG += MPI_SUPPORT
 
 # CONFIG SECTION
 ###############################################################################
