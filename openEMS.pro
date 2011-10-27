@@ -11,7 +11,7 @@ INCLUDEPATH += ../CSXCAD \
     ../fparser \
     ../tinyxml
 LIBS += -L../CSXCAD -lCSXCAD
-CONFIG = debug_and_release
+CONFIG += debug_and_release
 
 ###############################################################################
 # CONFIG SECTION
@@ -23,9 +23,6 @@ CONFIG = debug_and_release
 # openEMS defaults to output length in unit meters; to recover the old behaviour
 # to output length in terms of the drawing unit, uncomment:
 # DEFINES += OUTPUT_IN_DRAWINGUNITS
-
-# enable MPI support
-#!win32:CONFIG += MPI_SUPPORT
 
 # CONFIG SECTION
 ###############################################################################

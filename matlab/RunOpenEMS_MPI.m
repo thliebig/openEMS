@@ -4,18 +4,15 @@ function RunOpenEMS_MPI(Sim_Path, Sim_File, opts, Settings)
 % Run an openEMS simulation with MPI support
 % 
 % % mpi binary path on all nodes needed
-% Settings.MPI.Binary = '~/devel/openEMS/openEMS_MPI';
+% Settings.MPI.Binary = '/opt/openEMS/openEMS';
 % % number of processes to run
-% Settings.MPI.NrProc = 2;
+% Settings.MPI.NrProc = 3;
+% % define the mpi hosts :
+% Settings.MPI.Hosts = {'host1','host2','host3'};
 % 
-% % optional:
-% % define a hostfile and number of host to boot the mpd daemon:
-% Settings.MPI.HostFile = '/home/thorsten/ate-pc9x.hosts';
-% Settings.MPI.TotalNum = 2;
-% 
-% RunOpenEMS_MPI(Sim_Path, Sim_File, NrProc, opts, Settings)
+% RunOpenEMS(Sim_Path, Sim_File, NrProc, opts, Settings)
 %
-% See also WriteOpenEMS, RunOpenEMS
+% See also SetupMPI, WriteOpenEMS, RunOpenEMS
 %
 % openEMS matlab interface
 % -----------------------
