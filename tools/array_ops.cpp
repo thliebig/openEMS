@@ -73,6 +73,13 @@ f4vector* Create1DArray_v4sf(const unsigned int numLines)
 		cerr << "cannot allocate aligned memory" << endl;
 		exit(3);
 	}
+	for (unsigned int pos=0; pos<numLines; ++pos)
+	{
+		array[pos].f[0] = 0;
+		array[pos].f[1] = 0;
+		array[pos].f[2] = 0;
+		array[pos].f[3] = 0;
+	}
 	return array;
 }
 
@@ -116,6 +123,7 @@ f4vector*** Create3DArray_v4sf(const unsigned int* numLines)
 	}
 	return array;
 }
+
 f4vector**** Create_N_3DArray_v4sf(const unsigned int* numLines)
 {
 	f4vector**** array=NULL;
