@@ -8,7 +8,7 @@ function host = FindFreeSSH(host_list, wait_time, command)
 % host_list: give a list of possible host
 % 
 % wait_time: wait x seconds after not finding a free host and rechecking
-%            default: 60 seconds
+%            default: 600 seconds
 % 
 % command: unix command to check for free host (empty result --> free)
 %          default: 'ps -ewwo user,args | grep openEMS'
@@ -25,7 +25,7 @@ if (nargin<3)
 end
 
 if (nargin<2)
-    wait_time = 60;
+    wait_time = 600;
 end
 
 while 1
