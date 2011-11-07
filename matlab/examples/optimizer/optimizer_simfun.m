@@ -86,7 +86,7 @@ CSX = DefineRectGrid(CSX, unit, mesh);
 
 
 %% create port
-[CSX,port] = AddCurvePort( CSX, 1, 50, p1(:,1), p1(:,end), 'excite' );
+[CSX,port] = AddCurvePort( CSX, 10, 1, 50, p1(:,1), p1(:,end), 'excite' );
 
 if nargin > 1
     max_timesteps = 100000;
