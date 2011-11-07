@@ -67,6 +67,14 @@ public:
 	//! Get the current number of timesteps
 	virtual unsigned int GetNumberOfTimesteps() const =0;
 
+	//! Calc (roughly) the total energy
+	/*!
+	  This method only calculates a very rough estimate of the total energy in the simulation domain.
+	  The result may even be roughly proportional to the real system energy only.
+	  Primary goal is speed, not accuracy.
+	  */
+	virtual double CalcFastEnergy() const =0;
+
 protected:
 	Engine_Interface_Base(Operator_Base* base_op);
 

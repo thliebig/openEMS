@@ -50,6 +50,8 @@ public:
 	virtual double GetTime(bool dualTime=false) const {return ((double)m_Eng->GetNumberOfTimesteps() + (double)dualTime*0.5)*m_Op->GetTimestep();};
 	virtual unsigned int GetNumberOfTimesteps() const {return m_Eng->GetNumberOfTimesteps();}
 
+	virtual double CalcFastEnergy() const;
+
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;

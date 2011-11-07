@@ -346,7 +346,7 @@ bool openEMS_FDTD_MPI::CheckEnergyCalc()
 double openEMS_FDTD_MPI::CalcEnergy()
 {
 	double energy = 0;
-	double loc_energy= m_ProcField->CalcTotalEnergy();
+	double loc_energy= m_ProcField->CalcTotalEnergyEstimate();
 
 	//calc the sum of all local energies
 	MPI_Reduce(&loc_energy, &energy, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -429,7 +429,7 @@ void openEMS_FDTD_MPI::RunFDTD()
 	MPI_Bcast(&m_NumberCells, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
 
 	//special handling of a field processing, needed to realize the end criteria...
-	m_ProcField = new ProcessFields(new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng));
+	m_ProcField = new ProcessFields(NewEngineInterface());
 	PA->AddProcessing(m_ProcField);
 
 	//init processings

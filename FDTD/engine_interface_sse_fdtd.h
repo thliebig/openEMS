@@ -15,25 +15,24 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "engine_interface_sse_fdtd.h"
-#include "operator_cylinder.h"
+#ifndef ENGINE_INTERFACE_SSE_FDTD_H
+#define ENGINE_INTERFACE_SSE_FDTD_H
 
-#ifndef ENGINE_INTERFACE_CYLINDRICAL_FDTD_H
-#define ENGINE_INTERFACE_CYLINDRICAL_FDTD_H
+#include "engine_interface_fdtd.h"
+#include "operator_sse.h"
+#include "engine_sse.h"
 
-class Engine_Interface_Cylindrical_FDTD : public Engine_Interface_SSE_FDTD
+class Engine_Interface_SSE_FDTD : public Engine_Interface_FDTD
 {
 public:
-	Engine_Interface_Cylindrical_FDTD(Operator_sse* op, Engine_sse* eng);
-	virtual ~Engine_Interface_Cylindrical_FDTD();
+	Engine_Interface_SSE_FDTD(Operator_sse* op, Engine_sse* eng);
+	virtual ~Engine_Interface_SSE_FDTD();
 
-	virtual double* GetHField(const unsigned int* pos, double* out) const;
+	virtual double CalcFastEnergy() const;
 
 protected:
-	Operator_Cylinder* m_Op_Cyl;
-
-	//! Internal method to get an interpolated field of a given type. (0: E, 1: J, 2: rotH)
-	virtual double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;
+	Operator_sse* m_Op_SSE;
+	Engine_sse* m_Eng_SSE;
 };
 
-#endif // ENGINE_INTERFACE_CYLINDRICAL_FDTD_H
+#endif // ENGINE_INTERFACE_SSE_FDTD_H

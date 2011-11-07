@@ -79,7 +79,7 @@ public:
 	//! Dump a frequency-domain complex-vector dump to an HDF5 file
 	static bool DumpVectorArray2HDF5(string filename, string groupName, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency);
 
-	double CalcTotalEnergy() const;
+	double CalcTotalEnergyEstimate() const;
 
 	void SetFileType(FileType fileType) {m_fileType=fileType;}
 

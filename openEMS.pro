@@ -82,6 +82,7 @@ SOURCES += FDTD/engine.cpp \
     FDTD/operator_cylindermultigrid.cpp \
     FDTD/engine_cylindermultigrid.cpp \
 	FDTD/engine_interface_fdtd.cpp \
+	FDTD/engine_interface_sse_fdtd.cpp \
 	FDTD/engine_interface_cylindrical_fdtd.cpp
 
 # FDTD/extensions source files
@@ -143,6 +144,7 @@ HEADERS += FDTD/engine.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
 	FDTD/engine_interface_fdtd.h \
+	FDTD/engine_interface_sse_fdtd.h \
 	FDTD/engine_interface_cylindrical_fdtd.h
 
 # FDTD/extensions header files

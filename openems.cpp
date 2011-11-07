@@ -282,8 +282,12 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 Engine_Interface_FDTD* openEMS::NewEngineInterface()
 {
 	Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(FDTD_Op);
-	if (op_cyl)
-		return new Engine_Interface_Cylindrical_FDTD(FDTD_Op,FDTD_Eng);
+	Engine_sse* eng_sse = dynamic_cast<Engine_sse*>(FDTD_Eng);
+	if (op_cyl && eng_sse)
+		return new Engine_Interface_Cylindrical_FDTD(op_cyl,eng_sse);
+	Operator_sse* op_sse = dynamic_cast<Operator_sse*>(FDTD_Op);
+	if (op_sse && eng_sse)
+		return new Engine_Interface_SSE_FDTD(op_sse,eng_sse);
 	return new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng);
 }
 
@@ -761,7 +765,7 @@ void openEMS::RunFDTD()
 
 		if (ProcField->CheckTimestep())
 		{
-			currE = ProcField->CalcTotalEnergy();
+			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
 				maxE=currE;
 		}
@@ -775,7 +779,7 @@ void openEMS::RunFDTD()
 		t_diff = CalcDiffTime(currTime,prevTime);
 		if (t_diff>4)
 		{
-			currE = ProcField->CalcTotalEnergy();
+			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
 				maxE=currE;
 			cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;

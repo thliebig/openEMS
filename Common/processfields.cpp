@@ -123,34 +123,9 @@ void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 	}
 }
 
-double ProcessFields::CalcTotalEnergy() const
+double ProcessFields::CalcTotalEnergyEstimate() const
 {
-	double energy=0.0;
-
-	Engine_Interface_FDTD* EI_FDTD = dynamic_cast<Engine_Interface_FDTD*>(m_Eng_Interface);
-
-	if (EI_FDTD)
-	{
-		const Engine* Eng = EI_FDTD->GetFDTDEngine();
-
-		unsigned int pos[3];
-		for (pos[0]=0; pos[0]<Op->GetNumberOfLines(0)-1; ++pos[0])
-		{
-			for (pos[1]=0; pos[1]<Op->GetNumberOfLines(1)-1; ++pos[1])
-			{
-				for (pos[2]=0; pos[2]<Op->GetNumberOfLines(2)-1; ++pos[2])
-				{
-					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
-					energy+=fabs(Eng->GetVolt(0,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
-					energy+=fabs(Eng->GetVolt(1,pos[0],pos[1],pos[2]) * Eng->GetCurr(0,pos[0],pos[1],pos[2]));
-					energy+=fabs(Eng->GetVolt(1,pos[0],pos[1],pos[2]) * Eng->GetCurr(2,pos[0],pos[1],pos[2]));
-					energy+=fabs(Eng->GetVolt(2,pos[0],pos[1],pos[2]) * Eng->GetCurr(0,pos[0],pos[1],pos[2]));
-					energy+=fabs(Eng->GetVolt(2,pos[0],pos[1],pos[2]) * Eng->GetCurr(1,pos[0],pos[1],pos[2]));
-				}
-			}
-		}
-	}
-	return energy*0.5;
+	return m_Eng_Interface->CalcFastEnergy();
 }
 
 void ProcessFields::SetSubSampling(unsigned int subSampleRate, int dir)
