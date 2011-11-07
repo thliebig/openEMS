@@ -309,9 +309,8 @@ bool openEMS::SetupProcessing()
 			CSPrimitives* prim = Probes.at(i)->GetPrimitive(nb);
 			if (prim!=NULL)
 			{
-				bool acc;
 				double bnd[6] = {0,0,0,0,0,0};
-				acc = prim->GetBoundBox(bnd,true);
+				prim->GetBoundBox(bnd,true);
 				start[0]= bnd[0];
 				start[1]=bnd[2];
 				start[2]=bnd[4];
@@ -390,9 +389,8 @@ bool openEMS::SetupProcessing()
 			CSPrimitives* prim = DumpProps.at(i)->GetPrimitive(nb);
 			if (prim!=NULL)
 			{
-				bool acc;
 				double bnd[6] = {0,0,0,0,0,0};
-				acc = prim->GetBoundBox(bnd,true);
+				prim->GetBoundBox(bnd,true);
 				start[0]= bnd[0];
 				start[1]=bnd[2];
 				start[2]=bnd[4];
