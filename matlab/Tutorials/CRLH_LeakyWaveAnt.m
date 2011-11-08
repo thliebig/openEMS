@@ -115,7 +115,6 @@ Sim_CSX = 'CRLH.xml';
 
 WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
-return
 RunOpenEMS( Sim_Path, Sim_CSX );
 
 %% post-processing

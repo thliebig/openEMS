@@ -129,7 +129,7 @@ legend( 'real', 'imag' );
 % plot reflection coefficient S11
 figure
 uf_inc = 0.5*(U.FD{1}.val + I.FD{1}.val * 50);
-if_inc = 0.5*(I.FD{1}.val - U.FD{1}.val / 50);
+if_inc = 0.5*(I.FD{1}.val + U.FD{1}.val / 50);
 uf_ref = U.FD{1}.val - uf_inc;
 if_ref = if_inc - I.FD{1}.val;
 s11 = uf_ref ./ uf_inc;
