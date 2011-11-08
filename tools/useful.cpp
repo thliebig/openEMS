@@ -32,6 +32,13 @@ unsigned int CalcNyquistNum(double fmax, double dT)
 	return floor(T0/2/dT);
 }
 
+double CalcNyquistFrequency(unsigned int nyquist, double dT)
+{
+	if (nyquist==0) return 0;
+	if (dT==0) return 0;
+	return floor(1/(double)nyquist/2/dT);
+}
+
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty)
 {
 	std::vector<unsigned int> jpt; //jobs per thread

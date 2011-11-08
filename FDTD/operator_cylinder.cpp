@@ -193,7 +193,8 @@ bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 	double minmaxA = fabs(alphaLines[alphaNum-1]-alphaLines[0]);
 	if (fabs(minmaxA-2*PI) < OPERATOR_CYLINDER_CLOSED_ALPHA_THRESHOLD)
 	{
-		cout << "Operator_Cylinder::SetupCSXGrid: Alpha is a full 2*PI => closed Cylinder..." << endl;
+		if (g_settings.GetVerboseLevel()>0)
+			cout << "Operator_Cylinder::SetupCSXGrid: Alpha is a full 2*PI => closed Cylinder..." << endl;
 		CC_closedAlpha = true;
 		grid->SetLine(1,alphaNum-1,2*PI+alphaLines[0]);
 		grid->AddDiscLine(1,2*PI+alphaLines[1]);
@@ -218,7 +219,8 @@ bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 	}
 	else if (grid->GetLine(0,0)==0.0)
 	{
-		cout << "Operator_Cylinder::SetupCSXGrid: r=0 included..." << endl;
+		if (g_settings.GetVerboseLevel()>0)
+			cout << "Operator_Cylinder::SetupCSXGrid: r=0 included..." << endl;
 		CC_R0_included = CC_closedAlpha;  //needed for correct ec-calculation, deactivate if closed cylinder is false... --> E_r = 0 anyways
 	}
 

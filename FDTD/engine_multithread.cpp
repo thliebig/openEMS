@@ -99,7 +99,8 @@ void Engine_Multithread::Init()
 	vector<unsigned int> m_Stop_Lines;
 	m_Op_MT->CalcStartStopLines( m_numThreads, m_Start_Lines, m_Stop_Lines );
 
-	cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
 	m_IterateBarrier = new boost::barrier(m_numThreads); // numThread workers
 
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
@@ -117,10 +118,12 @@ void Engine_Multithread::Init()
 		{
 			// last thread
 			stop_h = stop-1;
-			cout << stop-start+1 << ")" << endl;
+			if (g_settings.GetVerboseLevel()>0)
+				cout << stop-start+1 << ")" << endl;
 		}
 		else
-			cout << stop-start+1 << ";";
+			if (g_settings.GetVerboseLevel()>0)
+				cout << stop-start+1 << ";";
 //		NS_Engine_Multithread::DBG().cout() << "###DEBUG## Thread " << n << ": start=" << start << " stop=" << stop  << " stop_h=" << stop_h << std::endl;
 		boost::thread *t = new boost::thread( NS_Engine_Multithread::thread(this,start,stop,stop_h,n) );
 		m_thread_group.add_thread( t );

@@ -129,7 +129,7 @@ void Operator_MPI::Init()
 	m_Processor_Name = new char[MPI_MAX_PROCESSOR_NAME];
 	MPI::Get_processor_name(m_Processor_Name,namelen);
 
-	if (m_MPI_Enabled)
+	if ((m_MPI_Enabled) && (g_settings.GetVerboseLevel()>0))
 		cerr << "Operator_MPI::Init(): Running on " << m_Processor_Name << endl;
 }
 

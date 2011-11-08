@@ -156,7 +156,8 @@ bool Operator_SSE_Compressed::CompareOperators(unsigned int pos1[3], unsigned in
 
 bool Operator_SSE_Compressed::CompressOperator()
 {
-	cout << "Compressing the FDTD operator... this may take a while..." << endl;
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Compressing the FDTD operator... this may take a while..." << endl;
 
 	map<SSE_coeff,unsigned int> lookUpMap;
 

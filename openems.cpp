@@ -18,6 +18,7 @@
 #include "openems.h"
 #include <iomanip>
 #include "tools/array_ops.h"
+#include "tools/useful.h"
 #include "FDTD/operator_cylinder.h"
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
@@ -294,7 +295,8 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface()
 bool openEMS::SetupProcessing()
 {
 	//*************** setup processing ************//
-	cout << "Setting up processing..." << endl;
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Setting up processing..." << endl;
 
 	unsigned int Nyquist = FDTD_Op->Exc->GetNyquistNum();
 	PA = new ProcessingArray(Nyquist);
@@ -527,7 +529,8 @@ int openEMS::SetupFDTD(const char* file)
 	if (file==NULL) return -1;
 	Reset();
 
-	cout << "Read openEMS xml file: " << file << " ..." << endl;
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Read openEMS xml file: " << file << " ..." << endl;
 
 	timeval startTime;
 	gettimeofday(&startTime,NULL);
@@ -540,7 +543,8 @@ int openEMS::SetupFDTD(const char* file)
 		exit(-1);
 	}
 
-	cout << "Read openEMS Settings..." << endl;
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Read openEMS Settings..." << endl;
 	TiXmlElement* openEMSxml = doc.FirstChildElement("openEMS");
 	if (openEMSxml==NULL)
 	{
@@ -588,7 +592,8 @@ int openEMS::SetupFDTD(const char* file)
 		exit(-3);
 	}
 
-	cout << "Read Geometry..." << endl;
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Read Geometry..." << endl;
 	m_CSX = new ContinuousStructure();
 	string EC(m_CSX->ReadFromXML(openEMSxml));
 	if (EC.empty()==false)
@@ -597,7 +602,7 @@ int openEMS::SetupFDTD(const char* file)
 //		return(-2);
 	}
 
-	if (g_settings.GetVerboseLevel()>0)
+	if (g_settings.GetVerboseLevel()>1)
 		m_CSX->ShowPropertyStatus(cerr);
 
 	if (CylinderCoords)
@@ -659,10 +664,17 @@ int openEMS::SetupFDTD(const char* file)
 	timeval OpDoneTime;
 	gettimeofday(&OpDoneTime,NULL);
 
-	FDTD_Op->ShowStat();
-	FDTD_Op->ShowExtStat();
+	if (g_settings.GetVerboseLevel()>0)
+	{
+		FDTD_Op->ShowStat();
+		FDTD_Op->ShowExtStat();
+		cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
+	}
+	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " << FDTD_Op->Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(FDTD_Op->Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
+	cout << "Excitation signal length is: " << FDTD_Op->Exc->Length << " timesteps (" << FDTD_Op->Exc->Length*FDTD_Op->GetTimestep() << "s)" << endl;
 
-	cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
+	if (FDTD_Op->Exc->GetNyquistNum()>1000)
+		cerr << "openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?" << endl;
 
 	if (m_no_simulation)
 	{

@@ -113,7 +113,8 @@ int Operator_Multithread::CalcECOperator( DebugFlags debugFlags )
 	vector<unsigned int> m_Stop_Lines;
 	CalcStartStopLines( m_numThreads, m_Start_Lines, m_Stop_Lines );
 
-	cout << "Multithreaded operator using " << m_numThreads << " threads." << std::endl;
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Multithreaded operator using " << m_numThreads << " threads." << std::endl;
 
 	m_thread_group.join_all();
 	delete m_CalcEC_Start;

@@ -87,7 +87,7 @@ void Engine::SortExtensionByPriority()
 	stable_sort(m_Eng_exts.begin(),m_Eng_exts.end(), CompareExtensions);
 	reverse(m_Eng_exts.begin(),m_Eng_exts.end());
 
-	if (g_settings.GetVerboseLevel()>0)
+	if (g_settings.GetVerboseLevel()>1)
 	{
 		cout << "---  Engine::SortExtensionByPriority() ---" << endl;
 		for (size_t n=0; n<m_Eng_exts.size(); ++n)
