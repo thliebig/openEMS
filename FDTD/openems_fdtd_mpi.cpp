@@ -131,17 +131,22 @@ bool openEMS_FDTD_MPI::parseCommandLineArgument( const char *argv )
 
 bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 {
-	//manipulate geometry for this part...
-	UNUSED(FDTD_Opts);
+	TiXmlElement* MPI_Elem = FDTD_Opts->FirstChildElement("MPI");
 
 	if (!m_MPI_Enabled)
 	{
-		if (g_settings.GetVerboseLevel()>0)
+		if ((MPI_Elem!=NULL))
 			cerr << "openEMS_FDTD_MPI::SetupMPI: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;
 		return true;
 	}
 
-	TiXmlElement* MPI_Elem = FDTD_Opts->FirstChildElement("MPI");
+	if (MPI_Elem==NULL)
+	{
+		MPI_Barrier(MPI_COMM_WORLD);
+		if (m_MyID==0)
+			cerr << "openEMS_FDTD_MPI::SetupMPI: Error: no MPI settings found, exiting MPI engine... " << endl;
+		exit(-1);
+	}
 
 	CSRectGrid* grid = m_CSX->GetGrid();
 	delete m_Original_Grid;
