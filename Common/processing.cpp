@@ -181,7 +181,12 @@ void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 
 void Processing::ShowSnappedCoords()
 {
-	cerr << m_Name << ": snapped coords: (" << Op->GetDiscLine( 0, start[0], m_dualMesh ) << ","
+	cerr << m_Name << ": snapped ";
+	if (m_dualMesh)
+		cerr << "dual";
+	else
+		cerr << "primary";
+	cerr << " coords: (" << Op->GetDiscLine( 0, start[0], m_dualMesh ) << ","
 		 << Op->GetDiscLine( 1, start[1], m_dualMesh ) << "," << Op->GetDiscLine( 2, start[2], m_dualMesh ) << ") -> ("
 		 << Op->GetDiscLine( 0, stop[0], m_dualMesh ) << ","<< Op->GetDiscLine( 1, stop[1], m_dualMesh ) << ","
 		 << Op->GetDiscLine( 2, stop[2], m_dualMesh ) << ")";

@@ -670,6 +670,7 @@ int openEMS::SetupFDTD(const char* file)
 		FDTD_Op->ShowExtStat();
 		cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
 	}
+	cout << "FDTD simulation size: " << FDTD_Op->GetNumberOfLines(0) << "x" << FDTD_Op->GetNumberOfLines(1) << "x" << FDTD_Op->GetNumberOfLines(2) << " --> "  << FDTD_Op->GetNumberCells() << " FDTD cells " << endl;
 	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " << FDTD_Op->Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(FDTD_Op->Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
 	cout << "Excitation signal length is: " << FDTD_Op->Exc->Length << " timesteps (" << FDTD_Op->Exc->Length*FDTD_Op->GetTimestep() << "s)" << endl;
 
