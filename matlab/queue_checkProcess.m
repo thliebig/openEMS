@@ -10,12 +10,12 @@ end
 
 if nargout > 1
     fid = fopen( filenames.stdout );
-    stdout = fread(fid);
+    stdout = fread(fid, '*char')';
     fclose(fid);
 end
 if nargout > 2
     fid = fopen( filenames.stderr );
-    stderr = fread(fid);
+    stderr = fread(fid, '*char')';
     fclose(fid);
 end
 
