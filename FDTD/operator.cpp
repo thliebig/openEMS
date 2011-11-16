@@ -1464,6 +1464,8 @@ double Operator::CalcTimestep_Var1()
 	dT=1e200;
 	double newT;
 	unsigned int pos[3];
+	unsigned int smallest_pos[3];
+	unsigned int smallest_n;
 	unsigned int ipos;
 	unsigned int ipos_PM;
 	unsigned int ipos_PPM;
@@ -1485,7 +1487,12 @@ double Operator::CalcTimestep_Var1()
 					ipos_PPM= MainOp->Shift(nPP,-1);
 					MainOp->ResetShift();
 					newT = 2/sqrt( ( 4/EC_L[nP][ipos] + 4/EC_L[nP][ipos_PPM] + 4/EC_L[nPP][ipos] + 4/EC_L[nPP][ipos_PM]) / EC_C[n][ipos] );
-					if ((newT<dT) && (newT>0.0)) dT=newT;
+					if ((newT<dT) && (newT>0.0))
+					{
+						dT=newT;
+						smallest_pos[0]=pos[0];smallest_pos[1]=pos[1];smallest_pos[2]=pos[2];
+						smallest_n = n;
+					}
 				}
 			}
 		}
@@ -1495,7 +1502,10 @@ double Operator::CalcTimestep_Var1()
 		cerr << "Operator::CalcTimestep: Timestep is zero... this is not supposed to happen!!! exit!" << endl;
 		exit(3);
 	}
-//	cerr << "Operator Timestep: " << dT << endl;
+	if (g_settings.GetVerboseLevel()>1)
+	{
+		cout << "Operator::CalcTimestep_Var1: Smallest timestep (" << dT << "s) found at position: " <<  smallest_n << " : " << smallest_pos[0] << ";" <<  smallest_pos[1] << ";" <<  smallest_pos[2] << endl;
+	}
 	return 0;
 }
 
@@ -1518,6 +1528,8 @@ double Operator::CalcTimestep_Var3()
 //	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 76, eq. 4.77 ff." << endl;
 	double newT;
 	unsigned int pos[3];
+	unsigned int smallest_pos[3];
+	unsigned int smallest_n;
 	unsigned int ipos;
 	double w_total=0;
 	double wqp=0,wt1=0,wt2=0;
@@ -1564,7 +1576,11 @@ double Operator::CalcTimestep_Var3()
 					w_total = wqp + wt1 + wt2;
 					newT = 2/sqrt( w_total );
 					if ((newT<dT) && (newT>0.0))
+					{
 						dT=newT;
+						smallest_pos[0]=pos[0];smallest_pos[1]=pos[1];smallest_pos[2]=pos[2];
+						smallest_n = n;
+					}
 				}
 			}
 		}
@@ -1574,7 +1590,10 @@ double Operator::CalcTimestep_Var3()
 		cerr << "Operator::CalcTimestep: Timestep is zero... this is not supposed to happen!!! exit!" << endl;
 		exit(3);
 	}
-//	cerr << "Operator Timestep: " << dT << endl;
+	if (g_settings.GetVerboseLevel()>1)
+	{
+		cout << "Operator::CalcTimestep_Var3: Smallest timestep (" << dT << "s) found at position: " <<  smallest_n << " : " << smallest_pos[0] << ";" <<  smallest_pos[1] << ";" <<  smallest_pos[2] << endl;
+	}
 	return 0;
 }
 
