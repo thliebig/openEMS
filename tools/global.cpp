@@ -35,7 +35,7 @@ void Global::ShowArguments(ostream& ostr, string front)
 {
 	ostr << front << "--showProbeDiscretization\tShow probe discretization information" << endl;
 	ostr << front << "--nativeFieldDumps\t\tDump all fields using the native field components" << endl;
-	ostr << front << "-v(v)\t\t\t\tSet debug level to 1(2)" << endl;
+	ostr << front << "-v,-vv,-vvv\t\t\tSet debug level: 1 to 3" << endl;
 }
 
 //! \brief This function initializes the object
@@ -66,6 +66,12 @@ bool Global::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - verbose level 2" << endl;
 		m_VerboseLevel = 2;
+		return true;
+	}
+	else if (strcmp(argv,"-vvv")==0)
+	{
+		cout << "openEMS - verbose level 3" << endl;
+		m_VerboseLevel = 3;
 		return true;
 	}
 	return false;

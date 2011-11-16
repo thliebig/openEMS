@@ -88,7 +88,8 @@ bool Operator_CylinderMultiGrid::SetupCSXGrid(CSRectGrid* grid)
 		if (m_Split_Rad < discLines[0][n])
 		{
 			m_Split_Pos = n;
-			cout << "Operator_CylinderMultiGrid::SetupCSXGrid: Found mesh split position @" << m_Split_Pos << endl;
+			if (g_settings.GetVerboseLevel()>0)
+				cout << "Operator_CylinderMultiGrid::SetupCSXGrid: Found mesh split position @" << m_Split_Pos << endl;
 			m_Split_Rad = discLines[0][n];
 			break;
 		}

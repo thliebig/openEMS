@@ -37,13 +37,21 @@ public:
 
 	void ShowArguments(std::ostream& ostr, std::string front=std::string());
 
-	void SetVerboseLevel(int level) {m_VerboseLevel=level;}
+	//! Set the verbose level
+	void SetVerboseLevel(int level) {m_VerboseLevel=level;m_SavedVerboseLevel=level;}
+	//! Get the verbose level
 	int GetVerboseLevel() const {return m_VerboseLevel;}
+
+	//! Set a new verbose level temporarily, restore it with RestoreVerboseLevel()
+	void SetTempVerboseLevel(int level) {m_SavedVerboseLevel=m_VerboseLevel;m_VerboseLevel=level;}
+	//! Restore the temporarily overwritten verbose level
+	void RestoreVerboseLevel() {m_VerboseLevel=m_SavedVerboseLevel;}
 
 protected:
 	bool m_showProbeDiscretization;
 	bool m_nativeFieldDumps;
 	int m_VerboseLevel;
+	int m_SavedVerboseLevel;
 };
 
 extern Global g_settings;
