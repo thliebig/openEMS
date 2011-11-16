@@ -265,7 +265,7 @@ int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int
 		double max = GetDiscLine(n,GetNumberOfLines(n)-1);
 		if ( ((l_start[n]<min) && (l_stop[n]<min)) || ((l_start[n]>max) && (l_stop[n]>max)) )
 		{
-			return -1;
+			return -2;
 		}
 	}
 
@@ -1256,7 +1256,7 @@ bool Operator::Calc_LumpedElements()
 				{
 					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element R or C not specified! skipping. "
 							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
-					break;
+					continue;
 				}
 
 				int ny = PLE->GetDirection();
@@ -1264,7 +1264,7 @@ bool Operator::Calc_LumpedElements()
 				{
 					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element direction is invalid! skipping. "
 							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
-					break;
+					continue;
 				}
 				int nyP = (ny+1)%3;
 				int nyPP = (ny+2)%3;
@@ -1275,17 +1275,18 @@ bool Operator::Calc_LumpedElements()
 				int Snap_Dimension = Operator::SnapBox2Mesh(box->GetStartCoord()->GetCoords(m_MeshType), box->GetStopCoord()->GetCoords(m_MeshType), uiStart, uiStop);
 				if (Snap_Dimension<=0)
 				{
-					if (g_settings.GetVerboseLevel()>0)
+					if (Snap_Dimension>=-1)
 						cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element snapping failed! Dimension is: " << Snap_Dimension << " skipping. "
 								<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
-					break;
+					// Snap_Dimension == -2 means outside the simulation domain --> no special warning, but box probably marked as unused!
+					continue;
 				}
 
 				if (uiStart[ny]==uiStop[ny])
 				{
 					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element with zero (snapped) length is invalid! skipping. "
 							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
-					break;
+					continue;
 				}
 
 				//calculate geometric property for this lumped element
