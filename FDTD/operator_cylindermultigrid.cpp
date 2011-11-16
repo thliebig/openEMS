@@ -65,6 +65,9 @@ bool Operator_CylinderMultiGrid::SetupCSXGrid(CSRectGrid* grid)
 	if (Operator_Cylinder::SetupCSXGrid(grid)==false)
 		return false;
 
+	// make this multigrid use the larger timestep by method 3, since no r==0 singularity can be part of this engine
+	m_TimeStepVar = 3;
+
 	if ((numLines[1]-CC_closedAlpha)%2 != 1)
 	{
 		cerr << "Operator_CylinderMultiGrid::SetupCSXGrid: Error, number of line in alpha direction must be odd... found: " << numLines[1] << endl;

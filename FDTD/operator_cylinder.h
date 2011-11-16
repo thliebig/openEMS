@@ -74,9 +74,6 @@ protected:
 	Operator_Cylinder();
 	virtual void Init();
 
-	//Calc timestep only internal use
-	virtual double CalcTimestep();
-
 	virtual bool SetupCSXGrid(CSRectGrid* grid);
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;

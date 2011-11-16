@@ -222,6 +222,9 @@ bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 		if (g_settings.GetVerboseLevel()>0)
 			cout << "Operator_Cylinder::SetupCSXGrid: r=0 included..." << endl;
 		CC_R0_included = CC_closedAlpha;  //needed for correct ec-calculation, deactivate if closed cylinder is false... --> E_r = 0 anyways
+
+		// use conservative timestep for a mesh including the r==0 singularity
+		m_TimeStepVar = 1;
 	}
 
 #ifdef MPI_SUPPORT
@@ -287,10 +290,4 @@ void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)
 		m_Op_exts.push_back(op_ext);
 	else
 		cerr << "Operator_Cylinder::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylinder-coords!! skipping...!" << endl;
-}
-
-double Operator_Cylinder::CalcTimestep()
-{
-	m_TimeStepVar = 1;
-	return Operator_Multithread::CalcTimestep();
 }
