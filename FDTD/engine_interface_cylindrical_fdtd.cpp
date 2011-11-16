@@ -33,34 +33,18 @@ Engine_Interface_Cylindrical_FDTD::~Engine_Interface_Cylindrical_FDTD()
 
 double* Engine_Interface_Cylindrical_FDTD::GetHField(const unsigned int* pos, double* out) const
 {
-	if ((m_Op_Cyl->GetClosedAlpha()==false) || (m_InterpolType!=NODE_INTERPOLATE))
+	if (m_Op_Cyl->GetClosedAlpha()==false)
 		return Engine_Interface_FDTD::GetHField(pos, out);
 
 	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
-	if (iPos[1]==0)
-		iPos[1]=m_Op->GetNumberOfLines(1)-1;
 
-	int nP,nPP;
-	for (int n=0; n<3; ++n)
-	{
-		nP = (n+1)%3;
-		nPP = (n+2)%3;
-		if ((iPos[0]==m_Op->GetNumberOfLines(0)-1) || (iPos[2]==m_Op->GetNumberOfLines(2)-1) || (iPos[nP]==0) || (iPos[nPP]==0))
-		{
-			out[n] = 0;
-			continue;
-		}
-		out[n]=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
-		--iPos[nP];
-		out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
-		--iPos[nPP];
-		out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
-		++iPos[nP];
-		out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
-		++iPos[nPP];
-		out[n]/=4;
-	}
-	return out;
+	if ((m_InterpolType==CELL_INTERPOLATE) && (pos[1]==m_Op->GetNumberOfLines(1)))
+		iPos[1]=0;
+
+	if ((m_InterpolType==NODE_INTERPOLATE) && (iPos[1]==0))
+		iPos[1]=m_Op->GetNumberOfLines(1);
+
+	return Engine_Interface_FDTD::GetHField(iPos, out);
 }
 
 double* Engine_Interface_Cylindrical_FDTD::GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const
@@ -70,30 +54,11 @@ double* Engine_Interface_Cylindrical_FDTD::GetRawInterpolatedField(const unsigne
 
 	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
 
-	switch (m_InterpolType)
-	{
-	default:
-	case NO_INTERPOLATION:
-		return Engine_Interface_FDTD::GetRawInterpolatedField(pos,out,type);
-		break;
-	case NODE_INTERPOLATE:
-		for (int n=0; n<3; ++n)
-		{
-			if (pos[1]==0)
-				iPos[1]=m_Op->GetNumberOfLines(1)-1;
-			return Engine_Interface_FDTD::GetRawInterpolatedField(iPos,out,type);
-		}
-		break;
-	case CELL_INTERPOLATE:
-		for (int n=0; n<3; ++n)
-		{
-			if (pos[1]==m_Op->GetNumberOfLines(1)-1)
-				iPos[1]=0;
-			return Engine_Interface_FDTD::GetRawInterpolatedField(iPos,out,type);
-		}
-		break;
-	}
+	if ((m_InterpolType==NODE_INTERPOLATE) && (pos[1]==0))
+		iPos[1]=m_Op->GetNumberOfLines(1);
 
-	//! this should not happen
-	return Engine_Interface_FDTD::GetRawInterpolatedField(pos,out,type);
+	if ((m_InterpolType==CELL_INTERPOLATE) && (pos[1]==m_Op->GetNumberOfLines(1)))
+		iPos[1]=0;
+
+	return Engine_Interface_FDTD::GetRawInterpolatedField(iPos,out,type);
 }
