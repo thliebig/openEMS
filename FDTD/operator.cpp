@@ -1465,8 +1465,8 @@ double Operator::CalcTimestep_Var1()
 	dT=1e200;
 	double newT;
 	unsigned int pos[3];
-	unsigned int smallest_pos[3];
-	unsigned int smallest_n;
+	unsigned int smallest_pos[3] = {0, 0, 0};
+	unsigned int smallest_n = 0;
 	unsigned int ipos;
 	unsigned int ipos_PM;
 	unsigned int ipos_PPM;
@@ -1529,8 +1529,8 @@ double Operator::CalcTimestep_Var3()
 //	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 76, eq. 4.77 ff." << endl;
 	double newT;
 	unsigned int pos[3];
-	unsigned int smallest_pos[3];
-	unsigned int smallest_n;
+	unsigned int smallest_pos[3] = {0, 0, 0};
+	unsigned int smallest_n = 0;
 	unsigned int ipos;
 	double w_total=0;
 	double wqp=0,wt1=0,wt2=0;
