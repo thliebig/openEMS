@@ -11,7 +11,7 @@ function host = FindFreeSSH(host_list, wait_time, command)
 %            default: 600 seconds
 % 
 % command: unix command to check for free host (empty result --> free)
-%          default: 'ps -ewwo user,args | grep openEMS'
+%          default: 'ps -e | grep openEMS'
 %
 % See also RunOpenEMS
 %
@@ -28,17 +28,38 @@ if (nargin<2)
     wait_time = 600;
 end
 
+if ischar(host_list)
+    fid=fopen(host_list);
+    if (fid==-1)
+        error('FindFreeSSH: cant open host file');
+    end
+    clear host_list;
+    host_list = {};
+    while 1
+        line = fgetl(fid);
+        if ischar(line)
+            host_list{end+1} = line;
+        else
+            break;
+        end
+    end
+    fclose(fid);
+elseif ~iscell(host_list)
+    error('FindFreeSSH: unknown host list format');
+end
+
 while 1
-    
     for n = 1:numel(host_list)
         host = host_list{n};
         [status, result] = unix(['ssh ' host ' ' command]);
-        
-        if isempty(result)
+
+        if (isempty(result) && status==1)
             disp(['FindFreeSSH:: found a free host: ' host ]);
             return
-        else
+        elseif (~isempty(result) && status==0)
             disp(['FindFreeSSH:: ' host ' is busy running openEMS ... ' ]);
+        else
+            disp(['FindFreeSSH:: shh connection to ' host ' failed ... ' ]);
         end
 
     end
