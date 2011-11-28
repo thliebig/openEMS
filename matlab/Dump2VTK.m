@@ -87,6 +87,39 @@ elseif (mesh.type==1) %write cylindrical mesh to vtk
         fields = field_CC;
         clear R A Z sinA cosA field_CC
     end
+elseif (mesh.type==2) %write spherical mesh to vtk
+    fprintf(fid,'# vtk DataFile Version 3.0\n');
+    fprintf(fid,'Structured Grid by matlab-interface of openEMS\n');
+    fprintf(fid,'ASCII\n');
+    fprintf(fid,'DATASET STRUCTURED_GRID\n');
+
+    fprintf(fid,'DIMENSIONS %d %d %d\n',numel(x),numel(y),numel(z));
+
+    fprintf(fid,'POINTS %d double\n',numel(x)*numel(y)*numel(z));
+
+    for nz=1:numel(z)
+        for ny=1:numel(y)
+            for nx=1:numel(x)
+                fprintf(fid,'%e %e %e\n',...
+                    x(nx)*sin(y(ny))*cos(z(nz)),...
+                    x(nx)*sin(y(ny))*sin(z(nz)),...
+                    x(nx)*cos(y(ny)));
+            end
+        end
+    end
+
+    if (ndims(fields)==4)
+        [R T A] = ndgrid(x,y,z);
+        sinA = sin(A);
+        cosA = cos(A);
+        sinT = sin(T);
+        cosT = cos(T);
+        field_CC(:,:,:,1) = fields(:,:,:,1) .* sinT .* cosA + fields(:,:,:,2) .*cosT .* cosA - fields(:,:,:,3) .* sinA;
+        field_CC(:,:,:,2) = fields(:,:,:,1) .* sinT .* cosA + fields(:,:,:,2) .*cosT .* sinA + fields(:,:,:,3) .* cosA;
+        field_CC(:,:,:,3) = fields(:,:,:,1) .* cosT - fields(:,:,:,2) .*sinT;
+        fields = field_CC;
+        clear R A T sinA cosA sinT cosT field_CC
+    end
 end
 
     
