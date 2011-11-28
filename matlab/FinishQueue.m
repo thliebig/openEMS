@@ -25,41 +25,14 @@ end
 
 numJobs = numel(queue.jobs);
 
-for n=1:numel(numJobs)
-    is_done = queue.jobs{n}.finished;
-end
-
 if (queue.verbose>=1)
-    disp(['FinishQueue: Waiting for ' num2str(sum(~is_done)) ' of ' num2str(numJobs) ' jobs to finish...']);
+    disp(['FinishQueue: Waiting for ' num2str(sum(~queue.jobs_finished)) ' of ' num2str(numJobs) ' jobs to finish...']);
 end
 
-while sum(is_done)<numJobs
-    pause(query_time);
+running = numel(queue.jobs_finished) - sum(queue.jobs_finished);
 
-    for n=1:numel(numJobs)
-        if (is_done(n)==0)
-            if (queue_checkProcess( queue.jobs{n}.pid, queue.jobs{n}.filenames)==0)
-                queue.jobs{n}.finished=1;
-                load(queue.jobs{n}.outargsfile);
-                queue.jobs{n}.outargs = outargs;
-
-                % read in output and cleanup
-                [queue.jobs{n}.stdout,queue.jobs{n}.stderr] = queue_delProcess( queue.jobs{n}.pid, queue.jobs{n}.filenames );
-
-                % cleanup
-                delete( queue.jobs{n}.argsfile );
-                clear queue.jobs{n}.argsfile;
-                delete( queue.jobs{n}.outargsfile );
-                clear queue.jobs{n}.outargsfile;
-
-                is_done(n) = 1;
-
-                if (queue.verbose>=1)
-                    disp(['FinishQueue: Job #' num2str(n) ' is finished!']);
-                end
-            end
-        end
-    end
+while sum(running)>0
+    [queue running] = CheckQueue(queue, query_time);
 end
 
 if (queue.verbose>=1)

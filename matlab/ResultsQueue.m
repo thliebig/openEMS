@@ -19,6 +19,6 @@ if (nargout>numel(queue.jobs{n}.outargs))
     error 'not enough job output arguments'
 end
 
-for n=1:numel(queue.jobs{n}.outargs)
-    varargout{n} = queue.jobs{n}.outargs{n};
+for k=1:numel(queue.jobs{n}.outargs)
+    varargout{k} = queue.jobs{n}.outargs{k};
 end

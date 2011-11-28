@@ -55,6 +55,7 @@ queue.use_octave = 1;
 
 queue.verbose = 1;
 
+queue.maxThreads = Inf;
 
 % add current path
 queue.DependPath = ['addpath(''' pwd ''');'];
@@ -68,6 +69,9 @@ for n=1:2:nargin
     if strcmp(varargin{n},'UseOctave');
         queue.use_octave = varargin{n+1};
     end
+    if strcmp(varargin{n},'MaxThreads');
+        queue.maxThreads = varargin{n+1};
+    end
 end
 
 
@@ -79,3 +83,5 @@ else
     queue.bin = [matlabroot '/bin/matlab'];
     queue.bin_options = [' -nodesktop -nosplash  -r'];
 end
+
+queue.jobs_finished = [];

@@ -17,7 +17,18 @@ else
     jobnum = 1;
 end
 
-queue.jobs{jobnum}.finished = 0;
+running = numel(queue.jobs_finished) - sum(queue.jobs_finished);
+
+while (running>=queue.maxThreads)
+    [queue running] = CheckQueue(queue);
+end
+
+
+if (queue.verbose>=1)
+    disp(['Add2Queue: Job #' num2str(jobnum) ' starting...']);
+end
+
+queue.jobs_finished(jobnum) = 0;
 
 queue.jobs{jobnum}.argsfile = [tempname '.mat'];
 save(queue.jobs{jobnum}.argsfile,'func_args');
