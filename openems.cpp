@@ -198,6 +198,9 @@ string openEMS::GetExtLibsInfo()
 	// tinyxml
 	str << "\t\t" << "tinyxml -- compiled against: " << TIXML_MAJOR_VERSION << '.' << TIXML_MINOR_VERSION << '.' << TIXML_PATCH_VERSION << endl;
 
+	// fparser
+	str << "\t\t" << "fparser" << endl;
+
 	// boost
 	str << "\t\t" << "boost  -- compiled against: " << BOOST_LIB_VERSION << endl;
 
