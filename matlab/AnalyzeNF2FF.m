@@ -1,5 +1,5 @@
-function [E_theta,E_phi,Prad,Dmax] = AnalyzeNFFF2( Sim_Path, nf2ff, f, theta, phi, r )
-% [E_theta,E_phi,Prad,Dmax] = AnalyzeNFFF2( Sim_Path, filenames_E, filenames_H, f, theta, phi, r )
+function [E_theta,E_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f, theta, phi, r )
+% [E_theta,E_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, filenames_E, filenames_H, f, theta, phi, r )
 %
 % calculates the farfield via a near field to far field transformation
 %
@@ -23,6 +23,7 @@ function [E_theta,E_phi,Prad,Dmax] = AnalyzeNFFF2( Sim_Path, nf2ff, f, theta, ph
 % See also CreateNF2FFBox
 %
 % (C) 2010 Sebastian Held <sebastian.held@gmx.de>
+% (C) 2011 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 % check arguments
 error( nargchk(6,6,nargin) );
@@ -33,10 +34,19 @@ end
 filenames_E = nf2ff.filenames_E;
 filenames_H = nf2ff.filenames_H;
 
+if (~isrow(nf2ff.directions))
+    nf2ff.directions = nf2ff.directions';
+end
+
 % read time domain field data and transform into frequency domain
-for n=1:numel(filenames_E)
+for n=find(nf2ff.directions==1)
     [Ef{n}, E_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_E{n}], 'Frequency', f );
+    %clear out time domain data
+    Ef{n} = rmfield(Ef{n},'TD');
+
     [Hf{n}, H_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_H{n}], 'Frequency', f );
+    %clear out time domain data
+    Hf{n} = rmfield(Hf{n},'TD');
     
     % reshape mesh into row vector
     mesh{n}.x = reshape( E_mesh{n}.lines{1}, 1, [] );
@@ -73,7 +83,7 @@ for phi_deg_aufpunkt = phi
         N_phi = 0;
         L_theta = 0;
         L_phi = 0;
-        for a=1:6
+        for a=find(nf2ff.directions==1)
             [N_theta_,N_phi_,L_theta_,L_phi_] = process_plane( k, n{a}, center, mesh{a}, Ef{a}.FD.values{1}, Hf{a}.FD.values{1}, theta_rad_aufpunkt, phi_rad_aufpunkt );
             N_theta = N_theta + N_theta_; N_phi = N_phi + N_phi_;
             L_theta = L_theta + L_theta_; L_phi = L_phi + L_phi_;
@@ -95,7 +105,7 @@ end
 
 % power
 Prad = 0;
-for a=1:6
+for a=find(nf2ff.directions==1)
     [~,~,~,~,P] = process_plane( k, n{a}, center, mesh{a}, Ef{a}.FD.values{1}, Hf{a}.FD.values{1}, theta_rad_aufpunkt, phi_rad_aufpunkt );
     Prad = Prad + P;
 end
