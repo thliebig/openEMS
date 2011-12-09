@@ -33,10 +33,10 @@ FDTD = SetBoundaryCond( FDTD, BC );
 %% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = InitCSX();
 resolution = c0/(f_max*sqrt(substrate_epr))/unit /50; % resolution of lambda/50
-mesh.x = SmoothMeshLines( [0 MSL_width/2+[resolution/3 -resolution/3*2]/4], resolution/4, 1.5 ,0 );
+mesh.x = SmoothMeshLines( [0 MSL_width/2+[2*resolution/3 -resolution/3]/4], resolution/4, 1.5 ,0 );
 mesh.x = SmoothMeshLines( [-MSL_length -mesh.x mesh.x MSL_length], resolution, 1.5 ,0 );
 mesh.y = SmoothMeshLines( [0 MSL_width/2+[-resolution/3 +resolution/3*2]/4], resolution/4 , 1.5 ,0);
-mesh.y = SmoothMeshLines( [-15*MSL_width -mesh.y mesh.y 15*MSL_width+stub_length], resolution, 1.5 ,0);
+mesh.y = SmoothMeshLines( [-15*MSL_width -mesh.y mesh.y stub_length+[-resolution/3 +resolution/3*2]/4 15*MSL_width+stub_length], resolution, 1.3 ,0);
 mesh.z = SmoothMeshLines( [linspace(0,substrate_thickness,5) 10*substrate_thickness], resolution );
 CSX = DefineRectGrid( CSX, unit, mesh );
 
