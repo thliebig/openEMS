@@ -47,7 +47,11 @@ for n=find(nf2ff.directions==1)
     [Hf{n}, H_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_H{n}], 'Frequency', f );
     %clear out time domain data
     Hf{n} = rmfield(Hf{n},'TD');
-    
+
+    % matlab error concerning memory management
+    % perform memory garbage collection
+    pack
+
     % reshape mesh into row vector
     mesh{n}.x = reshape( E_mesh{n}.lines{1}, 1, [] );
     mesh{n}.y = reshape( E_mesh{n}.lines{2}, 1, [] );
