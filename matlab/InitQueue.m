@@ -6,6 +6,11 @@ function [queue] = InitQueue(varargin)
 % This can be used to efficiently run an openEMS parameter sweep in parallel
 % on multiple remote machines.
 %
+% Options:
+%   DependPath: Add multiple paths, your script may depend on
+%   UseOctave:  Enable/Disable octave usage
+%   MaxThreads: max. number of parallel executions
+%
 % Note:
 %   - Currently only Linux/Unix is supported
 %   - By default Octave is used to spawn parallel functions (saves
@@ -49,9 +54,7 @@ if ~isunix
     error 'your OS is not supported (Unix only)'
 end
 
-% use octave as default to save matlab (floating) licenses
-% otherwise many matlab instances are spawned
-queue.use_octave = 1;
+queue.use_octave = exist('OCTAVE_VERSION','builtin') ~= 0;
 
 queue.verbose = 1;
 
