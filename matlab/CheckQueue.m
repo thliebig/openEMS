@@ -33,6 +33,10 @@ for n=1:numJobs
         if (queue_checkProcess( queue.jobs{n}.pid, queue.jobs{n}.filenames)==0)
             queue.jobs_finished(n)=1;
             load(queue.jobs{n}.outargsfile);
+            if ~isempty(err)
+                disp(['Job with number ' num2str(n) ' failed to execute: Error message:']);
+                error(['CheckQueue:' err.message]);
+            end
             queue.jobs{n}.outargs = outargs;
 
             % read in output and cleanup
