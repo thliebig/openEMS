@@ -24,6 +24,9 @@ if (nargin<3)
     command = 'ps -e | grep openEMS';
 end
 
+% 10 seconds ssh timeout
+time_out = 10;
+
 if (nargin<2)
     wait_time = 600;
 end
@@ -51,7 +54,7 @@ end
 while 1
     for n = 1:numel(host_list)
         host = host_list{n};
-        [status, result] = unix(['ssh ' host ' ' command]);
+        [status, result] = unix(['ssh -o ConnectTimeout=' num2str(time_out) ' ' host ' ''' command '''']);
 
         if (isempty(result) && status==1)
             disp(['FindFreeSSH:: found a free host: ' host ]);
@@ -61,7 +64,6 @@ while 1
         else
             disp(['FindFreeSSH:: shh connection to ' host ' failed ... ' ]);
         end
-
     end
     
     host = '';
