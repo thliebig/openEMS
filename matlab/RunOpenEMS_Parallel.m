@@ -1,5 +1,5 @@
-function [stdout, stderr] = RunOpenEMS_Parallel(Sim_Paths, Sim_Files, opts, Settings)
-% function [stdout, stderr] = RunOpenEMS_Parallel(Sim_Paths, Sim_Files, opts, Settings)
+function [stdout, stderr] = RunOpenEMS_Parallel(Sim_Paths, Sim_Files, opts, Settings, varargin)
+% function [stdout, stderr] = RunOpenEMS_Parallel(Sim_Paths, Sim_Files, opts, Settings, varargin)
 % 
 % Run multiple openEMS simulations in parallel, distributed on multiple 
 % machines using a ssh host_list! (currently on Linux only)
@@ -23,12 +23,12 @@ function [stdout, stderr] = RunOpenEMS_Parallel(Sim_Paths, Sim_Files, opts, Sett
 % -----------------------
 % author: Thorsten Liebig 2011
 
-pause_queue = 1; %pause between consecutive runs (needed for FindFreeSSH)
+pause_queue = 5; %pause between consecutive runs (needed for FindFreeSSH)
 
 skip_parallel = 0;
 
 % currently only supporting linux, run conventional RunOpenEMS
-if ~isunix || 
+if ~isunix
     warning 'your OS is not supported (Unix only), running default RunOpenEMS';
     skip_parallel = 1;    
 end
@@ -62,7 +62,7 @@ end
 % get the path to this file
 [dir] = fileparts( mfilename('fullpath') );
 
-queue = InitQueue('DependPath',dir);
+queue = InitQueue('DependPath',{dir}, varargin{:});
 
 % spawn multiple simulations
 numSims = numel(Sim_Paths);
@@ -73,7 +73,7 @@ for n=1:numSims
         Sim_File = Sim_Files;
     end
     
-    queue = Add2Queue(queue,'RunOpenEMS',{Sim_Paths{1}, Sim_File, opts, Settings});   
+    queue = Add2Queue(queue,'RunOpenEMS',{Sim_Paths{n}, Sim_File, opts, Settings});
     disp(['openEMS simulation #' int2str(n) ' in directory: ' Sim_Paths{n} ' started!']);
     pause(pause_queue);
 end
