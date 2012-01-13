@@ -1,5 +1,5 @@
-function Dump2VTK(filename, fields, mesh, fieldname)
-% Dump2VTK(filename, fields, mesh, fieldname)
+function Dump2VTK(filename, fields, mesh, fieldname, varargin)
+% Dump2VTK(filename, fields, mesh, fieldname, varargin)
 %
 %   Dump fields extraced from an hdf5 file to a vtk file format
 %
@@ -11,6 +11,14 @@ function Dump2VTK(filename, fields, mesh, fieldname)
 % author: Thorsten Liebig
 %
 % See also ReadHDF5FieldData ReadHDF5Mesh GetField_TD2FD GetField_Interpolation
+
+NativeDump = 0;
+
+for n=1:2:numel(varargin)
+	if (strcmp(varargin{n},'NativeDump')==1);
+		NativeDump =  varargin{n+1};
+    end
+end
 
 x = mesh.lines{1};
 y = mesh.lines{2};
@@ -77,7 +85,7 @@ elseif (mesh.type==1) %write cylindrical mesh to vtk
             end
         end
     end
-    if (ndims(fields)==4)
+    if ((ndims(fields)==4) && (NativeDump==0))
         [R A Z] = ndgrid(x,y,z);
         sinA = sin(A);
         cosA = cos(A);
@@ -108,7 +116,7 @@ elseif (mesh.type==2) %write spherical mesh to vtk
         end
     end
 
-    if (ndims(fields)==4)
+    if ((ndims(fields)==4) && (NativeDump==0))
         [R T A] = ndgrid(x,y,z);
         sinA = sin(A);
         cosA = cos(A);
