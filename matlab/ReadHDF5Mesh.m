@@ -57,3 +57,9 @@ for n=1:numel(hdf_mesh.names)
         hdf_mesh.type = 1; % cylindrical mesh
     end
 end
+
+if (hdf_mesh.type==1)
+    % alpha and rho are in the wrong order, flip to have rho, alpha, z
+    hdf_mesh.names(1:2) = fliplr(hdf_mesh.names(1:2));
+    hdf_mesh.lines(1:2) = fliplr(hdf_mesh.lines(1:2));
+end

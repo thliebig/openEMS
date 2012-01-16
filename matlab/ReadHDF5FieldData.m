@@ -2,15 +2,21 @@ function hdf_fielddata = ReadHDF5FieldData(file)
 % function hdf_fielddata = ReadHDF5FieldData(file)
 %
 % returns:
-% hdf_fielddata.time
-% hdf_fielddata.names
-% hdf_fielddata.values
+% % time domain data (if exist)
+% hdf_fielddata.TD.time
+% hdf_fielddata.TD.names
+% hdf_fielddata.TD.values
+%
+% % frequency domain data (if exist)
+% hdf_fielddata.FD.time
+% hdf_fielddata.FD.names
+% hdf_fielddata.FD.values
 %
 % example: values of timestep 12:
-% hdf_fielddata.values{12}: array (x,y,z,polarization)
+% hdf_fielddata.TD.values{12}: array (x,y,z,polarization)
 %
 % plot z-field component along y-direction for timestep 12:
-% plot( hdf_fielddata.values{12}(1,:,1,3) )
+% plot( hdf_fielddata.TD.values{12}(1,:,1,3) )
 %
 % openEMS matlab interface
 % -----------------------
@@ -81,11 +87,26 @@ if (numel(FD.names)>0)
     end
 end
 
-
 function hdf_fielddata = ReadHDF5FieldData_octave(file)
 hdf = load( '-hdf5', file );
-hdf_fielddata.names = fieldnames(hdf.FieldData);
-for n=1:numel(hdf_fielddata.names)
-    hdf_fielddata.time(n) = str2double(hdf_fielddata.names{n}(2:end));
-    hdf_fielddata.values{n} = hdf.FieldData.(hdf_fielddata.names{n});
+if ~isfield(hdf,'FieldData')
+    error('no field data found')
+end
+if isfield(hdf.FieldData,'TD')
+    %read TD data
+    hdf_fielddata_names = fieldnames(hdf.FieldData.TD);
+    for n=1:numel(hdf_fielddata_names)
+        hdf_fielddata.TD.values{n} = hdf.FieldData.TD.(hdf_fielddata_names{n});
+        hdf_fielddata.TD.names{n} = ['/FieldData/TD/' hdf_fielddata_names{n}(2:end)];
+        hdf_fielddata.TD.time(n) = h5readatt_octave(file, hdf_fielddata.TD.names{n},'time');
+    end
+end
+if isfield(hdf.FieldData,'FD')
+    %read FD data
+    hdf_fielddata_names = fieldnames(hdf.FieldData.FD);
+    for n=1:numel(hdf_fielddata_names)/2
+        hdf_fielddata.FD.values{n} = hdf.FieldData.FD.(hdf_fielddata_names{2*n}) + 1j*hdf.FieldData.FD.(hdf_fielddata_names{2*n-1});
+        hdf_fielddata.FD.names{n} = ['/FieldData/FD/' hdf_fielddata_names{2*n-1}(1:end-5)];
+        hdf_fielddata.FD.freq(n) = h5readatt_octave(file,['/FieldData/FD/' hdf_fielddata_names{2*n}],'frequency');
+    end
 end

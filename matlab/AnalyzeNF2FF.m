@@ -40,11 +40,11 @@ end
 
 % read time domain field data and transform into frequency domain
 for n=find(nf2ff.directions==1)
-    [Ef{n}, E_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_E{n}], 'Frequency', f );
+    [Ef{n}, E_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_E{n} '.h5'], 'Frequency', f );
     %clear out time domain data
     Ef{n} = rmfield(Ef{n},'TD');
 
-    [Hf{n}, H_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_H{n}], 'Frequency', f );
+    [Hf{n}, H_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_H{n} '.h5'], 'Frequency', f );
     %clear out time domain data
     Hf{n} = rmfield(Hf{n},'TD');
 
