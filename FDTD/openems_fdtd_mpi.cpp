@@ -484,7 +484,7 @@ void openEMS_FDTD_MPI::RunFDTD()
 				currE = CalcEnergy();
 			if (m_MyID==0)
 			{
-				cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
+				cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS ;
 				cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 				cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(m_EnergyDecrement)) << "dB)" << endl;
 
@@ -501,6 +501,10 @@ void openEMS_FDTD_MPI::RunFDTD()
 			PA->FlushNext();
 		}
 	}
+	if ((m_MyID==0) && (m_EnergyDecrement>endCrit))
+		cerr << "RunFDTD: max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
+				"\tYou may want to choose a higher number of max. timesteps... " << endl;
+
 	PA->PostProcess();
 
 	//*************** postproc ************//

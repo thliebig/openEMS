@@ -675,10 +675,14 @@ int openEMS::SetupFDTD(const char* file)
 	}
 	cout << "FDTD simulation size: " << FDTD_Op->GetNumberOfLines(0) << "x" << FDTD_Op->GetNumberOfLines(1) << "x" << FDTD_Op->GetNumberOfLines(2) << " --> "  << FDTD_Op->GetNumberCells() << " FDTD cells " << endl;
 	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " << FDTD_Op->Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(FDTD_Op->Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
-	cout << "Excitation signal length is: " << FDTD_Op->Exc->Length << " timesteps (" << FDTD_Op->Exc->Length*FDTD_Op->GetTimestep() << "s)" << endl;
-
 	if (FDTD_Op->Exc->GetNyquistNum()>1000)
 		cerr << "openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?" << endl;
+
+	cout << "Excitation signal length is: " << FDTD_Op->Exc->Length << " timesteps (" << FDTD_Op->Exc->Length*FDTD_Op->GetTimestep() << "s)" << endl;
+	cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(FDTD_Op->Exc->Length) << " * Excitation signal length)" << endl;
+	if ((double)NrTS/(double)FDTD_Op->Exc->Length < 3)
+		cerr << "openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. " << endl << \
+				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 
 	if (m_no_simulation)
 	{
@@ -798,7 +802,7 @@ void openEMS::RunFDTD()
 			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
 				maxE=currE;
-			cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS << " (" << setw(6) << setprecision(2) << std::fixed << (double)currTS/(double)NrTS*100.0  << "%)" ;
+			cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS ;
 			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 			if (maxE)
 				change = currE/maxE;
@@ -809,6 +813,10 @@ void openEMS::RunFDTD()
 			PA->FlushNext();
 		}
 	}
+	if (change>endCrit)
+		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
+				"\tYou may want to choose a higher number of max. timesteps... " << endl;
+
 	PA->PostProcess();
 
 	//*************** postproc ************//
