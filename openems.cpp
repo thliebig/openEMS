@@ -562,20 +562,17 @@ int openEMS::SetupFDTD(const char* file)
 		cerr << "Can't read openEMS FDTD Settings... " << endl;
 		exit(-1);
 	}
-	int help=0;
-	FDTD_Opts->QueryIntAttribute("NumberOfTimesteps",&help);
-	if (help<0)
+	double dhelp=0;
+	FDTD_Opts->QueryDoubleAttribute("NumberOfTimesteps",&dhelp);
+	if (dhelp<0)
 		NrTS=0;
 	else
-		NrTS = help;
+		NrTS = (unsigned int)dhelp;
 
-	help = 0;
-	FDTD_Opts->QueryIntAttribute("CylinderCoords",&help);
-	if (help==1)
-	{
-//		cout << "Using a cylinder coordinate FDTD..." << endl;
+	int ihelp = 0;
+	FDTD_Opts->QueryIntAttribute("CylinderCoords",&ihelp);
+	if (ihelp==1)
 		CylinderCoords = true;
-	}
 
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
 	if (endCrit==0)
