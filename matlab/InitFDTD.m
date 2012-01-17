@@ -7,6 +7,7 @@ function FDTD = InitFDTD(NrTS, endCrit, varargin)
 %   NrTS:       max. number of timesteps to simulate (e.g. default=1e9)
 %   endCrit:    end criteria, e.g. 1e-5, simulations stops if energy has
 %               decayed by this value (<1e-4 is recommended, default=1e-5)
+%   MaxTime:    max. real time in seconds to simulate
 %
 % optional field arguments for usage with openEMS:
 %   OverSampling:   nyquist oversampling of time domain dumps
