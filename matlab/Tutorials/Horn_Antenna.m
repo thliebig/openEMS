@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Horn_Antenna
 %
 % Tested with
-%  - Matlab 2011a
-%  - openEMS v0.0.25
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2011 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear
@@ -73,7 +73,7 @@ if (f_start<fc)
 end
 
 %% setup FDTD parameter & excitation function
-FDTD = InitFDTD( 30000, 1e-5 );
+FDTD = InitFDTD( 30000, 1e-4 );
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -199,6 +199,8 @@ ylabel( 'reflection coefficient |S_{11}|' );
 
 P_in = 0.5*uf_inc .* conj( if_inc ); % antenna feed power
 
+drawnow
+
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
@@ -269,4 +271,4 @@ ylabel( 'y' );
 zlabel( 'z' );
 
 %%
-DumpFF2VTK('Horn_Pattern.vtk',E_far_normalized,thetaRange,phiRange,1e-3);
+DumpFF2VTK([Sim_Path '/Horn_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,1e-3);

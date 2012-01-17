@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Conical_Horn_Antenna
 %
 % Tested with
-%  - Matlab 2011a
-%  - openEMS v0.0.25
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2011 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear
@@ -52,7 +52,7 @@ beta = sqrt(k.^2 - kc^2);
 ZL_a = k * Z0 ./ beta;    %analytic waveguide impedance
 
 % mode profile E- and H-field
-kc = kc*unit
+kc = kc*unit;
 func_Er = [ num2str(-1/kc^2,'%14.13f') '/rho*cos(a)*j1('  num2str(kc,'%14.13f') '*rho)'];
 func_Ea = [ num2str(1/kc,'%14.13f') '*sin(a)*0.5*(j0('  num2str(kc,'%14.13f') '*rho)-jn(2,'  num2str(kc,'%14.13f') '*rho))'];
 func_Ex = ['(' func_Er '*cos(a) - ' func_Ea '*sin(a) ) * (rho<' num2str(horn.radius) ')'];
@@ -70,7 +70,7 @@ if (f_start<fc)
 end
 
 %% setup FDTD parameter & excitation function
-FDTD = InitFDTD( 30000, 1e-5 );
+FDTD = InitFDTD( 30000 );
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -126,7 +126,7 @@ CSX = AddCylinder(CSX,'excite',0 ,start,stop,horn.radius);
 %% voltage and current definitions using the mode matching probes %%%%%%%%%
 %port 1
 start = [-horn.radius -horn.radius mesh.z(1)+horn.feed_length/2];
-stop  = [ horn.radius  horn.radius mesh.z(1)+horn.feed_length/2]
+stop  = [ horn.radius  horn.radius mesh.z(1)+horn.feed_length/2];
 CSX = AddProbe(CSX, 'ut1', 10, 1, [], 'ModeFunction',{func_Ex,func_Ey,0});
 CSX = AddBox(CSX,  'ut1',  0 ,start,stop);
 CSX = AddProbe(CSX,'it1', 11, 1, [], 'ModeFunction',{func_Hx,func_Hy,0});
@@ -151,7 +151,7 @@ WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
 
 %% run openEMS
-RunOpenEMS( Sim_Path, Sim_CSX ,'--debug-PEC');
+RunOpenEMS( Sim_Path, Sim_CSX);
 
 %% postprocessing & do the plots
 U = ReadUI( 'ut1', Sim_Path, freq ); % time domain/freq domain voltage
@@ -172,6 +172,8 @@ xlabel( 'frequency f / GHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
 
 P_in = 0.5*uf_inc .* conj( if_inc ); % antenna feed power
+
+drawnow
 
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -243,4 +245,4 @@ ylabel( 'y' );
 zlabel( 'z' );
 
 %%
-DumpFF2VTK('Conical_Horn_Pattern.vtk',E_far_normalized,thetaRange,phiRange,1e-3);
+DumpFF2VTK([Sim_Path '/Conical_Horn_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,1e-3);

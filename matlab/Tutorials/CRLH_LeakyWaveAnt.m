@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_CRLH_Leaky_Wave_Antenna
 %
 % Tested with
-%  - Matlab 2009b
-%  - openEMS v0.0.23
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2011 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -47,7 +47,7 @@ f_rad = (1.9:0.1:4.2)*1e9;
 Plot_3D_Rad_Pattern = 0; %this may take a very very long time! > 7h
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD( 20000, 1e-6, 'OverSampling', 10 );
+FDTD = InitFDTD( 20000 );
 FDTD = SetGaussExcite( FDTD, (f_start+f_stop)/2, (f_stop-f_start)/2 );
 BC   = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -136,6 +136,7 @@ ylabel('S-Parameter (dB)','FontSize',12);
 xlabel('frequency (GHz) \rightarrow','FontSize',12);
 ylim([-40 2]);
 
+drawnow
 
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 thetaRange = (0:3:359) - 180;
@@ -214,5 +215,7 @@ for n=1:numel(f_rad)
     zlim([-4 10]);
     title(['f=' num2str(f_res*1e-9,3) 'GHz  -  D=' num2str(Dlog(n),3) 'dBi'],'FontSize',12)
     pause(0.5)
+
+    DumpFF2VTK( [Sim_Path '/FF_Pattern_' int2str(f_res/1e6) 'MHz.vtk'],E_far_normalized_3D,thetaRange,phiRange,1e-3);
 end
 

@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Circular_Waveguide
 %
 % Tested with
-%  - Matlab 2009b
-%  - openEMS v0.0.23
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2010,2011 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2010-2012 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -17,7 +17,6 @@ clc
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 physical_constants;
 unit = 1e-3; %drawing unit in mm
-numTS = 50000; %max. number of timesteps
 
 % waveguide dimensions
 length = 2000;
@@ -55,7 +54,7 @@ if (f_start<fc)
 end
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitCylindricalFDTD(numTS,1e-5,'OverSampling',6);
+FDTD = InitFDTD(1e6,1e-5,'CoordSystem',1);
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 
 % boundary conditions

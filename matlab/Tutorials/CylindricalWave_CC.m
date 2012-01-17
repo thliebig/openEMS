@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_2D_Cylindrical_Wave
 %
 % Tested with
-%  - Matlab 2009b
-%  - openEMS v0.0.23
+%  - Matlab 2011a/ Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2011 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -28,7 +28,7 @@ exite_offset = 1300;
 excite_angle = 45;
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitCylindricalFDTD(100000,1e-4,'OverSampling',5,'MultiGrid',split);
+FDTD = InitFDTD(100000,1e-4,'CoordSystem',1,'MultiGrid',split);
 FDTD = SetGaussExcite(FDTD,f0,f0/2);
 BC = [0 3 0 0 0 0];             % pml in positive r-direction
 FDTD = SetBoundaryCond(FDTD,BC);
@@ -72,6 +72,9 @@ Sim_CSX = '2D_CC_Wave.xml';
 
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 RunOpenEMS(Sim_Path, Sim_CSX);
+
+%%
+disp('use Paraview to visualize the vtk field dump...');
 
 %%
 [field mesh_h5] = ReadHDF5Dump([Sim_Path '/Ef_ra.h5']);

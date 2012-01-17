@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_CRLH_Extraction
 %
 % Tested with
-%  - Matlab 2009b
-%  - openEMS v0.0.23
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2011 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -38,7 +38,7 @@ f_start = 0.8e9;
 f_stop  = 6e9;
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD( 20000, 1e-6, 'OverSampling', 10 );
+FDTD = InitFDTD( 20000 );
 FDTD = SetGaussExcite( FDTD, (f_start+f_stop)/2, (f_stop-f_start)/2 );
 BC   = {'PML_8' 'PML_8' 'MUR' 'MUR' 'PEC' 'PML_8'};
 FDTD = SetBoundaryCond( FDTD, BC );

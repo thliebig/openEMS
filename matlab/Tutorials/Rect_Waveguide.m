@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Rectangular_Waveguide
 %
 % Tested with
-%  - Matlab 2009b
-%  - openEMS v0.0.23
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2010,2011 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2010-2012 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -57,7 +57,7 @@ if (f_start<fc)
 end
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD(numTS,1e-5,'OverSampling',6);
+FDTD = InitFDTD(numTS,1e-5);
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 
 % boundary conditions

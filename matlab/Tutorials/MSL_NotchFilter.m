@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Microstrip_Notch_Filter
 %
 % Tested with
-%  - Matlab 2009b
-%  - openEMS v0.0.23
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2011 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -25,7 +25,7 @@ stub_length = 12e3;
 f_max = 7e9;
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD( 20000, 1e-6, 'OverSampling', 10 );
+FDTD = InitFDTD();
 FDTD = SetGaussExcite( FDTD, f_max/2, f_max/2 );
 BC   = {'PML_8' 'PML_8' 'MUR' 'MUR' 'PEC' 'MUR'};
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -86,8 +86,7 @@ plot(f/1e9,20*log10(abs(s11)),'k-','LineWidth',2);
 hold on;
 grid on;
 plot(f/1e9,20*log10(abs(s21)),'r--','LineWidth',2);
-l = legend('S_{11}','S_{21}','Location','Best');
-set(l,'FontSize',12);
+legend('S_{11}','S_{21}');
 ylabel('S-Parameter (dB)','FontSize',12);
 xlabel('frequency (GHz) \rightarrow','FontSize',12);
 ylim([-40 2]);

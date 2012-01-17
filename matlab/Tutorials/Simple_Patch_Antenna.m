@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Simple_Patch_Antenna
 %
 % Tested with
-%  - Matlab 2009b
-%  - openEMS v0.0.23
+%  - Matlab 2011a / Octave 3.4.3
+%  - openEMS v0.0.26
 %
-% (C) 2010,2011 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2010-2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear
@@ -40,9 +40,9 @@ feed.R = 50;     %feed resistance
 SimBox = [200 200 100];
 
 %% setup FDTD parameter & excitation function
-f0 = 0e9; % center frequency
-fc = 3e9; % 20 dB corner frequency (in this case 0 Hz - 3e9 Hz)
-FDTD = InitFDTD( 30000, 1e-5 );
+f0 = 2e9; % center frequency
+fc = 1e9; % 20 dB corner frequency
+FDTD = InitFDTD( 30000 );
 FDTD = SetGaussExcite( FDTD, f0, fc );
 BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -140,6 +140,8 @@ xlabel( 'frequency f / MHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
 
 P_in = 0.5*U.FD{1}.val .* conj( I.FD{1}.val ); % antenna feed power
+
+drawnow
 
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %find resonance frequncy from s11
