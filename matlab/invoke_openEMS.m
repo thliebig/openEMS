@@ -49,7 +49,7 @@ else
     command = [command ' > ' logfile ' 2>&1'];
 end
 
-if ~silent
-    disp( ['invoking openEMS simulator: ' command] );
-end
+% if ~silent
+%     disp( ['invoking openEMS simulator: ' command] );
+% end
 system(command);
