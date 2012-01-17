@@ -54,6 +54,9 @@ public:
 	//! Get the used timestep
 	double GetTimestep() const {return dT;}
 
+	//! Get the type of excitation
+	int GetExciteType() const {return m_Excit_Type;}
+
 	//Excitation time-signal
 	unsigned int Length;
 	FDTD_FLOAT* Signal_volt;
@@ -78,6 +81,7 @@ public:
 protected:
 	double dT;
 	unsigned int m_nyquistTS;
+	int m_Excit_Type;
 
 	//! Calculate a custom signal
 	virtual void CalcCustomExcitation(double f0, int nTS, string signal);

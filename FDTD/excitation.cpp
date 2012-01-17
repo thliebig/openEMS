@@ -36,6 +36,8 @@ Excitation::Excitation( double timestep )
 	Curr_dir = 0;
 	Curr_Count = 0;
 
+	m_Excit_Type = -1;
+
 	for (int n=0; n<3; ++n)
 	{
 		Volt_index[n] = 0;
@@ -87,6 +89,8 @@ void Excitation::Reset( double timestep )
 	Volt_Count = 0;
 	Curr_Count = 0;
 
+	m_Excit_Type = -1;
+
 	for (int n=0; n<3; ++n)
 	{
 		delete[] Volt_index[n];
@@ -110,12 +114,11 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 		return false;
 	}
 
-	int Excit_Type=0;
 	double f0=0;
 	double fc=0;
-	Excite->QueryIntAttribute("Type",&Excit_Type);
+	Excite->QueryIntAttribute("Type",&m_Excit_Type);
 
-	switch (Excit_Type)
+	switch (m_Excit_Type)
 	{
 	case 0:
 		Excite->QueryDoubleAttribute("f0",&f0);
@@ -137,7 +140,8 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 		CalcCustomExcitation(f0,maxTS,Excite->Attribute("Function"));
 		break;
 	default:
-		cerr << "Excitation::setupExcitation: Unknown excitation type: \"" << Excit_Type<< "\" !!" << endl;
+		cerr << "Excitation::setupExcitation: Unknown excitation type: \"" << m_Excit_Type<< "\" !!" << endl;
+		m_Excit_Type = -1;
 		return false;
 	}
 

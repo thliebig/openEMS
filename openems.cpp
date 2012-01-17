@@ -680,7 +680,7 @@ int openEMS::SetupFDTD(const char* file)
 
 	cout << "Excitation signal length is: " << FDTD_Op->Exc->Length << " timesteps (" << FDTD_Op->Exc->Length*FDTD_Op->GetTimestep() << "s)" << endl;
 	cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(FDTD_Op->Exc->Length) << " * Excitation signal length)" << endl;
-	if ((double)NrTS/(double)FDTD_Op->Exc->Length < 3)
+	if ( ((double)NrTS/(double)FDTD_Op->Exc->Length < 3) && (FDTD_Op->Exc->GetExciteType()==0))
 		cerr << "openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 
@@ -813,7 +813,7 @@ void openEMS::RunFDTD()
 			PA->FlushNext();
 		}
 	}
-	if (change>endCrit)
+	if ((change>endCrit) && (FDTD_Op->Exc->GetExciteType()==0))
 		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 

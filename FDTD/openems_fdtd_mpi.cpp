@@ -501,7 +501,7 @@ void openEMS_FDTD_MPI::RunFDTD()
 			PA->FlushNext();
 		}
 	}
-	if ((m_MyID==0) && (m_EnergyDecrement>endCrit))
+	if ((m_MyID==0) && (m_EnergyDecrement>endCrit) && (FDTD_Op->Exc->GetExciteType()==0))
 		cerr << "RunFDTD: max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 
