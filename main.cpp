@@ -52,10 +52,10 @@ int main(int argc, char *argv[])
 	string bits = "32bit";
 #endif
 
-	cout << " -------------------------------------------------------------------- " << endl;
+	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << " | openEMS " << bits << " -- version " GIT_VERSION << endl;
-	cout << " | (C) 2010 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
-	cout << " -------------------------------------------------------------------- " << endl;
+	cout << " | (C) 2010-2012 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
+	cout << " ---------------------------------------------------------------------- " << endl;
 #ifdef MPI_SUPPORT
 	cout << openEMS_FDTD_MPI::GetExtLibsInfo() << endl;
 #else
