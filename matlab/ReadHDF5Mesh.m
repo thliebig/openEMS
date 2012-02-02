@@ -42,6 +42,13 @@ if (strcmp(names{1},'/Mesh/alpha'))
     hdf_mesh.type=1;
     return
 end
+if (strcmp(names{1},'/Mesh/phi'))
+    % reorder coordinates
+    hdf_mesh.names = hdf_mesh.names([2 3 1]);
+    hdf_mesh.lines = hdf_mesh.lines([2 3 1]);
+    hdf_mesh.type=2;
+    return
+end
 
 hdf_mesh.type=0;
 
@@ -56,10 +63,18 @@ for n=1:numel(hdf_mesh.names)
     if strcmp(hdf_mesh.names{n},'/Mesh/alpha')
         hdf_mesh.type = 1; % cylindrical mesh
     end
+    if strcmp(hdf_mesh.names{n},'/Mesh/phi')
+        hdf_mesh.type = 2; % cylindrical mesh
+    end
 end
 
 if (hdf_mesh.type==1)
     % alpha and rho are in the wrong order, flip to have rho, alpha, z
     hdf_mesh.names(1:2) = fliplr(hdf_mesh.names(1:2));
     hdf_mesh.lines(1:2) = fliplr(hdf_mesh.lines(1:2));
+end
+if (hdf_mesh.type==2)
+    % alpha and rho are in the wrong order, flip to have rho, alpha, z
+    hdf_mesh.names = hdf_mesh.names([2 3 1]);
+    hdf_mesh.lines = hdf_mesh.lines([2 3 1]);
 end
