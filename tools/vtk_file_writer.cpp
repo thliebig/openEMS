@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2011,2012 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#include "vtk_file_io.h"
+#include "vtk_file_writer.h"
 
 #include <vtkRectilinearGrid.h>
 #include <vtkRectilinearGridWriter.h>
@@ -35,34 +35,42 @@ using namespace std;
 #include <iomanip>
 
 
-VTK_File_IO::VTK_File_IO(string filename, int meshType) : Base_File_IO(filename, meshType)
+VTK_File_Writer::VTK_File_Writer(string filename, int meshType)
 {
+	SetFilename(filename);
+	m_MeshType = meshType;
+	m_NativeDump = false;
+	m_Binary = true;
+	m_Compress = true;
+	m_AppendMode = false;
+	m_ActiveTS = false;
+
 	if (m_MeshType==0) //cartesian mesh
 		m_GridData = vtkRectilinearGrid::New();
 	else if (m_MeshType==1) //cylindrical mesh
 		m_GridData = vtkStructuredGrid::New();
 	else
 	{
-		cerr << "VTK_File_IO::VTK_File_IO: Error, unknown mesh type: " << m_MeshType << endl;
+		cerr << "VTK_File_Writer::VTK_File_Writer: Error, unknown mesh type: " << m_MeshType << endl;
 		m_GridData=NULL;
 	}
 }
 
-VTK_File_IO::~VTK_File_IO()
+VTK_File_Writer::~VTK_File_Writer()
 {
 	if (m_GridData)
 		m_GridData->Delete();
 	m_GridData = NULL;
 }
 
-void VTK_File_IO::SetMeshLines(double const* const* lines, unsigned int const* count, double scaling)
+void VTK_File_Writer::SetMeshLines(double const* const* lines, unsigned int const* count, double scaling)
 {
 	if (m_MeshType==0) //cartesian mesh
 	{
 		vtkRectilinearGrid* RectGrid = dynamic_cast<vtkRectilinearGrid*>(m_GridData);
 		if (RectGrid==NULL)
 		{
-			cerr << "VTK_File_IO::SetMeshLines: Error, grid invalid, this should not have happend! " << endl;
+			cerr << "VTK_File_Writer::SetMeshLines: Error, grid invalid, this should not have happend! " << endl;
 			exit(1);
 		}
 		RectGrid->SetDimensions(count[0],count[1],count[2]);
@@ -89,7 +97,7 @@ void VTK_File_IO::SetMeshLines(double const* const* lines, unsigned int const* c
 		vtkStructuredGrid* StructGrid = dynamic_cast<vtkStructuredGrid*>(m_GridData);
 		if (StructGrid==NULL)
 		{
-			cerr << "VTK_File_IO::SetMeshLines: Error, grid invalid, this should not have happend! " << endl;
+			cerr << "VTK_File_Writer::SetMeshLines: Error, grid invalid, this should not have happend! " << endl;
 			exit(1);
 		}
 
@@ -123,21 +131,21 @@ void VTK_File_IO::SetMeshLines(double const* const* lines, unsigned int const* c
 	}
 	else
 	{
-		cerr << "VTK_File_IO::SetMeshLines: Error, unknown mesh type: " << m_MeshType << endl;
+		cerr << "VTK_File_Writer::SetMeshLines: Error, unknown mesh type: " << m_MeshType << endl;
 	}
 }
 
-void VTK_File_IO::AddScalarField(string fieldname, double const* const* const* field, unsigned int const* size)
+void VTK_File_Writer::AddScalarField(string fieldname, double const* const* const* field)
 {
 	vtkDoubleArray* array = vtkDoubleArray::New();
-	array->SetNumberOfTuples(size[0]*size[1]*size[2]);
+	array->SetNumberOfTuples(m_MeshLines[0].size()*m_MeshLines[1].size()*m_MeshLines[2].size());
 	array->SetName(fieldname.c_str());
 	int id=0;
-	for (unsigned int k=0;k<size[2];++k)
+	for (unsigned int k=0;k<m_MeshLines[2].size();++k)
 	{
-		for (unsigned int j=0;j<size[1];++j)
+		for (unsigned int j=0;j<m_MeshLines[1].size();++j)
 		{
-			for (unsigned int i=0;i<size[0];++i)
+			for (unsigned int i=0;i<m_MeshLines[0].size();++i)
 			{
 				array->SetTuple1(id++,field[i][j][k]);
 			}
@@ -147,17 +155,17 @@ void VTK_File_IO::AddScalarField(string fieldname, double const* const* const* f
 	array->Delete();
 }
 
-void VTK_File_IO::AddScalarField(string fieldname, float const* const* const* field, unsigned int const* size)
+void VTK_File_Writer::AddScalarField(string fieldname, float const* const* const* field)
 {
 	vtkFloatArray* array = vtkFloatArray::New();
-	array->SetNumberOfTuples(size[0]*size[1]*size[2]);
+	array->SetNumberOfTuples(m_MeshLines[0].size()*m_MeshLines[1].size()*m_MeshLines[2].size());
 	array->SetName(fieldname.c_str());
 	int id=0;
-	for (unsigned int k=0;k<size[2];++k)
+	for (unsigned int k=0;k<m_MeshLines[2].size();++k)
 	{
-		for (unsigned int j=0;j<size[1];++j)
+		for (unsigned int j=0;j<m_MeshLines[1].size();++j)
 		{
-			for (unsigned int i=0;i<size[0];++i)
+			for (unsigned int i=0;i<m_MeshLines[0].size();++i)
 			{
 				array->SetTuple1(id++,field[i][j][k]);
 			}
@@ -167,21 +175,21 @@ void VTK_File_IO::AddScalarField(string fieldname, float const* const* const* fi
 	array->Delete();
 }
 
-void VTK_File_IO::AddVectorField(string fieldname, double const* const* const* const* field, unsigned int const* size)
+void VTK_File_Writer::AddVectorField(string fieldname, double const* const* const* const* field)
 {
 	vtkDoubleArray* array = vtkDoubleArray::New();
 	array->SetNumberOfComponents(3);
-	array->SetNumberOfTuples(size[0]*size[1]*size[2]);
+	array->SetNumberOfTuples(m_MeshLines[0].size()*m_MeshLines[1].size()*m_MeshLines[2].size());
 	array->SetName(fieldname.c_str());
 	int id=0;
 	double out[3];
-	for (unsigned int k=0;k<size[2];++k)
+	for (unsigned int k=0;k<m_MeshLines[2].size();++k)
 	{
-		for (unsigned int j=0;j<size[1];++j)
+		for (unsigned int j=0;j<m_MeshLines[1].size();++j)
 		{
 			double cos_a = cos(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
 			double sin_a = sin(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
-			for (unsigned int i=0;i<size[0];++i)
+			for (unsigned int i=0;i<m_MeshLines[0].size();++i)
 			{
 				if ((m_MeshType==0) || (m_NativeDump))
 					array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
@@ -199,21 +207,21 @@ void VTK_File_IO::AddVectorField(string fieldname, double const* const* const* c
 	array->Delete();
 }
 
-void VTK_File_IO::AddVectorField(string fieldname, float const* const* const* const* field, unsigned int const* size)
+void VTK_File_Writer::AddVectorField(string fieldname, float const* const* const* const* field)
 {
 	vtkFloatArray* array = vtkFloatArray::New();
 	array->SetNumberOfComponents(3);
-	array->SetNumberOfTuples(size[0]*size[1]*size[2]);
+	array->SetNumberOfTuples(m_MeshLines[0].size()*m_MeshLines[1].size()*m_MeshLines[2].size());
 	array->SetName(fieldname.c_str());
 	int id=0;
 	float out[3];
-	for (unsigned int k=0;k<size[2];++k)
+	for (unsigned int k=0;k<m_MeshLines[2].size();++k)
 	{
-		for (unsigned int j=0;j<size[1];++j)
+		for (unsigned int j=0;j<m_MeshLines[1].size();++j)
 		{
 			float cos_a = cos(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
 			float sin_a = sin(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
-			for (unsigned int i=0;i<size[0];++i)
+			for (unsigned int i=0;i<m_MeshLines[0].size();++i)
 			{
 				if ((m_MeshType==0) || (m_NativeDump))
 					array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
@@ -232,12 +240,12 @@ void VTK_File_IO::AddVectorField(string fieldname, float const* const* const* co
 }
 
 
-int VTK_File_IO::GetNumberOfFields() const
+int VTK_File_Writer::GetNumberOfFields() const
 {
 	return m_GridData->GetPointData()->GetNumberOfArrays();
 }
 
-void VTK_File_IO::ClearAllFields()
+void VTK_File_Writer::ClearAllFields()
 {
 	while (m_GridData->GetPointData()->GetNumberOfArrays()>0)
 	{
@@ -246,12 +254,12 @@ void VTK_File_IO::ClearAllFields()
 	}
 }
 
-bool VTK_File_IO::Write()
+bool VTK_File_Writer::Write()
 {
 	return WriteXML();
 }
 
-string VTK_File_IO::GetTimestepFilename(int pad_length) const
+string VTK_File_Writer::GetTimestepFilename(int pad_length) const
 {
 	if (m_ActiveTS==false)
 		return m_filename;
@@ -263,7 +271,7 @@ string VTK_File_IO::GetTimestepFilename(int pad_length) const
 }
 
 
-bool VTK_File_IO::WriteASCII()
+bool VTK_File_Writer::WriteASCII()
 {
 	vtkDataWriter* writer = NULL;
 	if (m_MeshType==0) //cartesian mesh
@@ -272,7 +280,7 @@ bool VTK_File_IO::WriteASCII()
 		writer = vtkStructuredGridWriter::New();
 	else
 	{
-		cerr << "VTK_File_IO::WriteASCII: Error, unknown mesh type: " << m_MeshType << endl;
+		cerr << "VTK_File_Writer::WriteASCII: Error, unknown mesh type: " << m_MeshType << endl;
 		return false;
 	}
 
@@ -291,7 +299,7 @@ bool VTK_File_IO::WriteASCII()
 	return true;
 }
 
-bool VTK_File_IO::WriteXML()
+bool VTK_File_Writer::WriteXML()
 {
 	vtkXMLStructuredDataWriter* writer = NULL;
 	if (m_MeshType==0) //cartesian mesh
@@ -300,7 +308,7 @@ bool VTK_File_IO::WriteXML()
 		writer = vtkXMLStructuredGridWriter::New();
 	else
 	{
-		cerr << "VTK_File_IO::WriteXML: Error, unknown mesh type: " << m_MeshType << endl;
+		cerr << "VTK_File_Writer::WriteXML: Error, unknown mesh type: " << m_MeshType << endl;
 		return false;
 	}
 

@@ -17,7 +17,8 @@
 
 #include "processfields_sar.h"
 #include "operator_base.h"
-#include "tools/vtk_file_io.h"
+#include "tools/vtk_file_writer.h"
+#include "tools/hdf5_file_writer.h"
 
 ProcessFieldsSAR::ProcessFieldsSAR(Engine_Interface_Base* eng_if) : ProcessFieldsFD(eng_if)
 {
@@ -109,17 +110,22 @@ void ProcessFieldsSAR::DumpFDData()
 			stringstream ss;
 			ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n);
 
-			m_Dump_File->SetFilename(ss.str());
-			m_Dump_File->ClearAllFields();
-			m_Dump_File->AddScalarField(GetFieldNameByType(m_DumpType),SAR,numLines);
-			if (m_Dump_File->Write()==false)
-				cerr << "ProcessFieldsSAR::Process: can't dump to file... abort! " << endl;
+			m_Vtk_Dump_File->SetFilename(ss.str());
+			m_Vtk_Dump_File->ClearAllFields();
+			m_Vtk_Dump_File->AddScalarField(GetFieldNameByType(m_DumpType),SAR);
+			if (m_Vtk_Dump_File->Write()==false)
+				cerr << "ProcessFieldsSAR::Process: can't dump to file...! " << endl;
 		}
 		else if (m_fileType==HDF5_FILETYPE)
 		{
 			stringstream ss;
 			ss << "f" << n;
-			DumpScalarArray2HDF5(m_filename.c_str(), "/FieldData/FD", ss.str(), SAR,numLines , "frequency", m_FD_Samples.at(n));
+			size_t datasize[]={numLines[0],numLines[1],numLines[2]};
+			if (m_HDF5_Dump_File->WriteScalarField(ss.str(), SAR, datasize)==false)
+				cerr << "ProcessFieldsSAR::Process: can't dump to file...! " << endl;
+			float freq[1]={m_FD_Samples.at(n)};
+			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",freq,1)==false)
+				cerr << "ProcessFieldsSAR::Process: can't dump to file...! " << endl;
 		}
 		else
 			cerr << "ProcessFieldsSAR::Process: unknown File-Type" << endl;

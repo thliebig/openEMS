@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2011,2012 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -15,20 +15,23 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef BASE_FILE_IO_H
-#define BASE_FILE_IO_H
+#ifndef VTK_FILE_WRITER_H
+#define VTK_FILE_WRITER_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <complex>
 
-//! Abstract base class for dumping scalar or vector field data
-class Base_File_IO
+class vtkDataSet;
+
+class VTK_File_Writer
 {
 public:
-	virtual ~Base_File_IO();
+	VTK_File_Writer(std::string filename, int meshType=0);
+	virtual ~VTK_File_Writer();
 
 	//! Set the filename
 	virtual void SetFilename(std::string filename) {m_filename=filename;}
@@ -42,24 +45,17 @@ public:
 	//! Set compression flag (if the file type supports it)
 	virtual void SetCompress(bool val) {m_Compress=val;}
 
-	//! Set the mesh lines for the given mesh type.
-	virtual void SetMeshLines(double const* const* lines, unsigned int const* count, double scaling=1) = 0 ;
+	void SetNativeDump(bool val) {m_NativeDump=val;}
 
-	void SetNativeDump(bool val) {m_NativeDump=val;};
+	virtual void SetMeshLines(double const* const* lines, unsigned int const* count, double scaling=1);
 
-	//! Add a scalar field. \sa GetNumberOfFields \sa ClearAllFields
-	virtual void AddScalarField(std::string fieldname, double const* const* const* field, unsigned int const* size) = 0;
-	//! Add a scalar field. \sa GetNumberOfFields \sa ClearAllFields
-	virtual void AddScalarField(std::string fieldname, float const* const* const* field, unsigned int const* size) = 0;
-	//! Add a vector field. \sa GetNumberOfFields \sa ClearAllFields
-	virtual void AddVectorField(std::string fieldname, double const* const* const* const* field, unsigned int const* size) = 0;
-	//! Add a vector field. \sa GetNumberOfFields \sa ClearAllFields
-	virtual void AddVectorField(std::string fieldname, float const* const* const* const* field, unsigned int const* size) = 0;
+	virtual void AddScalarField(std::string fieldname, double const* const* const* field);
+	virtual void AddScalarField(std::string fieldname, float const* const* const* field);
+	virtual void AddVectorField(std::string fieldname, double const* const* const* const* field);
+	virtual void AddVectorField(std::string fieldname, float const* const* const* const* field);
 
-	//! Get the number of fields. \sa ClearAllFields
-	virtual int GetNumberOfFields() const = 0;
-	//! Clear all included fields. \sa GetNumberOfFields
-	virtual void ClearAllFields() = 0;
+	virtual int GetNumberOfFields() const;
+	virtual void ClearAllFields();
 
 	//! Get if timestep file series is active. \sa SetTimestepActive
 	virtual bool GetTimestepActive() {return m_ActiveTS;}
@@ -68,23 +64,31 @@ public:
 	//! Set the current timestep, this will set the timestep flag to true. \sa SetTimestepActive
 	virtual void SetTimestep(unsigned int ts) {m_timestep=ts;SetTimestepActive(true);}
 
-	virtual bool Write() = 0;
+	virtual bool Write();
+
+	virtual bool WriteASCII();
+	virtual bool WriteXML();
 
 protected:
-	Base_File_IO(std::string filename, int meshType=0);
 	std::string m_filename;
 	std::string m_header;
 
+	//timestep properties
 	bool m_ActiveTS;
 	unsigned int m_timestep;
 
+	vtkDataSet* m_GridData;
+
+	//mesh information
 	int m_MeshType;
+	std::vector<double> m_MeshLines[3];
 	bool m_NativeDump;
 
 	bool m_AppendMode;
 	bool m_Binary;
 	bool m_Compress;
+
+	virtual std::string GetTimestepFilename(int pad_length=10) const;
 };
 
-
-#endif // BASE_FILE_IO_H
+#endif // VTK_FILE_Writer_H

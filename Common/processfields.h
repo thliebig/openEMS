@@ -23,7 +23,8 @@
 
 #define __VTK_DATA_TYPE__ "double"
 
-class Base_File_IO;
+class VTK_File_Writer;
+class HDF5_File_Writer;
 
 class ProcessFields : public Processing
 {
@@ -67,18 +68,6 @@ public:
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
 	void SetDumpType(DumpType type) {m_DumpType=type;}
 
-	//! Write a mesh information to the given hdf5-group
-	static bool WriteMesh2HDF5(string filename, string groupName, unsigned int const* numLines, double const* const* discLines, MeshType meshT = CARTESIAN_MESH, double discLines_scaling = 1);
-
-	//! Dump a time-domain vector dump to an HDF5 file
-	static bool DumpVectorArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, float time=0);
-
-	//! Dump a scalar field to an HDF5 file
-	static bool DumpScalarArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, string attr_name=string(), float attr_value=0);
-
-	//! Dump a frequency-domain complex-vector dump to an HDF5 file
-	static bool DumpVectorArray2HDF5(string filename, string groupName, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency);
-
 	double CalcTotalEnergyEstimate() const;
 
 	void SetFileType(FileType fileType) {m_fileType=fileType;}
@@ -89,7 +78,8 @@ protected:
 	DumpType m_DumpType;
 	FileType m_fileType;
 
-	Base_File_IO* m_Dump_File;
+	VTK_File_Writer* m_Vtk_Dump_File;
+	HDF5_File_Writer* m_HDF5_Dump_File;
 
 	enum SampleType {NONE, SUBSAMPLE, OPT_RESOLUTION} m_SampleType;
 	virtual void CalcMeshPos();

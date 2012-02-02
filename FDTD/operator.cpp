@@ -23,7 +23,7 @@
 #include "extensions/operator_ext_excitation.h"
 #include "Common/processfields.h"
 #include "tools/array_ops.h"
-#include "tools/vtk_file_io.h"
+#include "tools/vtk_file_writer.h"
 #include "fparser.hh"
 
 Operator* Operator::New()
@@ -493,24 +493,24 @@ void Operator::DumpOperator2File(string filename)
 					ii_temp[n][pos[0]][pos[1]][pos[2]] = GetII(n,pos);
 				}
 
-	VTK_File_IO* vtk_io = new VTK_File_IO(filename.c_str(), m_MeshType);
-	vtk_io->SetMeshLines(discLines,numLines,discLines_scaling);
-	vtk_io->SetHeader("openEMS - Operator dump");
+	VTK_File_Writer* vtk_Writer = new VTK_File_Writer(filename.c_str(), m_MeshType);
+	vtk_Writer->SetMeshLines(discLines,numLines,discLines_scaling);
+	vtk_Writer->SetHeader("openEMS - Operator dump");
 
-	vtk_io->SetNativeDump(true);
+	vtk_Writer->SetNativeDump(true);
 
-	vtk_io->AddVectorField("vv",vv_temp,numLines);
+	vtk_Writer->AddVectorField("vv",vv_temp);
 	Delete_N_3DArray(vv_temp,numLines);
-	vtk_io->AddVectorField("vi",vi_temp,numLines);
+	vtk_Writer->AddVectorField("vi",vi_temp);
 	Delete_N_3DArray(vi_temp,numLines);
-	vtk_io->AddVectorField("iv",iv_temp,numLines);
+	vtk_Writer->AddVectorField("iv",iv_temp);
 	Delete_N_3DArray(iv_temp,numLines);
-	vtk_io->AddVectorField("ii",ii_temp,numLines);
+	vtk_Writer->AddVectorField("ii",ii_temp);
 	Delete_N_3DArray(ii_temp,numLines);
-	vtk_io->AddVectorField("exc",exc,numLines);
+	vtk_Writer->AddVectorField("exc",exc);
 	Delete_N_3DArray(exc,numLines);
 
-	if (vtk_io->Write()==false)
+	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpOperator2File: Error: Can't write file... skipping!" << endl;
 
 	cout << " done!" << endl;
@@ -590,16 +590,16 @@ void Operator::DumpPEC2File( string filename )
 	scaling = GetGridDelta();
 #endif
 
-	VTK_File_IO* vtk_io = new VTK_File_IO(filename.c_str(), m_MeshType);
-	vtk_io->SetMeshLines(discLines,numLines,scaling);
-	vtk_io->SetHeader("openEMS - PEC dump");
+	VTK_File_Writer* vtk_Writer = new VTK_File_Writer(filename.c_str(), m_MeshType);
+	vtk_Writer->SetMeshLines(discLines,numLines,scaling);
+	vtk_Writer->SetHeader("openEMS - PEC dump");
 
-	vtk_io->SetNativeDump(true);
+	vtk_Writer->SetNativeDump(true);
 
-	vtk_io->AddVectorField("PEC",pec,numLines);
+	vtk_Writer->AddVectorField("PEC",pec);
 	Delete_N_3DArray(pec,numLines);
 
-	if (vtk_io->Write()==false)
+	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpPEC2File: Error: Can't write file... skipping!" << endl;
 
 	cout << " done!" << endl;
@@ -640,22 +640,22 @@ void Operator::DumpMaterial2File(string filename)
 		}
 	}
 
-	VTK_File_IO* vtk_io = new VTK_File_IO(filename.c_str(), m_MeshType);
-	vtk_io->SetMeshLines(discLines,numLines,discLines_scaling);
-	vtk_io->SetHeader("openEMS - material dump");
+	VTK_File_Writer* vtk_Writer = new VTK_File_Writer(filename.c_str(), m_MeshType);
+	vtk_Writer->SetMeshLines(discLines,numLines,discLines_scaling);
+	vtk_Writer->SetHeader("openEMS - material dump");
 
-	vtk_io->SetNativeDump(true);
+	vtk_Writer->SetNativeDump(true);
 
-	vtk_io->AddVectorField("epsilon",epsilon,numLines);
+	vtk_Writer->AddVectorField("epsilon",epsilon);
 	Delete_N_3DArray(epsilon,numLines);
-	vtk_io->AddVectorField("mue",mue,numLines);
+	vtk_Writer->AddVectorField("mue",mue);
 	Delete_N_3DArray(mue,numLines);
-	vtk_io->AddVectorField("kappa",kappa,numLines);
+	vtk_Writer->AddVectorField("kappa",kappa);
 	Delete_N_3DArray(kappa,numLines);
-	vtk_io->AddVectorField("sigma",sigma,numLines);
+	vtk_Writer->AddVectorField("sigma",sigma);
 	Delete_N_3DArray(sigma,numLines);
 
-	if (vtk_io->Write()==false)
+	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpMaterial2File: Error: Can't write file... skipping!" << endl;
 
 	cout << " done!" << endl;

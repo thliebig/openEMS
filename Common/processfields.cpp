@@ -18,7 +18,8 @@
 #include <iomanip>
 #include <H5Cpp.h>
 #include "tools/global.h"
-#include "tools/vtk_file_io.h"
+#include "tools/vtk_file_writer.h"
+#include "tools/hdf5_file_writer.h"
 #include "processfields.h"
 #include "FDTD/engine_interface_fdtd.h"
 
@@ -28,7 +29,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	// vtk-file is default
 	m_fileType = VTK_FILETYPE;
 	m_SampleType = NONE;
-	m_Dump_File = NULL;
+	m_Vtk_Dump_File = NULL;
+	m_HDF5_Dump_File = NULL;
 	SetPrecision(6);
 	m_dualTime = false;
 
@@ -47,8 +49,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 
 ProcessFields::~ProcessFields()
 {
-	delete m_Dump_File;
-	m_Dump_File = NULL;
+	delete m_Vtk_Dump_File;
+	m_Vtk_Dump_File = NULL;
 	for (int n=0; n<3; ++n)
 	{
 		delete[] posLines[n];
@@ -84,16 +86,28 @@ void ProcessFields::InitProcess()
 
 	if (m_fileType==VTK_FILETYPE)
 	{
-		delete m_Dump_File;
-		m_Dump_File = new VTK_File_IO(m_filename,(int)m_Mesh_Type);
+		delete m_Vtk_Dump_File;
+		m_Vtk_Dump_File = new VTK_File_Writer(m_filename,(int)m_Mesh_Type);
 
 		#ifdef OUTPUT_IN_DRAWINGUNITS
 		double discScaling = 1;
 		#else
 		double discScaling = Op->GetGridDelta();
 		#endif
-		m_Dump_File->SetMeshLines(discLines,numLines,discScaling);
-		m_Dump_File->SetNativeDump(g_settings.NativeFieldDumps());
+		m_Vtk_Dump_File->SetMeshLines(discLines,numLines,discScaling);
+		m_Vtk_Dump_File->SetNativeDump(g_settings.NativeFieldDumps());
+	}
+	if (m_fileType==HDF5_FILETYPE)
+	{
+		delete m_HDF5_Dump_File;
+		m_HDF5_Dump_File = new HDF5_File_Writer(m_filename+".h5");
+
+		#ifdef OUTPUT_IN_DRAWINGUNITS
+		double discScaling = 1;
+		#else
+		double discScaling = Op->GetGridDelta();
+		#endif
+		m_HDF5_Dump_File->WriteRectMesh(numLines,discLines,(int)m_Mesh_Type,discScaling);
 	}
 }
 
@@ -214,220 +228,6 @@ void ProcessFields::CalcMeshPos()
 			}
 		}
 	}
-}
-
-bool ProcessFields::WriteMesh2HDF5(string filename, string groupName, unsigned int const* numLines, double const* const* discLines, MeshType meshT, double discLines_scaling)
-{
-	H5::H5File file( filename, H5F_ACC_RDWR );
-
-	H5::Group hdf_group( file.openGroup( groupName ));
-
-	string names[] = {"x","y","z"};
-	if (meshT==CYLINDRICAL_MESH)
-	{
-		names[0]="rho";
-		names[1]="alpha";
-	}
-
-	H5::Group* group = new H5::Group( hdf_group.createGroup( "/Mesh" ));
-	for (int n=0; n<3; ++n)
-	{
-		hsize_t dimsf[1];              // dataset dimensions
-		dimsf[0] = numLines[n];
-		H5::DataSpace dataspace( 1, dimsf );
-		H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
-		H5::DataSet dataset = group->createDataSet( names[n].c_str(), datatype, dataspace );
-		//convert to float...
-		float* array = new float[numLines[n]];
-		for (unsigned int i=0; i<numLines[n]; ++i)
-		{
-#ifdef OUTPUT_IN_DRAWINGUNITS
-			array[i] = Lines[n][i];
-#else
-			if ((meshT==CYLINDRICAL_MESH) && (n==1)) //check for alpha-direction
-				array[i] = discLines[n][i];
-			else
-				array[i] = discLines[n][i] * discLines_scaling;
-#endif
-		}
-		//write to dataset
-		dataset.write( array, H5::PredType::NATIVE_FLOAT );
-		delete[] array;
-	}
-	delete group;
-
-	return true;
-}
-
-bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* const* array, unsigned int const* numLines, float time)
-{
-	const H5std_string FILE_NAME(filename);
-	const H5std_string DATASET_NAME( name );
-
-	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
-
-	H5::Group group( file.openGroup( groupName ));
-
-	hsize_t dimsf[4];              // dataset dimensions
-
-	dimsf[0] = 3;
-	dimsf[1] = numLines[2];
-	dimsf[2] = numLines[1];
-	dimsf[3] = numLines[0];
-
-	H5::DataSpace dataspace( 4, dimsf );
-
-	H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
-//	datatype.setOrder( H5T_ORDER_LE );
-	H5::DataSet dataset = group.createDataSet( DATASET_NAME, datatype, dataspace );
-
-	hsize_t t_dimsf[] = {1};
-	H5::DataSpace t_dataspace( 1, t_dimsf );
-	H5::Attribute attr = dataset.createAttribute("time",H5::PredType::NATIVE_FLOAT,t_dataspace);
-	attr.write( H5::PredType::NATIVE_FLOAT , &time);
-
-	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
-	// at least it is save in case FDTD_FLOAT was defined as double...
-	// why does hdf5 write the dimensions backwards??? or matlab???
-	unsigned long pos = 0;
-	float *hdf5array = new float[3*numLines[0]*numLines[1]*numLines[2]];
-	for (int n=0; n<3; ++n)
-	{
-		for (unsigned int k=0; k<numLines[2]; ++k)
-		{
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				for (unsigned int i=0; i<numLines[0]; ++i)
-				{
-					hdf5array[pos++] = array[n][i][j][k];
-				}
-			}
-		}
-	}
-	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
-	delete[] hdf5array;
-	return true;
-}
-
-bool ProcessFields:: DumpScalarArray2HDF5(string filename, string groupName, string name, FDTD_FLOAT const* const* const* array, unsigned int const* numLines, string attr_name, float attr_value)
-{
-	const H5std_string FILE_NAME(filename);
-	const H5std_string DATASET_NAME( name );
-
-	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
-
-	H5::Group group( file.openGroup( groupName ));
-
-	hsize_t dimsf[3];              // dataset dimensions
-
-	dimsf[0] = numLines[2];
-	dimsf[1] = numLines[1];
-	dimsf[2] = numLines[0];
-
-	H5::DataSpace dataspace( 3, dimsf );
-
-	H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
-//	datatype.setOrder( H5T_ORDER_LE );
-	H5::DataSet dataset = group.createDataSet( DATASET_NAME, datatype, dataspace );
-
-	if (!attr_name.empty())
-	{
-		hsize_t t_dimsf[] = {1};
-		H5::DataSpace t_dataspace( 1, t_dimsf );
-		H5::Attribute attr = dataset.createAttribute(attr_name,H5::PredType::NATIVE_FLOAT,t_dataspace);
-		attr.write( H5::PredType::NATIVE_FLOAT , &attr_value);
-	}
-
-	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
-	// at least it is save in case FDTD_FLOAT was defined as double...
-	// why does hdf5 write the dimensions backwards??? or matlab???
-	unsigned long pos = 0;
-	float *hdf5array = new float[numLines[0]*numLines[1]*numLines[2]];
-	for (unsigned int k=0; k<numLines[2]; ++k)
-	{
-		for (unsigned int j=0; j<numLines[1]; ++j)
-		{
-			for (unsigned int i=0; i<numLines[0]; ++i)
-			{
-				hdf5array[pos++] = array[i][j][k];
-			}
-		}
-	}
-	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
-	delete[] hdf5array;
-	return true;
-}
-
-bool ProcessFields::DumpVectorArray2HDF5(string filename, string groupName, string name, std::complex<float> const* const* const* const* array, unsigned int const* numLines, float weight, float frequency)
-{
-	const H5std_string FILE_NAME(filename);
-	const H5std_string DATASET_NAME_RE( name + "_real");
-	const H5std_string DATASET_NAME_IM( name + "_imag");
-
-	H5::H5File file( FILE_NAME, H5F_ACC_RDWR );
-
-	H5::Group group( file.openGroup( groupName ));
-
-	hsize_t t_dimsf[] = {1};
-	H5::DataSpace t_dataspace( 1, t_dimsf );
-
-	hsize_t dimsf[4];              // dataset dimensions
-	dimsf[0] = 3;
-	dimsf[1] = numLines[2];
-	dimsf[2] = numLines[1];
-	dimsf[3] = numLines[0];
-
-	H5::DataSpace dataspace( 4, dimsf );
-	H5::FloatType datatype( H5::PredType::NATIVE_FLOAT );
-
-	//create and write real part
-	H5::DataSet dataset = group.createDataSet( DATASET_NAME_RE, datatype, dataspace );
-	H5::Attribute attr = dataset.createAttribute("frequency",H5::PredType::NATIVE_FLOAT,t_dataspace);
-	attr.write( H5::PredType::NATIVE_FLOAT , &frequency);
-	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
-	// at least it is save in case FDTD_FLOAT was defined as double...
-	// why does hdf5 write the dimensions backwards??? or matlab???
-	unsigned long pos = 0;
-	float *hdf5array = new float[3*numLines[0]*numLines[1]*numLines[2]];
-	for (int n=0; n<3; ++n)
-	{
-		for (unsigned int k=0; k<numLines[2]; ++k)
-		{
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				for (unsigned int i=0; i<numLines[0]; ++i)
-				{
-					hdf5array[pos++] = array[n][i][j][k].real() * weight;
-				}
-			}
-		}
-	}
-	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
-
-	//create and write imaginary part
-	dataset = group.createDataSet( DATASET_NAME_IM, datatype, dataspace );
-	attr = dataset.createAttribute("frequency",H5::PredType::NATIVE_FLOAT,t_dataspace);
-	attr.write( H5::PredType::NATIVE_FLOAT , &frequency);
-	// I have not the slightest idea why this array-copy action is necessary...  but it's the only way hdf5 does what it is supposed to do anyway!!
-	// at least it is save in case FDTD_FLOAT was defined as double...
-	// why does hdf5 write the dimensions backwards??? or matlab???
-	pos=0;
-	for (int n=0; n<3; ++n)
-	{
-		for (unsigned int k=0; k<numLines[2]; ++k)
-		{
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				for (unsigned int i=0; i<numLines[0]; ++i)
-				{
-					hdf5array[pos++] = array[n][i][j][k].imag() * weight;
-				}
-			}
-		}
-	}
-	dataset.write( hdf5array, H5::PredType::NATIVE_FLOAT );
-	delete[] hdf5array;
-	return true;
 }
 
 FDTD_FLOAT**** ProcessFields::CalcField()

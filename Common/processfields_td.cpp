@@ -17,7 +17,8 @@
 
 #include "processfields_td.h"
 #include "Common/operator_base.h"
-#include "tools/vtk_file_io.h"
+#include "tools/vtk_file_writer.h"
+#include "tools/hdf5_file_writer.h"
 #include <H5Cpp.h>
 #include <iomanip>
 #include <sstream>
@@ -38,29 +39,11 @@ void ProcessFieldsTD::InitProcess()
 	
 	ProcessFields::InitProcess();
 
-	if (m_Dump_File)
-		m_Dump_File->SetHeader(string("openEMS TD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
+	if (m_Vtk_Dump_File)
+		m_Vtk_Dump_File->SetHeader(string("openEMS TD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
 
-	#ifdef OUTPUT_IN_DRAWINGUNITS
-	double discScaling = 1;
-	#else
-	double discScaling = Op->GetGridDelta();
-	#endif
-
-	if (m_fileType==HDF5_FILETYPE)
-	{
-		//create hdf5 file & necessary groups
-		m_filename+= ".h5";
-		H5::H5File* file = new H5::H5File( m_filename, H5F_ACC_TRUNC );
-		H5::Group* group = new H5::Group( file->createGroup( "/FieldData" ));
-		delete group;
-		group = new H5::Group( file->createGroup( "/FieldData/TD" ));
-		delete group;
-		delete file;
-
-		//write mesh information in main root-group
-		ProcessFields::WriteMesh2HDF5(m_filename,"/",numLines,discLines,m_Mesh_Type, discScaling);
-	}
+	if (m_HDF5_Dump_File)
+		m_HDF5_Dump_File->SetCurrentGroup("/FieldData/TD");
 }
 
 int ProcessFieldsTD::Process()
@@ -71,25 +54,37 @@ int ProcessFieldsTD::Process()
 	string filename = m_filename;
 
 	float**** field = CalcField();
+	bool success = true;
 
 	if (m_fileType==VTK_FILETYPE)
 	{
-		m_Dump_File->SetTimestep(m_Eng_Interface->GetNumberOfTimesteps());
-		m_Dump_File->ClearAllFields();
-		m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
-		if (m_Dump_File->Write()==false)
-			cerr << "ProcessFieldsTD::Process: can't dump to file... abort! " << endl;
+		m_Vtk_Dump_File->SetTimestep(m_Eng_Interface->GetNumberOfTimesteps());
+		m_Vtk_Dump_File->ClearAllFields();
+		m_Vtk_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field);
+		success &= m_Vtk_Dump_File->Write();
 	}
 	else if (m_fileType==HDF5_FILETYPE)
 	{
 		stringstream ss;
 		ss << std::setw( pad_length ) << std::setfill( '0' ) << m_Eng_Interface->GetNumberOfTimesteps();
-		DumpVectorArray2HDF5(filename.c_str(), "/FieldData/TD", string( ss.str() ), field, numLines, m_Eng_Interface->GetTime(m_dualTime));
+		size_t datasize[]={numLines[0],numLines[1],numLines[2]};
+		success &= m_HDF5_Dump_File->WriteVectorField(ss.str(), field, datasize);
+		float time[1]={m_Eng_Interface->GetTime(m_dualTime)};
+		success &= m_HDF5_Dump_File->WriteAtrribute("/FieldData/TD/"+ss.str(),"time",time,1);
 	}
 	else
+	{
+		success = false;
 		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;
+	}
 
 	Delete_N_3DArray<FDTD_FLOAT>(field,numLines);
+
+	if (success==false)
+	{
+		SetEnable(false);
+		cerr << "ProcessFieldsTD::Process: can't dump to file... disabled! " << endl;
+	}
 
 	return GetNextInterval();
 }

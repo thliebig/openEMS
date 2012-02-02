@@ -17,7 +17,8 @@
 
 #include "processfields_fd.h"
 #include "Common/operator_base.h"
-#include "tools/vtk_file_io.h"
+#include "tools/vtk_file_writer.h"
+#include "tools/hdf5_file_writer.h"
 #include <H5Cpp.h>
 #include <iomanip>
 #include <sstream>
@@ -50,35 +51,14 @@ void ProcessFieldsFD::InitProcess()
 	//setup the hdf5 file
 	ProcessFields::InitProcess();
 
-	if (m_Dump_File)
-		m_Dump_File->SetHeader(string("openEMS FD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
+	if (m_Vtk_Dump_File)
+		m_Vtk_Dump_File->SetHeader(string("openEMS FD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
 
-	if (m_fileType==HDF5_FILETYPE)
+	if (m_HDF5_Dump_File)
 	{
-		//create	 hdf5 file & necessary groups
-		m_filename+= ".h5";
-		H5::H5File* file = new H5::H5File( m_filename , H5F_ACC_TRUNC );
-		H5::Group* group = new H5::Group( file->createGroup( "/FieldData" ));
-		delete group;
-		group = new H5::Group( file->createGroup( "/FieldData/FD" ));
-
-		//set number of frequencies
-		hsize_t t_dimsf[] = {1};
-		H5::DataSpace t_dataspace( 1, t_dimsf );
-		H5::Attribute attr = group->createAttribute("Number_of_Frequencies",H5::PredType::NATIVE_INT,t_dataspace);
-		int count = m_FD_Samples.size();
-		attr.write( H5::PredType::NATIVE_INT , &count);
-
-		delete group;
-		delete file;
-
-		//write mesh information in main root-group
-		#ifdef OUTPUT_IN_DRAWINGUNITS
-		double discScaling = 1;
-		#else
-		double discScaling = Op->GetGridDelta();
-		#endif
-		ProcessFields::WriteMesh2HDF5(m_filename,"/",numLines,discLines,m_Mesh_Type, discScaling);
+		m_HDF5_Dump_File->SetCurrentGroup("/FieldData/FD");
+		int numFreq = m_FD_Samples.size();
+		m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD","Number_of_Frequencies",&numFreq,1,H5T_NATIVE_INT);
 	}
 
 	//create data structures...
@@ -164,10 +144,10 @@ void ProcessFieldsFD::DumpFDData()
 				stringstream ss;
 				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_p=" << std::setw( 3 ) << std::setfill( '0' ) <<(int)(angle * 180 / M_PI);
 
-				m_Dump_File->SetFilename(ss.str());
-				m_Dump_File->ClearAllFields();
-				m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
-				if (m_Dump_File->Write()==false)
+				m_Vtk_Dump_File->SetFilename(ss.str());
+				m_Vtk_Dump_File->ClearAllFields();
+				m_Vtk_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field);
+				if (m_Vtk_Dump_File->Write()==false)
 					cerr << "ProcessFieldsFD::Process: can't dump to file... abort! " << endl;
 			}
 
@@ -187,10 +167,10 @@ void ProcessFieldsFD::DumpFDData()
 				}
 				stringstream ss;
 				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_abs";
-				m_Dump_File->SetFilename(ss.str());
-				m_Dump_File->ClearAllFields();
-				m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
-				if (m_Dump_File->Write()==false)
+				m_Vtk_Dump_File->SetFilename(ss.str());
+				m_Vtk_Dump_File->ClearAllFields();
+				m_Vtk_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field);
+				if (m_Vtk_Dump_File->Write()==false)
 					cerr << "ProcessFieldsFD::Process: can't dump to file... abort! " << endl;
 			}
 
@@ -210,10 +190,10 @@ void ProcessFieldsFD::DumpFDData()
 				}
 				stringstream ss;
 				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_arg";
-				m_Dump_File->SetFilename(ss.str());
-				m_Dump_File->ClearAllFields();
-				m_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field,numLines);
-				if (m_Dump_File->Write()==false)
+				m_Vtk_Dump_File->SetFilename(ss.str());
+				m_Vtk_Dump_File->ClearAllFields();
+				m_Vtk_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field);
+				if (m_Vtk_Dump_File->Write()==false)
 					cerr << "ProcessFieldsFD::Process: can't dump to file... abort! " << endl;
 			}
 		}
@@ -227,10 +207,15 @@ void ProcessFieldsFD::DumpFDData()
 		{
 			stringstream ss;
 			ss << "f" << n;
-			DumpVectorArray2HDF5(m_filename.c_str(), "/FieldData/FD", ss.str(), m_FD_Fields.at(n),numLines,1.0,m_FD_Samples.at(n));
+			size_t datasize[]={numLines[0],numLines[1],numLines[2]};
+			if (m_HDF5_Dump_File->WriteVectorField(ss.str(), m_FD_Fields.at(n), datasize)==false)
+				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
+			float freq[1]={m_FD_Samples.at(n)};
+			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",freq,1)==false)
+				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
 		}
 		return;
 	}
 
-	cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;
+	cerr << "ProcessFieldsFD::Process: unknown File-Type" << endl;
 }
