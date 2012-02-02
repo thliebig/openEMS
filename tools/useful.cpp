@@ -22,6 +22,9 @@
 #include <climits>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iomanip>
+#include <sstream>
+#include <boost/algorithm/string.hpp>
 #include <iostream>
 
 unsigned int CalcNyquistNum(double fmax, double dT)
@@ -69,4 +72,20 @@ std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrT
 	}
 
 	return jpt;
+}
+
+std::vector<float> SplitString2Float(std::string str, std::string delimiter)
+{
+	std::vector<float> v_f;
+	std::vector<std::string> results;
+	boost::split(results, str, boost::is_any_of(delimiter));
+
+	for (size_t n=0;n<results.size();++n)
+	{
+		std::istringstream is(results.at(n));
+		float num;
+		if (is >> num)
+			v_f.push_back(num);
+	}
+	return v_f;
 }
