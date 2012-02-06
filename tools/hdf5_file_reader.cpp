@@ -70,17 +70,22 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 	if (dataset<0)
 	{
 		cerr << "HDF5_File_Reader::ReadDataSet: dataset not found" << endl;
+		H5Fclose(hdf5_file);
 		return false;
 	}
 	hid_t type = H5Dget_type(dataset);
 	if (type<0)
 	{
 		cerr << "HDF5_File_Reader::ReadDataSet: dataset type error" << endl;
+		H5Dclose(dataset);
+		H5Fclose(hdf5_file);
 		return false;
 	}
 	if (H5Tget_class(type)!=H5T_FLOAT)
 	{
 		cerr << "HDF5_File_Reader::ReadDataSet: dataset type not a float" << endl;
+		H5Dclose(dataset);
+		H5Fclose(hdf5_file);
 		return false;
 	}
 
@@ -95,8 +100,12 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 	if (H5Dread(dataset,type,H5S_ALL,H5S_ALL,H5P_DEFAULT,data)<0)
 	{
 		cerr << "HDF5_File_Reader::ReadDataSet: error reading data" << endl;
+		H5Dclose(dataset);
+		H5Fclose(hdf5_file);
 		return false;
 	}
+	H5Dclose(dataset);
+	H5Fclose(hdf5_file);
 	return true;
 }
 
@@ -130,6 +139,7 @@ bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &mesh
 	else
 	{
 		cerr << "HDF5_File_Reader::ReadMesh: no falid mesh information found" << endl;
+		H5Fclose(hdf5_file);
 		return false;
 	}
 	for (int n=0;n<3;++n)
@@ -142,12 +152,14 @@ bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &mesh
 		{
 			cerr << "HDF5_File_Reader::ReadMesh: mesh dimension error" << endl;
 			delete[] dims;
+			H5Fclose(hdf5_file);
 			return false;
 		}
 		numLines[n]=dims[0];
 		delete[] dims;
 		lines[n]=data;
 	}
+	H5Fclose(hdf5_file);
 	return true;
 }
 
@@ -164,20 +176,28 @@ unsigned int HDF5_File_Reader::GetNumTimeSteps()
 	}
 
 	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<0)
+	{
+		H5Fclose(hdf5_file);
 		return 0;
+	}
 
 	hid_t TD_grp = H5Gopen(hdf5_file, "/FieldData/TD" );
 	if (TD_grp<0)
 	{
 		cerr << "HDF5_File_Reader::GetNumTimeSteps: can't open group ""/FieldData/TD""" << endl;
+		H5Fclose(hdf5_file);
 		return 0;
 	}
 	hsize_t numObj;
 	if (H5Gget_num_objs(TD_grp,&numObj)<0)
 	{
 		cerr << "HDF5_File_Reader::GetNumTimeSteps: can't read number of datasets" << endl;
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return 0;
 	}
+	H5Gclose(TD_grp);
+	H5Fclose(hdf5_file);
 	return numObj;
 }
 
@@ -196,18 +216,22 @@ bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<stri
 	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<0)
 	{
 		cerr << "HDF5_File_Reader::ReadTimeSteps: can't open ""/FieldData/TD""" << endl;
+		H5Fclose(hdf5_file);
 		return false;
 	}
 	hid_t TD_grp = H5Gopen(hdf5_file, "/FieldData/TD" );
 	if (TD_grp<0)
 	{
 		cerr << "HDF5_File_Reader::ReadTimeSteps: can't open ""/FieldData/TD""" << endl;
+		H5Fclose(hdf5_file);
 		return false;
 	}
 	hsize_t numObj;
 	if (H5Gget_num_objs(TD_grp,&numObj)<0)
 	{
 		cerr << "HDF5_File_Reader::ReadTimeSteps: can't read number of datasets" << endl;
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return false;
 	}
 	char name[100];
@@ -220,6 +244,8 @@ bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<stri
 		if (H5Gget_objtype_by_idx(TD_grp, n)  != H5G_DATASET)
 		{
 			cerr << "HDF5_File_Reader::ReadTimeSteps: invalid timestep found!" << endl;
+			H5Gclose(TD_grp);
+			H5Fclose(hdf5_file);
 			return false;
 		}
 		ssize_t name_size = H5Gget_objname_by_idx(TD_grp, n, name, 100 );
@@ -233,9 +259,13 @@ bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<stri
 		else
 		{
 			cerr << "HDF5_File_Reader::ReadTimeSteps: invalid timestep format found!" << endl;
+			H5Gclose(TD_grp);
+			H5Fclose(hdf5_file);
 			return false;
 		}
 	}
+	H5Gclose(TD_grp);
+	H5Fclose(hdf5_file);
 	return true;
 }
 
@@ -255,12 +285,14 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<0)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: can't open ""/FieldData/TD""" << endl;
+		H5Fclose(hdf5_file);
 		return NULL;
 	}
 	hid_t TD_grp = H5Gopen(hdf5_file, "/FieldData/TD" );
 	if (TD_grp<0)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: can't open ""/FieldData/TD""" << endl;
+		H5Fclose(hdf5_file);
 		return NULL;
 	}
 
@@ -268,14 +300,22 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 	if (H5Gget_num_objs(TD_grp,&numObj)<0)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: can't read number of datasets" << endl;
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return NULL;
 	}
 	if (idx>=numObj)
+	{
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return NULL;
+	}
 
 	if (H5Gget_objtype_by_idx(TD_grp, idx)  != H5G_DATASET)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: invalid timestep found!" << endl;
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return NULL;
 	}
 
@@ -287,12 +327,17 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 	if (attr<0)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: time attribute not found!" << endl;
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return NULL;
 	}
 	if (H5Aread(attr, H5T_NATIVE_FLOAT, &time)<0)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: can't read time attribute!" << endl;
-	  return NULL;
+		H5Aclose(attr);
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
+		return NULL;
 	}
 
 	hsize_t nDim;
@@ -303,12 +348,18 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: data dimension invalid" << endl;
 		delete[] dims;
+		H5Aclose(attr);
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return NULL;
 	}
 	if (dims[0]!=3)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: vector data dimension invalid" << endl;
 		delete[] dims;
+		H5Aclose(attr);
+		H5Gclose(TD_grp);
+		H5Fclose(hdf5_file);
 		return NULL;
 	}
 	data_size[0]=dims[3];
@@ -326,6 +377,9 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 					field[d][i][j][k]=data[pos++];
 				}
 	delete[] data;
+	H5Aclose(attr);
+	H5Gclose(TD_grp);
+	H5Fclose(hdf5_file);
 	return field;
 }
 
