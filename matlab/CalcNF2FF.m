@@ -72,7 +72,7 @@ try
         % remove LD_LIBRARY_PATH set by matlab
         system(['export LD_LIBRARY_PATH=; ' openEMS_Path 'nf2ff/nf2ff ' filename '.xml']);
     else
-        system([openEMS_Path 'nf2ff/nf2ff ' filename '.xml']);
+        system([openEMS_Path 'nf2ff.exe ' filename '.xml']);
     end
 
     nf2ff.hdf5;

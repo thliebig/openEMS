@@ -27,14 +27,25 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  return retval;
 	}
 
-	hid_t ds = H5Oopen(file, args(1).string_value().c_str(), H5P_DEFAULT);
-	if (ds==-1)
+#ifdef WIN32
+	// this special treatment is necessary because Win32-Octave ships with a very old hdf5 version (1.6.10)
+	hid_t obj = -1;
+	//try opening the group
+	obj = H5Gopen(file, args(1).string_value().c_str());
+	//try opening the dataset if group failed
+	if (obj==-1)
+		obj = H5Dopen(file, args(1).string_value().c_str());
+#else
+	hid_t obj = H5Oopen(file, args(1).string_value().c_str(), H5P_DEFAULT);
+#endif
+
+	if (obj==-1)
 	{
 	  error("h5readatt_octave: opening the given Object failed");
 	  return retval;
 	}
 
-	hid_t attr = H5Aopen_name(ds, args(2).string_value().c_str());
+	hid_t attr = H5Aopen_name(obj, args(2).string_value().c_str());
 	if (attr==-1)
 	{
 	  error("h5readatt_octave: opening the given Attribute failed");
@@ -63,7 +74,13 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	}
 
 	H5Aclose(attr);
-	H5Dclose(ds);
+#ifdef WIN32
+	// try group close, than Dataset close
+	if (H5Gclose(obj)<0)
+		H5Dclose(obj);
+#else
+	H5Oclose(obj);
+#endif
 	H5Fclose(file);
 	Matrix mat(numVal,1);
 	for (size_t n=0;n<numVal;++n)

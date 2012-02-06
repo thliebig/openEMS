@@ -8,6 +8,7 @@ INCLUDEPATH += ../../tinyxml
 CONFIG += debug_and_release
 
 win32 {
+    QMAKE_CXXFLAGS += -DH5_USE_16_API
     INCLUDEPATH += ../../hdf5/include ../../hdf5/include/cpp ../../boost/include/boost-1_42
 	LIBS +=  ../../hdf5/lib/hdf5.lib
     LIBS += ../../boost/lib/libboost_thread-mgw44-mt.lib
