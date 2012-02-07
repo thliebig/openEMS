@@ -78,7 +78,7 @@ if (do_TD_dump)
         acc = ['%0' int2str(ceil(log10(numel(field.TD.time)+1))) 'd'];
         for n = 1:numel(field.TD.time)
             filename = [vtk_prefix '_TD_' num2str(n,acc) '.vtk' ];
-            Dump2VTK(filename, abs(field.TD.values{n}), mesh, fieldname, varargin{:});
+            Dump2VTK(filename, field.TD.values{n}, mesh, fieldname, varargin{:});
         end
     end
 end
