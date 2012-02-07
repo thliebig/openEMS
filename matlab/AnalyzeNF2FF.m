@@ -19,7 +19,7 @@ function [E_theta,E_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f, theta, ph
 %
 % example:
 %   see examples/NF2FF/infDipol.m
-% 
+%
 % See also CreateNF2FFBox
 %
 % (C) 2010 Sebastian Held <sebastian.held@gmx.de>
@@ -31,6 +31,8 @@ if ~isscalar(f)
     error 'Currently only one frequency is supported. Call this function multiple times.'
 end
 
+warning('openEMS:AnalyzeNF2FF','This function is depreciated , use CalcNF2FF instead');
+
 filenames_E = nf2ff.filenames_E;
 filenames_H = nf2ff.filenames_H;
 
@@ -41,16 +43,21 @@ end
 % read time domain field data and transform into frequency domain
 for n=find(nf2ff.directions==1)
     [Ef{n}, E_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_E{n} '.h5'], 'Frequency', f );
+
+    if (Ef{n}.FD.freq(1) ~= f)
+        error 'frequency mismach'
+    end
+
     %clear out time domain data
-    Ef{n} = rmfield(Ef{n},'TD');
+    if isfield(Ef{n},'TD')
+        Ef{n} = rmfield(Ef{n},'TD');
+    end
 
     [Hf{n}, H_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_H{n} '.h5'], 'Frequency', f );
     %clear out time domain data
-    Hf{n} = rmfield(Hf{n},'TD');
-
-    % matlab error concerning memory management
-    % perform memory garbage collection
-    pack
+    if isfield(Hf{n},'TD')
+        Hf{n} = rmfield(Hf{n},'TD');
+    end
 
     % reshape mesh into row vector
     mesh{n}.x = reshape( E_mesh{n}.lines{1}, 1, [] );
