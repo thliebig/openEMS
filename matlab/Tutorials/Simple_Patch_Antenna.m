@@ -6,7 +6,7 @@
 %
 % Tested with
 %  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.26
+%  - openEMS v0.0.27
 %
 % (C) 2010-2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
@@ -94,7 +94,7 @@ SimBox = SimBox - max_res * 4;  %reduced SimBox size for nf2ff box
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', -SimBox/2, SimBox/2);
 
 %% prepare simulation folder
-Sim_Path = 'tmp';
+Sim_Path = 'tmp_Patch_Ant';
 Sim_CSX = 'patch_ant.xml';
 
 [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
@@ -107,12 +107,12 @@ WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
 
 %% run openEMS
-RunOpenEMS( Sim_Path, Sim_CSX );
+RunOpenEMS( Sim_Path, Sim_CSX);
 
 %% postprocessing & do the plots
 freq = linspace( max([1e9,f0-fc]), f0+fc, 501 );
-U = ReadUI( {'port_ut1','et'}, 'tmp/', freq ); % time domain/freq domain voltage
-I = ReadUI( 'port_it1', 'tmp/', freq ); % time domain/freq domain current (half time step is corrected)
+U = ReadUI( {'port_ut1','et'}, Sim_Path, freq ); % time domain/freq domain voltage
+I = ReadUI( 'port_it1', Sim_Path, freq ); % time domain/freq domain current (half time step is corrected)
 
 % plot feed point impedance
 figure
@@ -150,44 +150,28 @@ f_res = freq(f_res_ind);
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
 thetaRange = (0:2:359) - 180;
-r = 1; % evaluate fields at radius r
+phiRange = (0:2:359) - 180;
 disp( 'calculating far field at phi=[0 90] deg...' );
-[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f_res, thetaRange, [0 90], r );
 
-Dlog=10*log10(Dmax);
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, [0 90]*pi/180);
 
 % display power and directivity
-disp( ['radiated power: Prad = ' num2str(Prad) ' Watt']);
-disp( ['directivity: Dmax = ' num2str(Dlog) ' dBi'] );
-disp( ['efficiency: nu_rad = ' num2str(100*Prad./real(P_in(f_res_ind))) ' %']);
+disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
+disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax) ' (' num2str(10*log10(nf2ff.Dmax)) ' dBi)'] );
+disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in(f_res_ind))) ' %']);
 
-% calculate the e-field magnitude for phi = 0 deg
-E_phi0_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi0_far(n) = norm( [E_far_theta(n,1) E_far_phi(n,1)] );
-end
-
-E_phi0_far_log = 20*log10(abs(E_phi0_far)/max(abs(E_phi0_far)));
-E_phi0_far_log = E_phi0_far_log + Dlog;
+% normalized directivity
+D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
+% directivity
+D_log = D_log + 10*log10(nf2ff.Dmax);
 
 % display polar plot
 figure
-plot( thetaRange, E_phi0_far_log ,'k-' );
+plot( nf2ff.theta, D_log(:,1) ,'k-' );
 xlabel( 'theta (deg)' );
 ylabel( 'directivity (dBi)');
 grid on;
 hold on;
-
-% calculate the e-field magnitude for phi = 90 deg
-E_phi90_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi90_far(n) = norm([E_far_theta(n,2) E_far_phi(n,2)]);
-end
-
-E_phi90_far_log = 20*log10(abs(E_phi90_far)/max(abs(E_phi90_far)));
-E_phi90_far_log = E_phi90_far_log + Dlog;
-
-% display polar plot
-plot( thetaRange, E_phi90_far_log ,'r-' );
+plot( nf2ff.theta, D_log(:,2) ,'r-' );
 legend('phi=0','phi=90')
 

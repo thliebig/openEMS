@@ -6,7 +6,7 @@
 %
 % Tested with
 %  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.26
+%  - openEMS v0.0.27
 %
 % (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
 
@@ -44,7 +44,7 @@ f_stop  = 6e9;
 
 f_rad = (1.9:0.1:4.2)*1e9;
 
-Plot_3D_Rad_Pattern = 0; %this may take a very very long time! > 7h
+Plot_3D_Rad_Pattern = 1; %this may take a long time! > 30min
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD( 20000 );
@@ -99,7 +99,7 @@ portstop  = [ -(N_Cells*CRLH.LL)/2,  CRLH.LW/2, 0];
 portstart = [ feed_length+(N_Cells*CRLH.LL)/2 , -CRLH.LW/2, substratelines(end)];
 portstop  = [ +(N_Cells*CRLH.LL)/2,   CRLH.LW/2, 0];
 [CSX,portstruct{2}] = AddMSLPort( CSX, 999, 2, 'PEC', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  feed_length/2, 'Feed_R', 50 );
- 
+
 
 %% nf2ff calc
 start = [mesh.x(1)   mesh.y(1)   mesh.z(1)  ] + 10*resolution;
@@ -107,7 +107,7 @@ stop  = [mesh.x(end) mesh.y(end) mesh.z(end)] - 10*resolution;
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
 
 %% write/show/run the openEMS compatible xml-file
-Sim_Path = 'tmp';
+Sim_Path = 'tmp_CRLH_LeakyWave';
 Sim_CSX = 'CRLH.xml';
 
 [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
@@ -139,43 +139,52 @@ ylim([-40 2]);
 drawnow
 
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-thetaRange = (0:3:359) - 180;
-for n=1:numel(f_rad)
-    f_res = f_rad(n)
-    % calculate the far field at phi=0 degrees and at phi=90 degrees
-    r = 1; % evaluate fields at radius r
-    disp( 'calculating far field at phi=[0 90] deg...' );
-    [E_far_theta{n},E_far_phi{n},Prad(n),Dmax(n)] = AnalyzeNF2FF( Sim_Path, nf2ff, f_res, thetaRange, 0, r );
-    toc
-end
+theta = (0:3:359) - 180;
+phi = [0 90];
+
+disp( 'calculating far field at phi=[0 90] deg...' );
+
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 1, 'Verbose',1);
+nf2ff = ReadNF2FF(nf2ff);
 
 %%
-Dlog=10*log10(Dmax);
-figure
-thetaRange = (0:3:359) - 180;
+% prepare figures
+figure(10)
+hold on;
+grid on;
+xlabel( 'theta (deg)' );
+ylabel( 'directivity (dBi)');
+title('phi = 0°');
+ylim([-20 10]);
+figure(11)
+hold on;
+grid on;
+xlabel( 'theta (deg)' );
+ylabel( 'directivity (dBi)');
+title('phi = 90°');
+ylim([-20 10]);
+line_styles = {'b-','g:','r-.','c--','m-','y:','k-.'};
+
 for n=1:numel(f_rad)
     f_res = f_rad(n)
-    
+
     % display power and directivity
-    disp( ['radiated power: Prad = ' num2str(Prad(n)) ' Watt']);
-    disp( ['directivity: Dmax = ' num2str(Dlog(n)) ' dBi'] );
+    disp( ['frequency: f = ' num2str(f_res/1e9) ' GHz']);
+    disp( ['radiated power: Prad = ' num2str(nf2ff.Prad(n)) ' Watt']);
+    disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax(n)) ' (' num2str(10*log10(nf2ff.Dmax(n))) ' dBi)'] );
 
-    % calculate the e-field magnitude for phi = 0 deg
-    E_phi0_far{n} = zeros(1,numel(thetaRange));
-    for m=1:numel(thetaRange)
-        E_phi0_far{n}(m) = norm( [E_far_theta{n}(m,1) E_far_phi{n}(m,1)] );
-    end
+    % normalized directivity
+    D_log = 20*log10(nf2ff.E_norm{n}/max(max(nf2ff.E_norm{n})));
+    % directivity
+    D_log = D_log + 10*log10(nf2ff.Dmax(n));
 
-    E_phi0_far_log{n} = 20*log10(abs(E_phi0_far{n})/max(abs(E_phi0_far{n})));
-    E_phi0_far_log{n} = E_phi0_far_log{n} + Dlog(n);
+    figure(10)
+    plot( nf2ff.theta, D_log(:,1) ,line_styles{1+mod(n-1,numel(line_styles))});
+    hold on;
 
-    % display polar plot
-    plot( thetaRange, E_phi0_far_log{n} ,'k-' );
-    xlabel( 'theta (deg)' );
-    ylabel( 'directivity (dBi)');
-    grid on;
-    ylim([-20 10]);
-    pause(0.5)
+    figure(11)
+    plot( nf2ff.theta, D_log(:,2) ,line_styles{1+mod(n-1,numel(line_styles))} );
+    hold on;
 end
 
 if (Plot_3D_Rad_Pattern==0)
@@ -183,39 +192,17 @@ if (Plot_3D_Rad_Pattern==0)
 end
 
 %% calculate 3D pattern
-for n=1:numel(f_rad)
-    f_res = f_rad(n);
-    phiRange = 0:3:360;
-    thetaRange = 0:3:180;
-    r = 1; % evaluate fields at radius r
-    disp( 'calculating 3D far field...' );
-    [E_far_theta_3D{n},E_far_phi_3D{n}] = AnalyzeNF2FF( Sim_Path, nf2ff, f_res, thetaRange, phiRange, r );
-end
+phi = 0:3:360;
+theta = 0:3:180;
+
+disp( 'calculating 3D far field pattern...' );
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 1, 'Verbose',2);
+nf2ff = ReadNF2FF(nf2ff);
 
 %%
-figure
+disp( 'dumping 3D far field pattern to vtk, use Paraview to visualize...' );
 for n=1:numel(f_rad)
-    f_res = f_rad(n);
-
-    E_far_3D{n} = sqrt( abs(E_far_theta_3D{n}).^2 + abs(E_far_phi_3D{n}).^2 );
-    E_far_normalized_3D{n} = E_far_3D{n} / max(E_far_3D{n}(:)) * max(Dmax);
-
-    [theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
-    x = E_far_normalized_3D{n} .* sin(theta) .* cos(phi);
-    y = E_far_normalized_3D{n} .* sin(theta) .* sin(phi);
-    z = E_far_normalized_3D{n} .* cos(theta);
-    surf( x,y,z, E_far_normalized_3D{n},'EdgeColor','none');
-    caxis([0 max(Dmax)]);
-    axis equal
-    xlabel( 'x' );
-    xlim([-6 6]);
-    ylabel( 'y' );
-    ylim([-6 6]);
-    zlabel( 'z' );
-    zlim([-4 10]);
-    title(['f=' num2str(f_res*1e-9,3) 'GHz  -  D=' num2str(Dlog(n),3) 'dBi'],'FontSize',12)
-    pause(0.5)
-
-    DumpFF2VTK( [Sim_Path '/FF_Pattern_' int2str(f_res/1e6) 'MHz.vtk'],E_far_normalized_3D,thetaRange,phiRange,1e-3);
+    E_far_normalized_3D = nf2ff.E_norm{n} / max(max(nf2ff.E_norm{n})) * nf2ff.Dmax(n);
+    DumpFF2VTK( [Sim_Path '/FF_Pattern_' int2str(f_rad(n)/1e6) 'MHz.vtk'],E_far_normalized_3D,theta,phi,1e-3);
 end
 

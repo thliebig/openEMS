@@ -6,7 +6,7 @@
 %
 % Tested with
 %  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.26
+%  - openEMS v0.0.27
 %
 % (C) 2011,2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
@@ -70,7 +70,7 @@ if (f_start<fc)
 end
 
 %% setup FDTD parameter & excitation function
-FDTD = InitFDTD( 30000 );
+FDTD = InitFDTD( 30000, 1e-4 );
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -122,6 +122,11 @@ CSX = SetExcitationWeight(CSX,'excite',weight);
 start=[0 0 mesh.z(8)-0.1 ];
 stop =[0 0 mesh.z(8)+0.1 ];
 CSX = AddCylinder(CSX,'excite',0 ,start,stop,horn.radius);
+
+CSX = AddDump(CSX,'Exc_dump');
+start=[-horn.radius -horn.radius mesh.z(8)-0.1 ];
+stop =[+horn.radius +horn.radius mesh.z(8)+0.1 ];
+CSX = AddBox(CSX,'Exc_dump',0,start,stop);
 
 %% voltage and current definitions using the mode matching probes %%%%%%%%%
 %port 1
@@ -181,56 +186,44 @@ drawnow
 thetaRange = (0:2:359) - 180;
 r = 1; % evaluate fields at radius r
 disp( 'calculating far field at phi=[0 90] deg...' );
-[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f0, thetaRange, [0 90], r );
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f0, thetaRange*pi/180, [0 90]*pi/180);
 
-Dlog=10*log10(Dmax);
+Dlog=10*log10(nf2ff.Dmax);
 G_a = 4*pi*A/(c0/f0)^2;
-e_a = Dmax/G_a;
+e_a = nf2ff.Dmax/G_a;
 
 % display some antenna parameter
-disp( ['radiated power: Prad = ' num2str(Prad) ' Watt']);
+disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
 disp( ['directivity: Dmax = ' num2str(Dlog) ' dBi'] );
 disp( ['aperture efficiency: e_a = ' num2str(e_a*100) '%'] );
 
-%%
-% calculate the e-field magnitude for phi = 0 deg
-E_phi0_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi0_far(n) = norm( [E_far_theta(n,1) E_far_phi(n,1)] );
-end
 
-E_phi0_far_log = 20*log10(abs(E_phi0_far)/max(abs(E_phi0_far)));
-E_phi0_far_log = E_phi0_far_log + Dlog;
+%%
+% normalized directivity
+D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
+% directivity
+D_log = D_log + 10*log10(nf2ff.Dmax);
 
 % display polar plot
 figure
-plot( thetaRange, E_phi0_far_log ,'k-' );
+plot( nf2ff.theta, D_log(:,1) ,'k-' );
 xlabel( 'theta (deg)' );
 ylabel( 'directivity (dBi)');
 grid on;
 hold on;
-
-% calculate the e-field magnitude for phi = 90 deg
-E_phi90_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi90_far(n) = norm([E_far_theta(n,2) E_far_phi(n,2)]);
-end
-
-E_phi90_far_log = 20*log10(abs(E_phi90_far)/max(abs(E_phi90_far)));
-E_phi90_far_log = E_phi90_far_log + Dlog;
-
-% display polar plot
-plot( thetaRange, E_phi90_far_log ,'r-' );
+plot( nf2ff.theta, D_log(:,2) ,'r-' );
 legend('phi=0','phi=90')
+
+drawnow
 
 %% calculate 3D pattern
 phiRange = sort( unique( [-180:5:-100 -100:2.5:-50 -50:1:50 50:2.5:100 100:5:180] ) );
 thetaRange = sort( unique([ 0:1:50 50:2.:100 100:5:180 ]));
-r = 1; % evaluate fields at radius r
+
 disp( 'calculating 3D far field...' );
-[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f0, thetaRange, phiRange, r );
-E_far = sqrt( abs(E_far_theta).^2 + abs(E_far_phi).^2 );
-E_far_normalized = E_far / max(E_far(:)) * Dmax;
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f0, thetaRange*pi/180, phiRange*pi/180, 'Verbose',2,'Outfile','nf2ff_3D.h5');
+
+E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax;
 
 [theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
 x = E_far_normalized .* sin(theta) .* cos(phi);
