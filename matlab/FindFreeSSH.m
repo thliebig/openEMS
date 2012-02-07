@@ -1,5 +1,5 @@
-function host = FindFreeSSH(host_list, wait_time, command)
-% function host = FindFreeSSH(host_list, wait_time, command)
+function host = FindFreeSSH(host_list, Settings, wait_time, command)
+% function host = FindFreeSSH(host_list, Settings, wait_time, command)
 % 
 % Find a free ssh host not running openEMS
 % 
@@ -19,7 +19,7 @@ function host = FindFreeSSH(host_list, wait_time, command)
 % -----------------------
 % author: Thorsten Liebig
 
-if (nargin<3)
+if (nargin<4)
     % command which should return an empty string if host is available
     command = 'ps -e | grep openEMS';
 end
@@ -27,8 +27,18 @@ end
 % 10 seconds ssh timeout
 time_out = 10;
 
-if (nargin<2)
+if (nargin<3)
     wait_time = 600;
+end
+
+if ~isunix
+    ssh_command = [Settings.SSH.Putty.Path '/plink '];
+    ssh_options = [' -i ' Settings.SSH.Putty.Key];
+    command = ['"' command '"'];
+else
+    ssh_command = 'ssh';
+    ssh_options = ['-o ConnectTimeout=' num2str(time_out)];
+    command = ['''' command ''''];
 end
 
 if ischar(host_list)
@@ -54,8 +64,7 @@ end
 while 1
     for n = 1:numel(host_list)
         host = host_list{n};
-        [status, result] = unix(['ssh -o ConnectTimeout=' num2str(time_out) ' ' host ' ''' command '''']);
-
+        [status, result] = unix([ssh_command ' ' ssh_options ' ' host ' ' command ]);
         if (isempty(result) && status==1)
             disp(['FindFreeSSH:: found a free host: ' host ]);
             return
