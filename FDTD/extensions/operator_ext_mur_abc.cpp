@@ -47,7 +47,7 @@ Operator_Extension* Operator_Ext_Mur_ABC::Clone(Operator* op)
 	return new Operator_Ext_Mur_ABC(op, this);
 }
 
-bool Operator_Ext_Mur_ABC::IsCylinderCoordsSave() const
+bool Operator_Ext_Mur_ABC::IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const
 {
 	if (m_ny==2)
 		return true;

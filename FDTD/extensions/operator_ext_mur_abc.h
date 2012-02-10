@@ -40,7 +40,7 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() const;
+	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const;
 	virtual bool IsCylindricalMultiGridSave(bool child) const;
 
 	virtual string GetExtensionName() const {return string("Mur ABC Extension");}

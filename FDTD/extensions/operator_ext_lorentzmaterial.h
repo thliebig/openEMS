@@ -32,7 +32,7 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave() const {return false;}
+	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return false;}
 
 	virtual std::string GetExtensionName() const {return std::string("Lorentz Dispersive Material Extension");}
 

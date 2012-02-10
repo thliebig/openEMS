@@ -396,7 +396,7 @@ Engine_Extension* Operator_Ext_PML_SF_Plane::CreateEngineExtention()
 	return eng_ext;
 }
 
-bool Operator_Ext_PML_SF_Plane::IsCylinderCoordsSave()  const
+bool Operator_Ext_PML_SF_Plane::IsCylinderCoordsSave(bool closedAlpha, bool R0_included)  const
 {
 	if (m_ny==2)
 	{

@@ -50,7 +50,7 @@ public:
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}
 
 	//! The cylindrical operator will check whether the extension is save to use. Default is false. Derive this method to override.
-	virtual bool IsCylinderCoordsSave() const {return false;}
+	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return false;}
 
 	//! The cylindrical multi grid operator will check whether the extension is save to use. Default is false. Derive this method to override.
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return false;}
