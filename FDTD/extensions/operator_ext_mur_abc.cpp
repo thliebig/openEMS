@@ -49,11 +49,11 @@ Operator_Extension* Operator_Ext_Mur_ABC::Clone(Operator* op)
 
 bool Operator_Ext_Mur_ABC::IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const
 {
-	if (m_ny==2)
-		return true;
-	if ((m_ny==0) && (m_top))
-		return true;
-	return false;
+	if ((m_ny==0) && (!m_top) && (R0_included || closedAlpha))
+		return false;
+	if ((m_ny==1) && (closedAlpha))
+		return false;
+	return true;
 }
 
 bool Operator_Ext_Mur_ABC::IsCylindricalMultiGridSave(bool child) const
