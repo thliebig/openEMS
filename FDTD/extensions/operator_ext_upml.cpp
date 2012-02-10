@@ -91,7 +91,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 	Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(op);
 	if (op_cyl)
 	{
-		if (BC[0]==3)
+		if ((BC[0]==3) && (op_cyl->GetClosedAlpha() || op_cyl->GetR0Included()))
 		{
 			BC[0]=0;
 			size[0]=0;
