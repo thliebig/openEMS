@@ -50,12 +50,14 @@ else
     direction = -1;
 end
 
-CSX = AddLumpedElement(CSX,['port_resist_' int2str(portnr)],  n_dir-1, 'Caps', 1, 'R', R);
-CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
+if (R>0)
+    CSX = AddLumpedElement(CSX,['port_resist_' int2str(portnr)],  n_dir-1, 'Caps', 1, 'R', R);
+    CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
+end
 
 % create excitation
 if (nargin >= 7) && ~isempty(excitename)
-    CSX = AddExcitation( CSX, excitename, 0, -dir*direction, varargin{:});
+    CSX = AddExcitation( CSX, excitename, R<=0, -dir*direction, varargin{:});
 	CSX = AddBox( CSX, excitename, prio, start, stop );
 end
 
