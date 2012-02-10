@@ -54,6 +54,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 	vi_R0 = new FDTD_FLOAT[m_Op->GetOriginalNumLines(2)];
 
 	unsigned int pos[3];
+	double coord[3];
 	double inEC[4];
 	double dT = m_Op->GetTimestep();
 	pos[0]=0;
@@ -70,6 +71,19 @@ bool Operator_Ext_Cylinder::BuildExtension()
 		m_Op->SetVV(2,0,0,pos[2], 1);
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
+
+		//search for metal on z-axis
+		m_Op_Cyl->GetYeeCoords(2,pos,coord,false);
+		CSProperties* prop = m_Op->CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), true);
+		if (prop)
+		{
+			if (prop->GetType()==CSProperties::METAL) //set to PEC
+			{
+				m_Op->SetVV(2,0,0,pos[2], 0);
+				vv_R0[pos[2]] = 0;
+				vi_R0[pos[2]] = 0;
+			}
+		}
 	}
 	return true;
 }
