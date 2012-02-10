@@ -27,25 +27,27 @@ CONFIG += debug_and_release
 # CONFIG SECTION
 ###############################################################################
 
+WIN32_LIB_ROOT = ..
+
 win32 {
     QMAKE_CXXFLAGS += -DH5_USE_16_API
-    INCLUDEPATH += ../hdf5/include ../hdf5/include/cpp ../boost/include/boost-1_42
-    LIBS +=  ../hdf5/lib/hdf5.lib
-    LIBS += ../boost/lib/libboost_thread-mgw44-mt.lib
+	INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp $$WIN32_LIB_ROOT/boost/include/boost-1_42
+	LIBS +=  $$WIN32_LIB_ROOT/hdf5/lib/hdf5.lib
+	LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
     LIBS += -L../CSXCAD/release
     LIBS += ../fparser/release/libfparser4.a
     LIBS += ../tinyxml/release/libtinyxml2.a
 
 	### vtk ###
-	 INCLUDEPATH +=   ..\vtk \
-		..\vtk\Common \
-		..\vtk\Filtering \
-		..\vtk\IO
-	 LIBS += ..\vtk\bin\libvtkIO.dll \
-		..\vtk\bin\libvtkFiltering.dll \
-		..\vtk\bin\libvtkCommon.dll \
-		..\vtk\bin\libvtksys.dll \
-		..\vtk\bin\libvtkzlib.dll
+	 INCLUDEPATH +=   $$WIN32_LIB_ROOT\vtk \
+		$$WIN32_LIB_ROOT\vtk\Common \
+		$$WIN32_LIB_ROOT\vtk\Filtering \
+		$$WIN32_LIB_ROOT\vtk\IO
+	 LIBS += $$WIN32_LIB_ROOT\vtk\bin\libvtkIO.dll \
+		$$WIN32_LIB_ROOT\vtk\bin\libvtkFiltering.dll \
+		$$WIN32_LIB_ROOT\vtk\bin\libvtkCommon.dll \
+		$$WIN32_LIB_ROOT\vtk\bin\libvtksys.dll \
+		$$WIN32_LIB_ROOT\vtk\bin\libvtkzlib.dll
 }
 !win32 {
     LIBS += ../fparser/libfparser.so
@@ -243,12 +245,12 @@ bits64 {
     LIBS = ../CSXCAD/ABI2-64/libCSXCAD.so
     LIBS += ../fparser/ABI2-64/libfparser.so
     LIBS += ../tinyxml/ABI2-64/libtinyxml.so
-    LIBS += ../boost-64/lib/libboost_thread.so
-    LIBS += ../hdf5-64/lib/libhdf5.so
-    LIBS += ../hdf5-64/lib/libhdf5_cpp.so \
+	LIBS += $$WIN32_LIB_ROOT/boost-64/lib/libboost_thread.so
+	LIBS += $$WIN32_LIB_ROOT/hdf5-64/lib/libhdf5.so
+	LIBS += $$WIN32_LIB_ROOT/hdf5-64/lib/libhdf5_cpp.so \
         -lpthread
-    INCLUDEPATH += ../hdf5-64/include
-    INCLUDEPATH += ../boost-64/include
+	INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5-64/include
+	INCLUDEPATH += $$WIN32_LIB_ROOT/boost-64/include
 }
 bits32 { 
     QMAKE_CXXFLAGS_RELEASE += -m32 \
@@ -259,11 +261,11 @@ bits32 {
     LIBS = ../CSXCAD/ABI2-32/libCSXCAD.so
     LIBS += ../fparser/ABI2-32/libfparser.so
     LIBS += ../tinyxml/ABI2-32/libtinyxml.so
-    LIBS += ../boost-32/lib/libboost_thread.so
-    LIBS += ../hdf5-32/lib/libhdf5.so
-    LIBS += ../hdf5-32/lib/libhdf5_cpp.so
-    INCLUDEPATH += ../hdf5-32/include
-    INCLUDEPATH += ../boost-32/include
+	LIBS += $$WIN32_LIB_ROOT/boost-32/lib/libboost_thread.so
+	LIBS += $$WIN32_LIB_ROOT/hdf5-32/lib/libhdf5.so
+	LIBS += $$WIN32_LIB_ROOT/hdf5-32/lib/libhdf5_cpp.so
+	INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5-32/include
+	INCLUDEPATH += $$WIN32_LIB_ROOT/boost-32/include
 }
 ABI2 { 
     DESTDIR = $$OBJECTS_DIR
