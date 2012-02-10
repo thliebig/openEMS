@@ -60,23 +60,39 @@ void nf2ff_calc_thread::operator()()
 	complex<float>**** E_field=m_data.E_field;
 	complex<float>**** H_field=m_data.H_field;
 
+	int mesh_type = m_data.mesh_type;
+
 	// calc Js and Ms (eq. 8.15a/b)
 	pos[ny]=0;
 	for (pos_t=0; pos_t<num_t; ++pos_t)
 	{
 		pos[nP] = m_start+pos_t;
 		for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
-			{
-				// Js =  n x H
-				Js[0][pos[0]][pos[1]][pos[2]] = normDir[1]*H_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*H_field[1][pos[0]][pos[1]][pos[2]];
-				Js[1][pos[0]][pos[1]][pos[2]] = normDir[2]*H_field[0][pos[0]][pos[1]][pos[2]] - normDir[0]*H_field[2][pos[0]][pos[1]][pos[2]];
-				Js[2][pos[0]][pos[1]][pos[2]] = normDir[0]*H_field[1][pos[0]][pos[1]][pos[2]] - normDir[1]*H_field[0][pos[0]][pos[1]][pos[2]];
+		{
+			// Js =  n x H
+			Js[0][pos[0]][pos[1]][pos[2]] = normDir[1]*H_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*H_field[1][pos[0]][pos[1]][pos[2]];
+			Js[1][pos[0]][pos[1]][pos[2]] = normDir[2]*H_field[0][pos[0]][pos[1]][pos[2]] - normDir[0]*H_field[2][pos[0]][pos[1]][pos[2]];
+			Js[2][pos[0]][pos[1]][pos[2]] = normDir[0]*H_field[1][pos[0]][pos[1]][pos[2]] - normDir[1]*H_field[0][pos[0]][pos[1]][pos[2]];
 
-				// Ms = -n x E
-				Ms[0][pos[0]][pos[1]][pos[2]] = normDir[2]*E_field[1][pos[0]][pos[1]][pos[2]] - normDir[1]*E_field[2][pos[0]][pos[1]][pos[2]];
-				Ms[1][pos[0]][pos[1]][pos[2]] = normDir[0]*E_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*E_field[0][pos[0]][pos[1]][pos[2]];
-				Ms[2][pos[0]][pos[1]][pos[2]] = normDir[1]*E_field[0][pos[0]][pos[1]][pos[2]] - normDir[0]*E_field[1][pos[0]][pos[1]][pos[2]];
+			// Ms = -n x E
+			Ms[0][pos[0]][pos[1]][pos[2]] = normDir[2]*E_field[1][pos[0]][pos[1]][pos[2]] - normDir[1]*E_field[2][pos[0]][pos[1]][pos[2]];
+			Ms[1][pos[0]][pos[1]][pos[2]] = normDir[0]*E_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*E_field[0][pos[0]][pos[1]][pos[2]];
+			Ms[2][pos[0]][pos[1]][pos[2]] = normDir[1]*E_field[0][pos[0]][pos[1]][pos[2]] - normDir[0]*E_field[1][pos[0]][pos[1]][pos[2]];
+
+			//transform to cartesian coordinates
+			if (mesh_type==1)
+			{
+				Js[0][pos[0]][pos[1]][pos[2]] = (normDir[1]*H_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*H_field[1][pos[0]][pos[1]][pos[2]])*cos(lines[1][pos[1]]) \
+						- (normDir[2]*H_field[0][pos[0]][pos[1]][pos[2]] - normDir[0]*H_field[2][pos[0]][pos[1]][pos[2]])*sin(lines[1][pos[1]]);
+				Js[1][pos[0]][pos[1]][pos[2]] = (normDir[1]*H_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*H_field[1][pos[0]][pos[1]][pos[2]])*sin(lines[1][pos[1]]) \
+						+ (normDir[2]*H_field[0][pos[0]][pos[1]][pos[2]] - normDir[0]*H_field[2][pos[0]][pos[1]][pos[2]])*cos(lines[1][pos[1]]);
+
+				Ms[0][pos[0]][pos[1]][pos[2]] = (normDir[2]*E_field[1][pos[0]][pos[1]][pos[2]] - normDir[1]*E_field[2][pos[0]][pos[1]][pos[2]])*cos(lines[1][pos[1]]) \
+						- (normDir[0]*E_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*E_field[0][pos[0]][pos[1]][pos[2]])*sin(lines[1][pos[1]]);
+				Ms[1][pos[0]][pos[1]][pos[2]] = (normDir[2]*E_field[1][pos[0]][pos[1]][pos[2]] - normDir[1]*E_field[2][pos[0]][pos[1]][pos[2]])*sin(lines[1][pos[1]]) \
+						+ (normDir[0]*E_field[2][pos[0]][pos[1]][pos[2]] - normDir[2]*E_field[0][pos[0]][pos[1]][pos[2]])*cos(lines[1][pos[1]]);
 			}
+		}
 	}
 
 	complex<float>** m_Nt=m_data.m_Nt;
@@ -84,6 +100,12 @@ void nf2ff_calc_thread::operator()()
 	complex<float>** m_Lt=m_data.m_Lt;
 	complex<float>** m_Lp=m_data.m_Lp;
 
+	float center[3] = {m_nf_calc->m_centerCoord[0],m_nf_calc->m_centerCoord[1],m_nf_calc->m_centerCoord[2]};
+	if (mesh_type==1)
+	{
+		center[0] = m_nf_calc->m_centerCoord[0]*cos(m_nf_calc->m_centerCoord[1]);
+		center[1] = m_nf_calc->m_centerCoord[0]*sin(m_nf_calc->m_centerCoord[1]);
+	}
 	// calc local Nt,Np,Lt and Lp
 	float area;
 	float cosT_cosP,cosP_sinT;
@@ -110,19 +132,21 @@ void nf2ff_calc_thread::operator()()
 			{
 				pos[nP] = m_start+pos_t;
 				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
-					{
-						r_cos_psi = lines[0][pos[0]]*cosP_sinT + lines[1][pos[1]]*sinT_sinP + lines[2][pos[2]]*cosT;
-						exp_jkr = exp(_I_*k*r_cos_psi);
-						area = edge_length_P[pos[nP]]*edge_length_PP[pos[nPP]];
-						m_Nt[tn][pn] += area*exp_jkr*(Js[0][pos[0]][pos[1]][pos[2]]*cosT_cosP + Js[1][pos[0]][pos[1]][pos[2]]*cosT_sinP \
-													- Js[2][pos[0]][pos[1]][pos[2]]*sinT);
-						m_Np[tn][pn] += area*exp_jkr*(Js[1][pos[0]][pos[1]][pos[2]]*cosP - Js[0][pos[0]][pos[1]][pos[2]]*sinP);
+				{
+					if (mesh_type==0)
+						r_cos_psi = (lines[0][pos[0]]-center[0])*cosP_sinT + (lines[1][pos[1]]-center[1])*sinT_sinP + (lines[2][pos[2]]-center[2])*cosT;
+					else
+						r_cos_psi = ((lines[0][pos[0]]*cos(lines[1][pos[1]]))-center[0])*cosP_sinT + ((lines[0][pos[0]]*sin(lines[1][pos[1]]))-center[1])*sinT_sinP + (lines[2][pos[2]]-center[2])*cosT;
+					exp_jkr = exp(_I_*k*r_cos_psi);
+					area = edge_length_P[pos[nP]]*edge_length_PP[pos[nPP]];
+					m_Nt[tn][pn] += area*exp_jkr*(Js[0][pos[0]][pos[1]][pos[2]]*cosT_cosP + Js[1][pos[0]][pos[1]][pos[2]]*cosT_sinP \
+												  - Js[2][pos[0]][pos[1]][pos[2]]*sinT);
+					m_Np[tn][pn] += area*exp_jkr*(Js[1][pos[0]][pos[1]][pos[2]]*cosP - Js[0][pos[0]][pos[1]][pos[2]]*sinP);
 
-						m_Lt[tn][pn] += area*exp_jkr*(Ms[0][pos[0]][pos[1]][pos[2]]*cosT_cosP + Ms[1][pos[0]][pos[1]][pos[2]]*cosT_sinP \
-													- Ms[2][pos[0]][pos[1]][pos[2]]*sinT);
-						m_Lp[tn][pn] += area*exp_jkr*(Ms[1][pos[0]][pos[1]][pos[2]]*cosP - Ms[0][pos[0]][pos[1]][pos[2]]*sinP);
-					}
-
+					m_Lt[tn][pn] += area*exp_jkr*(Ms[0][pos[0]][pos[1]][pos[2]]*cosT_cosP + Ms[1][pos[0]][pos[1]][pos[2]]*cosT_sinP \
+												  - Ms[2][pos[0]][pos[1]][pos[2]]*sinT);
+					m_Lp[tn][pn] += area*exp_jkr*(Ms[1][pos[0]][pos[1]][pos[2]]*cosP - Ms[0][pos[0]][pos[1]][pos[2]]*sinP);
+				}
 			}
 		}
 
@@ -135,19 +159,19 @@ void nf2ff_calc_thread::operator()()
 /***********************************************************************/
 
 
-nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi)
+nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vector<float> center)
 {
 	m_freq = freq;
 
 	m_numTheta = theta.size();
 	m_theta = new float[m_numTheta];
 	for (size_t n=0;n<m_numTheta;++n)
-		 m_theta[n]=theta.at(n);
+		m_theta[n]=theta.at(n);
 
 	m_numPhi = phi.size();
 	m_phi = new float[m_numPhi];
 	for (size_t n=0;n<m_numPhi;++n)
-		 m_phi[n]=phi.at(n);
+		m_phi[n]=phi.at(n);
 
 	unsigned int numLines[2] = {m_numTheta, m_numPhi};
 	m_E_theta = Create2DArray<std::complex<float> >(numLines);
@@ -156,7 +180,19 @@ nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi)
 	m_H_phi = Create2DArray<std::complex<float> >(numLines);
 	m_P_rad = Create2DArray<float>(numLines);
 
-	m_centerCoord[0]=m_centerCoord[1]=m_centerCoord[2]=0;
+	if (center.size()==3)
+	{
+		m_centerCoord[0]=center.at(0);
+		m_centerCoord[1]=center.at(1);
+		m_centerCoord[2]=center.at(2);
+	}
+	else if (center.size()>0)
+	{
+		cerr << "nf2ff_calc::nf2ff_calc: Warning: Center coordinates error, ignoring!" << endl;
+		m_centerCoord[0]=m_centerCoord[1]=m_centerCoord[2]=0.0;
+	}
+	else
+		m_centerCoord[0]=m_centerCoord[1]=m_centerCoord[2]=0.0;
 
 	m_radPower = 0;
 	m_maxDir = 0;
@@ -189,7 +225,7 @@ nf2ff_calc::~nf2ff_calc()
 	m_Barrier = NULL;
 }
 
-bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field)
+bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType)
 {
 	//find normal direction
 	int ny = -1;
@@ -231,6 +267,24 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 	edge_length_PP[0]=0.5*(lines[nPP][1]-lines[nPP][0]);
 	edge_length_PP[numLines[nPP]-1]=0.5*(lines[nPP][numLines[nPP]-1]-lines[nPP][numLines[nPP]-2]);
 
+	//check for cylindrical mesh
+	if (MeshType==1)
+	{
+		if (ny==0) //surface a-z
+		{
+			for (unsigned int n=0;n<numLines[nP];++n)
+				edge_length_P[n]*=lines[0][0]; //angle-width * radius
+		}
+		else if (ny==2) //surface r-a
+		{
+			//calculate: area = delta_angle * delta_radius * center_radius
+			for (unsigned int n=1;n<numLines[nP]-1;++n)
+				edge_length_P[n]*=lines[nP][n];  //radius-width * center-radius
+			edge_length_P[0]*=(lines[nP][0]+0.5*edge_length_P[0]);
+			edge_length_P[numLines[nP]-1]*=(lines[nP][numLines[nP]-1]-0.5*edge_length_P[numLines[nP]-1]);
+		}
+	}
+
 	complex<float> power = 0;
 	float area;
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
@@ -239,10 +293,9 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 			{
 				area = edge_length_P[pos[nP]]*edge_length_PP[pos[nPP]];
 				power = (E_field[nP][pos[0]][pos[1]][pos[2]]*conj(H_field[nPP][pos[0]][pos[1]][pos[2]]) \
-							- E_field[nPP][pos[0]][pos[1]][pos[2]]*conj(H_field[nP][pos[0]][pos[1]][pos[2]]));
+						 - E_field[nPP][pos[0]][pos[1]][pos[2]]*conj(H_field[nP][pos[0]][pos[1]][pos[2]]));
 				m_radPower += 0.5*area*real(power)*normDir[ny];
 			}
-
 	unsigned int numAngles[2] = {m_numTheta, m_numPhi};
 
 	// setup multi-threading jobs
@@ -255,6 +308,7 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 	for (unsigned int n=0; n<m_numThreads; n++)
 	{
 		thread_data[n].ny=ny;
+		thread_data[n].mesh_type = MeshType;
 		thread_data[n].normDir=normDir;
 		thread_data[n].numLines=numLines;
 		thread_data[n].lines=lines;

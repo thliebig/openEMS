@@ -34,6 +34,7 @@ typedef struct
 {
 	//local working data IN
 	int ny;
+	int mesh_type;
 	float* normDir;
 	unsigned int* numLines;
 	float **lines;
@@ -71,7 +72,7 @@ class nf2ff_calc
 	// allow full data access to nf2ff_calc_thread class
 	friend class nf2ff_calc_thread;
 public:
-	nf2ff_calc(float freq, vector<float> theta, vector<float> phi);
+	nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vector<float> center);
 	~nf2ff_calc();
 
 	float GetRadPower() const {return m_radPower;}
@@ -83,7 +84,7 @@ public:
 	unsigned int GetNumThreads() const {return m_numThreads;}
 	void SetNumThreads(unsigned int n) {m_numThreads=n;}
 
-	bool AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field);
+	bool AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType=0);
 
 protected:
 	float m_freq;

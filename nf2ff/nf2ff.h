@@ -32,7 +32,7 @@ class TiXmlElement;
 class nf2ff
 {
 public:
-	nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, unsigned int numThreads=0);
+	nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, vector<float> center, unsigned int numThreads=0);
 	~nf2ff();
 
 	bool AnalyseFile(string E_Field_file, string H_Field_file);

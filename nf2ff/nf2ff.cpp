@@ -34,7 +34,7 @@
 //external libs
 #include "tinyxml.h"
 
-nf2ff::nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, unsigned int numThreads)
+nf2ff::nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, vector<float> center, unsigned int numThreads)
 {
 	m_freq = freq;
 
@@ -51,11 +51,10 @@ nf2ff::nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, unsigne
 	m_nf2ff.resize(freq.size(),NULL);
 	for (size_t fn=0;fn<freq.size();++fn)
 	{
-		m_nf2ff.at(fn) = new nf2ff_calc(freq.at(fn),theta, phi);
+		m_nf2ff.at(fn) = new nf2ff_calc(freq.at(fn),theta, phi, center);
 		if (numThreads)
 			m_nf2ff.at(fn)->SetNumThreads(numThreads);
 	}
-
 	m_radius = 1;
 	m_Verbose = 0;
 }
@@ -99,6 +98,12 @@ bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 		return false;
 	}
 	vector<float> freq = SplitString2Float(attr);
+
+	vector<float> center;
+	attr = ti_nf2ff->Attribute("Center");
+	if (attr!=NULL)
+		center = SplitString2Float(attr);
+
 	attr = ti_nf2ff->Attribute("Outfile");
 	if (attr==NULL)
 	{
@@ -152,7 +157,7 @@ bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 	}
 	vector<float> phi = SplitString2Float(ti_phi_text->Value());
 
-	nf2ff* l_nf2ff = new nf2ff(freq,theta,phi,numThreads);
+	nf2ff* l_nf2ff = new nf2ff(freq,theta,phi,center,numThreads);
 	l_nf2ff->SetVerboseLevel(Verbose);
 
 	TiXmlElement* ti_Planes = ti_nf2ff->FirstChildElement();
@@ -266,7 +271,7 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 	{
 		if (m_Verbose>1)
 			cerr << "nf2ff: f = " << m_freq.at(fn) << "Hz (" << fn+1 << "/" << m_nf2ff.size() << ") ...";
-		m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, E_fd_data.at(fn), H_fd_data.at(fn));
+		m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, E_fd_data.at(fn), H_fd_data.at(fn),E_meshType);
 		if (m_Verbose>1)
 			cerr << " done." << endl;
 	}

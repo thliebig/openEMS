@@ -4,6 +4,10 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % Calculate the near-field to far-field transformation created by
 % CreateNF2FFBox
 %
+% IMPORTANT:
+% Make sure to define the correct nf2ff phase center, aka. central antenna
+% position! See optional parameter below!! Default is [0 0 0]
+%
 % parameter:
 % nf2ff:    data structure created by CreateNF2FFBox
 % Sim_Path: path to simulation data
@@ -11,6 +15,10 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % theta,phi: spherical coordinates to evaluate the far-field on
 %
 % optional paramater:
+% 'Center': nf2ff phase center, default is [0 0 0]
+%           !! Make sure the center is never outside of your nf2ff box!!
+%           Definition is the correct coordinate system necessary
+%           --> either Cartesian or cylindrical coordinates
 % 'Mode':   'Mode', 0 -> read only, if data already exist (default)
 %           'Mode', 1 -> calculate anyway, overwrite existing
 %           'Mode', 2 -> read only, fail if not existing
