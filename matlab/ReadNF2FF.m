@@ -24,11 +24,25 @@ if isOctave
     nf2ff.Dmax = double(h5readatt_octave(file,'/nf2ff','Dmax'));
     hdf = load( '-hdf5', file );
     for n=1:numel(nf2ff.freq)
-          nf2ff.E_theta{n} = double(hdf.nf2ff.E_theta.FD.(['f' int2str(n-1) '_real']) +1i*hdf.nf2ff.E_theta.FD.(['f' int2str(n-1) '_imag']) );
-          nf2ff.E_phi{n} = double(hdf.nf2ff.E_phi.FD.(['f' int2str(n-1) '_real']) +1i*hdf.nf2ff.E_phi.FD.(['f' int2str(n-1) '_imag']) );
-          nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
+        nf2ff.E_theta{n} = double(hdf.nf2ff.E_theta.FD.(['f' int2str(n-1) '_real']) +1i*hdf.nf2ff.E_theta.FD.(['f' int2str(n-1) '_imag']) );
+        nf2ff.E_phi{n} = double(hdf.nf2ff.E_phi.FD.(['f' int2str(n-1) '_real']) +1i*hdf.nf2ff.E_phi.FD.(['f' int2str(n-1) '_imag']) );
+        nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
     end
 else
+    % matlab compatibility to older versions (will be removed soon)
+    if (exist('h5read')<2)
+        nf2ff.freq = double(hdf5read(file,'/nf2ff','Frequency'));
+        nf2ff.Prad = double(hdf5read(file,'/nf2ff','Prad'));
+        nf2ff.Dmax = double(hdf5read(file,'/nf2ff','Dmax'));
+
+        for n=1:numel(nf2ff.freq)
+            nf2ff.E_theta{n} = double(hdf5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_real']) + 1i*hdf5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_imag']));
+            nf2ff.E_phi{n} = double(hdf5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_real']) + 1i*hdf5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_imag']));
+            nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
+        end
+        return
+    end
+
     nf2ff.freq = double(h5readatt(file,'/nf2ff','Frequency'));
     nf2ff.Prad = double(h5readatt(file,'/nf2ff','Prad'));
     nf2ff.Dmax = double(h5readatt(file,'/nf2ff','Dmax'));
