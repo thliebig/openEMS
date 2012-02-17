@@ -69,6 +69,11 @@ openEMS_Path = [dir filesep '..' filesep];
 if ((exist(nf2ff.hdf5,'file') && (mode==0)) || (mode==2))
     disp('CalcNF2FF: Reading nf2ff data only...')
     nf2ff = ReadNF2FF(nf2ff);
+
+    % verify read data
+    if ( (vectorEqual(nf2ff.freq,freq)==0) || (vectorEqual(nf2ff.theta,theta)==0) || (vectorEqual(nf2ff.phi,phi)==0) )
+        error('openEMS:CalcNF2FF','data mismatch between read and requested data --> recalculate nf2ff --> Set Mode to 1 ');
+    end
     return;
 end
 
@@ -91,3 +96,19 @@ catch
 end
 
 nf2ff = ReadNF2FF(nf2ff);
+
+function equal = vectorEqual(v1, v2, acc)
+if (nargin<3)
+    acc = 1e-6;
+end
+
+equal = 0;
+if numel(v1)~=numel(v2)
+    return;
+end
+
+if sum(abs(v1(:)-v2(:)) > acc)>0
+    return;
+end
+equal = 1;
+return
