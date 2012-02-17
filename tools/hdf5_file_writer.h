@@ -42,6 +42,9 @@ public:
 	bool WriteAtrribute(std::string locName, std::string attr_name, void const* value, hsize_t size, hid_t mem_type);
 	bool WriteAtrribute(std::string locName, std::string attr_name, float const* value, hsize_t size);
 	bool WriteAtrribute(std::string locName, std::string attr_name, std::vector<float> values);
+	bool WriteAtrribute(std::string locName, std::string attr_name, std::vector<double> values);
+	bool WriteAtrribute(std::string locName, std::string attr_name, float value);
+	bool WriteAtrribute(std::string locName, std::string attr_name, double value);
 
 	void SetCurrentGroup(std::string group, bool createGrp=true);
 

@@ -325,11 +325,6 @@ bool HDF5_File_Writer::WriteData(std::string dataSetName, float const* field_buf
 	return true;
 }
 
-bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, float const* value, hsize_t size)
-{
-	return WriteAtrribute(locName,attr_name, value, size, H5T_NATIVE_FLOAT);
-}
-
 bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, void const* value, hsize_t size, hid_t mem_type)
 {
 	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
@@ -383,10 +378,33 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	return true;
 }
 
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, float const* value, hsize_t size)
+{
+	return WriteAtrribute(locName,attr_name, value, size, H5T_NATIVE_FLOAT);
+}
+
 bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, vector<float> values)
 {
 	float val[values.size()];
 	for (size_t n=0;n<values.size();++n)
 		val[n]=values.at(n);
-	return HDF5_File_Writer::WriteAtrribute(locName, attr_name,val,values.size());
+	return HDF5_File_Writer::WriteAtrribute(locName, attr_name,val,values.size(),H5T_NATIVE_FLOAT);
+}
+
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, vector<double> values)
+{
+	float val[values.size()];
+	for (size_t n=0;n<values.size();++n)
+		val[n]=values.at(n);
+	return HDF5_File_Writer::WriteAtrribute(locName, attr_name, val, values.size(), H5T_NATIVE_DOUBLE);
+}
+
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, float value)
+{
+	return HDF5_File_Writer::WriteAtrribute(locName, attr_name,&value,1, H5T_NATIVE_FLOAT);
+}
+
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, double value)
+{
+	return HDF5_File_Writer::WriteAtrribute(locName, attr_name,&value,1, H5T_NATIVE_DOUBLE);
 }
