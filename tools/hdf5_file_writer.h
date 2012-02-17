@@ -43,7 +43,7 @@ public:
 	bool WriteAtrribute(std::string locName, std::string attr_name, float const* value, hsize_t size);
 	bool WriteAtrribute(std::string locName, std::string attr_name, std::vector<float> values);
 
-	void SetCurrentGroup(std::string group) {m_Group = group;}
+	void SetCurrentGroup(std::string group, bool createGrp=true);
 
 protected:
 	std::string m_filename;

@@ -89,6 +89,25 @@ hid_t HDF5_File_Writer::OpenGroup(hid_t hdf5_file, string group)
 	return grp;
 }
 
+void HDF5_File_Writer::SetCurrentGroup(std::string group, bool createGrp)
+{
+	m_Group = group;
+	if (createGrp==false)
+		return;
+
+	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
+	if (hdf5_file<0)
+	{
+		cerr << "HDF5_File_Writer::SetCurrentGroup: Error, opening the given file """ << m_filename << """ failed" << endl;
+		return;
+	}
+	hid_t hdf5_group = OpenGroup(hdf5_file, m_Group);
+	if (hdf5_group<0)
+		cerr << "HDF5_File_Writer::WriteData: Error opening group" << endl;
+	H5Gclose(hdf5_group);
+	H5Fclose(hdf5_file);
+}
+
 bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, double const* const* discLines, int MeshType, double scaling)
 {
 	float* array[3];
