@@ -57,8 +57,7 @@ void ProcessFieldsFD::InitProcess()
 	if (m_HDF5_Dump_File)
 	{
 		m_HDF5_Dump_File->SetCurrentGroup("/FieldData/FD");
-		int numFreq = m_FD_Samples.size();
-		m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD","Number_of_Frequencies",&numFreq,1,H5T_NATIVE_INT);
+		m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD","frequency",m_FD_Samples);
 	}
 
 	//create data structures...
@@ -210,8 +209,12 @@ void ProcessFieldsFD::DumpFDData()
 			size_t datasize[]={numLines[0],numLines[1],numLines[2]};
 			if (m_HDF5_Dump_File->WriteVectorField(ss.str(), m_FD_Fields.at(n), datasize)==false)
 				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
+
+			//legacy support, use /FieldData/FD frequency-Attribute in the future
 			float freq[1]={m_FD_Samples.at(n)};
-			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",freq,1)==false)
+			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str()+"_real","frequency",freq,1)==false)
+				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
+			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str()+"_imag","frequency",freq,1)==false)
 				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
 		}
 		return;
