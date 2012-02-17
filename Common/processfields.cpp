@@ -108,6 +108,8 @@ void ProcessFields::InitProcess()
 		double discScaling = Op->GetGridDelta();
 		#endif
 		m_HDF5_Dump_File->WriteRectMesh(numLines,discLines,(int)m_Mesh_Type,discScaling);
+
+		m_HDF5_Dump_File->WriteAtrribute("/","openEMS_HDF5_version",0.2);
 	}
 }
 
