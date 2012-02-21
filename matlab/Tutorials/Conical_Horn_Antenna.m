@@ -140,7 +140,7 @@ CSX = AddBox(CSX,'it1', 0 ,start,stop);
 %% nf2ff calc
 start = [mesh.x(9) mesh.y(9) mesh.z(9)];
 stop  = [mesh.x(end-8) mesh.y(end-8) mesh.z(end-8)];
-[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop, [1 1 1 1 0 1]);
+[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop, 'Directions', [1 1 1 1 0 1]);
 
 %% prepare simulation folder
 Sim_Path = 'tmp';

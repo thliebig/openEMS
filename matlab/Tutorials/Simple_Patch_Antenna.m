@@ -37,7 +37,7 @@ feed.width = 2;  %feeding port width
 feed.R = 50;     %feed resistance
 
 % size of the simulation box
-SimBox = [200 200 100];
+SimBox = [200 200 150];
 
 %% setup FDTD parameter & excitation function
 f0 = 2e9; % center frequency
@@ -60,7 +60,7 @@ mesh.y = [-SimBox(2)/2 SimBox(2)/2 -substrate.length/2 substrate.length/2 -feed.
 mesh.y = SmoothMeshLines( mesh.y, max_res, 1.4 );
 
 %create fixed lines for the simulation box and given number of lines inside the substrate
-mesh.z = [-SimBox(3)/2 linspace(0,substrate.thickness,substrate.cells) SimBox(3)/2 ];
+mesh.z = [-SimBox(3)/3 linspace(0,substrate.thickness,substrate.cells) SimBox(3)*2/3 ];
 mesh.z = SmoothMeshLines( mesh.z, max_res, 1.4 );
 
 CSX = DefineRectGrid( CSX, unit, mesh );
@@ -90,8 +90,9 @@ stop  = [feed.pos+.1 +feed.width/2 substrate.thickness];
 [CSX] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], 'excite');
 
 %%nf2ff calc
-SimBox = SimBox - max_res * 4;  %reduced SimBox size for nf2ff box
-[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', -SimBox/2, SimBox/2);
+start = [mesh.x(4)     mesh.y(4)     mesh.z(4)];
+stop  = [mesh.x(end-3) mesh.y(end-3) mesh.z(end-3)];
+[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
 
 %% prepare simulation folder
 Sim_Path = 'tmp_Patch_Ant';
@@ -149,11 +150,9 @@ f_res_ind = find(s11==min(s11));
 f_res = freq(f_res_ind);
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
-thetaRange = (0:2:359) - 180;
-phiRange = (0:2:359) - 180;
 disp( 'calculating far field at phi=[0 90] deg...' );
 
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, [0 90]*pi/180);
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, [-180:2:180]*pi/180, [0 90]*pi/180);
 
 % display power and directivity
 disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
@@ -165,7 +164,7 @@ D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
 % directivity
 D_log = D_log + 10*log10(nf2ff.Dmax);
 
-% display polar plot
+%% display polar plot
 figure
 plot( nf2ff.theta, D_log(:,1) ,'k-' );
 xlabel( 'theta (deg)' );
@@ -175,3 +174,11 @@ hold on;
 plot( nf2ff.theta, D_log(:,2) ,'r-' );
 legend('phi=0','phi=90')
 
+%%
+disp( 'calculating 3D far field pattern and dumping to vtk (use Paraview to visualize)...' );
+thetaRange = (0:2:180);
+phiRange = (0:2:360) - 180;
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180,'Verbose',1,'Outfile','3D_Pattern.h5');
+
+E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax;
+DumpFF2VTK([Sim_Path '/3D_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,1e-3);
