@@ -17,10 +17,13 @@
 
 #include "operator_extension.h"
 #include "FDTD/operator.h"
+#include "FDTD/operator_cylinder.h"
 
 Operator_Extension::Operator_Extension(Operator* op)
 {
 	m_Op = op;
+
+	m_Op_Cyl = dynamic_cast<Operator_Cylinder*>(op);
 }
 
 Operator_Extension::~Operator_Extension()

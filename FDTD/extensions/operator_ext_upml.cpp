@@ -97,13 +97,13 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 			size[0]=0;
 			cerr << "Operator_Ext_UPML::Create_UPML: Warning: An upml in r-min direction is not possible, resetting to PEC..." << endl;
 		}
-		if (BC[2]==3)
+		if ( (BC[2]==3) && (op_cyl->GetClosedAlpha()) )
 		{
 			BC[2]=0;
 			size[2]=0;
 			cerr << "Operator_Ext_UPML::Create_UPML: Warning: An upml in alpha-min direction is not possible, resetting to PEC..." << endl;
 		}
-		if (BC[3]==3)
+		if ( (BC[3]==3) && (op_cyl->GetClosedAlpha()) )
 		{
 			BC[3]=0;
 			size[3]=0;
@@ -276,6 +276,12 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 			width = (m_Op->GetDiscLine(n,m_Size[2*n]) - m_Op->GetDiscLine(n,0))*m_Op->GetGridDelta();
 			depth = width - (m_Op->GetDiscLine(n,pos[n]) - m_Op->GetDiscLine(n,0))*m_Op->GetGridDelta();
 
+			if ((m_Op_Cyl) && (n==1))
+			{
+				width *= m_Op_Cyl->GetDiscLine(0,pos[0]);
+				depth *= m_Op_Cyl->GetDiscLine(0,pos[0]);
+			}
+
 			if (n==ny)
 				depth-=m_Op->GetEdgeLength(n,pos)/2;
 			double vars[5] = {depth, width/m_Size[2*n], width, Zm, m_Size[2*n]};
@@ -300,6 +306,12 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 		{
 			width = (m_Op->GetDiscLine(n,m_Op->GetOriginalNumLines(n)-1) - m_Op->GetDiscLine(n,m_Op->GetOriginalNumLines(n)-m_Size[2*n+1]-1))*m_Op->GetGridDelta();
 			depth = width - (m_Op->GetDiscLine(n,m_Op->GetOriginalNumLines(n)-1) - m_Op->GetDiscLine(n,pos[n]))*m_Op->GetGridDelta();
+
+			if ((m_Op_Cyl) && (n==1))
+			{
+				width *= m_Op_Cyl->GetDiscLine(0,pos[0]);
+				depth *= m_Op_Cyl->GetDiscLine(0,pos[0]);
+			}
 
 			if (n==ny)
 				depth+=m_Op->GetEdgeLength(n,pos)/2;

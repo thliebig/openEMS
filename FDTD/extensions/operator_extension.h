@@ -29,6 +29,7 @@
 using namespace std;
 
 class Operator;
+class Operator_Cylinder;
 class Engine_Extension;
 
 //! Abstract base-class for all operator extensions
@@ -63,7 +64,12 @@ protected:
 	Operator_Extension(Operator* op);
 	//! Copy constructor, returns NULL if extension cannot be copied...
 	Operator_Extension(Operator* op, Operator_Extension* op_ext);
+
+	//FDTD Operator
 	Operator* m_Op;
+
+	//Cylindrical FDTD Operator (not NULL if a cylindrical FDTD is used)
+	Operator_Cylinder* m_Op_Cyl;
 };
 
 #endif // OPERATOR_EXTENSION_H
