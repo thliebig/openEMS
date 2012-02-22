@@ -1,5 +1,5 @@
 function [port] = calcPort( port, SimDir, f, varargin)
-% [port] = calcPort( port, SimDir, f, [ref_ZL], [ref_shift])
+% [port] = calcPort( port, SimDir, f, varargin)
 %
 % Calculate voltages and currents, the propagation constant beta
 % and the characteristic impedance ZL of the given port.
@@ -11,12 +11,13 @@ function [port] = calcPort( port, SimDir, f, varargin)
 %   f:          frequency vector for DFT
 % 
 % variable input:
-%   'RefImpedance': use a given reference impedance to calculate inc and
-%                   ref voltages and currents
-%                   default is given port or calculated line impedance
-%   'RefPlaneShift': use a given reference plane shift from port beginning
-%                   for a desired phase correction
-%                   default is the measurement plane 
+%   'RefImpedance':  - use a given reference impedance to calculate inc and
+%                      ref voltages and currents
+%                    - default is given port or calculated line impedance
+%   'RefPlaneShift': - use a given reference plane shift from port beginning
+%                      for a desired phase correction
+%                    - default is the measurement plane
+%                    - the plane shift has to be given in drawing units!
 %
 % output: 
 %   port.f                  the given frequency fector
@@ -90,9 +91,10 @@ ZL = sqrt(Et .* dEt ./ (Ht .* dHt));
 
 % reference plane shift (lossless)
 if ~isnan(ref_shift)
-    % renormalize the shift to the measurement plane
-    ref_shift = ref_shift - port.measplanepos * port.drawingunit;
-%     ref_shift = ref_shift * port.drawingunit;
+    ref_shift = ref_shift * port.LengthScale;
+    % shift to the beginning of MSL
+    ref_shift = ref_shift - port.measplanepos;
+    ref_shift = ref_shift * port.drawingunit;
     
     % store the shifted frequency domain waveforms
     phase = real(beta)*ref_shift;

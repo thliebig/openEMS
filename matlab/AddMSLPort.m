@@ -122,6 +122,13 @@ else
     direction = -1;
 end
 
+% direction of propagation
+if stop(idx_height)-start(idx_height) > 0
+    upsidedown = +1;
+else
+    upsidedown = -1;
+end
+
 % create the metal/material for the MSL
 MSL_start = start;
 MSL_stop = stop;
@@ -177,7 +184,7 @@ i2_stop(idx_prop)    = i2_start(idx_prop);
 % create the probes
 name = ['port_ut' num2str(portnr) 'A'];
 % weight = sign(stop(idx_height)-start(idx_height))
-weight = -1;
+weight = upsidedown;
 CSX = AddProbe( CSX, name, 0, weight );
 CSX = AddBox( CSX, name, prio, v1_start, v1_stop );
 name = ['port_ut' num2str(portnr) 'B'];
@@ -196,13 +203,18 @@ CSX = AddProbe( CSX, name, 1, weight );
 CSX = AddBox( CSX, name, prio, i2_start, i2_stop );
 
 % create port structure
+port.LengthScale = 1;
+if ((CSX.ATTRIBUTE.CoordSystem==1) && (idx_prop==2))
+    port.LengthScale = MSL_stop(idx_height);
+end
 port.nr = portnr;
 port.drawingunit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
-port.v_delta = diff(meshlines);
-port.i_delta = diff( meshlines(1:end-1) + diff(meshlines)/2 );
+port.v_delta = diff(meshlines)*port.LengthScale;
+port.i_delta = diff( meshlines(1:end-1) + diff(meshlines)/2 )*port.LengthScale;
 port.direction = direction;
 port.excite = 0;
-port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop));
+port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop))*port.LengthScale;
+% port
 
 % create excitation
 % excitation of this port is enabled
