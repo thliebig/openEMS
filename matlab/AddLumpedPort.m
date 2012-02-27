@@ -56,7 +56,7 @@ if (R>0)
 end
 
 % create excitation
-if (nargin >= 7) && ~isempty(excitename)
+if (nargin >= 8) && ~isempty(excitename)
     CSX = AddExcitation( CSX, excitename, R<=0, -dir*direction, varargin{:});
 	CSX = AddBox( CSX, excitename, prio, start, stop );
 end
