@@ -211,7 +211,7 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 	HDF5_File_Reader H_file(H_Field_file);
 
 	if (m_Verbose>0)
-		cerr << "nf2ff: Reading planes: " << E_Field_file << " & " << E_Field_file << endl;
+		cerr << "nf2ff: Reading planes: " << E_Field_file << " & " << H_Field_file << endl;
 
 	// read E-mesh
 	float* E_lines[3]={NULL,NULL,NULL};
