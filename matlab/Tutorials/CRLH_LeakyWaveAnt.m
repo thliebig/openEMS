@@ -22,6 +22,7 @@ feed_length = 20000;
 
 substrate_thickness = [1524 101 254];
 substrate_epsr = [3.48 3.48 3.48];
+substrate_tanD = [1 1 1]*1e-3;
 
 N_Cells = 8;        %number of CRLH unit cells
 
@@ -36,10 +37,10 @@ CRLH.TopSig = sum(substrate_thickness);  %top layer height
 CRLH.BottomSig = CRLH.TopSig - substrate_thickness(end);  %bottom layer height
 
 substrate_width = CRLH.LW + 2*CRLH.SL;
-Air_Spacer = 25000;
+Air_Spacer = 30000;
 
 % frequency range of interest
-f_start = 0.8e9;
+f_start = 1e9;
 f_stop  = 6e9;
 
 f_rad = (1.9:0.1:4.2)*1e9;
@@ -47,7 +48,7 @@ f_rad = (1.9:0.1:4.2)*1e9;
 Plot_3D_Rad_Pattern = 1; %this may take a long time! > 30min
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD( 20000 );
+FDTD = InitFDTD(100000, 1e-3);
 FDTD = SetGaussExcite( FDTD, (f_start+f_stop)/2, (f_stop-f_start)/2 );
 BC   = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -59,7 +60,7 @@ resolution = c0/(f_stop*sqrt(max(substrate_epsr)))/unit /30; % resolution of lam
 mesh.x = [-feed_length-(N_Cells*CRLH.LL)/2-Air_Spacer -feed_length-(N_Cells*CRLH.LL)/2 0 feed_length+(N_Cells*CRLH.LL)/2 feed_length+(N_Cells*CRLH.LL)/2+Air_Spacer];
 mesh.y = [-Air_Spacer-substrate_width/2 0 Air_Spacer+substrate_width/2];
 substratelines = cumsum(substrate_thickness);
-mesh.z = [-0.7*Air_Spacer 0 cumsum(substrate_thickness) linspace(substratelines(end-1),substratelines(end),4) Air_Spacer];
+mesh.z = [-0.5*Air_Spacer 0 cumsum(substrate_thickness) linspace(substratelines(end-1),substratelines(end),4) Air_Spacer];
 
 % create the CRLH unit cells (will define additional fixed mesh lines)
 pos_x = -(N_Cells*CRLH.LL)/2 + CRLH.LL/2;
@@ -78,7 +79,7 @@ CSX = DefineRectGrid( CSX, unit, mesh );
 substratelines = [0 substratelines];
 for n=1:numel(substrate_thickness)
     CSX = AddMaterial( CSX, ['substrate' int2str(n)] );
-    CSX = SetMaterialProperty( CSX, ['substrate' int2str(n)], 'Epsilon', substrate_epsr(n) );
+    CSX = SetMaterialProperty( CSX, ['substrate' int2str(n)], 'Epsilon', substrate_epsr(n), 'Kappa', substrate_tanD(n)*substrate_epsr(n)*EPS0*2*pi*3e9 );
     start = [-feed_length-(N_Cells*CRLH.LL)/2, -substrate_width/2, substratelines(n)];
     stop  = [+feed_length+(N_Cells*CRLH.LL)/2,  substrate_width/2, substratelines(n+1)];
     CSX = AddBox( CSX, ['substrate' int2str(n)], 0, start, stop );
@@ -144,8 +145,7 @@ phi = [0 90];
 
 disp( 'calculating far field at phi=[0 90] deg...' );
 
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 1, 'Verbose',1);
-nf2ff = ReadNF2FF(nf2ff);
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 'Verbose',1);
 
 %%
 % prepare figures
@@ -166,7 +166,7 @@ ylim([-20 10]);
 line_styles = {'b-','g:','r-.','c--','m-','y:','k-.'};
 
 for n=1:numel(f_rad)
-    f_res = f_rad(n)
+    f_res = f_rad(n);
 
     % display power and directivity
     disp( ['frequency: f = ' num2str(f_res/1e9) ' GHz']);
@@ -187,6 +187,14 @@ for n=1:numel(f_rad)
     hold on;
 end
 
+%%
+figure()
+plot(f_rad,nf2ff.Dmax,'b-*','Linewidth',2)
+grid on
+xlabel( 'frequency' );
+ylabel( 'directivity (dBi)');
+
+%%
 if (Plot_3D_Rad_Pattern==0)
     return
 end
@@ -196,8 +204,7 @@ phi = 0:3:360;
 theta = 0:3:180;
 
 disp( 'calculating 3D far field pattern...' );
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 1, 'Verbose',2);
-nf2ff = ReadNF2FF(nf2ff);
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180,'Verbose',2, 'Outfile','3D_Pattern.h5');
 
 %%
 disp( 'dumping 3D far field pattern to vtk, use Paraview to visualize...' );

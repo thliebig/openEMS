@@ -95,8 +95,8 @@ RunOpenEMS( Sim_Path, Sim_CSX );
 %% post-processing
 close all
 f = linspace( f_start, f_stop, 1601 );
-port{1} = calcPort( portstruct{1}, Sim_Path, f, 'RefPlaneShift', feed_length*unit);
-port{2} = calcPort( portstruct{2}, Sim_Path, f, 'RefPlaneShift', feed_length*unit);
+port{1} = calcPort( portstruct{1}, Sim_Path, f, 'RefPlaneShift', feed_length);
+port{2} = calcPort( portstruct{2}, Sim_Path, f, 'RefPlaneShift', feed_length);
 
 s11 = port{1}.uf.ref./ port{1}.uf.inc;
 s21 = port{2}.uf.ref./ port{1}.uf.inc;
