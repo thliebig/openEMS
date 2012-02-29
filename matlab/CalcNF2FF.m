@@ -107,7 +107,7 @@ if numel(v1)~=numel(v2)
     return;
 end
 
-if sum(abs(v1(:)-v2(:)) > acc)>0
+if sum(abs((v1(:)-v2(:))/v1(:)) > acc)>0
     return;
 end
 equal = 1;
