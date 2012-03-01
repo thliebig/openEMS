@@ -13,6 +13,13 @@ INCLUDEPATH += ../CSXCAD \
 LIBS += -L../CSXCAD -lCSXCAD
 CONFIG += debug_and_release
 
+
+#
+# VERSION
+#
+VERSION=0.0.27
+
+
 ###############################################################################
 # CONFIG SECTION
 
@@ -50,14 +57,17 @@ win32 {
 		$$WIN32_LIB_ROOT\vtk\bin\libvtkzlib.dll
 }
 !win32 {
-    LIBS += ../fparser/libfparser.so
-    LIBS += ../tinyxml/libtinyxml.so
+    LIBS += -L../fparser -lfparser
+    LIBS += -L../tinyxml -ltinyxml
     LIBS += -lboost_thread
     LIBS += -lhdf5 -lhdf5_cpp
 	### vtk ###
     INCLUDEPATH += /usr/include/vtk-5.2 \
         /usr/include/vtk-5.4 \
-        /usr/include/vtk-5.6
+        /usr/include/vtk-5.6 \
+        /usr/include/vtk-5.8 \
+        /usr/include/vtk
+    INCLUDEPATH += /usr/include/CSXCAD
     LIBS += -lvtkCommon \
         -lvtkIO \
 		-lvtksys \
@@ -203,8 +213,10 @@ QMAKE_CXXFLAGS_DEBUG = -O0 \
 
 MPI_SUPPORT {
 	DEFINES += MPI_SUPPORT
-	INCLUDEPATH += /usr/include/mpi
-	LIBS += -lmpi -lmpi++
+	QMAKE_CC     = mpicc
+	QMAKE_CXX    = mpicxx
+	QMAKE_LINK   = mpicxx
+	QMAKE_LINK_C = mpicc
     HEADERS += FDTD/operator_mpi.h \
 		FDTD/engine_mpi.h \
 	FDTD/openems_fdtd_mpi.h
@@ -218,58 +230,33 @@ MPI_SUPPORT {
 # add git revision
 QMAKE_CXXFLAGS += -DGIT_VERSION=\\\"`git describe --tags`\\\"
 
-# to use ABI2 target:
-# qmake CONFIG+="ABI2 bits64" -o Makefile.ABI2-64 openEMS.pro
-# make -fMakefile.ABI2-64
-ABI2 { 
-    CONFIG -= debug \
-        debug_and_release
-    CONFIG += release
-    QMAKE_CFLAGS_RELEASE = -O2 \
-        -fabi-version=2
-    QMAKE_CXXFLAGS_RELEASE = -O2 \
-        -fabi-version=2
-    QMAKE_CC = apgcc
-    QMAKE_CXX = apg++
-    QMAKE_LINK = apg++
-    QMAKE_LINK_SHLIB = apg++
-    QMAKE_LFLAGS_RPATH = 
-    QMAKE_LFLAGS = \'-Wl,-rpath,\$$ORIGIN/lib\'
-}
-bits64 { 
-    QMAKE_CXXFLAGS_RELEASE += -m64 \
-        -march=athlon64
-    QMAKE_LFLAGS_RELEASE += -m64 \
-        -march=athlon64
-    OBJECTS_DIR = ABI2-64
-    LIBS = ../CSXCAD/ABI2-64/libCSXCAD.so
-    LIBS += ../fparser/ABI2-64/libfparser.so
-    LIBS += ../tinyxml/ABI2-64/libtinyxml.so
-	LIBS += $$WIN32_LIB_ROOT/boost-64/lib/libboost_thread.so
-	LIBS += $$WIN32_LIB_ROOT/hdf5-64/lib/libhdf5.so
-	LIBS += $$WIN32_LIB_ROOT/hdf5-64/lib/libhdf5_cpp.so \
-        -lpthread
-	INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5-64/include
-	INCLUDEPATH += $$WIN32_LIB_ROOT/boost-64/include
-}
-bits32 { 
-    QMAKE_CXXFLAGS_RELEASE += -m32 \
-		-march=pentium3
-    QMAKE_LFLAGS_RELEASE += -m32 \
-		-march=pentium3
-    OBJECTS_DIR = ABI2-32
-    LIBS = ../CSXCAD/ABI2-32/libCSXCAD.so
-    LIBS += ../fparser/ABI2-32/libfparser.so
-    LIBS += ../tinyxml/ABI2-32/libtinyxml.so
-	LIBS += $$WIN32_LIB_ROOT/boost-32/lib/libboost_thread.so
-	LIBS += $$WIN32_LIB_ROOT/hdf5-32/lib/libhdf5.so
-	LIBS += $$WIN32_LIB_ROOT/hdf5-32/lib/libhdf5_cpp.so
-	INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5-32/include
-	INCLUDEPATH += $$WIN32_LIB_ROOT/boost-32/include
-}
-ABI2 { 
-    DESTDIR = $$OBJECTS_DIR
-    MOC_DIR = $$OBJECTS_DIR
-    UI_DIR = $$OBJECTS_DIR
-    RCC_DIR = $$OBJECTS_DIR
-}
+
+
+
+
+#
+# create tar file (for the whole openEMS project)
+#
+tarball.target = tarball
+tarball.commands = git archive --format=tar --prefix=openEMS-$$VERSION/ HEAD | bzip2 > openEMS-$${VERSION}.tar.bz2
+QMAKE_EXTRA_TARGETS += tarball
+
+
+#
+# INSTALL (only the openEMS executable and matlab scripts)
+#
+install.target = install
+install.commands = mkdir -p \"$(INSTALL_ROOT)/usr/bin\"
+install.commands += && mkdir -p \"$(INSTALL_ROOT)/usr/share/openEMS/matlab\"
+install.commands += && cp -at \"$(INSTALL_ROOT)/usr/bin/\" openEMS.sh openEMS_MPI.sh openEMS
+install.commands += && cp -at \"$(INSTALL_ROOT)/usr/share/openEMS/\" matlab/
+QMAKE_EXTRA_TARGETS += install
+
+
+#
+# create .PHONY target
+#
+phony.target = .PHONY
+phony.depends = $$QMAKE_EXTRA_TARGETS
+QMAKE_EXTRA_TARGETS += phony
+

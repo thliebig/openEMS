@@ -1,23 +1,21 @@
-TARGET = nf2ff
-CONFIG += console
 CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
-INCLUDEPATH += .
 INCLUDEPATH += ../../tinyxml
 CONFIG += debug_and_release
 
 win32 {
+    CONFIG += console
     QMAKE_CXXFLAGS += -DH5_USE_16_API
     INCLUDEPATH += ../../hdf5/include ../../hdf5/include/cpp ../../boost/include/boost-1_42
-	LIBS +=  ../../hdf5/lib/hdf5.lib
+    LIBS +=  ../../hdf5/lib/hdf5.lib
     LIBS += ../../boost/lib/libboost_thread-mgw44-mt.lib
-	LIBS += ../../tinyxml/release/libtinyxml2.a
+    LIBS += ../../tinyxml/release/libtinyxml2.a
 }
 !win32 {
     LIBS += -lboost_thread
-	LIBS += -lhdf5
-	LIBS += ../../tinyxml/libtinyxml.so
+    LIBS += -lhdf5
+    LIBS += ../../tinyxml/libtinyxml.so
 }
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../../tinyxml\'
 
@@ -58,4 +56,22 @@ QMAKE_CXXFLAGS_DEBUG = -O0 \
 # add git revision
 # QMAKE_CXXFLAGS += -DGIT_VERSION=\\\"`git describe --tags`\\\"
 
+
+
+
+#
+# INSTALL (only the nf2ff executable)
+#
+install.target = install
+install.commands = mkdir -p \"$(INSTALL_ROOT)/usr/bin\"
+install.commands += && cp -at \"$(INSTALL_ROOT)/usr/bin/\" nf2ff
+QMAKE_EXTRA_TARGETS += install
+
+
+#
+# create .PHONY target
+#
+phony.target = .PHONY
+phony.depends = $$QMAKE_EXTRA_TARGETS
+QMAKE_EXTRA_TARGETS += phony
 
