@@ -21,6 +21,7 @@ function [CSX nf2ff] = CreateNF2FFBox(CSX, name, start, stop, varargin)
 %
 % example:
 %   see Tutorials/Simple_Patch_Antenna.m
+%   see Tutorials/Helical_Antenna.m
 % 
 % See also CalcNF2FF
 %

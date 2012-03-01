@@ -43,9 +43,9 @@ Air_Spacer = 30000;
 f_start = 1e9;
 f_stop  = 6e9;
 
-f_rad = (1.9:0.1:4.2)*1e9;
-
-Plot_3D_Rad_Pattern = 1; %this may take a long time! > 30min
+% frequencies to calculate the 3D radiation pattern
+f_rad = (1.9:0.05:4.2)*1e9;
+nf2ff_resolution = c0/max(f_rad)/unit/15;
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD(100000, 1e-3);
@@ -101,11 +101,10 @@ portstart = [ feed_length+(N_Cells*CRLH.LL)/2 , -CRLH.LW/2, substratelines(end)]
 portstop  = [ +(N_Cells*CRLH.LL)/2,   CRLH.LW/2, 0];
 [CSX,portstruct{2}] = AddMSLPort( CSX, 999, 2, 'PEC', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  feed_length/2, 'Feed_R', 50 );
 
-
 %% nf2ff calc
 start = [mesh.x(1)   mesh.y(1)   mesh.z(1)  ] + 10*resolution;
 stop  = [mesh.x(end) mesh.y(end) mesh.z(end)] - 10*resolution;
-[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
+[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop, 'OptResolution', nf2ff_resolution);
 
 %% write/show/run the openEMS compatible xml-file
 Sim_Path = 'tmp_CRLH_LeakyWave';
@@ -139,72 +138,30 @@ ylim([-40 2]);
 
 drawnow
 
-%% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-theta = (0:3:359) - 180;
-phi = [0 90];
-
-disp( 'calculating far field at phi=[0 90] deg...' );
-
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 'Verbose',1);
-
-%%
-% prepare figures
-figure(10)
-hold on;
-grid on;
-xlabel( 'theta (deg)' );
-ylabel( 'directivity (dBi)');
-title('phi = 0°');
-ylim([-20 10]);
-figure(11)
-hold on;
-grid on;
-xlabel( 'theta (deg)' );
-ylabel( 'directivity (dBi)');
-title('phi = 90°');
-ylim([-20 10]);
-line_styles = {'b-','g:','r-.','c--','m-','y:','k-.'};
-
-for n=1:numel(f_rad)
-    f_res = f_rad(n);
-
-    % display power and directivity
-    disp( ['frequency: f = ' num2str(f_res/1e9) ' GHz']);
-    disp( ['radiated power: Prad = ' num2str(nf2ff.Prad(n)) ' Watt']);
-    disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax(n)) ' (' num2str(10*log10(nf2ff.Dmax(n))) ' dBi)'] );
-
-    % normalized directivity
-    D_log = 20*log10(nf2ff.E_norm{n}/max(max(nf2ff.E_norm{n})));
-    % directivity
-    D_log = D_log + 10*log10(nf2ff.Dmax(n));
-
-    figure(10)
-    plot( nf2ff.theta, D_log(:,1) ,line_styles{1+mod(n-1,numel(line_styles))});
-    hold on;
-
-    figure(11)
-    plot( nf2ff.theta, D_log(:,2) ,line_styles{1+mod(n-1,numel(line_styles))} );
-    hold on;
-end
-
-%%
-figure()
-plot(f_rad,nf2ff.Dmax,'b-*','Linewidth',2)
-grid on
-xlabel( 'frequency' );
-ylabel( 'directivity (dBi)');
-
-%%
-if (Plot_3D_Rad_Pattern==0)
-    return
-end
-
 %% calculate 3D pattern
-phi = 0:3:360;
-theta = 0:3:180;
+phi = 0:2:360;
+theta = 0:2:180;
 
 disp( 'calculating 3D far field pattern...' );
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180,'Verbose',2, 'Outfile','3D_Pattern.h5');
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 'Outfile','3D_Pattern.h5', 'Mode', 1,'Verbose',1);
+
+%%
+P_in = 0.5*port{1}.uf.inc .* conj( port{1}.if.inc ); % accepted antenna feed power
+P_in = interp1(f, P_in, f_rad);
+
+figure()
+
+[AX,H1,H2] = plotyy(f_rad/1e9,nf2ff.Dmax',f_rad/1e9,100*nf2ff.Prad'./real(P_in),'plot');
+grid on
+xlabel( 'frequency (GHz)' );
+set(get(AX(1),'Ylabel'),'String','directivity (dBi)')
+set(get(AX(2),'Ylabel'),'String','radiation efficiency (%)')
+set(H1,'Linewidth',2)
+set(H2,'Linewidth',2)
+set(H1,'Marker','*')
+set(H2,'Marker','s')
+
+drawnow
 
 %%
 disp( 'dumping 3D far field pattern to vtk, use Paraview to visualize...' );
