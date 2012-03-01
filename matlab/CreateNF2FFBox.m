@@ -11,11 +11,18 @@ function [CSX nf2ff] = CreateNF2FFBox(CSX, name, start, stop, varargin)
 %   'Directions': enable/disable specific directions, e.g.
 %                 'Directions',[1 1 0 0 1 1]
 %                   -> disable nf2ff in +/-y direction
+%   'Frequency': dump nf2ff in frequency domain, this will save disk-space
+%                but is less flexible, since only this frequencies can be
+%                used for the nf2ff calculations by CalcNF2FF
+%                See also AddDump for more information
+%   'OptResolution': specify a dump resolution, this will save disk-space
+%                    See also AddDump for more information
+%                    e.g.: 'OptResolution', c0/max_freq/unit/15
 %
 % example:
 %   see Tutorials/Simple_Patch_Antenna.m
 % 
-% See also AnalyzeNF2FF
+% See also CalcNF2FF
 %
 % (C) 2010 Sebastian Held <sebastian.held@gmx.de>
 % (C) 2010-2012 Thorsten Liebig <thorsten.liebig@gmx.de>
