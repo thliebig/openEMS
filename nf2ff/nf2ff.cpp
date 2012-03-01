@@ -252,7 +252,7 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 				return false;
 			}
 
-	if (m_Verbose>1)
+	if (m_Verbose>0)
 		cerr << "nf2ff: Data-Size: " << E_numLines[0] << "x" << E_numLines[1] << "x"  << E_numLines[2] << endl;
 	if (m_Verbose>1)
 		cerr << "nf2ff: calculate dft..." << endl;
