@@ -31,11 +31,12 @@ dump_mode = 1;
 
 for n=1:numel(varargin)/2
     if strcmp(varargin{2*n-1},'Frequency')
-        add_args = {'Frequency', varargin{2*n}};
+        add_args = {add_args{:}, 'Frequency', varargin{2*n}};
         dump_type = 10;
-    end
-    if strcmp(varargin{2*n-1},'Directions')
+    elseif strcmp(varargin{2*n-1},'Directions')
         directions=varargin{2*n};
+    else
+        add_args = {add_args{:}, varargin{2*n-1}, varargin{2*n}};
     end
 end
 
