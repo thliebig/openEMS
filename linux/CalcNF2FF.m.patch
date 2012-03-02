@@ -1,0 +1,14 @@
+diff --git a/matlab/CalcNF2FF.m b/matlab/CalcNF2FF.m
+index 35c11c7..1638110 100644
+--- a/matlab/CalcNF2FF.m
++++ b/matlab/CalcNF2FF.m
+@@ -83,7 +83,8 @@ cd(Sim_Path);
+ try
+     if isunix
+         % remove LD_LIBRARY_PATH set by matlab
+-        system(['export LD_LIBRARY_PATH=; ' openEMS_Path 'nf2ff/nf2ff ' filename '.xml']);
++        % this is a packaged openEMS; nf2ff is found within PATH
++        system(['LD_LIBRARY_PATH=; nf2ff ' filename '.xml']);
+     else
+         system([openEMS_Path 'nf2ff.exe ' filename '.xml']);
+     end

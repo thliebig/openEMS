@@ -27,6 +27,7 @@ URL:            http://www.openems.de
 Source0:        %{name}-%{version}.tar.bz2
 Patch0:         invoke_openEMS.m.patch
 Patch1:         README.patch
+Patch2:         CalcNF2FF.m.patch
 BuildRoot:      %_tmppath/%name-%version-build
 
 # libqt4-devel is needed only to provide qmake (the Qt-libraries are not used)
@@ -54,6 +55,7 @@ OpenEMS is a free and open-source electromagnetic field solver using the (EC-)FD
 #%patch1 -p1
 #%endif
 %patch1 -p1
+%patch2 -p1
 
 %build
 ADDFLAGS="-msse" # enable at least the SSE command set (no SSE makes no sense -- way too slow)
