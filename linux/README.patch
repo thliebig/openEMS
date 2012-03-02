@@ -1,0 +1,15 @@
+diff --git a/README b/README
+index 1962055..ae6df82 100644
+--- a/README
++++ b/README
+@@ -10,8 +10,8 @@ Forum:     http://openems.de/forum/
+ Tutorials: http://openems.de/index.php/Tutorials
+ 
+ 
+-To use openEMS from Matlab or Octave, you need to include the <openEMS-install-folder>/matlab folder in the respective environment:
+-> addpath( '<openEMS-install-folder>/matlab' );
++To use openEMS from Matlab or Octave, you need to include the /usr/share/openEMS/matlab folder in the respective environment:
++> addpath( '/usr/share/openEMS/matlab' );
+ 
+ To verify the correct installation follow the instructions at:
+ http://openems.de/index.php/Tutorial:_First_Steps

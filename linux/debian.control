@@ -1,0 +1,12 @@
+Source: openems
+Section: contrib/science
+Priority: optional
+Maintainer: Sebastian Held <sebastian.held@gmx.de>
+Build-Depends: debhelper (>=7.0.50~), qt4-qmake, libfparser4, libhdf5-serial-dev, libtinyxml-dev, csxcad-dev (>= 0.2.4), libopenmpi-dev, libvtk5-qt4-dev, libboost-all-dev
+
+Package: openems
+Architecture: any
+Depends: ${shlibs:Depends}
+Recommends: octave3.2, paraview
+Description: Free and Open Electromagnetic Field Solver
+ OpenEMS is a free and open-source electromagnetic field solver using the (EC-)FDTD method.
