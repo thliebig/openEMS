@@ -2,11 +2,9 @@
 # Project created by QtCreator 2010-02-26T22:34:51
 # -------------------------------------------------
 TARGET = openEMS
-CONFIG += console
 CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
-INCLUDEPATH += .
 INCLUDEPATH += ../CSXCAD \
     ../fparser \
     ../tinyxml
@@ -37,10 +35,10 @@ VERSION=0.0.27
 WIN32_LIB_ROOT = ..
 
 win32 {
-    QMAKE_CXXFLAGS += -DH5_USE_16_API
-	INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp $$WIN32_LIB_ROOT/boost/include/boost-1_42
-	LIBS +=  $$WIN32_LIB_ROOT/hdf5/lib/hdf5.lib
-	LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
+    CONFIG += console
+    INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp $$WIN32_LIB_ROOT/boost/include/boost-1_42
+    LIBS +=  $$WIN32_LIB_ROOT/hdf5/lib/hdf5.lib
+    LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
     LIBS += -L../CSXCAD/release
     LIBS += ../fparser/release/libfparser4.a
     LIBS += ../tinyxml/release/libtinyxml2.a
@@ -59,7 +57,7 @@ win32 {
 !win32 {
     LIBS += -L../fparser -lfparser
     LIBS += -L../tinyxml -ltinyxml
-    LIBS += -lboost_thread
+    LIBS += -lboost_thread-mt
     LIBS += -lhdf5 -lhdf5_cpp
 	### vtk ###
     INCLUDEPATH += /usr/include/vtk-5.2 \
@@ -76,6 +74,10 @@ win32 {
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
+
+# hdf5 compat
+DEFINES += H5_USE_16_API
+
 
 #### SOURCES ################################################################
 SOURCES += main.cpp \
@@ -128,8 +130,8 @@ SOURCES += Common/operator_base.cpp \
     Common/processfields_td.cpp \
     Common/processcurrent.cpp \
     Common/processfields_fd.cpp \
-	Common/processfieldprobe.cpp \
-	Common/processfields_sar.cpp
+    Common/processfieldprobe.cpp \
+    Common/processfields_sar.cpp
 
 # tools
  SOURCES += tools/global.cpp \
@@ -156,9 +158,9 @@ HEADERS += FDTD/engine.h \
     FDTD/operator_multithread.h \
     FDTD/operator_cylindermultigrid.h \
     FDTD/engine_cylindermultigrid.h \
-	FDTD/engine_interface_fdtd.h \
-	FDTD/engine_interface_sse_fdtd.h \
-	FDTD/engine_interface_cylindrical_fdtd.h
+    FDTD/engine_interface_fdtd.h \
+    FDTD/engine_interface_sse_fdtd.h \
+    FDTD/engine_interface_cylindrical_fdtd.h
 
 # FDTD/extensions header files
 HEADERS += FDTD/extensions/operator_extension.h \
@@ -191,7 +193,7 @@ HEADERS += Common/operator_base.h \
     Common/processmodematch.h \
     Common/processfields_fd.h \
     Common/processfieldprobe.h \
-	Common/processfields_sar.h
+    Common/processfields_sar.h
 
 # tools
 HEADERS += tools/ErrorMsg.h \
@@ -204,27 +206,31 @@ HEADERS += tools/ErrorMsg.h \
 	tools/vtk_file_writer.h \
 	tools/hdf5_file_writer.h
 
+!packaging {
+# if packaging is not set in CONFIG, set some default flags
+# if packaging is enabled, give the flags on the qmake comandline
 QMAKE_CXXFLAGS_RELEASE = -O3 \
 	-g \
 	-march=native
 QMAKE_CXXFLAGS_DEBUG = -O0 \
 	-g \
 	-march=native
+}
 
 MPI_SUPPORT {
-	DEFINES += MPI_SUPPORT
-	QMAKE_CC     = mpicc
-	QMAKE_CXX    = mpicxx
-	QMAKE_LINK   = mpicxx
-	QMAKE_LINK_C = mpicc
+    DEFINES += MPI_SUPPORT
+    QMAKE_CC     = mpicc
+    QMAKE_CXX    = mpicxx
+    QMAKE_LINK   = mpicxx
+    QMAKE_LINK_C = mpicc
     HEADERS += FDTD/operator_mpi.h \
-		FDTD/engine_mpi.h \
-	FDTD/openems_fdtd_mpi.h
+               FDTD/engine_mpi.h \
+               FDTD/openems_fdtd_mpi.h
     SOURCES += FDTD/operator_mpi.cpp \
-		FDTD/engine_mpi.cpp \
-		FDTD/openems_fdtd_mpi.cpp
+               FDTD/engine_mpi.cpp \
+               FDTD/openems_fdtd_mpi.cpp
 
-	QMAKE_CXXFLAGS_RELEASE += -Wno-unused-parameter #needed because mpich2 produces tons of unused parameter
+    QMAKE_CXXFLAGS_RELEASE += -Wno-unused-parameter #needed because mpich2 produces tons of unused parameter
 }
 
 # add git revision

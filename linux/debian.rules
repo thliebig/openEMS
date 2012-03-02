@@ -8,7 +8,7 @@
 # This is the debhelper compatibility version to use.
 export DH_COMPAT=4
 
-CFLAGS = -g
+CFLAGS = -g -msse
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 CFLAGS += -O0
 else
@@ -20,12 +20,10 @@ build-stamp:
 	dh_testdir
 
 	# Add here commands to compile the package.
-	qmake-qt4 QMAKE_CFLAGS="$$CFLAGS" QMAKE_CXXFLAGS="$$CFLAGS" openEMS.pro
+	qmake-qt4 QMAKE_CFLAGS="$$CFLAGS" QMAKE_CXXFLAGS="$$CFLAGS" CONFIG+=packaging openEMS.pro
 	make
-	cd nf2ff
-	qmake-qt4 QMAKE_CFLAGS="$$CFLAGS" QMAKE_CXXFLAGS="$$CFLAGS" nf2ff.pro
-	make
-	cd ..
+	cd nf2ff && qmake-qt4 QMAKE_CFLAGS="$$CFLAGS" QMAKE_CXXFLAGS="$$CFLAGS" CONFIG+=packaging nf2ff.pro
+	make -C nf2ff
 	# --- end custom part for compiling
 
 	touch build-stamp
@@ -37,6 +35,7 @@ clean:
 
 	# Add here commands to clean up after the build process.
 	make clean || true
+	make -C nf2ff clean || true
 	# --- end custom part for cleaning up
 
 	dh_clean
@@ -50,9 +49,7 @@ install: build
 	# Add here commands to install the package
 	# The DESTDIR Has To Be Exactly  /usr/src/packages/BUILD/debian/<nameOfPackage>
 	make install INSTALL_ROOT=/usr/src/packages/BUILD/debian/openems
-	cd nf2ff
-	make install INSTALL_ROOT=/usr/src/packages/BUILD/debian/openems
-	cd ..
+	make -C nf2ff install INSTALL_ROOT=/usr/src/packages/BUILD/debian/openems
 	# --- end custom part for installing
 
 # Build architecture-independent files here.

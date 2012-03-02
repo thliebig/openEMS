@@ -6,18 +6,20 @@ CONFIG += debug_and_release
 
 win32 {
     CONFIG += console
-    QMAKE_CXXFLAGS += -DH5_USE_16_API
     INCLUDEPATH += ../../hdf5/include ../../hdf5/include/cpp ../../boost/include/boost-1_42
     LIBS +=  ../../hdf5/lib/hdf5.lib
     LIBS += ../../boost/lib/libboost_thread-mgw44-mt.lib
     LIBS += ../../tinyxml/release/libtinyxml2.a
 }
 !win32 {
-    LIBS += -lboost_thread
+    LIBS += -lboost_thread-mt
     LIBS += -lhdf5
-    LIBS += ../../tinyxml/libtinyxml.so
+    LIBS += -L../tinyxml -ltinyxml
 }
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../../tinyxml\'
+
+# hdf5 compat
+DEFINES += H5_USE_16_API
 
 TOOLSPATH = ../tools
 
@@ -46,12 +48,16 @@ HEADERS += $$TOOLSPATH/constants.h \
 	$$TOOLSPATH/hdf5_file_reader.h \
 	$$TOOLSPATH/hdf5_file_writer.h
 
+!packaging {
+# if packaging is not set in CONFIG, set some default flags
+# if packaging is enabled, give the flags on the qmake comandline
 QMAKE_CXXFLAGS_RELEASE = -O3 \
 	-g \
 	-march=native
 QMAKE_CXXFLAGS_DEBUG = -O0 \
 	-g \
 	-march=native
+}
 
 # add git revision
 # QMAKE_CXXFLAGS += -DGIT_VERSION=\\\"`git describe --tags`\\\"

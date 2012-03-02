@@ -57,10 +57,10 @@ OpenEMS is a free and open-source electromagnetic field solver using the (EC-)FD
 
 %build
 ADDFLAGS="-msse" # enable at least the SSE command set (no SSE makes no sense -- way too slow)
-%qmake QMAKE_CFLAGS="%optflags $ADDFLAGS" QMAKE_CXXFLAGS="%optflags $ADDFLAGS" LIB_SUFFIX="$(echo %_lib | cut -b4-)" openEMS.pro
+%qmake QMAKE_CFLAGS="%optflags $ADDFLAGS" QMAKE_CXXFLAGS="%optflags $ADDFLAGS" LIB_SUFFIX="$(echo %_lib | cut -b4-)" CONFIG+=packaging openEMS.pro
 make %{?_smp_mflags}
 cd nf2ff
-%qmake QMAKE_CFLAGS="%optflags $ADDFLAGS" QMAKE_CXXFLAGS="%optflags $ADDFLAGS" LIB_SUFFIX="$(echo %_lib | cut -b4-)" nf2ff.pro
+%qmake QMAKE_CFLAGS="%optflags $ADDFLAGS" QMAKE_CXXFLAGS="%optflags $ADDFLAGS" LIB_SUFFIX="$(echo %_lib | cut -b4-)" CONFIG+=packaging nf2ff.pro
 make %{?_smp_mflags}
 cd ..
 
