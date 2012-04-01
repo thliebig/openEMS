@@ -234,7 +234,8 @@ MPI_SUPPORT {
 }
 
 # add git revision
-QMAKE_CXXFLAGS += -DGIT_VERSION=\\\"`git describe --tags`\\\"
+GITREV = $$system(git describe --tags)
+DEFINES += GIT_VERSION=\\\"$$GITREV\\\"
 
 
 
