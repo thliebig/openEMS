@@ -1,7 +1,6 @@
 CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
-INCLUDEPATH += ../../tinyxml
 CONFIG += debug_and_release
 
 win32 {
@@ -14,9 +13,8 @@ win32 {
 !win32 {
     LIBS += -lboost_thread-mt
     LIBS += -lhdf5
-    LIBS += -L../tinyxml -ltinyxml
+    LIBS += -ltinyxml
 }
-QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../../tinyxml\'
 
 # hdf5 compat
 DEFINES += H5_USE_16_API

@@ -6,8 +6,7 @@ CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += ../CSXCAD \
-    ../fparser \
-    ../tinyxml
+    ../fparser
 LIBS += -L../CSXCAD -lCSXCAD
 CONFIG += debug_and_release
 
@@ -56,7 +55,7 @@ win32 {
 }
 !win32 {
     LIBS += -L../fparser -lfparser
-    LIBS += -L../tinyxml -ltinyxml
+    LIBS += -ltinyxml
     LIBS += -lboost_thread-mt
     LIBS += -lhdf5 -lhdf5_cpp
 	### vtk ###
@@ -73,7 +72,6 @@ win32 {
 }
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
-QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../tinyxml\'
 
 # hdf5 compat
 DEFINES += H5_USE_16_API
