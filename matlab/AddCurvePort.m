@@ -97,16 +97,8 @@ m_start(dir2) = m_start(dir2) - delta2_n/2;
 m_stop(dir2)  = m_stop(dir2)  + delta2_p/2;
 
 % calculate kappa
-l = abs((m_stop(dir) - m_start(dir))) * unit; % length of the "resistor"
-A = (m_stop(dir1) - m_start(dir1)) * (m_stop(dir2) - m_start(dir2)) * unit^2; % area of the "resistor"
-A = abs(A);
-kappa = l/A / R; % [kappa] = S/m
 materialname = ['port' num2str(portnr) '_sheet_resistance'];
-CSX = AddMaterial( CSX, materialname );%, 'Isotropy', 0 );
-% kappa_cell = {0,0,0};
-% kappa_cell{dir} = kappa;
-kappa_cell = kappa;
-CSX = SetMaterialProperty( CSX, materialname, 'Kappa', kappa_cell );
+CSX = AddLumpedElement( CSX, materialname, dir-1, 'R', R);
 CSX = AddBox( CSX, materialname, prio, m_start, m_stop );
 
 % calculate position of the voltage probe
