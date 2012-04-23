@@ -45,15 +45,15 @@ win32 {
     LIBS += ../tinyxml/release/libtinyxml2.a
 
 	### vtk ###
-	 INCLUDEPATH +=   $$WIN32_LIB_ROOT\vtk \
-		$$WIN32_LIB_ROOT\vtk\Common \
-		$$WIN32_LIB_ROOT\vtk\Filtering \
-		$$WIN32_LIB_ROOT\vtk\IO
-	 LIBS += $$WIN32_LIB_ROOT\vtk\bin\libvtkIO.dll \
-		$$WIN32_LIB_ROOT\vtk\bin\libvtkFiltering.dll \
-		$$WIN32_LIB_ROOT\vtk\bin\libvtkCommon.dll \
-		$$WIN32_LIB_ROOT\vtk\bin\libvtksys.dll \
-		$$WIN32_LIB_ROOT\vtk\bin\libvtkzlib.dll
+	 INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk \
+		$$WIN32_LIB_ROOT/vtk/Common \
+		$$WIN32_LIB_ROOT/vtk/Filtering \
+		$$WIN32_LIB_ROOT/vtk/IO
+	 LIBS += $$WIN32_LIB_ROOT/vtk/bin/libvtkIO.dll \
+		$$WIN32_LIB_ROOT/vtk/bin/libvtkFiltering.dll \
+		$$WIN32_LIB_ROOT/vtk/bin/libvtkCommon.dll \
+		$$WIN32_LIB_ROOT/vtk/bin/libvtksys.dll \
+		$$WIN32_LIB_ROOT/vtk/bin/libvtkzlib.dll
 }
 !win32 {
     LIBS += -L../fparser -lfparser
