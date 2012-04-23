@@ -5,6 +5,7 @@ TARGET = openEMS
 CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
+INCLUDEPATH += .
 INCLUDEPATH += ../CSXCAD \
     ../fparser
 LIBS += -L../CSXCAD -lCSXCAD
@@ -35,6 +36,7 @@ WIN32_LIB_ROOT = ..
 
 win32 {
     CONFIG += console
+    INCLUDEPATH += ../tinyxml
     INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp $$WIN32_LIB_ROOT/boost/include/boost-1_42
     LIBS +=  $$WIN32_LIB_ROOT/hdf5/lib/hdf5.lib
     LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
