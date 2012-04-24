@@ -36,11 +36,16 @@ public:
 protected:
 	Operator_Ext_Dispersive* m_Op_Ext_Disp;
 
+	//! Dispersive order
+	int m_Order;
+
 	//! ADE currents
-	FDTD_FLOAT *curr_ADE[3];
+	// Array setup: curr_ADE[N_order][direction][mesh_pos]
+	FDTD_FLOAT ***curr_ADE;
 
 	//! ADE voltages
-	FDTD_FLOAT *volt_ADE[3];
+	// Array setup: volt_ADE[N_order][direction][mesh_pos]
+	FDTD_FLOAT ***volt_ADE;
 };
 
 #endif // ENGINE_EXT_DISPERSIVE_H

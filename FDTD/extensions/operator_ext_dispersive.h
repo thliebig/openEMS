@@ -20,6 +20,7 @@
 
 //#include "operator.h"
 #include "operator_extension.h"
+#include "vector"
 
 //! Abstract base class for all dispersive material models, based on an ADE (additional differential equation)
 class Operator_Ext_Dispersive : public Operator_Extension
@@ -28,6 +29,8 @@ class Operator_Ext_Dispersive : public Operator_Extension
 public:
 	virtual ~Operator_Ext_Dispersive();
 
+	virtual int GetDispersionOrder() {return m_Order;}
+
 	virtual string GetExtensionName() const {return string("Dispersive Material Abstract Base class");}
 
 	virtual void ShowStat(ostream &ostr) const;
@@ -35,13 +38,17 @@ public:
 protected:
 	Operator_Ext_Dispersive(Operator* op);
 
-	//! Lorentz material count
-	unsigned int m_LM_Count;
-	//! Index with dispersive material
-	unsigned int *m_LM_pos[3];
+	//! Dispersive order
+	int m_Order;
 
-	bool m_curr_ADE_On;
-	bool m_volt_ADE_On;
+	//! Dispersive material count
+	vector<unsigned int> m_LM_Count;
+	//! Index with dispersive material
+	// Array setup: m_LM_pos[N_order][direction][mesh_pos]
+	unsigned int ***m_LM_pos;
+
+	bool *m_curr_ADE_On;
+	bool *m_volt_ADE_On;
 };
 
 #endif // OPERATOR_EXT_DISPERSIVE_H

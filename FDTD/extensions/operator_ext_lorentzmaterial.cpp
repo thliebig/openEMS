@@ -20,28 +20,48 @@
 
 Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Operator_Ext_Dispersive(op)
 {
-	for (int n=0; n<3; ++n)
-	{
-		v_int_ADE[n] = NULL;
-		v_ext_ADE[n] = NULL;
-		i_int_ADE[n] = NULL;
-		i_ext_ADE[n] = NULL;
-	}
+	v_int_ADE = NULL;
+	v_ext_ADE = NULL;
+	i_int_ADE = NULL;
+	i_ext_ADE = NULL;
 }
 
 Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 {
-	for (int n=0; n<3; ++n)
+	for (int i=0;i<m_Order;++i)
 	{
-		delete[] v_int_ADE[n];
-		v_int_ADE[n] = NULL;
-		delete[] v_ext_ADE[n];
-		v_ext_ADE[n] = NULL;
-		delete[] i_int_ADE[n];
-		i_int_ADE[n] = NULL;
-		delete[] i_ext_ADE[n];
-		i_ext_ADE[n] = NULL;
+		for (int n=0; n<3; ++n)
+		{
+			if (m_volt_ADE_On[i])
+			{
+				delete[] v_int_ADE[i][n];
+				delete[] v_ext_ADE[i][n];
+			}
+			if (m_curr_ADE_On[i])
+			{
+				delete[] i_int_ADE[i][n];
+				delete[] i_ext_ADE[i][n];
+			}
+		}
+		if (m_volt_ADE_On[i])
+		{
+			delete[] v_int_ADE[i];
+			delete[] v_ext_ADE[i];
+		}
+		if (m_curr_ADE_On[i])
+		{
+			delete[] i_int_ADE[i];
+			delete[] i_ext_ADE[i];
+		}
 	}
+	delete[] v_int_ADE;
+	delete[] v_ext_ADE;
+	delete[] i_int_ADE;
+	delete[] i_ext_ADE;
+	v_int_ADE = NULL;
+	v_ext_ADE = NULL;
+	i_int_ADE = NULL;
+	i_ext_ADE = NULL;
 }
 
 bool Operator_Ext_LorentzMaterial::BuildExtension()
@@ -61,6 +81,11 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	vector<double> i_int[3];
 	vector<double> i_ext[3];
 	vector<unsigned int> v_pos[3];
+	m_Order = 1;
+	m_volt_ADE_On = new bool[1];
+	m_volt_ADE_On[0]=false;
+	m_curr_ADE_On = new bool[1];
+	m_curr_ADE_On[0]=false;
 
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
@@ -87,11 +112,11 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (w_plasma>0)
 						{
 							b_pos_on = true;
-							m_volt_ADE_On = true;
+							m_volt_ADE_On[0] = true;
 							L_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_C[n][index]);
 						}
 						t_relax = mat->GetEpsRelaxTimeWeighted(n,coord);
-						if ((t_relax>0) && m_volt_ADE_On)
+						if ((t_relax>0) && m_volt_ADE_On[0])
 						{
 							R_D[n] = L_D[n]/t_relax;
 						}
@@ -114,11 +139,11 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (w_plasma>0)
 						{
 							b_pos_on = true;
-							m_curr_ADE_On = true;
+							m_curr_ADE_On[0] = true;
 							C_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_L[n][index]);
 						}
 						t_relax = mat->GetMueRelaxTimeWeighted(n,coord);
-						if ((t_relax>0) && m_curr_ADE_On)
+						if ((t_relax>0) && m_curr_ADE_On[0])
 						{
 							G_D[n] = C_D[n]/t_relax;
 						}
@@ -158,33 +183,46 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	}
 
 	//copy all vectors into the array's
-	m_LM_Count = v_pos[0].size();
+	m_LM_Count.push_back(v_pos[0].size());
+
+	m_LM_pos = new unsigned int**[1];
+	m_LM_pos[0] = new unsigned int*[3];
+
+	v_int_ADE = new FDTD_FLOAT**[1];
+	v_ext_ADE = new FDTD_FLOAT**[1];
+	i_int_ADE = new FDTD_FLOAT**[1];
+	i_ext_ADE = new FDTD_FLOAT**[1];
+
+	v_int_ADE[0] = new FDTD_FLOAT*[3];
+	v_ext_ADE[0] = new FDTD_FLOAT*[3];
+	i_int_ADE[0] = new FDTD_FLOAT*[3];
+	i_ext_ADE[0] = new FDTD_FLOAT*[3];
 
 	for (int n=0; n<3; ++n)
 	{
-		m_LM_pos[n] = new unsigned int[m_LM_Count];
-		for (unsigned int i=0; i<m_LM_Count; ++i)
-			m_LM_pos[n][i] = v_pos[n].at(i);
+		m_LM_pos[0][n] = new unsigned int[m_LM_Count.at(0)];
+		for (unsigned int i=0; i<m_LM_Count.at(0); ++i)
+			m_LM_pos[0][n][i] = v_pos[n].at(i);
 		if (m_volt_ADE_On)
 		{
-			v_int_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
-			v_ext_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
+			v_int_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
+			v_ext_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
 
-			for (unsigned int i=0; i<m_LM_Count; ++i)
+			for (unsigned int i=0; i<m_LM_Count.at(0); ++i)
 			{
-				v_int_ADE[n][i] = v_int[n].at(i);
-				v_ext_ADE[n][i] = v_ext[n].at(i);
+				v_int_ADE[0][n][i] = v_int[n].at(i);
+				v_ext_ADE[0][n][i] = v_ext[n].at(i);
 			}
 		}
 		if (m_curr_ADE_On)
 		{
-			i_int_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
-			i_ext_ADE[n]  = new FDTD_FLOAT[m_LM_Count];
+			i_int_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
+			i_ext_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
 
-			for (unsigned int i=0; i<m_LM_Count; ++i)
+			for (unsigned int i=0; i<m_LM_Count.at(0); ++i)
 			{
-				i_int_ADE[n][i] = i_int[n].at(i);
-				i_ext_ADE[n][i] = i_ext[n].at(i);
+				i_int_ADE[0][n][i] = i_int[n].at(i);
+				i_ext_ADE[0][n][i] = i_ext[n].at(i);
 			}
 		}
 

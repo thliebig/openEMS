@@ -34,16 +34,17 @@ public:
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return false;}
 
-	virtual std::string GetExtensionName() const {return std::string("Lorentz Dispersive Material Extension");}
+	virtual std::string GetExtensionName() const {return std::string("Drude/Lorentz Dispersive Material Extension");}
 
 	virtual void ShowStat(ostream &ostr) const;
 
 protected:
 
-	FDTD_FLOAT *v_int_ADE[3];
-	FDTD_FLOAT *v_ext_ADE[3];
-	FDTD_FLOAT *i_int_ADE[3];
-	FDTD_FLOAT *i_ext_ADE[3];
+	//ADE update coefficients, array setup: coeff[N_order][direction][mesh_pos_index]
+	FDTD_FLOAT ***v_int_ADE;
+	FDTD_FLOAT ***v_ext_ADE;
+	FDTD_FLOAT ***i_int_ADE;
+	FDTD_FLOAT ***i_ext_ADE;
 };
 
 #endif // OPERATOR_EXT_LORENTZMATERIAL_H
