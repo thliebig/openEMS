@@ -52,9 +52,10 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0),m_Op->GetNumberOfLines(1),m_Op->GetNumberOfLines(2)};
 	CSPropLorentzMaterial* mat = NULL;
 
-	double w_plasma;
+	double w_plasma,t_relax;
 	bool b_pos_on;
 	double L_D[3], C_D[3];
+	double R_D[3], G_D[3];
 	vector<double> v_int[3];
 	vector<double> v_ext[3];
 	vector<double> i_int[3];
@@ -73,6 +74,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 				for (int n=0; n<3; ++n)
 				{
 					L_D[n]=0;
+					R_D[n]=0;
 					coord[0] = m_Op->GetDiscLine(0,pos[0]);
 					coord[1] = m_Op->GetDiscLine(1,pos[1]);
 					coord[2] = m_Op->GetDiscLine(2,pos[2]);
@@ -82,11 +84,16 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					if ((mat = prop->ToLorentzMaterial()))
 					{
 						w_plasma = mat->GetEpsPlasmaFreqWeighted(n,coord) * 2 * PI;
-						if (w_plasma)
+						if (w_plasma>0)
 						{
 							b_pos_on = true;
 							m_volt_ADE_On = true;
 							L_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_C[n][index]);
+						}
+						t_relax = mat->GetEpsRelaxTimeWeighted(n,coord);
+						if ((t_relax>0) && m_volt_ADE_On)
+						{
+							R_D[n] = L_D[n]/t_relax;
 						}
 					}
 				}
@@ -94,6 +101,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 				for (int n=0; n<3; ++n)
 				{
 					C_D[n]=0;
+					G_D[n]=0;
 					coord[0] = m_Op->GetDiscLine(0,pos[0],true);
 					coord[1] = m_Op->GetDiscLine(1,pos[1],true);
 					coord[2] = m_Op->GetDiscLine(2,pos[2],true);
@@ -103,11 +111,16 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					if ((mat = prop->ToLorentzMaterial()))
 					{
 						w_plasma = mat->GetMuePlasmaFreqWeighted(n,coord) * 2 * PI;
-						if (w_plasma)
+						if (w_plasma>0)
 						{
 							b_pos_on = true;
 							m_curr_ADE_On = true;
 							C_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_L[n][index]);
+						}
+						t_relax = mat->GetMueRelaxTimeWeighted(n,coord);
+						if ((t_relax>0) && m_curr_ADE_On)
+						{
+							G_D[n] = C_D[n]/t_relax;
 						}
 					}
 				}
@@ -117,16 +130,26 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					for (unsigned int n=0; n<3; ++n)
 					{
 						v_pos[n].push_back(pos[n]);
-						v_int[n].push_back(1);
-						i_int[n].push_back(1);
 						if (L_D[n]>0)
-							v_ext[n].push_back(dT/L_D[n]	*m_Op->GetVI(n,pos[0],pos[1],pos[2]));
+						{
+							v_int[n].push_back((2*L_D[n]-dT*R_D[n])/(2*L_D[n]+dT*R_D[n]));
+							v_ext[n].push_back(dT/(L_D[n]+dT*R_D[n]/2)*m_Op->GetVI(n,pos[0],pos[1],pos[2]));
+						}
 						else
+						{
+							v_int[n].push_back(1);
 							v_ext[n].push_back(0);
+						}
 						if (C_D[n]>0)
-							i_ext[n].push_back(dT/C_D[n]	*m_Op->GetIV(n,pos[0],pos[1],pos[2]));
+						{
+							i_int[n].push_back((2*C_D[n]-dT*G_D[n])/(2*C_D[n]+dT*G_D[n]));
+							i_ext[n].push_back(dT/(C_D[n]+dT*G_D[n]/2)*m_Op->GetIV(n,pos[0],pos[1],pos[2]));
+						}
 						else
+						{
+							i_int[n].push_back(1);
 							i_ext[n].push_back(0);
+						}
 //						cerr << v_int[n].back() << " " << v_ext[n].back() << " " << i_int[n].back() << " " << i_ext[n].back() << endl;
 					}
 				}

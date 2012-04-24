@@ -1,7 +1,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 % example demonstrating double drude meta-material
 %
-% author: Thorsten Liebig @ 2010
+% tested with openEMS v0.0.28
+%
+% author: Thorsten Liebig @ 2010,2012
 %%%%%%%%%%%%%%%%%%%%%%%
 
 close all
@@ -17,27 +19,27 @@ Settings.LogFile = 'openEMS.log';
 pic_size = round([1400 1400/4]); %define the animation picture size
 
 %simulation domain setup (in mm)
-length = 4000;
-width = 100;    
-mesh_res = 5;        % mesh resolution
+length = 500;
+width = 10;
+mesh_res = 0.5;        % mesh resolution
 height = 3*mesh_res; % hight is ony 3 lines with PEC (top/bottom) --> quasi 2D
 
 %FDTD setup
-f0 = 0.5e9;         %center frequency
+f0 = 5e9;         %center frequency
 f_BW = f0/sqrt(2);  %bandwidth
+MTM.eps_R = 1;
+MTM.mue_R = 1;
 MTM.f0 = f0;        %plasma frequency of the drude material
-MTM.length = 1000;  %length of the metamaterial
+MTM.relaxTime = 5e-9; %relaxation time (smaller number results in greater losses, set to 0 to disable)
+MTM.length = 250;  %length of the metamaterial
 N_TS = 5e4;         %number of timesteps
 endCriteria = 1e-5; %stop simulation if signal is at -50dB
 
 %constants
-EPS0 = 8.85418781762e-12;
-MUE0 = 1.256637062e-6;
+physical_constants
 
 %% define openEMS options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-openEMS_opts = '';
-% openEMS_opts = [openEMS_opts ' --disable-dumps'];
-openEMS_opts = [openEMS_opts ' --engine=fastest'];
+openEMS_opts = '-vvv';
 
 Sim_Path = 'MTM_PW_Drude';
 Sim_CSX = 'MTM_PW_Drude.xml';
@@ -51,8 +53,7 @@ if (postproc_only==0)
 
     %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     FDTD = InitFDTD(N_TS,endCriteria,'OverSampling',10);
-    FDTD = SetGaussExcite(FDTD,f0,f0/sqrt(2));
-    % FDTD = SetSinusExcite(FDTD,f0*sqrt(2));
+    FDTD = SetGaussExcite(FDTD,0,2*f0);
     BC = [1 1 0 0 2 2];
     FDTD = SetBoundaryCond(FDTD,BC);
 
@@ -70,9 +71,9 @@ if (postproc_only==0)
     CSX = AddBox(CSX,'excite',0 ,start,stop);
 
     %% apply drude material %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    CSX = AddProperty(CSX,'LorentzMaterial','drude');
-    CSX = SetPropertyArgs(CSX,'LorentzMaterial','drude','PlasmaFrequency','Epsilon',MTM.f0);
-    CSX = SetPropertyArgs(CSX,'LorentzMaterial','drude','PlasmaFrequency','Mue'    ,MTM.f0);
+    CSX = AddLorentzMaterial(CSX,'drude');
+    CSX = SetMaterialProperty(CSX,'drude','Epsilon',MTM.eps_R,'EpsilonPlasmaFrequency',MTM.f0,'EpsilonRelaxTime',MTM.relaxTime);
+    CSX = SetMaterialProperty(CSX,'drude','Mue',MTM.mue_R,'MuePlasmaFrequency',MTM.f0,'MueRelaxTime',MTM.relaxTime);
     start=[mesh.x(1)   mesh.y(1)   -MTM.length/2];
     stop =[mesh.x(end) mesh.y(end)  MTM.length/2];
     CSX = AddBox(CSX,'drude', 10 ,start,stop);
@@ -90,6 +91,22 @@ if (postproc_only==0)
     RunOpenEMS(Sim_Path, Sim_CSX, openEMS_opts, Settings);
 
 end
+
+%% plot the drude type material dependency
+f = linspace(0.1*f0,2*f0,501);
+w = 2*pi*f;
+epsr = MTM.eps_R * (1 - (2*pi*MTM.f0)^2./( w.^2 - 1j*w./MTM.relaxTime ));
+muer = MTM.mue_R * (1 - (2*pi*MTM.f0)^2./( w.^2 - 1j*w./MTM.relaxTime ));
+plot(f,real(epsr),'Linewidth',2);
+hold on
+grid on
+plot(f,imag(epsr),'r--','Linewidth',2);
+plot(f,real(muer),'c-.','Linewidth',2);
+plot(f,imag(muer),'m-.','Linewidth',2);
+ylim([-10 MTM.eps_R])
+% l=legend('\Re \epsilon_r','\Im \epsilon_r','\Re \mue_r','\Im \mue_r');
+l=legend('$\Re\{\varepsilon_r\}$','$\Im\{\varepsilon_r\}$','$\Re\{\mu_r\}$','$\Im\{\mu_r\}$');
+set(l,'Interpreter','latex','Fontsize',12)
 
 %% plot E-fields
 freq = [f0/sqrt(2) f0 f0*sqrt(2)];
