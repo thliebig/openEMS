@@ -81,151 +81,174 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	vector<double> i_int[3];
 	vector<double> i_ext[3];
 	vector<unsigned int> v_pos[3];
-	m_Order = 1;
-	m_volt_ADE_On = new bool[1];
-	m_volt_ADE_On[0]=false;
-	m_curr_ADE_On = new bool[1];
-	m_curr_ADE_On[0]=false;
 
-	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+	m_Order = 0;
+	vector<CSProperties*> LD_props = m_Op->CSX->GetPropertyByType(CSProperties::LORENTZMATERIAL);
+	for (size_t n=0;n<LD_props.size();++n)
 	{
-		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-		{
-			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-			{
-				unsigned int index = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
-				//calc epsilon lorentz material
-				b_pos_on = false;
-				for (int n=0; n<3; ++n)
-				{
-					L_D[n]=0;
-					R_D[n]=0;
-					coord[0] = m_Op->GetDiscLine(0,pos[0]);
-					coord[1] = m_Op->GetDiscLine(1,pos[1]);
-					coord[2] = m_Op->GetDiscLine(2,pos[2]);
-					coord[n] = m_Op->GetDiscLine(n,pos[n],true); //pos of E_n
-
-					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
-					if ((mat = prop->ToLorentzMaterial()))
-					{
-						w_plasma = mat->GetEpsPlasmaFreqWeighted(n,coord) * 2 * PI;
-						if (w_plasma>0)
-						{
-							b_pos_on = true;
-							m_volt_ADE_On[0] = true;
-							L_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_C[n][index]);
-						}
-						t_relax = mat->GetEpsRelaxTimeWeighted(n,coord);
-						if ((t_relax>0) && m_volt_ADE_On[0])
-						{
-							R_D[n] = L_D[n]/t_relax;
-						}
-					}
-				}
-
-				for (int n=0; n<3; ++n)
-				{
-					C_D[n]=0;
-					G_D[n]=0;
-					coord[0] = m_Op->GetDiscLine(0,pos[0],true);
-					coord[1] = m_Op->GetDiscLine(1,pos[1],true);
-					coord[2] = m_Op->GetDiscLine(2,pos[2],true);
-					coord[n] = m_Op->GetDiscLine(n,pos[n]); //pos of H_n
-
-					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
-					if ((mat = prop->ToLorentzMaterial()))
-					{
-						w_plasma = mat->GetMuePlasmaFreqWeighted(n,coord) * 2 * PI;
-						if (w_plasma>0)
-						{
-							b_pos_on = true;
-							m_curr_ADE_On[0] = true;
-							C_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_L[n][index]);
-						}
-						t_relax = mat->GetMueRelaxTimeWeighted(n,coord);
-						if ((t_relax>0) && m_curr_ADE_On[0])
-						{
-							G_D[n] = C_D[n]/t_relax;
-						}
-					}
-				}
-
-				if (b_pos_on) //this position has active lorentz material
-				{
-					for (unsigned int n=0; n<3; ++n)
-					{
-						v_pos[n].push_back(pos[n]);
-						if (L_D[n]>0)
-						{
-							v_int[n].push_back((2*L_D[n]-dT*R_D[n])/(2*L_D[n]+dT*R_D[n]));
-							v_ext[n].push_back(dT/(L_D[n]+dT*R_D[n]/2)*m_Op->GetVI(n,pos[0],pos[1],pos[2]));
-						}
-						else
-						{
-							v_int[n].push_back(1);
-							v_ext[n].push_back(0);
-						}
-						if (C_D[n]>0)
-						{
-							i_int[n].push_back((2*C_D[n]-dT*G_D[n])/(2*C_D[n]+dT*G_D[n]));
-							i_ext[n].push_back(dT/(C_D[n]+dT*G_D[n]/2)*m_Op->GetIV(n,pos[0],pos[1],pos[2]));
-						}
-						else
-						{
-							i_int[n].push_back(1);
-							i_ext[n].push_back(0);
-						}
-//						cerr << v_int[n].back() << " " << v_ext[n].back() << " " << i_int[n].back() << " " << i_ext[n].back() << endl;
-					}
-				}
-			}
-		}
+		CSPropLorentzMaterial* LorMat = dynamic_cast<CSPropLorentzMaterial*>(LD_props.at(n));
+		if (LorMat==NULL)
+			return false; //sanity check, this should not happen
+		if (LorMat->GetDispersionOrder()>m_Order)
+			m_Order=LorMat->GetDispersionOrder();
 	}
 
-	//copy all vectors into the array's
-	m_LM_Count.push_back(v_pos[0].size());
+	m_volt_ADE_On = new bool[m_Order];
+	m_curr_ADE_On = new bool[m_Order];
+	m_LM_pos = new unsigned int**[m_Order];
 
-	m_LM_pos = new unsigned int**[1];
-	m_LM_pos[0] = new unsigned int*[3];
+	v_int_ADE = new FDTD_FLOAT**[m_Order];
+	v_ext_ADE = new FDTD_FLOAT**[m_Order];
+	i_int_ADE = new FDTD_FLOAT**[m_Order];
+	i_ext_ADE = new FDTD_FLOAT**[m_Order];
 
-	v_int_ADE = new FDTD_FLOAT**[1];
-	v_ext_ADE = new FDTD_FLOAT**[1];
-	i_int_ADE = new FDTD_FLOAT**[1];
-	i_ext_ADE = new FDTD_FLOAT**[1];
-
-	v_int_ADE[0] = new FDTD_FLOAT*[3];
-	v_ext_ADE[0] = new FDTD_FLOAT*[3];
-	i_int_ADE[0] = new FDTD_FLOAT*[3];
-	i_ext_ADE[0] = new FDTD_FLOAT*[3];
-
-	for (int n=0; n<3; ++n)
+	for (int order=0;order<m_Order;++order)
 	{
-		m_LM_pos[0][n] = new unsigned int[m_LM_Count.at(0)];
-		for (unsigned int i=0; i<m_LM_Count.at(0); ++i)
-			m_LM_pos[0][n][i] = v_pos[n].at(i);
-		if (m_volt_ADE_On)
-		{
-			v_int_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
-			v_ext_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
+		m_volt_ADE_On[order]=false;
+		m_curr_ADE_On[order]=false;
 
-			for (unsigned int i=0; i<m_LM_Count.at(0); ++i)
-			{
-				v_int_ADE[0][n][i] = v_int[n].at(i);
-				v_ext_ADE[0][n][i] = v_ext[n].at(i);
-			}
-		}
-		if (m_curr_ADE_On)
+		for (int n=0;n<3;++n)
 		{
-			i_int_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
-			i_ext_ADE[0][n]  = new FDTD_FLOAT[m_LM_Count.at(0)];
-
-			for (unsigned int i=0; i<m_LM_Count.at(0); ++i)
-			{
-				i_int_ADE[0][n][i] = i_int[n].at(i);
-				i_ext_ADE[0][n][i] = i_ext[n].at(i);
-			}
+			v_int[n].clear();
+			v_ext[n].clear();
+			i_int[n].clear();
+			i_ext[n].clear();
+			v_pos[n].clear();
 		}
 
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+		{
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			{
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				{
+					unsigned int index = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
+					//calc epsilon lorentz material
+					b_pos_on = false;
+					for (int n=0; n<3; ++n)
+					{
+						L_D[n]=0;
+						R_D[n]=0;
+						coord[0] = m_Op->GetDiscLine(0,pos[0]);
+						coord[1] = m_Op->GetDiscLine(1,pos[1]);
+						coord[2] = m_Op->GetDiscLine(2,pos[2]);
+						coord[n] = m_Op->GetDiscLine(n,pos[n],true); //pos of E_n
+
+						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
+						if ((mat = prop->ToLorentzMaterial()))
+						{
+							w_plasma = mat->GetEpsPlasmaFreqWeighted(order,n,coord) * 2 * PI;
+							if (w_plasma>0)
+							{
+								b_pos_on = true;
+								m_volt_ADE_On[order] = true;
+								L_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_C[n][index]);
+							}
+							t_relax = mat->GetEpsRelaxTimeWeighted(order,n,coord);
+							if ((t_relax>0) && m_volt_ADE_On[order])
+							{
+								R_D[n] = L_D[n]/t_relax;
+							}
+						}
+					}
+
+					for (int n=0; n<3; ++n)
+					{
+						C_D[n]=0;
+						G_D[n]=0;
+						coord[0] = m_Op->GetDiscLine(0,pos[0],true);
+						coord[1] = m_Op->GetDiscLine(1,pos[1],true);
+						coord[2] = m_Op->GetDiscLine(2,pos[2],true);
+						coord[n] = m_Op->GetDiscLine(n,pos[n]); //pos of H_n
+
+						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
+						if ((mat = prop->ToLorentzMaterial()))
+						{
+							w_plasma = mat->GetMuePlasmaFreqWeighted(order,n,coord) * 2 * PI;
+							if (w_plasma>0)
+							{
+								b_pos_on = true;
+								m_curr_ADE_On[order] = true;
+								C_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_L[n][index]);
+							}
+							t_relax = mat->GetMueRelaxTimeWeighted(order,n,coord);
+							if ((t_relax>0) && m_curr_ADE_On[order])
+							{
+								G_D[n] = C_D[n]/t_relax;
+							}
+						}
+					}
+
+					if (b_pos_on) //this position has active lorentz material
+					{
+						for (unsigned int n=0; n<3; ++n)
+						{
+							v_pos[n].push_back(pos[n]);
+							if (L_D[n]>0)
+							{
+								v_int[n].push_back((2*L_D[n]-dT*R_D[n])/(2*L_D[n]+dT*R_D[n]));
+								v_ext[n].push_back(dT/(L_D[n]+dT*R_D[n]/2)*m_Op->GetVI(n,pos[0],pos[1],pos[2]));
+							}
+							else
+							{
+								v_int[n].push_back(1);
+								v_ext[n].push_back(0);
+							}
+							if (C_D[n]>0)
+							{
+								i_int[n].push_back((2*C_D[n]-dT*G_D[n])/(2*C_D[n]+dT*G_D[n]));
+								i_ext[n].push_back(dT/(C_D[n]+dT*G_D[n]/2)*m_Op->GetIV(n,pos[0],pos[1],pos[2]));
+							}
+							else
+							{
+								i_int[n].push_back(1);
+								i_ext[n].push_back(0);
+							}
+							//						cerr << v_int[n].back() << " " << v_ext[n].back() << " " << i_int[n].back() << " " << i_ext[n].back() << endl;
+						}
+					}
+				}
+			}
+		}
+
+		//copy all vectors into the array's
+		m_LM_Count.push_back(v_pos[0].size());
+
+		m_LM_pos[order] = new unsigned int*[3];
+
+		v_int_ADE[order] = new FDTD_FLOAT*[3];
+		v_ext_ADE[order] = new FDTD_FLOAT*[3];
+		i_int_ADE[order] = new FDTD_FLOAT*[3];
+		i_ext_ADE[order] = new FDTD_FLOAT*[3];
+
+		for (int n=0; n<3; ++n)
+		{
+			m_LM_pos[order][n] = new unsigned int[m_LM_Count.at(order)];
+			for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+				m_LM_pos[order][n][i] = v_pos[n].at(i);
+			if (m_volt_ADE_On)
+			{
+				v_int_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
+				v_ext_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
+
+				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+				{
+					v_int_ADE[order][n][i] = v_int[n].at(i);
+					v_ext_ADE[order][n][i] = v_ext[n].at(i);
+				}
+			}
+			if (m_curr_ADE_On)
+			{
+				i_int_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
+				i_ext_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
+
+				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+				{
+					i_int_ADE[order][n][i] = i_int[n].at(i);
+					i_ext_ADE[order][n][i] = i_ext[n].at(i);
+				}
+			}
+		}
 	}
 
 	return true;
