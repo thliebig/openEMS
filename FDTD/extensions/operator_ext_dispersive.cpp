@@ -57,7 +57,7 @@ void Operator_Ext_Dispersive::ShowStat(ostream &ostr)  const
 	ostr << " Max. Dispersion Order N = " << m_Order << endl;
 	for (int i=0;i<m_Order;++i)
 	{
-		ostr << " N=" << i << ":\t Active cells\t\t: " << 	m_LM_Count[i] << endl;
+		ostr << " N=" << i << ":\t Active cells\t\t: " << 	m_LM_Count.at(i) << endl;
 		ostr << " N=" << i << ":\t Voltage ADE is \t: " << On_Off[m_volt_ADE_On[i]] << endl;
 		ostr << " N=" << i << ":\t Current ADE is \t: " << On_Off[m_curr_ADE_On[i]] << endl;
 	}

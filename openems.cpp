@@ -623,13 +623,13 @@ int openEMS::SetupFDTD(const char* file)
 
 	SetupBoundaryConditions(BC);
 
-	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
-		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
-
 	double timestep=0;
 	FDTD_Opts->QueryDoubleAttribute("TimeStep",&timestep);
 	if (timestep)
 		FDTD_Op->SetTimestep(timestep);
+
+	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
+		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 
 	//check all properties to request material storage during operator creation...
 	SetupMaterialStorages();

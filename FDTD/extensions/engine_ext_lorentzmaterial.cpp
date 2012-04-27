@@ -34,7 +34,7 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates()
 {
 	for (int o=0;o<m_Order;++o)
 	{
-		if (m_Op_Ext_Lor->m_volt_ADE_On==false) continue;
+		if (m_Op_Ext_Lor->m_volt_ADE_On[o]==false) continue;
 
 		unsigned int **pos = m_Op_Ext_Lor->m_LM_pos[o];
 
@@ -93,7 +93,7 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates()
 {
 	for (int o=0;o<m_Order;++o)
 	{
-		if (m_Op_Ext_Lor->m_curr_ADE_On==false) continue;
+		if (m_Op_Ext_Lor->m_curr_ADE_On[o]==false) continue;
 
 		unsigned int **pos = m_Op_Ext_Lor->m_LM_pos[o];
 
