@@ -43,14 +43,20 @@ for n=1:numel(info.GroupHierarchy.Groups)
             if strcmp(info.GroupHierarchy.Groups(n).Groups(nGroup).Name,'/FieldData/TD')
                 for m=1:numel(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets)
                     TD.names{m} = info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Name;
-                    TD.time(m) = double(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes.Value);
+                    for a = 1:numel(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes)
+                        str = regexp(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes(a).Name,'\w/*\w*','match');
+                        TD.(str{end})(m) = double(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes(a).Value);
+                    end
                 end
             end
             %search and read FD data
             if strcmp(info.GroupHierarchy.Groups(n).Groups(nGroup).Name,'/FieldData/FD')
                 for m=1:numel(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets)
                     FD.names{m} = info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Name;
-                    FD.freq(m) = double(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes.Value);
+                    for a = 1:numel(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes)
+                        str = regexp(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes(a).Name,'\w/*\w*','match');
+                        FD.(str{end})(m) = double(info.GroupHierarchy.Groups(n).Groups(nGroup).Datasets(m).Attributes(a).Value);
+                    end
                 end
             end
         end
@@ -59,14 +65,14 @@ for n=1:numel(info.GroupHierarchy.Groups)
 end
 
 if (numel(TD.names)>0)
-    hdf_fielddata.TD.names=TD.names;
-    hdf_fielddata.TD.time=TD.time;
+    hdf_fielddata.TD=TD;
     for n=1:numel(hdf_fielddata.TD.names)
         hdf_fielddata.TD.values{n} = double(hdf5read(file,hdf_fielddata.TD.names{n}));
     end
 end
 
 if (numel(FD.names)>0)
+    hdf_fielddata.FD=FD;
     Nr_freq = numel(FD.names);
     for n=1:Nr_freq
         name = ['/FieldData/FD/f' int2str(n-1) '_real'];
@@ -75,11 +81,9 @@ if (numel(FD.names)>0)
             ind = find(strcmp(FD.names,['/FieldData/FD/f' int2str(n-1)]));
             if ~isempty(ind)
                 hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
-                hdf_fielddata.FD.freq(n) = FD.freq(ind);
             end
         else
             hdf_fielddata.FD.values{n} = double(hdf5read(file,FD.names{ind}));
-            hdf_fielddata.FD.freq(n) = FD.freq(ind);
             name = ['/FieldData/FD/f' int2str(n-1) '_imag'];
             ind = find(strcmp(FD.names,name));
             hdf_fielddata.FD.values{n} = hdf_fielddata.FD.values{n} + 1j*double(hdf5read(file,FD.names{ind}));
@@ -107,6 +111,6 @@ if isfield(hdf.FieldData,'FD')
     for n=1:numel(hdf_fielddata_names)/2
         hdf_fielddata.FD.values{n} = hdf.FieldData.FD.(hdf_fielddata_names{2*n}) + 1j*hdf.FieldData.FD.(hdf_fielddata_names{2*n-1});
         hdf_fielddata.FD.names{n} = ['/FieldData/FD/' hdf_fielddata_names{2*n-1}(1:end-5)];
-        hdf_fielddata.FD.freq(n) = h5readatt_octave(file,['/FieldData/FD/' hdf_fielddata_names{2*n}],'frequency');
+        hdf_fielddata.FD.frequencies(n) = h5readatt_octave(file,['/FieldData/FD/' hdf_fielddata_names{2*n}],'frequency');
     end
 end

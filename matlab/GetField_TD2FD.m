@@ -25,7 +25,7 @@ dt = t(2)-t(1);
 
 clear field.FD
 
-field.FD.freq = freq;
+field.FD.frequency = freq;
 
 for nf = 1:numel(freq)
     field.FD.values{nf} = 0;
