@@ -241,7 +241,6 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 	switch (m_DumpType)
 	{
 	case E_FIELD_DUMP:
-	case SAR_LOCAL_DUMP:
 		for (unsigned int i=0; i<numLines[0]; ++i)
 		{
 			pos[0]=posLines[0][i];
@@ -317,8 +316,9 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 			}
 		}
 		return field;
+	default:
+		cerr << "ProcessFields::CalcField(): Error, unknown dump type..." << endl;
+		return field;
 	}
-	cerr << "ProcessFields::CalcField(): Error, unknown dump type..." << endl;
-	return field;
 }
 

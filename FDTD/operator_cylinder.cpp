@@ -176,6 +176,11 @@ double Operator_Cylinder::GetEdgeLength(int ny, const unsigned int pos[3], bool 
 	return length * GetDiscLine(0,pos[0],dualMesh);
 }
 
+double Operator_Cylinder::GetCellVolume(const unsigned int pos[3], bool dualMesh) const
+{
+	return GetEdgeArea(2,pos,dualMesh)*GetEdgeLength(2,pos,dualMesh);
+}
+
 double Operator_Cylinder::GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh) const
 {
 	if (ny!=0)

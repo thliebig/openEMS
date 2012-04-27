@@ -181,6 +181,14 @@ double Operator::GetEdgeLength(int n, const unsigned int* pos, bool dualMesh) co
 	}
 }
 
+double Operator::GetCellVolume(const unsigned int pos[3], bool dualMesh) const
+{
+	double vol=1;
+	for (int n=0;n<3;++n)
+		vol*=GetEdgeLength(n,pos,dualMesh);
+	return vol;
+}
+
 double Operator::GetNodeWidth(int ny, const int pos[3], bool dualMesh) const
 {
 	if ( (pos[0]<0) || (pos[1]<0) || (pos[2]<0) )
@@ -1338,6 +1346,7 @@ bool Operator::Calc_LumpedElements()
 								EC_C[ny][ipos] = epsilon * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos);
 							if (R>0)
 								EC_G[ny][ipos] = kappa * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos);
+
 							if (R==0) //make lumped element a PEC if resistance is zero
 							{
 								SetVV(ny,pos[0],pos[1],pos[2], 0 );

@@ -30,10 +30,19 @@ public:
 
 	virtual void InitProcess();
 
+	virtual int Process();
+
+	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
+
+	virtual void SetOptResolution(double optRes, int dir=-1);
+
 protected:
 	virtual void DumpFDData();
 
-	double GetKappaDensityRatio(const unsigned int* pos);
+	//! frequency domain electric field storage
+	vector<std::complex<float>****> m_E_FD_Fields;
+	//! frequency domain current density storage
+	vector<std::complex<float>****> m_J_FD_Fields;
 };
 
 #endif // PROCESSFIELDS_SAR_H

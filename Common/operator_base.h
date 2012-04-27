@@ -69,6 +69,9 @@ public:
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 
+	//! Get the volume of an FDTD cell
+	virtual double GetCellVolume(const unsigned int pos[3], bool dualMesh = false) const =0;
+
 	//! Snap the given coodinates to mesh indices, return box dimension
 	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool* inside=NULL) const =0;
 
