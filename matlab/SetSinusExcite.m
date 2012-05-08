@@ -11,3 +11,4 @@ function FDTD = SetSinusExcite(FDTD,f0)
 
 FDTD.Excitation.ATTRIBUTE.Type=1;
 FDTD.Excitation.ATTRIBUTE.f0=f0;
+FDTD.ATTRIBUTE.f_max=f0;

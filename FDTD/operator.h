@@ -33,6 +33,7 @@ class Operator : public Operator_Base
 	friend class Engine;
 	friend class Engine_Interface_FDTD;
 	friend class Operator_Ext_LorentzMaterial; //we need to find a way around this... friend class Operator_Extension only would be nice
+	friend class Operator_Ext_ConductingSheet; //we need to find a way around this... friend class Operator_Extension only would be nice
 	friend class Operator_Ext_PML_SF_Plane;
 	friend class Operator_Ext_Excitation;
 	friend class Operator_Ext_UPML;
@@ -74,6 +75,9 @@ public:
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
+
+	virtual void SetBCSize(int dir, int size) {m_BC_Size[dir]=size;}
+	virtual int GetBCSize(int dir) {return m_BC_Size[dir];}
 
 	//! Set a forced timestep to use by the operator
 	virtual void SetTimestep(double ts) {dT = ts;}
@@ -200,6 +204,9 @@ protected:
 
 	//! Calculate and setup lumped elements
 	virtual bool Calc_LumpedElements();
+
+	//! Store the size of the applied boundary conditions
+	int m_BC_Size[6];
 
 	//store material properties for post-processing
 	float**** m_epsR;

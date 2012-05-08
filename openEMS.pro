@@ -102,6 +102,7 @@ SOURCES += FDTD/engine.cpp \
 SOURCES += FDTD/extensions/engine_extension.cpp \
     FDTD/extensions/operator_ext_dispersive.cpp \
     FDTD/extensions/operator_ext_lorentzmaterial.cpp \
+    FDTD/extensions/operator_ext_conductingsheet.cpp \
     FDTD/extensions/engine_ext_dispersive.cpp \
     FDTD/extensions/engine_ext_lorentzmaterial.cpp \
     FDTD/extensions/operator_ext_pml_sf.cpp \
@@ -169,6 +170,8 @@ HEADERS += FDTD/extensions/operator_extension.h \
     FDTD/extensions/engine_ext_cylinder.h \
     FDTD/extensions/operator_ext_dispersive.h \
     FDTD/extensions/operator_ext_lorentzmaterial.h \
+    FDTD/extensions/operator_ext_conductingsheet.h \
+    FDTD/extensions/cond_sheet_parameter.h \
     FDTD/extensions/engine_ext_dispersive.h \
     FDTD/extensions/engine_ext_lorentzmaterial.h \
     FDTD/extensions/operator_ext_pml_sf.h \
@@ -264,4 +267,3 @@ QMAKE_EXTRA_TARGETS += install
 phony.target = .PHONY
 phony.depends = $$QMAKE_EXTRA_TARGETS
 QMAKE_EXTRA_TARGETS += phony
-

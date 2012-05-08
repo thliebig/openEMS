@@ -27,6 +27,7 @@
 #include "FDTD/extensions/operator_ext_pml_sf.h"
 #include "FDTD/extensions/operator_ext_upml.h"
 #include "FDTD/extensions/operator_ext_lorentzmaterial.h"
+#include "FDTD/extensions/operator_ext_conductingsheet.h"
 #include "FDTD/engine_interface_fdtd.h"
 #include "FDTD/engine_interface_cylindrical_fdtd.h"
 #include "Common/processvoltage.h"
@@ -263,8 +264,10 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 	string mur_v_ph_names[6] = {"MUR_PhaseVelocity_xmin", "MUR_PhaseVelocity_xmax", "MUR_PhaseVelocity_ymin", "MUR_PhaseVelocity_ymax", "MUR_PhaseVelocity_zmin", "MUR_PhaseVelocity_zmax"};
 	for (int n=0; n<6; ++n)
 	{
+		FDTD_Op->SetBCSize(n, 0);
 		if (bounds[n]==2) //Mur-ABC
 		{
+			FDTD_Op->SetBCSize(n, 1);
 			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
 			op_ext_mur->SetDirection(n/2,n%2);
 			double v_ph = 0;
@@ -275,6 +278,8 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 				op_ext_mur->SetPhaseVelocity(mur_v_ph);
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
+		if (bounds[n]==3)
+			FDTD_Op->SetBCSize(n, pml_size[n]);
 	}
 
 	//create the upml
@@ -630,6 +635,12 @@ int openEMS::SetupFDTD(const char* file)
 
 	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
+	if (m_CSX->GetQtyPropertyType(CSProperties::CONDUCTINGSHEET)>0)
+	{
+		double f_max=0;
+		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
+		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op,f_max));
+	}
 
 	//check all properties to request material storage during operator creation...
 	SetupMaterialStorages();
