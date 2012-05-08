@@ -31,7 +31,7 @@ end
 
 filename = mfilename('fullpath');
 dir = fileparts( filename );
-openEMS_Path = [dir filesep '..' filesep];
+openEMS_Path = [dir filesep '../..' filesep];
     
 if isunix
 	openEMS_Path = [openEMS_Path 'openEMS.sh'];
