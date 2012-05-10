@@ -78,22 +78,32 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 						if (cs_sheet==NULL)
 							return false; //sanity check, this should never happen
 						if (cs_sheet->GetDimension()!=2)
+						{
+							cerr << "Operator_Ext_ConductingSheet::BuildExtension: A conducting sheet primitive (ID: " << cs_sheet->GetID() << ") with dimension: " << cs_sheet->GetDimension() << " found, fallback to PEC!" << endl;
+							m_Op->SetVV(n,pos[0],pos[1],pos[2], 0 );
+							m_Op->SetVI(n,pos[0],pos[1],pos[2], 0 );
+							++m_Op->m_Nr_PEC[n];
 							continue;
+						}
 						cs_sheet->SetPrimitiveUsed(true);
 
 						if (disable_pos)
 						{
 							m_Op->SetVV(n,pos[0],pos[1],pos[2], 0 );
 							m_Op->SetVI(n,pos[0],pos[1],pos[2], 0 );
+							++m_Op->m_Nr_PEC[n];
 							continue;
 						}
 
 						Conductivity[n][pos[0]][pos[1]][pos[2]] = cs_prop->GetConductivity();
 						Thickness[n][pos[0]][pos[1]][pos[2]] = cs_prop->GetThickness();
 
-						if ((Conductivity[n][pos[0]][pos[1]][pos[2]]==0) || (Thickness[n][pos[0]][pos[1]][pos[2]]==0))
+						if ((Conductivity[n][pos[0]][pos[1]][pos[2]]<=0) || (Thickness[n][pos[0]][pos[1]][pos[2]]<=0))
 						{
-							cerr << "Operator_Ext_ConductingSheet::BuildExtension: Warning: Zero conductivity or thickness detected... skipping node!" << endl;
+							cerr << "Operator_Ext_ConductingSheet::BuildExtension: Warning: Zero conductivity or thickness detected... fallback to PEC!" << endl;
+							m_Op->SetVV(n,pos[0],pos[1],pos[2], 0 );
+							m_Op->SetVI(n,pos[0],pos[1],pos[2], 0 );
+							++m_Op->m_Nr_PEC[n];
 							continue;
 						}
 
@@ -173,6 +183,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 		index = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
 		for (int n=0;n<3;++n)
 		{
+			tpos[0]=pos[0];tpos[1]=pos[1];tpos[2]=pos[2];
 			t_dir = tanDir[n][pos[0]][pos[1]][pos[2]];
 			G0 = Conductivity[n][pos[0]][pos[1]][pos[2]]*Thickness[n][pos[0]][pos[1]][pos[2]];
 			w0 = 8.0/ G0 / Thickness[n][pos[0]][pos[1]][pos[2]]/__MUE0__;
@@ -199,9 +210,6 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 				--tpos[t_dir];
 				if (tanDir[t_dir][tpos[0]][tpos[1]][tpos[2]]<0)
 					factor = 2;
-
-				if (n==1)
-					factor=1;
 
 				L1 = l1[optParaPos]/G0/w0*factor;
 				L2 = l2[optParaPos]/G0/w0*factor;
