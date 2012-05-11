@@ -34,7 +34,7 @@ public:
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return false;}
 
-	virtual std::string GetExtensionName() const {return std::string("Drude/Lorentz Dispersive Material Extension");}
+	virtual string GetExtensionName() const {return string("Drude/Lorentz Dispersive Material Extension");}
 
 	virtual void ShowStat(ostream &ostr) const;
 

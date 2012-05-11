@@ -36,7 +36,7 @@ public:
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return true;}
 
-	virtual std::string GetExtensionName() const {return std::string("Conducting Sheet Extension");}
+	virtual string GetExtensionName() const {return string("Conducting Sheet Extension");}
 
 protected:
 	double m_f_max;
