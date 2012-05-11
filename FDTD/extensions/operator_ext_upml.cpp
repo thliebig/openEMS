@@ -111,6 +111,24 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 		}
 	}
 
+	//check cylindrical coord compatiblility
+	if (dynamic_cast<Operator_CylinderMultiGrid*>(op))
+	{
+		if (BC[2]==3)
+		{
+			BC[2]=0;
+			size[2]=0;
+			cerr << "Operator_Ext_UPML::Create_UPML: Warning: An upml in alpha direction is not possible for a cylindrical multi-grid, resetting to PEC..." << endl;
+		}
+		if (BC[3]==3)
+		{
+			BC[3]=0;
+			size[3]=0;
+			cerr << "Operator_Ext_UPML::Create_UPML: Warning: An upml in alpha direction is not possible for a cylindrical multi-grid, resetting to PEC..." << endl;
+		}
+	}
+
+
 	Operator_Ext_UPML* op_ext_upml=NULL;
 	unsigned int start[3]={0 ,0 ,0};
 	unsigned int stop[3] ={op->GetOriginalNumLines(0)-1,op->GetOriginalNumLines(1)-1,op->GetOriginalNumLines(2)-1};
