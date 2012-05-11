@@ -6,6 +6,7 @@ CONFIG += debug_and_release
 win32 {
     CONFIG += console
     INCLUDEPATH += ../../hdf5/include ../../hdf5/include/cpp ../../boost/include/boost-1_42
+    INCLUDEPATH += ../../tinyxml
     LIBS +=  ../../hdf5/lib/hdf5.lib
     LIBS += ../../boost/lib/libboost_thread-mgw44-mt.lib
     LIBS += ../../tinyxml/release/libtinyxml2.a
