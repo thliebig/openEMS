@@ -35,6 +35,7 @@ public:
 	virtual bool BuildExtension();
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return true;}
+	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 
 	virtual string GetExtensionName() const {return string("Conducting Sheet Extension");}
 
