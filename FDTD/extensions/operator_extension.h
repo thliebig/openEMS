@@ -44,7 +44,7 @@ public:
 		Create a clone of this extension, will return NULL if this is impossible (e.g. derived extension has no clone method and copy-constructor)...
 		BuildExtension has to be called separatly!
 	*/
-	virtual Operator_Extension* Clone(Operator* op);
+	virtual Operator_Extension* Clone(Operator* op) {return NULL;}
 
 	virtual bool BuildExtension() {return true;}
 
