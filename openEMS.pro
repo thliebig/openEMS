@@ -8,7 +8,6 @@ OBJECTS_DIR = obj
 INCLUDEPATH += .
 INCLUDEPATH += ../CSXCAD \
     ../fparser
-LIBS += -L../CSXCAD -lCSXCAD
 CONFIG += debug_and_release
 
 
@@ -32,32 +31,34 @@ VERSION=0.0.27
 # CONFIG SECTION
 ###############################################################################
 
-WIN32_LIB_ROOT = ..
-
 win32 {
     CONFIG += console
-    INCLUDEPATH += ../tinyxml
-    INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp $$WIN32_LIB_ROOT/boost/include/boost-1_42
-    LIBS +=  $$WIN32_LIB_ROOT/hdf5/lib/hdf5.lib
+    WIN32_LIB_ROOT = ..
+    # tinyxml
+    INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml
+    LIBS += -L../tinyxml/release -ltinyxml2
+    # fparser
+    LIBS += -L../fparser/release -lfparser4
+    # CSXCAD
+    LIBS += -L../CSXCAD/release  -lCSXCAD0
+    # hdf5
+    INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp
+    LIBS += -L$$WIN32_LIB_ROOT/hdf5/lib -lhdf5
+    # boost
+    DEFINES += BOOST_THREAD_USE_LIB
+    INCLUDEPATH += $$WIN32_LIB_ROOT/boost/include
     LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
-    LIBS += -L../CSXCAD/release
-    LIBS += ../fparser/release/libfparser4.a
-    LIBS += ../tinyxml/release/libtinyxml2.a
-
-	### vtk ###
-	 INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk \
-		$$WIN32_LIB_ROOT/vtk/Common \
+    # vtk
+    INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk \
+        $$WIN32_LIB_ROOT/vtk/Common \
 		$$WIN32_LIB_ROOT/vtk/Filtering \
 		$$WIN32_LIB_ROOT/vtk/IO
-	 LIBS += $$WIN32_LIB_ROOT/vtk/bin/libvtkIO.dll \
-		$$WIN32_LIB_ROOT/vtk/bin/libvtkFiltering.dll \
-		$$WIN32_LIB_ROOT/vtk/bin/libvtkCommon.dll \
-		$$WIN32_LIB_ROOT/vtk/bin/libvtksys.dll \
-		$$WIN32_LIB_ROOT/vtk/bin/libvtkzlib.dll
+     LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
 }
 !win32 {
     LIBS += -L../fparser -lfparser
     LIBS += -ltinyxml
+    LIBS += -L../CSXCAD -lCSXCAD
     LIBS += -lboost_thread-mt
     LIBS += -lhdf5 -lhdf5_cpp
 	### vtk ###

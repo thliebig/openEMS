@@ -3,13 +3,25 @@ TEMPLATE = app
 OBJECTS_DIR = obj
 CONFIG += debug_and_release
 
+VERSION = 0.1.0
+
 win32 {
     CONFIG += console
-    INCLUDEPATH += ../../hdf5/include ../../hdf5/include/cpp ../../boost/include/boost-1_42
-    INCLUDEPATH += ../../tinyxml
-    LIBS +=  ../../hdf5/lib/hdf5.lib
-    LIBS += ../../boost/lib/libboost_thread-mgw44-mt.lib
-    LIBS += ../../tinyxml/release/libtinyxml2.a
+
+    WIN32_LIB_ROOT = ../..
+
+    # tinyxml
+    INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml
+    LIBS += -L$$WIN32_LIB_ROOT/tinyxml/release -ltinyxml2
+
+    # hdf5
+    INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp
+    LIBS += -L$$WIN32_LIB_ROOT/hdf5/lib -lhdf5
+
+    # boost
+    DEFINES += BOOST_THREAD_USE_LIB
+    INCLUDEPATH += $$WIN32_LIB_ROOT/boost/include
+    LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
 }
 !win32 {
     LIBS += -lboost_thread-mt
