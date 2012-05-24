@@ -144,6 +144,7 @@ int ProcessFieldsSAR::Process()
 
 void ProcessFieldsSAR::DumpFDData()
 {
+	if (Enabled==false) return;
 	unsigned int pos[3];
 	unsigned int orig_pos[3];
 	FDTD_FLOAT*** SAR = Create3DArray<float>(numLines);
