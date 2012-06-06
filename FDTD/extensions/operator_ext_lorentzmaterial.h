@@ -28,17 +28,22 @@ public:
 	Operator_Ext_LorentzMaterial(Operator* op);
 	virtual ~Operator_Ext_LorentzMaterial();
 
+	virtual Operator_Extension* Clone(Operator* op);
+
 	virtual bool BuildExtension();
 
 	virtual Engine_Extension* CreateEngineExtention();
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return true;}
+	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 
 	virtual string GetExtensionName() const {return string("Drude/Lorentz Dispersive Material Extension");}
 
 	virtual void ShowStat(ostream &ostr) const;
 
 protected:
+	//! Copy constructor
+	Operator_Ext_LorentzMaterial(Operator* op, Operator_Ext_LorentzMaterial* op_ext);
 
 	//ADE update coefficients, array setup: coeff[N_order][direction][mesh_pos_index]
 	FDTD_FLOAT ***v_int_ADE;

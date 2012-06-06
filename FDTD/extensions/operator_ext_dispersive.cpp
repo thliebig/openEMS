@@ -19,7 +19,19 @@
 
 #include "tools/array_ops.h"
 
-Operator_Ext_Dispersive::Operator_Ext_Dispersive(Operator* op)  : Operator_Extension(op)
+Operator_Ext_Dispersive::Operator_Ext_Dispersive(Operator* op) : Operator_Extension(op)
+{
+	m_curr_ADE_On = NULL;
+	m_volt_ADE_On = NULL;
+
+	m_LM_pos=NULL;
+	m_curr_ADE_On=NULL;
+	m_volt_ADE_On=NULL;
+
+	m_Order = 0;
+}
+
+Operator_Ext_Dispersive::Operator_Ext_Dispersive(Operator* op, Operator_Ext_Dispersive* op_ext) : Operator_Extension(op,op_ext)
 {
 	m_curr_ADE_On = NULL;
 	m_volt_ADE_On = NULL;

@@ -28,6 +28,14 @@ Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Opera
 	i_ext_ADE = NULL;
 }
 
+Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op, Operator_Ext_LorentzMaterial* op_ext) : Operator_Ext_Dispersive(op,op_ext)
+{
+	v_int_ADE = NULL;
+	v_ext_ADE = NULL;
+	i_int_ADE = NULL;
+	i_ext_ADE = NULL;
+}
+
 Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 {
 	for (int i=0;i<m_Order;++i)
@@ -64,6 +72,13 @@ Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 	v_ext_ADE = NULL;
 	i_int_ADE = NULL;
 	i_ext_ADE = NULL;
+}
+
+Operator_Extension* Operator_Ext_LorentzMaterial::Clone(Operator* op)
+{
+	if (dynamic_cast<Operator_Ext_LorentzMaterial*>(this)==NULL)
+		return NULL;
+	return new Operator_Ext_LorentzMaterial(op, this);
 }
 
 bool Operator_Ext_LorentzMaterial::BuildExtension()

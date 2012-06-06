@@ -62,7 +62,7 @@ public:
 
 protected:
 	Operator_Extension(Operator* op);
-	//! Copy constructor, returns NULL if extension cannot be copied...
+	//! Copy constructor
 	Operator_Extension(Operator* op, Operator_Extension* op_ext);
 
 	//FDTD Operator

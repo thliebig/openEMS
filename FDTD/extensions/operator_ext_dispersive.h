@@ -37,6 +37,8 @@ public:
 
 protected:
 	Operator_Ext_Dispersive(Operator* op);
+	//! Copy constructor
+	Operator_Ext_Dispersive(Operator* op, Operator_Ext_Dispersive* op_ext);
 
 	//! Dispersive order
 	int m_Order;
