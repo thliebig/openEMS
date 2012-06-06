@@ -70,6 +70,7 @@ protected:
 
 	//Cylindrical FDTD Operator (not NULL if a cylindrical FDTD is used)
 	Operator_Cylinder* m_Op_Cyl;
+	bool m_CC_R0_included;
 };
 
 #endif // OPERATOR_EXTENSION_H

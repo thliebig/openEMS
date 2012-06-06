@@ -23,7 +23,10 @@ Operator_Extension::Operator_Extension(Operator* op)
 {
 	m_Op = op;
 
+	m_CC_R0_included = false;
 	m_Op_Cyl = dynamic_cast<Operator_Cylinder*>(op);
+	if (m_Op_Cyl)
+		m_CC_R0_included=m_Op_Cyl->GetR0Included();
 }
 
 Operator_Extension::~Operator_Extension()
