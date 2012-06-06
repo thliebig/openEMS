@@ -220,10 +220,27 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 
 		m_LM_pos[order] = new unsigned int*[3];
 
-		v_int_ADE[order] = new FDTD_FLOAT*[3];
-		v_ext_ADE[order] = new FDTD_FLOAT*[3];
-		i_int_ADE[order] = new FDTD_FLOAT*[3];
-		i_ext_ADE[order] = new FDTD_FLOAT*[3];
+		if (m_volt_ADE_On[order])
+		{
+			v_int_ADE[order] = new FDTD_FLOAT*[3];
+			v_ext_ADE[order] = new FDTD_FLOAT*[3];
+		}
+		else
+		{
+			v_int_ADE[order] = NULL;
+			v_ext_ADE[order] = NULL;
+		}
+
+		if (m_curr_ADE_On[order])
+		{
+			i_int_ADE[order] = new FDTD_FLOAT*[3];
+			i_ext_ADE[order] = new FDTD_FLOAT*[3];
+		}
+		else
+		{
+			i_int_ADE[order] = NULL;
+			i_ext_ADE[order] = NULL;
+		}
 
 		for (int n=0; n<3; ++n)
 		{
