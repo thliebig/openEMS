@@ -30,7 +30,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	double dT = m_Op->GetTimestep();
 	unsigned int pos[] = {0,0,0};
 	double coord[3];
-	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0),m_Op->GetNumberOfLines(1),m_Op->GetNumberOfLines(2)};
+	unsigned int numLines[3] = {m_Op->GetOriginalNumLines(0),m_Op->GetOriginalNumLines(1),m_Op->GetOriginalNumLines(2)};
 
 	m_Order = 0;
 	vector<unsigned int> v_pos[3];
@@ -65,10 +65,13 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 					Conductivity[n][pos[0]][pos[1]][pos[2]] = 0; //deactivate by default
 					Thickness[n][pos[0]][pos[1]][pos[2]] = 0; //deactivate by default
 
-					coord[0] = m_Op->GetDiscLine(0,pos[0]);
-					coord[1] = m_Op->GetDiscLine(1,pos[1]);
-					coord[2] = m_Op->GetDiscLine(2,pos[2]);
-					coord[n] = m_Op->GetDiscLine(n,pos[n],true); //pos of E_n
+					if (m_Op->GetYeeCoords(n,pos,coord,false)==false)
+						continue;
+
+					// Ez at r==0 not supported --> set to PEC
+					if (m_CC_R0_included && (n==2) && (pos[0]==0))
+						disable_pos = true;
+
 					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::CONDUCTINGSHEET, false, &cs_sheet);
 					if (prop)
 					{
