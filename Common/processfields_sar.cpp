@@ -157,6 +157,7 @@ void ProcessFieldsSAR::DumpFDData()
 	CSPropMaterial* matProp = NULL;
 
 	double power;
+	double l_pow;
 
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
@@ -175,6 +176,12 @@ void ProcessFieldsSAR::DumpFDData()
 				{
 					orig_pos[2] = posLines[2][pos[2]];
 					coord[2] = Op->GetDiscLine(2,orig_pos[2],true);
+					l_pow  = abs(E_field_fd[0][pos[0]][pos[1]][pos[2]]) * abs(J_field_fd[0][pos[0]][pos[1]][pos[2]]);
+					l_pow += abs(E_field_fd[1][pos[0]][pos[1]][pos[2]]) * abs(J_field_fd[1][pos[0]][pos[1]][pos[2]]);
+					l_pow += abs(E_field_fd[2][pos[0]][pos[1]][pos[2]]) * abs(J_field_fd[2][pos[0]][pos[1]][pos[2]]);
+
+					power += 0.5*l_pow*Op->GetCellVolume(orig_pos);
+
 					prop = CSX->GetPropertyByCoordPriority(coord,CSProperties::MATERIAL);
 					SAR[pos[0]][pos[1]][pos[2]] = 0.0;
 					density=0.0;
@@ -184,15 +191,9 @@ void ProcessFieldsSAR::DumpFDData()
 						density = matProp->GetDensityWeighted(coord);
 						if (density>0)
 						{
-							SAR[pos[0]][pos[1]][pos[2]]  = abs(E_field_fd[0][pos[0]][pos[1]][pos[2]]) * abs(J_field_fd[0][pos[0]][pos[1]][pos[2]]);
-							SAR[pos[0]][pos[1]][pos[2]] += abs(E_field_fd[1][pos[0]][pos[1]][pos[2]]) * abs(J_field_fd[1][pos[0]][pos[1]][pos[2]]);
-							SAR[pos[0]][pos[1]][pos[2]] += abs(E_field_fd[2][pos[0]][pos[1]][pos[2]]) * abs(J_field_fd[2][pos[0]][pos[1]][pos[2]]);
-							SAR[pos[0]][pos[1]][pos[2]] *= 0.5/density;
+							SAR[pos[0]][pos[1]][pos[2]] = l_pow*0.5/density;
 						}
-						else
-							density=0.0;
 					}
-					power+=SAR[pos[0]][pos[1]][pos[2]]*Op->GetCellVolume(orig_pos)*density;
 				}
 			}
 		}
