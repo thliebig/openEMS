@@ -51,7 +51,7 @@ public:
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
-	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return Exc->setupExcitation(Excite,maxTS);};
+	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return Exc->setupExcitation(Excite,maxTS);}
 
 	virtual void DumpExciationSignals();
 
