@@ -97,12 +97,14 @@ string Operator_Cylinder::GetDirName(int ny) const
 
 bool Operator_Cylinder::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const
 {
-	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
+	bool ret = Operator_Multithread::GetYeeCoords(ny,pos,coords,dualMesh);
+
+	if (CC_closedAlpha && (coords[1]>=GetDiscLine(1,0,false)+2*PI))
 		coords[1]-=2*PI;
 	if (CC_closedAlpha && (coords[1]<GetDiscLine(1,0,false)))
 		coords[1]+=2*PI;
 
-	return Operator_Multithread::GetYeeCoords(ny,pos,coords,dualMesh);
+	return ret;
 }
 
 double Operator_Cylinder::GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh) const

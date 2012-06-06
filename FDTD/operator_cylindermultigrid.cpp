@@ -143,6 +143,16 @@ void Operator_CylinderMultiGrid::Init()
 		m_InnerOp = Operator_CylinderMultiGrid::New(m_Split_Radii,m_numThreads);
 }
 
+bool Operator_CylinderMultiGrid::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const
+{
+	bool ret = Operator_Cylinder::GetYeeCoords(ny,pos,coords,dualMesh);
+
+	if (pos[0]<(m_Split_Pos-1))
+		ret = false;
+
+	return ret;
+}
+
 #ifdef MPI_SUPPORT
 void Operator_CylinderMultiGrid::SetTag(int tag)
 {

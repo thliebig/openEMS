@@ -41,6 +41,9 @@ public:
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
+	//! Get the coordinates for a given node index and component, according to the cylindrical yee-algorithm. Returns true if inside the FDTD domain.
+	virtual bool GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const;
+
 	virtual unsigned int GetSplitPos() const {return m_Split_Pos;}
 
 	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS);

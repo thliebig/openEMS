@@ -140,16 +140,16 @@ bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool du
 {
 	for (int n=0;n<3;++n)
 		coords[n]=GetDiscLine(n,pos[n],dualMesh);
+	coords[ny]=GetDiscLine(ny,pos[ny],!dualMesh);
+
+	//check if position is inside the FDTD domain
 	if (dualMesh==false) //main grid
 	{
-		coords[ny]+=0.5*fabs(GetRawDiscDelta(ny,pos[ny]));
 		if (pos[ny]>=numLines[ny]-1)
 			return false;
 	}
 	else	//dual grid
 	{
-		coords[ny]-=0.5*fabs(GetRawDiscDelta(ny, pos[ny]-1));
-
 		int nP = (ny+1)%3;
 		int nPP = (ny+2)%3;
 		if ((pos[nP]>=numLines[nP]-1) || (pos[nPP]>=numLines[nPP]-1))
