@@ -16,6 +16,7 @@
 */
 
 #include "engine.h"
+#include "engine_cylinder.h"
 #include "Common/processfields.h"
 #include "operator_cylinder.h"
 #include "extensions/operator_extension.h"
@@ -37,6 +38,14 @@ Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 
 Operator_Cylinder::~Operator_Cylinder()
 {
+}
+
+
+Engine* Operator_Cylinder::CreateEngine() const
+{
+	//! create a special cylindrical-engine
+	Engine_Cylinder* eng = Engine_Cylinder::New(this, m_numThreads);
+	return eng;
 }
 
 void Operator_Cylinder::Init()

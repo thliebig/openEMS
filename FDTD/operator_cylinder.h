@@ -73,6 +73,8 @@ public:
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
+	virtual Engine* CreateEngine() const;
+
 protected:
 	Operator_Cylinder();
 	virtual void Init();

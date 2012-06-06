@@ -18,17 +18,17 @@
 #ifndef ENGINE_CYLINDERMULTIGRID_H
 #define ENGINE_CYLINDERMULTIGRID_H
 
-#include "engine_multithread.h"
+#include "engine_cylinder.h"
 
 class Operator_CylinderMultiGrid;
 class Engine_CylinderMultiGrid_Thread;
 class Engine_Ext_CylinderMultiGrid;
 
-class Engine_CylinderMultiGrid : public Engine_Multithread
+class Engine_CylinderMultiGrid : public Engine_Cylinder
 {
 	friend class Engine_Ext_CylinderMultiGrid;
 public:
-	Engine_CylinderMultiGrid();
+//	Engine_CylinderMultiGrid();
 
 	static Engine_CylinderMultiGrid* New(const Operator_CylinderMultiGrid* op, unsigned int numThreads = 0);
 	virtual ~Engine_CylinderMultiGrid();

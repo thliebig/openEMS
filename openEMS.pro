@@ -82,13 +82,14 @@ DEFINES += H5_USE_16_API
 
 #### SOURCES ################################################################
 SOURCES += main.cpp \
-	openems.cpp
+    openems.cpp
 
 # FDTD
 SOURCES += FDTD/engine.cpp \
     FDTD/operator.cpp \
     FDTD/engine_multithread.cpp \
     FDTD/operator_cylinder.cpp \
+    FDTD/engine_cylinder.cpp \
     FDTD/engine_sse.cpp \
     FDTD/operator_sse.cpp \
     FDTD/operator_sse_compressed.cpp \
@@ -152,6 +153,7 @@ HEADERS += FDTD/engine.h \
     FDTD/operator.h \
     FDTD/engine_multithread.h \
     FDTD/operator_cylinder.h \
+    FDTD/engine_cylinder.h \
     FDTD/engine_sse.h \
     FDTD/operator_sse.h \
     FDTD/excitation.h \

@@ -28,7 +28,7 @@ Engine_CylinderMultiGrid* Engine_CylinderMultiGrid::New(const Operator_CylinderM
 	return e;
 }
 
-Engine_CylinderMultiGrid::Engine_CylinderMultiGrid(const Operator_CylinderMultiGrid* op) : Engine_Multithread(op)
+Engine_CylinderMultiGrid::Engine_CylinderMultiGrid(const Operator_CylinderMultiGrid* op) : Engine_Cylinder(op)
 {
 	Op_CMG = op;
 
