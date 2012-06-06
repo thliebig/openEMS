@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	openEMS FDTD;
 #endif
 
-#ifdef defined(_LP64) || defined(_WIN64)
+#ifdef _LP64 || _WIN64
 	string bits = "64bit";
 #else
 	string bits = "32bit";
