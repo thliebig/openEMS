@@ -45,9 +45,12 @@ mesh.z = SmoothMeshLines([-heigth/2 0 heigth/2],mesh_res);
 CSX = DefineRectGrid(CSX, 1e-3,mesh);
 
 %% add the dipol %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-start = [exite_offset excite_angle/180*pi-0.01 -20];
-stop =  [exite_offset excite_angle/180*pi+0.01  20];
-
+start = [exite_offset excite_angle/180*pi-0.001 -20];
+stop =  [exite_offset excite_angle/180*pi+0.001  20];
+if (exite_offset==0)
+    start(2) = mesh.a(1);
+    stop(2)  = mesh.a(1);
+end
 CSX = AddExcitation(CSX,'excite',1,[0 0 1]);
 CSX = AddBox(CSX,'excite',0 ,start,stop);
 
