@@ -32,6 +32,8 @@ class Operator_Ext_ConductingSheet : public Operator_Ext_LorentzMaterial
 public:
 	Operator_Ext_ConductingSheet(Operator* op, double f_max);
 
+	virtual Operator_Extension* Clone(Operator* op);
+
 	virtual bool BuildExtension();
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return true;}
@@ -40,6 +42,8 @@ public:
 	virtual string GetExtensionName() const {return string("Conducting Sheet Extension");}
 
 protected:
+	//! Copy constructor
+	Operator_Ext_ConductingSheet(Operator* op, Operator_Ext_ConductingSheet* op_ext);
 	double m_f_max;
 };
 

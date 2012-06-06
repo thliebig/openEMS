@@ -25,6 +25,18 @@ Operator_Ext_ConductingSheet::Operator_Ext_ConductingSheet(Operator* op, double 
 	m_f_max = f_max;
 }
 
+Operator_Ext_ConductingSheet::Operator_Ext_ConductingSheet(Operator* op, Operator_Ext_ConductingSheet* op_ext) : Operator_Ext_LorentzMaterial(op, op_ext)
+{
+	m_f_max = op_ext->m_f_max;
+}
+
+Operator_Extension* Operator_Ext_ConductingSheet::Clone(Operator* op)
+{
+	if (dynamic_cast<Operator_Ext_ConductingSheet*>(this)==NULL)
+		return NULL;
+	return new Operator_Ext_ConductingSheet(op, this);
+}
+
 bool Operator_Ext_ConductingSheet::BuildExtension()
 {
 	double dT = m_Op->GetTimestep();
