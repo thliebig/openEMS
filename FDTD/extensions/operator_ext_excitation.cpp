@@ -82,7 +82,14 @@ bool Operator_Ext_Excitation::BuildExtension()
 				//electric field excite
 				for (int n=0; n<3; ++n)
 				{
-					m_Op->GetYeeCoords(n,pos,volt_coord,false);
+					if (m_Op->GetYeeCoords(n,pos,volt_coord,false)==false)
+						continue;
+					if (m_CC_R0_included && (n==2) && (pos[0]==0))
+						volt_coord[1] = m_Op->GetDiscLine(1,0);
+
+					if (m_CC_R0_included && (n==1) && (pos[0]==0))
+						continue;
+
 					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);
@@ -118,7 +125,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 				{
 					if ((pos[0]>=numLines[0]-1) || (pos[1]>=numLines[1]-1) || (pos[2]>=numLines[2]-1))
 						continue;  //skip the last H-Line which is outside the FDTD-domain
-					m_Op->GetYeeCoords(n,pos,curr_coord,true);
+					if (m_Op->GetYeeCoords(n,pos,curr_coord,true)==false)
+						continue;
 					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);

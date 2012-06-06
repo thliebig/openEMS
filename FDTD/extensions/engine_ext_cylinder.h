@@ -30,9 +30,9 @@ class Engine_Ext_Cylinder : public Engine_Extension
 public:
 	Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext);
 
-	virtual void Apply2Voltages();
+	virtual void DoPostVoltageUpdates();
 
-	virtual void Apply2Current();
+	virtual void DoPostCurrentUpdates();
 
 	virtual void SetEngine(Engine* eng);
 

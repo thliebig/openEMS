@@ -41,7 +41,7 @@ void Engine_Ext_Cylinder::SetEngine(Engine* eng)
 	m_Eng_SSE = dynamic_cast<Engine_sse*>(m_Eng);
 }
 
-void Engine_Ext_Cylinder::Apply2Voltages()
+void Engine_Ext_Cylinder::DoPostVoltageUpdates()
 {
 	if (CC_closedAlpha==false) return;
 
@@ -49,14 +49,15 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 	{
 		unsigned int pos[3];
 		pos[0] = 0;
+		FDTD_FLOAT volt=0;
 		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			m_Eng_SSE->Engine_sse::SetVolt(2,0,0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]]);
+			volt =m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]];
 			for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
-			{
-				m_Eng_SSE->Engine_sse::SetVolt(2,0,0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2]) + cyl_Op->vi_R0[pos[2]] *  m_Eng_SSE->Engine_sse::GetCurr(1,0,pos[1],pos[2]) );
-			}
+				volt +=cyl_Op->vi_R0[pos[2]] *  m_Eng_SSE->Engine_sse::GetCurr(1,0,pos[1],pos[2]);
+			m_Eng_SSE->Engine_sse::SetVolt(2,0,0,pos[2], volt);
 		}
+
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
@@ -81,7 +82,7 @@ void Engine_Ext_Cylinder::Apply2Voltages()
 	}
 }
 
-void Engine_Ext_Cylinder::Apply2Current()
+void Engine_Ext_Cylinder::DoPostCurrentUpdates()
 {
 	if (CC_closedAlpha==false) return;
 

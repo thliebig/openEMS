@@ -22,8 +22,8 @@
 
 // priority definitions for some important extensions
 #define ENG_EXT_PRIO_UPML				+1e6  //unaxial pml extension priority
+#define ENG_EXT_PRIO_CYLINDER			+1e5  //cylindrial extension priority
 #define ENG_EXT_PRIO_EXCITATION			-1000 //excitation priority
-#define ENG_EXT_PRIO_CYLINDER			-2000 //cylindrial extension priority
 #define ENG_EXT_PRIO_CYLINDERMULTIGRID	-3000 //cylindrial multi-grid extension priority
 
 #include <string>
