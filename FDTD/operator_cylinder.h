@@ -22,6 +22,8 @@
 
 #include "operator_multithread.h"
 
+class Operator_Ext_Cylinder;
+
 //! This class creates an operator for a cylindrical FDTD.
 /*!
 This class creates an operator for a cylindrical FDTD. No special engine is necessary,
@@ -31,6 +33,7 @@ class Operator_Cylinder : public Operator_Multithread
 {
 	friend class Operator_CylinderMultiGrid;
 	friend class Operator_Ext_Cylinder;
+	friend class Operator_Ext_LorentzMaterial;
 public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
 	virtual ~Operator_Cylinder();
@@ -89,6 +92,7 @@ protected:
 
 	bool CC_closedAlpha;
 	bool CC_R0_included;
+	Operator_Ext_Cylinder* m_Cyl_Ext;
 
 #ifdef MPI_SUPPORT
 	bool CC_MPI_Alpha;

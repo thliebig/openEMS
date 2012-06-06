@@ -72,6 +72,12 @@ bool Operator_Ext_Cylinder::BuildExtension()
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 
+		for (unsigned int i=0; i<m_Op->GetOriginalNumLines(1); ++i)
+		{
+			m_Op->EC_C[2][m_Op->MainOp->SetPos(0,i,pos[2])] = C;
+			m_Op->EC_G[2][m_Op->MainOp->SetPos(0,i,pos[2])] = G;
+		}
+
 		//search for metal on z-axis
 		m_Op_Cyl->GetYeeCoords(2,pos,coord,false);
 		CSProperties* prop = m_Op->CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), true);
@@ -82,6 +88,8 @@ bool Operator_Ext_Cylinder::BuildExtension()
 				m_Op->SetVV(2,0,0,pos[2], 0);
 				vv_R0[pos[2]] = 0;
 				vi_R0[pos[2]] = 0;
+				m_Op->EC_C[2][m_Op->MainOp->SetPos(0,0,pos[2])] = 0;
+				m_Op->EC_G[2][m_Op->MainOp->SetPos(0,0,pos[2])] = 0;
 			}
 		}
 	}

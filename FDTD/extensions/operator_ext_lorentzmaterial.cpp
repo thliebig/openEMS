@@ -17,6 +17,8 @@
 
 #include "operator_ext_lorentzmaterial.h"
 #include "engine_ext_lorentzmaterial.h"
+#include "operator_ext_cylinder.h"
+#include "../operator_cylinder.h"
 
 Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Operator_Ext_Dispersive(op)
 {
@@ -69,7 +71,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	double dT = m_Op->GetTimestep();
 	unsigned int pos[] = {0,0,0};
 	double coord[3];
-	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0),m_Op->GetNumberOfLines(1),m_Op->GetNumberOfLines(2)};
+	unsigned int numLines[3] = {m_Op->GetOriginalNumLines(0),m_Op->GetOriginalNumLines(1),m_Op->GetOriginalNumLines(2)};
 	CSPropLorentzMaterial* mat = NULL;
 
 	double w_plasma,t_relax;
@@ -129,16 +131,16 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					{
 						L_D[n]=0;
 						R_D[n]=0;
-						coord[0] = m_Op->GetDiscLine(0,pos[0]);
-						coord[1] = m_Op->GetDiscLine(1,pos[1]);
-						coord[2] = m_Op->GetDiscLine(2,pos[2]);
-						coord[n] = m_Op->GetDiscLine(n,pos[n],true); //pos of E_n
+						if (m_Op->GetYeeCoords(n,pos,coord,false)==false)
+							continue;
+						if (m_CC_R0_included && (n==2) && (pos[0]==0))
+							coord[1] = m_Op->GetDiscLine(1,0);
 
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetEpsPlasmaFreqWeighted(order,n,coord) * 2 * PI;
-							if (w_plasma>0)
+							if ((w_plasma>0) && (m_Op->EC_C[n][index]>0))
 							{
 								b_pos_on = true;
 								m_volt_ADE_On[order] = true;
@@ -156,16 +158,14 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					{
 						C_D[n]=0;
 						G_D[n]=0;
-						coord[0] = m_Op->GetDiscLine(0,pos[0],true);
-						coord[1] = m_Op->GetDiscLine(1,pos[1],true);
-						coord[2] = m_Op->GetDiscLine(2,pos[2],true);
-						coord[n] = m_Op->GetDiscLine(n,pos[n]); //pos of H_n
+						if (m_Op->GetYeeCoords(n,pos,coord,true)==false)
+							continue;
 
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetMuePlasmaFreqWeighted(order,n,coord) * 2 * PI;
-							if (w_plasma>0)
+							if ((w_plasma>0) && (m_Op->EC_L[n][index]>0))
 							{
 								b_pos_on = true;
 								m_curr_ADE_On[order] = true;
@@ -187,7 +187,11 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 							if (L_D[n]>0)
 							{
 								v_int[n].push_back((2*L_D[n]-dT*R_D[n])/(2*L_D[n]+dT*R_D[n]));
-								v_ext[n].push_back(dT/(L_D[n]+dT*R_D[n]/2)*m_Op->GetVI(n,pos[0],pos[1],pos[2]));
+								// check for r==0 in clyindrical coords and get special VI cooefficient
+								if (m_CC_R0_included && n==2 && pos[0]==0)
+									v_ext[n].push_back(dT/(L_D[n]+dT*R_D[n]/2)*m_Op_Cyl->m_Cyl_Ext->vi_R0[pos[2]]);
+								else
+									v_ext[n].push_back(dT/(L_D[n]+dT*R_D[n]/2)*m_Op->GetVI(n,pos[0],pos[1],pos[2]));
 							}
 							else
 							{

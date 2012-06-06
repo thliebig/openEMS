@@ -34,6 +34,7 @@ Operator_Cylinder* Operator_Cylinder::New(unsigned int numThreads)
 Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 {
 	m_MeshType = CYLINDRICAL;
+	m_Cyl_Ext = NULL;
 }
 
 Operator_Cylinder::~Operator_Cylinder()
@@ -280,7 +281,10 @@ bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 		return false;
 
 	if (CC_closedAlpha || CC_R0_included)
-		this->AddExtension(new Operator_Ext_Cylinder(this));
+	{
+		m_Cyl_Ext = new Operator_Ext_Cylinder(this);
+		this->AddExtension(m_Cyl_Ext);
+	}
 
 	return true;
 }
