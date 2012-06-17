@@ -1,13 +1,15 @@
-diff --git a/matlab/invoke_openEMS.m b/matlab/invoke_openEMS.m
-index 4de39e4..31ecb75 100644
---- a/matlab/invoke_openEMS.m
-+++ b/matlab/invoke_openEMS.m
-@@ -32,6 +32,8 @@ end
+diff --git a/matlab/private/invoke_openEMS.m b/matlab/private/invoke_openEMS.m
+index ce3ac53..d64771d 100644
+--- a/matlab/private/invoke_openEMS.m
++++ b/matlab/private/invoke_openEMS.m
+@@ -32,7 +32,9 @@ end
  filename = mfilename('fullpath');
  dir = fileparts( filename );
- openEMS_Path = [dir filesep '..' filesep];
+ openEMS_Path = [dir filesep '../..' filesep];
+-    
 +
 +openEMS_Path = ''; % this is a packaged openEMS installation; openEMS.sh is found in $PATH
-     
++
  if isunix
  	openEMS_Path = [openEMS_Path 'openEMS.sh'];
+ else

@@ -18,7 +18,7 @@
 # norootforbuild
 
 Name:           openEMS
-Version:        0.0.27
+Version:        0.0.28
 Release:        1
 Summary:        Free and Open Electromagnetic Field Solver
 Group:          Productivity/Scientific/Physics
@@ -87,6 +87,8 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sun Jun 17 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.28-1
+- new upstream version
 * Thu Mar 1 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.27-1
 - new upstream version
 * Sat Jan 21 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.26-1
