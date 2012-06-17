@@ -6,8 +6,7 @@ CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += .
-INCLUDEPATH += ../CSXCAD \
-    ../fparser
+INCLUDEPATH += ../CSXCAD ../fparser
 CONFIG += debug_and_release
 
 
@@ -51,8 +50,8 @@ win32 {
     # vtk
     INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk \
         $$WIN32_LIB_ROOT/vtk/Common \
-		$$WIN32_LIB_ROOT/vtk/Filtering \
-		$$WIN32_LIB_ROOT/vtk/IO
+        $$WIN32_LIB_ROOT/vtk/Filtering \
+        $$WIN32_LIB_ROOT/vtk/IO
      LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
 }
 !win32 {
@@ -61,7 +60,7 @@ win32 {
     LIBS += -L../CSXCAD -lCSXCAD
     LIBS += -lboost_thread-mt
     LIBS += -lhdf5 -lhdf5_cpp
-	### vtk ###
+    ### vtk ###
     INCLUDEPATH += /usr/include/vtk-5.2 \
         /usr/include/vtk-5.4 \
         /usr/include/vtk-5.6 \
@@ -71,11 +70,14 @@ win32 {
     INCLUDEPATH += /usr/include/CSXCAD
     LIBS += -lvtkCommon \
         -lvtkIO \
-		-lvtksys \
-		-lvtkFiltering
+        -lvtksys \
+        -lvtkFiltering
+    QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
+    QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 }
-QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
-QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
+
+# vtk includes deprecated header files; silence the corresponding warning
+QMAKE_CXXFLAGS += -Wno-deprecated
 
 # hdf5 compat
 DEFINES += H5_USE_16_API
@@ -99,9 +101,9 @@ SOURCES += FDTD/engine.cpp \
     FDTD/excitation.cpp \
     FDTD/operator_cylindermultigrid.cpp \
     FDTD/engine_cylindermultigrid.cpp \
-	FDTD/engine_interface_fdtd.cpp \
-	FDTD/engine_interface_sse_fdtd.cpp \
-	FDTD/engine_interface_cylindrical_fdtd.cpp
+    FDTD/engine_interface_fdtd.cpp \
+    FDTD/engine_interface_sse_fdtd.cpp \
+    FDTD/engine_interface_cylindrical_fdtd.cpp
 
 # FDTD/extensions source files
 SOURCES += FDTD/extensions/engine_extension.cpp \
@@ -138,13 +140,13 @@ SOURCES += Common/operator_base.cpp \
     Common/processfields_sar.cpp
 
 # tools
- SOURCES += tools/global.cpp \
-	tools/useful.cpp \
-	tools/array_ops.cpp \
-	tools/ErrorMsg.cpp \
-	tools/AdrOp.cpp \
-	tools/vtk_file_writer.cpp \
-	tools/hdf5_file_writer.cpp
+SOURCES += tools/global.cpp \
+    tools/useful.cpp \
+    tools/array_ops.cpp \
+    tools/ErrorMsg.cpp \
+    tools/AdrOp.cpp \
+    tools/vtk_file_writer.cpp \
+    tools/hdf5_file_writer.cpp
 
 #### HEADERS ################################################################
 HEADERS += openems.h
@@ -204,24 +206,20 @@ HEADERS += Common/operator_base.h \
 
 # tools
 HEADERS += tools/ErrorMsg.h \
-	tools/AdrOp.h \
-	tools/constants.h \
-	tools/array_ops.h \
-	tools/global.h \
-	tools/useful.h \
-	tools/aligned_allocator.h \
-	tools/vtk_file_writer.h \
-	tools/hdf5_file_writer.h
+    tools/AdrOp.h \
+    tools/constants.h \
+    tools/array_ops.h \
+    tools/global.h \
+    tools/useful.h \
+    tools/aligned_allocator.h \
+    tools/vtk_file_writer.h \
+    tools/hdf5_file_writer.h
 
 !packaging {
-# if packaging is not set in CONFIG, set some default flags
-# if packaging is enabled, give the flags on the qmake comandline
-QMAKE_CXXFLAGS_RELEASE = -O3 \
-	-g \
-	-march=native
-QMAKE_CXXFLAGS_DEBUG = -O0 \
-	-g \
-	-march=native
+    # if packaging is not set in CONFIG, set some default flags
+    # if packaging is enabled, give the flags on the qmake comandline
+    QMAKE_CXXFLAGS_RELEASE = -O3 -g -march=native
+    QMAKE_CXXFLAGS_DEBUG = -O0 -g -march=native
 }
 
 MPI_SUPPORT {

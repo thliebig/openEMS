@@ -44,14 +44,14 @@ public:
 		Create a clone of this extension, will return NULL if this is impossible (e.g. derived extension has no clone method and copy-constructor)...
 		BuildExtension has to be called separatly!
 	*/
-	virtual Operator_Extension* Clone(Operator* op) {return NULL;}
+	virtual Operator_Extension* Clone(Operator* op) {UNUSED(op); return NULL;}
 
 	virtual bool BuildExtension() {return true;}
 
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}
 
 	//! The cylindrical operator will check whether the extension is save to use. Default is false. Derive this method to override.
-	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return false;}
+	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return false;}
 
 	//! The cylindrical multi grid operator will check whether the extension is save to use. Default is false. Derive this method to override.
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return false;}

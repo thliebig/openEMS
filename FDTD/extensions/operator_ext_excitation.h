@@ -36,7 +36,7 @@ public:
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {return true;}
+	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 
 	virtual string GetExtensionName() const {return string("Excitation Extension");}

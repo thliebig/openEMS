@@ -398,6 +398,9 @@ Engine_Extension* Operator_Ext_PML_SF_Plane::CreateEngineExtention()
 
 bool Operator_Ext_PML_SF_Plane::IsCylinderCoordsSave(bool closedAlpha, bool R0_included)  const
 {
+	UNUSED(closedAlpha);
+	UNUSED(R0_included);
+
 	if (m_ny==2)
 	{
 		Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(m_Op);
