@@ -232,8 +232,8 @@ if ~isempty(excitename)
     CSX = AddBox( CSX, excitename, prio, ex_start, ex_stop );
 end
 if feed_R > 0
-    CSX = AddLumpedElement( CSX, [excitename '_R'], idx_height-1, 'R', feed_R );
-    CSX = AddBox( CSX, [excitename '_R'], prio, ex_start, ex_stop );
+    CSX = AddLumpedElement( CSX, 'port_R', idx_height-1, 'R', feed_R );
+    CSX = AddBox( CSX, 'port_R', prio, ex_start, ex_stop );
     port.Feed_R = feed_R;
 end
 end
