@@ -1,0 +1,13 @@
+diff --git a/openEMS.pro b/openEMS.pro
+index 97b0632..b9c3cf7 100644
+--- a/openEMS.pro
++++ b/openEMS.pro
+@@ -68,7 +68,7 @@ win32 {
+         /usr/include/vtk-5.10 \
+         /usr/include/vtk
+     INCLUDEPATH += /usr/include/CSXCAD
+-    LIBS += -lvtkCommon \
++    LIBS += -L/usr/lib/vtk -L/usr/lib64/vtk -lvtkCommon \
+         -lvtkIO \
+         -lvtksys \
+         -lvtkFiltering

@@ -19,7 +19,7 @@
 
 Name:           openEMS
 Version:        0.0.28
-Release:        1
+Release:        2
 Summary:        Free and Open Electromagnetic Field Solver
 Group:          Productivity/Scientific/Physics
 License:        GPLv3
@@ -28,6 +28,7 @@ Source0:        %{name}-%{version}.tar.bz2
 Patch0:         invoke_openEMS.m.patch
 Patch1:         README.patch
 Patch2:         CalcNF2FF.m.patch
+Patch3:         fedora17.diff
 BuildRoot:      %_tmppath/%name-%version-build
 
 # libqt4-devel is needed only to provide qmake (the Qt-libraries are not used)
@@ -56,6 +57,9 @@ OpenEMS is a free and open-source electromagnetic field solver using the (EC-)FD
 #%endif
 %patch1 -p1
 %patch2 -p1
+%if 0%{?fedora} >= 17
+%patch3 -p1
+%endif
 
 %build
 ADDFLAGS="-msse" # enable at least the SSE command set (no SSE makes no sense -- way too slow)
@@ -87,6 +91,8 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Jun 18 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.28-2
+- Fedora 17 build fixes
 * Sun Jun 17 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.28-1
 - new upstream version
 * Thu Mar 1 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.27-1
