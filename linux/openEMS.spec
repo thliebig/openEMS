@@ -19,7 +19,7 @@
 
 Name:           openEMS
 Version:        0.0.28
-Release:        2
+Release:        3
 Summary:        Free and Open Electromagnetic Field Solver
 Group:          Productivity/Scientific/Physics
 License:        GPLv3
@@ -91,6 +91,8 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sat Jun 23 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.28-3
+- display correct version
 * Mon Jun 18 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.28-2
 - Fedora 17 build fixes
 * Sun Jun 17 2012 Sebastian Held <sebastian.held@gmx.de> - 0.0.28-1

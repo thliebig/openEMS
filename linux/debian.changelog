@@ -1,3 +1,6 @@
+openems (0.0.28-2) stable; urgency=low
+  * display correct version
+ -- Sebastian Held <sebastian.held@gmx.de>  Sun, 24 Jun 2012 14:17:00 +0200
 openems (0.0.28-1) stable; urgency=low
   * New upstream release
  -- Sebastian Held <sebastian.held@gmx.de>  Sun, 17 Jun 2012 23:28:29 +0200
