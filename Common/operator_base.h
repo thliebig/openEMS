@@ -53,6 +53,9 @@ public:
 	//! Get the disc line in \a n direction (in drawing units)
 	virtual double GetDiscLine(int n, unsigned int pos, bool dualMesh=false) const =0;
 
+	//! Get the disc line delta in \a n direction (in drawing units)
+	virtual double GetDiscDelta(int n, unsigned int pos, bool dualMesh=false) const =0;
+
 	//! Get the node width for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 

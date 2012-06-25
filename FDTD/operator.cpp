@@ -136,6 +136,29 @@ double Operator::GetDiscLine(int n, unsigned int pos, bool dualMesh) const
 	return discLines[n][pos] + 0.5*(discLines[n][pos] - discLines[n][pos-1]);
 }
 
+double Operator::GetDiscDelta(int n, unsigned int pos, bool dualMesh) const
+{
+	if ((n<0) || (n>2)) return 0.0;
+	if (pos>=numLines[n]) return 0.0;
+	double delta=0;
+	if (dualMesh==false)
+	{
+		if (pos<numLines[n]-1)
+			delta = GetDiscLine(n,pos+1,false) - GetDiscLine(n,pos,false);
+		else
+			delta = GetDiscLine(n,pos,false) - GetDiscLine(n,pos-1,false);
+		return delta;
+	}
+	else
+	{
+		if (pos>0)
+			delta = GetDiscLine(n,pos,true) - GetDiscLine(n,pos-1,true);
+		else
+			delta = GetDiscLine(n,1,false) - GetDiscLine(n,0,false);
+		return delta;
+	}
+}
+
 bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const
 {
 	for (int n=0;n<3;++n)
@@ -160,25 +183,7 @@ bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool du
 
 double Operator::GetEdgeLength(int n, const unsigned int* pos, bool dualMesh) const
 {
-	if ((n<0) || (n>2)) return 0.0;
-	if (pos[n]>=numLines[n]) return 0.0;
-	double delta=0;
-	if (dualMesh==false)
-	{
-		if (pos[n]<numLines[n]-1)
-			delta = GetDiscLine(n,pos[n]+1,false) - GetDiscLine(n,pos[n],false);
-		else
-			delta = GetDiscLine(n,pos[n],false) - GetDiscLine(n,pos[n]-1,false);
-		return delta*gridDelta;
-	}
-	else
-	{
-		if (pos[n]>0)
-			delta = GetDiscLine(n,pos[n],true) - GetDiscLine(n,pos[n]-1,true);
-		else
-			delta = GetDiscLine(n,1,false) - GetDiscLine(n,0,false);
-		return delta*gridDelta;
-	}
+	return GetDiscDelta(n,pos[n],dualMesh)*gridDelta;
 }
 
 double Operator::GetCellVolume(const unsigned int pos[3], bool dualMesh) const
