@@ -33,8 +33,8 @@ public:
 	static Engine_CylinderMultiGrid* New(const Operator_CylinderMultiGrid* op, unsigned int numThreads = 0);
 	virtual ~Engine_CylinderMultiGrid();
 
-	virtual void InterpolVoltChild2Base(unsigned int rzPlane);
-	virtual void InterpolCurrChild2Base(unsigned int rzPlane);
+	virtual void InterpolVoltChild2Base(unsigned int rPos);
+	virtual void InterpolCurrChild2Base(unsigned int rPos);
 
 	virtual void Init();
 

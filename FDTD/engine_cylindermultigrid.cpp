@@ -131,128 +131,50 @@ bool Engine_CylinderMultiGrid::IterateTS(unsigned int iterTS)
 	return true;
 }
 
-void Engine_CylinderMultiGrid::InterpolVoltChild2Base(unsigned int rzPlane)
+void Engine_CylinderMultiGrid::InterpolVoltChild2Base(unsigned int rPos)
 {
 	//interpolate voltages from child engine to the base engine...
 	unsigned int pos[3];
-	int pos1_rz1, pos1_rz2;
-	int pos1_a1, pos1_a2;
-	pos[0] = rzPlane;
-	bool isOdd, isEven;
-	f4vector half, one_eighth, three_eighth;
-	for (int n=0; n<4; ++n)
+	pos[0] = rPos;
+	for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 	{
-		half.f[n]=0.5;
-		one_eighth.f[n]   = 1.0/8.0;
-		three_eighth.f[n] = 3.0/8.0;
-	}
-	for (pos[1]=0; pos[1]<numLines[1] - !Op_CMG->CC_closedAlpha; ++pos[1])
-	{
-		isOdd = (pos[1]%2);
-		isEven = !isOdd;
-
-		pos1_rz1 = pos[1]/2;
-		pos1_rz2 = pos[1]/2 + isOdd;
-
-		pos1_a1 = pos[1]/2;
-		pos1_a2 = pos[1]/2 + isOdd - isEven;
-
-		if ((pos1_a2<0) && (Op_CMG->CC_closedAlpha))
-			pos1_a2 += m_InnerEngine->numLines[1]-1;
-		else if (pos1_a2<0)
-			pos1_a2 = 0;
-
 		for (pos[2]=0; pos[2]<numVectors; ++pos[2])
 		{
 			//r - direction
-			f4_volt[0][pos[0]][pos[1]][pos[2]].v = half.v * ( m_InnerEngine->f4_volt[0][pos[0]][pos1_rz1][pos[2]].v + m_InnerEngine->f4_volt[0][pos[0]][pos1_rz2][pos[2]].v);
+			f4_volt[0][pos[0]][pos[1]][pos[2]].v  = Op_CMG->f4_interpol_v_2p[0][pos[1]].v * m_InnerEngine->f4_volt[0][pos[0]][Op_CMG->m_interpol_pos_v_2p[0][pos[1]]][pos[2]].v
+													+ Op_CMG->f4_interpol_v_2pp[0][pos[1]].v * m_InnerEngine->f4_volt[0][pos[0]][Op_CMG->m_interpol_pos_v_2pp[0][pos[1]]][pos[2]].v;
 
 			//z - direction
-			f4_volt[2][pos[0]][pos[1]][pos[2]].v = half.v * ( m_InnerEngine->f4_volt[2][pos[0]][pos1_rz1][pos[2]].v + m_InnerEngine->f4_volt[2][pos[0]][pos1_rz2][pos[2]].v);
+			f4_volt[2][pos[0]][pos[1]][pos[2]].v  = Op_CMG->f4_interpol_v_2p[0][pos[1]].v * m_InnerEngine->f4_volt[2][pos[0]][Op_CMG->m_interpol_pos_v_2p[0][pos[1]]][pos[2]].v
+													+ Op_CMG->f4_interpol_v_2pp[0][pos[1]].v * m_InnerEngine->f4_volt[2][pos[0]][Op_CMG->m_interpol_pos_v_2pp[0][pos[1]]][pos[2]].v;
 
 			//alpha - direction
-			f4_volt[1][pos[0]][pos[1]][pos[2]].v  = three_eighth.v * m_InnerEngine->f4_volt[1][pos[0]][pos1_a1][pos[2]].v;
-			f4_volt[1][pos[0]][pos[1]][pos[2]].v += one_eighth.v * m_InnerEngine->f4_volt[1][pos[0]][pos1_a2][pos[2]].v;
-		}
-	}
-
-	if (!Op_CMG->CC_closedAlpha)
-	{
-		// boundary interpolation correction...
-		pos[1]=1;
-		for (pos[2]=0; pos[2]<numVectors; ++pos[2])
-		{
-			f4_volt[0][pos[0]][pos[1]][pos[2]].v  = m_InnerEngine->f4_volt[0][pos[0]][1][pos[2]].v + half.v * m_InnerEngine->f4_volt[0][pos[0]][1][pos[2]].v - half.v * m_InnerEngine->f4_volt[0][pos[0]][2][pos[2]].v;
-			f4_volt[2][pos[0]][pos[1]][pos[2]].v  = m_InnerEngine->f4_volt[2][pos[0]][1][pos[2]].v + half.v * m_InnerEngine->f4_volt[2][pos[0]][1][pos[2]].v - half.v * m_InnerEngine->f4_volt[2][pos[0]][2][pos[2]].v;
-		}
-		pos[1]=numLines[1]-2;
-		for (pos[2]=0; pos[2]<numVectors; ++pos[2])
-		{
-			f4_volt[1][pos[0]][pos[1]][pos[2]].v  = half.v * m_InnerEngine->f4_volt[1][pos[0]][pos[1]/2][pos[2]].v + one_eighth.v * m_InnerEngine->f4_volt[1][pos[0]][pos[1]/2][pos[2]].v - one_eighth.v * m_InnerEngine->f4_volt[1][pos[0]][pos[1]/2-1][pos[2]].v;
-			f4_volt[0][pos[0]][pos[1]][pos[2]].v  = m_InnerEngine->f4_volt[0][pos[0]][pos[1]/2][pos[2]].v + half.v * m_InnerEngine->f4_volt[0][pos[0]][pos[1]/2][pos[2]].v - half.v * m_InnerEngine->f4_volt[0][pos[0]][pos[1]/2-1][pos[2]].v;
-			f4_volt[2][pos[0]][pos[1]][pos[2]].v  = m_InnerEngine->f4_volt[2][pos[0]][pos[1]/2][pos[2]].v + half.v * m_InnerEngine->f4_volt[2][pos[0]][pos[1]/2][pos[2]].v - half.v * m_InnerEngine->f4_volt[2][pos[0]][pos[1]/2-1][pos[2]].v;
+			f4_volt[1][pos[0]][pos[1]][pos[2]].v  = Op_CMG->f4_interpol_v_2p[1][pos[1]].v * m_InnerEngine->f4_volt[1][pos[0]][Op_CMG->m_interpol_pos_v_2p[1][pos[1]]][pos[2]].v
+													+ Op_CMG->f4_interpol_v_2pp[1][pos[1]].v * m_InnerEngine->f4_volt[1][pos[0]][Op_CMG->m_interpol_pos_v_2pp[1][pos[1]]][pos[2]].v;
 		}
 	}
 }
 
-void Engine_CylinderMultiGrid::InterpolCurrChild2Base(unsigned int rzPlane)
+void Engine_CylinderMultiGrid::InterpolCurrChild2Base(unsigned int rPos)
 {
 	//interpolate voltages from child engine to the base engine...
 	unsigned int pos[3];
-	int pos1_rz1, pos1_rz2;
-	int pos1_a1, pos1_a2;
-	pos[0] = rzPlane;
-	bool isOdd, isEven;
-	f4vector one_fourth, three_fourth;
-	for (int n=0; n<4; ++n)
+	pos[0] = rPos;
+	for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 	{
-		one_fourth.f[n] = 1.0/4.0;
-		three_fourth.f[n] = 3.0/4.0;
-	}
-	for (pos[1]=0; pos[1]<numLines[1] - !Op_CMG->CC_closedAlpha; ++pos[1])
-	{
-		isOdd = (pos[1]%2);
-		isEven = !isOdd; //* (pos[1]>0);
-
-		pos1_a1 = pos[1]/2;
-		pos1_a2 = pos[1]/2 + isOdd;
-
-		pos1_rz1 = pos[1]/2;
-		pos1_rz2 = pos[1]/2 + isOdd - isEven;
-
-		if ((pos1_rz2<0) && (Op_CMG->CC_closedAlpha))
-			pos1_rz2 += m_InnerEngine->numLines[1]-1;
-		else if (pos1_rz2<0)
-			pos1_rz2 = 0;
-
 		for (pos[2]=0; pos[2]<numVectors; ++pos[2])
 		{
 			//r - direction
-			f4_curr[0][pos[0]][pos[1]][pos[2]].v  = three_fourth.v * m_InnerEngine->f4_curr[0][pos[0]][pos1_rz1][pos[2]].v;
-			f4_curr[0][pos[0]][pos[1]][pos[2]].v += one_fourth.v * m_InnerEngine->f4_curr[0][pos[0]][pos1_rz2][pos[2]].v;
+			f4_curr[0][pos[0]][pos[1]][pos[2]].v  = Op_CMG->f4_interpol_i_2p[0][pos[1]].v * m_InnerEngine->f4_curr[0][pos[0]][Op_CMG->m_interpol_pos_i_2p[0][pos[1]]][pos[2]].v
+													+ Op_CMG->f4_interpol_i_2pp[0][pos[1]].v * m_InnerEngine->f4_curr[0][pos[0]][Op_CMG->m_interpol_pos_i_2pp[0][pos[1]]][pos[2]].v;
 
 			//z - direction
-			f4_curr[2][pos[0]][pos[1]][pos[2]].v  = three_fourth.v * m_InnerEngine->f4_curr[2][pos[0]][pos1_rz1][pos[2]].v;
-			f4_curr[2][pos[0]][pos[1]][pos[2]].v += one_fourth.v * m_InnerEngine->f4_curr[2][pos[0]][pos1_rz2][pos[2]].v;
+			f4_curr[2][pos[0]][pos[1]][pos[2]].v  = Op_CMG->f4_interpol_i_2p[0][pos[1]].v * m_InnerEngine->f4_curr[2][pos[0]][Op_CMG->m_interpol_pos_i_2p[0][pos[1]]][pos[2]].v
+													+ Op_CMG->f4_interpol_i_2pp[0][pos[1]].v * m_InnerEngine->f4_curr[2][pos[0]][Op_CMG->m_interpol_pos_i_2pp[0][pos[1]]][pos[2]].v;
 
 			//alpha - direction
-			f4_curr[1][pos[0]][pos[1]][pos[2]].v  = one_fourth.v * (m_InnerEngine->f4_curr[1][pos[0]][pos1_a1][pos[2]].v + m_InnerEngine->f4_curr[1][pos[0]][pos1_a2][pos[2]].v);
-		}
-
-	}
-
-	if (!Op_CMG->CC_closedAlpha)
-	{
-		// boundary interpolation correction...
-		pos[1]=1;
-		for (pos[2]=0; pos[2]<numVectors; ++pos[2])
-			f4_curr[1][pos[0]][pos[1]][pos[2]].v  = three_fourth.v * m_InnerEngine->f4_curr[1][pos[0]][1][pos[2]].v - one_fourth.v * m_InnerEngine->f4_curr[1][pos[0]][2][pos[2]].v;
-		pos[1]=numLines[1]-2;
-		for (pos[2]=0; pos[2]<numVectors; ++pos[2])
-		{
-			f4_curr[1][pos[0]][pos[1]][pos[2]].v  = three_fourth.v * m_InnerEngine->f4_curr[1][pos[0]][pos[1]/2][pos[2]].v - one_fourth.v * m_InnerEngine->f4_curr[1][pos[0]][pos[1]/2-1][pos[2]].v;
-			f4_curr[0][pos[0]][pos[1]][pos[2]].v  = m_InnerEngine->f4_curr[0][pos[0]][pos[1]/2][pos[2]].v + one_fourth.v * m_InnerEngine->f4_curr[0][pos[0]][pos[1]/2][pos[2]].v - one_fourth.v * m_InnerEngine->f4_curr[0][pos[0]][pos[1]/2-1][pos[2]].v;
-			f4_curr[2][pos[0]][pos[1]][pos[2]].v  = m_InnerEngine->f4_curr[2][pos[0]][pos[1]/2][pos[2]].v + one_fourth.v * m_InnerEngine->f4_curr[2][pos[0]][pos[1]/2][pos[2]].v - one_fourth.v * m_InnerEngine->f4_curr[2][pos[0]][pos[1]/2-1][pos[2]].v;
+			f4_curr[1][pos[0]][pos[1]][pos[2]].v  = Op_CMG->f4_interpol_i_2p[1][pos[1]].v * m_InnerEngine->f4_curr[1][pos[0]][Op_CMG->m_interpol_pos_i_2p[1][pos[1]]][pos[2]].v
+													+ Op_CMG->f4_interpol_i_2pp[1][pos[1]].v * m_InnerEngine->f4_curr[1][pos[0]][Op_CMG->m_interpol_pos_i_2pp[1][pos[1]]][pos[2]].v;
 		}
 	}
 }

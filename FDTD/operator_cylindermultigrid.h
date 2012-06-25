@@ -81,6 +81,19 @@ protected:
 
 	Operator_Cylinder* m_InnerOp;
 
+	// sub-grid to base interpolation coefficients
+	unsigned int* m_interpol_pos_v_2p[2];
+	f4vector* f4_interpol_v_2p[2];
+	unsigned int* m_interpol_pos_v_2pp[2];
+	f4vector* f4_interpol_v_2pp[2];
+
+	unsigned int* m_interpol_pos_i_2p[2];
+	f4vector* f4_interpol_i_2p[2];
+	unsigned int* m_interpol_pos_i_2pp[2];
+	f4vector* f4_interpol_i_2pp[2];
+
+	void SetupInterpolation();
+
 	virtual void CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const;
 };
 
