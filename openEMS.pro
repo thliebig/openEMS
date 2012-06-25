@@ -240,7 +240,7 @@ MPI_SUPPORT {
 
 # add git revision
 GITREV = $$system(git describe --tags)
-isEmpty($$GITREV):GITREV=$$VERSION
+isEmpty(GITREV):GITREV=$$VERSION
 DEFINES += GIT_VERSION=\\\"$$GITREV\\\"
 
 
