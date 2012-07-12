@@ -220,10 +220,10 @@ protected:
 	//EC elements, internal only!
 	virtual void Init_EC();
 	virtual bool Calc_EC();
-	double* EC_C[3];
-	double* EC_G[3];
-	double* EC_L[3];
-	double* EC_R[3];
+	FDTD_FLOAT* EC_C[3];
+	FDTD_FLOAT* EC_G[3];
+	FDTD_FLOAT* EC_L[3];
+	FDTD_FLOAT* EC_R[3];
 
 	AdrOp* MainOp;
 

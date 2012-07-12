@@ -828,20 +828,25 @@ void Operator::InitExcitation()
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 {
 	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
-	if (EC_C[n][i]>0)
+	double C = EC_C[n][i];
+	double G = EC_G[n][i];
+	if (C>0)
 	{
-		SetVV(n,pos[0],pos[1],pos[2], (1-dT*EC_G[n][i]/2/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]) );
-		SetVI(n,pos[0],pos[1],pos[2], (dT/EC_C[n][i])/(1+dT*EC_G[n][i]/2/EC_C[n][i]) );
+		SetVV(n,pos[0],pos[1],pos[2], (1.0-dT*G/2.0/C)/(1.0+dT*G/2.0/C) );
+		SetVI(n,pos[0],pos[1],pos[2], (dT/C)/(1.0+dT*G/2.0/C) );
 	}
 	else
 	{
 		SetVV(n,pos[0],pos[1],pos[2], 0 );
 		SetVI(n,pos[0],pos[1],pos[2], 0 );
 	}
-	if (EC_L[n][i]>0)
+
+	double L = EC_L[n][i];
+	double R = EC_R[n][i];
+	if (L>0)
 	{
-		SetII(n,pos[0],pos[1],pos[2], (1-dT*EC_R[n][i]/2/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]) );
-		SetIV(n,pos[0],pos[1],pos[2], (dT/EC_L[n][i])/(1+dT*EC_R[n][i]/2/EC_L[n][i]) );
+		SetII(n,pos[0],pos[1],pos[2], (1.0-dT*R/2.0/L)/(1.0+dT*R/2.0/L) );
+		SetIV(n,pos[0],pos[1],pos[2], (dT/L)/(1.0+dT*R/2.0/L) );
 	}
 	else
 	{
@@ -1416,10 +1421,10 @@ void Operator::Init_EC()
 		delete[] EC_G[n];
 		delete[] EC_L[n];
 		delete[] EC_R[n];
-		EC_C[n] = new double[MainOp->GetSize()];
-		EC_G[n] = new double[MainOp->GetSize()];
-		EC_L[n] = new double[MainOp->GetSize()];
-		EC_R[n] = new double[MainOp->GetSize()];
+		EC_C[n] = new FDTD_FLOAT[MainOp->GetSize()];
+		EC_G[n] = new FDTD_FLOAT[MainOp->GetSize()];
+		EC_L[n] = new FDTD_FLOAT[MainOp->GetSize()];
+		EC_R[n] = new FDTD_FLOAT[MainOp->GetSize()];
 		for (unsigned int i=0; i<MainOp->GetSize(); i++) //init all
 		{
 			EC_C[n][i]=0;
