@@ -45,7 +45,7 @@ public:
 	//!Iterate a number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
 
-	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
+	virtual unsigned int GetNumberOfTimesteps() {return numTS;}
 
 	//this access functions muss be overloaded by any new engine using a different storage model
 	inline virtual FDTD_FLOAT GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z )		const { return volt[n][x][y][z]; }
