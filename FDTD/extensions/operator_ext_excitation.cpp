@@ -20,14 +20,63 @@
 #include "FDTD/excitation.h"
 #include "ContinuousStructure.h"
 
-Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op, Excitation* exc) : Operator_Extension(op)
+Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op) : Operator_Extension(op)
 {
-	m_Exc = exc;
+	Volt_delay = 0;
+	Volt_amp = 0;
+	Volt_dir = 0;
+	Volt_Count = 0;
+	Curr_delay = 0;
+	Curr_amp = 0;
+	Curr_dir = 0;
+	Curr_Count = 0;
+
+	for (int n=0; n<3; ++n)
+	{
+		Volt_index[n] = 0;
+		Curr_index[n] = 0;
+		Volt_Count_Dir[n] = 0;
+		Curr_Count_Dir[n] = 0;
+	}
+
+	m_Exc = m_Op->m_Exc;
 }
 
 Operator_Ext_Excitation::~Operator_Ext_Excitation()
 {
+	Reset();
 }
+
+void Operator_Ext_Excitation::Reset( )
+{
+	delete[] Volt_delay;
+	Volt_delay = 0;
+	delete[] Volt_dir;
+	Volt_dir = 0;
+	delete[] Volt_amp;
+	Volt_amp = 0;
+	delete[] Curr_delay;
+	Curr_delay = 0;
+	delete[] Curr_dir;
+	Curr_dir = 0;
+	delete[] Curr_amp;
+	Curr_amp = 0;
+
+	Volt_Count = 0;
+	Curr_Count = 0;
+
+	for (int n=0; n<3; ++n)
+	{
+		delete[] Volt_index[n];
+		Volt_index[n] = 0;
+		delete[] Curr_index[n];
+		Curr_index[n] = 0;
+
+		Volt_Count_Dir[n] = 0;
+		Curr_Count_Dir[n] = 0;
+	}
+}
+
 
 Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op, Operator_Ext_Excitation* op_ext) : Operator_Extension(op, op_ext)
 {
@@ -36,7 +85,7 @@ Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op, Operator_Ext_Exci
 
 bool Operator_Ext_Excitation::BuildExtension()
 {
-	double dT = m_Exc->GetTimestep();
+	double dT = m_Op->GetTimestep();
 	if (dT==0)
 		return false;
 	if (m_Exc==0)
@@ -217,12 +266,77 @@ bool Operator_Ext_Excitation::BuildExtension()
 	}
 
 	// set voltage excitations
-	m_Exc->setupVoltageExcitation( volt_vIndex, volt_vExcit, volt_vDelay, volt_vDir );
+	setupVoltageExcitation( volt_vIndex, volt_vExcit, volt_vDelay, volt_vDir );
 
 	// set current excitations
-	m_Exc->setupCurrentExcitation( curr_vIndex, curr_vExcit, curr_vDelay, curr_vDir );
+	setupCurrentExcitation( curr_vIndex, curr_vExcit, curr_vDelay, curr_vDir );
 
 	return true;
+}
+
+void Operator_Ext_Excitation::setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,
+		vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir )
+{
+	Volt_Count = volt_vIndex[0].size();
+	for (int n=0; n<3; n++)
+	{
+		Volt_Count_Dir[n]=0;
+		delete[] Volt_index[n];
+		Volt_index[n] = new unsigned int[Volt_Count];
+	}
+	delete[] Volt_delay;
+	delete[] Volt_amp;
+	delete[] Volt_dir;
+	Volt_delay = new unsigned int[Volt_Count];
+	Volt_amp = new FDTD_FLOAT[Volt_Count];
+	Volt_dir = new unsigned short[Volt_Count];
+
+//	cerr << "Excitation::setupVoltageExcitation(): Number of voltage excitation points: " << Volt_Count << endl;
+//	if (Volt_Count==0)
+//		cerr << "No E-Field/voltage excitation found!" << endl;
+	for (int n=0; n<3; n++)
+		for (unsigned int i=0; i<Volt_Count; i++)
+			Volt_index[n][i] = volt_vIndex[n].at(i);
+	for (unsigned int i=0; i<Volt_Count; i++)
+	{
+		Volt_delay[i] = volt_vDelay.at(i);
+		Volt_amp[i]   = volt_vExcit.at(i);
+		Volt_dir[i]   = volt_vDir.at(i);
+		++Volt_Count_Dir[Volt_dir[i]];
+	}
+}
+
+void Operator_Ext_Excitation::setupCurrentExcitation( vector<unsigned int> const curr_vIndex[3], vector<FDTD_FLOAT> const& curr_vExcit,
+		vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir )
+{
+	Curr_Count = curr_vIndex[0].size();
+	for (int n=0; n<3; n++)
+	{
+		Curr_Count_Dir[n]=0;
+		delete[] Curr_index[n];
+		Curr_index[n] = new unsigned int[Curr_Count];
+	}
+	delete[] Curr_delay;
+	delete[] Curr_amp;
+	delete[] Curr_dir;
+	Curr_delay = new unsigned int[Curr_Count];
+	Curr_amp = new FDTD_FLOAT[Curr_Count];
+	Curr_dir = new unsigned short[Curr_Count];
+
+//	cerr << "Excitation::setupCurrentExcitation(): Number of current excitation points: " << Curr_Count << endl;
+//	if (Curr_Count==0)
+//		cerr << "No H-Field/current excitation found!" << endl;
+	for (int n=0; n<3; ++n)
+		for (unsigned int i=0; i<Curr_Count; i++)
+			Curr_index[n][i] = curr_vIndex[n].at(i);
+	for (unsigned int i=0; i<Curr_Count; i++)
+	{
+		Curr_delay[i] = curr_vDelay.at(i);
+		Curr_amp[i]   = curr_vExcit.at(i);
+		Curr_dir[i]   = curr_vDir.at(i);
+		++Curr_Count_Dir[Curr_dir[i]];
+	}
+
 }
 
 Engine_Extension* Operator_Ext_Excitation::CreateEngineExtention()
@@ -233,9 +347,9 @@ Engine_Extension* Operator_Ext_Excitation::CreateEngineExtention()
 void Operator_Ext_Excitation::ShowStat(ostream &ostr)  const
 {
 	Operator_Extension::ShowStat(ostr);
-	cout << "Voltage excitations\t: " << m_Exc->Volt_Count    << "\t (" << m_Exc->Volt_Count_Dir[0] << ", " << m_Exc->Volt_Count_Dir[1] << ", " << m_Exc->Volt_Count_Dir[2] << ")" << endl;
-	cout << "Current excitations\t: " << m_Exc->Curr_Count << "\t (" << m_Exc->Curr_Count_Dir[0] << ", " << m_Exc->Curr_Count_Dir[1] << ", " << m_Exc->Curr_Count_Dir[2] << ")" << endl;
-	cout << "Excitation Length (TS)\t: " << m_Exc->Length << endl;
-	cout << "Excitation Length (s)\t: " << m_Exc->Length*m_Op->GetTimestep() << endl;
+	cout << "Voltage excitations\t: " << Volt_Count    << "\t (" << Volt_Count_Dir[0] << ", " << Volt_Count_Dir[1] << ", " << Volt_Count_Dir[2] << ")" << endl;
+	cout << "Current excitations\t: " << Curr_Count << "\t (" << Curr_Count_Dir[0] << ", " << Curr_Count_Dir[1] << ", " << Curr_Count_Dir[2] << ")" << endl;
+	cout << "Excitation Length (TS)\t: " << m_Exc->GetLength() << endl;
+	cout << "Excitation Length (s)\t: " << m_Exc->GetLength()*m_Op->GetTimestep() << endl;
 }
 

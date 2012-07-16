@@ -443,9 +443,10 @@ void openEMS_FDTD_MPI::RunFDTD()
 	double currE=0;
 
 	//add all timesteps to end-crit field processing with max excite amplitude
-	unsigned int maxExcite = FDTD_Op->Exc->GetMaxExcitationTimestep();
-	for (unsigned int n=0; n<FDTD_Op->Exc->Volt_Count; ++n)
-		m_ProcField->AddStep(FDTD_Op->Exc->Volt_delay[n]+maxExcite);
+	unsigned int maxExcite = FDTD_Op->GetExcitationSignal()->GetMaxExcitationTimestep();
+//	for (unsigned int n=0; n<FDTD_Op->Exc->Volt_Count; ++n)
+//		m_ProcField->AddStep(FDTD_Op->Exc->Volt_delay[n]+maxExcite);
+	m_ProcField->AddStep(maxExcite);
 
 	int prevTS=0,currTS=0;
 	double speed = m_NumberCells/1e6;
@@ -457,7 +458,6 @@ void openEMS_FDTD_MPI::RunFDTD()
 	timeval prevTime= currTime;
 
 	//*************** simulate ************//
-
 	PA->PreProcess();
 	int step = GetNextStep();
 
@@ -501,7 +501,7 @@ void openEMS_FDTD_MPI::RunFDTD()
 			PA->FlushNext();
 		}
 	}
-	if ((m_MyID==0) && (m_EnergyDecrement>endCrit) && (FDTD_Op->Exc->GetExciteType()==0))
+	if ((m_MyID==0) && (m_EnergyDecrement>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))
 		cerr << "RunFDTD: max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 

@@ -37,11 +37,6 @@ public:
 	//! Get the excitation timestep with the (first) max amplitude
 	virtual unsigned int GetMaxExcitationTimestep() const;
 
-	void setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,
-	                             vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir );
-	void setupCurrentExcitation( vector<unsigned int> const curr_vIndex[3], vector<FDTD_FLOAT> const& curr_vExcit,
-	                             vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir );
-
 	void SetNyquistNum(unsigned int nyquist) {m_nyquistTS=nyquist;}
 	unsigned int GetNyquistNum() const {return m_nyquistTS;}
 
@@ -57,31 +52,21 @@ public:
 	//! Get the type of excitation
 	int GetExciteType() const {return m_Excit_Type;}
 
-	//Excitation time-signal
-	unsigned int Length;
-	FDTD_FLOAT* Signal_volt;
-	FDTD_FLOAT* Signal_curr;
+	//! Get the length of the excitation signal
+	unsigned int GetLength() const {return Length;}
 
-	//E-Field/voltage Excitation
-	unsigned int Volt_Count;
-	unsigned int Volt_Count_Dir[3];
-	unsigned int* Volt_index[3];
-	unsigned short* Volt_dir;
-	FDTD_FLOAT* Volt_amp; //represented as edge-voltages!!
-	unsigned int* Volt_delay;
-
-	//H-Field/current Excitation
-	unsigned int Curr_Count;
-	unsigned int Curr_Count_Dir[3];
-	unsigned int* Curr_index[3];
-	unsigned short* Curr_dir;
-	FDTD_FLOAT* Curr_amp; //represented as edge-currents!!
-	unsigned int* Curr_delay;
+	FDTD_FLOAT* GetVoltageSignal() const {return Signal_volt;}
+	FDTD_FLOAT* GetCurrentSignal() const {return Signal_curr;}
 
 protected:
 	double dT;
 	unsigned int m_nyquistTS;
 	int m_Excit_Type;
+
+	//Excitation time-signal
+	unsigned int Length;
+	FDTD_FLOAT* Signal_volt;
+	FDTD_FLOAT* Signal_curr;
 
 	//! Calculate a custom signal
 	virtual void CalcCustomExcitation(double f0, int nTS, string signal);

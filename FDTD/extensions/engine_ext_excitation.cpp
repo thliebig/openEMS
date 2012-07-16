@@ -37,50 +37,52 @@ void Engine_Ext_Excitation::Apply2Voltages()
 	unsigned int ny;
 	unsigned int pos[3];
 	int numTS = m_Eng->GetNumberOfTimesteps();
+	unsigned int length = m_Op_Exc->m_Exc->GetLength();
+	FDTD_FLOAT* exc_volt =  m_Op_Exc->m_Exc->GetVoltageSignal();
 
 	//switch for different engine types to access faster inline engine functions
 	switch (m_Eng->GetType())
 	{
 	case Engine::BASIC:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Volt_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
 			{
-				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
-				ny = m_Op_Exc->m_Exc->Volt_dir[n];
-				pos[0]=m_Op_Exc->m_Exc->Volt_index[0][n];
-				pos[1]=m_Op_Exc->m_Exc->Volt_index[1][n];
-				pos[2]=m_Op_Exc->m_Exc->Volt_index[2][n];
-				m_Eng->Engine::SetVolt(ny,pos, m_Eng->Engine::GetVolt(ny,pos) + m_Op_Exc->m_Exc->Volt_amp[n]*m_Op_Exc->m_Exc->Signal_volt[exc_pos]);
+				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
+				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				ny = m_Op_Exc->Volt_dir[n];
+				pos[0]=m_Op_Exc->Volt_index[0][n];
+				pos[1]=m_Op_Exc->Volt_index[1][n];
+				pos[2]=m_Op_Exc->Volt_index[2][n];
+				m_Eng->Engine::SetVolt(ny,pos, m_Eng->Engine::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
 			}
 			break;
 		}
 	case Engine::SSE:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Volt_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
 			{
 				Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
-				ny = m_Op_Exc->m_Exc->Volt_dir[n];
-				pos[0]=m_Op_Exc->m_Exc->Volt_index[0][n];
-				pos[1]=m_Op_Exc->m_Exc->Volt_index[1][n];
-				pos[2]=m_Op_Exc->m_Exc->Volt_index[2][n];
-				eng_sse->Engine_sse::SetVolt(ny,pos, eng_sse->Engine_sse::GetVolt(ny,pos) + m_Op_Exc->m_Exc->Volt_amp[n]*m_Op_Exc->m_Exc->Signal_volt[exc_pos]);
+				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
+				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				ny = m_Op_Exc->Volt_dir[n];
+				pos[0]=m_Op_Exc->Volt_index[0][n];
+				pos[1]=m_Op_Exc->Volt_index[1][n];
+				pos[2]=m_Op_Exc->Volt_index[2][n];
+				eng_sse->Engine_sse::SetVolt(ny,pos, eng_sse->Engine_sse::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
 			}
 			break;
 		}
 	default:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Volt_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
 			{
-				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
-				ny = m_Op_Exc->m_Exc->Volt_dir[n];
-				pos[0]=m_Op_Exc->m_Exc->Volt_index[0][n];
-				pos[1]=m_Op_Exc->m_Exc->Volt_index[1][n];
-				pos[2]=m_Op_Exc->m_Exc->Volt_index[2][n];
-				m_Eng->SetVolt(ny,pos, m_Eng->GetVolt(ny,pos) + m_Op_Exc->m_Exc->Volt_amp[n]*m_Op_Exc->m_Exc->Signal_volt[exc_pos]);
+				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
+				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				ny = m_Op_Exc->Volt_dir[n];
+				pos[0]=m_Op_Exc->Volt_index[0][n];
+				pos[1]=m_Op_Exc->Volt_index[1][n];
+				pos[2]=m_Op_Exc->Volt_index[2][n];
+				m_Eng->SetVolt(ny,pos, m_Eng->GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
 			}
 			break;
 		}
@@ -95,50 +97,52 @@ void Engine_Ext_Excitation::Apply2Current()
 	unsigned int ny;
 	unsigned int pos[3];
 	int numTS = m_Eng->GetNumberOfTimesteps();
+	unsigned int length = m_Op_Exc->m_Exc->GetLength();
+	FDTD_FLOAT* exc_curr =  m_Op_Exc->m_Exc->GetCurrentSignal();
 
 	//switch for different engine types to access faster inline engine functions
 	switch (m_Eng->GetType())
 	{
 	case Engine::BASIC:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Curr_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
 			{
-				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
-				ny = m_Op_Exc->m_Exc->Curr_dir[n];
-				pos[0]=m_Op_Exc->m_Exc->Curr_index[0][n];
-				pos[1]=m_Op_Exc->m_Exc->Curr_index[1][n];
-				pos[2]=m_Op_Exc->m_Exc->Curr_index[2][n];
-				m_Eng->Engine::SetCurr(ny,pos, m_Eng->Engine::GetCurr(ny,pos) + m_Op_Exc->m_Exc->Curr_amp[n]*m_Op_Exc->m_Exc->Signal_curr[exc_pos]);
+				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
+				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				ny = m_Op_Exc->Curr_dir[n];
+				pos[0]=m_Op_Exc->Curr_index[0][n];
+				pos[1]=m_Op_Exc->Curr_index[1][n];
+				pos[2]=m_Op_Exc->Curr_index[2][n];
+				m_Eng->Engine::SetCurr(ny,pos, m_Eng->Engine::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
 			}
 			break;
 		}
 	case Engine::SSE:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Curr_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
 			{
 				Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
-				ny = m_Op_Exc->m_Exc->Curr_dir[n];
-				pos[0]=m_Op_Exc->m_Exc->Curr_index[0][n];
-				pos[1]=m_Op_Exc->m_Exc->Curr_index[1][n];
-				pos[2]=m_Op_Exc->m_Exc->Curr_index[2][n];
-				eng_sse->Engine_sse::SetCurr(ny,pos, eng_sse->Engine_sse::GetCurr(ny,pos) + m_Op_Exc->m_Exc->Curr_amp[n]*m_Op_Exc->m_Exc->Signal_curr[exc_pos]);
+				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
+				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				ny = m_Op_Exc->Curr_dir[n];
+				pos[0]=m_Op_Exc->Curr_index[0][n];
+				pos[1]=m_Op_Exc->Curr_index[1][n];
+				pos[2]=m_Op_Exc->Curr_index[2][n];
+				eng_sse->Engine_sse::SetCurr(ny,pos, eng_sse->Engine_sse::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
 			}
 			break;
 		}
 	default:
 		{
-			for (unsigned int n=0; n<m_Op_Exc->m_Exc->Curr_Count; ++n)
+			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
 			{
-				exc_pos = numTS - (int)m_Op_Exc->m_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)m_Op_Exc->m_Exc->Length);
-				ny = m_Op_Exc->m_Exc->Curr_dir[n];
-				pos[0]=m_Op_Exc->m_Exc->Curr_index[0][n];
-				pos[1]=m_Op_Exc->m_Exc->Curr_index[1][n];
-				pos[2]=m_Op_Exc->m_Exc->Curr_index[2][n];
-				m_Eng->SetCurr(ny,pos, m_Eng->GetCurr(ny,pos) + m_Op_Exc->m_Exc->Curr_amp[n]*m_Op_Exc->m_Exc->Signal_curr[exc_pos]);
+				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
+				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				ny = m_Op_Exc->Curr_dir[n];
+				pos[0]=m_Op_Exc->Curr_index[0][n];
+				pos[1]=m_Op_Exc->Curr_index[1][n];
+				pos[2]=m_Op_Exc->Curr_index[2][n];
+				m_Eng->SetCurr(ny,pos, m_Eng->GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
 			}
 			break;
 		}

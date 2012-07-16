@@ -25,6 +25,7 @@
 #include "tools/array_ops.h"
 #include "tools/vtk_file_writer.h"
 #include "fparser.hh"
+#include "extensions/operator_ext_excitation.h"
 
 Operator* Operator::New()
 {
@@ -36,7 +37,7 @@ Operator* Operator::New()
 
 Operator::Operator() : Operator_Base()
 {
-	Exc = 0;
+	m_Exc = 0;
 	m_InvaildTimestep = false;
 	m_TimeStepVar = 3;
 }
@@ -82,7 +83,7 @@ void Operator::Init()
 		EC_R[n]=NULL;
 	}
 
-	Exc = 0;
+	m_Exc = 0;
 }
 
 void Operator::Delete()
@@ -103,7 +104,7 @@ void Operator::Delete()
 		delete[] EC_R[n];EC_R[n]=0;
 	}
 
-	delete Exc;Exc=0;
+	delete m_Exc;m_Exc=0;
 
 	Delete_N_3DArray(m_epsR,numLines);
 	m_epsR=0;
@@ -458,8 +459,8 @@ void Operator::ShowStat() const
 		cout <<"\t(" << opt_dT << ")";
 	cout << endl;
 	cout << "Timestep method name\t: " << m_Used_TS_Name << endl;
-	cout << "Nyquist criteria (TS)\t: " << Exc->GetNyquistNum() << endl;
-	cout << "Nyquist criteria (s)\t: " << Exc->GetNyquistNum()*dT << endl;
+	cout << "Nyquist criteria (TS)\t: " << m_Exc->GetNyquistNum() << endl;
+	cout << "Nyquist criteria (s)\t: " << m_Exc->GetNyquistNum()*dT << endl;
 	cout << "-----------------------------------" << endl;
 }
 
@@ -482,11 +483,32 @@ void Operator::DumpOperator2File(string filename)
 
 	cout << "Operator: Dumping FDTD operator information to vtk file: " << filename << " ..." << flush;
 
-	FDTD_FLOAT**** exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	if (Exc)
+	VTK_File_Writer* vtk_Writer = new VTK_File_Writer(filename.c_str(), m_MeshType);
+	vtk_Writer->SetMeshLines(discLines,numLines,discLines_scaling);
+	vtk_Writer->SetHeader("openEMS - Operator dump");
+
+	vtk_Writer->SetNativeDump(true);
+
+	if (m_Op_Ext_Exc)
 	{
-		for (unsigned int n=0; n<Exc->Volt_Count; ++n)
-			exc[Exc->Volt_dir[n]][Exc->Volt_index[0][n]][Exc->Volt_index[1][n]][Exc->Volt_index[2][n]] = Exc->Volt_amp[n];
+		FDTD_FLOAT**** exc = NULL;
+		if (m_Op_Ext_Exc->Volt_Count>0)
+		{
+			exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
+			for (unsigned int n=0; n<m_Op_Ext_Exc->Volt_Count; ++n)
+				exc[m_Op_Ext_Exc->Volt_dir[n]][m_Op_Ext_Exc->Volt_index[0][n]][m_Op_Ext_Exc->Volt_index[1][n]][m_Op_Ext_Exc->Volt_index[2][n]] = m_Op_Ext_Exc->Volt_amp[n];
+			vtk_Writer->AddVectorField("exc_volt",exc);
+			Delete_N_3DArray(exc,numLines);
+		}
+
+		if (m_Op_Ext_Exc->Curr_Count>0)
+		{
+			exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
+			for (unsigned int n=0; n<m_Op_Ext_Exc->Curr_Count; ++n)
+				exc[m_Op_Ext_Exc->Curr_dir[n]][m_Op_Ext_Exc->Curr_index[0][n]][m_Op_Ext_Exc->Curr_index[1][n]][m_Op_Ext_Exc->Curr_index[2][n]] = m_Op_Ext_Exc->Curr_amp[n];
+			vtk_Writer->AddVectorField("exc_curr",exc);
+			Delete_N_3DArray(exc,numLines);
+		}
 	}
 
 	FDTD_FLOAT**** vv_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
@@ -506,11 +528,6 @@ void Operator::DumpOperator2File(string filename)
 					ii_temp[n][pos[0]][pos[1]][pos[2]] = GetII(n,pos);
 				}
 
-	VTK_File_Writer* vtk_Writer = new VTK_File_Writer(filename.c_str(), m_MeshType);
-	vtk_Writer->SetMeshLines(discLines,numLines,discLines_scaling);
-	vtk_Writer->SetHeader("openEMS - Operator dump");
-
-	vtk_Writer->SetNativeDump(true);
 
 	vtk_Writer->AddVectorField("vv",vv_temp);
 	Delete_N_3DArray(vv_temp,numLines);
@@ -520,13 +537,11 @@ void Operator::DumpOperator2File(string filename)
 	Delete_N_3DArray(iv_temp,numLines);
 	vtk_Writer->AddVectorField("ii",ii_temp);
 	Delete_N_3DArray(ii_temp,numLines);
-	vtk_Writer->AddVectorField("exc",exc);
-	Delete_N_3DArray(exc,numLines);
 
 	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpOperator2File: Error: Can't write file... skipping!" << endl;
 
-	cout << " done!" << endl;
+	delete vtk_Writer;
 }
 
 //! \brief dump PEC (perfect electric conductor) information (into VTK-file)
@@ -615,7 +630,7 @@ void Operator::DumpPEC2File( string filename )
 	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpPEC2File: Error: Can't write file... skipping!" << endl;
 
-	cout << " done!" << endl;
+	delete vtk_Writer;
 }
 
 void Operator::DumpMaterial2File(string filename)
@@ -671,7 +686,7 @@ void Operator::DumpMaterial2File(string filename)
 	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpMaterial2File: Error: Can't write file... skipping!" << endl;
 
-	cout << " done!" << endl;
+	delete vtk_Writer;
 }
 
  bool Operator::SetupCSXGrid(CSRectGrid* grid)
@@ -816,12 +831,13 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 
 void Operator::InitExcitation()
 {
-	if (Exc!=NULL)
-		Exc->Reset(dT);
+	if (m_Exc!=NULL)
+		m_Exc->Reset(dT);
 	else
 	{
-		Exc = new Excitation( dT );
-		this->AddExtension(new Operator_Ext_Excitation(this,Exc));
+		m_Exc = new Excitation( dT );
+		m_Op_Ext_Exc = new Operator_Ext_Excitation(this);
+		this->AddExtension(m_Op_Ext_Exc);
 	}
 }
 
@@ -1408,8 +1424,8 @@ bool Operator::Calc_LumpedElements()
 
 void Operator::DumpExciationSignals()
 {
-	Exc->DumpVoltageExcite("et");
-	Exc->DumpCurrentExcite("ht");
+	m_Exc->DumpVoltageExcite("et");
+	m_Exc->DumpCurrentExcite("ht");
 }
 
 void Operator::Init_EC()

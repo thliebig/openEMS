@@ -449,7 +449,7 @@ bool Operator_CylinderMultiGrid::SetupExcitation(TiXmlElement* Excite, unsigned 
 {
 	if (!m_InnerOp->SetupExcitation(Excite,maxTS))
 		return false;
-	return Exc->setupExcitation(Excite,maxTS);
+	return m_Exc->setupExcitation(Excite,maxTS);
 }
 
 void Operator_CylinderMultiGrid::Delete()

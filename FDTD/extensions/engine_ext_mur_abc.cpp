@@ -21,6 +21,7 @@
 #include "FDTD/engine_sse.h"
 #include "tools/array_ops.h"
 #include "tools/useful.h"
+#include "operator_ext_excitation.h"
 
 Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) : Engine_Extension(op_ext)
 {
@@ -41,18 +42,20 @@ Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) : Engine_Ex
 
 	//find if some excitation is on this mur-abc and find the max length of this excite, so that the abc can start after the excitation is done...
 	int maxDelay=-1;
-	for (unsigned int n=0; n<m_Op_mur->m_Op->Exc->Volt_Count; ++n)
+	Excitation* Exc = m_Op_mur->m_Op->GetExcitationSignal();
+	Operator_Ext_Excitation* Exc_ext = m_Op_mur->m_Op->GetExcitationExtension();
+	for (unsigned int n=0; n<Exc_ext->GetVoltCount(); ++n)
 	{
-		if ( ((m_Op_mur->m_Op->Exc->Volt_dir[n]==m_nyP) || (m_Op_mur->m_Op->Exc->Volt_dir[n]==m_nyPP)) && (m_Op_mur->m_Op->Exc->Volt_index[m_ny][n]==m_LineNr) )
+		if ( ((Exc_ext->Volt_dir[n]==m_nyP) || (Exc_ext->Volt_dir[n]==m_nyPP)) && (Exc_ext->Volt_index[m_ny][n]==m_LineNr) )
 		{
-			if ((int)m_Op_mur->m_Op->Exc->Volt_delay[n]>maxDelay)
-				maxDelay = (int)m_Op_mur->m_Op->Exc->Volt_delay[n];
+			if ((int)Exc_ext->Volt_delay[n]>maxDelay)
+				maxDelay = (int)Exc_ext->Volt_delay[n];
 		}
 	}
 	m_start_TS = 0;
 	if (maxDelay>=0)
 	{
-		m_start_TS = maxDelay + m_Op_mur->m_Op->Exc->Length + 10; //give it some extra timesteps, for the excitation to travel at least one cell away
+		m_start_TS = maxDelay + m_Op_mur->m_Op->GetExcitationSignal()->GetLength() + 10; //give it some extra timesteps, for the excitation to travel at least one cell away
 		cerr << "Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC: Warning: Excitation inside the Mur-ABC #" <<  m_ny << "-" << (int)(m_LineNr>0) << " found!!!!  Mur-ABC will be switched on after excitation is done at " << m_start_TS << " timesteps!!! " << endl;
 	}
 

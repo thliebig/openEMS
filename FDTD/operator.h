@@ -24,6 +24,7 @@
 #include "Common/operator_base.h"
 
 class Operator_Extension;
+class Operator_Ext_Excitation;
 class Engine;
 class TiXmlElement;
 
@@ -51,7 +52,7 @@ public:
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
-	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return Exc->setupExcitation(Excite,maxTS);}
+	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return m_Exc->setupExcitation(Excite,maxTS);}
 
 	virtual void DumpExciationSignals();
 
@@ -84,7 +85,7 @@ public:
 	bool GetTimestepValid() const {return !m_InvaildTimestep;}
 	virtual double GetNumberCells() const;
 
-	virtual unsigned int GetNumberOfNyquistTimesteps() const {return Exc->GetNyquistNum();}
+	virtual unsigned int GetNumberOfNyquistTimesteps() const {return m_Exc->GetNyquistNum();}
 
 	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
 
@@ -144,6 +145,10 @@ public:
 	virtual void CleanupMaterialStorage();
 
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const;
+
+	Excitation* GetExcitationSignal() const {return m_Exc;}
+
+	Operator_Ext_Excitation* GetExcitationExtension() const {return m_Op_Ext_Exc;}
 
 protected:
 	//! use New() for creating a new Operator
@@ -229,6 +234,10 @@ protected:
 
 	vector<Operator_Extension*> m_Op_exts;
 
+	// excitation classes
+	Excitation* m_Exc; // excitation time signal class
+	Operator_Ext_Excitation* m_Op_Ext_Exc; // excitation extension
+
 	// engine/post-proc needs access
 public:
 	//EC operator
@@ -236,8 +245,6 @@ public:
 	FDTD_FLOAT**** vi; //calc new voltage from old current
 	FDTD_FLOAT**** ii; //calc new current from old current
 	FDTD_FLOAT**** iv; //calc new current from old voltage
-
-	Excitation* Exc;
 };
 
 inline Operator::DebugFlags operator|( Operator::DebugFlags a, Operator::DebugFlags b ) { return static_cast<Operator::DebugFlags>(static_cast<int>(a) | static_cast<int>(b)); }

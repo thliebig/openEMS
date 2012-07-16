@@ -306,7 +306,7 @@ bool openEMS::SetupProcessing()
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Setting up processing..." << endl;
 
-	unsigned int Nyquist = FDTD_Op->Exc->GetNyquistNum();
+	unsigned int Nyquist = FDTD_Op->GetExcitationSignal()->GetNyquistNum();
 	PA = new ProcessingArray(Nyquist);
 
 	double start[3];
@@ -681,14 +681,15 @@ int openEMS::SetupFDTD(const char* file)
 		FDTD_Op->ShowExtStat();
 		cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
 	}
+	Excitation* Exc=FDTD_Op->GetExcitationSignal();
 	cout << "FDTD simulation size: " << FDTD_Op->GetNumberOfLines(0) << "x" << FDTD_Op->GetNumberOfLines(1) << "x" << FDTD_Op->GetNumberOfLines(2) << " --> "  << FDTD_Op->GetNumberCells() << " FDTD cells " << endl;
-	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " << FDTD_Op->Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(FDTD_Op->Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
-	if (FDTD_Op->Exc->GetNyquistNum()>1000)
+	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " << Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
+	if (Exc->GetNyquistNum()>1000)
 		cerr << "openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?" << endl;
 
-	cout << "Excitation signal length is: " << FDTD_Op->Exc->Length << " timesteps (" << FDTD_Op->Exc->Length*FDTD_Op->GetTimestep() << "s)" << endl;
-	cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(FDTD_Op->Exc->Length) << " * Excitation signal length)" << endl;
-	if ( ((double)NrTS/(double)FDTD_Op->Exc->Length < 3) && (FDTD_Op->Exc->GetExciteType()==0))
+	cout << "Excitation signal length is: " << Exc->GetLength() << " timesteps (" << Exc->GetLength()*FDTD_Op->GetTimestep() << "s)" << endl;
+	cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(Exc->GetLength()) << " * Excitation signal length)" << endl;
+	if ( ((double)NrTS/(double)Exc->GetLength() < 3) && (Exc->GetExciteType()==0))
 		cerr << "openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 
@@ -767,9 +768,10 @@ void openEMS::RunFDTD()
 	PA->InitAll();
 
 	//add all timesteps to end-crit field processing with max excite amplitude
-	unsigned int maxExcite = FDTD_Op->Exc->GetMaxExcitationTimestep();
-	for (unsigned int n=0; n<FDTD_Op->Exc->Volt_Count; ++n)
-		ProcField->AddStep(FDTD_Op->Exc->Volt_delay[n]+maxExcite);
+	unsigned int maxExcite = FDTD_Op->GetExcitationSignal()->GetMaxExcitationTimestep();
+//	for (unsigned int n=0; n<FDTD_Op->Exc->Volt_Count; ++n)
+//		ProcField->AddStep(FDTD_Op->Exc->Volt_delay[n]+maxExcite);
+	ProcField->AddStep(maxExcite);
 
 	double change=1;
 	int prevTS=0,currTS=0;
@@ -821,7 +823,7 @@ void openEMS::RunFDTD()
 			PA->FlushNext();
 		}
 	}
-	if ((change>endCrit) && (FDTD_Op->Exc->GetExciteType()==0))
+	if ((change>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))
 		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 

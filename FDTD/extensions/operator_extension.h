@@ -60,6 +60,8 @@ public:
 
 	virtual void ShowStat(ostream &ostr) const;
 
+	virtual void Reset() {}
+
 protected:
 	Operator_Extension(Operator* op);
 	//! Copy constructor
