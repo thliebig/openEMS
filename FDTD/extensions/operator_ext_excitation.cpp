@@ -59,7 +59,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 	vector<unsigned int> curr_vDir;
 	double curr_coord[3];
 
-	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::ELECTRODE);
+	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::EXCITATION);
 
 	if (vec_prop.size()==0)
 	{
@@ -67,7 +67,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 		return false;
 	}
 
-	CSPropElectrode* elec=NULL;
+	CSPropExcitation* elec=NULL;
 	CSProperties* prop=NULL;
 	int priority=0;
 
@@ -93,7 +93,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);
-						elec = prop->ToElectrode();
+						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
 						if (prop->CheckCoordInPrimitive(volt_coord,priority,true))
@@ -130,7 +130,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 					for (size_t p=0; p<vec_prop.size(); ++p)
 					{
 						prop = vec_prop.at(p);
-						elec = prop->ToElectrode();
+						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
 						if (prop->CheckCoordInPrimitive(curr_coord,priority,true))
@@ -168,7 +168,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 	for (size_t p=0; p<vec_prop.size(); ++p)
 	{
 		prop = vec_prop.at(p);
-		elec = prop->ToElectrode();
+		elec = prop->ToExcitation();
 		for (size_t n=0; n<prop->GetQtyPrimitives(); ++n)
 		{
 			CSPrimitives* prim = prop->GetPrimitive(n);
