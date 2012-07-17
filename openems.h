@@ -31,6 +31,7 @@ class ProcessingArray;
 class TiXmlElement;
 class ContinuousStructure;
 class Engine_Interface_FDTD;
+class Excitation;
 
 double CalcDiffTime(timeval t1, timeval t2);
 string FormatTime(int sec);
@@ -83,6 +84,8 @@ protected:
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;
+
+	Excitation* m_Exc;
 
 	bool m_Abort;
 

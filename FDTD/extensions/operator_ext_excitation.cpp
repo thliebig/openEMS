@@ -22,6 +22,23 @@
 
 Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op) : Operator_Extension(op)
 {
+	Init();
+}
+
+Operator_Ext_Excitation::~Operator_Ext_Excitation()
+{
+	Reset();
+}
+
+Operator_Extension* Operator_Ext_Excitation::Clone(Operator* op)
+{
+	Operator_Ext_Excitation* clone = new Operator_Ext_Excitation(op, this);
+	return clone;
+}
+
+void Operator_Ext_Excitation::Init()
+{
+	Operator_Extension::Init();
 	Volt_delay = 0;
 	Volt_amp = 0;
 	Volt_dir = 0;
@@ -38,17 +55,12 @@ Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op) : Operator_Extens
 		Volt_Count_Dir[n] = 0;
 		Curr_Count_Dir[n] = 0;
 	}
-
-	m_Exc = m_Op->m_Exc;
+	m_Exc = 0;
 }
 
-Operator_Ext_Excitation::~Operator_Ext_Excitation()
+void Operator_Ext_Excitation::Reset()
 {
-	Reset();
-}
-
-void Operator_Ext_Excitation::Reset( )
-{
+	Operator_Extension::Reset();
 	delete[] Volt_delay;
 	Volt_delay = 0;
 	delete[] Volt_dir;
@@ -80,17 +92,19 @@ void Operator_Ext_Excitation::Reset( )
 
 Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op, Operator_Ext_Excitation* op_ext) : Operator_Extension(op, op_ext)
 {
-	m_Exc = NULL;
+	Init();
 }
 
 bool Operator_Ext_Excitation::BuildExtension()
 {
+	m_Exc = m_Op->GetExcitationSignal();
 	double dT = m_Op->GetTimestep();
 	if (dT==0)
 		return false;
 	if (m_Exc==0)
 		return false;
 
+	Reset();
 	ContinuousStructure* CSX = m_Op->GetGeometryCSX();
 
 	unsigned int pos[3];

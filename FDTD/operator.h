@@ -52,10 +52,6 @@ public:
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
-	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS) {return m_Exc->setupExcitation(Excite,maxTS);}
-
-	virtual void DumpExciationSignals();
-
 	// the next four functions need to be reimplemented in a derived class
 	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[n][x][y][z]; }
 	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }
@@ -146,9 +142,10 @@ public:
 
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const;
 
-	Excitation* GetExcitationSignal() const {return m_Exc;}
+	virtual void SetExcitationSignal(Excitation* exc);
+	virtual Excitation* GetExcitationSignal() const {return m_Exc;}
 
-	Operator_Ext_Excitation* GetExcitationExtension() const {return m_Op_Ext_Exc;}
+	Operator_Ext_Excitation* GetExcitationExtension() const;
 
 protected:
 	//! use New() for creating a new Operator
@@ -159,7 +156,6 @@ protected:
 	virtual void Reset();
 	virtual void InitOperator();
 	virtual void InitDataStorage();
-	virtual void InitExcitation();
 
 	virtual bool SetupCSXGrid(CSRectGrid* grid);
 
@@ -236,7 +232,7 @@ protected:
 
 	// excitation classes
 	Excitation* m_Exc; // excitation time signal class
-	Operator_Ext_Excitation* m_Op_Ext_Exc; // excitation extension
+//	Operator_Ext_Excitation* m_Op_Ext_Exc; // excitation extension
 
 	// engine/post-proc needs access
 public:

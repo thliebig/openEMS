@@ -46,8 +46,6 @@ public:
 	virtual void SetNeighborUp(int ny, int id);
 	virtual void SetNeighborDown(int ny, int id);
 
-	virtual void DumpExciationSignals();
-
 	//! Set the lower original mesh position
 	virtual void SetSplitPos(int ny, unsigned int pos) {m_SplitPos[ny]=pos;}
 	virtual void SetOriginalMesh(CSRectGrid* orig_Mesh);

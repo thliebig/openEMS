@@ -60,12 +60,18 @@ public:
 
 	virtual void ShowStat(ostream &ostr) const;
 
+	virtual bool IsActive() const {return m_Active;}
+	virtual void SetActive(bool active=true) {m_Active=active;}
+
+	virtual void Init() {}
 	virtual void Reset() {}
 
 protected:
 	Operator_Extension(Operator* op);
 	//! Copy constructor
 	Operator_Extension(Operator* op, Operator_Extension* op_ext);
+
+	bool m_Active;
 
 	//FDTD Operator
 	Operator* m_Op;

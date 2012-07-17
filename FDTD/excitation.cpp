@@ -23,14 +23,14 @@
 #include "tinyxml.h"
 #include "excitation.h"
 
-Excitation::Excitation( double timestep )
+Excitation::Excitation()
 {
 	Signal_volt = 0;
 	Signal_curr = 0;
 
 	m_Excit_Type = -1;
 
-	dT = timestep;
+	dT = 0;
 	m_nyquistTS = 0;
 }
 
@@ -57,7 +57,13 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 {
 	if (!Excite)
 	{
-		cerr << "Can't read openEMS excitation settings... " << endl;
+		cerr << "Excitation::setupExcitation: Error, can't read openEMS excitation settings... " << endl;
+		return false;
+	}
+
+	if (dT<=0)
+	{
+		cerr << "Excitation::setupExcitation: Error, invalid timestep... " << endl;
 		return false;
 	}
 

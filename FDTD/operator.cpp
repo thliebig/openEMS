@@ -104,8 +104,6 @@ void Operator::Delete()
 		delete[] EC_R[n];EC_R[n]=0;
 	}
 
-	delete m_Exc;m_Exc=0;
-
 	Delete_N_3DArray(m_epsR,numLines);
 	m_epsR=0;
 	Delete_N_3DArray(m_kappa,numLines);
@@ -489,23 +487,26 @@ void Operator::DumpOperator2File(string filename)
 
 	vtk_Writer->SetNativeDump(true);
 
-	if (m_Op_Ext_Exc)
+	//find excitation extension
+	Operator_Ext_Excitation* Op_Ext_Exc=GetExcitationExtension();
+
+	if (Op_Ext_Exc)
 	{
 		FDTD_FLOAT**** exc = NULL;
-		if (m_Op_Ext_Exc->Volt_Count>0)
+		if (Op_Ext_Exc->Volt_Count>0)
 		{
 			exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
-			for (unsigned int n=0; n<m_Op_Ext_Exc->Volt_Count; ++n)
-				exc[m_Op_Ext_Exc->Volt_dir[n]][m_Op_Ext_Exc->Volt_index[0][n]][m_Op_Ext_Exc->Volt_index[1][n]][m_Op_Ext_Exc->Volt_index[2][n]] = m_Op_Ext_Exc->Volt_amp[n];
+			for (unsigned int n=0; n<  Op_Ext_Exc->Volt_Count; ++n)
+				exc[  Op_Ext_Exc->Volt_dir[n]][  Op_Ext_Exc->Volt_index[0][n]][  Op_Ext_Exc->Volt_index[1][n]][  Op_Ext_Exc->Volt_index[2][n]] =   Op_Ext_Exc->Volt_amp[n];
 			vtk_Writer->AddVectorField("exc_volt",exc);
 			Delete_N_3DArray(exc,numLines);
 		}
 
-		if (m_Op_Ext_Exc->Curr_Count>0)
+		if (  Op_Ext_Exc->Curr_Count>0)
 		{
 			exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
-			for (unsigned int n=0; n<m_Op_Ext_Exc->Curr_Count; ++n)
-				exc[m_Op_Ext_Exc->Curr_dir[n]][m_Op_Ext_Exc->Curr_index[0][n]][m_Op_Ext_Exc->Curr_index[1][n]][m_Op_Ext_Exc->Curr_index[2][n]] = m_Op_Ext_Exc->Curr_amp[n];
+			for (unsigned int n=0; n<  Op_Ext_Exc->Curr_Count; ++n)
+				exc[  Op_Ext_Exc->Curr_dir[n]][  Op_Ext_Exc->Curr_index[0][n]][  Op_Ext_Exc->Curr_index[1][n]][  Op_Ext_Exc->Curr_index[2][n]] =   Op_Ext_Exc->Curr_amp[n];
 			vtk_Writer->AddVectorField("exc_curr",exc);
 			Delete_N_3DArray(exc,numLines);
 		}
@@ -829,16 +830,9 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 	return 0;
 }
 
-void Operator::InitExcitation()
+void Operator::SetExcitationSignal(Excitation* exc)
 {
-	if (m_Exc!=NULL)
-		m_Exc->Reset(dT);
-	else
-	{
-		m_Exc = new Excitation( dT );
-		m_Op_Ext_Exc = new Operator_Ext_Excitation(this);
-		this->AddExtension(m_Op_Ext_Exc);
-	}
+	m_Exc=exc;
 }
 
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
@@ -897,6 +891,8 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	else
 		CalcTimestep();
 
+	m_Exc->Reset(dT);
+
 	InitOperator();
 
 	unsigned int pos[3];
@@ -932,11 +928,22 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 		PMC[n] = m_BC[n]==1;
 	ApplyMagneticBC(PMC);
 
-	InitExcitation();
-
 	//all information available for extension... create now...
 	for (size_t n=0; n<m_Op_exts.size(); ++n)
 		m_Op_exts.at(n)->BuildExtension();
+
+	//remove inactive extensions
+	vector<Operator_Extension*>::iterator it = m_Op_exts.begin();
+	while (it!=m_Op_exts.end())
+	{
+		if ( (*it)->IsActive() == false)
+		{
+			m_Op_exts.erase(it);
+			it = m_Op_exts.begin(); //restart search for inactive extension
+		}
+		else
+			++it;
+	}
 
 	if (debugFlags & debugMaterial)
 		DumpMaterial2File( "material_dump" );
@@ -1422,12 +1429,6 @@ bool Operator::Calc_LumpedElements()
 	return true;
 }
 
-void Operator::DumpExciationSignals()
-{
-	m_Exc->DumpVoltageExcite("et");
-	m_Exc->DumpCurrentExcite("ht");
-}
-
 void Operator::Init_EC()
 {
 	for (int n=0; n<3; ++n)
@@ -1708,6 +1709,19 @@ void Operator::CalcPEC_Curves()
 			}
 		}
 	}
+}
+
+Operator_Ext_Excitation* Operator::GetExcitationExtension() const
+{
+	//search for excitation extension
+	Operator_Ext_Excitation* Op_Ext_Exc=0;
+	for (size_t n=0; n<m_Op_exts.size(); ++n)
+	{
+		Op_Ext_Exc = dynamic_cast<Operator_Ext_Excitation*>(m_Op_exts.at(n));
+		if (Op_Ext_Exc)
+			break;
+	}
+	return Op_Ext_Exc;
 }
 
 void Operator::AddExtension(Operator_Extension* op_ext)

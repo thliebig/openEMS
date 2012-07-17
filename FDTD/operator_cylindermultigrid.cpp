@@ -445,11 +445,10 @@ void Operator_CylinderMultiGrid::SetupInterpolation()
 	}
 }
 
-bool Operator_CylinderMultiGrid::SetupExcitation(TiXmlElement* Excite, unsigned int maxTS)
+void Operator_CylinderMultiGrid::SetExcitationSignal(Excitation* exc)
 {
-	if (!m_InnerOp->SetupExcitation(Excite,maxTS))
-		return false;
-	return m_Exc->setupExcitation(Excite,maxTS);
+	m_InnerOp->SetExcitationSignal(exc);
+	Operator_Cylinder::SetExcitationSignal(exc);
 }
 
 void Operator_CylinderMultiGrid::Delete()

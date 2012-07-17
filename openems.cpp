@@ -23,6 +23,7 @@
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
+#include "FDTD/extensions/operator_ext_excitation.h"
 #include "FDTD/extensions/operator_ext_mur_abc.h"
 #include "FDTD/extensions/operator_ext_pml_sf.h"
 #include "FDTD/extensions/operator_ext_upml.h"
@@ -71,6 +72,7 @@ openEMS::openEMS()
 	m_engine_numThreads = 0;
 
 	m_Abort = false;
+	m_Exc = 0;
 }
 
 openEMS::~openEMS()
@@ -89,6 +91,8 @@ void openEMS::Reset()
 	FDTD_Op=0;
 	delete m_CSX;
 	m_CSX=0;
+	delete m_Exc;
+	m_Exc=0;
 }
 
 //! \brief processes a command line argument
@@ -624,6 +628,10 @@ int openEMS::SetupFDTD(const char* file)
 	if (SetupOperator(FDTD_Opts)==false)
 		return 2;
 
+	m_Exc = new Excitation();
+	FDTD_Op->SetExcitationSignal(m_Exc);
+	FDTD_Op->AddExtension(new Operator_Ext_Excitation(FDTD_Op));
+
 	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
 
 	SetupBoundaryConditions(BC);
@@ -667,10 +675,10 @@ int openEMS::SetupFDTD(const char* file)
 	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
 		NrTS = maxTime_TS;
 
-	if (!FDTD_Op->SetupExcitation( FDTD_Opts->FirstChildElement("Excitation"), NrTS ))
+	if (!m_Exc->setupExcitation(FDTD_Opts->FirstChildElement("Excitation"),NrTS))
 		exit(2);
-
-	FDTD_Op->DumpExciationSignals();
+	m_Exc->DumpVoltageExcite("et");
+	m_Exc->DumpCurrentExcite("ht");
 
 	timeval OpDoneTime;
 	gettimeofday(&OpDoneTime,NULL);
@@ -681,15 +689,14 @@ int openEMS::SetupFDTD(const char* file)
 		FDTD_Op->ShowExtStat();
 		cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
 	}
-	Excitation* Exc=FDTD_Op->GetExcitationSignal();
 	cout << "FDTD simulation size: " << FDTD_Op->GetNumberOfLines(0) << "x" << FDTD_Op->GetNumberOfLines(1) << "x" << FDTD_Op->GetNumberOfLines(2) << " --> "  << FDTD_Op->GetNumberCells() << " FDTD cells " << endl;
-	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " << Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
-	if (Exc->GetNyquistNum()>1000)
+	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " <<  m_Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(m_Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
+	if (m_Exc->GetNyquistNum()>1000)
 		cerr << "openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?" << endl;
 
-	cout << "Excitation signal length is: " << Exc->GetLength() << " timesteps (" << Exc->GetLength()*FDTD_Op->GetTimestep() << "s)" << endl;
-	cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(Exc->GetLength()) << " * Excitation signal length)" << endl;
-	if ( ((double)NrTS/(double)Exc->GetLength() < 3) && (Exc->GetExciteType()==0))
+	cout << "Excitation signal length is: " <<  m_Exc->GetLength() << " timesteps (" <<  m_Exc->GetLength()*FDTD_Op->GetTimestep() << "s)" << endl;
+	cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(m_Exc->GetLength()) << " * Excitation signal length)" << endl;
+	if ( ((double)NrTS/(double)m_Exc->GetLength() < 3) && (m_Exc->GetExciteType()==0))
 		cerr << "openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 

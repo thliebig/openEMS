@@ -27,7 +27,7 @@ class TiXmlElement;
 class Excitation
 {
 public:
-	Excitation( double timestep );
+	Excitation();
 	virtual ~Excitation();
 
 	virtual void Reset( double timestep );

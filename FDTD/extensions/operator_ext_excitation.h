@@ -32,7 +32,7 @@ public:
 	Operator_Ext_Excitation(Operator* op);
 	~Operator_Ext_Excitation();
 
-	virtual Operator_Extension* Clone(Operator* op) {UNUSED(op);return NULL;}
+	virtual Operator_Extension* Clone(Operator* op);
 
 	virtual bool BuildExtension();
 
@@ -45,6 +45,7 @@ public:
 
 	virtual void ShowStat(ostream &ostr) const;
 
+	virtual void Init();
 	virtual void Reset();
 
 	unsigned int GetVoltCount() const {return Volt_Count;}

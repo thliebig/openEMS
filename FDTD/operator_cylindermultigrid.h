@@ -46,13 +46,13 @@ public:
 
 	virtual unsigned int GetSplitPos() const {return m_Split_Pos;}
 
-	virtual bool SetupExcitation(TiXmlElement* Excite, unsigned int maxTS);
-
 	virtual void SetBoundaryCondition(int* BCs);
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
 	Operator_Cylinder* GetInnerOperator() const {return m_InnerOp;}
+
+	virtual void SetExcitationSignal(Excitation* exc);
 
 	virtual void ShowStat() const;
 
