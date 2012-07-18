@@ -27,6 +27,10 @@ function mesh = AddPML( mesh, numcells, CoordSystem )
 % check
 error( nargchk(2,3,nargin) );
 
+if (numel(numcells)==1)
+    numcells = ones(6,1)*numcells;
+end
+
 numcells = reshape( numcells, 1, [] );
 if numel(numcells) ~= 6
     error( 'argument numcells needs to have exactly 6 elements' );
