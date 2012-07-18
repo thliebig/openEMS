@@ -1,8 +1,6 @@
 %
 % Tutorials / radar cross section of a metal sphere
 %
-% This tutorial is unfinished!
-%
 % Describtion at:
 % http://openems.de/index.php/Tutorial:_RCS_Sphere
 %
@@ -20,11 +18,11 @@ clc
 physical_constants;
 unit = 1e-3; % all length in mm
 
-sphere.rad = 160;
+sphere.rad = 200;
 
 % size of the simulation box
 SimBox = 1000;
-PW_Box = 500;
+PW_Box = 750;
 
 %% setup FDTD parameter & excitation function
 f_start = 200e6; % start frequency
@@ -64,6 +62,11 @@ start = [mesh.x(1)   mesh.y(1)   0];
 stop  = [mesh.x(end) mesh.y(end) 0];
 CSX = AddBox(CSX, 'Et', 0, start, stop);
 
+%%nf2ff calc
+start = [mesh.x(1)     mesh.y(1)     mesh.z(1)];
+stop  = [mesh.x(end) mesh.y(end) mesh.z(end)];
+[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
+
 % add 8 lines in all direction as pml spacing
 mesh = AddPML(mesh,8);
 
@@ -87,3 +90,28 @@ RunOpenEMS( Sim_Path, Sim_CSX);
 
 %%
 disp('Use Paraview to display the elctric fields dumped by openEMS');
+
+%%
+freq = 500e6;
+EF = ReadUI( 'et', Sim_Path, freq ); % time domain/freq domain voltage
+Pin = 0.5*norm(E_dir)^2/Z0 .* abs(EF.FD{1}.val).^2;
+
+%%
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, [-180:2:180]*pi/180, [0 90]*pi/180,'Mode',1);
+RCS = 4*pi./Pin(1).*nf2ff.P_rad{1}(:,1);
+polar(nf2ff.theta,RCS);
+xlabel('z -->');
+ylabel('x -->');
+hold on
+grid on
+
+%%
+disp( 'calculating 3D far field pattern and dumping to vtk (use Paraview to visualize)...' );
+thetaRange = (0:2:180);
+phiRange = (0:2:360) - 180;
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, thetaRange*pi/180, phiRange*pi/180,'Verbose',1,'Outfile','3D_Pattern.h5','Mode',1);
+
+RCS = 4*pi./Pin(1).*nf2ff.P_rad{1};
+DumpFF2VTK([Sim_Path '/3D_Pattern.vtk'],RCS,thetaRange,phiRange,1e-3);
+
+disp('Use Paraview to display the 3D scattering pattern');
