@@ -123,7 +123,9 @@ SOURCES += FDTD/extensions/engine_extension.cpp \
     FDTD/extensions/operator_ext_cylinder.cpp \
     FDTD/extensions/engine_ext_cylinder.cpp \
     FDTD/extensions/operator_ext_excitation.cpp \
-    FDTD/extensions/engine_ext_excitation.cpp
+    FDTD/extensions/engine_ext_excitation.cpp \
+    FDTD/extensions/operator_ext_tfsf.cpp \
+    FDTD/extensions/engine_ext_tfsf.cpp
 
 # Common source files
 SOURCES += Common/operator_base.cpp \
@@ -188,7 +190,9 @@ HEADERS += FDTD/extensions/operator_extension.h \
     FDTD/extensions/operator_ext_upml.h \
     FDTD/extensions/engine_ext_upml.h \
     FDTD/extensions/operator_ext_excitation.h \
-    FDTD/extensions/engine_ext_excitation.h
+    FDTD/extensions/engine_ext_excitation.h \
+    FDTD/extensions/operator_ext_tfsf.h \
+    FDTD/extensions/engine_ext_tfsf.h
 
 # Common header files
 HEADERS += Common/operator_base.h \

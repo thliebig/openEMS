@@ -24,6 +24,7 @@
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
 #include "FDTD/extensions/operator_ext_excitation.h"
+#include "FDTD/extensions/operator_ext_tfsf.h"
 #include "FDTD/extensions/operator_ext_mur_abc.h"
 #include "FDTD/extensions/operator_ext_pml_sf.h"
 #include "FDTD/extensions/operator_ext_upml.h"
@@ -631,6 +632,7 @@ int openEMS::SetupFDTD(const char* file)
 	m_Exc = new Excitation();
 	FDTD_Op->SetExcitationSignal(m_Exc);
 	FDTD_Op->AddExtension(new Operator_Ext_Excitation(FDTD_Op));
+	FDTD_Op->AddExtension(new Operator_Ext_TFST(FDTD_Op));
 
 	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
 
