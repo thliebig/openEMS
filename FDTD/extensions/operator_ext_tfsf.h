@@ -51,6 +51,7 @@ protected:
 	Excitation* m_Exc;
 
 	bool m_IncLow[3];
+	bool m_ActiveDir[3][2]; // m_ActiveDir[direction][low/high]
 	unsigned int m_Start[3];
 	unsigned int m_Stop[3];
 	unsigned int m_numLines[3];

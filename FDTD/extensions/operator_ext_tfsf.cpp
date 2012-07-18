@@ -152,6 +152,15 @@ bool Operator_Ext_TFST::BuildExtension()
 			m_numLines[n] = m_Stop[n]-m_Start[n]+1;
 			m_IncLow[n] = m_PropDir[n]>=0;
 
+			if (m_Start[n]==0)
+				m_ActiveDir[n][0]=false;
+			else
+				m_ActiveDir[n][0]=true;
+			if (m_Stop[n]==m_Op->GetOriginalNumLines(n)-1)
+				m_ActiveDir[n][1]=false;
+			else
+				m_ActiveDir[n][1]=true;
+
 			if (m_IncLow[n])
 			{
 				ui_origin[n] = m_Start[n];
@@ -205,16 +214,22 @@ bool Operator_Ext_TFST::BuildExtension()
 
 			numP = m_numLines[nP]*m_numLines[nPP];
 
+			if (!m_ActiveDir[n][0] && !m_ActiveDir[n][1])
+				continue;
+
 			for (int l=0;l<2;++l)
 				for (int c=0;c<2;++c)
 				{
-					m_VoltDelay[n][l][c]=new unsigned int[numP];
-					m_VoltDelayDelta[n][l][c]=new FDTD_FLOAT[numP];
-					m_VoltAmp[n][l][c]=new FDTD_FLOAT[numP];
+					if (m_ActiveDir[n][l])
+					{
+						m_VoltDelay[n][l][c]=new unsigned int[numP];
+						m_VoltDelayDelta[n][l][c]=new FDTD_FLOAT[numP];
+						m_VoltAmp[n][l][c]=new FDTD_FLOAT[numP];
 
-					m_CurrDelay[n][l][c]=new unsigned int[numP];
-					m_CurrDelayDelta[n][l][c]=new FDTD_FLOAT[numP];
-					m_CurrAmp[n][l][c]=new FDTD_FLOAT[numP];
+						m_CurrDelay[n][l][c]=new unsigned int[numP];
+						m_CurrDelayDelta[n][l][c]=new FDTD_FLOAT[numP];
+						m_CurrAmp[n][l][c]=new FDTD_FLOAT[numP];
+					}
 				}
 
 			ui_pos = 0;
@@ -225,130 +240,159 @@ bool Operator_Ext_TFST::BuildExtension()
 				{
 					// current updates
 					pos[n] = m_Start[n];
-					m_Op->GetYeeCoords(nP,pos,coord,false);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_CurrDelay[n][0][1][ui_pos] = floor(delay);
-					m_CurrDelayDelta[n][0][1][ui_pos] = delay - floor(delay);
-					m_CurrAmp[n][0][1][ui_pos] = m_E_Amp[nP]*m_Op->GetEdgeLength(nP,pos);
 
-					m_Op->GetYeeCoords(nPP,pos,coord,false);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_CurrDelay[n][0][0][ui_pos] = floor(delay);
-					m_CurrDelayDelta[n][0][0][ui_pos] = delay - floor(delay);
-					m_CurrAmp[n][0][0][ui_pos] = m_E_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos);
+					if (m_ActiveDir[n][0])
+					{
+						m_Op->GetYeeCoords(nP,pos,coord,false);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_CurrDelay[n][0][1][ui_pos] = floor(delay);
+						m_CurrDelayDelta[n][0][1][ui_pos] = delay - floor(delay);
+						m_CurrAmp[n][0][1][ui_pos] = m_E_Amp[nP]*m_Op->GetEdgeLength(nP,pos);
 
-					--pos[n];
-					m_CurrAmp[n][0][0][ui_pos]*=m_Op->GetIV(nP,pos);
-					m_CurrAmp[n][0][1][ui_pos]*=m_Op->GetIV(nPP,pos);
+						m_Op->GetYeeCoords(nPP,pos,coord,false);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_CurrDelay[n][0][0][ui_pos] = floor(delay);
+						m_CurrDelayDelta[n][0][0][ui_pos] = delay - floor(delay);
+						m_CurrAmp[n][0][0][ui_pos] = m_E_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos);
 
-					pos[n] = m_Stop[n];
-					m_Op->GetYeeCoords(nP,pos,coord,false);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_CurrDelay[n][1][1][ui_pos] = floor(delay);
-					m_CurrDelayDelta[n][1][1][ui_pos] = delay - floor(delay);
-					m_CurrAmp[n][1][1][ui_pos] = m_E_Amp[nP]*m_Op->GetEdgeLength(nP,pos);
+						--pos[n];
+						m_CurrAmp[n][0][0][ui_pos]*=m_Op->GetIV(nP,pos);
+						m_CurrAmp[n][0][1][ui_pos]*=m_Op->GetIV(nPP,pos);
+					}
 
-					m_Op->GetYeeCoords(nPP,pos,coord,false);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_CurrDelay[n][1][0][ui_pos] = floor(delay);
-					m_CurrDelayDelta[n][1][0][ui_pos] = delay - floor(delay);
-					m_CurrAmp[n][1][0][ui_pos] = m_E_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos);
+					if (m_ActiveDir[n][1])
+					{
+						pos[n] = m_Stop[n];
+						m_Op->GetYeeCoords(nP,pos,coord,false);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_CurrDelay[n][1][1][ui_pos] = floor(delay);
+						m_CurrDelayDelta[n][1][1][ui_pos] = delay - floor(delay);
+						m_CurrAmp[n][1][1][ui_pos] = m_E_Amp[nP]*m_Op->GetEdgeLength(nP,pos);
 
-					m_CurrAmp[n][1][0][ui_pos]*=m_Op->GetIV(nP,pos);
-					m_CurrAmp[n][1][1][ui_pos]*=m_Op->GetIV(nPP,pos);
+						m_Op->GetYeeCoords(nPP,pos,coord,false);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_CurrDelay[n][1][0][ui_pos] = floor(delay);
+						m_CurrDelayDelta[n][1][0][ui_pos] = delay - floor(delay);
+						m_CurrAmp[n][1][0][ui_pos] = m_E_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos);
+
+						m_CurrAmp[n][1][0][ui_pos]*=m_Op->GetIV(nP,pos);
+						m_CurrAmp[n][1][1][ui_pos]*=m_Op->GetIV(nPP,pos);
+					}
 
 					if (m_IncLow[n])
 					{
-						m_CurrAmp[n][0][0][ui_pos]*=-1;
-						m_CurrAmp[n][1][1][ui_pos]*=-1;
+						if (m_ActiveDir[n][0])
+							m_CurrAmp[n][0][0][ui_pos]*=-1;
+						if (m_ActiveDir[n][1])
+							m_CurrAmp[n][1][1][ui_pos]*=-1;
 					}
 					else
 					{
-						m_CurrAmp[n][0][1][ui_pos]*=-1;
-						m_CurrAmp[n][1][0][ui_pos]*=-1;
+						if (m_ActiveDir[n][0])
+							m_CurrAmp[n][0][1][ui_pos]*=-1;
+						if (m_ActiveDir[n][1])
+							m_CurrAmp[n][1][0][ui_pos]*=-1;
 					}
 
 					if (pos[nP]==m_Stop[nP])
 					{
-						m_CurrAmp[n][0][1][ui_pos]=0;
-						m_CurrAmp[n][1][1][ui_pos]=0;
+						if (m_ActiveDir[n][0])
+							m_CurrAmp[n][0][1][ui_pos]=0;
+						if (m_ActiveDir[n][1])
+							m_CurrAmp[n][1][1][ui_pos]=0;
 					}
 					if (pos[nPP]==m_Stop[nPP])
 					{
-						m_CurrAmp[n][0][0][ui_pos]=0;
-						m_CurrAmp[n][1][0][ui_pos]=0;
+						if (m_ActiveDir[n][0])
+							m_CurrAmp[n][0][0][ui_pos]=0;
+						if (m_ActiveDir[n][1])
+							m_CurrAmp[n][1][0][ui_pos]=0;
 					}
 
 					// voltage updates
 					pos[n] = m_Start[n]-1;
-					m_Op->GetYeeCoords(nP,pos,coord,true);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_VoltDelay[n][0][1][ui_pos] = floor(delay);
-					m_VoltDelayDelta[n][0][1][ui_pos] = delay - floor(delay);
-					m_VoltAmp[n][0][1][ui_pos] = m_H_Amp[nP]*m_Op->GetEdgeLength(nP,pos,true);
+					if (m_ActiveDir[n][0])
+					{
+						m_Op->GetYeeCoords(nP,pos,coord,true);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_VoltDelay[n][0][1][ui_pos] = floor(delay);
+						m_VoltDelayDelta[n][0][1][ui_pos] = delay - floor(delay);
+						m_VoltAmp[n][0][1][ui_pos] = m_H_Amp[nP]*m_Op->GetEdgeLength(nP,pos,true);
 
-					m_Op->GetYeeCoords(nPP,pos,coord,true);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_VoltDelay[n][0][0][ui_pos] = floor(delay);
-					m_VoltDelayDelta[n][0][0][ui_pos] = delay - floor(delay);
-					m_VoltAmp[n][0][0][ui_pos] = m_H_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos,true);
+						m_Op->GetYeeCoords(nPP,pos,coord,true);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_VoltDelay[n][0][0][ui_pos] = floor(delay);
+						m_VoltDelayDelta[n][0][0][ui_pos] = delay - floor(delay);
+						m_VoltAmp[n][0][0][ui_pos] = m_H_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos,true);
 
-					++pos[n];
-					m_VoltAmp[n][0][0][ui_pos]*=m_Op->GetVI(nP,pos);
-					m_VoltAmp[n][0][1][ui_pos]*=m_Op->GetVI(nPP,pos);
+						++pos[n];
+						m_VoltAmp[n][0][0][ui_pos]*=m_Op->GetVI(nP,pos);
+						m_VoltAmp[n][0][1][ui_pos]*=m_Op->GetVI(nPP,pos);
+					}
 
 					pos[n] = m_Stop[n];
-					m_Op->GetYeeCoords(nP,pos,coord,true);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_VoltDelay[n][1][1][ui_pos] = floor(delay);
-					m_VoltDelayDelta[n][1][1][ui_pos] = delay - floor(delay);
-					m_VoltAmp[n][1][1][ui_pos] = m_H_Amp[nP]*m_Op->GetEdgeLength(nP,pos,true);
+					if (m_ActiveDir[n][1])
+					{
+						m_Op->GetYeeCoords(nP,pos,coord,true);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_VoltDelay[n][1][1][ui_pos] = floor(delay);
+						m_VoltDelayDelta[n][1][1][ui_pos] = delay - floor(delay);
+						m_VoltAmp[n][1][1][ui_pos] = m_H_Amp[nP]*m_Op->GetEdgeLength(nP,pos,true);
 
-					m_Op->GetYeeCoords(nPP,pos,coord,true);
-					dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-					delay = dist*unit/__C0__/dT;
-					m_maxDelay = max((unsigned int)delay,m_maxDelay);
-					m_VoltDelay[n][1][0][ui_pos] = floor(delay);
-					m_VoltDelayDelta[n][1][0][ui_pos] = delay - floor(delay);
-					m_VoltAmp[n][1][0][ui_pos] = m_H_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos,true);
+						m_Op->GetYeeCoords(nPP,pos,coord,true);
+						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
+						delay = dist*unit/__C0__/dT;
+						m_maxDelay = max((unsigned int)delay,m_maxDelay);
+						m_VoltDelay[n][1][0][ui_pos] = floor(delay);
+						m_VoltDelayDelta[n][1][0][ui_pos] = delay - floor(delay);
+						m_VoltAmp[n][1][0][ui_pos] = m_H_Amp[nPP]*m_Op->GetEdgeLength(nPP,pos,true);
 
-					m_VoltAmp[n][1][0][ui_pos]*=m_Op->GetVI(nP,pos);
-					m_VoltAmp[n][1][1][ui_pos]*=m_Op->GetVI(nPP,pos);
+						m_VoltAmp[n][1][0][ui_pos]*=m_Op->GetVI(nP,pos);
+						m_VoltAmp[n][1][1][ui_pos]*=m_Op->GetVI(nPP,pos);
+					}
 
 					if (m_IncLow[n])
 					{
-						m_VoltAmp[n][1][0][ui_pos]*=-1;
-						m_VoltAmp[n][0][1][ui_pos]*=-1;
+						if (m_ActiveDir[n][1])
+							m_VoltAmp[n][1][0][ui_pos]*=-1;
+						if (m_ActiveDir[n][0])
+							m_VoltAmp[n][0][1][ui_pos]*=-1;
 					}
 					else
 					{
-						m_VoltAmp[n][0][0][ui_pos]*=-1;
-						m_VoltAmp[n][1][1][ui_pos]*=-1;
+						if (m_ActiveDir[n][0])
+							m_VoltAmp[n][0][0][ui_pos]*=-1;
+						if (m_ActiveDir[n][1])
+							m_VoltAmp[n][1][1][ui_pos]*=-1;
 					}
 
 					if (pos[nP]==m_Stop[nP])
 					{
-						m_VoltAmp[n][0][0][ui_pos]=0;
-						m_VoltAmp[n][1][0][ui_pos]=0;
+						if (m_ActiveDir[n][0])
+							m_VoltAmp[n][0][0][ui_pos]=0;
+						if (m_ActiveDir[n][1])
+							m_VoltAmp[n][1][0][ui_pos]=0;
 					}
 					if (pos[nPP]==m_Stop[nPP])
 					{
-						m_VoltAmp[n][0][1][ui_pos]=0;
-						m_VoltAmp[n][1][1][ui_pos]=0;
+						if (m_ActiveDir[n][0])
+							m_VoltAmp[n][0][1][ui_pos]=0;
+						if (m_ActiveDir[n][1])
+							m_VoltAmp[n][1][1][ui_pos]=0;
 					}
 
 					++pos[nPP];
@@ -372,10 +416,12 @@ Engine_Extension* Operator_Ext_TFST::CreateEngineExtention()
 void Operator_Ext_TFST::ShowStat(ostream &ostr) const
 {
 	Operator_Extension::ShowStat(ostr);
+	cout << "Active directions\t: " << "(" << m_ActiveDir[0][0] << "/" << m_ActiveDir[0][1] << ", " << m_ActiveDir[1][0] << "/" << m_ActiveDir[1][1]  << ", " << m_ActiveDir[2][0] << "/" << m_ActiveDir[2][1]  << ")" << endl;
 	cout << "Propagation direction\t: " << "(" << m_PropDir[0] << ", " << m_PropDir[1] << ", " << m_PropDir[2] << ")" << endl;
 	cout << "E-field amplitude\t: " << "(" << m_E_Amp[0] << ", " << m_E_Amp[1] << ", " << m_E_Amp[2] << ")" << endl;
 	cout << "m_H_Amp amplitude\t: " << "(" << m_H_Amp[0]*__Z0__ << ", " << m_H_Amp[1]*__Z0__ << ", " << m_H_Amp[2]*__Z0__ << ")/Z0" << endl;
 	cout << "Box Dimensions\t\t: " << m_numLines[0] << " x " << m_numLines[1] << " x " << m_numLines[2] << endl;
 	cout << "Max. Delay (TS)\t\t: " << m_maxDelay << endl;
-	cout << "Memory usage (est.)\t: ~" << m_numLines[0] * m_numLines[1] * m_numLines[2] * 6 * 4 * 4 / 1024 << " kiB" << endl;
+	int dirs = m_ActiveDir[0][0] + m_ActiveDir[0][1] + m_ActiveDir[1][0] + m_ActiveDir[1][1] + m_ActiveDir[2][0] + m_ActiveDir[2][1] ;
+	cout << "Memory usage (est.)\t: ~" << m_numLines[0] * m_numLines[1] * m_numLines[2] * dirs * 4 * 4 / 1024 << " kiB" << endl;
 }

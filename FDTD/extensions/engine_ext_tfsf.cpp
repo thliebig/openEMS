@@ -58,39 +58,63 @@ void Engine_Ext_TFSF::DoPostVoltageUpdates()
 	{
 		nP = (n+1)%3;
 		nPP = (n+2)%3;
+
+		// lower plane
 		pos[nP] = m_Op_TFSF->m_Start[nP];
-
 		ui_pos = 0;
-		for (unsigned int i=0;i<m_Op_TFSF->m_numLines[nP];++i)
+		if (m_Op_TFSF->m_ActiveDir[n][0])
 		{
-			pos[nPP] = m_Op_TFSF->m_Start[nPP];
-			for (unsigned int j=0;j<m_Op_TFSF->m_numLines[nPP];++j)
+
+			for (unsigned int i=0;i<m_Op_TFSF->m_numLines[nP];++i)
 			{
-				// current updates
-				pos[n] = m_Op_TFSF->m_Start[n];
+				pos[nPP] = m_Op_TFSF->m_Start[nPP];
+				for (unsigned int j=0;j<m_Op_TFSF->m_numLines[nPP];++j)
+				{
+					// current updates
+					pos[n] = m_Op_TFSF->m_Start[n];
 
-				m_Eng->SetVolt(nP,pos, m_Eng->GetVolt(nP,pos)
-							   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][0][0][ui_pos])*m_Op_TFSF->m_VoltAmp[n][0][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][0][0][ui_pos]]]
-							   +      m_Op_TFSF->m_VoltDelayDelta[n][0][0][ui_pos] *m_Op_TFSF->m_VoltAmp[n][0][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][0][0][ui_pos]]] );
+					m_Eng->SetVolt(nP,pos, m_Eng->GetVolt(nP,pos)
+								   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][0][0][ui_pos])*m_Op_TFSF->m_VoltAmp[n][0][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][0][0][ui_pos]]]
+								   +      m_Op_TFSF->m_VoltDelayDelta[n][0][0][ui_pos] *m_Op_TFSF->m_VoltAmp[n][0][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][0][0][ui_pos]]] );
 
-				m_Eng->SetVolt(nPP,pos, m_Eng->GetVolt(nPP,pos)
-							   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][0][1][ui_pos])*m_Op_TFSF->m_VoltAmp[n][0][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][0][1][ui_pos]]]
-							   +      m_Op_TFSF->m_VoltDelayDelta[n][0][1][ui_pos] *m_Op_TFSF->m_VoltAmp[n][0][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][0][1][ui_pos]]] );
+					m_Eng->SetVolt(nPP,pos, m_Eng->GetVolt(nPP,pos)
+								   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][0][1][ui_pos])*m_Op_TFSF->m_VoltAmp[n][0][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][0][1][ui_pos]]]
+								   +      m_Op_TFSF->m_VoltDelayDelta[n][0][1][ui_pos] *m_Op_TFSF->m_VoltAmp[n][0][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][0][1][ui_pos]]] );
 
-				pos[n] = m_Op_TFSF->m_Stop[n];
-
-				m_Eng->SetVolt(nP,pos, m_Eng->GetVolt(nP,pos)
-							   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][1][0][ui_pos])*m_Op_TFSF->m_VoltAmp[n][1][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][1][0][ui_pos]]]
-							   +      m_Op_TFSF->m_VoltDelayDelta[n][1][0][ui_pos] *m_Op_TFSF->m_VoltAmp[n][1][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][1][0][ui_pos]]] );
-
-				m_Eng->SetVolt(nPP,pos, m_Eng->GetVolt(nPP,pos)
-							   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][1][1][ui_pos])*m_Op_TFSF->m_VoltAmp[n][1][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][1][1][ui_pos]]]
-							   +      m_Op_TFSF->m_VoltDelayDelta[n][1][1][ui_pos] *m_Op_TFSF->m_VoltAmp[n][1][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][1][1][ui_pos]]] );
-
-				++pos[nPP];
-				++ui_pos;
+					++pos[nPP];
+					++ui_pos;
+				}
+				++pos[nP];
 			}
-			++pos[nP];
+		}
+
+		// upper plane
+		pos[nP] = m_Op_TFSF->m_Start[nP];
+		ui_pos = 0;
+		if (m_Op_TFSF->m_ActiveDir[n][1])
+		{
+
+			for (unsigned int i=0;i<m_Op_TFSF->m_numLines[nP];++i)
+			{
+				pos[nPP] = m_Op_TFSF->m_Start[nPP];
+				for (unsigned int j=0;j<m_Op_TFSF->m_numLines[nPP];++j)
+				{
+					// current updates
+					pos[n] = m_Op_TFSF->m_Stop[n];
+
+					m_Eng->SetVolt(nP,pos, m_Eng->GetVolt(nP,pos)
+								   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][1][0][ui_pos])*m_Op_TFSF->m_VoltAmp[n][1][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][1][0][ui_pos]]]
+								   +      m_Op_TFSF->m_VoltDelayDelta[n][1][0][ui_pos] *m_Op_TFSF->m_VoltAmp[n][1][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][1][0][ui_pos]]] );
+
+					m_Eng->SetVolt(nPP,pos, m_Eng->GetVolt(nPP,pos)
+								   + (1.0-m_Op_TFSF->m_VoltDelayDelta[n][1][1][ui_pos])*m_Op_TFSF->m_VoltAmp[n][1][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_VoltDelay[n][1][1][ui_pos]]]
+								   +      m_Op_TFSF->m_VoltDelayDelta[n][1][1][ui_pos] *m_Op_TFSF->m_VoltAmp[n][1][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_VoltDelay[n][1][1][ui_pos]]] );
+
+					++pos[nPP];
+					++ui_pos;
+				}
+				++pos[nP];
+			}
 		}
 	}
 }
@@ -118,41 +142,66 @@ void Engine_Ext_TFSF::DoPostCurrentUpdates()
 	unsigned int pos[3];
 	for (int n=0;n<3;++n)
 	{
+		if (!m_Op_TFSF->m_ActiveDir[n][0] && !m_Op_TFSF->m_ActiveDir[n][1])
+			continue;
+
 		nP = (n+1)%3;
 		nPP = (n+2)%3;
+
+		// lower plane
 		pos[nP] = m_Op_TFSF->m_Start[nP];
-
 		ui_pos = 0;
-		for (unsigned int i=0;i<m_Op_TFSF->m_numLines[nP];++i)
+		if (m_Op_TFSF->m_ActiveDir[n][0])
 		{
-			pos[nPP] = m_Op_TFSF->m_Start[nPP];
-			for (unsigned int j=0;j<m_Op_TFSF->m_numLines[nPP];++j)
+			for (unsigned int i=0;i<m_Op_TFSF->m_numLines[nP];++i)
 			{
-				// current updates
-				pos[n] = m_Op_TFSF->m_Start[n]-1;
+				pos[nPP] = m_Op_TFSF->m_Start[nPP];
+				for (unsigned int j=0;j<m_Op_TFSF->m_numLines[nPP];++j)
+				{
+					// current updates
+					pos[n] = m_Op_TFSF->m_Start[n]-1;
 
-				m_Eng->SetCurr(nP,pos, m_Eng->GetCurr(nP,pos)
-							   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][0][0][ui_pos])*m_Op_TFSF->m_CurrAmp[n][0][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][0][0][ui_pos]]]
-							   +      m_Op_TFSF->m_CurrDelayDelta[n][0][0][ui_pos] *m_Op_TFSF->m_CurrAmp[n][0][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][0][0][ui_pos]]] );
+					m_Eng->SetCurr(nP,pos, m_Eng->GetCurr(nP,pos)
+								   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][0][0][ui_pos])*m_Op_TFSF->m_CurrAmp[n][0][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][0][0][ui_pos]]]
+								   +      m_Op_TFSF->m_CurrDelayDelta[n][0][0][ui_pos] *m_Op_TFSF->m_CurrAmp[n][0][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][0][0][ui_pos]]] );
 
-				m_Eng->SetCurr(nPP,pos, m_Eng->GetCurr(nPP,pos)
-							   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][0][1][ui_pos])*m_Op_TFSF->m_CurrAmp[n][0][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][0][1][ui_pos]]]
-							   +      m_Op_TFSF->m_CurrDelayDelta[n][0][1][ui_pos] *m_Op_TFSF->m_CurrAmp[n][0][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][0][1][ui_pos]]] );
+					m_Eng->SetCurr(nPP,pos, m_Eng->GetCurr(nPP,pos)
+								   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][0][1][ui_pos])*m_Op_TFSF->m_CurrAmp[n][0][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][0][1][ui_pos]]]
+								   +      m_Op_TFSF->m_CurrDelayDelta[n][0][1][ui_pos] *m_Op_TFSF->m_CurrAmp[n][0][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][0][1][ui_pos]]] );
 
-				pos[n] = m_Op_TFSF->m_Stop[n];
-
-				m_Eng->SetCurr(nP,pos, m_Eng->GetCurr(nP,pos)
-							   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][1][0][ui_pos])*m_Op_TFSF->m_CurrAmp[n][1][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][1][0][ui_pos]]]
-							   +      m_Op_TFSF->m_CurrDelayDelta[n][1][0][ui_pos] *m_Op_TFSF->m_CurrAmp[n][1][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][1][0][ui_pos]]] );
-
-				m_Eng->SetCurr(nPP,pos, m_Eng->GetCurr(nPP,pos)
-							   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][1][1][ui_pos])*m_Op_TFSF->m_CurrAmp[n][1][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][1][1][ui_pos]]]
-							   +      m_Op_TFSF->m_CurrDelayDelta[n][1][1][ui_pos] *m_Op_TFSF->m_CurrAmp[n][1][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][1][1][ui_pos]]] );
-
-				++pos[nPP];
-				++ui_pos;
+					++pos[nPP];
+					++ui_pos;
+				}
+				++pos[nP];
 			}
-			++pos[nP];
+		}
+
+		// upper plane
+		pos[nP] = m_Op_TFSF->m_Start[nP];
+		ui_pos = 0;
+		if (m_Op_TFSF->m_ActiveDir[n][1])
+		{
+			for (unsigned int i=0;i<m_Op_TFSF->m_numLines[nP];++i)
+			{
+				pos[nPP] = m_Op_TFSF->m_Start[nPP];
+				for (unsigned int j=0;j<m_Op_TFSF->m_numLines[nPP];++j)
+				{
+					// current updates
+					pos[n] = m_Op_TFSF->m_Stop[n];
+
+					m_Eng->SetCurr(nP,pos, m_Eng->GetCurr(nP,pos)
+								   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][1][0][ui_pos])*m_Op_TFSF->m_CurrAmp[n][1][0][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][1][0][ui_pos]]]
+								   +      m_Op_TFSF->m_CurrDelayDelta[n][1][0][ui_pos] *m_Op_TFSF->m_CurrAmp[n][1][0][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][1][0][ui_pos]]] );
+
+					m_Eng->SetCurr(nPP,pos, m_Eng->GetCurr(nPP,pos)
+								   + (1.0-m_Op_TFSF->m_CurrDelayDelta[n][1][1][ui_pos])*m_Op_TFSF->m_CurrAmp[n][1][1][ui_pos]*signal[m_DelayLookup[  m_Op_TFSF->m_CurrDelay[n][1][1][ui_pos]]]
+								   +      m_Op_TFSF->m_CurrDelayDelta[n][1][1][ui_pos] *m_Op_TFSF->m_CurrAmp[n][1][1][ui_pos]*signal[m_DelayLookup[1+m_Op_TFSF->m_CurrDelay[n][1][1][ui_pos]]] );
+
+					++pos[nPP];
+					++ui_pos;
+				}
+				++pos[nP];
+			}
 		}
 	}
 }
