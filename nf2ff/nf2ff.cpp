@@ -349,6 +349,27 @@ bool nf2ff::Write2HDF5(string filename)
 			}
 		}
 	}
+
+	//dump radiated power
+	hdf_file.SetCurrentGroup("/nf2ff/P_rad/FD");
+	for (size_t fn=0;fn<m_freq.size();++fn)
+	{
+		stringstream ss;
+		ss << "f" << fn;
+		pos = 0;
+		float** field_data = GetRadPower(fn);
+		for (size_t j=0;j<m_numPhi;++j)
+			for (size_t i=0;i<m_numTheta;++i)
+			{
+				buffer[pos++]=field_data[i][j];
+			}
+		if (hdf_file.WriteData(ss.str(),buffer,dim,datasize)==false)
+		{
+			delete[] buffer;
+			cerr << "nf2ff::Write2HDF5: Error writing field data" << endl;
+			return false;
+		}
+	}
 	delete[] buffer;
 
 	//write frequency attribute
@@ -357,7 +378,7 @@ bool nf2ff::Write2HDF5(string filename)
 	buffer = new float[m_freq.size()];
 	//write radiated power attribute
 	for (size_t fn=0;fn<m_freq.size();++fn)
-		buffer[fn] = GetRadPower(fn);
+		buffer[fn] = GetTotalRadPower(fn);
 	hdf_file.WriteAtrribute("/nf2ff", "Prad",buffer,m_freq.size());
 
 	//write max directivity attribute

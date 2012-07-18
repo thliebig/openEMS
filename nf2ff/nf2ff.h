@@ -37,11 +37,12 @@ public:
 
 	bool AnalyseFile(string E_Field_file, string H_Field_file);
 
-	float GetRadPower(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetRadPower();}
+	float GetTotalRadPower(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetTotalRadPower();}
 	float GetMaxDirectivity(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetMaxDirectivity();}
 
 	complex<float>** GetETheta(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetETheta();}
 	complex<float>** GetEPhi(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetEPhi();}
+	float** GetRadPower(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetRadPower();}
 
 	//! Write results to a hdf5 file
 	bool Write2HDF5(string filename);

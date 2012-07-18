@@ -27,6 +27,7 @@ if isOctave
         nf2ff.E_theta{n} = double(hdf.nf2ff.E_theta.FD.(['f' int2str(n-1) '_real']) +1i*hdf.nf2ff.E_theta.FD.(['f' int2str(n-1) '_imag']) );
         nf2ff.E_phi{n} = double(hdf.nf2ff.E_phi.FD.(['f' int2str(n-1) '_real']) +1i*hdf.nf2ff.E_phi.FD.(['f' int2str(n-1) '_imag']) );
         nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
+        nf2ff.P_rad{n} = double(hdf.nf2ff.P_rad.FD.(['f' int2str(n-1)]));
     end
 else
     % matlab compatibility to older versions (will be removed soon)
@@ -39,6 +40,7 @@ else
             nf2ff.E_theta{n} = double(hdf5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_real']) + 1i*hdf5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_imag']));
             nf2ff.E_phi{n} = double(hdf5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_real']) + 1i*hdf5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_imag']));
             nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
+            nf2ff.P_rad{n} = double(hdf5read(file,['/nf2ff/P_rad/FD/f' int2str(n-1)]));
         end
         return
     end
@@ -51,5 +53,6 @@ else
         nf2ff.E_theta{n} = double(h5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_real']) + 1i*h5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_imag']));
         nf2ff.E_phi{n} = double(h5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_real']) + 1i*h5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_imag']));
         nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
+        nf2ff.P_rad{n} = double(h5read(file,['/nf2ff/P_rad/FD/f' int2str(n-1)]));
     end
 end

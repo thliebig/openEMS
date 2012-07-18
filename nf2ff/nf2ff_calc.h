@@ -75,11 +75,12 @@ public:
 	nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vector<float> center);
 	~nf2ff_calc();
 
-	float GetRadPower() const {return m_radPower;}
+	float GetTotalRadPower() const {return m_radPower;}
 	float GetMaxDirectivity() const {return m_maxDir;}
 
 	complex<float>** GetETheta() const {return m_E_theta;}
 	complex<float>** GetEPhi() const {return m_E_phi;}
+	float** GetRadPower() const {return m_P_rad;}
 
 	unsigned int GetNumThreads() const {return m_numThreads;}
 	void SetNumThreads(unsigned int n) {m_numThreads=n;}
