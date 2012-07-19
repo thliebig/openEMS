@@ -419,7 +419,7 @@ void Operator_Ext_TFST::ShowStat(ostream &ostr) const
 	cout << "Active directions\t: " << "(" << m_ActiveDir[0][0] << "/" << m_ActiveDir[0][1] << ", " << m_ActiveDir[1][0] << "/" << m_ActiveDir[1][1]  << ", " << m_ActiveDir[2][0] << "/" << m_ActiveDir[2][1]  << ")" << endl;
 	cout << "Propagation direction\t: " << "(" << m_PropDir[0] << ", " << m_PropDir[1] << ", " << m_PropDir[2] << ")" << endl;
 	cout << "E-field amplitude\t: " << "(" << m_E_Amp[0] << ", " << m_E_Amp[1] << ", " << m_E_Amp[2] << ")" << endl;
-	cout << "m_H_Amp amplitude\t: " << "(" << m_H_Amp[0]*__Z0__ << ", " << m_H_Amp[1]*__Z0__ << ", " << m_H_Amp[2]*__Z0__ << ")/Z0" << endl;
+	cout << "H-field amplitude\t: " << "(" << m_H_Amp[0]*__Z0__ << ", " << m_H_Amp[1]*__Z0__ << ", " << m_H_Amp[2]*__Z0__ << ")/Z0" << endl;
 	cout << "Box Dimensions\t\t: " << m_numLines[0] << " x " << m_numLines[1] << " x " << m_numLines[2] << endl;
 	cout << "Max. Delay (TS)\t\t: " << m_maxDelay << endl;
 	int dirs = m_ActiveDir[0][0] + m_ActiveDir[0][1] + m_ActiveDir[1][0] + m_ActiveDir[1][1] + m_ActiveDir[2][0] + m_ActiveDir[2][1] ;
