@@ -32,6 +32,8 @@ Excitation::Excitation()
 
 	dT = 0;
 	m_nyquistTS = 0;
+	m_f_max = 0;
+	m_foi = 0;
 }
 
 Excitation::~Excitation()
@@ -51,6 +53,8 @@ void Excitation::Reset( double timestep )
 
 	dT = timestep;
 	m_nyquistTS = 0;
+	m_f_max = 0;
+	m_foi = 0;
 }
 
 bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
@@ -146,6 +150,9 @@ void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 		Signal_curr[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
 	}
 
+	m_foi = f0;
+	m_f_max = f0+fc;
+
 	SetNyquistNum( CalcNyquistNum(f0+fc,dT) );
 }
 
@@ -164,6 +171,9 @@ void Excitation::CalcDiracPulsExcitation()
 	Signal_curr[0]=0.0;
 	Signal_curr[1]=1.0;
 
+	m_foi = 0;
+	m_f_max = 0;
+
 	SetNyquistNum( 1 );
 }
 
@@ -180,6 +190,9 @@ void Excitation::CalcStepExcitation()
 	Signal_volt[1]=1.0;
 	Signal_curr[0]=1.0;
 	Signal_curr[1]=1.0;
+
+	m_foi = 0;
+	m_f_max = 0;
 
 	SetNyquistNum( 1 );
 }
@@ -215,6 +228,8 @@ void Excitation::CalcCustomExcitation(double f0, int nTS, string signal)
 		Signal_curr[n] = fParse.Eval(vars);
 	}
 
+	m_f_max = f0;
+	m_foi = f0;
 	SetNyquistNum( CalcNyquistNum(f0,dT) );
 }
 
@@ -238,7 +253,8 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 		t += 0.5*dT;
 		Signal_curr[n] = sin(2.0*PI*f0*t);
 	}
-
+	m_f_max = f0;
+	m_foi = f0;
 	SetNyquistNum( CalcNyquistNum(f0,dT) );
 }
 

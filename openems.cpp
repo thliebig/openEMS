@@ -646,11 +646,7 @@ int openEMS::SetupFDTD(const char* file)
 	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 	if (m_CSX->GetQtyPropertyType(CSProperties::CONDUCTINGSHEET)>0)
-	{
-		double f_max=0;
-		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
-		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op,f_max));
-	}
+		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op,m_Exc->GetMaxFrequency()));
 
 	//check all properties to request material storage during operator creation...
 	SetupMaterialStorages();

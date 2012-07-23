@@ -55,6 +55,12 @@ public:
 	//! Get the length of the excitation signal
 	unsigned int GetLength() const {return Length;}
 
+	//! Get the max frequeny excited by this signal
+	double GetMaxFrequency() const {return m_f_max;}
+
+	//! Get the frequency of interest
+	double GetFrequencyOfInterest() const {return m_foi;}
+
 	FDTD_FLOAT* GetVoltageSignal() const {return Signal_volt;}
 	FDTD_FLOAT* GetCurrentSignal() const {return Signal_curr;}
 
@@ -67,6 +73,11 @@ protected:
 	unsigned int Length;
 	FDTD_FLOAT* Signal_volt;
 	FDTD_FLOAT* Signal_curr;
+
+	// max frequency
+	double m_f_max;
+	// frequency of interest
+	double m_foi;
 
 	//! Calculate a custom signal
 	virtual void CalcCustomExcitation(double f0, int nTS, string signal);
