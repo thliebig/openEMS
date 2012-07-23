@@ -60,6 +60,9 @@ protected:
 	double m_E_Amp[3];
 	double m_H_Amp[3];
 
+	double m_Frequency;
+	double m_PhVel;
+
 	unsigned int m_maxDelay;
 
 	// array setup [direction][low/high][component][ <mesh_position> ]

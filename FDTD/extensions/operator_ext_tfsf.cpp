@@ -43,6 +43,8 @@ void Operator_Ext_TFST::Init()
 				m_CurrAmp[n][l][c]=NULL;
 			}
 
+	m_Frequency = 0.0;
+	m_PhVel = __C0__;
 	Operator_Extension::Init();
 }
 
@@ -95,6 +97,7 @@ bool Operator_Ext_TFST::BuildExtension()
 		return false;
 	}
 
+	m_PhVel = __C0__;
 	CSPropExcitation* elec=NULL;
 	CSProperties* prop=NULL;
 	CSPrimitives* prim=NULL;
@@ -144,6 +147,20 @@ bool Operator_Ext_TFST::BuildExtension()
 			return false;
 		}
 
+		m_Frequency = elec->GetFrequency();
+//		if (m_Frequency<=0)
+//			m_Frequency = m_Op->GetExcitationSignal()->GetFrequencyOfInterest();
+		if (m_Frequency<=0)
+			m_PhVel=__C0__;
+		else
+			m_PhVel=m_Op->CalcNumericPhaseVelocity(m_Start,m_Stop,m_PropDir,m_Frequency);
+
+		if ((m_PhVel<0) || (m_PhVel>__C0__) || isnan(m_PhVel))
+		{
+			cerr << "Operator_Ext_TFST::BuildExtension: Warning, invalid phase velocity found, resetting to c0! " << endl;
+			m_PhVel = __C0__;
+		}
+
 		double origin[3];
 		unsigned int ui_origin[3];
 		for (int n=0;n<3;++n)
@@ -163,11 +180,11 @@ bool Operator_Ext_TFST::BuildExtension()
 
 			if (m_IncLow[n])
 			{
-				ui_origin[n] = m_Start[n];
+				ui_origin[n] = m_Start[n]-1;
 			}
 			else
 			{
-				ui_origin[n] = m_Stop[n];
+				ui_origin[n] = m_Stop[n]+1;
 			}
 			origin[n] = m_Op->GetDiscLine(n,ui_origin[n]);
 		}
@@ -244,16 +261,16 @@ bool Operator_Ext_TFST::BuildExtension()
 					if (m_ActiveDir[n][0])
 					{
 						m_Op->GetYeeCoords(nP,pos,coord,false);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_CurrDelay[n][0][1][ui_pos] = floor(delay);
 						m_CurrDelayDelta[n][0][1][ui_pos] = delay - floor(delay);
 						m_CurrAmp[n][0][1][ui_pos] = m_E_Amp[nP]*m_Op->GetEdgeLength(nP,pos);
 
 						m_Op->GetYeeCoords(nPP,pos,coord,false);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_CurrDelay[n][0][0][ui_pos] = floor(delay);
 						m_CurrDelayDelta[n][0][0][ui_pos] = delay - floor(delay);
@@ -268,16 +285,16 @@ bool Operator_Ext_TFST::BuildExtension()
 					{
 						pos[n] = m_Stop[n];
 						m_Op->GetYeeCoords(nP,pos,coord,false);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_CurrDelay[n][1][1][ui_pos] = floor(delay);
 						m_CurrDelayDelta[n][1][1][ui_pos] = delay - floor(delay);
 						m_CurrAmp[n][1][1][ui_pos] = m_E_Amp[nP]*m_Op->GetEdgeLength(nP,pos);
 
 						m_Op->GetYeeCoords(nPP,pos,coord,false);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_CurrDelay[n][1][0][ui_pos] = floor(delay);
 						m_CurrDelayDelta[n][1][0][ui_pos] = delay - floor(delay);
@@ -287,20 +304,10 @@ bool Operator_Ext_TFST::BuildExtension()
 						m_CurrAmp[n][1][1][ui_pos]*=m_Op->GetIV(nPP,pos);
 					}
 
-					if (m_IncLow[n])
-					{
-						if (m_ActiveDir[n][0])
-							m_CurrAmp[n][0][0][ui_pos]*=-1;
-						if (m_ActiveDir[n][1])
-							m_CurrAmp[n][1][1][ui_pos]*=-1;
-					}
-					else
-					{
-						if (m_ActiveDir[n][0])
-							m_CurrAmp[n][0][1][ui_pos]*=-1;
-						if (m_ActiveDir[n][1])
-							m_CurrAmp[n][1][0][ui_pos]*=-1;
-					}
+					if (m_ActiveDir[n][0])
+						m_CurrAmp[n][0][0][ui_pos]*=-1;
+					if (m_ActiveDir[n][1])
+						m_CurrAmp[n][1][1][ui_pos]*=-1;
 
 					if (pos[nP]==m_Stop[nP])
 					{
@@ -322,16 +329,16 @@ bool Operator_Ext_TFST::BuildExtension()
 					if (m_ActiveDir[n][0])
 					{
 						m_Op->GetYeeCoords(nP,pos,coord,true);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT + 1.0;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_VoltDelay[n][0][1][ui_pos] = floor(delay);
 						m_VoltDelayDelta[n][0][1][ui_pos] = delay - floor(delay);
 						m_VoltAmp[n][0][1][ui_pos] = m_H_Amp[nP]*m_Op->GetEdgeLength(nP,pos,true);
 
 						m_Op->GetYeeCoords(nPP,pos,coord,true);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT + 1.0;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_VoltDelay[n][0][0][ui_pos] = floor(delay);
 						m_VoltDelayDelta[n][0][0][ui_pos] = delay - floor(delay);
@@ -346,16 +353,16 @@ bool Operator_Ext_TFST::BuildExtension()
 					if (m_ActiveDir[n][1])
 					{
 						m_Op->GetYeeCoords(nP,pos,coord,true);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT + 1.0;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_VoltDelay[n][1][1][ui_pos] = floor(delay);
 						m_VoltDelayDelta[n][1][1][ui_pos] = delay - floor(delay);
 						m_VoltAmp[n][1][1][ui_pos] = m_H_Amp[nP]*m_Op->GetEdgeLength(nP,pos,true);
 
 						m_Op->GetYeeCoords(nPP,pos,coord,true);
-						dist = fabs(coord[0]-origin[0])*m_PropDir[0]+fabs(coord[1]-origin[1])*m_PropDir[1]+fabs(coord[2]-origin[2])*m_PropDir[2];
-						delay = dist*unit/__C0__/dT;
+						dist = fabs((coord[0]-origin[0])*m_PropDir[0])+fabs((coord[1]-origin[1])*m_PropDir[1])+fabs((coord[2]-origin[2])*m_PropDir[2]);
+						delay = dist*unit/m_PhVel/dT + 1.0;
 						m_maxDelay = max((unsigned int)delay,m_maxDelay);
 						m_VoltDelay[n][1][0][ui_pos] = floor(delay);
 						m_VoltDelayDelta[n][1][0][ui_pos] = delay - floor(delay);
@@ -365,20 +372,10 @@ bool Operator_Ext_TFST::BuildExtension()
 						m_VoltAmp[n][1][1][ui_pos]*=m_Op->GetVI(nPP,pos);
 					}
 
-					if (m_IncLow[n])
-					{
-						if (m_ActiveDir[n][1])
-							m_VoltAmp[n][1][0][ui_pos]*=-1;
-						if (m_ActiveDir[n][0])
-							m_VoltAmp[n][0][1][ui_pos]*=-1;
-					}
-					else
-					{
-						if (m_ActiveDir[n][0])
-							m_VoltAmp[n][0][0][ui_pos]*=-1;
-						if (m_ActiveDir[n][1])
-							m_VoltAmp[n][1][1][ui_pos]*=-1;
-					}
+					if (m_ActiveDir[n][1])
+						m_VoltAmp[n][1][0][ui_pos]*=-1;
+					if (m_ActiveDir[n][0])
+						m_VoltAmp[n][0][1][ui_pos]*=-1;
 
 					if (pos[nP]==m_Stop[nP])
 					{
@@ -418,6 +415,7 @@ void Operator_Ext_TFST::ShowStat(ostream &ostr) const
 	Operator_Extension::ShowStat(ostr);
 	cout << "Active directions\t: " << "(" << m_ActiveDir[0][0] << "/" << m_ActiveDir[0][1] << ", " << m_ActiveDir[1][0] << "/" << m_ActiveDir[1][1]  << ", " << m_ActiveDir[2][0] << "/" << m_ActiveDir[2][1]  << ")" << endl;
 	cout << "Propagation direction\t: " << "(" << m_PropDir[0] << ", " << m_PropDir[1] << ", " << m_PropDir[2] << ")" << endl;
+	cout << "Rel. propagation speed\t: " << m_PhVel/__C0__ << "*c0  @ " << m_Frequency << " Hz" << endl;
 	cout << "E-field amplitude\t: " << "(" << m_E_Amp[0] << ", " << m_E_Amp[1] << ", " << m_E_Amp[2] << ")" << endl;
 	cout << "H-field amplitude\t: " << "(" << m_H_Amp[0]*__Z0__ << ", " << m_H_Amp[1]*__Z0__ << ", " << m_H_Amp[2]*__Z0__ << ")/Z0" << endl;
 	cout << "Box Dimensions\t\t: " << m_numLines[0] << " x " << m_numLines[1] << " x " << m_numLines[2] << endl;

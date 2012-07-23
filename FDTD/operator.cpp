@@ -1740,3 +1740,30 @@ void Operator::DeleteExtension(Operator_Extension* op_ext)
 		}
 	}
 }
+
+double Operator::CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const
+{
+	double phv=__C0__;
+
+	double average_mesh_disc[3];
+//	double k=2*PI*freq/__C0__;
+	for (int n=0;n<3;++n)
+	{
+		average_mesh_disc[n] = fabs(GetDiscLine(n,start[n])-GetDiscLine(n,stop[n]))*GetGridDelta() / (fabs(stop[n]-start[n]));
+	}
+
+	for (int n=0;n<3;++n)
+	{
+		int nP = (n+1)%3;
+		int nPP = (n+2)%3;
+		if ((fabs(propDir[n])==1) && (propDir[nP]==0) && (propDir[nPP]==0))
+		{
+			double kx = asin(average_mesh_disc[0]/__C0__/dT*sin(2*PI*freq*dT/2))*2/average_mesh_disc[0];
+			return 2*PI*freq/kx;
+		}
+	}
+
+	cerr << "Operator::CalcNumericPhaseVelocity: Warning, propagation direction not in Cartesian direction, assuming phase velocity to be c0" << endl;
+
+	return phv;
+}

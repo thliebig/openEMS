@@ -147,6 +147,8 @@ public:
 
 	Operator_Ext_Excitation* GetExcitationExtension() const;
 
+	virtual double CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const;
+
 protected:
 	//! use New() for creating a new Operator
 	Operator();
