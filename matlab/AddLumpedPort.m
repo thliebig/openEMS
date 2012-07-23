@@ -50,10 +50,10 @@ else
     direction = -1;
 end
 
-if (R>0)
+if (R>0 && (~isinf(R)))
     CSX = AddLumpedElement(CSX,['port_resist_' int2str(portnr)],  n_dir-1, 'Caps', 1, 'R', R);
     CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
-else
+elseif (R<=0)
     CSX = AddMetal(CSX,['port_resist_' int2str(portnr)]);
     CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
 end
