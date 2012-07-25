@@ -1743,15 +1743,15 @@ void Operator::DeleteExtension(Operator_Extension* op_ext)
 
 double Operator::CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const
 {
-	double phv=__C0__;
-
 	double average_mesh_disc[3];
-//	double k=2*PI*freq/__C0__;
+
+	//calculate average mesh deltas
 	for (int n=0;n<3;++n)
 	{
 		average_mesh_disc[n] = fabs(GetDiscLine(n,start[n])-GetDiscLine(n,stop[n]))*GetGridDelta() / (fabs(stop[n]-start[n]));
 	}
 
+	// if propagation is in a Cartesian direction, return analytic solution
 	for (int n=0;n<3;++n)
 	{
 		int nP = (n+1)%3;
@@ -1763,7 +1763,45 @@ double Operator::CalcNumericPhaseVelocity(unsigned int start[3], unsigned int st
 		}
 	}
 
-	cerr << "Operator::CalcNumericPhaseVelocity: Warning, propagation direction not in Cartesian direction, assuming phase velocity to be c0" << endl;
+	// else, do an newton iterative estimation
+	double k0=2*PI*freq/__C0__;
+	double k=k0;
+	double RHS = pow(sin(2*PI*freq*dT/2)/__C0__/dT,2);
+	double fk=1,fdk=0;
+	double old_phv=0;
+	double phv=__C0__;
+	double err_est = 1e-6;
+	int it_count=0;
+	while (fabs(old_phv-phv)>err_est)
+	{
+		++it_count;
+		old_phv=phv;
+		fk=0;
+		fdk=0;
+		for (int n=0;n<3;++n)
+		{
+			fk+= pow(sin(propDir[n]*k*average_mesh_disc[n]/2)/average_mesh_disc[n],2);
+			fdk+= propDir[n]*sin(propDir[n]*k*average_mesh_disc[n]/2)*cos(propDir[n]*k*average_mesh_disc[n]/2)/average_mesh_disc[n];
+		}
+		fk -= RHS;
+		k-=fk/fdk;
+
+		// do not allow a speed greater than c0 due to a numerical inaccuracy
+		if (k<k0)
+			k=k0;
+
+		phv=2*PI*freq/k;
+
+		//abort if iteration count is getting to high!
+		if (it_count>99)
+		{
+			cerr << "Operator::CalcNumericPhaseVelocity: Error, newton iteration estimation can't find a solution!!" << endl;
+			break;
+		}
+	}
+
+	if (g_settings.GetVerboseLevel()>1)
+		cerr << "Operator::CalcNumericPhaseVelocity: Newton iteration estimated solution: " << phv/__C0__ << "*c0 in " <<  it_count << " iterations." << endl;
 
 	return phv;
 }

@@ -54,7 +54,7 @@ CSX = AddSphere(CSX,'sphere',10,[0 0 0],sphere.rad);
 k_dir = [cos(inc_angle) sin(inc_angle) 0]; % plane wave direction
 E_dir = [0 0 1]; % plane wave polarization --> E_z
 
-CSX = AddPlaneWaveExcite(CSX, 'plane_wave', k_dir, E_dir);
+CSX = AddPlaneWaveExcite(CSX, 'plane_wave', k_dir, E_dir, f0);
 start = [-PW_Box/2 -PW_Box/2 -PW_Box/2];
 stop  = -start;
 CSX = AddBox(CSX, 'plane_wave', 0, start, stop);
