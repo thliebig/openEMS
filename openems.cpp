@@ -632,7 +632,8 @@ int openEMS::SetupFDTD(const char* file)
 	m_Exc = new Excitation();
 	FDTD_Op->SetExcitationSignal(m_Exc);
 	FDTD_Op->AddExtension(new Operator_Ext_Excitation(FDTD_Op));
-	FDTD_Op->AddExtension(new Operator_Ext_TFST(FDTD_Op));
+	if (!CylinderCoords)
+		FDTD_Op->AddExtension(new Operator_Ext_TFST(FDTD_Op));
 
 	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
 
