@@ -38,26 +38,25 @@ if isfield( hdf_fielddata, 'TD' )
 end
 if isfield( hdf_fielddata, 'FD' )
     % this is a frequency domain data set
-    freq = hdf_fielddata.FD.freq;
+    freq = hdf_fielddata.FD.frequency;
     for n=1:numel(freq)
         name = ['/FieldData/FD/f' int2str(n-1) '_real'];
         [details.Location, details.Name] = fileparts(name);
-        attribute_details.AttachedTo = name;
-        attribute_details.AttachType = 'dataset';
-        attribute_details.Name = 'freq';
         hdf5write( filename, details, real(hdf_fielddata.FD.values{n}), ...
-                   attribute_details, freq(n), ...
                    'WriteMode', writemode );
         name = ['/FieldData/FD/f' int2str(n-1) '_imag'];
         [details.Location, details.Name] = fileparts(name);
-        attribute_details.AttachedTo = name;
-        attribute_details.AttachType = 'dataset';
-        attribute_details.Name = 'freq';
         hdf5write( filename, details, imag(hdf_fielddata.FD.values{n}), ...
-                   attribute_details, freq(n), ...
                    'WriteMode', 'append' );
         writemode = 'append';
     end
+    name = '/FieldData/FD';
+    [details.Location, details.Name] = fileparts(name);
+    attribute_details.AttachedTo = name;
+    attribute_details.AttachType = 'group';
+    attribute_details.Name = 'frequency';
+    hdf5write( filename, attribute_details, freq, ...
+                   'WriteMode', 'append' );
 end
 
 names = hdf_mesh.names; % names is a cell array
