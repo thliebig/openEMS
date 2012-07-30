@@ -251,7 +251,7 @@ bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<stri
 			H5Fclose(hdf5_file);
 			return false;
 		}
-		ssize_t name_size = H5Gget_objname_by_idx(TD_grp, n, name, 100 );
+		H5Gget_objname_by_idx(TD_grp, n, name, 100 );
 		istringstream is(name);
 		unsigned int num;
 		if (is >> num)
@@ -323,7 +323,7 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 	}
 
 	char name[100];
-	ssize_t name_size = H5Gget_objname_by_idx(TD_grp, idx, name, 100 );
+	H5Gget_objname_by_idx(TD_grp, idx, name, 100 );
 	string ds_name = "/FieldData/TD/" + string(name);
 
 	hid_t attr = H5Aopen_by_name(hdf5_file, ds_name.c_str(), "time", H5P_DEFAULT, H5P_DEFAULT);
