@@ -230,6 +230,8 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 	if (H_file.ReadMesh(H_lines, H_numLines, H_meshType) == false)
 	{
 		cerr << "nf2ff::AnalyseFile: Error reading H-Field mesh..." << endl;
+		for (int n=0;n<3;++n)
+			delete[] E_lines[n];
 		return false;
 	}
 
@@ -237,11 +239,21 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 	if (E_meshType!=H_meshType)
 	{
 		cerr << "nf2ff::AnalyseFile: Error mesh types don't agree" << endl;
+		for (int n=0;n<3;++n)
+		{
+			delete[] H_lines[n];
+			delete[] E_lines[n];
+		}
 		return false;
 	}
 	if ((E_numLines[0]!=H_numLines[0]) || (E_numLines[1]!=H_numLines[1]) || (E_numLines[2]!=H_numLines[2]))
 	{
 		cerr << "nf2ff::AnalyseFile: Error mesh dimensions don't agree" << endl;
+		for (int n=0;n<3;++n)
+		{
+			delete[] H_lines[n];
+			delete[] E_lines[n];
+		}
 		return false;
 	}
 	for (int n=0;n<3;++n)
@@ -249,6 +261,11 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 			if (E_lines[n][m]!=H_lines[n][m])
 			{
 				cerr << "nf2ff::AnalyseFile: Error mesh lines don't agree" << endl;
+				for (int n=0;n<3;++n)
+				{
+					delete[] H_lines[n];
+					delete[] E_lines[n];
+				}
 				return false;
 			}
 
@@ -259,10 +276,26 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 
 	unsigned int data_size[4];
 	vector<complex<float>****> E_fd_data;
-	E_file.CalcFDVectorData(m_freq,E_fd_data,data_size);
+	if (E_file.CalcFDVectorData(m_freq,E_fd_data,data_size)==false)
+	{
+		for (int n=0;n<3;++n)
+		{
+			delete[] H_lines[n];
+			delete[] E_lines[n];
+		}
+		return false;
+	}
 
 	vector<complex<float>****> H_fd_data;
-	H_file.CalcFDVectorData(m_freq,H_fd_data,data_size);
+	if (H_file.CalcFDVectorData(m_freq,H_fd_data,data_size)==false)
+	{
+		for (int n=0;n<3;++n)
+		{
+			delete[] H_lines[n];
+			delete[] E_lines[n];
+		}
+		return false;
+	}
 
 	if (m_Verbose>0)
 		cerr << "nf2ff: Analysing far-field for " <<  m_nf2ff.size() << " frequencies.  " << endl;
