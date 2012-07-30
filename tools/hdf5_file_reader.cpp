@@ -102,6 +102,8 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 		cerr << "HDF5_File_Reader::ReadDataSet: error reading data" << endl;
 		H5Dclose(dataset);
 		H5Fclose(hdf5_file);
+		delete[] data;
+		data=NULL;
 		return false;
 	}
 	H5Dclose(dataset);
@@ -152,6 +154,7 @@ bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &mesh
 		{
 			cerr << "HDF5_File_Reader::ReadMesh: mesh dimension error" << endl;
 			delete[] dims;
+			delete[] data;
 			H5Fclose(hdf5_file);
 			return false;
 		}
@@ -175,7 +178,7 @@ unsigned int HDF5_File_Reader::GetNumTimeSteps()
 		return false;
 	}
 
-	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<0)
+	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<=0)
 	{
 		H5Fclose(hdf5_file);
 		return 0;
@@ -282,7 +285,7 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 	}
 
 	time = 0;
-	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<0)
+	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<=0)
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: can't open ""/FieldData/TD""" << endl;
 		H5Fclose(hdf5_file);
@@ -404,6 +407,13 @@ complex<float>**** HDF5_File_Reader::GetFDVectorData(size_t idx, float &frequenc
 bool HDF5_File_Reader::CalcFDVectorData(vector<float> &frequencies, vector<complex<float>****> &FD_data, unsigned int data_size[4])
 {
 	FD_data.clear();
+
+	if (GetNumTimeSteps()<=0)
+	{
+		cerr << "HDF5_File_Reader::CalcFDVectorData: error, no TD data found..." << endl;
+		return false;
+	}
+
 	float time;
 	//read first TD data
 	float**** field = this->GetTDVectorData(0,time,data_size);

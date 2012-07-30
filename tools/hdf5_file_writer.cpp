@@ -393,7 +393,7 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 
 bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, vector<double> values)
 {
-	float val[values.size()];
+	double val[values.size()];
 	for (size_t n=0;n<values.size();++n)
 		val[n]=values.at(n);
 	return HDF5_File_Writer::WriteAtrribute(locName, attr_name, val, values.size(), H5T_NATIVE_DOUBLE);
