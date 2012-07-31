@@ -46,19 +46,25 @@ public:
 
 	unsigned int GetNumFrequencies();
 	bool ReadFrequencies(std::vector<float> &frequencies);
-	std::complex<float>**** GetFDVectorData(size_t idx, float &frequency, unsigned int data_size[4]);
+	std::complex<float>**** GetFDVectorData(size_t idx, unsigned int data_size[4]);
 
 	/*!
 	  Calculate
 	  */
 	bool CalcFDVectorData(std::vector<float> &frequencies, std::vector<std::complex<float>****> &FD_data, unsigned int data_size[4]);
 
+	bool ReadAttribute(std::string grp_name, std::string attr_name, std::vector<double> &attr_values);
+	bool ReadAttribute(std::string grp_name, std::string attr_name, std::vector<float> &attr_values);
+
 	bool IsValid();
 
 protected:
 	std::string m_filename;
 
+	bool ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, double* &data);
 	bool ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, float* &data);
+
+	bool OpenGroup(hid_t &file, hid_t &group, std::string groupName);
 };
 
 #endif // HDF5_FILE_READER_H

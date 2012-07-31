@@ -54,7 +54,139 @@ bool HDF5_File_Reader::IsValid()
 	return true;
 }
 
+bool HDF5_File_Reader::OpenGroup(hid_t &file, hid_t &group, string groupName)
+{
+	file = H5Fopen( m_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT );
+	if (file==-1)
+	{
+		cerr << "HDF5_File_Reader::OpenGroup: opening the given file """ << m_filename << """ failed" << endl;
+		return 0;
+	}
+	if (H5Lexists(file, groupName.c_str(), H5P_DEFAULT)<=0)
+	{
+		H5Fclose(file);
+		return 0;
+	}
+
+	group = H5Gopen(file, groupName.c_str() );
+	if (group<0)
+	{
+		cerr << "HDF5_File_Reader::OpenGroup: can't open group """ << groupName << """" << endl;
+		H5Fclose(file);
+		return 0;
+	}
+	return true;
+}
+
+bool HDF5_File_Reader::ReadAttribute(string grp_name, string attr_name, vector<float> &attr_values)
+{
+	vector<double> d_attr_values;
+	if (ReadAttribute(grp_name, attr_name, d_attr_values)==false)
+		return false;
+	attr_values.resize(d_attr_values.size(),0);
+	for (size_t n=0;n<d_attr_values.size();++n)
+		attr_values.at(n)=d_attr_values.at(n);
+	return true;
+}
+
+bool HDF5_File_Reader::ReadAttribute(string grp_name, string attr_name, vector<double> &attr_values)
+{
+	attr_values.clear();
+
+	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT );
+	if (hdf5_file==-1)
+	{
+		cerr << "HDF5_File_Reader::OpenGroup: opening the given file """ << m_filename << """ failed" << endl;
+		return 0;
+	}
+
+	if (H5Lexists(hdf5_file, grp_name.c_str(), H5P_DEFAULT)<=0)
+	{
+		H5Fclose(hdf5_file);
+		return false;
+	}
+
+	hid_t attr = H5Aopen_by_name(hdf5_file, grp_name.c_str(), attr_name.c_str(), H5P_DEFAULT, H5P_DEFAULT);
+	if (attr==-1)
+	{
+		cerr << "HDF5_File_Reader::ReadAttribute: Opening the given Attribute: """ << attr_name << """ failed" << endl;
+		H5Fclose(hdf5_file);
+		return false;
+	}
+
+	hid_t type = H5Aget_type(attr);
+	if (type<0)
+	{
+		cerr << "HDF5_File_Reader::ReadAttribute: Dataset type error" << endl;
+		H5Aclose(attr);
+		H5Fclose(hdf5_file);
+		return false;
+	}
+
+	attr_values.clear();
+	if (H5Tget_class(type)==H5T_FLOAT)
+	{
+		size_t numVal = H5Aget_storage_size(attr)/H5Tget_size(type);
+		hid_t datatype=-1;
+		void *value=NULL;
+		float *f_value=NULL;
+		double *d_value=NULL;
+		if (H5Tget_size(type)==sizeof(float))
+		{
+			f_value = new float[numVal];
+			value = f_value;
+			datatype = H5T_NATIVE_FLOAT;
+		}
+		if (H5Tget_size(type)==sizeof(double))
+		{
+			d_value = new double[numVal];
+			value = d_value;
+			datatype = H5T_NATIVE_DOUBLE;
+		}
+		if (H5Aread(attr, datatype, value)<0)
+		{
+		  cerr << "HDF5_File_Reader::ReadAttribute: Reading the given Attribute failed" << endl;
+		  H5Aclose(attr);
+		  H5Fclose(hdf5_file);
+		  return false;
+		}
+		if (f_value)
+			for (size_t n=0;n<numVal;++n)
+				attr_values.push_back(f_value[n]);
+		if (d_value)
+			for (size_t n=0;n<numVal;++n)
+				attr_values.push_back(d_value[n]);
+		delete[] f_value;
+		delete[] d_value;
+	}
+	else
+	{
+		cerr << "HDF5_File_Reader::ReadAttribute: Attribute type not supported" << endl;
+		H5Aclose(attr);
+		H5Fclose(hdf5_file);
+		return false;
+	}
+	H5Aclose(attr);
+	H5Fclose(hdf5_file);
+	return true;
+}
+
 bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims, float* &data)
+{
+	double* d_data;
+	if (ReadDataSet(ds_name, nDim, dims, d_data)==false)
+		return false;
+	hsize_t data_size = 1;
+	for (unsigned int d=0;d<nDim;++d)
+		data_size*=dims[d];
+	data = new float[data_size];
+	for (size_t n=0;n<data_size;++n)
+		data[n]=d_data[n];
+	delete[] d_data;
+	return true;
+}
+
+bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims, double* &data)
 {
 	if (IsValid()==false)
 		return false;
@@ -96,16 +228,32 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 	hsize_t data_size = 1;
 	for (unsigned int d=0;d<nDim;++d)
 		data_size*=dims[d];
-	data = new float[data_size];
-	if (H5Dread(dataset,type,H5S_ALL,H5S_ALL,H5P_DEFAULT,data)<0)
+
+	void *value=NULL;
+	float *f_value=NULL;
+	data = new double[data_size];
+	if (H5Tget_size(type)==sizeof(float))
+	{
+		f_value = new float[data_size];
+		value = f_value;
+	}
+	else
+		value = data;
+
+	if (H5Dread(dataset,type,H5S_ALL,H5S_ALL,H5P_DEFAULT,value)<0)
 	{
 		cerr << "HDF5_File_Reader::ReadDataSet: error reading data" << endl;
 		H5Dclose(dataset);
 		H5Fclose(hdf5_file);
 		delete[] data;
+		delete[] f_value;
 		data=NULL;
 		return false;
 	}
+	if (f_value)
+		for (size_t n=0;n<data_size;++n)
+			data[n]=f_value[n];
+	delete[] f_value;
 	H5Dclose(dataset);
 	H5Fclose(hdf5_file);
 	return true;
@@ -144,6 +292,7 @@ bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &mesh
 		H5Fclose(hdf5_file);
 		return false;
 	}
+
 	for (int n=0;n<3;++n)
 	{
 		hsize_t nDim;
@@ -171,26 +320,11 @@ unsigned int HDF5_File_Reader::GetNumTimeSteps()
 	if (IsValid()==false)
 		return false;
 
-	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT );
-	if (hdf5_file==-1)
-	{
-		cerr << "HDF5_File_Reader::GetNumTimeSteps: opening the given file """ << m_filename << """ failed" << endl;
+	hid_t hdf5_file;
+	hid_t TD_grp;
+	if (OpenGroup(hdf5_file, TD_grp, "/FieldData/TD")==false)
 		return false;
-	}
 
-	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<=0)
-	{
-		H5Fclose(hdf5_file);
-		return 0;
-	}
-
-	hid_t TD_grp = H5Gopen(hdf5_file, "/FieldData/TD" );
-	if (TD_grp<0)
-	{
-		cerr << "HDF5_File_Reader::GetNumTimeSteps: can't open group ""/FieldData/TD""" << endl;
-		H5Fclose(hdf5_file);
-		return 0;
-	}
 	hsize_t numObj;
 	if (H5Gget_num_objs(TD_grp,&numObj)<0)
 	{
@@ -209,26 +343,11 @@ bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<stri
 	if (IsValid()==false)
 		return false;
 
-	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT );
-	if (hdf5_file==-1)
-	{
-		cerr << "HDF5_File_Reader::ReadTimeSteps: opening the given file """ << m_filename << """ failed" << endl;
+	hid_t hdf5_file;
+	hid_t TD_grp;
+	if (OpenGroup(hdf5_file, TD_grp, "/FieldData/TD")==false)
 		return false;
-	}
 
-	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<0)
-	{
-		cerr << "HDF5_File_Reader::ReadTimeSteps: can't open ""/FieldData/TD""" << endl;
-		H5Fclose(hdf5_file);
-		return false;
-	}
-	hid_t TD_grp = H5Gopen(hdf5_file, "/FieldData/TD" );
-	if (TD_grp<0)
-	{
-		cerr << "HDF5_File_Reader::ReadTimeSteps: can't open ""/FieldData/TD""" << endl;
-		H5Fclose(hdf5_file);
-		return false;
-	}
 	hsize_t numObj;
 	if (H5Gget_num_objs(TD_grp,&numObj)<0)
 	{
@@ -277,27 +396,10 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 	if (IsValid()==false)
 		return false;
 
-	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT );
-	if (hdf5_file==-1)
-	{
-		cerr << "HDF5_File_Reader::GetTDVectorData: opening the given file """ << m_filename << """ failed" << endl;
+	hid_t hdf5_file;
+	hid_t TD_grp;
+	if (OpenGroup(hdf5_file, TD_grp, "/FieldData/TD")==false)
 		return false;
-	}
-
-	time = 0;
-	if (H5Lexists(hdf5_file, "/FieldData/TD", H5P_DEFAULT)<=0)
-	{
-		cerr << "HDF5_File_Reader::GetTDVectorData: can't open ""/FieldData/TD""" << endl;
-		H5Fclose(hdf5_file);
-		return NULL;
-	}
-	hid_t TD_grp = H5Gopen(hdf5_file, "/FieldData/TD" );
-	if (TD_grp<0)
-	{
-		cerr << "HDF5_File_Reader::GetTDVectorData: can't open ""/FieldData/TD""" << endl;
-		H5Fclose(hdf5_file);
-		return NULL;
-	}
 
 	hsize_t numObj;
 	if (H5Gget_num_objs(TD_grp,&numObj)<0)
@@ -345,7 +447,7 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 
 	hsize_t nDim;
 	hsize_t* dims=NULL;
-	float* data=NULL;
+	double* data=NULL;
 	ReadDataSet(ds_name, nDim, dims, data);
 	if (nDim!=4)
 	{
@@ -388,20 +490,107 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 
 unsigned int HDF5_File_Reader::GetNumFrequencies()
 {
-	cerr << "HDF5_File_Reader::GetNumFrequencies(): not implemented yet!" << endl;
-	return 0;
+	vector<float> frequencies;
+	if (ReadFrequencies(frequencies)==false)
+		return 0;
+	return frequencies.size();
 }
 
 bool HDF5_File_Reader::ReadFrequencies(vector<float> &frequencies)
 {
-	cerr << "HDF5_File_Reader::ReadFrequencies(): not implemented yet!" << endl;
-	return false;
+	if (IsValid()==false)
+		return false;
+
+	return ReadAttribute("/FieldData/FD","frequency",frequencies);
 }
 
-complex<float>**** HDF5_File_Reader::GetFDVectorData(size_t idx, float &frequency, unsigned int data_size[])
+complex<float>**** HDF5_File_Reader::GetFDVectorData(size_t idx, unsigned int data_size[])
 {
-	cerr << "HDF5_File_Reader::GetFDVectorData(): not implemented yet!" << endl;
-	return NULL;
+	hsize_t nDim;
+	hsize_t* dims=NULL;
+	double* data=NULL;
+	stringstream ds_name;
+
+	// read real values
+	ds_name << "/FieldData/FD/f" << idx << "_real";
+	if (ReadDataSet(ds_name.str(), nDim, dims, data) == false)
+		return NULL;
+	if (nDim!=4)
+	{
+		cerr << "HDF5_File_Reader::GetFDVectorData: data dimension invalid" << endl;
+		delete[] dims;
+		delete[] data;
+		return NULL;
+	}
+	if (dims[0]!=3)
+	{
+		cerr << "HDF5_File_Reader::GetFDVectorData: vector data dimension invalid" << endl;
+		delete[] dims;
+		delete[] data;
+		return NULL;
+	}
+	data_size[0]=dims[3];
+	data_size[1]=dims[2];
+	data_size[2]=dims[1];
+	delete[] dims;
+	data_size[3]=3;
+	size_t pos = 0;
+	complex<float>**** field = Create_N_3DArray<complex<float> >(data_size);
+	for (unsigned int d=0;d<3;++d)
+		for (unsigned int k=0;k<data_size[2];++k)
+			for (unsigned int j=0;j<data_size[1];++j)
+				for (unsigned int i=0;i<data_size[0];++i)
+				{
+					field[d][i][j][k]=data[pos++];
+				}
+	delete[] data;
+
+	// read imaginary values
+	ds_name.str("");
+	ds_name << "/FieldData/FD/f" << idx << "_imag";
+	if (ReadDataSet(ds_name.str(), nDim, dims, data) == false)
+	{
+		Delete_N_3DArray<complex<float> >(field, data_size);
+		return NULL;
+	}
+	if (nDim!=4)
+	{
+		cerr << "HDF5_File_Reader::GetFDVectorData: data dimension invalid" << endl;
+		delete[] dims;
+		delete[] data;
+		Delete_N_3DArray<complex<float> >(field, data_size);
+		return NULL;
+	}
+	if (dims[0]!=3)
+	{
+		cerr << "HDF5_File_Reader::GetFDVectorData: vector data dimension invalid" << endl;
+		delete[] dims;
+		delete[] data;
+		Delete_N_3DArray<complex<float> >(field, data_size);
+		return NULL;
+	}
+	if ((data_size[0]!=dims[3]) || (data_size[1]!=dims[2]) || (data_size[2]!=dims[1]))
+	{
+		cerr << "HDF5_File_Reader::GetFDVectorData: data dimension mismatch" << endl;
+		delete[] dims;
+		delete[] data;
+		Delete_N_3DArray<complex<float> >(field, data_size);
+		return NULL;
+	}
+	delete[] dims;
+
+	pos = 0;
+	complex<double> I(0,1);
+	for (unsigned int d=0;d<3;++d)
+		for (unsigned int k=0;k<data_size[2];++k)
+			for (unsigned int j=0;j<data_size[1];++j)
+				for (unsigned int i=0;i<data_size[0];++i)
+				{
+					field[d][i][j][k]+= I*data[pos++];
+				}
+	delete[] data;
+
+	return field;
 }
 
 bool HDF5_File_Reader::CalcFDVectorData(vector<float> &frequencies, vector<complex<float>****> &FD_data, unsigned int data_size[4])
