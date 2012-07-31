@@ -269,50 +269,175 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 				return false;
 			}
 
+	for (int n=0;n<3;++n)
+		delete[] H_lines[n];
+
 	if (m_Verbose>0)
 		cerr << "nf2ff: Data-Size: " << E_numLines[0] << "x" << E_numLines[1] << "x"  << E_numLines[2] << endl;
-	if (m_Verbose>1)
-		cerr << "nf2ff: calculate dft..." << endl;
 
-	unsigned int data_size[4];
-	vector<complex<float>****> E_fd_data;
-	if (E_file.CalcFDVectorData(m_freq,E_fd_data,data_size)==false)
+	// test if FD data available or fallback to TD is necessary
+	bool fallBack_TD=false;
+	vector<float> FD_freq;
+	if (E_file.ReadFrequencies(FD_freq)==false)
+		fallBack_TD = true;
+	if (FD_freq.size()>0)
 	{
-		for (int n=0;n<3;++n)
+		vector<float> H_freq;
+		if (H_file.ReadFrequencies(H_freq)==false)
 		{
-			delete[] H_lines[n];
-			delete[] E_lines[n];
+			cerr << "nf2ff::AnalyseFile: Error, number of FD data mismatch, fallback to TD data..." << endl;
+			fallBack_TD = true;
 		}
-		return false;
-	}
-
-	vector<complex<float>****> H_fd_data;
-	if (H_file.CalcFDVectorData(m_freq,H_fd_data,data_size)==false)
-	{
-		for (int n=0;n<3;++n)
+		else
 		{
-			delete[] H_lines[n];
-			delete[] E_lines[n];
+			for (size_t nf=0;nf<FD_freq.size();++nf)
+				if (FD_freq.at(nf)!=H_freq.at(nf))
+				{
+					cerr << "nf2ff::AnalyseFile: Error, frequency data mismatch, fallback to TD data..." << endl;
+					fallBack_TD = true;
+					break;
+				}
 		}
-		return false;
 	}
+	else
+		fallBack_TD = true;
 
-	if (m_Verbose>0)
-		cerr << "nf2ff: Analysing far-field for " <<  m_nf2ff.size() << " frequencies.  " << endl;
-
-	for (size_t fn=0;fn<m_nf2ff.size();++fn)
+	// search FD-data frequency index that matches requested nf2ff frequencies
+	vector<size_t> FD_index;
+	if (fallBack_TD==false)
 	{
-		if (m_Verbose>1)
-			cerr << "nf2ff: f = " << m_freq.at(fn) << "Hz (" << fn+1 << "/" << m_nf2ff.size() << ") ...";
-		m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, E_fd_data.at(fn), H_fd_data.at(fn),E_meshType);
-		if (m_Verbose>1)
-			cerr << " done." << endl;
+		FD_index.resize(FD_freq.size(),-1);
+
+		for (size_t n=0;n<m_freq.size();++n)
+		{
+			bool found=false;
+			for (size_t nf=0;nf<FD_freq.size();++nf)
+			{
+				if (FD_freq.at(nf)==m_freq.at(n))
+				{
+					FD_index.at(n)=nf;
+					found = true;
+					break;
+				}
+			}
+			if (found==false)
+			{
+				fallBack_TD=true;
+				cerr << "nf2ff::AnalyseFile: Frequency " << m_freq.at(n) << " not found in FD data, general fallback to TD data..." << endl;
+				break;
+			}
+		}
 	}
+
+	if (fallBack_TD)
+	{
+		vector<complex<float>****> E_fd_data;
+		vector<complex<float>****> H_fd_data;
+
+		if (m_Verbose>1)
+			cerr << "nf2ff: calculate dft..." << endl;
+
+		unsigned int data_size[4];
+		if (E_file.CalcFDVectorData(m_freq,E_fd_data,data_size)==false)
+		{
+			for (int n=0;n<3;++n)
+				delete[] E_lines[n];
+			return false;
+		}
+		if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+		{
+			for (size_t fn=0;fn<m_nf2ff.size();++fn)
+			{
+				Delete_N_3DArray<complex<float> >(E_fd_data.at(fn),data_size);
+			}
+			for (int n=0;n<3;++n)
+				delete[] E_lines[n];
+			return false;
+		}
+
+		if (H_file.CalcFDVectorData(m_freq,H_fd_data,data_size)==false)
+		{
+			for (size_t fn=0;fn<m_nf2ff.size();++fn)
+				Delete_N_3DArray<complex<float> >(E_fd_data.at(fn),data_size);
+			for (int n=0;n<3;++n)
+				delete[] E_lines[n];
+			return false;
+		}
+		if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+		{
+			for (size_t fn=0;fn<m_nf2ff.size();++fn)
+			{
+				Delete_N_3DArray<complex<float> >(E_fd_data.at(fn),data_size);
+				Delete_N_3DArray<complex<float> >(H_fd_data.at(fn),data_size);
+			}
+			for (int n=0;n<3;++n)
+				delete[] E_lines[n];
+			return false;
+		}
+
+		if (m_Verbose>0)
+			cerr << "nf2ff: Analysing far-field for " <<  m_nf2ff.size() << " frequencies.  " << endl;
+
+		for (size_t fn=0;fn<m_nf2ff.size();++fn)
+		{
+			if (m_Verbose>1)
+				cerr << "nf2ff: f = " << m_freq.at(fn) << "Hz (" << fn+1 << "/" << m_freq.size() << ") ...";
+			m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, E_fd_data.at(fn), H_fd_data.at(fn),E_meshType);
+			if (m_Verbose>1)
+				cerr << " done." << endl;
+		}
+
+	}
+	else
+	{
+		complex<float>**** E_fd_data;
+		complex<float>**** H_fd_data;
+		unsigned int data_size[4];
+		for (size_t n=0;n<m_freq.size();++n)
+		{
+			E_fd_data = E_file.GetFDVectorData(FD_index.at(n),data_size);
+			if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+			{
+				cerr << data_size[0] << "," << data_size[1] << "," <<  data_size[2] << endl;
+				cerr << "nf2ff::AnalyseFile: FD data size mismatch... " << endl;
+				Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
+			}
+
+			H_fd_data = H_file.GetFDVectorData(FD_index.at(n),data_size);
+			if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+			{
+				cerr << data_size[0] << "," << data_size[1] << "," <<  data_size[2] << endl;
+				cerr << "nf2ff::AnalyseFile: FD data size mismatch... " << endl;
+				Delete_N_3DArray<complex<float> >(H_fd_data,data_size);
+				Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
+			}
+
+			if ((E_fd_data==NULL) || (H_fd_data==NULL))
+			{
+				cerr << "nf2ff::AnalyseFile: Reaing FD data failed... " << endl;
+				Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
+				Delete_N_3DArray<complex<float> >(H_fd_data,data_size);
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
+			}
+			if (m_Verbose>1)
+				cerr << "nf2ff: f = " << m_freq.at(n) << "Hz (" << n+1 << "/" << m_freq.size() << ") ...";
+			m_nf2ff.at(n)->AddPlane(E_lines, E_numLines, E_fd_data, H_fd_data,E_meshType);
+			if (m_Verbose>1)
+				cerr << " done." << endl;
+		}
+	}
+
 	for (int n=0;n<3;++n)
-	{
-		delete[] H_lines[n];
 		delete[] E_lines[n];
-	}
+
 	return true;
 }
 
