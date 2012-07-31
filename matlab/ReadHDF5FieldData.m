@@ -63,7 +63,7 @@ end
 try
     hdf_fielddata.FD.frequency = double(hdf5read(file,'/FieldData/FD','frequency'));
 catch err
-    disp(err)
+%     disp(err)
     return
 end
 for n=1:numel(hdf_fielddata.FD.frequency)
