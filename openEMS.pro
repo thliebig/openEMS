@@ -6,7 +6,7 @@ CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += .
-INCLUDEPATH += ../CSXCAD ../fparser
+INCLUDEPATH += ../CSXCAD
 CONFIG += debug_and_release
 
 
@@ -55,7 +55,7 @@ win32 {
      LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
 }
 !win32 {
-    LIBS += -L../fparser -lfparser
+    LIBS += -lfparser
     LIBS += -ltinyxml
     LIBS += -L../CSXCAD -lCSXCAD
     LIBS += -lboost_thread-mt
@@ -73,7 +73,6 @@ win32 {
         -lvtksys \
         -lvtkFiltering
     QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
-    QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../fparser\'
 }
 
 # vtk includes deprecated header files; silence the corresponding warning
