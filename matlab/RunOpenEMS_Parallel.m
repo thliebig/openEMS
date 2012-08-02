@@ -49,7 +49,14 @@ elseif ~isfield(Settings.SSH,'host_list')
 end
 
 if (skip_parallel)
-    RunOpenEMS(Sim_Paths, Sim_Files, opts, Settings)
+    for n=1:numel(Sim_Paths)
+        if iscell(Sim_Files)
+            Sim_File = Sim_Files{n};
+        else
+            Sim_File = Sim_Files;
+        end
+        RunOpenEMS(Sim_Paths{n}, Sim_Files, opts, Settings)
+    end
     stdout = [];
     stderr = [];
     return
@@ -65,8 +72,7 @@ end
 queue = InitQueue('DependPath',{dir}, varargin{:});
 
 % spawn multiple simulations
-numSims = numel(Sim_Paths);
-for n=1:numSims
+for n=1:numel(Sim_Paths)
     if iscell(Sim_Files)
         Sim_File = Sim_Files{n};
     else
