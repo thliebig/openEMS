@@ -6,7 +6,6 @@ CONFIG -= app_bundle qt
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += .
-INCLUDEPATH += ../CSXCAD
 CONFIG += debug_and_release
 
 
@@ -35,11 +34,13 @@ win32 {
     WIN32_LIB_ROOT = ..
     # tinyxml
     INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml
-    LIBS += -L../tinyxml/release -ltinyxml2
+    LIBS += -L$$WIN32_LIB_ROOT/tinyxml/release -ltinyxml2
     # fparser
-    LIBS += -L../fparser/release -lfparser4
+    INCLUDEPATH += $$WIN32_LIB_ROOT/fparser
+    LIBS += -L$$WIN32_LIB_ROOT/fparser/release -lfparser4
     # CSXCAD
-    LIBS += -L../CSXCAD/release  -lCSXCAD0
+    INCLUDEPATH += $$WIN32_LIB_ROOT/CSXCAD
+    LIBS += -L$$WIN32_LIB_ROOT/CSXCAD/release  -lCSXCAD0
     # hdf5
     INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp
     LIBS += -L$$WIN32_LIB_ROOT/hdf5/lib -lhdf5
@@ -57,9 +58,11 @@ win32 {
 !win32 {
     LIBS += -lfparser
     LIBS += -ltinyxml
-    LIBS += -L../CSXCAD -lCSXCAD
     LIBS += -lboost_thread-mt
     LIBS += -lhdf5 -lhdf5_cpp
+    # CSXCAD
+    INCLUDEPATH += ../CSXCAD
+    LIBS += -L../CSXCAD -lCSXCAD
     ### vtk ###
     INCLUDEPATH += /usr/include/vtk-5.2 \
         /usr/include/vtk-5.4 \
@@ -67,7 +70,6 @@ win32 {
         /usr/include/vtk-5.8 \
         /usr/include/vtk-5.10 \
         /usr/include/vtk
-    INCLUDEPATH += /usr/include/CSXCAD
     LIBS += -lvtkCommon \
         -lvtkIO \
         -lvtksys \
