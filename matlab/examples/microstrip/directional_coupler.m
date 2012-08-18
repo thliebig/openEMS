@@ -13,7 +13,7 @@ function directional_coupler
 %
 % Tested with
 %  - Matlab 2010b
-%  - Octave 3.3.54
+%  - Octave 3.2.4
 %  - openEMS v0.0.17
 %
 % (C) 2010 Sebastian Held <sebastian.held@gmx.de>
@@ -157,9 +157,9 @@ FDTD = SetBoundaryCond( FDTD, BC );
 
 %% Write openEMS compatible xml-file
 if runSimulation
-    [~,~,~] = rmdir(Sim_Path,'s');
+    [dummy,dummy,dummy] = rmdir(Sim_Path,'s');
 end
-[~,~,~] = mkdir(Sim_Path);
+[dummy,dummy,dummy] = mkdir(Sim_Path);
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
 if showStructure
@@ -232,4 +232,30 @@ else
     plot( hg, [-1 1], [0 0], 'Color', color );
     axis equal
     axis off
+end
+
+
+function s = y2s(y, ZL)
+% S = y2s(Y, ZL)
+%
+% Admittance to Scattering transformation
+% for square matrices at multiple frequencies
+%
+% ZL defaults to 50 Ohm
+
+if nargin < 2
+    ZL = 50;
+end
+
+if size(size(y),2) > 2
+    nF = size(y,3);
+else
+    nF = 1;
+end
+
+I = diag(ones(1, size(y,2)))/ZL;
+
+for i=1:nF
+    %s(:,:,i) = inv(I+y(:,:,i)) * (I-y(:,:,i));
+    s(:,:,i) = (I+y(:,:,i)) \ (I-y(:,:,i));
 end
