@@ -84,12 +84,10 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 					if (m_CC_R0_included && (n==2) && (pos[0]==0))
 						disable_pos = true;
 
-					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::CONDUCTINGSHEET, false, &cs_sheet);
-					if (prop)
+					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), false, &cs_sheet);
+					CSPropConductingSheet* cs_prop = dynamic_cast<CSPropConductingSheet*>(prop);
+					if (cs_prop)
 					{
-						CSPropConductingSheet* cs_prop = dynamic_cast<CSPropConductingSheet*>(prop);
-						if (cs_prop==NULL)
-							return false; //sanity check, this should never happen
 						if (cs_sheet==NULL)
 							return false; //sanity check, this should never happen
 						if (cs_sheet->GetDimension()!=2)

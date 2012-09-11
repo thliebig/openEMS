@@ -151,7 +151,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_CC_R0_included && (n==2) && (pos[0]==0))
 							coord[1] = m_Op->GetDiscLine(1,0);
 
-						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
+						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetEpsPlasmaFreqWeighted(order,n,coord) * 2 * PI;
@@ -176,7 +176,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_Op->GetYeeCoords(n,pos,coord,true)==false)
 							continue;
 
-						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,CSProperties::LORENTZMATERIAL, true);
+						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetMuePlasmaFreqWeighted(order,n,coord) * 2 * PI;
