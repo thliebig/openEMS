@@ -32,28 +32,27 @@ VERSION=0.0.28
 win32 {
     CONFIG += console
     WIN32_LIB_ROOT = ..
-    # tinyxml
-    INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml
-    LIBS += -L$$WIN32_LIB_ROOT/tinyxml/release -ltinyxml2
-    # fparser
-    INCLUDEPATH += $$WIN32_LIB_ROOT/fparser
-    LIBS += -L$$WIN32_LIB_ROOT/fparser/release -lfparser4
     # CSXCAD
     INCLUDEPATH += $$WIN32_LIB_ROOT/CSXCAD
     LIBS += -L$$WIN32_LIB_ROOT/CSXCAD/release  -lCSXCAD0
+
+    # #3rd party libraries#
+    # tinyxml
+    INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml/include
+    LIBS += -L$$WIN32_LIB_ROOT/tinyxml/bin -ltinyxml2
+    # fparser
+    INCLUDEPATH += $$WIN32_LIB_ROOT/fparser/include
+    LIBS += -L$$WIN32_LIB_ROOT/fparser/bin -lfparser4
     # hdf5
     INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp
     LIBS += -L$$WIN32_LIB_ROOT/hdf5/lib -lhdf5
     # boost
     DEFINES += BOOST_THREAD_USE_LIB
     INCLUDEPATH += $$WIN32_LIB_ROOT/boost/include
-    LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
+    LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread -lboost_chrono -lboost_system
     # vtk
-    INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk \
-        $$WIN32_LIB_ROOT/vtk/Common \
-        $$WIN32_LIB_ROOT/vtk/Filtering \
-        $$WIN32_LIB_ROOT/vtk/IO
-     LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
+    INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk/include/vtk-5.10
+    LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
 }
 !win32 {
     LIBS += -lfparser

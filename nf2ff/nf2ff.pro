@@ -10,18 +10,19 @@ win32 {
 
     WIN32_LIB_ROOT = ../..
 
+    # #3rd party libraries#
     # tinyxml
-    INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml
-    LIBS += -L$$WIN32_LIB_ROOT/tinyxml/release -ltinyxml2
+    INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml/include
+    LIBS += -L$$WIN32_LIB_ROOT/tinyxml/bin -ltinyxml2
 
     # hdf5
-    INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include $$WIN32_LIB_ROOT/hdf5/include/cpp
+    INCLUDEPATH += $$WIN32_LIB_ROOT/hdf5/include
     LIBS += -L$$WIN32_LIB_ROOT/hdf5/lib -lhdf5
 
     # boost
     DEFINES += BOOST_THREAD_USE_LIB
     INCLUDEPATH += $$WIN32_LIB_ROOT/boost/include
-    LIBS += $$WIN32_LIB_ROOT/boost/lib/libboost_thread-mgw44-mt.lib
+    LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread -lboost_chrono -lboost_system
 }
 !win32 {
     LIBS += -lboost_thread-mt
