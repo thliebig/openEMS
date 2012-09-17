@@ -1,0 +1,11 @@
+Summary of most noticeable changes for version 0.0.29:
+-----------------------------------------------------
+  - Cylindrical sub-grids now fully support alpha-graded meshes
+  - Property Electrode has been renamed to Excitation
+      This doesn't have any effect on the Matlab/Octave interface,
+      but old *.xml files cannot be run with a current openEMS/CSXCAD version.
+  - Overall memory usage reduced during pre-processing
+  - New excitation: Total-field/scattered field (TFSF)
+  - New tutorial on radar cross section on a metallic sphere using the TFSF excitation
+  - official support for 64-bit windows version
+  - check for engine extensions MPI compatibility
