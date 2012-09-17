@@ -89,3 +89,19 @@ std::vector<float> SplitString2Float(std::string str, std::string delimiter)
 	}
 	return v_f;
 }
+
+std::vector<double> SplitString2Double(std::string str, std::string delimiter)
+{
+	std::vector<double> v_f;
+	std::vector<std::string> results;
+	boost::split(results, str, boost::is_any_of(delimiter));
+
+	for (size_t n=0;n<results.size();++n)
+	{
+		std::istringstream is(results.at(n));
+		double num;
+		if (is >> num)
+			v_f.push_back(num);
+	}
+	return v_f;
+}

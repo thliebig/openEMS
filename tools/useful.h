@@ -31,5 +31,6 @@ double CalcNyquistFrequency(unsigned int nyquist, double dT);
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty=false);
 
 std::vector<float> SplitString2Float(std::string str, std::string delimiter=",");
+std::vector<double> SplitString2Double(std::string str, std::string delimiter=",");
 
 #endif // USEFUL_H
