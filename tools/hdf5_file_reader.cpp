@@ -504,6 +504,15 @@ bool HDF5_File_Reader::ReadFrequencies(vector<float> &frequencies)
 	return ReadAttribute("/FieldData/FD","frequency",frequencies);
 }
 
+bool HDF5_File_Reader::ReadFrequencies(vector<double> &frequencies)
+{
+	if (IsValid()==false)
+		return false;
+
+	return ReadAttribute("/FieldData/FD","frequency",frequencies);
+}
+
+
 complex<float>**** HDF5_File_Reader::GetFDVectorData(size_t idx, unsigned int data_size[])
 {
 	hsize_t nDim;

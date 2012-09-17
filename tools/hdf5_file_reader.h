@@ -37,7 +37,7 @@ public:
 
 	/*!
 	  Get time-domain data stored at /FieldData/TD/<NUMBER_OF_TS>
-	  \param[in] ids	time step index to extract
+	  \param[in]  idx	time step index to extract
 	  \param[out] time	time attribute for the given timestep
 	  \param[out] data_size data size found
 	  \return field data found in given timestep, caller must delete array, returns NULL if timestep was not found
@@ -46,6 +46,14 @@ public:
 
 	unsigned int GetNumFrequencies();
 	bool ReadFrequencies(std::vector<float> &frequencies);
+	bool ReadFrequencies(std::vector<double> &frequencies);
+
+	/*!
+	  Get frequency-domain data stored at "/FieldData/FD/f<idx>_real" and "/FieldData/FD/f<idx>_imag"
+	  \param[in]  idx	frequency index to extract
+	  \param[out] data_size data size found
+	  \return complex field data found for the given frequency, caller must delete array, returns NULL if frequency was not found
+	  */
 	std::complex<float>**** GetFDVectorData(size_t idx, unsigned int data_size[4]);
 
 	/*!
