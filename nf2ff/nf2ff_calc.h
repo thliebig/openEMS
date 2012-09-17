@@ -47,10 +47,10 @@ typedef struct
 	complex<float>**** Ms;
 
 	//local working data OUT
-	complex<float>** m_Nt;
-	complex<float>** m_Np;
-	complex<float>** m_Lt;
-	complex<float>** m_Lp;
+	complex<double>** m_Nt;
+	complex<double>** m_Np;
+	complex<double>** m_Lt;
+	complex<double>** m_Lp;
 
 } nf2ff_data;
 
@@ -75,12 +75,12 @@ public:
 	nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vector<float> center);
 	~nf2ff_calc();
 
-	float GetTotalRadPower() const {return m_radPower;}
-	float GetMaxDirectivity() const {return m_maxDir;}
+	double GetTotalRadPower() const {return m_radPower;}
+	double GetMaxDirectivity() const {return m_maxDir;}
 
-	complex<float>** GetETheta() const {return m_E_theta;}
-	complex<float>** GetEPhi() const {return m_E_phi;}
-	float** GetRadPower() const {return m_P_rad;}
+	complex<double>** GetETheta() const {return m_E_theta;}
+	complex<double>** GetEPhi() const {return m_E_phi;}
+	double** GetRadPower() const {return m_P_rad;}
 
 	unsigned int GetNumThreads() const {return m_numThreads;}
 	void SetNumThreads(unsigned int n) {m_numThreads=n;}
@@ -91,14 +91,14 @@ protected:
 	float m_freq;
 	float m_radius;
 
-	float m_radPower;
-	float m_maxDir;
+	double m_radPower;
+	double m_maxDir;
 
-	complex<float>** m_E_theta;
-	complex<float>** m_E_phi;
-	complex<float>** m_H_theta;
-	complex<float>** m_H_phi;
-	float** m_P_rad;
+	complex<double>** m_E_theta;
+	complex<double>** m_E_phi;
+	complex<double>** m_H_theta;
+	complex<double>** m_H_phi;
+	double** m_P_rad;
 
 	float m_centerCoord[3];
 	unsigned int m_numTheta;

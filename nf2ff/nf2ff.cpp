@@ -466,8 +466,8 @@ bool nf2ff::Write2HDF5(string filename)
 	size_t pos = 0;
 	size_t datasize[2]={m_numPhi,m_numTheta};
 	size_t size = datasize[0]*datasize[1];
-	float* buffer = new float[size];
-	complex<float>** field_data;
+	double* buffer = new double[size];
+	complex<double>** field_data;
 	string field_names[2]={"E_theta", "E_phi"};
 	for (int n=0;n<2;++n)
 	{
@@ -515,7 +515,7 @@ bool nf2ff::Write2HDF5(string filename)
 		stringstream ss;
 		ss << "f" << fn;
 		pos = 0;
-		float** field_data = GetRadPower(fn);
+		double** field_data = GetRadPower(fn);
 		for (size_t j=0;j<m_numPhi;++j)
 			for (size_t i=0;i<m_numTheta;++i)
 			{
@@ -533,7 +533,7 @@ bool nf2ff::Write2HDF5(string filename)
 	//write frequency attribute
 	hdf_file.WriteAtrribute("/nf2ff", "Frequency",m_freq);
 
-	buffer = new float[m_freq.size()];
+	buffer = new double[m_freq.size()];
 	//write radiated power attribute
 	for (size_t fn=0;fn<m_freq.size();++fn)
 		buffer[fn] = GetTotalRadPower(fn);

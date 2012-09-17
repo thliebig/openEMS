@@ -95,10 +95,10 @@ void nf2ff_calc_thread::operator()()
 		}
 	}
 
-	complex<float>** m_Nt=m_data.m_Nt;
-	complex<float>** m_Np=m_data.m_Np;
-	complex<float>** m_Lt=m_data.m_Lt;
-	complex<float>** m_Lp=m_data.m_Lp;
+	complex<double>** m_Nt=m_data.m_Nt;
+	complex<double>** m_Np=m_data.m_Np;
+	complex<double>** m_Lt=m_data.m_Lt;
+	complex<double>** m_Lp=m_data.m_Lp;
 
 	float center[3] = {m_nf_calc->m_centerCoord[0],m_nf_calc->m_centerCoord[1],m_nf_calc->m_centerCoord[2]};
 	if (mesh_type==1)
@@ -174,11 +174,11 @@ nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vecto
 		m_phi[n]=phi.at(n);
 
 	unsigned int numLines[2] = {m_numTheta, m_numPhi};
-	m_E_theta = Create2DArray<std::complex<float> >(numLines);
-	m_E_phi = Create2DArray<std::complex<float> >(numLines);
-	m_H_theta = Create2DArray<std::complex<float> >(numLines);
-	m_H_phi = Create2DArray<std::complex<float> >(numLines);
-	m_P_rad = Create2DArray<float>(numLines);
+	m_E_theta = Create2DArray<std::complex<double> >(numLines);
+	m_E_phi = Create2DArray<std::complex<double> >(numLines);
+	m_H_theta = Create2DArray<std::complex<double> >(numLines);
+	m_H_phi = Create2DArray<std::complex<double> >(numLines);
+	m_P_rad = Create2DArray<double>(numLines);
 
 	if (center.size()==3)
 	{
@@ -285,8 +285,8 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 		}
 	}
 
-	complex<float> power = 0;
-	float area;
+	complex<double> power = 0;
+	double area;
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
@@ -318,10 +318,10 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 		thread_data[n].H_field=H_field;
 		thread_data[n].Js=Js;
 		thread_data[n].Ms=Ms;
-		thread_data[n].m_Nt=Create2DArray<complex<float> >(numAngles);
-		thread_data[n].m_Np=Create2DArray<complex<float> >(numAngles);
-		thread_data[n].m_Lt=Create2DArray<complex<float> >(numAngles);
-		thread_data[n].m_Lp=Create2DArray<complex<float> >(numAngles);
+		thread_data[n].m_Nt=Create2DArray<complex<double> >(numAngles);
+		thread_data[n].m_Np=Create2DArray<complex<double> >(numAngles);
+		thread_data[n].m_Lt=Create2DArray<complex<double> >(numAngles);
+		thread_data[n].m_Lp=Create2DArray<complex<double> >(numAngles);
 
 		boost::thread *t = new boost::thread( nf2ff_calc_thread(this,start,stop,n,thread_data[n]) );
 
