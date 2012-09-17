@@ -3,21 +3,11 @@
 
 todo / mandatory for v0.1.0:
 - more examples and lots of testing...
-- pml
-- dump fields only on box surfaces
-- dump fields at certain timesteps/frequencies
-- field visualization (matlab)
-- nf2ff calc & visualization (matlab)
+- improvments and testing for MPI engine
 
 wishes:
-- location dependend excitation given by a file (e.g. simulated with comsol or complicated formula via matlab)
-- dispersive material
-- optimized operator/engine
-- multithreaded processing (should be easy enough)
-- more output file-formats (e.g. hdf5)
-
-feature-requests:
-- port libraries
+- location dependend excitation given by a file (e.g. mode-profile simulated with comsol)
+- more import filter (e.g. gerber import)
 
 outlook:
 - incorporate a static FD-solver into openEMS
