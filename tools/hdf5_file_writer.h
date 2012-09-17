@@ -33,14 +33,23 @@ public:
 	bool WriteRectMesh(unsigned int const* numLines, float const* const* discLines, int MeshType=0, float scaling=1);
 
 	bool WriteScalarField(std::string dataSetName, float const* const* const* field, size_t datasize[3]);
+	bool WriteScalarField(std::string dataSetName, double const* const* const* field, size_t datasize[3]);
+
 	bool WriteScalarField(std::string dataSetName, std::complex<float> const* const* const* field, size_t datasize[3]);
+	bool WriteScalarField(std::string dataSetName, std::complex<double> const* const* const* field, size_t datasize[3]);
+
 	bool WriteVectorField(std::string dataSetName, float const* const* const* const* field, size_t datasize[3]);
+	bool WriteVectorField(std::string dataSetName, double const* const* const* const* field, size_t datasize[3]);
+
 	bool WriteVectorField(std::string dataSetName, std::complex<float> const* const* const* const* field, size_t datasize[3]);
+	bool WriteVectorField(std::string dataSetName, std::complex<double> const* const* const* const* field, size_t datasize[3]);
 
 	bool WriteData(std::string dataSetName, float const* field_buf, size_t dim, size_t* datasize);
+	bool WriteData(std::string dataSetName, double const* field_buf, size_t dim, size_t* datasize);
 
 	bool WriteAtrribute(std::string locName, std::string attr_name, void const* value, hsize_t size, hid_t mem_type);
 	bool WriteAtrribute(std::string locName, std::string attr_name, float const* value, hsize_t size);
+	bool WriteAtrribute(std::string locName, std::string attr_name, double const* value, hsize_t size);
 	bool WriteAtrribute(std::string locName, std::string attr_name, std::vector<float> values);
 	bool WriteAtrribute(std::string locName, std::string attr_name, std::vector<double> values);
 	bool WriteAtrribute(std::string locName, std::string attr_name, float value);
@@ -53,6 +62,7 @@ protected:
 	std::string m_Group;
 
 	hid_t OpenGroup(hid_t hdf5_file, std::string group);
+	bool WriteData(std::string dataSetName, hid_t mem_type, void const* field_buf, size_t dim, size_t* datasize);
 };
 
 #endif // HDF5_FILE_WRITER_H
