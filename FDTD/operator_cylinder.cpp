@@ -307,7 +307,10 @@ void Operator_Cylinder::ApplyMagneticBC(bool* dirs)
 void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)
 {
 	if (op_ext->IsCylinderCoordsSave(CC_closedAlpha, CC_R0_included))
-		m_Op_exts.push_back(op_ext);
+		Operator_Multithread::AddExtension(op_ext);
 	else
+	{
+		delete op_ext;
 		cerr << "Operator_Cylinder::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylinder-coords!! skipping...!" << endl;
+	}
 }
