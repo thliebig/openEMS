@@ -41,6 +41,8 @@ public:
 	//! Returns always true if base grid, Create_UPML will create proper child pml extensions.
 	virtual bool IsCylindricalMultiGridSave(bool child) const {if (child) return false; return true;}
 
+	virtual bool IsMPISave() const {return true;}
+
 	void SetBoundaryCondition(const int* BCs, const unsigned int size[6]);
 
 	void SetRange(const unsigned int start[3], const unsigned int stop[3]);

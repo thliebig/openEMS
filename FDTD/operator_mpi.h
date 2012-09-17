@@ -52,6 +52,8 @@ public:
 
 	virtual unsigned int GetNumberOfLines(int ny) const;
 
+	virtual void AddExtension(Operator_Extension* op_ext);
+
 protected:
 	Operator_MPI();
 	bool m_MPI_Enabled;

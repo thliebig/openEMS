@@ -42,6 +42,7 @@ public:
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const;
 	virtual bool IsCylindricalMultiGridSave(bool child) const;
+	virtual bool IsMPISave() const {return true;}
 
 	virtual string GetExtensionName() const {return string("Mur ABC Extension");}
 

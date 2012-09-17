@@ -19,6 +19,7 @@
 #include "operator_sse_compressed.h"
 #include "engine_sse_compressed.h"
 #include "engine_mpi.h"
+#include "extensions/operator_extension.h"
 #include "tools/array_ops.h"
 #include "tools/useful.h"
 #include "mpi.h"
@@ -162,6 +163,21 @@ unsigned int Operator_MPI::GetNumberOfLines(int ny) const
 
 	return Operator_SSE_Compressed::GetNumberOfLines(ny)-1;
 }
+
+void Operator_MPI::AddExtension(Operator_Extension* op_ext)
+{
+	if (m_MPI_Enabled==false)
+		return Operator_SSE_Compressed::AddExtension(op_ext);
+
+	if (op_ext->IsMPISave())
+		Operator_SSE_Compressed::AddExtension(op_ext);
+	else
+	{
+		delete op_ext;
+		cerr << "Operator_MPI::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with MPI!! skipping...!" << endl;
+	}
+}
+
 
 string Operator_MPI::PrependRank(string name)
 {

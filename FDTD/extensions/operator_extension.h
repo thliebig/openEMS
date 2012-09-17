@@ -56,6 +56,9 @@ public:
 	//! The cylindrical multi grid operator will check whether the extension is save to use. Default is false. Derive this method to override.
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return false;}
 
+	//! The MPI operator (if enabled) will check whether the extension is compatible with MPI. Default is false. Derive this method to override.
+	virtual bool IsMPISave() const {return false;}
+
 	virtual string GetExtensionName() const {return string("Abstract Operator Extension Base Class");}
 
 	virtual void ShowStat(ostream &ostr) const;

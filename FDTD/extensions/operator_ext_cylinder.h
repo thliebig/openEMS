@@ -38,6 +38,9 @@ public:
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 
+	// FIXME, this extension is not save or unknown to be save to use with MPI
+	virtual bool IsMPISave() const {return false;}
+
 	virtual std::string GetExtensionName() const {return std::string("Extension for the Cylinder-Coords Operator");}
 
 	virtual void ShowStat(ostream &ostr) const;
