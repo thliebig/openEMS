@@ -61,7 +61,7 @@ end
 
 % extract FD data
 try
-    hdf_fielddata.FD.frequency = double(hdf5read(file,'/FieldData/FD','frequency'));
+    hdf_fielddata.FD.frequency = ReadHDF5Attribute(file,'/FieldData/FD','frequency');
 catch err
 %     disp(err)
     return
@@ -81,12 +81,12 @@ if isfield(hdf.FieldData,'TD')
     for n=1:numel(hdf_fielddata_names)
         hdf_fielddata.TD.values{n} = hdf.FieldData.TD.(hdf_fielddata_names{n});
         hdf_fielddata.TD.names{n} = ['/FieldData/TD/' hdf_fielddata_names{n}(2:end)];
-        hdf_fielddata.TD.time(n) = h5readatt_octave(file, hdf_fielddata.TD.names{n},'time');
+        hdf_fielddata.TD.time(n) = ReadHDF5Attribute(file, hdf_fielddata.TD.names{n},'time');
     end
 end
 if isfield(hdf.FieldData,'FD')
     %read FD data
-    hdf_fielddata.FD.frequency = h5readatt_octave(file,'/FieldData/FD/','frequency');
+    hdf_fielddata.FD.frequency = ReadHDF5Attribute(file,'/FieldData/FD/','frequency');
     for n=1:numel(hdf_fielddata.FD.frequency)
         hdf_fielddata.FD.values{n} = double(hdf.FieldData.FD.(['f' int2str(n-1) '_real']) +1i*hdf.FieldData.FD.(['f' int2str(n-1) '_imag']) );
     end
