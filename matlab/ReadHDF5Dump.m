@@ -1,14 +1,15 @@
 function [field mesh] = ReadHDF5Dump(file, varargin)
 %[field mesh] = ReadHDF5Dump(file, varargin)
-% 
+%
 %   Read a hdf5 field dump, including an interpolation and frequency domain
 %   transformation.
-% 
+%
 %   possible arguments:
 %       'Range'             see GetField_Range
 %       'Interpolation'     see GetField_Interpolation
 %       'Frequency'         see GetField_TD2FD
-%   
+%       'CloseAlpha': 0 (default) / 1
+%
 %   example:
 %   [field mesh] = ReadHDF5Dump('Et.h5');
 %   or
@@ -26,22 +27,43 @@ function [field mesh] = ReadHDF5Dump(file, varargin)
 field = ReadHDF5FieldData(file);
 mesh = ReadHDF5Mesh(file);
 
-if (nargin>1)
-    for n=1:2:(nargin-1)
-        if (strcmp(varargin{n},'Range')==1);
-            [field mesh] = GetField_Range(field, mesh, varargin{n+1});
-        end
+if (nargin<2)
+    return
+end
+
+% evaluate arguments in a specific order
+for n=1:2:(nargin-1)
+    if (strcmp(varargin{n},'Range')==1);
+        [field mesh] = GetField_Range(field, mesh, varargin{n+1});
     end
-    
-    for n=1:2:(nargin-1)
-        if (strcmp(varargin{n},'Interpolation')==1);
-            [field mesh] = GetField_Interpolation(field,mesh,varargin{n+1});
-        end
+end
+
+for n=1:2:(nargin-1)
+    if (strcmp(varargin{n},'Interpolation')==1);
+        [field mesh] = GetField_Interpolation(field,mesh,varargin{n+1});
     end
-    
-    for n=1:2:(nargin-1)
-        if (strcmp(varargin{n},'Frequency')==1);
-            field = GetField_TD2FD(field,varargin{n+1});
+end
+
+for n=1:2:(nargin-1)
+    if (strcmp(varargin{n},'Frequency')==1);
+        field = GetField_TD2FD(field,varargin{n+1});
+    end
+end
+
+for n=1:2:(nargin-1)
+    if (strcmp(varargin{n},'CloseAlpha')==1);
+        if ((varargin{n+1}==1) && (mesh.type==1))
+            mesh.lines{2}(end+1)=mesh.lines{2}(1)+2*pi;
+            if (isfield(field,'TD'))
+                for n = 1:numel(field.TD.values)
+                    field.TD.values{n}(:,end+1,:,:) =  field.TD.values{n}(:,1,:,:);
+                end
+            end
+            if (isfield(field,'FD'))
+                for n = 1:numel(field.FD.values)
+                    field.FD.values{n}(:,end+1,:,:) =  field.FD.values{n}(:,1,:,:);
+                end
+            end
         end
     end
 end
