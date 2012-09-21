@@ -65,12 +65,31 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  return retval;
 	}
 
-	size_t numVal = H5Aget_storage_size(attr)/sizeof(float);
-	float value[numVal];
-	if (H5Aread(attr, H5T_NATIVE_FLOAT, value)<0)
+	size_t numVal = H5Aget_storage_size(attr)/H5Tget_size(type);
+	double value[numVal];
+	if (H5Tget_size(type)==sizeof(float))
 	{
-	  error("h5readatt_octave: reading the given Attribute failed");
-	  return retval;
+	  float f_value[numVal];
+	  if (H5Aread(attr, H5T_NATIVE_FLOAT, f_value)<0)
+	  {
+	    error("h5readatt_octave: reading the given Attribute failed");
+	    return retval;
+	  }
+	  for (size_t n=0;n<numVal;++n)
+	    value[n] = f_value[n];
+	}
+	else if (H5Tget_size(type)==sizeof(double))
+	{
+	  if (H5Aread(attr, H5T_NATIVE_DOUBLE, value)<0)
+	  {
+	    error("h5readatt_octave: reading the given Attribute failed");
+	    return retval;
+	  }
+	}
+	else
+	{
+	    error("h5readatt_octave: reading the given Attribute failed: unknown type");
+	    return retval;
 	}
 
 	H5Aclose(attr);
