@@ -55,17 +55,24 @@ if (do_FD_dump)
     if (~isfield(field,'FD'))
         warning('openEMS:ConvertHDF5_VTK','no FD data found skipping frequency domian vtk dump...');
     else
-        ph = linspace(0,360,phase_N+1);
-        ph = ph(1:end-1);
-        for n = 1:numel(field.FD.frequency)
-            for p = ph
-                filename = [vtk_prefix '_' num2str(field.FD.frequency(n)) '_' num2str(p,'%03d') '.vtk' ];
-                Dump2VTK(filename, real(field.FD.values{n}*exp(1j*p*pi/180)), mesh, fieldname, varargin{:});
+        if (field.FD.DataType==1) % dump complex value FD data
+            ph = linspace(0,360,phase_N+1);
+            ph = ph(1:end-1);
+            for n = 1:numel(field.FD.frequency)
+                for p = ph
+                    filename = [vtk_prefix '_' num2str(field.FD.frequency(n)) '_' num2str(p,'%03d') '.vtk' ];
+                    Dump2VTK(filename, real(field.FD.values{n}*exp(1j*p*pi/180)), mesh, fieldname, varargin{:});
+                end
+                filename = [vtk_prefix '_' num2str(field.FD.frequency(n)) '_abs.vtk' ];
+                Dump2VTK(filename, abs(field.FD.values{n}), mesh, fieldname, varargin{:});
+                filename = [vtk_prefix '_' num2str(field.FD.frequency(n)) '_ang.vtk' ];
+                Dump2VTK(filename, angle(field.FD.values{n}), mesh, fieldname, varargin{:});
             end
-            filename = [vtk_prefix '_' num2str(field.FD.frequency(n)) '_abs.vtk' ];
-            Dump2VTK(filename, abs(field.FD.values{n}), mesh, fieldname, varargin{:});
-            filename = [vtk_prefix '_' num2str(field.FD.frequency(n)) '_ang.vtk' ];
-            Dump2VTK(filename, angle(field.FD.values{n}), mesh, fieldname, varargin{:});
+        else % dump real value FD data
+            for n = 1:numel(field.FD.frequency)
+                filename = [vtk_prefix '_' num2str(field.FD.frequency(n)) '.vtk' ];
+                Dump2VTK(filename, real(field.FD.values{n}), mesh, fieldname, varargin{:});
+            end
         end
     end
 end

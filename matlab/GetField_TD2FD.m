@@ -44,3 +44,5 @@ for n=1:numTS
     end
 end
 
+field.FD.DataType=1;
+
