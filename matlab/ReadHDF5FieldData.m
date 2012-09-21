@@ -25,7 +25,6 @@ function hdf_fielddata = ReadHDF5FieldData(file)
 %
 % See also ReadHDF5Mesh ReadHDF5Dump
 
-isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
 if isOctave
     hdf_fielddata = ReadHDF5FieldData_octave(file);
     return
