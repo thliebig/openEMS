@@ -9,3 +9,4 @@ Summary of most noticeable changes for version 0.0.29:
   - New tutorial on radar cross section on a metallic sphere using the TFSF excitation
   - official support for 64-bit windows version
   - check for engine extensions MPI compatibility
+  - CSXCAD: support for new CSXGeomPlot export options (see help for more infos)
