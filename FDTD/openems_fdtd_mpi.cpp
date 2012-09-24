@@ -517,5 +517,7 @@ void openEMS_FDTD_MPI::RunFDTD()
 	{
 		cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
 		cout << "Speed: " << speed*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff << " MCells/s " << endl;
+
+		DumpStatistics("openEMS_stats.txt", t_diff);
 	}
 }

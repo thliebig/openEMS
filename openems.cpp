@@ -17,6 +17,8 @@
 
 #include "openems.h"
 #include <iomanip>
+#include <iostream>
+#include <fstream>
 #include "tools/array_ops.h"
 #include "tools/useful.h"
 #include "FDTD/operator_cylinder.h"
@@ -66,6 +68,7 @@ openEMS::openEMS()
 	DebugOp = false;
 	m_debugCSX = false;
 	m_debugBox = m_debugPEC = m_no_simulation = false;
+	m_DumpStats = false;
 	endCrit = 1e-6;
 	m_OverSampling = 4;
 
@@ -180,6 +183,12 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	{
 		cout << "openEMS - disabling simulation => preprocessing only" << endl;
 		m_no_simulation = true;
+		return true;
+	}
+	else if (strcmp(argv,"--dump-statistics")==0)
+	{
+		cout << "openEMS - dump simulation statistics to 'openEMS_stats.txt'" << endl;
+		m_DumpStats = true;
 		return true;
 	}
 
@@ -843,4 +852,28 @@ void openEMS::RunFDTD()
 
 	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
 	cout << "Speed: " << speed*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff << " MCells/s " << endl;
+
+	DumpStatistics("openEMS_stats.txt", t_diff);
+}
+
+bool openEMS::DumpStatistics(const string& filename, double time)
+{
+	ofstream stat_file;
+	stat_file.open(filename.c_str());
+
+	if (!stat_file.is_open())
+	{
+		cerr << "openEMS::DumpStatistics: Error, opening file failed..." << endl;
+		return false;
+	}
+	stat_file << std::setprecision( 16 );
+	stat_file << FDTD_Op->GetNumberCells() << "\t% number of cells" << endl;
+	stat_file << FDTD_Op->GetTimestep() << "\t% timestep (s)" << endl;
+	stat_file << FDTD_Eng->GetNumberOfTimesteps() << "\t% number of iterations" << endl;
+	stat_file << FDTD_Eng->GetNumberOfTimesteps()*FDTD_Op->GetTimestep() << "\t% total numercial time (s)" << endl;
+	stat_file << time << "\t% simulation time (s)" << endl;
+	stat_file << (double)FDTD_Op->GetNumberCells()*(double)FDTD_Eng->GetNumberOfTimesteps()/time << "\t% speed (cells/s)" << endl;
+
+	stat_file.close();
+	return true;
 }

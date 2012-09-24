@@ -74,11 +74,15 @@ protected:
 
 	//! Number of Timesteps
 	unsigned int NrTS;
+
+	// some command line flags
 	bool Enable_Dumps;
 	bool DebugMat;
 	bool DebugOp;
 	bool m_debugCSX;
+	bool m_DumpStats;
 	bool m_debugBox, m_debugPEC, m_no_simulation;
+
 	double endCrit;
 	int m_OverSampling;
 	Operator* FDTD_Op;
@@ -108,6 +112,9 @@ protected:
 
 	//! Setup all processings.
 	virtual bool SetupProcessing();
+
+	//! Dump statistics to file
+	virtual bool DumpStatistics(const string& filename, double time);
 };
 
 #endif // OPENEMS_H
