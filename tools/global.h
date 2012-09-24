@@ -26,6 +26,11 @@ class Global
 {
 public:
 	Global();
+
+	//! Show all possible (global) command line arguments
+	void ShowArguments(std::ostream& ostr, std::string front=std::string());
+
+	//! Parse the given command line arguments
 	bool parseCommandLineArgument( const char *argv );
 
 	bool showProbeDiscretization() const {return m_showProbeDiscretization;}
@@ -34,8 +39,6 @@ public:
 	bool NativeFieldDumps() const {return m_nativeFieldDumps;}
 	//! Set dumps to use native fields.
 	void SetNativeFieldDumps(bool val) {m_nativeFieldDumps=val;}
-
-	void ShowArguments(std::ostream& ostr, std::string front=std::string());
 
 	//! Set the verbose level
 	void SetVerboseLevel(int level) {m_VerboseLevel=level;m_SavedVerboseLevel=level;}
