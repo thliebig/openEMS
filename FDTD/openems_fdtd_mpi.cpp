@@ -449,14 +449,18 @@ void openEMS_FDTD_MPI::RunFDTD()
 	m_ProcField->AddStep(maxExcite);
 
 	int prevTS=0,currTS=0;
-	double speed = m_NumberCells/1e6;
+	double numCells = FDTD_Op->GetNumberCells();
+	double speed = 0;
 	double t_diff;
+	double t_run;
 
 	timeval currTime;
 	gettimeofday(&currTime,NULL);
 	timeval startTime = currTime;
 	timeval prevTime= currTime;
 
+	if (m_DumpStats)
+		InitRunStatistics(__OPENEMS_RUN_STAT_FILE__);
 	//*************** simulate ************//
 	PA->PreProcess();
 	int step = GetNextStep();
@@ -484,13 +488,18 @@ void openEMS_FDTD_MPI::RunFDTD()
 				currE = CalcEnergy();
 			if (m_MyID==0)
 			{
-				cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS ;
-				cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
+				t_run = CalcDiffTime(currTime,startTime);
+				speed = numCells*(currTS-prevTS)/t_diff;
+				cout << "[@" << FormatTime(t_run)  <<  "] Timestep: " << setw(12)  << currTS ;
+				cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 				cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(m_EnergyDecrement)) << "dB)" << endl;
 
 				//set step to zero to abort simulation and send to all
 				if (m_EnergyDecrement<endCrit)
 					step=0;
+
+				if (m_DumpStats)
+					DumpRunStatistics(__OPENEMS_RUN_STAT_FILE__, t_run, currTS, speed, currE);
 			}
 
 			MPI_Bcast(&step, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -516,8 +525,9 @@ void openEMS_FDTD_MPI::RunFDTD()
 	if (m_MyID==0)
 	{
 		cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
-		cout << "Speed: " << speed*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff << " MCells/s " << endl;
+		cout << "Speed: " << numCells*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff*1e-6 << " MCells/s " << endl;
 
-		DumpStatistics("openEMS_stats.txt", t_diff);
+		if (m_DumpStats)
+			DumpStatistics(__OPENEMS_STAT_FILE__, t_diff);
 	}
 }

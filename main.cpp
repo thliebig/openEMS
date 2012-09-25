@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 #endif
 		cout << "\t--numThreads=<n>\tForce use n threads for multithreaded engine (needs: --engine=multithreaded)" << endl;
 		cout << "\t--no-simulation\t\tonly run preprocessing; do not simulate" << endl;
-		cout << "\t--dump-statistics\tdump simulation statistics to 'openEMS_stats.txt'" << endl;
+		cout << "\t--dump-statistics\tdump simulation statistics to '" << __OPENEMS_RUN_STAT_FILE__ << "' and '" << __OPENEMS_STAT_FILE__ << "'" << endl;
 		cout << "\n\t Additional global arguments " << endl;
 		g_settings.ShowArguments(cout,"\t");
 		cout << endl;

@@ -22,6 +22,9 @@
 #include <sys/time.h>
 #include <time.h>
 
+#define __OPENEMS_STAT_FILE__ "openEMS_stats.txt"
+#define __OPENEMS_RUN_STAT_FILE__ "openEMS_run_stats.txt"
+
 using namespace std;
 
 class Operator;
@@ -115,6 +118,10 @@ protected:
 
 	//! Dump statistics to file
 	virtual bool DumpStatistics(const string& filename, double time);
+
+	//! Dump run statistivs to file
+	virtual bool InitRunStatistics(const string& filename);
+	virtual bool DumpRunStatistics(const string& filename, double time, unsigned int ts, double speed, double energy);
 };
 
 #endif // OPENEMS_H

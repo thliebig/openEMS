@@ -187,7 +187,7 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	}
 	else if (strcmp(argv,"--dump-statistics")==0)
 	{
-		cout << "openEMS - dump simulation statistics to 'openEMS_stats.txt'" << endl;
+		cout << "openEMS - dump simulation statistics to '" << __OPENEMS_RUN_STAT_FILE__ << "' and '" << __OPENEMS_STAT_FILE__ << "'" << endl;
 		m_DumpStats = true;
 		return true;
 	}
@@ -790,14 +790,18 @@ void openEMS::RunFDTD()
 
 	double change=1;
 	int prevTS=0,currTS=0;
-	double speed = FDTD_Op->GetNumberCells()/1e6;
+	double numCells = FDTD_Op->GetNumberCells();
+	double speed = 0;
 	double t_diff;
+	double t_run;
 
 	timeval currTime;
 	gettimeofday(&currTime,NULL);
 	timeval startTime = currTime;
 	timeval prevTime= currTime;
 
+	if (m_DumpStats)
+		InitRunStatistics(__OPENEMS_RUN_STAT_FILE__);
 	//*************** simulate ************//
 
 	PA->PreProcess();
@@ -822,13 +826,16 @@ void openEMS::RunFDTD()
 		gettimeofday(&currTime,NULL);
 
 		t_diff = CalcDiffTime(currTime,prevTime);
+
 		if (t_diff>4)
 		{
 			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
 				maxE=currE;
-			cout << "[@" << FormatTime(CalcDiffTime(currTime,startTime))  <<  "] Timestep: " << setw(12)  << currTS ;
-			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*(currTS-prevTS)/t_diff << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
+			t_run = CalcDiffTime(currTime,startTime);
+			speed = numCells*(currTS-prevTS)/t_diff;
+			cout << "[@" <<  FormatTime(t_run) <<  "] Timestep: " << setw(12)  << currTS ;
+			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 			if (maxE)
 				change = currE/maxE;
 			cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
@@ -836,6 +843,9 @@ void openEMS::RunFDTD()
 			prevTS=currTS;
 
 			PA->FlushNext();
+
+			if (m_DumpStats)
+				DumpRunStatistics(__OPENEMS_RUN_STAT_FILE__, t_run, currTS, speed, currE);
 		}
 	}
 	if ((change>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))
@@ -851,9 +861,10 @@ void openEMS::RunFDTD()
 	t_diff = CalcDiffTime(currTime,startTime);
 
 	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
-	cout << "Speed: " << speed*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff << " MCells/s " << endl;
+	cout << "Speed: " << numCells*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff*1e-6 << " MCells/s " << endl;
 
-	DumpStatistics("openEMS_stats.txt", t_diff);
+	if (m_DumpStats)
+		DumpStatistics(__OPENEMS_STAT_FILE__, t_diff);
 }
 
 bool openEMS::DumpStatistics(const string& filename, double time)
@@ -874,6 +885,36 @@ bool openEMS::DumpStatistics(const string& filename, double time)
 	stat_file << time << "\t% simulation time (s)" << endl;
 	stat_file << (double)FDTD_Op->GetNumberCells()*(double)FDTD_Eng->GetNumberOfTimesteps()/time << "\t% speed (cells/s)" << endl;
 
+	stat_file.close();
+	return true;
+}
+
+bool openEMS::InitRunStatistics(const string& filename)
+{
+	ofstream stat_file;
+	stat_file.open(filename.c_str(), ios_base::out);
+
+	if (!stat_file.is_open())
+	{
+		cerr << "openEMS::InitRunStatistics: Error, opening file failed..." << endl;
+		return false;
+	}
+	stat_file << "%time\ttimestep\tspeed\tenergy" << endl;
+	stat_file.close();
+	return true;
+}
+
+bool openEMS::DumpRunStatistics(const string& filename, double time, unsigned int ts, double speed, double energy)
+{
+	ofstream stat_file;
+	stat_file.open(filename.c_str(), ios_base::app);
+
+	if (!stat_file.is_open())
+	{
+		cerr << "openEMS::DumpRunStatistics: Error, opening file failed..." << endl;
+		return false;
+	}
+	stat_file << time << "\t" << ts << "\t" << speed << "\t" << energy << endl;
 	stat_file.close();
 	return true;
 }
