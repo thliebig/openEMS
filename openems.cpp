@@ -652,6 +652,9 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Opts->QueryDoubleAttribute("TimeStep",&timestep);
 	if (timestep)
 		FDTD_Op->SetTimestep(timestep);
+	double timestepfactor=0;
+	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&timestepfactor)==TIXML_SUCCESS)
+		FDTD_Op->SetTimestepFactor(timestepfactor);
 
 	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));

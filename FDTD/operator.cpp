@@ -84,6 +84,7 @@ void Operator::Init()
 	}
 
 	m_Exc = 0;
+	m_TimeStepFactor = 1;
 }
 
 void Operator::Delete()
@@ -891,6 +892,8 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	else
 		CalcTimestep();
 
+	dT*=m_TimeStepFactor;
+
 	m_Exc->Reset(dT);
 
 	InitOperator();
@@ -1482,6 +1485,18 @@ bool Operator::Calc_EC()
 	}
 
 	return true;
+}
+
+void Operator::SetTimestepFactor(double factor)
+{
+	if ((factor<=0) || (factor>1))
+	{
+		cerr << "Operator::SetTimestepFactor: Warning, invalid timestep factor, skipping!" << endl;
+		return;
+	}
+
+	cout << "Operator::SetTimestepFactor: Setting timestep factor to " << factor << endl;
+	m_TimeStepFactor=factor;
 }
 
 double Operator::CalcTimestep()

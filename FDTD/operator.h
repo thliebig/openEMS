@@ -78,7 +78,9 @@ public:
 
 	//! Set a forced timestep to use by the operator
 	virtual void SetTimestep(double ts) {dT = ts;}
+	virtual void SetTimestepFactor(double factor);
 	bool GetTimestepValid() const {return !m_InvaildTimestep;}
+
 	virtual double GetNumberCells() const;
 
 	virtual unsigned int GetNumberOfNyquistTimesteps() const {return m_Exc->GetNyquistNum();}
@@ -180,6 +182,7 @@ protected:
 
 	//Calc timestep only internal use
 	int m_TimeStepVar;
+	double m_TimeStepFactor;
 	virtual double CalcTimestep();
 	double opt_dT;
 	bool m_InvaildTimestep;
