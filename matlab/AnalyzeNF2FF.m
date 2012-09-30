@@ -31,7 +31,7 @@ if ~isscalar(f)
     error 'Currently only one frequency is supported. Call this function multiple times.'
 end
 
-warning('openEMS:AnalyzeNF2FF','This function is depreciated , use CalcNF2FF instead');
+warning('openEMS:AnalyzeNF2FF','This function is deprecated, use CalcNF2FF instead');
 
 filenames_E = nf2ff.filenames_E;
 filenames_H = nf2ff.filenames_H;
@@ -44,7 +44,7 @@ end
 for n=find(nf2ff.directions==1)
     [Ef{n}, E_mesh{n}] = ReadHDF5Dump( [Sim_Path '/' filenames_E{n} '.h5'], 'Frequency', f );
 
-    if (Ef{n}.FD.freq(1) ~= f)
+    if (Ef{n}.FD.frequency(1) ~= f)
         error 'frequency mismach'
     end
 

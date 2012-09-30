@@ -12,7 +12,7 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % nf2ff:    data structure created by CreateNF2FFBox
 % Sim_Path: path to simulation data
 % freq:     array of frequencies to analyse
-% theta,phi: spherical coordinates to evaluate the far-field on
+% theta,phi: spherical coordinates to evaluate the far-field on (in radians)
 %
 % optional paramater:
 % 'Center': nf2ff phase center, default is [0 0 0]

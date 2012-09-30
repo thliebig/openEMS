@@ -38,11 +38,14 @@ ex_vector(dipole_orientation) = 1;
 start = ex_vector * -dipole_length/2;
 stop  = ex_vector *  dipole_length/2;
 CSX = AddExcitation( CSX, 'infDipole', 1, ex_vector );
+% enlarge the box to be sure that one mesh line is covered by it
+start = start - [0.1 0.1 0.1] * dipole_length/2;
+stop  = stop  + [0.1 0.1 0.1] * dipole_length/2;
 CSX = AddBox( CSX, 'infDipole', 1, start, stop );
 
 % NFFF contour
-start = [mesh.x(1)   mesh.y(1)   mesh.z(1) ]
-stop  = [mesh.x(end) mesh.y(end) mesh.z(end) ]
+start = [mesh.x(1)   mesh.y(1)   mesh.z(1) ];
+stop  = [mesh.x(end) mesh.y(end) mesh.z(end) ];
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
 
 % add space for PML
@@ -64,6 +67,9 @@ if ~postprocessing_only
     [~,~,~] = mkdir(Sim_Path);
     WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
+    % take a view at the "structure"
+    CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
+
     % define openEMS options and start simulation
     openEMS_opts = '';
     RunOpenEMS( Sim_Path, Sim_CSX, openEMS_opts );
@@ -76,9 +82,14 @@ disp( ' ' );
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
 thetaRange = 0:2:359;
-r = 1; % evaluate fields at radius r
 disp( 'calculating far field at phi=[0 90] deg..' );
-[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, thetaRange, [0 90], r );
+%[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, thetaRange, [0 90], 1 );
+nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, thetaRange/180*pi, [0 pi/2], 'Mode', 1 );
+Prad = nf2ff.Prad;
+Dmax = nf2ff.Dmax;
+f_idx = 1;
+E_far_theta = nf2ff.E_theta{f_idx};
+E_far_phi   = nf2ff.E_phi{f_idx};
 
 % display power and directivity
 disp( ['radiated power: Prad = ' num2str(Prad)] );
@@ -94,7 +105,7 @@ end
 figure
 polar( thetaRange/180*pi, E_phi0_far );
 ylabel( 'theta / deg' );
-title( ['electrical far field (V/m) @r=' num2str(r) ' m  phi=0 deg'] );
+title( ['electrical far field (V/m); r=1 m  phi=0 deg'] );
 legend( 'e-field magnitude', 'Location', 'BestOutside' );
 
 % calculate the e-field magnitude for phi = 90 deg
@@ -107,14 +118,19 @@ end
 figure
 polar( thetaRange/180*pi, E_phi90_far );
 ylabel( 'theta / deg' );
-title( ['electrical far field (V/m) @r=' num2str(r) ' m  phi=90 deg'] );
+title( ['electrical far field (V/m); r=1 m  phi=90 deg'] );
 legend( 'e-field magnitude', 'Location', 'BestOutside' );
 
 % calculate the far field at theta=90 degrees
 phiRange = 0:2:359;
-r = 1; % evaluate fields at radius r
 disp( 'calculating far field at theta=90 deg..' );
-[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, 90, phiRange, r );
+%[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, 90, phiRange, 1 );
+nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, 90, phiRange/180*pi, 'Mode', 1 );
+Prad = nf2ff.Prad;
+Dmax = nf2ff.Dmax;
+f_idx = 1;
+E_far_theta = nf2ff.E_theta{f_idx};
+E_far_phi   = nf2ff.E_phi{f_idx};
 
 E_theta90_far = zeros(1,numel(phiRange));
 for n=1:numel(phiRange)
@@ -125,16 +141,20 @@ end
 figure
 polar( phiRange/180*pi, E_theta90_far );
 ylabel( 'phi / deg' );
-title( ['electrical far field (V/m) @r=' num2str(r) ' m  theta=90 deg'] );
+title( ['electrical far field (V/m); r=1 m  theta=90 deg'] );
 legend( 'e-field magnitude', 'Location', 'BestOutside' );
 
 
 % calculate 3D pattern
 phiRange = 0:15:360;
 thetaRange = 0:10:180;
-r = 1; % evaluate fields at radius r
 disp( 'calculating 3D far field...' );
-[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, thetaRange, phiRange, r );
+%[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, thetaRange, phiRange, 1 );
+nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, thetaRange/180*pi, phiRange/180*pi, 'Mode', 1 );
+f_idx = 1;
+E_far_theta = nf2ff.E_theta{f_idx};
+E_far_phi   = nf2ff.E_phi{f_idx};
+
 E_far = sqrt( abs(E_far_theta).^2 + abs(E_far_phi).^2 );
 E_far_normalized = E_far / max(E_far(:));
 [theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
