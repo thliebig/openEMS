@@ -32,6 +32,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/date_time/gregorian/gregorian.hpp"
 #include <iomanip>
+#include <xmmintrin.h>
 
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
