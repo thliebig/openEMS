@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 		cout << "\t\t--engine=fastest\t\tfastest available engine (default)" << endl;
 		cout << "\t\t--engine=basic\t\t\tbasic FDTD engine" << endl;
 		cout << "\t\t--engine=sse\t\t\tengine using sse vector extensions" << endl;
-		cout << "\t\t--engine=sse_compressed\t\tengine using compressed operator + sse vector extensions" << endl;
+		cout << "\t\t--engine=sse-compressed\t\tengine using compressed operator + sse vector extensions" << endl;
 #ifdef MPI_SUPPORT
 		cout << "\t\t--engine=MPI\t\t\tengine using compressed operator + sse vector extensions + MPI parallel processing" << endl;
 		cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + MPI + multithreading" << endl;
