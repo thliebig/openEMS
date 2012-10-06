@@ -3,6 +3,7 @@
 # -------------------------------------------------
 TARGET = openEMS
 CONFIG -= app_bundle qt
+CONFIG += rtti exceptions
 TEMPLATE = app
 OBJECTS_DIR = obj
 INCLUDEPATH += .
@@ -40,6 +41,7 @@ win32 {
     # tinyxml
     INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml/include
     LIBS += -L$$WIN32_LIB_ROOT/tinyxml/bin -ltinyxml2
+	DEFINES += TIXML_USE_STL
     # fparser
     INCLUDEPATH += $$WIN32_LIB_ROOT/fparser/include
     LIBS += -L$$WIN32_LIB_ROOT/fparser/bin -lfparser4
@@ -49,7 +51,7 @@ win32 {
     # boost
     DEFINES += BOOST_THREAD_USE_LIB
     INCLUDEPATH += $$WIN32_LIB_ROOT/boost/include
-    LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread -lboost_chrono -lboost_system
+    LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread
     # vtk
     INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk/include/vtk-5.10
     LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
@@ -57,6 +59,7 @@ win32 {
 !win32 {
     LIBS += -lfparser
     LIBS += -ltinyxml
+	DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread-mt
     LIBS += -lhdf5 -lhdf5_cpp
     # CSXCAD
