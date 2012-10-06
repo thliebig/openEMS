@@ -251,6 +251,13 @@ void thread::operator()()
 	//std::cout << "thread::operator() Parameters: " << m_start << " " << m_stop << std::endl;
 	//DBG().cout() << "Thread " << m_threadID << " (" << boost::this_thread::get_id() << ") started." << endl;
 
+	// speed up the calculation of denormal floating point values (flush-to-zero)
+#ifndef SSE_CORRECT_DENORMALS
+	unsigned int oldMXCSR = _mm_getcsr(); //read the old MXCSR setting
+	unsigned int newMXCSR = oldMXCSR | 0x8040; // set DAZ and FZ bits
+	_mm_setcsr( newMXCSR ); //write the new MXCSR setting to the MXCSR
+#endif
+
 	while (!m_enginePtr->m_stopThreads)
 	{
 		// wait for start

@@ -38,8 +38,8 @@ Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 
 	// speed up the calculation of denormal floating point values (flush-to-zero)
 #ifndef SSE_CORRECT_DENORMALS
-	int oldMXCSR = _mm_getcsr(); //read the old MXCSR setting
-	int newMXCSR = oldMXCSR | 0x8040; // set DAZ and FZ bits
+	unsigned int oldMXCSR = _mm_getcsr(); //read the old MXCSR setting
+	unsigned int newMXCSR = oldMXCSR | 0x8040; // set DAZ and FZ bits
 	_mm_setcsr( newMXCSR ); //write the new MXCSR setting to the MXCSR
 #endif
 }
