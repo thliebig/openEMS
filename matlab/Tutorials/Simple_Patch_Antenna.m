@@ -53,7 +53,7 @@ max_res = c0 / (f0+fc) / unit / 20; % cell size: lambda/20
 CSX = InitCSX();
 
 %create fixed lines for the simulation box, substrate and port
-mesh.x = [-SimBox(1)/2 SimBox(1)/2 -substrate.width/2 substrate.width/2 -patch.width/2 patch.width/2 feed.pos];
+mesh.x = [-SimBox(1)/2 SimBox(1)/2 -substrate.width/2 substrate.width/2 -patch.width/2 patch.width/2 feed.pos+[-feed.width/2 feed.width/2]];
 mesh.x = SmoothMeshLines( mesh.x, max_res, 1.4); % create a smooth mesh between specified fixed mesh lines
 
 mesh.y = [-SimBox(2)/2 SimBox(2)/2 -substrate.length/2 substrate.length/2 -feed.width/2 feed.width/2 -patch.length/2 patch.length/2];
@@ -85,8 +85,8 @@ stop(3) =0;
 CSX = AddBox(CSX,'gnd',10,start,stop);
 
 %% apply the excitation & resist as a current source
-start = [feed.pos-.1 -feed.width/2 0];
-stop  = [feed.pos+.1 +feed.width/2 substrate.thickness];
+start = [feed.pos-feed.width/2 -feed.width/2 0];
+stop  = [feed.pos+feed.width/2 +feed.width/2 substrate.thickness];
 [CSX] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], 'excite');
 
 %%nf2ff calc
