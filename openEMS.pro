@@ -51,7 +51,7 @@ win32 {
     # boost
     DEFINES += BOOST_THREAD_USE_LIB
     INCLUDEPATH += $$WIN32_LIB_ROOT/boost/include
-    LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread
+    LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread -lboost_chrono -lboost_system
     # vtk
     INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk/include/vtk-5.10
     LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
