@@ -1,5 +1,5 @@
-function [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excitename, varargin )
-% [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excitename, varargin )
+function [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excite, varargin )
+% [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excite, varargin )
 %
 % Add a 3D lumped port as an excitation.
 %
@@ -10,7 +10,8 @@ function [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excitena
 % start:    3D start rowvector for port definition
 % stop:     3D end rowvector for port definition
 % dir:      direction/amplitude of port (e.g.: [1 0 0], [0 1 0] or [0 0 1])
-% excitename (optional): if specified, the port will be switched on (see AddExcitation())
+% excite (optional): if true, the port will be switched on (see AddExcitation())
+%                       Note: for legacy support a string will be accepted
 % varargin (optional): additional excitations options, see also AddExcitation
 %
 % example:
@@ -58,10 +59,25 @@ elseif (R<=0)
     CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
 end
 
+if (nargin < 8)
+    excite = false;
+end
+
+% legacy support, will be removed at some point
+if ischar(excite)
+    warning('CSXCAD:AddLumpedPort','depreceated: a string as excite option is no longer supported and will be removed in the future, please use true or false');
+    if ~isempty(excite)
+        excite = true;
+    else
+        excite = false;
+    end
+end
+
+
 % create excitation
-if (nargin >= 8) && ~isempty(excitename)
-    CSX = AddExcitation( CSX, excitename, 0, -dir*direction, varargin{:});
-	CSX = AddBox( CSX, excitename, prio, start, stop );
+if (excite)
+    CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, -dir*direction, varargin{:});
+	CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, start, stop );
 end
 
 u_start = 0.5*(start + stop);

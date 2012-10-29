@@ -49,21 +49,15 @@ FDTD = SetBoundaryCond( FDTD, BC );
 
 %% setup CSXCAD geometry & mesh
 % currently, openEMS cannot automatically generate a mesh
-max_res = c0 / (f0+fc) / unit / 20; % cell size: lambda/20
 CSX = InitCSX();
 
 %create fixed lines for the simulation box, substrate and port
-mesh.x = [-SimBox(1)/2 SimBox(1)/2 -substrate.width/2 substrate.width/2 -patch.width/2 patch.width/2 feed.pos+[-feed.width/2 feed.width/2]];
-mesh.x = SmoothMeshLines( mesh.x, max_res, 1.4); % create a smooth mesh between specified fixed mesh lines
-
-mesh.y = [-SimBox(2)/2 SimBox(2)/2 -substrate.length/2 substrate.length/2 -feed.width/2 feed.width/2 -patch.length/2 patch.length/2];
-mesh.y = SmoothMeshLines( mesh.y, max_res, 1.4 );
-
-%create fixed lines for the simulation box and given number of lines inside the substrate
-mesh.z = [-SimBox(3)/3 linspace(0,substrate.thickness,substrate.cells) SimBox(3)*2/3 ];
-mesh.z = SmoothMeshLines( mesh.z, max_res, 1.4 );
-
-CSX = DefineRectGrid( CSX, unit, mesh );
+mesh.x = [-SimBox(1)/2 SimBox(1)/2   -substrate.width/2 substrate.width/2 -patch.width/2 patch.width/2 feed.pos+[-feed.width/2 feed.width/2]];
+mesh.y = [-SimBox(2)/2 SimBox(2)/2   -substrate.length/2 substrate.length/2 -feed.width/2 feed.width/2 -patch.length/2 patch.length/2];
+mesh.z = [-SimBox(3)/3 SimBox(3)*2/3 linspace(0,substrate.thickness,substrate.cells)  ];
+% generate a smooth mesh with max. cell size: lambda_min / 20
+mesh = SmoothMesh(mesh, c0 / (f0+fc) / unit / 20); 
+CSX = DefineRectGrid(CSX, unit, mesh);
 
 %% create patch
 CSX = AddMetal( CSX, 'patch' ); % create a perfect electric conductor (PEC)
@@ -87,7 +81,7 @@ CSX = AddBox(CSX,'gnd',10,start,stop);
 %% apply the excitation & resist as a current source
 start = [feed.pos-feed.width/2 -feed.width/2 0];
 stop  = [feed.pos+feed.width/2 +feed.width/2 substrate.thickness];
-[CSX] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], 'excite');
+[CSX] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
 %%nf2ff calc
 start = [mesh.x(4)     mesh.y(4)     mesh.z(4)];

@@ -1,5 +1,5 @@
-function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excitename )
-%[CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop [, excitename] )
+function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excite, varargin )
+%[CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop [, excite, varargin] )
 %
 % Creates a curve port (1-dimensional).
 % The mesh must already be initialized.
@@ -11,7 +11,9 @@ function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excitenam
 %   R:      internal resistance of the port
 %   start:  3D start rowvector for port definition
 %   stop:   3D end rowvector for port definition
-%   excitename (optional): if specified, the port will be switched on (see AddExcitation())
+%   excite (optional): if true, the port will be switched on (see AddExcitation())
+%                       Note: for legacy support a string will be accepted
+%   varargin (optional): additional excitations options, see also AddExcitation
 %
 % output:
 %   CSX:
@@ -137,12 +139,26 @@ port.drawingunit = unit;
 % port.idx1 = idx1;
 port.excite = 0;
 
+if (nargin < 7)
+    excite = false;
+end
+
+% legacy support, will be removed at some point
+if ischar(excite)
+    warning('CSXCAD:AddCurvePort','depreceated: a string as excite option is no longer supported and will be removed in the future, please use true or false');
+    if ~isempty(excite)
+        excite = true;
+    else
+        excite = false;
+    end
+end
+
 % create excitation
-if (nargin >= 7) && ~isempty(excitename)
+if (excite)
 	% excitation of this port is enabled
 	port.excite = 1;
     e_start = v_start;
     e_stop  = v_stop;
-    CSX = AddExcitation( CSX, excitename, 0, start_idx ~= stop_idx );
-	CSX = AddBox( CSX, excitename, prio, e_start, e_stop );
+    CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, start_idx ~= stop_idx, varargin{:});
+	CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, e_start, e_stop );
 end

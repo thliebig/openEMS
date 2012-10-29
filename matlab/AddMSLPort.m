@@ -11,7 +11,8 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 % evec:         excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
 % 
 % variable input:
-% 'ExcitePort'  necessary excitation name to make the port an active feeding port
+% 'ExcitePort'  true/false to make the port an active feeding port (default
+%               is false)
 % 'FeedShift'   shift to port from start by a given distance in drawing
 %               units. Default is 0. Only active if 'ExcitePort' is set!
 % 'Feed_R'      Specifiy a lumped port resistance. Default is no lumped
@@ -66,35 +67,41 @@ n_conv_arg = 8; % number of conventional arguments
 %set defaults
 feed_shift = 0;
 feed_R = 0;
-excitename = '';
+excite = false;
 measplanepos = nan;
 
-if (nargin>n_conv_arg)
-    for n=1:2:(nargin-n_conv_arg)
-        if (strcmp(varargin{n},'FeedShift')==1);
-            feed_shift = varargin{n+1};
-            if (numel(feed_shift)>1)
-                error 'FeedShift must be a scalar value'
+excite_args = {};
+
+for n=1:2:numel(varargin)
+    if (strcmp(varargin{n},'FeedShift')==1);
+        feed_shift = varargin{n+1};
+        if (numel(feed_shift)>1)
+            error 'FeedShift must be a scalar value'
+        end
+    elseif (strcmp(varargin{n},'Feed_R')==1);
+        feed_R = varargin{n+1};
+        if (numel(feed_shift)>1)
+            error 'Feed_R must be a scalar value'
+        end
+    elseif (strcmp(varargin{n},'MeasPlaneShift')==1);
+        measplanepos = varargin{n+1};
+        if (numel(feed_shift)>1)
+            error 'MeasPlaneShift must be a scalar value'
+        end
+    elseif (strcmp(varargin{n},'ExcitePort')==1);
+        if ischar(varargin{n+1})
+            warning('CSXCAD:AddMSLPort','depreceated: a string as excite option is no longer supported and will be removed in the future, please use true or false');
+            if ~isempty(excite)
+                excite = true;
+            else
+                excite = false;
             end
+        else
+            excite = varargin{n+1};
         end
-        
-        if (strcmp(varargin{n},'Feed_R')==1);
-            feed_R = varargin{n+1};
-            if (numel(feed_shift)>1)
-                error 'Feed_R must be a scalar value'
-            end
-        end
-        
-        if (strcmp(varargin{n},'MeasPlaneShift')==1);
-            measplanepos = varargin{n+1};
-            if (numel(feed_shift)>1)
-                error 'MeasPlaneShift must be a scalar value'
-            end
-        end
-                
-        if (strcmp(varargin{n},'ExcitePort')==1);
-            excitename = varargin{n+1};
-        end
+    else
+        excite_args{end+1} = varargin{n};
+        excite_args{end+1} = varargin{n+1};
     end
 end
 
@@ -227,9 +234,9 @@ ex_stop(idx_prop)    = ex_start(idx_prop);
 ex_stop(idx_width)   = nstop(idx_width);
 ex_stop(idx_height)  = nstop(idx_height);
 
-if ~isempty(excitename)
-    CSX = AddExcitation( CSX, excitename, 0, evec );
-    CSX = AddBox( CSX, excitename, prio, ex_start, ex_stop );
+if excite
+    CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, evec, excite_args{:} );
+    CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, ex_start, ex_stop );
 end
 if feed_R > 0
     CSX = AddLumpedElement( CSX, 'port_R', idx_height-1, 'R', feed_R );
