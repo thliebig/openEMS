@@ -498,8 +498,8 @@ void Operator_CylinderMultiGrid::AddExtension(Operator_Extension* op_ext)
 	//check whether extension is save to use in multi-grid
 	if (op_ext->IsCylindricalMultiGridSave(false)==false)
 	{
-		delete op_ext;
 		cerr << "Operator_CylinderMultiGrid::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylindrical multi-grids!! skipping...!" << endl;
+		delete op_ext;
 		return;
 	}
 

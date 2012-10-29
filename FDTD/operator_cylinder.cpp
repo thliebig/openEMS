@@ -310,7 +310,7 @@ void Operator_Cylinder::AddExtension(Operator_Extension* op_ext)
 		Operator_Multithread::AddExtension(op_ext);
 	else
 	{
-		delete op_ext;
 		cerr << "Operator_Cylinder::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with cylinder-coords!! skipping...!" << endl;
+		delete op_ext;
 	}
 }

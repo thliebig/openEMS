@@ -173,8 +173,8 @@ void Operator_MPI::AddExtension(Operator_Extension* op_ext)
 		Operator_SSE_Compressed::AddExtension(op_ext);
 	else
 	{
-		delete op_ext;
 		cerr << "Operator_MPI::AddExtension: Warning: Operator extension \"" << op_ext->GetExtensionName() << "\" is not compatible with MPI!! skipping...!" << endl;
+		delete op_ext;
 	}
 }
 
