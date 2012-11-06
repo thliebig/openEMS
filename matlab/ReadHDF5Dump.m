@@ -4,6 +4,9 @@ function [field mesh] = ReadHDF5Dump(file, varargin)
 %   Read a hdf5 field dump, including an interpolation and frequency domain
 %   transformation.
 %
+%   For more information about the output, refer to the help of
+%   ReadHDF5Mesh and ReadHDF5FieldData
+%
 %   possible arguments:
 %       'Range'             see GetField_Range
 %       'Interpolation'     see GetField_Interpolation

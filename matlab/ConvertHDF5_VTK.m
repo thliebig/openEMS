@@ -15,6 +15,8 @@ function ConvertHDF5_VTK(hdf_file, vtk_prefix, varargin)
 %   'FieldName': field name written to vtk, e.g. 'E-Field'
 %   'weight':   field weighting
 %
+%   for more optional aguments have a look at ReadHDF5Dump
+%
 % example:
 %   % read time-domian data from hdf5, perform dft and dump as vtk
 %   ConvertHDF5_VTK('Et.h5','Ef','NumPhase',18,'Frequency',1e9)
