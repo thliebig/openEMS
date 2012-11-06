@@ -855,12 +855,7 @@ void openEMS::RunFDTD()
 		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 
-	PA->PostProcess();
-
-	//*************** postproc ************//
-	prevTime = currTime;
 	gettimeofday(&currTime,NULL);
-
 	t_diff = CalcDiffTime(currTime,startTime);
 
 	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
@@ -868,6 +863,9 @@ void openEMS::RunFDTD()
 
 	if (m_DumpStats)
 		DumpStatistics(__OPENEMS_STAT_FILE__, t_diff);
+
+	//*************** postproc ************//
+	PA->PostProcess();
 }
 
 bool openEMS::DumpStatistics(const string& filename, double time)
