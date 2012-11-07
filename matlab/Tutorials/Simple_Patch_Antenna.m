@@ -48,16 +48,12 @@ BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
 
 %% setup CSXCAD geometry & mesh
-% currently, openEMS cannot automatically generate a mesh
 CSX = InitCSX();
 
-%create fixed lines for the simulation box, substrate and port
-mesh.x = [-SimBox(1)/2 SimBox(1)/2   -substrate.width/2 substrate.width/2 -patch.width/2 patch.width/2 feed.pos+[-feed.width/2 feed.width/2]];
-mesh.y = [-SimBox(2)/2 SimBox(2)/2   -substrate.length/2 substrate.length/2 -feed.width/2 feed.width/2 -patch.length/2 patch.length/2];
-mesh.z = [-SimBox(3)/3 SimBox(3)*2/3 linspace(0,substrate.thickness,substrate.cells)  ];
-% generate a smooth mesh with max. cell size: lambda_min / 20
-mesh = SmoothMesh(mesh, c0 / (f0+fc) / unit / 20); 
-CSX = DefineRectGrid(CSX, unit, mesh);
+%initialize the mesh with the "air-box" dimensions
+mesh.x = [-SimBox(1)/2 SimBox(1)/2];
+mesh.y = [-SimBox(2)/2 SimBox(2)/2];
+mesh.z = [-SimBox(3)/3 SimBox(3)*2/3];
 
 %% create patch
 CSX = AddMetal( CSX, 'patch' ); % create a perfect electric conductor (PEC)
@@ -72,6 +68,9 @@ start = [-substrate.width/2 -substrate.length/2 0];
 stop  = [ substrate.width/2  substrate.length/2 substrate.thickness];
 CSX = AddBox( CSX, 'substrate', 0, start, stop );
 
+% add extra cells to discretize the substrate thickness
+mesh.z = [linspace(0,substrate.thickness,substrate.cells+1) mesh.z];
+
 %% create ground (same size as substrate)
 CSX = AddMetal( CSX, 'gnd' ); % create a perfect electric conductor (PEC)
 start(3)=0;
@@ -83,7 +82,13 @@ start = [feed.pos-feed.width/2 -feed.width/2 0];
 stop  = [feed.pos+feed.width/2 +feed.width/2 substrate.thickness];
 [CSX] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
-%%nf2ff calc
+%% finalize the mesh
+% generate a smooth mesh with max. cell size: lambda_min / 20
+mesh = DetectEdges(CSX, mesh);
+mesh = SmoothMesh(mesh, c0 / (f0+fc) / unit / 20);
+CSX = DefineRectGrid(CSX, unit, mesh);
+
+%% add a nf2ff calc box; size is 3 cells away from MUR boundary condition
 start = [mesh.x(4)     mesh.y(4)     mesh.z(4)];
 stop  = [mesh.x(end-3) mesh.y(end-3) mesh.z(end-3)];
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
