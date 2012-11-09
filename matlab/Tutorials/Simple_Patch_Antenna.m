@@ -80,7 +80,7 @@ CSX = AddBox(CSX,'gnd',10,start,stop);
 %% apply the excitation & resist as a current source
 start = [feed.pos-feed.width/2 -feed.width/2 0];
 stop  = [feed.pos+feed.width/2 +feed.width/2 substrate.thickness];
-[CSX] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
+[CSX port] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
 %% finalize the mesh
 % generate a smooth mesh with max. cell size: lambda_min / 20
@@ -111,12 +111,14 @@ RunOpenEMS( Sim_Path, Sim_CSX);
 
 %% postprocessing & do the plots
 freq = linspace( max([1e9,f0-fc]), f0+fc, 501 );
-U = ReadUI( {'port_ut1','et'}, Sim_Path, freq ); % time domain/freq domain voltage
-I = ReadUI( 'port_it1', Sim_Path, freq ); % time domain/freq domain current (half time step is corrected)
+port = calcPort(port, Sim_Path, freq);
+
+Zin = port.uf.tot ./ port.if.tot;
+s11 = port.uf.ref ./ port.uf.inc;
+P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
 
 % plot feed point impedance
 figure
-Zin = U.FD{1}.val ./ I.FD{1}.val;
 plot( freq/1e6, real(Zin), 'k-', 'Linewidth', 2 );
 hold on
 grid on
@@ -128,18 +130,12 @@ legend( 'real', 'imag' );
 
 % plot reflection coefficient S11
 figure
-uf_inc = 0.5*(U.FD{1}.val + I.FD{1}.val * 50);
-if_inc = 0.5*(I.FD{1}.val + U.FD{1}.val / 50);
-uf_ref = U.FD{1}.val - uf_inc;
-if_ref = if_inc - I.FD{1}.val;
-s11 = uf_ref ./ uf_inc;
 plot( freq/1e6, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
 grid on
 title( 'reflection coefficient S_{11}' );
 xlabel( 'frequency f / MHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
 
-P_in = 0.5*U.FD{1}.val .* conj( I.FD{1}.val ); % antenna feed power
 
 drawnow
 

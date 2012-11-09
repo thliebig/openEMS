@@ -38,7 +38,7 @@ f_start = 0.8e9;
 f_stop  = 6e9;
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD( 20000 );
+FDTD = InitFDTD();
 FDTD = SetGaussExcite( FDTD, (f_start+f_stop)/2, (f_stop-f_start)/2 );
 BC   = {'PML_8' 'PML_8' 'MUR' 'MUR' 'PEC' 'PML_8'};
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -56,9 +56,7 @@ mesh.z = [0 cumsum(substrate_thickness) linspace(substratelines(end-1),substrate
 [CSX mesh] = CreateCRLH(CSX, mesh, CRLH, resolution/4);
 
 % Smooth the given mesh
-mesh.x = SmoothMeshLines(mesh.x, resolution, 1.5, 0);
-mesh.y = SmoothMeshLines(mesh.y, resolution, 1.5, 0);
-mesh.z = SmoothMeshLines(mesh.z, resolution, 1.5, 0);
+mesh = SmoothMesh(mesh, resolution, 1.5);
 CSX = DefineRectGrid( CSX, unit, mesh );
 
 %% Setup the substrate layer
@@ -75,11 +73,11 @@ end
 CSX = AddMetal( CSX, 'PEC' );
 portstart = [ mesh.x(1) , -CRLH.LW/2, substratelines(end)];
 portstop  = [ -CRLH.LL/2,  CRLH.LW/2, 0];
-[CSX,portstruct{1}] = AddMSLPort( CSX, 999, 1, 'PEC', portstart, portstop, 0, [0 0 -1], 'ExcitePort', 'excite', 'FeedShift', 10*resolution(1), 'MeasPlaneShift',  feed_length/2);
+[CSX,port{1}] = AddMSLPort( CSX, 999, 1, 'PEC', portstart, portstop, 0, [0 0 -1], 'ExcitePort', 'excite', 'FeedShift', 10*resolution(1), 'MeasPlaneShift',  feed_length/2);
 
 portstart = [ mesh.x(end) , -CRLH.LW/2, substratelines(end)];
 portstop  = [ +CRLH.LL/2,   CRLH.LW/2, 0];
-[CSX,portstruct{2}] = AddMSLPort( CSX, 999, 2, 'PEC', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  feed_length/2 );
+[CSX,port{2}] = AddMSLPort( CSX, 999, 2, 'PEC', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  feed_length/2 );
  
 %% write/show/run the openEMS compatible xml-file
 Sim_Path = 'tmp';
@@ -95,8 +93,7 @@ RunOpenEMS( Sim_Path, Sim_CSX );
 %% post-processing
 close all
 f = linspace( f_start, f_stop, 1601 );
-port{1} = calcPort( portstruct{1}, Sim_Path, f, 'RefPlaneShift', feed_length);
-port{2} = calcPort( portstruct{2}, Sim_Path, f, 'RefPlaneShift', feed_length);
+port = calcPort( port, Sim_Path, f, 'RefPlaneShift', feed_length);
 
 s11 = port{1}.uf.ref./ port{1}.uf.inc;
 s21 = port{2}.uf.ref./ port{1}.uf.inc;
@@ -113,7 +110,7 @@ ylim([-40 2]);
 
 %% extract parameter
 A = ((1+s11).*(1-s11) + s21.*s21)./(2*s21);
-C = ((1-s11).*(1-s11) - s21.*s21)./(2*s21) ./ port{1}.ZL;
+C = ((1-s11).*(1-s11) - s21.*s21)./(2*s21) ./ port{2}.ZL;
 
 Y = C;
 Z = 2*(A-1)./C;

@@ -70,9 +70,7 @@ for n=1:N_Cells
 end
 
 % Smooth the given mesh
-mesh.x = SmoothMeshLines(mesh.x, resolution, 1.5, 0);
-mesh.y = SmoothMeshLines(mesh.y, resolution, 1.5, 0);
-mesh.z = SmoothMeshLines(mesh.z, resolution, 1.5, 0);
+mesh = SmoothMesh(mesh, resolution, 1.5);
 CSX = DefineRectGrid( CSX, unit, mesh );
 
 %% Setup the substrate layer
@@ -95,11 +93,11 @@ CSX = AddBox( CSX, 'ground', 0, start, stop );
 CSX = AddMetal( CSX, 'PEC' );
 portstart = [ -feed_length-(N_Cells*CRLH.LL)/2 , -CRLH.LW/2, substratelines(end)];
 portstop  = [ -(N_Cells*CRLH.LL)/2,  CRLH.LW/2, 0];
-[CSX,portstruct{1}] = AddMSLPort( CSX, 999, 1, 'PEC', portstart, portstop, 0, [0 0 -1], 'ExcitePort', 'excite', 'MeasPlaneShift',  feed_length/2, 'Feed_R', 50);
+[CSX,port{1}] = AddMSLPort( CSX, 999, 1, 'PEC', portstart, portstop, 0, [0 0 -1], 'ExcitePort', true, 'MeasPlaneShift',  feed_length/2, 'Feed_R', 50);
 
 portstart = [ feed_length+(N_Cells*CRLH.LL)/2 , -CRLH.LW/2, substratelines(end)];
 portstop  = [ +(N_Cells*CRLH.LL)/2,   CRLH.LW/2, 0];
-[CSX,portstruct{2}] = AddMSLPort( CSX, 999, 2, 'PEC', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  feed_length/2, 'Feed_R', 50 );
+[CSX,port{2}] = AddMSLPort( CSX, 999, 2, 'PEC', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  feed_length/2, 'Feed_R', 50 );
 
 %% nf2ff calc
 start = [mesh.x(1)   mesh.y(1)   mesh.z(1)  ] + 10*resolution;
@@ -120,8 +118,7 @@ RunOpenEMS( Sim_Path, Sim_CSX );
 %% post-processing
 close all
 f = linspace( f_start, f_stop, 1601 );
-port{1} = calcPort( portstruct{1}, Sim_Path, f, 'RefPlaneShift', feed_length*unit);
-port{2} = calcPort( portstruct{2}, Sim_Path, f, 'RefPlaneShift', feed_length*unit);
+port = calcPort( port, Sim_Path, f, 'RefPlaneShift', feed_length*unit);
 
 s11 = port{1}.uf.ref./ port{1}.uf.inc;
 s21 = port{2}.uf.ref./ port{1}.uf.inc;

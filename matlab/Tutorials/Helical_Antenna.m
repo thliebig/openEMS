@@ -97,7 +97,7 @@ CSX = AddCylinder(CSX,'gnd',10,start,stop,gnd.radius);
 %% apply the excitation & resist as a current source
 start = [Helix.radius-feed.width/2 -feed.width/2 0];
 stop  = [Helix.radius+feed.width/2 +feed.width/2 feed.heigth];
-[CSX] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], 'excite');
+[CSX port] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
 %%nf2ff calc
 start = [mesh.x(11)      mesh.y(11)     mesh.z(11)];
@@ -124,12 +124,14 @@ end
 
 %% postprocessing & do the plots
 freq = linspace( f0-fc, f0+fc, 501 );
-U = ReadUI( {'port_ut1','et'}, Sim_Path, freq ); % time domain/freq domain voltage
-I = ReadUI( 'port_it1', Sim_Path, freq ); % time domain/freq domain current (half time step is corrected)
+port = calcPort(port, Sim_Path, freq);
+
+Zin = port.uf.tot ./ port.if.tot;
+s11 = port.uf.ref ./ port.uf.inc;
+P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
 
 % plot feed point impedance
 figure
-Zin = U.FD{1}.val ./ I.FD{1}.val;
 plot( freq/1e6, real(Zin), 'k-', 'Linewidth', 2 );
 hold on
 grid on
@@ -141,18 +143,11 @@ legend( 'real', 'imag' );
 
 % plot reflection coefficient S11
 figure
-uf_inc = 0.5*(U.FD{1}.val + I.FD{1}.val * feed.R);
-if_inc = 0.5*(I.FD{1}.val + U.FD{1}.val / feed.R);
-uf_ref = U.FD{1}.val - uf_inc;
-if_ref = if_inc - I.FD{1}.val;
-s11 = uf_ref ./ uf_inc;
 plot( freq/1e6, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
 grid on
 title( 'reflection coefficient S_{11}' );
 xlabel( 'frequency f / MHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
-
-P_in = 0.5*uf_inc .* conj( if_inc ); % accepted antenna feed power
 
 drawnow
 
@@ -166,7 +161,7 @@ P_in_0 = interp1(freq, P_in, f0);
 % calculate the far field at phi=0 degrees and at phi=90 degrees
 thetaRange = unique([0:0.5:90 90:180]);
 phiRange = (0:2:360) - 180;
-disp( 'calculating far field at phi=[0 90] deg...' );
+disp( 'calculating the 3D far field...' );
 
 nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180,'Mode',1,'Outfile','3D_Pattern.h5','Verbose',1);
 
