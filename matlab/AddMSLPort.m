@@ -66,7 +66,7 @@ n_conv_arg = 8; % number of conventional arguments
 
 %set defaults
 feed_shift = 0;
-feed_R = 0;
+feed_R = inf; %(default is open, no resitance)
 excite = false;
 measplanepos = nan;
 
@@ -215,6 +215,7 @@ if ((CSX.ATTRIBUTE.CoordSystem==1) && (idx_prop==2))
     port.LengthScale = MSL_stop(idx_height);
 end
 port.nr = portnr;
+port.type = 'MSL';
 port.drawingunit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
 port.v_delta = diff(meshlines)*port.LengthScale;
 port.i_delta = diff( meshlines(1:end-1) + diff(meshlines)/2 )*port.LengthScale;
@@ -223,9 +224,7 @@ port.excite = 0;
 port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop))*port.LengthScale;
 % port
 
-% create excitation
-% excitation of this port is enabled
-port.excite = 1;
+% create excitation (if enabled) and port resistance
 meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop) + feed_shift*direction, 'nearest' );
 ex_start(idx_prop)   = mesh{idx_prop}(meshline) ;
 ex_start(idx_width)  = nstart(idx_width);
@@ -234,13 +233,26 @@ ex_stop(idx_prop)    = ex_start(idx_prop);
 ex_stop(idx_width)   = nstop(idx_width);
 ex_stop(idx_height)  = nstop(idx_height);
 
+port.excite = 0;
 if excite
+    port.excite = 1;
     CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, evec, excite_args{:} );
     CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, ex_start, ex_stop );
 end
-if feed_R > 0
+
+%% MSL resitance at start of MSL line
+ex_start(idx_prop) = start(idx_prop);
+ex_stop(idx_prop) = ex_start(idx_prop);
+
+if (feed_R > 0) && ~isinf(feed_R)
     CSX = AddLumpedElement( CSX, 'port_R', idx_height-1, 'R', feed_R );
     CSX = AddBox( CSX, 'port_R', prio, ex_start, ex_stop );
-    port.Feed_R = feed_R;
+elseif isinf(feed_R)
+    % do nothing --> open port
+elseif feed_R == 0
+    %port "resistance" as metal
+    CSX = AddBox( CSX, materialname, prio, ex_start, ex_stop );
+else
+    error('openEMS:AddMSLPort','MSL port with resitance <= 0 it not possible');
 end
 end

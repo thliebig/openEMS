@@ -27,6 +27,9 @@ function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excite, v
 % (C) 2010 Sebastian Held <sebastian.held@uni-due.de>
 % See also InitCSX AddExcitation
 
+port.type='Lumped';
+port.nr=portnr;
+
 % make row vector
 start = reshape( start, 1, [] );
 stop  = reshape( stop , 1, [] );
@@ -98,12 +101,7 @@ m_stop(dir1)  = m_stop(dir1)  + delta1_p/2;
 m_start(dir2) = m_start(dir2) - delta2_n/2;
 m_stop(dir2)  = m_stop(dir2)  + delta2_p/2;
 
-% calculate kappa
-materialname = ['port' num2str(portnr) '_sheet_resistance'];
-CSX = AddLumpedElement( CSX, materialname, dir-1, 'R', R);
-CSX = AddBox( CSX, materialname, prio, m_start, m_stop );
-
-% calculate position of the voltage probe
+% calculate position of the voltage probe & excitation
 v_start = [mesh{1}(port_start_idx(1)), mesh{2}(port_start_idx(2)), mesh{3}(port_start_idx(3))];
 v_stop  = [mesh{1}(port_stop_idx(1)),  mesh{2}(port_stop_idx(2)),  mesh{3}(port_stop_idx(3))];
 
@@ -124,7 +122,6 @@ CSX = AddProbe( CSX, name, 1, weight );
 CSX = AddBox( CSX, name, prio, i_start, i_stop );
 
 % create port structure
-port.nr = portnr;
 port.drawingunit = unit;
 % port.start = start;
 % port.stop = stop;
@@ -137,7 +134,6 @@ port.drawingunit = unit;
 % port.idx_cal = idx_cal;
 % port.idx1 = idx1;
 % port.idx1 = idx1;
-port.excite = 0;
 
 if (nargin < 7)
     excite = false;
@@ -153,6 +149,8 @@ if ischar(excite)
     end
 end
 
+port.excite = excite;
+
 % create excitation
 if (excite)
 	% excitation of this port is enabled
@@ -161,4 +159,12 @@ if (excite)
     e_stop  = v_stop;
     CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, start_idx ~= stop_idx, varargin{:});
 	CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, e_start, e_stop );
+end
+
+port.Feed_R = R;
+if (R>0 && (~isinf(R))) 
+    CSX = AddLumpedElement( CSX, ['port_resist_' int2str(portnr)], dir-1, 'R', R);
+    CSX = AddBox( CSX, ['port_resist_' int2str(portnr)], prio, v_start, v_stop );
+elseif (R==0)
+    CSX = AddBox(CSX,metalname, prio, v_start, v_stop);
 end

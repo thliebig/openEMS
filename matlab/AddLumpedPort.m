@@ -1,5 +1,5 @@
-function [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excite, varargin )
-% [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excite, varargin )
+function [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excite, varargin )
+% [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excite, varargin )
 %
 % Add a 3D lumped port as an excitation.
 %
@@ -31,6 +31,9 @@ function [CSX] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, excite, 
 
 % check dir
 
+port.type='Lumped';
+port.nr=portnr;
+
 if (dir(1)~=0) && (dir(2) == 0) && (dir(3)==0)
     n_dir = 1;
 elseif (dir(1)==0) && (dir(2) ~= 0) && (dir(3)==0)
@@ -50,7 +53,9 @@ if (stop(n_dir)-start(n_dir)) > 0
 else
     direction = -1;
 end
+port.direction = direction;
 
+port.Feed_R = R;
 if (R>0 && (~isinf(R)))
     CSX = AddLumpedElement(CSX,['port_resist_' int2str(portnr)],  n_dir-1, 'Caps', 1, 'R', R);
     CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
@@ -73,7 +78,7 @@ if ischar(excite)
     end
 end
 
-
+port.excite = excite;
 % create excitation
 if (excite)
     CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, -dir*direction, varargin{:});
