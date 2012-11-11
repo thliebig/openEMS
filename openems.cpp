@@ -41,7 +41,7 @@
 #include "Common/processfields_td.h"
 #include "Common/processfields_fd.h"
 #include "Common/processfields_sar.h"
-#include <H5Cpp.h> // only for H5get_libversion()
+#include <hdf5.h>            // only for H5get_libversion()
 #include <boost/version.hpp> // only for BOOST_LIB_VERSION
 #include <vtkVersion.h>
 

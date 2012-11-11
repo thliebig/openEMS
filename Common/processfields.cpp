@@ -16,7 +16,6 @@
 */
 
 #include <iomanip>
-#include <H5Cpp.h>
 #include "tools/global.h"
 #include "tools/vtk_file_writer.h"
 #include "tools/hdf5_file_writer.h"

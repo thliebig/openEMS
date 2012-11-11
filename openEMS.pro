@@ -63,7 +63,7 @@ win32 {
     LIBS += -ltinyxml
 	DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread-mt
-    LIBS += -lhdf5 -lhdf5_cpp
+    LIBS += -lhdf5
     # CSXCAD
     INCLUDEPATH += ../CSXCAD
     LIBS += -L../CSXCAD -lCSXCAD

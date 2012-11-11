@@ -19,7 +19,6 @@
 #include "Common/operator_base.h"
 #include "tools/vtk_file_writer.h"
 #include "tools/hdf5_file_writer.h"
-#include <H5Cpp.h>
 #include <iomanip>
 #include <sstream>
 #include <string>
