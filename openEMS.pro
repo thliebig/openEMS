@@ -9,7 +9,6 @@ OBJECTS_DIR = obj
 INCLUDEPATH += .
 CONFIG += debug_and_release
 
-
 #
 # VERSION
 #
@@ -63,10 +62,14 @@ win32 {
     LIBS += -ltinyxml
 	DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread-mt
-    LIBS += -lhdf5
+    LIBS += -llapack
+    # hdf5 (and mpi for parallel hdf5)
+    LIBS += -lhdf5_hl -lhdf5
+    LIBS += -lmpi -lmpi_cxx
+    INCLUDEPATH += /usr/include/mpi
     # CSXCAD
     INCLUDEPATH += ../CSXCAD
-    LIBS += -L../CSXCAD -lCSXCAD
+    LIBS += -L../CSXCAD  -lCSXCAD
     ### vtk ###
     INCLUDEPATH += /usr/include/vtk-5.2 \
         /usr/include/vtk-5.4 \
