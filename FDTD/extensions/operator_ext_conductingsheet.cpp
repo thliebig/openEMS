@@ -65,7 +65,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 				disable_pos = false;
 				// disable conducting sheet model inside the boundary conditions, especially inside a pml
 				for (int m=0;m<3;++m)
-					if ((pos[m]<=(m_Op->GetBCSize(2*m))) || (pos[m]>=(numLines[m]-m_Op->GetBCSize(2*m+1)-1)))
+					if ((pos[m]<=(unsigned int)m_Op->GetBCSize(2*m)) || (pos[m]>=(numLines[m]-m_Op->GetBCSize(2*m+1)-1)))
 						disable_pos = true;
 
 				for (int n=0; n<3; ++n)
