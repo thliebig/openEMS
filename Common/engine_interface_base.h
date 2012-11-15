@@ -32,6 +32,8 @@ class Engine_Interface_Base
 public:
 	enum InterpolationType { NO_INTERPOLATION, NODE_INTERPOLATE, CELL_INTERPOLATE };
 
+	virtual ~Engine_Interface_Base() {;} //!< provide a virtual destructor to correctly delete derived objects
+
 	//! Set the operator used for this engine interface.
 	virtual void SetOperator(Operator_Base* base_op) {m_Op_Base=base_op;}
 	//! Get the operator used for this engine interface.
