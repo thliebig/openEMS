@@ -199,8 +199,7 @@ double Operator::GetNodeWidth(int ny, const int pos[3], bool dualMesh) const
 	if ( (pos[0]<0) || (pos[1]<0) || (pos[2]<0) )
 		return 0.0;
 
-	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
-	return GetNodeWidth(ny, uiPos, dualMesh);
+	return GetNodeWidth(ny, pos, dualMesh);
 }
 
 double Operator::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
@@ -215,8 +214,7 @@ double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
 	if ( (pos[0]<0) || (pos[1]<0) || (pos[2]<0) )
 		return 0.0;
 
-	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
-	return GetNodeArea(ny, uiPos, dualMesh);
+	return GetNodeArea(ny, pos, dualMesh);
 }
 
 unsigned int Operator::SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh) const
@@ -1178,7 +1176,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	double deltaP_M=GetRawDiscDelta(nP,pos[nP]-1);
 	double deltaPP_M=GetRawDiscDelta(nPP,pos[nPP]-1);
 
-	int loc_pos[3]={pos[0],pos[1],pos[2]};
+	int loc_pos[3] = {(int)pos[0],(int)pos[1],(int)pos[2]};
 	double A_n;
 	double area = 0;
 

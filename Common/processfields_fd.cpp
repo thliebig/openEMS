@@ -210,7 +210,7 @@ void ProcessFieldsFD::DumpFDData()
 				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
 
 			//legacy support, use /FieldData/FD frequency-Attribute in the future
-			float freq[1]={m_FD_Samples.at(n)};
+			float freq[1] = {(float)m_FD_Samples.at(n)};
 			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str()+"_real","frequency",freq,1)==false)
 				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
 			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str()+"_imag","frequency",freq,1)==false)

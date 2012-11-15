@@ -216,10 +216,10 @@ void ProcessFieldsSAR::DumpFDData()
 			size_t datasize[]={numLines[0],numLines[1],numLines[2]};
 			if (m_HDF5_Dump_File->WriteScalarField(ss.str(), SAR, datasize)==false)
 				cerr << "ProcessFieldsSAR::Process: can't dump to file...! " << endl;
-			float freq[1]={m_FD_Samples.at(n)};
+			float freq[1] = {(float)m_FD_Samples.at(n)};
 			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",freq,1)==false)
 				cerr << "ProcessFieldsSAR::Process: can't dump to file...! " << endl;
-			float pow[1]={power};
+			float pow[1] = {(float)power};
 			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"power",pow,1)==false)
 				cerr << "ProcessFieldsSAR::Process: can't dump to file...! " << endl;
 		}

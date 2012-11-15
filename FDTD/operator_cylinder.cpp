@@ -132,7 +132,7 @@ double Operator_Cylinder::GetNodeWidth(int ny, const int pos[3], bool dualMesh) 
 	if ( (pos[0]<0) || (pos[1]<0 && CC_closedAlpha==false) || (pos[2]<0) )
 		return 0.0;
 
-	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
+	unsigned int uiPos[]={(unsigned int)pos[0],(unsigned int)pos[1],(unsigned int)pos[2]};
 	if (pos[1]<0 && CC_closedAlpha==true)
 		uiPos[1]+=numLines[1]-2;
 
@@ -173,7 +173,7 @@ double Operator_Cylinder::GetNodeArea(int ny, const int pos[3], bool dualMesh) c
 	if ( (pos[0]<0) || (pos[1]<0 && CC_closedAlpha==false) || (pos[2]<0) )
 		return 0.0;
 
-	unsigned int uiPos[]={pos[0],pos[1],pos[2]};
+	unsigned int uiPos[]={(unsigned int)pos[0],(unsigned int)pos[1],(unsigned int)pos[2]};
 	if (pos[1]<0 && CC_closedAlpha==true)
 		uiPos[1]+=numLines[1]-2;
 

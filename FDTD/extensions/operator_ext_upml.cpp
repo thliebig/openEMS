@@ -302,7 +302,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 
 			if (n==ny)
 				depth-=m_Op->GetEdgeLength(n,pos)/2;
-			double vars[5] = {depth, width/m_Size[2*n], width, Zm, m_Size[2*n]};
+			double vars[5] = {depth, width/m_Size[2*n], width, Zm, (double)m_Size[2*n]};
 			if (depth>0)
 				kappa_v[n] = m_GradingFunction->Eval(vars);
 			else
@@ -333,7 +333,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 
 			if (n==ny)
 				depth+=m_Op->GetEdgeLength(n,pos)/2;
-			double vars[5] = {depth, width/(m_Size[2*n]), width, Zm, m_Size[2*n]};
+			double vars[5] = {depth, width/(m_Size[2*n]), width, Zm, (double)m_Size[2*n]};
 			if (depth>0)
 				kappa_v[n] = m_GradingFunction->Eval(vars);
 			else

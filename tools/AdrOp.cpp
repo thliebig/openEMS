@@ -499,11 +499,11 @@ unsigned int AdrOp::GetCellPos(int i, int j, int k)
 double AdrOp::GetShiftCellVolume(int ny, int step)
 {
 	for (unsigned int n=0; n<uiDimension; n++) if (dGrid[n]==NULL) error->Error(9);
-	int uiMax[4]={uiImax-1,uiJmax-1,uiKmax-1,uiLmax-1};
+	int uiMax[4]={(int)uiImax-1,(int)uiJmax-1,(int)uiKmax-1,(int)uiLmax-1};
 	while (ny<0) ny+=uiDimension;
 	ny=ny%uiDimension;
 	iCellShift[ny]=step;
-	int uiPos[4]={uiIpos+iCellShift[0],uiJpos+iCellShift[1],uiKpos+iCellShift[2]};
+	int uiPos[4]={(int)uiIpos+iCellShift[0],(int)uiJpos+iCellShift[1],(int)uiKpos+iCellShift[2]};
 	double dVol=1;
 	for (unsigned int n=0; n<uiDimension; ++n)
 	{

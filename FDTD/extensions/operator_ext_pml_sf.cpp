@@ -278,7 +278,7 @@ double Operator_Ext_PML_SF_Plane::GetKappaGraded(double depth, double Zm) const
 	if (depth<0)
 		return 0.0;
 
-	double vars[5] = {depth, m_pml_delta, m_pml_width, Zm, m_numLines[m_ny]};
+	double vars[5] = {depth, m_pml_delta, m_pml_width, Zm, (double)m_numLines[m_ny]};
 	return m_GradingFunction->Eval(vars);
 }
 
