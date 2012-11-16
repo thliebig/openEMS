@@ -7,10 +7,10 @@ clear
 close all
 drawnow
 
-Octave = exist('OCTAVE_VERSION','var') ~= 0;
-
-if Octave
+if isOctave
     confirm_recursive_rmdir(0);
+    page_screen_output(0);      % do not buffer output
+    page_output_immediately(1); % do not buffer output
 end
 
 folder = fileparts( mfilename( 'fullpath' ) );
@@ -23,7 +23,7 @@ options = {'--engine=multithreaded', '--engine=sse-compressed', '--engine=sse', 
 for o=1:numel(options)
 
     disp( [datestr(now) ' *** TESTSUITE started (options: ' options{o} ')'] );
-    
+
     % now list the tests
     folders = dir();
     for f=1:numel(folders)
@@ -42,6 +42,7 @@ for o=1:numel(options)
                     % execute function
                     disp( [datestr(now) ' executing: ' folders(f).name '/' scripts(s).name] );
                     [~,fname] = fileparts( scripts(s).name );
+                    fflush(1); % flush stdout
                     pass = feval( fname, options{o}, 'run_testsuite' );
                 end
             end

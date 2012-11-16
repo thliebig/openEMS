@@ -11,26 +11,26 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % 
 % opts:  list of openEMS options
 %        possible options:
-%    	  --disable-dumps	Disable all field dumps for faster simulation
-%         --debug-material	Dump material distribution to a vtk file for debugging
-%         --debug-PEC		Dump metal distribution to a vtk file for debugging
-%         --debug-operator	Dump operator to vtk file for debugging
-%         --debug-boxes		Dump e.g. probe boxes to vtk file for debugging
-%         --debug-CSX		Write CSX geometry file to debugCSX.xml
-%         --engine=<type>		Choose engine type
-%             --engine=fastest		fastest available engine (default)
-%             --engine=basic			basic FDTD engine
-%             --engine=sse			engine using sse vector extensions
-%             --engine=sse_compressed		engine using compressed operator + sse vector extensions
-%             --engine=MPI			engine using compressed operator + sse vector extensions + MPI parallel processing
-%             --engine=multithreaded		engine using compressed operator + sse vector extensions + MPI + multithreading
-%         --numThreads=<n>	Force use n threads for multithreaded engine
-%         --no-simulation	only run preprocessing; do not simulate
+%         --disable-dumps      Disable all field dumps for faster simulation
+%         --debug-material     Dump material distribution to a vtk file for debugging
+%         --debug-PEC          Dump metal distribution to a vtk file for debugging
+%         --debug-operator     Dump operator to vtk file for debugging
+%         --debug-boxes        Dump e.g. probe boxes to vtk file for debugging
+%         --debug-CSX          Write CSX geometry file to debugCSX.xml
+%         --engine=<type>      Choose engine type
+%             --engine=fastest         fastest available engine (default)
+%             --engine=basic           basic FDTD engine
+%             --engine=sse             engine using sse vector extensions
+%             --engine=sse_compressed  engine using compressed operator + sse vector extensions
+%             --engine=MPI             engine using compressed operator + sse vector extensions + MPI parallel processing
+%             --engine=multithreaded   engine using compressed operator + sse vector extensions + MPI + multithreading
+%         --numThreads=<n>     Force use n threads for multithreaded engine
+%         --no-simulation      only run preprocessing; do not simulate
 %
 %          Additional global arguments
-%         --showProbeDiscretization	Show probe discretization information
-%         --nativeFieldDumps		Dump all fields using the native field components
-%         -v,-vv,-vvv			Set debug level: 1 to 3
+%         --showProbeDiscretization    Show probe discretization information
+%         --nativeFieldDumps           Dump all fields using the native field components
+%         -v,-vv,-vvv                  Set debug level: 1 to 3
 %
 %
 % settings: list of Matlab settings
@@ -104,7 +104,7 @@ end
 
 savePath = pwd;
 cd(Sim_Path);
-    
+
 if (enable_ssh)
     scp_options = [scp_options ' -C'];
     ssh_options = [ssh_options ' -x -C'];
@@ -123,17 +123,17 @@ if (enable_ssh)
             error('openEMS:RunOpenEMS', 'unable to find host, abort openEMS');
         end
     end
-    
+
     % create a tmp working dir
- 	[status, result] = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "mktemp -d /tmp/openEMS_XXXXXXXXXXXX"']);
+    [status, result] = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "mktemp -d /tmp/openEMS_XXXXXXXXXXXX"']);
     if (status~=0)
         disp(result);
         error('openEMS:RunOpenEMS','mktemp failed to create tmp directory!');
     end
     ssh_work_path = strtrim(result); %remove tailing \n
-    
+
     disp(['Running remote openEMS on ' Settings.SSH.host ' at working dir: ' ssh_work_path]);
-    
+
     %copy openEMS all simulation files to the ssh host
     [stat, res] = unix([scp_command ' ' scp_options ' * ' Settings.SSH.host ':' ssh_work_path '/']);
     if (stat~=0)
@@ -147,7 +147,7 @@ if (enable_ssh)
     else
         append_unix = [];
     end
-	status = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "cd ' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix]);
+    status = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "cd ' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix]);
     if (status~=0)
         disp(result);
         error('openEMS:RunOpenEMS','ssh openEMS failed!');
@@ -160,14 +160,14 @@ if (enable_ssh)
     if (stat~=0);
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');
-    end 
-    
+    end
+
     %cleanup
     [stat, res] = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' rm -r ' ssh_work_path]);
     if (stat~=0);
         disp(res);
         warning('openEMS:RunOpenEMS','remote cleanup failed!');
-    end       
+    end
 else
     args = [Sim_File ' ' opts];
     if isfield(Settings,'LogFile') && isfield(Settings,'Silent')
@@ -180,6 +180,6 @@ else
         invoke_openEMS(args);
     end
 end
- 
+
 cd(savePath);
 return

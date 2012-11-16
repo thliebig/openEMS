@@ -32,11 +32,11 @@ end
 filename = mfilename('fullpath');
 dir = fileparts( filename );
 openEMS_Path = [dir filesep '../..' filesep];
-    
+
 if isunix
-	openEMS_Path = [openEMS_Path 'openEMS.sh'];
+    openEMS_Path = [openEMS_Path 'openEMS.sh'];
 else
-	openEMS_Path = [openEMS_Path 'openEMS'];
+    openEMS_Path = [openEMS_Path 'openEMS'];
 end
 
 command = [openEMS_Path ' ' opts];
