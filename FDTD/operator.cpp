@@ -199,7 +199,9 @@ double Operator::GetNodeWidth(int ny, const int pos[3], bool dualMesh) const
 	if ( (pos[0]<0) || (pos[1]<0) || (pos[2]<0) )
 		return 0.0;
 
-	return GetNodeWidth(ny, pos, dualMesh);
+	//call the unsigned int version of GetNodeWidth
+	unsigned int uiPos[]={(unsigned int)pos[0],(unsigned int)pos[1],(unsigned int)pos[2]};
+	return GetNodeWidth(ny, uiPos, dualMesh);
 }
 
 double Operator::GetNodeArea(int ny, const unsigned int pos[3], bool dualMesh) const
@@ -214,7 +216,9 @@ double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
 	if ( (pos[0]<0) || (pos[1]<0) || (pos[2]<0) )
 		return 0.0;
 
-	return GetNodeArea(ny, pos, dualMesh);
+	//call the unsigned int version of GetNodeArea
+	unsigned int uiPos[]={(unsigned int)pos[0],(unsigned int)pos[1],(unsigned int)pos[2]};
+	return GetNodeArea(ny, uiPos, dualMesh);
 }
 
 unsigned int Operator::SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh) const
