@@ -42,7 +42,9 @@ for o=1:numel(options)
                     % execute function
                     disp( [datestr(now) ' executing: ' folders(f).name '/' scripts(s).name] );
                     [~,fname] = fileparts( scripts(s).name );
-                    fflush(1); % flush stdout
+                    if isOctave
+                        fflush(1); % flush stdout
+                    end
                     pass = feval( fname, options{o}, 'run_testsuite' );
                 end
             end
