@@ -201,6 +201,62 @@ double Operator_Cylinder::GetEdgeArea(int ny, const unsigned int pos[3], bool du
 	return GetEdgeLength(1,pos,!dualMesh) * GetEdgeLength(2,pos,!dualMesh);
 }
 
+double Operator_Cylinder::FitToAlphaRange(double a_coord) const
+{
+	double min = GetDiscLine(1,0);
+	double max = GetDiscLine(1,GetOriginalNumLines(1)-1);
+	if ((a_coord>=min) && (a_coord<=max))
+		return a_coord;
+	while (a_coord<min)
+	{
+		a_coord+=2*PI;
+		if (a_coord>max)
+			return a_coord-2*PI;
+		if (a_coord>min)
+			return a_coord;
+	}
+	while (a_coord>max)
+	{
+		a_coord-=2*PI;
+		if (a_coord<min)
+			return a_coord+2*PI;
+		if (a_coord<max)
+			return a_coord;
+	}
+	// this cannot happen
+	return a_coord;
+}
+
+unsigned int Operator_Cylinder::SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh) const
+{
+	if (ny==1)
+		coord=FitToAlphaRange(coord);
+	return Operator_Multithread::SnapToMeshLine(ny, coord, inside, dualMesh);
+}
+
+int Operator_Cylinder::SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh, int SnapMethod, bool* bStartIn, bool* bStopIn) const
+{
+	double a_min = GetDiscLine(1,0);
+	double a_max = GetDiscLine(1,GetNumberOfLines(1)-1);
+
+	double a_size = stop[1] - start[1];
+	double a_center = FitToAlphaRange(0.5*(stop[1]+start[1]));
+	double a_start = a_center-a_size/2;
+	double a_stop = a_start + a_size;
+	if (a_stop>a_max)
+		a_stop=a_max;
+	if (a_stop<a_min)
+		a_stop=a_min;
+	if (a_start>a_max)
+		a_start=a_max;
+	if (a_start<a_min)
+		a_start=a_min;
+
+	double l_start[3] = {start[0], a_start, start[2]};
+	double l_stop[3]  = {stop[0] , a_stop , stop[2] };
+	return Operator_Multithread::SnapBox2Mesh(l_start, l_stop, uiStart, uiStop, dualMesh, SnapMethod, bStartIn, bStopIn);
+}
+
 bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 {
 	unsigned int alphaNum;

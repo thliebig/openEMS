@@ -71,6 +71,13 @@ public:
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 
+	virtual double FitToAlphaRange(double a_coord) const;
+
+	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false) const;
+
+	//! Snap a given box to the FDTD mesh
+	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
+
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
