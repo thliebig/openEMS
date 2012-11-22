@@ -25,6 +25,7 @@ function [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 % author: Thorsten Liebig
 %
 % See also ReadHDF5Dump ReadHDF5FieldData ReadHDF5Mesh
+
 if ((~iscell(lines) && ~isnumeric(lines)) || numel(lines)~=3)
     error('openEMS:GetField_Interpolation: numLines for interpolation must be a vector...');
 end
@@ -57,7 +58,8 @@ end
 
 if (isfield(field,'FD'))
     field_i.FD = interpolate_fields(field.FD,x,y,z, x_i, y_i, z_i);
-    field_i.FD.freq = field.FD.freq;
+    field_i.FD.frequency = field.FD.frequency;
+    field_i.FD.DataType = field.FD.DataType;
 end
 
 return
