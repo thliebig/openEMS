@@ -13,9 +13,16 @@ function [f,decay,Q,amp,phase,err]=harminv( timeseries, timestep, start_freq, st
 % -----------------------
 % Sebastian Held <sebastian.held@gmx.de>
 
+if isunix
+    harminv_exe = 'export LD_LIBRARY_PATH=; harminv';
+elseif ispc
+    m_filename = mfilename('fullpath');
+    dir = fileparts( m_filename );
+    harminv_exe = [ '"' dir '\..\harminv.exe"'];
+else
+    error('openEMS:harminv','unknown/unsupported operating system...');
+end
 
-%harminv_exe = '../../../harminv/harminv';
-harminv_exe = 'harminv';
 options = ['-t ' num2str(timestep)];
 tmpfile = tempname;
 
@@ -34,7 +41,7 @@ end
 dlmwrite( tmpfile, timeseries );
 
 command = [harminv_exe ' ' options ' '...
-           num2str(start_freq) '-' num2str(stop_freq) ' < ' tmpfile];
+           num2str(start_freq) '-' num2str(stop_freq) ' < "' tmpfile '"'];
 [status,result] = system( command );
 if status ~= 0
     disp( 'error executing harminv:' );
@@ -54,10 +61,10 @@ amp = [];
 phase = [];
 err = [];
 
-pos = 1;
-while pos < length(result)
-    result = result(pos:end);
-    [C,pos] = textscan( result, '%f', 6, 'Delimiter', ',', 'HeaderLines', 1 );
+lines = textscan( result, '%s', 'Delimiter', '\n');
+
+for n=2:numel(lines{1})
+    [C] = textscan( lines{1}{n}, '%f', 6, 'Delimiter', ',');
     if isempty(C{1}), break; end
     if C{1}(1) >= 0
         f     = [f C{1}(1)];
