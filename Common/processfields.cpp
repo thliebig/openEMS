@@ -73,8 +73,26 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 		return "RotH-Field";
 	case SAR_LOCAL_DUMP:
 		return "SAR-local";
+	case SAR_1G_DUMP:
+		return "SAR_1g";
+	case SAR_10G_DUMP:
+		return "SAR_10g";
+	case SAR_RAW_DATA:
+		return "SAR_raw_data";
 	}
 	return "unknown field";
+}
+
+bool ProcessFields::NeedConductivity() const
+{
+	switch (m_DumpType)
+	{
+	case J_FIELD_DUMP:
+		return true;
+	default:
+		return false;
+	}
+	return false;
 }
 
 void ProcessFields::InitProcess()

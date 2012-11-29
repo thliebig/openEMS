@@ -40,7 +40,7 @@ public:
 	  Current dump types are electric field (E_FIELD_DUMP), magnetic field (H_FIELD_DUMP),
 	  (conduction) electric current density (kappa*E) (J_FIELD_DUMP) and total current density (rotH)
 	  */
-	enum DumpType { E_FIELD_DUMP, H_FIELD_DUMP, J_FIELD_DUMP, ROTH_FIELD_DUMP, SAR_LOCAL_DUMP};
+	enum DumpType { E_FIELD_DUMP=0, H_FIELD_DUMP=1, J_FIELD_DUMP=2, ROTH_FIELD_DUMP=3, SAR_LOCAL_DUMP=20, SAR_1G_DUMP=21, SAR_10G_DUMP=22, SAR_RAW_DATA=29};
 
 	virtual string GetProcessingName() const {return "common field processing";}
 
@@ -66,13 +66,15 @@ public:
 	void SetDumpMode2Cell() {SetDumpMode(Engine_Interface_Base::CELL_INTERPOLATE);}
 
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
-	void SetDumpType(DumpType type) {m_DumpType=type;}
+	virtual void SetDumpType(DumpType type) {m_DumpType=type;}
 
 	double CalcTotalEnergyEstimate() const;
 
 	void SetFileType(FileType fileType) {m_fileType=fileType;}
 
 	static string GetFieldNameByType(DumpType type);
+
+	virtual bool NeedConductivity() const;
 
 protected:
 	DumpType m_DumpType;

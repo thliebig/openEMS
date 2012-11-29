@@ -432,7 +432,7 @@ bool openEMS::SetupProcessing()
 						ProcField = new ProcessFieldsTD(NewEngineInterface());
 					else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
 						ProcField = new ProcessFieldsFD(NewEngineInterface());
-					else if (db->GetDumpType()==20)
+					else if ( ((db->GetDumpType()>=20) && (db->GetDumpType()<=22)) || (db->GetDumpType()==29) )
 						ProcField = new ProcessFieldsSAR(NewEngineInterface());
 					else
 						cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
@@ -455,12 +455,16 @@ bool openEMS::SetupProcessing()
 							ProcField->SetDumpType((ProcessFields::DumpType)db->GetDumpType());
 
 						if (db->GetDumpType()==20)
-						{
 							ProcField->SetDumpType(ProcessFields::SAR_LOCAL_DUMP);
-						}
+						if (db->GetDumpType()==21)
+							ProcField->SetDumpType(ProcessFields::SAR_1G_DUMP);
+						if (db->GetDumpType()==22)
+							ProcField->SetDumpType(ProcessFields::SAR_10G_DUMP);
+						if (db->GetDumpType()==29)
+							ProcField->SetDumpType(ProcessFields::SAR_RAW_DATA);
 
 						//SetupMaterialStorages() has previewed storage needs... refresh here to prevent cleanup!!!
-						if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12) || (db->GetDumpType()==20)) && Enable_Dumps )
+						if ( ProcField->NeedConductivity() && Enable_Dumps )
 							FDTD_Op->SetMaterialStoreFlags(1,true);
 
 						ProcField->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());

@@ -155,6 +155,7 @@ SOURCES += tools/global.cpp \
     tools/array_ops.cpp \
     tools/ErrorMsg.cpp \
     tools/AdrOp.cpp \
+    tools/sar_calculation.cpp \
     tools/vtk_file_writer.cpp \
     tools/hdf5_file_writer.cpp
 
@@ -224,6 +225,7 @@ HEADERS += tools/ErrorMsg.h \
     tools/global.h \
     tools/useful.h \
     tools/aligned_allocator.h \
+    tools/sar_calculation.h \
     tools/vtk_file_writer.h \
     tools/hdf5_file_writer.h
 

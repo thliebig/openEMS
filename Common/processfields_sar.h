@@ -26,6 +26,10 @@ public:
 	ProcessFieldsSAR(Engine_Interface_Base* eng_if);
 	virtual ~ProcessFieldsSAR();
 
+	virtual void SetDumpType(DumpType type);
+
+	virtual bool NeedConductivity() const;
+
 	virtual string GetProcessingName() const {return "SAR dump";}
 
 	virtual void InitProcess();
@@ -36,8 +40,13 @@ public:
 
 	virtual void SetOptResolution(double optRes, int dir=-1);
 
+	//! Set to true for using the conductivity found at the center of a cell, instead of default E*J
+	virtual void SetUseCellConductivity(bool val) {m_UseCellKappa=val;}
+
 protected:
 	virtual void DumpFDData();
+
+	bool m_UseCellKappa;
 
 	//! frequency domain electric field storage
 	vector<std::complex<float>****> m_E_FD_Fields;
