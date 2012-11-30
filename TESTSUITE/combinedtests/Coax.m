@@ -25,7 +25,6 @@ upper_error = 0.03; % max +3%
 lower_error = 0.01; % max -1%
 
 % structure
-abs_length = 250;
 length = 1000;
 coax_rad_i  = 100;
 coax_rad_ai = 230;
@@ -43,37 +42,23 @@ Sim_CSX = 'coax.xml';
 %setup FDTD parameter
 FDTD = InitFDTD(5000,1e-6);
 FDTD = SetGaussExcite(FDTD,0,f_stop);
-BC = [1 1 1 1 1 1] * 0;
-FDTD = SetBoundaryCond(FDTD,BC);
+FDTD = SetBoundaryCond(FDTD,{'PEC','PEC','PEC','PEC','PEC','PML_8'});
 
 %setup CSXCAD geometry
 CSX = InitCSX();
 mesh.x = -2.5*mesh_res(1)-coax_rad_aa : mesh_res(1) : coax_rad_aa+2.5*mesh_res(1);
 mesh.y = mesh.x;
 mesh.z = 0 : mesh_res(3) : length;
-mesh.z = linspace(0,length,numel(mesh.z) + 4-mod(numel(mesh.z),4)); % make it compatible with sse-engine
+mesh.z = linspace(0,length,numel(mesh.z));
 CSX = DefineRectGrid(CSX, 1e-3,mesh);
 
 % create a perfect electric conductor
 CSX = AddMetal(CSX,'PEC');
 
-%%%fake pml
-finalKappa = 0.3/abs_length^4;
-finalSigma = finalKappa*MUE0/EPS0;
-CSX = AddMaterial(CSX,'pml');
-CSX = SetMaterialProperty(CSX,'pml','Kappa',finalKappa);
-CSX = SetMaterialProperty(CSX,'pml','Sigma',finalSigma);
-CSX = SetMaterialWeight(CSX,'pml','Kappa',['pow(abs(z)-' num2str(length-abs_length) ',4)']);
-CSX = SetMaterialWeight(CSX,'pml','Sigma',['pow(abs(z)-' num2str(length-abs_length) ',4)']);
-
 %%% coax
 start = [0, 0 , 0];stop = [0, 0 , length];
 CSX = AddCylinder(CSX,'PEC',1 ,start,stop,coax_rad_i); % inner conductor
 CSX = AddCylindricalShell(CSX,'PEC',0 ,start,stop,0.5*(coax_rad_aa+coax_rad_ai),(coax_rad_aa-coax_rad_ai)); % outer conductor
-
-%%% add PML
-start(3) = length-abs_length;
-CSX = AddCylindricalShell(CSX,'pml',0 ,start,stop,0.5*(coax_rad_i+coax_rad_ai),(coax_rad_ai-coax_rad_i));
 
 %%% add excitation
 start(3) = 0; stop(3)=mesh_res(1)/2;
@@ -83,7 +68,7 @@ weight{2} = 'y/pow(rho,2)';
 weight{3} = '0';
 CSX = SetExcitationWeight(CSX, 'excite', weight );
 CSX = AddCylindricalShell(CSX,'excite',0 ,start,stop,0.5*(coax_rad_i+coax_rad_ai),(coax_rad_ai-coax_rad_i));
- 
+
 % %dump
 % CSX = AddDump(CSX,'Et_',0,2);
 % start = [mesh.x(1) , 0 , mesh.z(1)];
