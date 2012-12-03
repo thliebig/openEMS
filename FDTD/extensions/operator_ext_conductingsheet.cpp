@@ -20,6 +20,8 @@
 #include "tools/constants.h"
 #include "cond_sheet_parameter.h"
 
+#include "CSPropConductingSheet.h"
+
 Operator_Ext_ConductingSheet::Operator_Ext_ConductingSheet(Operator* op, double f_max) : Operator_Ext_LorentzMaterial(op)
 {
 	m_f_max = f_max;

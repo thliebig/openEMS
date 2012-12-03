@@ -21,6 +21,8 @@
 #include "tools/hdf5_file_writer.h"
 #include "tools/sar_calculation.h"
 
+#include "CSPropMaterial.h"
+
 ProcessFieldsSAR::ProcessFieldsSAR(Engine_Interface_Base* eng_if) : ProcessFieldsFD(eng_if)
 {
 	m_UseCellKappa = false;

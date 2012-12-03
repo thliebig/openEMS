@@ -27,6 +27,12 @@
 #include "fparser.hh"
 #include "extensions/operator_ext_excitation.h"
 
+#include "CSPrimBox.h"
+#include "CSPrimCurve.h"
+
+#include "CSPropMaterial.h"
+#include "CSPropLumpedElement.h"
+
 Operator* Operator::New()
 {
 	cout << "Create FDTD operator" << endl;

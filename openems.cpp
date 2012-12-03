@@ -48,6 +48,8 @@
 //external libs
 #include "tinyxml.h"
 #include "ContinuousStructure.h"
+#include "CSPropProbeBox.h"
+#include "CSPropDumpBox.h"
 
 double CalcDiffTime(timeval t1, timeval t2)
 {

@@ -62,6 +62,7 @@ win32 {
     LIBS += -ltinyxml
 	DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread-mt
+    LIBS += -lCGAL
     LIBS += -llapack
     # hdf5 (and mpi for parallel hdf5)
     LIBS += -lhdf5_hl -lhdf5

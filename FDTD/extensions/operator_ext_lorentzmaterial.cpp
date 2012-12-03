@@ -20,6 +20,8 @@
 #include "operator_ext_cylinder.h"
 #include "../operator_cylinder.h"
 
+#include "CSPropLorentzMaterial.h"
+
 Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Operator_Ext_Dispersive(op)
 {
 	v_int_ADE = NULL;

@@ -19,6 +19,9 @@
 #include "engine_ext_tfsf.h"
 #include <cmath>
 
+#include "CSPrimBox.h"
+#include "CSPropExcitation.h"
+
 Operator_Ext_TFST::Operator_Ext_TFST(Operator* op) : Operator_Extension(op)
 {
 	Init();

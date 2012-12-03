@@ -20,6 +20,9 @@
 #include "FDTD/excitation.h"
 #include "ContinuousStructure.h"
 
+#include "CSPrimCurve.h"
+#include "CSPropExcitation.h"
+
 Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op) : Operator_Extension(op)
 {
 	Init();
