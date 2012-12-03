@@ -8,7 +8,9 @@ VERSION = 0.1.0
 win32 {
     CONFIG += console
 
-    WIN32_LIB_ROOT = ../..
+    isEmpty(WIN32_LIB_ROOT) {
+	WIN32_LIB_ROOT = ../..
+    }
 
     # #3rd party libraries#
     # tinyxml
