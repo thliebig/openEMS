@@ -3,6 +3,11 @@ function Dump2VTK(filename, fields, mesh, fieldname, varargin)
 %
 %   Dump fields extraced from an hdf5 file to a vtk file format
 %
+%   possible arguments:
+%       'NativeDump': 0 (default) / 1, dump in native coordinate system
+%       'CloseAlpha': 0 (default) / 1, repeat first/last line in
+%                     alpha-direction for a full cylindrical mesh
+%
 %   example:
 %
 %
@@ -13,10 +18,15 @@ function Dump2VTK(filename, fields, mesh, fieldname, varargin)
 % See also ReadHDF5FieldData ReadHDF5Mesh GetField_TD2FD GetField_Interpolation
 
 NativeDump = 0;
+CloseAlpha = 0;
 
 for n=1:2:numel(varargin)
 	if (strcmp(varargin{n},'NativeDump')==1);
 		NativeDump =  varargin{n+1};
+    elseif (strcmp(varargin{n},'CloseAlpha')==1);
+		CloseAlpha =  varargin{n+1};
+    else
+        warning('openEMS:Dump2VTK', ['"' varargin{n} '" is an unknown argument']);
     end
 end
 
@@ -38,6 +48,11 @@ ind = find(isinf(fields));
 if (~isempty(ind))
     warning('openEMS:Dump2VTK','field contains inf, setting to zero');
     fields(ind)=0;
+end
+
+if ((CloseAlpha~=0) && (mesh.type==1) && (range(y)<2*pi))
+    y(end+1) = y(1)+2*pi;
+    fields(:,end+1,:,:) = fields(:,1,:,:);
 end
 
 if (mesh.type==0) %write cartesian mesh to vtk
