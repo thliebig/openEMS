@@ -5,6 +5,10 @@ CONFIG += debug_and_release
 
 VERSION = 0.1.0
 
+exists(localPathes.pri) {
+    include(localPathes.pri)
+}
+
 win32 {
     CONFIG += console
 
@@ -87,9 +91,13 @@ QMAKE_CXXFLAGS_DEBUG = -O0 \
 #
 # INSTALL (only the nf2ff executable)
 #
+isEmpty(PREFIX) {
+ PREFIX = /usr/local
+}
 install.target = install
-install.commands = mkdir -p \"$(INSTALL_ROOT)/usr/bin\"
-install.commands += && cp -at \"$(INSTALL_ROOT)/usr/bin/\" nf2ff
+install.commands = mkdir -p \"$$PREFIX/bin\"
+unix:install.commands += && cp -at \"$$PREFIX/bin/\" nf2ff
+win32:install.commands += && cp -at \"$$PREFIX/bin/\" release/nf2ff.exe
 QMAKE_EXTRA_TARGETS += install
 
 

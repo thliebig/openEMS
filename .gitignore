@@ -9,3 +9,4 @@ Makefile*
 *.pro.user*
 *.orig
 openEMS
+localPathes.pri

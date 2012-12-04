@@ -14,6 +14,17 @@ CONFIG += debug_and_release
 #
 VERSION=0.0.29
 
+# add git revision
+GITREV = $$system(git describe --tags)
+isEmpty(GITREV):GITREV=$$VERSION
+DEFINES += GIT_VERSION=\\\"$$GITREV\\\"
+
+# remove unnecessary webkit define
+DEFINES -= QT_WEBKIT
+
+exists(localPathes.pri) {
+    include(localPathes.pri)
+}
 
 ###############################################################################
 # CONFIG SECTION
@@ -262,13 +273,6 @@ MPI_SUPPORT {
     QMAKE_CXXFLAGS_RELEASE += -Wno-unused-parameter #needed because mpich2 produces tons of unused parameter
 }
 
-# add git revision
-GITREV = $$system(git describe --tags)
-isEmpty(GITREV):GITREV=$$VERSION
-DEFINES += GIT_VERSION=\\\"$$GITREV\\\"
-
-
-
 
 
 #
@@ -282,11 +286,15 @@ QMAKE_EXTRA_TARGETS += tarball
 #
 # INSTALL (only the openEMS executable and matlab scripts)
 #
+isEmpty(PREFIX) {
+ PREFIX = /usr/local
+}
 install.target = install
-install.commands = mkdir -p \"$(INSTALL_ROOT)/usr/bin\"
-install.commands += && mkdir -p \"$(INSTALL_ROOT)/usr/share/openEMS/matlab\"
-install.commands += && cp -at \"$(INSTALL_ROOT)/usr/bin/\" openEMS.sh openEMS_MPI.sh openEMS
-install.commands += && cp -at \"$(INSTALL_ROOT)/usr/share/openEMS/\" matlab/
+install.commands = mkdir -p \"$$PREFIX/bin\"
+install.commands += && mkdir -p \"$$PREFIX/share/openEMS/matlab\"
+unix:install.commands += && cp -at \"$$PREFIX/bin/\" openEMS.sh openEMS_MPI.sh openEMS
+win32:install.commands += && cp -at \"$$PREFIX/bin/\" release/openEMS.exe
+install.commands += && cp -at \"$$PREFIX/share/openEMS/\" matlab/
 QMAKE_EXTRA_TARGETS += install
 
 
