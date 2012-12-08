@@ -46,7 +46,7 @@ win32 {
         WIN32_LIB_ROOT = ..
     }
     isEmpty(CSXCAD_ROOT) {
-     CSXCAD_ROOT = $$WIN32_LIB_ROOT/CSXCAD
+        CSXCAD_ROOT = $$WIN32_LIB_ROOT/CSXCAD
     }
     # CSXCAD
     INCLUDEPATH += $$CSXCAD_ROOT/include/CSXCAD
@@ -76,7 +76,9 @@ win32 {
 !win32 {
     # CSXCAD
     isEmpty(CSXCAD_ROOT) {
-     CSXCAD_ROOT = /usr
+        CSXCAD_ROOT = /usr
+    } else {
+        QMAKE_LFLAGS += \'-Wl,-rpath,$$CSXCAD_ROOT/lib\'
     }
     INCLUDEPATH += $$CSXCAD_ROOT/include/CSXCAD
     LIBS += -L$$CSXCAD_ROOT/lib -lCSXCAD
@@ -84,9 +86,8 @@ win32 {
     # #3rd party libraries#
     LIBS += -lfparser
     LIBS += -ltinyxml
-	DEFINES += TIXML_USE_STL
+    DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread-mt
-    LIBS += -lCGAL
     # hdf5 (and mpi for parallel hdf5)
     LIBS += -lhdf5_hl -lhdf5
     LIBS += -lmpi -lmpi_cxx
@@ -102,7 +103,6 @@ win32 {
         -lvtkIO \
         -lvtksys \
         -lvtkFiltering
-    QMAKE_LFLAGS += \'-Wl,-rpath,\$$ORIGIN/../CSXCAD\'
 }
 
 # vtk includes deprecated header files; silence the corresponding warning
@@ -287,7 +287,7 @@ QMAKE_EXTRA_TARGETS += tarball
 # INSTALL (only the openEMS executable and matlab scripts)
 #
 isEmpty(PREFIX) {
- PREFIX = /usr/local
+    PREFIX = /usr/local
 }
 install.target = install
 install.commands = mkdir -p \"$$PREFIX/bin\"
