@@ -57,27 +57,29 @@ end
 
 
 %% read optional arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-n_conv_arg = 3; % number of conventional arguments
 
 %set defaults
 ref_ZL = -1;
 ref_shift = nan;
-if (nargin>n_conv_arg)
-    for n=1:2:(nargin-n_conv_arg)
-        if (strcmp(varargin{n},'RefPlaneShift')==1);
-            ref_shift = varargin{n+1};
-        end
-        if (strcmp(varargin{n},'RefImpedance')==1);
-            ref_ZL = varargin{n+1};
-        end
+
+UI_args = {};
+
+for n=1:2:numel(varargin)
+    if (strcmp(varargin{n},'RefPlaneShift')==1);
+        ref_shift = varargin{n+1};
+    elseif (strcmp(varargin{n},'RefImpedance')==1);
+        ref_ZL = varargin{n+1};
+    else
+        UI_args(end+1) = varargin(n);
+        UI_args(end+1) = varargin(n+1);
     end
 end
 
 % read time domain data
 filename = ['port_ut' num2str(port.nr)];
-U = ReadUI( {[filename 'A'],[filename 'B'],[filename 'C']}, SimDir, f );
+U = ReadUI( {[filename 'A'],[filename 'B'],[filename 'C']}, SimDir, f, UI_args{:} );
 filename = ['port_it' num2str(port.nr)];
-I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir, f );
+I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir, f, UI_args{:} );
 
 % store the original frequency domain waveforms
 u_f = U.FD{2}.val;
