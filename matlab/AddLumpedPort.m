@@ -3,10 +3,13 @@ function [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, ex
 %
 % Add a 3D lumped port as an excitation.
 %
+% A lumped port consists of an excitation, a lumped resistor, a voltage and
+% current probe.
+%
 % CSX:      CSX-object created by InitCSX()
 % prio:     priority for substrate and probe boxes
 % portnr:   (integer) number of the port
-% R:        internal resistance of the port
+% R:        internal resistance of the port (lumped element)
 % start:    3D start rowvector for port definition
 % stop:     3D end rowvector for port definition
 % dir:      direction/amplitude of port (e.g.: [1 0 0], [0 1 0] or [0 0 1])
@@ -18,7 +21,7 @@ function [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, ex
 %   start = [-0.1 -width/2 0];
 %   stop  = [ 0.1  width/2 height];
 %   [CSX] = AddLumpedPort(CSX, 5 ,1 , 50, start, stop, [0 0 1], 'excite');
-%   this defines a lumped port in z-direction (dir)
+%   this defines a lumped port in z-direction with a 50 Ohm port impedence
 %
 % openEMS matlab interface
 % -----------------------
