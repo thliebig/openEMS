@@ -55,7 +55,7 @@ end
 
 for n=1:2:(nargin-1)
     if (strcmp(varargin{n},'CloseAlpha')==1);
-        if ((varargin{n+1}==1) && (mesh.type==1))
+        if ((varargin{n+1}==1) && (mesh.type==1) && (range(mesh.lines{2})<2*pi))
             mesh.lines{2}(end+1)=mesh.lines{2}(1)+2*pi;
             if (isfield(field,'TD'))
                 for n = 1:numel(field.TD.values)

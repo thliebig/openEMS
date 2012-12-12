@@ -37,17 +37,13 @@ fieldname = 'unknown';
 for n=1:2:numel(varargin)
     if (strcmp(varargin{n},'TD_Dump')==1);
         do_TD_dump =  varargin{n+1};
-    end
-    if (strcmp(varargin{n},'FD_Dump')==1);
+    elseif (strcmp(varargin{n},'FD_Dump')==1);
         do_FD_dump =  varargin{n+1};
-    end
-    if (strcmp(varargin{n},'NumPhase')==1);
+    elseif (strcmp(varargin{n},'NumPhase')==1);
         phase_N =  varargin{n+1};
-    end
-    if (strcmp(varargin{n},'FieldName')==1);
+    elseif (strcmp(varargin{n},'FieldName')==1);
         fieldname =  varargin{n+1};
-    end
-    if (strcmp(varargin{n},'weight')==1);
+    elseif (strcmp(varargin{n},'weight')==1);
         weight =  varargin{n+1};
     end
 end

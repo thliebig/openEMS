@@ -25,8 +25,6 @@ for n=1:2:numel(varargin)
 		NativeDump =  varargin{n+1};
     elseif (strcmp(varargin{n},'CloseAlpha')==1);
 		CloseAlpha =  varargin{n+1};
-    else
-        warning('openEMS:Dump2VTK', ['"' varargin{n} '" is an unknown argument']);
     end
 end
 
