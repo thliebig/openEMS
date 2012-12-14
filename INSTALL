@@ -1,0 +1,25 @@
+Install instructions for openEMS:
+---------------------------------------------
+
+1) Prerequirements:
+  openEMS relies on a number of libraries:
+  - CSXCAD (http://openEMS.de)
+  - fparser (http://warp.povusers.org/FunctionParser/)
+  - tinyxml (http://www.grinninglizard.com/tinyxml/)
+  - hdf5 (http://www.hdfgroup.org/HDF5/)
+  - vtk (http://www.vtk.org/)
+  - boost (http://www.boost.org/)
+  - cgal (http://www.cgal.org/)
+  - zlib (http://www.zlib.net/)
+
+2) Build:
+  - change directory to openEMS
+  - build:
+    qmake PREFIX=<path/to/install/> CSXCAD_ROOT=<path/to/CSXCAD>  openEMS.pro
+    make
+    make install (may require root)
+
+    Note:
+      - all path informations may be stored in a localPathes.pri
+      - the default "prefix" is /usr/local
+

@@ -12,7 +12,7 @@ CONFIG += debug_and_release
 #
 # VERSION
 #
-VERSION=0.0.29
+VERSION=0.0.30
 
 # add git revision
 GITREV = $$system(git describe --tags)
@@ -56,7 +56,7 @@ win32 {
     # tinyxml
     INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml/include
     LIBS += -L$$WIN32_LIB_ROOT/tinyxml/bin -ltinyxml2
-	DEFINES += TIXML_USE_STL
+    DEFINES += TIXML_USE_STL
     # fparser
     INCLUDEPATH += $$WIN32_LIB_ROOT/fparser/include
     LIBS += -L$$WIN32_LIB_ROOT/fparser/bin -lfparser4

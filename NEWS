@@ -1,3 +1,16 @@
+Summary of most noticeable changes for version 0.0.30:
+-----------------------------------------------------
+  - meshing improved with new detect edges and new smoothing capabilities
+  - new calcPort function for simplified port analysis
+  - cylindrical mesh improvement by considering 360° rotation symmetry
+  - support for harminv on all platforms
+  - update to auto-regressive model for voltage/current probes
+  - new SAR calculation options, incl. 1g/10g averaging
+  - support for a new primitive: polyhedron
+  - CAD import: STL/PLY surface solids supported (matlab: ImportSTL / ImportPLY)
+  - CAD export: STL/PLY export (using AppCSXCAD)
+  - lot of minor fixes and updates
+
 Summary of most noticeable changes for version 0.0.29:
 -----------------------------------------------------
   - Cylindrical sub-grids now fully support alpha-graded meshes
