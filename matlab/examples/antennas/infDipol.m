@@ -81,81 +81,56 @@ disp( ' ********************************************************** ' );
 disp( ' ' );
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
-thetaRange = 0:2:359;
+thetaRange = 0:0.5:359;
 disp( 'calculating far field at phi=[0 90] deg..' );
-%[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, thetaRange, [0 90], 1 );
 nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, thetaRange/180*pi, [0 pi/2], 'Mode', 1 );
 Prad = nf2ff.Prad;
 Dmax = nf2ff.Dmax;
-f_idx = 1;
-E_far_theta = nf2ff.E_theta{f_idx};
-E_far_phi   = nf2ff.E_phi{f_idx};
+
+theta_HPBW = interp1(nf2ff.E_norm{1}(find(thetaRange<90),1)/max(nf2ff.E_norm{1}(find(thetaRange<90),1)),thetaRange(find(thetaRange<90)),1/sqrt(2))*2;
 
 % display power and directivity
 disp( ['radiated power: Prad = ' num2str(Prad)] );
 disp( ['directivity: Dmax = ' num2str(Dmax)] );
+disp( ['theta_HPBW = ' num2str(theta_HPBW) ' °']);
 
-% calculate the e-field magnitude for phi = 0 deg
-E_phi0_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi0_far(n) = norm( [E_far_theta(n,1) E_far_phi(n,1)] );
-end
-
-% display polar plot
+% display polar plot for the e-field magnitude for phi = 0 deg
 figure
-polar( thetaRange/180*pi, E_phi0_far );
+polar( thetaRange/180*pi, nf2ff.E_norm{1}(:,1)' );
 ylabel( 'theta / deg' );
-title( ['electrical far field (V/m); r=1 m  phi=0 deg'] );
+title( 'electrical far field (V/m); r=1 m  phi=0 deg' );
 legend( 'e-field magnitude', 'Location', 'BestOutside' );
 
-% calculate the e-field magnitude for phi = 90 deg
-E_phi90_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi90_far(n) = norm([E_far_theta(n,2) E_far_phi(n,2)]);
-end
-
-% display polar plot
+% display polar plot for the e-field magnitude for phi = 90 deg
 figure
-polar( thetaRange/180*pi, E_phi90_far );
+polar( thetaRange/180*pi, nf2ff.E_norm{1}(:,2)' );
 ylabel( 'theta / deg' );
-title( ['electrical far field (V/m); r=1 m  phi=90 deg'] );
+title( 'electrical far field (V/m); r=1 m  phi=90 deg' );
 legend( 'e-field magnitude', 'Location', 'BestOutside' );
 
-% calculate the far field at theta=90 degrees
+%% calculate the far field at theta=90 degrees
 phiRange = 0:2:359;
 disp( 'calculating far field at theta=90 deg..' );
 %[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, 90, phiRange, 1 );
 nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, 90, phiRange/180*pi, 'Mode', 1 );
 Prad = nf2ff.Prad;
 Dmax = nf2ff.Dmax;
-f_idx = 1;
-E_far_theta = nf2ff.E_theta{f_idx};
-E_far_phi   = nf2ff.E_phi{f_idx};
-
-E_theta90_far = zeros(1,numel(phiRange));
-for n=1:numel(phiRange)
-    E_theta90_far(n) = norm([E_far_theta(1,n) E_far_phi(1,n)]);
-end
 
 % display polar plot
 figure
-polar( phiRange/180*pi, E_theta90_far );
+polar( phiRange/180*pi, nf2ff.E_norm{1} );
 ylabel( 'phi / deg' );
-title( ['electrical far field (V/m); r=1 m  theta=90 deg'] );
+title( 'electrical far field (V/m); r=1 m  theta=90 deg' );
 legend( 'e-field magnitude', 'Location', 'BestOutside' );
 
 
-% calculate 3D pattern
-phiRange = 0:15:360;
-thetaRange = 0:10:180;
+%% calculate 3D pattern
+phiRange = 0:5:360;
+thetaRange = 0:5:180;
 disp( 'calculating 3D far field...' );
-%[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, thetaRange, phiRange, 1 );
 nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, thetaRange/180*pi, phiRange/180*pi, 'Mode', 1 );
-f_idx = 1;
-E_far_theta = nf2ff.E_theta{f_idx};
-E_far_phi   = nf2ff.E_phi{f_idx};
 
-E_far = sqrt( abs(E_far_theta).^2 + abs(E_far_phi).^2 );
+E_far = nf2ff.E_norm{1};
 E_far_normalized = E_far / max(E_far(:));
 [theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
 x = E_far_normalized .* sin(theta) .* cos(phi);
@@ -168,6 +143,6 @@ xlabel( 'x' );
 ylabel( 'y' );
 zlabel( 'z' );
 
-%
+%%
 DumpFF2VTK([Sim_Path '/FF_pattern.vtk'],E_far_normalized, thetaRange,  phiRange);
 disp(['view the farfield pattern "' Sim_Path '/FF_pattern.vtk" using paraview' ]);
