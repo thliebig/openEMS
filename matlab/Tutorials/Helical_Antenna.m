@@ -163,9 +163,9 @@ thetaRange = unique([0:0.5:90 90:180]);
 phiRange = (0:2:360) - 180;
 disp( 'calculating the 3D far field...' );
 
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180,'Mode',1,'Outfile','3D_Pattern.h5','Verbose',1);
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180,'Mode',0,'Outfile','3D_Pattern.h5','Verbose',1);
 
-theta_HPBW = thetaRange(find(nf2ff.E_norm{1}(:,1)<max(nf2ff.E_norm{1}(:,1))/2,1))*2;
+theta_HPBW = interp1(nf2ff.E_norm{1}(:,1)/max(nf2ff.E_norm{1}(:,1)),thetaRange,1/sqrt(2))*2;
 
 % display power and directivity
 disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
@@ -175,6 +175,23 @@ disp( ['theta_HPBW = ' num2str(theta_HPBW) ' °']);
 
 
 %%
-E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax;
-DumpFF2VTK([Sim_Path '/3D_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,1e-3);
+directivity = nf2ff.P_rad{1}/nf2ff.Prad*4*pi;
+directivity_CPRH = abs(nf2ff.E_cprh{1}).^2./max(nf2ff.E_norm{1}(:)).^2*nf2ff.Dmax;
+directivity_CPLH = abs(nf2ff.E_cplh{1}).^2./max(nf2ff.E_norm{1}(:)).^2*nf2ff.Dmax;
+
+%%
+figure
+plot(thetaRange, 10*log10(directivity(:,1)'),'k-','LineWidth',2);
+hold on
+grid on
+xlabel('theta (deg)');
+ylabel('directivity (dBi)');
+plot(thetaRange, 10*log10(directivity_CPRH(:,1)'),'g--','LineWidth',2);
+plot(thetaRange, 10*log10(directivity_CPLH(:,1)'),'r-.','LineWidth',2);
+legend('norm','CPRH','CPLH');
+
+%% dump to vtk
+DumpFF2VTK([Sim_Path '/3D_Pattern.vtk'],directivity,thetaRange,phiRange,1e-3);
+DumpFF2VTK([Sim_Path '/3D_Pattern_CPRH.vtk'],directivity_CPRH,thetaRange,phiRange,1e-3);
+DumpFF2VTK([Sim_Path '/3D_Pattern_CPLH.vtk'],directivity_CPLH,thetaRange,phiRange,1e-3);
 

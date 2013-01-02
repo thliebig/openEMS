@@ -34,7 +34,6 @@ if isOctave
 else
     % matlab compatibility to older versions
     if verLessThan('matlab','7.12')
-
         % read data
         for n=1:numel(nf2ff.freq)
             nf2ff.E_theta{n} = double(hdf5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_real']) + 1i*hdf5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_imag']));
@@ -42,14 +41,28 @@ else
             nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
             nf2ff.P_rad{n} = double(hdf5read(file,['/nf2ff/P_rad/FD/f' int2str(n-1)]));
         end
-        return
+    else
+        % read data
+        for n=1:numel(nf2ff.freq)
+            nf2ff.E_theta{n} = double(h5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_real']) + 1i*h5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_imag']));
+            nf2ff.E_phi{n} = double(h5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_real']) + 1i*h5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_imag']));
+            nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
+            nf2ff.P_rad{n} = double(h5read(file,['/nf2ff/P_rad/FD/f' int2str(n-1)]));
+        end
     end
+end
 
-    % read data
-    for n=1:numel(nf2ff.freq)
-        nf2ff.E_theta{n} = double(h5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_real']) + 1i*h5read(file,['/nf2ff/E_theta/FD/f' int2str(n-1) '_imag']));
-        nf2ff.E_phi{n} = double(h5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_real']) + 1i*h5read(file,['/nf2ff/E_phi/FD/f' int2str(n-1) '_imag']));
-        nf2ff.E_norm{n} = double(sqrt(abs(nf2ff.E_theta{n}).^2+abs(nf2ff.E_phi{n}).^2));
-        nf2ff.P_rad{n} = double(h5read(file,['/nf2ff/P_rad/FD/f' int2str(n-1)]));
+% Calculation of right- and left-handed circular polarization
+% adopted from
+% 2012, Tim Pegg <teepegg@gmail.com>
+
+% Setup vectors for converting to LHCP and RHCP polarization senses
+cosphi = cos(nf2ff.phi)';
+sinphi = sin(nf2ff.phi)';
+
+for f=1:numel(nf2ff.freq)
+    for n = 1:numel(nf2ff.theta)
+        nf2ff.E_cprh{f}(n,:) = (cosphi+1i*sinphi) .* (nf2ff.E_theta{f}(n,:)+1i*nf2ff.E_phi{f}(n,:))/sqrt(2);
+        nf2ff.E_cplh{f}(n,:) = (cosphi-1i*sinphi) .* (nf2ff.E_theta{f}(n,:)-1i*nf2ff.E_phi{f}(n,:))/sqrt(2);
     end
 end
