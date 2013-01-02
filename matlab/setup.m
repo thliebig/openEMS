@@ -17,7 +17,11 @@ cd(dir);
 if isOctave()
     disp('compiling oct files')
     fflush(stdout)
-    mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
+    if isunix
+        mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
+    else
+        mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
+    end
 else
     disp('Matlab does not need this function. It is Octave only.')
 end
