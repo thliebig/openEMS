@@ -56,6 +56,10 @@ end
 % adopted from
 % 2012, Tim Pegg <teepegg@gmail.com>
 
+% cleanup (if exist)
+nf2ff.E_cprh = [];
+nf2ff.E_cplh = [];
+
 % Setup vectors for converting to LHCP and RHCP polarization senses
 cosphi = cos(nf2ff.phi)';
 sinphi = sin(nf2ff.phi)';
