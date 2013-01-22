@@ -47,8 +47,8 @@ else
 	error 'dir must have exactly one component ~= 0'
 end
 
-if (sum(start==stop)>0)
-    error 'start/stop in must not be equal in any direction --> lumped port needs a 3D box'
+if (stop(n_dir)==start(n_dir))
+    error 'start/stop in excitation direction in must not be equal'
 end
 
 if (stop(n_dir)-start(n_dir)) > 0
@@ -93,7 +93,7 @@ u_stop  = 0.5*(start + stop);
 u_start(n_dir) = start(n_dir);
 u_stop(n_dir)  = stop(n_dir);
 
-CSX = AddProbe(CSX,['port_ut' int2str(portnr)], 0, -direction);
+CSX = AddProbe(CSX,['port_ut' int2str(portnr)], 0, 'weight', -direction);
 CSX = AddBox(CSX,['port_ut' int2str(portnr)], prio, u_start, u_stop);
 
 i_start = start;
@@ -101,6 +101,6 @@ i_stop  = stop;
 i_start(n_dir) = 0.5*(start(n_dir)+stop(n_dir));
 i_stop(n_dir)  = 0.5*(start(n_dir)+stop(n_dir));
 
-CSX = AddProbe(CSX,['port_it' int2str(portnr)], 1, direction);
+CSX = AddProbe(CSX,['port_it' int2str(portnr)], 1, 'weight', direction, 'NormDir', n_dir-1);
 CSX = AddBox(CSX,['port_it' int2str(portnr)], prio, i_start, i_stop);
 

@@ -73,7 +73,7 @@ end
 CSX = AddMetal( CSX, 'PEC' );
 portstart = [ mesh.x(1) , -CRLH.LW/2, substratelines(end)];
 portstop  = [ -CRLH.LL/2,  CRLH.LW/2, 0];
-[CSX,port{1}] = AddMSLPort( CSX, 999, 1, 'PEC', portstart, portstop, 0, [0 0 -1], 'ExcitePort', 'excite', 'FeedShift', 10*resolution(1), 'MeasPlaneShift',  feed_length/2);
+[CSX,port{1}] = AddMSLPort( CSX, 999, 1, 'PEC', portstart, portstop, 0, [0 0 -1], 'ExcitePort', true, 'FeedShift', 10*resolution(1), 'MeasPlaneShift',  feed_length/2);
 
 portstart = [ mesh.x(end) , -CRLH.LW/2, substratelines(end)];
 portstop  = [ +CRLH.LL/2,   CRLH.LW/2, 0];

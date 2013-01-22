@@ -83,17 +83,17 @@ CSX = AddBox(CSX,'excite',0 ,start,stop);
 %port 1
 start = [mesh.r(1)   mesh.a(1)   mesh.z(15)];
 stop  = [mesh.r(end) mesh.a(end) mesh.z(15)];
-CSX = AddProbe(CSX, 'ut1', 10, 1, [], 'ModeFunction',{func_Er,func_Ea,0});
+CSX = AddProbe(CSX, 'ut1', 10, 'ModeFunction',{func_Er,func_Ea,0});
 CSX = AddBox(CSX,  'ut1',  0 ,start,stop);
-CSX = AddProbe(CSX,'it1', 11, 1, [], 'ModeFunction',{func_Hr,func_Ha,0});
+CSX = AddProbe(CSX,'it1', 11, 'ModeFunction',{func_Hr,func_Ha,0});
 CSX = AddBox(CSX,'it1', 0 ,start,stop);
 
 %port 2
 start(3) = mesh.z(end-14);
 stop(3) = mesh.z(end-14);
-CSX = AddProbe(CSX, 'ut2', 10, 1, [], 'ModeFunction',{func_Er,func_Ea,0});
+CSX = AddProbe(CSX, 'ut2', 10, 'ModeFunction',{func_Er,func_Ea,0});
 CSX = AddBox(CSX,  'ut2',  0 ,start,stop);
-CSX = AddProbe(CSX,'it2', 11, 1, [], 'ModeFunction',{func_Hr,func_Ha,0});
+CSX = AddProbe(CSX,'it2', 11, 'ModeFunction',{func_Hr,func_Ha,0});
 CSX = AddBox(CSX,'it2', 0 ,start,stop);
 
 port_dist = mesh.z(end-14) - mesh.z(15);

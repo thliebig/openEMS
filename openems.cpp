@@ -348,7 +348,7 @@ bool openEMS::SetupProcessing()
 				stop[1] =bnd[3];
 				stop[2] =bnd[5];
 				CSPropProbeBox* pb = Probes.at(i)->ToProbeBox();
-				Processing* proc = NULL;
+				ProcessIntegral* proc = NULL;
 				if (pb)
 				{
 					if (pb->GetProbeType()==0)
@@ -388,6 +388,7 @@ bool openEMS::SetupProcessing()
 					}
 					proc->SetProcessInterval(Nyquist/m_OverSampling);
 					proc->AddFrequency(pb->GetFDSamples());
+					proc->GetNormalDir(pb->GetNormalDir());
 					if (l_MultiBox==false)
 						proc->SetName(pb->GetName());
 					else

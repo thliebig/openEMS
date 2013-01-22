@@ -24,6 +24,7 @@ ProcessIntegral::ProcessIntegral(Engine_Interface_Base* eng_if)  : Processing(en
 {
 	m_Results=NULL;
 	m_FD_Results=NULL;
+	m_normDir = -1;
 }
 
 ProcessIntegral::~ProcessIntegral()

@@ -33,7 +33,6 @@ substrate.cells = 4;
 
 %setup feeding
 feed.pos = -6; %feeding position in x-direction
-feed.width = 2;  %feeding port width
 feed.R = 50;     %feed resistance
 
 % size of the simulation box
@@ -78,8 +77,8 @@ stop(3) =0;
 CSX = AddBox(CSX,'gnd',10,start,stop);
 
 %% apply the excitation & resist as a current source
-start = [feed.pos-feed.width/2 -feed.width/2 0];
-stop  = [feed.pos+feed.width/2 +feed.width/2 substrate.thickness];
+start = [feed.pos 0 0];
+stop  = [feed.pos 0 substrate.thickness];
 [CSX port] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
 %% finalize the mesh

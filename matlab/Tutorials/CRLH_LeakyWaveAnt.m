@@ -108,12 +108,12 @@ stop  = [mesh.x(end) mesh.y(end) mesh.z(end)] - 10*resolution;
 Sim_Path = 'tmp_CRLH_LeakyWave';
 Sim_CSX = 'CRLH.xml';
 
-[status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
-[status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
+% [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
+% [status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
 
-WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
+% WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
-RunOpenEMS( Sim_Path, Sim_CSX );
+% RunOpenEMS( Sim_Path, Sim_CSX );
 
 %% post-processing
 close all
@@ -140,7 +140,7 @@ phi = 0:2:360;
 theta = 0:2:180;
 
 disp( 'calculating 3D far field pattern...' );
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 'Outfile','3D_Pattern.h5', 'Mode', 1,'Verbose',1);
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 'Outfile','3D_Pattern.h5', 'Mode', 0,'Verbose',1);
 
 %%
 P_in = 0.5*port{1}.uf.inc .* conj( port{1}.if.inc ); % accepted antenna feed power

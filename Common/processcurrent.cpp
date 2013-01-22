@@ -40,23 +40,51 @@ void ProcessCurrent::DefineStartStopCoord(double* dstart, double* dstop)
 {
 	ProcessIntegral::DefineStartStopCoord(dstart, dstop);
 
-	m_normDir = -1;
-	for (int n=0; n<3; ++n)
+	if ((m_normDir<0) || (m_normDir>2))
 	{
-		if (stop[n] == start[n])
-			m_normDir = n;
+		if (m_Dimension!=2)
+		{
+			cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" is not a surface (found dimension: " << m_Dimension << ") nor has it set a valid normal direction! --> disabled" << endl;
+			SetEnable(false);
+			return;
+		}
+
+		for (int n=0; n<3; ++n)
+		{
+			if (stop[n] == start[n])
+				m_normDir = n;
+		}
+	}
+	else
+	{
+		//expand dimension to 2 if possible
+		m_Dimension = 0;
+		for (int n=0; n<3; ++n)
+		{
+			if (n==m_normDir)
+				continue;
+			if (dstart[n]==dstop[n])
+			{
+				if ((Op->GetDiscLine( n, start[n], true ) > dstart[n]) && (start[n]>0))
+					--start[n];
+				if ((Op->GetDiscLine( n, start[n], true ) < dstart[n]) && (stop[n]<Op->GetNumberOfLines(n)-1))
+					++stop[n];
+			}
+			if (stop[n] > start[n])
+				++m_Dimension;
+		}
 	}
 
-	if (m_normDir<0)
+	if (start[m_normDir]!=stop[m_normDir])
 	{
-		cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" has an invalid normal direction --> disabled" << endl;
+		cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" has an expansion in normal direction! --> disabled" << endl;
 		SetEnable(false);
 		return;
 	}
 
-	if (m_Dimension!=2)
+	if ((m_normDir<0) || (m_normDir>2))
 	{
-		cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" is not a surface (found dimension: " << m_Dimension << ") --> disabled" << endl;
+		cerr << "ProcessCurrent::DefineStartStopCoord(): Warning Current Integration Box \"" << m_filename << "\" has an invalid normal direction --> disabled" << endl;
 		SetEnable(false);
 		return;
 	}

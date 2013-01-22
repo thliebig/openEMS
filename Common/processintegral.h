@@ -33,6 +33,8 @@ public:
 
 	virtual string GetProcessingName() const = 0;
 
+	virtual void GetNormalDir(int nd) {m_normDir=nd;}
+
 	//! Flush FD data to disk
 	virtual void FlushData();
 
@@ -62,6 +64,8 @@ protected:
 
 	vector<double_complex> *m_FD_Results;
 	double *m_Results;
+
+	int m_normDir; // normal direction as required by some integral processings
 };
 
 #endif // PROCESSINTEGRAL_H

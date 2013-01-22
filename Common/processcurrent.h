@@ -36,7 +36,6 @@ public:
 	virtual double CalcIntegral();
 
 protected:
-	int m_normDir; //current box has to be 2D plane, this is the normal direction
 };
 
 #endif // PROCESSCURRENT_H

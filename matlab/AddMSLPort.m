@@ -192,21 +192,21 @@ i2_stop(idx_prop)    = i2_start(idx_prop);
 name = ['port_ut' num2str(portnr) 'A'];
 % weight = sign(stop(idx_height)-start(idx_height))
 weight = upsidedown;
-CSX = AddProbe( CSX, name, 0, weight );
+CSX = AddProbe( CSX, name, 0, 'weight', weight );
 CSX = AddBox( CSX, name, prio, v1_start, v1_stop );
 name = ['port_ut' num2str(portnr) 'B'];
-CSX = AddProbe( CSX, name, 0, weight );
+CSX = AddProbe( CSX, name, 0, 'weight', weight );
 CSX = AddBox( CSX, name, prio, v2_start, v2_stop );
 name = ['port_ut' num2str(portnr) 'C'];
-CSX = AddProbe( CSX, name, 0, weight );
+CSX = AddProbe( CSX, name, 0, 'weight', weight );
 CSX = AddBox( CSX, name, prio, v3_start, v3_stop );
 name = ['port_it' num2str(portnr) 'A'];
 
 weight = direction;
-CSX = AddProbe( CSX, name, 1, weight );
+CSX = AddProbe( CSX, name, 1, 'weight', weight );
 CSX = AddBox( CSX, name, prio, i1_start, i1_stop );
 name = ['port_it' num2str(portnr) 'B'];
-CSX = AddProbe( CSX, name, 1, weight );
+CSX = AddProbe( CSX, name, 1,'weight', weight );
 CSX = AddBox( CSX, name, prio, i2_start, i2_stop );
 
 % create port structure
