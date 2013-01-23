@@ -1,5 +1,5 @@
 function mesh = AddPML( mesh, numcells, CoordSystem )
-%mesh = AddPML( mesh, numcells, <CoordSystem>  )
+% mesh = AddPML( mesh, numcells, <CoordSystem>  )
 %
 % Adds equidistant cells to the specified directions of the simulation
 % area. This is used to put a PML (perfectly matched layer) absorber there.
@@ -10,19 +10,31 @@ function mesh = AddPML( mesh, numcells, CoordSystem )
 %
 % input:
 %   mesh:     mesh structure
-%     .x:     1xn vector (lines in x direction)
-%     .y:     1xn vector (lines in y direction)
-%     .z:     1xn vector (lines in z direction)
 %   numcells: 1x6 vector (xmin,xmax,ymin,ymax,zmin,zmax) with number of
 %             cells to add to this direction
+%   CoordSystem (optional): set to 1 in case of cylindrical mesh using
+%               mesh.r, mesh.a and mesh.z
 %
 % output:
-%   mesh:     new mesh
+%   mesh:     new mesh with the added lines
+%
+% example:
+%   % some fixed mesh lines
+%   mesh.x = [-100 0 100];
+%   mesh.y = [-100 0 100];
+%   mesh.z = [0 500];
+%   mesh = DetectEdges(CSX, mesh); %detect edges
+%   mesh = SmoothMesh(mesh, c0/fmax/20/unit); % smooth the mesh
+%
+%   mesh = AddPML(mesh, 8); % add 8 lines to all directions
+%   % or
+%   mesh = AddPML(mesh, [0 0 0 0 8 8]); % add 8 lines in both z-directions
+%
+% See also DefineRectGrid, SmoothMesh, DetectEdges
 %
 % openEMS matlab interface
 % -----------------------
 % Sebastian Held <sebastian.held@uni-due.de>
-% See also DefineRectGrid
 
 % check
 error( nargchk(2,3,nargin) );
