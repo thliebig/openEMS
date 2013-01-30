@@ -24,7 +24,7 @@ SAR_Calculation::SAR_Calculation()
 {
 	m_Vx_Used = NULL;
 	m_Vx_Valid = NULL;
-	m_DebugLevel = 1;
+	m_DebugLevel = 0;
 	SetAveragingMethod(SIMPLE);
 	Reset();
 }

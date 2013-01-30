@@ -270,6 +270,7 @@ void ProcessFieldsSAR::DumpFDData()
 	else
 	{
 		SAR_Calculation SAR_Calc;
+		SAR_Calc.SetDebugLevel(g_settings.GetVerboseLevel());
 		SAR_Calc.SetNumLines(numLines);
 		if (m_DumpType == SAR_LOCAL_DUMP)
 			SAR_Calc.SetAveragingMass(0);
