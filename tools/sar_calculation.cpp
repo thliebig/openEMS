@@ -205,11 +205,11 @@ float*** SAR_Calculation::CalcLocalSAR(float*** SAR)
 }
 
 int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
-					float partial_start[3], float partial_stop[3], float &mass, float &volume, float &bg_ratio, int disabledFace, bool ignoreFaceValid)
+					float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace, bool ignoreFaceValid)
 {
 	unsigned int mass_iterations = 0;
-	float old_mass=0;
-	float old_box_size=0;
+	double old_mass=0;
+	double old_box_size=0;
 	bool face_valid;
 	bool mass_valid;
 	bool voxel_valid;
@@ -265,8 +265,8 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 	return -1;
 }
 
-bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
-									 float partial_start[3], float partial_stop[3], float &mass, float &volume, float &bg_ratio, int disabledFace)
+bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], double box_size, unsigned int start[3], unsigned int stop[3],
+									 float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace)
 {
 	if ((box_size<=0) || isnan(box_size) || isinf(box_size))
 	{
@@ -343,8 +343,8 @@ bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], float box_size, unsign
 
 	mass = 0;
 	volume = 0;
-	float bg_volume=0;
-	float weight[3];
+	double bg_volume=0;
+	double weight[3];
 	unsigned int f_pos[3];
 	bool face_intersect[6] = {false,false,false,false,false,false};
 	for (f_pos[0]=start[0];f_pos[0]<=stop[0];++f_pos[0])
@@ -400,9 +400,9 @@ bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], float box_size, unsign
 
 float SAR_Calculation::CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigned int start[3], unsigned int stop[3], float partial_start[3], float partial_stop[3], bool assignUsed)
 {
-	float power_mass=0;
-	float mass=0;
-	float weight[3];
+	double power_mass=0;
+	double mass=0;
+	double weight[3];
 	unsigned int f_pos[3];
 	for (f_pos[0]=start[0];f_pos[0]<=stop[0];++f_pos[0])
 	{
@@ -489,13 +489,13 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 	m_Vx_Used = Create3DArray<bool>(m_numLines);
 	m_Vx_Valid = Create3DArray<bool>(m_numLines);
 
-	float voxel_volume;
-	float total_mass;
+	double voxel_volume;
+	double total_mass;
 	unsigned int start[3];
 	unsigned int stop[3];
 	float partial_start[3];
 	float partial_stop[3];
-	float bg_ratio;
+	double bg_ratio;
 	int EC=0;
 
 	// debug counter
@@ -551,7 +551,7 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 	{
 		cerr << "Number of invalid cubes (case 1): " << cnt_case1 << endl;
 		cerr << "Number of invalid cubes (case 2): " << cnt_case2 << endl;
-		cerr << "Number of invalid cubes (falied to converge): " << cnt_NoConvergence << endl;
+		cerr << "Number of invalid cubes (failed to converge): " << cnt_NoConvergence << endl;
 	}
 
 	// count all used and unused etc. + special handling of unused voxels!!
@@ -570,10 +570,10 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 					++m_Unused;
 
 					SAR[pos[0]][pos[1]][pos[2]] = 0;
-					float unused_volumes[6];
+					double unused_volumes[6];
 					float unused_SAR[6];
 
-					float min_Vol=FLT_MAX;
+					double min_Vol=FLT_MAX;
 
 					// special handling of unused voxels:
 					for (int n=0;n<6;++n)
@@ -614,18 +614,18 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 	return SAR;
 }
 
-float SAR_Calculation::CellVolume(unsigned int pos[3])
+double SAR_Calculation::CellVolume(unsigned int pos[3])
 {
 	if (m_cell_volume)
 		return m_cell_volume[pos[0]][pos[1]][pos[2]];
 
-	float volume=1;
+	double volume=1;
 	for (int n=0;n<3;++n)
 		volume*=m_cellWidth[n][pos[n]];
 	return volume;
 }
 
-float SAR_Calculation::CellMass(unsigned int pos[3])
+double SAR_Calculation::CellMass(unsigned int pos[3])
 {
 	return m_cell_density[pos[0]][pos[1]][pos[2]]*CellVolume(pos);
 }

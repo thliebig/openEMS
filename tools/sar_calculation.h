@@ -104,16 +104,16 @@ protected:
 	float*** CalcAveragedSAR(float*** SAR);
 
 	int FindFittingCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
-						float partial_start[3], float partial_stop[3], float &mass, float &volume, float &bg_ratio, int disabledFace=-1, bool ignoreFaceValid=false);
-	bool GetCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
-						float partial_start[3], float partial_stop[3], float &mass, float &volume, float &bg_ratio, int disabledFace=-1);
+						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1, bool ignoreFaceValid=false);
+	bool GetCubicalMass(unsigned int pos[3], double box_size, unsigned int start[3], unsigned int stop[3],
+						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1);
 
 	float CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigned int start[3], unsigned int stop[3], float partial_start[3], float partial_stop[3], bool assignUsed=false);
 	/****** end SAR averaging and all necessary methods ********/
 
 	bool CheckValid();
-	float CellVolume(unsigned int pos[3]);
-	float CellMass(unsigned int pos[3]);
+	double CellVolume(unsigned int pos[3]);
+	double CellMass(unsigned int pos[3]);
 };
 
 #endif // SAR_CALCULATION_H
