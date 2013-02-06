@@ -33,7 +33,7 @@ public:
 	virtual ContinuousStructure* GetGeometryCSX() const {return CSX;}
 
 	//! Get the timestep used by this operator
-	virtual double GetTimestep() const {return dT;};
+	virtual double GetTimestep() const {return dT;}
 
 	//! Get the number of cells or nodes defined by this operator
 	virtual double GetNumberCells() const =0;
