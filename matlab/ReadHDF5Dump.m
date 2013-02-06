@@ -10,6 +10,7 @@ function [field mesh] = ReadHDF5Dump(file, varargin)
 %   possible arguments:
 %       'Range'             see GetField_Range
 %       'Interpolation'     see GetField_Interpolation
+%       'SubSampling'       see GetField_SubSampling
 %       'Frequency'         see GetField_TD2FD
 %       'CloseAlpha': 0 (default) / 1
 %
@@ -24,7 +25,7 @@ function [field mesh] = ReadHDF5Dump(file, varargin)
 % -----------------------
 % author: Thorsten Liebig
 %
-% See also ReadHDF5Mesh ReadHDF5FieldData GetField_Interpolation
+% See also ReadHDF5Mesh ReadHDF5FieldData GetField_Interpolation GetField_SubSampling
 % GetField_TD2FD GetField_Range
 
 field = ReadHDF5FieldData(file);
@@ -38,6 +39,12 @@ end
 for n=1:2:(nargin-1)
     if (strcmp(varargin{n},'Range')==1);
         [field mesh] = GetField_Range(field, mesh, varargin{n+1});
+    end
+end
+
+for n=1:2:(nargin-1)
+    if (strcmp(varargin{n},'SubSampling')==1);
+        [field mesh] = GetField_SubSampling(field,mesh,varargin{n+1});
     end
 end
 
