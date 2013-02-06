@@ -81,7 +81,7 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 		{
 			nP = (n+1)%3;
 			nPP = (n+2)%3;
-			if ((pos[0]==m_Op->GetOriginalNumLines(0)-1) || (pos[1]==m_Op->GetOriginalNumLines(1)-1) || (pos[2]==m_Op->GetOriginalNumLines(2)-1))
+			if ((pos[0]==m_Op->GetNumberOfLines(0,true)-1) || (pos[1]==m_Op->GetNumberOfLines(1,true)-1) || (pos[2]==m_Op->GetNumberOfLines(2,true)-1))
 			{
 				out[n] = 0; //electric field outside the field domain is always zero
 				continue;
@@ -119,7 +119,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 		{
 			nP = (n+1)%3;
 			nPP = (n+2)%3;
-			if ((pos[0]==m_Op->GetOriginalNumLines(0)-1) || (pos[1]==m_Op->GetOriginalNumLines(1)-1) || (pos[2]==m_Op->GetOriginalNumLines(2)-1) || (pos[nP]==0) || (pos[nPP]==0))
+			if ((pos[0]==m_Op->GetNumberOfLines(0,true)-1) || (pos[1]==m_Op->GetNumberOfLines(1,true)-1) || (pos[2]==m_Op->GetNumberOfLines(2,true)-1) || (pos[nP]==0) || (pos[nPP]==0))
 			{
 				out[n] = 0;
 				continue;
@@ -140,7 +140,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 		{
 			delta = m_Op->GetEdgeLength(n,iPos,true);
 			out[n] = m_Eng->GetCurr(n,iPos);
-			if ((pos[n]>=m_Op->GetOriginalNumLines(n)-1))
+			if ((pos[n]>=m_Op->GetNumberOfLines(n,true)-1))
 			{
 				out[n] = 0; //magnetic field on the outer boundaries is always zero
 				continue;

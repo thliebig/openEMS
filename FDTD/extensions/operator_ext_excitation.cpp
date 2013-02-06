@@ -137,7 +137,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 	CSProperties* prop=NULL;
 	int priority=0;
 
-	unsigned int numLines[] = {m_Op->GetOriginalNumLines(0),m_Op->GetOriginalNumLines(1),m_Op->GetOriginalNumLines(2)};
+	unsigned int numLines[] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 
 	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 	{
@@ -243,8 +243,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 			{
 				for (size_t i=1; i<curv->GetNumberOfPoints(); ++i)
 				{
-					curv->GetPoint(i-1,p1);
-					curv->GetPoint(i,p2);
+					curv->GetPoint(i-1,p1,m_Op->m_MeshType);
+					curv->GetPoint(i,p2,m_Op->m_MeshType);
 					path = m_Op->FindPath(p1,p2);
 					if (path.dir.size()>0)
 						prim->SetPrimitiveUsed(true);

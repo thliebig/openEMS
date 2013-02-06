@@ -78,7 +78,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 
 	//check if mesh is large enough to support the pml
 	for (int n=0; n<3; ++n)
-		if ( (size[2*n]*(BC[2*n]==3)+size[2*n+1]*(BC[2*n+1]==3)) >= op->GetOriginalNumLines(n) )
+		if ( (size[2*n]*(BC[2*n]==3)+size[2*n+1]*(BC[2*n+1]==3)) >= op->GetNumberOfLines(n,true) )
 		{
 			cerr << "Operator_Ext_UPML::Create_UPML: Warning: Not enough lines in direction: " << n << ", resetting to PEC" << endl;
 			BC[2*n]=0;
@@ -131,7 +131,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 
 	Operator_Ext_UPML* op_ext_upml=NULL;
 	unsigned int start[3]={0 ,0 ,0};
-	unsigned int stop[3] ={op->GetOriginalNumLines(0)-1,op->GetOriginalNumLines(1)-1,op->GetOriginalNumLines(2)-1};
+	unsigned int stop[3] ={op->GetNumberOfLines(0,true)-1,op->GetNumberOfLines(1,true)-1,op->GetNumberOfLines(2,true)-1};
 
 	//create a pml in x-direction over the full width of yz-space
 	if (BC[0]==3)
@@ -148,8 +148,8 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 	{
 		op_ext_upml = new Operator_Ext_UPML(op);
 		op_ext_upml->SetGradingFunction(gradFunc);
-		start[0]=op->GetOriginalNumLines(0)-1-size[1];
-		stop[0] =op->GetOriginalNumLines(0)-1;
+		start[0]=op->GetNumberOfLines(0,true)-1-size[1];
+		stop[0] =op->GetNumberOfLines(0,true)-1;
 		op_ext_upml->SetBoundaryCondition(BC, size);
 		op_ext_upml->SetRange(start,stop);
 		op->AddExtension(op_ext_upml);
@@ -157,7 +157,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 
 	//create a pml in y-direction over the xz-space (if a pml in x-direction already exists, skip that corner regions)
 	start[0]=(size[0]+1)*(BC[0]==3);
-	stop[0] =op->GetOriginalNumLines(0)-1-(size[0]+1)*(BC[1]==3);
+	stop[0] =op->GetNumberOfLines(0,true)-1-(size[0]+1)*(BC[1]==3);
 
 	if (BC[2]==3)
 	{
@@ -173,8 +173,8 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 	{
 		op_ext_upml = new Operator_Ext_UPML(op);
 		op_ext_upml->SetGradingFunction(gradFunc);
-		start[1]=op->GetOriginalNumLines(1)-1-size[3];
-		stop[1] =op->GetOriginalNumLines(1)-1;
+		start[1]=op->GetNumberOfLines(1,true)-1-size[3];
+		stop[1] =op->GetNumberOfLines(1,true)-1;
 		op_ext_upml->SetBoundaryCondition(BC, size);
 		op_ext_upml->SetRange(start,stop);
 		op->AddExtension(op_ext_upml);
@@ -182,7 +182,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 
 	//create a pml in z-direction over the xy-space (if a pml in x- and/or y-direction already exists, skip that corner/edge regions)
 	start[1]=(size[2]+1)*(BC[2]==3);
-	stop[1] =op->GetOriginalNumLines(1)-1-(size[3]+1)*(BC[3]==3);
+	stop[1] =op->GetNumberOfLines(1,true)-1-(size[3]+1)*(BC[3]==3);
 
 	//exclude x-lines that does not belong to the base multi-grid operator;
 	Operator_CylinderMultiGrid* op_cyl_MG = dynamic_cast<Operator_CylinderMultiGrid*>(op);
@@ -203,8 +203,8 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 	{
 		op_ext_upml = new Operator_Ext_UPML(op);
 		op_ext_upml->SetGradingFunction(gradFunc);
-		start[2]=op->GetOriginalNumLines(2)-1-size[5];
-		stop[2] =op->GetOriginalNumLines(2)-1;
+		start[2]=op->GetNumberOfLines(2,true)-1-size[5];
+		stop[2] =op->GetNumberOfLines(2,true)-1;
 		op_ext_upml->SetBoundaryCondition(BC, size);
 		op_ext_upml->SetRange(start,stop);
 		op->AddExtension(op_ext_upml);
@@ -220,7 +220,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 		for (int n=0; n<2; ++n)
 		{
 			start[n]=0;
-			stop[n]=op_child->GetOriginalNumLines(n)-1;
+			stop[n]=op_child->GetNumberOfLines(n,true)-1;
 		}
 
 		if (op_cyl_MG)
@@ -240,8 +240,8 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 		{
 			op_ext_upml = new Operator_Ext_UPML(op_child);
 			op_ext_upml->SetGradingFunction(gradFunc);
-			start[2]=op->GetOriginalNumLines(2)-1-size[5];
-			stop[2] =op->GetOriginalNumLines(2)-1;
+			start[2]=op->GetNumberOfLines(2,true)-1-size[5];
+			stop[2] =op->GetNumberOfLines(2,true)-1;
 			op_ext_upml->SetBoundaryCondition(BC, size);
 			op_ext_upml->SetRange(start,stop);
 			op_child->AddExtension(op_ext_upml);
@@ -320,10 +320,10 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 			else
 				kappa_i[n] = 0;
 		}
-		else if ((pos[n] >= m_Op->GetOriginalNumLines(n) -1 -m_Size[2*n+1]) && (m_BC[2*n+1]==3))  //upper pml in n-dir
+		else if ((pos[n] >= m_Op->GetNumberOfLines(n,true) -1 -m_Size[2*n+1]) && (m_BC[2*n+1]==3))  //upper pml in n-dir
 		{
-			width = (m_Op->GetDiscLine(n,m_Op->GetOriginalNumLines(n)-1) - m_Op->GetDiscLine(n,m_Op->GetOriginalNumLines(n)-m_Size[2*n+1]-1))*m_Op->GetGridDelta();
-			depth = width - (m_Op->GetDiscLine(n,m_Op->GetOriginalNumLines(n)-1) - m_Op->GetDiscLine(n,pos[n]))*m_Op->GetGridDelta();
+			width = (m_Op->GetDiscLine(n,m_Op->GetNumberOfLines(n,true)-1) - m_Op->GetDiscLine(n,m_Op->GetNumberOfLines(n,true)-m_Size[2*n+1]-1))*m_Op->GetGridDelta();
+			depth = width - (m_Op->GetDiscLine(n,m_Op->GetNumberOfLines(n,true)-1) - m_Op->GetDiscLine(n,pos[n]))*m_Op->GetGridDelta();
 
 			if ((m_Op_Cyl) && (n==1))
 			{

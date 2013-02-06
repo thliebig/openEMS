@@ -176,7 +176,7 @@ bool Operator_Ext_TFST::BuildExtension()
 				m_ActiveDir[n][0]=false;
 			else
 				m_ActiveDir[n][0]=true;
-			if (m_Stop[n]==m_Op->GetOriginalNumLines(n)-1)
+			if (m_Stop[n]==m_Op->GetNumberOfLines(n,true)-1)
 				m_ActiveDir[n][1]=false;
 			else
 				m_ActiveDir[n][1]=true;

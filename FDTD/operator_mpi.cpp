@@ -156,10 +156,13 @@ void Operator_MPI::SetOriginalMesh(CSRectGrid* orig_Mesh)
 	}
 }
 
-unsigned int Operator_MPI::GetNumberOfLines(int ny) const
+unsigned int Operator_MPI::GetNumberOfLines(int ny, bool fullMesh) const
 {
+	if (fullMesh)
+		return Operator_SSE_Compressed::GetNumberOfLines(ny,fullMesh);
+
 	if ((!m_MPI_Enabled) || (m_NeighborUp[ny]<0))
-		return Operator_SSE_Compressed::GetNumberOfLines(ny);
+		return Operator_SSE_Compressed::GetNumberOfLines(ny,fullMesh);
 
 	return Operator_SSE_Compressed::GetNumberOfLines(ny)-1;
 }

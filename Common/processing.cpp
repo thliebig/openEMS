@@ -170,7 +170,7 @@ void Processing::AddFrequency(vector<double> *freqs)
 
 void Processing::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	m_Dimension = Op->SnapBox2Mesh(dstart,dstop,start,stop,m_dualMesh,m_SnapMethod, m_start_inside, m_stop_inside);
+	m_Dimension = Op->SnapBox2Mesh(dstart,dstop,start,stop,m_dualMesh,false,m_SnapMethod, m_start_inside, m_stop_inside);
 	if (m_Dimension<0)
 	{
 		cerr << "Processing::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Box is outside the field domain!! Disabling" << endl;

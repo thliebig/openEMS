@@ -50,19 +50,19 @@ bool Operator_Ext_Cylinder::BuildExtension()
 	if (CC_R0_included==false)
 		return true;
 
-	vv_R0 = new FDTD_FLOAT[m_Op->GetOriginalNumLines(2)];
-	vi_R0 = new FDTD_FLOAT[m_Op->GetOriginalNumLines(2)];
+	vv_R0 = new FDTD_FLOAT[m_Op->GetNumberOfLines(2,true)];
+	vi_R0 = new FDTD_FLOAT[m_Op->GetNumberOfLines(2,true)];
 
 	unsigned int pos[3];
 	double coord[3];
 	double inEC[4];
 	double dT = m_Op->GetTimestep();
 	pos[0]=0;
-	for (pos[2]=0; pos[2]<m_Op->GetOriginalNumLines(2); ++pos[2])
+	for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2,true); ++pos[2])
 	{
 		double C=0;
 		double G=0;
-		for (pos[1]=0; pos[1]<m_Op->GetOriginalNumLines(1)-2; ++pos[1])
+		for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1,true)-2; ++pos[1])
 		{
 			m_Op_Cyl->Calc_ECPos(2,pos,inEC);
 			C+=inEC[0];
@@ -72,7 +72,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 		vv_R0[pos[2]] = (1-dT*G/2/C)/(1+dT*G/2/C);
 		vi_R0[pos[2]] = (dT/C)/(1+dT*G/2/C);
 
-		for (unsigned int i=0; i<m_Op->GetOriginalNumLines(1); ++i)
+		for (unsigned int i=0; i<m_Op->GetNumberOfLines(1,true); ++i)
 		{
 			m_Op->EC_C[2][m_Op->MainOp->SetPos(0,i,pos[2])] = C;
 			m_Op->EC_G[2][m_Op->MainOp->SetPos(0,i,pos[2])] = G;

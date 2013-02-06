@@ -227,14 +227,14 @@ double Operator::GetNodeArea(int ny, const int pos[3], bool dualMesh) const
 	return GetNodeArea(ny, uiPos, dualMesh);
 }
 
-unsigned int Operator::SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh) const
+unsigned int Operator::SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh, bool fullMesh) const
 {
 	inside = false;
 	if ((ny<0) || (ny>2))
 		return 0;
 	if (coord<GetDiscLine(ny,0))
 		return 0;
-	unsigned int numLines = GetNumberOfLines(ny);
+	unsigned int numLines = GetNumberOfLines(ny, fullMesh);
 	if (coord>GetDiscLine(ny,numLines-1))
 		return numLines-1;
 	inside=true;
@@ -258,24 +258,21 @@ unsigned int Operator::SnapToMeshLine(int ny, double coord, bool &inside, bool d
 	return 0;
 }
 
-bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool dualMesh, bool* inside) const
+bool Operator::SnapToMesh(const double* dcoord, unsigned int* uicoord, bool dualMesh, bool fullMesh, bool* inside) const
 {
 	bool meshInside=false;
 	bool ok=true;
 	for (int n=0; n<3; ++n)
 	{
-		uicoord[n] = SnapToMeshLine(n,dcoord[n],meshInside,dualMesh);
+		uicoord[n] = SnapToMeshLine(n,dcoord[n],meshInside,dualMesh,fullMesh);
 		ok &= meshInside;
 		if (inside)
 			inside[n]=meshInside;
 	}
-//	cerr << "Operator::SnapToMesh Wish: " << dcoord[0] << " " << dcoord[1] << " " << dcoord[2] << endl;
-//	cerr << "Operator::SnapToMesh Found: " << discLines[0][uicoord[0]] << " " << discLines[1][uicoord[1]] << " " << discLines[2][uicoord[2]] << endl;
-//	cerr << "Operator::SnapToMesh Index: " << uicoord[0] << " " << uicoord[1] << " " << uicoord[2] << endl;
 	return ok;
 }
 
-int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh, int SnapMethod, bool* bStartIn, bool* bStopIn) const
+int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh, bool fullMesh, int SnapMethod, bool* bStartIn, bool* bStopIn) const
 {
 	double l_start[3], l_stop[3];
 	for (int n=0;n<3;++n)
@@ -283,15 +280,15 @@ int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int
 		l_start[n] = fmin(start[n],stop[n]);
 		l_stop[n] = fmax(start[n], stop[n]);
 		double min = GetDiscLine(n,0);
-		double max = GetDiscLine(n,GetNumberOfLines(n)-1);
+		double max = GetDiscLine(n,GetNumberOfLines(n, fullMesh)-1);
 		if ( ((l_start[n]<min) && (l_stop[n]<min)) || ((l_start[n]>max) && (l_stop[n]>max)) )
 		{
 			return -2;
 		}
 	}
 
-	SnapToMesh(l_start, uiStart, dualMesh, bStartIn);
-	SnapToMesh(l_stop, uiStop, dualMesh, bStopIn);
+	SnapToMesh(l_start, uiStart, dualMesh, fullMesh, bStartIn);
+	SnapToMesh(l_stop, uiStop, dualMesh, fullMesh, bStopIn);
 	int iDim = 0;
 
 	if (SnapMethod==0)
@@ -309,7 +306,7 @@ int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int
 			{
 				if ((GetDiscLine( n, uiStart[n], dualMesh ) > l_start[n]) && (uiStart[n]>0))
 					--uiStart[n];
-				if ((GetDiscLine( n, uiStop[n], dualMesh ) < l_stop[n]) && (uiStop[n]<GetNumberOfLines(n)-1))
+				if ((GetDiscLine( n, uiStop[n], dualMesh ) < l_stop[n]) && (uiStop[n]<GetNumberOfLines(n, fullMesh)-1))
 					++uiStop[n];
 			}
 			if (uiStop[n]>uiStart[n])
@@ -323,7 +320,7 @@ int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int
 		{
 			if (uiStop[n]>uiStart[n])
 			{
-				if ((GetDiscLine( n, uiStart[n], dualMesh ) < l_start[n]) && (uiStart[n]<GetNumberOfLines(n)-1))
+				if ((GetDiscLine( n, uiStart[n], dualMesh ) < l_start[n]) && (uiStart[n]<GetNumberOfLines(n, fullMesh)-1))
 					++uiStart[n];
 				if ((GetDiscLine( n, uiStop[n], dualMesh ) > l_stop[n]) && (uiStop[n]>0))
 					--uiStop[n];
@@ -341,24 +338,23 @@ int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int
 struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 {
 	struct Grid_Path path;
-//	double dV[] = {stop[0]-start[0],stop[1]-start[1],stop[2]-start[2]};
-
 	unsigned int uiStart[3],uiStop[3],currPos[3];
-	SnapToMesh(start,uiStart);
-	SnapToMesh(stop,uiStop);
+
+	SnapToMesh(start,uiStart,false,true);
+	SnapToMesh(stop,uiStop,false,true);
+
 	currPos[0]=uiStart[0];
 	currPos[1]=uiStart[1];
 	currPos[2]=uiStart[2];
-	double meshStart[] = {discLines[0][uiStart[0]], discLines[1][uiStart[1]], discLines[2][uiStart[2]]};
-	double meshStop[] = {discLines[0][uiStop[0]], discLines[1][uiStop[1]], discLines[2][uiStop[2]]};
-
+	double meshStart[3] = {discLines[0][uiStart[0]], discLines[1][uiStart[1]], discLines[2][uiStart[2]]};
+	double meshStop[3] = {discLines[0][uiStop[0]], discLines[1][uiStop[1]], discLines[2][uiStop[2]]};
 	bool UpDir = false;
 	double foot=0,dist=0,minFoot=0,minDist=0;
 	int minDir=0;
 	unsigned int minPos[3];
 	double startFoot,stopFoot,currFoot;
-	Point_Line_Distance(meshStart,start,stop,startFoot,dist);
-	Point_Line_Distance(meshStop,start,stop,stopFoot,dist);
+	Point_Line_Distance(meshStart,start,stop,startFoot,dist, m_MeshType);
+	Point_Line_Distance(meshStop,start,stop,stopFoot,dist, m_MeshType);
 	currFoot=startFoot;
 	minFoot=startFoot;
 	double P[3];
@@ -374,7 +370,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 			if (((int)currPos[n]-1)>=0)
 			{
 				P[n] = discLines[n][currPos[n]-1];
-				Point_Line_Distance(P,start,stop,foot,dist);
+				Point_Line_Distance(P,start,stop,foot,dist, m_MeshType);
 				if ((foot>currFoot) && (dist<minDist))
 				{
 					minFoot=foot;
@@ -386,7 +382,7 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 			if ((currPos[n]+1)<numLines[n])
 			{
 				P[n] = discLines[n][currPos[n]+1];
-				Point_Line_Distance(P,start,stop,foot,dist);
+				Point_Line_Distance(P,start,stop,foot,dist, m_MeshType);
 				if ((foot>currFoot) && (dist<minDist))
 				{
 					minFoot=foot;
@@ -408,6 +404,14 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 			currPos[minDir]+=-1;
 			minPos[minDir]-=1;
 		}
+		//check validity of current postion
+		for (int n=0;n<3;++n)
+			if (currPos[n]>=numLines[n])
+			{
+				cerr << __func__ << ": Error, path went out of simulation domain, skipping path!" << endl;
+				Grid_Path empty;
+				return empty;
+			}
 		path.posPath[0].push_back(minPos[0]);
 		path.posPath[1].push_back(minPos[1]);
 		path.posPath[2].push_back(minPos[2]);
@@ -1324,7 +1328,7 @@ bool Operator::Calc_LumpedElements()
 				unsigned int uiStart[3];
 				unsigned int uiStop[3];
 				// snap to the native coordinate system
-				int Snap_Dimension = Operator::SnapBox2Mesh(box->GetStartCoord()->GetCoords(m_MeshType), box->GetStopCoord()->GetCoords(m_MeshType), uiStart, uiStop);
+				int Snap_Dimension = Operator::SnapBox2Mesh(box->GetStartCoord()->GetCoords(m_MeshType), box->GetStopCoord()->GetCoords(m_MeshType), uiStart, uiStop, false, true);
 				if (Snap_Dimension<=0)
 				{
 					if (Snap_Dimension>=-1)
@@ -1717,8 +1721,8 @@ void Operator::CalcPEC_Curves()
 			{
 				for (size_t i=1; i<curv->GetNumberOfPoints(); ++i)
 				{
-					curv->GetPoint(i-1,p1);
-					curv->GetPoint(i,p2);
+					curv->GetPoint(i-1,p1,m_MeshType);
+					curv->GetPoint(i,p2,m_MeshType);
 					path = FindPath(p1,p2);
 					if (path.dir.size()>0)
 						prim->SetPrimitiveUsed(true);

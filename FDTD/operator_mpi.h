@@ -50,7 +50,7 @@ public:
 	virtual void SetSplitPos(int ny, unsigned int pos) {m_SplitPos[ny]=pos;}
 	virtual void SetOriginalMesh(CSRectGrid* orig_Mesh);
 
-	virtual unsigned int GetNumberOfLines(int ny) const;
+	virtual unsigned int GetNumberOfLines(int ny, bool fullMesh=false) const;
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 

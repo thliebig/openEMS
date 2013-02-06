@@ -40,7 +40,7 @@ public:
 
 	virtual void ApplyMagneticBC(bool* dirs);
 
-	virtual unsigned int GetNumberOfLines(int ny) const;
+	virtual unsigned int GetNumberOfLines(int ny, bool full=false) const;
 
 	//! Get the name for the given direction: 0 -> rho, 1 -> alpha, 2 -> z
 	virtual string GetDirName(int ny) const;
@@ -71,12 +71,12 @@ public:
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 
-	virtual double FitToAlphaRange(double a_coord) const;
+	virtual double FitToAlphaRange(double a_coord, bool fullMesh=false) const;
 
-	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false) const;
+	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false, bool fullMesh=false) const;
 
 	//! Snap a given box to the FDTD mesh
-	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
+	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, bool fullMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
 
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}

@@ -29,7 +29,7 @@ Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine
 	CC_R0_included = op_ext->CC_R0_included;
 
 	for (int n=0; n<3; ++n)
-		numLines[n] = op_ext->m_Op->GetOriginalNumLines(n);
+		numLines[n] = op_ext->m_Op->GetNumberOfLines(n,true);
 
 	//this cylindrical extension should be executed first?
 	m_Priority = ENG_EXT_PRIO_CYLINDER;

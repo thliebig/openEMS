@@ -41,8 +41,8 @@ public:
 	//! Get the number of timesteps satisfying the nyquist condition (may depend on the excitation)
 	virtual unsigned int GetNumberOfNyquistTimesteps() const =0;
 
-	//! Returns the number of lines as needed for post-processing etc. (for the engine, use GetOriginalNumLines())
-	virtual unsigned int GetNumberOfLines(int ny) const =0;
+	//! Returns the number of lines as needed for post-processing etc.
+	virtual unsigned int GetNumberOfLines(int ny, bool full=false) const =0;
 
 	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
 	virtual std::string GetDirName(int ny) const;
@@ -76,7 +76,7 @@ public:
 	virtual double GetCellVolume(const unsigned int pos[3], bool dualMesh = false) const =0;
 
 	//! Snap the given coodinates to mesh indices, return box dimension
-	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool* inside=NULL) const =0;
+	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool fullMesh=false, bool* inside=NULL) const =0;
 
 	//! Snap a given box to the operator mesh, uiStart will be always <= uiStop
 	/*!
@@ -88,7 +88,7 @@ public:
 	  \param[in] SnapMethod Snapping method, 0=snap to closest line, 1/(2)=snap such that given box is inside (outside) the snapped lines
 	  \return returns the box dimension or -1 if box is not inside the simulation domain
 	  */
-	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const =0;
+	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, bool fullMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const =0;
 
 	//! Set the boundary conditions
 	virtual void SetBoundaryCondition(int* BCs) {for (int n=0; n<6; ++n) m_BC[n]=BCs[n];}

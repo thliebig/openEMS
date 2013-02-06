@@ -85,10 +85,7 @@ public:
 
 	virtual unsigned int GetNumberOfNyquistTimesteps() const {return m_Exc->GetNyquistNum();}
 
-	virtual unsigned int GetNumberOfLines(int ny) const {return numLines[ny];}
-
-	//! Returns the number of lines as needed for the engine etc. (for post-processing etc, use GetNumLines())
-	virtual unsigned int GetOriginalNumLines(int ny) const {return numLines[ny];}
+	virtual unsigned int GetNumberOfLines(int ny, bool full=false) const {UNUSED(full);return numLines[ny];}
 
 	virtual void ShowStat() const;
 	virtual void ShowExtStat() const;
@@ -127,13 +124,13 @@ public:
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,pos,dualMesh);}
 
-	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false) const;
+	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false, bool fullMesh=false) const;
 
 	//! Snap the given coodinates to mesh indices
-	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool* inside=NULL) const;
+	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool fullMesh=false, bool* inside=NULL) const;
 
 	//! Snap a given box to the FDTD mesh
-	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
+	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, bool fullMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 	virtual void DeleteExtension(Operator_Extension* op_ext);
@@ -168,7 +165,7 @@ protected:
 		vector<unsigned int> posPath[3];
 		vector<unsigned short> dir;
 	};
-	struct Grid_Path FindPath(double start[], double stop[]);
+	virtual struct Grid_Path FindPath(double start[], double stop[]);
 
 	// debug
 	virtual void DumpOperator2File(string filename);

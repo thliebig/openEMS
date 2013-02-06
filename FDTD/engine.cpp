@@ -36,7 +36,7 @@ Engine::Engine(const Operator* op)
 	numTS = 0;
 	Op = op;
 	for (int n=0; n<3; ++n)
-		numLines[n] = Op->GetOriginalNumLines(n);
+		numLines[n] = Op->GetNumberOfLines(n, true);
 	volt=NULL;
 	curr=NULL;
 }

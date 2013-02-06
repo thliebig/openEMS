@@ -44,7 +44,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	double dT = m_Op->GetTimestep();
 	unsigned int pos[] = {0,0,0};
 	double coord[3];
-	unsigned int numLines[3] = {m_Op->GetOriginalNumLines(0),m_Op->GetOriginalNumLines(1),m_Op->GetOriginalNumLines(2)};
+	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 
 	m_Order = 0;
 	vector<unsigned int> v_pos[3];
