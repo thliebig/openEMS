@@ -513,7 +513,7 @@ bool openEMS::SetupMaterialStorages()
 			continue;
 		//check for current density dump types
 		if ( ((db->GetDumpType()==2) || (db->GetDumpType()==12) || // current density storage
-			  (db->GetDumpType()==20) || (db->GetDumpType()==21) || (db->GetDumpType()==22) || (db->GetDumpType()==29)) && // SAR dump types
+			  (db->GetDumpType()==20) || (db->GetDumpType()==21) || (db->GetDumpType()==22)) && // SAR dump types
 			  Enable_Dumps )
 			FDTD_Op->SetMaterialStoreFlags(1,true); //tell operator to store kappa material data
 	}
