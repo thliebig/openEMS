@@ -187,6 +187,14 @@ bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool du
 	return true;
 }
 
+bool Operator::GetNodeCoords(unsigned int pos[3], double* coords, bool dualMesh, CoordinateSystem c_system) const
+{
+	for (int n=0;n<3;++n)
+		coords[n]=GetDiscLine(n,pos[n],dualMesh);
+	TransformCoordSystem(coords,coords,m_MeshType,c_system);
+	return true;
+}
+
 double Operator::GetEdgeLength(int n, const unsigned int* pos, bool dualMesh) const
 {
 	return GetDiscDelta(n,pos[n],dualMesh)*gridDelta;
