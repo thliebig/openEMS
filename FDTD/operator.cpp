@@ -27,6 +27,10 @@
 #include "fparser.hh"
 #include "extensions/operator_ext_excitation.h"
 
+#include "vtkPolyData.h"
+#include "vtkCellArray.h"
+#include "vtkPoints.h"
+#include "vtkXMLPolyDataWriter.h"
 #include "CSPrimBox.h"
 #include "CSPrimCurve.h"
 
@@ -573,86 +577,97 @@ void Operator::DumpPEC2File( string filename )
 {
 	cout << "Operator: Dumping PEC information to vtk file: " << filename << " ..." << flush;
 
-	FDTD_FLOAT**** pec = Create_N_3DArray<FDTD_FLOAT>( numLines );
-	unsigned int pos[3];
-
 #ifdef OUTPUT_IN_DRAWINGUNITS
-	double scaling = 1.0/GetGridDelta();
+	double scaling = 1.0;
 #else
-	double scaling = 1;
+	double scaling = GetGridDelta();;
 #endif
 
-	for (pos[0]=0; pos[0]<numLines[0]-1; pos[0]++)
+	vtkPolyData* polydata = vtkPolyData::New();
+	vtkCellArray *poly = vtkCellArray::New();
+	vtkPoints *points = vtkPoints::New();
+
+	int* pointIdx[2];
+	pointIdx[0] = new int[numLines[0]*numLines[1]];
+	pointIdx[1] = new int[numLines[0]*numLines[1]];
+	// init point idx
+	for (unsigned int n=0;n<numLines[0]*numLines[1];++n)
 	{
-		for (pos[1]=0; pos[1]<numLines[1]-1; pos[1]++)
-		{
-			for (pos[2]=0; pos[2]<numLines[2]-1; pos[2]++)
-			{
-				if ((pos[1] != 0) && (pos[2] != 0))
-				{
-					// PEC surrounds the computational area; do not output this
-					if ((GetVV(0,pos) == 0) && (GetVI(0,pos) == 0))
-						pec[0][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 0, pos ) * scaling; // PEC-x found
-				}
-				if ((pos[0] != 0) && (pos[2] != 0))
-				{
-					// PEC surrounds the computational area; do not output this
-					if ((GetVV(1,pos) == 0) && (GetVI(1,pos) == 0))
-						pec[1][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 1, pos ) * scaling; // PEC-y found
-				}
-				if ((pos[0] != 0) && (pos[1] != 0))
-				{
-					// PEC surrounds the computational area; do not output this
-					if ((GetVV(2,pos) == 0) && (GetVI(2,pos) == 0))
-						pec[2][pos[0]][pos[1]][pos[2]] = GetEdgeLength( 2, pos ) * scaling; // PEC-z found
-				}
-			}
-		}
+		pointIdx[0][n]=-1;
+		pointIdx[1][n]=-1;
 	}
 
-	// evaluate boundary conditions
-	for (int n=0; n<3; n++)
-	{
-		int nP = (n+1)%3;
-		int nPP = (n+2)%3;
-		for (pos[nP]=0; pos[nP]<numLines[nP]; pos[nP]++)
+	int nP,nPP;
+	double coord[3];
+	unsigned int pos[3],rpos[3];
+	unsigned int mesh_idx=0;
+	for (pos[2]=0;pos[2]<numLines[2]-1;++pos[2])
+	{ // each xy-plane
+		for (unsigned int n=0;n<numLines[0]*numLines[1];++n)
 		{
-			for (pos[nPP]=0; pos[nPP]<numLines[nPP]; pos[nPP]++)
-			{
-				pos[n] = 0;
-				if ((pos[nP] != numLines[nP]-1) && (m_BC[2*n] == 0))
-					pec[nP ][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nP,  pos ) * scaling;
-				if ((pos[nPP] != numLines[nPP]-1) && (m_BC[2*n] == 0))
-					pec[nPP][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nPP, pos ) * scaling;
-
-				pos[n] = numLines[n]-1;
-				if ((pos[nP] != numLines[nP]-1) && (m_BC[2*n+1] == 0))
-					pec[nP ][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nP,  pos ) * scaling;
-				if ((pos[nPP] != numLines[nPP]-1) && (m_BC[2*n+1] == 0))
-					pec[nPP][pos[0]][pos[1]][pos[2]] = GetEdgeLength( nPP, pos ) * scaling;
-			}
+			pointIdx[0][n]=pointIdx[1][n];
+			pointIdx[1][n]=-1;
 		}
+		for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
+			for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
+			{
+				for (int n=0;n<3;++n)
+				{
+					nP = (n+1)%3;
+					nPP = (n+2)%3;
+					if ((GetVV(n,pos) == 0) && (GetVI(n,pos) == 0) && (pos[nP]>0) && (pos[nPP]>0))
+					{
+						rpos[0]=pos[0];
+						rpos[1]=pos[1];
+						rpos[2]=pos[2];
+
+						poly->InsertNextCell(2);
+
+						mesh_idx = rpos[0] + rpos[1]*numLines[0];
+						if (pointIdx[0][mesh_idx]<0)
+						{
+							for (int m=0;m<3;++m)
+								coord[m] = discLines[m][rpos[m]];
+							TransformCoordSystem(coord, coord, m_MeshType, CARTESIAN);
+							for (int m=0;m<3;++m)
+								coord[m] *= scaling;
+							pointIdx[0][mesh_idx] = (int)points->InsertNextPoint(coord);
+						}
+						poly->InsertCellPoint(pointIdx[0][mesh_idx]);
+
+						++rpos[n];
+						mesh_idx = rpos[0] + rpos[1]*numLines[0];
+						if (pointIdx[n==2][mesh_idx]<0)
+						{
+							for (int m=0;m<3;++m)
+								coord[m] = discLines[m][rpos[m]];
+							TransformCoordSystem(coord, coord, m_MeshType, CARTESIAN);
+							for (int m=0;m<3;++m)
+								coord[m] *= scaling;
+							pointIdx[n==2][mesh_idx] = (int)points->InsertNextPoint(coord);
+						}
+						poly->InsertCellPoint(pointIdx[n==2][mesh_idx]);
+					}
+				}
+			}
 	}
+	delete[] pointIdx[0];
+	delete[] pointIdx[1];
 
-#ifdef OUTPUT_IN_DRAWINGUNITS
-	scaling = 1;
-#else
-	scaling = GetGridDelta();
-#endif
+	polydata->SetPoints(points);
+	points->Delete();
+	polydata->SetLines(poly);
+	poly->Delete();
 
-	VTK_File_Writer* vtk_Writer = new VTK_File_Writer(filename.c_str(), m_MeshType);
-	vtk_Writer->SetMeshLines(discLines,numLines,scaling);
-	vtk_Writer->SetHeader("openEMS - PEC dump");
+	vtkXMLPolyDataWriter* writer  = vtkXMLPolyDataWriter::New();
+	filename += ".vtp";
+	writer->SetFileName(filename.c_str());
 
-	vtk_Writer->SetNativeDump(true);
+	writer->SetInput(polydata);
+	writer->Write();
 
-	vtk_Writer->AddVectorField("PEC",pec);
-	Delete_N_3DArray(pec,numLines);
-
-	if (vtk_Writer->Write()==false)
-		cerr << "Operator::DumpPEC2File: Error: Can't write file... skipping!" << endl;
-
-	delete vtk_Writer;
+	writer->Delete();
+	polydata->Delete();
 }
 
 void Operator::DumpMaterial2File(string filename)
