@@ -209,7 +209,7 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 
 	//create process table
 	unsigned int procN = 0;
-	unsigned int splits[] = {SplitNumber[0].size()-1, SplitNumber[1].size()-1, SplitNumber[2].size()-1};
+	unsigned int splits[] = {(unsigned int)SplitNumber[0].size()-1, (unsigned int)SplitNumber[1].size()-1, (unsigned int)SplitNumber[2].size()-1};
 	m_MPI_Op->SetSplitNumbers(0,splits[0]);
 	m_MPI_Op->SetSplitNumbers(1,splits[1]);
 	m_MPI_Op->SetSplitNumbers(2,splits[2]);
