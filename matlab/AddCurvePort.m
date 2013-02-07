@@ -114,11 +114,11 @@ i_stop(dir)  = i_start(dir);
 % create the probes
 name = ['port_ut' num2str(portnr)];
 weight = -1;
-CSX = AddProbe( CSX, name, 0, weight );
+CSX = AddProbe( CSX, name, 0, 'weight', weight );
 CSX = AddBox( CSX, name, prio, v_start, v_stop );
 name = ['port_it' num2str(portnr)];
 weight = 1;
-CSX = AddProbe( CSX, name, 1, weight );
+CSX = AddProbe( CSX, name, 1, 'weight',  weight );
 CSX = AddBox( CSX, name, prio, i_start, i_stop );
 
 % create port structure
