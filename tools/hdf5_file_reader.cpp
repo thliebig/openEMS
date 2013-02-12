@@ -394,12 +394,12 @@ bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<stri
 float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned int data_size[])
 {
 	if (IsValid()==false)
-		return false;
+		return NULL;
 
 	hid_t hdf5_file;
 	hid_t TD_grp;
 	if (OpenGroup(hdf5_file, TD_grp, "/FieldData/TD")==false)
-		return false;
+		return NULL;
 
 	hsize_t numObj;
 	if (H5Gget_num_objs(TD_grp,&numObj)<0)
