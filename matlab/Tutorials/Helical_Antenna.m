@@ -29,13 +29,12 @@ fc = 0.5e9; % 20 dB corner frequency
 Helix.radius = 20; % --> diameter is ~ lambda/pi
 Helix.turns = 10;  % --> expected gain is G ~ 4 * 10 = 40 (16dBi)
 Helix.pitch = 30;  % --> pitch is ~ lambda/4
-Helix.wire_rad = 1;
+Helix.mesh_res = 3;
 
 gnd.radius = lambda0/2;
 
 % feeding
-feed.width = 2;  %feeding port width
-feed.heigth = 2;
+feed.heigth = 3;
 feed.R = 120;    %feed impedance
 
 % size of the simulation box
@@ -51,12 +50,21 @@ FDTD = SetBoundaryCond( FDTD, BC );
 max_res = floor(c0 / (f0+fc) / unit / 20); % cell size: lambda/20
 CSX = InitCSX();
 
-mesh.x = [-SimBox(1)/2-gnd.radius     -Helix.radius:Helix.wire_rad:Helix.radius      SimBox(1)/2+gnd.radius];
-mesh.x = SmoothMeshLines( mesh.x, max_res, 1.4); % create a smooth mesh between specified fixed mesh lines
+% create helix mesh
+mesh.x = SmoothMeshLines([-Helix.radius 0 Helix.radius],Helix.mesh_res);
+% add the air-box
+mesh.x = [mesh.x -SimBox(1)/2-gnd.radius  SimBox(1)/2+gnd.radius];
+% create a smooth mesh between specified fixed mesh lines
+mesh.x = SmoothMeshLines( mesh.x, max_res, 1.4);
 
+% copy x-mesh to y-direction
 mesh.y = mesh.x;
 
-mesh.z = unique([-SimBox(3)/2    0:Helix.wire_rad:(Helix.turns*Helix.pitch+feed.heigth+Helix.wire_rad)  (feed.heigth+Helix.wire_rad+Helix.turns*Helix.pitch)+SimBox(3)/2 ]);
+% create helix mesh in z-direction
+mesh.z = SmoothMeshLines([0 feed.heigth Helix.turns*Helix.pitch+feed.heigth],Helix.mesh_res);
+% add the air-box
+mesh.z = unique([mesh.z -SimBox(3)/2 max(mesh.z)+SimBox(3)/2 ]);
+% create a smooth mesh between specified fixed mesh lines
 mesh.z = SmoothMeshLines( mesh.z, max_res, 1.4 );
 
 CSX = DefineRectGrid( CSX, unit, mesh );
@@ -72,7 +80,7 @@ coil_z = ang/2/pi*Helix.pitch;
 helix.x=[];
 helix.y=[];
 helix.z=[];
-zpos = feed.heigth+Helix.wire_rad;
+zpos = feed.heigth;
 for n=0:Helix.turns-1
     helix.x = [helix.x coil_x];
     helix.y = [helix.y coil_y];
@@ -83,20 +91,18 @@ clear p
 p(1,:) = helix.x;
 p(2,:) = helix.y;
 p(3,:) = helix.z;
-CSX = AddWire(CSX, 'helix', 0, p, Helix.wire_rad);
-start = [Helix.radius-feed.width/2 -feed.width/2 feed.heigth];
-stop  = [Helix.radius+feed.width/2 +feed.width/2 feed.heigth+2*Helix.wire_rad];
-CSX = AddBox(CSX,'helix',0,start,stop);
+CSX = AddCurve(CSX, 'helix', 0, p);
 
-%% create ground (same size as substrate)
+%% create ground circular ground
 CSX = AddMetal( CSX, 'gnd' ); % create a perfect electric conductor (PEC)
-start = [0 0 -0.1];
-stop  = [0 0  0.1];
-CSX = AddCylinder(CSX,'gnd',10,start,stop,gnd.radius);
+% add a box using cylindrical coordinates
+start = [0          0    0];
+stop  = [gnd.radius 2*pi 0];
+CSX = AddBox(CSX,'gnd',10,start,stop,'CoordSystem',1);
 
 %% apply the excitation & resist as a current source
-start = [Helix.radius-feed.width/2 -feed.width/2 0];
-stop  = [Helix.radius+feed.width/2 +feed.width/2 feed.heigth];
+start = [Helix.radius 0 0];
+stop  = [Helix.radius 0 feed.heigth];
 [CSX port] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
 %%nf2ff calc
