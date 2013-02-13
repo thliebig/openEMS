@@ -61,12 +61,11 @@ nf2ff.E_cprh = [];
 nf2ff.E_cplh = [];
 
 % Setup vectors for converting to LHCP and RHCP polarization senses
-cosphi = cos(nf2ff.phi)';
-sinphi = sin(nf2ff.phi)';
+[THETHA PHI] = ndgrid(nf2ff.theta,nf2ff.phi);
+cosphi = cos(PHI);
+sinphi = sin(PHI);
 
 for f=1:numel(nf2ff.freq)
-    for n = 1:numel(nf2ff.theta)
-        nf2ff.E_cprh{f}(n,:) = (cosphi+1i*sinphi) .* (nf2ff.E_theta{f}(n,:)+1i*nf2ff.E_phi{f}(n,:))/sqrt(2);
-        nf2ff.E_cplh{f}(n,:) = (cosphi-1i*sinphi) .* (nf2ff.E_theta{f}(n,:)-1i*nf2ff.E_phi{f}(n,:))/sqrt(2);
-    end
+    nf2ff.E_cprh{f} = (cosphi+1i*sinphi) .* (nf2ff.E_theta{f}+1i*nf2ff.E_phi{f})/sqrt(2);
+    nf2ff.E_cplh{f} = (cosphi-1i*sinphi) .* (nf2ff.E_theta{f}-1i*nf2ff.E_phi{f})/sqrt(2);
 end
