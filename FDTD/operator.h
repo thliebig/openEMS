@@ -81,6 +81,9 @@ public:
 	virtual void SetTimestepFactor(double factor);
 	bool GetTimestepValid() const {return !m_InvaildTimestep;}
 
+	//! Set operator to assume a constant material inside a cell (material probing in the cell center)
+	void SetCellConstantMaterial() {m_MatCellShiftFaktor=0.5;}
+
 	virtual double GetNumberCells() const;
 
 	virtual unsigned int GetNumberOfNyquistTimesteps() const {return m_Exc->GetNyquistNum();}
@@ -203,6 +206,8 @@ protected:
 
 	//! Get the material at a given coordinate, direction and type from CSX (internal use only)
 	virtual double GetMaterial(int ny, const double coords[3], int MatType, bool markAsUsed=true) const;
+
+	double m_MatCellShiftFaktor;
 
 	//! Calculate the effective/averaged material properties at the given position and direction ny.
 	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;

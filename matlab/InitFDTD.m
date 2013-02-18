@@ -12,6 +12,8 @@ function FDTD = InitFDTD(varargin)
 %   CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
 %   TimeStep:       force to use a given timestep (dangerous!)
 %   TimeStepFactor: reduce the timestep by a given factor (>0 to <=1)
+%   CellConstantMaterial: set to 1 to assume a material is constant inside
+%                         a cell (material probing in cell center)
 %
 % examples:
 %   %default init with 1e9 max. timesteps and -50dB end-criteria

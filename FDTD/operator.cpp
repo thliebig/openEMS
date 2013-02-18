@@ -95,6 +95,7 @@ void Operator::Init()
 
 	m_Exc = 0;
 	m_TimeStepFactor = 1;
+	m_MatCellShiftFaktor = 0.25;
 }
 
 void Operator::Delete()
@@ -1220,8 +1221,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	//******************************* epsilon,kappa averaging *****************************//
 	//shift up-right
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]+deltaP*0.25;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
+	shiftCoord[nP] = coord[nP]+deltaP*m_MatCellShiftFaktor;
+	shiftCoord[nPP] = coord[nPP]+deltaPP*m_MatCellShiftFaktor;
 	A_n = GetNodeArea(ny,loc_pos,true);
 	EffMat[0] = GetMaterial(n, shiftCoord, 0)*A_n;
 	EffMat[1] = GetMaterial(n, shiftCoord, 1)*A_n;
@@ -1229,8 +1230,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 
 	//shift up-left
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
+	shiftCoord[nP] = coord[nP]-deltaP_M*m_MatCellShiftFaktor;
+	shiftCoord[nPP] = coord[nPP]+deltaPP*m_MatCellShiftFaktor;
 
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,loc_pos,true);
@@ -1240,8 +1241,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 
 	//shift down-right
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]+deltaP*0.25;
-	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
+	shiftCoord[nP] = coord[nP]+deltaP*m_MatCellShiftFaktor;
+	shiftCoord[nPP] = coord[nPP]-deltaPP_M*m_MatCellShiftFaktor;
 	++loc_pos[nP];
 	--loc_pos[nPP];
 	A_n = GetNodeArea(ny,loc_pos,true);
@@ -1251,8 +1252,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 
 	//shift down-left
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
-	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
+	shiftCoord[nP] = coord[nP]-deltaP_M*m_MatCellShiftFaktor;
+	shiftCoord[nPP] = coord[nPP]-deltaPP_M*m_MatCellShiftFaktor;
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,loc_pos,true);
 	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
@@ -1269,7 +1270,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	double length=0;
 
 	//shift down
-	shiftCoord[n] = coord[n]-delta_M*0.25;
+	shiftCoord[n] = coord[n]-delta_M*m_MatCellShiftFaktor;
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	--loc_pos[n];
@@ -1283,7 +1284,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	length=delta_ny;
 
 	//shift up
-	shiftCoord[n] = coord[n]+delta*0.25;
+	shiftCoord[n] = coord[n]+delta*m_MatCellShiftFaktor;
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	++loc_pos[n];

@@ -647,6 +647,15 @@ int openEMS::SetupFDTD(const char* file)
 	if (SetupOperator(FDTD_Opts)==false)
 		return 2;
 
+	int cellConstantMaterial=0;
+	FDTD_Opts->QueryIntAttribute("CellConstantMaterial",&cellConstantMaterial);
+	if (cellConstantMaterial==1)
+	{
+		FDTD_Op->SetCellConstantMaterial();
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Enabling constant cell material assumption." << endl;
+	}
+
 	m_Exc = new Excitation();
 	FDTD_Op->SetExcitationSignal(m_Exc);
 	FDTD_Op->AddExtension(new Operator_Ext_Excitation(FDTD_Op));
