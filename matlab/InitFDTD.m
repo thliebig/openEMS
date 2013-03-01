@@ -39,9 +39,10 @@ endCrit = 1e-5;
 if ((nargin==1) && (isnumeric(varargin{1})))
     NrTS = varargin{1};
     warning('openEMS:InitFDTD',['Syntax for InitFDTD has changed, use: "InitFDTD(''NrTS'', ' num2str(NrTS) ')" instead! Legacy support enabled.']);
-elseif ((nargin==2) && (isnumeric(varargin{1})) && (isnumeric(varargin{2})))
+elseif ((nargin>1) && (isnumeric(varargin{1})) && (isnumeric(varargin{2})))
     NrTS = varargin{1};
     endCrit = varargin{2};
+    varargin(1:2) = [];
     warning('openEMS:InitFDTD',['Syntax for InitFDTD has changed, use: "InitFDTD(''NrTS'', ' num2str(NrTS) ', ''EndCriteria'', ' num2str(endCrit) ')" instead! Legacy support enabled.']);
 end
 
