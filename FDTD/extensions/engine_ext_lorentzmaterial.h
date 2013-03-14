@@ -34,6 +34,15 @@ public:
 
 protected:
 	Operator_Ext_LorentzMaterial* m_Op_Ext_Lor;
+
+	//! ADE Lorentz voltages
+	// Array setup: volt_Lor_ADE[N_order][direction][mesh_pos]
+	FDTD_FLOAT ***volt_Lor_ADE;
+
+	//! ADE Lorentz currents
+	// Array setup: curr_Lor_ADE[N_order][direction][mesh_pos]
+	FDTD_FLOAT ***curr_Lor_ADE;
+
 };
 
 #endif // ENGINE_EXT_LORENTZMATERIAL_H

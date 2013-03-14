@@ -51,6 +51,12 @@ protected:
 	FDTD_FLOAT ***v_ext_ADE;
 	FDTD_FLOAT ***i_int_ADE;
 	FDTD_FLOAT ***i_ext_ADE;
+
+	bool *m_curr_Lor_ADE_On;
+	bool *m_volt_Lor_ADE_On;
+
+	FDTD_FLOAT ***v_Lor_ADE;
+	FDTD_FLOAT ***i_Lor_ADE;
 };
 
 #endif // OPERATOR_EXT_LORENTZMATERIAL_H

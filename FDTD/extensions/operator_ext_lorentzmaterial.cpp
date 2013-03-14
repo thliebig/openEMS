@@ -28,6 +28,12 @@ Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Opera
 	v_ext_ADE = NULL;
 	i_int_ADE = NULL;
 	i_ext_ADE = NULL;
+
+	v_Lor_ADE = NULL;
+	i_Lor_ADE = NULL;
+
+	m_curr_Lor_ADE_On = NULL;
+	m_curr_Lor_ADE_On = NULL;
 }
 
 Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op, Operator_Ext_LorentzMaterial* op_ext) : Operator_Ext_Dispersive(op,op_ext)
@@ -36,6 +42,12 @@ Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op, Operato
 	v_ext_ADE = NULL;
 	i_int_ADE = NULL;
 	i_ext_ADE = NULL;
+
+	v_Lor_ADE = NULL;
+	i_Lor_ADE = NULL;
+
+	m_curr_Lor_ADE_On = NULL;
+	m_curr_Lor_ADE_On = NULL;
 }
 
 Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
@@ -54,6 +66,10 @@ Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 				delete[] i_int_ADE[i][n];
 				delete[] i_ext_ADE[i][n];
 			}
+			if (m_volt_Lor_ADE_On[i])
+				delete[] v_Lor_ADE[i][n];
+			if (m_curr_Lor_ADE_On[i])
+				delete[] i_Lor_ADE[i][n];
 		}
 		if (m_volt_ADE_On[i])
 		{
@@ -65,6 +81,10 @@ Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 			delete[] i_int_ADE[i];
 			delete[] i_ext_ADE[i];
 		}
+		if (m_volt_Lor_ADE_On[i])
+			delete[] v_Lor_ADE[i];
+		if (m_curr_Lor_ADE_On[i])
+			delete[] i_Lor_ADE[i];
 	}
 	delete[] v_int_ADE;
 	delete[] v_ext_ADE;
@@ -74,6 +94,16 @@ Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 	v_ext_ADE = NULL;
 	i_int_ADE = NULL;
 	i_ext_ADE = NULL;
+
+	delete[] v_Lor_ADE;
+	delete[] i_Lor_ADE;
+	v_Lor_ADE = NULL;
+	i_Lor_ADE = NULL;
+
+	delete[] m_curr_Lor_ADE_On;
+	delete[] m_volt_Lor_ADE_On;
+	m_curr_Lor_ADE_On = NULL;
+	m_curr_Lor_ADE_On = NULL;
 }
 
 Operator_Extension* Operator_Ext_LorentzMaterial::Clone(Operator* op)
@@ -91,15 +121,24 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 	CSPropLorentzMaterial* mat = NULL;
 
-	double w_plasma,t_relax;
 	bool b_pos_on;
+	vector<unsigned int> v_pos[3];
+
+	// drude material parameter
+	double w_plasma,t_relax;
 	double L_D[3], C_D[3];
 	double R_D[3], G_D[3];
 	vector<double> v_int[3];
 	vector<double> v_ext[3];
 	vector<double> i_int[3];
 	vector<double> i_ext[3];
-	vector<unsigned int> v_pos[3];
+
+	//additional Dorentz material parameter
+	double w_Lor_Pol;
+	double C_L[3];
+	double L_L[3];
+	vector<double> v_Lor[3];
+	vector<double> i_Lor[3];
 
 	m_Order = 0;
 	vector<CSProperties*> LD_props = m_Op->CSX->GetPropertyByType(CSProperties::LORENTZMATERIAL);
@@ -112,27 +151,40 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 			m_Order=LorMat->GetDispersionOrder();
 	}
 
+	m_LM_pos = new unsigned int**[m_Order];
+
 	m_volt_ADE_On = new bool[m_Order];
 	m_curr_ADE_On = new bool[m_Order];
-	m_LM_pos = new unsigned int**[m_Order];
+	m_volt_Lor_ADE_On = new bool[m_Order];
+	m_curr_Lor_ADE_On = new bool[m_Order];
 
 	v_int_ADE = new FDTD_FLOAT**[m_Order];
 	v_ext_ADE = new FDTD_FLOAT**[m_Order];
 	i_int_ADE = new FDTD_FLOAT**[m_Order];
 	i_ext_ADE = new FDTD_FLOAT**[m_Order];
 
+	v_Lor_ADE = new FDTD_FLOAT**[m_Order];
+	i_Lor_ADE = new FDTD_FLOAT**[m_Order];
+
 	for (int order=0;order<m_Order;++order)
 	{
 		m_volt_ADE_On[order]=false;
 		m_curr_ADE_On[order]=false;
 
+		m_volt_Lor_ADE_On[order]=false;
+		m_curr_Lor_ADE_On[order]=false;
+
 		for (int n=0;n<3;++n)
 		{
+			v_pos[n].clear();
+
 			v_int[n].clear();
 			v_ext[n].clear();
 			i_int[n].clear();
 			i_ext[n].clear();
-			v_pos[n].clear();
+
+			v_Lor[n].clear();
+			i_Lor[n].clear();
 		}
 
 		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
@@ -148,10 +200,14 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					{
 						L_D[n]=0;
 						R_D[n]=0;
+						C_L[n]=0;
 						if (m_Op->GetYeeCoords(n,pos,coord,false)==false)
 							continue;
 						if (m_CC_R0_included && (n==2) && (pos[0]==0))
 							coord[1] = m_Op->GetDiscLine(1,0);
+
+						if (m_Op->GetVI(n,pos[0],pos[1],pos[2])==0)
+							continue;
 
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
 						if ((mat = prop->ToLorentzMaterial()))
@@ -168,6 +224,12 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 							{
 								R_D[n] = L_D[n]/t_relax;
 							}
+							w_Lor_Pol = mat->GetEpsLorPoleFreqWeighted(order,n,coord) * 2 * PI;
+							if ((w_Lor_Pol>0) && (L_D[n]>0))
+							{
+								m_volt_Lor_ADE_On[order] = true;
+								C_L[n] = 1/(w_Lor_Pol*w_Lor_Pol*L_D[n]);
+							}
 						}
 					}
 
@@ -175,7 +237,10 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					{
 						C_D[n]=0;
 						G_D[n]=0;
+						L_L[n]=0;
 						if (m_Op->GetYeeCoords(n,pos,coord,true)==false)
+							continue;
+						if (m_Op->GetIV(n,pos[0],pos[1],pos[2])==0)
 							continue;
 
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
@@ -193,10 +258,16 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 							{
 								G_D[n] = C_D[n]/t_relax;
 							}
+							w_Lor_Pol = mat->GetMueLorPoleFreqWeighted(order,n,coord) * 2 * PI;
+							if ((w_Lor_Pol>0) && (C_D[n]>0))
+							{
+								m_curr_Lor_ADE_On[order] = true;
+								L_L[n] = 1/(w_Lor_Pol*w_Lor_Pol*C_D[n]);
+							}
 						}
 					}
 
-					if (b_pos_on) //this position has active lorentz material
+					if (b_pos_on) //this position has active drude material
 					{
 						for (unsigned int n=0; n<3; ++n)
 						{
@@ -225,7 +296,14 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 								i_int[n].push_back(1);
 								i_ext[n].push_back(0);
 							}
-							//						cerr << v_int[n].back() << " " << v_ext[n].back() << " " << i_int[n].back() << " " << i_ext[n].back() << endl;
+							if (C_L[n]>0)
+								v_Lor[n].push_back(dT/C_L[n]/m_Op->GetVI(n,pos[0],pos[1],pos[2]));
+							else
+								v_Lor[n].push_back(0);
+							if (L_L[n]>0)
+								i_Lor[n].push_back(dT/L_L[n]/m_Op->GetIV(n,pos[0],pos[1],pos[2]));
+							else
+								i_Lor[n].push_back(0);
 						}
 					}
 				}
@@ -259,6 +337,16 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 			i_ext_ADE[order] = NULL;
 		}
 
+		if (m_volt_Lor_ADE_On[order])
+			v_Lor_ADE[order] = new FDTD_FLOAT*[3];
+		else
+			v_Lor_ADE[order] = NULL;
+
+		if (m_curr_Lor_ADE_On[order])
+			i_Lor_ADE[order] = new FDTD_FLOAT*[3];
+		else
+			i_Lor_ADE[order] = NULL;
+
 		for (int n=0; n<3; ++n)
 		{
 			m_LM_pos[order][n] = new unsigned int[m_LM_Count.at(order)];
@@ -286,6 +374,19 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					i_ext_ADE[order][n][i] = i_ext[n].at(i);
 				}
 			}
+
+			if (m_volt_Lor_ADE_On[order])
+			{
+				v_Lor_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
+				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+					v_Lor_ADE[order][n][i] = v_Lor[n].at(i);
+			}
+			if (m_curr_Lor_ADE_On[order])
+			{
+				i_Lor_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
+				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+					i_Lor_ADE[order][n][i] = i_Lor[n].at(i);
+			}
 		}
 	}
 
@@ -300,5 +401,15 @@ Engine_Extension* Operator_Ext_LorentzMaterial::CreateEngineExtention()
 
 void Operator_Ext_LorentzMaterial::ShowStat(ostream &ostr)  const
 {
-	Operator_Ext_Dispersive::ShowStat(ostr);
+	Operator_Extension::ShowStat(ostr);
+	string On_Off[2] = {"Off", "On"};
+	ostr << " Max. Dispersion Order N = " << m_Order << endl;
+	for (int i=0;i<m_Order;++i)
+	{
+		ostr << " N=" << i << ":\t Active cells\t\t: " << 	m_LM_Count.at(i) << endl;
+		ostr << " N=" << i << ":\t Voltage ADE is \t: " << On_Off[m_volt_ADE_On[i]] << endl;
+		ostr << " N=" << i << ":\t Voltage Lor-ADE is \t: " << On_Off[m_volt_Lor_ADE_On[i]] << endl;
+		ostr << " N=" << i << ":\t Current ADE is \t: " << On_Off[m_curr_ADE_On[i]] << endl;
+		ostr << " N=" << i << ":\t Current Lor-ADE is \t: " << On_Off[m_curr_Lor_ADE_On[i]] << endl;
+	}
 }
