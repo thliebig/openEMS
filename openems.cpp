@@ -674,7 +674,7 @@ int openEMS::SetupFDTD(const char* file)
 	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&timestepfactor)==TIXML_SUCCESS)
 		FDTD_Op->SetTimestepFactor(timestepfactor);
 
-	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
+	if ((m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0) || (m_CSX->GetQtyPropertyType(CSProperties::DEBYEMATERIAL)>0))
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 	if (m_CSX->GetQtyPropertyType(CSProperties::CONDUCTINGSHEET)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op,m_Exc->GetMaxFrequency()));
