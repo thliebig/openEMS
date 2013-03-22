@@ -57,11 +57,11 @@ for n=1:2:numel(varargin)
     end
 end
 
+port.ZL_ref = ref_ZL;
+
 % read time domain data
-filename = ['port_ut' num2str(port.nr)];
-U = ReadUI(filename, SimDir, f, UI_args{:} );
-filename = ['port_it' num2str(port.nr)];
-I = ReadUI(filename, SimDir, f, UI_args{:} );
+U = ReadUI( port.U_filename, SimDir, f, UI_args{:} );
+I = ReadUI( port.I_filename, SimDir, f, UI_args{:} );
 
 % store the original frequency domain waveforms
 u_f = U.FD{1}.val;

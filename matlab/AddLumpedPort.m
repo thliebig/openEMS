@@ -93,14 +93,16 @@ u_stop  = 0.5*(start + stop);
 u_start(n_dir) = start(n_dir);
 u_stop(n_dir)  = stop(n_dir);
 
-CSX = AddProbe(CSX,['port_ut' int2str(portnr)], 0, 'weight', -direction);
-CSX = AddBox(CSX,['port_ut' int2str(portnr)], prio, u_start, u_stop);
+port.U_filename = ['port_ut' int2str(portnr)];
+CSX = AddProbe(CSX, port.U_filename, 0, 'weight', -direction);
+CSX = AddBox(CSX, port.U_filename, prio, u_start, u_stop);
 
 i_start = start;
 i_stop  = stop;
 i_start(n_dir) = 0.5*(start(n_dir)+stop(n_dir));
 i_stop(n_dir)  = 0.5*(start(n_dir)+stop(n_dir));
 
-CSX = AddProbe(CSX,['port_it' int2str(portnr)], 1, 'weight', direction, 'NormDir', n_dir-1);
-CSX = AddBox(CSX,['port_it' int2str(portnr)], prio, i_start, i_stop);
+port.I_filename = ['port_it' int2str(portnr)];
+CSX = AddProbe(CSX, port.I_filename, 1, 'weight', direction, 'NormDir', n_dir-1);
+CSX = AddBox(CSX, port.I_filename, prio, i_start, i_stop);
 

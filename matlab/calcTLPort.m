@@ -26,6 +26,7 @@ function [port] = calcTLPort( port, SimDir, f, varargin)
 %   port.if.tot/inc/ref     total, incoming and reflected current
 %   port.beta:              propagation constant
 %   port.ZL:                characteristic line impedance
+%   port.ZL_ref             used refernce impedance
 %
 % example:
 %   port{1} = calcTLPort( port{1}, Sim_Path, f, 'RefImpedance', 50);
@@ -75,11 +76,9 @@ for n=1:2:numel(varargin)
     end
 end
 
-% read time domain data
-filename = ['port_ut' num2str(port.nr)];
-U = ReadUI( {[filename 'A'],[filename 'B'],[filename 'C']}, SimDir, f, UI_args{:} );
-filename = ['port_it' num2str(port.nr)];
-I = ReadUI( {[filename 'A'],[filename 'B']}, SimDir, f, UI_args{:} );
+% read time domain data (multiples files)
+U = ReadUI( port.U_filename, SimDir, f, UI_args{:} );
+I = ReadUI( port.I_filename, SimDir, f, UI_args{:} );
 
 % store the original frequency domain waveforms
 u_f = U.FD{2}.val;
@@ -119,6 +118,7 @@ end
 
 port.ZL =  ZL;
 port.beta = beta;
+port.ZL_ref = ref_ZL;
 
 port.f = f;
 uf_inc = 0.5 * ( u_f + i_f .* ref_ZL );

@@ -23,6 +23,7 @@ function [port] = calcPort( port, SimDir, f, varargin)
 %   port.f                  the given frequency fector
 %   port.uf.tot/inc/ref     total, incoming and reflected voltage
 %   port.if.tot/inc/ref     total, incoming and reflected current
+%   port.ZL_ref             used refernce impedance
 %
 %   if port is a transmission line port:
 %   port.beta:              propagation constant
@@ -50,5 +51,7 @@ if strcmpi(port.type,'MSL')
 elseif (strcmpi(port.type,'Lumped') || strcmpi(port.type,'Curve'))
     port = calcLumpedPort( port, SimDir, f, varargin{:});
     return
+else
+    error 'unknown port type'
 end
 

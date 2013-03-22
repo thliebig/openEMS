@@ -189,25 +189,25 @@ i2_start(idx_prop)   = sum(meshlines(2:3))/2;
 i2_stop(idx_prop)    = i2_start(idx_prop);
 
 % create the probes
-name = ['port_ut' num2str(portnr) 'A'];
+port.U_filename{1} = ['port_ut' num2str(portnr) 'A'];
 % weight = sign(stop(idx_height)-start(idx_height))
 weight = upsidedown;
-CSX = AddProbe( CSX, name, 0, 'weight', weight );
-CSX = AddBox( CSX, name, prio, v1_start, v1_stop );
-name = ['port_ut' num2str(portnr) 'B'];
-CSX = AddProbe( CSX, name, 0, 'weight', weight );
-CSX = AddBox( CSX, name, prio, v2_start, v2_stop );
-name = ['port_ut' num2str(portnr) 'C'];
-CSX = AddProbe( CSX, name, 0, 'weight', weight );
-CSX = AddBox( CSX, name, prio, v3_start, v3_stop );
-name = ['port_it' num2str(portnr) 'A'];
+CSX = AddProbe( CSX, port.U_filename{1}, 0, 'weight', weight );
+CSX = AddBox( CSX, port.U_filename{1}, prio, v1_start, v1_stop );
+port.U_filename{2} = ['port_ut' num2str(portnr) 'B'];
+CSX = AddProbe( CSX, port.U_filename{2}, 0, 'weight', weight );
+CSX = AddBox( CSX, port.U_filename{2}, prio, v2_start, v2_stop );
+port.U_filename{3} = ['port_ut' num2str(portnr) 'C'];
+CSX = AddProbe( CSX, port.U_filename{3}, 0, 'weight', weight );
+CSX = AddBox( CSX, port.U_filename{3}, prio, v3_start, v3_stop );
 
 weight = direction;
-CSX = AddProbe( CSX, name, 1, 'weight', weight );
-CSX = AddBox( CSX, name, prio, i1_start, i1_stop );
-name = ['port_it' num2str(portnr) 'B'];
-CSX = AddProbe( CSX, name, 1,'weight', weight );
-CSX = AddBox( CSX, name, prio, i2_start, i2_stop );
+port.I_filename{1} = ['port_it' num2str(portnr) 'A'];
+CSX = AddProbe( CSX, port.I_filename{1}, 1, 'weight', weight );
+CSX = AddBox( CSX, port.I_filename{1}, prio, i1_start, i1_stop );
+port.I_filename{2} = ['port_it' num2str(portnr) 'B'];
+CSX = AddProbe( CSX, port.I_filename{2}, 1,'weight', weight );
+CSX = AddBox( CSX, port.I_filename{2}, prio, i2_start, i2_stop );
 
 % create port structure
 port.LengthScale = 1;
