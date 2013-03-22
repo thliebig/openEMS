@@ -5,8 +5,8 @@
 % http://openems.de/index.php/Tutorial:_Conical_Horn_Antenna
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.27
+%  - Matlab 2011a / Octave 3.6.3
+%  - openEMS v0.0.31
 %
 % (C) 2011,2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
@@ -39,35 +39,6 @@ f_stop  =  20e9;
 
 % frequency of interest
 f0 = 15e9;
-
-%% mode functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% by David M. Pozar, Microwave Engineering, third edition, page 113
-freq = linspace(f_start,f_stop,201);
-
-p11 = 1.841;
-kc = p11 / horn.radius /unit;
-k = 2*pi*freq/C0;
-fc = C0*kc/2/pi;
-beta = sqrt(k.^2 - kc^2);
-ZL_a = k * Z0 ./ beta;    %analytic waveguide impedance
-
-% mode profile E- and H-field
-kc = kc*unit;
-func_Er = [ num2str(-1/kc^2,'%14.13f') '/rho*cos(a)*j1('  num2str(kc,'%14.13f') '*rho)'];
-func_Ea = [ num2str(1/kc,'%14.13f') '*sin(a)*0.5*(j0('  num2str(kc,'%14.13f') '*rho)-jn(2,'  num2str(kc,'%14.13f') '*rho))'];
-func_Ex = ['(' func_Er '*cos(a) - ' func_Ea '*sin(a) ) * (rho<' num2str(horn.radius) ')'];
-func_Ey = ['(' func_Er '*sin(a) + ' func_Ea '*cos(a) ) * (rho<' num2str(horn.radius) ')'];
-
-func_Ha = [ num2str(-1/kc^2,'%14.13f') '/rho*cos(a)*j1('  num2str(kc,'%14.13f') '*rho)'];
-func_Hr = [ '-1*' num2str(1/kc,'%14.13f') '*sin(a)*0.5*(j0('  num2str(kc,'%14.13f') '*rho)-jn(2,'  num2str(kc,'%14.13f') '*rho))'];
-func_Hx = ['(' func_Hr '*cos(a) - ' func_Ha '*sin(a) ) * (rho<' num2str(horn.radius) ')'];
-func_Hy = ['(' func_Hr '*sin(a) + ' func_Ha '*cos(a) ) * (rho<' num2str(horn.radius) ')'];
-
-disp([' Cutoff frequencies for this mode and wavguide is: ' num2str(fc/1e9) ' GHz']);
-
-if (f_start<fc)
-    warning('openEMS:example','f_start is smaller than the cutoff-frequency, this may result in a long simulation... ');
-end
 
 %% setup FDTD parameter & excitation function
 FDTD = InitFDTD( 30000, 1e-4 );
@@ -112,30 +83,16 @@ CSX = AddRotPoly(CSX,'Conical_Horn',10,0,2,p);
 % horn aperture
 A = pi*((horn.radius + sin(horn.angle)*horn.length)*unit)^2;
 
-% %% apply the excitation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% xy-mode profile excitation located directly on top of pml (first 8 z-lines)
-CSX = AddExcitation(CSX,'excite',0,[1 1 0]);
-weight{1} = func_Ex;
-weight{2} = func_Ey;
-weight{3} = 0;
-CSX = SetExcitationWeight(CSX,'excite',weight);
-start=[0 0 mesh.z(8)-0.1 ];
-stop =[0 0 mesh.z(8)+0.1 ];
-CSX = AddCylinder(CSX,'excite',0 ,start,stop,horn.radius);
+%% apply the excitation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+start=[-horn.radius -horn.radius mesh.z(10) ];
+stop =[+horn.radius +horn.radius mesh.z(1)+horn.feed_length/2 ];
+[CSX, port] = AddCircWaveGuidePort( CSX, 0, 1, start, stop, horn.radius*unit, 'TE11', 0, 1);
 
+%%
 CSX = AddDump(CSX,'Exc_dump');
-start=[-horn.radius -horn.radius mesh.z(8)-0.1 ];
-stop =[+horn.radius +horn.radius mesh.z(8)+0.1 ];
+start=[-horn.radius -horn.radius mesh.z(8)];
+stop =[+horn.radius +horn.radius mesh.z(8)];
 CSX = AddBox(CSX,'Exc_dump',0,start,stop);
-
-%% voltage and current definitions using the mode matching probes %%%%%%%%%
-%port 1
-start = [-horn.radius -horn.radius mesh.z(1)+horn.feed_length/2];
-stop  = [ horn.radius  horn.radius mesh.z(1)+horn.feed_length/2];
-CSX = AddProbe(CSX, 'ut1', 10, 1, [], 'ModeFunction',{func_Ex,func_Ey,0});
-CSX = AddBox(CSX,  'ut1',  0 ,start,stop);
-CSX = AddProbe(CSX,'it1', 11, 1, [], 'ModeFunction',{func_Hx,func_Hy,0});
-CSX = AddBox(CSX,'it1', 0 ,start,stop);
 
 %% nf2ff calc
 start = [mesh.x(9) mesh.y(9) mesh.z(9)];
@@ -159,24 +116,23 @@ CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
 RunOpenEMS( Sim_Path, Sim_CSX);
 
 %% postprocessing & do the plots
-U = ReadUI( 'ut1', Sim_Path, freq ); % time domain/freq domain voltage
-I = ReadUI( 'it1', Sim_Path, freq ); % time domain/freq domain current (half time step is corrected)
+freq = linspace(f_start,f_stop,201);
+
+port = calcPort(port, Sim_Path, freq);
+
+Zin = port.uf.tot ./ port.if.tot;
+s11 = port.uf.ref ./ port.uf.inc;
+P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
+
 
 % plot reflection coefficient S11
 figure
-uf_inc = 0.5*(U.FD{1}.val + I.FD{1}.val .* ZL_a);
-if_inc = 0.5*(I.FD{1}.val + U.FD{1}.val ./ ZL_a);
-uf_ref = U.FD{1}.val - uf_inc;
-if_ref = if_inc - I.FD{1}.val;
-s11 = uf_ref ./ uf_inc;
 plot( freq/1e9, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
 ylim([-60 0]);
 grid on
 title( 'reflection coefficient S_{11}' );
 xlabel( 'frequency f / GHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
-
-P_in = 0.5*uf_inc .* conj( if_inc ); % antenna feed power
 
 drawnow
 

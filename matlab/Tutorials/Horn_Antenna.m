@@ -43,37 +43,12 @@ f_stop  =  20e9;
 f0 = 15e9;
 
 %waveguide TE-mode definition
-m = 1;
-n = 0;
-
-%% mode functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% by David M. Pozar, Microwave Engineering, third edition, page 113
-freq = linspace(f_start,f_stop,201);
+TE_mode = 'TE10';
 a = horn.width;
 b = horn.height;
-k = 2*pi*freq/c0;
-kc = sqrt((m*pi/a/unit)^2 + (n*pi/b/unit)^2);
-fc = c0*kc/2/pi;          %cut-off frequency
-beta = sqrt(k.^2 - kc^2); %waveguide phase-constant
-ZL_a = k * Z0 ./ beta;    %analytic waveguide impedance
-
-% mode profile E- and H-field
-x_pos = ['(x-' num2str(a/2) ')'];
-y_pos = ['(y-' num2str(b/2) ')'];
-func_Ex = [num2str( n/b/unit) '*cos(' num2str(m*pi/a) '*' x_pos ')*sin('  num2str(n*pi/b) '*' y_pos ')'];
-func_Ey = [num2str(-m/a/unit) '*sin(' num2str(m*pi/a) '*' x_pos ')*cos('  num2str(n*pi/b) '*' y_pos ')'];
-
-func_Hx = [num2str(m/a/unit) '*sin(' num2str(m*pi/a) '*' x_pos ')*cos('  num2str(n*pi/b) '*' y_pos ')'];
-func_Hy = [num2str(n/b/unit) '*cos(' num2str(m*pi/a) '*' x_pos ')*sin('  num2str(n*pi/b) '*' y_pos ')'];
-
-disp([' Cutoff frequencies for this mode and wavguide is: ' num2str(fc/1e9) ' GHz']);
-
-if (f_start<fc)
-    warning('openEMS:example','f_start is smaller than the cutoff-frequency, this may result in a long simulation... ');
-end
 
 %% setup FDTD parameter & excitation function
-FDTD = InitFDTD( 30000, 1e-4 );
+FDTD = InitFDTD('EndCriteria', 1e-4);
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -138,25 +113,10 @@ CSX = AddLinPoly( CSX, 'horn', 10, 0, -horn.thickness/2, p, horn.thickness, 'Tra
 % horn aperture
 A = (a + 2*sin(horn.angle(1))*horn.length)*unit * (b + 2*sin(horn.angle(2))*horn.length)*unit;
 
-% %% apply the excitation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% xy-mode profile excitation located directly on top of pml (first 8 z-lines)
-CSX = AddExcitation(CSX,'excite',0,[1 1 0]);
-weight{1} = func_Ex;
-weight{2} = func_Ey;
-weight{3} = 0;
-CSX = SetExcitationWeight(CSX,'excite',weight);
+%% apply the excitation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 start=[-a/2 -b/2 mesh.z(8) ];
-stop =[ a/2  b/2 mesh.z(8) ];
-CSX = AddBox(CSX,'excite',0 ,start,stop);
-
-%% voltage and current definitions using the mode matching probes %%%%%%%%%
-%port 1
-start(3) = mesh.z(1)+horn.feed_length/2;
-stop(3)  = start(3);
-CSX = AddProbe(CSX, 'ut1', 10, 1, [], 'ModeFunction',{func_Ex,func_Ey,0});
-CSX = AddBox(CSX,  'ut1',  0 ,start,stop);
-CSX = AddProbe(CSX,'it1', 11, 1, [], 'ModeFunction',{func_Hx,func_Hy,0});
-CSX = AddBox(CSX,'it1', 0 ,start,stop);
+stop =[ a/2  b/2 mesh.z(1)+horn.feed_length/2 ];
+[CSX, port] = AddRectWaveGuidePort( CSX, 0, 1, start, stop, 2, a*unit, b*unit, TE_mode, 1);
 
 %% nf2ff calc
 start = [mesh.x(9) mesh.y(9) mesh.z(9)];
@@ -180,24 +140,20 @@ CSXGeomPlot([Sim_Path '/' Sim_CSX]);
 RunOpenEMS(Sim_Path, Sim_CSX);
 
 %% postprocessing & do the plots
-U = ReadUI( 'ut1', Sim_Path, freq ); % time domain/freq domain voltage
-I = ReadUI( 'it1', Sim_Path, freq ); % time domain/freq domain current (half time step is corrected)
+freq = linspace(f_start,f_stop,201);
 
-% plot reflection coefficient S11
-figure
-uf_inc = 0.5*(U.FD{1}.val + I.FD{1}.val .* ZL_a);
-if_inc = 0.5*(I.FD{1}.val + U.FD{1}.val ./ ZL_a);
-uf_ref = U.FD{1}.val - uf_inc;
-if_ref = if_inc - I.FD{1}.val;
-s11 = uf_ref ./ uf_inc;
+port = calcPort(port, Sim_Path, freq);
+
+Zin = port.uf.tot ./ port.if.tot;
+s11 = port.uf.ref ./ port.uf.inc;
+P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
+
 plot( freq/1e9, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
 ylim([-60 0]);
 grid on
 title( 'reflection coefficient S_{11}' );
 xlabel( 'frequency f / GHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
-
-P_in = 0.5*uf_inc .* conj( if_inc ); % antenna feed power
 
 drawnow
 
