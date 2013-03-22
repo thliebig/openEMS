@@ -1,5 +1,5 @@
 function [port] = calcWGPort( port, SimDir, f, varargin)
-% [port] = calcTLPort( port, SimDir, f, varargin)
+% [port] = calcWGPort( port, SimDir, f, varargin)
 %
 % Calculate voltages and currents, the propagation constant beta
 % and the characteristic impedance ZL of the given waveguide port.
@@ -20,6 +20,8 @@ function [port] = calcWGPort( port, SimDir, f, varargin)
 %                    - default is the measurement plane at the end of the
 %                      port
 %                    - the plane shift has to be given in drawing units!
+%   'RefractiveIndex': set a material refractive index
+%   'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output:
 %   port.f                  the given frequency fector
@@ -52,6 +54,8 @@ end
 %set defaults
 ref_ZL = -1;
 ref_shift = nan;
+ref_index = 1;
+switch_dir = 1;
 
 UI_args = {};
 
@@ -60,6 +64,12 @@ for n=1:2:numel(varargin)
         ref_shift = varargin{n+1};
     elseif (strcmp(varargin{n},'RefImpedance')==1);
         ref_ZL = varargin{n+1};
+    elseif (strcmp(varargin{n},'RefractiveIndex')==1);
+        ref_index = varargin{n+1};
+    elseif (strcmpi(varargin{n},'SwitchDirection')==1);
+        if (varargin{n+1})
+            switch_dir = -1;
+        end
     else
         UI_args(end+1) = varargin(n);
         UI_args(end+1) = varargin(n+1);
@@ -72,11 +82,11 @@ I = ReadUI( port.I_filename, SimDir, f, UI_args{:} );
 
 % store the original frequency domain waveforms
 u_f = U.FD{1}.val;
-i_f = I.FD{1}.val;
+i_f = I.FD{1}.val * switch_dir;
 
 physical_constants
-k = 2*pi*f/C0;
-fc = C0*port.kc/2/pi;
+k = 2*pi*f/C0*ref_index;
+fc = C0*port.kc/2/pi/ref_index;
 port.beta = sqrt(k.^2 - port.kc^2);
 port.ZL = k * Z0 ./ port.beta;    %analytic waveguide impedance
 

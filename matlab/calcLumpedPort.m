@@ -14,6 +14,7 @@ function [port] = calcLumpedPort( port, SimDir, f, varargin)
 %   'RefImpedance':  - use a given reference impedance to calculate inc and
 %                      ref voltages and currents
 %                    - default is given port or calculated line impedance
+%   'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output:
 %   port.f                  the given frequency fector
@@ -45,12 +46,17 @@ end
 
 %set defaults
 ref_ZL = port.Feed_R;
+switch_dir = 1;
 
 UI_args = {};
 
 for n=1:2:numel(varargin)
     if (strcmp(varargin{n},'RefImpedance')==1);
         ref_ZL = varargin{n+1};
+    elseif (strcmpi(varargin{n},'SwitchDirection')==1);
+        if (varargin{n+1})
+            switch_dir = -1;
+        end
     else
         UI_args(end+1) = varargin(n);
         UI_args(end+1) = varargin(n+1);
@@ -65,7 +71,7 @@ I = ReadUI( port.I_filename, SimDir, f, UI_args{:} );
 
 % store the original frequency domain waveforms
 u_f = U.FD{1}.val;
-i_f = I.FD{1}.val; % shift to same position as v
+i_f = switch_dir*I.FD{1}.val;
 
 port.Zin = u_f./i_f;
 

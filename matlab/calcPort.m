@@ -18,6 +18,7 @@ function [port] = calcPort( port, SimDir, f, varargin)
 %                    - default is given port or calculated line impedance
 %   'RefPlaneShift': for transmission lines only, See also calcTLPort for
 %                    more details
+%   'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output: 
 %   port.f                  the given frequency fector

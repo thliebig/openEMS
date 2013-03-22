@@ -19,6 +19,7 @@ function [port] = calcTLPort( port, SimDir, f, varargin)
 %                      for a desired phase correction
 %                    - default is the measurement plane
 %                    - the plane shift has to be given in drawing units!
+%   'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output:
 %   port.f                  the given frequency fector
@@ -62,6 +63,7 @@ end
 %set defaults
 ref_ZL = -1;
 ref_shift = nan;
+switch_dir = 1;
 
 UI_args = {};
 
@@ -70,6 +72,10 @@ for n=1:2:numel(varargin)
         ref_shift = varargin{n+1};
     elseif (strcmp(varargin{n},'RefImpedance')==1);
         ref_ZL = varargin{n+1};
+    elseif (strcmpi(varargin{n},'SwitchDirection')==1);
+        if (varargin{n+1})
+            switch_dir = -1;
+        end
     else
         UI_args(end+1) = varargin(n);
         UI_args(end+1) = varargin(n+1);
@@ -82,7 +88,7 @@ I = ReadUI( port.I_filename, SimDir, f, UI_args{:} );
 
 % store the original frequency domain waveforms
 u_f = U.FD{2}.val;
-i_f = (I.FD{1}.val + I.FD{2}.val) / 2; % shift to same position as v
+i_f = switch_dir*(I.FD{1}.val + I.FD{2}.val) / 2; % shift to same position as v
 
 f = U.FD{2}.f;
 Et = U.FD{2}.val;
