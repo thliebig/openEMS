@@ -48,6 +48,9 @@ end
 if strcmpi(port.type,'MSL')
     port = calcTLPort( port, SimDir, f, varargin{:});
     return
+elseif strcmpi(port.type,'WaveGuide')
+    port = calcWGPort( port, SimDir, f, varargin{:});
+    return
 elseif (strcmpi(port.type,'Lumped') || strcmpi(port.type,'Curve'))
     port = calcLumpedPort( port, SimDir, f, varargin{:});
     return
