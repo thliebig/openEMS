@@ -39,6 +39,7 @@ Operator_Extension::Operator_Extension(Operator* op, Operator_Extension* op_ext)
 	UNUSED(op_ext);
 	m_Op = op;
 	m_Op_Cyl = dynamic_cast<Operator_Cylinder*>(op);
+	m_Active = op_ext->m_Active;
 	if (m_Op_Cyl)
 		m_CC_R0_included=m_Op_Cyl->GetR0Included();
 }
