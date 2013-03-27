@@ -84,7 +84,7 @@ protected:
 
 	virtual void DumpOperator2File(string filename);
 	virtual void DumpMaterial2File(string filename);
-	virtual void DumpPEC2File( string filename );
+	virtual void DumpPEC2File( string filename, unsigned int *range = NULL );
 };
 
 #endif // OPERATOR_MPI_H

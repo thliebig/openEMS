@@ -202,7 +202,7 @@ void Operator_MPI::DumpMaterial2File(string filename)
 	Operator_SSE_Compressed::DumpMaterial2File(PrependRank(filename));
 }
 
-void Operator_MPI::DumpPEC2File( string filename )
+void Operator_MPI::DumpPEC2File(string filename , unsigned int *range)
 {
-	Operator_SSE_Compressed::DumpPEC2File(PrependRank(filename));
+	Operator_SSE_Compressed::DumpPEC2File(PrependRank(filename), range);
 }

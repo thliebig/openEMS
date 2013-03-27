@@ -72,6 +72,8 @@ protected:
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
+	virtual void DumpPEC2File( string filename, unsigned int *range = NULL );
+
 	//! The material data storage in the sub-grid area's will not be filled by the base-operator. Check and do this here!
 	void FillMissingDataStorage();
 

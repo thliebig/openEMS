@@ -19,6 +19,7 @@
 #include "engine_cylindermultigrid.h"
 #include "extensions/operator_ext_cylinder.h"
 #include "tools/useful.h"
+#include "CSUseful.h"
 
 Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radii, unsigned int level) : Operator_Cylinder()
 {
@@ -264,6 +265,28 @@ int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
 	//the data storage will only be filled up to m_Split_Pos-1, fill the remaining area here...
 	FillMissingDataStorage();
 	return retCode;
+}
+
+void Operator_CylinderMultiGrid::DumpPEC2File( string filename, unsigned int *range)
+{
+	if (range!=NULL)
+		return Operator_Cylinder::DumpPEC2File(filename, range);
+
+	range = new unsigned int[6];
+	for (int n=0;n<3;++n)
+	{
+		range[2*n] = 0;
+		range[2*n+1] = numLines[n]-1;
+	}
+	range[0] = m_Split_Pos;
+	Operator_Cylinder::DumpPEC2File(filename + "_S" + ConvertInt(m_MultiGridLevel), range);
+	delete[] range;
+	range=NULL;
+
+	if (dynamic_cast<Operator_CylinderMultiGrid*>(m_InnerOp))
+		m_InnerOp->DumpPEC2File(filename);
+	else // base cylindrical grid
+		m_InnerOp->DumpPEC2File(filename + "_S" + ConvertInt(m_MultiGridLevel+1));
 }
 
 void Operator_CylinderMultiGrid::SetupInterpolation()

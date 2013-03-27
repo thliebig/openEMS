@@ -178,7 +178,7 @@ protected:
 	// debug
 	virtual void DumpOperator2File(string filename);
 	virtual void DumpMaterial2File(string filename);
-	virtual void DumpPEC2File( string filename );
+	virtual void DumpPEC2File( string filename, unsigned int *range = NULL );
 
 	unsigned int m_Nr_PEC[3]; //count PEC edges
 	virtual bool CalcPEC();

@@ -574,7 +574,7 @@ void Operator::DumpOperator2File(string filename)
 //! \brief dump PEC (perfect electric conductor) information (into VTK-file)
 //! visualization via paraview
 //! visualize only one component (x, y or z)
-void Operator::DumpPEC2File( string filename )
+void Operator::DumpPEC2File(string filename , unsigned int *range)
 {
 	cout << "Operator: Dumping PEC information to vtk file: " << filename << " ..." << flush;
 
@@ -583,6 +583,16 @@ void Operator::DumpPEC2File( string filename )
 #else
 	double scaling = GetGridDelta();;
 #endif
+
+	unsigned int start[3] = {0, 0, 0};
+	unsigned int stop[3] = {numLines[0]-1,numLines[1]-1,numLines[2]-1};
+
+	if (range!=NULL)
+		for (int n=0;n<3;++n)
+		{
+			start[n] = range[2*n];
+			stop[n] = range[2*n+1];
+		}
 
 	vtkPolyData* polydata = vtkPolyData::New();
 	vtkCellArray *poly = vtkCellArray::New();
@@ -602,15 +612,15 @@ void Operator::DumpPEC2File( string filename )
 	double coord[3];
 	unsigned int pos[3],rpos[3];
 	unsigned int mesh_idx=0;
-	for (pos[2]=0;pos[2]<numLines[2]-1;++pos[2])
+	for (pos[2]=start[2];pos[2]<stop[2];++pos[2])
 	{ // each xy-plane
 		for (unsigned int n=0;n<numLines[0]*numLines[1];++n)
 		{
 			pointIdx[0][n]=pointIdx[1][n];
 			pointIdx[1][n]=-1;
 		}
-		for (pos[0]=0;pos[0]<numLines[0]-1;++pos[0])
-			for (pos[1]=0;pos[1]<numLines[1]-1;++pos[1])
+		for (pos[0]=start[0];pos[0]<stop[0];++pos[0])
+			for (pos[1]=start[1];pos[1]<stop[1];++pos[1])
 			{
 				for (int n=0;n<3;++n)
 				{
@@ -669,6 +679,7 @@ void Operator::DumpPEC2File( string filename )
 
 	writer->Delete();
 	polydata->Delete();
+	cout << " done." << endl;
 }
 
 void Operator::DumpMaterial2File(string filename)
