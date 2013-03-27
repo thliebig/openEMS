@@ -51,9 +51,6 @@ function [CSX,port] = AddWaveGuidePort( CSX, prio, portnr, start, stop, dir, E_W
 %check mesh
 if ~isfield(CSX,'RectilinearGrid')
     error 'mesh needs to be defined! Use DefineRectGrid() first!';
-    if (~isfield(CSX.RectilinearGrid,'XLines') || ~isfield(CSX.RectilinearGrid,'YLines') || ~isfield(CSX.RectilinearGrid,'ZLines'))
-        error 'mesh needs to be defined! Use DefineRectGrid() first!';
-    end
 end
 
 port.type='WaveGuide';

@@ -73,9 +73,6 @@ end
 
 if ~isfield(CSX,'RectilinearGrid')
     error 'mesh needs to be defined! Use DefineRectGrid() first!';
-    if (~isfield(CSX.RectilinearGrid,'XLines') || ~isfield(CSX.RectilinearGrid,'YLines') || ~isfield(CSX.RectilinearGrid,'ZLines'))
-        error 'mesh needs to be defined! Use DefineRectGrid() first!';
-    end
 end
 
 unit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
