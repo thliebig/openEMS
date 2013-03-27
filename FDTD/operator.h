@@ -81,6 +81,9 @@ public:
 	virtual void SetTimestepFactor(double factor);
 	bool GetTimestepValid() const {return !m_InvaildTimestep;}
 
+	//! Choose a time step method (0=auto, 1=CFL, 3=Rennings)
+	void SetTimeStepMethod(int var) {m_TimeStepVar=var;}
+
 	//! Set operator to assume a constant material inside a cell (material probing in the cell center)
 	void SetCellConstantMaterial() {m_MatCellShiftFaktor=0.5;}
 

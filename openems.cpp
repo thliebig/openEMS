@@ -666,6 +666,10 @@ int openEMS::SetupFDTD(const char* file)
 
 	SetupBoundaryConditions(BC);
 
+	int TS_method=0;
+	if (FDTD_Opts->QueryIntAttribute("TimeStepMethod",&TS_method)==TIXML_SUCCESS)
+		FDTD_Op->SetTimeStepMethod(TS_method);
+
 	double timestep=0;
 	FDTD_Opts->QueryDoubleAttribute("TimeStep",&timestep);
 	if (timestep)
