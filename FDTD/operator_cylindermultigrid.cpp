@@ -20,11 +20,12 @@
 #include "extensions/operator_ext_cylinder.h"
 #include "tools/useful.h"
 
-Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radii) : Operator_Cylinder()
+Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radii, unsigned int level) : Operator_Cylinder()
 {
 	m_Split_Radii = Split_Radii;
 	m_Split_Rad = m_Split_Radii.back();
 	m_Split_Radii.pop_back();
+	m_MultiGridLevel = level;
 }
 
 Operator_CylinderMultiGrid::~Operator_CylinderMultiGrid()
@@ -32,7 +33,7 @@ Operator_CylinderMultiGrid::~Operator_CylinderMultiGrid()
 	Delete();
 }
 
-Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(vector<double> Split_Radii, unsigned int numThreads)
+Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(vector<double> Split_Radii, unsigned int numThreads, unsigned int level)
 {
 	if ((Split_Radii.size()==0) || (Split_Radii.size()>CYLIDINDERMULTIGRID_LIMIT))
 	{
@@ -40,7 +41,7 @@ Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(vector<double> Split
 		return NULL;
 	}
 	cout << "Create cylindrical multi grid FDTD operator " << endl;
-	Operator_CylinderMultiGrid* op = new Operator_CylinderMultiGrid(Split_Radii);
+	Operator_CylinderMultiGrid* op = new Operator_CylinderMultiGrid(Split_Radii, level);
 	op->setNumThreads(numThreads);
 	op->Init();
 
@@ -129,7 +130,7 @@ void Operator_CylinderMultiGrid::Init()
 	if (m_Split_Radii.empty())
 		m_InnerOp = Operator_Cylinder::New(m_numThreads);
 	else
-		m_InnerOp = Operator_CylinderMultiGrid::New(m_Split_Radii,m_numThreads);
+		m_InnerOp = Operator_CylinderMultiGrid::New(m_Split_Radii,m_numThreads, m_MultiGridLevel+1);
 
 	for (int n=0;n<2;++n)
 	{
