@@ -977,7 +977,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	{
 		if ( (*it)->IsActive() == false)
 		{
-			m_Op_exts.erase(it);
+			DeleteExtension((*it));
 			it = m_Op_exts.begin(); //restart search for inactive extension
 		}
 		else
