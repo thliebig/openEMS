@@ -152,14 +152,17 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	m_curr_ADE_On = new bool[m_Order];
 	m_curr_ADE_On[0] = m_curr_ADE_On[1]=false;
 
+	m_volt_Lor_ADE_On = new bool[m_Order];
+	m_volt_Lor_ADE_On[0] = m_volt_Lor_ADE_On[1]=false;
+	m_curr_Lor_ADE_On = new bool[m_Order];
+	m_curr_Lor_ADE_On[0] = m_curr_Lor_ADE_On[1]=false;
+
 	m_LM_pos = new unsigned int**[m_Order];
 	m_LM_pos[0] = new unsigned int*[3];
 	m_LM_pos[1] = new unsigned int*[3];
 
 	v_int_ADE = new FDTD_FLOAT**[m_Order];
 	v_ext_ADE = new FDTD_FLOAT**[m_Order];
-	i_int_ADE = NULL;
-	i_ext_ADE = NULL;
 
 	v_int_ADE[0] = new FDTD_FLOAT*[3];
 	v_ext_ADE[0] = new FDTD_FLOAT*[3];
