@@ -108,12 +108,12 @@ stop  = [mesh.x(end) mesh.y(end) mesh.z(end)] - 10*resolution;
 Sim_Path = 'tmp_CRLH_LeakyWave';
 Sim_CSX = 'CRLH.xml';
 
-% [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
-% [status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
+[status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
+[status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
 
-% WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
+WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
-% RunOpenEMS( Sim_Path, Sim_CSX );
+RunOpenEMS( Sim_Path, Sim_CSX );
 
 %% post-processing
 close all
