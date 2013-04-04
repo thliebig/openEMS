@@ -15,7 +15,10 @@ function [CSX,port] = AddCircWaveGuidePort( CSX, prio, portnr, start, stop, radi
 %   mode_name:  mode name, e.g. 'TE11' or 'TM21'
 %   pol_ang:    polarization angle (e.g. 0 = horizontal, pi/2 = vertical)
 %   exc_amp:    excitation amplitude (set 0 to be passive)
+%
+% optional (key/values):
 %   varargin:   optional additional excitations options, see also AddExcitation
+%   'PortNamePrefix': a prefix to the port name
 %
 % output:
 %   CSX:        modified CSX structure

@@ -13,7 +13,9 @@ function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excite, v
 %   stop:   3D end rowvector for port definition
 %   excite (optional): if true, the port will be switched on (see AddExcitation())
 %                       Note: for legacy support a string will be accepted
-%   varargin (optional): additional excitations options, see also AddExcitation
+% optional (key/values):
+%   varargin:   optional additional excitations options, see also AddExcitation
+%   'PortNamePrefix': a prefix to the port name
 %
 % output:
 %   CSX:
@@ -29,6 +31,16 @@ function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excite, v
 
 port.type='Lumped';
 port.nr=portnr;
+
+PortNamePrefix = '';
+
+varargin_tmp  = varargin;
+for n=1:2:numel(varargin_tmp)
+    if strcmpi('PortNamePrefix',varargin_tmp{n})
+        PortNamePrefix = varargin_tmp{n+1};
+        varargin([n n+1]) = [];
+    end
+end
 
 % make row vector
 start = reshape( start, 1, [] );
@@ -79,7 +91,7 @@ if abs(start_idx(dir) - stop_idx(dir)) ~= 1
     port_stop_idx(dir)   = idx+1;
     port_stop_idx(dir1)  = idx1;
     port_stop_idx(dir2)  = idx2;
-    metalname = ['port' num2str(portnr) '_PEC'];
+    metalname = [PortNamePrefix 'port' num2str(portnr) '_PEC'];
     CSX = AddMetal( CSX, metalname );
     CSX = AddCurve( CSX, metalname, prio, [nstart.' [mesh{1}(port_start_idx(1));mesh{2}(port_start_idx(2));mesh{3}(port_start_idx(3))]] );
     CSX = AddCurve( CSX, metalname, prio, [nstop.' [mesh{1}(port_stop_idx(1));mesh{2}(port_stop_idx(2));mesh{3}(port_stop_idx(3))]] );
@@ -112,11 +124,11 @@ i_start(dir) = (i_start(dir)+i_stop(dir))/2;
 i_stop(dir)  = i_start(dir);
 
 % create the probes
-name = ['port_ut' num2str(portnr)];
+name = [PortNamePrefix 'port_ut' num2str(portnr)];
 weight = -1;
 CSX = AddProbe( CSX, name, 0, 'weight', weight );
 CSX = AddBox( CSX, name, prio, v_start, v_stop );
-name = ['port_it' num2str(portnr)];
+name = [PortNamePrefix 'port_it' num2str(portnr)];
 weight = 1;
 CSX = AddProbe( CSX, name, 1, 'weight',  weight );
 CSX = AddBox( CSX, name, prio, i_start, i_stop );
@@ -157,14 +169,14 @@ if (excite)
 	port.excite = 1;
     e_start = v_start;
     e_stop  = v_stop;
-    CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, start_idx ~= stop_idx, varargin{:});
-	CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, e_start, e_stop );
+    CSX = AddExcitation( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], 0, start_idx ~= stop_idx, varargin{:});
+	CSX = AddBox( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], prio, e_start, e_stop );
 end
 
 port.Feed_R = R;
 if (R>0 && (~isinf(R))) 
-    CSX = AddLumpedElement( CSX, ['port_resist_' int2str(portnr)], dir-1, 'R', R);
-    CSX = AddBox( CSX, ['port_resist_' int2str(portnr)], prio, v_start, v_stop );
+    CSX = AddLumpedElement( CSX, [PortNamePrefix 'port_resist_' int2str(portnr)], dir-1, 'R', R);
+    CSX = AddBox( CSX, [PortNamePrefix 'port_resist_' int2str(portnr)], prio, v_start, v_stop );
 elseif (R==0)
     CSX = AddBox(CSX,metalname, prio, v_start, v_stop);
 end

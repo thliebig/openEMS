@@ -6,7 +6,7 @@ function [CSX,port] = AddWaveGuidePort( CSX, prio, portnr, start, stop, dir, E_W
 % Note: - The excitation will be located at the start position in the given direction
 %       - The voltage and current probes at the stop position in the given direction
 %
-% input:
+% parameter:
 %   CSX:        complete CSX structure (must contain a mesh)
 %   prio:       priority of primitives
 %   start:      start coordinates of waveguide port box
@@ -16,7 +16,10 @@ function [CSX,port] = AddWaveGuidePort( CSX, prio, portnr, start, stop, dir, E_W
 %   H_WG_func:  magnetic field mode profile function as a string
 %   kc:         cutoff wavenumber (defined by the waveguide dimensions)
 %   exc_amp:    excitation amplitude (set 0 to be passive)
+%
+% optional (key/values):
 %   varargin:   optional additional excitations options, see also AddExcitation
+%   'PortNamePrefix': a prefix to the port name
 %
 % output:
 %   CSX:        modified CSX structure
@@ -63,6 +66,16 @@ if ~( (dir==0) || (dir==1) || (dir==2) )
 	error 'dir must be 0, 1 or 2'
 end
 
+PortNamePrefix = '';
+
+varargin_tmp  = varargin;
+for n=1:2:numel(varargin_tmp)
+    if strcmpi('PortNamePrefix',varargin_tmp{n})
+        PortNamePrefix = varargin_tmp{n+1};
+        varargin([n n+1]) = [];
+    end
+end
+
 % matlab adressing
 dir = dir + 1;
 dir_sign = sign(stop(dir) - start(dir));
@@ -87,7 +100,7 @@ if (exc_amp~=0)
     port.excitepos = e_start(dir);
     e_vec = [1 1 1]*exc_amp;
     e_vec(dir) = 0;
-    exc_name = ['port_excite_' num2str(portnr)];
+    exc_name = [PortNamePrefix 'port_excite_' num2str(portnr)];
     CSX = AddExcitation( CSX, exc_name, 0, e_vec, varargin{:});
     CSX = SetExcitationWeight(CSX, exc_name, E_WG_func );
 	CSX = AddBox( CSX, exc_name, prio, e_start, e_stop);
@@ -99,10 +112,10 @@ m_stop = stop;
 m_start(dir) = stop(dir);
 
 port.measplanepos = m_start(dir);
-port.U_filename = ['port_ut' int2str(portnr)];
+port.U_filename = [PortNamePrefix 'port_ut' int2str(portnr)];
 CSX = AddProbe(CSX, port.U_filename, 10, 'ModeFunction', E_WG_func);
 CSX = AddBox(CSX, port.U_filename, 0 ,m_start, m_stop);
 
-port.I_filename = ['port_it' int2str(portnr)];
+port.I_filename = [PortNamePrefix 'port_it' int2str(portnr)];
 CSX = AddProbe(CSX, port.I_filename, 11, 'ModeFunction', H_WG_func, 'weight', dir_sign);
 CSX = AddBox(CSX, port.I_filename, 0 ,m_start, m_stop);

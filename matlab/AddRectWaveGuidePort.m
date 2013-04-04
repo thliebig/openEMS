@@ -15,7 +15,10 @@ function [CSX,port] = AddRectWaveGuidePort( CSX, prio, portnr, start, stop, dir,
 %   a,b:        rectangular waveguide width and height (in meter)
 %   mode_name:  mode name, e.g. 'TE11' or 'TM21'
 %   exc_amp:    excitation amplitude (set 0 to be passive)
+%
+% optional (key/values):
 %   varargin:   optional additional excitations options, see also AddExcitation
+%   'PortNamePrefix': a prefix to the port name
 %
 % output:
 %   CSX:        modified CSX structure

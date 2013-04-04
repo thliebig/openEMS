@@ -11,6 +11,7 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 % evec:         excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
 % 
 % variable input:
+%  varargin:    optional additional excitations options, see also AddExcitation
 % 'ExcitePort'  true/false to make the port an active feeding port (default
 %               is false)
 % 'FeedShift'   shift to port from start by a given distance in drawing
@@ -21,6 +22,7 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 % 'MeasPlaneShift'  Shift the measurement plane from start t a given distance 
 %               in drawing units. Default is the middle of start/stop.
 %               Only active if 'ExcitePort' is set!
+% 'PortNamePrefix' a prefix to the port name
 % 
 % the mesh must be already initialized
 %
@@ -69,6 +71,7 @@ feed_shift = 0;
 feed_R = inf; %(default is open, no resitance)
 excite = false;
 measplanepos = nan;
+PortNamePrefix = '';
 
 excite_args = {};
 
@@ -99,6 +102,8 @@ for n=1:2:numel(varargin)
         else
             excite = varargin{n+1};
         end
+    elseif (strcmpi(varargin{n},'PortNamePrefix'))
+        PortNamePrefix = varargin{n+1};
     else
         excite_args{end+1} = varargin{n};
         excite_args{end+1} = varargin{n+1};
@@ -189,23 +194,23 @@ i2_start(idx_prop)   = sum(meshlines(2:3))/2;
 i2_stop(idx_prop)    = i2_start(idx_prop);
 
 % create the probes
-port.U_filename{1} = ['port_ut' num2str(portnr) 'A'];
+port.U_filename{1} = [PortNamePrefix 'port_ut' num2str(portnr) 'A'];
 % weight = sign(stop(idx_height)-start(idx_height))
 weight = upsidedown;
 CSX = AddProbe( CSX, port.U_filename{1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{1}, prio, v1_start, v1_stop );
-port.U_filename{2} = ['port_ut' num2str(portnr) 'B'];
+port.U_filename{2} = [PortNamePrefix 'port_ut' num2str(portnr) 'B'];
 CSX = AddProbe( CSX, port.U_filename{2}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{2}, prio, v2_start, v2_stop );
-port.U_filename{3} = ['port_ut' num2str(portnr) 'C'];
+port.U_filename{3} = [PortNamePrefix 'port_ut' num2str(portnr) 'C'];
 CSX = AddProbe( CSX, port.U_filename{3}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{3}, prio, v3_start, v3_stop );
 
 weight = direction;
-port.I_filename{1} = ['port_it' num2str(portnr) 'A'];
+port.I_filename{1} = [PortNamePrefix 'port_it' num2str(portnr) 'A'];
 CSX = AddProbe( CSX, port.I_filename{1}, 1, 'weight', weight );
 CSX = AddBox( CSX, port.I_filename{1}, prio, i1_start, i1_stop );
-port.I_filename{2} = ['port_it' num2str(portnr) 'B'];
+port.I_filename{2} = [PortNamePrefix 'port_it' num2str(portnr) 'B'];
 CSX = AddProbe( CSX, port.I_filename{2}, 1,'weight', weight );
 CSX = AddBox( CSX, port.I_filename{2}, prio, i2_start, i2_stop );
 
@@ -236,8 +241,8 @@ ex_stop(idx_height)  = nstop(idx_height);
 port.excite = 0;
 if excite
     port.excite = 1;
-    CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, evec, excite_args{:} );
-    CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, ex_start, ex_stop );
+    CSX = AddExcitation( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], 0, evec, excite_args{:} );
+    CSX = AddBox( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], prio, ex_start, ex_stop );
 end
 
 %% MSL resitance at start of MSL line
@@ -245,8 +250,8 @@ ex_start(idx_prop) = start(idx_prop);
 ex_stop(idx_prop) = ex_start(idx_prop);
 
 if (feed_R > 0) && ~isinf(feed_R)
-    CSX = AddLumpedElement( CSX, 'port_R', idx_height-1, 'R', feed_R );
-    CSX = AddBox( CSX, 'port_R', prio, ex_start, ex_stop );
+    CSX = AddLumpedElement( CSX, [PortNamePrefix 'port_resist_' int2str(portnr)], idx_height-1, 'R', feed_R );
+    CSX = AddBox( CSX, [PortNamePrefix 'port_resist_' int2str(portnr)], prio, ex_start, ex_stop );
 elseif isinf(feed_R)
     % do nothing --> open port
 elseif feed_R == 0

@@ -15,6 +15,8 @@ function [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, ex
 % dir:      direction/amplitude of port (e.g.: [1 0 0], [0 1 0] or [0 0 1])
 % excite (optional): if true, the port will be switched on (see AddExcitation())
 %                       Note: for legacy support a string will be accepted
+% optional (key/values):
+%   'PortNamePrefix': an prefix to the port name
 % varargin (optional): additional excitations options, see also AddExcitation
 %
 % example:
@@ -47,6 +49,16 @@ else
 	error 'dir must have exactly one component ~= 0'
 end
 
+PortNamePrefix = '';
+
+varargin_tmp  = varargin;
+for n=1:2:numel(varargin_tmp)
+    if strcmpi('PortNamePrefix',varargin_tmp{n})
+        PortNamePrefix = varargin_tmp{n+1};
+        varargin([n n+1]) = [];
+    end
+end
+
 if (stop(n_dir)==start(n_dir))
     error 'start/stop in excitation direction in must not be equal'
 end
@@ -60,11 +72,11 @@ port.direction = direction;
 
 port.Feed_R = R;
 if (R>0 && (~isinf(R)))
-    CSX = AddLumpedElement(CSX,['port_resist_' int2str(portnr)],  n_dir-1, 'Caps', 1, 'R', R);
-    CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
+    CSX = AddLumpedElement(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)],  n_dir-1, 'Caps', 1, 'R', R);
+    CSX = AddBox(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)], prio, start, stop);
 elseif (R<=0)
-    CSX = AddMetal(CSX,['port_resist_' int2str(portnr)]);
-    CSX = AddBox(CSX,['port_resist_' int2str(portnr)], prio, start, stop);
+    CSX = AddMetal(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)]);
+    CSX = AddBox(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)], prio, start, stop);
 end
 
 if (nargin < 8)
@@ -84,8 +96,8 @@ end
 port.excite = excite;
 % create excitation
 if (excite)
-    CSX = AddExcitation( CSX, ['port_excite_' num2str(portnr)], 0, -dir*direction, varargin{:});
-	CSX = AddBox( CSX, ['port_excite_' num2str(portnr)], prio, start, stop );
+    CSX = AddExcitation( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], 0, -dir*direction, varargin{:});
+	CSX = AddBox( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], prio, start, stop );
 end
 
 u_start = 0.5*(start + stop);
@@ -93,7 +105,7 @@ u_stop  = 0.5*(start + stop);
 u_start(n_dir) = start(n_dir);
 u_stop(n_dir)  = stop(n_dir);
 
-port.U_filename = ['port_ut' int2str(portnr)];
+port.U_filename = [PortNamePrefix 'port_ut' int2str(portnr)];
 CSX = AddProbe(CSX, port.U_filename, 0, 'weight', -direction);
 CSX = AddBox(CSX, port.U_filename, prio, u_start, u_stop);
 
@@ -102,7 +114,7 @@ i_stop  = stop;
 i_start(n_dir) = 0.5*(start(n_dir)+stop(n_dir));
 i_stop(n_dir)  = 0.5*(start(n_dir)+stop(n_dir));
 
-port.I_filename = ['port_it' int2str(portnr)];
+port.I_filename = [PortNamePrefix 'port_it' int2str(portnr)];
 CSX = AddProbe(CSX, port.I_filename, 1, 'weight', direction, 'NormDir', n_dir-1);
 CSX = AddBox(CSX, port.I_filename, prio, i_start, i_stop);
 
