@@ -141,8 +141,6 @@ SOURCES += FDTD/extensions/engine_extension.cpp \
     FDTD/extensions/operator_ext_conductingsheet.cpp \
     FDTD/extensions/engine_ext_dispersive.cpp \
     FDTD/extensions/engine_ext_lorentzmaterial.cpp \
-    FDTD/extensions/operator_ext_pml_sf.cpp \
-    FDTD/extensions/engine_ext_pml_sf.cpp \
     FDTD/extensions/engine_ext_cylindermultigrid.cpp \
     FDTD/extensions/operator_ext_upml.cpp \
     FDTD/extensions/engine_ext_upml.cpp \
@@ -214,8 +212,6 @@ HEADERS += FDTD/extensions/operator_extension.h \
     FDTD/extensions/cond_sheet_parameter.h \
     FDTD/extensions/engine_ext_dispersive.h \
     FDTD/extensions/engine_ext_lorentzmaterial.h \
-    FDTD/extensions/operator_ext_pml_sf.h \
-    FDTD/extensions/engine_ext_pml_sf.h \
     FDTD/extensions/engine_ext_cylindermultigrid.h \
     FDTD/extensions/operator_ext_upml.h \
     FDTD/extensions/engine_ext_upml.h \
