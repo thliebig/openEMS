@@ -19,7 +19,7 @@
 #include "operator_ext_tfsf.h"
 #include "FDTD/engine_sse.h"
 
-Engine_Ext_TFSF::Engine_Ext_TFSF(Operator_Ext_TFST* op_ext) : Engine_Extension(op_ext)
+Engine_Ext_TFSF::Engine_Ext_TFSF(Operator_Ext_TFSF* op_ext) : Engine_Extension(op_ext)
 {
 	m_Op_TFSF = op_ext;
 	m_Priority = ENG_EXT_PRIO_TFSF;

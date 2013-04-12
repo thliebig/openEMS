@@ -24,12 +24,12 @@
 
 class Excitation;
 
-class Operator_Ext_TFST : public Operator_Extension
+class Operator_Ext_TFSF : public Operator_Extension
 {
 	friend class Engine_Ext_TFSF;
 public:
-	Operator_Ext_TFST(Operator* op);
-	~Operator_Ext_TFST();
+	Operator_Ext_TFSF(Operator* op);
+	~Operator_Ext_TFSF();
 
 	virtual Operator_Extension* Clone(Operator* op);
 

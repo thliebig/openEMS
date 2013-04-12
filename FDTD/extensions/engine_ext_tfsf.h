@@ -20,19 +20,19 @@
 
 #include "engine_extension.h"
 
-class Operator_Ext_TFST;
+class Operator_Ext_TFSF;
 
 class Engine_Ext_TFSF : public Engine_Extension
 {
 public:
-	Engine_Ext_TFSF(Operator_Ext_TFST* op_ext);
+	Engine_Ext_TFSF(Operator_Ext_TFSF* op_ext);
 	virtual ~Engine_Ext_TFSF();
 
 	virtual void DoPostVoltageUpdates();
 	virtual void DoPostCurrentUpdates();
 
 protected:
-	Operator_Ext_TFST* m_Op_TFSF;
+	Operator_Ext_TFSF* m_Op_TFSF;
 
 	unsigned int* m_DelayLookup;
 };

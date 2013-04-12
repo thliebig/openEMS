@@ -22,17 +22,17 @@
 #include "CSPrimBox.h"
 #include "CSPropExcitation.h"
 
-Operator_Ext_TFST::Operator_Ext_TFST(Operator* op) : Operator_Extension(op)
+Operator_Ext_TFSF::Operator_Ext_TFSF(Operator* op) : Operator_Extension(op)
 {
 	Init();
 }
 
-Operator_Ext_TFST::~Operator_Ext_TFST()
+Operator_Ext_TFSF::~Operator_Ext_TFSF()
 {
 	Reset();
 }
 
-void Operator_Ext_TFST::Init()
+void Operator_Ext_TFSF::Init()
 {
 	for (int n=0;n<3;++n)
 		for (int l=0;l<2;++l)
@@ -51,7 +51,7 @@ void Operator_Ext_TFST::Init()
 	Operator_Extension::Init();
 }
 
-void Operator_Ext_TFST::Reset()
+void Operator_Ext_TFSF::Reset()
 {
 	for (int n=0;n<3;++n)
 		for (int l=0;l<2;++l)
@@ -73,13 +73,13 @@ void Operator_Ext_TFST::Reset()
 	Operator_Extension::Reset();
 }
 
-Operator_Extension* Operator_Ext_TFST::Clone(Operator* op)
+Operator_Extension* Operator_Ext_TFSF::Clone(Operator* op)
 {
 	UNUSED(op);
 	return NULL;
 }
 
-bool Operator_Ext_TFST::BuildExtension()
+bool Operator_Ext_TFSF::BuildExtension()
 {
 	m_Exc = m_Op->GetExcitationSignal();
 	double dT = m_Op->GetTimestep();
@@ -95,7 +95,7 @@ bool Operator_Ext_TFST::BuildExtension()
 
 	if (vec_prop.size()==0)
 	{
-		cerr << "Operator_Ext_TFST::BuildExtension: Warning, no excitation properties found" << endl;
+		cerr << "Operator_Ext_TFSF::BuildExtension: Warning, no excitation properties found" << endl;
 		SetActive(false);
 		return false;
 	}
@@ -113,13 +113,13 @@ bool Operator_Ext_TFST::BuildExtension()
 			continue;
 		if (prop->GetQtyPrimitives()!=1)
 		{
-			cerr << "Operator_Ext_TFST::BuildExtension: Warning, plane wave excitation found with more (or less) than one primitive, skipping..." << endl;
+			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, plane wave excitation found with more (or less) than one primitive, skipping..." << endl;
 			continue;
 		}
 		prim = prop->GetPrimitive(0);
 		if (prim->GetType()!=CSPrimitives::BOX)
 		{
-			cerr << "Operator_Ext_TFST::BuildExtension: Warning, plane wave excitation found with false non-Box primitive, skipping..." << endl;
+			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, plane wave excitation found with false non-Box primitive, skipping..." << endl;
 			continue;
 		}
 		box = prim->ToBox();
@@ -135,7 +135,7 @@ bool Operator_Ext_TFST::BuildExtension()
 		double dir_norm = sqrt(m_PropDir[0]*m_PropDir[0]+m_PropDir[1]*m_PropDir[1]+m_PropDir[2]*m_PropDir[2]);
 		if (dir_norm==0)
 		{
-			cerr << "Operator_Ext_TFST::BuildExtension: Warning, plane wave direction is zero, skipping..." << endl;
+			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, plane wave direction is zero, skipping..." << endl;
 			SetActive(false);
 			return false;
 		}
@@ -145,7 +145,7 @@ bool Operator_Ext_TFST::BuildExtension()
 
 		if (m_Op->SnapBox2Mesh(box->GetStartCoord()->GetNativeCoords(), box->GetStopCoord()->GetNativeCoords(), m_Start, m_Stop)!=3)
 		{
-			cerr << "Operator_Ext_TFST::BuildExtension: Warning, plane wave box dimension is invalid, skipping..." << endl;
+			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, plane wave box dimension is invalid, skipping..." << endl;
 			SetActive(false);
 			return false;
 		}
@@ -160,7 +160,7 @@ bool Operator_Ext_TFST::BuildExtension()
 
 		if ((m_PhVel<0) || (m_PhVel>__C0__) || isnan(m_PhVel))
 		{
-			cerr << "Operator_Ext_TFST::BuildExtension: Warning, invalid phase velocity found, resetting to c0! " << endl;
+			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, invalid phase velocity found, resetting to c0! " << endl;
 			m_PhVel = __C0__;
 		}
 
@@ -197,13 +197,13 @@ bool Operator_Ext_TFST::BuildExtension()
 
 		if (angle==0)
 		{
-			cerr << "Operator_Ext_TFST::BuildExtension: Warning, plane wave direction and polarization is identical, skipping..." << endl;
+			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, plane wave direction and polarization is identical, skipping..." << endl;
 			SetActive(false);
 			return false;
 		}
 		if (angle!=90)
 		{
-			cerr << "Operator_Ext_TFST::BuildExtension: Warning, angle between propagation direction and polarization is not 90deg, resetting E-polarization to : (";
+			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, angle between propagation direction and polarization is not 90deg, resetting E-polarization to : (";
 			for (int n=0;n<3;++n)
 				m_E_Amp[n]-=m_PropDir[n]*dotEk;
 			cerr << m_E_Amp[0] << "," << m_E_Amp[1] << "," << m_E_Amp[2] << ")" << endl;
@@ -408,12 +408,12 @@ bool Operator_Ext_TFST::BuildExtension()
 	return false;
 }
 
-Engine_Extension* Operator_Ext_TFST::CreateEngineExtention()
+Engine_Extension* Operator_Ext_TFSF::CreateEngineExtention()
 {
 	return new Engine_Ext_TFSF(this);
 }
 
-void Operator_Ext_TFST::ShowStat(ostream &ostr) const
+void Operator_Ext_TFSF::ShowStat(ostream &ostr) const
 {
 	Operator_Extension::ShowStat(ostr);
 	cout << "Active directions\t: " << "(" << m_ActiveDir[0][0] << "/" << m_ActiveDir[0][1] << ", " << m_ActiveDir[1][0] << "/" << m_ActiveDir[1][1]  << ", " << m_ActiveDir[2][0] << "/" << m_ActiveDir[2][1]  << ")" << endl;
