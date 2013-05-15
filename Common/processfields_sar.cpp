@@ -26,6 +26,7 @@
 ProcessFieldsSAR::ProcessFieldsSAR(Engine_Interface_Base* eng_if) : ProcessFieldsFD(eng_if)
 {
 	m_UseCellKappa = false;
+	m_SAR_method = "Simple";
 }
 
 ProcessFieldsSAR::~ProcessFieldsSAR()
@@ -48,9 +49,7 @@ void ProcessFieldsSAR::SetDumpType(DumpType type)
 
 bool ProcessFieldsSAR::NeedConductivity() const
 {
-	if (m_UseCellKappa)
-		return false;
-	return	true;
+	return !m_UseCellKappa;
 }
 
 void ProcessFieldsSAR::SetSubSampling(unsigned int subSampleRate, int dir)
@@ -270,6 +269,7 @@ void ProcessFieldsSAR::DumpFDData()
 	else
 	{
 		SAR_Calculation SAR_Calc;
+		SAR_Calc.SetAveragingMethod(m_SAR_method);
 		SAR_Calc.SetDebugLevel(g_settings.GetVerboseLevel());
 		SAR_Calc.SetNumLines(numLines);
 		if (m_DumpType == SAR_LOCAL_DUMP)
@@ -285,7 +285,7 @@ void ProcessFieldsSAR::DumpFDData()
 		SAR_Calc.SetCellDensities(cell_density);
 		SAR_Calc.SetCellWidth(cellWidth);
 		SAR_Calc.SetCellVolumes(cell_volume);
-		SAR_Calc.SetCellCondictivity(cell_kappa);
+		SAR_Calc.SetCellCondictivity(cell_kappa); // cell_kappa will be NULL if m_UseCellKappa is false
 
 		for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 		{

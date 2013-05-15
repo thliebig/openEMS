@@ -435,7 +435,13 @@ bool openEMS::SetupProcessing()
 					else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
 						ProcField = new ProcessFieldsFD(NewEngineInterface());
 					else if ( ((db->GetDumpType()>=20) && (db->GetDumpType()<=22)) || (db->GetDumpType()==29) )
-						ProcField = new ProcessFieldsSAR(NewEngineInterface());
+					{
+						ProcessFieldsSAR* procSAR = new ProcessFieldsSAR(NewEngineInterface());
+						ProcField = procSAR;
+						string method = db->GetAttributeValue("SAR_Method");
+						if (!method.empty())
+							procSAR->SetSARAveragingMethod(method);
+					}
 					else
 						cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
 					if (ProcField)

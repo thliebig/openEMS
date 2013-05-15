@@ -34,7 +34,10 @@ public:
 	void SetDebugLevel(int level) {m_DebugLevel=level;}
 
 	//! Set the used averaging method
-	void SetAveragingMethod(SARAveragingMethod method);
+	void SetAveragingMethod(SARAveragingMethod method, bool silent=false);
+
+	//! Set the used averaging method
+	void SetAveragingMethod(std::string method, bool silent=false);
 
 	//! Set number of lines in all direcitions. (mandatory information)
 	void SetNumLines(unsigned int numLines[3]);

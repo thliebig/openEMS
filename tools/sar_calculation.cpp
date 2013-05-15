@@ -19,13 +19,14 @@
 #include "sar_calculation.h"
 #include "cfloat"
 #include "array_ops.h"
+#include "global.h"
 
 SAR_Calculation::SAR_Calculation()
 {
 	m_Vx_Used = NULL;
 	m_Vx_Valid = NULL;
 	m_DebugLevel = 0;
-	SetAveragingMethod(SIMPLE);
+	SetAveragingMethod(SIMPLE, true);
 	Reset();
 }
 
@@ -52,9 +53,23 @@ void SAR_Calculation::Reset()
 	m_Vx_Valid = NULL;
 }
 
-void SAR_Calculation::SetAveragingMethod(SARAveragingMethod method)
+void SAR_Calculation::SetAveragingMethod(string method, bool silent)
 {
-	if (method==IEEE_C95_3)
+	if (method.compare("IEEE_C95_3")==0)
+		return SetAveragingMethod(IEEE_C95_3, silent);
+	if (method.compare("IEEE_62704")==0)
+		return SetAveragingMethod(IEEE_62704, silent);
+	if (method.compare("SIMPLE")==0)
+		return SetAveragingMethod(SIMPLE, silent);
+
+	cerr << __func__ << ": Error, """ << method << """ is an unknown averaging method..." << endl;
+	// unknown method, fallback to simple
+	SetAveragingMethod(SIMPLE, false);
+}
+
+void SAR_Calculation::SetAveragingMethod(SARAveragingMethod method, bool silent)
+{
+	if (method==IEEE_62704)
 	{
 		m_massTolerance = 0.0001;
 		m_maxMassIterations = 100;
@@ -62,9 +77,11 @@ void SAR_Calculation::SetAveragingMethod(SARAveragingMethod method)
 		m_markPartialAsUsed = false;
 		m_UnusedRelativeVolLimit = 1.05;
 		m_IgnoreFaceValid = false;
+		if (!silent)
+			cerr << __func__ << ": Setting averaging method to IEEE_62704" << endl;
 		return;
 	}
-	else if (method==IEEE_62704)
+	else if (method==IEEE_C95_3)
 	{
 		m_massTolerance = 0.05;
 		m_maxMassIterations = 100;
@@ -72,6 +89,8 @@ void SAR_Calculation::SetAveragingMethod(SARAveragingMethod method)
 		m_markPartialAsUsed = true;
 		m_UnusedRelativeVolLimit = 1;
 		m_IgnoreFaceValid = false;
+		if (!silent)
+			cerr << __func__ << ": Setting averaging method to IEEE_C95_3" << endl;
 		return;
 	}
 	else if (method==SIMPLE)
@@ -82,11 +101,14 @@ void SAR_Calculation::SetAveragingMethod(SARAveragingMethod method)
 		m_markPartialAsUsed = true;
 		m_UnusedRelativeVolLimit = 1;
 		m_IgnoreFaceValid = true;
+		if (!silent)
+			cerr << __func__ << ": Setting averaging method to SIMPLE" << endl;
 		return;
 	}
 
+	cerr << __func__ << ": Error, unknown averaging method..." << endl;
 	// unknown method, fallback to simple
-	SetAveragingMethod(SIMPLE);
+	SetAveragingMethod(SIMPLE, false);
 }
 
 void SAR_Calculation::SetNumLines(unsigned int numLines[3])
