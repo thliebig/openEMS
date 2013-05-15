@@ -59,7 +59,7 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % WriteOpenEMS('/tmp/path_to_run_in/myfile.xml', FDTD, CSX)
 % RunOpenEMS('/tmp/path_to_run_in','myfile.xml','-v')
 %
-% See also WriteOpenEMS FindFreeSSH InitCSX InitFDTD
+% See also WriteOpenEMS FindFreeSSH InitCSX InitFDTD RunOpenEMS_MPI
 %
 % openEMS matlab interface
 % -----------------------
