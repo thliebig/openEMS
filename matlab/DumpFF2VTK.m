@@ -1,10 +1,27 @@
-function DumpFF2VTK(filename, farfield, thetaRange, phiRange, scale)
-%  DumpFF2VTK(filename, farfield, thetaRange, phiRange, scale)
+function DumpFF2VTK2(filename, farfield, thetaRange, phiRange, scale, varargin)
+%  DumpFF2VTK(filename, farfield, thetaRange, phiRange, scale, varargin)
 %
 %  Dump 3D far field pattern to a vtk file
 %
+% input:
+%   filename:      filename of VTK file, existing file will be overwritten
+%   farfield:      farfield in V/m
+%   thetaRange:    theta range in deg
+%   phiRange:      phi range in deg
+%   scale:         linear scale of plot, doesn't effect gain values
+%
+% variable input:
+%   'logscale':    - if set, show farfield with logarithmic scale
+%                  - set the minimum dB value for point 0,0,0
+%   'maxgain':     - add max gain in dB to normalized farfield
+%                  - only valid if logscale is set
+%                  - default is 0dB
+%
 %   example:
-%       see examples/NF2FF/infDipol.m
+%       DumpFF2VTK(filename, farfield, thetaRange, phiRange, scale, ...
+%                    'logscale',-20,'maxgain',3)
+%
+%       see also examples/NF2FF/infDipol.m
 %
 % See also CreateNF2FFBox, AnalyzeNF2FF
 % 
@@ -15,6 +32,26 @@ function DumpFF2VTK(filename, farfield, thetaRange, phiRange, scale)
 
 if (nargin<5)
     scale = 1;
+end
+
+% defaults
+maxgain = 0;
+logscale = [];
+
+for n=1:2:numel(varargin)
+    if (strcmp(varargin{n},'maxgain')==1);
+        maxgain = varargin{n+1};
+    elseif (strcmp(varargin{n},'logscale')==1);
+        logscale = varargin{n+1};
+    end
+end
+
+if ~isempty(logscale)
+    farfield = 20*log10(farfield) + maxgain;
+    ind = find(farfield<0);
+    farfield(ind)=0;
+else
+    maxgain = 0;      % force 0 for linear plot
 end
 
 t = thetaRange*pi/180;
@@ -63,6 +100,5 @@ fprintf(fid,'POINT_DATA %d\n',numel(t)*numel(a));
 
 fprintf(fid,['SCALARS gain double 1\nLOOKUP_TABLE default\n']);
 fclose(fid);
-dumpField = farfield(:);
+dumpField = farfield(:) + maxgain;
 save('-ascii','-append',filename,'dumpField')
-
