@@ -164,6 +164,6 @@ drawnow
 disp( 'dumping 3D far field pattern to vtk, use Paraview to visualize...' );
 for n=1:numel(f_rad)
     E_far_normalized_3D = nf2ff.E_norm{n} / max(max(nf2ff.E_norm{n})) * nf2ff.Dmax(n);
-    DumpFF2VTK( [Sim_Path '/FF_Pattern_' int2str(f_rad(n)/1e6) 'MHz.vtk'],E_far_normalized_3D,theta,phi,1e-3);
+    DumpFF2VTK( [Sim_Path '/FF_Pattern_' int2str(f_rad(n)/1e6) 'MHz.vtk'],E_far_normalized_3D,theta,phi,'scale',1e-3);
 end
 
