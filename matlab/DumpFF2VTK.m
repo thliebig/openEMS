@@ -47,11 +47,12 @@ for n=1:2:numel(varargin)
 end
 
 if ~isempty(logscale)
-    farfield = 20*log10(farfield) + maxgain;
+    farfield = 20*log10(farfield) + maxgain - logscale;
     ind = find(farfield<0);
     farfield(ind)=0;
 else
-    maxgain = 0;      % force 0 for linear plot
+    % force 0 for linear plot
+    logscale = 0;
 end
 
 t = thetaRange*pi/180;
@@ -100,5 +101,5 @@ fprintf(fid,'POINT_DATA %d\n',numel(t)*numel(a));
 
 fprintf(fid,['SCALARS gain double 1\nLOOKUP_TABLE default\n']);
 fclose(fid);
-dumpField = farfield(:) + maxgain;
+dumpField = farfield(:) + logscale;
 save('-ascii','-append',filename,'dumpField')
