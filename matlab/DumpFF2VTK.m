@@ -47,7 +47,7 @@ for n=1:2:numel(varargin)
 end
 
 if ~isempty(logscale)
-    farfield = 20*log10(farfield) + maxgain;
+    farfield = 20*log10(farfield) - logscale;
     ind = find(farfield<0);
     farfield(ind)=0;
 else
