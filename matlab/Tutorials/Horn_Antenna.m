@@ -213,4 +213,4 @@ ylabel( 'y' );
 zlabel( 'z' );
 
 %%
-DumpFF2VTK([Sim_Path '/Horn_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,1e-3);
+DumpFF2VTK([Sim_Path '/Horn_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,'scale',1e-3);
