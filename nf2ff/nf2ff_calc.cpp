@@ -113,7 +113,7 @@ void nf2ff_calc_thread::operator()()
 	float sinT,sinP;
 	float cosP,cosT;
 	float r_cos_psi;
-	float k = 2*M_PI*m_nf_calc->m_freq/__C0__;
+	float k = 2*M_PI*m_nf_calc->m_freq/__C0__*sqrt(m_nf_calc->m_permittivity*m_nf_calc->m_permeability);
 	complex<float> exp_jkr;
 	complex<float> _I_(0,1);
 	for (unsigned int tn=0;tn<m_nf_calc->m_numTheta;++tn)
@@ -162,6 +162,8 @@ void nf2ff_calc_thread::operator()()
 nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vector<float> center)
 {
 	m_freq = freq;
+	m_permittivity = 1;
+	m_permeability = 1;
 
 	m_numTheta = theta.size();
 	m_theta = new float[m_numTheta];
@@ -375,11 +377,12 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 	Delete_N_3DArray(Ms,numLines);
 
 	// calc equations 8.23a/b and 8.24a/b
-	float k = 2*M_PI*m_freq/__C0__;
+	float k = 2*M_PI*m_freq/__C0__*sqrt(m_permittivity*m_permeability);
 	complex<float> factor(0,k/4.0/M_PI/m_radius);
 	complex<float> f_exp(0,-1*k*m_radius);
 	factor *= exp(f_exp);
-	complex<float> Z0 = __Z0__;
+	float fZ0 = __Z0__ * sqrt(m_permeability/m_permittivity);
+	complex<float> Z0 = fZ0;
 	float P_max = 0;
 	for (unsigned int tn=0;tn<m_numTheta;++tn)
 		for (unsigned int pn=0;pn<m_numPhi;++pn)
@@ -390,7 +393,7 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 			m_H_theta[tn][pn] += factor*(Np[tn][pn] - Lt[tn][pn]/Z0);
 			m_H_phi[tn][pn] -= factor*(Nt[tn][pn] + Lp[tn][pn]/Z0);
 
-			m_P_rad[tn][pn] = m_radius*m_radius/(2*__Z0__) * abs((m_E_theta[tn][pn]*conj(m_E_theta[tn][pn])+m_E_phi[tn][pn]*conj(m_E_phi[tn][pn])));
+			m_P_rad[tn][pn] = m_radius*m_radius/(2*fZ0) * abs((m_E_theta[tn][pn]*conj(m_E_theta[tn][pn])+m_E_phi[tn][pn]*conj(m_E_phi[tn][pn])));
 			if (m_P_rad[tn][pn]>P_max)
 				P_max = m_P_rad[tn][pn];
 		}

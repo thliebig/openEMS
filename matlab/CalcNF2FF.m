@@ -25,6 +25,9 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % 'Outfile': alternative nf2ff result hdf5 file name
 %            default is: <nf2ff.name>.h5
 % 'Verbose': set verbose level for the nf2ff calculation 0-2 supported
+% 'Radius':  specify the radius for the nf2ff
+% 'Eps_r':   specify the relative electric permittivity for the nf2ff
+% 'Mue_r':   specify the relative magnetic permeability for the nf2ff
 %
 % See also: CreateNF2FFBox, ReadNF2FF
 %
