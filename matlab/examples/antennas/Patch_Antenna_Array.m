@@ -65,7 +65,7 @@ max_timesteps = 30000;
 min_decrement = 1e-5; % equivalent to -50 dB
 f0 = 0e9; % center frequency
 fc = 3e9; % 10 dB corner frequency (in this case 0 Hz - 3e9 Hz)
-FDTD = InitFDTD( max_timesteps, min_decrement );
+FDTD = InitFDTD( 'NrTS', max_timesteps, 'EndCriteria', min_decrement );
 FDTD = SetGaussExcite( FDTD, f0, fc );
 BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions
 if (use_pml>0)
@@ -133,7 +133,7 @@ for xn=1:array.xn
         % apply the excitation & resist as a current source
         start = [midX+feed.pos-feed.width/2 midY-feed.width/2 0];
         stop  = [midX+feed.pos+feed.width/2 midY+feed.width/2 substrate.thickness];
-        [CSX] = AddLumpedPort(CSX, 5, number,feed.R, start, stop,[0 0 1],['excite_' int2str(xn) '_' int2str(yn)]);
+        [CSX] = AddLumpedPort(CSX, 5, number,feed.R, start, stop,[0 0 1],true);
         number=number+1;
     end
 end
@@ -221,74 +221,35 @@ f_res = freq(f_res_ind);
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
 thetaRange = (0:2:359) - 180;
+phiRange = [0 90];
 r = 1; % evaluate fields at radius r
 disp( 'calculating far field at phi=[0 90] deg...' );
-[E_far_theta,E_far_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f_res, thetaRange, [0 90], r );
 
-Dlog=10*log10(Dmax);
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180);
+
+Dlog=10*log10(nf2ff.Dmax);
 
 % display power and directivity
-disp( ['radiated power: Prad = ' num2str(Prad) ' Watt']);
+disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
 disp( ['directivity: Dmax = ' num2str(Dlog) ' dBi'] );
-disp( ['efficiency: nu_rad = ' num2str(100*Prad./real(P_in(f_res_ind))) ' %']);
+disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in(f_res_ind))) ' %']);
 
-% calculate the e-field magnitude for phi = 0 deg
-E_phi0_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi0_far(n) = norm( [E_far_theta(n,1) E_far_phi(n,1)] );
-end
-
-E_phi0_far_log = 20*log10(abs(E_phi0_far)/max(abs(E_phi0_far)));
-E_phi0_far_log = E_phi0_far_log + Dlog;
-
-% display radiation pattern
+% display phi
 figure
-plot( thetaRange, E_phi0_far_log ,'k-' );
-xlabel( 'theta (deg)' );
-ylabel( 'directivity (dBi)');
-grid on;
-hold on;
-
-% calculate the e-field magnitude for phi = 90 deg
-E_phi90_far = zeros(1,numel(thetaRange));
-for n=1:numel(thetaRange)
-    E_phi90_far(n) = norm([E_far_theta(n,2) E_far_phi(n,2)]);
-end
-
-E_phi90_far_log = 20*log10(abs(E_phi90_far)/max(abs(E_phi90_far)));
-E_phi90_far_log = E_phi90_far_log + Dlog;
-
-plot( thetaRange, E_phi90_far_log ,'r-' );
-legend('phi=0','phi=90')
-
+plotFFdB(nf2ff,'xaxis','theta','param',[1 2]);
 drawnow
 
 if (draw_3d_pattern==0)
     return
 end
+
 %% calculate 3D pattern
-tic
 phiRange = 0:3:360;
 thetaRange = unique([0:0.5:15 10:3:180]);
-r = 1; % evaluate fields at radius r
 disp( 'calculating 3D far field...' );
-[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_res, thetaRange, phiRange, r );
-E_far = sqrt( abs(E_far_theta).^2 + abs(E_far_phi).^2 );
-
-E_far_normalized = E_far / max(E_far(:)) * Dmax;
-[theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
-x = E_far_normalized .* sin(theta) .* cos(phi);
-y = E_far_normalized .* sin(theta) .* sin(phi);
-z = E_far_normalized .* cos(theta);
-
-%%
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose',2,'Outfile','nf2ff_3D.h5');
 figure
-surf( x,y,z, E_far_normalized );
-axis equal
-xlabel( 'x' );
-ylabel( 'y' );
-zlabel( 'z' );
-toc
+plotFF3D(nf2ff);
 
 %% visualize magnetic fields
 % you will find vtk dump files in the simulation folder (tmp/)
