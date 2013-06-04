@@ -41,7 +41,7 @@ SimBox = [200 200 150];
 %% setup FDTD parameter & excitation function
 f0 = 2e9; % center frequency
 fc = 1e9; % 20 dB corner frequency
-FDTD = InitFDTD( 30000 );
+FDTD = InitFDTD( 'NrTs', 30000 );
 FDTD = SetGaussExcite( FDTD, f0, fc );
 BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -154,25 +154,21 @@ disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax) ' (' num2str(10*log10(nf2ff.Dm
 disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in(f_res_ind))) ' %']);
 
 % normalized directivity
-D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
-% directivity
-D_log = D_log + 10*log10(nf2ff.Dmax);
-
-%% display polar plot
 figure
-plot( nf2ff.theta, D_log(:,1) ,'k-' );
-xlabel( 'theta (deg)' );
-ylabel( 'directivity (dBi)');
-grid on;
-hold on;
-plot( nf2ff.theta, D_log(:,2) ,'r-' );
-legend('phi=0','phi=90')
+plotFFdB(nf2ff,'xaxis','theta','param',[1 2])
+%   D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
+%   D_log = D_log + 10*log10(nf2ff.Dmax);
+%   plot( nf2ff.theta, D_log(:,1) ,'k-' );
+
 
 %%
 disp( 'calculating 3D far field pattern and dumping to vtk (use Paraview to visualize)...' );
 thetaRange = (0:2:180);
 phiRange = (0:2:360) - 180;
 nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180,'Verbose',1,'Outfile','3D_Pattern.h5');
+figure
+plotFF3D(nf2ff);
+
 
 E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax;
 DumpFF2VTK([Sim_Path '/3D_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,'scale',1e-3);

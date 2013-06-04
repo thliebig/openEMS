@@ -24,7 +24,7 @@ function DumpFF2VTK2(filename, farfield, thetaRange, phiRange, varargin)
 %
 %       see also examples/NF2FF/infDipol.m
 %
-% See also CreateNF2FFBox, AnalyzeNF2FF
+% See also CreateNF2FFBox, CalcNF2FF
 % 
 % openEMS matlab interface
 % -----------------------

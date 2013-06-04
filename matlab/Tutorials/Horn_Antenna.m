@@ -198,19 +198,8 @@ thetaRange = sort( unique([ 0:1:50 50:2.:100 100:5:180 ]));
 disp( 'calculating 3D far field...' );
 nf2ff = CalcNF2FF(nf2ff, Sim_Path, f0, thetaRange*pi/180, phiRange*pi/180, 'Verbose',2,'Outfile','nf2ff_3D.h5');
 
-E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax;
-
-[theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
-x = E_far_normalized .* sin(theta) .* cos(phi);
-y = E_far_normalized .* sin(theta) .* sin(phi);
-z = E_far_normalized .* cos(theta);
 figure
-surf( x,y,z, E_far_normalized, 'EdgeColor','none' );
-axis equal
-axis off
-xlabel( 'x' );
-ylabel( 'y' );
-zlabel( 'z' );
+plotFF3D(nf2ff);
 
 %%
 DumpFF2VTK([Sim_Path '/Horn_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,'scale',1e-3);
