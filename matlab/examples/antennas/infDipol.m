@@ -111,7 +111,6 @@ legend( 'e-field magnitude', 'Location', 'BestOutside' );
 %% calculate the far field at theta=90 degrees
 phiRange = 0:2:359;
 disp( 'calculating far field at theta=90 deg..' );
-%[E_far_theta,E_far_phi] = AnalyzeNF2FF( Sim_Path, nf2ff, f_max, 90, phiRange, 1 );
 nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, 90, phiRange/180*pi, 'Mode', 1 );
 Prad = nf2ff.Prad;
 Dmax = nf2ff.Dmax;
@@ -129,20 +128,10 @@ phiRange = 0:5:360;
 thetaRange = 0:5:180;
 disp( 'calculating 3D far field...' );
 nf2ff = CalcNF2FF( nf2ff, Sim_Path, f_max, thetaRange/180*pi, phiRange/180*pi, 'Mode', 1 );
-
-E_far = nf2ff.E_norm{1};
-E_far_normalized = E_far / max(E_far(:));
-[theta,phi] = ndgrid(thetaRange/180*pi,phiRange/180*pi);
-x = E_far_normalized .* sin(theta) .* cos(phi);
-y = E_far_normalized .* sin(theta) .* sin(phi);
-z = E_far_normalized .* cos(theta);
 figure
-surf( x,y,z, E_far_normalized );
-axis equal
-xlabel( 'x' );
-ylabel( 'y' );
-zlabel( 'z' );
+plotFF3D(nf2ff)
 
 %%
+E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:));
 DumpFF2VTK([Sim_Path '/FF_pattern.vtk'],E_far_normalized, thetaRange,  phiRange);
 disp(['view the farfield pattern "' Sim_Path '/FF_pattern.vtk" using paraview' ]);
