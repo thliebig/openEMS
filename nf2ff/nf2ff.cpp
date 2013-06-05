@@ -72,6 +72,44 @@ nf2ff::~nf2ff()
 	m_theta = NULL;
 }
 
+void nf2ff::SetRadius(float radius)
+{
+	m_radius = radius;
+	for (size_t fn=0;fn<m_nf2ff.size();++fn)
+		m_nf2ff.at(fn)->SetRadius(radius);
+}
+
+void nf2ff::SetPermittivity(vector<float> permittivity)
+{
+	if (permittivity.size()==0)
+		return;
+
+	if (permittivity.size()!=m_freq.size())
+	{
+		cerr << __func__ << ": Error, permittivity vector size must match number of set frequencies! skipping!" << endl;
+		return;
+	}
+	m_permittivity = permittivity;
+	for (size_t fn=0;fn<m_nf2ff.size();++fn)
+		m_nf2ff.at(fn)->SetPermittivity(permittivity.at(fn));
+}
+
+void nf2ff::SetPermeability(vector<float> permeability)
+{
+	if (permeability.size()==0)
+		return;
+
+	if (permeability.size()!=m_freq.size())
+	{
+		cerr << __func__ << ": Error, permeability vector size must match number of set frequencies! skipping!" << endl;
+		return;
+	}
+	m_permeability = permeability;
+	for (size_t fn=0;fn<m_nf2ff.size();++fn)
+		m_nf2ff.at(fn)->SetPermeability(permeability.at(fn));
+
+}
+
 bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 {
 	if (ti_nf2ff==NULL)
@@ -159,6 +197,18 @@ bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 
 	nf2ff* l_nf2ff = new nf2ff(freq,theta,phi,center,numThreads);
 	l_nf2ff->SetVerboseLevel(Verbose);
+
+	attr = ti_nf2ff->Attribute("Eps_r");
+	if (attr!=NULL)
+		l_nf2ff->SetPermittivity(SplitString2Float(attr));
+
+	attr = ti_nf2ff->Attribute("Mue_r");
+	if (attr!=NULL)
+		l_nf2ff->SetPermeability(SplitString2Float(attr));
+
+	float radius = 1;
+	if (ti_nf2ff->QueryFloatAttribute("Radius",&radius) ==  TIXML_SUCCESS)
+		l_nf2ff->SetRadius(radius);
 
 	TiXmlElement* ti_Planes = ti_nf2ff->FirstChildElement();
 	string E_name;
@@ -538,12 +588,32 @@ bool nf2ff::Write2HDF5(string filename)
 	for (size_t fn=0;fn<m_freq.size();++fn)
 		buffer[fn] = GetTotalRadPower(fn);
 	hdf_file.WriteAtrribute("/nf2ff", "Prad",buffer,m_freq.size());
+	delete[] buffer;
 
 	//write max directivity attribute
+	buffer = new double[m_freq.size()];
 	for (size_t fn=0;fn<m_freq.size();++fn)
 		buffer[fn] = GetMaxDirectivity(fn);
 	hdf_file.WriteAtrribute("/nf2ff", "Dmax",buffer,m_freq.size());
-
 	delete[] buffer;
+
+	if (m_permittivity.size()>0)
+	{
+		buffer = new double[m_permittivity.size()];
+		for (size_t n=0;n<m_permittivity.size();++n)
+			buffer[n] = m_permittivity.at(n);
+		hdf_file.WriteAtrribute("/nf2ff", "Eps_r",buffer,m_permittivity.size());
+		delete[] buffer;
+	}
+
+	if (m_permeability.size()>0)
+	{
+		buffer = new double[m_permeability.size()];
+		for (size_t n=0;n<m_permeability.size();++n)
+			buffer[n] = m_permeability.at(n);
+		hdf_file.WriteAtrribute("/nf2ff", "Mue_r",buffer,m_permeability.size());
+		delete[] buffer;
+	}
+
 	return true;
 }

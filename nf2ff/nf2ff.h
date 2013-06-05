@@ -37,6 +37,10 @@ public:
 
 	bool AnalyseFile(string E_Field_file, string H_Field_file);
 
+	void SetRadius(float radius);
+	void SetPermittivity(vector<float> permittivity);
+	void SetPermeability(vector<float> permeability);
+
 	double GetTotalRadPower(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetTotalRadPower();}
 	double GetMaxDirectivity(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetMaxDirectivity();}
 
@@ -54,6 +58,8 @@ public:
 
 protected:
 	vector<float> m_freq;
+	vector<float> m_permittivity;
+	vector<float> m_permeability;
 	unsigned int m_numTheta;
 	unsigned int m_numPhi;
 	float* m_theta;

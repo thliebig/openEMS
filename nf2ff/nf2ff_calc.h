@@ -75,6 +75,10 @@ public:
 	nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vector<float> center);
 	~nf2ff_calc();
 
+	void SetRadius(float radius) {m_radius=radius;}
+	void SetPermittivity(float permittivity) {m_permittivity=permittivity;}
+	void SetPermeability(float permeability) {m_permeability=permeability;}
+
 	double GetTotalRadPower() const {return m_radPower;}
 	double GetMaxDirectivity() const {return m_maxDir;}
 
@@ -90,6 +94,9 @@ public:
 protected:
 	float m_freq;
 	float m_radius;
+
+	float m_permittivity; //relative electric permittivity
+	float m_permeability; //relative magnetic permeability
 
 	double m_radPower;
 	double m_maxDir;

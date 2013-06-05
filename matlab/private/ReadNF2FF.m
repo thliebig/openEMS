@@ -23,6 +23,17 @@ nf2ff.freq = ReadHDF5Attribute(file,'/nf2ff','Frequency');
 nf2ff.Prad = ReadHDF5Attribute(file,'/nf2ff','Prad');
 nf2ff.Dmax = ReadHDF5Attribute(file,'/nf2ff','Dmax');
 
+try
+    nf2ff.Eps_r = ReadHDF5Attribute(file,'/nf2ff','Eps_r');
+catch
+    nf2ff.Eps_r = ones(size(nf2ff.freq));
+end
+try
+    nf2ff.Mue_r = ReadHDF5Attribute(file,'/nf2ff','Mue_r');
+catch
+    nf2ff.Mue_r = ones(size(nf2ff.freq));
+end
+
 if isOctave
     hdf = load( '-hdf5', file );
     for n=1:numel(nf2ff.freq)
