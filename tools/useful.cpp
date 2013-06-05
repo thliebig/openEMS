@@ -26,6 +26,7 @@
 #include <sstream>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
+#include <vtkMatrix3x3.h>
 
 unsigned int CalcNyquistNum(double fmax, double dT)
 {
@@ -104,4 +105,62 @@ std::vector<double> SplitString2Double(std::string str, std::string delimiter)
 			v_f.push_back(num);
 	}
 	return v_f;
+}
+
+bool CrossProd(double* v1, double* v2, double* out)
+{
+	int nP,nPP;
+	for (int n=0;n<3;++n)
+	{
+		nP = (n+1)%3;
+		nPP = (n+2)%3;
+		out[n] = v1[nP]*v2[nPP] - v1[nPP]*v2[nP];
+	}
+	return ((out[0]+out[1]+out[2])>0);
+}
+
+double ScalarProd(double* v1, double* v2)
+{
+	double out=0;
+	for (int n=0;n<3;++n)
+		out+=v1[n]*v2[n];
+	return out;
+}
+
+int LinePlaneIntersection(double* p0, double* p1, double* p2, double* l_start, double* l_stop, double* is_point, double &dist)
+{
+	dist = 0;
+	double mat[9];
+	for (int n=0;n<3;++n)
+	{
+		is_point[n] = 0;
+		mat[3*n] = l_start[n]-l_stop[n];
+		mat[3*n+1] = p1[n]-p0[n];
+		mat[3*n+2] = p2[n]-p0[n];
+	}
+	double det = vtkMatrix3x3::Determinant(mat);
+	if (fabs(det)<1e-50)
+		return -1;
+
+	double inv_mat[9];
+	vtkMatrix3x3::Invert(mat, inv_mat);
+
+	double t=0,u=0,v=0;
+	for (int n=0;n<3;++n)
+	{
+		t+=inv_mat[n]*(l_start[n]-p0[n]);
+		u+=inv_mat[3+n]*(l_start[n]-p0[n]);
+		v+=inv_mat[6+n]*(l_start[n]-p0[n]);
+	}
+	dist = t;
+
+	for (int n=0;n<3;++n)
+		is_point[n] = l_start[n]*(1-dist) + l_stop[n]*dist;
+
+	if ((u<0) || (u>1) || (v<0) || (v>1) || ((u+v)>1))
+		return 1;
+	if ((t<0) || (t>1))
+		return 2;
+
+	return 0;
 }
