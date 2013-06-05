@@ -78,6 +78,8 @@ public:
 	//! Snap a given box to the FDTD mesh
 	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, bool fullMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
 
+	virtual int SnapLine2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, bool fullMesh=false) const;
+
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
@@ -90,6 +92,8 @@ protected:
 	virtual void Init();
 
 	virtual bool SetupCSXGrid(CSRectGrid* grid);
+
+	virtual struct Grid_Path FindPath(double start[], double stop[]);
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 

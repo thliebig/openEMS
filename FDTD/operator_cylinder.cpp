@@ -21,6 +21,7 @@
 #include "operator_cylinder.h"
 #include "extensions/operator_extension.h"
 #include "extensions/operator_ext_cylinder.h"
+#include "tools/useful.h"
 
 Operator_Cylinder* Operator_Cylinder::New(unsigned int numThreads)
 {
@@ -258,6 +259,143 @@ int Operator_Cylinder::SnapBox2Mesh(const double* start, const double* stop, uns
 	double l_start[3] = {start[0], a_start, start[2]};
 	double l_stop[3]  = {stop[0] , a_stop , stop[2] };
 	return Operator_Multithread::SnapBox2Mesh(l_start, l_stop, uiStart, uiStop, dualMesh, fullMesh, SnapMethod, bStartIn, bStopIn);
+}
+
+int Operator_Cylinder::SnapLine2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh, bool fullMesh) const
+{
+	int ret = Operator_Multithread::SnapLine2Mesh(start, stop, uiStart, uiStop, dualMesh, fullMesh);
+
+	if ((stop[1]>start[1]) && (uiStop[1]<uiStart[1]) && (uiStop[1]==0))
+		uiStop[1] = GetNumberOfLines(1, fullMesh)-1-(int)CC_closedAlpha;
+	if ((stop[1]<start[1]) && (uiStop[1]>uiStart[1]) && (uiStop[1]==GetNumberOfLines(1, fullMesh)-1-(int)CC_closedAlpha))
+		uiStop[1] = 0;
+
+	return ret;
+}
+
+
+struct Operator::Grid_Path Operator_Cylinder::FindPath(double start[], double stop[])
+{
+	double l_start[3];
+	double l_stop[3];
+	if (stop[1]<start[1])
+	{
+		for (int n=0;n<3;++n)
+		{
+			l_start[n] = stop[n];
+			l_stop[n] = start[n];
+		}
+	}
+	else
+	{
+		for (int n=0;n<3;++n)
+		{
+			l_start[n] = start[n];
+			l_stop[n] = stop[n];
+		}
+	}
+	double a_start = FitToAlphaRange(l_start[1]);
+	double a_stop = FitToAlphaRange(l_stop[1]);
+
+	if (a_stop >= a_start)
+		return Operator_Multithread::FindPath(start, stop);
+
+	if (g_settings.GetVerboseLevel()>2)
+	{
+		cerr << __func__ << ": A path was leaving the alpha-direction mesh..." << endl;
+	}
+
+	// this section comes into play, if the line moves over the angulare mesh-end/start
+	// we try to have one part of the path on both "ends" of the mesh and stitch them together
+
+	struct Grid_Path path;
+	struct Grid_Path path1;
+	struct Grid_Path path2;
+
+	// calculate the intersection of the line with the a-max boundary
+	double p0[3],p1[3],p2[3];
+	for (int n=0;n<3;++n)
+	{
+		p0[n] = GetDiscLine(n,0);
+		p1[n] = p0[n];
+		p2[n] = p0[n];
+	}
+	p0[1] = GetDiscLine(1,GetNumberOfLines(1,true)-1-(int)CC_closedAlpha);
+	p1[1] = p0[1];
+	p2[1] = p0[1];
+	p1[0] = discLines[0][numLines[0]-1];
+	p2[2] = discLines[2][numLines[2]-1];
+
+	TransformCoordSystem(p0,p0,m_MeshType,CARTESIAN);
+	TransformCoordSystem(p1,p1,m_MeshType,CARTESIAN);
+	TransformCoordSystem(p2,p2,m_MeshType,CARTESIAN);
+
+	double c_start[3],c_stop[3];
+	TransformCoordSystem(l_start,c_start,m_MeshType,CARTESIAN);
+	TransformCoordSystem(l_stop,c_stop,m_MeshType,CARTESIAN);
+	double intersect[3];
+	double dist;
+	int ret = LinePlaneIntersection(p0,p1,p2,c_start,c_stop,intersect,dist);
+	if (ret<0)
+	{
+		cerr << __func__ << ": Error, unable to calculate intersection, this should not happen!" << endl;
+		return path; // return empty path;
+	}
+
+	if (ret==0)
+	{
+		TransformCoordSystem(intersect,intersect,CARTESIAN,m_MeshType);
+		path1 = Operator::FindPath(l_start, intersect);
+		if (g_settings.GetVerboseLevel()>2)
+			cerr << __func__ << ": Intersection top: " << intersect[0] << "," << intersect[1] << "," << intersect[2] << endl;
+	} //otherwise the path was not intersecting the upper a-bound...
+
+	if (CC_closedAlpha==false)
+	{
+		for (int n=0;n<3;++n)
+		{
+			p0[n] = GetDiscLine(n,0);
+			p1[n] = p0[n];
+			p2[n] = p0[n];
+		}
+		p1[0] = discLines[0][numLines[0]-1];
+		p2[2] = discLines[2][numLines[2]-1];
+
+		TransformCoordSystem(p0,p0,m_MeshType,CARTESIAN);
+		TransformCoordSystem(p1,p1,m_MeshType,CARTESIAN);
+		TransformCoordSystem(p2,p2,m_MeshType,CARTESIAN);
+
+		TransformCoordSystem(l_start,c_start,m_MeshType,CARTESIAN);
+		TransformCoordSystem(l_stop,c_stop,m_MeshType,CARTESIAN);
+
+		ret = LinePlaneIntersection(p0,p1,p2,c_start,c_stop,intersect,dist);
+		TransformCoordSystem(intersect,intersect,CARTESIAN,m_MeshType);
+	}
+
+	if (ret==0)
+	{
+		path2 = Operator::FindPath(intersect, l_stop);
+		if (g_settings.GetVerboseLevel()>2)
+			cerr << __func__ << ": Intersection bottom: " << intersect[0] << "," << intersect[1] << "," << intersect[2] << endl;
+	}
+
+	//combine path
+	for (size_t t=0; t<path1.dir.size(); ++t)
+	{
+		path.posPath[0].push_back(path1.posPath[0].at(t));
+		path.posPath[1].push_back(path1.posPath[1].at(t));
+		path.posPath[2].push_back(path1.posPath[2].at(t));
+		path.dir.push_back(path1.dir.at(t));
+	}
+	for (size_t t=0; t<path2.dir.size(); ++t)
+	{
+		path.posPath[0].push_back(path2.posPath[0].at(t));
+		path.posPath[1].push_back(path2.posPath[1].at(t));
+		path.posPath[2].push_back(path2.posPath[2].at(t));
+		path.dir.push_back(path2.dir.at(t));
+	}
+
+	return path;
 }
 
 bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)

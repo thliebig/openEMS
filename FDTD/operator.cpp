@@ -348,14 +348,35 @@ int Operator::SnapBox2Mesh(const double* start, const double* stop, unsigned int
 	return -1;
 }
 
+int Operator::SnapLine2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh, bool fullMesh) const
+{
+	bool bStartIn[3];
+	bool bStopIn[3];
+	SnapToMesh(start, uiStart, dualMesh, fullMesh, bStartIn);
+	SnapToMesh(stop, uiStop, dualMesh, fullMesh, bStopIn);
+
+	int ret = 0;
+	if (!(bStartIn[0] && bStartIn[1] && bStartIn[2]))
+		ret = ret + 1;
+	if (!(bStopIn[0] && bStopIn[1] && bStopIn[2]))
+		ret = ret + 2;
+	if (ret==0)
+		return ret;
+
+	//fixme, do we need to do something about start or stop being outside the field domain?
+	//maybe caclulate the intersection point and snap to that?
+	//it seems to work like this as well...
+
+	return ret;
+}
+
+
 struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 {
 	struct Grid_Path path;
 	unsigned int uiStart[3],uiStop[3],currPos[3];
 
-	SnapToMesh(start,uiStart,false,true);
-	SnapToMesh(stop,uiStop,false,true);
-
+	SnapLine2Mesh(start, stop, uiStart, uiStop, false, true);
 	currPos[0]=uiStart[0];
 	currPos[1]=uiStart[1];
 	currPos[2]=uiStart[2];

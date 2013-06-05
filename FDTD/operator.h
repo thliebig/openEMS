@@ -140,6 +140,17 @@ public:
 	//! Snap a given box to the FDTD mesh
 	virtual int SnapBox2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, bool fullMesh=false, int SnapMethod=0, bool* bStartIn=NULL, bool* bStopIn=NULL) const;
 
+	//! Snap a given line to the operator mesh
+	/*!
+	  \param[in] start coorindate of the line
+	  \param[in] stop coorindate of the line
+	  \param[out] uiStart the snapped line-start coorindate index
+	  \param[out] uiStop the snapped line-stop coorindate index
+	  \param[in] dualMesh snap to main or dual mesh (default is main mesh)
+	  \return returns a status, 0 = success, 1 = start outside, 2 = stop outside, 3 = both outside
+	  */
+	virtual int SnapLine2Mesh(const double* start, const double* stop, unsigned int* uiStart, unsigned int* uiStop, bool dualMesh=false, bool fullMesh=false) const;
+
 	virtual void AddExtension(Operator_Extension* op_ext);
 	virtual void DeleteExtension(Operator_Extension* op_ext);
 	virtual size_t GetNumberOfExtentions() const {return m_Op_exts.size();}
