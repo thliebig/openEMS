@@ -7,18 +7,20 @@ function h = plotFF3D(nf2ff,varargin)
 %   nf2ff:      output of CalcNF2FF
 %
 % variable input:
-%   'cellelement': - use element from cell array
+%   'freq_index':  - use the given frequency index, see nf2ff.freq
 %                  - default is 1
 %   'logscale':    - if set, show farfield with logarithmic scale
 %                  - set the dB value for point of origin
 %                  - values below will be clamped
+%   'normalize':   - true/false, normalize linear plot
+%                  - default is false, log-plot is always normalized!
 %
 %   example:
-%       plotFF3D(nf2ff, 'cellelement', 2, 'logscale', -20)
+%       plotFF3D(nf2ff, 'freq_index', 2, 'logscale', -20)
 %
-%       see examples/NF2FF/infDipol.m
+%       see examples/antennas/infDipol.m
 %
-% See also CalcNF2FF
+% See also CalcNF2FF, plotFFdB
 % 
 % openEMS matlab interface
 % -----------------------
@@ -26,40 +28,52 @@ function h = plotFF3D(nf2ff,varargin)
 
 % defaults
 logscale = [];
-cellelement = 1;
+freq_index = 1;
+normalize = 0;
 
 for n=1:2:numel(varargin)
     if (strcmp(varargin{n},'logscale')==1);
         logscale = varargin{n+1};
-    elseif (strcmp(varargin{n},'cellelement')==1);
-        cellelement = varargin{n+1};
+    elseif (strcmp(varargin{n},'freq_index')==1);
+        freq_index = varargin{n+1};
+    elseif (strcmp(varargin{n},'normalize')==1);
+        normalize = varargin{n+1};
     end
 end
 
-E_far_normalized = nf2ff.E_norm{cellelement} / max(nf2ff.E_norm{cellelement}(:));
+if ((normalize~=0) || ~isempty(logscale))
+    E_far = nf2ff.E_norm{freq_index} / max(nf2ff.E_norm{freq_index}(:));
+else
+    E_far = nf2ff.E_norm{freq_index};
+end;
 
 if ~isempty(logscale)
-    E_far_normalized = 20*log10(E_far_normalized)/-logscale + 1;
-    ind = find ( E_far_normalized < 0 );
-    E_far_normalized(ind) = 0;
-    titletext = sprintf('electrical far field [dB] @ f = %e Hz',nf2ff.freq(cellelement));
+    E_far = 20*log10(E_far)/-logscale + 1;
+    E_far = E_far .* ( E_far > 0 );
+    titletext = sprintf('electrical far field [dB] @ f = %e Hz',nf2ff.freq(freq_index));
+elseif (normalize==0)
+    titletext = sprintf('electrical far field [V/m] @ f = %e Hz',nf2ff.freq(freq_index));
 else
-    titletext = sprintf('electrical far field [V/m] @ f = %e Hz',nf2ff.freq(cellelement));
+    titletext = sprintf('normalized electrical far field @ f = %e Hz',nf2ff.freq(freq_index));
 end
 
 [theta,phi] = ndgrid(nf2ff.theta,nf2ff.phi);
-x = E_far_normalized .* sin(theta) .* cos(phi);
-y = E_far_normalized .* sin(theta) .* sin(phi);
-z = E_far_normalized .* cos(theta);
+x = E_far .* sin(theta) .* cos(phi);
+y = E_far .* sin(theta) .* sin(phi);
+z = E_far .* cos(theta);
 %figure
-h = surf( x,y,z, E_far_normalized );
+h = surf( x,y,z, E_far );
 set(h,'EdgeColor','none');
 axis equal
+axis off
+if ~isempty(logscale)
+    colorbar('YTick', linspace(0,max(E_far(:)),9), ...
+    'YTickLabel',linspace(logscale, 10*log10(nf2ff.Dmax(freq_index)),9));
+else
+    colorbar;
+end
 
 title( titletext );
-xlabel( 'x' );
-ylabel( 'y' );
-zlabel( 'z' );
 
 if (nargout == 0)
   clear h;
