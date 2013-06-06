@@ -157,7 +157,7 @@ int LinePlaneIntersection(double* p0, double* p1, double* p2, double* l_start, d
 	for (int n=0;n<3;++n)
 		is_point[n] = l_start[n]*(1-dist) + l_stop[n]*dist;
 
-	if ((u<0) || (u>1) || (v<0) || (v>1) || ((u+v)>1))
+	if ((u<0) || (u>1) || (v<0) || (v>1))
 		return 1;
 	if ((t<0) || (t>1))
 		return 2;
