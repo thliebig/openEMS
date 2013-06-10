@@ -355,6 +355,14 @@ int Operator::SnapLine2Mesh(const double* start, const double* stop, unsigned in
 	SnapToMesh(start, uiStart, dualMesh, fullMesh, bStartIn);
 	SnapToMesh(stop, uiStop, dualMesh, fullMesh, bStopIn);
 
+	for (int n=0;n<3;++n)
+	{
+		if ((start[n]<GetDiscLine(n,0)) && (stop[n]<GetDiscLine(n,0)))
+			return -1; //lower bound violation
+		if ((start[n]>GetDiscLine(n,GetNumberOfLines(n,true)-1)) && (stop[n]>GetDiscLine(n,GetNumberOfLines(n,true)-1)))
+			return -1; //upper bound violation
+	}
+
 	int ret = 0;
 	if (!(bStartIn[0] && bStartIn[1] && bStartIn[2]))
 		ret = ret + 1;
@@ -376,7 +384,10 @@ struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
 	struct Grid_Path path;
 	unsigned int uiStart[3],uiStop[3],currPos[3];
 
-	SnapLine2Mesh(start, stop, uiStart, uiStop, false, true);
+	int ret = SnapLine2Mesh(start, stop, uiStart, uiStop, false, true);
+	if (ret<0)
+		return path;
+
 	currPos[0]=uiStart[0];
 	currPos[1]=uiStart[1];
 	currPos[2]=uiStart[2];

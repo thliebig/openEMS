@@ -278,37 +278,59 @@ struct Operator::Grid_Path Operator_Cylinder::FindPath(double start[], double st
 {
 	double l_start[3];
 	double l_stop[3];
-	if (stop[1]<start[1])
+
+	for (int n=0;n<3;++n)
+	{
+		l_start[n] = start[n];
+		l_stop[n] = stop[n];
+	}
+
+	while (fabs(l_stop[1]-l_start[1])>PI)
+	{
+		if (l_stop[1]>l_start[1])
+			l_stop[1]-=2*PI;
+		else
+			l_stop[1]+=2*PI;
+	}
+
+	double help=0;
+	if (l_start[1]>l_stop[1])
 	{
 		for (int n=0;n<3;++n)
 		{
-			l_start[n] = stop[n];
-			l_stop[n] = start[n];
+			help = l_start[n];
+			l_start[n] = l_stop[n];
+			l_stop[n] = help;
 		}
 	}
-	else
-	{
-		for (int n=0;n<3;++n)
-		{
-			l_start[n] = start[n];
-			l_stop[n] = stop[n];
-		}
-	}
+
 	double a_start = FitToAlphaRange(l_start[1]);
 	double a_stop = FitToAlphaRange(l_stop[1]);
 
 	if (a_stop >= a_start)
-		return Operator_Multithread::FindPath(start, stop);
+	{
+		l_start[1] = a_start;
+		l_stop[1] = a_stop;
+		return Operator_Multithread::FindPath(l_start, l_stop);
+	}
+
+	// if a-stop fitted to disc range is now smaller than a-start, it must step over the a-bounds...
+
+	struct Grid_Path path;
+	for (int n=0;n<3;++n)
+	{
+		if ((l_start[n]<GetDiscLine(n,0)) && (l_stop[n]<GetDiscLine(n,0)))
+			return path; //lower bound violation
+		if ((l_start[n]>GetDiscLine(n,GetNumberOfLines(n,true)-1)) && (l_stop[n]>GetDiscLine(n,GetNumberOfLines(n,true)-1)))
+			return path; //upper bound violation
+	}
 
 	if (g_settings.GetVerboseLevel()>2)
-	{
 		cerr << __func__ << ": A path was leaving the alpha-direction mesh..." << endl;
-	}
 
 	// this section comes into play, if the line moves over the angulare mesh-end/start
 	// we try to have one part of the path on both "ends" of the mesh and stitch them together
 
-	struct Grid_Path path;
 	struct Grid_Path path1;
 	struct Grid_Path path2;
 
