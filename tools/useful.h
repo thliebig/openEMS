@@ -33,9 +33,12 @@ std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrT
 std::vector<float> SplitString2Float(std::string str, std::string delimiter=",");
 std::vector<double> SplitString2Double(std::string str, std::string delimiter=",");
 
-bool CrossProd(double* v1, double* v2, double* out);
-double ScalarProd(double* v1, double* v2);
+bool CrossProd(const double* v1, const double* v2, double* out);
+double ScalarProd(const double* v1, const double* v2);
 
-int LinePlaneIntersection(double *p0, double* p1, double* p2, double* l_start, double* l_stop, double* is_point, double &dist);
+double Determinant(const double* mat);
+double* Invert(const double* in, double* out);
+
+int LinePlaneIntersection(const double *p0, const double* p1, const double* p2, const double* l_start, const double* l_stop, double* is_point, double &dist);
 
 #endif // USEFUL_H

@@ -26,7 +26,6 @@
 #include <sstream>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
-#include <vtkMatrix3x3.h>
 
 unsigned int CalcNyquistNum(double fmax, double dT)
 {
@@ -107,7 +106,7 @@ std::vector<double> SplitString2Double(std::string str, std::string delimiter)
 	return v_f;
 }
 
-bool CrossProd(double* v1, double* v2, double* out)
+bool CrossProd(const double *v1, const double *v2, double* out)
 {
 	int nP,nPP;
 	for (int n=0;n<3;++n)
@@ -119,7 +118,7 @@ bool CrossProd(double* v1, double* v2, double* out)
 	return ((out[0]+out[1]+out[2])>0);
 }
 
-double ScalarProd(double* v1, double* v2)
+double ScalarProd(const double *v1, const double *v2)
 {
 	double out=0;
 	for (int n=0;n<3;++n)
@@ -127,7 +126,27 @@ double ScalarProd(double* v1, double* v2)
 	return out;
 }
 
-int LinePlaneIntersection(double* p0, double* p1, double* p2, double* l_start, double* l_stop, double* is_point, double &dist)
+double Determinant(const double *mat)
+{
+	return mat[0]*mat[4]*mat[8]+mat[1]*mat[5]*mat[6]+mat[2]*mat[3]*mat[7]-mat[2]*mat[4]*mat[6]-mat[1]*mat[3]*mat[8]-mat[0]*mat[5]*mat[7];
+}
+
+double* Invert(const double* in, double* out)
+{
+	double det = Determinant(in);
+	out[0] = (in[4]*in[8]-in[5]*in[7])/det;
+	out[1] = (in[2]*in[7]-in[1]*in[8])/det;
+	out[2] = (in[1]*in[5]-in[2]*in[4])/det;
+	out[3] = (in[5]*in[6]-in[3]*in[8])/det;
+	out[4] = (in[0]*in[8]-in[2]*in[6])/det;
+	out[5] = (in[2]*in[3]-in[0]*in[5])/det;
+	out[6] = (in[3]*in[7]-in[4]*in[6])/det;
+	out[7] = (in[1]*in[6]-in[0]*in[7])/det;
+	out[8] = (in[0]*in[4]-in[1]*in[3])/det;
+	return out;
+}
+
+int LinePlaneIntersection(const double *p0, const double *p1, const double *p2, const double *l_start, const double *l_stop, double* is_point, double &dist)
 {
 	dist = 0;
 	double mat[9];
@@ -138,12 +157,12 @@ int LinePlaneIntersection(double* p0, double* p1, double* p2, double* l_start, d
 		mat[3*n+1] = p1[n]-p0[n];
 		mat[3*n+2] = p2[n]-p0[n];
 	}
-	double det = vtkMatrix3x3::Determinant(mat);
+	double det = Determinant(mat);
 	if (fabs(det)<1e-50)
 		return -1;
 
 	double inv_mat[9];
-	vtkMatrix3x3::Invert(mat, inv_mat);
+	Invert(mat, inv_mat);
 
 	double t=0,u=0,v=0;
 	for (int n=0;n<3;++n)
