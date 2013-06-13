@@ -1,3 +1,17 @@
+Summary of most noticeable changes for version 0.0.31:
+-----------------------------------------------------
+  - nf2ff: calculate circular polarization
+  - improvements to calcPort
+  - allow 1D and 2D lumped ports
+  - improvements to SAR calculations
+  - curve primitives and port fixes & improvements
+  - FDTD operator now supports different material averaging methods
+  - support for full multi-polar Lorentz/Drude/Debye dispersive material types
+  - new ports for waveguides (rectangular and circular waveguides)
+  - improved PEC debugging
+  - improvements/simplifications in plotting far-fields (thanks to Stefan)
+  - many fixes and updates
+
 Summary of most noticeable changes for version 0.0.30:
 -----------------------------------------------------
   - meshing improved with new detect edges and new smoothing capabilities
