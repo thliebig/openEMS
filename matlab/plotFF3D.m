@@ -70,7 +70,7 @@ axis equal
 axis off
 if ~isempty(logscale)
     colorbar('YTick', linspace(0,max(E_far(:)),9), ...
-    'YTickLabel',linspace(logscale, 10*log10(nf2ff.Dmax(freq_index)),9));
+    'YTickLabel',num2str(linspace(logscale, 10*log10(nf2ff.Dmax(freq_index)),9)'));
 else
     colorbar;
 end
