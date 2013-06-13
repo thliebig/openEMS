@@ -68,6 +68,13 @@ h = surf( x,y,z, E_far );
 set(h,'EdgeColor','none');
 axis equal
 axis off
+
+try
+    if (isOctave && (strcmp(graphics_toolkit,'gnuplot')==1))
+        warning('openEMS:plotFF3D','Colorbar doesn''t work properly with octave and gnuplot. On problems, try ''colorbar off''');
+    end
+end
+
 if ~isempty(logscale)
     colorbar('YTick', linspace(0,max(E_far(:)),9), ...
     'YTickLabel',num2str(linspace(logscale, 10*log10(nf2ff.Dmax(freq_index)),9)'));
