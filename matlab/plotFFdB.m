@@ -20,7 +20,7 @@ function h = plotFFdB(nf2ff,varargin)
 %
 %       see examples/NF2FF/infDipol.m
 %
-% See also CalcNF2FF, plotFF3D
+% See also CalcNF2FF, plotFF3D, polarFF
 % 
 % openEMS matlab interface
 % -----------------------
@@ -38,6 +38,8 @@ for n=1:2:numel(varargin)
         xaxis = varargin{n+1};
     elseif (strcmp(varargin{n},'param')==1);
         param = varargin{n+1};
+    else
+        warning('openEMS:plotFFdB',['unknown argument key: ''' varargin{n} '''']);
     end
 end
 
@@ -54,6 +56,8 @@ elseif (strcmp(xaxis,'phi')==1);
     yax = D_log(param,:);
     parval = nf2ff.theta(param);
     param = 'theta';
+else
+    error('openEMS:plotFFdB','unknown parameter to ''xaxis''');
 end
 
 %figure

@@ -20,7 +20,7 @@ function h = plotFF3D(nf2ff,varargin)
 %
 %       see examples/antennas/infDipol.m
 %
-% See also CalcNF2FF, plotFFdB
+% See also CalcNF2FF, plotFFdB, polarFF
 % 
 % openEMS matlab interface
 % -----------------------
@@ -38,6 +38,8 @@ for n=1:2:numel(varargin)
         freq_index = varargin{n+1};
     elseif (strcmp(varargin{n},'normalize')==1);
         normalize = varargin{n+1};
+    else
+        warning('openEMS:plotFF3D',['unknown argument key: ''' varargin{n} '''']);
     end
 end
 

@@ -7,7 +7,7 @@ function h = polarFF(nf2ff,varargin)
 %   nf2ff:      output of CalcNF2FF
 %
 % variable input:
-%   'freq_index':  - use element from cell array
+%   'freq_index':  - use the given frequency index, see nf2ff.freq
 %                  - default is 1
 %   'xaxis':       - 'phi' (default) or 'theta'
 %   'param':       - array positions of parametric plot
@@ -21,6 +21,7 @@ function h = polarFF(nf2ff,varargin)
 %                  - values below minimum will be clamped
 %                  - default is -20
 %   'xtics':       - set the number of tics for polar grid
+%                  - default is 5
 %
 %   example:
 %       polarFF(nf2ff, 'freq_index', 2, ...
@@ -61,6 +62,8 @@ for n=1:2:numel(varargin)
         logscale = varargin{n+1};
     elseif (strcmp(varargin{n},'xtics')==1);
         xtics = varargin{n+1};
+    else
+        warning('openEMS:polarFF',['unknown argument key: ''' varargin{n} '''']);
     end
 end
 
@@ -109,6 +112,8 @@ elseif (strcmp(xaxis,'phi')==1);
     yax = E_far(param,:)';
     parval = nf2ff.theta(param);
     param = 'theta';
+else
+    error('openEMS:polarFF','unknown parameter to ''xaxis''');
 end
 
 if ~isempty(logscale)
