@@ -41,7 +41,7 @@ f_stop  =  20e9;
 f0 = 15e9;
 
 %% setup FDTD parameter & excitation function
-FDTD = InitFDTD( 30000, 1e-4 );
+FDTD = InitFDTD( 'NrTS', 30000, 'EndCriteria', 1e-4 );
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -140,7 +140,6 @@ drawnow
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
 thetaRange = (0:2:359) - 180;
-r = 1; % evaluate fields at radius r
 disp( 'calculating far field at phi=[0 90] deg...' );
 nf2ff = CalcNF2FF(nf2ff, Sim_Path, f0, thetaRange*pi/180, [0 90]*pi/180);
 
@@ -153,24 +152,20 @@ disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
 disp( ['directivity: Dmax = ' num2str(Dlog) ' dBi'] );
 disp( ['aperture efficiency: e_a = ' num2str(e_a*100) '%'] );
 
-
 %%
 % normalized directivity
-D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
-% directivity
-D_log = D_log + 10*log10(nf2ff.Dmax);
-
-% display polar plot
 figure
-plot( nf2ff.theta, D_log(:,1) ,'k-' );
-xlabel( 'theta (deg)' );
-ylabel( 'directivity (dBi)');
-grid on;
-hold on;
-plot( nf2ff.theta, D_log(:,2) ,'r-' );
-legend('phi=0','phi=90')
-
+plotFFdB(nf2ff,'xaxis','theta','param',[1 2]);
 drawnow
+%   D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
+%   D_log = D_log + 10*log10(nf2ff.Dmax);
+%   plot( nf2ff.theta, D_log(:,1) ,'k-', nf2ff.theta, D_log(:,2) ,'r-' );
+
+% polar plot
+figure
+polarFF(nf2ff,'xaxis','theta','param',[1 2],'logscale',[-40 20], 'xtics', 12);
+drawnow
+%   polar( nf2ff.theta, nf2ff.E_norm{1}(:,1) )
 
 %% calculate 3D pattern
 phiRange = sort( unique( [-180:5:-100 -100:2.5:-50 -50:1:50 50:2.5:100 100:5:180] ) );
@@ -183,4 +178,5 @@ figure
 plotFF3D(nf2ff);        % plot liear 3D far field
 
 %%
+E_far_normalized = nf2ff.E_norm{1}/max(nf2ff.E_norm{1}(:));
 DumpFF2VTK([Sim_Path '/Conical_Horn_Pattern.vtk'],E_far_normalized,thetaRange,phiRange,'scale',1e-3);
