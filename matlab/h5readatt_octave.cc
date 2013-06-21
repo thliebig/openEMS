@@ -41,6 +41,8 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 
 	if (obj==-1)
 	{
+	  H5Oclose(obj);
+	  H5Fclose(file);
 	  error("h5readatt_octave: opening the given Object failed");
 	  return retval;
 	}
@@ -48,6 +50,8 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	hid_t attr = H5Aopen_name(obj, args(2).string_value().c_str());
 	if (attr==-1)
 	{
+	  H5Oclose(obj);
+	  H5Fclose(file);
 	  error("h5readatt_octave: opening the given Attribute failed");
 	  return retval;
 	}
@@ -55,12 +59,18 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	hid_t type = H5Aget_type(attr);
 	if (type<0)
 	{
+	  H5Aclose(attr);
+	  H5Oclose(obj);
+	  H5Fclose(file);
 	  error("h5readatt_octave: dataset type error");
 	  return retval;
 	}
 
 	if (H5Tget_class(type)!=H5T_FLOAT)
 	{
+	  H5Aclose(attr);
+	  H5Oclose(obj);
+	  H5Fclose(file);
 	  error("h5readatt_octave: attribute type not supported");
 	  return retval;
 	}
@@ -72,6 +82,9 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  float f_value[numVal];
 	  if (H5Aread(attr, H5T_NATIVE_FLOAT, f_value)<0)
 	  {
+	    H5Aclose(attr);
+	    H5Oclose(obj);
+	    H5Fclose(file);
 	    error("h5readatt_octave: reading the given Attribute failed");
 	    return retval;
 	  }
@@ -82,12 +95,18 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	{
 	  if (H5Aread(attr, H5T_NATIVE_DOUBLE, value)<0)
 	  {
+	    H5Aclose(attr);
+	    H5Oclose(obj);
+	    H5Fclose(file);
 	    error("h5readatt_octave: reading the given Attribute failed");
 	    return retval;
 	  }
 	}
 	else
 	{
+	    H5Aclose(attr);
+	    H5Oclose(obj);
+	    H5Fclose(file);
 	    error("h5readatt_octave: reading the given Attribute failed: unknown type");
 	    return retval;
 	}
