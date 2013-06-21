@@ -118,6 +118,11 @@ end
 
 nf2ff = ReadNF2FF(nf2ff);
 
+% verify read data
+if ( (vectorEqual(nf2ff.freq,freq)==0) || (vectorEqual(nf2ff.theta,theta)==0) || (vectorEqual(nf2ff.phi,phi)==0) )
+    error('openEMS:CalcNF2FF','data mismatch between read and requested data --> THIS SHOULD NOT HAPPEN!');
+end
+
 function equal = vectorEqual(v1, v2, acc)
 if (nargin<3)
     acc = 1e-6;
