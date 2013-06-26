@@ -1,4 +1,4 @@
-function DumpFF2VTK2(filename, farfield, thetaRange, phiRange, varargin)
+function DumpFF2VTK(filename, farfield, thetaRange, phiRange, varargin)
 %  DumpFF2VTK(filename, farfield, thetaRange, phiRange, varargin)
 %
 %  Dump 3D far field pattern to a vtk file
