@@ -1,4 +1,16 @@
 %
+% EXAMPLE / antennas / inverted-f antenna (ifa) 2.4GHz
+%
+% This example demonstrates how to:
+%  - calculate the reflection coefficient of an ifa
+%  - calculate farfield of an ifa
+%
+% Tested with
+%  - Octave 3.7.5
+%  - openEMS v0.0.30+ (git 10.07.2013)
+%
+% (C) 2013 Stefan Mahr <dac922@gmx.de>
+
 close all
 clear
 clc
@@ -49,6 +61,8 @@ substrate.kappa  = 1e-3 * 2*pi*2.45e9 * EPS0*substrate.epsR;
 %setup feeding
 feed.R = 50;     %feed resistance
 
+%open AppCSXCAD and show ifa
+show = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % size of the simulation box
@@ -61,7 +75,6 @@ fc = 1e9; % 20 dB corner frequency
 FDTD = InitFDTD('NrTS',  60000 );
 FDTD = SetGaussExcite( FDTD, f0, fc );
 BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions
-%BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};
 FDTD = SetBoundaryCond( FDTD, BC );
 
 %% setup CSXCAD geometry & mesh
@@ -124,7 +137,7 @@ stop  = [mesh.x(end-3) mesh.y(end-3) mesh.z(end-3)];
 Sim_Path = 'tmp_IFA';
 Sim_CSX = 'IFA.xml';
 
-try, confirm_recursive_rmdir(false,'local'); end
+try confirm_recursive_rmdir(false,'local'); end
  
 [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
 [status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
@@ -139,7 +152,7 @@ end
 
 
 %% run openEMS
-RunOpenEMS( Sim_Path, Sim_CSX, '--debug-PEC -v');  %RunOpenEMS( Sim_Path, Sim_CSX, '--debug-PEC -v');
+RunOpenEMS( Sim_Path, Sim_CSX);  %RunOpenEMS( Sim_Path, Sim_CSX, '--debug-PEC -v');
 
 %% postprocessing & do the plots
 freq = linspace( max([1e9,f0-fc]), f0+fc, 501 );
