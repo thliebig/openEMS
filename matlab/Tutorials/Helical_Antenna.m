@@ -5,8 +5,8 @@
 % http://openems.de/index.php/Tutorial:_Helical_Antenna
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.27
+%  - Matlab 2011a / Octave 3.6.4
+%  - openEMS v0.0.31
 %
 % (C) 2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
@@ -41,7 +41,7 @@ feed.R = 120;    %feed impedance
 SimBox = [1 1 1.5]*2*lambda0;
 
 %% setup FDTD parameter & excitation function
-FDTD = InitFDTD( 30000 );
+FDTD = InitFDTD( );
 FDTD = SetGaussExcite( FDTD, f0, fc );
 BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'PML_8'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );

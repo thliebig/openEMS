@@ -48,7 +48,7 @@ f_rad = (1.9:0.05:4.2)*1e9;
 nf2ff_resolution = c0/max(f_rad)/unit/15;
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD(100000, 1e-3);
+FDTD = InitFDTD('EndCriteria', 1e-3);
 FDTD = SetGaussExcite( FDTD, (f_start+f_stop)/2, (f_stop-f_start)/2 );
 BC   = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};
 FDTD = SetBoundaryCond( FDTD, BC );

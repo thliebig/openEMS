@@ -31,7 +31,7 @@ f_start =  50e6; % start frequency
 f_stop = 1000e6; % stop  frequency
 f0 = 500e6;
 
-FDTD = InitFDTD( 30000 );
+FDTD = InitFDTD( );
 FDTD = SetGaussExcite( FDTD, 0.5*(f_start+f_stop), 0.5*(f_stop-f_start) );
 BC = [1 1 1 1 1 1]*3;  % set boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
