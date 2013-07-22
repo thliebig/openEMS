@@ -50,35 +50,28 @@ end
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FDTD = InitFDTD(numTS,1e-5);
 FDTD = SetGaussExcite(FDTD,f0,f0);
-BC = {'PEC','PEC','PEC','PEC','PEC','MUR'};
+BC = {'PEC','PEC','PEC','PEC','MUR','MUR'};
 if (use_pml>0)
-    BC = {'PEC','PEC','PEC','PEC','PEC','PML_8'};
+    BC = {'PEC','PEC','PEC','PEC','PML_8','PML_8'};
 end
 FDTD = SetBoundaryCond(FDTD,BC);
 
 %% setup CSXCAD geometry & mesh %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = InitCSX();
-mesh.x = -2.5*mesh_res(1)-coax_rad_aa : mesh_res(1) : coax_rad_aa+2.5*mesh_res(1);
+mesh.x = -coax_rad_aa : mesh_res(1) : coax_rad_aa;
 mesh.y = mesh.x;
-mesh.z = 0 : mesh_res(3) : length;
+mesh.z = SmoothMeshLines([0 length], mesh_res(3));
 CSX = DefineRectGrid(CSX, unit, mesh);
 
 %%% coax
-CSX = AddMaterial(CSX,'copper');
-CSX = SetMaterialProperty(CSX,'copper','Kappa',56e6);
-start = [0, 0 , 0];stop = [0, 0 , length];
-CSX = AddCylinder(CSX,'copper',0 ,start,stop,coax_rad_i);
-CSX = AddCylindricalShell(CSX,'copper',0 ,start,stop,0.5*(coax_rad_aa+coax_rad_ai),(coax_rad_aa-coax_rad_ai));
+CSX = AddMetal(CSX,'copper');
+start = [0,0,0];
+stop  = [0,0,length/2];
+[CSX,port{1}] = AddCoaxialPort( CSX, 10, 1, 'copper', '', start, stop, 'z', coax_rad_i, coax_rad_ai, coax_rad_aa, 'ExciteAmp', 1,'FeedShift', 10*mesh_res(1) );
 
-%% apply the excitation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-start = [0,0,-0.1];
-stop  = [0,0, 0.1];
-CSX = AddExcitation(CSX,'excite',0,[1 1 0]);
-weight{1} = '(x)/(x*x+y*y)';
-weight{2} = 'y/pow(rho,2)';
-weight{3} = 0;
-CSX = SetExcitationWeight(CSX, 'excite', weight );
-CSX = AddCylindricalShell(CSX,'excite',0 ,start,stop,0.5*(coax_rad_i+coax_rad_ai),(coax_rad_ai-coax_rad_i));
+start = [0,0,length/2];
+stop  = [0,0,length];
+[CSX,port{2}] = AddCoaxialPort( CSX, 10, 2, 'copper', '', start, stop, 'z', coax_rad_i, coax_rad_ai, coax_rad_aa );
  
 %% define dump boxes... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddDump(CSX,'Et_','DumpMode',2);
@@ -89,101 +82,39 @@ CSX = AddBox(CSX,'Et_',0 , start,stop);
 CSX = AddDump(CSX,'Ht_','DumpType',1,'DumpMode',2);
 CSX = AddBox(CSX,'Ht_',0,start,stop);
 
-%% define voltage calc boxes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%voltage calc
-CSX = AddProbe(CSX,'ut1',0);
-start = [ coax_rad_i  0 mesh.z(10) ];
-stop  = [ coax_rad_ai 0 mesh.z(10) ];
-CSX = AddBox(CSX,'ut1', 0 ,start,stop);
-CSX = AddProbe(CSX,'ut2',0);
-start = [ coax_rad_i  0 mesh.z(end-10)];
-stop  = [ coax_rad_ai 0 mesh.z(end-10)];
-CSX = AddBox(CSX,'ut2', 0 ,start,stop);
-
-%current calc, for each position there are two currents, which will get
-%averaged to match the voltage position in between (!Yee grid!)
-CSX = AddProbe(CSX,'it1a',1);
-mid = 0.5*(coax_rad_i+coax_rad_ai);
-start = [ -mid -mid mesh.z(9) ];
-stop  = [  mid  mid mesh.z(9) ];
-CSX = AddBox(CSX,'it1a', 0 ,start,stop);
-CSX = AddProbe(CSX,'it1b',1);
-start = [ -mid -mid mesh.z(10) ];
-stop  = [  mid  mid mesh.z(10) ];
-CSX = AddBox(CSX,'it1b', 0 ,start,stop);
-
-CSX = AddProbe(CSX,'it2a',1);
-start = [ -mid -mid mesh.z(end-11) ];
-stop  = [  mid  mid mesh.z(end-11) ];
-CSX = AddBox(CSX,'it2a', 0 ,start,stop);
-CSX = AddProbe(CSX,'it2b',1);
-start = [ -mid -mid mesh.z(end-10) ];
-stop  = [  mid  mid mesh.z(end-10) ];
-CSX = AddBox(CSX,'it2b', 0 ,start,stop);
-
 %% Write openEMS
 if (postprocessing_only==0)
     WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
+    CSXGeomPlot([Sim_Path '/' Sim_CSX]);
     RunOpenEMS(Sim_Path, Sim_CSX, openEMS_opts);
 end
 
 %%
 freq = linspace(0,2*f0,201);
-U = ReadUI({'ut1','ut2'},[Sim_Path '/'],freq);
-I = ReadUI({'it1a','it1b','it2a','it2b'},[Sim_Path '/'],freq);
-Exc = ReadUI('et',Sim_Path,freq);
+port = calcPort(port, Sim_Path, freq);
 
-%% plot voltages
+%% plot s-parameter
 figure
-plot(U.TD{1}.t, U.TD{1}.val,'Linewidth',2);
-hold on;
-grid on;
-plot(U.TD{2}.t, U.TD{2}.val,'r--','Linewidth',2);
-xlabel('time (s)')
-ylabel('voltage (V)')
-legend('u_1(t)','u_2(t)')
-
-%% calculate incoming and reflected voltages & currents
-ZL_a = ones(size(freq))*Z0/2/pi/sqrt(epsR)*log(coax_rad_ai/coax_rad_i); %analytic line-impedance of a coax
-
-uf1 = U.FD{1}.val./Exc.FD{1}.val;
-uf2 = U.FD{2}.val./Exc.FD{1}.val;
-if1 = 0.5*(I.FD{1}.val+I.FD{2}.val)./Exc.FD{1}.val;
-if2 = 0.5*(I.FD{3}.val+I.FD{4}.val)./Exc.FD{1}.val;
-
-uf1_inc = 0.5 * ( uf1 + if1 .* ZL_a );
-if1_inc = 0.5 * ( if1 + uf1 ./ ZL_a );
-uf2_inc = 0.5 * ( uf2 + if2 .* ZL_a );
-if2_inc = 0.5 * ( if2 + uf2 ./ ZL_a );
-
-uf1_ref = uf1 - uf1_inc;
-if1_ref = if1 - if1_inc;
-uf2_ref = uf2 - uf2_inc;
-if2_ref = if2 - if2_inc;
-
-% plot s-parameter
-figure
-s11 = uf1_ref./uf1_inc;
-s21 = uf2_inc./uf1_inc;
+s11 = port{1}.uf.ref./port{1}.uf.inc;
+s21 = port{2}.uf.inc./port{1}.uf.inc;
 plot(freq,20*log10(abs(s11)),'Linewidth',2);
+hold on
+grid on
+plot(freq,20*log10(abs(s21)),'r--','Linewidth',2);
 xlim([freq(1) freq(end)]);
 xlabel('frequency (Hz)')
 ylabel('s-para (dB)');
-% ylim([-40 5]);
-grid on;
-hold on;
-plot(freq,20*log10(abs(s21)),'r','Linewidth',2);
-legend('s11','s21','Location','SouthEast');
 
-% plot line-impedance comparison
+%% plot line-impedance comparison
 figure()
-ZL = uf1./if1;
-plot(freq,real(ZL),'Linewidth',2);
+ZL_a = ones(size(freq))*Z0/2/pi/sqrt(epsR)*log(coax_rad_ai/coax_rad_i); %analytic line-impedance of a coax
+ZL = port{2}.uf.tot./port{2}.if.tot;
+plot(freq,real(port{1}.ZL),'Linewidth',2);
 xlim([freq(1) freq(end)]);
 xlabel('frequency (Hz)')
 ylabel('line-impedance (\Omega)');
 grid on;
 hold on;
-plot(freq,imag(ZL),'r--','Linewidth',2);
+plot(freq,imag(port{1}.ZL),'r--','Linewidth',2);
 plot(freq,ZL_a,'g-.','Linewidth',2);
 legend('\Re\{ZL\}','\Im\{ZL\}','ZL-analytic','Location','Best');

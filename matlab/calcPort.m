@@ -46,7 +46,7 @@ if (iscell(port))
     return;
 end
 
-if strcmpi(port.type,'MSL')
+if (strcmpi(port.type,'MSL') || strcmpi(port.type,'Coaxial'))
     port = calcTLPort( port, SimDir, f, varargin{:});
     return
 elseif strcmpi(port.type,'WaveGuide')

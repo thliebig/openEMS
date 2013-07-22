@@ -48,7 +48,7 @@ if (iscell(port))
     return;
 end
 
-if (strcmpi(port.type,'MSL')~=1)
+if ((strcmpi(port.type,'MSL')~=1) && (strcmpi(port.type,'Coaxial')~=1))
     error('openEMS:calcTLPort','error, type is not a transmission line port');
 end
 
@@ -101,6 +101,10 @@ beta(real(beta) < 0) = -beta(real(beta) < 0); % determine correct sign (unlike t
 
 % determine ZL
 ZL = sqrt(Et .* dEt ./ (Ht .* dHt));
+
+% if (strcmpi(port.type,'Coaxial'))
+%     port.ZL = Z0/2/pi/ref_index*log(port.r_o/port.r_i);
+% end
 
 % reference plane shift (lossless)
 if ~isnan(ref_shift)
