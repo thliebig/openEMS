@@ -11,7 +11,7 @@ function [CSX,port] = AddWaveGuidePort( CSX, prio, portnr, start, stop, dir, E_W
 %   prio:       priority of primitives
 %   start:      start coordinates of waveguide port box
 %   stop:       stop  coordinates of waveguide port box
-%   dir:        direction of port (0/1/2 for x/y/z-direction)
+%   dir:        direction of port (0/1/2 or 'x'/'y'/'z'-direction)
 %   E_WG_func:  electric field mode profile function as a string
 %   H_WG_func:  magnetic field mode profile function as a string
 %   kc:         cutoff wavenumber (defined by the waveguide dimensions)
@@ -56,15 +56,13 @@ if ~isfield(CSX,'RectilinearGrid')
     error 'mesh needs to be defined! Use DefineRectGrid() first!';
 end
 
+dir = DirChar2Int(dir);
+
 port.type='WaveGuide';
 port.nr=portnr;
 port.kc = kc;
 port.dir = dir;
 port.drawingunit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
-
-if ~( (dir==0) || (dir==1) || (dir==2) )
-	error 'dir must be 0, 1 or 2'
-end
 
 PortNamePrefix = '';
 

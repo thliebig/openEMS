@@ -50,11 +50,11 @@ CSX = DefineRectGrid(CSX, unit,mesh);
 %% apply the waveguide port %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 start=[mesh.x(1)   mesh.y(1)   mesh.z(8)];
 stop =[mesh.x(end) mesh.y(end) mesh.z(15)];
-[CSX, port{1}] = AddRectWaveGuidePort( CSX, 0, 1, start, stop, 2, a*unit, b*unit, TE_mode, 1);
+[CSX, port{1}] = AddRectWaveGuidePort( CSX, 0, 1, start, stop, 'z', a*unit, b*unit, TE_mode, 1);
 
 start=[mesh.x(1)   mesh.y(1)   mesh.z(end-13)];
 stop =[mesh.x(end) mesh.y(end) mesh.z(end-14)];
-[CSX, port{2}] = AddRectWaveGuidePort( CSX, 0, 2, start, stop, 2, a*unit, b*unit, TE_mode);
+[CSX, port{2}] = AddRectWaveGuidePort( CSX, 0, 2, start, stop, 'z', a*unit, b*unit, TE_mode);
 
 %% define dump box... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CSX = AddDump(CSX,'Et','FileType',1,'SubSampling','4,4,4');

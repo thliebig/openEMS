@@ -11,7 +11,7 @@ function [CSX,port] = AddRectWaveGuidePort( CSX, prio, portnr, start, stop, dir,
 %   prio:       priority of primitives
 %   start:      start coordinates of waveguide port box
 %   stop:       stop  coordinates of waveguide port box
-%   dir:        direction of port (0/1/2 for x/y/z-direction)
+%   dir:        direction of port (0/1/2 or 'x'/'y'/'z'-direction)
 %   a,b:        rectangular waveguide width and height (in meter)
 %   mode_name:  mode name, e.g. 'TE11' or 'TM21'
 %   exc_amp:    excitation amplitude (set 0 to be passive)
@@ -58,8 +58,8 @@ if ~isfield(CSX,'RectilinearGrid')
 end
 
 unit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
-kc_draw = kc*unit;
 
+dir = DirChar2Int(dir);
 dir_names={'x','y','z'};
 
 dirP = mod((dir+1),3)+1;

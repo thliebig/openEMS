@@ -7,7 +7,7 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 % materialname: property for the MSL (created by AddMetal())
 % start:        3D start rowvector for port definition
 % stop:         3D end rowvector for port definition
-% dir:          direction of wave propagation (choices: 0 1 2)
+% dir:          direction of wave propagation (choices: 0, 1, 2 or 'x','y','z')
 % evec:         excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
 % 
 % variable input:
@@ -18,10 +18,8 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 %               units. Default is 0. Only active if 'ExcitePort' is set!
 % 'Feed_R'      Specifiy a lumped port resistance. Default is no lumped
 %               port resistance --> port has to end in an ABC.
-%               Only active if 'ExcitePort' is set!
 % 'MeasPlaneShift'  Shift the measurement plane from start t a given distance 
 %               in drawing units. Default is the middle of start/stop.
-%               Only active if 'ExcitePort' is set!
 % 'PortNamePrefix' a prefix to the port name
 % 
 % the mesh must be already initialized
@@ -47,24 +45,19 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 %check mesh
 if ~isfield(CSX,'RectilinearGrid')
     error 'mesh needs to be defined! Use DefineRectGrid() first!';
-    if (~isfield(CSX.RectilinearGrid,'XLines') || ~isfield(CSX.RectilinearGrid,'YLines') || ~isfield(CSX.RectilinearGrid,'ZLines'))
-        error 'mesh needs to be defined! Use DefineRectGrid() first!';
-    end
+end
+if (~isfield(CSX.RectilinearGrid,'XLines') || ~isfield(CSX.RectilinearGrid,'YLines') || ~isfield(CSX.RectilinearGrid,'ZLines'))
+    error 'mesh needs to be defined! Use DefineRectGrid() first!';
 end
 
 % check dir
-if ~( (dir >= 0) && (dir <= 2) )
-	error 'dir must have exactly one component ~= 0'
-end
+dir = DirChar2Int(dir);
 
 % check evec
 if ~(evec(1) == evec(2) == 0) && ~(evec(1) == evec(3) == 0) && ~(evec(2) == evec(3) == 0) || (sum(evec) == 0)
 	error 'evec must have exactly one component ~= 0'
 end
 evec0 = evec ./ sum(evec); % evec0 is a unit vector
-
-%% read optional arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-n_conv_arg = 8; % number of conventional arguments
 
 %set defaults
 feed_shift = 0;
@@ -75,6 +68,7 @@ PortNamePrefix = '';
 
 excite_args = {};
 
+%% read optional arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for n=1:2:numel(varargin)
     if (strcmp(varargin{n},'FeedShift')==1);
         feed_shift = varargin{n+1};
