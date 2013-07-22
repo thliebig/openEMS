@@ -42,7 +42,7 @@ function [port] = calcWGPort( port, SimDir, f, varargin)
 
 if (iscell(port))
     for n=1:numel(port)
-        port{n}=calcTLPort(port{n}, SimDir, f, varargin{:});
+        port{n}=calcWGPort(port{n}, SimDir, f, varargin{:});
     end
     return;
 end
@@ -89,7 +89,6 @@ k = 2*pi*f/C0*ref_index;
 fc = C0*port.kc/2/pi/ref_index;
 port.beta = sqrt(k.^2 - port.kc^2);
 port.ZL = k * Z0 ./ port.beta;    %analytic waveguide impedance
-
 
 % reference plane shift (lossless)
 if ~isnan(ref_shift)
