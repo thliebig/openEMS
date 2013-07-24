@@ -59,7 +59,7 @@ void SAR_Calculation::SetAveragingMethod(string method, bool silent)
 		return SetAveragingMethod(IEEE_C95_3, silent);
 	if (method.compare("IEEE_62704")==0)
 		return SetAveragingMethod(IEEE_62704, silent);
-	if (method.compare("SIMPLE")==0)
+	if (method.compare("Simple")==0)
 		return SetAveragingMethod(SIMPLE, silent);
 
 	cerr << __func__ << ": Error, """ << method << """ is an unknown averaging method..." << endl;
