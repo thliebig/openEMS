@@ -46,6 +46,10 @@ if (iscell(port))
     return;
 end
 
+if isempty(port)
+    return;
+end
+
 if (strcmpi(port.type,'MSL') || strcmpi(port.type,'Coaxial'))
     port = calcTLPort( port, SimDir, f, varargin{:});
     return
