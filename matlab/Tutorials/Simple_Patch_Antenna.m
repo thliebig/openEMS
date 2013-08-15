@@ -19,7 +19,7 @@ physical_constants;
 unit = 1e-3; % all length in mm
 
 % patch width in x-direction
-patch.width  = 30; % resonant length
+patch.width  = 32; % resonant length
 % patch length in y-direction
 patch.length = 40;
 
@@ -82,9 +82,12 @@ stop  = [feed.pos 0 substrate.thickness];
 [CSX port] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
 %% finalize the mesh
+% detect all edges except of the patch
+mesh = DetectEdges(CSX, mesh,'ExcludeProperty','patch');
+% detect and set a special 2D metal edge mesh for the patch
+mesh = DetectEdges(CSX, mesh,'SetProperty','patch','2D_Metal_Edge_Res', c0/(f0+fc)/unit/50);
 % generate a smooth mesh with max. cell size: lambda_min / 20
-mesh = DetectEdges(CSX, mesh);
-mesh = SmoothMesh(mesh, c0 / (f0+fc) / unit / 20);
+mesh = SmoothMesh(mesh, c0/(f0+fc)/unit/20);
 CSX = DefineRectGrid(CSX, unit, mesh);
 
 %% add a nf2ff calc box; size is 3 cells away from MUR boundary condition
@@ -135,7 +138,6 @@ title( 'reflection coefficient S_{11}' );
 xlabel( 'frequency f / MHz' );
 ylabel( 'reflection coefficient |S_{11}|' );
 
-
 drawnow
 
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -153,21 +155,30 @@ disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
 disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax) ' (' num2str(10*log10(nf2ff.Dmax)) ' dBi)'] );
 disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in(f_res_ind))) ' %']);
 
-% normalized directivity
+% normalized directivity as polar plot
 figure
-plotFFdB(nf2ff,'xaxis','theta','param',[1 2])
-%   D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
-%   D_log = D_log + 10*log10(nf2ff.Dmax);
-%   plot( nf2ff.theta, D_log(:,1) ,'k-' );
+polarFF(nf2ff,'xaxis','theta','param',[1 2],'normalize',1)
 
+% conventional directivity plot
+figure
+D_log = 20*log10(nf2ff.E_norm{1}/max(max(nf2ff.E_norm{1})));
+D_log = D_log + 10*log10(nf2ff.Dmax);
+plot( nf2ff.theta, D_log );
+grid on
+xlabel('theta')
+ylabel('D (dBi)');
+legend('phi=0','phi=90')
+
+drawnow
 
 %%
 disp( 'calculating 3D far field pattern and dumping to vtk (use Paraview to visualize)...' );
 thetaRange = (0:2:180);
 phiRange = (0:2:360) - 180;
 nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180,'Verbose',1,'Outfile','3D_Pattern.h5');
+
 figure
-plotFF3D(nf2ff);
+plotFF3D(nf2ff,'logscale',-20);
 
 
 E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax;
