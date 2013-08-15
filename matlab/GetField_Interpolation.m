@@ -39,9 +39,21 @@ if (isnumeric(lines))
     y_i = linspace(y(1),y(end),lines(2));
     z_i = linspace(z(1),z(end),lines(3));
 else
-    x_i = lines{1};
-    y_i = lines{2};
-    z_i = lines{3};
+    if isempty(lines{1})
+        x_i = x;
+    else
+        x_i = lines{1};
+    end
+    if isempty(lines{2})
+        y_i = y;
+    else
+        y_i = lines{2};
+    end
+    if isempty(lines{3})
+        z_i = z;
+    else
+        z_i = lines{3};
+    end
 end
 
 field_i = field;
