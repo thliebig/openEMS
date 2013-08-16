@@ -396,7 +396,7 @@ bool Operator_Ext_UPML::BuildExtension()
 				pos[2] = loc_pos[2] + m_StartPos[2];
 				for (int n=0; n<3; ++n)
 				{
-					m_Op->Calc_EffMatPos(0,pos,eff_Mat);
+					m_Op->Calc_EffMatPos(n,pos,eff_Mat);
 					CalcGradingKappa(n, pos,__Z0__ ,kappa_v ,kappa_i);
 					nP = (n+1)%3;
 					nPP = (n+2)%3;
