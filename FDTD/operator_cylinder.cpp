@@ -274,7 +274,7 @@ int Operator_Cylinder::SnapLine2Mesh(const double* start, const double* stop, un
 }
 
 
-struct Operator::Grid_Path Operator_Cylinder::FindPath(double start[], double stop[])
+Grid_Path Operator_Cylinder::FindPath(double start[], double stop[])
 {
 	double l_start[3];
 	double l_stop[3];
@@ -316,7 +316,7 @@ struct Operator::Grid_Path Operator_Cylinder::FindPath(double start[], double st
 
 	// if a-stop fitted to disc range is now smaller than a-start, it must step over the a-bounds...
 
-	struct Grid_Path path;
+	Grid_Path path;
 	for (int n=0;n<3;++n)
 	{
 		if ((l_start[n]<GetDiscLine(n,0)) && (l_stop[n]<GetDiscLine(n,0)))
@@ -331,8 +331,8 @@ struct Operator::Grid_Path Operator_Cylinder::FindPath(double start[], double st
 	// this section comes into play, if the line moves over the angulare mesh-end/start
 	// we try to have one part of the path on both "ends" of the mesh and stitch them together
 
-	struct Grid_Path path1;
-	struct Grid_Path path2;
+	Grid_Path path1;
+	Grid_Path path2;
 
 	// calculate the intersection of the line with the a-max boundary
 	double p0[3],p1[3],p2[3];

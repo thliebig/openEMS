@@ -93,7 +93,7 @@ protected:
 
 	virtual bool SetupCSXGrid(CSRectGrid* grid);
 
-	virtual struct Grid_Path FindPath(double start[], double stop[]);
+	virtual Grid_Path FindPath(double start[], double stop[]);
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 

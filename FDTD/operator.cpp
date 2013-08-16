@@ -379,9 +379,9 @@ int Operator::SnapLine2Mesh(const double* start, const double* stop, unsigned in
 }
 
 
-struct Operator::Grid_Path Operator::FindPath(double start[], double stop[])
+Grid_Path Operator::FindPath(double start[], double stop[])
 {
-	struct Grid_Path path;
+	Grid_Path path;
 	unsigned int uiStart[3],uiStop[3],currPos[3];
 
 	int ret = SnapLine2Mesh(start, stop, uiStart, uiStop, false, true);
@@ -1775,7 +1775,7 @@ void Operator::CalcPEC_Curves()
 	//special treatment for primitives of type curve (treated as wires)
 	double p1[3];
 	double p2[3];
-	struct Grid_Path path;
+	Grid_Path path;
 	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::METAL);
 	for (size_t p=0; p<vec_prop.size(); ++p)
 	{

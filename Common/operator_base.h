@@ -23,6 +23,12 @@
 #include "Common/processing.h"
 #include "string"
 
+typedef struct
+{
+	vector<unsigned int> posPath[3];
+	vector<unsigned short> dir;
+} Grid_Path;
+
 //! Abstract base-class for a common operator
 class Operator_Base
 {

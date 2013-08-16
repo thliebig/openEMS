@@ -230,7 +230,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 	//special treatment for primitives of type curve (treated as wires) see also Calc_PEC
 	double p1[3];
 	double p2[3];
-	struct Operator::Grid_Path path;
+	Grid_Path path;
 	for (size_t p=0; p<vec_prop.size(); ++p)
 	{
 		prop = vec_prop.at(p);
