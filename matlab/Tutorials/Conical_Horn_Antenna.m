@@ -78,7 +78,7 @@ p(1,end+1) = horn.radius;  % x-coord point 1
 p(2,end) = 0;     % z-coord point 1
 p(1,end+1) = horn.radius;   % x-coord point 1
 p(2,end) = -horn.feed_length;     % z-coord point 1
-CSX = AddRotPoly(CSX,'Conical_Horn',10,0,2,p);
+CSX = AddRotPoly(CSX,'Conical_Horn',10,'x',p,'z');
 
 % horn aperture
 A = pi*((horn.radius + sin(horn.angle)*horn.length)*unit)^2;
