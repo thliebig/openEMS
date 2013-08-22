@@ -1481,22 +1481,34 @@ bool Operator::Calc_LumpedElements()
 						for (pos[nyPP]=uiStart[nyPP];pos[nyPP]<=uiStop[nyPP];++pos[nyPP])
 						{
 							pos[ny]=uiStart[ny];
-							SetVV(nyP,pos[0],pos[1],pos[2], 0 );
-							SetVI(nyP,pos[0],pos[1],pos[2], 0 );
-							++m_Nr_PEC[nyP];
+							if (pos[nyP]<uiStop[nyP])
+							{
+								SetVV(nyP,pos[0],pos[1],pos[2], 0 );
+								SetVI(nyP,pos[0],pos[1],pos[2], 0 );
+								++m_Nr_PEC[nyP];
+							}
 
-							SetVV(nyPP,pos[0],pos[1],pos[2], 0 );
-							SetVI(nyPP,pos[0],pos[1],pos[2], 0 );
-							++m_Nr_PEC[nyPP];
+							if (pos[nyPP]<uiStop[nyPP])
+							{
+								SetVV(nyPP,pos[0],pos[1],pos[2], 0 );
+								SetVI(nyPP,pos[0],pos[1],pos[2], 0 );
+								++m_Nr_PEC[nyPP];
+							}
 
 							pos[ny]=uiStop[ny];
-							SetVV(nyP,pos[0],pos[1],pos[2], 0 );
-							SetVI(nyP,pos[0],pos[1],pos[2], 0 );
-							++m_Nr_PEC[nyP];
+							if (pos[nyP]<uiStop[nyP])
+							{
+								SetVV(nyP,pos[0],pos[1],pos[2], 0 );
+								SetVI(nyP,pos[0],pos[1],pos[2], 0 );
+								++m_Nr_PEC[nyP];
+							}
 
-							SetVV(nyPP,pos[0],pos[1],pos[2], 0 );
-							SetVI(nyPP,pos[0],pos[1],pos[2], 0 );
-							++m_Nr_PEC[nyPP];
+							if (pos[nyPP]<uiStop[nyPP])
+							{
+								SetVV(nyPP,pos[0],pos[1],pos[2], 0 );
+								SetVI(nyPP,pos[0],pos[1],pos[2], 0 );
+								++m_Nr_PEC[nyPP];
+							}
 						}
 					}
 				}
