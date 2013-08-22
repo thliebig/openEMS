@@ -155,6 +155,10 @@ disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
 disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax) ' (' num2str(10*log10(nf2ff.Dmax)) ' dBi)'] );
 disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in(f_res_ind))) ' %']);
 
+% normalized directivity as polar plot
+figure
+polarFF(nf2ff,'xaxis','theta','param',[1 2],'normalize',1)
+
 % log-scale directivity plot
 figure
 plotFFdB(nf2ff,'xaxis','theta','param',[1 2])
