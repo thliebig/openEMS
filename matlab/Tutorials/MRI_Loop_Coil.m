@@ -6,6 +6,7 @@
 %
 % Tested with
 %  - openEMS v0.0.31
+%  - Matlab 7.12.0 (R2011a)
 %
 % (C) 2013 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
@@ -23,49 +24,50 @@ loop.width = 60;        % width of the loop  (in y-direction)
 loop.strip_width = 5;   % metal strip width
 loop.strip_N_cells = 3; % number of cells over the strip length
 loop.air_gap = loop.strip_width/3;       % air gap width for lumped capacitors
-loop.pos_x = 110;       % position of loop
-loop.C_gap = 5e-12;     % lumped cap value
+loop.pos_x = -130;       % position of loop
+loop.C_gap = 5.4e-12;   % lumped cap value
 loop.port_R = 10;       % feeding port resistance
 
-%% define the phantom material stackup material
-materials.name{1}='skin';
-materials.rad(1)=100;
-materials.eps_r(1)=49.8;
-materials.kappa(1)=0.64;
-materials.density(1)=1100;
-materials.prio(1)=10;
+%% define the human body model (virtual family)
+% set file name for human body model to create with "Convert_VF_DiscMaterial"
+% the file name should contain a full path
+body_model_file = [pwd '/Ella_centered_298MHz.h5'];
 
-materials.name{2}='headbone';
-materials.rad(2)=95;
-materials.eps_r(2)=13.4;
-materials.kappa(2)=0.08;
-materials.density(2)=1990;
-materials.prio(2)=11;
+% convert only part of the model (head/shoulder section)
+body_model_range = {[],[],[-0.85 -0.4]};
 
-materials.name{3}='CSF';
-materials.rad(3)=90;
-materials.eps_r(3)=72.734;
-materials.kappa(3)=2.2245;
-materials.density(3)=1007;
-materials.prio(3)=12;
+VF_raw_filesuffix = '/home/thorsten/Simulation/Virtual Family Voxel Models V1.0/Ella_26y_V2_1mm/Ella_26y_V2_1mm';
+VF_mat_db_file = '/home/thorsten/Simulation/Virtual Family Voxel Models V1.0/DB_h5_20120711_SEMCADv14.8.h5';
 
-materials.name{4}='brain';    % average of white/grey matter
-materials.rad(4)=86;
-materials.eps_r(4)=60;
-materials.kappa(4)=0.69;
-materials.density(4)=1039;
-materials.prio(4)=13;
+% delete(body_model_file); % uncomment to delete old model if something changed
+
+% convert model (if it does not exist)
+Convert_VF_DiscMaterial(VF_raw_filesuffix, VF_mat_db_file, body_model_file, ...
+                        'Frequency', 298e6, 'Center', 1, ...
+                        'Range', body_model_range);
+
+% rotate model to face the nose in x-dir, and translate
+body_model_transform = {'Rotate_X',pi,'Rotate_Z',pi/2, ...
+                        'Translate',[0,5,-720]};
+
+% the head should + part of shoulder should fit this box
+body_box.start = [-120 -150 -200];
+body_box.stop  = [+100 +150 +130];
+
+% box with high res mesh
+mesh_box.start = [-120 -80 -120];
+mesh_box.stop  = [+100 +80 +120];
+mesh_box.resolution = 2;
 
 %% some mesh parameter
-mat_mesh = 2;       % mesh inside the phantom (2mm)
 Air_Box = 150;      % size of the surrounding air box (150mm)
 
 %% setup FDTD parameter & excitation function
 % init FDTD structure
-FDTD = InitFDTD( 'EndCriteria', 1e-4 );
+FDTD = InitFDTD( 'EndCriteria', 1e-4, 'CellConstantMaterial', 0);
 
 % define gaussian pulse excitation signal
-f0 = 300e6; % center frequency
+f0 = 298e6; % center frequency
 fc = 300e6; % 20 dB corner frequency
 FDTD = SetGaussExcite( FDTD, f0, fc );
 
@@ -134,24 +136,24 @@ start = [loop.pos_x -loop.air_gap/2 -loop.length/2+loop.strip_width/2-loop.air_g
 stop  = [loop.pos_x +loop.air_gap/2 -loop.length/2+loop.strip_width/2+loop.air_gap/2];
 [CSX port] = AddLumpedPort(CSX, 100, 1, loop.port_R, start, stop, [0 1 0], true);
 
-%% define materials in a loop
-for n=1:numel(materials.name)
-    CSX = AddMaterial( CSX, materials.name{n} );
-    CSX = SetMaterialProperty( CSX, materials.name{n}, 'Epsilon', materials.eps_r(n), 'Kappa', materials.kappa(n), 'Density', materials.density(n));
-    CSX = AddSphere( CSX, materials.name{n}, materials.prio(n), [0 0 0], materials.rad(n),'Transform',{'Scale',[1 0.8 1] } );
-end
+%% define human body model
+CSX = AddDiscMaterial(CSX, 'body_model', 'File', body_model_file, 'Scale', 1/unit, 'Transform', body_model_transform);
+CSX = AddBox(CSX, 'body_model', 0, body_box.start, body_box.stop);
 
 %% finalize mesh
-% create loop mesh (detect only metal and the lumped elements)
-mesh = DetectEdges(CSX, [], 'SetPropertyType', {'Metal','LumpedElement'});
+% create loop mesh
+mesh = DetectEdges(CSX);
 
-% add a dense homegeneous mesh inside the phantom
-mesh.x = [mesh.x -materials.rad -mat_mesh/2 mat_mesh/2 materials.rad];
-mesh.y = [mesh.y -materials.rad*0.8  materials.rad*0.8];
-mesh.z = [mesh.z -materials.rad  materials.rad];
+% add a dense homegeneous mesh inside the human body model
+mesh.x = [mesh.x mesh_box.start(1) mesh_box.stop(1)];
+mesh.y = [mesh.y mesh_box.start(2) mesh_box.stop(2)];
+mesh.z = [mesh.z mesh_box.start(3) mesh_box.stop(3)];
 
-% smooth the mesh for the loop & phantom
-mesh = SmoothMesh(mesh, mat_mesh);
+% add lines in x-dir for the loop and a cell centered around 0
+mesh.x = [mesh.x loop.pos_x -mesh_box.resolution/2 mesh_box.resolution/2];
+
+% smooth the mesh for the loop & body
+mesh = SmoothMesh(mesh, mesh_box.resolution);
 
 % add air spacer
 mesh.x = [-Air_Box+mesh.x(1) mesh.x mesh.x(end)+Air_Box];
@@ -160,18 +162,16 @@ mesh.z = [-Air_Box+mesh.z(1) mesh.z mesh.z(end)+Air_Box];
 
 mesh = SmoothMesh(mesh, c0 / (f0+fc) / unit / 10, 1.5, 'algorithm', 1);
 
-%% Add Dump boxes (3D box) for E,J and SAR
-CSX = AddDump(CSX,'Hf','DumpType',11,'FileType',1,'Frequency',f0);
-CSX = AddDump(CSX,'SAR','DumpType',20,'DumpMode',2,'FileType',1,'Frequency',f0);
-start = [-120 -120 -120];
-stop  = [+120 +120 +120];
-CSX = AddBox(CSX,'Hf',0,start,stop);
-CSX = AddBox(CSX,'SAR',0,start,stop);
+%% Add Dump boxes (2D boxes) for H and SAR on xy- and xz-plane
+CSX = AddDump(CSX,'Hf_xy','DumpType',11,'FileType',1,'Frequency',f0);
+CSX = AddBox(CSX,'Hf_xy',0, body_box.start.*[1 1 0], body_box.stop.*[1 1 0]);
+CSX = AddDump(CSX,'SAR_xy','DumpType',20,'DumpMode',2,'FileType',1,'Frequency',f0);
+CSX = AddBox(CSX,'SAR_xy',0, body_box.start.*[1 1 0], body_box.stop.*[1 1 0]);
 
-%% add a nf2ff calc box; size is 3 cells away from MUR boundary condition
-start = [mesh.x(1)   mesh.y(1)   mesh.z(1)];
-stop  = [mesh.x(end) mesh.y(end) mesh.z(end)];
-[CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop,'Frequency',f0,'OptResolution',c0/f0/unit/20);
+CSX = AddDump(CSX,'Hf_xz','DumpType',11,'FileType',1,'Frequency',f0);
+CSX = AddBox(CSX,'Hf_xz',0, body_box.start.*[1 0 1], body_box.stop.*[1 0 1]);
+CSX = AddDump(CSX,'SAR_xz','DumpType',20,'DumpMode',2,'FileType',1,'Frequency',f0);
+CSX = AddBox(CSX,'SAR_xz',0, body_box.start.*[1 0 1], body_box.stop.*[1 0 1]);
 
 %% add 10 lines in all direction to make space for PML or MUR absorbing
 %% boundary conditions
@@ -182,8 +182,8 @@ disp(['number of cells: ' num2str(1e-6*numel(mesh.x)*numel(mesh.y)*numel(mesh.z)
 CSX = DefineRectGrid( CSX, unit, mesh );
 
 %% prepare simulation folder
-Sim_Path = mfilename;
-Sim_CSX = [Sim_Path '.xml'];
+Sim_Path = ['tmp_' mfilename];
+Sim_CSX = [mfilename '.xml'];
 
 [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
 [status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
@@ -192,7 +192,7 @@ Sim_CSX = [Sim_Path '.xml'];
 WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 
 %% show the structure and export as vtk data automatically
-CSXGeomPlot( [Sim_Path '/' Sim_CSX] , ['--export-polydata-vtk=' Sim_Path]);
+CSXGeomPlot( [Sim_Path '/' Sim_CSX] , ['--export-polydata-vtk=' Sim_Path ' --RenderDiscMaterial -v']);
 
 %% run openEMS
 RunOpenEMS( Sim_Path, Sim_CSX);
@@ -205,6 +205,7 @@ Zin = port.uf.tot ./ port.if.tot;
 s11 = port.uf.ref ./ port.uf.inc;
 
 P_in = real(0.5 * port.uf.tot .* conj(port.if.tot)); % antenna feed power
+
 % get the feeding power for frequency f0
 P0_in = interp1(freq, P_in, f0);
 
@@ -229,12 +230,12 @@ ylabel( 'admittance Y_{in} (S)' );
 legend( 'real', 'imag' );
 
 %% read SAR values on a xy-plane (range)
-[SAR SAR_mesh] = ReadHDF5Dump([Sim_Path '/SAR.h5'], 'Range', {[],[],0});
-SAR = SAR.FD.values{1};
+[SAR SAR_mesh] = ReadHDF5Dump([Sim_Path '/SAR_xy.h5']);
+SAR = SAR.FD.values{1}/P0_in;
 
-%%
 % SAR plot
 figure()
+subplot(1,2,1);
 [X Y] = ndgrid(SAR_mesh.lines{1},SAR_mesh.lines{2});
 colormap('hot');
 h = pcolor(X,Y,(squeeze(SAR)));
@@ -245,22 +246,38 @@ ylabel('y -->');
 title('local SAR');
 axis equal tight
 
-%%
-[H_field H_mesh] = ReadHDF5Dump([Sim_Path '/Hf.h5'], 'Range',{[],[],0});
+%% read SAR values on a xz-plane (range)
+[SAR SAR_mesh] = ReadHDF5Dump([Sim_Path '/SAR_xz.h5']);
+SAR = SAR.FD.values{1}/P0_in;
+
+% SAR plot
+subplot(1,2,2);
+[X Z] = ndgrid(SAR_mesh.lines{1},SAR_mesh.lines{3});
+colormap('hot');
+h = pcolor(X,Z,(squeeze(SAR)));
+% h = pcolor(X,Y,log10(squeeze(SAR)));
+set(h,'EdgeColor','none');
+xlabel('x -->');
+ylabel('z -->');
+title('local SAR');
+axis equal tight
+
+%% plot B1+/- on an xy-plane
+[H_field H_mesh] = ReadHDF5Dump([Sim_Path '/Hf_xy.h5']);
 % calc Bx,By, B1p, B1m normalize to the input-power
-Bx = MUE0*H_field.FD.values{1}(:,:,1,1)/sqrt(P0_in);
-By = MUE0*H_field.FD.values{1}(:,:,1,2)/sqrt(P0_in);
+Bx = MUE0*H_field.FD.values{1}(:,:,:,1)/sqrt(P0_in);
+By = MUE0*H_field.FD.values{1}(:,:,:,2)/sqrt(P0_in);
 B1p = 0.5*(Bx+1j*By);
 B1m = 0.5*(Bx-1j*By);
 % create a 2D grid to plot on
 [X Y] = ndgrid(H_mesh.lines{1},H_mesh.lines{2});
 
-filter = sqrt(X.^2+Y.^2)<0.1;
-Dump2VTK([Sim_Path '/B1p_xy.vtk'], abs(B1p).*filter, H_mesh, 'B-Field');
-Dump2VTK([Sim_Path '/B1m_xy.vtk'], abs(B1m).*filter, H_mesh, 'B-Field');
+Dump2VTK([Sim_Path '/B1p_xy.vtk'], abs(B1p), H_mesh, 'B-Field');
+Dump2VTK([Sim_Path '/B1m_xy.vtk'], abs(B1m), H_mesh, 'B-Field');
 
 % B1+ plot
 figure()
+subplot(1,2,1);
 h = pcolor(X,Y,log10(abs(B1p)));
 set(h,'EdgeColor','none');
 xlabel('x -->');
@@ -269,7 +286,7 @@ title('B_1^+ field (dB)');
 axis equal tight
 
 % B1- plot
-figure()
+subplot(1,2,2);
 h = pcolor(X,Y,log10(abs(B1m)));
 set(h,'EdgeColor','none');
 xlabel('x -->');
@@ -277,20 +294,42 @@ ylabel('y -->');
 title('B_1^- field (dB)');
 axis equal tight
 
+%% plot B1+/- on an xz-plane
+[H_field H_mesh] = ReadHDF5Dump([Sim_Path '/Hf_xz.h5']);
+% calc Bx,By, B1p, B1m normalize to the input-power
+Bx = MUE0*H_field.FD.values{1}(:,:,:,1)/sqrt(P0_in);
+By = MUE0*H_field.FD.values{1}(:,:,:,2)/sqrt(P0_in);
+B1p = 0.5*(Bx+1j*By);
+B1m = 0.5*(Bx-1j*By);
+% create a 2D grid to plot on
+[X Z] = ndgrid(H_mesh.lines{1},H_mesh.lines{3});
+
+Dump2VTK([Sim_Path '/B1p_xz.vtk'], abs(B1p), H_mesh, 'B-Field');
+Dump2VTK([Sim_Path '/B1m_xz.vtk'], abs(B1m), H_mesh, 'B-Field');
+
+% B1+ plot
+figure()
+subplot(1,2,1);
+h = pcolor(X,Z,log10(squeeze(abs(B1p))));
+set(h,'EdgeColor','none');
+xlabel('x -->');
+ylabel('z -->');
+title('B_1^+ field (dB)');
+axis equal tight
+
+% B1- plot
+subplot(1,2,2);
+h = pcolor(X,Z,log10(squeeze(abs(B1m))));
+set(h,'EdgeColor','none');
+xlabel('x -->');
+ylabel('z -->');
+title('B_1^- field (dB)');
+axis equal tight
+
 %% dump to vtk to view in Paraview
-Dump2VTK([Sim_Path '/SAR_xy.vtk'], SAR, SAR_mesh, 'SAR');
+ConvertHDF5_VTK([Sim_Path '/SAR_xy.h5'],[Sim_Path '/SAR_xy'], 'weight', 1/P0_in, 'FieldName', 'SAR');
+ConvertHDF5_VTK([Sim_Path '/SAR_xz.h5'],[Sim_Path '/SAR_xz'], 'weight', 1/P0_in, 'FieldName', 'SAR');
 
 %%
-ConvertHDF5_VTK([Sim_Path '/Hf.h5'],[Sim_Path '/B1_xy'], 'Range',{[],[],0}, 'weight', MUE0/sqrt(P0_in), 'FieldName', 'B1-field');
-
-%% validation by calculating the power budget
-% calculate the radiated power
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f0, 0, 0);
-p_rad  = nf2ff.Prad;
-
-% read dissipated power in the phantom
-p_loss = ReadHDF5Attribute([Sim_Path '/SAR.h5'],'/FieldData/FD/f0','power');
-
-% display results, should add up to 100% (+/- 5% error margin)
-disp([' power loss in phantom: ' num2str(p_loss) ' W (' num2str(p_loss/P0_in*100) '%)']);
-disp([' power radiated: ' num2str(p_rad) ' W (' num2str(p_rad/P0_in*100) '%)']);
+ConvertHDF5_VTK([Sim_Path '/Hf_xy.h5'],[Sim_Path '/B1_xy'], 'weight', MUE0/sqrt(P0_in), 'FieldName', 'B1-field');
+ConvertHDF5_VTK([Sim_Path '/Hf_xz.h5'],[Sim_Path '/B1_xz'], 'weight', MUE0/sqrt(P0_in), 'FieldName', 'B1-field');
