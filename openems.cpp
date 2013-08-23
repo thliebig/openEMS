@@ -72,6 +72,7 @@ openEMS::openEMS()
 	m_DumpStats = false;
 	endCrit = 1e-6;
 	m_OverSampling = 4;
+	m_CellConstantMaterial=false;
 
 	m_engine = EngineType_Multithreaded; //default engine type
 	m_engine_numThreads = 0;
@@ -654,9 +655,10 @@ int openEMS::SetupFDTD(const char* file)
 	if (SetupOperator(FDTD_Opts)==false)
 		return 2;
 
-	int cellConstantMaterial=0;
-	FDTD_Opts->QueryIntAttribute("CellConstantMaterial",&cellConstantMaterial);
-	if (cellConstantMaterial==1)
+	if (FDTD_Opts->QueryIntAttribute("CellConstantMaterial",&ihelp)==TIXML_SUCCESS)
+		m_CellConstantMaterial=(ihelp==1);
+
+	if (m_CellConstantMaterial)
 	{
 		FDTD_Op->SetCellConstantMaterial();
 		if (g_settings.GetVerboseLevel()>0)

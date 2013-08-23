@@ -88,6 +88,7 @@ protected:
 
 	double endCrit;
 	int m_OverSampling;
+	bool m_CellConstantMaterial;
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
 	ProcessingArray* PA;
