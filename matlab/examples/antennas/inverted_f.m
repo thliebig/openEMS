@@ -160,7 +160,7 @@ port = calcPort(port, Sim_Path, freq);
 
 Zin = port.uf.tot ./ port.if.tot;
 s11 = port.uf.ref ./ port.uf.inc;
-P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
+P_in = real(0.5 * port.uf.tot .* conj( port.if.tot )); % antenna feed power
 
 % plot feed point impedance
 figure
