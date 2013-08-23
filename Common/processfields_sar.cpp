@@ -25,7 +25,7 @@
 
 ProcessFieldsSAR::ProcessFieldsSAR(Engine_Interface_Base* eng_if) : ProcessFieldsFD(eng_if)
 {
-	m_UseCellKappa = false;
+	m_UseCellKappa = true;
 	m_SAR_method = "Simple";
 }
 

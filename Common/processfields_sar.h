@@ -40,7 +40,7 @@ public:
 
 	virtual void SetOptResolution(double optRes, int dir=-1);
 
-	//! Set to true for using the conductivity found at the center of a cell, instead of default E*J
+	//! Set to true for using the conductivity found at the center of a cell, or false for E*J instead
 	virtual void SetUseCellConductivity(bool val) {m_UseCellKappa=val;}
 
 	virtual void SetSARAveragingMethod(string method) {m_SAR_method=method;}

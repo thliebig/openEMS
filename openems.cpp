@@ -441,6 +441,8 @@ bool openEMS::SetupProcessing()
 						string method = db->GetAttributeValue("SAR_Method");
 						if (!method.empty())
 							procSAR->SetSARAveragingMethod(method);
+						// use (center)-cell based conductivity only
+						procSAR->SetUseCellConductivity(true);
 					}
 					else
 						cerr << "openEMS::SetupFDTD: unknown dump box type... skipping!" << endl;
