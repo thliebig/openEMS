@@ -17,7 +17,7 @@ clc
 postprocessing_only = 0;
 
 %% prepare simulation folder
-Sim_Path = 'Dipole_SAR';
+Sim_Path = 'tmp_Dipole_SAR';
 Sim_CSX = 'Dipole_SAR.xml';
 
 %% setup the simulation
@@ -170,8 +170,9 @@ legend( 'real', 'imag' );
 figure
 plot( freq/1e9, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
 grid on
+title( 'reflection coefficient' );
 xlabel( 'frequency f / MHz' );
-ylabel( 'reflection coefficient |S_{11}|' );
+ylabel( 'S_{11} (dB)' );
 
 %% read SAR and visualize
 SAR_field = ReadHDF5Dump([Sim_Path '/SAR.h5']);
@@ -198,6 +199,7 @@ disp(['power budget:   ' num2str(100*(nf2ff.Prad + ptotal) / Pin_f0) ' %']);
 figure
 [X Y] = ndgrid(SAR_mesh.lines{1},SAR_mesh.lines{2});
 h = pcolor(X,Y,log10(SAR_field.FD.values{1}/abs(Pin_f0)));
+title( 'logarithmic SAR on an xy-plane' );
 xlabel('x -->')
 ylabel('y -->')
 axis equal tight
@@ -208,6 +210,7 @@ set(h,'EdgeColor','none');
 figure
 [X Z] = ndgrid(SAR_mesh.lines{1},SAR_mesh.lines{3});
 h = pcolor(X,Z,log10(squeeze(SAR_field.FD.values{1}))/abs(Pin_f0));
+title( 'logarithmic SAR on an xz-plane' );
 xlabel('x -->')
 ylabel('z -->')
 axis equal tight
