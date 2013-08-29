@@ -10,6 +10,7 @@ function FDTD = InitFDTD(varargin)
 %   MaxTime:        max. real time in seconds to simulate
 %   OverSampling:   nyquist oversampling of time domain dumps
 %   CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
+%   MultiGrid:      define a cylindrical sub-grid radius
 %   TimeStep:       force to use a given timestep (dangerous!)
 %   TimeStepFactor: reduce the timestep by a given factor (>0 to <=1)
 %   TimeStepMethod: 1 or 3 chose timestep method (1=CFL, 3=Rennigs (default))
