@@ -10,6 +10,7 @@ Summary of most noticeable changes for version 0.0.31:
   - new ports for waveguides (rectangular and circular waveguides)
   - improved PEC debugging
   - improvements/simplifications in plotting far-fields (thanks to Stefan)
+  - new tutorials and examples
   - many fixes and updates
 
 Summary of most noticeable changes for version 0.0.30:
