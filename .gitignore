@@ -2,6 +2,7 @@ release/
 debug/
 doc/
 obj/
+nf2ff/nf2ff
 tmp*
 Makefile*
 *~
