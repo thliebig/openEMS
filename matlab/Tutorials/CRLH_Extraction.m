@@ -134,15 +134,22 @@ LL = 1/(2*pi*fsh)^2/CR;
 disp([' Series tank: CL = ' num2str(CL*1e12,3) 'pF;  LR = ' num2str(LR*1e9,3) 'nH -> f_se = ' num2str(fse*1e-9,3) 'GHz ']);
 disp([' Shunt  tank: CR = ' num2str(CR*1e12,3) 'pF;  LL = ' num2str(LL*1e9,3) 'nH -> f_sh = ' num2str(fsh*1e-9,3) 'GHz ']);
 
+%% calculate analytical wave-number of an inf-array of cells
+w = 2*pi*f;
+wse = 2*pi*fse;
+wsh = 2*pi*fsh;
+beta_calc = real(acos(1-(w.^2-wse^2).*(w.^2-wsh^2)./(2*w.^2/CR/LR)));
+
 %%
 figure
 beta = -angle(s21)/CRLH.LL/unit;
 plot(abs(beta)*CRLH.LL*unit/pi,f*1e-9,'k-','LineWidth',2)
 grid on;
 hold on;
-plot(2*pi*f./c0*CRLH.LL*unit/pi,f*1e-9,'g-')
+plot(beta_calc/pi,f*1e-9,'c--','LineWidth',2)
+plot(real(port{2}.beta)*CRLH.LL*unit/pi,f*1e-9,'g-','LineWidth',2)
 ylim([1 6])
 xlabel('|\beta| p / \pi \rightarrow','FontSize',12)
 ylabel('frequency (GHz) \rightarrow','FontSize',12)
-l = legend('\beta_{CRLH}','\beta_{light}','Location','Best');
+l = legend('\beta_{CRLH, 1 cell}','\beta_{CRLH, \infty cells}','\beta_{MSL}','Location','East');
 set(l,'FontSize',12);
