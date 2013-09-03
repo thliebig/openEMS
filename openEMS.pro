@@ -84,7 +84,16 @@ win32 {
     LIBS += -L$$CSXCAD_ROOT/lib -lCSXCAD
 
     # #3rd party libraries#
+    #fparser
+    isEmpty(FPARSER_ROOT) {
+        FPARSER_ROOT = /usr
+    } else {
+        INCLUDEPATH += $$FPARSER_ROOT/include
+        LIBS += -L$$FPARSER_ROOT/lib
+        QMAKE_LFLAGS += \'-Wl,-rpath,$$FPARSER_ROOT/lib\'
+    }
     LIBS += -lfparser
+
     LIBS += -ltinyxml
     DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread-mt
