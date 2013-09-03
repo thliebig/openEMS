@@ -45,7 +45,7 @@ FDTD = InitFDTD('CoordSystem', 1); % init a cylindrical FDTD
 f0 = 2e9; % center frequency
 fc = 1e9; % 20 dB corner frequency
 FDTD = SetGaussExcite( FDTD, f0, fc );
-BC = [2 2 2 2 2 2]; % boundary conditions
+BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
 
 %% setup CSXCAD geometry & mesh
