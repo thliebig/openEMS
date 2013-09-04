@@ -77,8 +77,8 @@ nf2ff_xml.ATTRIBUTE.freq = freq;
 nf2ff_xml.theta = theta;
 nf2ff_xml.phi = phi;
 
-nf2ff.xml = [Sim_Path '/' filename '.xml'];
-nf2ff.hdf5 = [Sim_Path '/' nf2ff_xml.ATTRIBUTE.Outfile];
+nf2ff.xml = [Sim_Path '' filesep '' filename '.xml'];
+nf2ff.hdf5 = [Sim_Path '' filesep '' nf2ff_xml.ATTRIBUTE.Outfile];
 
 % create nf2ff structure
 struct_2_xml(nf2ff.xml,nf2ff_xml,'nf2ff');
@@ -88,13 +88,13 @@ dir_name = fileparts( m_filename );
 
 if isunix
     % try development path
-    nf2ff_bin = [dir_name filesep '../nf2ff' filesep 'nf2ff'];
+    nf2ff_bin = [dir_name filesep '..' filesep 'nf2ff' filesep 'nf2ff'];
     if (~exist(nf2ff_bin,'file'))
         % fallback to install path
-        nf2ff_bin = [dir_name filesep '../../../bin' filesep 'nf2ff'];
+        nf2ff_bin = [dir_name filesep '..' filesep '..' filesep '..' filesep 'bin' filesep 'nf2ff'];
     end
 else
-    nf2ff_bin = [dir_name filesep '..' filesep nf2ff.exe];
+    nf2ff_bin = [dir_name filesep '..' filesep 'nf2ff.exe'];
 end
 
 if ((exist(nf2ff.hdf5,'file') && (mode==0)) || (mode==2))
@@ -113,7 +113,7 @@ cd(Sim_Path);
 
 try
     if (~exist(nf2ff_bin,'file'))
-        error('openEMS:CalcNF2FF',['Binary not found: ' nf2ff_bin]);
+        error('openEMS:CalcNF2FF','nf2ff binary not found!');
     end
     if isunix
         % remove LD_LIBRARY_PATH set by matlab
