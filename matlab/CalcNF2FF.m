@@ -85,7 +85,15 @@ struct_2_xml(nf2ff.xml,nf2ff_xml,'nf2ff');
 
 m_filename = mfilename('fullpath');
 dir_name = fileparts( m_filename );
-openEMS_Path = [dir_name filesep '..' filesep];
+
+if isunix
+    % <openEMS-path> could be /usr or ~/opt/openEMS etc.
+    % assume this file to be in  '<openEMS-path>/share/openEMS/matlab/'
+    % assume openEMS binary to be in '<openEMS-path>/bin'
+    openEMS_Path = [dir_name filesep '../../../bin' filesep];
+else
+    openEMS_Path = [dir_name filesep '..' filesep];
+end
 
 if ((exist(nf2ff.hdf5,'file') && (mode==0)) || (mode==2))
     disp('CalcNF2FF: Reading nf2ff data only...')
@@ -104,7 +112,7 @@ cd(Sim_Path);
 try
     if isunix
         % remove LD_LIBRARY_PATH set by matlab
-        system(['export LD_LIBRARY_PATH=; ' openEMS_Path 'nf2ff/nf2ff ' filename '.xml']);
+        system(['export LD_LIBRARY_PATH=; ' openEMS_Path 'nf2ff ' filename '.xml']);
     else
         system([openEMS_Path 'nf2ff.exe ' filename '.xml']);
     end

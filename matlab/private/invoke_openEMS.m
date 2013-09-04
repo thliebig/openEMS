@@ -31,11 +31,15 @@ end
 
 filename = mfilename('fullpath');
 dir = fileparts( filename );
-openEMS_Path = [dir filesep '../..' filesep];
 
 if isunix
+    % <openEMS-path> could be /usr or ~/opt/openEMS etc.
+    % assume this file to be in  '<openEMS-path>/share/openEMS/matlab/private/'
+    % assume openEMS binary to be in '<openEMS-path>/bin'
+    openEMS_Path = [dir filesep '../../../../bin' filesep];
     openEMS_Path = [openEMS_Path 'openEMS.sh'];
 else
+    openEMS_Path = [dir filesep '../..' filesep];
     openEMS_Path = [openEMS_Path 'openEMS'];
 end
 
