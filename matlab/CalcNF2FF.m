@@ -87,12 +87,14 @@ m_filename = mfilename('fullpath');
 dir_name = fileparts( m_filename );
 
 if isunix
-    % <openEMS-path> could be /usr or ~/opt/openEMS etc.
-    % assume this file to be in  '<openEMS-path>/share/openEMS/matlab/'
-    % assume openEMS binary to be in '<openEMS-path>/bin'
-    openEMS_Path = [dir_name filesep '../../../bin' filesep];
+    % try development path
+    nf2ff_bin = [dir_name filesep '../nf2ff' filesep 'nf2ff'];
+    if (~exist(nf2ff_bin,'file'))
+        % fallback to install path
+        nf2ff_bin = [dir_name filesep '../../../bin' filesep 'nf2ff'];
+    end
 else
-    openEMS_Path = [dir_name filesep '..' filesep];
+    nf2ff_bin = [dir_name filesep '..' filesep nf2ff.exe];
 end
 
 if ((exist(nf2ff.hdf5,'file') && (mode==0)) || (mode==2))
@@ -110,13 +112,15 @@ savePath = pwd;
 cd(Sim_Path);
 
 try
+    if (~exist(nf2ff_bin,'file'))
+        error('openEMS:CalcNF2FF',['Binary not found: ' nf2ff_bin]);
+    end
     if isunix
         % remove LD_LIBRARY_PATH set by matlab
-        system(['export LD_LIBRARY_PATH=; ' openEMS_Path 'nf2ff ' filename '.xml']);
+        system(['export LD_LIBRARY_PATH=; ' nf2ff_bin ' ' filename '.xml']);
     else
-        system([openEMS_Path 'nf2ff.exe ' filename '.xml']);
+        system([nf2ff_bin ' ' filename '.xml']);
     end
-
     nf2ff.hdf5;
     cd(savePath);
 catch

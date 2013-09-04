@@ -7,7 +7,7 @@ function invoke_openEMS( opts, logfile, silent )
 %
 % openEMS matlab interface
 % -----------------------
-% author: Sebastian Held
+% author: Sebastian Held, Thorsten Liebig
 
 if nargin < 1
     error 'specify the xml file to simulate'
@@ -23,27 +23,26 @@ if (nargin < 2) || isempty(logfile)
     end
 end
 
-% opts = [opts ' --disable-dumps'];
-% opts = [opts ' --debug-material'];
-% opts = [opts ' --debug-boxes'];
-% opts = [opts ' --engine=sse'];
-% opts = [opts ' --engine=multithreaded'];
-
 filename = mfilename('fullpath');
 dir = fileparts( filename );
 
 if isunix
-    % <openEMS-path> could be /usr or ~/opt/openEMS etc.
-    % assume this file to be in  '<openEMS-path>/share/openEMS/matlab/private/'
-    % assume openEMS binary to be in '<openEMS-path>/bin'
-    openEMS_Path = [dir filesep '../../../../bin' filesep];
-    openEMS_Path = [openEMS_Path 'openEMS.sh'];
+    % try development path
+    openEMS_bin = [dir filesep '../..' filesep 'openEMS.sh'];
+    if (~exist(openEMS_bin,'file'))
+        % fallback to install path
+        openEMS_bin = [dir filesep '../../../../bin' filesep 'openEMS.sh'];
+    end
 else
-    openEMS_Path = [dir filesep '../..' filesep];
-    openEMS_Path = [openEMS_Path 'openEMS'];
+    openEMS_bin = [dir filesep '../..' filesep];
+    openEMS_bin = [openEMS_bin 'openEMS'];
 end
 
-command = [openEMS_Path ' ' opts];
+if (~exist(openEMS_bin,'file'))
+    error('openEMS:invoke_openEMS',['Binary not found: ' openEMS_bin]);
+end
+
+command = [openEMS_bin ' ' opts];
 
 if ~silent
     if (isunix && nargin>1)
@@ -53,7 +52,4 @@ else
     command = [command ' > ' logfile ' 2>&1'];
 end
 
-% if ~silent
-%     disp( ['invoking openEMS simulator: ' command] );
-% end
 system(command);
