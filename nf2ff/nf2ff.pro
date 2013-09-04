@@ -5,8 +5,8 @@ CONFIG += debug_and_release
 
 VERSION = 0.1.0
 
-exists(localPathes.pri) {
-    include(localPathes.pri)
+exists(localPaths.pri) {
+    include(localPaths.pri)
 }
 
 win32 {

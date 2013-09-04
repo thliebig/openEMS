@@ -22,8 +22,8 @@ DEFINES += GIT_VERSION=\\\"$$GITREV\\\"
 # remove unnecessary webkit define
 DEFINES -= QT_WEBKIT
 
-exists(localPathes.pri) {
-    include(localPathes.pri)
+exists(localPaths.pri) {
+    include(localPaths.pri)
 }
 
 ###############################################################################
