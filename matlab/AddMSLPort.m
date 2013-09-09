@@ -22,24 +22,32 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 %               in drawing units. Default is the middle of start/stop.
 % 'PortNamePrefix' a prefix to the port name
 % 
-% the mesh must be already initialized
+% Important: The mesh has to be already set and defined by DefineRectGrid!
 %
 % example:
-%   start = [0 0 height]; 
-%   stop = [length width 0]; 
 %   CSX = AddMetal( CSX, 'metal' ); %create a PEC called 'metal'
-%   [CSX,port] = AddMSLPort( CSX, 0, 1, 'metal', start, stop,  ...
-%                0, [0 0 -1] , 'ExcitePort', 'excite', 'Feed_R', 50 )
-% 
-%   this defines a MSL in x-direction (dir=0) with an e-field excitation 
-%   in -z-direction (evec=[0 0 -1]) the excitation is placed at x=start(1); 
-%   the wave travels towards x=stop(1) the MSL-metal is created 
-%   in xy-plane at z=start(3)
+%   start = [0       -width/2  height];
+%   stop  = [length  +width/2  0     ];
+%   [CSX,port] = AddMSLPort( CSX, 0, 1, 'metal', start, stop, 'x', [0 0 -1], ...
+%                           'ExcitePort', true, 'Feed_R', 50 )
+% Explanation:
+%   - this defines a MSL in x-direction (dir='x')
+%     --> the wave travels along the x-direction
+%   - with an e-field excitation in -z-direction (evec=[0 0 -1])
+%   - the excitation is active and placed at x=start(1) ('ExcitePort', true)
+%   - a 50 Ohm lumped port resistance is placed at x=start(1) ('Feed_R', 50)
+%   - the width-direction is determined by the cross product of the
+%       direction of propagtion (dir='x') and the excitation vector
+%       (evec=[0 0 -1]), in this case it is the y-direction
+%   - the MSL-metal is created in a xy-plane at a height at z=start(3)
+%     --> It is important to define the MSL height in the start coordinate!
+%   - the ground (xy-plane, not defined by the port) is assumed at z=stop(3)
+%     --> The reference plane (ground) is defined in the stop coordinate!
 %
 % Sebastian Held <sebastian.held@gmx.de> May 13 2010
-% Thorsten Liebig <thorsten.liebig@gmx.de> Sept 16 2011
+% Thorsten Liebig <thorsten.liebig@gmx.de> (c) 2011-2013
 %
-% See also InitCSX AddMetal AddMaterial AddExcitation calcPort
+% See also InitCSX DefineRectGrid AddMetal AddMaterial AddExcitation calcPort
 
 %% validate arguments %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %check mesh
