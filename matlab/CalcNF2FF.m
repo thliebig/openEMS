@@ -87,14 +87,9 @@ m_filename = mfilename('fullpath');
 dir_name = fileparts( m_filename );
 
 if isunix
-    % try development path
-    nf2ff_bin = [dir_name filesep '..' filesep 'nf2ff' filesep 'nf2ff'];
-    if (~exist(nf2ff_bin,'file'))
-        % fallback to install path
-        nf2ff_bin = [dir_name filesep '..' filesep '..' filesep '..' filesep 'bin' filesep 'nf2ff'];
-    end
+    nf2ff_bin = searchBinary('nf2ff',[dir_name filesep '..' filesep 'nf2ff' filesep]);
 else
-    nf2ff_bin = [dir_name filesep '..' filesep 'nf2ff.exe'];
+    nf2ff_bin = searchBinary('nf2ff.exe',[dir_name filesep '..' filesep]);
 end
 
 if ((exist(nf2ff.hdf5,'file') && (mode==0)) || (mode==2))
@@ -112,7 +107,7 @@ savePath = pwd;
 cd(Sim_Path);
 
 try
-    if (~exist(nf2ff_bin,'file'))
+    if (isempty(nf2ff_bin))
         error('openEMS:CalcNF2FF','nf2ff binary not found!');
     end
     if isunix

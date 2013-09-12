@@ -27,18 +27,12 @@ filename = mfilename('fullpath');
 dir = fileparts( filename );
 
 if isunix
-    % try development path
-    openEMS_bin = [dir filesep '..' filesep '..' filesep 'openEMS.sh'];
-    if (~exist(openEMS_bin,'file'))
-        % fallback to install path
-        openEMS_bin = [dir filesep '..' filesep '..' filesep '..' filesep '..' filesep 'bin' filesep 'openEMS.sh'];
-    end
+    openEMS_bin = searchBinary('openEMS.sh',[dir filesep '..' filesep '..' filesep]);
 else % assume windows
-    openEMS_bin = [dir filesep '..' filesep '..' filesep];
-    openEMS_bin = [openEMS_bin 'openEMS.exe'];
+    openEMS_bin = searchBinary('openEMS.exe',[dir filesep '..' filesep '..' filesep]);
 end
 
-if (~exist(openEMS_bin,'file'))
+if (isempty(openEMS_bin))
     error('openEMS:invoke_openEMS', 'openEMS binary not found!');
 end
 
