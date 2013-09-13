@@ -87,9 +87,11 @@ m_filename = mfilename('fullpath');
 dir_name = fileparts( m_filename );
 
 if isunix
-    nf2ff_bin = searchBinary('nf2ff',[dir_name filesep '..' filesep 'nf2ff' filesep]);
+    nf2ff_bin = searchBinary('nf2ff', ...
+    {[dir_name filesep '..' filesep 'nf2ff' filesep], ...
+     [dir_name filesep '..' filesep '..' filesep '..' filesep 'bin' filesep]}, 0);
 else
-    nf2ff_bin = searchBinary('nf2ff.exe',[dir_name filesep '..' filesep]);
+    nf2ff_bin = searchBinary('nf2ff.exe',[dir_name filesep '..' filesep], 0);
 end
 
 if ((exist(nf2ff.hdf5,'file') && (mode==0)) || (mode==2))
