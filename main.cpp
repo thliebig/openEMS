@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << " | openEMS " << bits << " -- version " GIT_VERSION << endl;
-	cout << " | (C) 2010-2012 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
+	cout << " | (C) 2010-2013 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license" << endl;
 	cout << " ---------------------------------------------------------------------- " << endl;
 #ifdef MPI_SUPPORT
 	cout << openEMS_FDTD_MPI::GetExtLibsInfo() << endl;
