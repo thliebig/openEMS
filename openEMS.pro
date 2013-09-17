@@ -12,7 +12,7 @@ CONFIG += debug_and_release
 #
 # VERSION
 #
-VERSION=0.0.30
+VERSION=0.0.31
 
 # add git revision
 GITREV = $$system(git describe --tags)
