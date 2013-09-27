@@ -53,8 +53,9 @@ body_model_range = {[],[],[-0.85 0]};
 
 body_mesh_res = 2.5; % should be something like: BC.stripwidth/4
 
-VF_raw_filesuffix = '/home/thorsten/Simulation/Virtual Family Voxel Models V1.0/Ella_26y_V2_1mm/Ella_26y_V2_1mm';
-VF_mat_db_file = '/home/thorsten/Simulation/Virtual Family Voxel Models V1.0/DB_h5_20120711_SEMCADv14.8.h5';
+% paths to virtual family voxel models (VFVM), adept to your install!
+VF_raw_filesuffix = '/tmp/Ella_26y_V2_1mm';
+VF_mat_db_file = '/tmp/DB_h5_20120711_SEMCADv14.8.h5';
 
 % delete(body_model_file); % uncomment to delete old model if something changed
 
