@@ -2,6 +2,18 @@
 #include <octave/ov-struct.h>
 #include "hdf5.h"
 
+// this special treatment is necessary because Win32-Octave ships with a very old hdf5 version (1.6.10)
+void CloseH5Object(hid_t obj)
+{
+#if ((H5_VERS_MAJOR == 1) && (H5_VERS_MINOR == 6))
+	// try group close, than Dataset close
+	if (H5Gclose(obj)<0)
+		H5Dclose(obj);
+#else
+	H5Oclose(obj);
+#endif
+}
+
 DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataSet_Name>,<Attribute_Name>)")
 {
 	octave_value retval;
@@ -27,7 +39,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  return retval;
 	}
 
-#ifdef WIN32
+#if ((H5_VERS_MAJOR == 1) && (H5_VERS_MINOR == 6))
 	// this special treatment is necessary because Win32-Octave ships with a very old hdf5 version (1.6.10)
 	hid_t obj = -1;
 	//try opening the group
@@ -41,7 +53,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 
 	if (obj==-1)
 	{
-	  H5Oclose(obj);
+	  CloseH5Object(obj);
 	  H5Fclose(file);
 	  error("h5readatt_octave: opening the given Object failed");
 	  return retval;
@@ -50,7 +62,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	hid_t attr = H5Aopen_name(obj, args(2).string_value().c_str());
 	if (attr==-1)
 	{
-	  H5Oclose(obj);
+	  CloseH5Object(obj);
 	  H5Fclose(file);
 	  error("h5readatt_octave: opening the given Attribute failed");
 	  return retval;
@@ -60,7 +72,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	if (type<0)
 	{
 	  H5Aclose(attr);
-	  H5Oclose(obj);
+	  CloseH5Object(obj);
 	  H5Fclose(file);
 	  error("h5readatt_octave: dataset type error");
 	  return retval;
@@ -69,7 +81,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	if (H5Tget_class(type)!=H5T_FLOAT)
 	{
 	  H5Aclose(attr);
-	  H5Oclose(obj);
+	  CloseH5Object(obj);
 	  H5Fclose(file);
 	  error("h5readatt_octave: attribute type not supported");
 	  return retval;
@@ -83,7 +95,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  if (H5Aread(attr, H5T_NATIVE_FLOAT, f_value)<0)
 	  {
 	    H5Aclose(attr);
-	    H5Oclose(obj);
+	    CloseH5Object(obj);
 	    H5Fclose(file);
 	    error("h5readatt_octave: reading the given Attribute failed");
 	    return retval;
@@ -96,7 +108,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  if (H5Aread(attr, H5T_NATIVE_DOUBLE, value)<0)
 	  {
 	    H5Aclose(attr);
-	    H5Oclose(obj);
+	    CloseH5Object(obj);
 	    H5Fclose(file);
 	    error("h5readatt_octave: reading the given Attribute failed");
 	    return retval;
@@ -105,20 +117,14 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	else
 	{
 	    H5Aclose(attr);
-	    H5Oclose(obj);
+	    CloseH5Object(obj);
 	    H5Fclose(file);
 	    error("h5readatt_octave: reading the given Attribute failed: unknown type");
 	    return retval;
 	}
 
 	H5Aclose(attr);
-#ifdef WIN32
-	// try group close, than Dataset close
-	if (H5Gclose(obj)<0)
-		H5Dclose(obj);
-#else
-	H5Oclose(obj);
-#endif
+	CloseH5Object(obj);
 	H5Fclose(file);
 	Matrix mat(numVal,1);
 	for (size_t n=0;n<numVal;++n)
