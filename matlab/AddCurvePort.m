@@ -124,14 +124,14 @@ i_start(dir) = (i_start(dir)+i_stop(dir))/2;
 i_stop(dir)  = i_start(dir);
 
 % create the probes
-name = [PortNamePrefix 'port_ut' num2str(portnr)];
+port.U_filename = [PortNamePrefix 'port_ut' num2str(portnr)];
 weight = -1;
-CSX = AddProbe( CSX, name, 0, 'weight', weight );
-CSX = AddBox( CSX, name, prio, v_start, v_stop );
-name = [PortNamePrefix 'port_it' num2str(portnr)];
+CSX = AddProbe( CSX, port.U_filename, 0, 'weight', weight );
+CSX = AddBox( CSX, port.U_filename, prio, v_start, v_stop );
+port.I_filename = [PortNamePrefix 'port_it' num2str(portnr)];
 weight = 1;
-CSX = AddProbe( CSX, name, 1, 'weight',  weight );
-CSX = AddBox( CSX, name, prio, i_start, i_stop );
+CSX = AddProbe( CSX, port.I_filename, 1, 'weight',  weight );
+CSX = AddBox( CSX, port.I_filename, prio, i_start, i_stop );
 
 % create port structure
 port.drawingunit = unit;
