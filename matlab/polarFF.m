@@ -71,7 +71,7 @@ E_far_max = max(nf2ff.E_norm{freq_index}(:));
 if ~isempty(logscale)
     gridmin = logscale(1);
 
-    Dmax = 10*log10(nf2ff.Dmax);
+    Dmax = 10*log10(nf2ff.Dmax(freq_index));
     E_far_scale = Dmax - gridmin;
     E_far = 20*log10(nf2ff.E_norm{freq_index}) - 20*log10(E_far_max) + E_far_scale;
     E_far = E_far .* ( E_far > 0 );
