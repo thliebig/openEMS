@@ -44,7 +44,7 @@ for n=1:2:numel(varargin)
 end
 
 D_log = nf2ff.E_norm{freq_index} / max(nf2ff.E_norm{freq_index}(:));
-D_log = 20*log10(D_log) + 10*log10(nf2ff.Dmax);
+D_log = 20*log10(D_log) + 10*log10(nf2ff.Dmax(freq_index));
 
 if (strcmp(xaxis,'theta')==1);
     xax = nf2ff.theta;
