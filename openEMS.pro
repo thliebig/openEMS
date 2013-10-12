@@ -97,17 +97,22 @@ win32 {
     LIBS += -ltinyxml
     DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread-mt
-    # hdf5 (and mpi for parallel hdf5)
     LIBS += -lhdf5_hl -lhdf5
-    LIBS += -lmpi -lmpi_cxx
-    INCLUDEPATH += /usr/include/mpi
     ### vtk ###
+    isEmpty(VTK_INCLUDEPATH) {
     INCLUDEPATH += /usr/include/vtk-5.2 \
         /usr/include/vtk-5.4 \
         /usr/include/vtk-5.6 \
         /usr/include/vtk-5.8 \
         /usr/include/vtk-5.10 \
         /usr/include/vtk
+    } else {
+    INCLUDEPATH += $$VTK_INCLUDEPATH
+    }
+    isEmpty(VTK_LIBRARYPATH){
+    } else {
+    LIBS +=-L$$VTK_LIBRARYPATH
+    }
     LIBS += -lvtkCommon \
         -lvtkIO \
         -lvtksys \

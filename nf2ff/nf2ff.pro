@@ -35,10 +35,12 @@ win32 {
 !win32 {
     LIBS += -lboost_thread-mt
     LIBS += -ltinyxml
-    # hdf5 (and mpi for parallel hdf5)
+    #vtk
+    isEmpty(VTK_LIBRARYPATH){
+    } else {
+    LIBS +=-L$$VTK_LIBRARYPATH
+    }
     LIBS += -lhdf5_hl -lhdf5
-    LIBS += -lmpi -lmpi_cxx
-    INCLUDEPATH += /usr/include/mpi
 }
 
 # hdf5 compat
