@@ -48,7 +48,7 @@ if (iscell(port))
     return;
 end
 
-if ((strcmpi(port.type,'MSL')~=1) && (strcmpi(port.type,'Coaxial')~=1))
+if ((strcmpi(port.type,'MSL')~=1) && (strcmpi(port.type,'Coaxial')~=1) && (strcmpi(port.type,'StripLine')~=1))
     error('openEMS:calcTLPort','error, type is not a transmission line port');
 end
 
@@ -82,8 +82,18 @@ for n=1:2:numel(varargin)
     end
 end
 
+if (strcmpi(port.type,'StripLine')==1)
+    U1 = ReadUI( port.U_filename(:,1), SimDir, f, UI_args{:} );
+    U2 = ReadUI( port.U_filename(:,1), SimDir, f, UI_args{:} );
+    U = U1;
+    for n=1:3
+        U.TD{n}.val = U1.TD{n}.val+U2.TD{n}.val;
+        U.FD{n}.val = U1.FD{n}.val+U2.FD{n}.val;
+    end
+else
+    U = ReadUI( port.U_filename, SimDir, f, UI_args{:} );
+end
 % read time domain data (multiples files)
-U = ReadUI( port.U_filename, SimDir, f, UI_args{:} );
 I = ReadUI( port.I_filename, SimDir, f, UI_args{:} );
 
 % store the original frequency domain waveforms
