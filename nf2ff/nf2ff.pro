@@ -18,6 +18,7 @@ win32 {
 
     # #3rd party libraries#
     # tinyxml
+    DEFINES += TIXML_USE_STL
     INCLUDEPATH += $$WIN32_LIB_ROOT/tinyxml/include
     LIBS += -L$$WIN32_LIB_ROOT/tinyxml/bin -ltinyxml2
 
