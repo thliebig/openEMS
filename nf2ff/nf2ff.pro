@@ -34,7 +34,7 @@ win32 {
     LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread -lboost_chrono -lboost_system
 }
 !win32 {
-    LIBS += -lboost_thread-mt
+    LIBS += -lboost_thread -lboost_system
     LIBS += -ltinyxml
     #vtk
     isEmpty(VTK_LIBRARYPATH){
