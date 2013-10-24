@@ -96,7 +96,7 @@ win32 {
 
     LIBS += -ltinyxml
     DEFINES += TIXML_USE_STL
-    LIBS += -lboost_thread
+    LIBS += -lboost_thread -lboost_system
     LIBS += -lhdf5_hl -lhdf5
     ### vtk ###
     isEmpty(VTK_INCLUDEPATH) {
