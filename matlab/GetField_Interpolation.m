@@ -62,6 +62,10 @@ mesh_i.lines{1} = x_i;
 mesh_i.lines{2} = y_i;
 mesh_i.lines{3} = z_i;
 
+% clear or create empty original indices list, since such do not make any
+% sense with interpolated field values
+mesh_i.original_indices = {};
+
 if (isfield(field,'TD'))
     field_i.TD = interpolate_fields(field.TD,x,y,z, x_i, y_i, z_i);
     field_i.TD.time = field.TD.time;

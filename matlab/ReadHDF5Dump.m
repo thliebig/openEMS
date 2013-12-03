@@ -74,6 +74,13 @@ for n=1:2:(nargin-1)
                     field.FD.values{n}(:,end+1,:,:) =  field.FD.values{n}(:,1,:,:);
                 end
             end
+            if (isfield(mesh,'original_indices'))
+                if (~isempty(mesh.original_indices))
+                    mesh.original_indices{2} = [mesh.original_indices{2} 1];
+                end
+            else
+                mesh.original_indices = {1:numel(mesh.lines{1}),[1:numel(mesh.lines{2}) 1],[1:numel(mesh.lines{3})]};
+            end
         end
     end
 end

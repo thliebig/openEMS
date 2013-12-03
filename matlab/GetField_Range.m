@@ -47,6 +47,15 @@ for n=1:3
     mesh_i.lines{n} = mesh.lines{n}(ind_range{n});
 end
 
+% store original indices
+if (isfield(mesh_i,'original_indices'))
+    for n=1:3
+        mesh_i.original_indices{n} = mesh_i.original_indices{n}(ind_range{n});
+    end
+else
+    mesh_i.original_indices = ind_range;
+end
+
 field_i = field;
 
 if (isfield(field,'FD'))

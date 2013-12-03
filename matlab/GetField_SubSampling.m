@@ -33,6 +33,15 @@ mesh_i.lines{1} = x_i;
 mesh_i.lines{2} = y_i;
 mesh_i.lines{3} = z_i;
 
+% store original indices
+if (isfield(mesh_i,'original_indices'))
+    for n=1:3
+        mesh_i.original_indices{n} = mesh_i.original_indices{n}(ss_idx{n});
+    end
+else
+    mesh_i.original_indices = ss_idx;
+end
+
 if (isfield(field,'TD'))
     field_i.TD = subsample_fields(field.TD,ss_idx);
     field_i.TD.time = field.TD.time;
