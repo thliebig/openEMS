@@ -278,7 +278,7 @@ void Operator_CylinderMultiGrid::DumpPEC2File( string filename, unsigned int *ra
 		range[2*n] = 0;
 		range[2*n+1] = numLines[n]-1;
 	}
-	range[0] = m_Split_Pos;
+	range[0] = m_Split_Pos-1;
 	Operator_Cylinder::DumpPEC2File(filename + "_S" + ConvertInt(m_MultiGridLevel), range);
 	delete[] range;
 	range=NULL;

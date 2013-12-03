@@ -367,6 +367,8 @@ Grid_Path Operator_Cylinder::FindPath(double start[], double stop[])
 	if (ret==0)
 	{
 		TransformCoordSystem(intersect,intersect,CARTESIAN,m_MeshType);
+		intersect[1] = GetDiscLine(1,GetNumberOfLines(1,true)-1-(int)CC_closedAlpha);
+		l_start[1] = FitToAlphaRange(l_start[1]);
 		path1 = Operator::FindPath(l_start, intersect);
 		if (g_settings.GetVerboseLevel()>2)
 			cerr << __func__ << ": Intersection top: " << intersect[0] << "," << intersect[1] << "," << intersect[2] << endl;
@@ -396,6 +398,8 @@ Grid_Path Operator_Cylinder::FindPath(double start[], double stop[])
 
 	if (ret==0)
 	{
+		intersect[1] = GetDiscLine(1,0);
+		l_stop[1] = FitToAlphaRange(l_stop[1]);
 		path2 = Operator::FindPath(intersect, l_stop);
 		if (g_settings.GetVerboseLevel()>2)
 			cerr << __func__ << ": Intersection bottom: " << intersect[0] << "," << intersect[1] << "," << intersect[2] << endl;
@@ -416,6 +420,13 @@ Grid_Path Operator_Cylinder::FindPath(double start[], double stop[])
 		path.posPath[2].push_back(path2.posPath[2].at(t));
 		path.dir.push_back(path2.dir.at(t));
 	}
+
+	if (CC_closedAlpha==true)
+		for (size_t t=0; t<path.dir.size(); ++t)
+		{
+			if ( ((path.dir.at(t)==0) || (path.dir.at(t)==2)) && (path.posPath[1].at(t)==0))
+				path.posPath[1].at(t) = numLines[1]-2;
+		}
 
 	return path;
 }
