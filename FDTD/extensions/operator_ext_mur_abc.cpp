@@ -175,7 +175,7 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 				if (m_v_phase>0.0)
 					c0t = m_v_phase * dT;
 				else
-					c0t = __C0__ * dT;
+					c0t = __C0__ / sqrt(m_Op->GetBackgroundEpsR()*m_Op->GetBackgroundMueR()) * dT;
 				m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] = (c0t - delta) / (c0t + delta);
 				m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] = m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]];
 			}

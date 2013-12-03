@@ -57,6 +57,14 @@ if (isfield(CSX,'ATTRIBUTE'))
     if (isfield(CSX.ATTRIBUTE,'CoordSystem'))
         nf2ff.CoordSystem = CSX.ATTRIBUTE.CoordSystem;
     end
+    if (isfield(CSX,'BackgroundMaterial'))
+        if (isfield(CSX.ATTRIBUTE,'Epsilon'))
+            nf2ff.Eps_r = CSX.ATTRIBUTE.BG_epsR;
+        end
+        if (isfield(CSX.ATTRIBUTE,'Mue'))
+            nf2ff.Mue_r = CSX.ATTRIBUTE.BG_mueR;
+        end
+    end
 end
 
 for nd = 1:3

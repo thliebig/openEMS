@@ -57,6 +57,8 @@ void Operator_Base::Init()
 		discLines[n]=NULL;
 	for (int n=0; n<6; ++n)
 		m_BC[n]=0;
+
+	SetBackgroundMaterial(1,1,0,0);
 }
 
 void Operator_Base::Delete()
@@ -81,4 +83,53 @@ void Operator_Base::SetMaterialStoreFlags(int type, bool val)
 	if ((type<0) || (type>4))
 		return;
 	m_StoreMaterial[type]=val;
+}
+
+
+void Operator_Base::SetBackgroundMaterial(double epsR, double mueR, double kappa, double sigma)
+{
+	SetBackgroundEpsR(epsR);
+	SetBackgroundMueR(mueR);
+	SetBackgroundKappa(kappa);
+	SetBackgroundSigma(sigma);
+}
+
+void Operator_Base::SetBackgroundEpsR(double val)
+{
+	if (val<1)
+	{
+		cerr << __func__ << ": Warning, a relative electric permittivity <1 it not supported, skipping" << endl;
+		return;
+	}
+	m_BG_epsR=val;
+}
+
+void Operator_Base::SetBackgroundMueR(double val)
+{
+	if (val<1)
+	{
+		cerr << __func__ << ": Warning, a relative magnetic permeability <1 it not supported, skipping" << endl;
+		return;
+	}
+	m_BG_mueR=val;
+}
+
+void Operator_Base::SetBackgroundKappa(double val)
+{
+	if (val<0)
+	{
+		cerr << __func__ << ": Warning, an electric conductivity <0 it not supported, skipping" << endl;
+		return;
+	}
+	m_BG_kappa=val;
+}
+
+void Operator_Base::SetBackgroundSigma(double val)
+{
+	if (val<0)
+	{
+		cerr << __func__ << ": Warning, an artifival magnetic conductivity <0 it not supported, skipping" << endl;
+		return;
+	}
+	m_BG_sigma=val;
 }

@@ -44,6 +44,13 @@ nf2ff_xml.Planes = {};
 
 nf2ff_xml.ATTRIBUTE.Outfile = [filename '.h5'];
 
+if (isfield(nf2ff,'Eps_r'))
+    nf2ff_xml.ATTRIBUTE.Eps_r = nf2ff.Eps_r;
+end
+if (isfield(nf2ff,'Mue_r'))
+    nf2ff_xml.ATTRIBUTE.Mue_r = nf2ff.Mue_r;
+end
+
 for n=1:2:numel(varargin)-1
     if (strcmp(varargin{n},'Mode'))
         mode = varargin{n+1};

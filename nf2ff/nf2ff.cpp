@@ -84,12 +84,19 @@ void nf2ff::SetPermittivity(vector<float> permittivity)
 	if (permittivity.size()==0)
 		return;
 
+	m_permittivity = permittivity;
+	if (permittivity.size()==1)
+	{
+		for (size_t fn=0;fn<m_nf2ff.size();++fn)
+			m_nf2ff.at(fn)->SetPermittivity(permittivity.at(0));
+		return;
+	}
+
 	if (permittivity.size()!=m_freq.size())
 	{
 		cerr << __func__ << ": Error, permittivity vector size must match number of set frequencies! skipping!" << endl;
 		return;
 	}
-	m_permittivity = permittivity;
 	for (size_t fn=0;fn<m_nf2ff.size();++fn)
 		m_nf2ff.at(fn)->SetPermittivity(permittivity.at(fn));
 }
@@ -99,12 +106,19 @@ void nf2ff::SetPermeability(vector<float> permeability)
 	if (permeability.size()==0)
 		return;
 
+	m_permeability = permeability;
+	if (permeability.size()==1)
+	{
+		for (size_t fn=0;fn<m_nf2ff.size();++fn)
+			m_nf2ff.at(fn)->SetPermeability(permeability.at(0));
+		return;
+	}
+
 	if (permeability.size()!=m_freq.size())
 	{
 		cerr << __func__ << ": Error, permeability vector size must match number of set frequencies! skipping!" << endl;
 		return;
 	}
-	m_permeability = permeability;
 	for (size_t fn=0;fn<m_nf2ff.size();++fn)
 		m_nf2ff.at(fn)->SetPermeability(permeability.at(fn));
 

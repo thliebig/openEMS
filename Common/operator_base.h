@@ -108,6 +108,29 @@ public:
 	//! Get stored discrete material (if storage is enabled).
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const = 0;
 
+	//! Set the background material (default is vacuum)
+	virtual void SetBackgroundMaterial(double epsR=0, double mueR=0, double kappa=0, double sigma=0);
+
+	//! Get background rel. electric permittivity
+	double GetBackgroundEpsR() const {return m_BG_epsR;}
+	//! Set background rel. electric permittivity
+	void SetBackgroundEpsR(double val);
+
+	//! Get background rel. magnetic permeability
+	double GetBackgroundMueR() const {return m_BG_mueR;}
+	//! Set background rel. magnetic permeability
+	void SetBackgroundMueR(double val);
+
+	//! Get background electric conductivity
+	double GetBackgroundKappa() const {return m_BG_kappa;}
+	//! Set background electric conductivity
+	void SetBackgroundKappa(double val);
+
+	//! Get background magnetic conductivity (artificial)
+	double GetBackgroundSigma() const {return m_BG_sigma;}
+	//! Set background magnetic conductivity (artificial)
+	void SetBackgroundSigma(double val);
+
 protected:
 	Operator_Base();
 
@@ -126,6 +149,12 @@ protected:
 
 	//! bool flag array to store material data for post-processing
 	bool m_StoreMaterial[4];
+
+	//! background materials
+	double m_BG_epsR;
+	double m_BG_mueR;
+	double m_BG_kappa;
+	double m_BG_sigma;
 
 	CoordinateSystem m_MeshType;
 	unsigned int numLines[3];

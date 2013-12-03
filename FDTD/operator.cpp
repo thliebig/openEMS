@@ -505,6 +505,8 @@ void Operator::ShowStat() const
 	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MiB) " << endl;
 	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MiB) " << endl;
 	cout << "-----------------------------------" << endl;
+	cout << "Background materials (epsR/mueR/kappa/sigma): " << GetBackgroundEpsR() << "/" << GetBackgroundMueR() << "/" << GetBackgroundKappa() << "/" << GetBackgroundSigma() << endl;
+	cout << "-----------------------------------" << endl;
 	cout << "Number of PEC edges\t: " << m_Nr_PEC[0]+m_Nr_PEC[1]+m_Nr_PEC[2] << endl;
 	cout << "in " << GetDirName(0) << " direction\t\t: " << m_Nr_PEC[0] << endl;
 	cout << "in " << GetDirName(1) << " direction\t\t: " << m_Nr_PEC[1] << endl;
@@ -805,8 +807,13 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 
 	CSX = geo;
 
-	CSRectGrid* grid=CSX->GetGrid();
+	CSBackgroundMaterial* bg_mat=CSX->GetBackgroundMaterial();
+	SetBackgroundEpsR(bg_mat->GetEpsilon());
+	SetBackgroundMueR(bg_mat->GetMue());
+	SetBackgroundKappa(bg_mat->GetKappa());
+	SetBackgroundSigma(bg_mat->GetSigma());
 
+	CSRectGrid* grid=CSX->GetGrid();
 	return SetupCSXGrid(CSRectGrid::Clone(grid));
 }
 
@@ -1227,13 +1234,13 @@ double Operator::GetMaterial(int ny, const double* coords, int MatType, bool mar
 	switch (MatType)
 	{
 	case 0:
-		return 1;
+		return GetBackgroundEpsR();
 	case 1:
-		return 0;
+		return GetBackgroundKappa();
 	case 2:
-		return 1;
+		return GetBackgroundMueR();
 	case 3:
-		return 0;
+		return GetBackgroundSigma();
 	default:
 		cerr << "Operator::GetMaterial: Error: unknown material type" << endl;
 		return 0;
@@ -1850,6 +1857,7 @@ void Operator::DeleteExtension(Operator_Extension* op_ext)
 double Operator::CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const
 {
 	double average_mesh_disc[3];
+	double c0 = __C0__/sqrt(GetBackgroundEpsR()*GetBackgroundMueR());
 
 	//calculate average mesh deltas
 	for (int n=0;n<3;++n)
@@ -1864,18 +1872,18 @@ double Operator::CalcNumericPhaseVelocity(unsigned int start[3], unsigned int st
 		int nPP = (n+2)%3;
 		if ((fabs(propDir[n])==1) && (propDir[nP]==0) && (propDir[nPP]==0))
 		{
-			double kx = asin(average_mesh_disc[0]/__C0__/dT*sin(2*PI*freq*dT/2))*2/average_mesh_disc[0];
+			double kx = asin(average_mesh_disc[0]/c0/dT*sin(2*PI*freq*dT/2))*2/average_mesh_disc[0];
 			return 2*PI*freq/kx;
 		}
 	}
 
 	// else, do an newton iterative estimation
-	double k0=2*PI*freq/__C0__;
+	double k0=2*PI*freq/c0;
 	double k=k0;
-	double RHS = pow(sin(2*PI*freq*dT/2)/__C0__/dT,2);
+	double RHS = pow(sin(2*PI*freq*dT/2)/c0/dT,2);
 	double fk=1,fdk=0;
 	double old_phv=0;
-	double phv=__C0__;
+	double phv=c0;
 	double err_est = 1e-6;
 	int it_count=0;
 	while (fabs(old_phv-phv)>err_est)
