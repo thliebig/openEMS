@@ -26,6 +26,11 @@ function [port] = calcPort( port, SimDir, f, varargin)
 %   port.if.tot/inc/ref     total, incoming and reflected current
 %   port.ZL_ref             used refernce impedance
 %
+%   port.P_inc              incoming power
+%   port.P_ref              reflected power
+%   port.P_acc              accepted power (incoming minus reflected,
+%                           may be negative for passive ports)
+%
 %   if port is a transmission line port:
 %   port.beta:              propagation constant
 %   port.ZL:                characteristic line impedance
@@ -52,14 +57,18 @@ end
 
 if (strcmpi(port.type,'MSL') || strcmpi(port.type,'Coaxial') || strcmpi(port.type,'StripLine'))
     port = calcTLPort( port, SimDir, f, varargin{:});
-    return
 elseif strcmpi(port.type,'WaveGuide')
     port = calcWGPort( port, SimDir, f, varargin{:});
-    return
 elseif (strcmpi(port.type,'Lumped') || strcmpi(port.type,'Curve'))
     port = calcLumpedPort( port, SimDir, f, varargin{:});
-    return
 else
     error 'unknown port type'
 end
 
+% calc some more port parameter
+% incoming power
+port.P_inc = 0.5*real(port.uf.inc.*conj(port.if.inc));
+% reflected power
+port.P_ref = 0.5*real(port.uf.ref.*conj(port.if.ref));
+% accepted power (incoming - reflected)
+port.P_acc = 0.5*real(port.uf.tot.*conj(port.if.tot));
