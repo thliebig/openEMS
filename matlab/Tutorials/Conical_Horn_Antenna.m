@@ -122,8 +122,6 @@ port = calcPort(port, Sim_Path, freq);
 
 Zin = port.uf.tot ./ port.if.tot;
 s11 = port.uf.ref ./ port.uf.inc;
-P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
-
 
 % plot reflection coefficient S11
 figure

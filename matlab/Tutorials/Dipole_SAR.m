@@ -151,8 +151,7 @@ port = calcPort(port, Sim_Path, freq);
 s11 = port.uf.ref./port.uf.inc;
 Zin = port.uf.tot./port.if.tot;
 
-Pin = real(0.5*port.uf.tot.*conj(port.if.tot));
-Pin_f0 = interp1(freq, Pin, f0);
+Pin_f0 = interp1(freq, port.P_acc, f0);
 
 %%
 % plot feed point impedance

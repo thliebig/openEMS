@@ -117,7 +117,6 @@ port = calcPort(port, Sim_Path, freq);
 
 Zin = port.uf.tot ./ port.if.tot;
 s11 = port.uf.ref ./ port.uf.inc;
-P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
 
 % plot feed point impedance
 figure
@@ -153,7 +152,7 @@ nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, [-180:2:180]*pi/180, [0 90]*pi/180);
 % display power and directivity
 disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
 disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax) ' (' num2str(10*log10(nf2ff.Dmax)) ' dBi)'] );
-disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in(f_res_ind))) ' %']);
+disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./port.P_inc(f_res_ind)) ' %']);
 
 % normalized directivity as polar plot
 figure

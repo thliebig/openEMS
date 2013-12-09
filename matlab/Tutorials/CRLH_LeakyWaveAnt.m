@@ -143,12 +143,11 @@ disp( 'calculating 3D far field pattern...' );
 nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 'Outfile','3D_Pattern.h5', 'Mode', 0,'Verbose',1);
 
 %%
-P_in = 0.5*port{1}.uf.inc .* conj( port{1}.if.inc ); % accepted antenna feed power
-P_in = interp1(f, P_in, f_rad);
+P_in = interp1(f, port.P_acc, f_rad);
 
 figure()
 
-[AX,H1,H2] = plotyy(f_rad/1e9,nf2ff.Dmax',f_rad/1e9,100*nf2ff.Prad'./real(P_in),'plot');
+[AX,H1,H2] = plotyy(f_rad/1e9,nf2ff.Dmax',f_rad/1e9,100*nf2ff.Prad'./P_in,'plot');
 grid on
 xlabel( 'frequency (GHz)' );
 set(get(AX(1),'Ylabel'),'String','directivity (dBi)')

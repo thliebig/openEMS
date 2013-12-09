@@ -205,10 +205,8 @@ port = calcPort(port, Sim_Path, freq);
 Zin = port.uf.tot ./ port.if.tot;
 s11 = port.uf.ref ./ port.uf.inc;
 
-P_in = real(0.5 * port.uf.tot .* conj(port.if.tot)); % antenna feed power
-
 % get the feeding power for frequency f0
-P0_in = interp1(freq, P_in, f0);
+P0_in = interp1(freq, port.P_acc, f0);
 
 %%
 % plot reflection coefficient S11

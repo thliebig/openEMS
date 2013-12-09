@@ -134,7 +134,6 @@ port = calcPort(port, Sim_Path, freq);
 
 Zin = port.uf.tot ./ port.if.tot;
 s11 = port.uf.ref ./ port.uf.inc;
-P_in = 0.5*real(port.uf.tot).*conj(port.if.tot); % accepted antenna feed power
 
 % plot feed point impedance
 figure
@@ -162,7 +161,7 @@ drawnow
 f_res = f0;
 
 % get accepted antenna power at frequency f0
-P_in_0 = interp1(freq, P_in, f0);
+P_in_0 = interp1(freq, port.P_acc, f0);
 
 % calculate the far field at phi=0 degrees and at phi=90 degrees
 thetaRange = unique([0:0.5:90 90:180]);
@@ -176,7 +175,7 @@ theta_HPBW = interp1(nf2ff.E_norm{1}(:,1)/max(nf2ff.E_norm{1}(:,1)),thetaRange,1
 % display power and directivity
 disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
 disp( ['directivity: Dmax = ' num2str(nf2ff.Dmax) ' (' num2str(10*log10(nf2ff.Dmax)) ' dBi)'] );
-disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in_0)) ' %']);
+disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./P_in_0) ' %']);
 disp( ['theta_HPBW = ' num2str(theta_HPBW) ' °']);
 
 

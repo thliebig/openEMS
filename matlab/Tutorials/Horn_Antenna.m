@@ -146,7 +146,6 @@ port = calcPort(port, Sim_Path, freq);
 
 Zin = port.uf.tot ./ port.if.tot;
 s11 = port.uf.ref ./ port.uf.inc;
-P_in = 0.5 * port.uf.inc .* conj( port.if.inc ); % antenna feed power
 
 plot( freq/1e9, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
 ylim([-60 0]);
