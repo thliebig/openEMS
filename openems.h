@@ -68,7 +68,7 @@ public:
 	//! Check for abort conditions
 	bool CheckAbortCond();
 
-	Engine_Interface_FDTD* NewEngineInterface();
+	Engine_Interface_FDTD* NewEngineInterface(int multigridlevel = 0);
 
 protected:
 	bool CylinderCoords;

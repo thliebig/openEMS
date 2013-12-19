@@ -50,6 +50,9 @@ public:
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
+	//! Get the multi grid level of this operator, e.g. 0 is main grid --> no parent grid
+	int GetMultiGridLevel() const {return m_MultiGridLevel;}
+
 	Operator_Cylinder* GetInnerOperator() const {return m_InnerOp;}
 
 	virtual void SetExcitationSignal(Excitation* exc);
