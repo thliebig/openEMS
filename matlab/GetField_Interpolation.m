@@ -35,9 +35,21 @@ y = mesh.lines{2};
 z = mesh.lines{3};
 
 if (isnumeric(lines))
-    x_i = linspace(x(1),x(end),lines(1));
-    y_i = linspace(y(1),y(end),lines(2));
-    z_i = linspace(z(1),z(end),lines(3));
+    if (lines(1)==0)
+        x_i = x;
+    else
+        x_i = linspace(x(1),x(end),lines(1));
+    end
+    if (lines(2)==0)
+        y_i = y;
+    else
+        y_i = linspace(y(1),y(end),lines(2));
+    end
+    if (lines(3)==0)
+        z_i = z;
+    else
+        z_i = linspace(z(1),z(end),lines(3));
+    end
 else
     if isempty(lines{1})
         x_i = x;
