@@ -200,19 +200,17 @@ void ProcessFieldsSAR::DumpFDData()
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		orig_pos[0] = posLines[0][pos[0]];
-		coord[0] = Op->GetDiscLine(0,orig_pos[0],true);
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			orig_pos[1] = posLines[1][pos[1]];
-			coord[1] = Op->GetDiscLine(1,orig_pos[1],true);
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				orig_pos[2] = posLines[2][pos[2]];
-				coord[2] = Op->GetDiscLine(2,orig_pos[2],true);
 
 				cell_volume[pos[0]][pos[1]][pos[2]] = Op->GetCellVolume(orig_pos);
 				cell_density[pos[0]][pos[1]][pos[2]] = 0.0;
 
+				Op->GetCellCenterMaterialAvgCoord(orig_pos, coord);
 				prop = CSX->GetPropertyByCoordPriority(coord,CSProperties::MATERIAL);
 				if (prop!=0)
 				{

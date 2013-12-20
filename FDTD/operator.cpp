@@ -192,7 +192,7 @@ bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool du
 	return true;
 }
 
-bool Operator::GetNodeCoords(unsigned int pos[3], double* coords, bool dualMesh, CoordinateSystem c_system) const
+bool Operator::GetNodeCoords(const unsigned int pos[3], double* coords, bool dualMesh, CoordinateSystem c_system) const
 {
 	for (int n=0;n<3;++n)
 		coords[n]=GetDiscLine(n,pos[n],dualMesh);
@@ -1208,6 +1208,17 @@ double Operator::GetRawDiscDelta(int ny, const int pos) const
 		return (discLines[ny][numLines[ny]-2] - discLines[ny][numLines[ny]-1]);
 
 	return (discLines[ny][pos+1] - discLines[ny][pos]);
+}
+
+bool Operator::GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const
+{
+	for (int n=0;n<3;++n)
+	{
+		if (pos[n]>=numLines[n])
+			return false;
+	}
+	GetNodeCoords(pos, coord, true);
+	return true;
 }
 
 double Operator::GetMaterial(int ny, const double* coords, int MatType, bool markAsUsed) const

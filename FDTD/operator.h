@@ -107,7 +107,7 @@ public:
 	//! Get the coordinates for a given node index and component, according to the yee-algorithm. Returns true if inside the FDTD domain.
 	virtual bool GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const;
 
-	virtual bool GetNodeCoords(unsigned int pos[3], double* coords, bool dualMesh=false, CoordinateSystem c_system=UNDEFINED_CS) const;
+	virtual bool GetNodeCoords(const unsigned int pos[3], double* coords, bool dualMesh=false, CoordinateSystem c_system=UNDEFINED_CS) const;
 
 	//! Get the node width for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetEdgeLength(ny,pos,!dualMesh);}
@@ -159,6 +159,9 @@ public:
 	virtual void CleanupMaterialStorage();
 
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const;
+
+	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
+	virtual bool GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const;
 
 	virtual void SetExcitationSignal(Excitation* exc);
 	virtual Excitation* GetExcitationSignal() const {return m_Exc;}

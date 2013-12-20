@@ -85,6 +85,18 @@ void Operator_Base::SetMaterialStoreFlags(int type, bool val)
 	m_StoreMaterial[type]=val;
 }
 
+bool Operator_Base::GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const
+{
+	unsigned int l_pos[3];
+	for (int n=0;n<3;++n)
+	{
+		if (pos[n]<0)
+			return false;
+		else
+			l_pos[n] = pos[n];
+	}
+	return GetCellCenterMaterialAvgCoord(l_pos, coord);
+}
 
 void Operator_Base::SetBackgroundMaterial(double epsR, double mueR, double kappa, double sigma, double density)
 {
