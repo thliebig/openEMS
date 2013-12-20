@@ -86,12 +86,13 @@ void Operator_Base::SetMaterialStoreFlags(int type, bool val)
 }
 
 
-void Operator_Base::SetBackgroundMaterial(double epsR, double mueR, double kappa, double sigma)
+void Operator_Base::SetBackgroundMaterial(double epsR, double mueR, double kappa, double sigma, double density)
 {
 	SetBackgroundEpsR(epsR);
 	SetBackgroundMueR(mueR);
 	SetBackgroundKappa(kappa);
 	SetBackgroundSigma(sigma);
+	SetBackgroundDensity(density);
 }
 
 void Operator_Base::SetBackgroundEpsR(double val)
@@ -132,4 +133,15 @@ void Operator_Base::SetBackgroundSigma(double val)
 		return;
 	}
 	m_BG_sigma=val;
+}
+
+
+void Operator_Base::SetBackgroundDensity(double val)
+{
+	if (val<0)
+	{
+		cerr << __func__ << ": Warning, a mass density <0 it not supported, skipping" << endl;
+		return;
+	}
+	m_BG_density=val;
 }

@@ -812,6 +812,7 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 	SetBackgroundMueR(bg_mat->GetMue());
 	SetBackgroundKappa(bg_mat->GetKappa());
 	SetBackgroundSigma(bg_mat->GetSigma());
+	SetBackgroundDensity(0);
 
 	CSRectGrid* grid=CSX->GetGrid();
 	return SetupCSXGrid(CSRectGrid::Clone(grid));
@@ -1225,6 +1226,8 @@ double Operator::GetMaterial(int ny, const double* coords, int MatType, bool mar
 			return mat->GetMueWeighted(ny,coords);
 		case 3:
 			return mat->GetSigmaWeighted(ny,coords);
+		case 4:
+			return mat->GetDensityWeighted(coords);
 		default:
 			cerr << "Operator::GetMaterial: Error: unknown material type" << endl;
 			return 0;
@@ -1241,6 +1244,8 @@ double Operator::GetMaterial(int ny, const double* coords, int MatType, bool mar
 		return GetBackgroundMueR();
 	case 3:
 		return GetBackgroundSigma();
+	case 4:
+		return GetBackgroundDensity();
 	default:
 		cerr << "Operator::GetMaterial: Error: unknown material type" << endl;
 		return 0;

@@ -109,7 +109,7 @@ public:
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const = 0;
 
 	//! Set the background material (default is vacuum)
-	virtual void SetBackgroundMaterial(double epsR=0, double mueR=0, double kappa=0, double sigma=0);
+	virtual void SetBackgroundMaterial(double epsR=0, double mueR=0, double kappa=0, double sigma=0, double density=0);
 
 	//! Get background rel. electric permittivity
 	double GetBackgroundEpsR() const {return m_BG_epsR;}
@@ -130,6 +130,11 @@ public:
 	double GetBackgroundSigma() const {return m_BG_sigma;}
 	//! Set background magnetic conductivity (artificial)
 	void SetBackgroundSigma(double val);
+
+	//! Get background mass density
+	double GetBackgroundDensity() const {return m_BG_density;}
+	//! Set background mass density
+	void SetBackgroundDensity(double val);
 
 protected:
 	Operator_Base();
@@ -155,6 +160,7 @@ protected:
 	double m_BG_mueR;
 	double m_BG_kappa;
 	double m_BG_sigma;
+	double m_BG_density;
 
 	CoordinateSystem m_MeshType;
 	unsigned int numLines[3];
