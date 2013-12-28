@@ -42,6 +42,8 @@ class Operator : public Operator_Base
 public:
 	enum DebugFlags {None=0,debugMaterial=1,debugOperator=2,debugPEC=4};
 
+	enum MatAverageMethods {QuarterCell=0, CentralCell=1};
+
 	//! Create a new operator
 	static Operator* New();
 	virtual ~Operator();
@@ -84,8 +86,14 @@ public:
 	//! Choose a time step method (0=auto, 1=CFL, 3=Rennings)
 	void SetTimeStepMethod(int var) {m_TimeStepVar=var;}
 
+	//! Set the material averaging method /sa MatAverageMethods
+	void SetMaterialAvgMethod(MatAverageMethods method);
+
+	//! Set material averaging method to the advanced quarter cell material interpolation (default)
+	void SetQuarterCellMaterialAvg() {m_MatAverageMethod=QuarterCell;}
+
 	//! Set operator to assume a constant material inside a cell (material probing in the cell center)
-	void SetCellConstantMaterial() {m_MatCellShiftFaktor=0.5;}
+	void SetCellConstantMaterial() {m_MatAverageMethod=CentralCell;}
 
 	virtual double GetNumberCells() const;
 
@@ -219,10 +227,13 @@ protected:
 	//! Get the material at a given coordinate, direction and type from CSX (internal use only)
 	virtual double GetMaterial(int ny, const double coords[3], int MatType, bool markAsUsed=true) const;
 
-	double m_MatCellShiftFaktor;
+	MatAverageMethods m_MatAverageMethod;
 
 	//! Calculate the effective/averaged material properties at the given position and direction ny.
 	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
+
+	virtual bool AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat) const;
+	virtual bool AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat) const;
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);

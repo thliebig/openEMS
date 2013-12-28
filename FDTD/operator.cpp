@@ -95,7 +95,7 @@ void Operator::Init()
 
 	m_Exc = 0;
 	m_TimeStepFactor = 1;
-	m_MatCellShiftFaktor = 0.25;
+	SetMaterialAvgMethod(QuarterCell);
 }
 
 void Operator::Delete()
@@ -485,6 +485,18 @@ Grid_Path Operator::FindPath(double start[], double stop[])
 	}
 
 	return path;
+}
+
+void Operator::SetMaterialAvgMethod(MatAverageMethods method)
+{
+	switch (method)
+	{
+	default:
+	case QuarterCell:
+		return SetQuarterCellMaterialAvg();
+	case CentralCell:
+		return SetCellConstantMaterial();
+	}
 }
 
 double Operator::GetNumberCells() const
@@ -1265,7 +1277,113 @@ double Operator::GetMaterial(int ny, const double* coords, int MatType, bool mar
 	}
 }
 
-bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const
+bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat) const
+{
+	int n=ny;
+	double coord[3];
+	int nP = (n+1)%3;
+	int nPP = (n+2)%3;
+
+	int loc_pos[3] = {(int)pos[0],(int)pos[1],(int)pos[2]};
+	double A_n;
+	double area = 0;
+	EffMat[0] = 0;
+	EffMat[1] = 0;
+	EffMat[2] = 0;
+	EffMat[3] = 0;
+
+	//******************************* epsilon,kappa averaging *****************************//
+	//shift up-right
+	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
+	{
+		A_n = GetNodeArea(ny,loc_pos,true);
+		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		area+=A_n;
+	}
+
+	//shift up-left
+	--loc_pos[nP];
+	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
+	{
+		A_n = GetNodeArea(ny,loc_pos,true);
+		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		area+=A_n;
+	}
+
+	//shift down-right
+	++loc_pos[nP];
+	--loc_pos[nPP];
+	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
+	{
+		A_n = GetNodeArea(ny,loc_pos,true);
+		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		area+=A_n;
+	}
+
+	//shift down-left
+	--loc_pos[nP];
+	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
+	{
+		A_n = GetNodeArea(ny,loc_pos,true);
+		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		area+=A_n;
+	}
+
+	EffMat[0]*=__EPS0__/area;
+	EffMat[1]/=area;
+
+	//******************************* mu,sigma averaging *****************************//
+	loc_pos[0]=pos[0];
+	loc_pos[1]=pos[1];
+	loc_pos[2]=pos[2];
+	double length=0;
+	double delta_ny,sigma;
+	//shift down
+	--loc_pos[n];
+	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
+	{
+		delta_ny = GetNodeWidth(n,loc_pos,true);
+		EffMat[2] += delta_ny / GetMaterial(n, coord, 2);
+		sigma = GetMaterial(n, coord, 3);
+		if (sigma)
+			EffMat[3] += delta_ny / sigma;
+		else
+			EffMat[3] = 0;
+		length+=delta_ny;
+	}
+
+	//shift up
+	++loc_pos[n];
+	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
+	{
+		delta_ny = GetNodeWidth(n,loc_pos,true);
+		EffMat[2] += delta_ny / GetMaterial(n, coord, 2);
+		sigma = GetMaterial(n, coord, 3);
+		if (sigma)
+			EffMat[3] += delta_ny / sigma;
+		else
+			EffMat[3] = 0;
+		length+=delta_ny;
+	}
+
+	EffMat[2] = length * __MUE0__ / EffMat[2];
+	if (EffMat[3]) EffMat[3]=length / EffMat[3];
+
+	for (int n=0; n<4; ++n)
+		if (isnan(EffMat[n]) || isinf(EffMat[n]))
+		{
+			cerr << "Operator::" << __func__ << ": Error, an effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
+			cerr << ny << "@" << n << " : " << pos[0] << "," << pos[1] << ","  << pos[2] << endl;
+			exit(0);
+		}
+	return true;
+}
+
+bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat) const
 {
 	int n=ny;
 	double coord[3];
@@ -1289,8 +1407,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	//******************************* epsilon,kappa averaging *****************************//
 	//shift up-right
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]+deltaP*m_MatCellShiftFaktor;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*m_MatCellShiftFaktor;
+	shiftCoord[nP] = coord[nP]+deltaP*0.25;
+	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
 	A_n = GetNodeArea(ny,loc_pos,true);
 	EffMat[0] = GetMaterial(n, shiftCoord, 0)*A_n;
 	EffMat[1] = GetMaterial(n, shiftCoord, 1)*A_n;
@@ -1298,8 +1416,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 
 	//shift up-left
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]-deltaP_M*m_MatCellShiftFaktor;
-	shiftCoord[nPP] = coord[nPP]+deltaPP*m_MatCellShiftFaktor;
+	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
+	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
 
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,loc_pos,true);
@@ -1309,8 +1427,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 
 	//shift down-right
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]+deltaP*m_MatCellShiftFaktor;
-	shiftCoord[nPP] = coord[nPP]-deltaPP_M*m_MatCellShiftFaktor;
+	shiftCoord[nP] = coord[nP]+deltaP*0.25;
+	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	++loc_pos[nP];
 	--loc_pos[nPP];
 	A_n = GetNodeArea(ny,loc_pos,true);
@@ -1320,8 +1438,8 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 
 	//shift down-left
 	shiftCoord[n] = coord[n]+delta*0.5;
-	shiftCoord[nP] = coord[nP]-deltaP_M*m_MatCellShiftFaktor;
-	shiftCoord[nPP] = coord[nPP]-deltaPP_M*m_MatCellShiftFaktor;
+	shiftCoord[nP] = coord[nP]-deltaP_M*0.25;
+	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,loc_pos,true);
 	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
@@ -1338,7 +1456,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	double length=0;
 
 	//shift down
-	shiftCoord[n] = coord[n]-delta_M*m_MatCellShiftFaktor;
+	shiftCoord[n] = coord[n]-delta_M*0.25;
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	--loc_pos[n];
@@ -1352,7 +1470,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	length=delta_ny;
 
 	//shift up
-	shiftCoord[n] = coord[n]+delta*m_MatCellShiftFaktor;
+	shiftCoord[n] = coord[n]+delta*0.25;
 	shiftCoord[nP] = coord[nP]+deltaP*0.5;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	++loc_pos[n];
@@ -1371,11 +1489,27 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) c
 	for (int n=0; n<4; ++n)
 		if (isnan(EffMat[n]) || isinf(EffMat[n]))
 		{
-			cerr << "Operator::Calc_EffMatPos: An effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
+			cerr << "Operator::" << __func__ << ": Error, An effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
+			cerr << ny << "@" << n << " : " << pos[0] << "," << pos[1] << ","  << pos[2] << endl;
 			exit(0);
 		}
 
 	return true;
+}
+
+bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const
+{
+	switch (m_MatAverageMethod)
+	{
+	case QuarterCell:
+		return AverageMatQuarterCell(ny, pos, EffMat);
+	case CentralCell:
+		return AverageMatCellCenter(ny, pos, EffMat);
+	default:
+		cerr << "Operator:: " << __func__ << ":  Error, unknown material averaging method... exit" << endl;
+		exit(1);
+	}
+	return false;
 }
 
 bool Operator::Calc_LumpedElements()

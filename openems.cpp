@@ -675,9 +675,12 @@ int openEMS::SetupFDTD(const char* file)
 	if (SetupOperator(FDTD_Opts)==false)
 		return 2;
 
+	// default material averaging is quarter cell averaging
+	FDTD_Op->SetQuarterCellMaterialAvg();
+
+	// check for cell constant material averaging
 	if (FDTD_Opts->QueryIntAttribute("CellConstantMaterial",&ihelp)==TIXML_SUCCESS)
 		m_CellConstantMaterial=(ihelp==1);
-
 	if (m_CellConstantMaterial)
 	{
 		FDTD_Op->SetCellConstantMaterial();
