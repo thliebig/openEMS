@@ -1210,14 +1210,16 @@ double Operator::GetRawDiscDelta(int ny, const int pos) const
 	return (discLines[ny][pos+1] - discLines[ny][pos]);
 }
 
-bool Operator::GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const
+bool Operator::GetCellCenterMaterialAvgCoord(const int pos[], double coord[3]) const
 {
+	unsigned int ui_pos[3];
 	for (int n=0;n<3;++n)
 	{
-		if (pos[n]>=numLines[n])
+		if ((pos[n]<0) || (pos[n]>=(int)numLines[n]))
 			return false;
+		ui_pos[n] = pos[n];
 	}
-	GetNodeCoords(pos, coord, true);
+	GetNodeCoords(ui_pos, coord, true);
 	return true;
 }
 

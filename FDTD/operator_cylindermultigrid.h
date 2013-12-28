@@ -60,7 +60,7 @@ public:
 	virtual void ShowStat() const;
 
 	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
-	virtual bool GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const;
+	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const;
 
 #ifdef MPI_SUPPORT
 	virtual void SetTag(int tag);

@@ -60,10 +60,9 @@ void Operator_Cylinder::Init()
 double Operator_Cylinder::GetRawDiscDelta(int ny, const int pos) const
 {
 	if (CC_closedAlpha && ny==1 && pos==-1)
-	{
-//		cerr << (discLines[1][numLines[1]-2] - discLines[1][numLines[1]-3]) << " vs "  << Operator_Multithread::GetRawDiscDelta(ny,pos) << endl;
 		return (discLines[1][numLines[1]-2] - discLines[1][numLines[1]-3]);
-	}
+	if (CC_closedAlpha && ny==1 && (pos==(int)numLines[ny]-1))
+		return (discLines[1][2] - discLines[1][1]);
 
 	return Operator_Multithread::GetRawDiscDelta(ny,pos);
 }
@@ -229,6 +228,31 @@ double Operator_Cylinder::FitToAlphaRange(double a_coord, bool fullMesh) const
 	}
 	// this cannot happen
 	return a_coord;
+}
+
+int Operator_Cylinder::MapAlphaIndex2Range(int pos) const
+{
+	if (!CC_closedAlpha)
+		return pos;
+	if (pos<0)
+		return (int)numLines[1]+pos-2;
+	else if (pos>=(int)numLines[1]-2)
+		return pos-(int)numLines[1]+2;
+	else
+		return pos;
+}
+
+bool Operator_Cylinder::GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const
+{
+	if (!CC_closedAlpha || ((pos[1]>=0) && (pos[1]<(int)numLines[1]-2)))
+	{
+		return Operator_Multithread::GetCellCenterMaterialAvgCoord(pos, coord);
+	}
+	if ((pos[0]<0) || (pos[2]<0))
+		return false;
+	int l_pos[3] = {pos[0], 0, pos[2]};
+	l_pos[1] = MapAlphaIndex2Range(pos[1]);
+	return Operator_Multithread::GetCellCenterMaterialAvgCoord(l_pos, coord);
 }
 
 unsigned int Operator_Cylinder::SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh, bool fullMesh) const

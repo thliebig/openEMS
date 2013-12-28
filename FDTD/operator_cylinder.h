@@ -73,6 +73,11 @@ public:
 
 	virtual double FitToAlphaRange(double a_coord, bool fullMesh=false) const;
 
+	//! Map a negative or out of range index in alpha direction back into the closed alpha mesh
+	virtual int MapAlphaIndex2Range(int pos) const;
+
+	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const;
+
 	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false, bool fullMesh=false) const;
 
 	//! Snap a given box to the FDTD mesh

@@ -109,10 +109,10 @@ public:
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const = 0;
 
 	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
-	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const;
+	bool GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const;
 
 	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
-	virtual bool GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const = 0;
+	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const = 0;
 
 	//! Set the background material (default is vacuum)
 	virtual void SetBackgroundMaterial(double epsR=0, double mueR=0, double kappa=0, double sigma=0, double density=0);

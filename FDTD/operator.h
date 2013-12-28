@@ -161,7 +161,7 @@ public:
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const;
 
 	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
-	virtual bool GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const;
+	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const;
 
 	virtual void SetExcitationSignal(Excitation* exc);
 	virtual Excitation* GetExcitationSignal() const {return m_Exc;}

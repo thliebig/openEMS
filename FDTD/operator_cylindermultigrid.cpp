@@ -239,13 +239,19 @@ void Operator_CylinderMultiGrid::FillMissingDataStorage()
 	}
 }
 
-bool Operator_CylinderMultiGrid::GetCellCenterMaterialAvgCoord(const unsigned int pos[3], double coord[3]) const
+bool Operator_CylinderMultiGrid::GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const
 {
-	if (pos[0]>(m_Split_Pos-1))
-		return Operator_Cylinder::GetCellCenterMaterialAvgCoord(pos, coord);
+	if (Operator_Cylinder::GetCellCenterMaterialAvgCoord(pos, coord)==false)
+		return false;
 
-	unsigned int bg_pos[3] = {pos[0],pos[1]/2,pos[2]};
-	return m_InnerOp->GetCellCenterMaterialAvgCoord(bg_pos, coord);
+	if (pos[0]>=((int)m_Split_Pos))
+		return true;
+
+	int pos_a = MapAlphaIndex2Range(pos[1])/2;
+	if ((pos_a<0) || (pos_a>=(int)m_InnerOp->numLines[1]))
+		return false;
+	coord[1] = m_InnerOp->GetDiscLine(1,pos_a,true);
+	return true;
 }
 
 int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
