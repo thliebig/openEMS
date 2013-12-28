@@ -21,6 +21,13 @@ function [port] = calcPort( port, SimDir, f, varargin)
 %   'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output: 
+%   % output signals/values in time domain (TD):
+%   port.ut.tot     total voltage (time-domain)
+%   port.ut.time    voltage time vector
+%   port.it.tot     total current (time-domain)
+%   port.it.time    current time vector
+%
+%   % output signals/values in frequency domain (FD):
 %   port.f                  the given frequency fector
 %   port.uf.tot/inc/ref     total, incoming and reflected voltage
 %   port.if.tot/inc/ref     total, incoming and reflected current

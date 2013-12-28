@@ -17,6 +17,13 @@ function [port] = calcLumpedPort( port, SimDir, f, varargin)
 %   'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output:
+%   % output signals/values in time domain (TD):
+%   port.ut.tot     total voltage (time-domain)
+%   port.ut.time    voltage time vector
+%   port.it.tot     total current (time-domain)
+%   port.it.time    current time vector
+%
+%   % output signals/values in frequency domain (FD):
 %   port.f                  the given frequency fector
 %   port.uf.tot/inc/ref     total, incoming and reflected voltage
 %   port.if.tot/inc/ref     total, incoming and reflected current
@@ -72,6 +79,12 @@ I = ReadUI( port.I_filename, SimDir, f, UI_args{:} );
 % store the original frequency domain waveforms
 u_f = U.FD{1}.val;
 i_f = switch_dir*I.FD{1}.val;
+
+port.ut.time  = U.TD{1}.t;
+port.ut.tot = U.TD{1}.val;
+
+port.it.time  = I.TD{1}.t;
+port.it.tot = switch_dir*I.TD{1}.val;
 
 port.Zin = u_f./i_f;
 
