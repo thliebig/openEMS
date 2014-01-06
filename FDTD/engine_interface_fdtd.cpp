@@ -19,6 +19,11 @@
 
 Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op, Engine* eng) : Engine_Interface_Base(op)
 {
+	if ((op==NULL) || (eng==NULL))
+	{
+		cerr << "Engine_Interface_FDTD::Engine_Interface_FDTD: Error: Operator or Engine is not set! Exit!" << endl;
+		exit(1);
+	}
 	m_Op = op;
 	m_Eng = eng;
 }
