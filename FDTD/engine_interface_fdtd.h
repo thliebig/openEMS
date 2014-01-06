@@ -27,7 +27,7 @@
 class Engine_Interface_FDTD : public Engine_Interface_Base
 {
 public:
-	Engine_Interface_FDTD(Operator* op, Engine* eng);
+	Engine_Interface_FDTD(Operator* op);
 	virtual ~Engine_Interface_FDTD();
 
 	//! Set the FDTD operator

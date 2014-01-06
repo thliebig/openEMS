@@ -17,7 +17,7 @@
 
 #include "engine_interface_cylindrical_fdtd.h"
 
-Engine_Interface_Cylindrical_FDTD::Engine_Interface_Cylindrical_FDTD(Operator_sse* op, Engine_sse* eng) : Engine_Interface_SSE_FDTD(op,eng)
+Engine_Interface_Cylindrical_FDTD::Engine_Interface_Cylindrical_FDTD(Operator_sse* op) : Engine_Interface_SSE_FDTD(op)
 {
 	m_Op_Cyl = dynamic_cast<Operator_Cylinder*>(op);
 	if (m_Op_Cyl==NULL)

@@ -25,7 +25,7 @@
 class Engine_Interface_SSE_FDTD : public Engine_Interface_FDTD
 {
 public:
-	Engine_Interface_SSE_FDTD(Operator_sse* op, Engine_sse* eng);
+	Engine_Interface_SSE_FDTD(Operator_sse* op);
 	virtual ~Engine_Interface_SSE_FDTD();
 
 	virtual double CalcFastEnergy() const;

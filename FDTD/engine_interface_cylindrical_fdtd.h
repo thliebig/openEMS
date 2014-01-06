@@ -24,7 +24,7 @@
 class Engine_Interface_Cylindrical_FDTD : public Engine_Interface_SSE_FDTD
 {
 public:
-	Engine_Interface_Cylindrical_FDTD(Operator_sse* op, Engine_sse* eng);
+	Engine_Interface_Cylindrical_FDTD(Operator_sse* op);
 	virtual ~Engine_Interface_Cylindrical_FDTD();
 
 	virtual double* GetHField(const unsigned int* pos, double* out) const;

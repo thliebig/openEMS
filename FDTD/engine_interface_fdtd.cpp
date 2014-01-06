@@ -17,15 +17,20 @@
 
 #include "engine_interface_fdtd.h"
 
-Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op, Engine* eng) : Engine_Interface_Base(op)
+Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op) : Engine_Interface_Base(op)
 {
-	if ((op==NULL) || (eng==NULL))
+	if (op==NULL)
 	{
-		cerr << "Engine_Interface_FDTD::Engine_Interface_FDTD: Error: Operator or Engine is not set! Exit!" << endl;
+		cerr << "Engine_Interface_FDTD::Engine_Interface_FDTD: Error: Operator is not set! Exit!" << endl;
 		exit(1);
 	}
 	m_Op = op;
-	m_Eng = eng;
+	m_Eng = m_Op->GetEngine();
+	if (m_Eng==NULL)
+	{
+		cerr << "Engine_Interface_FDTD::Engine_Interface_FDTD: Error: Engine is not set! Exit!" << endl;
+		exit(1);
+	}
 }
 
 Engine_Interface_FDTD::~Engine_Interface_FDTD()

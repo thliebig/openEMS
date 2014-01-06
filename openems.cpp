@@ -307,15 +307,14 @@ bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
 Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 {
 	Operator_CylinderMultiGrid* op_cyl_mg = dynamic_cast<Operator_CylinderMultiGrid*>(FDTD_Op);
-	Engine_sse* eng_sse = dynamic_cast<Engine_sse*>(FDTD_Eng);
-	while (op_cyl_mg && eng_sse && multigridlevel>0)
+	while (op_cyl_mg && multigridlevel>0)
 	{
 		int mgl = op_cyl_mg->GetMultiGridLevel();
 		if (mgl==multigridlevel)
 		{
 			if (g_settings.GetVerboseLevel()>0)
 				cerr << __func__ << ": Operator with requested multi-grid level found." << endl;
-			return new Engine_Interface_Cylindrical_FDTD(op_cyl_mg,eng_sse);
+			return new Engine_Interface_Cylindrical_FDTD(op_cyl_mg);
 		}
 		Operator_Cylinder* op_cyl_inner = op_cyl_mg->GetInnerOperator();
 		op_cyl_mg = dynamic_cast<Operator_CylinderMultiGrid*>(op_cyl_inner);
@@ -323,17 +322,17 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 		{
 			if (g_settings.GetVerboseLevel()>0)
 				cerr << __func__ << ": Operator with highest multi-grid level chosen." << endl;
-			return new Engine_Interface_Cylindrical_FDTD(op_cyl_inner,eng_sse);
+			return new Engine_Interface_Cylindrical_FDTD(op_cyl_inner);
 		}
 		// try next level
 	}
 	Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(FDTD_Op);
-	if (op_cyl && eng_sse)
-		return new Engine_Interface_Cylindrical_FDTD(op_cyl,eng_sse);
+	if (op_cyl)
+		return new Engine_Interface_Cylindrical_FDTD(op_cyl);
 	Operator_sse* op_sse = dynamic_cast<Operator_sse*>(FDTD_Op);
-	if (op_sse && eng_sse)
-		return new Engine_Interface_SSE_FDTD(op_sse,eng_sse);
-	return new Engine_Interface_FDTD(FDTD_Op,FDTD_Eng);
+	if (op_sse)
+		return new Engine_Interface_SSE_FDTD(op_sse);
+	return new Engine_Interface_FDTD(FDTD_Op);
 }
 
 bool openEMS::SetupProcessing()
