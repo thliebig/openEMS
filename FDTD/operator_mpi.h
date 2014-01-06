@@ -32,7 +32,7 @@ public:
 
 	virtual void SetBoundaryCondition(int* BCs);
 
-	virtual Engine* CreateEngine() const;
+	virtual Engine* CreateEngine();
 
 	virtual void SetTag(int tag) {m_MyTag=tag;}
 

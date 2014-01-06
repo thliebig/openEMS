@@ -77,12 +77,13 @@ void Operator_MPI::SetBoundaryCondition(int* BCs)
 	Operator_SSE_Compressed::SetBoundaryCondition(BCs);
 }
 
-Engine* Operator_MPI::CreateEngine() const
+Engine* Operator_MPI::CreateEngine()
 {
 	if (m_MPI_Enabled)
-		return Engine_MPI::New(this);
+		m_Engine = Engine_MPI::New(this);
 	else
-		return Engine_SSE_Compressed::New(this);
+		m_Engine = Engine_SSE_Compressed::New(this);
+	return m_Engine;
 }
 
 void Operator_MPI::SetNeighborUp(int ny, int id)

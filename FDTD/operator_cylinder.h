@@ -90,7 +90,7 @@ public:
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
-	virtual Engine* CreateEngine() const;
+	virtual Engine* CreateEngine();
 
 protected:
 	Operator_Cylinder();

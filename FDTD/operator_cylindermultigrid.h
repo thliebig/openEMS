@@ -37,7 +37,7 @@ public:
 
 	virtual double GetNumberCells() const;
 
-	virtual Engine* CreateEngine() const;
+	virtual Engine* CreateEngine();
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 

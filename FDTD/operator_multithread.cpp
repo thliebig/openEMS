@@ -38,10 +38,10 @@ void Operator_Multithread::setNumThreads( unsigned int numThreads )
 	m_numThreads = numThreads;
 }
 
-Engine* Operator_Multithread::CreateEngine() const
+Engine* Operator_Multithread::CreateEngine()
 {
-	Engine_Multithread* e = Engine_Multithread::New(this,m_numThreads);
-	return e;
+	m_Engine = Engine_Multithread::New(this,m_numThreads);
+	return m_Engine;
 }
 
 Operator_Multithread::Operator_Multithread() : OPERATOR_MULTITHREAD_BASE()

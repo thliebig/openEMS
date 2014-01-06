@@ -61,15 +61,16 @@ Operator::~Operator()
 	Delete();
 }
 
-Engine* Operator::CreateEngine() const
+Engine* Operator::CreateEngine()
 {
-	Engine* eng = Engine::New(this);
-	return eng;
+	m_Engine = Engine::New(this);
+	return m_Engine;
 }
 
 void Operator::Init()
 {
 	CSX = NULL;
+	m_Engine = NULL;
 
 	Operator_Base::Init();
 

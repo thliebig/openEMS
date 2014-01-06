@@ -48,7 +48,8 @@ public:
 	static Operator* New();
 	virtual ~Operator();
 
-	virtual Engine* CreateEngine() const;
+	virtual Engine* CreateEngine();
+	virtual Engine* GetEngine() const {return m_Engine;}
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
@@ -261,6 +262,8 @@ protected:
 	AdrOp* MainOp;
 
 	vector<Operator_Extension*> m_Op_exts;
+
+	Engine* m_Engine;
 
 	// excitation classes
 	Excitation* m_Exc; // excitation time signal class

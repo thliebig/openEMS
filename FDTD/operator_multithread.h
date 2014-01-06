@@ -40,7 +40,7 @@ public:
 
 	virtual void setNumThreads( unsigned int numThreads );
 
-	virtual Engine* CreateEngine() const;
+	virtual Engine* CreateEngine();
 
 protected:
 	Operator_Multithread();

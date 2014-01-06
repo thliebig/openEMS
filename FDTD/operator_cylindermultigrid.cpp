@@ -49,10 +49,10 @@ Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(vector<double> Split
 	return op;
 }
 
-Engine* Operator_CylinderMultiGrid::CreateEngine() const
+Engine* Operator_CylinderMultiGrid::CreateEngine()
 {
-	Engine_CylinderMultiGrid* eng = Engine_CylinderMultiGrid::New(this,m_numThreads);
-	return eng;
+	m_Engine = Engine_CylinderMultiGrid::New(this,m_numThreads);
+	return m_Engine;
 }
 
 double Operator_CylinderMultiGrid::GetNumberCells() const

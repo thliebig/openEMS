@@ -43,11 +43,11 @@ Operator_Cylinder::~Operator_Cylinder()
 }
 
 
-Engine* Operator_Cylinder::CreateEngine() const
+Engine* Operator_Cylinder::CreateEngine()
 {
 	//! create a special cylindrical-engine
-	Engine_Cylinder* eng = Engine_Cylinder::New(this, m_numThreads);
-	return eng;
+	m_Engine = Engine_Cylinder::New(this, m_numThreads);
+	return m_Engine;
 }
 
 void Operator_Cylinder::Init()
