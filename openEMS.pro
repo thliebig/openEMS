@@ -98,25 +98,40 @@ win32 {
     DEFINES += TIXML_USE_STL
     LIBS += -lboost_thread -lboost_system
     LIBS += -lhdf5_hl -lhdf5
+
     ### vtk ###
     isEmpty(VTK_INCLUDEPATH) {
-    INCLUDEPATH += /usr/include/vtk-5.2 \
+        INCLUDEPATH += /usr/include/vtk-5.2 \
         /usr/include/vtk-5.4 \
         /usr/include/vtk-5.6 \
         /usr/include/vtk-5.8 \
         /usr/include/vtk-5.10 \
+        /usr/include/vtk-6.0 \
+        /usr/include/vtk-6.1 \
         /usr/include/vtk
     } else {
-    INCLUDEPATH += $$VTK_INCLUDEPATH
+        INCLUDEPATH += $$VTK_INCLUDEPATH
     }
     isEmpty(VTK_LIBRARYPATH){
     } else {
-    LIBS +=-L$$VTK_LIBRARYPATH
+        LIBS +=-L$$VTK_LIBRARYPATH
+        QMAKE_LFLAGS += \'-Wl,-rpath,$$VTK_LIBRARYPATH\'
     }
-    LIBS += -lvtkCommon \
+    isEmpty(VTK_6_VERSION){
+        LIBS += -lvtkCommon \
         -lvtkIO \
         -lvtksys \
         -lvtkFiltering
+    } else {
+        LIBS += -lvtkCommonCore-$$VTK_6_VERSION \
+        -lvtkCommonDataModel-$$VTK_6_VERSION \
+        -lvtkIOLegacy-$$VTK_6_VERSION \
+        -lvtkIOXML-$$VTK_6_VERSION \
+        -lvtkIOGeometry-$$VTK_6_VERSION \
+        -lvtkIOPLY-$$VTK_6_VERSION \
+        -lvtksys-$$VTK_6_VERSION \
+        -lvtkIOCore-$$VTK_6_VERSION
+    }
 }
 
 # vtk includes deprecated header files; silence the corresponding warning

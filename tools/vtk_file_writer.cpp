@@ -285,7 +285,11 @@ bool VTK_File_Writer::WriteASCII()
 	}
 
 	writer->SetHeader(m_header.c_str());
+#if VTK_MAJOR_VERSION==6
+	writer->SetInputData(m_GridData);
+#else
 	writer->SetInput(m_GridData);
+#endif
 
 	string filename = GetTimestepFilename() + ".vtk";
 	writer->SetFileName(filename.c_str());
@@ -312,7 +316,11 @@ bool VTK_File_Writer::WriteXML()
 		return false;
 	}
 
+#if VTK_MAJOR_VERSION==6
+	writer->SetInputData(m_GridData);
+#else
 	writer->SetInput(m_GridData);
+#endif
 
 	string filename = GetTimestepFilename() + "." + writer->GetDefaultFileExtension();
 	writer->SetFileName(filename.c_str());
