@@ -117,20 +117,20 @@ win32 {
         LIBS +=-L$$VTK_LIBRARYPATH
         QMAKE_LFLAGS += \'-Wl,-rpath,$$VTK_LIBRARYPATH\'
     }
-    isEmpty(VTK_6_VERSION){
+    !contains(VTK_6, 1) {
         LIBS += -lvtkCommon \
         -lvtkIO \
         -lvtksys \
         -lvtkFiltering
     } else {
-        LIBS += -lvtkCommonCore-$$VTK_6_VERSION \
-        -lvtkCommonDataModel-$$VTK_6_VERSION \
-        -lvtkIOLegacy-$$VTK_6_VERSION \
-        -lvtkIOXML-$$VTK_6_VERSION \
-        -lvtkIOGeometry-$$VTK_6_VERSION \
-        -lvtkIOPLY-$$VTK_6_VERSION \
-        -lvtksys-$$VTK_6_VERSION \
-        -lvtkIOCore-$$VTK_6_VERSION
+        LIBS += -lvtkCommonCore$$VTK_6_LIBSUFFIX \
+        -lvtkCommonDataModel$$VTK_6_LIBSUFFIX \
+        -lvtkIOLegacy$$VTK_6_LIBSUFFIX \
+        -lvtkIOXML$$VTK_6_LIBSUFFIX \
+        -lvtkIOGeometry$$VTK_6_LIBSUFFIX \
+        -lvtkIOPLY$$VTK_6_LIBSUFFIX \
+        -lvtksys$$VTK_6_LIBSUFFIX \
+        -lvtkIOCore$$VTK_6_LIBSUFFIX
     }
 }
 
