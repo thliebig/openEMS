@@ -103,8 +103,8 @@ CSX = AddBox(CSX, 'groundplane', 10, start,stop);
 %% create ifa
 CSX = AddMetal( CSX, 'ifa' ); % create a perfect electric conductor (PEC)
 tl = [0,substrate.length/2-ifa.e,substrate.thickness];   % translate
-start = [0 0 0] + tl;
-stop = start + [ifa.wf ifa.h 0];
+start = [0 0.5 0] + tl;
+stop = start + [ifa.wf ifa.h-0.5 0];
 CSX = AddBox( CSX, 'ifa', 10,  start, stop);  % feed element
 start = [-ifa.fp 0 0] + tl;
 stop =  start + [-ifa.w1 ifa.h 0];
