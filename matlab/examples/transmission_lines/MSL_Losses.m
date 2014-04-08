@@ -31,7 +31,7 @@ f_stop  = 25e9;
 lambda = c0/f_stop;
 
 %% setup FDTD parameters & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD(1e6,1e-4);
+FDTD = InitFDTD('endCriteria',1e-4);
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 BC   = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PEC' 'PML_8'};
 FDTD = SetBoundaryCond( FDTD, BC );
@@ -56,11 +56,11 @@ CSX = AddBox( CSX, 'RO4350B', 0, start, stop );
 CSX = AddConductingSheet( CSX, 'gold', MSL.conductivity, MSL.thickness );
 portstart = [ mesh.x(1),               -MSL.width/2, substrate.thickness];
 portstop  = [ mesh.x(1)+MSL.port_dist,  MSL.width/2, 0];
-[CSX,portstruct{1}] = AddMSLPort( CSX, 999, 1, 'gold', portstart, portstop, 0, [0 0 -1], 'ExcitePort', 'excite', 'FeedShift', 10*resolution, 'MeasPlaneShift',  MSL.port_dist);
+[CSX, port{1}] = AddMSLPort( CSX, 999, 1, 'gold', portstart, portstop, 0, [0 0 -1], 'ExcitePort', 'excite', 'FeedShift', 10*resolution, 'MeasPlaneShift',  MSL.port_dist);
 
 portstart = [mesh.x(end),              -MSL.width/2, substrate.thickness];
 portstop  = [mesh.x(end)-MSL.port_dist, MSL.width/2, 0];
-[CSX,portstruct{2}] = AddMSLPort( CSX, 999, 2, 'gold', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  MSL.port_dist );
+[CSX, port{2}] = AddMSLPort( CSX, 999, 2, 'gold', portstart, portstop, 0, [0 0 -1], 'MeasPlaneShift',  MSL.port_dist );
 
 start = [mesh.x(1)+MSL.port_dist,   -MSL.width/2, substrate.thickness];
 stop  = [mesh.x(end)-MSL.port_dist,  MSL.width/2, substrate.thickness];
@@ -80,8 +80,7 @@ RunOpenEMS( Sim_Path, Sim_CSX ,'');
 %% post-processing
 close all
 f = linspace( f_start, f_stop, 1601 );
-port{1} = calcPort( portstruct{1}, Sim_Path, f, 'RefImpedance', 50);
-port{2} = calcPort( portstruct{2}, Sim_Path, f, 'RefImpedance', 50);
+port = calcPort(port, Sim_Path, f, 'RefImpedance', 50);
 
 s11 = port{1}.uf.ref./ port{1}.uf.inc;
 s21 = port{2}.uf.ref./ port{1}.uf.inc;

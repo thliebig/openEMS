@@ -712,7 +712,14 @@ int openEMS::SetupFDTD(const char* file)
 	if ((m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0) || (m_CSX->GetQtyPropertyType(CSProperties::DEBYEMATERIAL)>0))
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 	if (m_CSX->GetQtyPropertyType(CSProperties::CONDUCTINGSHEET)>0)
-		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op,m_Exc->GetMaxFrequency()));
+	{
+		double f_max=0;
+		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
+		if (f_max>0)
+			FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op,f_max));
+		else
+			cerr << __func__ << ": Error, max. frequency is <=0, disabling conducting sheet material..." << endl;
+	}
 
 	//check all properties to request material storage during operator creation...
 	SetupMaterialStorages();
