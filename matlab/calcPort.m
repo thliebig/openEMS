@@ -62,7 +62,7 @@ if isempty(port)
     return;
 end
 
-if (strcmpi(port.type,'MSL') || strcmpi(port.type,'Coaxial') || strcmpi(port.type,'StripLine'))
+if (strcmpi(port.type,'MSL') || strcmpi(port.type,'Coaxial') || strcmpi(port.type,'StripLine') || strcmpi(port.type,'CPW'))
     port = calcTLPort( port, SimDir, f, varargin{:});
 elseif strcmpi(port.type,'WaveGuide')
     port = calcWGPort( port, SimDir, f, varargin{:});
