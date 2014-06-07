@@ -4,10 +4,10 @@
 % This example demonstrates how to model sheet conductor losses
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.28
+%  - Matlab 2013a / Octave 3.8.1+
+%  - openEMS v0.0.32
 %
-% (C) 2012 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2012-2014 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -56,7 +56,7 @@ CSX = AddBox( CSX, 'RO4350B', 0, start, stop );
 CSX = AddConductingSheet( CSX, 'gold', MSL.conductivity, MSL.thickness );
 portstart = [ mesh.x(1),               -MSL.width/2, substrate.thickness];
 portstop  = [ mesh.x(1)+MSL.port_dist,  MSL.width/2, 0];
-[CSX, port{1}] = AddMSLPort( CSX, 999, 1, 'gold', portstart, portstop, 0, [0 0 -1], 'ExcitePort', 'excite', 'FeedShift', 10*resolution, 'MeasPlaneShift',  MSL.port_dist);
+[CSX, port{1}] = AddMSLPort( CSX, 999, 1, 'gold', portstart, portstop, 0, [0 0 -1], 'ExcitePort', true, 'FeedShift', 10*resolution, 'MeasPlaneShift',  MSL.port_dist);
 
 portstart = [mesh.x(end),              -MSL.width/2, substrate.thickness];
 portstop  = [mesh.x(end)-MSL.port_dist, MSL.width/2, 0];

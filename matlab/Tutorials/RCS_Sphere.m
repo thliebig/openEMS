@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_RCS_Sphere
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.29
+%  - Matlab 2013a / Octave 3.8.1
+%  - openEMS v0.0.32
 %
-% (C) 2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2012-2014 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear
