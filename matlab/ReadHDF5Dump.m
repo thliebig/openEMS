@@ -84,3 +84,9 @@ for n=1:2:(nargin-1)
         end
     end
 end
+
+end
+
+function rng = range(x)
+    rng = max(x)-min(x);
+end

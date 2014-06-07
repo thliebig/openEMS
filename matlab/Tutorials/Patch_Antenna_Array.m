@@ -51,7 +51,7 @@ substrate.kappa  = 0.0013 * 2*pi*f0 * EPS0*substrate.epsR;
 substrate.thickness = 1.524;
 substrate.cells = 4;
 
-substrate.width = patch.W + range(xpos) + 4*patch.l;
+substrate.width = patch.W + max(xpos) - min(xpos) + 4*patch.l;
 substrate.length = 3*patch.l + patch.L;
 
 % size of the simulation box
