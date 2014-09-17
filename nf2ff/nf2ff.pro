@@ -33,8 +33,20 @@ win32 {
     INCLUDEPATH += $$WIN32_LIB_ROOT/boost/include
     LIBS += -L$$WIN32_LIB_ROOT/boost/lib -lboost_thread -lboost_chrono -lboost_system
 }
-!win32 {
+
+unix:!macx {
     LIBS += -lboost_thread -lboost_system
+    LIBS += -ltinyxml
+    #vtk
+    isEmpty(VTK_LIBRARYPATH){
+    } else {
+    LIBS +=-L$$VTK_LIBRARYPATH
+    }
+    LIBS += -lhdf5_hl -lhdf5
+}
+
+macx {
+    LIBS += -lboost_thread-mt -lboost_system
     LIBS += -ltinyxml
     #vtk
     isEmpty(VTK_LIBRARYPATH){
@@ -99,7 +111,7 @@ isEmpty(PREFIX) {
 }
 install.target = install
 install.commands = mkdir -p \"$$PREFIX/bin\"
-unix:install.commands += && cp -at \"$$PREFIX/bin/\" nf2ff
+unix:install.commands += && cp nf2ff \"$$PREFIX/bin/\"
 win32:install.commands += && cp -at \"$$PREFIX/bin/\" release/nf2ff.exe
 QMAKE_EXTRA_TARGETS += install
 

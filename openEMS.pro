@@ -73,7 +73,7 @@ win32 {
     INCLUDEPATH +=   $$WIN32_LIB_ROOT/vtk/include/vtk-5.10
     LIBS += -L$$WIN32_LIB_ROOT/vtk/bin -lvtkCommon -lvtkIO -lvtkFiltering
 }
-!win32 {
+unix:!macx {
     # CSXCAD
     isEmpty(CSXCAD_ROOT) {
         CSXCAD_ROOT = /usr
@@ -131,6 +131,57 @@ win32 {
         -lvtkIOPLY$$VTK_6_LIBSUFFIX \
         -lvtksys$$VTK_6_LIBSUFFIX \
         -lvtkIOCore$$VTK_6_LIBSUFFIX
+    }
+}
+
+macx: {
+    # CSXCAD
+    isEmpty(CSXCAD_ROOT) {
+        CSXCAD_ROOT = /usr
+    } else {
+        QMAKE_LFLAGS += \'-Wl,-rpath,$$CSXCAD_ROOT/lib\'
+    }
+    INCLUDEPATH += $$CSXCAD_ROOT/include/CSXCAD
+    LIBS += -L$$CSXCAD_ROOT/lib -lCSXCAD
+
+    # #3rd party libraries#
+    #fparser
+    isEmpty(FPARSER_ROOT) {
+        FPARSER_ROOT = /usr
+    } else {
+        INCLUDEPATH += $$FPARSER_ROOT/include
+        LIBS += -L$$FPARSER_ROOT/lib
+        QMAKE_LFLAGS += \'-Wl,-rpath,$$FPARSER_ROOT/lib\'
+    }
+    LIBS += -lfparser
+
+    LIBS += -ltinyxml
+    DEFINES += TIXML_USE_STL
+    LIBS += -L/usr/local/lib -lboost_thread-mt -lboost_system -lboost_date_time -lboost_serialization
+    LIBS += -lhdf5_hl -lhdf5
+
+    ### vtk ###
+    isEmpty(VTK_INCLUDEPATH) {
+        INCLUDEPATH += \
+        /usr/local/opt/vtk5/include  \
+        /usr/local/opt/vtk5/include/vtk-5.10
+    } else {
+        INCLUDEPATH += $$VTK_INCLUDEPATH
+    }
+
+    LIBS += -L/usr/local/opt/vtk5/lib/vtk-5.10  -lvtkCommon \
+        -lvtkFiltering \
+        -lvtkGraphics \
+        -lvtkHybrid \
+        -lvtkIO \
+        -lvtkRendering \
+        -lvtkWidgets \
+        -lQVTK
+
+    isEmpty(VTK_LIBRARYPATH){
+    } else {
+        LIBS +=-L$$VTK_LIBRARYPATH
+        QMAKE_LFLAGS += \'-Wl,-rpath,$$VTK_LIBRARYPATH\'
     }
 }
 
@@ -317,9 +368,10 @@ isEmpty(PREFIX) {
 install.target = install
 install.commands = mkdir -p \"$$PREFIX/bin\"
 install.commands += && mkdir -p \"$$PREFIX/share/openEMS/matlab\"
-unix:install.commands += && cp -at \"$$PREFIX/bin/\" openEMS.sh openEMS_MPI.sh openEMS
+unix:!macx:install.commands += && cp -at \"$$PREFIX/bin/\" openEMS.sh openEMS_MPI.sh openEMS
 win32:install.commands += && cp -at \"$$PREFIX/bin/\" release/openEMS.exe
-install.commands += && cp -at \"$$PREFIX/share/openEMS/\" matlab/
+macx:install.commands += && cp openEMS.sh openEMS_MPI.sh openEMS \"$$PREFIX/bin/\"
+install.commands += && cp -r matlab/* \"$$PREFIX/share/openEMS/matlab\"
 QMAKE_EXTRA_TARGETS += install
 
 
