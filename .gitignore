@@ -11,3 +11,9 @@ Makefile*
 *.orig
 openEMS
 localPaths.pri
+.directory
+
+#cmake
+**CMakeFiles
+CMakeCache.txt
+cmake_install.cmake

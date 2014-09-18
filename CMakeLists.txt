@@ -19,7 +19,7 @@ ENDIF()
 ADD_DEFINITIONS(-DGIT_VERSION=\"${VERSION}\")
 
 # Set locations of extra CMake modules
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${openEMS_SOURCE_DIR}/cmake/modules/")
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${openEMS_SOURCE_DIR}/cmake/Modules/")
 
 # TinyXML module from https://github.com/ros/cmake_modules
 find_package(TinyXML REQUIRED)
