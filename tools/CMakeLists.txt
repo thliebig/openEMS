@@ -2,7 +2,6 @@
 set(SOURCES
   AdrOp.cpp
   ErrorMsg.cpp
-  ExpenseLog.cpp
   array_ops.cpp
   global.cpp
   hdf5_file_reader.cpp
