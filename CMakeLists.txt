@@ -147,12 +147,12 @@ INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )    #find tools
 ADD_EXECUTABLE( openEMS ${SOURCES} )
 
 TARGET_LINK_LIBRARIES( openEMS
-  ${CSXCAD_LIBRARIES}
-  ${fparser_LIBRARIES}
   FDTD
   Common
-  tools
   extensions
+  tools
+  ${CSXCAD_LIBRARIES}
+  ${fparser_LIBRARIES}
   tinyxml
   hdf5
   hdf5_hl
