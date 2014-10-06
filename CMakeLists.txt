@@ -1,4 +1,11 @@
 
+# define build type
+IF( DEFINED CMAKE_BUILD_TYPE )
+  SET( CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Set to either \"Release\" or \"Debug\"" )
+ELSE()
+  SET( CMAKE_BUILD_TYPE Release CACHE STRING "Set to either \"Release\" or \"Debug\"" )
+ENDIF()
+
 PROJECT(openEMS CXX)
 cmake_minimum_required(VERSION 2.8)
 
