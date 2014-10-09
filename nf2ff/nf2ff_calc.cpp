@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2012 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2012-2014 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -200,6 +200,12 @@ nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vecto
 	m_maxDir = 0;
 	m_radius = 1;
 
+	for (int n=0;n<3;++n)
+	{
+		m_MirrorType[n] = MIRROR_OFF;
+		m_MirrorPos[n]  = 0.0;
+	}
+
 	m_Barrier = NULL;
 	m_numThreads = boost::thread::hardware_concurrency();
 }
@@ -227,9 +233,8 @@ nf2ff_calc::~nf2ff_calc()
 	m_Barrier = NULL;
 }
 
-bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType)
+int nf2ff_calc::GetNormalDir(unsigned int* numLines)
 {
-	//find normal direction
 	int ny = -1;
 	int nP,nPP;
 	for (int n=0;n<3;++n)
@@ -239,13 +244,116 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 		if ((numLines[n]==1) && (numLines[nP]>2) && (numLines[nPP]>2))
 			ny=n;
 	}
-	nP = (ny+1)%3;
-	nPP = (ny+2)%3;
+	return ny;
+}
+
+void nf2ff_calc::SetMirror(int type, int dir, float pos)
+{
+	if ((dir<0) || (dir>3))
+	{
+		cerr << "nf2ff_calc::SetMirror: Error, invalid direction!" << endl;
+		return;
+	}
+	if ((type!=MIRROR_PEC) && (type!=MIRROR_PMC))
+	{
+		cerr << "nf2ff_calc::SetMirror: Error, invalid type!" << endl;
+		return;
+	}
+	m_MirrorType[dir] = type;
+	m_MirrorPos[dir] = pos;
+}
+
+bool nf2ff_calc::AddMirrorPlane(int n, float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType)
+{
+	float E_factor[3] = {1,1,1};
+	float H_factor[3] = {1,1,1};
+
+	int nP  = (n+1)%3;
+	int nPP = (n+2)%3;
+	
+	// mirror in ny direction
+	for (unsigned int i=0;i<numLines[n];++i)
+		lines[n][i] = 2.0*m_MirrorPos[n] - lines[n][i];
+	if (m_MirrorType[n]==MIRROR_PEC)
+	{
+		H_factor[n]  =-1.0;
+		E_factor[nP] =-1.0;
+		E_factor[nPP]=-1.0;
+	}
+	else if (m_MirrorType[n]==MIRROR_PMC)
+	{
+		E_factor[n]  = -1.0;
+		H_factor[nP] = -1.0;
+		H_factor[nPP]= -1.0;
+	}
+
+	for (int d=0;d<3;++d)
+		for (unsigned int i=0;i<numLines[0];++i)
+			for (unsigned int j=0;j<numLines[1];++j)
+				for (unsigned int k=0;k<numLines[2];++k)
+				{
+					E_field[d][i][j][k] *= E_factor[d];
+					H_field[d][i][j][k] *= H_factor[d];
+				}
+
+	return this->AddSinglePlane(lines, numLines, E_field, H_field, MeshType);
+}
+
+bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType)
+{
+	this->AddSinglePlane(lines, numLines, E_field, H_field, MeshType);
+
+	for (int n=0;n<3;++n)
+	{
+		int nP  = (n+1)%3;
+		int nPP = (n+2)%3;
+		// check if a single mirror plane is on
+		if ((m_MirrorType[n]!=MIRROR_OFF) && (m_MirrorType[nP]==MIRROR_OFF) && (m_MirrorType[nPP]==MIRROR_OFF))
+		{
+			cerr << "single plane in " << n << endl;
+			this->AddMirrorPlane(n, lines, numLines, E_field, H_field, MeshType);
+			break;
+		}
+		//check if two planes are on 
+		else if ((m_MirrorType[n]==MIRROR_OFF) && (m_MirrorType[nP]!=MIRROR_OFF) && (m_MirrorType[nPP]!=MIRROR_OFF))
+		{
+			cerr << "two planes in " << nP << " and " << nPP << endl;
+			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
+			this->AddMirrorPlane(nPP, lines, numLines, E_field, H_field, MeshType);
+			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
+			break;
+		}
+	}
+	// check if all planes are on
+	if ((m_MirrorType[0]!=MIRROR_OFF) && (m_MirrorType[1]!=MIRROR_OFF) && (m_MirrorType[2]!=MIRROR_OFF))
+	{
+		cerr << "all three planes on " << endl;
+		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
+		this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType);
+		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
+		this->AddMirrorPlane(2, lines, numLines, E_field, H_field, MeshType);
+		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
+		this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType);
+		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
+	}
+
+	//cleanup E- & H-Fields
+	Delete_N_3DArray(E_field,numLines);
+	Delete_N_3DArray(H_field,numLines);
+	return true;
+}
+
+bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType)
+{
+	//find normal direction
+	int ny = this->GetNormalDir(numLines);
 	if (ny<0)
 	{
 		cerr << "nf2ff_calc::AddPlane: Error can't determine normal direction..." << endl;
 		return false;
 	}
+	int nP  = (ny+1)%3;
+	int nPP = (ny+2)%3;
 
 	complex<float>**** Js = Create_N_3DArray<complex<float> >(numLines);
 	complex<float>**** Ms = Create_N_3DArray<complex<float> >(numLines);
@@ -259,15 +367,15 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 
 	float edge_length_P[numLines[nP]];
 	for (unsigned int n=1;n<numLines[nP]-1;++n)
-		edge_length_P[n]=0.5*(lines[nP][n+1]-lines[nP][n-1]);
-	edge_length_P[0]=0.5*(lines[nP][1]-lines[nP][0]);
-	edge_length_P[numLines[nP]-1]=0.5*(lines[nP][numLines[nP]-1]-lines[nP][numLines[nP]-2]);
+		edge_length_P[n]=0.5*fabs(lines[nP][n+1]-lines[nP][n-1]);
+	edge_length_P[0]=0.5*fabs(lines[nP][1]-lines[nP][0]);
+	edge_length_P[numLines[nP]-1]=0.5*fabs(lines[nP][numLines[nP]-1]-lines[nP][numLines[nP]-2]);
 
 	float edge_length_PP[numLines[nPP]];
 	for (unsigned int n=1;n<numLines[nPP]-1;++n)
-		edge_length_PP[n]=0.5*(lines[nPP][n+1]-lines[nPP][n-1]);
-	edge_length_PP[0]=0.5*(lines[nPP][1]-lines[nPP][0]);
-	edge_length_PP[numLines[nPP]-1]=0.5*(lines[nPP][numLines[nPP]-1]-lines[nPP][numLines[nPP]-2]);
+		edge_length_PP[n]=0.5*fabs(lines[nPP][n+1]-lines[nPP][n-1]);
+	edge_length_PP[0]=0.5*fabs(lines[nPP][1]-lines[nPP][0]);
+	edge_length_PP[numLines[nPP]-1]=0.5*fabs(lines[nPP][numLines[nPP]-1]-lines[nPP][numLines[nPP]-2]);
 
 	//check for cylindrical mesh
 	if (MeshType==1)
@@ -341,10 +449,6 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 	// threads calc their local Nt,Np,Lt and Lp
 
 	m_Barrier->wait(); //combine all thread local Nt,Np,Lt and Lp
-
-	//cleanup E- & H-Fields
-	Delete_N_3DArray(E_field,numLines);
-	Delete_N_3DArray(H_field,numLines);
 
 	complex<float>** Nt = Create2DArray<complex<float> >(numAngles);
 	complex<float>** Np = Create2DArray<complex<float> >(numAngles);

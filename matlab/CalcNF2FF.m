@@ -30,6 +30,11 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % 'Mue_r':   specify the relative magnetic permeability for the nf2ff
 % 'MPI'    : set true if MPI was used
 %
+% 'Mirror':  Add mirroring in a given direction (dir), with a given 
+%            mirror type (PEC or PMC) and a mirror position in the given
+%            direction.
+%            Example: 'Mirror', {0, 'PMC', +100}
+%
 % See also: CreateNF2FFBox, ReadNF2FF
 %
 % openEMS matlab interface
@@ -56,6 +61,15 @@ for n=1:2:numel(varargin)-1
         mode = varargin{n+1};
     elseif (strcmp(varargin{n},'MPI'))
         MPI = varargin{n+1};
+    elseif (strcmp(varargin{n},'Mirror'))
+        if isfield(nf2ff_xml,'Mirror')
+            pos = length(nf2ff_xml.Mirror)+1;
+        else
+            pos = 1;
+        end
+        nf2ff_xml.Mirror{pos}.ATTRIBUTE.Dir=varargin{n+1}{1};
+        nf2ff_xml.Mirror{pos}.ATTRIBUTE.Type=varargin{n+1}{2};
+        nf2ff_xml.Mirror{pos}.ATTRIBUTE.Pos=varargin{n+1}{3};
     else
         nf2ff_xml.ATTRIBUTE.(varargin{n})=varargin{n+1};
     end

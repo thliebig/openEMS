@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2012 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2012-2014 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -121,7 +121,14 @@ void nf2ff::SetPermeability(vector<float> permeability)
 	}
 	for (size_t fn=0;fn<m_nf2ff.size();++fn)
 		m_nf2ff.at(fn)->SetPermeability(permeability.at(fn));
+}
 
+void nf2ff::SetMirror(int type, int dir, float pos)
+{
+	if (m_Verbose>0)
+		cerr << "Enable mirror of type: "<< type << " in direction: " << dir << " at: " << pos << endl;
+	for (size_t fn=0;fn<m_nf2ff.size();++fn)
+		m_nf2ff.at(fn)->SetMirror(type, dir, pos);
 }
 
 bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
@@ -224,7 +231,26 @@ bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 	if (ti_nf2ff->QueryFloatAttribute("Radius",&radius) ==  TIXML_SUCCESS)
 		l_nf2ff->SetRadius(radius);
 
-	TiXmlElement* ti_Planes = ti_nf2ff->FirstChildElement();
+	// read mirrors
+	TiXmlElement* ti_Mirros = ti_nf2ff->FirstChildElement("Mirror");
+	int dir=-1;
+	string type;
+	float pos=0.0;
+	while (ti_Mirros!=NULL)
+	{
+		type = string(ti_Mirros->Attribute("Type"));
+		if (ti_Mirros->QueryIntAttribute("Dir",&dir) != TIXML_SUCCESS)
+			dir = -1;
+		if (ti_Mirros->QueryFloatAttribute("Pos",&pos) != TIXML_SUCCESS)
+			dir = -1;
+		if ((dir>=0) && (strcmp(type.c_str(),"PEC")==0))
+			l_nf2ff->SetMirror(MIRROR_PEC, dir, pos);
+		else if ((dir>=0) && (strcmp(type.c_str(),"PMC")==0))
+			l_nf2ff->SetMirror(MIRROR_PMC, dir, pos);
+		ti_Mirros = ti_Mirros->NextSiblingElement("Mirror");
+	}
+	
+	TiXmlElement* ti_Planes = ti_nf2ff->FirstChildElement("Planes");
 	string E_name;
 	string H_name;
 	while (ti_Planes!=NULL)

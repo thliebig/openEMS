@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2012 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2012-2014 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -28,6 +28,10 @@
 using namespace std;
 
 class nf2ff_calc;
+
+#define MIRROR_OFF 0
+#define MIRROR_PEC 1
+#define MIRROR_PMC 2
 
 // data structure to exchange data between thread-controller and worker-threads
 typedef struct
@@ -89,6 +93,8 @@ public:
 	unsigned int GetNumThreads() const {return m_numThreads;}
 	void SetNumThreads(unsigned int n) {m_numThreads=n;}
 
+	void SetMirror(int type, int dir, float pos);
+
 	bool AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType=0);
 
 protected:
@@ -112,6 +118,15 @@ protected:
 	unsigned int m_numPhi;
 	float* m_theta;
 	float* m_phi;
+
+	//mirror settings
+	bool m_EnableMirror;
+	int m_MirrorType[3];
+	float m_MirrorPos[3];
+
+	int GetNormalDir(unsigned int* numLines);
+	bool AddSinglePlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType=0);
+	bool AddMirrorPlane(int n, float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType=0);
 
 	//boost multi-threading
 	unsigned int m_numThreads;

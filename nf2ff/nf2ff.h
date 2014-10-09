@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2012 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2012-2014 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -40,6 +40,8 @@ public:
 	void SetRadius(float radius);
 	void SetPermittivity(vector<float> permittivity);
 	void SetPermeability(vector<float> permeability);
+	
+	void SetMirror(int type, int dir, float pos);
 
 	double GetTotalRadPower(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetTotalRadPower();}
 	double GetMaxDirectivity(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetMaxDirectivity();}

@@ -115,6 +115,19 @@ T*** Create3DArray(const unsigned int* numLines)
 }
 
 template <typename T>
+T*** Copy3DArray(T*** array_in, T*** array_out, const unsigned int* numLines)
+{
+	if (array_out==NULL)
+		array_out = Create3DArray<T>(numLines);
+	unsigned int pos[3];
+	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				array_out[pos[0]][pos[1]][pos[2]] = array_in[pos[0]][pos[1]][pos[2]];
+	return array_out;
+}
+
+template <typename T>
 T**** Create_N_3DArray(const unsigned int* numLines)
 {
 	T**** array=NULL;
@@ -124,6 +137,16 @@ T**** Create_N_3DArray(const unsigned int* numLines)
 		array[n]=Create3DArray<T>( numLines );
 	}
 	return array;
+}
+
+template <typename T>
+T**** Copy_N_3DArray(T**** array_in, T**** array_out, const unsigned int* numLines)
+{
+	if (array_out==NULL)
+		array_out = Create_N_3DArray<T>(numLines);
+	for (int n=0; n<3; ++n)
+		array_out[n]=Copy3DArray<T>( array_in[n], array_out[n], numLines);
+	return array_out;
 }
 
 template <typename T>
