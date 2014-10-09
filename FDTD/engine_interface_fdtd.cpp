@@ -67,6 +67,13 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 	case NODE_INTERPOLATE:
 		for (int n=0; n<3; ++n)
 		{
+			if (pos[n]==m_Op->GetNumberOfLines(n, true)-1)  // use only the "lower value" at the upper bound
+			{
+				--iPos[n];
+				out[n] = (double)GetRawField(n,iPos,type);
+				++iPos[n];
+				continue;
+			}
 			delta = m_Op->GetEdgeLength(n,iPos);
 			out[n] = GetRawField(n,iPos,type);
 			if (delta==0)
@@ -74,11 +81,8 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 				out[n]=0;
 				continue;
 			}
-			if (pos[n]==0)
-			{
-				out[n] *= 0.5; //make it consistant with upper PEC boundary
+			if (pos[n]==0) // use only the "upper value" at the lower bound
 				continue;
-			}
 			--iPos[n];
 			double deltaDown = m_Op->GetEdgeLength(n,iPos);
 			double deltaRel = delta / (delta+deltaDown);
