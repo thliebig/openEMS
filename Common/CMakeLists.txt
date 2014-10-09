@@ -1,6 +1,5 @@
 
 INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )
-INCLUDE_DIRECTORIES( ${CSXCAD_SOURCE_DIR}/src )
 
 set( SOURCES
   engine_interface_base.cpp

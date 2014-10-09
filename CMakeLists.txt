@@ -172,5 +172,4 @@ TARGET_LINK_LIBRARIES( openEMS
 INSTALL( TARGETS openEMS DESTINATION bin )
 
 INSTALL( DIRECTORY matlab DESTINATION share/openEMS )
-
 # TODO mpi, tarball, debug, release
