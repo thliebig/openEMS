@@ -310,14 +310,12 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 		// check if a single mirror plane is on
 		if ((m_MirrorType[n]!=MIRROR_OFF) && (m_MirrorType[nP]==MIRROR_OFF) && (m_MirrorType[nPP]==MIRROR_OFF))
 		{
-			cerr << "single plane in " << n << endl;
 			this->AddMirrorPlane(n, lines, numLines, E_field, H_field, MeshType);
 			break;
 		}
 		//check if two planes are on 
 		else if ((m_MirrorType[n]==MIRROR_OFF) && (m_MirrorType[nP]!=MIRROR_OFF) && (m_MirrorType[nPP]!=MIRROR_OFF))
 		{
-			cerr << "two planes in " << nP << " and " << nPP << endl;
 			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
 			this->AddMirrorPlane(nPP, lines, numLines, E_field, H_field, MeshType);
 			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
@@ -327,7 +325,6 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 	// check if all planes are on
 	if ((m_MirrorType[0]!=MIRROR_OFF) && (m_MirrorType[1]!=MIRROR_OFF) && (m_MirrorType[2]!=MIRROR_OFF))
 	{
-		cerr << "all three planes on " << endl;
 		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
 		this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType);
 		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
