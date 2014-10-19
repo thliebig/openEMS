@@ -102,7 +102,7 @@ protected:
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
-	virtual double GetMaterial(int ny, const double coords[3], int MatType, bool markAsUsed=true) const;
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 

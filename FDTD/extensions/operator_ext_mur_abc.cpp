@@ -140,13 +140,20 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 	else
 		coord[m_ny] = m_Op->GetDiscLine(m_ny,pos[m_ny]) - delta/2 / m_Op->GetGridDelta();
 
+	int posBB[3];
+	posBB[m_ny]  =pos[m_ny];
+	posBB[m_nyPP]=-1;
+
 	for (pos[m_nyP]=0; pos[m_nyP]<m_numLines[0]; ++pos[m_nyP])
 	{
+		posBB[m_nyP]=pos[m_nyP];
+		vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(posBB[0], posBB[1], posBB[2], CSProperties::MATERIAL);
 		coord[m_nyP] = m_Op->GetDiscLine(m_nyP,pos[m_nyP]);
 		for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
 		{
 			coord[m_nyPP] = m_Op->GetDiscLine(m_nyPP,pos[m_nyPP]);
-			CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, CSProperties::MATERIAL, false);
+//			CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, CSProperties::MATERIAL, false);
+			CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, false);
 			if (prop)
 			{
 				CSPropMaterial* mat = prop->ToMaterial();

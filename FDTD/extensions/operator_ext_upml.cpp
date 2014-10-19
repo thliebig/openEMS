@@ -391,12 +391,13 @@ bool Operator_Ext_UPML::BuildExtension()
 		for (loc_pos[1]=0; loc_pos[1]<m_numLines[1]; ++loc_pos[1])
 		{
 			pos[1] = loc_pos[1] + m_StartPos[1];
+			vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(pos[0], pos[1], -1, CSProperties::MATERIAL);
 			for (loc_pos[2]=0; loc_pos[2]<m_numLines[2]; ++loc_pos[2])
 			{
 				pos[2] = loc_pos[2] + m_StartPos[2];
 				for (int n=0; n<3; ++n)
 				{
-					m_Op->Calc_EffMatPos(n,pos,eff_Mat);
+					m_Op->Calc_EffMatPos(n,pos,eff_Mat,vPrims);
 					CalcGradingKappa(n, pos,__Z0__ ,kappa_v ,kappa_i);
 					nP = (n+1)%3;
 					nPP = (n+2)%3;

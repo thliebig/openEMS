@@ -204,6 +204,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 		{
 			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
+				vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(pos[0], pos[1], -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
 					unsigned int index = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
@@ -222,7 +223,8 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_Op->GetVI(n,pos[0],pos[1],pos[2])==0)
 							continue;
 
-						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
+//						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
+						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetEpsPlasmaFreqWeighted(order,n,coord) * 2 * PI;
@@ -273,7 +275,8 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_Op->GetIV(n,pos[0],pos[1],pos[2])==0)
 							continue;
 
-						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
+//						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
+						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetMuePlasmaFreqWeighted(order,n,coord) * 2 * PI;

@@ -179,6 +179,8 @@ public:
 
 	virtual double CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const;
 
+	virtual vector<CSPrimitives*> GetPrimitivesBoundBox(int posX, int posY, int posZ, CSProperties::PropertyType type=CSProperties::ANY) const;
+
 protected:
 	//! use New() for creating a new Operator
 	Operator();
@@ -215,7 +217,7 @@ protected:
 	double CalcTimestep_Var3();
 
 	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
-	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC) const;
+	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC, vector<CSPrimitives *> vPrims) const;
 
 	//! Get the FDTD raw disc delta, needed by Calc_EffMatPos() \sa Calc_EffMatPos
 	/*!
@@ -226,15 +228,15 @@ protected:
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
 	//! Get the material at a given coordinate, direction and type from CSX (internal use only)
-	virtual double GetMaterial(int ny, const double coords[3], int MatType, bool markAsUsed=true) const;
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
 
 	MatAverageMethods m_MatAverageMethod;
 
 	//! Calculate the effective/averaged material properties at the given position and direction ny.
-	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const;
+	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const;
 
-	virtual bool AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat) const;
-	virtual bool AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat) const;
+	virtual bool AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const;
+	virtual bool AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const;
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
@@ -254,6 +256,7 @@ protected:
 	//EC elements, internal only!
 	virtual void Init_EC();
 	virtual bool Calc_EC();
+	virtual void Calc_EC_Range(unsigned int xStart, unsigned int xStop);
 	FDTD_FLOAT* EC_C[3];
 	FDTD_FLOAT* EC_G[3];
 	FDTD_FLOAT* EC_L[3];

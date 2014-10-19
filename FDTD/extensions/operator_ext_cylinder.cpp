@@ -58,13 +58,15 @@ bool Operator_Ext_Cylinder::BuildExtension()
 	double inEC[4];
 	double dT = m_Op->GetTimestep();
 	pos[0]=0;
+	vector<CSPrimitives*> vPrims_metal = m_Op->GetPrimitivesBoundBox(pos[0], -1, -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
 	for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2,true); ++pos[2])
 	{
 		double C=0;
 		double G=0;
+		vector<CSPrimitives*> vPrims_mat   = m_Op->GetPrimitivesBoundBox(pos[0], -1, pos[2], CSProperties::MATERIAL);
 		for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1,true)-2; ++pos[1])
 		{
-			m_Op_Cyl->Calc_ECPos(2,pos,inEC);
+			m_Op_Cyl->Calc_ECPos(2,pos,inEC,vPrims_mat);
 			C+=inEC[0];
 			G+=inEC[1];
 		}
@@ -80,7 +82,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 
 		//search for metal on z-axis
 		m_Op_Cyl->GetYeeCoords(2,pos,coord,false);
-		CSProperties* prop = m_Op->CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), true);
+		CSProperties* prop = m_Op->CSX->GetPropertyByCoordPriority(coord, vPrims_metal, true);
 		if (prop)
 		{
 			if (prop->GetType()==CSProperties::METAL) //set to PEC

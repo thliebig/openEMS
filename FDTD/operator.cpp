@@ -753,12 +753,13 @@ void Operator::DumpMaterial2File(string filename)
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
+			vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, CSProperties::MATERIAL);
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				for (int n=0; n<3; ++n)
 				{
 					double inMat[4];
-					Calc_EffMatPos(n, pos, inMat);
+					Calc_EffMatPos(n, pos, inMat, vPrims);
 					epsilon[n][pos[0]][pos[1]][pos[2]] = inMat[0]/__EPS0__;
 					mue[n][pos[0]][pos[1]][pos[2]]     = inMat[2]/__MUE0__;
 					kappa[n][pos[0]][pos[1]][pos[2]]   = inMat[1];
@@ -1165,10 +1166,10 @@ void Operator::ApplyMagneticBC(bool* dirs)
 	}
 }
 
-bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC) const
+bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC, vector<CSPrimitives*> vPrims) const
 {
 	double EffMat[4];
-	Calc_EffMatPos(ny,pos,EffMat);
+	Calc_EffMatPos(ny,pos,EffMat, vPrims);
 
 	if (m_epsR)
 		m_epsR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[0];
@@ -1240,9 +1241,16 @@ bool Operator::GetCellCenterMaterialAvgCoord(const int pos[], double coord[3]) c
 	return true;
 }
 
-double Operator::GetMaterial(int ny, const double* coords, int MatType, bool markAsUsed) const
+double Operator::GetMaterial(int ny, const double* coords, int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed) const
 {
-	CSProperties* prop = CSX->GetPropertyByCoordPriority(coords,CSProperties::MATERIAL,markAsUsed);
+	CSProperties* prop = CSX->GetPropertyByCoordPriority(coords,vPrims,markAsUsed);
+//	CSProperties* old_prop = CSX->GetPropertyByCoordPriority(coords,CSProperties::MATERIAL,markAsUsed);
+//	if (old_prop!=prop)
+//	{
+//		cerr << "ERROR: Unequal properties!" << endl;
+//		exit(-1);
+//	}
+
 	CSPropMaterial* mat = dynamic_cast<CSPropMaterial*>(prop);
 	if (mat)
 	{
@@ -1282,7 +1290,7 @@ double Operator::GetMaterial(int ny, const double* coords, int MatType, bool mar
 	}
 }
 
-bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat) const
+bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives *> vPrims) const
 {
 	int n=ny;
 	double coord[3];
@@ -1302,8 +1310,8 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
 	{
 		A_n = GetNodeArea(ny,loc_pos,true);
-		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
-		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		EffMat[0] += GetMaterial(n, coord, 0, vPrims)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1, vPrims)*A_n;
 		area+=A_n;
 	}
 
@@ -1312,8 +1320,8 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
 	{
 		A_n = GetNodeArea(ny,loc_pos,true);
-		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
-		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		EffMat[0] += GetMaterial(n, coord, 0, vPrims)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1, vPrims)*A_n;
 		area+=A_n;
 	}
 
@@ -1323,8 +1331,8 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
 	{
 		A_n = GetNodeArea(ny,loc_pos,true);
-		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
-		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		EffMat[0] += GetMaterial(n, coord, 0, vPrims)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1, vPrims)*A_n;
 		area+=A_n;
 	}
 
@@ -1333,8 +1341,8 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
 	{
 		A_n = GetNodeArea(ny,loc_pos,true);
-		EffMat[0] += GetMaterial(n, coord, 0)*A_n;
-		EffMat[1] += GetMaterial(n, coord, 1)*A_n;
+		EffMat[0] += GetMaterial(n, coord, 0, vPrims)*A_n;
+		EffMat[1] += GetMaterial(n, coord, 1, vPrims)*A_n;
 		area+=A_n;
 	}
 
@@ -1352,8 +1360,8 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
 	{
 		delta_ny = GetNodeWidth(n,loc_pos,true);
-		EffMat[2] += delta_ny / GetMaterial(n, coord, 2);
-		sigma = GetMaterial(n, coord, 3);
+		EffMat[2] += delta_ny / GetMaterial(n, coord, 2, vPrims);
+		sigma = GetMaterial(n, coord, 3, vPrims);
 		if (sigma)
 			EffMat[3] += delta_ny / sigma;
 		else
@@ -1366,8 +1374,8 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	if (GetCellCenterMaterialAvgCoord(loc_pos,coord))
 	{
 		delta_ny = GetNodeWidth(n,loc_pos,true);
-		EffMat[2] += delta_ny / GetMaterial(n, coord, 2);
-		sigma = GetMaterial(n, coord, 3);
+		EffMat[2] += delta_ny / GetMaterial(n, coord, 2, vPrims);
+		sigma = GetMaterial(n, coord, 3, vPrims);
 		if (sigma)
 			EffMat[3] += delta_ny / sigma;
 		else
@@ -1388,7 +1396,7 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	return true;
 }
 
-bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat) const
+bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const
 {
 	int n=ny;
 	double coord[3];
@@ -1415,8 +1423,8 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	shiftCoord[nP] = coord[nP]+deltaP*0.25;
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.25;
 	A_n = GetNodeArea(ny,loc_pos,true);
-	EffMat[0] = GetMaterial(n, shiftCoord, 0)*A_n;
-	EffMat[1] = GetMaterial(n, shiftCoord, 1)*A_n;
+	EffMat[0] = GetMaterial(n, shiftCoord, 0, vPrims)*A_n;
+	EffMat[1] = GetMaterial(n, shiftCoord, 1, vPrims)*A_n;
 	area+=A_n;
 
 	//shift up-left
@@ -1426,8 +1434,8 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,loc_pos,true);
-	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
-	EffMat[1] += GetMaterial(n, shiftCoord, 1)*A_n;
+	EffMat[0] += GetMaterial(n, shiftCoord, 0, vPrims)*A_n;
+	EffMat[1] += GetMaterial(n, shiftCoord, 1, vPrims)*A_n;
 	area+=A_n;
 
 	//shift down-right
@@ -1437,8 +1445,8 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	++loc_pos[nP];
 	--loc_pos[nPP];
 	A_n = GetNodeArea(ny,loc_pos,true);
-	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
-	EffMat[1] += GetMaterial(n, shiftCoord, 1)*A_n;
+	EffMat[0] += GetMaterial(n, shiftCoord, 0, vPrims)*A_n;
+	EffMat[1] += GetMaterial(n, shiftCoord, 1, vPrims)*A_n;
 	area+=A_n;
 
 	//shift down-left
@@ -1447,8 +1455,8 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	shiftCoord[nPP] = coord[nPP]-deltaPP_M*0.25;
 	--loc_pos[nP];
 	A_n = GetNodeArea(ny,loc_pos,true);
-	EffMat[0] += GetMaterial(n, shiftCoord, 0)*A_n;
-	EffMat[1] += GetMaterial(n, shiftCoord, 1)*A_n;
+	EffMat[0] += GetMaterial(n, shiftCoord, 0, vPrims)*A_n;
+	EffMat[1] += GetMaterial(n, shiftCoord, 1, vPrims)*A_n;
 	area+=A_n;
 
 	EffMat[0]*=__EPS0__/area;
@@ -1466,8 +1474,8 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	--loc_pos[n];
 	double delta_ny = GetNodeWidth(n,loc_pos,true);
-	EffMat[2] = delta_ny / GetMaterial(n, shiftCoord, 2);
-	double sigma = GetMaterial(n, shiftCoord, 3);
+	EffMat[2] = delta_ny / GetMaterial(n, shiftCoord, 2, vPrims);
+	double sigma = GetMaterial(n, shiftCoord, 3, vPrims);
 	if (sigma)
 		EffMat[3] = delta_ny / sigma;
 	else
@@ -1480,8 +1488,8 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	shiftCoord[nPP] = coord[nPP]+deltaPP*0.5;
 	++loc_pos[n];
 	delta_ny = GetNodeWidth(n,loc_pos,true);
-	EffMat[2] += delta_ny / GetMaterial(n, shiftCoord, 2);
-	sigma = GetMaterial(n, shiftCoord, 3);
+	EffMat[2] += delta_ny / GetMaterial(n, shiftCoord, 2, vPrims);
+	sigma = GetMaterial(n, shiftCoord, 3, vPrims);
 	if (sigma)
 		EffMat[3] += delta_ny / sigma;
 	else
@@ -1502,14 +1510,14 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	return true;
 }
 
-bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat) const
+bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives *> vPrims) const
 {
 	switch (m_MatAverageMethod)
 	{
 	case QuarterCell:
-		return AverageMatQuarterCell(ny, pos, EffMat);
+		return AverageMatQuarterCell(ny, pos, EffMat, vPrims);
 	case CentralCell:
-		return AverageMatCellCenter(ny, pos, EffMat);
+		return AverageMatCellCenter(ny, pos, EffMat, vPrims);
 	default:
 		cerr << "Operator:: " << __func__ << ":  Error, unknown material averaging method... exit" << endl;
 		exit(1);
@@ -1717,19 +1725,51 @@ bool Operator::Calc_EC()
 		cerr << "CartOperator::Calc_EC: CSX not given or invalid!!!" << endl;
 		return false;
 	}
+	
+	MainOp->SetPos(0,0,0);
+	Calc_EC_Range(0,numLines[0]-1);
+	return true;
+}
+
+vector<CSPrimitives*> Operator::GetPrimitivesBoundBox(int posX, int posY, int posZ, CSProperties::PropertyType type) const
+{
+	double boundBox[6];
+	int BBpos[3] = {posX, posY, posZ};
+	for (int n=0;n<3;++n)
+	{
+		if (BBpos[n]<0)
+		{
+			boundBox[2*n]   = this->GetDiscLine(n,0);
+			boundBox[2*n+1] = this->GetDiscLine(n,numLines[n]-1);
+		}
+		else
+		{
+			boundBox[2*n]   = this->GetDiscLine(n, max(0, BBpos[n]-1));
+			boundBox[2*n+1] = this->GetDiscLine(n, min(int(numLines[n])-1, BBpos[n]+1));
+		}
+	}
+
+	vector<CSPrimitives*> vPrim = this->CSX->GetPrimitivesByBoundBox(boundBox, true, type);
+	return vPrim;
+}
+
+void Operator::Calc_EC_Range(unsigned int xStart, unsigned int xStop)
+{
+//	vector<CSPrimitives*> vPrims = this->CSX->GetAllPrimitives(true, CSProperties::MATERIAL);
 	unsigned int ipos;
 	unsigned int pos[3];
 	double inEC[4];
-	for (int n=0; n<3; ++n)
+	for (pos[0]=xStart; pos[0]<=xStop; ++pos[0])
 	{
-		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, CSProperties::MATERIAL);
+			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
-				for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+				ipos = MainOp->GetPos(pos[0],pos[1],pos[2]);
+				for (int n=0; n<3; ++n)
 				{
-					Calc_ECPos(n,pos,inEC);
-					ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
+					Calc_ECPos(n,pos,inEC,vPrims);
 					EC_C[n][ipos]=inEC[0];
 					EC_G[n][ipos]=inEC[1];
 					EC_L[n][ipos]=inEC[2];
@@ -1738,8 +1778,6 @@ bool Operator::Calc_EC()
 			}
 		}
 	}
-
-	return true;
 }
 
 void Operator::SetTimestepFactor(double factor)
@@ -1925,12 +1963,19 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
+			vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				for (int n=0; n<3; ++n)
 				{
 					GetYeeCoords(n,pos,coord,false);
-					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), true);
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(coord, vPrims, true);
+//					CSProperties* old_prop = CSX->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), true);
+//					if (old_prop!=prop)
+//					{
+//						cerr << "CalcPEC_Range: " << old_prop << " vs " << prop << endl;
+//						exit(-1);
+//					}
 					if (prop)
 					{
 						if (prop->GetType()==CSProperties::METAL) //set to PEC

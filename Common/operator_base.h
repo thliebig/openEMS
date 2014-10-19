@@ -114,6 +114,8 @@ public:
 	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
 	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const = 0;
 
+	virtual vector<CSPrimitives*> GetPrimitivesBoundBox(int posX, int posY, int posZ, CSProperties::PropertyType type=CSProperties::ANY) const = 0;
+
 	//! Set the background material (default is vacuum)
 	virtual void SetBackgroundMaterial(double epsR=0, double mueR=0, double kappa=0, double sigma=0, double density=0);
 

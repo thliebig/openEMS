@@ -212,18 +212,17 @@ void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, ve
 void Operator_CylinderMultiGrid::FillMissingDataStorage()
 {
 	unsigned int pos[3];
-
 	double EffMat[4];
-
 	for (int ny=0; ny<3; ++ny)
 	{
 		for (pos[0]=0; pos[0]<m_Split_Pos-1; ++pos[0])
 		{
 			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
+				vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, CSProperties::MATERIAL);
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
-					Calc_EffMatPos(ny,pos,EffMat);
+					Calc_EffMatPos(ny,pos,EffMat,vPrims);
 
 					if (m_epsR)
 						m_epsR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[0];

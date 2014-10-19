@@ -67,14 +67,14 @@ double Operator_Cylinder::GetRawDiscDelta(int ny, const int pos) const
 	return Operator_Multithread::GetRawDiscDelta(ny,pos);
 }
 
-double Operator_Cylinder::GetMaterial(int ny, const double* coords, int MatType, bool markAsUsed) const
+double Operator_Cylinder::GetMaterial(int ny, const double* coords, int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed) const
 {
 	double l_coords[] = {coords[0],coords[1],coords[2]};
 	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
 		l_coords[1]-=2*PI;
 	if (CC_closedAlpha && (coords[1]<GetDiscLine(1,0,false)))
 		l_coords[1] += 2*PI;
-	return Operator_Multithread::GetMaterial(ny,l_coords,MatType,markAsUsed);
+	return Operator_Multithread::GetMaterial(ny,l_coords,MatType,vPrims,markAsUsed);
 }
 
 int Operator_Cylinder::CalcECOperator( DebugFlags debugFlags )

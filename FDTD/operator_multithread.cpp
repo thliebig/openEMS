@@ -189,27 +189,7 @@ void Operator_Thread::operator()()
 {
 	//************** calculate EC (Calc_EC) ***********************//
 	m_OpPtr->m_CalcEC_Start->wait();
-	unsigned int ipos;
-	unsigned int pos[3];
-	double inEC[4];
-	for (int n=0; n<3; ++n)
-	{
-		for (pos[0]=m_start; pos[0]<=m_stop; ++pos[0])
-		{
-			for (pos[1]=0; pos[1]<m_OpPtr->numLines[1]; ++pos[1])
-			{
-				for (pos[2]=0; pos[2]<m_OpPtr->numLines[2]; ++pos[2])
-				{
-					m_OpPtr->Calc_ECPos(n,pos,inEC);
-					ipos = m_OpPtr->MainOp->GetPos(pos[0],pos[1],pos[2]);
-					m_OpPtr->EC_C[n][ipos]=inEC[0];
-					m_OpPtr->EC_G[n][ipos]=inEC[1];
-					m_OpPtr->EC_L[n][ipos]=inEC[2];
-					m_OpPtr->EC_R[n][ipos]=inEC[3];
-				}
-			}
-		}
-	}
+	m_OpPtr->Calc_EC_Range(m_start,m_stop);
 	m_OpPtr->m_CalcEC_Stop->wait();
 
 	//************** calculate EC (Calc_EC) ***********************//

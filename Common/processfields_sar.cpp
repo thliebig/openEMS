@@ -203,6 +203,7 @@ void ProcessFieldsSAR::DumpFDData()
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			orig_pos[1] = posLines[1][pos[1]];
+			vector<CSPrimitives*> vPrims = Op->GetPrimitivesBoundBox(orig_pos[0], orig_pos[1], -1, CSProperties::MATERIAL);
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				orig_pos[2] = posLines[2][pos[2]];
@@ -211,7 +212,8 @@ void ProcessFieldsSAR::DumpFDData()
 				cell_density[pos[0]][pos[1]][pos[2]] = 0.0;
 
 				Op->GetCellCenterMaterialAvgCoord(orig_pos, coord);
-				prop = CSX->GetPropertyByCoordPriority(coord,CSProperties::MATERIAL);
+				prop = CSX->GetPropertyByCoordPriority(coord, vPrims);
+//				prop = CSX->GetPropertyByCoordPriority(coord,CSProperties::MATERIAL);
 				if (prop!=0)
 				{
 					matProp = dynamic_cast<CSPropMaterial*>(prop);

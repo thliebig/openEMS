@@ -61,6 +61,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
+			vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(pos[0], pos[1], -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				b_pos_on = false;
@@ -86,7 +87,8 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 					if (m_CC_R0_included && (n==2) && (pos[0]==0))
 						disable_pos = true;
 
-					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), false, &cs_sheet);
+//					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), false, &cs_sheet);
+					CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, false, &cs_sheet);
 					CSPropConductingSheet* cs_prop = dynamic_cast<CSPropConductingSheet*>(prop);
 					if (cs_prop)
 					{
