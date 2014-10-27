@@ -119,41 +119,6 @@ void Operator_SSE_Compressed::ShowStat() const
 	cout << "-----------------------------------" << endl;
 }
 
-// see http://www.informit.com/articles/article.aspx?p=710752&seqNum=6
-#define INLINE inline extern __attribute__((always_inline))
-INLINE int equal(f4vector v1, f4vector v2)
-{
-#if defined(__SSE__)
-#if (__GNUC__ == 4) && (__GNUC_MINOR__ < 4)
-	v4si compare = __builtin_ia32_cmpeqps( v1.v, v2.v );
-	return __builtin_ia32_movmskps( (v4sf)compare ) == 0x0f;
-#else
-	v4sf compare = __builtin_ia32_cmpeqps( v1.v, v2.v );
-	return __builtin_ia32_movmskps( compare ) == 0x0f;
-#endif
-#else
-	return (
-	           v1.f[0] == v2.f[0] &&
-	           v1.f[1] == v2.f[1] &&
-	           v1.f[2] == v2.f[2] &&
-	           v1.f[3] == v2.f[3]
-	       );
-#endif
-}
-
-bool Operator_SSE_Compressed::CompareOperators(unsigned int pos1[3], unsigned int pos2[3])
-{
-//	cerr << pos1[0] << " " << pos1[1] << " " << pos1[2] << endl;
-	for (int n=0; n<3; ++n)
-	{
-		if (!equal( f4_vv[n][pos1[0]][pos1[1]][pos1[2]], f4_vv[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
-		if (!equal( f4_vi[n][pos1[0]][pos1[1]][pos1[2]], f4_vi[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
-		if (!equal( f4_iv[n][pos1[0]][pos1[1]][pos1[2]], f4_iv[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
-		if (!equal( f4_ii[n][pos1[0]][pos1[1]][pos1[2]], f4_ii[n][pos2[0]][pos2[1]][pos2[2]] )) return false;
-	}
-	return true;
-}
-
 bool Operator_SSE_Compressed::CompressOperator()
 {
 	if (g_settings.GetVerboseLevel()>0)

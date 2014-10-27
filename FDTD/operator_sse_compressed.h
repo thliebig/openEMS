@@ -69,8 +69,6 @@ protected:
 	virtual void Reset();
 	virtual void InitOperator();
 
-	bool CompareOperators(unsigned int pos1[3], unsigned int pos2[3]);
-
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	// engine needs access
