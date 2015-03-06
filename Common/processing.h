@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2010 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2010-2015 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -62,6 +62,7 @@ public:
 	virtual void ShowSnappedCoords();
 
 	void SetProcessInterval(unsigned int interval) {ProcessInterval=max((unsigned int)1,interval);}
+	void SetProcessStartStopTime(double start, double stop);
 
 	void AddStep(unsigned int step);
 	void AddSteps(vector<unsigned int> steps);
@@ -150,6 +151,9 @@ protected:
 	//! define/store snapped start/stop coords as mesh index
 	unsigned int start[3];
 	unsigned int stop[3];
+
+	//! start/stop timestep
+	unsigned int startTS, stopTS;
 
 	//! define/store if snapped start/stop coords are inside the field domain
 	bool m_start_inside[3];

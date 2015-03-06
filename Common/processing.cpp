@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2010 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2010-2015 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -40,6 +40,8 @@ Processing::Processing(Engine_Interface_Base* eng_if)
 	m_SnapMethod = 0;
 	m_Mesh_Type = CARTESIAN_MESH;
 
+	startTS=0;
+	stopTS =UINT_MAX;
 	for (int n=0;n<3;++n)
 	{
 		start[n]=0;
@@ -77,9 +79,12 @@ void Processing::SetName(string val, int number)
 
 bool Processing::CheckTimestep()
 {
+	unsigned int ts = m_Eng_Interface->GetNumberOfTimesteps();
+	if (ts<startTS || ts>stopTS)
+		return false;
 	if (m_ProcessSteps.size()>m_PS_pos)
 	{
-		if (m_ProcessSteps.at(m_PS_pos)==m_Eng_Interface->GetNumberOfTimesteps())
+		if (m_ProcessSteps.at(m_PS_pos)==ts)
 		{
 			++m_PS_pos;
 			return true;
@@ -87,12 +92,12 @@ bool Processing::CheckTimestep()
 	}
 	if (ProcessInterval)
 	{
-		if (m_Eng_Interface->GetNumberOfTimesteps()%ProcessInterval==0) return true;
+		if (ts%ProcessInterval==0) return true;
 	}
 
 	if (m_FD_Interval)
 	{
-		if (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval==0) return true;
+		if (ts%m_FD_Interval==0) return true;
 	}
 	return false;
 }
@@ -101,13 +106,14 @@ int Processing::GetNextInterval() const
 {
 	if (Enabled==false) return -1;
 	int next=INT_MAX;
+	int ts = (int)m_Eng_Interface->GetNumberOfTimesteps();
 	if (m_ProcessSteps.size()>m_PS_pos)
 	{
-		next = (int)m_ProcessSteps.at(m_PS_pos)-(int)m_Eng_Interface->GetNumberOfTimesteps();
+		next = (int)m_ProcessSteps.at(m_PS_pos)-ts;
 	}
 	if (ProcessInterval!=0)
 	{
-		int next_Interval = (int)ProcessInterval - (int)m_Eng_Interface->GetNumberOfTimesteps()%ProcessInterval;
+		int next_Interval = (int)ProcessInterval - ts%ProcessInterval;
 		if (next_Interval<next)
 			next = next_Interval;
 	}
@@ -115,10 +121,11 @@ int Processing::GetNextInterval() const
 	//check for FD sample interval
 	if (m_FD_Interval!=0)
 	{
-		int next_Interval = (int)m_FD_Interval - (int)m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval;
+		int next_Interval = (int)m_FD_Interval - ts%m_FD_Interval;
 		if (next_Interval<next)
 			next = next_Interval;
 	}
+
 	return next;
 }
 
@@ -192,6 +199,23 @@ void Processing::ShowSnappedCoords()
 		 << Op->GetDiscLine( 2, stop[2], m_dualMesh ) << ")";
 	cerr << "   [" << start[0] << "," << start[1] << "," << start[2] << "] -> ["
 		 << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
+}
+
+void Processing::SetProcessStartStopTime(double start, double stop)
+{
+	double dT = Op->GetTimestep();
+	startTS = 0;
+	stopTS  = UINT_MAX;
+	if (start>0)
+		startTS = floor(start/dT);
+	if (stop>0)
+		stopTS = ceil(stop/dT);
+	if (stopTS<=startTS)
+	{
+		cerr << "Processing::SetProcessStartStopTimestep: Invalid start/stop values! Disabling!" << endl;
+		startTS = 0;
+		stopTS  = UINT_MAX;
+	}
 }
 
 void Processing::OpenFile( string outfile )

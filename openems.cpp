@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2010 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2010-2015 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -406,6 +406,8 @@ bool openEMS::SetupProcessing()
 						proc->SetDualMesh(true);
 					}
 					proc->SetProcessInterval(Nyquist/m_OverSampling);
+					if (pb->GetStartTime()>0 || pb->GetStopTime()>0)
+						proc->SetProcessStartStopTime(pb->GetStartTime(), pb->GetStopTime());
 					proc->AddFrequency(pb->GetFDSamples());
 					proc->GetNormalDir(pb->GetNormalDir());
 					if (l_MultiBox==false)
@@ -470,6 +472,8 @@ bool openEMS::SetupProcessing()
 					{
 						ProcField->SetEnable(Enable_Dumps);
 						ProcField->SetProcessInterval(Nyquist/m_OverSampling);
+						if (db->GetStopTime()>0 || db->GetStartTime()>0)
+							ProcField->SetProcessStartStopTime(db->GetStartTime(), db->GetStopTime());
 						if ((db->GetDumpType()==1) || (db->GetDumpType()==11))
 						{
 							ProcField->SetDualTime(true);
