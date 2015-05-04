@@ -30,7 +30,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	}
 
 	//suppress hdf5 error output
-	H5Eset_auto(NULL, NULL);
+	H5Eset_auto1(NULL, NULL);
 
 	hid_t file = H5Fopen( args(0).string_value().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT );
 	if (file==-1)

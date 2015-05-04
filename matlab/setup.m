@@ -18,7 +18,14 @@ if isOctave()
     disp('compiling oct files')
     fflush(stdout)
     if isunix
-        mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
+        [res, fn] = unix('find /usr/lib -name libhdf5.so');
+        if length(fn)>0
+            [hdf5lib_dir, hdf5lib_fn] = fileparts(fn);
+            disp(["HDF5 library path found at: " hdf5lib_dir])
+            mkoctfile(["-L" hdf5lib_dir ],"-lhdf5 -DH5_USE_16_API", "h5readatt_octave.cc")
+        else
+            mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
+        end
     else
         mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
     end
