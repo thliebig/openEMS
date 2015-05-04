@@ -21,6 +21,8 @@ set(SOURCES
   engine_ext_excitation.cpp
   operator_ext_tfsf.cpp
   engine_ext_tfsf.cpp
+  operator_ext_steadystate.cpp
+  engine_ext_steadystate.cpp
 )
 
 # FDTD/extensions lib

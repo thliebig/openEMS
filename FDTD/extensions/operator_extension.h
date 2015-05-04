@@ -49,6 +49,7 @@ public:
 	virtual bool BuildExtension() {return true;}
 
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}
+	virtual Engine_Extension* GetEngineExtention() {return m_Eng_Ext;}
 
 	//! The cylindrical operator will check whether the extension is save to use. Default is false. Derive this method to override.
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return false;}
@@ -78,6 +79,7 @@ protected:
 
 	//FDTD Operator
 	Operator* m_Op;
+	Engine_Extension* m_Eng_Ext;
 
 	//Cylindrical FDTD Operator (not NULL if a cylindrical FDTD is used)
 	Operator_Cylinder* m_Op_Cyl;

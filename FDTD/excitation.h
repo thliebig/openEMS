@@ -32,7 +32,8 @@ public:
 
 	virtual void Reset( double timestep );
 
-	bool setupExcitation( TiXmlElement* Excite, unsigned int maxTS );
+	bool setupExcitation(TiXmlElement* Excite);
+	bool buildExcitationSignal(unsigned int maxTS);
 
 	//! Get the excitation timestep with the (first) max amplitude
 	virtual unsigned int GetMaxExcitationTimestep() const;
@@ -61,13 +62,19 @@ public:
 	//! Get the frequency of interest
 	double GetFrequencyOfInterest() const {return m_foi;}
 
+	//! Get the signal period, 0 if not a periodical signal
+	double GetSignalPeriod() const {return m_SignalPeriod;}
+
 	FDTD_FLOAT* GetVoltageSignal() const {return Signal_volt;}
 	FDTD_FLOAT* GetCurrentSignal() const {return Signal_curr;}
 
 protected:
 	double dT;
 	unsigned int m_nyquistTS;
+	double m_SignalPeriod;
 	int m_Excit_Type;
+
+	TiXmlElement* m_Excite_Elem;
 
 	//Excitation time-signal
 	unsigned int Length;

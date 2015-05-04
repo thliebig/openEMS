@@ -237,7 +237,9 @@ SOURCES += FDTD/extensions/engine_extension.cpp \
     FDTD/extensions/operator_ext_excitation.cpp \
     FDTD/extensions/engine_ext_excitation.cpp \
     FDTD/extensions/operator_ext_tfsf.cpp \
-    FDTD/extensions/engine_ext_tfsf.cpp
+    FDTD/extensions/engine_ext_tfsf.cpp \
+    FDTD/extensions/operator_ext_steadystate.cpp \
+    FDTD/extensions/engine_ext_steadystate.cpp
 
 # Common source files
 SOURCES += Common/operator_base.cpp \
@@ -303,7 +305,9 @@ HEADERS += FDTD/extensions/operator_extension.h \
     FDTD/extensions/operator_ext_excitation.h \
     FDTD/extensions/engine_ext_excitation.h \
     FDTD/extensions/operator_ext_tfsf.h \
-    FDTD/extensions/engine_ext_tfsf.h
+    FDTD/extensions/engine_ext_tfsf.h \
+    FDTD/extensions/operator_ext_steadystate.h \
+    FDTD/extensions/engine_ext_steadystate.h
 
 # Common header files
 HEADERS += Common/operator_base.h \

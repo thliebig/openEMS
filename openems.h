@@ -35,6 +35,7 @@ class TiXmlElement;
 class ContinuousStructure;
 class Engine_Interface_FDTD;
 class Excitation;
+class Engine_Ext_SteadyState;
 
 double CalcDiffTime(timeval t1, timeval t2);
 string FormatTime(int sec);
@@ -91,6 +92,7 @@ protected:
 	bool m_CellConstantMaterial;
 	Operator* FDTD_Op;
 	Engine* FDTD_Eng;
+	Engine_Ext_SteadyState* Eng_Ext_SSD;
 	ProcessingArray* PA;
 
 	Excitation* m_Exc;

@@ -28,6 +28,7 @@ Operator_Extension::Operator_Extension(Operator* op)
 	m_Op_Cyl = dynamic_cast<Operator_Cylinder*>(op);
 	if (m_Op_Cyl)
 		m_CC_R0_included=m_Op_Cyl->GetR0Included();
+	m_Eng_Ext = NULL;
 }
 
 Operator_Extension::~Operator_Extension()
@@ -42,6 +43,7 @@ Operator_Extension::Operator_Extension(Operator* op, Operator_Extension* op_ext)
 	m_Active = op_ext->m_Active;
 	if (m_Op_Cyl)
 		m_CC_R0_included=m_Op_Cyl->GetR0Included();
+	m_Eng_Ext = NULL;
 }
 
 void Operator_Extension::ShowStat(ostream &ostr) const

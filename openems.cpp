@@ -31,6 +31,8 @@
 #include "FDTD/extensions/operator_ext_upml.h"
 #include "FDTD/extensions/operator_ext_lorentzmaterial.h"
 #include "FDTD/extensions/operator_ext_conductingsheet.h"
+#include "FDTD/extensions/operator_ext_steadystate.h"
+#include "FDTD/extensions/engine_ext_steadystate.h"
 #include "FDTD/engine_interface_fdtd.h"
 #include "FDTD/engine_interface_cylindrical_fdtd.h"
 #include "Common/processvoltage.h"
@@ -61,6 +63,7 @@ openEMS::openEMS()
 {
 	FDTD_Op=NULL;
 	FDTD_Eng=NULL;
+	Eng_Ext_SSD=NULL;
 	m_CSX=NULL;
 	PA=NULL;
 	CylinderCoords = false;
@@ -313,7 +316,7 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 		if (mgl==multigridlevel)
 		{
 			if (g_settings.GetVerboseLevel()>0)
-				cerr << __func__ << ": Operator with requested multi-grid level found." << endl;
+				cout << __func__ << ": Operator with requested multi-grid level found." << endl;
 			return new Engine_Interface_Cylindrical_FDTD(op_cyl_mg);
 		}
 		Operator_Cylinder* op_cyl_inner = op_cyl_mg->GetInnerOperator();
@@ -321,7 +324,7 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 		if (op_cyl_mg==NULL) //inner most operator reached
 		{
 			if (g_settings.GetVerboseLevel()>0)
-				cerr << __func__ << ": Operator with highest multi-grid level chosen." << endl;
+				cout << __func__ << ": Operator with highest multi-grid level chosen." << endl;
 			return new Engine_Interface_Cylindrical_FDTD(op_cyl_inner);
 		}
 		// try next level
@@ -641,9 +644,6 @@ int openEMS::SetupFDTD(const char* file)
 	if (m_OverSampling<2)
 		m_OverSampling=2;
 
-	double maxTime=0;
-	FDTD_Opts->QueryDoubleAttribute("MaxTime",&maxTime);
-
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
 	{
@@ -688,10 +688,12 @@ int openEMS::SetupFDTD(const char* file)
 	{
 		FDTD_Op->SetCellConstantMaterial();
 		if (g_settings.GetVerboseLevel()>0)
-			cerr << "Enabling constant cell material assumption." << endl;
+			cout << "Enabling constant cell material assumption." << endl;
 	}
 
 	m_Exc = new Excitation();
+	if (!m_Exc->setupExcitation(FDTD_Opts->FirstChildElement("Excitation")))
+		exit(2);
 	FDTD_Op->SetExcitationSignal(m_Exc);
 	FDTD_Op->AddExtension(new Operator_Ext_Excitation(FDTD_Op));
 	if (!CylinderCoords)
@@ -712,6 +714,36 @@ int openEMS::SetupFDTD(const char* file)
 	double timestepfactor=0;
 	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&timestepfactor)==TIXML_SUCCESS)
 		FDTD_Op->SetTimestepFactor(timestepfactor);
+
+	// Is a steady state detection requested
+	Operator_Ext_SteadyState* Op_Ext_SSD = NULL;
+	if (m_Exc->GetSignalPeriod()>0)
+	{
+		cout << "Create a steady state detection using a period of " << m_Exc->GetSignalPeriod() << " s" << endl;
+		Op_Ext_SSD = new Operator_Ext_SteadyState(FDTD_Op, m_Exc->GetSignalPeriod());
+		unsigned int pos[3];
+		for (int p=0;p<3;++p)
+			pos[p] = FDTD_Op->GetNumberOfLines(p)/2;
+		Op_Ext_SSD->Add_E_Probe(pos, 0);
+		Op_Ext_SSD->Add_E_Probe(pos, 1);
+		Op_Ext_SSD->Add_E_Probe(pos, 2);
+
+		for (int n=0;n<3;++n)
+		{
+			for (int p=0;p<3;++p)
+				pos[p] = FDTD_Op->GetNumberOfLines(p)/2;
+			pos[n] = 10;
+			Op_Ext_SSD->Add_E_Probe(pos, 0);
+			Op_Ext_SSD->Add_E_Probe(pos, 1);
+			Op_Ext_SSD->Add_E_Probe(pos, 2);
+
+			pos[n] = FDTD_Op->GetNumberOfLines(n)-10;
+			Op_Ext_SSD->Add_E_Probe(pos, 0);
+			Op_Ext_SSD->Add_E_Probe(pos, 1);
+			Op_Ext_SSD->Add_E_Probe(pos, 2);
+		}
+		FDTD_Op->AddExtension(Op_Ext_SSD);
+	}
 
 	if ((m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0) || (m_CSX->GetQtyPropertyType(CSProperties::DEBYEMATERIAL)>0))
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
@@ -746,11 +778,13 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Op->SetMaterialStoreFlags(2,false);
 	FDTD_Op->SetMaterialStoreFlags(3,false);
 
+	double maxTime=0;
+	FDTD_Opts->QueryDoubleAttribute("MaxTime",&maxTime);
 	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
 	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
 		NrTS = maxTime_TS;
 
-	if (!m_Exc->setupExcitation(FDTD_Opts->FirstChildElement("Excitation"),NrTS))
+	if (!m_Exc->buildExcitationSignal(NrTS))
 		exit(2);
 	m_Exc->DumpVoltageExcite("et");
 	m_Exc->DumpCurrentExcite("ht");
@@ -783,6 +817,12 @@ int openEMS::SetupFDTD(const char* file)
 
 	//create FDTD engine
 	FDTD_Eng = FDTD_Op->CreateEngine();
+
+	if (Op_Ext_SSD)
+	{
+		Eng_Ext_SSD = dynamic_cast<Engine_Ext_SteadyState*>(Op_Ext_SSD->GetEngineExtention());
+		Eng_Ext_SSD->SetEngineInterface(this->NewEngineInterface());
+	}
 
 	//setup all processing classes
 	if (SetupProcessing()==false)
@@ -879,7 +919,7 @@ void openEMS::RunFDTD()
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
 
-		if (ProcField->CheckTimestep())
+		if ((Eng_Ext_SSD==NULL) && ProcField->CheckTimestep())
 		{
 			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
@@ -896,16 +936,24 @@ void openEMS::RunFDTD()
 
 		if (t_diff>4)
 		{
-			currE = ProcField->CalcTotalEnergyEstimate();
-			if (currE>maxE)
-				maxE=currE;
 			t_run = CalcDiffTime(currTime,startTime);
 			speed = numCells*(currTS-prevTS)/t_diff;
 			cout << "[@" <<  FormatTime(t_run) <<  "] Timestep: " << setw(12)  << currTS ;
 			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
-			if (maxE)
-				change = currE/maxE;
-			cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
+			if (Eng_Ext_SSD==NULL)
+			{
+				currE = ProcField->CalcTotalEnergyEstimate();
+				if (currE>maxE)
+					maxE=currE;
+				if (maxE)
+					change = currE/maxE;
+				cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
+			}
+			else
+			{
+				change = Eng_Ext_SSD->GetLastDiff();
+				cout << " || SteadyState: " << setw(6) << setprecision(2) << std::fixed << 10.0*log10(change) << " dB" << endl;
+			}
 			prevTime=currTime;
 			prevTS=currTS;
 

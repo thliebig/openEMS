@@ -28,18 +28,16 @@ Excitation::Excitation()
 	Signal_volt = 0;
 	Signal_curr = 0;
 
-	m_Excit_Type = -1;
+	this->Reset(0);
 
-	dT = 0;
-	m_nyquistTS = 0;
-	m_f_max = 0;
-	m_foi = 0;
+	m_Excite_Elem = NULL;
+	m_Excit_Type = -1;
+	m_SignalPeriod = 0;
 }
 
 Excitation::~Excitation()
 {
-	delete[] Signal_volt;
-	delete[] Signal_curr;
+	this->Reset(0);
 }
 
 void Excitation::Reset( double timestep )
@@ -49,15 +47,13 @@ void Excitation::Reset( double timestep )
 	delete[] Signal_curr;
 	Signal_curr = 0;
 
-	m_Excit_Type = -1;
-
 	dT = timestep;
 	m_nyquistTS = 0;
 	m_f_max = 0;
 	m_foi = 0;
 }
 
-bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
+bool Excitation::setupExcitation( TiXmlElement* Excite)
 {
 	if (!Excite)
 	{
@@ -65,6 +61,23 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 		return false;
 	}
 
+	m_Excite_Elem = Excite;
+
+	double f0=0;
+	m_Excite_Elem->QueryIntAttribute("Type",&m_Excit_Type);
+	m_SignalPeriod = 0;
+	switch (m_Excit_Type)
+	{
+	case 1: // sinusoidal excite
+		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
+		m_SignalPeriod = 1/f0;
+		break;
+	}
+	return true;
+}
+
+bool Excitation::buildExcitationSignal(unsigned int maxTS)
+{
 	if (dT<=0)
 	{
 		cerr << "Excitation::setupExcitation: Error, invalid timestep... " << endl;
@@ -73,17 +86,15 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 
 	double f0=0;
 	double fc=0;
-	Excite->QueryIntAttribute("Type",&m_Excit_Type);
-
 	switch (m_Excit_Type)
 	{
 	case 0:
-		Excite->QueryDoubleAttribute("f0",&f0);
-		Excite->QueryDoubleAttribute("fc",&fc);
+		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
+		m_Excite_Elem->QueryDoubleAttribute("fc",&fc);
 		CalcGaussianPulsExcitation(f0,fc,maxTS);
 		break;
 	case 1:
-		Excite->QueryDoubleAttribute("f0",&f0);
+		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
 		CalcSinusExcitation(f0,maxTS);
 		break;
 	case 2:
@@ -93,18 +104,18 @@ bool Excitation::setupExcitation( TiXmlElement* Excite, unsigned int maxTS )
 		CalcStepExcitation();
 		break;
 	case 10:
-		Excite->QueryDoubleAttribute("f0",&f0);
-		CalcCustomExcitation(f0,maxTS,Excite->Attribute("Function"));
+		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
+		CalcCustomExcitation(f0,maxTS,m_Excite_Elem->Attribute("Function"));
 		break;
 	default:
-		cerr << "Excitation::setupExcitation: Unknown excitation type: \"" << m_Excit_Type<< "\" !!" << endl;
+		cerr << "Excitation::buildExcitationSignal: Unknown excitation type: \"" << m_Excit_Type<< "\" !!" << endl;
 		m_Excit_Type = -1;
 		return false;
 	}
 
 	if (GetNyquistNum() == 0)
 	{
-		cerr << "Excitation::setupExcitation: Unknown error... excitation setup failed!!" << endl;
+		cerr << "Excitation::buildExcitationSignal: Unknown error... excitation setup failed!!" << endl;
 		return false;
 	}
 
