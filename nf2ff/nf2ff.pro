@@ -42,7 +42,11 @@ unix:!macx {
     } else {
     LIBS +=-L$$VTK_LIBRARYPATH
     }
-    LIBS += -lhdf5_hl -lhdf5
+    #hdf5
+    !isEmpty(HDF5_ROOT) {LIBS += -L$$HDF5_ROOT}
+    LIBS += -lhdf5 -lhdf5_hl
+    INCLUDEPATH += /usr/include/hdf5/serial
+    INCLUDEPATH += /usr/include/mpi
 }
 
 macx {
