@@ -78,12 +78,15 @@ INCLUDE_DIRECTORIES( ${CSXCAD_ROOT_DIR}/include/CSXCAD )
 find_package(TinyXML REQUIRED)
 ADD_DEFINITIONS( -DTIXML_USE_STL )
 
+# hdf5
 find_package(HDF5 REQUIRED)
 INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR})
+link_directories(${HDF5_LIBRARY_DIRS})
 
 # hdf5 compat
 ADD_DEFINITIONS( -DH5_USE_16_API )
 
+# boost
 find_package(Boost 1.46 COMPONENTS
   thread
   system
@@ -163,9 +166,7 @@ TARGET_LINK_LIBRARIES( openEMS
   tinyxml
   hdf5
   hdf5_hl
-  #${HDF_LIBRARIES}
   ${Boost_LIBRARIES}
-  #${VTK_LIBRARIES}
   ${vtk_LIBS}
 )
 

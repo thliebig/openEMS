@@ -94,8 +94,13 @@ unix:!macx {
     }
     LIBS += -lfparser
 
+    # tinyxml
     LIBS += -ltinyxml
     DEFINES += TIXML_USE_STL
+
+    #hdf5
+    !isEmpty(HDF5_ROOT) {LIBS += -L$$HDF5_ROOT}
+    INCLUDEPATH += /usr/include/hdf5/serial
     LIBS += -lboost_thread -lboost_system
     LIBS += -lhdf5_hl -lhdf5
 
