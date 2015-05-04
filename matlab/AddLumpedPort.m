@@ -15,6 +15,8 @@ function [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, ex
 % dir:      direction/amplitude of port (e.g.: [1 0 0], [0 1 0] or [0 0 1])
 % excite (optional): if true, the port will be switched on (see AddExcitation())
 %                       Note: for legacy support a string will be accepted
+% V_Probe_Weight:  additional weigth for the voltage probes
+% I_Probe_Weight:  additional weigth for the current probes
 % optional (key/values):
 %   'PortNamePrefix': an prefix to the port name
 % varargin (optional): additional excitations options, see also AddExcitation
@@ -39,6 +41,9 @@ function [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, ex
 port.type='Lumped';
 port.nr=portnr;
 
+V_Probe_Weight = 1;
+I_Probe_Weight = 1;
+
 if (dir(1)~=0) && (dir(2) == 0) && (dir(3)==0)
     n_dir = 1;
 elseif (dir(1)==0) && (dir(2) ~= 0) && (dir(3)==0)
@@ -56,6 +61,10 @@ for n=1:2:numel(varargin_tmp)
     if strcmpi('PortNamePrefix',varargin_tmp{n})
         PortNamePrefix = varargin_tmp{n+1};
         varargin([n n+1]) = [];
+    elseif strcmpi('V_Probe_Weight',varargin_tmp{n})
+        V_Probe_Weight = varargin_tmp{n+1};
+    elseif strcmpi('I_Probe_Weight',varargin_tmp{n})
+        I_Probe_Weight = varargin_tmp{n+1};
     end
 end
 
@@ -106,7 +115,7 @@ u_start(n_dir) = start(n_dir);
 u_stop(n_dir)  = stop(n_dir);
 
 port.U_filename = [PortNamePrefix 'port_ut' int2str(portnr)];
-CSX = AddProbe(CSX, port.U_filename, 0, 'weight', -direction);
+CSX = AddProbe(CSX, port.U_filename, 0, 'weight', -direction*V_Probe_Weight);
 CSX = AddBox(CSX, port.U_filename, prio, u_start, u_stop);
 
 i_start = start;
@@ -115,6 +124,6 @@ i_start(n_dir) = 0.5*(start(n_dir)+stop(n_dir));
 i_stop(n_dir)  = 0.5*(start(n_dir)+stop(n_dir));
 
 port.I_filename = [PortNamePrefix 'port_it' int2str(portnr)];
-CSX = AddProbe(CSX, port.I_filename, 1, 'weight', direction, 'NormDir', n_dir-1);
+CSX = AddProbe(CSX, port.I_filename, 1, 'weight', direction*I_Probe_Weight, 'NormDir', n_dir-1);
 CSX = AddBox(CSX, port.I_filename, prio, i_start, i_stop);
 
