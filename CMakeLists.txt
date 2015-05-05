@@ -95,45 +95,36 @@ find_package(Boost 1.46 COMPONENTS
   chrono
 )
 
+# vtk
 find_package(VTK REQUIRED)
-
-if("${VTK_MAJOR_VERSION}" EQUAL 5)
-  set( vtk_LIBS
-    vtkCommon
-    vtkFiltering
-    vtkGraphics
-    vtkHybrid
-    vtkIO
-    vtkRendering
-    vtkWidgets
-    QVTK
-  )
-endif()
-
-
 if("${VTK_MAJOR_VERSION}" EQUAL 6)
-  set( vtk_LIBS
-    vtkCommonCore
-    vtkCommonDataModel
-    vtkIOLegacy
-    vtkIOXML
-    vtkIOGeometry
-    vtkIOPLY
-    vtksys
-    vtkIOCore
-)
+    set( vtk_LIBS
+        vtkCommonCore
+        vtkCommonDataModel
+        vtkIOLegacy
+        vtkIOXML
+        vtkIOGeometry
+        vtkIOPLY
+        vtkIOMPIParallel
+        vtksys
+        vtkIOCore
+    )
+else()
+    set( vtk_LIBS
+        vtkCommon
+        vtkFiltering
+        vtkGraphics
+        vtkHybrid
+        vtkIO
+        vtkRendering
+        vtkWidgets
+        QVTK
+    )    
 endif()
 
-if(VTK_FOUND)
-	message(STATUS "Found package VTK. Using " ${VTK_USE_FILE})
-    include(${VTK_USE_FILE})
-else(VTK_FOUND)
-    message(FATAL_ERROR "VTK not found. Please set VTK_DIR.")
-endif(VTK_FOUND)
-
+message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
+include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIR})
-
-#message(status "vtk libs: ${vtk_LIBS}")
 
 # independent tool
 ADD_SUBDIRECTORY( nf2ff )
