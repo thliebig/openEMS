@@ -66,13 +66,19 @@ INCLUDE_DIRECTORIES( ${FPARSER_ROOT_DIR}/include )
 # CSXCAD
 # $ cmake -D CSXCAD_ROOT_DIR=~/opt/openEMS .
 # SET(CSXCAD_ROOT_DIR ~/opt/openEMS)
-find_library(CSXCAD_LIBRARIES NAMES CSXCAD
-  HINTS
-  ${CSXCAD_ROOT_DIR}/lib
+find_library(CSXCAD_LIBRARIES 
+  NAMES CSXCAD
+  HINTS ${CSXCAD_ROOT_DIR}/lib
 )
-message(STATUS "CSXCAD: ${CSXCAD_LIBRARIES}" )
+message(STATUS "CSXCAD_LIBRARIES: ${CSXCAD_LIBRARIES}" )
 #TODO test if CSXCADs was found
-INCLUDE_DIRECTORIES( ${CSXCAD_ROOT_DIR}/include/CSXCAD ) 
+find_path(CSXCAD_INCLUDE_DIR 
+    NAMES ContinuousStructure.h 
+    HINTS ${CSXCAD_ROOT_DIR}/include
+    PATH_SUFFIXES "CSXCAD" ${CSXCAD_INCLUDE_DIR}
+)
+message(STATUS "CSXCAD_INCLUDE_DIR: ${CSXCAD_INCLUDE_DIR}" )
+INCLUDE_DIRECTORIES( ${CSXCAD_INCLUDE_DIR} ) 
 
 # TinyXML module from https://github.com/ros/cmake_modules
 find_package(TinyXML REQUIRED)
@@ -96,7 +102,14 @@ find_package(Boost 1.46 COMPONENTS
 )
 
 # vtk
-find_package(VTK REQUIRED)
+if (WIN32)
+    find_package(VTK 6.1 REQUIRED)
+else()
+    # prefer >=6.1, fallback to >=5.4
+    find_package(VTK REQUIRED)
+endif()
+
+message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
 if("${VTK_MAJOR_VERSION}" EQUAL 6)
     set( vtk_LIBS
         vtkCommonCore
@@ -105,7 +118,6 @@ if("${VTK_MAJOR_VERSION}" EQUAL 6)
         vtkIOXML
         vtkIOGeometry
         vtkIOPLY
-        vtkIOMPIParallel
         vtksys
         vtkIOCore
     )
@@ -122,9 +134,12 @@ else()
     )    
 endif()
 
-message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
 include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIR})
+
+if(WIN32)
+    set(CMAKE_CXX_FLAGS "-msse")
+endif()
 
 # independent tool
 ADD_SUBDIRECTORY( nf2ff )
@@ -155,16 +170,17 @@ TARGET_LINK_LIBRARIES( openEMS
   ${CSXCAD_LIBRARIES}
   ${fparser_LIBRARIES}
   tinyxml
-  hdf5
-  hdf5_hl
+  ${HDF5_LIBRARIES}
   ${Boost_LIBRARIES}
   ${vtk_LIBS}
 )
 
+
 INSTALL( TARGETS openEMS DESTINATION bin )
-INSTALL( FILES openEMS.sh 
+if (UNIX)
+    INSTALL( FILES openEMS.sh 
          DESTINATION bin 
          PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE)
-
+endif ()
 INSTALL( DIRECTORY matlab DESTINATION share/openEMS )
 # TODO mpi, tarball, debug, release

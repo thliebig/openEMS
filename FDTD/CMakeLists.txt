@@ -21,5 +21,5 @@ set(SOURCES
 )
 
 # FDTD lib
-add_library( FDTD ${SOURCES} )
+add_library( FDTD STATIC ${SOURCES} )
 

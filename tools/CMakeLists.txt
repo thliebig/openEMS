@@ -22,5 +22,5 @@ set(SOURCES
 #)
 
 # tools lib
-add_library(tools ${SOURCES} )
+add_library(tools STATIC ${SOURCES} )
 

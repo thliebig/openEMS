@@ -17,5 +17,5 @@ set( SOURCES
 )
 
 # Common lib
-add_library( Common ${SOURCES} )
+add_library( Common STATIC ${SOURCES} )
 

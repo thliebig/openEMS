@@ -26,9 +26,9 @@
 #include <boost/fusion/container/list/list_fwd.hpp>
 #include <boost/fusion/include/list_fwd.hpp>
 
-#ifdef WIN32
-#include <Winsock2.h> // for struct timeval
-#endif
+//#ifdef WIN32
+//#include <Winsock2.h> // for struct timeval
+//#endif
 
 #include <sys/time.h>
 

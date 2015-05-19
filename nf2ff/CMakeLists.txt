@@ -25,8 +25,7 @@ ADD_EXECUTABLE( nf2ff ${SOURCES} )
 TARGET_LINK_LIBRARIES( nf2ff
   tools
   tinyxml
-  hdf5
-  hdf5_hl
+  ${HDF5_LIBRARIES}
   ${Boost_LIBRARIES}
 )
 

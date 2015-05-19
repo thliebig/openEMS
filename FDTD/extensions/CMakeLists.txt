@@ -26,5 +26,5 @@ set(SOURCES
 )
 
 # FDTD/extensions lib
-add_library( extensions ${SOURCES} )
+add_library( extensions STATIC ${SOURCES} )
 
