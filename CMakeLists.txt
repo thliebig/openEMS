@@ -55,9 +55,10 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${openEMS_SOURCE_DIR}/cmake/Modules/
 # fparser
 # $ cmake -D FPARSER_ROOT_DIR=~/opt/openEMS .
 # SET(FPARSER_ROOT_DIR ~/opt/openEMS)
-find_library(fparser_LIBRARIES NAMES fparser
-  HINTS
-  ${FPARSER_ROOT_DIR}/lib
+find_library(fparser_LIBRARIES 
+  NAMES fparser
+  HINTS ${FPARSER_ROOT_DIR}/lib
+  NO_CMAKE_FIND_ROOT_PATH
 )
 message(STATUS "fparser: ${fparser_LIBRARIES}" )
 #TODO test if fparser was found
@@ -69,6 +70,7 @@ INCLUDE_DIRECTORIES( ${FPARSER_ROOT_DIR}/include )
 find_library(CSXCAD_LIBRARIES 
   NAMES CSXCAD
   HINTS ${CSXCAD_ROOT_DIR}/lib
+  NO_CMAKE_FIND_ROOT_PATH
 )
 message(STATUS "CSXCAD_LIBRARIES: ${CSXCAD_LIBRARIES}" )
 #TODO test if CSXCADs was found
@@ -76,6 +78,7 @@ find_path(CSXCAD_INCLUDE_DIR
     NAMES ContinuousStructure.h 
     HINTS ${CSXCAD_ROOT_DIR}/include
     PATH_SUFFIXES "CSXCAD" ${CSXCAD_INCLUDE_DIR}
+    NO_CMAKE_FIND_ROOT_PATH
 )
 message(STATUS "CSXCAD_INCLUDE_DIR: ${CSXCAD_INCLUDE_DIR}" )
 INCLUDE_DIRECTORIES( ${CSXCAD_INCLUDE_DIR} ) 
