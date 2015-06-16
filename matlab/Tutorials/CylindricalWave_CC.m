@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_2D_Cylindrical_Wave
 %
 % Tested with
-%  - Matlab 2011a/ Octave 3.4.3
-%  - openEMS v0.0.26
+%  - Matlab 2011a/ Octave 4.0
+%  - openEMS v0.0.33
 %
-% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2011-2015 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear

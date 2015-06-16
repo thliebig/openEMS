@@ -5,7 +5,8 @@
 %
 % Tested with
 %  - Matlab 2011a
-%  - openEMS v0.0.31
+%  - Octave 4.0
+%  - openEMS v0.0.33
 %
 % References:
 % [1] Y. Yusuf and X. Gong, “A low-cost patch antenna phased array with
@@ -20,7 +21,7 @@
 %   circuit simulations,” in Proc. Second European Conference on Antennas
 %   and Propagation EuCAP 2007, 11–16 Nov. 2007, pp. 1–5.
 %
-% (C) 2013 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2013-2015 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 
 close all

@@ -8,10 +8,10 @@
 % Memory requirement (RAM): ~ 700MB
 %
 % Tested with
-%  - openEMS v0.0.31
+%  - openEMS v0.0.33
 %  - Matlab 7.12.0 (R2011a)
 %
-% (C) 2013 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2013-2015 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 
 close all

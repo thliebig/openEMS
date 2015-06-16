@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Helical_Antenna
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.6.4
-%  - openEMS v0.0.31
+%  - Matlab 2011a / Octave 4.0
+%  - openEMS v0.0.33
 %
-% (C) 2012 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2012-2015 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear

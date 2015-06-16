@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_CRLH_Extraction
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.26
+%  - Matlab 2011a / Octave 4.0
+%  - openEMS v0.0.33
 %
-% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2011-2015 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -56,7 +56,7 @@ mesh.z = [0 cumsum(substrate_thickness) linspace(substratelines(end-1),substrate
 [CSX mesh] = CreateCRLH(CSX, mesh, CRLH, resolution/4);
 
 % Smooth the given mesh
-mesh = SmoothMesh(mesh, resolution, 1.5);
+mesh = SmoothMesh(mesh, resolution, 1.5, 'algorithm',[1 3]);
 CSX = DefineRectGrid( CSX, unit, mesh );
 
 %% Setup the substrate layer

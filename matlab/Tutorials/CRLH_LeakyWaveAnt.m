@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_CRLH_Leaky_Wave_Antenna
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.27
+%  - Matlab 2011a / Octave 4.0
+%  - openEMS v0.0.33
 %
-% (C) 2011,2012 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2011-2015 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -70,7 +70,7 @@ for n=1:N_Cells
 end
 
 % Smooth the given mesh
-mesh = SmoothMesh(mesh, resolution, 1.5);
+mesh = SmoothMesh(mesh, resolution, 1.5, 'algorithm',[1 3]);
 CSX = DefineRectGrid( CSX, unit, mesh );
 
 %% Setup the substrate layer
@@ -143,7 +143,7 @@ disp( 'calculating 3D far field pattern...' );
 nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_rad, theta*pi/180, phi*pi/180, 'Outfile','3D_Pattern.h5', 'Mode', 0,'Verbose',1);
 
 %%
-P_in = interp1(f, port.P_acc, f_rad);
+P_in = interp1(f, port{1}.P_acc, f_rad);
 
 figure()
 

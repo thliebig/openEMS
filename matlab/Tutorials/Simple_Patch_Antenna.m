@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Simple_Patch_Antenna
 %
 % Tested with
-%  - Matlab 2013a / Octave 3.8.1
-%  - openEMS v0.0.32
+%  - Matlab 2013a / Octave 4.0
+%  - openEMS v0.0.33
 %
-% (C) 2010-2014 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2010-2015 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear

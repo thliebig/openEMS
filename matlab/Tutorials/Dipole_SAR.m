@@ -5,9 +5,9 @@
 % http://openems.de/index.php/Tutorial:_Dipole_SAR
 %
 % Tested with
-%  - openEMS v0.0.31
+%  - openEMS v0.0.33
 %
-% (C) 2013 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2013-2015 Thorsten Liebig <thorsten.liebig@uni-due.de>
 
 close all
 clear
@@ -188,9 +188,9 @@ nf2ff = CalcNF2FF(nf2ff, Sim_Path, f0, theta*pi/180, phi*pi/180, 'Outfile','3D_P
 
 %%
 disp(['max SAR: ' num2str(max(SAR(:))/Pin_f0) ' W/kg normalized to 1 W accepted power']);
-disp(['accepted power: ' num2str(Pin_f0) ' W']);
-disp(['radiated power: ' num2str(nf2ff.Prad) ' W']);
-disp(['absorbed power: ' num2str(ptotal) ' W']);
+disp(['accepted power: ' num2str(Pin_f0) ' W (100 %)']);
+disp(['radiated power: ' num2str(nf2ff.Prad) ' W ( ' num2str(round(100*(nf2ff.Prad) / Pin_f0)) ' %)']);
+disp(['absorbed power: ' num2str(ptotal) ' W ( ' num2str(round(100*(ptotal) / Pin_f0)) ' %)']);
 disp(['power budget:   ' num2str(100*(nf2ff.Prad + ptotal) / Pin_f0) ' %']);
 
 %%  plot on a x/y-plane
