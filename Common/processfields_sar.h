@@ -30,7 +30,7 @@ public:
 
 	virtual bool NeedConductivity() const;
 
-	virtual string GetProcessingName() const {return "SAR dump";}
+	virtual std::string GetProcessingName() const {return "SAR dump";}
 
 	virtual void InitProcess();
 
@@ -43,19 +43,19 @@ public:
 	//! Set to true for using the conductivity found at the center of a cell, or false for E*J instead
 	virtual void SetUseCellConductivity(bool val) {m_UseCellKappa=val;}
 
-	virtual void SetSARAveragingMethod(string method) {m_SAR_method=method;}
+	virtual void SetSARAveragingMethod(std::string method) {m_SAR_method=method;}
 
 protected:
 	virtual void DumpFDData();
 
 	bool m_UseCellKappa;
 
-	string m_SAR_method;
+	std::string m_SAR_method;
 
 	//! frequency domain electric field storage
-	vector<std::complex<float>****> m_E_FD_Fields;
+	std::vector<std::complex<float>****> m_E_FD_Fields;
 	//! frequency domain current density storage
-	vector<std::complex<float>****> m_J_FD_Fields;
+	std::vector<std::complex<float>****> m_J_FD_Fields;
 };
 
 #endif // PROCESSFIELDS_SAR_H

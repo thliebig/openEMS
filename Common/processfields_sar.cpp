@@ -23,6 +23,8 @@
 
 #include "CSPropMaterial.h"
 
+using namespace std;
+
 ProcessFieldsSAR::ProcessFieldsSAR(Engine_Interface_Base* eng_if) : ProcessFieldsFD(eng_if)
 {
 	m_UseCellKappa = true;

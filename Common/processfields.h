@@ -42,7 +42,7 @@ public:
 	  */
 	enum DumpType { E_FIELD_DUMP=0, H_FIELD_DUMP=1, J_FIELD_DUMP=2, ROTH_FIELD_DUMP=3, SAR_LOCAL_DUMP=20, SAR_1G_DUMP=21, SAR_10G_DUMP=22, SAR_RAW_DATA=29};
 
-	virtual string GetProcessingName() const {return "common field processing";}
+	virtual std::string GetProcessingName() const {return "common field processing";}
 
 	virtual void InitProcess();
 
@@ -55,8 +55,8 @@ public:
 	virtual void SetOptResolution(double optRes, int dir=-1);
 
 	//! Set the filename for a hdf5 data group file (HDF5 FileType only) \sa SetFileType()
-	void SetFileName(string fn) {m_filename=fn;}
-	string SetFileName() const {return m_filename;}
+	void SetFileName(std::string fn) {m_filename=fn;}
+	std::string SetFileName() const {return m_filename;}
 
 	//! Define the Dump-Mode
 	void SetDumpMode(Engine_Interface_Base::InterpolationType mode);
@@ -72,7 +72,7 @@ public:
 
 	void SetFileType(FileType fileType) {m_fileType=fileType;}
 
-	static string GetFieldNameByType(DumpType type);
+	static std::string GetFieldNameByType(DumpType type);
 
 	virtual bool NeedConductivity() const;
 

@@ -34,6 +34,8 @@
 //external libs
 #include "tinyxml.h"
 
+using namespace std;
+
 nf2ff::nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, vector<float> center, unsigned int numThreads)
 {
 	m_freq = freq;

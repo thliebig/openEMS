@@ -19,6 +19,8 @@
 
 #include "tools/array_ops.h"
 
+using namespace std;
+
 Operator_Ext_Dispersive::Operator_Ext_Dispersive(Operator* op) : Operator_Extension(op)
 {
 	m_curr_ADE_On = NULL;

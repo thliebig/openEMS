@@ -17,6 +17,8 @@
 
 #include "AdrOp.h"
 
+using namespace std;
+
 AdrOp::AdrOp(unsigned int muiImax, unsigned int muiJmax, unsigned int muiKmax, unsigned int muiLmax)
 {
 	//error-handling...

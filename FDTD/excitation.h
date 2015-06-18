@@ -42,10 +42,10 @@ public:
 	unsigned int GetNyquistNum() const {return m_nyquistTS;}
 
 	//! Dump voltage excitation signal to ASCII file
-	void DumpVoltageExcite(string filename);
+	void DumpVoltageExcite(std::string filename);
 
 	//! Dump current excitation signal to ASCII file
-	void DumpCurrentExcite(string filename);
+	void DumpCurrentExcite(std::string filename);
 
 	//! Get the used timestep
 	double GetTimestep() const {return dT;}
@@ -87,7 +87,7 @@ protected:
 	double m_foi;
 
 	//! Calculate a custom signal
-	virtual void CalcCustomExcitation(double f0, int nTS, string signal);
+	virtual void CalcCustomExcitation(double f0, int nTS, std::string signal);
 	//! Calculate an excitation with center of \a f0 and the half bandwidth \a fc
 	virtual void CalcGaussianPulsExcitation(double f0, double fc, int nTS);
 	//! Calculate a sinusoidal excitation with frequency \a f0 and a duration of \a nTS number of timesteps

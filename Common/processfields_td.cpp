@@ -23,6 +23,8 @@
 #include <sstream>
 #include <string>
 
+using namespace std;
+
 ProcessFieldsTD::ProcessFieldsTD(Engine_Interface_Base* eng_if) : ProcessFields(eng_if)
 {
 	pad_length = 8;

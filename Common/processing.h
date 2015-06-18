@@ -35,8 +35,6 @@ typedef std::complex<double> double_complex;
 
 class Operator_Base;
 
-using namespace std;
-
 class Processing
 {
 public:
@@ -47,12 +45,12 @@ public:
 	//! Set the interface to the engine. Each processing needs its own engine interface. This class will take ownership and cleanup the interface on deletion!
 	void SetEngineInterface(Engine_Interface_Base* eng_if);
 
-	virtual void SetName(string val) {m_Name=val;}
-	virtual void SetName(string val, int number);
-	virtual string GetName() const {return m_Name;}
+	virtual void SetName(std::string val) {m_Name=val;}
+	virtual void SetName(std::string val, int number);
+	virtual std::string GetName() const {return m_Name;}
 
 	//! Get the name for this processing, will be used in file description.
-	virtual string GetProcessingName() const = 0;
+	virtual std::string GetProcessingName() const = 0;
 
 	virtual void InitProcess() {};
 	virtual void Reset();
@@ -61,14 +59,14 @@ public:
 
 	virtual void ShowSnappedCoords();
 
-	void SetProcessInterval(unsigned int interval) {ProcessInterval=max((unsigned int)1,interval);}
+	void SetProcessInterval(unsigned int interval) {ProcessInterval=std::max((unsigned int)1,interval);}
 	void SetProcessStartStopTime(double start, double stop);
 
 	void AddStep(unsigned int step);
-	void AddSteps(vector<unsigned int> steps);
+	void AddSteps(std::vector<unsigned int> steps);
 
 	void AddFrequency(double freq);
-	void AddFrequency(vector<double> *freqs);
+	void AddFrequency(std::vector<double> *freqs);
 
 	bool CheckTimestep();
 
@@ -99,10 +97,10 @@ public:
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
 	//! Dump probe geometry to file (will obay main or dual mesh property)
-	virtual void DumpBox2File( string vtkfilenameprefix) const {DumpBox2File(vtkfilenameprefix,m_dualMesh);}
+	virtual void DumpBox2File(std::string vtkfilenameprefix) const {DumpBox2File(vtkfilenameprefix,m_dualMesh);}
 
 	//! Dump probe geometry to file
-	virtual void DumpBox2File( string vtkfilenameprefix, bool dualMesh) const;
+	virtual void DumpBox2File(std::string vtkfilenameprefix, bool dualMesh) const;
 
 	virtual void SetDualMesh(bool val) {m_dualMesh=val;}
 	virtual void SetDualTime(bool val) {m_dualTime=val;}
@@ -115,7 +113,7 @@ protected:
 
 	unsigned int m_precision;
 
-	string m_Name;
+	std::string m_Name;
 
 	bool m_Flush;
 
@@ -127,10 +125,10 @@ protected:
 	unsigned int ProcessInterval;
 
 	size_t m_PS_pos; //! current position in list of processing steps
-	vector<unsigned int> m_ProcessSteps; //! list of processing steps
+	std::vector<unsigned int> m_ProcessSteps; //! list of processing steps
 
 	//! Vector of frequency samples
-	vector<double> m_FD_Samples;
+	std::vector<double> m_FD_Samples;
 	//! Number of samples already processed
 	unsigned int m_FD_SampleCount;
 	//! Sampling interval needed for the FD_Samples
@@ -159,10 +157,10 @@ protected:
 	bool m_start_inside[3];
 	bool m_stop_inside[3];
 
-	ofstream file;
-	string m_filename;
+	std::ofstream file;
+	std::string m_filename;
 
-	virtual void OpenFile(string outfile);
+	virtual void OpenFile(std::string outfile);
 };
 
 class ProcessingArray
@@ -192,7 +190,7 @@ public:
 	//! Invoke PostProcess() on all Processings.
 	void PostProcess();
 
-	void DumpBoxes2File( string vtkfilenameprefix ) const;
+	void DumpBoxes2File(std::string vtkfilenameprefix ) const;
 
 	size_t GetNumberOfProcessings() const {return ProcessArray.size();}
 
@@ -200,7 +198,7 @@ public:
 
 protected:
 	unsigned int maxInterval;
-	vector<Processing*> ProcessArray;
+	std::vector<Processing*> ProcessArray;
 };
 
 #endif // PROCESSING_H

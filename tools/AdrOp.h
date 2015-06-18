@@ -32,8 +32,6 @@
 #include "ExpenseLog.h"
 #include "ErrorMsg.h"
 
-using namespace std;
-
 class AdrOp
 {
 public:

@@ -25,8 +25,6 @@
 #define __OPENEMS_STAT_FILE__ "openEMS_stats.txt"
 #define __OPENEMS_RUN_STAT_FILE__ "openEMS_run_stats.txt"
 
-using namespace std;
-
 class Operator;
 class Engine;
 class Engine_Interface_FDTD;
@@ -38,7 +36,7 @@ class Excitation;
 class Engine_Ext_SteadyState;
 
 double CalcDiffTime(timeval t1, timeval t2);
-string FormatTime(int sec);
+std::string FormatTime(int sec);
 
 class openEMS
 {
@@ -62,7 +60,7 @@ public:
 	void DebugBox() {m_debugBox=true;}
 
 	//! Get informations about external libs used by openEMS
-	static string GetExtLibsInfo();
+	static std::string GetExtLibsInfo();
 
 	//! Set this to about FDTD iteration process
 	void SetAbort(bool val) {m_Abort=val;}
@@ -120,11 +118,11 @@ protected:
 	virtual bool SetupProcessing();
 
 	//! Dump statistics to file
-	virtual bool DumpStatistics(const string& filename, double time);
+	virtual bool DumpStatistics(const std::string& filename, double time);
 
 	//! Dump run statistivs to file
-	virtual bool InitRunStatistics(const string& filename);
-	virtual bool DumpRunStatistics(const string& filename, double time, unsigned int ts, double speed, double energy);
+	virtual bool InitRunStatistics(const std::string& filename);
+	virtual bool DumpRunStatistics(const std::string& filename, double time, unsigned int ts, double speed, double energy);
 };
 
 #endif // OPENEMS_H

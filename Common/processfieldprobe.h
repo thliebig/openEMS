@@ -26,9 +26,9 @@ public:
 	ProcessFieldProbe(Engine_Interface_Base* eng_if, int type=0);
 	virtual ~ProcessFieldProbe();
 
-	virtual string GetProcessingName() const;
+	virtual std::string GetProcessingName() const;
 
-	virtual string GetIntegralName(int row) const;
+	virtual std::string GetIntegralName(int row) const;
 
 	//! Set the field type (0 electric field, 1 magnetic field)
 	void SetFieldType(int type);

@@ -26,7 +26,7 @@ public:
 	ProcessFieldsFD(Engine_Interface_Base* eng_if);
 	virtual ~ProcessFieldsFD();
 
-	virtual string GetProcessingName() const {return "frequency domain field dump";}
+	virtual std::string GetProcessingName() const {return "frequency domain field dump";}
 
 	virtual void InitProcess();
 
@@ -37,7 +37,7 @@ protected:
 	virtual void DumpFDData();
 
 	//! frequency domain field storage
-	vector<std::complex<float>****> m_FD_Fields;
+	std::vector<std::complex<float>****> m_FD_Fields;
 };
 
 #endif // PROCESSFIELDS_FD_H

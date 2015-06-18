@@ -19,6 +19,8 @@
 #include "FDTD/operator.h"
 #include "FDTD/operator_cylinder.h"
 
+using namespace std;
+
 Operator_Extension::Operator_Extension(Operator* op)
 {
 	m_Op = op;

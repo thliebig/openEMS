@@ -20,6 +20,8 @@
 #include "Common/operator_base.h"
 #include "tools/array_ops.h"
 
+using namespace std;
+
 ProcessModeMatch::ProcessModeMatch(Engine_Interface_Base* eng_if) : ProcessIntegral(eng_if)
 {
 	for (int n=0; n<2; ++n)

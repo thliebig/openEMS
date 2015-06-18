@@ -26,7 +26,7 @@ ProcessVoltage::~ProcessVoltage()
 {
 }
 
-string ProcessVoltage::GetIntegralName(int row) const
+std::string ProcessVoltage::GetIntegralName(int row) const
 {
 	if (row==0)
 		return "voltage";

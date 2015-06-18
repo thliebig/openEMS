@@ -31,7 +31,7 @@ public:
 
 	virtual void InitProcess();
 
-	virtual string GetProcessingName() const = 0;
+	virtual std::string GetProcessingName() const = 0;
 
 	virtual void GetNormalDir(int nd) {m_normDir=nd;}
 
@@ -46,7 +46,7 @@ public:
 	virtual double* CalcMultipleIntegrals();
 
 	//! Get the name of the integral for the given row. The names will be used in the file header.
-	virtual string GetIntegralName(int row) const = 0;
+	virtual std::string GetIntegralName(int row) const = 0;
 
 	//! Number of calculated results produced by this integral processing. \sa CalcMultipleIntegrals
 	virtual int GetNumberOfIntegrals() const {return 1;}
@@ -60,9 +60,9 @@ public:
 protected:
 	ProcessIntegral(Engine_Interface_Base* eng_if);
 
-	void Dump_FD_Data(double factor, string filename);
+	void Dump_FD_Data(double factor, std::string filename);
 
-	vector<double_complex> *m_FD_Results;
+	std::vector<double_complex> *m_FD_Results;
 	double *m_Results;
 
 	int m_normDir; // normal direction as required by some integral processings

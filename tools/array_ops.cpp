@@ -18,6 +18,8 @@
 #include "array_ops.h"
 #include <ostream>
 
+using namespace std;
+
 #ifdef WIN32
 #define __MSVCRT_VERSION__ 0x0700
 #include <malloc.h>

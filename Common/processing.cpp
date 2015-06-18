@@ -22,6 +22,8 @@
 #include "processing.h"
 #include <climits>
 
+using namespace std;
+
 Processing::Processing(Engine_Interface_Base* eng_if)
 {
 	m_Eng_Interface = NULL;

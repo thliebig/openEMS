@@ -27,6 +27,8 @@
 #include <iostream>
 #include <sstream>
 
+using namespace std;
+
 nf2ff_calc_thread::nf2ff_calc_thread(nf2ff_calc* nfc, unsigned int start, unsigned int stop, unsigned int threadID, nf2ff_data &data)
 {
 	m_nf_calc = nfc;

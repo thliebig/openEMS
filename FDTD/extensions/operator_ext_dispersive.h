@@ -31,9 +31,9 @@ public:
 
 	virtual int GetDispersionOrder() {return m_Order;}
 
-	virtual string GetExtensionName() const {return string("Dispersive Material Abstract Base class");}
+	virtual std::string GetExtensionName() const {return std::string("Dispersive Material Abstract Base class");}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 protected:
 	Operator_Ext_Dispersive(Operator* op);
@@ -44,7 +44,7 @@ protected:
 	int m_Order;
 
 	//! Dispersive material count
-	vector<unsigned int> m_LM_Count;
+	std::vector<unsigned int> m_LM_Count;
 	//! Index with dispersive material
 	// Array setup: m_LM_pos[N_order][direction][mesh_pos]
 	unsigned int ***m_LM_pos;

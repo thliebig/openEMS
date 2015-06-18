@@ -21,6 +21,8 @@
 #include "array_ops.h"
 #include "global.h"
 
+using namespace std;
+
 SAR_Calculation::SAR_Calculation()
 {
 	m_Vx_Used = NULL;

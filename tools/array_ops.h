@@ -31,8 +31,6 @@
 #include <math.h>
 #include "constants.h"
 
-using namespace std;
-
 typedef float v4sf __attribute__ ((vector_size (16))); // vector of four single floats
 typedef   int v4si __attribute__ ((vector_size (4*sizeof(int)))); // vector of four single ints
 
@@ -177,7 +175,7 @@ void Delete_N_3DArray(T**** array, const unsigned int* numLines)
 }
 
 template <typename T>
-void Dump_N_3DArray2File(ostream &file, T**** array, const unsigned int* numLines)
+void Dump_N_3DArray2File(std::ostream &file, T**** array, const unsigned int* numLines)
 {
 	unsigned int pos[3];
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
@@ -189,7 +187,7 @@ void Dump_N_3DArray2File(ostream &file, T**** array, const unsigned int* numLine
 				file << pos[0] << "\t" << pos[1] << "\t" << pos[2];
 				for (int n=0; n<3; ++n)
 					file << "\t" << (float)array[n][pos[0]][pos[1]][pos[2]];
-				file << endl;
+				file << std::endl;
 			}
 		}
 	}

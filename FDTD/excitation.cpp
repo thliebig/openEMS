@@ -23,6 +23,8 @@
 #include "tinyxml.h"
 #include "excitation.h"
 
+using namespace std;
+
 Excitation::Excitation()
 {
 	Signal_volt = 0;

@@ -17,6 +17,8 @@
 
 #include "operator_base.h"
 
+using namespace std;
+
 Operator_Base::Operator_Base()
 {
 	Init();

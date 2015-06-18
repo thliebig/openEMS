@@ -33,9 +33,9 @@ public:
 	ProcessModeMatch(Engine_Interface_Base* eng_if);
 	virtual ~ProcessModeMatch();
 
-	virtual string GetProcessingName() const;
+	virtual std::string GetProcessingName() const;
 
-	virtual string GetIntegralName(int row) const;
+	virtual std::string GetIntegralName(int row) const;
 
 	virtual void InitProcess();
 	virtual void Reset();
@@ -43,7 +43,7 @@ public:
 	//! Set the field type (0 electric field, 1 magnetic field)
 	void SetFieldType(int type);
 	//! Set the mode function in the given direction ny. For example: SetModeFunction(0,"cos(pi/1000*x)*sin(pi/500*y)");
-	void SetModeFunction(int ny, string function);
+	void SetModeFunction(int ny, std::string function);
 
 	virtual int GetNumberOfIntegrals() const {return 2;}
 	virtual double* CalcMultipleIntegrals();
@@ -58,7 +58,7 @@ protected:
 	double GetEField(int ny, const unsigned int pos[3]);
 	double GetHField(int ny, const unsigned int pos[3]);
 
-	string m_ModeFunction[3];
+	std::string m_ModeFunction[3];
 	CSFunctionParser* m_ModeParser[2];
 
 	unsigned int m_numLines[2];

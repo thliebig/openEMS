@@ -26,8 +26,6 @@
 
 #include "tools/global.h"
 
-using namespace std;
-
 class Operator;
 class Operator_Cylinder;
 class Engine_Extension;
@@ -60,9 +58,9 @@ public:
 	//! The MPI operator (if enabled) will check whether the extension is compatible with MPI. Default is false. Derive this method to override.
 	virtual bool IsMPISave() const {return false;}
 
-	virtual string GetExtensionName() const {return string("Abstract Operator Extension Base Class");}
+	virtual std::string GetExtensionName() const {return std::string("Abstract Operator Extension Base Class");}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 	virtual bool IsActive() const {return m_Active;}
 	virtual void SetActive(bool active=true) {m_Active=active;}

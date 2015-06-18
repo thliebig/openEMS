@@ -25,8 +25,6 @@
 #include <complex>
 #include <boost/thread.hpp>
 
-using namespace std;
-
 class nf2ff_calc;
 
 #define MIRROR_OFF 0
@@ -45,16 +43,16 @@ typedef struct
 	float* edge_length_P;
 	float* edge_length_PP;
 
-	complex<float>**** E_field;
-	complex<float>**** H_field;
-	complex<float>**** Js;
-	complex<float>**** Ms;
+	std::complex<float>**** E_field;
+	std::complex<float>**** H_field;
+	std::complex<float>**** Js;
+	std::complex<float>**** Ms;
 
 	//local working data OUT
-	complex<double>** m_Nt;
-	complex<double>** m_Np;
-	complex<double>** m_Lt;
-	complex<double>** m_Lp;
+	std::complex<double>** m_Nt;
+	std::complex<double>** m_Np;
+	std::complex<double>** m_Lt;
+	std::complex<double>** m_Lp;
 
 } nf2ff_data;
 
@@ -76,7 +74,7 @@ class nf2ff_calc
 	// allow full data access to nf2ff_calc_thread class
 	friend class nf2ff_calc_thread;
 public:
-	nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vector<float> center);
+	nf2ff_calc(float freq, std::vector<float> theta, std::vector<float> phi, std::vector<float> center);
 	~nf2ff_calc();
 
 	void SetRadius(float radius) {m_radius=radius;}
@@ -86,8 +84,8 @@ public:
 	double GetTotalRadPower() const {return m_radPower;}
 	double GetMaxDirectivity() const {return m_maxDir;}
 
-	complex<double>** GetETheta() const {return m_E_theta;}
-	complex<double>** GetEPhi() const {return m_E_phi;}
+	std::complex<double>** GetETheta() const {return m_E_theta;}
+	std::complex<double>** GetEPhi() const {return m_E_phi;}
 	double** GetRadPower() const {return m_P_rad;}
 
 	unsigned int GetNumThreads() const {return m_numThreads;}
@@ -95,7 +93,7 @@ public:
 
 	void SetMirror(int type, int dir, float pos);
 
-	bool AddPlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType=0);
+	bool AddPlane(float **lines, unsigned int* numLines, std::complex<float>**** E_field, std::complex<float>**** H_field, int MeshType=0);
 
 protected:
 	float m_freq;
@@ -107,10 +105,10 @@ protected:
 	double m_radPower;
 	double m_maxDir;
 
-	complex<double>** m_E_theta;
-	complex<double>** m_E_phi;
-	complex<double>** m_H_theta;
-	complex<double>** m_H_phi;
+	std::complex<double>** m_E_theta;
+	std::complex<double>** m_E_phi;
+	std::complex<double>** m_H_theta;
+	std::complex<double>** m_H_phi;
 	double** m_P_rad;
 
 	float m_centerCoord[3];
@@ -125,8 +123,8 @@ protected:
 	float m_MirrorPos[3];
 
 	int GetNormalDir(unsigned int* numLines);
-	bool AddSinglePlane(float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType=0);
-	bool AddMirrorPlane(int n, float **lines, unsigned int* numLines, complex<float>**** E_field, complex<float>**** H_field, int MeshType=0);
+	bool AddSinglePlane(float **lines, unsigned int* numLines, std::complex<float>**** E_field, std::complex<float>**** H_field, int MeshType=0);
+	bool AddMirrorPlane(int n, float **lines, unsigned int* numLines, std::complex<float>**** E_field, std::complex<float>**** H_field, int MeshType=0);
 
 	//boost multi-threading
 	unsigned int m_numThreads;

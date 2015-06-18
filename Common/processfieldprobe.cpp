@@ -17,6 +17,8 @@
 
 #include "processfieldprobe.h"
 
+using namespace std;
+
 ProcessFieldProbe::ProcessFieldProbe(Engine_Interface_Base* eng_if, int type) : ProcessIntegral(eng_if)
 {
 	SetFieldType(type);

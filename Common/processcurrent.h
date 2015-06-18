@@ -26,9 +26,9 @@ public:
 	ProcessCurrent(Engine_Interface_Base* eng_if);
 	virtual ~ProcessCurrent();
 
-	virtual string GetProcessingName() const {return "current integration";}
+	virtual std::string GetProcessingName() const {return "current integration";}
 
-	virtual string GetIntegralName(int row) const;
+	virtual std::string GetIntegralName(int row) const;
 
 	virtual void DefineStartStopCoord(double* dstart, double* dstop);
 

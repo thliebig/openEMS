@@ -26,7 +26,7 @@ public:
 	ProcessFieldsTD(Engine_Interface_Base* eng_if);
 	virtual ~ProcessFieldsTD();
 
-	virtual string GetProcessingName() const {return "time domain field dump";}
+	virtual std::string GetProcessingName() const {return "time domain field dump";}
 
 	virtual void InitProcess();
 

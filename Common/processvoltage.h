@@ -27,9 +27,9 @@ public:
 	ProcessVoltage(Engine_Interface_Base* eng_if);
 	virtual ~ProcessVoltage();
 
-	virtual string GetProcessingName() const {return "voltage integration";}
+	virtual std::string GetProcessingName() const {return "voltage integration";}
 
-	virtual string GetIntegralName(int row) const;
+	virtual std::string GetIntegralName(int row) const;
 
 	virtual double CalcIntegral();
 

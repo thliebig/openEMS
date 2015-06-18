@@ -23,6 +23,8 @@
 #include <sstream>
 #include <string>
 
+using namespace std;
+
 ProcessFieldsFD::ProcessFieldsFD(Engine_Interface_Base* eng_if) : ProcessFields(eng_if)
 {
 }

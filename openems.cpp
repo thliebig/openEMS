@@ -52,6 +52,8 @@
 #include "CSPropProbeBox.h"
 #include "CSPropDumpBox.h"
 
+using namespace std;
+
 double CalcDiffTime(timeval t1, timeval t2)
 {
 	double s_diff = t1.tv_sec - t2.tv_sec;

@@ -20,6 +20,8 @@
 #include "time.h"
 #include <iomanip>
 
+using namespace std;
+
 ProcessIntegral::ProcessIntegral(Engine_Interface_Base* eng_if)  : Processing(eng_if)
 {
 	m_Results=NULL;

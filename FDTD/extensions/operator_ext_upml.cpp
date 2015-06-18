@@ -21,6 +21,8 @@
 #include "tools/array_ops.h"
 #include "fparser.hh"
 
+using namespace std;
+
 Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 {
 	m_GradingFunction = new FunctionParser();
