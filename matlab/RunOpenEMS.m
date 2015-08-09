@@ -126,7 +126,7 @@ if (enable_ssh)
     end
 
     % create a tmp working dir
-    [status, result] = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "mktemp -d /tmp/openEMS_XXXXXXXXXXXX"']);
+    [status, result] = system([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "mktemp -d /tmp/openEMS_XXXXXXXXXXXX"']);
     if (status~=0)
         disp(result);
         error('openEMS:RunOpenEMS','mktemp failed to create tmp directory!');
@@ -136,7 +136,7 @@ if (enable_ssh)
     disp(['Running remote openEMS on ' Settings.SSH.host ' at working dir: ' ssh_work_path]);
 
     %copy openEMS all simulation files to the ssh host
-    [stat, res] = unix([scp_command ' ' scp_options ' * ' Settings.SSH.host ':' ssh_work_path '/']);
+    [stat, res] = system([scp_command ' ' scp_options ' * ' Settings.SSH.host ':' ssh_work_path '/']);
     if (stat~=0)
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');
@@ -148,7 +148,7 @@ if (enable_ssh)
     else
         append_unix = [];
     end
-    status = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "cd ' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix]);
+    status = system([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' "cd ' ssh_work_path ' && ' Settings.SSH.bin ' ' Sim_File ' ' opts '"' append_unix]);
     if (status~=0)
         disp(result);
         error('openEMS:RunOpenEMS','ssh openEMS failed!');
@@ -157,14 +157,14 @@ if (enable_ssh)
     disp( 'Remote simulation done... copying back results and cleaning up...' );
 
     %copy back all results
-    [stat, res] = unix([scp_command ' -r ' scp_options ' ' Settings.SSH.host ':' ssh_work_path '/* ' pwd '/']);
+    [stat, res] = system([scp_command ' -r ' scp_options ' ' Settings.SSH.host ':' ssh_work_path '/* ' pwd '/']);
     if (stat~=0);
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');
     end
 
     %cleanup
-    [stat, res] = unix([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' rm -r ' ssh_work_path]);
+    [stat, res] = system([ssh_command ' ' ssh_options ' ' Settings.SSH.host ' rm -r ' ssh_work_path]);
     if (stat~=0);
         disp(res);
         warning('openEMS:RunOpenEMS','remote cleanup failed!');
