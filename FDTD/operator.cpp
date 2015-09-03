@@ -1001,9 +1001,9 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 
 	if (m_Exc->GetSignalPeriod()>0)
 	{
-		unsigned int TS = floor(m_Exc->GetSignalPeriod()/dT);
+		unsigned int TS = ceil(m_Exc->GetSignalPeriod()/dT);
 		double new_dT = m_Exc->GetSignalPeriod()/TS;
-		cerr << "Operartor::CalcECOperator: Increasing timestep by " << round((new_dT-dT)/dT*1000)/10.0 << "% to " << new_dT << " (" << dT << ") to match periodic signal" << endl;
+		cout << "Operartor::CalcECOperator: Decreasing timestep by " << round((dT-new_dT)/dT*1000)/10.0 << "% to " << new_dT << " (" << dT << ") to match periodic signal" << endl;
 		dT = new_dT;
 	}
 
