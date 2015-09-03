@@ -251,8 +251,8 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 	if (dT==0) return;
 	if (nTS<=0) return;
 
-	Length = (unsigned int)(nTS);
-//	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
+	Length = (unsigned int)(2.0/f0/dT);
+	//cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << Length << " timesteps " << Length*dT << "s" << endl;
 	delete[] Signal_volt;
 	delete[] Signal_curr;
 	Signal_volt = new FDTD_FLOAT[Length+1];

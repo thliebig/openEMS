@@ -805,11 +805,23 @@ int openEMS::SetupFDTD(const char* file)
 	if (m_Exc->GetNyquistNum()>1000)
 		cerr << "openEMS::SetupFDTD: Warning, the timestep seems to be very small --> long simulation. Check your mesh!?" << endl;
 
-	cout << "Excitation signal length is: " <<  m_Exc->GetLength() << " timesteps (" <<  m_Exc->GetLength()*FDTD_Op->GetTimestep() << "s)" << endl;
-	cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(m_Exc->GetLength()) << " * Excitation signal length)" << endl;
-	if ( ((double)NrTS/(double)m_Exc->GetLength() < 3) && (m_Exc->GetExciteType()==0))
-		cerr << "openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. " << endl << \
-				"\tYou may want to choose a higher number of max. timesteps... " << endl;
+	if (m_Exc->GetSignalPeriod()==0)
+	{
+		cout << "Excitation signal length is: " <<  m_Exc->GetLength() << " timesteps (" <<  m_Exc->GetLength()*FDTD_Op->GetTimestep() << "s)" << endl;
+		cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(m_Exc->GetLength()) << " * Excitation signal length)" << endl;
+		if ( ((double)NrTS/(double)m_Exc->GetLength() < 3) && (m_Exc->GetExciteType()==0))
+			cerr << "openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation. " << endl << \
+					"\tYou may want to choose a higher number of max. timesteps... " << endl;
+	}
+	else
+	{
+		int p = int(m_Exc->GetSignalPeriod()/FDTD_Op->GetTimestep());
+		cout << "Excitation signal period is: " <<  p << " timesteps (" <<  m_Exc->GetSignalPeriod() << "s)" << endl;
+		cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(m_Exc->GetLength()) << " * Excitation signal period)" << endl;
+		if (NrTS/p < 3)
+			cerr << "openEMS::SetupFDTD: Warning, max. number of timesteps is smaller than three times the excitation signal period. " << endl << \
+					"\tYou may want to choose a higher number of max. timesteps... " << endl;
+	}
 
 	if (m_no_simulation)
 	{

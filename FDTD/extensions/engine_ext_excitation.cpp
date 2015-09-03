@@ -40,6 +40,10 @@ void Engine_Ext_Excitation::Apply2Voltages()
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_volt =  m_Op_Exc->m_Exc->GetVoltageSignal();
 
+	int p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
+	if (p>0)
+		numTS = (numTS % p) + p;
+
 	//switch for different engine types to access faster inline engine functions
 	switch (m_Eng->GetType())
 	{
@@ -99,6 +103,10 @@ void Engine_Ext_Excitation::Apply2Current()
 	int numTS = m_Eng->GetNumberOfTimesteps();
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_curr =  m_Op_Exc->m_Exc->GetCurrentSignal();
+
+	int p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
+	if (p>0)
+		numTS = (numTS % p) + p;
 
 	//switch for different engine types to access faster inline engine functions
 	switch (m_Eng->GetType())
