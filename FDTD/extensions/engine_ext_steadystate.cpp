@@ -64,7 +64,7 @@ void Engine_Ext_SteadyState::Apply2Voltages()
 			m_last_max_diff = abs(curr_total_energy-last_total_energy)/last_total_energy;
 			no_valid = false;
 		}
-//		cerr << curr_total_energy << "/" << last_total_energy << "=" << abs(curr_total_energy-last_total_energy)/last_total_energy << endl;
+		//cerr << curr_total_energy << "/" << last_total_energy << "=" << abs(curr_total_energy-last_total_energy)/last_total_energy << endl;
 		last_total_energy = curr_total_energy;
 		unsigned int old_pos = 0;
 		unsigned int new_pos = p;
@@ -74,27 +74,35 @@ void Engine_Ext_SteadyState::Apply2Voltages()
 			old_pos = p;
 		}
 		//cerr << TS << "/" << rel_pos << ": one period complete, new_pos" << new_pos << " old pos: " << old_pos << endl;
+		double *curr_pow = new double[m_E_records.size()];
+		double *diff_pow = new double[m_E_records.size()];
+		double max_pow = 0;
 		for (size_t n=0;n<m_E_records.size();++n)
 		{
 			double *buf = m_E_records.at(n);
-			double curr_pow = 0;
-			double diff_pow = 0;
+			curr_pow[n] = 0;
+			diff_pow[n] = 0;
 			for (unsigned int nt=0;nt<p;++nt)
 			{
-				curr_pow += buf[nt+new_pos]*buf[nt+new_pos];
-				diff_pow += (buf[nt+old_pos]-buf[nt+new_pos])*(buf[nt+old_pos]-buf[nt+new_pos]);
+				curr_pow[n] += buf[nt+new_pos]*buf[nt+new_pos];
+				diff_pow[n] += (buf[nt+old_pos]-buf[nt+new_pos])*(buf[nt+old_pos]-buf[nt+new_pos]);
 			}
-			if (curr_pow>0)
+			max_pow = max(max_pow, curr_pow[n]);
+		}
+		for (size_t n=0;n<m_E_records.size();++n)
+		{
+			//cerr << "curr_pow: " << curr_pow[n] <<  " diff_pow: " << diff_pow[n] << " diff: " << diff_pow[n]/curr_pow[n] << endl;
+			if (curr_pow[n]>max_pow*1e-2)
 			{
-				m_last_max_diff = max(m_last_max_diff, diff_pow/curr_pow);
+				m_last_max_diff = max(m_last_max_diff, diff_pow[n]/curr_pow[n]);
+				//cerr << m_last_max_diff << endl;
 				no_valid = false;
 			}
-//			cerr << "curr_pow: " << curr_pow <<  " diff_pow: " << diff_pow << " diff: " << diff_pow/curr_pow << endl;
-//			cerr << m_last_max_diff << endl;
 		}
 		if ((no_valid) || (m_last_max_diff>1))
 			m_last_max_diff = 1;
-//		cerr << m_last_max_diff << endl;
+		delete[] curr_pow; curr_pow = NULL;
+		//cerr << m_last_max_diff << endl;
 	}
 }
 
