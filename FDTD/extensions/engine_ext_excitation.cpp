@@ -40,9 +40,9 @@ void Engine_Ext_Excitation::Apply2Voltages()
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_volt =  m_Op_Exc->m_Exc->GetVoltageSignal();
 
-	int p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
-	if (p>0)
-		numTS = (numTS % p) + p;
+	int p = numTS+1;
+	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
+		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
 	//switch for different engine types to access faster inline engine functions
 	switch (m_Eng->GetType())
@@ -52,7 +52,9 @@ void Engine_Ext_Excitation::Apply2Voltages()
 			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
 			{
 				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				exc_pos *= (exc_pos>0);
+				exc_pos %= p;
+				exc_pos *= (exc_pos<=(int)length);
 				ny = m_Op_Exc->Volt_dir[n];
 				pos[0]=m_Op_Exc->Volt_index[0][n];
 				pos[1]=m_Op_Exc->Volt_index[1][n];
@@ -67,7 +69,9 @@ void Engine_Ext_Excitation::Apply2Voltages()
 			{
 				Engine_sse* eng_sse = (Engine_sse*) m_Eng;
 				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				exc_pos *= (exc_pos>0);
+				exc_pos %= p;
+				exc_pos *= (exc_pos<=(int)length);
 				ny = m_Op_Exc->Volt_dir[n];
 				pos[0]=m_Op_Exc->Volt_index[0][n];
 				pos[1]=m_Op_Exc->Volt_index[1][n];
@@ -81,7 +85,9 @@ void Engine_Ext_Excitation::Apply2Voltages()
 			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
 			{
 				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				exc_pos *= (exc_pos>0);
+				exc_pos %= p;
+				exc_pos *= (exc_pos<=(int)length);
 				ny = m_Op_Exc->Volt_dir[n];
 				pos[0]=m_Op_Exc->Volt_index[0][n];
 				pos[1]=m_Op_Exc->Volt_index[1][n];
@@ -104,9 +110,9 @@ void Engine_Ext_Excitation::Apply2Current()
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_curr =  m_Op_Exc->m_Exc->GetCurrentSignal();
 
-	int p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
-	if (p>0)
-		numTS = (numTS % p) + p;
+	int p = numTS+1;
+	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
+		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
 	//switch for different engine types to access faster inline engine functions
 	switch (m_Eng->GetType())
@@ -116,7 +122,9 @@ void Engine_Ext_Excitation::Apply2Current()
 			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
 			{
 				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				exc_pos *= (exc_pos>0);
+				exc_pos %= p;
+				exc_pos *= (exc_pos<=(int)length);
 				ny = m_Op_Exc->Curr_dir[n];
 				pos[0]=m_Op_Exc->Curr_index[0][n];
 				pos[1]=m_Op_Exc->Curr_index[1][n];
@@ -131,7 +139,9 @@ void Engine_Ext_Excitation::Apply2Current()
 			{
 				Engine_sse* eng_sse = (Engine_sse*) m_Eng;
 				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				exc_pos *= (exc_pos>0);
+				exc_pos %= p;
+				exc_pos *= (exc_pos<=(int)length);
 				ny = m_Op_Exc->Curr_dir[n];
 				pos[0]=m_Op_Exc->Curr_index[0][n];
 				pos[1]=m_Op_Exc->Curr_index[1][n];
@@ -145,7 +155,9 @@ void Engine_Ext_Excitation::Apply2Current()
 			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
 			{
 				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0 && exc_pos<=(int)length);
+				exc_pos *= (exc_pos>0);
+				exc_pos %= p;
+				exc_pos *= (exc_pos<=(int)length);
 				ny = m_Op_Exc->Curr_dir[n];
 				pos[0]=m_Op_Exc->Curr_index[0][n];
 				pos[1]=m_Op_Exc->Curr_index[1][n];
