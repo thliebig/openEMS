@@ -15,11 +15,13 @@ Install instructions for openEMS:
 2) Build:
   - change directory to openEMS
   - build:
-    qmake PREFIX=<path/to/install/> CSXCAD_ROOT=<path/to/CSXCAD>  openEMS.pro
+    mkdir build
+    cd build
+    cmake .. -DCMAKE_INSTALL_PREFIX=<path/to/install/> -DFPARSER_ROOT_DIR=<path/to/fparser> -DCSXCAD_ROOT_DIR=<path/to/CSXCAD>
     make
     make install (may require root)
 
     Note:
-      - all path informations may be stored in a localPathes.pri
+      - all path informations may be stored in a localConfig.cmake
       - the default "prefix" is /usr/local
 
