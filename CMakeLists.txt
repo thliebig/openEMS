@@ -13,7 +13,7 @@ IF(EXISTS ${PROJECT_SOURCE_DIR}/localConfig.cmake)
    include(${PROJECT_SOURCE_DIR}/localConfig.cmake)
 ENDIF()
 
-set(VERSION "v0.0.33-rc2")
+set(VERSION "v0.0.33")
 
 # add git revision
 IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
