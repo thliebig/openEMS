@@ -111,33 +111,22 @@ if (WIN32)
     find_package(VTK 6.1 REQUIRED)
 else()
     # prefer >=6.1, fallback to >=5.4
-    find_package(VTK REQUIRED)
+    find_package(VTK 6.1 COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE)
+    IF (NOT ${VTK_FOUND})
+        find_package(VTK REQUIRED)
+    endif()
 endif()
 
 message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
 if("${VTK_MAJOR_VERSION}" EQUAL 6)
-    set( vtk_LIBS
-        vtkCommonCore
-        vtkCommonDataModel
-        vtkIOLegacy
-        vtkIOXML
-        vtkIOGeometry
-        vtkIOPLY
-        vtksys
-        vtkIOCore
-    )
+    set( vtk_LIBS ${VTK_LIBRARIES} )
 else()
     set( vtk_LIBS
         vtkCommon
-        vtkFiltering
-        vtkGraphics
-        vtkHybrid
         vtkIO
-        vtkRendering
-        vtkWidgets
-        QVTK
     )    
 endif()
+message(STATUS "vtk libraries " ${vtk_LIBS})
 
 include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIR})
