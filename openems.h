@@ -21,6 +21,7 @@
 #include <sstream>
 #include <sys/time.h>
 #include <time.h>
+#include <vector>
 
 #define __OPENEMS_STAT_FILE__ "openEMS_stats.txt"
 #define __OPENEMS_RUN_STAT_FILE__ "openEMS_run_stats.txt"
@@ -46,18 +47,34 @@ public:
 
 	virtual bool parseCommandLineArgument( const char *argv );
 
-	int SetupFDTD(const char* file);
-
+	bool ParseFDTDSetup(std::string file);
+	int SetupFDTD();
 	virtual void RunFDTD();
 
 	void Reset();
 
+	void SetNumberOfTimeSteps(unsigned int val) {NrTS=val;}
 	void SetEnableDumps(bool val) {Enable_Dumps=val;}
 	void SetEndCriteria(double val) {endCrit=val;}
+	void SetOverSampling(int val) {m_OverSampling=val;}
+	void SetCellConstantMaterial(bool val) {m_CellConstantMaterial=val;}
+
+	void SetCylinderCoords(bool val) {CylinderCoords=val;}
+	void SetupCylinderMultiGrid(std::vector<double> val) {m_CC_MultiGrid=val;}
+	void SetupCylinderMultiGrid(std::string val);
+
+	void SetTimeStepMethod(int val) {m_TS_method=val;}
+	void SetTimeStep(double val) {m_TS=val;}
+	void SetTimeStepFactor(double val) {m_TS_fac=val;}
+	void SetMaxTime(double val) {m_maxTime=val;}
 
 	void DebugMaterial() {DebugMat=true;}
 	void DebugOperator() {DebugOp=true;}
 	void DebugBox() {m_debugBox=true;}
+
+	void Set_BC_Type(int idx, int type);
+	void Set_BC_PML(int idx, unsigned int size);
+	void Set_Mur_PhaseVel(int idx, double val);
 
 	//! Get informations about external libs used by openEMS
 	static std::string GetExtLibsInfo();
@@ -67,15 +84,24 @@ public:
 	//! Check for abort conditions
 	bool CheckAbortCond();
 
+	Excitation* InitExcitation();
+
+	void SetCSX(ContinuousStructure* csx);
+
 	Engine_Interface_FDTD* NewEngineInterface(int multigridlevel = 0);
 
 protected:
 	bool CylinderCoords;
+	std::vector<double> m_CC_MultiGrid;
 
 	ContinuousStructure* m_CSX;
 
 	//! Number of Timesteps
 	unsigned int NrTS;
+	int m_TS_method;
+	double m_TS;
+	double m_TS_fac;
+	double m_maxTime;
 
 	// some command line flags
 	bool Enable_Dumps;
@@ -106,10 +132,13 @@ protected:
 	unsigned int m_engine_numThreads;
 
 	//! Setup an operator matching the requested engine
-	virtual bool SetupOperator(TiXmlElement* FDTD_Opts);
+	virtual bool SetupOperator();
 
 	//! Read boundary conditions from xml element and apply to FDTD operator
-	bool SetupBoundaryConditions(TiXmlElement* BC);
+	bool SetupBoundaryConditions();
+	int m_BC_type[6];
+	unsigned int m_PML_size[6];
+	double m_Mur_v_ph[6];
 
 	//! Check whether or not the FDTD-Operator has to store material data.
 	bool SetupMaterialStorages();

@@ -20,7 +20,6 @@
 #include <iostream>
 #include <fstream>
 #include "fparser.hh"
-#include "tinyxml.h"
 #include "excitation.h"
 
 using namespace std;
@@ -32,8 +31,7 @@ Excitation::Excitation()
 
 	this->Reset(0);
 
-	m_Excite_Elem = NULL;
-	m_Excit_Type = -1;
+	m_Excit_Type = Excitation::UNDEFINED;
 	m_SignalPeriod = 0;
 }
 
@@ -55,27 +53,44 @@ void Excitation::Reset( double timestep )
 	m_foi = 0;
 }
 
-bool Excitation::setupExcitation( TiXmlElement* Excite)
+bool Excitation::SetupGaussianPulse(double f0, double fc)
 {
-	if (!Excite)
-	{
-		cerr << "Excitation::setupExcitation: Error, can't read openEMS excitation settings... " << endl;
-		return false;
-	}
-
-	m_Excite_Elem = Excite;
-
-	double f0=0;
-	m_Excite_Elem->QueryIntAttribute("Type",&m_Excit_Type);
+	m_Excit_Type = Excitation::GaissianPulse;
+	m_f0 = f0;
+	m_fc = fc;
+	m_f_max = f0+fc;
 	m_SignalPeriod = 0;
-	switch (m_Excit_Type)
-	{
-	case 1: // sinusoidal excite
-		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
-		m_SignalPeriod = 1/f0;
-		break;
-	}
-	return true;
+}
+
+bool Excitation::SetupSinusoidal(double f0)
+{
+	m_Excit_Type = Excitation::Sinusoidal;
+	m_f0 = f0;
+	m_f_max = f0;
+	m_SignalPeriod = 1/f0;
+}
+
+bool Excitation::SetupDiracPulse(double fmax)
+{
+	m_Excit_Type = Excitation::DiracPulse;
+	m_SignalPeriod = 0;
+	m_f_max = fmax;
+}
+
+bool Excitation::SetupStepExcite(double fmax)
+{
+	m_Excit_Type = Excitation::Step;
+	m_SignalPeriod = 0;
+	m_f_max = fmax;
+}
+
+bool Excitation::SetupCustomExcite(string str, double f0, double fmax)
+{
+	m_Excit_Type = Excitation::CustomExcite;
+	m_CustomExc_Str = str;
+	m_f0 = f0;
+	m_SignalPeriod = 0;
+	m_f_max = fmax;
 }
 
 bool Excitation::buildExcitationSignal(unsigned int maxTS)
@@ -86,32 +101,26 @@ bool Excitation::buildExcitationSignal(unsigned int maxTS)
 		return false;
 	}
 
-	double f0=0;
-	double fc=0;
 	switch (m_Excit_Type)
 	{
-	case 0:
-		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
-		m_Excite_Elem->QueryDoubleAttribute("fc",&fc);
-		CalcGaussianPulsExcitation(f0,fc,maxTS);
+	case Excitation::GaissianPulse:
+		CalcGaussianPulsExcitation(m_f0,m_fc,maxTS);
 		break;
-	case 1:
-		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
-		CalcSinusExcitation(f0,maxTS);
+	case Excitation::Sinusoidal:
+		CalcSinusExcitation(m_f0,maxTS);
 		break;
-	case 2:
+	case Excitation::DiracPulse:
 		CalcDiracPulsExcitation();
 		break;
-	case 3:
+	case Excitation::Step:
 		CalcStepExcitation();
 		break;
-	case 10:
-		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
-		CalcCustomExcitation(f0,maxTS,m_Excite_Elem->Attribute("Function"));
+	case Excitation::CustomExcite:
+		CalcCustomExcitation(m_f0,maxTS,m_CustomExc_Str);
 		break;
 	default:
 		cerr << "Excitation::buildExcitationSignal: Unknown excitation type: \"" << m_Excit_Type<< "\" !!" << endl;
-		m_Excit_Type = -1;
+		m_Excit_Type = Excitation::UNDEFINED;
 		return false;
 	}
 

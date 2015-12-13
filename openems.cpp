@@ -84,6 +84,18 @@ openEMS::openEMS()
 
 	m_Abort = false;
 	m_Exc = 0;
+
+	m_TS_method=3;
+	m_TS=0;
+	m_TS_fac=1.0;
+	m_maxTime=0.0;
+
+	for (int n=0;n<6;++n)
+	{
+		m_BC_type[n]  = 0;
+		m_PML_size[n] = 8;
+		m_Mur_v_ph[n] = 0;
+	}
 }
 
 openEMS::~openEMS()
@@ -233,78 +245,28 @@ string openEMS::GetExtLibsInfo()
 	return str.str();
 }
 
-bool openEMS::SetupBoundaryConditions(TiXmlElement* BC)
+bool openEMS::SetupBoundaryConditions()
 {
-	int EC; //error code of tinyxml
-	int bounds[6] = {0,0,0,0,0,0};   //default boundary cond. (PEC)
-	unsigned int pml_size[6] = {8,8,8,8,8,8}; //default pml size
-	string s_bc;
-	const char* tmp = BC->Attribute("PML_Grading");
-	string pml_gradFunc;
-	if (tmp)
-		pml_gradFunc = string(tmp);
-
-	string bound_names[] = {"xmin","xmax","ymin","ymax","zmin","zmax"};
-
-	for (int n=0; n<6; ++n)
-	{
-		EC = BC->QueryIntAttribute(bound_names[n].c_str(),&bounds[n]);
-		if (EC==TIXML_SUCCESS)
-			continue;
-		if (EC==TIXML_WRONG_TYPE)
-		{
-			tmp = BC->Attribute(bound_names[n].c_str());
-			if (tmp)
-				s_bc = string(tmp);
-			if (s_bc=="PEC")
-				bounds[n] = 0;
-			else if (s_bc=="PMC")
-				bounds[n] = 1;
-			else if (s_bc=="MUR")
-				bounds[n] = 2;
-			else if (strncmp(s_bc.c_str(),"PML_=",4)==0)
-			{
-				bounds[n] = 3;
-				pml_size[n] = atoi(s_bc.c_str()+4);
-			}
-			else
-				cerr << "openEMS::SetupBoundaryConditions: Warning,  boundary condition for \"" << bound_names[n] << "\" unknown... set to PEC " << endl;
-		}
-		else
-			cerr << "openEMS::SetupBoundaryConditions: Warning, boundary condition for \"" << bound_names[n] << "\" not found... set to PEC " << endl;
-	}
-
-	FDTD_Op->SetBoundaryCondition(bounds); //operator only knows about PEC and PMC, everything else is defined by extensions (see below)
+	FDTD_Op->SetBoundaryCondition(m_BC_type); //operator only knows about PEC and PMC, everything else is defined by extensions (see below)
 
 	/**************************** create all operator/engine extensions here !!!! **********************************/
-	//Mur-ABC, defined as extension to the operator
-	double mur_v_ph = 0;
-	//read general mur phase velocity
-	if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&mur_v_ph) != TIXML_SUCCESS)
-		mur_v_ph = -1;
-	string mur_v_ph_names[6] = {"MUR_PhaseVelocity_xmin", "MUR_PhaseVelocity_xmax", "MUR_PhaseVelocity_ymin", "MUR_PhaseVelocity_ymax", "MUR_PhaseVelocity_zmin", "MUR_PhaseVelocity_zmax"};
 	for (int n=0; n<6; ++n)
 	{
 		FDTD_Op->SetBCSize(n, 0);
-		if (bounds[n]==2) //Mur-ABC
+		if (m_BC_type[n]==2) //Mur-ABC
 		{
 			FDTD_Op->SetBCSize(n, 1);
 			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
 			op_ext_mur->SetDirection(n/2,n%2);
-			double v_ph = 0;
-			//read special mur phase velocity or assign general phase velocity
-			if (BC->QueryDoubleAttribute(mur_v_ph_names[n].c_str(),&v_ph) == TIXML_SUCCESS)
-				op_ext_mur->SetPhaseVelocity(v_ph);
-			else if (mur_v_ph>0)
-				op_ext_mur->SetPhaseVelocity(mur_v_ph);
+			op_ext_mur->SetPhaseVelocity(m_Mur_v_ph[n]);
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
-		if (bounds[n]==3)
-			FDTD_Op->SetBCSize(n, pml_size[n]);
+		if (m_BC_type[n]==3)
+			FDTD_Op->SetBCSize(n, m_PML_size[n]);
 	}
 
 	//create the upml
-	Operator_Ext_UPML::Create_UPML(FDTD_Op,bounds,pml_size,pml_gradFunc);
+	Operator_Ext_UPML::Create_UPML(FDTD_Op, m_BC_type, m_PML_size, string());
 
 	return true;
 }
@@ -556,15 +518,19 @@ bool openEMS::SetupMaterialStorages()
 	return true;
 }
 
-bool openEMS::SetupOperator(TiXmlElement* FDTD_Opts)
+void openEMS::SetupCylinderMultiGrid(std::string val)
+{
+	m_CC_MultiGrid.clear();
+	m_CC_MultiGrid = SplitString2Double(val,',');
+}
+
+bool openEMS::SetupOperator()
 {
 	if (CylinderCoords)
 	{
-		const char* radii = FDTD_Opts->Attribute("MultiGrid");
-		if (radii)
+		if (m_CC_MultiGrid.size()>0)
 		{
-			string rad(radii);
-			FDTD_Op = Operator_CylinderMultiGrid::New(SplitString2Double(rad,','),m_engine_numThreads);
+			FDTD_Op = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
 			if (FDTD_Op==NULL)
 				FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
 		}
@@ -590,18 +556,34 @@ bool openEMS::SetupOperator(TiXmlElement* FDTD_Opts)
 	return true;
 }
 
-
-int openEMS::SetupFDTD(const char* file)
+void openEMS::Set_BC_Type(int idx, int type)
 {
-	if (file==NULL) return -1;
+	if ((idx<0) || (idx>5))
+		return;
+	m_BC_type[idx] = type;
+}
+
+void openEMS::Set_BC_PML(int idx, unsigned int size)
+{
+	if ((idx<0) || (idx>5))
+		return;
+	m_BC_type[idx] = 3;
+	m_PML_size[idx] = size;
+}
+
+void openEMS::Set_Mur_PhaseVel(int idx, double val)
+{
+	if ((idx<0) || (idx>5))
+	return;
+	m_Mur_v_ph[idx] = val;
+}
+
+bool openEMS::ParseFDTDSetup(std::string file)
+{
 	Reset();
 
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Read openEMS xml file: " << file << " ..." << endl;
-
-	timeval startTime;
-	gettimeofday(&startTime,NULL);
-
 
 	TiXmlDocument doc(file);
 	if (!doc.LoadFile())
@@ -629,22 +611,35 @@ int openEMS::SetupFDTD(const char* file)
 	double dhelp=0;
 	FDTD_Opts->QueryDoubleAttribute("NumberOfTimesteps",&dhelp);
 	if (dhelp<0)
-		NrTS=0;
+		this->SetNumberOfTimeSteps(0);
 	else
-		NrTS = (unsigned int)dhelp;
+		this->SetNumberOfTimeSteps((unsigned int)dhelp);
 
 	int ihelp = 0;
 	FDTD_Opts->QueryIntAttribute("CylinderCoords",&ihelp);
 	if (ihelp==1)
-		CylinderCoords = true;
+		this->SetCylinderCoords(true);
+		const char* cchelp = FDTD_Opts->Attribute("MultiGrid");
+		if (cchelp!=NULL)
+			this->SetupCylinderMultiGrid(string(cchelp));
 
-	FDTD_Opts->QueryDoubleAttribute("endCriteria",&endCrit);
-	if (endCrit==0)
-		endCrit=1e-6;
+	dhelp = 0;
+	FDTD_Opts->QueryDoubleAttribute("endCriteria",&dhelp);
+	if (dhelp==0)
+		this->SetEndCriteria(1e-6);
+	else
+		this->SetEndCriteria(dhelp);
 
-	FDTD_Opts->QueryIntAttribute("OverSampling",&m_OverSampling);
-	if (m_OverSampling<2)
-		m_OverSampling=2;
+	ihelp = 0;
+	FDTD_Opts->QueryIntAttribute("OverSampling",&ihelp);
+	if (ihelp<2)
+		this->SetOverSampling(2);
+	else
+		this->SetOverSampling(ihelp);
+
+	// check for cell constant material averaging
+	if (FDTD_Opts->QueryIntAttribute("CellConstantMaterial",&ihelp)==TIXML_SUCCESS)
+		this->SetCellConstantMaterial(ihelp==1);
 
 	TiXmlElement* BC = FDTD_Opts->FirstChildElement("BoundaryCond");
 	if (BC==NULL)
@@ -653,15 +648,121 @@ int openEMS::SetupFDTD(const char* file)
 		exit(-3);
 	}
 
+//	const char* tmp = BC->Attribute("PML_Grading");
+//	string pml_gradFunc;
+//	if (tmp)
+//		pml_gradFunc = string(tmp);
+
+	string bound_names[] = {"xmin","xmax","ymin","ymax","zmin","zmax"};
+
+	for (int n=0; n<6; ++n)
+	{
+		int EC = BC->QueryIntAttribute(bound_names[n].c_str(),&ihelp);
+		if (EC==TIXML_SUCCESS)
+			this->Set_BC_Type(n, ihelp);
+			continue;
+		if (EC==TIXML_WRONG_TYPE)
+		{
+			string s_bc;
+			const char* tmp = BC->Attribute(bound_names[n].c_str());
+			if (tmp)
+				s_bc = string(tmp);
+			if (s_bc=="PEC")
+				this->Set_BC_Type(n, 0);
+			else if (s_bc=="PMC")
+				this->Set_BC_Type(n, 1);
+			else if (s_bc=="MUR")
+				this->Set_BC_Type(n, 2);
+			else if (strncmp(s_bc.c_str(),"PML_=",4)==0)
+				this->Set_BC_PML(n, atoi(s_bc.c_str()+4));
+			else
+				cerr << "openEMS::SetupBoundaryConditions: Warning,  boundary condition for \"" << bound_names[n] << "\" unknown... set to PEC " << endl;
+		}
+		else
+			cerr << "openEMS::SetupBoundaryConditions: Warning, boundary condition for \"" << bound_names[n] << "\" not found... set to PEC " << endl;
+	}
+
+	//read general mur phase velocity
+	if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&dhelp) != TIXML_SUCCESS)
+		for (int n=0;n<6;++n)
+			this->Set_Mur_PhaseVel(n, dhelp);
+
+	string mur_v_ph_names[6] = {"MUR_PhaseVelocity_xmin", "MUR_PhaseVelocity_xmax", "MUR_PhaseVelocity_ymin", "MUR_PhaseVelocity_ymax", "MUR_PhaseVelocity_zmin", "MUR_PhaseVelocity_zmax"};
+	for (int n=0; n<6; ++n)
+		if (BC->QueryDoubleAttribute(mur_v_ph_names[n].c_str(),&dhelp) == TIXML_SUCCESS)
+			this->Set_Mur_PhaseVel(n, dhelp);
+
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Read Geometry..." << endl;
-	m_CSX = new ContinuousStructure();
-	string EC(m_CSX->ReadFromXML(openEMSxml));
+	ContinuousStructure* csx = new ContinuousStructure();
+	string EC(csx->ReadFromXML(openEMSxml));
 	if (EC.empty()==false)
-	{
 		cerr << EC << endl;
-//		return(-2);
+	this->SetCSX(csx);
+
+	TiXmlElement* m_Excite_Elem = FDTD_Opts->FirstChildElement("Excitation");
+	if (!m_Excite_Elem)
+	{
+		cerr << "Excitation::setupExcitation: Error, can't read openEMS excitation settings... " << endl;
+		return false;
 	}
+
+	Excitation* exc = this->InitExcitation();
+	double f0=0, fc=0, f_max=0;
+	ihelp = -1;
+	m_Excite_Elem->QueryIntAttribute("Type",&ihelp);
+	switch (ihelp)
+	{
+	case Excitation::GaissianPulse:
+		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
+		m_Excite_Elem->QueryDoubleAttribute("fc",&fc);
+		exc->SetupGaussianPulse(f0, fc);
+		break;
+	case Excitation::Sinusoidal:  // sinusoidal excite
+		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
+		exc->SetupSinusoidal(f0);
+		break;
+	case Excitation::DiracPulse:
+		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
+		exc->SetupDiracPulse(f_max);
+		break;
+	case Excitation::Step:
+		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
+		exc->SetupStepExcite(f_max);
+		break;
+	case Excitation::CustomExcite:
+		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
+		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
+		exc->SetupCustomExcite(m_Excite_Elem->Attribute("Function"), f0, f_max);
+		break;
+	}
+
+	if (FDTD_Opts->QueryIntAttribute("TimeStepMethod",&ihelp)==TIXML_SUCCESS)
+		this->SetTimeStepMethod(ihelp);
+	if (FDTD_Opts->QueryDoubleAttribute("TimeStep",&dhelp)==TIXML_SUCCESS)
+		this->SetTimeStep(dhelp);
+	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&dhelp)==TIXML_SUCCESS)
+		this->SetTimeStepFactor(dhelp);
+}
+
+Excitation* openEMS::InitExcitation()
+{
+	delete m_Exc;
+	m_Exc = new Excitation();
+	return m_Exc;
+}
+
+void openEMS::SetCSX(ContinuousStructure* csx)
+{
+	delete m_CSX;
+	m_CSX = csx;
+}
+
+int openEMS::SetupFDTD()
+{
+
+	timeval startTime;
+	gettimeofday(&startTime,NULL);
 
 	if (g_settings.GetVerboseLevel()>2)
 		m_CSX->ShowPropertyStatus(cerr);
@@ -677,15 +778,12 @@ int openEMS::SetupFDTD(const char* file)
 		m_CSX->Write2XML("debugCSX.xml");
 
 	//*************** setup operator ************//
-	if (SetupOperator(FDTD_Opts)==false)
+	if (SetupOperator()==false)
 		return 2;
 
 	// default material averaging is quarter cell averaging
 	FDTD_Op->SetQuarterCellMaterialAvg();
 
-	// check for cell constant material averaging
-	if (FDTD_Opts->QueryIntAttribute("CellConstantMaterial",&ihelp)==TIXML_SUCCESS)
-		m_CellConstantMaterial=(ihelp==1);
 	if (m_CellConstantMaterial)
 	{
 		FDTD_Op->SetCellConstantMaterial();
@@ -693,9 +791,6 @@ int openEMS::SetupFDTD(const char* file)
 			cout << "Enabling constant cell material assumption." << endl;
 	}
 
-	m_Exc = new Excitation();
-	if (!m_Exc->setupExcitation(FDTD_Opts->FirstChildElement("Excitation")))
-		exit(2);
 	FDTD_Op->SetExcitationSignal(m_Exc);
 	FDTD_Op->AddExtension(new Operator_Ext_Excitation(FDTD_Op));
 	if (!CylinderCoords)
@@ -703,19 +798,14 @@ int openEMS::SetupFDTD(const char* file)
 
 	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
 
-	SetupBoundaryConditions(BC);
+	SetupBoundaryConditions();
 
-	int TS_method=0;
-	if (FDTD_Opts->QueryIntAttribute("TimeStepMethod",&TS_method)==TIXML_SUCCESS)
-		FDTD_Op->SetTimeStepMethod(TS_method);
+	FDTD_Op->SetTimeStepMethod(m_TS_method);
 
-	double timestep=0;
-	FDTD_Opts->QueryDoubleAttribute("TimeStep",&timestep);
-	if (timestep)
-		FDTD_Op->SetTimestep(timestep);
-	double timestepfactor=0;
-	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&timestepfactor)==TIXML_SUCCESS)
-		FDTD_Op->SetTimestepFactor(timestepfactor);
+	if (m_TS>0)
+		FDTD_Op->SetTimestep(m_TS);
+	if (m_TS_fac<1)
+		FDTD_Op->SetTimestepFactor(m_TS_fac);
 
 	// Is a steady state detection requested
 	Operator_Ext_SteadyState* Op_Ext_SSD = NULL;
@@ -751,14 +841,7 @@ int openEMS::SetupFDTD(const char* file)
 	if ((m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0) || (m_CSX->GetQtyPropertyType(CSProperties::DEBYEMATERIAL)>0))
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 	if (m_CSX->GetQtyPropertyType(CSProperties::CONDUCTINGSHEET)>0)
-	{
-		double f_max=0;
-		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
-		if (f_max>0)
-			FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op,f_max));
-		else
-			cerr << __func__ << ": Error, max. frequency is <=0, disabling conducting sheet material..." << endl;
-	}
+		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op, m_Exc->GetMaxFreq()));
 
 	//check all properties to request material storage during operator creation...
 	SetupMaterialStorages();
@@ -781,10 +864,8 @@ int openEMS::SetupFDTD(const char* file)
 	FDTD_Op->SetMaterialStoreFlags(2,false);
 	FDTD_Op->SetMaterialStoreFlags(3,false);
 
-	double maxTime=0;
-	FDTD_Opts->QueryDoubleAttribute("MaxTime",&maxTime);
-	unsigned int maxTime_TS = (unsigned int)(maxTime/FDTD_Op->GetTimestep());
-	if ((maxTime_TS>0) && (maxTime_TS<NrTS))
+	unsigned int maxTime_TS = (unsigned int)(m_maxTime/FDTD_Op->GetTimestep());
+	if ((m_maxTime>0) && (maxTime_TS<NrTS))
 		NrTS = maxTime_TS;
 
 	if (!m_Exc->buildExcitationSignal(NrTS))

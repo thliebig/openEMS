@@ -22,17 +22,25 @@
 #include <string>
 #include "tools/constants.h"
 
-class TiXmlElement;
-
 class Excitation
 {
 public:
+	enum ExciteTypes {UNDEFINED=-1, GaissianPulse=0, Sinusoidal=1, DiracPulse=2, Step=3, CustomExcite=10};
 	Excitation();
 	virtual ~Excitation();
 
 	virtual void Reset( double timestep );
 
-	bool setupExcitation(TiXmlElement* Excite);
+	bool SetupGaussianPulse(double f0, double fc);
+	bool SetupSinusoidal(double f0);
+	bool SetupDiracPulse(double fmax);
+	bool SetupStepExcite(double fmax);
+	bool SetupCustomExcite(std::string str, double f0, double fmax);
+
+	double GetCenterFreq() {return m_f0;}
+	double GetCutOffFreq() {return m_fc;}
+	double GetMaxFreq() {return m_f_max;}
+
 	bool buildExcitationSignal(unsigned int maxTS);
 
 	//! Get the excitation timestep with the (first) max amplitude
@@ -72,14 +80,20 @@ protected:
 	double dT;
 	unsigned int m_nyquistTS;
 	double m_SignalPeriod;
-	int m_Excit_Type;
-
-	TiXmlElement* m_Excite_Elem;
+	ExciteTypes m_Excit_Type;
 
 	//Excitation time-signal
 	unsigned int Length;
 	FDTD_FLOAT* Signal_volt;
 	FDTD_FLOAT* Signal_curr;
+
+	// center frequency
+	double m_f0;
+
+	// cutoff-frequency (Gaussian pulse only)
+	double m_fc;
+
+	std::string m_CustomExc_Str;
 
 	// max frequency
 	double m_f_max;

@@ -101,7 +101,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	int EC = FDTD.SetupFDTD(argv[1]);
+	int EC = FDTD.ParseFDTDSetup(argv[1]);
+	EC = FDTD.SetupFDTD();
 	if (EC) return EC;
 	FDTD.RunFDTD();
 
