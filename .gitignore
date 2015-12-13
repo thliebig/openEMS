@@ -1,3 +1,4 @@
+build/
 release/
 debug/
 doc/
@@ -9,6 +10,7 @@ Makefile*
 *.so*
 *.a
 *.pro.user*
+*.user
 *.orig
 openEMS
 localPaths.pri
