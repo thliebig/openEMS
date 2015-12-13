@@ -36,13 +36,20 @@ if (nargin<2)
 end
 
 AR_order = 0;
+SignalType = 'pulse';
 
 for n=1:2:numel(varargin)
     if (strcmp(varargin{n},'AR')==1)
         AR_order =  varargin{n+1};
+    elseif strcmpi(varargin{n},'SignalType')
+        SignalType = varargin{n+1};
     else
         warning('CSXCAD:ReadUI', ['"' varargin{n} '" is an unknown argument']);
     end
+end
+
+if strcmpi(SignalType,'periodic') && AR_order>0
+    error 'auto-regressive model not compatible with periodic signals'
 end
 
 if (ischar(files))
@@ -66,6 +73,9 @@ for n=1:numel(filenames)
     end    
     
     if (nargin<3) || isempty(freq)
+        if strcmpi(SignalType,'periodic')
+           warning 'ReadUI: periodic signal type not supported by FFT'
+        end
         [UI.FD{n}.f,UI.FD{n}.val] = FFT_time2freq( t,val );
     else
         UI.FD{n}.f = freq;
@@ -82,15 +92,15 @@ for n=1:numel(filenames)
             end
             if (EC~=0)
                 warning('CSXCAD:ReadUI','AR estimation failed, skipping...')
-                UI.FD{n}.val = DFT_time2freq( t, val, freq );
+                UI.FD{n}.val = DFT_time2freq( t, val, freq, SignalType );
             end
         elseif (AR_order<=0)
-            UI.FD{n}.val = DFT_time2freq( t, val, freq );
+            UI.FD{n}.val = DFT_time2freq( t, val, freq, SignalType );
         else
             [val_ar t_ar UI.FD{n}.val EC] = AR_estimate( t, val, freq, AR_order);
             if (EC~=0)
                 warning('CSXCAD:ReadUI','AR estimation failed, skipping...')
-                UI.FD{n}.val = DFT_time2freq( t, val, freq );
+                UI.FD{n}.val = DFT_time2freq( t, val, freq, SignalType );
             end
         end
     end   

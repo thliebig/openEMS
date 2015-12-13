@@ -1,6 +1,8 @@
 function [f,val] = FFT_time2freq( t, val )
 % [f,val] = FFT_time2freq( t, val )
 %
+% Note: This function can only be used for pulse signals
+%
 % See also DFT_time2freq
 
 dt=t(2)-t(1); % timestep

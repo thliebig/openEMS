@@ -19,6 +19,7 @@ function [port] = calcPort( port, SimDir, f, varargin)
 %   'RefPlaneShift': for transmission lines only, See also calcTLPort for
 %                    more details
 %   'SwitchDirection': 0/1, switch assumed direction of propagation
+%   'SignalType':    'pulse' (default) or 'periodic'
 %
 % output: 
 %   % output signals/values in time domain (TD):
