@@ -258,12 +258,14 @@ bool openEMS::SetupBoundaryConditions()
 			FDTD_Op->SetBCSize(n, 1);
 			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
 			op_ext_mur->SetDirection(n/2,n%2);
-			op_ext_mur->SetPhaseVelocity(m_Mur_v_ph[n]);
+			if (m_Mur_v_ph[n]>0)
+				op_ext_mur->SetPhaseVelocity(m_Mur_v_ph[n]);
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
 		if (m_BC_type[n]==3)
 			FDTD_Op->SetBCSize(n, m_PML_size[n]);
 	}
+
 
 	//create the upml
 	Operator_Ext_UPML::Create_UPML(FDTD_Op, m_BC_type, m_PML_size, string());
@@ -618,10 +620,12 @@ bool openEMS::ParseFDTDSetup(std::string file)
 	int ihelp = 0;
 	FDTD_Opts->QueryIntAttribute("CylinderCoords",&ihelp);
 	if (ihelp==1)
+	{
 		this->SetCylinderCoords(true);
 		const char* cchelp = FDTD_Opts->Attribute("MultiGrid");
 		if (cchelp!=NULL)
 			this->SetupCylinderMultiGrid(string(cchelp));
+	}
 
 	dhelp = 0;
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&dhelp);
@@ -654,19 +658,22 @@ bool openEMS::ParseFDTDSetup(std::string file)
 //		pml_gradFunc = string(tmp);
 
 	string bound_names[] = {"xmin","xmax","ymin","ymax","zmin","zmax"};
-
+	string s_bc;
 	for (int n=0; n<6; ++n)
 	{
 		int EC = BC->QueryIntAttribute(bound_names[n].c_str(),&ihelp);
 		if (EC==TIXML_SUCCESS)
+		{
 			this->Set_BC_Type(n, ihelp);
 			continue;
+		}
 		if (EC==TIXML_WRONG_TYPE)
 		{
-			string s_bc;
 			const char* tmp = BC->Attribute(bound_names[n].c_str());
 			if (tmp)
 				s_bc = string(tmp);
+			else
+				cerr << "openEMS::SetupBoundaryConditions: Warning,  boundary condition for \"" << bound_names[n] << "\" unknown... set to PEC " << endl;
 			if (s_bc=="PEC")
 				this->Set_BC_Type(n, 0);
 			else if (s_bc=="PMC")
@@ -683,7 +690,7 @@ bool openEMS::ParseFDTDSetup(std::string file)
 	}
 
 	//read general mur phase velocity
-	if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&dhelp) != TIXML_SUCCESS)
+	if (BC->QueryDoubleAttribute("MUR_PhaseVelocity",&dhelp) == TIXML_SUCCESS)
 		for (int n=0;n<6;++n)
 			this->Set_Mur_PhaseVel(n, dhelp);
 
