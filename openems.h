@@ -84,6 +84,7 @@ public:
 	//! Check for abort conditions
 	bool CheckAbortCond();
 
+	void SetGaussExcite(double f0, double fc);
 	Excitation* InitExcitation();
 
 	void SetCSX(ContinuousStructure* csx);

@@ -752,6 +752,12 @@ bool openEMS::ParseFDTDSetup(std::string file)
 		this->SetTimeStepFactor(dhelp);
 }
 
+void openEMS::SetGaussExcite(double f0, double fc)
+{
+	this->InitExcitation();
+	m_Exc->SetupGaussianPulse(f0, fc);
+}
+
 Excitation* openEMS::InitExcitation()
 {
 	delete m_Exc;
