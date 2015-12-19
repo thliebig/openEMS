@@ -91,6 +91,8 @@ public:
 
 	Engine_Interface_FDTD* NewEngineInterface(int multigridlevel = 0);
 
+	void SetVerboseLevel(int level);
+
 protected:
 	bool CylinderCoords;
 	std::vector<double> m_CC_MultiGrid;

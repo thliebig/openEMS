@@ -304,6 +304,11 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 	return new Engine_Interface_FDTD(FDTD_Op);
 }
 
+void openEMS::SetVerboseLevel(int level)
+{
+    g_settings.SetVerboseLevel(level);
+}
+
 bool openEMS::SetupProcessing()
 {
 	//*************** setup processing ************//
