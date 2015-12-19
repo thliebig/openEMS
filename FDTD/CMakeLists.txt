@@ -1,25 +1,27 @@
 
-INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )
+#INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )
 
 set(SOURCES
-  engine.cpp
-  operator.cpp
-  engine_multithread.cpp
-  operator_cylinder.cpp
-  engine_cylinder.cpp
-  engine_sse.cpp
-  operator_sse.cpp
-  operator_sse_compressed.cpp
-  engine_sse_compressed.cpp
-  operator_multithread.cpp
-  excitation.cpp
-  operator_cylindermultigrid.cpp
-  engine_cylindermultigrid.cpp
-  engine_interface_fdtd.cpp
-  engine_interface_sse_fdtd.cpp
-  engine_interface_cylindrical_fdtd.cpp
+  ${SOURCES}
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_multithread.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator_cylinder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_cylinder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_sse.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator_sse.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator_sse_compressed.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_sse_compressed.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator_multithread.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/excitation.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator_cylindermultigrid.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_cylindermultigrid.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_fdtd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_sse_fdtd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_cylindrical_fdtd.cpp
+  PARENT_SCOPE
 )
 
 # FDTD lib
-add_library( FDTD STATIC ${SOURCES} )
+#add_library( FDTD STATIC ${SOURCES} )
 

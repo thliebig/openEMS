@@ -9,6 +9,14 @@ ENDIF()
 PROJECT(openEMS CXX)
 cmake_minimum_required(VERSION 2.8)
 
+# default
+set(LIB_VERSION_MAJOR 0)
+set(LIB_VERSION_MINOR 0)
+set(LIB_VERSION_PATCH 33)
+set(LIB_VERSION_STRING ${LIB_VERSION_MAJOR}.${LIB_VERSION_MINOR}.${LIB_VERSION_PATCH})
+
+set(VERSION "v${LIB_VERSION_STRING}")
+
 IF(EXISTS ${PROJECT_SOURCE_DIR}/localConfig.cmake)
    include(${PROJECT_SOURCE_DIR}/localConfig.cmake)
 ENDIF()
@@ -131,36 +139,28 @@ message(STATUS "vtk libraries " ${vtk_LIBS})
 include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIR})
 
-if(WIN32)
-    set(CMAKE_CXX_FLAGS "-msse")
-endif()
+#set(CMAKE_CXX_FLAGS "-msse -march=native")
 
 # independent tool
 ADD_SUBDIRECTORY( nf2ff )
+
+set(SOURCES
+  openems.cpp
+)
 
 # libs
 ADD_SUBDIRECTORY( tools )
 ADD_SUBDIRECTORY( FDTD )
 ADD_SUBDIRECTORY( FDTD/extensions )
-
-# depend on CSXCAD
 ADD_SUBDIRECTORY( Common )
-
-# main program
-set(SOURCES
-  main.cpp
-  openems.cpp
-)
 
 INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )    #find tools
 
-ADD_EXECUTABLE( openEMS ${SOURCES} )
+message(STATUS "Sources:"  ${SOURCES})
 
+add_library( openEMS SHARED ${SOURCES})
+set_target_properties(openEMS PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR})
 TARGET_LINK_LIBRARIES( openEMS
-  FDTD
-  Common
-  extensions
-  tools
   ${CSXCAD_LIBRARIES}
   ${fparser_LIBRARIES}
   tinyxml
@@ -169,8 +169,13 @@ TARGET_LINK_LIBRARIES( openEMS
   ${vtk_LIBS}
 )
 
-
-INSTALL( TARGETS openEMS DESTINATION bin )
+# main program
+ADD_EXECUTABLE( openEMS_bin main.cpp )
+SET_TARGET_PROPERTIES(openEMS_bin PROPERTIES OUTPUT_NAME openEMS)
+TARGET_LINK_LIBRARIES(openEMS_bin openEMS)
+ 
+INSTALL(TARGETS openEMS DESTINATION lib${LIB_SUFFIX})
+INSTALL(TARGETS openEMS_bin DESTINATION bin )
 if (UNIX)
     INSTALL( FILES openEMS.sh 
          DESTINATION bin 

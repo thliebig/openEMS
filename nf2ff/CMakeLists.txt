@@ -11,10 +11,15 @@ cmake_minimum_required(VERSION 2.8)
 
 set(SOURCES
   main.cpp
-	nf2ff.cpp
-	nf2ff_calc.cpp
+  nf2ff.cpp
+  nf2ff_calc.cpp
+  ../tools/array_ops.cpp
+  ../tools/useful.cpp
+  ../tools/hdf5_file_reader.cpp
+  ../tools/hdf5_file_writer.cpp
 )
 
+#ADD_SUBDIRECTORY( ../tools )
 set(HEADERS
   nf2ff.h
   nf2ff_calc.h
@@ -23,7 +28,6 @@ set(HEADERS
 ADD_EXECUTABLE( nf2ff ${SOURCES} )
 
 TARGET_LINK_LIBRARIES( nf2ff
-  tools
   tinyxml
   ${HDF5_LIBRARIES}
   ${Boost_LIBRARIES}

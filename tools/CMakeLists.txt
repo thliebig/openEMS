@@ -1,14 +1,16 @@
 
 set(SOURCES
-  AdrOp.cpp
-  ErrorMsg.cpp
-  array_ops.cpp
-  global.cpp
-  hdf5_file_reader.cpp
-  hdf5_file_writer.cpp
-  sar_calculation.cpp
-  useful.cpp
-  vtk_file_writer.cpp
+  ${SOURCES}
+  ${CMAKE_CURRENT_SOURCE_DIR}/AdrOp.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ErrorMsg.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/array_ops.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/global.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/hdf5_file_reader.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/hdf5_file_writer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/sar_calculation.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/useful.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/vtk_file_writer.cpp
+  PARENT_SCOPE
 )
 
 #set(HEADERS
@@ -22,5 +24,5 @@ set(SOURCES
 #)
 
 # tools lib
-add_library(tools STATIC ${SOURCES} )
+#add_library(tools STATIC ${SOURCES} )
 
