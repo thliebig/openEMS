@@ -809,6 +809,12 @@ int openEMS::SetupFDTD()
 			cout << "Enabling constant cell material assumption." << endl;
 	}
 
+	if (m_Exc==NULL)
+	{
+		cerr << "openEMS::SetupFDTD: Error, excitation is not defined! Abort!" << endl;
+		return 3;
+	}
+
 	FDTD_Op->SetExcitationSignal(m_Exc);
 	FDTD_Op->AddExtension(new Operator_Ext_Excitation(FDTD_Op));
 	if (!CylinderCoords)
