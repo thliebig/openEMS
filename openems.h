@@ -46,6 +46,7 @@ public:
 	virtual ~openEMS();
 
 	virtual bool parseCommandLineArgument( const char *argv );
+	static void showUsage();
 
 	bool ParseFDTDSetup(std::string file);
 	int SetupFDTD();
@@ -77,7 +78,10 @@ public:
 	void Set_Mur_PhaseVel(int idx, double val);
 
 	//! Get informations about external libs used by openEMS
-	static std::string GetExtLibsInfo();
+	static std::string GetExtLibsInfo(std::string prefix="\t");
+
+	//! Get welcome screen for openEMS
+	static void WelcomeScreen();
 
 	//! Set this to about FDTD iteration process
 	void SetAbort(bool val) {m_Abort=val;}

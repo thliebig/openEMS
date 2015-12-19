@@ -118,6 +118,35 @@ void openEMS::Reset()
 	m_Exc=0;
 }
 
+void openEMS::showUsage()
+{
+	cout << " Usage: openEMS <FDTD_XML_FILE> [<options>...]" << endl << endl;
+	cout << " <options>" << endl;
+	cout << "\t--disable-dumps\t\tDisable all field dumps for faster simulation" << endl;
+	cout << "\t--debug-material\tDump material distribution to a vtk file for debugging" << endl;
+	cout << "\t--debug-PEC\t\tDump metal distribution to a vtk file for debugging" << endl;
+	cout << "\t--debug-operator\tDump operator to vtk file for debugging" << endl;
+	cout << "\t--debug-boxes\t\tDump e.g. probe boxes to vtk file for debugging" << endl;
+	cout << "\t--debug-CSX\t\tWrite CSX geometry file to debugCSX.xml" << endl;
+	cout << "\t--engine=<type>\t\tChoose engine type" << endl;
+	cout << "\t\t--engine=fastest\t\tfastest available engine (default)" << endl;
+	cout << "\t\t--engine=basic\t\t\tbasic FDTD engine" << endl;
+	cout << "\t\t--engine=sse\t\t\tengine using sse vector extensions" << endl;
+	cout << "\t\t--engine=sse-compressed\t\tengine using compressed operator + sse vector extensions" << endl;
+#ifdef MPI_SUPPORT
+	cout << "\t\t--engine=MPI\t\t\tengine using compressed operator + sse vector extensions + MPI parallel processing" << endl;
+	cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + MPI + multithreading" << endl;
+#else
+	cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + multithreading" << endl;
+#endif
+	cout << "\t--numThreads=<n>\tForce use n threads for multithreaded engine (needs: --engine=multithreaded)" << endl;
+	cout << "\t--no-simulation\t\tonly run preprocessing; do not simulate" << endl;
+	cout << "\t--dump-statistics\tdump simulation statistics to '" << __OPENEMS_RUN_STAT_FILE__ << "' and '" << __OPENEMS_STAT_FILE__ << "'" << endl;
+	cout << "\n\t Additional global arguments " << endl;
+	g_settings.ShowArguments(cout,"\t");
+	cout << endl;
+}
+
 //! \brief processes a command line argument
 //! \return true if argument is known
 //! \return false if argument is unknown
@@ -214,35 +243,50 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
-string openEMS::GetExtLibsInfo()
+string openEMS::GetExtLibsInfo(string prefix)
 {
 	stringstream str;
 
-	str << "\tUsed external libraries:" << endl;
-	str << "\t\t" << ContinuousStructure::GetInfoLine(true) << endl;
+	str << prefix << "Used external libraries:" << endl;
+	str << prefix << "\t" << ContinuousStructure::GetInfoLine(true) << endl;
 
 	// libhdf5
 	unsigned int major, minor, release;
 	if (H5get_libversion( &major, &minor, &release ) >= 0)
 	{
-		str << "\t\t" << "hdf5   -- Version: " << major << '.' << minor << '.' << release << endl;
-		str << "\t\t" << "          compiled against: " H5_VERS_INFO << endl;
+		str << prefix << "\t" << "hdf5   -- Version: " << major << '.' << minor << '.' << release << endl;
+		str << prefix << "\t" << "          compiled against: " H5_VERS_INFO << endl;
 	}
 
 	// tinyxml
-	str << "\t\t" << "tinyxml -- compiled against: " << TIXML_MAJOR_VERSION << '.' << TIXML_MINOR_VERSION << '.' << TIXML_PATCH_VERSION << endl;
+	str << prefix << "\t" << "tinyxml -- compiled against: " << TIXML_MAJOR_VERSION << '.' << TIXML_MINOR_VERSION << '.' << TIXML_PATCH_VERSION << endl;
 
 	// fparser
-	str << "\t\t" << "fparser" << endl;
+	str << prefix << "\t" << "fparser" << endl;
 
 	// boost
-	str << "\t\t" << "boost  -- compiled against: " << BOOST_LIB_VERSION << endl;
+	str << prefix << "\t" << "boost  -- compiled against: " << BOOST_LIB_VERSION << endl;
 
 	//vtk
-	str << "\t\t" << "vtk -- Version: " << vtkVersion::GetVTKMajorVersion() << "." << vtkVersion::GetVTKMinorVersion() << "." << vtkVersion::GetVTKBuildVersion() << endl;
-	str << "\t\t" << "       compiled against: " << VTK_VERSION << endl;
+	str << prefix << "\t" << "vtk -- Version: " << vtkVersion::GetVTKMajorVersion() << "." << vtkVersion::GetVTKMinorVersion() << "." << vtkVersion::GetVTKBuildVersion() << endl;
+	str << prefix << "\t" << "       compiled against: " << VTK_VERSION << endl;
 
 	return str.str();
+}
+
+void openEMS::WelcomeScreen()
+{
+#if defined(_LP64) || defined(_WIN64)
+	string bits = "64bit";
+#else
+	string bits = "32bit";
+#endif
+
+	cout << " ---------------------------------------------------------------------- " << endl;
+	cout << " | openEMS " << bits << " -- version " GIT_VERSION << endl;
+	cout << " | (C) 2010-2015 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
+	cout << " ---------------------------------------------------------------------- " << endl;
+	cout << openEMS::GetExtLibsInfo("\t") << endl;
 }
 
 bool openEMS::SetupBoundaryConditions()
