@@ -5,10 +5,10 @@
 % http://openems.de/index.php/Tutorial:_Rectangular_Waveguide
 %
 % Tested with
-%  - Matlab 2011a / Octave 3.4.3
-%  - openEMS v0.0.31
+%  - Octave 4.0.0
+%  - openEMS v0.0.33
 %
-% (C) 2010-2013 Thorsten Liebig <thorsten.liebig@gmx.de>
+% (C) 2010-2015 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -16,24 +16,28 @@ clc
 
 %% setup the simulation %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 physical_constants;
-unit = 1e-3; %drawing unit in mm
+unit = 1e-6; %drawing unit in um
 
 % waveguide dimensions
-length = 5000;
-a = 1000;   %waveguide width
-b = 1000;    %waveguide heigth
+% WR42
+a = 10700;   %waveguide width
+b = 4300;    %waveguide heigth
+length = 50000;
 
 % frequency range of interest
-f_start =  300e6;
-f_stop  =  500e6;
+f_start = 20e9;
+f_0     = 24e9;
+f_stop  = 26e9;
+lambda0 = c0/f_0/unit;
 
 %waveguide TE-mode definition
-TE_mode = 'TE11';
+TE_mode = 'TE10';
 
-mesh_res = [10 10 10]; %targeted mesh resolution
+%targeted mesh resolution
+mesh_res = lambda0./[30 30 30];
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD();
+FDTD = InitFDTD('NrTS',1e4, 'OverSampling', 5);
 FDTD = SetGaussExcite(FDTD,0.5*(f_start+f_stop),0.5*(f_stop-f_start));
 
 % boundary conditions
@@ -48,7 +52,7 @@ mesh.z = SmoothMeshLines([0 length], mesh_res(3));
 CSX = DefineRectGrid(CSX, unit,mesh);
 
 %% apply the waveguide port %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-start=[mesh.x(1)   mesh.y(1)   mesh.z(8)];
+start=[mesh.x(1)   mesh.y(1)   mesh.z(11)];
 stop =[mesh.x(end) mesh.y(end) mesh.z(15)];
 [CSX, port{1}] = AddRectWaveGuidePort( CSX, 0, 1, start, stop, 'z', a*unit, b*unit, TE_mode, 1);
 
@@ -57,7 +61,7 @@ stop =[mesh.x(end) mesh.y(end) mesh.z(end-14)];
 [CSX, port{2}] = AddRectWaveGuidePort( CSX, 0, 2, start, stop, 'z', a*unit, b*unit, TE_mode);
 
 %% define dump box... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-CSX = AddDump(CSX,'Et','FileType',1,'SubSampling','4,4,4');
+CSX = AddDump(CSX,'Et','FileType',1,'SubSampling','2,2,2');
 start = [mesh.x(1)   mesh.y(1)   mesh.z(1)];
 stop  = [mesh.x(end) mesh.y(end) mesh.z(end)];
 CSX = AddBox(CSX,'Et',0 , start,stop);
@@ -75,7 +79,7 @@ RunOpenEMS(Sim_Path, Sim_CSX)
 
 %% postproc %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 freq = linspace(f_start,f_stop,201);
-port = calcPort( port, Sim_Path, freq);
+port = calcPort(port, Sim_Path, freq);
 
 s11 = port{1}.uf.ref./ port{1}.uf.inc;
 s21 = port{2}.uf.ref./ port{1}.uf.inc;
