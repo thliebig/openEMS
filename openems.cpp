@@ -838,10 +838,22 @@ void openEMS::SetCSX(ContinuousStructure* csx)
 
 int openEMS::SetupFDTD()
 {
-
 	timeval startTime;
 	gettimeofday(&startTime,NULL);
 
+	if (m_CSX==NULL)
+	{
+		cerr << "openEMS::SetupFDTD: Error: CSXCAD is not set!" << endl;
+		return 3;
+	}
+	if (m_CSX==NULL)
+	{
+		cerr << "openEMS::SetupFDTD: Error: CSXCAD is not set!" << endl;
+		return 3;
+	}
+	std::string ec = m_CSX->Update();
+	if (!ec.empty())
+		cerr << ec << endl;
 	if (g_settings.GetVerboseLevel()>2)
 		m_CSX->ShowPropertyStatus(cerr);
 
