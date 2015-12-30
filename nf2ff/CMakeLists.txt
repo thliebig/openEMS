@@ -9,8 +9,14 @@ ENDIF()
 PROJECT(nf2ff CXX)
 cmake_minimum_required(VERSION 2.8)
 
+set(LIB_VERSION_MAJOR 0)
+set(LIB_VERSION_MINOR 1)
+set(LIB_VERSION_PATCH 0)
+set(LIB_VERSION_STRING ${LIB_VERSION_MAJOR}.${LIB_VERSION_MINOR}.${LIB_VERSION_PATCH})
+
+set(VERSION "v${LIB_VERSION_STRING}")
+
 set(SOURCES
-  main.cpp
   nf2ff.cpp
   nf2ff_calc.cpp
   ../tools/array_ops.cpp
@@ -25,7 +31,8 @@ set(HEADERS
   nf2ff_calc.h
 )
 
-ADD_EXECUTABLE( nf2ff ${SOURCES} )
+add_library( nf2ff SHARED ${SOURCES})
+set_target_properties(nf2ff PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR})
 
 TARGET_LINK_LIBRARIES( nf2ff
   tinyxml
@@ -33,7 +40,12 @@ TARGET_LINK_LIBRARIES( nf2ff
   ${Boost_LIBRARIES}
 )
 
-INSTALL(TARGETS nf2ff DESTINATION bin)
+ADD_EXECUTABLE( nf2ff_bin main.cpp )
+SET_TARGET_PROPERTIES(nf2ff_bin PROPERTIES OUTPUT_NAME nf2ff)
+TARGET_LINK_LIBRARIES(nf2ff_bin nf2ff)
+
+INSTALL(TARGETS nf2ff_bin DESTINATION bin)
+INSTALL(TARGETS nf2ff     DESTINATION lib${LIB_SUFFIX})
 
 
 #TODO tarball, debug, release
