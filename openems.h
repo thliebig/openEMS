@@ -74,7 +74,9 @@ public:
 	void DebugBox() {m_debugBox=true;}
 
 	void Set_BC_Type(int idx, int type);
+	int Get_BC_Type(int idx);
 	void Set_BC_PML(int idx, unsigned int size);
+	int Get_PML_Size(int idx);
 	void Set_Mur_PhaseVel(int idx, double val);
 
 	//! Get informations about external libs used by openEMS

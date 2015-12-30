@@ -614,12 +614,28 @@ void openEMS::Set_BC_Type(int idx, int type)
 	m_BC_type[idx] = type;
 }
 
+int openEMS::Get_BC_Type(int idx)
+{
+	if ((idx<0) || (idx>5))
+		return -1;
+	return m_BC_type[idx];
+}
+
 void openEMS::Set_BC_PML(int idx, unsigned int size)
 {
 	if ((idx<0) || (idx>5))
 		return;
 	m_BC_type[idx] = 3;
 	m_PML_size[idx] = size;
+}
+
+int openEMS::Get_PML_Size(int idx)
+{
+	if ((idx<0) || (idx>5))
+		return -1;
+	if (m_BC_type[idx]!=3)
+		return -1; // return -1 if BC was *not* a PML
+	return m_PML_size[idx];
 }
 
 void openEMS::Set_Mur_PhaseVel(int idx, double val)
