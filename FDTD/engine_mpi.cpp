@@ -83,9 +83,6 @@ void Engine_MPI::Reset()
 
 void Engine_MPI::SendReceiveVoltages()
 {
-	if (!m_Op_MPI->GetMPIEnabled())
-		return;
-
 	unsigned int pos[3];
 
 	//non-blocking prepare for receive...
@@ -136,9 +133,6 @@ void Engine_MPI::SendReceiveVoltages()
 
 void Engine_MPI::SendReceiveCurrents()
 {
-	if (!m_Op_MPI->GetMPIEnabled())
-		return;
-
 	unsigned int pos[3];
 
 	//non-blocking prepare for receive...

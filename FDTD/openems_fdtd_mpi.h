@@ -30,11 +30,13 @@ public:
 	openEMS_FDTD_MPI(bool m_MPI_Debug=false);
 	virtual ~openEMS_FDTD_MPI();
 
+	virtual bool Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts);
+	virtual int SetupFDTD();
 	virtual void RunFDTD();
 
 	virtual bool parseCommandLineArgument( const char *argv );
 
-	static string GetExtLibsInfo();
+	static std::string GetExtLibsInfo();
 
 protected:
 	Operator_MPI* m_MPI_Op;
@@ -44,8 +46,10 @@ protected:
 	bool m_MPI_Enabled;
 	unsigned int m_NumberCells;
 
-	virtual bool SetupMPI(TiXmlElement* FDTD_Opts);
-	virtual bool SetupOperator(TiXmlElement* FDTD_Opts);
+	std::vector<unsigned int> m_SplitNumber[3];
+	TiXmlElement* m_MPI_Elem;
+	virtual bool SetupMPI();
+	virtual bool SetupOperator();
 
 	int* m_Gather_Buffer;
 	unsigned int GetNextStep();
@@ -62,7 +66,7 @@ protected:
 	virtual bool SetupProcessing();
 
 	//output redirection to file for ranks > 0
-	ofstream* m_Output;
+	std::ofstream* m_Output;
 };
 
 #endif // OPENEMS_FDTD_MPI_H

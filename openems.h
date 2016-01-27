@@ -49,7 +49,8 @@ public:
 	static void showUsage();
 
 	bool ParseFDTDSetup(std::string file);
-	int SetupFDTD();
+	virtual bool Parse_XML_FDTDSetup(TiXmlElement* openEMSxml);
+	virtual int SetupFDTD();
 	virtual void RunFDTD();
 
 	void Reset();

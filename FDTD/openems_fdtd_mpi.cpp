@@ -60,6 +60,7 @@ openEMS_FDTD_MPI::openEMS_FDTD_MPI(bool m_MPI_Debug) : openEMS()
 		m_Energy_Buffer = NULL;
 	}
 
+	m_MPI_Elem = NULL;
 	m_Original_Grid = NULL;
 
 	//redirect output to file for all ranks > 0
@@ -129,18 +130,17 @@ bool openEMS_FDTD_MPI::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
-bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
+bool openEMS_FDTD_MPI::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 {
-	TiXmlElement* MPI_Elem = FDTD_Opts->FirstChildElement("MPI");
-
+	m_MPI_Elem = FDTD_Opts->FirstChildElement("MPI");
 	if (!m_MPI_Enabled)
 	{
-		if ((MPI_Elem!=NULL))
+		if ((m_MPI_Elem!=NULL))
 			cerr << "openEMS_FDTD_MPI::SetupMPI: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;
 		return true;
 	}
 
-	if (MPI_Elem==NULL)
+	if (m_MPI_Elem==NULL)
 	{
 		MPI_Barrier(MPI_COMM_WORLD);
 		if (m_MyID==0)
@@ -152,15 +152,14 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 	delete m_Original_Grid;
 	m_Original_Grid = CSRectGrid::Clone(grid);
 
-	vector<unsigned int> SplitNumber[3];
-
 	string arg_Pos_Names[] = {"SplitPos_X", "SplitPos_Y", "SplitPos_Z"};
 	string arg_N_Names[] = {"SplitN_X", "SplitN_Y", "SplitN_Z"};
 	const char* tmp = NULL;
 	for (int n=0;n<3;++n)
 	{
-		SplitNumber[n].push_back(0);
-		tmp = MPI_Elem->Attribute(arg_Pos_Names[n].c_str());
+		m_SplitNumber[n].clear();
+		m_SplitNumber[n].push_back(0);
+		tmp = m_MPI_Elem->Attribute(arg_Pos_Names[n].c_str());
 		if (tmp) //check if a split position is requested
 		{
 			vector<double> SplitLines = SplitString2Double(tmp, ',');
@@ -170,13 +169,13 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 			{
 				line = m_Original_Grid->Snap2LineNumber(n, SplitLines.at(lineN), inside);
 				if (inside)
-					SplitNumber[n].push_back(line);
+					m_SplitNumber[n].push_back(line);
 			}
 		}
 		else //check if a number of splits is requested
 		{
 			int SplitN=0;
-			if (MPI_Elem->QueryIntAttribute( arg_N_Names[n].c_str(), &SplitN) == TIXML_SUCCESS)
+			if (m_MPI_Elem->QueryIntAttribute( arg_N_Names[n].c_str(), &SplitN) == TIXML_SUCCESS)
 			{
 				if (SplitN>1)
 				{
@@ -186,20 +185,28 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 					for (size_t i = 0; i<jobs.size()-1;++i)
 					{
 						line += jobs.at(i);
-						SplitNumber[n].push_back(line);
+						m_SplitNumber[n].push_back(line);
 					}
 				}
 			}
 		}
 
-		SplitNumber[n].push_back(m_Original_Grid->GetQtyLines(n)-1);
-		unique(SplitNumber[n].begin(), SplitNumber[n].end());
+		m_SplitNumber[n].push_back(m_Original_Grid->GetQtyLines(n)-1);
+		unique(m_SplitNumber[n].begin(), m_SplitNumber[n].end());
 	}
+
+	return openEMS::Parse_XML_FDTDSetup(FDTD_Opts);
+}
+
+bool openEMS_FDTD_MPI::SetupMPI()
+{
+	if (!m_MPI_Enabled)
+		return true;
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//validate number of processes
-	unsigned int numProcs = (SplitNumber[0].size()-1)*(SplitNumber[1].size()-1)*(SplitNumber[2].size()-1);
+	unsigned int numProcs = (m_SplitNumber[0].size()-1)*(m_SplitNumber[1].size()-1)*(m_SplitNumber[2].size()-1);
 	if (numProcs!=m_NumProc)
 	{
 		if (m_MyID==0)
@@ -209,26 +216,27 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 
 	//create process table
 	unsigned int procN = 0;
-	unsigned int splits[] = {(unsigned int)SplitNumber[0].size()-1, (unsigned int)SplitNumber[1].size()-1, (unsigned int)SplitNumber[2].size()-1};
+	unsigned int splits[] = {(unsigned int)m_SplitNumber[0].size()-1, (unsigned int)m_SplitNumber[1].size()-1, (unsigned int)m_SplitNumber[2].size()-1};
 	m_MPI_Op->SetSplitNumbers(0,splits[0]);
 	m_MPI_Op->SetSplitNumbers(1,splits[1]);
 	m_MPI_Op->SetSplitNumbers(2,splits[2]);
 	unsigned int*** procTable=Create3DArray<unsigned int>(splits);
-	for (size_t i=0;i<SplitNumber[0].size()-1;++i)
-		for (size_t j=0;j<SplitNumber[1].size()-1;++j)
-			for (size_t k=0;k<SplitNumber[2].size()-1;++k)
+	for (size_t i=0;i<m_SplitNumber[0].size()-1;++i)
+		for (size_t j=0;j<m_SplitNumber[1].size()-1;++j)
+			for (size_t k=0;k<m_SplitNumber[2].size()-1;++k)
 			{
 				procTable[i][j][k] = procN;
 				++procN;
 			}
 	m_MPI_Op->SetProcessTable(procTable);
 
+	CSRectGrid* grid = m_CSX->GetGrid();
 	//assign mesh and neighbors to this process
-	for (size_t i=0;i<SplitNumber[0].size()-1;++i)
+	for (size_t i=0;i<m_SplitNumber[0].size()-1;++i)
 	{
-		for (size_t j=0;j<SplitNumber[1].size()-1;++j)
+		for (size_t j=0;j<m_SplitNumber[1].size()-1;++j)
 		{
-			for (size_t k=0;k<SplitNumber[2].size()-1;++k)
+			for (size_t k=0;k<m_SplitNumber[2].size()-1;++k)
 			{
 				if (procTable[i][j][k] == m_MyID)
 				{
@@ -240,41 +248,41 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 					grid->ClearLines(1);
 					grid->ClearLines(2);
 
-					for (unsigned int n=SplitNumber[0].at(i);n<=SplitNumber[0].at(i+1);++n)
+					for (unsigned int n=m_SplitNumber[0].at(i);n<=m_SplitNumber[0].at(i+1);++n)
 						grid->AddDiscLine(0, m_Original_Grid->GetLine(0,n) );
-					for (unsigned int n=SplitNumber[1].at(j);n<=SplitNumber[1].at(j+1);++n)
+					for (unsigned int n=m_SplitNumber[1].at(j);n<=m_SplitNumber[1].at(j+1);++n)
 						grid->AddDiscLine(1, m_Original_Grid->GetLine(1,n) );
-					for (unsigned int n=SplitNumber[2].at(k);n<=SplitNumber[2].at(k+1);++n)
+					for (unsigned int n=m_SplitNumber[2].at(k);n<=m_SplitNumber[2].at(k+1);++n)
 						grid->AddDiscLine(2, m_Original_Grid->GetLine(2,n) );
 
-					m_MPI_Op->SetSplitPos(0,SplitNumber[0].at(i));
-					m_MPI_Op->SetSplitPos(1,SplitNumber[1].at(i));
-					m_MPI_Op->SetSplitPos(2,SplitNumber[2].at(i));
+					m_MPI_Op->SetSplitPos(0,m_SplitNumber[0].at(i));
+					m_MPI_Op->SetSplitPos(1,m_SplitNumber[1].at(i));
+					m_MPI_Op->SetSplitPos(2,m_SplitNumber[2].at(i));
 
 					if (i>0)
 						m_MPI_Op->SetNeighborDown(0,procTable[i-1][j][k]);
-					if (i<SplitNumber[0].size()-2)
+					if (i<m_SplitNumber[0].size()-2)
 					{
 						//add one additional line
-						grid->AddDiscLine(0, m_Original_Grid->GetLine(0,SplitNumber[0].at(i+1)+1 ));
+						grid->AddDiscLine(0, m_Original_Grid->GetLine(0,m_SplitNumber[0].at(i+1)+1 ));
 						m_MPI_Op->SetNeighborUp(0,procTable[i+1][j][k]);
 					}
 
 					if (j>0)
 						m_MPI_Op->SetNeighborDown(1,procTable[i][j-1][k]);
-					if (j<SplitNumber[1].size()-2)
+					if (j<m_SplitNumber[1].size()-2)
 					{
 						//add one additional line
-						grid->AddDiscLine(1, m_Original_Grid->GetLine(1,SplitNumber[1].at(j+1)+1 ));
+						grid->AddDiscLine(1, m_Original_Grid->GetLine(1,m_SplitNumber[1].at(j+1)+1 ));
 						m_MPI_Op->SetNeighborUp(1,procTable[i][j+1][k]);
 					}
 
 					if (k>0)
 						m_MPI_Op->SetNeighborDown(2,procTable[i][j][k-1]);
-					if (k<SplitNumber[2].size()-2)
+					if (k<m_SplitNumber[2].size()-2)
 					{
 						//add one additional line
-						grid->AddDiscLine(2, m_Original_Grid->GetLine(2,SplitNumber[2].at(k+1)+1 ));
+						grid->AddDiscLine(2, m_Original_Grid->GetLine(2,m_SplitNumber[2].at(k+1)+1 ));
 						m_MPI_Op->SetNeighborUp(2,procTable[i][j][k+1]);
 					}
 
@@ -291,7 +299,7 @@ bool openEMS_FDTD_MPI::SetupMPI(TiXmlElement* FDTD_Opts)
 }
 
 
-bool openEMS_FDTD_MPI::SetupOperator(TiXmlElement* FDTD_Opts)
+bool openEMS_FDTD_MPI::SetupOperator()
 {
 	bool ret = true;
 	if (m_engine == EngineType_MPI)
@@ -300,7 +308,7 @@ bool openEMS_FDTD_MPI::SetupOperator(TiXmlElement* FDTD_Opts)
 	}
 	else
 	{
-		ret = openEMS::SetupOperator(FDTD_Opts);
+		ret = openEMS::SetupOperator();
 	}
 
 	m_MPI_Op = dynamic_cast<Operator_MPI*>(FDTD_Op);
@@ -312,7 +320,7 @@ bool openEMS_FDTD_MPI::SetupOperator(TiXmlElement* FDTD_Opts)
 		exit(0);
 	}
 
-	ret &=SetupMPI(FDTD_Opts);
+	ret &= SetupMPI();
 
 	return ret;
 }
@@ -419,6 +427,11 @@ bool openEMS_FDTD_MPI::SetupProcessing()
 		}
 	}
 	return ret;
+}
+
+int openEMS_FDTD_MPI::SetupFDTD()
+{
+	return openEMS::SetupFDTD();
 }
 
 void openEMS_FDTD_MPI::RunFDTD()

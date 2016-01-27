@@ -1,8 +1,15 @@
 
-#INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )
+if (WITH_MPI)
+  set(MPI_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/openems_fdtd_mpi.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/operator_mpi.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/engine_mpi.cpp
+     )
+endif()
 
 set(SOURCES
   ${SOURCES}
+  ${MPI_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/engine.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_multithread.cpp
@@ -21,7 +28,3 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_cylindrical_fdtd.cpp
   PARENT_SCOPE
 )
-
-# FDTD lib
-#add_library( FDTD STATIC ${SOURCES} )
-

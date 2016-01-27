@@ -284,7 +284,7 @@ void openEMS::WelcomeScreen()
 
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << " | openEMS " << bits << " -- version " GIT_VERSION << endl;
-	cout << " | (C) 2010-2015 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
+	cout << " | (C) 2010-2016 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << openEMS::GetExtLibsInfo("\t") << endl;
 }
@@ -667,7 +667,6 @@ bool openEMS::ParseFDTDSetup(std::string file)
 		cerr << "Can't read openEMS ... " << endl;
 		exit(-1);
 	}
-
 	TiXmlElement* FDTD_Opts = openEMSxml->FirstChildElement("FDTD");
 
 	if (FDTD_Opts==NULL)
@@ -675,6 +674,21 @@ bool openEMS::ParseFDTDSetup(std::string file)
 		cerr << "Can't read openEMS FDTD Settings... " << endl;
 		exit(-1);
 	}
+
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Read Geometry..." << endl;
+	ContinuousStructure* csx = new ContinuousStructure();
+	string EC(csx->ReadFromXML(openEMSxml));
+	if (EC.empty()==false)
+		cerr << EC << endl;
+	this->SetCSX(csx);
+
+
+	return this->Parse_XML_FDTDSetup(FDTD_Opts);
+}
+
+bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
+{
 	double dhelp=0;
 	FDTD_Opts->QueryDoubleAttribute("NumberOfTimesteps",&dhelp);
 	if (dhelp<0)
@@ -763,14 +777,6 @@ bool openEMS::ParseFDTDSetup(std::string file)
 	for (int n=0; n<6; ++n)
 		if (BC->QueryDoubleAttribute(mur_v_ph_names[n].c_str(),&dhelp) == TIXML_SUCCESS)
 			this->Set_Mur_PhaseVel(n, dhelp);
-
-	if (g_settings.GetVerboseLevel()>0)
-		cout << "Read Geometry..." << endl;
-	ContinuousStructure* csx = new ContinuousStructure();
-	string EC(csx->ReadFromXML(openEMSxml));
-	if (EC.empty()==false)
-		cerr << EC << endl;
-	this->SetCSX(csx);
 
 	TiXmlElement* m_Excite_Elem = FDTD_Opts->FirstChildElement("Excitation");
 	if (!m_Excite_Elem)
