@@ -137,7 +137,7 @@ bool openEMS_FDTD_MPI::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 	{
 		if ((m_MPI_Elem!=NULL))
 			cerr << "openEMS_FDTD_MPI::SetupMPI: Warning: Number of MPI processes is 1, skipping MPI engine... " << endl;
-		return true;
+		return openEMS::Parse_XML_FDTDSetup(FDTD_Opts);
 	}
 
 	if (m_MPI_Elem==NULL)
