@@ -28,7 +28,6 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % 'Radius':  specify the radius for the nf2ff
 % 'Eps_r':   specify the relative electric permittivity for the nf2ff
 % 'Mue_r':   specify the relative magnetic permeability for the nf2ff
-% 'MPI'    : set true if MPI was used
 %
 % 'Mirror':  Add mirroring in a given direction (dir), with a given 
 %            mirror type (PEC or PMC) and a mirror position in the given
@@ -42,7 +41,6 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % author: Thorsten Liebig, 2012
 
 mode = 0;
-MPI = 0;
 
 filename = nf2ff.name;
 nf2ff_xml.Planes = {};
@@ -59,8 +57,6 @@ end
 for n=1:2:numel(varargin)-1
     if (strcmp(varargin{n},'Mode'))
         mode = varargin{n+1};
-    elseif (strcmp(varargin{n},'MPI'))
-        MPI = varargin{n+1};
     elseif (strcmp(varargin{n},'Mirror'))
         if isfield(nf2ff_xml,'Mirror')
             pos = length(nf2ff_xml.Mirror)+1;
@@ -77,19 +73,14 @@ end
 
 for (n=1:numel(nf2ff.filenames_E))
     if (nf2ff.directions(n)~=0)
-        if (MPI==0)
-            nf2ff_xml.Planes{end+1}.ATTRIBUTE.E_Field = [nf2ff.filenames_E{n} '.h5'];
-            nf2ff_xml.Planes{end}.ATTRIBUTE.H_Field = [nf2ff.filenames_H{n} '.h5'];
-        else
-            files_E = dir([Sim_Path '/ID*' nf2ff.filenames_E{n} '.h5']);
-            files_H = dir([Sim_Path '/ID*' nf2ff.filenames_H{n} '.h5']);
-            if (numel(files_E)~=numel(files_H))
-                error 'number of E/H planes mismatch!'
-            end
-            for fn = 1:numel(files_E)
-                nf2ff_xml.Planes{end+1}.ATTRIBUTE.E_Field = files_E(fn).name;
-                nf2ff_xml.Planes{end}.ATTRIBUTE.H_Field = files_H(fn).name;
-            end
+        files_E = dir([Sim_Path '/*' nf2ff.filenames_E{n} '.h5']);
+        files_H = dir([Sim_Path '/*' nf2ff.filenames_H{n} '.h5']);
+        if (numel(files_E)~=numel(files_H))
+            error 'number of E/H planes mismatch!'
+        end
+        for fn = 1:numel(files_E)
+            nf2ff_xml.Planes{end+1}.ATTRIBUTE.E_Field = files_E(fn).name;
+            nf2ff_xml.Planes{end}.ATTRIBUTE.H_Field = files_H(fn).name;
         end
     end
 end
