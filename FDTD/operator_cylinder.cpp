@@ -88,6 +88,15 @@ int Operator_Cylinder::CalcECOperator( DebugFlags debugFlags )
 	return rc;
 }
 
+double Operator_Cylinder::CalcTimestep()
+{
+	if (discLines[0][0]==0.0)
+		// use conservative timestep for a mesh including the r==0 singularity
+		m_TimeStepVar = 1;
+
+	return Operator::CalcTimestep();
+}
+
 inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny, bool full) const
 {
 	if (full)
@@ -493,9 +502,6 @@ bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 		if (g_settings.GetVerboseLevel()>0)
 			cout << "Operator_Cylinder::SetupCSXGrid: r=0 included..." << endl;
 		CC_R0_included = CC_closedAlpha;  //needed for correct ec-calculation, deactivate if closed cylinder is false... --> E_r = 0 anyways
-
-		// use conservative timestep for a mesh including the r==0 singularity
-		m_TimeStepVar = 1;
 	}
 
 #ifdef MPI_SUPPORT

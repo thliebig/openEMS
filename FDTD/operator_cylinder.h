@@ -105,7 +105,7 @@ protected:
 	virtual double GetMaterial(int ny, const double coords[3], int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
-
+	virtual double CalcTimestep();
 	bool CC_closedAlpha;
 	bool CC_R0_included;
 	Operator_Ext_Cylinder* m_Cyl_Ext;
