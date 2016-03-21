@@ -721,7 +721,7 @@ void Operator::DumpPEC2File(string filename , unsigned int *range)
 	filename += ".vtp";
 	writer->SetFileName(filename.c_str());
 
-#if VTK_MAJOR_VERSION==6
+#if VTK_MAJOR_VERSION>=6
 	writer->SetInputData(polydata);
 #else
 	writer->SetInput(polydata);
