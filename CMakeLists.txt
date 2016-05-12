@@ -12,7 +12,7 @@ cmake_minimum_required(VERSION 2.8)
 # default
 set(LIB_VERSION_MAJOR 0)
 set(LIB_VERSION_MINOR 0)
-set(LIB_VERSION_PATCH 33)
+set(LIB_VERSION_PATCH 34)
 set(LIB_VERSION_STRING ${LIB_VERSION_MAJOR}.${LIB_VERSION_MINOR}.${LIB_VERSION_PATCH})
 
 set(VERSION "v${LIB_VERSION_STRING}")
@@ -21,7 +21,7 @@ IF(EXISTS ${PROJECT_SOURCE_DIR}/localConfig.cmake)
    include(${PROJECT_SOURCE_DIR}/localConfig.cmake)
 ENDIF()
 
-set(VERSION "v0.0.33")
+set(VERSION "v0.0.34")
 
 # add git revision
 IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
