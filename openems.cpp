@@ -715,9 +715,7 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 
 	ihelp = 0;
 	FDTD_Opts->QueryIntAttribute("OverSampling",&ihelp);
-	if (ihelp<2)
-		this->SetOverSampling(2);
-	else
+	if (ihelp>1)
 		this->SetOverSampling(ihelp);
 
 	// check for cell constant material averaging
