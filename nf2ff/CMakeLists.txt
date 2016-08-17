@@ -47,5 +47,7 @@ TARGET_LINK_LIBRARIES(nf2ff_bin nf2ff)
 INSTALL(TARGETS nf2ff_bin DESTINATION bin)
 INSTALL(TARGETS nf2ff     DESTINATION lib${LIB_SUFFIX})
 
+INSTALL(FILES ${HEADERS} DESTINATION include/openEMS)
+
 
 #TODO tarball, debug, release
