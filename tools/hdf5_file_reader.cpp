@@ -68,7 +68,7 @@ bool HDF5_File_Reader::OpenGroup(hid_t &file, hid_t &group, string groupName)
 		return 0;
 	}
 
-	group = H5Gopen(file, groupName.c_str() );
+	group = H5Gopen(file, groupName.c_str(), H5P_DEFAULT );
 	if (group<0)
 	{
 		cerr << "HDF5_File_Reader::OpenGroup: can't open group """ << groupName << """" << endl;
@@ -198,7 +198,7 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 		return false;
 	}
 
-	hid_t dataset = H5Dopen(hdf5_file, ds_name.c_str() );
+	hid_t dataset = H5Dopen(hdf5_file, ds_name.c_str(), H5P_DEFAULT );
 	if (dataset<0)
 	{
 		cerr << "HDF5_File_Reader::ReadDataSet: dataset not found" << endl;

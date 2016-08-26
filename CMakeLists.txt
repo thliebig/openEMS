@@ -112,9 +112,6 @@ find_package(HDF5 1.8 COMPONENTS C HL REQUIRED)
 INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR})
 link_directories(${HDF5_LIBRARY_DIRS})
 
-# hdf5 compat
-ADD_DEFINITIONS( -DH5_USE_16_API )
-
 # boost
 find_package(Boost 1.46 COMPONENTS
   thread

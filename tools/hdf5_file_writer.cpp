@@ -52,7 +52,7 @@ hid_t HDF5_File_Writer::OpenGroup(hid_t hdf5_file, string group)
 	vector<string> results;
 	boost::split(results, group, boost::is_any_of("/"));
 
-	hid_t grp=H5Gopen(hdf5_file,"/");
+	hid_t grp=H5Gopen(hdf5_file,"/", H5P_DEFAULT);
 	if (grp<0)
 	{
 		cerr << "HDF5_File_Writer::OpenGroup: Error, opening root group " << endl;
@@ -66,7 +66,7 @@ hid_t HDF5_File_Writer::OpenGroup(hid_t hdf5_file, string group)
 		{
 			if (H5Lexists(grp, results.at(n).c_str(), H5P_DEFAULT))
 			{
-				grp = H5Gopen(grp, results.at(n).c_str());
+			  grp = H5Gopen(grp, results.at(n).c_str(), H5P_DEFAULT);
 				H5Gclose(old_grp);
 				if (grp<0)
 				{
@@ -76,7 +76,7 @@ hid_t HDF5_File_Writer::OpenGroup(hid_t hdf5_file, string group)
 			}
 			else
 			{
-				grp = H5Gcreate(grp,results.at(n).c_str(),0);
+			  grp = H5Gcreate(grp,results.at(n).c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 				H5Gclose(old_grp);
 				if (grp<0)
 				{
@@ -140,7 +140,7 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, float const* 
 		return false;
 	}
 
-	hid_t mesh_grp = H5Gcreate(hdf5_file,"/Mesh",0);
+	hid_t mesh_grp = H5Gcreate(hdf5_file,"/Mesh", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	if (mesh_grp<0)
 	{
 		cerr << "HDF5_File_Writer::WriteRectMesh: Error, creating group ""/Mesh"" failed" << endl;
@@ -165,7 +165,7 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, float const* 
 	{
 		hsize_t dims[1]={numLines[n]};
 		hid_t space = H5Screate_simple(1, dims, NULL);
-		hid_t dataset = H5Dcreate(mesh_grp, names[n].c_str(), H5T_NATIVE_FLOAT, space, H5P_DEFAULT);
+		hid_t dataset = H5Dcreate(mesh_grp, names[n].c_str(), H5T_NATIVE_FLOAT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 		float* array = new float[numLines[n]];
 		for (unsigned int i=0; i<numLines[n]; ++i)
 		{
@@ -408,7 +408,7 @@ bool HDF5_File_Writer::WriteData(std::string dataSetName,  hid_t mem_type, void 
 	for (size_t n=0;n<dim;++n)
 		dims[n]=datasize[n];
 	hid_t space = H5Screate_simple(dim, dims, NULL);
-	hid_t dataset = H5Dcreate(group, dataSetName.c_str(), mem_type, space, H5P_DEFAULT);
+	hid_t dataset = H5Dcreate(group, dataSetName.c_str(), mem_type, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	if (H5Dwrite(dataset, mem_type, space, H5P_DEFAULT, H5P_DEFAULT, field_buf))
 	{
 		cerr << "HDF5_File_Writer::WriteData: Error, writing to dataset failed" << endl;
@@ -451,7 +451,7 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	hid_t dataspace_id = H5Screate_simple(1, &size, NULL);
 
 	/* Create a dataset attribute. */
-	hid_t attribute_id = H5Acreate(loc, attr_name.c_str(), mem_type, dataspace_id,H5P_DEFAULT);
+	hid_t attribute_id = H5Acreate(loc, attr_name.c_str(), mem_type, dataspace_id, H5P_DEFAULT, H5P_DEFAULT);
 	if (attribute_id<0)
 	{
 		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to create the attrbute" << endl;
