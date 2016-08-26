@@ -38,6 +38,7 @@ TARGET_LINK_LIBRARIES( nf2ff
   tinyxml
   ${HDF5_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${MPI_LIBRARIES}
 )
 
 ADD_EXECUTABLE( nf2ff_bin main.cpp )
