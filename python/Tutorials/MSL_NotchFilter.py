@@ -66,10 +66,10 @@ mesh.AddLine('z', 3000)
 mesh.SmoothMeshLines('z', resolution)
 
 ## substrate
-substrate = CSX.AddMaterial( 'RO4350B', Epsilon=substrate_epr)
+substrate = CSX.AddMaterial( 'RO4350B', epsilon=substrate_epr)
 start = [-MSL_length, -15*MSL_width, 0]
 stop  = [+MSL_length, +15*MSL_width+stub_length, substrate_thickness]
-CSX.AddBox( substrate, start, stop )
+CSX.AddBox(substrate, start, stop )
 
 ## MSL port
 port = [None, None]

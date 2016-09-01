@@ -15,7 +15,7 @@ from openEMS.physical_constants import *
 
 Sim_Path = os.path.join(tempfile.gettempdir(), 'Simp_Patch')
 
-post_proc_only = True
+post_proc_only = False
 
 # patch width in x-direction
 patch_width  = 32 # resonant length
@@ -67,7 +67,7 @@ mesh['x'] = r_[mesh['x'], start[0]-edge_mesh, stop[0]+edge_mesh]
 mesh['y'] = r_[mesh['y'], start[1]-edge_mesh, stop[1]+edge_mesh]
 
 ## create substrate
-substrate = CSX.AddMaterial( 'substräte', Epsilon=substrate_epsR, Kappa=substrate_kappa)
+substrate = CSX.AddMaterial( 'substrate', epsilon=substrate_epsR, kappa=substrate_kappa)
 start = [-substrate_width/2, -substrate_length/2, 0]
 stop  = [ substrate_width/2,  substrate_length/2, substrate_thickness]
 sb=CSX.AddBox( substrate, priority=0, start=start, stop=stop )
