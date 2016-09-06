@@ -11,46 +11,58 @@ cimport openEMS
 from . import ports, nf2ff
 
 cdef class openEMS:
+    """ openEMS
+
+    :param NrTS:           max. number of timesteps to simulate (e.g. default=1e9)
+    :param EndCriteria:    end criteria, e.g. 1e-5, simulations stops if energy has decayed by this value (<1e-4 is recommended, default=1e-5)
+    :param MaxTime:        max. real time in seconds to simulate
+    :param OverSampling:   nyquist oversampling of time domain dumps
+    :param CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
+    :param MultiGrid:      define a cylindrical sub-grid radius ( not implemented yet )
+    :param TimeStep:       force to use a given timestep (dangerous!)
+    :param TimeStepFactor: reduce the timestep by a given factor (>0 to <=1)
+    :param TimeStepMethod: 1 or 3 chose timestep method (1=CFL, 3=Rennigs (default))
+    :param CellConstantMaterial: set to 1 to assume a material is constant inside a cell (material probing in cell center)
+    """
     @staticmethod
     def WelcomeScreen():
         _openEMS.WelcomeScreen()
 
-    """ __cinit__
-    NrTS:           max. number of timesteps to simulate (e.g. default=1e9)
-    EndCriteria:    end criteria, e.g. 1e-5, simulations stops if energy has decayed by this value (<1e-4 is recommended, default=1e-5)
-    MaxTime:        max. real time in seconds to simulate
-    OverSampling:   nyquist oversampling of time domain dumps
-    CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
-    #MultiGrid:      define a cylindrical sub-grid radius
-    TimeStep:       force to use a given timestep (dangerous!)
-    TimeStepFactor: reduce the timestep by a given factor (>0 to <=1)
-    TimeStepMethod: 1 or 3 chose timestep method (1=CFL, 3=Rennigs (default))
-    CellConstantMaterial: set to 1 to assume a material is constant inside a cell (material probing in cell center)
-    """
     def __cinit__(self, *args, **kw):
         self.thisptr = new _openEMS()
         self.CSX = None
 
         if 'NrTS' in kw:
             self.SetNumberOfTimeSteps(kw['NrTS'])
+            del kw['NrTS']
         else:
             self.SetNumberOfTimeSteps(1e9)
         if 'EndCriteria' in kw:
             self.SetEndCriteria(kw['EndCriteria'])
+            del kw['EndCriteria']
         if 'MaxTime' in kw:
             self.SetMaxTime(kw['MaxTime'])
+            del kw['MaxTime']
         if 'OverSampling' in kw:
             self.SetOverSampling(kw['OverSampling'])
+            del kw['OverSampling']
         if 'CoordSystem' in kw:
             self.SetCoordSystem(kw['CoordSystem'])
+            del kw['CoordSystem']
         if 'TimeStep' in kw:
             self.SetTimeStep(kw['TimeStep'])
+            del kw['TimeStep']
         if 'TimeStepFactor' in kw:
             self.SetTimeStepFactor(kw['TimeStepFactor'])
+            del kw['TimeStepFactor']
         if 'TimeStepMethod' in kw:
             self.SetTimeStepMethod(kw['TimeStepMethod'])
+            del kw['TimeStepMethod']
         if 'CellConstantMaterial' in kw:
             self.SetCellConstantMaterial(kw['CellConstantMaterial'])
+            del kw['CellConstantMaterial']
+
+        assert len(kw)==0, 'Unknown keyword arguments: "{}"'.format(kw)
 
     def __dealloc__(self):
         del self.thisptr
@@ -58,41 +70,68 @@ cdef class openEMS:
             self.CSX.thisptr = NULL
 
     def SetNumberOfTimeSteps(self, val):
+        """ SetNumberOfTimeSteps(val)
+        """
         self.thisptr.SetNumberOfTimeSteps(val)
 
     def SetEndCriteria(self, val):
+        """ SetEndCriteria(val)
+        """
         self.thisptr.SetEndCriteria(val)
 
     def SetOverSampling(self, val):
+        """ SetOverSampling(val)
+        """
         self.thisptr.SetOverSampling(val)
 
     def SetCellConstantMaterial(self, val):
+        """ SetCellConstantMaterial(val)
+        """
         self.thisptr.SetCellConstantMaterial(val)
 
     def SetCoordSystem(self, val):
-        assert (val==0 or val==1)
+        """ SetCoordSystem(val)
+        """
+        assert (val==0 or val==1), 'SetCoordSystem: Invalid coordinate system'
         if val==0:
             pass
         elif val==1:
             self.SetCylinderCoords()
 
     def SetCylinderCoords(self):
+        """ SetCylinderCoords()
+        """
         self.thisptr.SetCylinderCoords(True)
 
     def SetTimeStepMethod(self, val):
+        """ SetTimeStepMethod(val)
+        """
         self.thisptr.SetTimeStepMethod(val)
+
     def SetTimeStep(self, val):
+        """ SetTimeStep(val)
+        """
         self.thisptr.SetTimeStep(val)
+
     def SetTimeStepFactor(self, val):
+        """ SetTimeStepFactor(val)
+        """
         self.thisptr.SetTimeStepFactor(val)
+
     def SetMaxTime(self, val):
+        """ SetMaxTime(val)
+        """
         self.thisptr.SetMaxTime(val)
 
     def SetGaussExcite(self, f0, fc):
+        """ SetGaussExcite(f0, fc)
+        """
         self.thisptr.SetGaussExcite(f0, fc)
 
 
     def SetBoundaryCond(self, BC):
+        """ SetBoundaryCond(BC)
+        """
         assert len(BC)==6
         for n in range(len(BC)):
             if type(BC[n])==int:
@@ -108,19 +147,27 @@ cdef class openEMS:
             raise Exception('Unknown boundary condition')
 
     def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, **kw):
-        assert self.CSX is not None
+        """ AddLumpedPort(port_nr, R, start, stop, p_dir, excite=0, **kw)
+        """
+        assert self.CSX is not None, 'AddLumpedPort: CSX is not set!'
         return ports.LumpedPort(self.CSX, port_nr, R, start, stop, p_dir, excite, **kw)
 
     def AddRectWaveGuidePort(self, port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw):
-        assert self.CSX is not None
+        """ AddRectWaveGuidePort(port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw)
+        """
+        assert self.CSX is not None, 'AddRectWaveGuidePort: CSX is not set!'
         return ports.RectWGPort(self.CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
 
     def AddMSLPort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw):
-        assert self.CSX is not None
+        """ AddMSLPort(port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw)
+        """
+        assert self.CSX is not None, 'AddMSLPort: CSX is not set!'
         return ports.MSLPort(self.CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
 
     def CreateNF2FFBox(self, name='nf2ff', start=None, stop=None, **kw):
-        assert self.CSX is not None
+        """ CreateNF2FFBox(name='nf2ff', start=None, stop=None, **kw)
+        """
+        assert self.CSX is not None, 'CreateNF2FFBox: CSX is not set!'
         directions = [True]*6
         mirror     = [0]*6
         BC_size = [0]*6
@@ -152,10 +199,14 @@ cdef class openEMS:
         return nf2ff.nf2ff(self.CSX, name, start, stop, directions=directions, mirror=mirror, **kw)
 
     def SetCSX(self, ContinuousStructure CSX):
+        """ SetCSX(CSX)
+        """
         self.CSX = CSX
         self.thisptr.SetCSX(CSX.thisptr)
 
     def Run(self, sim_path, cleanup=False, setup_only=False, verbose=None):
+        """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
+        """
         if cleanup and os.path.exists(sim_path):
             shutil.rmtree(sim_path)
             os.mkdir(sim_path)

@@ -85,12 +85,15 @@ port[1] = FDTD.AddMSLPort( 2, pec, portstart, portstop, 'x', 'z', MeasPlaneShift
 ## Filter-stub
 start = [-MSL_width/2,  MSL_width/2, substrate_thickness]
 stop  = [ MSL_width/2,  MSL_width/2+stub_length, substrate_thickness]
-CSX.AddBox( pec, start, stop, priority=10 )
+box = CSX.AddBox( pec, start, stop, priority=10 )
 
 if 0:  # debugging only
     CSX_file = os.path.join(Sim_Path, 'notch.xml')
+    if not os.path.exists(Sim_Path):
+        os.mkdir(Sim_Path)
     CSX.Write2XML(CSX_file)
     os.system(r'AppCSXCAD "{}"'.format(CSX_file))
+
 
 if not post_proc_only:
     FDTD.Run(Sim_Path, verbose=3, cleanup=True)

@@ -69,53 +69,60 @@ class nf2ff:
                 CSX.AddBox(self.e_dump, l_start, l_stop)
                 CSX.AddBox(self.h_dump, l_start, l_stop)
 
-    def CalcNF2FF(self, sim_path, freq, theta, phi, center=[0,0,0], read_cached=True, verbose=0):
-        if not hasattr(freq, "__iter__"):
+    def CalcNF2FF(self, sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
+        if np.isscalar(freq):
             freq = [freq]
         self.freq  = freq
+        if np.isscalar(theta):
+            theta = [theta]
         self.theta = theta
+        if np.isscalar(phi):
+            phi = [phi]
         self.phi   = phi
         self.center = center
 
-        fn = os.path.join(sim_path, self.name + '.h5')
-        if os.path.exists(fn) and read_cached:
-            self.ReadNF2FF(sim_path)
-            return
+        if outfile is None:
+            fn = os.path.join(sim_path, self.name + '.h5')
+        else:
+            fn = os.path.join(sim_path,  outfile)
+        if  not read_cached or not os.path.exists(fn):
+            nfc = _nf2ff._nf2ff(self.freq, np.deg2rad(theta), np.deg2rad(phi), center, verbose=verbose)
 
-        nfc = _nf2ff._nf2ff(self.freq, np.deg2rad(theta), np.deg2rad(phi), center, verbose=verbose)
+            for ny in range(3):
+                nfc.SetMirror(self.mirror[2*ny]  , ny, self.start[ny])
+                nfc.SetMirror(self.mirror[2*ny+1], ny, self.stop[ny])
 
-        for ny in range(3):
-            nfc.SetMirror(self.mirror[2*ny]  , ny, self.start[ny])
-            nfc.SetMirror(self.mirror[2*ny+1], ny, self.stop[ny])
+            for n in range(6):
+                fn_e = os.path.join(sim_path, self.e_file + '_{}.h5'.format(n))
+                fn_h = os.path.join(sim_path, self.h_file + '_{}.h5'.format(n))
+                if os.path.exists(fn_e) and os.path.exists(fn_h):
+                    assert nfc.AnalyseFile(fn_e, fn_h)
 
-        for n in range(6):
-            fn_e = os.path.join(sim_path, self.e_file + '_{}.h5'.format(n))
-            fn_h = os.path.join(sim_path, self.h_file + '_{}.h5'.format(n))
-            if os.path.exists(fn_e) and os.path.exists(fn_h):
-                assert nfc.AnalyseFile(fn_e, fn_h)
+            nfc.Write2HDF5(fn)
 
-        nfc.Write2HDF5(fn)
+        result = nf2ff_results(fn)
+        if result.phi is not None:
+            assert utilities.Check_Array_Equal(np.rad2deg(result.theta), self.theta, 1e-4)
+            assert utilities.Check_Array_Equal(np.rad2deg(result.phi), self.phi, 1e-4)
+            assert utilities.Check_Array_Equal(result.freq, self.freq, 1e-6, relative=True)
+        return result
 
-        self.ReadNF2FF(sim_path)
-
-    def ReadNF2FF(self, sim_path):
-        h5_file = h5py.File(os.path.join(sim_path, self.name + '.h5'), 'r')
+class nf2ff_results:
+    def __init__(self, fn):
+        self.fn  = fn
+        h5_file  = h5py.File(fn, 'r')
         mesh_grp = h5_file['Mesh']
-        phi   = np.array(mesh_grp['phi'])
-        theta = np.array(mesh_grp['theta'])
+        self.phi   = np.array(mesh_grp['phi'])
+        self.theta = np.array(mesh_grp['theta'])
         self.r     = np.array(mesh_grp['r'])
 
         data  = h5_file['nf2ff']
-        freq = np.array(data.attrs['Frequency'])
+        self.freq = np.array(data.attrs['Frequency'])
 
-        if self.phi is not None:
-            assert utilities.Check_Array_Equal(np.rad2deg(theta), self.theta, 1e-4)
-            assert utilities.Check_Array_Equal(np.rad2deg(phi), self.phi, 1e-4)
-            assert utilities.Check_Array_Equal(freq, self.freq, 1e-6, relative=True)
         self.Dmax = np.array(data.attrs['Dmax'])
         self.Prad = np.array(data.attrs['Prad'])
 
-        THETA, PHI = np.meshgrid(theta, phi, indexing='ij')
+        THETA, PHI = np.meshgrid(self.theta, self.phi, indexing='ij')
         cos_phi = np.cos(PHI)
         sin_phi = np.sin(PHI)
 
@@ -125,7 +132,7 @@ class nf2ff:
         self.E_norm  = []
         self.E_cprh  = []
         self.E_cplh  = []
-        for n in range(len(freq)):
+        for n in range(len(self.freq)):
             E_theta = np.array(h5_file['/nf2ff/E_theta/FD/f{}_real'.format(n)]) + 1j*np.array(h5_file['/nf2ff/E_theta/FD/f{}_imag'.format(n)])
             E_theta = np.swapaxes(E_theta, 0, 1)
             E_phi   = np.array(h5_file['/nf2ff/E_phi/FD/f{}_real'.format(n)])   + 1j*np.array(h5_file['/nf2ff/E_phi/FD/f{}_imag'.format(n)])

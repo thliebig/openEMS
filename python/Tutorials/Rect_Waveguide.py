@@ -86,6 +86,8 @@ CSX.AddBox(Et, start, stop);
 ## Write openEMS compatoble xml-file ######################################
 if 0:  # debugging only
     CSX_file = os.path.join(Sim_Path, 'rect_wg.xml')
+    if not os.path.exists(Sim_Path):
+        os.mkdir(Sim_Path)
     CSX.Write2XML(CSX_file)
     os.system(r'AppCSXCAD "{}"'.format(CSX_file))
 

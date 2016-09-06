@@ -116,14 +116,14 @@ class LumpedPort(Port):
         self.exc_ny  = CheckNyDir(exc_dir)
 
         self.direction = np.sign(self.stop[self.exc_ny]-self.start[self.exc_ny])
-        assert self.start[self.exc_ny]!=self.stop[self.exc_ny]
+        assert self.start[self.exc_ny]!=self.stop[self.exc_ny], 'LumpedPort: start and stop may not be identical in excitation direction'
 
         if self.R > 0:
             lumped_R = CSX.AddLumpedElement(self.lbl_temp.format('resist'), ny=self.exc_ny, caps=True, R=self.R)
         elif self.R==0:
             lumped_R = CSX.AddMetal(self.lbl_temp.format('resist'))
 
-        CSX.AddBox(lumped_R, self.start, self.stop, priority=self.priority)
+        CSX.AddBox(lumped_R, self.start, self.stop, priority=self.priority, edges2grid=kw.get('edges2grid', None))
 
         if excite!=0:
             exc_vec = np.zeros(3)

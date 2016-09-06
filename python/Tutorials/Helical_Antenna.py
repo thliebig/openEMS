@@ -116,6 +116,8 @@ nf2ff = FDTD.CreateNF2FFBox(opt_resolution=[lambda0/15]*3)
 
 if 0:  # debugging only
     CSX_file = os.path.join(Sim_Path, 'helix.xml')
+    if not os.path.exists(Sim_Path):
+        os.mkdir(Sim_Path)
     CSX.Write2XML(CSX_file)
     os.system(r'AppCSXCAD "{}"'.format(CSX_file))
 
@@ -153,25 +155,25 @@ theta = arange(0.,180.,1.)
 phi = arange(-180,180,2)
 disp( 'calculating the 3D far field...' )
 
-nf2ff.CalcNF2FF(Sim_Path, f0, theta, phi, read_cached=True, verbose=True )
+nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, theta, phi, read_cached=True, verbose=True )
 
 #
-Dmax_dB = 10*log10(nf2ff.Dmax[0])
-E_norm = 20.0*log10(nf2ff.E_norm[0]/np.max(nf2ff.E_norm[0])) + 10*log10(nf2ff.Dmax[0])
+Dmax_dB = 10*log10(nf2ff_res.Dmax[0])
+E_norm = 20.0*log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10*log10(nf2ff_res.Dmax[0])
 
 theta_HPBW = theta[ np.where(squeeze(E_norm[:,phi==0])<Dmax_dB-3)[0][0] ]
 #
 # display power and directivity
-print('radiated power: Prad = {} W'.format(nf2ff.Prad[0]))
+print('radiated power: Prad = {} W'.format(nf2ff_res.Prad[0]))
 print('directivity: Dmax = {} dBi'.format(Dmax_dB))
-print('efficiency: nu_rad = {} %'.format(100*nf2ff.Prad[0]/interp(f0, freq, port.P_acc)))
+print('efficiency: nu_rad = {} %'.format(100*nf2ff_res.Prad[0]/interp(f0, freq, port.P_acc)))
 print('theta_HPBW = {} °'.format(theta_HPBW))
 
 
 ##
-E_norm = 20.0*log10(nf2ff.E_norm[0]/np.max(nf2ff.E_norm[0])) + 10*log10(nf2ff.Dmax[0])
-E_CPRH = 20.0*log10(np.abs(nf2ff.E_cprh[0])/np.max(nf2ff.E_norm[0])) + 10*log10(nf2ff.Dmax[0])
-E_CPLH = 20.0*log10(np.abs(nf2ff.E_cplh[0])/np.max(nf2ff.E_norm[0])) + 10*log10(nf2ff.Dmax[0])
+E_norm = 20.0*log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10*log10(nf2ff_res.Dmax[0])
+E_CPRH = 20.0*log10(np.abs(nf2ff_res.E_cprh[0])/np.max(nf2ff_res.E_norm[0])) + 10*log10(nf2ff_res.Dmax[0])
+E_CPLH = 20.0*log10(np.abs(nf2ff_res.E_cplh[0])/np.max(nf2ff_res.E_norm[0])) + 10*log10(nf2ff_res.Dmax[0])
 
 ##
 figure()
@@ -181,7 +183,7 @@ plot(theta, E_CPLH[:,phi==0],'r-.', linewidth=2, label='$|E_{CPLH}|$')
 grid()
 xlabel('theta (deg)')
 ylabel('directivity (dBi)')
-title('Frequency: {} GHz'.format(nf2ff.freq[0]/1e9))
+title('Frequency: {} GHz'.format(nf2ff_res.freq[0]/1e9))
 legend()
 
 ### dump to vtk
