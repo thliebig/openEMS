@@ -26,3 +26,5 @@ localConfig.cmake
 *.pyc
 *.pyo
 python/**/*.cpp
+!python/doc
+python/doc/_build

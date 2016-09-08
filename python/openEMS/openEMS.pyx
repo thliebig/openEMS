@@ -1,9 +1,20 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Dec 13 23:50:24 2015
-
-@author: thorsten
-"""
+#
+# Copyright (C) 2015,20016 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 import os, sys, shutil
 import numpy as np
@@ -26,11 +37,14 @@ cdef class openEMS:
     """
     @staticmethod
     def WelcomeScreen():
+        """
+        Show the openEMS welcome screen.
+        """
         _openEMS.WelcomeScreen()
 
     def __cinit__(self, *args, **kw):
         self.thisptr = new _openEMS()
-        self.CSX = None
+        self.__CSX = None
 
         if 'NrTS' in kw:
             self.SetNumberOfTimeSteps(kw['NrTS'])
@@ -66,71 +80,121 @@ cdef class openEMS:
 
     def __dealloc__(self):
         del self.thisptr
-        if self.CSX is not None:
-            self.CSX.thisptr = NULL
+        if self.__CSX is not None:
+            self.__CSX.thisptr = NULL
 
     def SetNumberOfTimeSteps(self, val):
         """ SetNumberOfTimeSteps(val)
+
+        Set the number of timesteps. E.g. 5e4 (default is 1e9)
         """
         self.thisptr.SetNumberOfTimeSteps(val)
 
     def SetEndCriteria(self, val):
         """ SetEndCriteria(val)
+
+        Set the end critera value. E.g. 1e-6 for -60dB
         """
         self.thisptr.SetEndCriteria(val)
 
     def SetOverSampling(self, val):
         """ SetOverSampling(val)
+
+        Set the time domain signal oversampling as multiple of the Nyquist-rate.
         """
         self.thisptr.SetOverSampling(val)
 
     def SetCellConstantMaterial(self, val):
         """ SetCellConstantMaterial(val)
+
+        Set cell material averaging to assume constant material inside each primary cell. (Advanced option)
+
+        :param val: bool -- Enable or Disable (default disabled)
         """
         self.thisptr.SetCellConstantMaterial(val)
 
     def SetCoordSystem(self, val):
         """ SetCoordSystem(val)
+
+        Set the coordinate system. 0 --> Cartesian (default), 1 --> cylindrical
         """
         assert (val==0 or val==1), 'SetCoordSystem: Invalid coordinate system'
         if val==0:
-            pass
+            self.thisptr.SetCylinderCoords(False)
         elif val==1:
-            self.SetCylinderCoords()
+            self.thisptr.SetCylinderCoords(True)
 
     def SetCylinderCoords(self):
         """ SetCylinderCoords()
+
+        Enable use of cylindircal coordinates.
         """
         self.thisptr.SetCylinderCoords(True)
 
     def SetTimeStepMethod(self, val):
         """ SetTimeStepMethod(val)
+
+        Set the time step calculation method. (Advanced option)
+
+        Options:
+
+        * 1: CFL criteria
+        * 3: Advanced Rennings criteria (default)
+
+        :param val: int -- 1 or 3 (See above)
         """
         self.thisptr.SetTimeStepMethod(val)
 
     def SetTimeStep(self, val):
         """ SetTimeStep(val)
+
+        Set/force the timestep. (Advanced option)
+
+        It is highly recommended to not use this method! You may use the
+        SetTimeStepFactor instead to reduce the time step if necessary!
         """
         self.thisptr.SetTimeStep(val)
 
     def SetTimeStepFactor(self, val):
         """ SetTimeStepFactor(val)
+
+        Set a time step factor (>0..1) to increase FDTD stability.
+
+        :param val: float -- >0..1
         """
         self.thisptr.SetTimeStepFactor(val)
 
     def SetMaxTime(self, val):
         """ SetMaxTime(val)
+
+        Set max simulation time for a max. number of timesteps.
         """
         self.thisptr.SetMaxTime(val)
 
     def SetGaussExcite(self, f0, fc):
         """ SetGaussExcite(f0, fc)
+
+        Set a Gaussian pulse as excitation signal.
+
+        :param f0: float -- Center frequency in Hz.
+        :param fc: float -- -20dB bandwidth in Hz.
         """
         self.thisptr.SetGaussExcite(f0, fc)
 
 
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)
+
+        Set the boundary conditions for all six FDTD directions.
+
+        Options:
+
+        * 0 or 'PEC' : perfect electric conductor (default)
+        * 1 or 'PMC' : perfect magnetic conductor, useful for symmetries
+        * 2 or 'MUR' : simple MUR absorbing boundary conditions
+        * 3 or 'PML-8' : PML absorbing boundary conditions
+
+        :param BC: (8,) array or list -- see options above
         """
         assert len(BC)==6
         for n in range(len(BC)):
@@ -148,26 +212,57 @@ cdef class openEMS:
 
     def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, **kw):
         """ AddLumpedPort(port_nr, R, start, stop, p_dir, excite=0, **kw)
+
+        Add a lumped port wit the given values and location.
+
+        See Also
+        --------
+        openEMS.ports.LumpedPort
         """
-        assert self.CSX is not None, 'AddLumpedPort: CSX is not set!'
-        return ports.LumpedPort(self.CSX, port_nr, R, start, stop, p_dir, excite, **kw)
+        assert self.__CSX is not None, 'AddLumpedPort: CSX is not set!'
+        return ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
 
     def AddRectWaveGuidePort(self, port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw):
         """ AddRectWaveGuidePort(port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw)
+
+        Add a rectilinear waveguide port.
+
+        See Also
+        --------
+        openEMS.ports.RectWGPort
         """
-        assert self.CSX is not None, 'AddRectWaveGuidePort: CSX is not set!'
-        return ports.RectWGPort(self.CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
+        assert self.__CSX is not None, 'AddRectWaveGuidePort: CSX is not set!'
+        return ports.RectWGPort(self.__CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
 
     def AddMSLPort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw):
         """ AddMSLPort(port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw)
+
+        Add a microstrip transmission line port.
+
+        See Also
+        --------
+        openEMS.ports.MSLPort
         """
-        assert self.CSX is not None, 'AddMSLPort: CSX is not set!'
-        return ports.MSLPort(self.CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
+        assert self.__CSX is not None, 'AddMSLPort: CSX is not set!'
+        return ports.MSLPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
 
     def CreateNF2FFBox(self, name='nf2ff', start=None, stop=None, **kw):
         """ CreateNF2FFBox(name='nf2ff', start=None, stop=None, **kw)
+
+        Create a near-field to far-field box.
+
+        This method will automatically adept the recording box to the current
+        FDTD grid and boundary conditions.
+
+        Notes
+        -----
+        * Make sure the mesh grid and all boundary conditions are finially defined.
+
+        See Also
+        --------
+        openEMS.nf2ff.nf2ff
         """
-        assert self.CSX is not None, 'CreateNF2FFBox: CSX is not set!'
+        assert self.__CSX is not None, 'CreateNF2FFBox: CSX is not set!'
         directions = [True]*6
         mirror     = [0]*6
         BC_size = [0]*6
@@ -186,7 +281,7 @@ cdef class openEMS:
                 BC_size[n] = self.thisptr.Get_PML_Size(n)+1
 
         if start is None or stop is None:
-            grid = self.CSX.GetGrid()
+            grid = self.__CSX.GetGrid()
             assert grid.IsValid(), 'Error::CreateNF2FFBox: Grid is invalid'
             start = np.zeros(3)
             stop  = np.zeros(3)
@@ -196,16 +291,29 @@ cdef class openEMS:
                 assert len(l)>(BC_size[2*n]+BC_size[2*n+1]), 'Error::CreateNF2FFBox: not enough lines in some direction'
                 start[n] = l[BC_size[2*n]]
                 stop[n]  = l[-1*BC_size[2*n+1]-1]
-        return nf2ff.nf2ff(self.CSX, name, start, stop, directions=directions, mirror=mirror, **kw)
+        return nf2ff.nf2ff(self.__CSX, name, start, stop, directions=directions, mirror=mirror, **kw)
 
     def SetCSX(self, ContinuousStructure CSX):
         """ SetCSX(CSX)
+
+        Set the CSXCAD Continuous Structure for CAD data handling.
+
+        See Also
+        --------
+        CSXCAD.CSXCAD.ContinuousStructure
         """
-        self.CSX = CSX
+        self.__CSX = CSX
         self.thisptr.SetCSX(CSX.thisptr)
 
     def Run(self, sim_path, cleanup=False, setup_only=False, verbose=None):
         """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
+
+        Run the openEMS FDTD simulation.
+
+        :param sim_path: str -- path to run in and create result data
+        :param cleanup: bool -- remove exisiting sim_path to cleanup old results
+        :param setup_only: bool -- only perform FDTD setup, do not run simulation
+        :param verbose: int -- set the openEMS verbosity level 0..3
         """
         if cleanup and os.path.exists(sim_path):
             shutil.rmtree(sim_path)

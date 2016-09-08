@@ -1,9 +1,20 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Dec 17 22:53:39 2015
-
-@author: thorsten
-"""
+#
+# Copyright (C) 2015,20016 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 import os
 import numpy as np
@@ -108,8 +119,17 @@ class Port:
         # accepted power (incoming - reflected)
         self.P_acc = 0.5*np.real(self.uf_tot*np.conj(self.if_tot))
 
-# Lumped-Port
 class LumpedPort(Port):
+    """
+    The lumped port.
+
+    :param CSX: Continuous Structure
+    :param port_nr: int -- port number
+    :param R: float -- port reference impedance, e.g. 50 (Ohms)
+    :param start, stop: (3,) array -- Start/Stop box coordinates
+    :param p_dir: int -- port direction
+    :param excite: float -- port excitation amplitude
+    """
     def __init__(self, CSX,  port_nr, R, start, stop, exc_dir, excite=0, **kw):
         super(LumpedPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
         self.R = R
