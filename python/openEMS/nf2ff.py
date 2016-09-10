@@ -23,6 +23,17 @@ from openEMS import _nf2ff
 from openEMS import utilities
 
 class nf2ff:
+    """
+    Create an nf2ff recording box. The nf2ff can either record in time-domain
+    or frequency-domain. Further more certain directions and boundary condition
+    mirroring can be enabled/disabled.
+
+    :param name: str -- Name for this recording box.
+    :param start/stop: (3,) array -- Box start/stop coordinates.
+    :param directions: (6,) bool array -- Enable/Disables directions.
+    :param mirror: (6,) int array -- 0 (Off), 1 (PEC) or 2 (PMC) boundary mirroring
+    :param frequency: array like -- List of frequencies (FD-domain recording)
+    """
     def __init__(self, CSX, name, start, stop, **kw):
         self.CSX   = CSX
         self.name  = name
@@ -81,6 +92,20 @@ class nf2ff:
                 CSX.AddBox(self.h_dump, l_start, l_stop)
 
     def CalcNF2FF(self, sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
+        """ CalcNF2FF(sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
+
+        Calculate the far-field after the simulation is done.
+
+        :param sim_path: str -- Simulation path
+        :param freq: array like -- list of frequency for transformation
+        :param theta/phi: array like -- Theta/Phi angles to calculate the far-field
+        :param center: (3,) array -- phase center, must be inside the recording box
+        :param outfile: str -- File to save results in. (defaults to recording name)
+        :param read_cached: bool -- enable/disable read already existing results
+        :param verbose: int -- set verbose level
+
+        :returns: nf2ff_results class instance
+        """
         if np.isscalar(freq):
             freq = [freq]
         self.freq  = freq
@@ -119,6 +144,27 @@ class nf2ff:
         return result
 
 class nf2ff_results:
+    """
+    nf2ff result class containing all results obtained by the nf2ff calculation.
+    Usueally returned from nf2ff.CalcNF2FF
+
+    Available attributes:
+
+    * `fn`   : file name
+    * `theta`: theta angles
+    * `phi`  : phi angles
+    * `r`    : radius
+    * `freq` : frequencies
+    * `Dmax` : directivity over frequency
+    * `Prad` : total radiated power over frequency
+
+    * `E_theta` : theta component of electric field over frequency/theta/phi
+    * `E_phi`   : phi   component of electric field over frequency/theta/phi
+    * `E_norm`  : abs   component of electric field over frequency/theta/phi
+    * `E_cprh`  : theta component of electric field over frequency/theta/phi
+    * `E_cplh`  : theta component of electric field over frequency/theta/phi
+    * `P_rad`   : radiated power (S) over frequency/theta/phi
+    """
     def __init__(self, fn):
         self.fn  = fn
         h5_file  = h5py.File(fn, 'r')

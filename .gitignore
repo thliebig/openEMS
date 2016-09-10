@@ -28,3 +28,4 @@ localConfig.cmake
 python/**/*.cpp
 !python/doc
 python/doc/_build
+python/doc/Tutorials/__*

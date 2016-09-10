@@ -24,6 +24,30 @@ from . import ports, nf2ff
 cdef class openEMS:
     """ openEMS
 
+    This class is the main control class for the FDTD options and setup and
+    to run the final simulation.
+
+    Examples
+    --------
+
+    >>> CSX = CSXCAD.ContinuousStructure()
+    >>>
+    >>> grid = CSX.GetGrid()
+    >>> grid.SetLines('x', np.arange(-50,50,1))
+    >>> grid.SetLines('y', np.arange(-50,50,1))
+    >>> grid.SetLines('z', np.arange(-2,2.1,1))
+    >>> grid.SetDeltaUnit(1e-3)
+    >>>
+    >>> FDTD = openEMS(NrTS=1e4, EndCriteria=1e-4)
+    >>>
+    >>> FDTD.SetCSX(CSX)
+    >>> FDTD.SetBoundaryCond(['PML_8', 'PML_8', 'PML_8', 'PML_8', 'PEC', 'PEC'])
+    >>> FDTD.SetGaussExcite(0, 10e9)
+    >>>
+    >>> FDTD.AddLumpedPort(port_nr=1, R=50, start=[10, 0, -2], stop=[10, 0, 2], p_dir='z', excite=1)
+    >>>
+    >>> FDTD.Run(sim_path='/tmp/test')
+
     :param NrTS:           max. number of timesteps to simulate (e.g. default=1e9)
     :param EndCriteria:    end criteria, e.g. 1e-5, simulations stops if energy has decayed by this value (<1e-4 is recommended, default=1e-5)
     :param MaxTime:        max. real time in seconds to simulate
@@ -300,7 +324,7 @@ cdef class openEMS:
 
         See Also
         --------
-        CSXCAD.CSXCAD.ContinuousStructure
+        CSXCAD.ContinuousStructure
         """
         self.__CSX = CSX
         self.thisptr.SetCSX(CSX.thisptr)

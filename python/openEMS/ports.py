@@ -41,6 +41,19 @@ class UI_data:
 
 # Port Base-Class
 class Port:
+    """
+    The port base class.
+
+    :param CSX: Continuous Structure
+    :param port_nr: int -- port number
+    :param R: float -- port reference impedance, e.g. 50 (Ohms)
+    :param start, stop: (3,) array -- Start/Stop box coordinates
+    :param p_dir: int -- port direction
+    :param excite: float -- port excitation amplitude
+    :param priority: int -- priority of all contained primtives
+    :param PortNamePrefix: str -- a prefix for all ports-names
+    :param delay: float -- a positiv delay value to e.g. emulate a phase shift
+    """
     def __init__(self, CSX, port_nr, start, stop, excite, **kw):
         self.CSX      = CSX
         self.number   = port_nr
@@ -123,12 +136,9 @@ class LumpedPort(Port):
     """
     The lumped port.
 
-    :param CSX: Continuous Structure
-    :param port_nr: int -- port number
-    :param R: float -- port reference impedance, e.g. 50 (Ohms)
-    :param start, stop: (3,) array -- Start/Stop box coordinates
-    :param p_dir: int -- port direction
-    :param excite: float -- port excitation amplitude
+    See Also
+    --------
+    Port
     """
     def __init__(self, CSX,  port_nr, R, start, stop, exc_dir, excite=0, **kw):
         super(LumpedPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
@@ -175,6 +185,15 @@ class LumpedPort(Port):
         super(LumpedPort, self).CalcPort(sim_path, freq, ref_impedance, ref_plane_shift, signal_type)
 
 class MSLPort(Port):
+    """
+    The microstrip transmission line port.
+
+    :param prop_dir: int/str -- direction of propagation
+
+    See Also
+    --------
+    Port
+    """
     def __init__(self, CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw):
         super(MSLPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
         self.exc_ny  = CheckNyDir(exc_dir)
@@ -287,6 +306,16 @@ class MSLPort(Port):
         self.Z_ref = np.sqrt(Et * dEt / (Ht * dHt))
 
 class WaveguidePort(Port):
+    """
+    Base class for any waveguide port.
+
+    :param mode_name: str -- Mode name, e.g. TE11 or TM10
+
+    See Also
+    --------
+    Port, RectWGPort
+
+    """
     def __init__(self, CSX, port_nr, start, stop, exc_dir, mode_name, excite=0, **kw):
         super(WaveguidePort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
         self.exc_ny  = CheckNyDir(exc_dir)
@@ -324,6 +353,9 @@ class WaveguidePort(Port):
         CSX.AddBox(i_probe, m_start, m_stop)
 
     def InitMode(self, wg_mode):
+        """
+        Init/Define waveguide mode, e.g. TE11, TM10.
+        """
         self.WG_mode = wg_mode
         assert len(self.WG_mode)==4, 'Invalid mode definition'
         self.unit = self.CSX.GetGrid().GetDeltaUnit()
@@ -348,11 +380,24 @@ class WaveguidePort(Port):
         super(WaveguidePort, self).CalcPort(sim_path, freq, ref_impedance, ref_plane_shift, signal_type)
 
 class RectWGPort(WaveguidePort):
+    """
+    Rectangular waveguide port.
+
+    :param a,b: float -- Width/Height of rectangular waveguide port
+
+    See Also
+    --------
+    Port, WaveguidePort
+
+    """
     def __init__(self, CSX, port_nr, start, stop, exc_dir, a, b, mode_name, excite=0, **kw):
         self.WG_size = [a, b]
         super(RectWGPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, exc_dir=exc_dir, mode_name=mode_name, excite=excite, **kw)
 
     def InitMode(self, wg_mode):
+        """
+        Init/Define rectangular waveguide mode, e.g. TE11, TM10.
+        """
         super(RectWGPort, self).InitMode(wg_mode)
         assert self.TE, 'Currently only TE-modes are supported! Mode found: {}'.format(self.WG_mode)
 

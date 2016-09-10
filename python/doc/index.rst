@@ -9,9 +9,11 @@ Welcome to openEMS's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
 
-   openEMS
+   Tutorials/index
+   openEMS_API
+
 
 Indices and tables
 ==================
