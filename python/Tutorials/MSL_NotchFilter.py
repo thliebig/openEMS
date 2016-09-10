@@ -1,27 +1,31 @@
 # -*- coding: utf-8 -*-
 """
+ Microstrip Notch Filter Tutorial
 
- Tutorials / MSL_NotchFilter
+ Describtion at:
+ http://openems.de/doc/openEMS/Tutorials.html#microstrip-notch-filter
 
  Tested with
   - python 3.4
-  - openEMS v0.0.33+
+  - openEMS v0.0.34+
 
  (C) 2016 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 """
+
+### Import Libraries
 import os, tempfile
 from pylab import *
 
-from CSXCAD import CSXCAD
-
+from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
 from openEMS.physical_constants import *
 
-post_proc_only = False
-Sim_Path = os.path.join(tempfile.gettempdir(), 'NotchFilter')
 
-## setup the simulation ###################################################
+### Setup the simulation
+Sim_Path = os.path.join(tempfile.gettempdir(), 'NotchFilter')
+post_proc_only = False
+
 unit = 1e-6 # specify everything in um
 MSL_length = 50000
 MSL_width = 600
@@ -30,13 +34,13 @@ substrate_epr = 3.66
 stub_length = 12e3
 f_max = 7e9
 
-## setup FDTD parameters & excitation function ############################
-FDTD = openEMS.openEMS()
+### Setup FDTD parameters & excitation function
+FDTD = openEMS()
 FDTD.SetGaussExcite( f_max/2, f_max/2 )
 FDTD.SetBoundaryCond( ['PML_8', 'PML_8', 'MUR', 'MUR', 'PEC', 'MUR'] )
 
-## setup CSXCAD geometry & mesh ###########################################
-CSX = CSXCAD.ContinuousStructure()
+### Setup Geometry & Mesh
+CSX = ContinuousStructure()
 FDTD.SetCSX(CSX)
 mesh = CSX.GetGrid()
 mesh.SetDeltaUnit(unit)
@@ -44,6 +48,7 @@ mesh.SetDeltaUnit(unit)
 resolution = C0/(f_max*sqrt(substrate_epr))/unit/50 # resolution of lambda/50
 third_mesh = array([2*resolution/3, -resolution/3])/4
 
+## Do manual meshing
 mesh.AddLine('x', 0)
 mesh.AddLine('x',  MSL_width/2+third_mesh)
 mesh.AddLine('x', -MSL_width/2-third_mesh)
@@ -65,13 +70,13 @@ mesh.AddLine('z', linspace(0,substrate_thickness,5))
 mesh.AddLine('z', 3000)
 mesh.SmoothMeshLines('z', resolution)
 
-## substrate
+## Add the substrate
 substrate = CSX.AddMaterial( 'RO4350B', epsilon=substrate_epr)
 start = [-MSL_length, -15*MSL_width, 0]
 stop  = [+MSL_length, +15*MSL_width+stub_length, substrate_thickness]
 CSX.AddBox(substrate, start, stop )
 
-## MSL port
+## MSL port setup
 port = [None, None]
 pec = CSX.AddMetal( 'PEC' )
 portstart = [ -MSL_length, -MSL_width/2, substrate_thickness]
@@ -82,11 +87,12 @@ portstart = [MSL_length, -MSL_width/2, substrate_thickness]
 portstop  = [0         ,  MSL_width/2, 0]
 port[1] = FDTD.AddMSLPort( 2, pec, portstart, portstop, 'x', 'z', MeasPlaneShift=MSL_length/3, priority=10 )
 
-## Filter-stub
+## Filter-Stub Definition
 start = [-MSL_width/2,  MSL_width/2, substrate_thickness]
 stop  = [ MSL_width/2,  MSL_width/2+stub_length, substrate_thickness]
 box = CSX.AddBox( pec, start, stop, priority=10 )
 
+### Run the simulation
 if 0:  # debugging only
     CSX_file = os.path.join(Sim_Path, 'notch.xml')
     if not os.path.exists(Sim_Path):
@@ -98,7 +104,7 @@ if 0:  # debugging only
 if not post_proc_only:
     FDTD.Run(Sim_Path, verbose=3, cleanup=True)
 
-## post-processing
+### Post-processing and plotting
 f = linspace( 1e6, f_max, 1601 )
 for p in port:
     p.CalcPort( Sim_Path, f, ref_impedance = 50)
