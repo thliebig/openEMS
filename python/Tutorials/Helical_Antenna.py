@@ -99,7 +99,7 @@ for n in range(Helix_turns-1):
     zpos = zpos + Helix_pitch
 
 p = np.array([Helix_x, Helix_y, Helix_z])
-CSX.AddCurve(helix_metal,  p)
+helix_metal.AddCurve(p)
 
 # create ground circular ground
 gnd = CSX.AddMetal( 'gnd' ) # create a perfect electric conductor (PEC)
@@ -107,7 +107,7 @@ gnd = CSX.AddMetal( 'gnd' ) # create a perfect electric conductor (PEC)
 # add a box using cylindrical coordinates
 start = [0, 0, -0.1]
 stop  = [0, 0,  0.1]
-CSX.AddCylinder(gnd, start, stop, radius=gnd_radius)
+gnd.AddCylinder(start, stop, radius=gnd_radius)
 
 # apply the excitation & resist as a current source
 start = [Helix_radius, 0, 0]

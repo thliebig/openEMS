@@ -16,7 +16,7 @@ from openEMS.physical_constants import *
 ### General parameter setup
 Sim_Path = os.path.join(tempfile.gettempdir(), 'Simp_Patch')
 
-post_proc_only = True
+post_proc_only = False
 
 # patch width (resonant length) in x-direction
 patch_width  = 32 #
@@ -66,14 +66,14 @@ mesh.AddLine('z', [-SimBox[2]/3, SimBox[2]*2/3]        )
 patch = CSX.AddMetal( 'patch' ) # create a perfect electric conductor (PEC)
 start = [-patch_width/2, -patch_length/2, substrate_thickness]
 stop  = [ patch_width/2 , patch_length/2, substrate_thickness]
-pb=CSX.AddBox(patch, priority=10, start=start, stop=stop) # add a box-primitive to the metal property 'patch'
+pb=patch.AddBox(priority=10, start=start, stop=stop) # add a box-primitive to the metal property 'patch'
 pb.AddEdges2Grid('xy', metal_edge_res=mesh_res/2)
 
 # create substrate
 substrate = CSX.AddMaterial( 'substrate', epsilon=substrate_epsR, kappa=substrate_kappa)
 start = [-substrate_width/2, -substrate_length/2, 0]
 stop  = [ substrate_width/2,  substrate_length/2, substrate_thickness]
-sb=CSX.AddBox( substrate, priority=0, start=start, stop=stop )
+sb=substrate.AddBox( priority=0, start=start, stop=stop )
 
 # add extra cells to discretize the substrate thickness
 mesh.AddLine('z', linspace(0,substrate_thickness,substrate_cells+1))
@@ -82,7 +82,7 @@ mesh.AddLine('z', linspace(0,substrate_thickness,substrate_cells+1))
 gnd = CSX.AddMetal( 'gnd' ) # create a perfect electric conductor (PEC)
 start[2]=0
 stop[2] =0
-gb=CSX.AddBox(gnd, start, stop, priority=10, edges2grid='all')
+gb=gnd.AddBox(start, stop, priority=10, edges2grid='all')
 
 # apply the excitation & resist as a current source
 start = [feed_pos, 0, 0]

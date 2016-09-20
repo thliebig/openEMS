@@ -66,6 +66,9 @@ class nf2ff:
             del kw['frequency']
             self.dump_type = 10  # Ef/Hf
 
+            if np.isscalar(self.freq):
+                self.freq = [self.freq]
+
         self.e_file = '{}_E'.format(self.name)
         self.h_file = '{}_H'.format(self.name)
 
@@ -82,14 +85,14 @@ class nf2ff:
                 l_start = np.array(start)
                 l_stop  = np.array(stop)
                 l_stop[ny] = l_start[ny]
-                CSX.AddBox(self.e_dump, l_start, l_stop)
-                CSX.AddBox(self.h_dump, l_start, l_stop)
+                self.e_dump.AddBox(l_start, l_stop)
+                self.h_dump.AddBox(l_start, l_stop)
             if self.directions[pos+1]:
                 l_start = np.array(start)
                 l_stop  = np.array(stop)
                 l_start[ny] = l_stop[ny]
-                CSX.AddBox(self.e_dump, l_start, l_stop)
-                CSX.AddBox(self.h_dump, l_start, l_stop)
+                self.e_dump.AddBox(l_start, l_stop)
+                self.h_dump.AddBox(l_start, l_stop)
 
     def CalcNF2FF(self, sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
         """ CalcNF2FF(sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):

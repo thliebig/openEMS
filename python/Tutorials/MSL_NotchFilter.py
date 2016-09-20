@@ -74,7 +74,7 @@ mesh.SmoothMeshLines('z', resolution)
 substrate = CSX.AddMaterial( 'RO4350B', epsilon=substrate_epr)
 start = [-MSL_length, -15*MSL_width, 0]
 stop  = [+MSL_length, +15*MSL_width+stub_length, substrate_thickness]
-CSX.AddBox(substrate, start, stop )
+substrate.AddBox(start, stop )
 
 ## MSL port setup
 port = [None, None]
@@ -90,7 +90,7 @@ port[1] = FDTD.AddMSLPort( 2, pec, portstart, portstop, 'x', 'z', MeasPlaneShift
 ## Filter-Stub Definition
 start = [-MSL_width/2,  MSL_width/2, substrate_thickness]
 stop  = [ MSL_width/2,  MSL_width/2+stub_length, substrate_thickness]
-box = CSX.AddBox( pec, start, stop, priority=10 )
+pec.AddBox(start, stop, priority=10 )
 
 ### Run the simulation
 if 0:  # debugging only

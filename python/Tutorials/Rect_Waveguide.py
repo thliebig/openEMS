@@ -80,7 +80,7 @@ mesh.SmoothMeshLines('all', mesh_res, ratio=1.4)
 Et = CSX.AddDump('Et', file_type=0, sub_sampling=[2,2,2])
 start = [0, 0, 0];
 stop  = [a, b, length];
-CSX.AddBox(Et, start, stop);
+Et.AddBox(start, stop);
 
 ### Run the simulation
 if 0:  # debugging only

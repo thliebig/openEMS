@@ -84,19 +84,19 @@ CSX.AddBox(patch, priority=10, start=start, stop=stop, edges2grid='all') # add a
 substrate = CSX.AddMaterial('substrate', epsilon=substrate_epsR, kappa=substrate_kappa  )
 start = [patch_radius                    , -substr_ang_width/2, -substrate_length/2]
 stop  = [patch_radius+substrate_thickness,  substr_ang_width/2,  substrate_length/2]
-CSX.AddBox(substrate, start=start, stop=stop, edges2grid='all')
+substrate.AddBox(start=start, stop=stop, edges2grid='all')
 
 # save current density oon the patch
 jt_patch = CSX.AddDump('Jt_patch', dump_type=3, file_type=1)
 start = [patch_radius+substrate_thickness, -substr_ang_width/2, -substrate_length/2]
 stop  = [patch_radius+substrate_thickness, +substr_ang_width/2,  substrate_length/2]
-CSX.AddBox(jt_patch, start=start, stop=stop)
+jt_patch.AddBox(start=start, stop=stop)
 
 # create ground
 gnd = CSX.AddMetal('gnd') # create a perfect electric conductor (PEC)
 start = [patch_radius, -substr_ang_width/2, -substrate_length/2]
 stop  = [patch_radius, +substr_ang_width/2, +substrate_length/2]
-CSX.AddBox(gnd, priority=10, start=start, stop=stop, edges2grid='all')
+gnd.AddBox(priority=10, start=start, stop=stop, edges2grid='all')
 
 # apply the excitation & resist as a current source
 start = [patch_radius                    ,  feed_angle, 0]
