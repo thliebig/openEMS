@@ -22,12 +22,12 @@ if isOctave()
         if length(fn)>0
             [hdf5lib_dir, hdf5lib_fn] = fileparts(fn);
             disp(["HDF5 library path found at: " hdf5lib_dir])
-            mkoctfile(["-L" hdf5lib_dir ],"-lhdf5 -DH5_USE_16_API", "h5readatt_octave.cc")
+            mkoctfile(["-L" hdf5lib_dir ],"-lhdf5", "h5readatt_octave.cc")
         else
-            mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
+            mkoctfile -lhdf5 h5readatt_octave.cc
         end
     else
-        mkoctfile -lhdf5 -DH5_USE_16_API h5readatt_octave.cc
+        mkoctfile -lhdf5 h5readatt_octave.cc
     end
 else
     disp('Matlab does not need this function. It is Octave only.')
