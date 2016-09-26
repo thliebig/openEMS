@@ -5,13 +5,7 @@
 // this special treatment is necessary because Win32-Octave ships with a very old hdf5 version (1.6.10)
 void CloseH5Object(hid_t obj)
 {
-#if ((H5_VERS_MAJOR == 1) && (H5_VERS_MINOR == 6))
-	// try group close, than Dataset close
-	if (H5Gclose(obj)<0)
-		H5Dclose(obj);
-#else
 	H5Oclose(obj);
-#endif
 }
 
 DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataSet_Name>,<Attribute_Name>)")
@@ -30,7 +24,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	}
 
 	//suppress hdf5 error output
-	H5Eset_auto1(NULL, NULL);
+	H5Eset_auto2(H5E_DEFAULT, NULL, NULL);
 
 	hid_t file = H5Fopen( args(0).string_value().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT );
 	if (file==-1)
@@ -39,17 +33,7 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  return retval;
 	}
 
-#if ((H5_VERS_MAJOR == 1) && (H5_VERS_MINOR == 6))
-	// this special treatment is necessary because Win32-Octave ships with a very old hdf5 version (1.6.10)
-	hid_t obj = -1;
-	//try opening the group
-	obj = H5Gopen(file, args(1).string_value().c_str());
-	//try opening the dataset if group failed
-	if (obj==-1)
-		obj = H5Dopen(file, args(1).string_value().c_str());
-#else
 	hid_t obj = H5Oopen(file, args(1).string_value().c_str(), H5P_DEFAULT);
-#endif
 
 	if (obj==-1)
 	{
@@ -59,7 +43,8 @@ DEFUN_DLD (h5readatt_octave, args, nargout, "h5readatt_octave(<File_Name>,<DataS
 	  return retval;
 	}
 
-	hid_t attr = H5Aopen_name(obj, args(2).string_value().c_str());
+	hid_t attr = H5Aopen_by_name(obj, ".", args(2).string_value().c_str(), H5P_DEFAULT, H5P_DEFAULT);
+
 	if (attr==-1)
 	{
 	  CloseH5Object(obj);
