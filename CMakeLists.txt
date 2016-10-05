@@ -110,7 +110,7 @@ ADD_DEFINITIONS( -DTIXML_USE_STL )
 # hdf5
 find_package(HDF5 1.8 COMPONENTS C HL REQUIRED)
 INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR})
-link_directories(${HDF5_LIBRARY_DIRS})
+link_directories(${HDF5_LIBRARIES})
 
 # boost
 find_package(Boost 1.46 COMPONENTS
