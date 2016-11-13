@@ -135,22 +135,23 @@ void ProcessModeMatch::InitProcess()
 		m_ModeDist[n] = Create2DArray<double>(m_numLines);
 	}
 
+	bool dualMesh = m_ModeFieldType==1;
 	unsigned int pos[3] = {0,0,0};
 	double discLine[3] = {0,0,0};
 	double gridDelta = 1; // 1 -> mode-matching function is definied in drawing units...
 	double var[7];
 	pos[m_ny] = start[m_ny];
-	discLine[m_ny] = Op->GetDiscLine(m_ny,pos[m_ny],m_dualMesh);
+	discLine[m_ny] = Op->GetDiscLine(m_ny,pos[m_ny],dualMesh);
 	double norm = 0;
 	double area = 0;
 	for (unsigned int posP = 0; posP<m_numLines[0]; ++posP)
 	{
 		pos[nP] = start[nP] + posP;
-		discLine[nP] = Op->GetDiscLine(nP,pos[nP],m_dualMesh);
+		discLine[nP] = Op->GetDiscLine(nP,pos[nP],dualMesh);
 		for (unsigned int posPP = 0; posPP<m_numLines[1]; ++posPP)
 		{
 			pos[nPP] = start[nPP] + posPP;
-			discLine[nPP] = Op->GetDiscLine(nPP,pos[nPP],m_dualMesh);
+			discLine[nPP] = Op->GetDiscLine(nPP,pos[nPP],dualMesh);
 
 			var[0] = discLine[0] * gridDelta; // x
 			var[1] = discLine[1] * gridDelta; // y
@@ -169,7 +170,7 @@ void ProcessModeMatch::InitProcess()
 				var[5] = sqrt(pow(discLine[0],2)+pow(discLine[2],2)) * gridDelta; // r
 				var[6] = asin(1)-atan(var[2]/var[3]); //theta (t)
 			}
-			area = Op->GetNodeArea(m_ny,pos,m_dualMesh);
+			area = Op->GetNodeArea(m_ny,pos,dualMesh);
 			for (int n=0; n<2; ++n)
 			{
 				m_ModeDist[n][posP][posPP] = m_ModeParser[n]->Eval(var); //calc mode template
@@ -227,6 +228,7 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 	double field = 0;
 	double purity = 0;
 	double area = 0;
+    bool dualMesh = m_ModeFieldType==1;
 
 	int nP = (m_ny+1)%3;
 	int nPP = (m_ny+2)%3;
@@ -242,7 +244,7 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 		for (unsigned int posPP = 0; posPP<m_numLines[1]; ++posPP)
 		{
 			pos[nPP] = start[nPP] + posPP;
-			area = Op->GetNodeArea(m_ny,pos,m_dualMesh);
+			area = Op->GetNodeArea(m_ny,pos,dualMesh);
 			if (m_ModeFieldType==0)
 				m_Eng_Interface->GetEField(pos,out);
 			if (m_ModeFieldType==1)
