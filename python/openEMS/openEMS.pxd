@@ -32,7 +32,7 @@ cdef extern from "openEMS/openems.h":
         void SetCellConstantMaterial(bool val)
 
         void SetCylinderCoords(bool val)
-        #void SetupCylinderMultiGrid(std::vector<double> val)
+        void SetupCylinderMultiGrid(string val)
 
         void SetTimeStepMethod(int val)
         void SetTimeStep(double val)

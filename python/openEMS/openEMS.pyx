@@ -53,7 +53,7 @@ cdef class openEMS:
     :param MaxTime:        max. real time in seconds to simulate
     :param OverSampling:   nyquist oversampling of time domain dumps
     :param CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
-    :param MultiGrid:      define a cylindrical sub-grid radius ( not implemented yet )
+    :param MultiGrid:      define a cylindrical sub-grid radius
     :param TimeStep:       force to use a given timestep (dangerous!)
     :param TimeStepFactor: reduce the timestep by a given factor (>0 to <=1)
     :param TimeStepMethod: 1 or 3 chose timestep method (1=CFL, 3=Rennigs (default))
@@ -99,6 +99,9 @@ cdef class openEMS:
         if 'CellConstantMaterial' in kw:
             self.SetCellConstantMaterial(kw['CellConstantMaterial'])
             del kw['CellConstantMaterial']
+        if 'MultiGrid' in kw:
+            self.SetMultiGrid(kw['MultiGrid'])
+            del kw['MultiGrid']
 
         assert len(kw)==0, 'Unknown keyword arguments: "{}"'.format(kw)
 
@@ -148,10 +151,30 @@ cdef class openEMS:
         elif val==1:
             self.thisptr.SetCylinderCoords(True)
 
+    def SetMultiGrid(self, radii):
+        """ SetMultiGrid(radii)
+
+        Define radii at which a cylindrical multi grid should be defined.
+
+        :param radii: array like, multigrid radii
+
+        See Also
+        --------
+        openEMS.SetCylinderCoords
+        """
+        assert len(radii)>0, 'SetMultiGrid: invalid multi grid definition'
+
+        grid_str = ','.join(['{}'.format(x) for x in radii])
+        self.thisptr.SetupCylinderMultiGrid(grid_str.encode('UTF-8'))
+
     def SetCylinderCoords(self):
         """ SetCylinderCoords()
 
         Enable use of cylindircal coordinates.
+
+        See Also
+        --------
+        openEMS.SetMultiGrid
         """
         self.thisptr.SetCylinderCoords(True)
 
