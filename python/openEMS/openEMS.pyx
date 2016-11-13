@@ -269,6 +269,18 @@ cdef class openEMS:
         assert self.__CSX is not None, 'AddLumpedPort: CSX is not set!'
         return ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
 
+    def AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func, H_func, kc, excite=0, **kw):
+        """ AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func, H_func, kc, excite=0, **kw)
+
+        Add a arbitrary waveguide port.
+
+        See Also
+        --------
+        openEMS.ports.WaveguidePort
+        """
+        assert self.__CSX is not None, 'AddWaveGuidePort: CSX is not set!'
+        return ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, **kw)
+
     def AddRectWaveGuidePort(self, port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw):
         """ AddRectWaveGuidePort(port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw)
 

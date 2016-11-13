@@ -314,14 +314,12 @@ class WaveguidePort(Port):
     """
     Base class for any waveguide port.
 
-    :param mode_name: str -- Mode name, e.g. TE11 or TM10
-
     See Also
     --------
     Port, RectWGPort
 
     """
-    def __init__(self, CSX, port_nr, start, stop, exc_dir, mode_name, excite=0, **kw):
+    def __init__(self, CSX, port_nr, start, stop, exc_dir, E_WG_func, H_WG_func, kc, excite=0, **kw):
         super(WaveguidePort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
         self.exc_ny  = CheckNyDir(exc_dir)
         self.ny_P  = (self.exc_ny+1)%3
@@ -331,7 +329,9 @@ class WaveguidePort(Port):
 
         assert not (self.excite!=0 and stop[self.exc_ny]==start[self.exc_ny]), 'port length in excitation direction may not be zero if port is excited!'
 
-        self.InitMode(mode_name)
+        self.kc = kc
+        self.E_func = E_WG_func
+        self.H_func = H_WG_func
 
         if excite!=0:
             e_start = np.array(start)
@@ -340,6 +340,7 @@ class WaveguidePort(Port):
             e_vec = np.ones(3)
             e_vec[self.exc_ny]=0
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0, exc_val=e_vec, delay=self.delay)
+            exc.SetWeightFunction([str(x) for x in self.E_func])
             exc.AddBox(e_start, e_stop, priority=self.priority)
 
         # voltage/current planes
@@ -357,24 +358,6 @@ class WaveguidePort(Port):
         i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_function=self.H_func)
         i_probe.AddBox(m_start, m_stop)
 
-    def InitMode(self, wg_mode):
-        """
-        Init/Define waveguide mode, e.g. TE11, TM10.
-        """
-        self.WG_mode = wg_mode
-        assert len(self.WG_mode)==4, 'Invalid mode definition'
-        self.unit = self.CSX.GetGrid().GetDeltaUnit()
-        if self.WG_mode.startswith('TE'):
-            self.TE = True
-            self.TM = False
-        else:
-            self.TE = False
-            self.TM = True
-        self.M = float(self.WG_mode[2])
-        self.N = float(self.WG_mode[3])
-        self.kc = None
-        self.E_func = [0,0,0]
-        self.H_func = [0,0,0]
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
         k = 2.0*np.pi*freq/C0*self.ref_index
@@ -396,20 +379,29 @@ class RectWGPort(WaveguidePort):
 
     """
     def __init__(self, CSX, port_nr, start, stop, exc_dir, a, b, mode_name, excite=0, **kw):
+        Port.__init__(self, CSX, port_nr, start, stop, excite=0, **kw)
+        self.exc_ny  = CheckNyDir(exc_dir)
+        self.ny_P  = (self.exc_ny+1)%3
+        self.ny_PP = (self.exc_ny+2)%3
         self.WG_size = [a, b]
-        super(RectWGPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, exc_dir=exc_dir, mode_name=mode_name, excite=excite, **kw)
 
-    def InitMode(self, wg_mode):
-        """
-        Init/Define rectangular waveguide mode, e.g. TE11, TM10.
-        """
-        super(RectWGPort, self).InitMode(wg_mode)
+        self.WG_mode = mode_name
+        assert len(self.WG_mode)==4, 'Invalid mode definition'
+        self.unit = self.CSX.GetGrid().GetDeltaUnit()
+        if self.WG_mode.startswith('TE'):
+            self.TE = True
+            self.TM = False
+        else:
+            self.TE = False
+            self.TM = True
+        self.M = float(self.WG_mode[2])
+        self.N = float(self.WG_mode[3])
+
         assert self.TE, 'Currently only TE-modes are supported! Mode found: {}'.format(self.WG_mode)
 
         # values by David M. Pozar, Microwave Engineering, third edition
         a = self.WG_size[0]
         b = self.WG_size[1]
-        self.kc = np.sqrt((self.M*np.pi/a)**2 + (self.N*np.pi/b)**2)
 
         xyz = 'xyz'
         if self.start[self.ny_P]!=0:
@@ -421,14 +413,21 @@ class RectWGPort(WaveguidePort):
         else:
             name_PP = xyz[self.ny_P]
 
+        kc = np.sqrt((self.M*np.pi/a)**2 + (self.N*np.pi/b)**2)
+
         a /= self.unit
         b /= self.unit
+        E_func = [0,0,0]
+        H_func = [0,0,0]
         if self.N>0:
-            self.E_func[self.ny_P]  = '{}*cos({}*{})*sin({}*{})'.format(self.N/b   , self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
+            E_func[self.ny_P]  = '{}*cos({}*{})*sin({}*{})'.format(self.N/b   , self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
         if self.M>0:
-            self.E_func[self.ny_PP] = '{}*sin({}*{})*cos({}*{})'.format(-1*self.M/a, self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
+            E_func[self.ny_PP] = '{}*sin({}*{})*cos({}*{})'.format(-1*self.M/a, self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
 
         if self.M>0:
-            self.H_func[self.ny_P]  = '{}*sin({}*{})*cos({}*{})'.format(self.M/a, self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
+            H_func[self.ny_P]  = '{}*sin({}*{})*cos({}*{})'.format(self.M/a, self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
         if self.N>0:
-            self.H_func[self.ny_PP] = '{}*cos({}*{})*sin({}*{})'.format(self.N/b, self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
+            H_func[self.ny_PP] = '{}*cos({}*{})*sin({}*{})'.format(self.N/b, self.M*np.pi/a, name_P, self.N*np.pi/b, name_PP)
+
+        super(RectWGPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, exc_dir=exc_dir, E_WG_func=E_func, H_WG_func=H_func, kc=kc, excite=excite, **kw)
+
