@@ -115,10 +115,12 @@ RunOpenEMS( Sim_Path, Sim_CSX);
 freq = linspace( max([1e9,f0-fc]), f0+fc, 501 );
 port = calcPort(port, Sim_Path, freq);
 
-Zin = port.uf.tot ./ port.if.tot;
-s11 = port.uf.ref ./ port.uf.inc;
+%% Smith chart port reflection
+plotRefl(port, 'threshold', -10)
+title( 'reflection coefficient' );
 
 % plot feed point impedance
+Zin = port.uf.tot ./ port.if.tot;
 figure
 plot( freq/1e6, real(Zin), 'k-', 'Linewidth', 2 );
 hold on
@@ -130,6 +132,7 @@ ylabel( 'impedance Z_{in} / Ohm' );
 legend( 'real', 'imag' );
 
 % plot reflection coefficient S11
+s11 = port.uf.ref ./ port.uf.inc;
 figure
 plot( freq/1e6, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
 grid on
