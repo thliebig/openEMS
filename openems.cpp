@@ -821,6 +821,7 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 		this->SetTimeStep(dhelp);
 	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&dhelp)==TIXML_SUCCESS)
 		this->SetTimeStepFactor(dhelp);
+	return true;
 }
 
 void openEMS::SetGaussExcite(double f0, double fc)
