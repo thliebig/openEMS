@@ -418,13 +418,11 @@ bool openEMS::SetupProcessing()
 					}
 					if (CylinderCoords)
 						proc->SetMeshType(Processing::CYLINDRICAL_MESH);
-					if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3))
+					if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3) || (pb->GetProbeType()==11))
 					{
 						proc->SetDualTime(true);
 						proc->SetDualMesh(true);
 					}
-					if (pb->GetProbeType()==11)
-						proc->SetDualTime(true);
 					proc->SetProcessInterval(Nyquist/m_OverSampling);
 					if (pb->GetStartTime()>0 || pb->GetStopTime()>0)
 						proc->SetProcessStartStopTime(pb->GetStartTime(), pb->GetStopTime());
@@ -821,6 +819,7 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 		this->SetTimeStep(dhelp);
 	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&dhelp)==TIXML_SUCCESS)
 		this->SetTimeStepFactor(dhelp);
+	return true;
 }
 
 void openEMS::SetGaussExcite(double f0, double fc)

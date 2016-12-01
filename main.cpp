@@ -68,8 +68,12 @@ int main(int argc, char *argv[])
 	}
 
 	int EC = FDTD.ParseFDTDSetup(argv[1]);
+	if(!EC) {
+	  cerr << "openEMS - ParseFDTDSetup failed." << endl;
+	  exit(1);
+	}
 	EC = FDTD.SetupFDTD();
-	if (EC) return EC;
+	if (EC) exit(EC);
 	FDTD.RunFDTD();
 
 #ifdef MPI_SUPPORT
@@ -77,5 +81,5 @@ int main(int argc, char *argv[])
 	MPI::Finalize();
 #endif
 
-	return 0;
+	exit(0);
 }
