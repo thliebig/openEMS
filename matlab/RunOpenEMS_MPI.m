@@ -87,7 +87,7 @@ end
 
 if isfield(Settings.MPI,'Hosts')
     disp(['Running remote openEMS_MPI in working dir: ' work_path]);
-    [status]  = system(['mpiexec -host ' HostList ' -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
+    [status]  = system(['mpiexec ' Settings.MPI.GlobalArgs ' -host ' HostList ' -n ' int2str(NrProc) ' -wdir ' work_path ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);
 else
     disp('Running local openEMS_MPI');
     [status]  = system(['mpiexec ' Settings.MPI.GlobalArgs ' -n ' int2str(NrProc) ' ' Settings.MPI.Binary ' ' Sim_File ' ' opts ' ' append_unix]);

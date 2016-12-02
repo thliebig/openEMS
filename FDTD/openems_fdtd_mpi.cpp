@@ -210,7 +210,7 @@ bool openEMS_FDTD_MPI::SetupMPI()
 	if (numProcs!=m_NumProc)
 	{
 		if (m_MyID==0)
-			cerr << "openEMS_FDTD_MPI::SetupMPI: Error: Requested splits require " << numProcs << " processes, but only " << m_NumProc << " were found! Exit! " << endl;
+			cerr << "openEMS_FDTD_MPI::SetupMPI: Error: Requested splits require " << numProcs << " processes, but " << m_NumProc << " were found! Exit! " << endl;
 		exit(10);
 	}
 
@@ -256,8 +256,8 @@ bool openEMS_FDTD_MPI::SetupMPI()
 						grid->AddDiscLine(2, m_Original_Grid->GetLine(2,n) );
 
 					m_MPI_Op->SetSplitPos(0,m_SplitNumber[0].at(i));
-					m_MPI_Op->SetSplitPos(1,m_SplitNumber[1].at(i));
-					m_MPI_Op->SetSplitPos(2,m_SplitNumber[2].at(i));
+					m_MPI_Op->SetSplitPos(1,m_SplitNumber[1].at(j));
+					m_MPI_Op->SetSplitPos(2,m_SplitNumber[2].at(k));
 
 					if (i>0)
 						m_MPI_Op->SetNeighborDown(0,procTable[i-1][j][k]);
