@@ -418,11 +418,13 @@ bool openEMS::SetupProcessing()
 					}
 					if (CylinderCoords)
 						proc->SetMeshType(Processing::CYLINDRICAL_MESH);
-					if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3) || (pb->GetProbeType()==11))
+					if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3))
 					{
 						proc->SetDualTime(true);
 						proc->SetDualMesh(true);
 					}
+					if (pb->GetProbeType()==11)
+						proc->SetDualTime(true);
 					proc->SetProcessInterval(Nyquist/m_OverSampling);
 					if (pb->GetStartTime()>0 || pb->GetStopTime()>0)
 						proc->SetProcessStartStopTime(pb->GetStartTime(), pb->GetStopTime());
