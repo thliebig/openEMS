@@ -398,7 +398,7 @@ bool openEMS_FDTD_MPI::SetupProcessing()
 			{
 				//type is integral processing --> disable! Needs to be fixed!
 				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Warning: Processing: " << proc->GetName() << " occures multiple times and is being deactivated..." << endl;
-				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Note: Processing: Make sure that there are no splits inside probes or sources."
+				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Note: Processing: Make sure that there are no splits inside probes or sources." << endl;
 				deactivate = true;
 				rename = false;
 			}
