@@ -6,7 +6,7 @@ ELSE()
   SET( CMAKE_BUILD_TYPE Release CACHE STRING "Set to either \"Release\" or \"Debug\"" )
 ENDIF()
 
-PROJECT(openEMS CXX)
+PROJECT(openEMS CXX C)
 cmake_minimum_required(VERSION 2.8)
 
 # default
@@ -180,6 +180,7 @@ TARGET_LINK_LIBRARIES( openEMS
   ${fparser_LIBRARIES}
   tinyxml
   ${HDF5_LIBRARIES}
+  ${HDF5_HL_LIBRARIES}
   ${Boost_LIBRARIES}
   ${vtk_LIBS}
   ${MPI_LIBRARIES}
