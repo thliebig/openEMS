@@ -44,7 +44,7 @@ void Engine_Ext_TFSF::DoPostVoltageUpdates()
 	{
 		if ( numTS < n )
 			m_DelayLookup[n]=0;
-		else if ((numTS-n > length) && (p==0))
+		else if ((numTS-n >= length) && (p==0))
 			m_DelayLookup[n]=0;
 		else
 			m_DelayLookup[n] = numTS - n;
@@ -134,7 +134,7 @@ void Engine_Ext_TFSF::DoPostCurrentUpdates()
 	{
 		if ( numTS < n )
 			m_DelayLookup[n]=0;
-		else if ((numTS-n > length) && (p==0))
+		else if ((numTS-n >= length) && (p==0))
 			m_DelayLookup[n]=0;
 		else
 			m_DelayLookup[n] = numTS - n;

@@ -54,7 +54,7 @@ void Engine_Ext_Excitation::Apply2Voltages()
 				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
 				exc_pos *= (exc_pos>0);
 				exc_pos %= p;
-				exc_pos *= (exc_pos<=(int)length);
+				exc_pos *= (exc_pos<(int)length);
 				ny = m_Op_Exc->Volt_dir[n];
 				pos[0]=m_Op_Exc->Volt_index[0][n];
 				pos[1]=m_Op_Exc->Volt_index[1][n];
@@ -71,7 +71,7 @@ void Engine_Ext_Excitation::Apply2Voltages()
 				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
 				exc_pos *= (exc_pos>0);
 				exc_pos %= p;
-				exc_pos *= (exc_pos<=(int)length);
+				exc_pos *= (exc_pos<(int)length);
 				ny = m_Op_Exc->Volt_dir[n];
 				pos[0]=m_Op_Exc->Volt_index[0][n];
 				pos[1]=m_Op_Exc->Volt_index[1][n];
@@ -87,7 +87,7 @@ void Engine_Ext_Excitation::Apply2Voltages()
 				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
 				exc_pos *= (exc_pos>0);
 				exc_pos %= p;
-				exc_pos *= (exc_pos<=(int)length);
+				exc_pos *= (exc_pos<(int)length);
 				ny = m_Op_Exc->Volt_dir[n];
 				pos[0]=m_Op_Exc->Volt_index[0][n];
 				pos[1]=m_Op_Exc->Volt_index[1][n];
@@ -124,7 +124,7 @@ void Engine_Ext_Excitation::Apply2Current()
 				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
 				exc_pos *= (exc_pos>0);
 				exc_pos %= p;
-				exc_pos *= (exc_pos<=(int)length);
+				exc_pos *= (exc_pos<(int)length);
 				ny = m_Op_Exc->Curr_dir[n];
 				pos[0]=m_Op_Exc->Curr_index[0][n];
 				pos[1]=m_Op_Exc->Curr_index[1][n];
@@ -141,7 +141,7 @@ void Engine_Ext_Excitation::Apply2Current()
 				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
 				exc_pos *= (exc_pos>0);
 				exc_pos %= p;
-				exc_pos *= (exc_pos<=(int)length);
+				exc_pos *= (exc_pos<(int)length);
 				ny = m_Op_Exc->Curr_dir[n];
 				pos[0]=m_Op_Exc->Curr_index[0][n];
 				pos[1]=m_Op_Exc->Curr_index[1][n];
@@ -157,7 +157,7 @@ void Engine_Ext_Excitation::Apply2Current()
 				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
 				exc_pos *= (exc_pos>0);
 				exc_pos %= p;
-				exc_pos *= (exc_pos<=(int)length);
+				exc_pos *= (exc_pos<(int)length);
 				ny = m_Op_Exc->Curr_dir[n];
 				pos[0]=m_Op_Exc->Curr_index[0][n];
 				pos[1]=m_Op_Exc->Curr_index[1][n];

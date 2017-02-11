@@ -137,7 +137,7 @@ unsigned int Excitation::GetMaxExcitationTimestep() const
 {
 	FDTD_FLOAT maxAmp=0;
 	unsigned int maxStep=0;
-	for (unsigned int n=1; n<Length+1; ++n)
+	for (unsigned int n=0; n<Length; ++n)
 	{
 		if (fabs(Signal_volt[n])>maxAmp)
 		{
@@ -152,7 +152,7 @@ void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 {
 	if (dT==0) return;
 
-	Length = (unsigned int)(2.0 * 9.0/(2.0*PI*fc) / dT);
+	Length = (unsigned int)ceil(2.0 * 9.0/(2.0*PI*fc) / dT);
 	if (Length>(unsigned int)nTS)
 	{
 		cerr << "Operator::CalcGaussianPulsExcitation: Requested excitation pusle would be " << Length << " timesteps or " << Length * dT << " s long. Cutting to max number of timesteps!" << endl;
@@ -160,13 +160,11 @@ void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 	}
 	delete[] Signal_volt;
 	delete[] Signal_curr;
-	Signal_volt = new FDTD_FLOAT[Length+1];
-	Signal_curr = new FDTD_FLOAT[Length+1];
-	Signal_volt[0]=0.0;
-	Signal_curr[0]=0.0;
-	for (unsigned int n=1; n<Length+1; ++n)
+	Signal_volt = new FDTD_FLOAT[Length];
+	Signal_curr = new FDTD_FLOAT[Length];
+	for (unsigned int n=0; n<Length; ++n)
 	{
-		double t = (n-1)*dT;
+		double t = n*dT;
 		Signal_volt[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
 		t += 0.5*dT;
 		Signal_curr[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
@@ -182,12 +180,12 @@ void Excitation::CalcDiracPulsExcitation()
 {
 	if (dT==0) return;
 
-	Length = 1;
+	Length = 2;
 //	cerr << "Operator::CalcDiracPulsExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
 	delete[] Signal_volt;
 	delete[] Signal_curr;
-	Signal_volt = new FDTD_FLOAT[Length+1];
-	Signal_curr = new FDTD_FLOAT[Length+1];
+	Signal_volt = new FDTD_FLOAT[Length];
+	Signal_curr = new FDTD_FLOAT[Length];
 	Signal_volt[0]=0.0;
 	Signal_volt[1]=1.0;
 	Signal_curr[0]=0.0;
@@ -203,11 +201,11 @@ void Excitation::CalcStepExcitation()
 {
 	if (dT==0) return;
 
-	Length = 1;
+	Length = 2;
 	delete[] Signal_volt;
 	delete[] Signal_curr;
-	Signal_volt = new FDTD_FLOAT[Length+1];
-	Signal_curr = new FDTD_FLOAT[Length+1];
+	Signal_volt = new FDTD_FLOAT[Length];
+	Signal_curr = new FDTD_FLOAT[Length];
 	Signal_volt[0]=1.0;
 	Signal_volt[1]=1.0;
 	Signal_curr[0]=1.0;
@@ -228,10 +226,8 @@ void Excitation::CalcCustomExcitation(double f0, int nTS, string signal)
 //	cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << ExciteLength << " timesteps" << endl;
 	delete[] Signal_volt;
 	delete[] Signal_curr;
-	Signal_volt = new FDTD_FLOAT[Length+1];
-	Signal_curr = new FDTD_FLOAT[Length+1];
-	Signal_volt[0]=0.0;
-	Signal_curr[0]=0.0;
+	Signal_volt = new FDTD_FLOAT[Length];
+	Signal_curr = new FDTD_FLOAT[Length];
 	FunctionParser fParse;
 	fParse.AddConstant("pi", 3.14159265358979323846);
 	fParse.AddConstant("e", 2.71828182845904523536);
@@ -242,9 +238,9 @@ void Excitation::CalcCustomExcitation(double f0, int nTS, string signal)
 		exit(1);
 	}
 	double vars[1];
-	for (unsigned int n=1; n<Length+1; ++n)
+	for (unsigned int n=0; n<Length; ++n)
 	{
-		vars[0] = (n-1)*dT;
+		vars[0] = n*dT;
 		Signal_volt[n] = fParse.Eval(vars);
 		vars[0] += 0.5*dT;
 		Signal_curr[n] = fParse.Eval(vars);
@@ -260,17 +256,16 @@ void Excitation::CalcSinusExcitation(double f0, int nTS)
 	if (dT==0) return;
 	if (nTS<=0) return;
 
-	Length = (unsigned int)(2.0/f0/dT);
-	//cerr << "Operator::CalcSinusExcitation: Length of the excite signal: " << Length << " timesteps " << Length*dT << "s" << endl;
+	Length = (unsigned int)round(2.0/f0/dT);
 	delete[] Signal_volt;
 	delete[] Signal_curr;
-	Signal_volt = new FDTD_FLOAT[Length+1];
-	Signal_curr = new FDTD_FLOAT[Length+1];
+	Signal_volt = new FDTD_FLOAT[Length];
+	Signal_curr = new FDTD_FLOAT[Length];
 	Signal_volt[0]=0.0;
 	Signal_curr[0]=0.0;
-	for (unsigned int n=1; n<Length+1; ++n)
+	for (unsigned int n=1; n<Length; ++n)
 	{
-		double t = (n-1)*dT;
+		double t = n*dT;
 		Signal_volt[n] = sin(2.0*PI*f0*t);
 		t += 0.5*dT;
 		Signal_curr[n] = sin(2.0*PI*f0*t);
@@ -286,8 +281,8 @@ void Excitation::DumpVoltageExcite(string filename)
 	file.open( filename.c_str() );
 	if (file.fail())
 		return;
-	for (unsigned int n=1; n<Length+1; ++n)
-		file << (n-1)*dT << "\t" << Signal_volt[n] << "\n";
+	for (unsigned int n=0; n<Length; ++n)
+		file << n*dT << "\t" << Signal_volt[n] << "\n";
 	file.close();
 }
 
@@ -297,8 +292,8 @@ void Excitation::DumpCurrentExcite(string filename)
 	file.open( filename.c_str() );
 	if (file.fail())
 		return;
-	for (unsigned int n=1; n<Length+1; ++n)
-		file << (n-1)*dT + 0.5*dT << "\t" << Signal_curr[n] << "\n";
+	for (unsigned int n=0; n<Length; ++n)
+		file << n*dT + 0.5*dT << "\t" << Signal_curr[n] << "\n";
 	file.close();
 }
 
