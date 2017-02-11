@@ -28,7 +28,7 @@ exite_offset = 1300;
 excite_angle = 45;
 
 %% setup FDTD parameter & excitation function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-FDTD = InitFDTD(100000,1e-4,'CoordSystem',1,'MultiGrid',split);
+FDTD = InitFDTD('NrTS', 100000, 'EndCriteria', 1e-4, 'CoordSystem', 1, 'MultiGrid', split);
 FDTD = SetGaussExcite(FDTD,f0,f0/2);
 BC = [0 3 0 0 0 0];             % pml in positive r-direction
 FDTD = SetBoundaryCond(FDTD,BC);

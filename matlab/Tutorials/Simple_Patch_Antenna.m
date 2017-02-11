@@ -1,20 +1,20 @@
-%
-% Tutorials / simple patch antenna
+%% Simple Patch Antenna Tutorial
 %
 % Describtion at:
-% http://openems.de/index.php/Tutorial:_Simple_Patch_Antenna
+% <http://openems.de/index.php/Tutorial:_Simple_Patch_Antenna>
 %
 % Tested with
 %  - Matlab 2013a / Octave 4.0
-%  - openEMS v0.0.33
+%  - openEMS v0.0.35
 %
-% (C) 2010-2015 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2010-2017 Thorsten Liebig <thorsten.liebig@uni-due.de>
+%%
 
 close all
 clear
 clc
 
-%% setup the simulation
+%% Setup the Simulation
 physical_constants;
 unit = 1e-3; % all length in mm
 
@@ -38,7 +38,7 @@ feed.R = 50;     %feed resistance
 % size of the simulation box
 SimBox = [200 200 150];
 
-%% setup FDTD parameter & excitation function
+%% Setup FDTD Parameter & Excitation Function
 f0 = 2e9; % center frequency
 fc = 1e9; % 20 dB corner frequency
 FDTD = InitFDTD( 'NrTs', 30000 );
@@ -46,7 +46,7 @@ FDTD = SetGaussExcite( FDTD, f0, fc );
 BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'}; % boundary conditions
 FDTD = SetBoundaryCond( FDTD, BC );
 
-%% setup CSXCAD geometry & mesh
+%% Setup CSXCAD Geometry & Mesh
 CSX = InitCSX();
 
 %initialize the mesh with the "air-box" dimensions
@@ -54,13 +54,13 @@ mesh.x = [-SimBox(1)/2 SimBox(1)/2];
 mesh.y = [-SimBox(2)/2 SimBox(2)/2];
 mesh.z = [-SimBox(3)/3 SimBox(3)*2/3];
 
-%% create patch
+% Create Patch
 CSX = AddMetal( CSX, 'patch' ); % create a perfect electric conductor (PEC)
 start = [-patch.width/2 -patch.length/2 substrate.thickness];
 stop  = [ patch.width/2  patch.length/2 substrate.thickness];
 CSX = AddBox(CSX,'patch',10,start,stop); % add a box-primitive to the metal property 'patch'
 
-%% create substrate
+% Create Substrate
 CSX = AddMaterial( CSX, 'substrate' );
 CSX = SetMaterialProperty( CSX, 'substrate', 'Epsilon', substrate.epsR, 'Kappa', substrate.kappa );
 start = [-substrate.width/2 -substrate.length/2 0];
@@ -70,18 +70,18 @@ CSX = AddBox( CSX, 'substrate', 0, start, stop );
 % add extra cells to discretize the substrate thickness
 mesh.z = [linspace(0,substrate.thickness,substrate.cells+1) mesh.z];
 
-%% create ground (same size as substrate)
+% Create Ground same size as substrate
 CSX = AddMetal( CSX, 'gnd' ); % create a perfect electric conductor (PEC)
 start(3)=0;
 stop(3) =0;
 CSX = AddBox(CSX,'gnd',10,start,stop);
 
-%% apply the excitation & resist as a current source
+% Apply the Excitation & Resist as a Current Source
 start = [feed.pos 0 0];
 stop  = [feed.pos 0 substrate.thickness];
 [CSX port] = AddLumpedPort(CSX, 5 ,1 ,feed.R, start, stop, [0 0 1], true);
 
-%% finalize the mesh
+% Finalize the Mesh
 % detect all edges except of the patch
 mesh = DetectEdges(CSX, mesh,'ExcludeProperty','patch');
 % detect and set a special 2D metal edge mesh for the patch
@@ -90,28 +90,32 @@ mesh = DetectEdges(CSX, mesh,'SetProperty','patch','2D_Metal_Edge_Res', c0/(f0+f
 mesh = SmoothMesh(mesh, c0/(f0+fc)/unit/20);
 CSX = DefineRectGrid(CSX, unit, mesh);
 
-%% add a nf2ff calc box; size is 3 cells away from MUR boundary condition
+CSX = AddDump(CSX,'Hf', 'DumpType', 11, 'Frequency',[2.4e9]);
+CSX = AddBox(CSX,'Hf',10,[-substrate.width -substrate.length -10*substrate.thickness],[substrate.width +substrate.length 10*substrate.thickness]); %assign box
+
+% add a nf2ff calc box; size is 3 cells away from MUR boundary condition
 start = [mesh.x(4)     mesh.y(4)     mesh.z(4)];
 stop  = [mesh.x(end-3) mesh.y(end-3) mesh.z(end-3)];
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
 
-%% prepare simulation folder
+%% Prepare and Run Simulation
 Sim_Path = 'tmp_Patch_Ant';
 Sim_CSX = 'patch_ant.xml';
 
+% create an empty working directory
 [status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
 [status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
 
-%% write openEMS compatible xml-file
+% write openEMS compatible xml-file
 WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX );
 
-%% show the structure
+% show the structure
 CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
 
-%% run openEMS
+% run openEMS
 RunOpenEMS( Sim_Path, Sim_CSX);
 
-%% postprocessing & do the plots
+%% Postprocessing & Plots
 freq = linspace( max([1e9,f0-fc]), f0+fc, 501 );
 port = calcPort(port, Sim_Path, freq);
 
@@ -142,7 +146,7 @@ ylabel( 'reflection coefficient |S_{11}|' );
 
 drawnow
 
-%% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% NFFF Plots
 %find resonance frequncy from s11
 f_res_ind = find(s11==min(s11));
 f_res = freq(f_res_ind);
@@ -169,7 +173,7 @@ plotFFdB(nf2ff,'xaxis','theta','param',[1 2])
 
 drawnow
 
-%%
+% Show 3D pattern
 disp( 'calculating 3D far field pattern and dumping to vtk (use Paraview to visualize)...' );
 thetaRange = (0:2:180);
 phiRange = (0:2:360) - 180;
