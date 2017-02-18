@@ -64,7 +64,8 @@ start = [mesh.x(1),   mesh.y(1),   -strip_substrate_thickness];
 stop  = [mesh.x(end), mesh.y(end), +strip_substrate_thickness+msl_substrate_thickness];
 CSX = AddBox( CSX, 'RO4350B', 0, start, stop );
 
-% Create a PEC called 'metal'
+% Create a PEC called 'metal' and 'gnd'
+CSX = AddMetal( CSX, 'gnd' ); 
 CSX = AddMetal( CSX, 'metal' ); 
 
 % Create strip line port (incl. metal stip line)
@@ -99,7 +100,7 @@ p(1,end+1) = mesh.x(end);
 p(2,end  ) = mesh.y(end);
 p(1,end+1) = mesh.x(1);
 p(2,end  ) = mesh.y(end);
-CSX = AddPolygon( CSX, 'metal', 1, 'z', strip_substrate_thickness, p);
+CSX = AddPolygon( CSX, 'gnd', 1, 'z', strip_substrate_thickness, p);
 
 %% Write/Show/Run the openEMS compatible xml-file
 Sim_Path = 'tmp';
