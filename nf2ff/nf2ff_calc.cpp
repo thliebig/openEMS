@@ -496,7 +496,7 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, complex<f
 			m_H_theta[tn][pn] += factor*(Np[tn][pn] - Lt[tn][pn]/Z0);
 			m_H_phi[tn][pn] -= factor*(Nt[tn][pn] + Lp[tn][pn]/Z0);
 
-			m_P_rad[tn][pn] = m_radius*m_radius/(2*fZ0) * abs((m_E_theta[tn][pn]*conj(m_E_theta[tn][pn])+m_E_phi[tn][pn]*conj(m_E_phi[tn][pn])));
+			m_P_rad[tn][pn] = abs((m_E_theta[tn][pn]*conj(m_E_theta[tn][pn])+m_E_phi[tn][pn]*conj(m_E_phi[tn][pn])))/(2*fZ0);
 			if (m_P_rad[tn][pn]>P_max)
 				P_max = m_P_rad[tn][pn];
 		}
