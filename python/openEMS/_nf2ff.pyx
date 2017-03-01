@@ -49,6 +49,9 @@ cdef class _nf2ff:
         ny = CheckNyDir(ny)
         self.thisptr.SetMirror(mirr_type, ny, pos)
 
+    def SetRadius(self, radius):
+        self.thisptr.SetRadius(radius)
+
     def Write2HDF5(self, filename):
         return self.thisptr.Write2HDF5(filename.encode('UTF-8'))
 

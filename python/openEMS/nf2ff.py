@@ -94,7 +94,7 @@ class nf2ff:
                 self.e_dump.AddBox(l_start, l_stop)
                 self.h_dump.AddBox(l_start, l_stop)
 
-    def CalcNF2FF(self, sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
+    def CalcNF2FF(self, sim_path, freq, theta, phi, radius=1, center=[0,0,0], outfile=None, read_cached=False, verbose=0):
         """ CalcNF2FF(sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
 
         Calculate the far-field after the simulation is done.
@@ -102,10 +102,11 @@ class nf2ff:
         :param sim_path: str -- Simulation path
         :param freq: array like -- list of frequency for transformation
         :param theta/phi: array like -- Theta/Phi angles to calculate the far-field
+        :param radius: float -- Radius to calculate the far-field (default is 1m)
         :param center: (3,) array -- phase center, must be inside the recording box
         :param outfile: str -- File to save results in. (defaults to recording name)
-        :param read_cached: bool -- enable/disable read already existing results
-        :param verbose: int -- set verbose level
+        :param read_cached: bool -- enable/disable read already existing results (default off)
+        :param verbose: int -- set verbose level (default 0)
 
         :returns: nf2ff_results class instance
         """
@@ -131,6 +132,8 @@ class nf2ff:
                 nfc.SetMirror(self.mirror[2*ny]  , ny, self.start[ny])
                 nfc.SetMirror(self.mirror[2*ny+1], ny, self.stop[ny])
 
+            nfc.SetRadius(radius)
+
             for n in range(6):
                 fn_e = os.path.join(sim_path, self.e_file + '_{}.h5'.format(n))
                 fn_h = os.path.join(sim_path, self.h_file + '_{}.h5'.format(n))
@@ -141,9 +144,10 @@ class nf2ff:
 
         result = nf2ff_results(fn)
         if result.phi is not None:
-            assert utilities.Check_Array_Equal(np.rad2deg(result.theta), self.theta, 1e-4)
-            assert utilities.Check_Array_Equal(np.rad2deg(result.phi), self.phi, 1e-4)
-            assert utilities.Check_Array_Equal(result.freq, self.freq, 1e-6, relative=True)
+            assert np.abs((result.r-radius)/radius)<1e-6, 'Radius does not match. Did you read an invalid chached result? Try "read_cached=False"'
+            assert utilities.Check_Array_Equal(np.rad2deg(result.theta), self.theta, 1e-4), 'Theta array does not match. Did you read an invalid chached result? Try "read_cached=False"'
+            assert utilities.Check_Array_Equal(np.rad2deg(result.phi), self.phi, 1e-4), 'Phi array does not match. Did you read an invalid chached result? Try "read_cached=False"'
+            assert utilities.Check_Array_Equal(result.freq, self.freq, 1e-6, relative=True), 'Frequency array does not match. Did you read an invalid chached result? Try "read_cached=False"'
         return result
 
 class nf2ff_results:
