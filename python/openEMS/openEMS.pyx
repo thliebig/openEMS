@@ -19,7 +19,9 @@
 import os, sys, shutil
 import numpy as np
 cimport openEMS
-from . import ports, nf2ff
+from . import ports, nf2ff, automesh
+
+from CSXCAD.Utilities import GetMultiDirs
 
 cdef class openEMS:
     """ openEMS
@@ -267,7 +269,15 @@ cdef class openEMS:
         openEMS.ports.LumpedPort
         """
         assert self.__CSX is not None, 'AddLumpedPort: CSX is not set!'
-        return ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
+        port = ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
+        edges2grid = kw.get('edges2grid', None)
+        if edges2grid is not None:
+            grid = self.__CSX.GetGrid()
+            for n in GetMultiDirs(edges2grid):
+                grid.AddLine(n, start[n])
+                if start[n] != stop[n]:
+                    grid.AddLine(n, stop[n])
+        return port
 
     def AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func, H_func, kc, excite=0, **kw):
         """ AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func, H_func, kc, excite=0, **kw)
@@ -363,6 +373,42 @@ cdef class openEMS:
         """
         self.__CSX = CSX
         self.thisptr.SetCSX(CSX.thisptr)
+
+    def GetCSX(self):
+        return self.__CSX
+
+    def AddEdges2Grid(self, dirs, primitives=None, properties=None, **kw):
+        """ AddEdges2Grid(primitives, dirs, **kw)
+
+        Add the edges of the given primitives to the FDTD grid.
+
+        :param dirs: primitives -- one or more primitives
+        :param dirs: str -- 'x','y','z' or 'xy', 'yz' or 'xyz' or 'all'
+        """
+        csx = self.GetCSX()
+        if csx is None:
+            raise Exception('AddEdges2Grid: Unable to access CSX!')
+        prim_list = []
+        if primitives is not None and  type(primitives) is not list:
+            prim_list.append(primitives)
+        elif primitives is not None:
+            prim_list += primitives
+
+        if properties is not None and  type(properties) is not list:
+            prim_list += properties.GetAllPrimitives()
+        elif primitives is not None:
+            for prop in properties:
+                prim_list += prop.GetAllPrimitives()
+
+        grid = csx.GetGrid()
+        for prim in prim_list:
+            hint = automesh.mesh_hint_from_primitive(prim, dirs, **kw)
+            if hint is None:
+                continue
+            for n in range(3):
+                if hint[n] is None:
+                    continue
+                grid.AddLine(n, hint[n])
 
     def Run(self, sim_path, cleanup=False, setup_only=False, verbose=None):
         """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)

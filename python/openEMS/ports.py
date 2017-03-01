@@ -158,7 +158,7 @@ class LumpedPort(Port):
         elif self.R==0:
             lumped_R = CSX.AddMetal(self.lbl_temp.format('resist'))
 
-        lumped_R.AddBox(self.start, self.stop, priority=self.priority, edges2grid=kw.get('edges2grid', None))
+        lumped_R.AddBox(self.start, self.stop, priority=self.priority)
 
         if excite!=0:
             exc_vec = np.zeros(3)

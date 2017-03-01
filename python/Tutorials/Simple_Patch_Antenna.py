@@ -58,7 +58,7 @@ mesh_res = C0/(f0+fc)/1e-3/20
 
 ### Generate properties, primitives and mesh-grid
 #initialize the mesh with the "air-box" dimensions
-mesh.AddLine('x', [-SimBox[0]/2, feed_pos, SimBox[0]/2])
+mesh.AddLine('x', [-SimBox[0]/2, SimBox[0]/2])
 mesh.AddLine('y', [-SimBox[1]/2, SimBox[1]/2]          )
 mesh.AddLine('z', [-SimBox[2]/3, SimBox[2]*2/3]        )
 
@@ -66,14 +66,14 @@ mesh.AddLine('z', [-SimBox[2]/3, SimBox[2]*2/3]        )
 patch = CSX.AddMetal( 'patch' ) # create a perfect electric conductor (PEC)
 start = [-patch_width/2, -patch_length/2, substrate_thickness]
 stop  = [ patch_width/2 , patch_length/2, substrate_thickness]
-pb=patch.AddBox(priority=10, start=start, stop=stop) # add a box-primitive to the metal property 'patch'
-pb.AddEdges2Grid('xy', metal_edge_res=mesh_res/2)
+patch.AddBox(priority=10, start=start, stop=stop) # add a box-primitive to the metal property 'patch'
+FDTD.AddEdges2Grid(dirs='xy', properties=patch, metal_edge_res=mesh_res/2)
 
 # create substrate
 substrate = CSX.AddMaterial( 'substrate', epsilon=substrate_epsR, kappa=substrate_kappa)
 start = [-substrate_width/2, -substrate_length/2, 0]
 stop  = [ substrate_width/2,  substrate_length/2, substrate_thickness]
-sb=substrate.AddBox( priority=0, start=start, stop=stop )
+substrate.AddBox( priority=0, start=start, stop=stop )
 
 # add extra cells to discretize the substrate thickness
 mesh.AddLine('z', linspace(0,substrate_thickness,substrate_cells+1))
@@ -82,12 +82,14 @@ mesh.AddLine('z', linspace(0,substrate_thickness,substrate_cells+1))
 gnd = CSX.AddMetal( 'gnd' ) # create a perfect electric conductor (PEC)
 start[2]=0
 stop[2] =0
-gb=gnd.AddBox(start, stop, priority=10, edges2grid='all')
+gnd.AddBox(start, stop, priority=10)
+
+FDTD.AddEdges2Grid(dirs='xy', properties=gnd)
 
 # apply the excitation & resist as a current source
 start = [feed_pos, 0, 0]
 stop  = [feed_pos, 0, substrate_thickness]
-port = FDTD.AddLumpedPort(1 ,feed_R, start, stop, 'z', 1.0, priority=5, edges2grid='all')
+port = FDTD.AddLumpedPort(1, feed_R, start, stop, 'z', 1.0, priority=5, edges2grid='xy')
 
 mesh.SmoothMeshLines('all', mesh_res, 1.4)
 
