@@ -12,7 +12,6 @@ Makefile*
 *.pro.user*
 *.user
 *.orig
-openEMS
 localPaths.pri
 .directory
 
@@ -22,3 +21,11 @@ CMakeCache.txt
 cmake_install.cmake
 install_manifest.txt
 localConfig.cmake
+
+#python
+*.pyc
+*.pyo
+python/**/*.cpp
+!python/doc
+python/doc/_build
+python/doc/Tutorials/__*
