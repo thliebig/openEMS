@@ -28,7 +28,7 @@ function [delay, fidelity, nf2ff_out] = DelayFidelity(nf2ff, port, path, weight_
 %   theta = [-180:10:180] * pi / 180;
 %   phi = [0, 90] * pi / 180;
 %   % use circular right handed polarization
-%   [delay, fidelity] = DelayFidelity2(nf2ff, port, Sim_Path, 1i, 1, theta, phi, f_0, f_c, 'Mode', 1);
+%   [delay, fidelity] = DelayFidelity2(nf2ff, port, Sim_Path, -1i, 1, theta, phi, f_0, f_c, 'Mode', 1);
 %   figure
 %   polar(theta.', delay(:,1) * 3e11); % delay in mm
 %   figure
