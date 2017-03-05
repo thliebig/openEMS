@@ -1,5 +1,5 @@
 function [delay, fidelity, nf2ff_out] = DelayFidelity(nf2ff, port, path, weight_theta, weight_phi, theta, phi, f_0, f_c, varargin)
-% [delay, fidelity] = DelayFidelity(nf2ff, port, path, theta, phi, f_lo, f_hi, varargin)
+% [delay, fidelity] = DelayFidelity(nf2ff, port, path, weight_theta, weight_phi, theta, phi, f_lo, f_hi, varargin)
 % 
 % 
 % This function calculates the time delay from the source port to the phase center of the antenna and the fidelity. 
@@ -11,8 +11,8 @@ function [delay, fidelity, nf2ff_out] = DelayFidelity(nf2ff, port, path, weight_
 %   nf2ff: return value of CreateNF2FFBox.
 %   port: return value of AddLumpedPort
 %   path: path of the simulation results.
-%   weight_theta: weight if the E_theta component 
-%   weight_phi: eight of the E_phi component
+%   weight_theta: weight of the E_theta component 
+%   weight_phi: weight of the E_phi component
 %     -> with both (possibly complex) parameters any polarization can be examined
 %   theta: theta values to be simulated
 %   phi: phi values to be simulated
@@ -27,7 +27,8 @@ function [delay, fidelity, nf2ff_out] = DelayFidelity(nf2ff, port, path, weight_
 % example:
 %   theta = [-180:10:180] * pi / 180;
 %   phi = [0, 90] * pi / 180;
-%   [delay, fidelity] = DelayFidelity2(nf2ff, port, Sim_Path, sin(tilt), cos(tilt), theta, phi, f_0, f_c, 'Mode', 1);
+%   % use circular right handed polarization
+%   [delay, fidelity] = DelayFidelity2(nf2ff, port, Sim_Path, 1i, 1, theta, phi, f_0, f_c, 'Mode', 1);
 %   figure
 %   polar(theta.', delay(:,1) * 3e11); % delay in mm
 %   figure
