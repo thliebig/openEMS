@@ -18,9 +18,11 @@ function h = plotRefl(port, varargin)
 %                    for the frequency (always in MHz), default is 0
 %   'threshold':   - Threshold value (in dB) for the upper and lower
 %                    cutoff frequency, default is -3
+%   'fmarkers':    - set lower and upper frequency marker in Hz manually, 
+%                    like so: [4e9, 6.5e9]
 %   example:
 %       myport = calcPort(myport, Sim_Path, linspace(f_0-f_c, f_0+f_c, 200));
-%       plotRefl(myport);
+%       plotRefl(myport, 'fmarkers', [4e9, 6.5e9]);
 %
 % See also calcPort
 % 
@@ -31,14 +33,16 @@ function h = plotRefl(port, varargin)
 %defaults
 precision = 0;
 threshold = -3;
-
+fmarkers = [];
 
 for n=1:2:numel(varargin)
     if (strcmp(varargin{n},'precision')==1);
         precision = varargin{n+1};
     elseif (strcmp(varargin{n},'threshold')==1);
         threshold = varargin{n+1};
-    else
+    elseif (strcmp(varargin{n},'fmarkers')==1);
+        fmarkers = varargin{n+1};
+	else
         warning('openEMS:polarFF',['unknown argument key: ''' varargin{n} '''']);
     end
 end
@@ -111,14 +115,21 @@ text (real (rho), imag (rho), '0');
 
 s11dB = 20*log10(abs(s11));
 
+if(isempty(fmarkers))
 upperind = s11dB(1:end-1) < threshold & s11dB(2:end) > threshold;
 lowerind = s11dB(1:end-1) > threshold & s11dB(2:end) < threshold;
+else
+upperind = [nthargout(2, @min, abs(fmarkers(2)-port.f))];
+lowerind = [nthargout(2, @min, abs(fmarkers(1)-port.f))];
+end
+
 minind = nthargout(2, @min, s11dB);
 handle1 = plot(s11(lowerind),['<','b']);
 handle2 = plot(s11(upperind),['>','b']);
 handle3 = plot(s11(minind),['*', 'b']);
 llegend = num2str(port.f(lowerind)(1)/1e6, ffmt);
 ulegend = num2str(port.f(upperind)(1)/1e6, ffmt);
+
 
 if nnz(lowerind) > 1
   for i= 2:nnz(lowerind)
