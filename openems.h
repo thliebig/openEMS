@@ -73,6 +73,8 @@ public:
 	void DebugMaterial() {DebugMat=true;}
 	void DebugOperator() {DebugOp=true;}
 	void DebugBox() {m_debugBox=true;}
+	void DebugPEC() {m_debugPEC=true;}
+	void DebugCSX() {m_debugCSX=true;}
 
 	void Set_BC_Type(int idx, int type);
 	int Get_BC_Type(int idx);

@@ -182,13 +182,13 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	else if (strcmp(argv,"--debug-PEC")==0)
 	{
 		cout << "openEMS - dumping PEC info to 'PEC_dump.vtk'" << endl;
-		m_debugPEC = true;
+		DebugPEC();
 		return true;
 	}
 	else if (strcmp(argv,"--debug-CSX")==0)
 	{
 		cout << "openEMS - dumping CSX geometry to 'debugCSX.xml'" << endl;
-		m_debugCSX = true;
+		DebugCSX();
 		return true;
 	}
 	else if (strcmp(argv,"--engine=basic")==0)
