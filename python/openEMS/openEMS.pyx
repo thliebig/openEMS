@@ -410,7 +410,7 @@ cdef class openEMS:
                     continue
                 grid.AddLine(n, hint[n])
 
-    def Run(self, sim_path, cleanup=False, setup_only=False, verbose=None):
+    def Run(self, sim_path, cleanup=False, setup_only=False, debug_pec=False, verbose=None):
         """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
 
         Run the openEMS FDTD simulation.
@@ -429,6 +429,8 @@ cdef class openEMS:
         os.chdir(sim_path)
         if verbose is not None:
             self.thisptr.SetVerboseLevel(verbose)
+        if debug_pec:
+            self.thisptr.DebugPEC()
         assert os.getcwd() == sim_path
         _openEMS.WelcomeScreen()
         cdef int EC

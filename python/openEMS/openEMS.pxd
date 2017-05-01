@@ -48,6 +48,9 @@ cdef extern from "openEMS/openems.h":
         void SetGaussExcite(double f0, double fc)
 
         void SetVerboseLevel(int level)
+        void DebugPEC()
+        void DebugMaterial()
+        void DebugCSX()
 
         int SetupFDTD()
         void RunFDTD()
