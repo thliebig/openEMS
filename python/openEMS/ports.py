@@ -66,8 +66,8 @@ class Port:
         self.start    = np.array(start, np.float)
         self.stop     = np.array(stop, np.float)
         self.Z_ref    = None
-        self.U_filenames = []
-        self.I_filenames = []
+        self.U_filenames = kw.get('U_filenames', [])
+        self.I_filenames = kw.get('I_filenames', [])
 
         self.priority = 0
         if 'priority' in kw:

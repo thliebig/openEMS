@@ -396,7 +396,7 @@ cdef class openEMS:
 
         if properties is not None and  type(properties) is not list:
             prim_list += properties.GetAllPrimitives()
-        elif primitives is not None:
+        elif properties is not None:
             for prop in properties:
                 prim_list += prop.GetAllPrimitives()
 
