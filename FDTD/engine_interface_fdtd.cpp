@@ -47,6 +47,11 @@ double* Engine_Interface_FDTD::GetJField(const unsigned int* pos, double* out) c
 	return GetRawInterpolatedField(pos, out, 1);
 }
 
+double* Engine_Interface_FDTD::GetDField(const unsigned int* pos, double* out) const
+{
+	return GetRawInterpolatedField(pos, out, 3);
+}
+
 double* Engine_Interface_FDTD::GetRotHField(const unsigned int* pos, double* out) const
 {
 	return GetRawInterpolatedField(pos, out, 2);
@@ -117,6 +122,27 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 
 double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) const
 {
+		return GetRawInterpolatedDualField(pos, out, 0);
+}
+
+double* Engine_Interface_FDTD::GetBField(const unsigned int* pos, double* out) const
+{
+		return GetRawInterpolatedDualField(pos, out, 1);
+}
+
+double Engine_Interface_FDTD::GetRawDualField(unsigned int n, const unsigned int* pos, int type) const
+{
+	double value = m_Eng->GetCurr(n,pos[0],pos[1],pos[2]);
+	double delta = m_Op->GetEdgeLength(n,pos,true);
+	if ((type==0) && (delta))
+		return value/delta;
+	if ((type==1) && (m_Op->m_mueR) && (delta))
+		return value*m_Op->m_mueR[n][pos[0]][pos[1]][pos[2]]/delta;
+	return 0.0;
+}
+
+double* Engine_Interface_FDTD::GetRawInterpolatedDualField(const unsigned int* pos, double* out, int type) const
+{
 	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
 	int nP,nPP;
 	double delta;
@@ -124,9 +150,9 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 	{
 	default:
 	case NO_INTERPOLATION:
-		out[0] = m_Eng->GetCurr(0,pos) / m_Op->GetEdgeLength(0,pos,true);
-		out[1] = m_Eng->GetCurr(1,pos) / m_Op->GetEdgeLength(1,pos,true);
-		out[2] = m_Eng->GetCurr(2,pos) / m_Op->GetEdgeLength(2,pos,true);
+		out[0] = GetRawDualField(0, pos, type);
+		out[1] = GetRawDualField(1, pos, type);
+		out[2] = GetRawDualField(2, pos, type);
 		break;
 	case NODE_INTERPOLATE:
 		for (int n=0; n<3; ++n)
@@ -138,13 +164,13 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 				out[n] = 0;
 				continue;
 			}
-			out[n]=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+			out[n] = GetRawDualField(n, iPos, type);
 			--iPos[nP];
-			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+			out[n]+= GetRawDualField(n, iPos, type);
 			--iPos[nPP];
-			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+			out[n]+= GetRawDualField(n, iPos, type);
 			++iPos[nP];
-			out[n]+=m_Eng->GetCurr(n,iPos)/m_Op->GetEdgeLength(n,iPos,true);
+			out[n]+= GetRawDualField(n, iPos, type);
 			++iPos[nPP];
 			out[n]/=4;
 		}
@@ -153,7 +179,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 		for (int n=0; n<3; ++n)
 		{
 			delta = m_Op->GetEdgeLength(n,iPos,true);
-			out[n] = m_Eng->GetCurr(n,iPos);
+			out[n] = GetRawDualField(n, iPos, type);
 			if ((pos[n]>=m_Op->GetNumberOfLines(n,true)-1))
 			{
 				out[n] = 0; //magnetic field on the outer boundaries is always zero
@@ -162,7 +188,7 @@ double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) c
 			++iPos[n];
 			double deltaUp = m_Op->GetEdgeLength(n,iPos,true);
 			double deltaRel = delta / (delta+deltaUp);
-			out[n] = out[n]*(1.0-deltaRel)/delta + (double)m_Eng->GetCurr(n,iPos)/deltaUp*deltaRel;
+			out[n] = out[n]*(1.0-deltaRel) + (double)GetRawDualField(n, iPos, type)*deltaRel;
 			--iPos[n];
 		}
 		break;
@@ -201,6 +227,8 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 		return value/delta;
 	if ((type==1) && (m_Op->m_kappa) && (delta))
 		return value*m_Op->m_kappa[n][pos[0]][pos[1]][pos[2]]/delta;
+	if ((type==3) && (m_Op->m_epsR) && (delta))
+		return value*m_Op->m_epsR[n][pos[0]][pos[1]][pos[2]]/delta;
 	if (type==2) //calc rot(H)
 	{
 		int nP = (n+1)%3;

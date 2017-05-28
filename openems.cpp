@@ -472,9 +472,9 @@ bool openEMS::SetupProcessing()
 				CSPropDumpBox* db = DumpProps.at(i)->ToDumpBox();
 				if (db)
 				{
-					if ((db->GetDumpType()>=0) && (db->GetDumpType()<=3))
+					if ((db->GetDumpType()>=0) && (db->GetDumpType()<=5))
 						ProcField = new ProcessFieldsTD(NewEngineInterface(db->GetMultiGridLevel()));
-					else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=13))
+					else if ((db->GetDumpType()>=10) && (db->GetDumpType()<=15))
 						ProcField = new ProcessFieldsFD(NewEngineInterface(db->GetMultiGridLevel()));
 					else if ( ((db->GetDumpType()>=20) && (db->GetDumpType()<=22)) || (db->GetDumpType()==29) )
 					{
@@ -518,8 +518,12 @@ bool openEMS::SetupProcessing()
 							ProcField->SetDumpType(ProcessFields::SAR_RAW_DATA);
 
 						//SetupMaterialStorages() has previewed storage needs... refresh here to prevent cleanup!!!
-						if ( ProcField->NeedConductivity() && Enable_Dumps )
+						if ( ProcField->NeedPermittivity() && Enable_Dumps)
+							FDTD_Op->SetMaterialStoreFlags(0,true);
+						if ( ProcField->NeedConductivity() && Enable_Dumps)
 							FDTD_Op->SetMaterialStoreFlags(1,true);
+						if ( ProcField->NeedPermeability() && Enable_Dumps)
+							FDTD_Op->SetMaterialStoreFlags(2,true);
 
 						ProcField->SetDumpMode((Engine_Interface_Base::InterpolationType)db->GetDumpMode());
 						ProcField->SetFileType((ProcessFields::FileType)db->GetFileType());
@@ -567,6 +571,10 @@ bool openEMS::SetupMaterialStorages()
 			  (db->GetDumpType()==20) || (db->GetDumpType()==21) || (db->GetDumpType()==22)) && // SAR dump types
 			  Enable_Dumps )
 			FDTD_Op->SetMaterialStoreFlags(1,true); //tell operator to store kappa material data
+		if ( ((db->GetDumpType()==4) || (db->GetDumpType()==14)) || Enable_Dumps) // electric flux density storage
+			FDTD_Op->SetMaterialStoreFlags(0,true); //tell operator to store epsR material data
+		if ( ((db->GetDumpType()==5) || (db->GetDumpType()==15)) || Enable_Dumps) // magnetic flux density storage
+			FDTD_Op->SetMaterialStoreFlags(2,true); //tell operator to store mueR material data
 	}
 	return true;
 }

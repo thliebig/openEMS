@@ -56,6 +56,10 @@ public:
 	virtual double* GetJField(const unsigned int* pos, double* out) const =0;
 	//! Get the total current density field by rot(H) at \p pos. \sa SetInterpolationType
 	virtual double* GetRotHField(const unsigned int* pos, double* out) const =0;
+	//! Get the (interpolated) electric flux density field at \p pos. \sa SetInterpolationType
+	virtual double* GetDField(const unsigned int* pos, double* out) const =0;
+	//! Get the (interpolated) magnetic flux density field at \p pos. \sa SetInterpolationType
+	virtual double* GetBField(const unsigned int* pos, double* out) const =0;
 
 	//! Calculate the electric field integral along a given line
 	virtual double CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const =0;

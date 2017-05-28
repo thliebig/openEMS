@@ -40,7 +40,7 @@ public:
 	  Current dump types are electric field (E_FIELD_DUMP), magnetic field (H_FIELD_DUMP),
 	  (conduction) electric current density (kappa*E) (J_FIELD_DUMP) and total current density (rotH)
 	  */
-	enum DumpType { E_FIELD_DUMP=0, H_FIELD_DUMP=1, J_FIELD_DUMP=2, ROTH_FIELD_DUMP=3, SAR_LOCAL_DUMP=20, SAR_1G_DUMP=21, SAR_10G_DUMP=22, SAR_RAW_DATA=29};
+	enum DumpType { E_FIELD_DUMP=0, H_FIELD_DUMP=1, J_FIELD_DUMP=2, ROTH_FIELD_DUMP=3, D_FIELD_DUMP=4, B_FIELD_DUMP=5, SAR_LOCAL_DUMP=20, SAR_1G_DUMP=21, SAR_10G_DUMP=22, SAR_RAW_DATA=29};
 
 	virtual std::string GetProcessingName() const {return "common field processing";}
 
@@ -75,6 +75,8 @@ public:
 	static std::string GetFieldNameByType(DumpType type);
 
 	virtual bool NeedConductivity() const;
+	virtual bool NeedPermittivity() const;
+	virtual bool NeedPermeability() const;
 
 protected:
 	DumpType m_DumpType;

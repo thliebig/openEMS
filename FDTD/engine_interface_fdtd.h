@@ -44,6 +44,8 @@ public:
 	virtual double* GetHField(const unsigned int* pos, double* out) const;
 	virtual double* GetJField(const unsigned int* pos, double* out) const;
 	virtual double* GetRotHField(const unsigned int* pos, double* out) const;
+	virtual double* GetDField(const unsigned int* pos, double* out) const;
+	virtual double* GetBField(const unsigned int* pos, double* out) const;
 
 	virtual double CalcVoltageIntegral(const unsigned int* start, const unsigned int* stop) const;
 
@@ -56,10 +58,15 @@ protected:
 	Operator* m_Op;
 	Engine* m_Eng;
 
-	//! Internal method to get an interpolated field of a given type. (0: E, 1: J, 2: rotH)
+	//! Internal method to get an interpolated field of a given type. (0: E, 1: J, 2: rotH, 3: D)
 	virtual double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;
-	//! Internal method to get a raw field of a given type. (0: E, 1: J, 2: rotH)
+	//! Internal method to get a raw field of a given type. (0: E, 1: J, 2: rotH, 3: D)
 	virtual double GetRawField(unsigned int n, const unsigned int* pos, int type) const;
+
+	//! Internal method to get an interpolated dual field of a given type. (0: H, 1: B)
+	virtual double* GetRawInterpolatedDualField(const unsigned int* pos, double* out, int type) const;
+	//! Internal method to get a raw dual field of a given type. (0: H, 1: B)
+	virtual double GetRawDualField(unsigned int n, const unsigned int* pos, int type) const;
 };
 
 #endif // ENGINE_INTERFACE_FDTD_H

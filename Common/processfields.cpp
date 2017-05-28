@@ -71,6 +71,10 @@ string ProcessFields::GetFieldNameByType(DumpType type)
 		return "J-Field";
 	case ROTH_FIELD_DUMP:
 		return "RotH-Field";
+	case D_FIELD_DUMP:
+		return "D-Field";
+	case B_FIELD_DUMP:
+		return "B-Field";
 	case SAR_LOCAL_DUMP:
 		return "SAR-local";
 	case SAR_1G_DUMP:
@@ -88,6 +92,30 @@ bool ProcessFields::NeedConductivity() const
 	switch (m_DumpType)
 	{
 	case J_FIELD_DUMP:
+		return true;
+	default:
+		return false;
+	}
+	return false;
+}
+
+bool ProcessFields::NeedPermittivity() const
+{
+	switch (m_DumpType)
+	{
+	case D_FIELD_DUMP:
+		return true;
+	default:
+		return false;
+	}
+	return false;
+}
+
+bool ProcessFields::NeedPermeability() const
+{
+	switch (m_DumpType)
+	{
+	case B_FIELD_DUMP:
 		return true;
 	default:
 		return false;
@@ -326,6 +354,44 @@ FDTD_FLOAT**** ProcessFields::CalcField()
 					pos[2]=posLines[2][k];
 
 					m_Eng_Interface->GetRotHField(pos,out);
+					field[0][i][j][k] = out[0];
+					field[1][i][j][k] = out[1];
+					field[2][i][j][k] = out[2];
+				}
+			}
+		}
+		return field;
+	case D_FIELD_DUMP:
+		for (unsigned int i=0; i<numLines[0]; ++i)
+		{
+			pos[0]=posLines[0][i];
+			for (unsigned int j=0; j<numLines[1]; ++j)
+			{
+				pos[1]=posLines[1][j];
+				for (unsigned int k=0; k<numLines[2]; ++k)
+				{
+					pos[2]=posLines[2][k];
+
+					m_Eng_Interface->GetDField(pos,out);
+					field[0][i][j][k] = out[0];
+					field[1][i][j][k] = out[1];
+					field[2][i][j][k] = out[2];
+				}
+			}
+		}
+		return field;
+	case B_FIELD_DUMP:
+		for (unsigned int i=0; i<numLines[0]; ++i)
+		{
+			pos[0]=posLines[0][i];
+			for (unsigned int j=0; j<numLines[1]; ++j)
+			{
+				pos[1]=posLines[1][j];
+				for (unsigned int k=0; k<numLines[2]; ++k)
+				{
+					pos[2]=posLines[2][k];
+
+					m_Eng_Interface->GetBField(pos,out);
 					field[0][i][j][k] = out[0];
 					field[1][i][j][k] = out[1];
 					field[2][i][j][k] = out[2];
