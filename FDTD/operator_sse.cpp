@@ -41,11 +41,11 @@ Operator_sse::~Operator_sse()
 	Delete();
 }
 
-Engine* Operator_sse::CreateEngine() const
+Engine* Operator_sse::CreateEngine()
 {
 	//! create a special sse-engine
-	Engine_sse* eng = Engine_sse::New(this);
-	return eng;
+	m_Engine = Engine_sse::New(this);
+	return m_Engine;
 }
 
 void Operator_sse::Init()

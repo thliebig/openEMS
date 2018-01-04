@@ -42,16 +42,14 @@ Operator_SSE_Compressed::~Operator_SSE_Compressed()
 	Delete();
 }
 
-Engine* Operator_SSE_Compressed::CreateEngine() const
+Engine* Operator_SSE_Compressed::CreateEngine()
 {
 	if (!m_Use_Compression)
-	{
 		//! create a default sse-engine
-		Engine_sse* eng = Engine_sse::New(this);
-		return eng;
-	}
-	Engine_SSE_Compressed* eng = Engine_SSE_Compressed::New(this);
-	return eng;
+		m_Engine = Engine_sse::New(this);
+  else
+	  m_Engine = Engine_SSE_Compressed::New(this);
+	return m_Engine;
 }
 
 int Operator_SSE_Compressed::CalcECOperator( DebugFlags debugFlags )
