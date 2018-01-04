@@ -170,11 +170,11 @@ if (enable_ssh)
         warning('openEMS:RunOpenEMS','remote cleanup failed!');
     end
 else
-    args = [Sim_File ' ' opts];
+    args = ['"' Sim_File '" ' opts]
     if isfield(Settings,'LogFile') && isfield(Settings,'Silent')
-        invoke_openEMS(args,Settings.LogFile,Settings.Silent);
+        invoke_openEMS(args,['"' Settings.LogFile '"'],Settings.Silent);
     elseif isfield(Settings,'LogFile')
-        invoke_openEMS(args,Settings.LogFile);
+        invoke_openEMS(args,['"' Settings.LogFile '"']);
     elseif isfield(Settings,'Silent')
         invoke_openEMS(args,[],Settings.Silent);
     else
