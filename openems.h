@@ -70,6 +70,8 @@ public:
 	void SetTimeStepFactor(double val) {m_TS_fac=val;}
 	void SetMaxTime(double val) {m_maxTime=val;}
 
+	void SetNumberOfThreads(unsigned int val) {m_engine_numThreads = val;}
+
 	void DebugMaterial() {DebugMat=true;}
 	void DebugOperator() {DebugOp=true;}
 	void DebugBox() {m_debugBox=true;}

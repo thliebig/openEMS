@@ -410,7 +410,7 @@ cdef class openEMS:
                     continue
                 grid.AddLine(n, hint[n])
 
-    def Run(self, sim_path, cleanup=False, setup_only=False, debug_pec=False, verbose=None):
+    def Run(self, sim_path, cleanup=False, setup_only=False, debug_pec=False, verbose=None, **kw):
         """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
 
         Run the openEMS FDTD simulation.
@@ -419,6 +419,9 @@ cdef class openEMS:
         :param cleanup: bool -- remove exisiting sim_path to cleanup old results
         :param setup_only: bool -- only perform FDTD setup, do not run simulation
         :param verbose: int -- set the openEMS verbosity level 0..3
+
+        Additional keyword parameter:
+        :param numThreads: int -- set the number of threads (default 0 --> max)
         """
         if cleanup and os.path.exists(sim_path):
             shutil.rmtree(sim_path)
@@ -431,6 +434,8 @@ cdef class openEMS:
             self.thisptr.SetVerboseLevel(verbose)
         if debug_pec:
             self.thisptr.DebugPEC()
+        if 'numThreads' in kw:
+            self.thisptr.SetNumberOfThreads(int(kw['numThreads']))
         assert os.getcwd() == sim_path
         _openEMS.WelcomeScreen()
         cdef int EC

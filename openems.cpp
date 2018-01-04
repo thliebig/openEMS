@@ -217,7 +217,7 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	}
 	else if (strncmp(argv,"--numThreads=",13)==0)
 	{
-		m_engine_numThreads = atoi(argv+13);
+		this->SetNumberOfThreads(atoi(argv+13));
 		cout << "openEMS - fixed number of threads: " << m_engine_numThreads << endl;
 		return true;
 	}

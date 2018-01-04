@@ -39,6 +39,8 @@ cdef extern from "openEMS/openems.h":
         void SetTimeStepFactor(double val)
         void SetMaxTime(double val)
 
+        void SetNumberOfThreads(int val)
+
         void Set_BC_Type(int idx, int _type)
         int Get_BC_Type(int idx)
         void Set_BC_PML(int idx, unsigned int size)
