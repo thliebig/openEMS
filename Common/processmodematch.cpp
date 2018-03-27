@@ -174,7 +174,7 @@ void ProcessModeMatch::InitProcess()
 			for (int n=0; n<2; ++n)
 			{
 				m_ModeDist[n][posP][posPP] = m_ModeParser[n]->Eval(var); //calc mode template
-				if ((isnan(m_ModeDist[n][posP][posPP])) || (isinf(m_ModeDist[n][posP][posPP])))
+				if ((std::isnan(m_ModeDist[n][posP][posPP])) || (std::isinf(m_ModeDist[n][posP][posPP])))
 					m_ModeDist[n][posP][posPP] = 0.0;
 				norm += pow(m_ModeDist[n][posP][posPP],2) * area;
 			}
