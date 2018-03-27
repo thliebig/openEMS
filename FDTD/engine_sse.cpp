@@ -15,7 +15,10 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef SSE_CORRECT_DENORMALS
 #include <xmmintrin.h>
+#endif
+
 #include "engine_sse.h"
 
 //! \brief construct an Engine_sse instance
