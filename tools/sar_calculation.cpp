@@ -292,7 +292,7 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], double box_size, unsigned int start[3], unsigned int stop[3],
 									 float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace)
 {
-	if ((box_size<=0) || isnan(box_size) || isinf(box_size))
+	if ((box_size<=0) || std::isnan(box_size) || std::isinf(box_size))
 	{
 		cerr << "SAR_Calculation::GetCubicalMass: critical error: invalid averaging box size!! EXIT" << endl;
 		exit(-1);

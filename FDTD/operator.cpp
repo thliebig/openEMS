@@ -1395,7 +1395,7 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	if (EffMat[3]) EffMat[3]=length / EffMat[3];
 
 	for (int n=0; n<4; ++n)
-		if (isnan(EffMat[n]) || isinf(EffMat[n]))
+		if (std::isnan(EffMat[n]) || std::isinf(EffMat[n]))
 		{
 			cerr << "Operator::" << __func__ << ": Error, an effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
 			cerr << ny << "@" << n << " : " << pos[0] << "," << pos[1] << ","  << pos[2] << endl;
@@ -1508,7 +1508,7 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	if (EffMat[3]) EffMat[3]=length / EffMat[3];
 
 	for (int n=0; n<4; ++n)
-		if (isnan(EffMat[n]) || isinf(EffMat[n]))
+		if (std::isnan(EffMat[n]) || std::isinf(EffMat[n]))
 		{
 			cerr << "Operator::" << __func__ << ": Error, An effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
 			cerr << ny << "@" << n << " : " << pos[0] << "," << pos[1] << ","  << pos[2] << endl;
@@ -1555,7 +1555,7 @@ bool Operator::Calc_LumpedElements()
 				if (R<0)
 					R = NAN;
 
-				if ((isnan(R)) && (isnan(C)))
+				if ((std::isnan(R)) && (std::isnan(C)))
 				{
 					cerr << "Operator::Calc_LumpedElements(): Warning: Lumped Element R or C not specified! skipping. "
 							<< " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;

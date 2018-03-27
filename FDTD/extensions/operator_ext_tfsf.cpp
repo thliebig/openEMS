@@ -159,7 +159,7 @@ bool Operator_Ext_TFSF::BuildExtension()
 		else
 			m_PhVel=m_Op->CalcNumericPhaseVelocity(m_Start,m_Stop,m_PropDir,m_Frequency);
 
-		if ((m_PhVel<0) || (m_PhVel>__C0__/ref_index) || isnan(m_PhVel))
+		if ((m_PhVel<0) || (m_PhVel>__C0__/ref_index) || std::isnan(m_PhVel))
 		{
 			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, invalid phase velocity found, resetting to c0! " << endl;
 			m_PhVel = __C0__/ref_index;
