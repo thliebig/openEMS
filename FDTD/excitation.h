@@ -31,11 +31,11 @@ public:
 
 	virtual void Reset( double timestep );
 
-	bool SetupGaussianPulse(double f0, double fc);
-	bool SetupSinusoidal(double f0);
-	bool SetupDiracPulse(double fmax);
-	bool SetupStepExcite(double fmax);
-	bool SetupCustomExcite(std::string str, double f0, double fmax);
+	void SetupGaussianPulse(double f0, double fc);
+	void SetupSinusoidal(double f0);
+	void SetupDiracPulse(double fmax);
+	void SetupStepExcite(double fmax);
+	void SetupCustomExcite(std::string str, double f0, double fmax);
 
 	double GetCenterFreq() {return m_f0;}
 	double GetCutOffFreq() {return m_fc;}

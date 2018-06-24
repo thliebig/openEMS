@@ -53,7 +53,7 @@ void Excitation::Reset( double timestep )
 	m_foi = 0;
 }
 
-bool Excitation::SetupGaussianPulse(double f0, double fc)
+void Excitation::SetupGaussianPulse(double f0, double fc)
 {
 	m_Excit_Type = Excitation::GaissianPulse;
 	m_f0 = f0;
@@ -62,7 +62,7 @@ bool Excitation::SetupGaussianPulse(double f0, double fc)
 	m_SignalPeriod = 0;
 }
 
-bool Excitation::SetupSinusoidal(double f0)
+void Excitation::SetupSinusoidal(double f0)
 {
 	m_Excit_Type = Excitation::Sinusoidal;
 	m_f0 = f0;
@@ -70,21 +70,21 @@ bool Excitation::SetupSinusoidal(double f0)
 	m_SignalPeriod = 1/f0;
 }
 
-bool Excitation::SetupDiracPulse(double fmax)
+void Excitation::SetupDiracPulse(double fmax)
 {
 	m_Excit_Type = Excitation::DiracPulse;
 	m_SignalPeriod = 0;
 	m_f_max = fmax;
 }
 
-bool Excitation::SetupStepExcite(double fmax)
+void Excitation::SetupStepExcite(double fmax)
 {
 	m_Excit_Type = Excitation::Step;
 	m_SignalPeriod = 0;
 	m_f_max = fmax;
 }
 
-bool Excitation::SetupCustomExcite(string str, double f0, double fmax)
+void Excitation::SetupCustomExcite(string str, double f0, double fmax)
 {
 	m_Excit_Type = Excitation::CustomExcite;
 	m_CustomExc_Str = str;
