@@ -313,6 +313,10 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 		if ((m_MirrorType[n]!=MIRROR_OFF) && (m_MirrorType[nP]==MIRROR_OFF) && (m_MirrorType[nPP]==MIRROR_OFF))
 		{
 			this->AddMirrorPlane(n, lines, numLines, E_field, H_field, MeshType);
+
+			for (unsigned int i=0;i<numLines[n];++i)
+				lines[n][i] = 2.0*m_MirrorPos[n] - lines[n][i];
+
 			break;
 		}
 		//check if two planes are on 
@@ -321,6 +325,10 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
 			this->AddMirrorPlane(nPP, lines, numLines, E_field, H_field, MeshType);
 			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
+      
+			for (unsigned int i=0;i<numLines[nPP];++i)
+				lines[nPP][i] = 2.0*m_MirrorPos[nPP] - lines[nPP][i];
+			
 			break;
 		}
 	}
@@ -334,6 +342,10 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
 		this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType);
 		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
+
+		for (unsigned int i=0;i<numLines[2];++i)
+			lines[2][i] = 2.0*m_MirrorPos[2] - lines[2][i];
+
 	}
 
 	//cleanup E- & H-Fields
