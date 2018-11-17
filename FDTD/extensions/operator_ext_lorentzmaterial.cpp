@@ -225,6 +225,9 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 
 //						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
+
+            if(prop==NULL) continue;
+
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetEpsPlasmaFreqWeighted(order,n,coord) * 2 * PI;
@@ -277,6 +280,9 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 
 //						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
+
+            if(prop==NULL) continue;
+
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetMuePlasmaFreqWeighted(order,n,coord) * 2 * PI;
