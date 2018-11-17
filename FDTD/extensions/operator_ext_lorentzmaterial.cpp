@@ -226,7 +226,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 //						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 
-            if(prop==NULL) continue;
+						if (prop==NULL) continue;
 
 						if ((mat = prop->ToLorentzMaterial()))
 						{
@@ -281,7 +281,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 //						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
 						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 
-            if(prop==NULL) continue;
+						if (prop==NULL) continue;
 
 						if ((mat = prop->ToLorentzMaterial()))
 						{
