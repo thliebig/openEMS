@@ -122,15 +122,7 @@ find_package(Boost 1.46 COMPONENTS
 )
 
 # vtk
-if (WIN32)
-    find_package(VTK 6.1 REQUIRED)
-else()
-    # prefer >=6.1, fallback to >=5.4
-    find_package(VTK 6.1 COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE)
-    IF (NOT ${VTK_FOUND})
-        find_package(VTK REQUIRED)
-    endif()
-endif()
+find_package(VTK COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE REQUIRED)
 
 message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
 if("${VTK_MAJOR_VERSION}" GREATER 5)
