@@ -717,6 +717,11 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 	}
 
 	dhelp = 0;
+	FDTD_Opts->QueryDoubleAttribute("MaxTime",&dhelp);
+	if (dhelp>0)
+		this->SetMaxTime(dhelp);
+
+	dhelp = 0;
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&dhelp);
 	if (dhelp==0)
 		this->SetEndCriteria(1e-6);
