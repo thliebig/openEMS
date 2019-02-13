@@ -46,7 +46,7 @@ class UI_data:
             self.ui_f_val.append(utilities.DFT_time2freq(tmp[:,0], tmp[:,1], freq, signal_type=signal_type))
 
 # Port Base-Class
-class Port:
+class Port(object):
     """
     The port base class.
 
