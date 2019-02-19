@@ -91,7 +91,7 @@ end
 
 if ((strcmpi(port.type,'StripLine')==1) || (strcmpi(port.type,'CPW')==1))
     U1 = ReadUI( port.U_filename(:,1), SimDir, f, UI_args{:} );
-    U2 = ReadUI( port.U_filename(:,1), SimDir, f, UI_args{:} );
+    U2 = ReadUI( port.U_filename(:,2), SimDir, f, UI_args{:} );
     U = U1;
     for n=1:3
         U.TD{n}.val = U1.TD{n}.val+U2.TD{n}.val;
