@@ -84,12 +84,12 @@ for n=1:2:numel(varargin)
         end
     elseif (strcmp(varargin{n},'Feed_R')==1);
         feed_R = varargin{n+1};
-        if (numel(feed_shift)>1)
+        if (numel(feed_R)>1)
             error 'Feed_R must be a scalar value'
         end
     elseif (strcmp(varargin{n},'MeasPlaneShift')==1);
         measplanepos = varargin{n+1};
-        if (numel(feed_shift)>1)
+        if (numel(measplanepos)>1)
             error 'MeasPlaneShift must be a scalar value'
         end
     elseif (strcmp(varargin{n},'ExcitePort')==1);
