@@ -17,7 +17,7 @@ function [CSX,port] = AddCPWPort( CSX, prio, portnr, materialname, start, stop, 
 %               is false)
 % 'FeedShift'   shift to port from start by a given distance in drawing
 %               units. Default is 0. Only active if 'ExcitePort' is set!
-% 'Feed_R'      Specifiy a lumped port resistance. Default is no lumped
+% 'Feed_R'      Specify a lumped port resistance. Default is no lumped
 %               port resistance --> port has to end in an ABC.
 % 'MeasPlaneShift'  Shift the measurement plane from start t a given distance
 %               in drawing units. Default is the middle of start/stop.

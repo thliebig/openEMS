@@ -24,7 +24,7 @@ function [port] = calcLumpedPort( port, SimDir, f, varargin)
 %   port.it.time    current time vector
 %
 %   % output signals/values in frequency domain (FD):
-%   port.f                  the given frequency fector
+%   port.f                  the given frequency factor
 %   port.uf.tot/inc/ref     total, incoming and reflected voltage
 %   port.if.tot/inc/ref     total, incoming and reflected current
 %

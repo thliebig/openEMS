@@ -4,7 +4,7 @@ function hdf_mesh = ReadHDF5Mesh(file)
 %   Get the raw mesh data stored in the hdf5 dump file created by openEMS
 %
 % returns:
-% hdf_mesh.type     (0-> cartesian, 1-> cylindrical mesh type)
+% hdf_mesh.type     (0-> Cartesian, 1-> cylindrical mesh type)
 % hdf_mesh.names    (e.g. 'Mesh/y')
 % hdf_mesh.lines    (e.g. [0,1,2,3,4])
 %
@@ -56,7 +56,7 @@ hdf_mesh.type=0;
 function hdf_mesh = ReadHDF5Mesh_octave(file)
 hdf = load( '-hdf5', file );
 hdf_mesh.names = fieldnames(hdf.Mesh);
-hdf_mesh.type = 0; % cartesian mesh
+hdf_mesh.type = 0; % Cartesian mesh
 for n=1:numel(hdf_mesh.names)
     hdf_mesh.lines{n} = hdf.Mesh.(hdf_mesh.names{n});
     hdf_mesh.names{n} = ['/Mesh/' hdf_mesh.names{n}];

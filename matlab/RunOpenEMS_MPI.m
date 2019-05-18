@@ -100,7 +100,7 @@ end
 if isfield(Settings.MPI,'Hosts')
     disp( 'Remote simulation done... copying back results and cleaning up...' );
     
-    if (strncmp(work_path,'/tmp/',5)~=1) % savety precaution...
+    if (strncmp(work_path,'/tmp/',5)~=1) % safety precaution...
         error('openEMS:RunOpenEMS','working path invalid for deletion');
     end
     

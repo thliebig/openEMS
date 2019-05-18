@@ -79,12 +79,12 @@ radfield ./= radnorm;
 %initialize radiated field in fully populated frequency domain
 rad_f = zeros([numel(nf2ff.theta), numel(nf2ff.phi), numel(fport)]);
 rad_f(:, :, f_ind) = radfield; % assign selected frequencies
-exc_f = reshape(exc_f, [1,1,numel(exc_f)]); %make exc_f confomant with rad_f
+exc_f = reshape(exc_f, [1,1,numel(exc_f)]); %make exc_f conformant with rad_f
 
 cr_f = rad_f .* conj(exc_f); % calculate cross correlation
 % calculate the cross correlation in time domain (analytic signal)
 cr = ifft(cr_f(:, :, 1:end-1), [], 3) * (numel(fport) -1); % twice the FFT normalization (sqrt^2) because product of two normalized functions 
-%search for the maxiumum of the envelope
+%search for the maximum of the envelope
 [fidelity, delay_ind] = max(abs(cr), [], 3);
 delay = (delay_ind - 1) * dt * 2; % double time step because of single-sided FFT
 nf2ff_out = nf2ff; %possibly needed for plotting the far field and other things

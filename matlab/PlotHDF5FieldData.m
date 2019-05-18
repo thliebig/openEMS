@@ -25,7 +25,7 @@ mesh = ReadHDF5Mesh(file);
 fields = ReadHDF5FieldData(file);
 
 if (mesh.type==0)
-    % cartesian mesh
+    % Cartesian mesh
     [X Y Z] = meshgrid(mesh.lines{1},mesh.lines{2},mesh.lines{3});
     for n=1:numel(fields.TD.values)
         % since Matlab 7.1SP3 the field needs to be reordered
