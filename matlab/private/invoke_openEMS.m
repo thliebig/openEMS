@@ -44,4 +44,9 @@ else
     command = [command ' > ' logfile ' 2>&1'];
 end
 
-system(command);
+
+[exitcode, shelloutput] = system(command);
+if (exitcode~=0);
+	disp(shelloutput);
+	error(['openEMS binary exited with error-code ' num2str(exitcode)]);
+end
