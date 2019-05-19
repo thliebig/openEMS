@@ -48,5 +48,5 @@ end
 [exitcode, shelloutput] = system(command);
 if (exitcode~=0);
 	disp(shelloutput);
-	error(['openEMS.exe exited with error-code ' num2str(exitcode)]);
+	error(['openEMS binary exited with error-code ' num2str(exitcode)]);
 end
