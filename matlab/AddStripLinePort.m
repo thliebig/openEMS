@@ -68,7 +68,7 @@ evec0 = evec ./ sum(evec); % evec0 is a unit vector
 
 %set defaults
 feed_shift = 0;
-feed_R = inf; %(default is open, no resitance)
+feed_R = inf; %(default is open, no resistance)
 excite = false;
 measplanepos = nan;
 PortNamePrefix = '';
@@ -84,12 +84,12 @@ for n=1:2:numel(varargin)
         end
     elseif (strcmp(varargin{n},'Feed_R')==1);
         feed_R = varargin{n+1};
-        if (numel(feed_R)>1)
+        if (numel(feed_shift)>1)
             error 'Feed_R must be a scalar value'
         end
     elseif (strcmp(varargin{n},'MeasPlaneShift')==1);
         measplanepos = varargin{n+1};
-        if (numel(measplanepos)>1)
+        if (numel(feed_shift)>1)
             error 'MeasPlaneShift must be a scalar value'
         end
     elseif (strcmp(varargin{n},'ExcitePort')==1);
@@ -263,7 +263,7 @@ if excite
     CSX = AddBox( CSX, [PortNamePrefix 'port_excite_2_' num2str(portnr)], prio, ex_start, ex_stop-height_vector );
 end
 
-%% MSL resitance at start of MSL line
+%% MSL resistance at start of MSL line
 ex_start(idx_prop) = start(idx_prop);
 ex_stop(idx_prop) = ex_start(idx_prop);
 
@@ -278,6 +278,6 @@ elseif feed_R == 0
     CSX = AddBox( CSX, materialname, prio, ex_start, ex_stop+height_vector );
     CSX = AddBox( CSX, materialname, prio, ex_start, ex_stop-height_vector );
 else
-    error('openEMS:AddMSLPort','MSL port with resitance <= 0 it not possible');
+    error('openEMS:AddMSLPort','MSL port with resistance <= 0 it not possible');
 end
 end

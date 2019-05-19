@@ -5,16 +5,16 @@ function DumpFF2VTK(filename, farfield, thetaRange, phiRange, varargin)
 %
 % input:
 %   filename:      filename of VTK file, existing file will be overwritten
-%   farfield:      farfield in V/m
+%   farfield:      far field in V/m
 %   thetaRange:    theta range in deg
 %   phiRange:      phi range in deg
 %
 % variable input:
 %   'scale':       - linear scale of plot, doesn't affect gain values
-%   'logscale':    - if set, show farfield with logarithmic scale
+%   'logscale':    - if set, show far field with logarithmic scale
 %                  - set the dB value for point of origin
 %                  - values below will be clamped
-%   'maxgain':     - add max gain in dB to normalized farfield
+%   'maxgain':     - add max gain in dB to normalized far field
 %                  - only valid if logscale is set
 %                  - default is 0dB
 %

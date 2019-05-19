@@ -4,7 +4,7 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % Run an openEMS simulation.
 %
 % arguments:
-% Sim_Path: specifiy the simulation folder (folder must exist!)
+% Sim_Path: specify the simulation folder (folder must exist!)
 % Sim_File: xml-filename to simulate, created by WriteOpenEMS
 %
 % optional arguments

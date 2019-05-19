@@ -16,7 +16,7 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 %               is false)
 % 'FeedShift'   shift to port from start by a given distance in drawing
 %               units. Default is 0. Only active if 'ExcitePort' is set!
-% 'Feed_R'      Specifiy a lumped port resistance. Default is no lumped
+% 'Feed_R'      Specify a lumped port resistance. Default is no lumped
 %               port resistance --> port has to end in an ABC.
 % 'MeasPlaneShift'  Shift the measurement plane from start t a given distance 
 %               in drawing units. Default is the middle of start/stop.
@@ -37,7 +37,7 @@ function [CSX,port] = AddMSLPort( CSX, prio, portnr, materialname, start, stop, 
 %   - the excitation is active and placed at x=start(1) ('ExcitePort', true)
 %   - a 50 Ohm lumped port resistance is placed at x=start(1) ('Feed_R', 50)
 %   - the width-direction is determined by the cross product of the
-%       direction of propagtion (dir='x') and the excitation vector
+%       direction of propagation (dir='x') and the excitation vector
 %       (evec=[0 0 -1]), in this case it is the y-direction
 %   - the MSL-metal is created in a xy-plane at a height at z=start(3)
 %     --> It is important to define the MSL height in the start coordinate!
@@ -95,7 +95,7 @@ for n=1:2:numel(varargin)
         end
     elseif (strcmp(varargin{n},'ExcitePort')==1);
         if ischar(varargin{n+1})
-            warning('CSXCAD:AddMSLPort','depreceated: a string as excite option is no longer supported and will be removed in the future, please use true or false');
+            warning('CSXCAD:AddMSLPort','deprecated: a string as excite option is no longer supported and will be removed in the future, please use true or false');
             if ~isempty(excite)
                 excite = true;
             else
@@ -247,7 +247,7 @@ if excite
     CSX = AddBox( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], prio, ex_start, ex_stop );
 end
 
-%% MSL resitance at start of MSL line
+%% MSL resistance at start of MSL line
 ex_start(idx_prop) = start(idx_prop);
 ex_stop(idx_prop) = ex_start(idx_prop);
 
@@ -260,6 +260,6 @@ elseif feed_R == 0
     %port "resistance" as metal
     CSX = AddBox( CSX, materialname, prio, ex_start, ex_stop );
 else
-    error('openEMS:AddMSLPort','MSL port with resitance <= 0 it not possible');
+    error('openEMS:AddMSLPort','MSL port with resistance <= 0 it not possible');
 end
 end

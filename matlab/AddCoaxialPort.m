@@ -20,7 +20,7 @@ function [CSX,port] = AddCoaxialPort( CSX, prio, portnr, pec_name, materialname,
 %               set to 0 (default) for a passive port
 % 'FeedShift'   shift to port from start by a given distance in drawing
 %               units. Default is 0. Only active if 'ExciteAmp' is set!
-% 'Feed_R'      Specifiy a lumped port resistance. Default is no lumped
+% 'Feed_R'      Specify a lumped port resistance. Default is no lumped
 %               port resistance --> port has to end in an ABC.
 % 'MeasPlaneShift'  Shift the measurement plane from start t a given distance
 %               in drawing units. Default is the middle of start/stop.
@@ -213,7 +213,7 @@ if (excite_amp~=0)
     CSX = AddCylindricalShell(CSX,[PortNamePrefix 'port_excite_' num2str(portnr)],0 ,ex_start,ex_stop,0.5*(r_i+r_o),(r_o-r_i));
 end
 
-%% resitance at start of coaxial line
+%% resistance at start of coaxial line
 ex_start = start;
 ex_stop = stop;
 ex_stop(idx_prop_n) = ex_start(idx_prop_n);
@@ -227,6 +227,6 @@ elseif feed_R == 0
     CSX = AddBox( CSX, pec_name, prio, ex_start, ex_stop );
     CSX = AddCylindricalShell(CSX, pec_name, prio ,ex_start, ex_stop, 0.5*(r_i+r_o),(r_o-r_i));
 else
-    error('openEMS:AddMSLPort','MSL port with resitance <= 0 it not possible');
+    error('openEMS:AddMSLPort','MSL port with resistance <= 0 it not possible');
 end
 end

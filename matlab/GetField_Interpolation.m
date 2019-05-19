@@ -3,9 +3,9 @@ function [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 %
 %   Get an interpolated field, e.g. read by ReadHDF5Dump 
 % 
-%   homogen interpolation given by a 3x1 vector: e.g. [21,1,101]
+%   homogeneous interpolation given by a 3x1 vector: e.g. [21,1,101]
 % 
-%   abitrary interpolation on a given mesh:
+%   arbitrary interpolation on a given mesh:
 %               e.g.:   mesh_interp{1} = linspace(0,  1,101) * 1e-3;
 %                       mesh_interp{2} = linspace(0,0.5, 51) * 1e-3;
 %                       mesh_interp{3} = linspace(0,0.2, 21) * 1e-3;

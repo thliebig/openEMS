@@ -2,7 +2,7 @@ function FDTD = SetCustomExcite(FDTD,f0,funcStr)
 % function FDTD = SetCustomExcite(FDTD,f0,funcStr)
 %
 % f0 : nyquist rate
-% funcStr : string desribing the excitation function e(t)
+% funcStr : string describing the excitation function e(t)
 %
 % see also SetSinusExcite SetGaussExcite
 %

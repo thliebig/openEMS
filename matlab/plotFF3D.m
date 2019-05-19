@@ -9,7 +9,7 @@ function h = plotFF3D(nf2ff,varargin)
 % variable input:
 %   'freq_index':  - use the given frequency index, see nf2ff.freq
 %                  - default is 1
-%   'logscale':    - if set, show farfield with logarithmic scale
+%   'logscale':    - if set, show far field with logarithmic scale
 %                  - set the dB value for point of origin
 %                  - values below will be clamped
 %   'normalize':   - true/false, normalize linear plot

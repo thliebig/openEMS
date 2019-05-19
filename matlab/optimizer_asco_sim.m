@@ -5,9 +5,9 @@ function optimizer_asco_sim( optimdir, inputfile, outputfile, simfun )
 %
 % tasks:
 %  - set correct matlab path
-%  - evaluate inputfile
+%  - evaluate input file
 %  - start simulation or get result from cache
-%  - postprocess simulation results
+%  - post-process simulation results
 %  - create output file (important: needs single \n at the first line and double \n at the last line!)
 
 error( nargchk(4,4,nargin) );

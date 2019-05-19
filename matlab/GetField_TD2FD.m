@@ -2,7 +2,7 @@ function field = GetField_TD2FD(field, freq)
 % function field = GetField_TD2FD(field, freq)
 %
 % Transforms time-domain field data into the frequency domain
-% Autocorrects the half-timestep offset of the H-field
+% Auto-corrects the half-timestep offset of the H-field
 % 
 % example:
 %   freq = linspace(0,1e9,100); %target frequency vector (Hz)
