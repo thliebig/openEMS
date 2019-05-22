@@ -4,7 +4,7 @@ function [CSX,port] = AddStripLinePort( CSX, prio, portnr, materialname, start, 
 % CSX:          CSX-object created by InitCSX()
 % prio:         priority for excitation and probe boxes
 % portnr:       (integer) number of the port
-% materialname: property for the MSL (created by AddMetal())
+% materialname: property for the stripline (created by AddMetal())
 % start:        3D start rowvector for port definition
 % stop:         3D end rowvector for port definition
 % height:       height of the stripline (top and bottom)
@@ -84,17 +84,17 @@ for n=1:2:numel(varargin)
         end
     elseif (strcmp(varargin{n},'Feed_R')==1);
         feed_R = varargin{n+1};
-        if (numel(feed_shift)>1)
+        if (numel(feed_R)>1)
             error 'Feed_R must be a scalar value'
         end
     elseif (strcmp(varargin{n},'MeasPlaneShift')==1);
         measplanepos = varargin{n+1};
-        if (numel(feed_shift)>1)
+        if (numel(measplanepos)>1)
             error 'MeasPlaneShift must be a scalar value'
         end
     elseif (strcmp(varargin{n},'ExcitePort')==1);
         if ischar(varargin{n+1})
-            warning('CSXCAD:AddMSLPort','depreceated: a string as excite option is no longer supported and will be removed in the future, please use true or false');
+            warning('CSXCAD:AddStripLinePort','depreceated: a string as excite option is no longer supported and will be removed in the future, please use true or false');
             if ~isempty(excite)
                 excite = true;
             else
@@ -117,10 +117,10 @@ end
 nstart = min( [start;stop] );
 nstop  = max( [start;stop] );
 
-% determine index (1, 2 or 3) of propagation (length of MSL)
+% determine index (1, 2 or 3) of propagation (length of stripline)
 idx_prop = dir + 1;
 
-% determine index (1, 2 or 3) of width of MSL
+% determine index (1, 2 or 3) of width of stripline
 dir = [0 0 0];
 dir(idx_prop) = 1;
 idx_width = abs(cross(dir,evec0)) * [1;2;3];
@@ -139,7 +139,7 @@ else
     direction = -1;
 end
 
-% create the metal/material for the MSL
+% create the metal/material for the stripline
 SL_start = start;
 SL_stop = stop;
 CSX = AddBox( CSX, materialname, prio, SL_start, SL_stop );
@@ -161,7 +161,7 @@ try
 		meshlines = fliplr(meshlines);
 	end
 	SL_w2 = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), (nstart(idx_width)+nstop(idx_width))/2, 'nearest' );
-	SL_w2 = mesh{idx_width}(SL_w2); % get e-line at center of MSL (SL_width/2)
+	SL_w2 = mesh{idx_width}(SL_w2); % get e-line at center of stripline (SL_width/2)
 	v1_start(idx_prop)   = meshlines(1);
 	v1_start(idx_width)  = SL_w2;
 	v1_start(idx_height) = start(idx_height);
@@ -275,7 +275,7 @@ if excite
     CSX = AddBox( CSX, [PortNamePrefix 'port_excite_2_' num2str(portnr)], prio, ex_start, ex_stop-height_vector );
 end
 
-%% MSL resistance at start of MSL line
+%% stripline resistance at start of stripline line
 ex_start(idx_prop) = start(idx_prop);
 ex_stop(idx_prop) = ex_start(idx_prop);
 
@@ -290,6 +290,6 @@ elseif feed_R == 0
     CSX = AddBox( CSX, materialname, prio, ex_start, ex_stop+height_vector );
     CSX = AddBox( CSX, materialname, prio, ex_start, ex_stop-height_vector );
 else
-    error('openEMS:AddMSLPort','MSL port with resistance <= 0 it not possible');
+    error('openEMS:AddStripLinePort','stripline port with resistance <= 0 it not possible');
 end
 end

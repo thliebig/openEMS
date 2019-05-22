@@ -235,6 +235,6 @@ elseif feed_R == 0
     CSX = AddBox( CSX, pec_name, prio, ex_start, ex_stop );
     CSX = AddCylindricalShell(CSX, pec_name, prio ,ex_start, ex_stop, 0.5*(r_i+r_o),(r_o-r_i));
 else
-    error('openEMS:AddMSLPort','MSL port with resistance <= 0 it not possible');
+    error('openEMS:AddCoaxialPort','Coaxial port with resistance <= 0 it not possible');
 end
 end
