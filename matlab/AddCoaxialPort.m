@@ -114,27 +114,31 @@ else
 end
 
 % calculate position of the voltage probes
-mesh{1} = sort(unique(CSX.RectilinearGrid.XLines));
-mesh{2} = sort(unique(CSX.RectilinearGrid.YLines));
-mesh{3} = sort(unique(CSX.RectilinearGrid.ZLines));
-meshlines = interp1( mesh{idx_prop_n}, 1:numel(mesh{idx_prop_n}), measplanepos, 'nearest' );
-meshlines = mesh{idx_prop_n}(meshlines-1:meshlines+1); % get three lines (approx. at center)
-if direction == -1
-    meshlines = fliplr(meshlines);
+try
+	mesh{1} = sort(unique(CSX.RectilinearGrid.XLines));
+	mesh{2} = sort(unique(CSX.RectilinearGrid.YLines));
+	mesh{3} = sort(unique(CSX.RectilinearGrid.ZLines));
+	meshlines = interp1( mesh{idx_prop_n}, 1:numel(mesh{idx_prop_n}), measplanepos, 'nearest' );
+	meshlines = mesh{idx_prop_n}(meshlines-1:meshlines+1); % get three lines (approx. at center)
+	if direction == -1
+		meshlines = fliplr(meshlines);
+	end
+	v1_start(idx_prop_n)   = meshlines(1);
+	v1_start(idx_prop_nP)  = start(idx_prop_nP)+r_i;
+	v1_start(idx_prop_nPP) = start(idx_prop_nPP);
+	v1_stop  = v1_start;
+	v1_stop(idx_prop_nP)  = start(idx_prop_nP)+r_o;
+	v2_start = v1_start;
+	v2_stop  = v1_stop;
+	v2_start(idx_prop_n)   = meshlines(2);
+	v2_stop(idx_prop_n)    = meshlines(2);
+	v3_start = v2_start;
+	v3_stop  = v2_stop;
+	v3_start(idx_prop_n)   = meshlines(3);
+	v3_stop(idx_prop_n)    = meshlines(3);
+catch
+	error('Unable to place voltage probe on mesh; check the location of the port and the probe (MeasPlaneShift), and make sure that the mesh is large enough');
 end
-v1_start(idx_prop_n)   = meshlines(1);
-v1_start(idx_prop_nP)  = start(idx_prop_nP)+r_i;
-v1_start(idx_prop_nPP) = start(idx_prop_nPP);
-v1_stop  = v1_start;
-v1_stop(idx_prop_nP)  = start(idx_prop_nP)+r_o;
-v2_start = v1_start;
-v2_stop  = v1_stop;
-v2_start(idx_prop_n)   = meshlines(2);
-v2_stop(idx_prop_n)    = meshlines(2);
-v3_start = v2_start;
-v3_stop  = v2_stop;
-v3_start(idx_prop_n)   = meshlines(3);
-v3_stop(idx_prop_n)    = meshlines(3);
 
 % calculate position of the current probes
 i1_start(idx_prop_n)   = 0.5*(meshlines(1)+meshlines(2));
@@ -184,12 +188,16 @@ port.r_i = r_i;
 port.r_o = r_o;
 
 % create excitation (if enabled) and port resistance
-meshline = interp1( mesh{idx_prop_n}, 1:numel(mesh{idx_prop_n}), start(idx_prop_n) + feed_shift*direction, 'nearest' );
-min_cell_prop = min(diff(mesh{idx_prop_n}));
-ex_start = start;
-ex_start(idx_prop_n)   = mesh{idx_prop_n}(meshline) - 0.01*min_cell_prop;
-ex_stop  = ex_start;
-ex_stop(idx_prop_n)   = mesh{idx_prop_n}(meshline) + 0.01*min_cell_prop;
+try
+	meshline = interp1( mesh{idx_prop_n}, 1:numel(mesh{idx_prop_n}), start(idx_prop_n) + feed_shift*direction, 'nearest' );
+	min_cell_prop = min(diff(mesh{idx_prop_n}));
+	ex_start = start;
+	ex_start(idx_prop_n)   = mesh{idx_prop_n}(meshline) - 0.01*min_cell_prop;
+	ex_stop  = ex_start;
+	ex_stop(idx_prop_n)   = mesh{idx_prop_n}(meshline) + 0.01*min_cell_prop;
+catch
+	error('Unable to place excitation on mesh; check the location of the port and the excitation (FeedShift), and make sure that the mesh is large enough');
+end
 
 port.excite = 0;
 if (excite_amp~=0)

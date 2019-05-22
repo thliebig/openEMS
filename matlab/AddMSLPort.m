@@ -156,44 +156,52 @@ else
 end
 
 % calculate position of the voltage probes
-mesh{1} = sort(CSX.RectilinearGrid.XLines);
-mesh{2} = sort(CSX.RectilinearGrid.YLines);
-mesh{3} = sort(CSX.RectilinearGrid.ZLines);
-meshlines = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), measplanepos, 'nearest' );
-meshlines = mesh{idx_prop}(meshlines-1:meshlines+1); % get three lines (approx. at center)
-if direction == -1
-    meshlines = fliplr(meshlines);
+try
+	mesh{1} = sort(CSX.RectilinearGrid.XLines);
+	mesh{2} = sort(CSX.RectilinearGrid.YLines);
+	mesh{3} = sort(CSX.RectilinearGrid.ZLines);
+	meshlines = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), measplanepos, 'nearest' );
+	meshlines = mesh{idx_prop}(meshlines-1:meshlines+1); % get three lines (approx. at center)
+	if direction == -1
+		meshlines = fliplr(meshlines);
+	end
+	MSL_w2 = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), (nstart(idx_width)+nstop(idx_width))/2, 'nearest' );
+	MSL_w2 = mesh{idx_width}(MSL_w2); % get e-line at center of MSL (MSL_width/2)
+	v1_start(idx_prop)   = meshlines(1);
+	v1_start(idx_width)  = MSL_w2;
+	v1_start(idx_height) = start(idx_height);
+	v1_stop  = v1_start;
+	v1_stop(idx_height)  = stop(idx_height);
+	v2_start = v1_start;
+	v2_stop  = v1_stop;
+	v2_start(idx_prop)   = meshlines(2);
+	v2_stop(idx_prop)    = meshlines(2);
+	v3_start = v2_start;
+	v3_stop  = v2_stop;
+	v3_start(idx_prop)   = meshlines(3);
+	v3_stop(idx_prop)    = meshlines(3);
+catch
+	error('Unable to place voltage probe on mesh; check the location of the MSL and the probe (MeasPlaneShift), and make sure that the mesh is large enough');
 end
-MSL_w2 = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), (nstart(idx_width)+nstop(idx_width))/2, 'nearest' );
-MSL_w2 = mesh{idx_width}(MSL_w2); % get e-line at center of MSL (MSL_width/2)
-v1_start(idx_prop)   = meshlines(1);
-v1_start(idx_width)  = MSL_w2;
-v1_start(idx_height) = start(idx_height);
-v1_stop  = v1_start;
-v1_stop(idx_height)  = stop(idx_height);
-v2_start = v1_start;
-v2_stop  = v1_stop;
-v2_start(idx_prop)   = meshlines(2);
-v2_stop(idx_prop)    = meshlines(2);
-v3_start = v2_start;
-v3_stop  = v2_stop;
-v3_start(idx_prop)   = meshlines(3);
-v3_stop(idx_prop)    = meshlines(3);
 
 % calculate position of the current probes
-idx = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), nstart(idx_width), 'nearest' );
-i1_start(idx_width)  = mesh{idx_width}(idx) - diff(mesh{idx_width}(idx-1:idx))/2;
-idx = interp1( mesh{idx_height}, 1:numel(mesh{idx_height}), start(idx_height), 'nearest' );
-i1_start(idx_height) = mesh{idx_height}(idx-1) - diff(mesh{idx_height}(idx-2:idx-1))/2;
-i1_stop(idx_height)  = mesh{idx_height}(idx+1) + diff(mesh{idx_height}(idx+1:idx+2))/2;
-i1_start(idx_prop)   = sum(meshlines(1:2))/2;
-i1_stop(idx_prop)    = i1_start(idx_prop);
-idx = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), nstop(idx_width), 'nearest' );
-i1_stop(idx_width)   = mesh{idx_width}(idx) + diff(mesh{idx_width}(idx:idx+1))/2;
-i2_start = i1_start;
-i2_stop  = i1_stop;
-i2_start(idx_prop)   = sum(meshlines(2:3))/2;
-i2_stop(idx_prop)    = i2_start(idx_prop);
+try
+	idx = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), nstart(idx_width), 'nearest' );
+	i1_start(idx_width)  = mesh{idx_width}(idx) - diff(mesh{idx_width}(idx-1:idx))/2;
+	idx = interp1( mesh{idx_height}, 1:numel(mesh{idx_height}), start(idx_height), 'nearest' );
+	i1_start(idx_height) = mesh{idx_height}(idx-1) - diff(mesh{idx_height}(idx-2:idx-1))/2;
+	i1_stop(idx_height)  = mesh{idx_height}(idx+1) + diff(mesh{idx_height}(idx+1:idx+2))/2;
+	i1_start(idx_prop)   = sum(meshlines(1:2))/2;
+	i1_stop(idx_prop)    = i1_start(idx_prop);
+	idx = interp1( mesh{idx_width}, 1:numel(mesh{idx_width}), nstop(idx_width), 'nearest' );
+	i1_stop(idx_width)   = mesh{idx_width}(idx) + diff(mesh{idx_width}(idx:idx+1))/2;
+	i2_start = i1_start;
+	i2_stop  = i1_stop;
+	i2_start(idx_prop)   = sum(meshlines(2:3))/2;
+	i2_stop(idx_prop)    = i2_start(idx_prop);
+catch
+  error('Unable to place current probe on mesh; check the location of the MSL, and make sure that the mesh is large enough');
+end
 
 % create the probes
 port.U_filename{1} = [PortNamePrefix 'port_ut' num2str(portnr) 'A'];
@@ -232,13 +240,17 @@ port.measplanepos = abs(v2_start(idx_prop) - start(idx_prop))*port.LengthScale;
 % port
 
 % create excitation (if enabled) and port resistance
-meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop) + feed_shift*direction, 'nearest' );
-ex_start(idx_prop)   = mesh{idx_prop}(meshline) ;
-ex_start(idx_width)  = nstart(idx_width);
-ex_start(idx_height) = nstart(idx_height);
-ex_stop(idx_prop)    = ex_start(idx_prop);
-ex_stop(idx_width)   = nstop(idx_width);
-ex_stop(idx_height)  = nstop(idx_height);
+try
+	meshline = interp1( mesh{idx_prop}, 1:numel(mesh{idx_prop}), start(idx_prop) + feed_shift*direction, 'nearest' );
+	ex_start(idx_prop)   = mesh{idx_prop}(meshline) ;
+	ex_start(idx_width)  = nstart(idx_width);
+	ex_start(idx_height) = nstart(idx_height);
+	ex_stop(idx_prop)    = ex_start(idx_prop);
+	ex_stop(idx_width)   = nstop(idx_width);
+	ex_stop(idx_height)  = nstop(idx_height);
+catch
+  error('Unable to place excitation on mesh; check the location of the MSL and the excitation (FeedShift), and make sure that the mesh is large enough');
+end
 
 port.excite = 0;
 if excite

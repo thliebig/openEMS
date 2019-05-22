@@ -78,23 +78,27 @@ for n=1:3
 end
 
 % calculate position
-port_start_idx = start_idx;
-port_stop_idx  = stop_idx;
-if abs(start_idx(dir) - stop_idx(dir)) ~= 1
-    % calc port position
-    idx  = interp1( mesh{dir},  1:numel(mesh{dir}),  (nstart(dir)+nstop(dir))/2,   'nearest' );
-    idx1 = interp1( mesh{dir1}, 1:numel(mesh{dir1}), (nstart(dir1)+nstop(dir1))/2, 'nearest' );
-    idx2 = interp1( mesh{dir2}, 1:numel(mesh{dir2}), (nstart(dir2)+nstop(dir2))/2, 'nearest' );
-    port_start_idx(dir)  = idx;
-    port_start_idx(dir1) = idx1;
-    port_start_idx(dir2) = idx2;
-    port_stop_idx(dir)   = idx+1;
-    port_stop_idx(dir1)  = idx1;
-    port_stop_idx(dir2)  = idx2;
-    metalname = [PortNamePrefix 'port' num2str(portnr) '_PEC'];
-    CSX = AddMetal( CSX, metalname );
-    CSX = AddCurve( CSX, metalname, prio, [nstart.' [mesh{1}(port_start_idx(1));mesh{2}(port_start_idx(2));mesh{3}(port_start_idx(3))]] );
-    CSX = AddCurve( CSX, metalname, prio, [nstop.' [mesh{1}(port_stop_idx(1));mesh{2}(port_stop_idx(2));mesh{3}(port_stop_idx(3))]] );
+try
+	port_start_idx = start_idx;
+	port_stop_idx  = stop_idx;
+	if abs(start_idx(dir) - stop_idx(dir)) ~= 1
+		% calc port position
+		idx  = interp1( mesh{dir},  1:numel(mesh{dir}),  (nstart(dir)+nstop(dir))/2,   'nearest' );
+		idx1 = interp1( mesh{dir1}, 1:numel(mesh{dir1}), (nstart(dir1)+nstop(dir1))/2, 'nearest' );
+		idx2 = interp1( mesh{dir2}, 1:numel(mesh{dir2}), (nstart(dir2)+nstop(dir2))/2, 'nearest' );
+		port_start_idx(dir)  = idx;
+		port_start_idx(dir1) = idx1;
+		port_start_idx(dir2) = idx2;
+		port_stop_idx(dir)   = idx+1;
+		port_stop_idx(dir1)  = idx1;
+		port_stop_idx(dir2)  = idx2;
+		metalname = [PortNamePrefix 'port' num2str(portnr) '_PEC'];
+		CSX = AddMetal( CSX, metalname );
+		CSX = AddCurve( CSX, metalname, prio, [nstart.' [mesh{1}(port_start_idx(1));mesh{2}(port_start_idx(2));mesh{3}(port_start_idx(3))]] );
+		CSX = AddCurve( CSX, metalname, prio, [nstop.' [mesh{1}(port_stop_idx(1));mesh{2}(port_stop_idx(2));mesh{3}(port_stop_idx(3))]] );
+	end
+catch
+	error('Unable to place port on mesh; check the location of the port, and make sure that the mesh is large enough');
 end
 
 % calculate position of resistive material
