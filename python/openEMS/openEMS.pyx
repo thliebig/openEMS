@@ -428,7 +428,6 @@ cdef class openEMS:
             os.mkdir(sim_path)
         if not os.path.exists(sim_path):
             os.mkdir(sim_path)
-        cwd = os.getcwd()
         os.chdir(sim_path)
         if verbose is not None:
             self.thisptr.SetVerboseLevel(verbose)
