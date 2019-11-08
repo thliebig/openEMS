@@ -59,7 +59,7 @@ sphere_metal = CSX.AddMetal( 'sphere' ) # create a perfect electric conductor (P
 sphere_metal.AddSphere(priority=10, center=[0, 0, 0], radius=sphere_rad)
 
 # plane wave excitation
-k_dir = [cos(inc_angle), sin(inc_angle), 0] # plane wave direction
+k_dir = [cos(np.deg2rad(inc_angle)), sin(np.deg2rad(inc_angle)), 0] # plane wave direction
 E_dir = [0, 0, 1] # plane wave polarization --> E_z
 
 pw_exc = CSX.AddExcitation('plane_wave', exc_type=10, exc_val=E_dir)
