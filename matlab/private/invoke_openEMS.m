@@ -44,8 +44,14 @@ else
     command = [command ' > ' logfile ' 2>&1'];
 end
 
+isOctave = exist('OCTAVE_VERSION','builtin') ~= 0;
+if isOctave
+    exitcode = system(command);
+    shelloutput = "";
+else
+    [exitcode, shelloutput] = system(command);
+end
 
-[exitcode, shelloutput] = system(command);
 if (exitcode~=0);
 	disp(shelloutput);
 	error(['openEMS binary exited with error-code ' num2str(exitcode)]);
