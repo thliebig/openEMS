@@ -16,6 +16,7 @@
 */
 
 
+#include <algorithm>
 #include "sar_calculation.h"
 #include "cfloat"
 #include "array_ops.h"

@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2010 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2010,2019 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -31,14 +31,32 @@
 #include <math.h>
 #include "constants.h"
 
-typedef float v4sf __attribute__ ((vector_size (16))); // vector of four single floats
-typedef   int v4si __attribute__ ((vector_size (4*sizeof(int)))); // vector of four single ints
+#define F4VECTOR_SIZE 16 // sizeof(typeid(f4vector))
 
+#ifdef __GNUC__ // GCC
+typedef float v4sf __attribute__ ((vector_size (F4VECTOR_SIZE))); // vector of four single floats
 union f4vector
 {
 	v4sf v;
 	float f[4];
 };
+#else // MSVC
+#include <emmintrin.h>
+union f4vector
+{
+	__m128 v;
+	float f[4];
+};
+inline __m128 operator + (__m128 a, __m128 b) {return _mm_add_ps(a, b);}
+inline __m128 operator - (__m128 a, __m128 b) {return _mm_sub_ps(a, b);}
+inline __m128 operator * (__m128 a, __m128 b) {return _mm_mul_ps(a, b);}
+inline __m128 operator / (__m128 a, __m128 b) {return _mm_div_ps(a, b);}
+
+inline __m128 & operator += (__m128 & a, __m128 b){a = a + b; return a;}
+inline __m128 & operator -= (__m128 & a, __m128 b){a = a - b; return a;}
+inline __m128 & operator *= (__m128 & a, __m128 b){a = a * b; return a;}
+inline __m128 & operator /= (__m128 & a, __m128 b){a = a / b; return a;}
+#endif
 
 void Delete1DArray_v4sf(f4vector* array);
 void Delete3DArray_v4sf(f4vector*** array, const unsigned int* numLines);

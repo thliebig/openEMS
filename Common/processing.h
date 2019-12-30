@@ -18,6 +18,10 @@
 #ifndef PROCESSING_H
 #define PROCESSING_H
 
+#ifndef __GNUC__ // not GCC
+#include <emmintrin.h>
+#endif
+
 #include <complex>
 typedef std::complex<double> double_complex;
 #define _I double_complex(0.0,1.0)
@@ -30,6 +34,8 @@ typedef std::complex<double> double_complex;
 #include <iostream>
 #include <string>
 #include <vector>
+
+#define _USE_MATH_DEFINES
 
 #include "Common/engine_interface_base.h"
 
@@ -59,7 +65,7 @@ public:
 
 	virtual void ShowSnappedCoords();
 
-	void SetProcessInterval(unsigned int interval) {ProcessInterval=std::max((unsigned int)1,interval);}
+	void SetProcessInterval(unsigned int interval);
 	void SetProcessStartStopTime(double start, double stop);
 
 	void AddStep(unsigned int step);

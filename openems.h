@@ -19,9 +19,15 @@
 #define OPENEMS_H
 
 #include <sstream>
+#ifdef WIN32
+#include <Winsock2.h> // for struct timeval
+#else
 #include <sys/time.h>
+#endif
 #include <time.h>
 #include <vector>
+
+#include "tools/global.h"
 
 #define __OPENEMS_STAT_FILE__ "openEMS_stats.txt"
 #define __OPENEMS_RUN_STAT_FILE__ "openEMS_run_stats.txt"
@@ -39,7 +45,7 @@ class Engine_Ext_SteadyState;
 double CalcDiffTime(timeval t1, timeval t2);
 std::string FormatTime(int sec);
 
-class openEMS
+class OPENEMS_EXPORT openEMS
 {
 public:
 	openEMS();

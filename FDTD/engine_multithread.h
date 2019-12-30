@@ -26,11 +26,13 @@
 #include <boost/fusion/container/list/list_fwd.hpp>
 #include <boost/fusion/include/list_fwd.hpp>
 
-//#ifdef WIN32
-//#include <Winsock2.h> // for struct timeval
-//#endif
-
+#include "tools/useful.h"
+#ifndef __GNUC__
+#include <Winsock2.h> // for struct timeval
+#else
 #include <sys/time.h>
+#endif
+
 
 #ifdef MPI_SUPPORT
 	#define ENGINE_MULTITHREAD_BASE Engine_MPI

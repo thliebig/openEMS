@@ -24,6 +24,7 @@
 #include <cmath>
 #include <complex>
 #include <boost/thread.hpp>
+#define _USE_MATH_DEFINES
 
 class nf2ff_calc;
 

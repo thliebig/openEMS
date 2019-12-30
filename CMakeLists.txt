@@ -8,6 +8,7 @@ ENDIF()
 
 PROJECT(openEMS CXX C)
 cmake_minimum_required(VERSION 2.8)
+cmake_policy(SET CMP0074 NEW)
 
 # default
 set(LIB_VERSION_MAJOR 0)
@@ -20,6 +21,8 @@ set(VERSION "v${LIB_VERSION_STRING}")
 IF(EXISTS ${PROJECT_SOURCE_DIR}/localConfig.cmake)
    include(${PROJECT_SOURCE_DIR}/localConfig.cmake)
 ENDIF()
+
+#ADD_DEFINITIONS( -D__SSE2__ )
 
 set(VERSION "v0.0.35")
 
@@ -106,11 +109,18 @@ INCLUDE_DIRECTORIES( ${CSXCAD_INCLUDE_DIR} )
 # TinyXML module from https://github.com/ros/cmake_modules
 find_package(TinyXML REQUIRED)
 ADD_DEFINITIONS( -DTIXML_USE_STL )
+message(STATUS "TinyXML_INCLUDE_DIR: ${TinyXML_INCLUDE_DIR}")
+message(STATUS "TinyXML_LIBRARY: ${TinyXML_LIBRARY}")
+
+INCLUDE_DIRECTORIES( ${TinyXML_INCLUDE_DIR} )
 
 # hdf5
 find_package(HDF5 1.8 COMPONENTS C HL REQUIRED)
 INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIRS})
 link_directories(${HDF5_LIBRARIES})
+# hdf5 compat
+#ADD_DEFINITIONS( -DH5_USE_16_API )
+ADD_DEFINITIONS( -DH5_BUILT_AS_DYNAMIC_LIB )
 
 # boost
 find_package(Boost 1.46 COMPONENTS
@@ -119,7 +129,11 @@ find_package(Boost 1.46 COMPONENTS
   date_time
   serialization
   chrono
+  REQUIRED
 )
+message(STATUS "Boost_INCLUDE_DIR: ${Boost_INCLUDE_DIR}")
+message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
+INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIR})
 
 # vtk
 find_package(VTK COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE REQUIRED)
@@ -193,11 +207,12 @@ if (${MPI_CXX_FOUND})
 endif()
 
 add_library( openEMS SHARED ${SOURCES})
-set_target_properties(openEMS PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR})
+#ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})
+set_target_properties(openEMS PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR} )
 TARGET_LINK_LIBRARIES( openEMS
   ${CSXCAD_LIBRARIES}
   ${fparser_LIBRARIES}
-  tinyxml
+  ${TinyXML_LIBRARY}
   ${HDF5_LIBRARIES}
   ${HDF5_HL_LIBRARIES}
   ${Boost_LIBRARIES}
@@ -205,13 +220,22 @@ TARGET_LINK_LIBRARIES( openEMS
   ${MPI_LIBRARIES}
 )
 
+if (WIN32)
+    # make sure "BUILD_OPENEMS_LIB" is only set for openEMS (dll) not openEMS_bin (exe)
+    target_compile_definitions(openEMS PRIVATE -DBUILD_OPENEMS_LIB )
+endif (WIN32)
+
 # main program
 ADD_EXECUTABLE( openEMS_bin main.cpp )
 SET_TARGET_PROPERTIES(openEMS_bin PROPERTIES OUTPUT_NAME openEMS)
 TARGET_LINK_LIBRARIES(openEMS_bin openEMS)
  
-INSTALL(TARGETS openEMS DESTINATION lib${LIB_SUFFIX})
-INSTALL(TARGETS openEMS_bin DESTINATION bin )
+if (WIN32)
+    INSTALL(TARGETS openEMS DESTINATION bin)
+else()
+    INSTALL(TARGETS openEMS DESTINATION lib${LIB_SUFFIX})
+endif()
+INSTALL(TARGETS openEMS_bin DESTINATION bin)
 
 if (UNIX)
     INSTALL( FILES openEMS.sh 

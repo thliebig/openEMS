@@ -183,3 +183,19 @@ int LinePlaneIntersection(const double *p0, const double *p1, const double *p2, 
 
 	return 0;
 }
+
+#ifndef __GNUC__
+#include <chrono>
+#include <Winsock2.h> // for struct timeval
+
+int gettimeofday(struct timeval* tp, struct timezone* tzp) {
+  namespace sc = std::chrono;
+  sc::system_clock::duration d = sc::system_clock::now().time_since_epoch();
+  sc::seconds s = sc::duration_cast<sc::seconds>(d);
+  tp->tv_sec = s.count();
+  tp->tv_usec = sc::duration_cast<sc::microseconds>(d - s).count();
+
+  return 0;
+}
+
+#endif // _WIN32

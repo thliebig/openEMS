@@ -27,9 +27,20 @@
 
 using namespace std;
 
+#if defined(WIN32)
+	#ifdef BUILD_NF2FF_LIB
+	#define NF2FF_EXPORT __declspec(dllexport)
+	#else
+	#define NF2FF_EXPORT __declspec(dllimport)
+	#endif
+#else
+#define NF2FF_EXPORT
+#endif
+
+
 class TiXmlElement;
 
-class nf2ff
+class NF2FF_EXPORT nf2ff
 {
 public:
 	nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, vector<float> center, unsigned int numThreads=0);

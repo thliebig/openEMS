@@ -19,10 +19,23 @@
 #define GLOBAL_H
 
 #include <sstream>
+#define _USE_MATH_DEFINES
 
+#include "tools/array_ops.h"
+#if defined(WIN32)
+	#ifdef BUILD_OPENEMS_LIB
+	#define OPENEMS_EXPORT __declspec(dllexport)
+	#else
+	#define OPENEMS_EXPORT __declspec(dllimport)
+	#endif
+#else
+#define OPENEMS_EXPORT
+#endif
+
+// declare a parameter as unused
 #define UNUSED(x) (void)(x);
 
-class Global
+class OPENEMS_EXPORT Global
 {
 public:
 	Global();
@@ -57,9 +70,6 @@ protected:
 	int m_SavedVerboseLevel;
 };
 
-extern Global g_settings;
-
-// declare a parameter as unused
-#define UNUSED(x) (void)(x);
+OPENEMS_EXPORT extern Global g_settings;
 
 #endif // GLOBAL_H

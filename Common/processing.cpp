@@ -203,6 +203,11 @@ void Processing::ShowSnappedCoords()
 		 << stop[0] << "," << stop[1] << "," << stop[2] << "]" << endl;
 }
 
+void Processing::SetProcessInterval(unsigned int interval)
+{
+	ProcessInterval=std::max((unsigned int)1,interval);
+}
+
 void Processing::SetProcessStartStopTime(double start, double stop)
 {
 	double dT = Op->GetTimestep();

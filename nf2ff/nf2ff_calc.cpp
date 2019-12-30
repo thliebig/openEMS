@@ -376,13 +376,13 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, complex<f
 		normDir[ny]=-1;
 	unsigned int pos[3];
 
-	float edge_length_P[numLines[nP]];
+	float* edge_length_P = new float[numLines[nP]];
 	for (unsigned int n=1;n<numLines[nP]-1;++n)
 		edge_length_P[n]=0.5*fabs(lines[nP][n+1]-lines[nP][n-1]);
 	edge_length_P[0]=0.5*fabs(lines[nP][1]-lines[nP][0]);
 	edge_length_P[numLines[nP]-1]=0.5*fabs(lines[nP][numLines[nP]-1]-lines[nP][numLines[nP]-2]);
 
-	float edge_length_PP[numLines[nPP]];
+	float* edge_length_PP = new float[numLines[nPP]];
 	for (unsigned int n=1;n<numLines[nPP]-1;++n)
 		edge_length_PP[n]=0.5*fabs(lines[nPP][n+1]-lines[nPP][n-1]);
 	edge_length_PP[0]=0.5*fabs(lines[nPP][1]-lines[nPP][0]);
@@ -422,7 +422,7 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, complex<f
 	// setup multi-threading jobs
 	vector<unsigned int> jpt = AssignJobs2Threads(numLines[nP], m_numThreads, true);
 	m_numThreads = jpt.size();
-	nf2ff_data thread_data[m_numThreads];
+	nf2ff_data* thread_data = new nf2ff_data[m_numThreads];
 	m_Barrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	unsigned int start=0;
 	unsigned int stop=jpt.at(0)-1;
@@ -518,6 +518,9 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, complex<f
 	Delete2DArray(Np,numAngles);
 	Delete2DArray(Lt,numAngles);
 	Delete2DArray(Lp,numAngles);
+	delete[] edge_length_P; edge_length_P=NULL;
+	delete[] edge_length_PP; edge_length_PP=NULL;
+	delete[] thread_data; thread_data=NULL;
 
 	m_maxDir = 4*M_PI*P_max / m_radPower;
 

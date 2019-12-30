@@ -404,7 +404,7 @@ bool HDF5_File_Writer::WriteData(std::string dataSetName,  hid_t mem_type, void 
 		return false;
 	}
 
-	hsize_t dims[dim];
+	hsize_t* dims = new hsize_t[dim];
 	for (size_t n=0;n<dim;++n)
 		dims[n]=datasize[n];
 	hid_t space = H5Screate_simple(dim, dims, NULL);
@@ -422,6 +422,7 @@ bool HDF5_File_Writer::WriteData(std::string dataSetName,  hid_t mem_type, void 
 	H5Sclose(space);
 	H5Gclose(group);
 	H5Fclose(hdf5_file);
+	delete[] dims; dims=NULL;
 	return true;
 }
 
@@ -490,18 +491,22 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 
 bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, vector<float> values)
 {
-	float val[values.size()];
+	float* val = new float[values.size()];
 	for (size_t n=0;n<values.size();++n)
 		val[n]=values.at(n);
-	return HDF5_File_Writer::WriteAtrribute(locName, attr_name,val,values.size(),H5T_NATIVE_FLOAT);
+	bool ok = HDF5_File_Writer::WriteAtrribute(locName, attr_name,val,values.size(),H5T_NATIVE_FLOAT);
+	delete[] val; val=NULL;
+	return ok;
 }
 
 bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, vector<double> values)
 {
-	double val[values.size()];
+	double* val = new double[values.size()];
 	for (size_t n=0;n<values.size();++n)
 		val[n]=values.at(n);
-	return HDF5_File_Writer::WriteAtrribute(locName, attr_name, val, values.size(), H5T_NATIVE_DOUBLE);
+	bool ok =  HDF5_File_Writer::WriteAtrribute(locName, attr_name, val, values.size(), H5T_NATIVE_DOUBLE);
+	delete[] val; val=NULL;
+	return ok;
 }
 
 bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, float value)

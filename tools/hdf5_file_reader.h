@@ -22,6 +22,7 @@
 #include <vector>
 #include <complex>
 #include <hdf5.h>
+#define _USE_MATH_DEFINES
 
 class HDF5_File_Reader
 {
