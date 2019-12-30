@@ -21,16 +21,7 @@
 #include <sstream>
 #define _USE_MATH_DEFINES
 
-#include "tools/array_ops.h"
-#if defined(WIN32)
-	#ifdef BUILD_OPENEMS_LIB
-	#define OPENEMS_EXPORT __declspec(dllexport)
-	#else
-	#define OPENEMS_EXPORT __declspec(dllimport)
-	#endif
-#else
-#define OPENEMS_EXPORT
-#endif
+#include "openems_global.h"
 
 // declare a parameter as unused
 #define UNUSED(x) (void)(x);

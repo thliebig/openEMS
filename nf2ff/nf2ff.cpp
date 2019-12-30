@@ -133,6 +133,32 @@ void nf2ff::SetMirror(int type, int dir, float pos)
 		m_nf2ff.at(fn)->SetMirror(type, dir, pos);
 }
 
+
+double nf2ff::GetTotalRadPower(size_t f_idx) const
+{
+	return m_nf2ff.at(f_idx)->GetTotalRadPower();
+}
+
+double nf2ff::GetMaxDirectivity(size_t f_idx) const
+{
+	return m_nf2ff.at(f_idx)->GetMaxDirectivity();
+}
+
+complex<double>** nf2ff::GetETheta(size_t f_idx) const
+{
+	return m_nf2ff.at(f_idx)->GetETheta();
+}
+
+complex<double>** nf2ff::GetEPhi(size_t f_idx) const
+{
+	return m_nf2ff.at(f_idx)->GetEPhi();
+}
+
+double** nf2ff::GetRadPower(size_t f_idx) const
+{
+	return m_nf2ff.at(f_idx)->GetRadPower();
+}
+
 bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 {
 	if (ti_nf2ff==NULL)

@@ -55,7 +55,7 @@ else()
     INSTALL(TARGETS nf2ff     DESTINATION lib${LIB_SUFFIX})
 endif()
 
-INSTALL(FILES ${HEADERS} DESTINATION include/openEMS)
+INSTALL(FILES nf2ff.h DESTINATION include/openEMS)
 
 
 #TODO tarball, debug, release

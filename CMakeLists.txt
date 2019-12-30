@@ -188,7 +188,7 @@ set(SOURCES
   openems.cpp
 )
 
-set(PUB_HEADERS openems.h)
+set(PUB_HEADERS openems.h openems_global.h)
 
 # libs
 ADD_SUBDIRECTORY( tools )

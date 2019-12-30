@@ -19,7 +19,7 @@
 #define OPENEMS_H
 
 #include <sstream>
-#ifdef WIN32
+#ifndef __GNUC__
 #include <Winsock2.h> // for struct timeval
 #else
 #include <sys/time.h>
@@ -27,7 +27,7 @@
 #include <time.h>
 #include <vector>
 
-#include "tools/global.h"
+#include "openems_global.h"
 
 #define __OPENEMS_STAT_FILE__ "openEMS_stats.txt"
 #define __OPENEMS_RUN_STAT_FILE__ "openEMS_run_stats.txt"

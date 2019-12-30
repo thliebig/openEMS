@@ -23,7 +23,6 @@
 #include <vector>
 #include <cmath>
 #include <complex>
-#include "nf2ff_calc.h"
 
 using namespace std;
 
@@ -39,6 +38,7 @@ using namespace std;
 
 
 class TiXmlElement;
+class nf2ff_calc;
 
 class NF2FF_EXPORT nf2ff
 {
@@ -54,12 +54,12 @@ public:
 	
 	void SetMirror(int type, int dir, float pos);
 
-	double GetTotalRadPower(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetTotalRadPower();}
-	double GetMaxDirectivity(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetMaxDirectivity();}
+	double GetTotalRadPower(size_t f_idx) const;
+	double GetMaxDirectivity(size_t f_idx) const;
 
-	complex<double>** GetETheta(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetETheta();}
-	complex<double>** GetEPhi(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetEPhi();}
-	double** GetRadPower(size_t f_idx) const {return m_nf2ff.at(f_idx)->GetRadPower();}
+	complex<double>** GetETheta(size_t f_idx) const;
+	complex<double>** GetEPhi(size_t f_idx) const;
+	double** GetRadPower(size_t f_idx) const;
 
 	//! Write results to a hdf5 file
 	bool Write2HDF5(string filename);
