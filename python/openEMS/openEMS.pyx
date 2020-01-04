@@ -432,15 +432,21 @@ cdef class openEMS:
         if verbose is not None:
             self.thisptr.SetVerboseLevel(verbose)
         if debug_pec:
-            self.thisptr.DebugPEC()
+            with nogil:
+                self.thisptr.DebugPEC()
         if 'numThreads' in kw:
             self.thisptr.SetNumberOfThreads(int(kw['numThreads']))
         assert os.getcwd() == sim_path
         _openEMS.WelcomeScreen()
         cdef int EC
-        EC = self.thisptr.SetupFDTD()
+        with nogil:
+            EC = self.thisptr.SetupFDTD()
         if EC!=0:
             print('Run: Setup failed, error code: {}'.format(EC))
         if setup_only or EC!=0:
             return EC
-        self.thisptr.RunFDTD()
+        with nogil:
+            self.thisptr.RunFDTD()
+
+    def SetAbort(self, val):
+        self.thisptr.SetAbort(val)

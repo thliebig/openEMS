@@ -23,7 +23,7 @@ from CSXCAD.CSXCAD cimport _ContinuousStructure, ContinuousStructure
 
 cdef extern from "openEMS/openems.h":
     cdef cppclass _openEMS "openEMS":
-        _openEMS() except +
+        _openEMS() nogil except +
         void SetNumberOfTimeSteps(unsigned int val)
         void SetCSX(_ContinuousStructure* csx)
 
@@ -49,13 +49,15 @@ cdef extern from "openEMS/openems.h":
 
         void SetGaussExcite(double f0, double fc)
 
-        void SetVerboseLevel(int level)
-        void DebugPEC()
-        void DebugMaterial()
-        void DebugCSX()
+        void SetAbort(bool val)
 
-        int SetupFDTD()
-        void RunFDTD()
+        void SetVerboseLevel(int level)
+        void DebugPEC()      nogil
+        void DebugMaterial() nogil
+        void DebugCSX()      nogil
+
+        int SetupFDTD() nogil
+        void RunFDTD()  nogil
 
         @staticmethod
         void WelcomeScreen()

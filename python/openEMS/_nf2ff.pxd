@@ -24,9 +24,9 @@ cimport cython.numeric
 
 cdef extern from "openEMS/nf2ff.h":
     cdef cppclass cpp_nf2ff "nf2ff":
-        cpp_nf2ff(vector[float] freq, vector[float] theta, vector[float] phi, vector[float] center, unsigned int numThreads) except +
+        cpp_nf2ff(vector[float] freq, vector[float] theta, vector[float] phi, vector[float] center, unsigned int numThreads) nogil except +
 
-        bool AnalyseFile(string E_Field_file, string H_Field_file)
+        bool AnalyseFile(string E_Field_file, string H_Field_file) nogil
 
         void SetRadius(float radius)
         void SetPermittivity(vector[float] permittivity);
@@ -41,7 +41,7 @@ cdef extern from "openEMS/nf2ff.h":
         complex[double]** GetEPhi(size_t f_idx)
         double** GetRadPower(size_t f_idx)
 
-        bool Write2HDF5(string filename)
+        bool Write2HDF5(string filename) nogil
 
         void SetVerboseLevel(int level)
 
