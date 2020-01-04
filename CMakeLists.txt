@@ -8,7 +8,6 @@ ENDIF()
 
 PROJECT(openEMS CXX C)
 cmake_minimum_required(VERSION 2.8)
-cmake_policy(SET CMP0074 NEW)
 
 # default
 set(LIB_VERSION_MAJOR 0)
