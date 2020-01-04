@@ -147,7 +147,8 @@ cdef class openEMS:
 
         Set the coordinate system. 0 --> Cartesian (default), 1 --> cylindrical
         """
-        assert (val==0 or val==1), 'SetCoordSystem: Invalid coordinate system'
+        if not (val==0 or val==1):
+            raise Exception('SetCoordSystem: Invalid coordinate system')
         if val==0:
             self.thisptr.SetCylinderCoords(False)
         elif val==1:
@@ -164,7 +165,8 @@ cdef class openEMS:
         --------
         openEMS.SetCylinderCoords
         """
-        assert len(radii)>0, 'SetMultiGrid: invalid multi grid definition'
+        if not len(radii)>0:
+            raise Exception('SetMultiGrid: invalid multi grid definition')
 
         grid_str = ','.join(['{}'.format(x) for x in radii])
         self.thisptr.SetupCylinderMultiGrid(grid_str.encode('UTF-8'))
@@ -245,7 +247,8 @@ cdef class openEMS:
 
         :param BC: (8,) array or list -- see options above
         """
-        assert len(BC)==6
+        if not len(BC)==6:
+            raise Exception('Invalid boundary condition size!')
         for n in range(len(BC)):
             if type(BC[n])==int:
                 self.thisptr.Set_BC_Type(n, BC[n])
@@ -268,7 +271,8 @@ cdef class openEMS:
         --------
         openEMS.ports.LumpedPort
         """
-        assert self.__CSX is not None, 'AddLumpedPort: CSX is not set!'
+        if self.__CSX is None:
+            raise Exception('AddLumpedPort: CSX is not set!')
         port = ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
         edges2grid = kw.get('edges2grid', None)
         if edges2grid is not None:
@@ -288,7 +292,8 @@ cdef class openEMS:
         --------
         openEMS.ports.WaveguidePort
         """
-        assert self.__CSX is not None, 'AddWaveGuidePort: CSX is not set!'
+        if self.__CSX is None:
+            raise Exception('AddWaveGuidePort: CSX is not set!')
         return ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, **kw)
 
     def AddRectWaveGuidePort(self, port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw):
@@ -300,7 +305,8 @@ cdef class openEMS:
         --------
         openEMS.ports.RectWGPort
         """
-        assert self.__CSX is not None, 'AddRectWaveGuidePort: CSX is not set!'
+        if self.__CSX is None:
+            raise Exception('AddRectWaveGuidePort: CSX is not set!')
         return ports.RectWGPort(self.__CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
 
     def AddMSLPort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw):
@@ -312,7 +318,8 @@ cdef class openEMS:
         --------
         openEMS.ports.MSLPort
         """
-        assert self.__CSX is not None, 'AddMSLPort: CSX is not set!'
+        if self.__CSX is None:
+            raise Exception('AddMSLPort: CSX is not set!')
         return ports.MSLPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
 
     def CreateNF2FFBox(self, name='nf2ff', start=None, stop=None, **kw):
@@ -331,7 +338,8 @@ cdef class openEMS:
         --------
         openEMS.nf2ff.nf2ff
         """
-        assert self.__CSX is not None, 'CreateNF2FFBox: CSX is not set!'
+        if self.__CSX is None:
+            raise Exception('CreateNF2FFBox: CSX is not set!')
         directions = [True]*6
         mirror     = [0]*6
         BC_size = [0]*6
@@ -351,13 +359,15 @@ cdef class openEMS:
 
         if start is None or stop is None:
             grid = self.__CSX.GetGrid()
-            assert grid.IsValid(), 'Error::CreateNF2FFBox: Grid is invalid'
+            if not grid.IsValid():
+                raise Exception('Error::CreateNF2FFBox: Grid is invalid')
             start = np.zeros(3)
             stop  = np.zeros(3)
             for n in range(3):
                 l = grid.GetLines(n)
                 BC_type = self.thisptr.Get_BC_Type(2*n)
-                assert len(l)>(BC_size[2*n]+BC_size[2*n+1]), 'Error::CreateNF2FFBox: not enough lines in some direction'
+                if not len(l)>(BC_size[2*n]+BC_size[2*n+1]):
+                    raise Exception('Error::CreateNF2FFBox: not enough lines in some direction')
                 start[n] = l[BC_size[2*n]]
                 stop[n]  = l[-1*BC_size[2*n+1]-1]
         return nf2ff.nf2ff(self.__CSX, name, start, stop, directions=directions, mirror=mirror, **kw)

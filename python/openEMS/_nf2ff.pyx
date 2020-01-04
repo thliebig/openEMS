@@ -38,8 +38,10 @@ cdef class _nf2ff:
         assert len(kw)==0, 'Unknown keyword(s): {}'.format(kw)
 
     def AnalyseFile(self, e_file, h_file):
-        assert os.path.exists(e_file)
-        assert os.path.exists(h_file)
+        if not os.path.exists(e_file):
+            raise Exception('File "{}" does not exist'.format(e_file))
+        if not os.path.exists(h_file):
+            raise Exception('File "{}" does not exist'.format(e_file))
         cdef string e_fn = e_file.encode('UTF-8')
         cdef string h_fn = h_file.encode('UTF-8')
         with nogil:
@@ -49,7 +51,8 @@ cdef class _nf2ff:
     def SetMirror(self, mirr_type, ny, pos):
         if mirr_type<=0:
             return
-        assert mirr_type<3
+        if not mirr_type<3:
+            raise Exception('SetMirror: invalid mirror type!')
         ny = CheckNyDir(ny)
         self.thisptr.SetMirror(mirr_type, ny, pos)
 

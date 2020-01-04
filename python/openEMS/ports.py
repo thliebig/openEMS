@@ -105,10 +105,12 @@ class Port(object):
 
         if ref_impedance is not None:
             self.Z_ref = ref_impedance
-        assert self.Z_ref  is not None
+        if self.Z_ref is None:
+            raise Exception('Port Z_ref should not be None!')
 
         if ref_plane_shift is not None:
-            assert hasattr(self, 'beta')
+            if not hasattr(self, 'beta'):
+                raise Exception('Port has no beta attribute!')
             shift = ref_plane_shift
             if self.measplane_shift:
                 shift -= self.measplane_shift
@@ -152,7 +154,8 @@ class LumpedPort(Port):
         self.exc_ny  = CheckNyDir(exc_dir)
 
         self.direction = np.sign(self.stop[self.exc_ny]-self.start[self.exc_ny])
-        assert self.start[self.exc_ny]!=self.stop[self.exc_ny], 'LumpedPort: start and stop may not be identical in excitation direction'
+        if not self.start[self.exc_ny]!=self.stop[self.exc_ny]:
+            raise Exception('LumpedPort: start and stop may not be identical in excitation direction')
 
         if self.R > 0:
             lumped_R = CSX.AddLumpedElement(self.lbl_temp.format('resist'), ny=self.exc_ny, caps=True, R=self.R)
@@ -206,10 +209,12 @@ class MSLPort(Port):
         self.prop_ny = CheckNyDir(prop_dir)
         self.direction   = np.sign(stop[self.prop_ny]-start[self.prop_ny])
         self.upside_down = np.sign(stop[self.exc_ny]  -start[self.exc_ny])
-        assert (self.start!=self.stop).all()
+        if not (self.start!=self.stop).all():
+            raise Exception('Start coordinate must not be equal to stop coordinate')
 #        assert stop[self.prop_ny]!=start[self.prop_ny], 'port length in propergation direction may not be zero!'
 #        assert stop[self.exc_ny] !=start[self.exc_ny], 'port length in propergation direction may not be zero!'
-        assert self.exc_ny!=self.prop_ny
+        if not self.exc_ny!=self.prop_ny:
+            raise Exception('Excitation direction must not be equal to propagation direction')
 
         self.feed_shift = 0
         if 'FeedShift' in kw:
@@ -230,7 +235,8 @@ class MSLPort(Port):
 
         mesh = CSX.GetGrid()
         prop_lines = mesh.GetLines(self.prop_ny)
-        assert len(prop_lines)>5, 'At least 5 lines in propagation direction required!'
+        if not len(prop_lines)>5:
+            raise Exception('At least 5 lines in propagation direction required!')
         meas_pos_idx = np.argmin(np.abs(prop_lines-self.measplane_pos))
         if meas_pos_idx==0:
             meas_pos_idx=1
@@ -328,7 +334,8 @@ class WaveguidePort(Port):
         self.direction = np.sign(stop[self.exc_ny]-start[self.exc_ny])
         self.ref_index = 1
 
-        assert not (self.excite!=0 and stop[self.exc_ny]==start[self.exc_ny]), 'port length in excitation direction may not be zero if port is excited!'
+        if (self.excite!=0 and stop[self.exc_ny]==start[self.exc_ny]):
+            raise Exception('Port length in excitation direction may not be zero if port is excited!')
 
         self.kc = kc
         self.E_func = E_WG_func
@@ -387,7 +394,8 @@ class RectWGPort(WaveguidePort):
         self.WG_size = [a, b]
 
         self.WG_mode = mode_name
-        assert len(self.WG_mode)==4, 'Invalid mode definition'
+        if not len(self.WG_mode)==4:
+            raise Exception('Invalid mode definition')
         self.unit = self.CSX.GetGrid().GetDeltaUnit()
         if self.WG_mode.startswith('TE'):
             self.TE = True
@@ -398,7 +406,8 @@ class RectWGPort(WaveguidePort):
         self.M = float(self.WG_mode[2])
         self.N = float(self.WG_mode[3])
 
-        assert self.TE, 'Currently only TE-modes are supported! Mode found: {}'.format(self.WG_mode)
+        if not self.TE:
+            raise Exception('Currently only TE-modes are supported! Mode found: {}'.format(self.WG_mode))
 
         # values by David M. Pozar, Microwave Engineering, third edition
         a = self.WG_size[0]

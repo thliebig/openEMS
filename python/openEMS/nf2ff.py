@@ -139,16 +139,21 @@ class nf2ff:
                 fn_e = os.path.join(sim_path, self.e_file + '_{}.h5'.format(n))
                 fn_h = os.path.join(sim_path, self.h_file + '_{}.h5'.format(n))
                 if os.path.exists(fn_e) and os.path.exists(fn_h):
-                    assert nfc.AnalyseFile(fn_e, fn_h)
+                    if not nfc.AnalyseFile(fn_e, fn_h):
+                        raise Exception('CalcNF2FF:: Unable to analyse files!')
 
             nfc.Write2HDF5(fn)
 
         result = nf2ff_results(fn)
         if result.phi is not None:
-            assert np.abs((result.r-radius)/radius)<1e-6, 'Radius does not match. Did you read an invalid chached result? Try "read_cached=False"'
-            assert utilities.Check_Array_Equal(np.rad2deg(result.theta), self.theta, 1e-4), 'Theta array does not match. Did you read an invalid chached result? Try "read_cached=False"'
-            assert utilities.Check_Array_Equal(np.rad2deg(result.phi), self.phi, 1e-4), 'Phi array does not match. Did you read an invalid chached result? Try "read_cached=False"'
-            assert utilities.Check_Array_Equal(result.freq, self.freq, 1e-6, relative=True), 'Frequency array does not match. Did you read an invalid chached result? Try "read_cached=False"'
+            if not np.abs((result.r-radius)/radius)<1e-6:
+                raise Exception('Radius does not match. Did you read an invalid chached result? Try "read_cached=False"')
+            if not utilities.Check_Array_Equal(np.rad2deg(result.theta), self.theta, 1e-4):
+                raise Exception('Theta array does not match. Did you read an invalid chached result? Try "read_cached=False"')
+            if not utilities.Check_Array_Equal(np.rad2deg(result.phi), self.phi, 1e-4):
+                raise Exception('Phi array does not match. Did you read an invalid chached result? Try "read_cached=False"')
+            if not utilities.Check_Array_Equal(result.freq, self.freq, 1e-6, relative=True):
+                raise Exception('Frequency array does not match. Did you read an invalid chached result? Try "read_cached=False"')
         return result
 
 class nf2ff_results:
