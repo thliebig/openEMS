@@ -157,7 +157,7 @@ if (enable_ssh)
     disp( 'Remote simulation done... copying back results and cleaning up...' );
 
     %copy back all results
-    [stat, res] = system([scp_command ' -r ' scp_options ' ' Settings.SSH.host ':' ssh_work_path '/* ' pwd '/']);
+    [stat, res] = system([scp_command ' -r ' scp_options ' ' Settings.SSH.host ':' ssh_work_path '/* ./']);
     if (stat~=0);
         disp(res);
         error('openEMS:RunOpenEMS','scp failed!');
