@@ -130,9 +130,9 @@ find_package(Boost 1.46 COMPONENTS
   chrono
   REQUIRED
 )
-message(STATUS "Boost_INCLUDE_DIR: ${Boost_INCLUDE_DIR}")
+message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
-INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIR})
+INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
 
 # vtk
 find_package(VTK COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE REQUIRED)
