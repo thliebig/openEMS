@@ -70,4 +70,4 @@ p(1,:) = p(1,:) + position(dim1);
 p(2,:) = p(2,:) + position(dim2);
 
 elevation = position(idx_elevation);
-CSX = AddPolygon( CSX, materialname, prio, normVector, elevation, p );
+CSX = AddPolygon( CSX, materialname, prio, idx_elevation-1, elevation, p );
