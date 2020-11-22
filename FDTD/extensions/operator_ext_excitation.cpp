@@ -135,14 +135,13 @@ bool Operator_Ext_Excitation::BuildExtension()
 
 	CSPropExcitation* elec=NULL;
 	CSProperties* prop=NULL;
-	int priority=0;
 
 	unsigned int numLines[] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
-
 	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
+			vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(-1, pos[1], pos[2], CSProperties::EXCITATION);
 			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 			{
 				//electric field excite
@@ -156,31 +155,28 @@ bool Operator_Ext_Excitation::BuildExtension()
 					if (m_CC_R0_included && (n==1) && (pos[0]==0))
 						continue;
 
-					for (size_t p=0; p<vec_prop.size(); ++p)
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(volt_coord, vPrims, true);
+					if (prop)
 					{
-						prop = vec_prop.at(p);
 						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
-						if (prop->CheckCoordInPrimitive(volt_coord,priority,true))
+						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 						{
-							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
+							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos);// delta[n]*gridDelta;
+							if (amp!=0)
 							{
-								amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos);// delta[n]*gridDelta;
-								if (amp!=0)
-								{
-									volt_vExcit.push_back(amp);
-									volt_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-									volt_vDir.push_back(n);
-									volt_vIndex[0].push_back(pos[0]);
-									volt_vIndex[1].push_back(pos[1]);
-									volt_vIndex[2].push_back(pos[2]);
-								}
-								if (elec->GetExcitType()==1) //hard excite
-								{
-									m_Op->SetVV(n,pos[0],pos[1],pos[2], 0 );
-									m_Op->SetVI(n,pos[0],pos[1],pos[2], 0 );
-								}
+								volt_vExcit.push_back(amp);
+								volt_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+								volt_vDir.push_back(n);
+								volt_vIndex[0].push_back(pos[0]);
+								volt_vIndex[1].push_back(pos[1]);
+								volt_vIndex[2].push_back(pos[2]);
+							}
+							if (elec->GetExcitType()==1) //hard excite
+							{
+								m_Op->SetVV(n,pos[0],pos[1],pos[2], 0 );
+								m_Op->SetVI(n,pos[0],pos[1],pos[2], 0 );
 							}
 						}
 					}
@@ -193,31 +189,28 @@ bool Operator_Ext_Excitation::BuildExtension()
 						continue;  //skip the last H-Line which is outside the FDTD-domain
 					if (m_Op->GetYeeCoords(n,pos,curr_coord,true)==false)
 						continue;
-					for (size_t p=0; p<vec_prop.size(); ++p)
+					CSProperties* prop = CSX->GetPropertyByCoordPriority(curr_coord, vPrims, true);
+					if (prop)
 					{
-						prop = vec_prop.at(p);
 						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
-						if (prop->CheckCoordInPrimitive(curr_coord,priority,true))
+						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 						{
-							if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
+							amp = elec->GetWeightedExcitation(n,curr_coord)*m_Op->GetEdgeLength(n,pos,true);// delta[n]*gridDelta;
+							if (amp!=0)
 							{
-								amp = elec->GetWeightedExcitation(n,curr_coord)*m_Op->GetEdgeLength(n,pos,true);// delta[n]*gridDelta;
-								if (amp!=0)
-								{
-									curr_vExcit.push_back(amp);
-									curr_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
-									curr_vDir.push_back(n);
-									curr_vIndex[0].push_back(pos[0]);
-									curr_vIndex[1].push_back(pos[1]);
-									curr_vIndex[2].push_back(pos[2]);
-								}
-								if (elec->GetExcitType()==3) //hard excite
-								{
-									m_Op->SetII(n,pos[0],pos[1],pos[2], 0 );
-									m_Op->SetIV(n,pos[0],pos[1],pos[2], 0 );
-								}
+								curr_vExcit.push_back(amp);
+								curr_vDelay.push_back((unsigned int)(elec->GetDelay()/dT));
+								curr_vDir.push_back(n);
+								curr_vIndex[0].push_back(pos[0]);
+								curr_vIndex[1].push_back(pos[1]);
+								curr_vIndex[2].push_back(pos[2]);
+							}
+							if (elec->GetExcitType()==3) //hard excite
+							{
+								m_Op->SetII(n,pos[0],pos[1],pos[2], 0 );
+								m_Op->SetIV(n,pos[0],pos[1],pos[2], 0 );
 							}
 						}
 					}
