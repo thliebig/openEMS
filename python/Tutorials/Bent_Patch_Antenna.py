@@ -55,7 +55,7 @@ SimBox_rad    = 2*100
 SimBox_height = 1.5*200
 
 ### Setup FDTD parameter & excitation function
-FDTD = openEMS(CoordSystem=1) # init a cylindrical FDTD
+FDTD = openEMS(CoordSystem=1, EndCriteria=1e-4) # init a cylindrical FDTD
 f0 = 2e9 # center frequency
 fc = 1e9 # 20 dB corner frequency
 FDTD.SetGaussExcite(f0, fc)
@@ -78,13 +78,15 @@ feed_angle = feed_pos/patch_radius
 patch = CSX.AddMetal('patch') # create a perfect electric conductor (PEC)
 start = [patch_radius+substrate_thickness, -patch_ang_width/2, -patch_length/2 ]
 stop  = [patch_radius+substrate_thickness,  patch_ang_width/2,  patch_length/2 ]
-CSX.AddBox(patch, priority=10, start=start, stop=stop, edges2grid='all') # add a box-primitive to the metal property 'patch'
+patch.AddBox(priority=10, start=start, stop=stop) # add a box-primitive to the metal property 'patch'
+FDTD.AddEdges2Grid(dirs='all', properties=patch)
 
 # create substrate
 substrate = CSX.AddMaterial('substrate', epsilon=substrate_epsR, kappa=substrate_kappa  )
 start = [patch_radius                    , -substr_ang_width/2, -substrate_length/2]
 stop  = [patch_radius+substrate_thickness,  substr_ang_width/2,  substrate_length/2]
-substrate.AddBox(start=start, stop=stop, edges2grid='all')
+substrate.AddBox(start=start, stop=stop)
+FDTD.AddEdges2Grid(dirs='all', properties=substrate)
 
 # save current density oon the patch
 jt_patch = CSX.AddDump('Jt_patch', dump_type=3, file_type=1)
@@ -96,7 +98,8 @@ jt_patch.AddBox(start=start, stop=stop)
 gnd = CSX.AddMetal('gnd') # create a perfect electric conductor (PEC)
 start = [patch_radius, -substr_ang_width/2, -substrate_length/2]
 stop  = [patch_radius, +substr_ang_width/2, +substrate_length/2]
-gnd.AddBox(priority=10, start=start, stop=stop, edges2grid='all')
+gnd.AddBox(priority=10, start=start, stop=stop)
+FDTD.AddEdges2Grid(dirs='all', properties=gnd)
 
 # apply the excitation & resist as a current source
 start = [patch_radius                    ,  feed_angle, 0]
