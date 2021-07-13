@@ -5,8 +5,8 @@ Created on Sun Dec 13 23:48:22 2015
 @author: thorsten
 """
 
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup
+from setuptools import Extension
 from Cython.Build import cythonize
 
 import os, sys

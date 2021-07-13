@@ -26,6 +26,8 @@ localConfig.cmake
 *.pyc
 *.pyo
 python/**/*.cpp
+python/openEMS.egg-info/*
+python/dist
 !python/doc
 python/doc/_build
 python/doc/Tutorials/__*
