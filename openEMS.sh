@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #clear LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=
@@ -7,5 +7,5 @@ export LD_LIBRARY_PATH=
 openEMS_PATH=`dirname $0`
 
 #execute openEMS
-exec $openEMS_PATH/openEMS $@
+exec $openEMS_PATH/openEMS "$@"
 
