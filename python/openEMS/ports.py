@@ -175,7 +175,7 @@ class LumpedPort(Port):
         u_start[self.exc_ny] = self.start[self.exc_ny]
         u_stop  = 0.5*(self.start+self.stop)
         u_stop[self.exc_ny]  = self.stop[self.exc_ny]
-        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=0, weight=-1*self.direction)
+        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=0, weight=-1)
         u_probe.AddBox(u_start, u_stop)
 
         self.I_filenames = [self.lbl_temp.format('it'), ]
@@ -259,7 +259,7 @@ class MSLPort(Port):
             u_stop[self.exc_ny]   = self.stop [self.exc_ny]
             u_name = self.lbl_temp.format('ut') + suffix[n]
             self.U_filenames.append(u_name)
-            u_probe = CSX.AddProbe(u_name, p_type=0, weight=self.upside_down)
+            u_probe = CSX.AddProbe(u_name, p_type=0)
             u_probe.AddBox(u_start, u_stop)
 
         i_prope_pos = u_prope_pos[0:2] + np.diff(u_prope_pos)/2.0

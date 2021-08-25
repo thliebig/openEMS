@@ -31,6 +31,8 @@ public:
 
 	virtual std::string GetIntegralName(int row) const;
 
+	virtual void DefineStartStopCoord(double* dstart, double* dstop);
+
 	virtual double CalcIntegral();
 
 protected:

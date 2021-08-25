@@ -115,7 +115,7 @@ u_start(n_dir) = start(n_dir);
 u_stop(n_dir)  = stop(n_dir);
 
 port.U_filename = [PortNamePrefix 'port_ut' int2str(portnr)];
-CSX = AddProbe(CSX, port.U_filename, 0, 'weight', -direction*V_Probe_Weight);
+CSX = AddProbe(CSX, port.U_filename, 0, 'weight', -1*V_Probe_Weight);
 CSX = AddBox(CSX, port.U_filename, prio, u_start, u_stop);
 
 i_start = start;

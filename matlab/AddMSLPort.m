@@ -136,13 +136,6 @@ else
     direction = -1;
 end
 
-% direction of propagation
-if stop(idx_height)-start(idx_height) > 0
-    upsidedown = +1;
-else
-    upsidedown = -1;
-end
-
 % create the metal/material for the MSL
 MSL_start = start;
 MSL_stop = stop;
@@ -206,7 +199,7 @@ end
 % create the probes
 port.U_filename{1} = [PortNamePrefix 'port_ut' num2str(portnr) 'A'];
 % weight = sign(stop(idx_height)-start(idx_height))
-weight = upsidedown;
+weight = 1;
 CSX = AddProbe( CSX, port.U_filename{1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{1}, prio, v1_start, v1_stop );
 port.U_filename{2} = [PortNamePrefix 'port_ut' num2str(portnr) 'B'];

@@ -187,7 +187,7 @@ width_add_stop(idx_width)  = (nstop(idx_width)-nstart(idx_width))/2+gap_width;
 weight = 0.5;
 % create the voltage-probes
 port.U_filename{1,1} = [PortNamePrefix 'port_ut' num2str(portnr) 'A1'];
-CSX = AddProbe( CSX, port.U_filename{1,1}, 0, 'weight', -1*weight );
+CSX = AddProbe( CSX, port.U_filename{1,1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{1,1}, prio, v1_start-width_add_start, v1_stop-width_add_stop);
 
 port.U_filename{1,2} = [PortNamePrefix 'port_ut' num2str(portnr) 'A2'];
@@ -196,7 +196,7 @@ CSX = AddBox( CSX, port.U_filename{1,2}, prio, v1_start+width_add_start, v1_stop
 
 
 port.U_filename{2,1} = [PortNamePrefix 'port_ut' num2str(portnr) 'B1'];
-CSX = AddProbe( CSX, port.U_filename{2,1}, 0, 'weight', -1*weight );
+CSX = AddProbe( CSX, port.U_filename{2,1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{2,1}, prio, v2_start-width_add_start, v2_stop-width_add_stop );
 
 port.U_filename{2,2} = [PortNamePrefix 'port_ut' num2str(portnr) 'B2'];
@@ -205,7 +205,7 @@ CSX = AddBox( CSX, port.U_filename{2,2}, prio, v2_start+width_add_start, v2_stop
 
 
 port.U_filename{3,1} = [PortNamePrefix 'port_ut' num2str(portnr) 'C1'];
-CSX = AddProbe( CSX, port.U_filename{3,1}, 0, 'weight', -1*weight );
+CSX = AddProbe( CSX, port.U_filename{3,1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{3,1}, prio, v3_start-width_add_start, v3_stop-width_add_stop );
 
 port.U_filename{3,2} = [PortNamePrefix 'port_ut' num2str(portnr) 'C2'];

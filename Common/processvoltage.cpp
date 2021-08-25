@@ -16,6 +16,7 @@
 */
 
 #include "processvoltage.h"
+#include "FDTD/engine_interface_fdtd.h"
 #include <iomanip>
 
 ProcessVoltage::ProcessVoltage(Engine_Interface_Base* eng_if) : ProcessIntegral(eng_if)
@@ -31,6 +32,12 @@ std::string ProcessVoltage::GetIntegralName(int row) const
 	if (row==0)
 		return "voltage";
 	return "unknown";
+}
+
+void ProcessVoltage::DefineStartStopCoord(double* dstart, double* dstop)
+{
+	Op->SnapToMesh(dstart, start, m_dualMesh, false, m_start_inside);
+	Op->SnapToMesh(dstop, stop, m_dualMesh, false, m_stop_inside);
 }
 
 double ProcessVoltage::CalcIntegral()

@@ -189,7 +189,7 @@ CSX = AddProbe( CSX, port.U_filename{1,1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{1,1}, prio, v1_start, v1_stop+height_vector);
 
 port.U_filename{1,2} = [PortNamePrefix 'port_ut' num2str(portnr) 'A2'];
-CSX = AddProbe( CSX, port.U_filename{1,2}, 0, 'weight', -1*weight );
+CSX = AddProbe( CSX, port.U_filename{1,2}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{1,2}, prio, v1_start, v1_stop-height_vector);
 
 
@@ -198,7 +198,7 @@ CSX = AddProbe( CSX, port.U_filename{2,1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{2,1}, prio, v2_start, v2_stop+height_vector );
 
 port.U_filename{2,2} = [PortNamePrefix 'port_ut' num2str(portnr) 'B2'];
-CSX = AddProbe( CSX, port.U_filename{2,2}, 0, 'weight', -1*weight );
+CSX = AddProbe( CSX, port.U_filename{2,2}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{2,2}, prio, v2_start, v2_stop-height_vector );
 
 
@@ -207,7 +207,7 @@ CSX = AddProbe( CSX, port.U_filename{3,1}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{3,1}, prio, v3_start, v3_stop+height_vector );
 
 port.U_filename{3,2} = [PortNamePrefix 'port_ut' num2str(portnr) 'C2'];
-CSX = AddProbe( CSX, port.U_filename{3,2}, 0, 'weight', -1*weight );
+CSX = AddProbe( CSX, port.U_filename{3,2}, 0, 'weight', weight );
 CSX = AddBox( CSX, port.U_filename{3,2}, prio, v3_start, v3_stop-height_vector );
 
 % calculate position of the current probes
