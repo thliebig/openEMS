@@ -50,6 +50,7 @@
 #include "tinyxml.h"
 #include "ContinuousStructure.h"
 #include "CSPropProbeBox.h"
+#include "CSPrimBox.h"
 #include "CSPropDumpBox.h"
 
 using namespace std;
@@ -368,12 +369,15 @@ bool openEMS::SetupProcessing()
 	vector<CSProperties*> Probes = m_CSX->GetPropertyByType(CSProperties::PROBEBOX);
 	for (size_t i=0; i<Probes.size(); ++i)
 	{
+		CSPropProbeBox* pb = Probes.at(i)->ToProbeBox();
+		if (!pb)
+			continue;
 		//check whether one or more probe boxes are defined
-		l_MultiBox =  (Probes.at(i)->GetQtyPrimitives()>1);
+		l_MultiBox =  (pb->GetQtyPrimitives()>1);
 
-		for (size_t nb=0; nb<Probes.at(i)->GetQtyPrimitives(); ++nb)
+		for (size_t nb=0; nb<pb->GetQtyPrimitives(); ++nb)
 		{
-			CSPrimitives* prim = Probes.at(i)->GetPrimitive(nb);
+			CSPrimitives* prim = pb->GetPrimitive(nb);
 			if (prim!=NULL)
 			{
 				double bnd[6] = {0,0,0,0,0,0};
@@ -384,65 +388,72 @@ bool openEMS::SetupProcessing()
 				stop[0] = bnd[1];
 				stop[1] =bnd[3];
 				stop[2] =bnd[5];
-				CSPropProbeBox* pb = Probes.at(i)->ToProbeBox();
+
 				ProcessIntegral* proc = NULL;
-				if (pb)
+				if (pb->GetProbeType()==0)
 				{
-					if (pb->GetProbeType()==0)
+					CSPrimBox* box = prim->ToBox();
+					if (!(box) or box->GetDimension()!=1)
 					{
-						ProcessVoltage* procVolt = new ProcessVoltage(NewEngineInterface());
-						proc=procVolt;
-					}
-					else if (pb->GetProbeType()==1)
-					{
-						ProcessCurrent* procCurr = new ProcessCurrent(NewEngineInterface());
-						proc=procCurr;
-					}
-					else if (pb->GetProbeType()==2)
-						proc = new ProcessFieldProbe(NewEngineInterface(),0);
-					else if (pb->GetProbeType()==3)
-						proc = new ProcessFieldProbe(NewEngineInterface(),1);
-					else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
-					{
-						ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
-						pmm->SetFieldType(pb->GetProbeType()-10);
-						pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
-						pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
-						pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
-						proc = pmm;
-					}
-					else
-					{
-						cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
+						cerr << "openEMS::SetupProcessing: Error: Probe primitive type or dimension not suitable ... skipping probe " << pb->GetName() << endl;
 						continue;
 					}
-					if (CylinderCoords)
-						proc->SetMeshType(Processing::CYLINDRICAL_MESH);
-					if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3))
+					// use the direction and coordinates of the box
+					for (int n=0;n<3;++n)
 					{
-						proc->SetDualTime(true);
-						proc->SetDualMesh(true);
+						start[n] = box->GetCoord(2*n);
+						stop[n]  = box->GetCoord(2*n+1);
 					}
-					if (pb->GetProbeType()==11)
-						proc->SetDualTime(true);
-					proc->SetProcessInterval(Nyquist/m_OverSampling);
-					if (pb->GetStartTime()>0 || pb->GetStopTime()>0)
-						proc->SetProcessStartStopTime(pb->GetStartTime(), pb->GetStopTime());
-					proc->AddFrequency(pb->GetFDSamples());
-					proc->GetNormalDir(pb->GetNormalDir());
-					if (l_MultiBox==false)
-						proc->SetName(pb->GetName());
-					else
-						proc->SetName(pb->GetName(),nb);
-					proc->DefineStartStopCoord(start,stop);
-					if (g_settings.showProbeDiscretization())
-						proc->ShowSnappedCoords();
-					proc->SetWeight(pb->GetWeighting());
-					PA->AddProcessing(proc);
-					prim->SetPrimitiveUsed(true);
+					ProcessVoltage* procVolt = new ProcessVoltage(NewEngineInterface());
+					proc=procVolt;
+				}
+				else if (pb->GetProbeType()==1)
+				{
+					ProcessCurrent* procCurr = new ProcessCurrent(NewEngineInterface());
+					proc=procCurr;
+				}
+				else if (pb->GetProbeType()==2)
+					proc = new ProcessFieldProbe(NewEngineInterface(),0);
+				else if (pb->GetProbeType()==3)
+					proc = new ProcessFieldProbe(NewEngineInterface(),1);
+				else if ((pb->GetProbeType()==10) || (pb->GetProbeType()==11))
+				{
+					ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
+					pmm->SetFieldType(pb->GetProbeType()-10);
+					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
+					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
+					pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+					proc = pmm;
 				}
 				else
-					delete 	proc;
+				{
+					cerr << "openEMS::SetupFDTD: Warning: Probe type " << pb->GetProbeType() << " of property '" << pb->GetName() << "' is unknown..." << endl;
+					continue;
+				}
+				if (CylinderCoords)
+					proc->SetMeshType(Processing::CYLINDRICAL_MESH);
+				if ((pb->GetProbeType()==1) || (pb->GetProbeType()==3))
+				{
+					proc->SetDualTime(true);
+					proc->SetDualMesh(true);
+				}
+				if (pb->GetProbeType()==11)
+					proc->SetDualTime(true);
+				proc->SetProcessInterval(Nyquist/m_OverSampling);
+				if (pb->GetStartTime()>0 || pb->GetStopTime()>0)
+					proc->SetProcessStartStopTime(pb->GetStartTime(), pb->GetStopTime());
+				proc->AddFrequency(pb->GetFDSamples());
+				proc->GetNormalDir(pb->GetNormalDir());
+				if (l_MultiBox==false)
+					proc->SetName(pb->GetName());
+				else
+					proc->SetName(pb->GetName(),nb);
+				proc->DefineStartStopCoord(start,stop);
+				if (g_settings.showProbeDiscretization())
+					proc->ShowSnappedCoords();
+				proc->SetWeight(pb->GetWeighting());
+				PA->AddProcessing(proc);
+				prim->SetPrimitiveUsed(true);
 			}
 		}
 	}
