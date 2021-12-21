@@ -855,6 +855,24 @@ void openEMS::SetGaussExcite(double f0, double fc)
 	m_Exc->SetupGaussianPulse(f0, fc);
 }
 
+void openEMS::SetSinusExcite(double f0)
+{
+	this->InitExcitation();
+	m_Exc->SetupSinusoidal(f0);
+}
+
+void openEMS::SetDiracExcite(double f_max)
+{
+	this->InitExcitation();
+	m_Exc->SetupDiracPulse(f_max);
+}
+
+void openEMS::SetStepExcite(double f_max)
+{
+	this->InitExcitation();
+	m_Exc->SetupStepExcite(f_max);
+}
+
 Excitation* openEMS::InitExcitation()
 {
 	delete m_Exc;

@@ -102,6 +102,10 @@ public:
 	bool CheckAbortCond();
 
 	void SetGaussExcite(double f0, double fc);
+	void SetSinusExcite(double f0);
+	void SetDiracExcite(double f_max);
+	void SetStepExcite(double f_max);
+
 	Excitation* InitExcitation();
 
 	void SetCSX(ContinuousStructure* csx);
