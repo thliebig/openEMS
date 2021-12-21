@@ -48,6 +48,9 @@ cdef extern from "openEMS/openems.h":
         void Set_Mur_PhaseVel(int idx, double val)
 
         void SetGaussExcite(double f0, double fc)
+        void SetSinusExcite(double f0)
+        void SetDiracExcite(double f_max)
+        void SetStepExcite(double f_max)
 
         void SetAbort(bool val)
 

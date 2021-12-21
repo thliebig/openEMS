@@ -232,6 +232,33 @@ cdef class openEMS:
         """
         self.thisptr.SetGaussExcite(f0, fc)
 
+    def SetSinusExcite(self, f0):
+        """ SetSinusExcite(f0)
+
+        Set a sinusoidal signal as excitation signal.
+
+        :param f0: float -- frequency in Hz.
+        """
+        self.thisptr.SetSinusExcite(f0)
+
+    def SetDiracExcite(self, f_max):
+        """ SetDiracExcite(f_max)
+
+        Set a dirac pulse as excitation signal.
+
+        :param f_max: float -- maximum simulated frequency in Hz.
+        """
+        self.thisptr.SetDiracExcite(f_max)
+
+    def SetStepExcite(self, f_max):
+        """ SetStepExcite(f_max)
+
+        Set a step function as excitation signal.
+
+        :param f_max: float -- maximum simulated frequency in Hz.
+        """
+        self.thisptr.SetStepExcite(f_max)
+
 
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)
