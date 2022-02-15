@@ -19,7 +19,7 @@ if isOctave()
     fflush(stdout);
     if isunix
         [res, fn_so] = unix('find /usr/lib     -name libhdf5.so');
-        [res, fn_h]  = unix('find /usr/include -name hdf5.h | head -1');
+        [res, fn_h]  = unix('find /usr/include -name hdf5.h | sort -r | head -1');
         if length(fn_so)>0 && length(fn_h)>0
             [hdf5lib_dir, hdf5lib_fn, ext] = fileparts(fn_so);
             disp(["HDF5 library path found at: " hdf5lib_dir])
