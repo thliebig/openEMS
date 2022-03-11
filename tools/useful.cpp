@@ -63,7 +63,7 @@ std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrT
 	}
 
 	if (jobs>0)
-		std::cerr << "AssignJobs2Threads: Error, " << jobs << " remain to be assigned, this should not have happend..." << std::endl;
+		std::cerr << "AssignJobs2Threads: Error, " << jobs << " remain to be assigned, this should not have happened..." << std::endl;
 
 	if (RemoveEmpty)
 	{

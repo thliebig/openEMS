@@ -280,7 +280,7 @@ bool Operator_Ext_UPML::SetGradingFunction(string func)
 	int res = m_GradingFunction->Parse(m_GradFunc.c_str(), "D,dl,W,Z,N");
 	if (res < 0) return true;
 
-	cerr << "Operator_Ext_UPML::SetGradingFunction: Warning, an error occured parsing the pml grading function (see below) ..." << endl;
+	cerr << "Operator_Ext_UPML::SetGradingFunction: Warning, an error occurred parsing the pml grading function (see below) ..." << endl;
 	cerr << func << "\n" << string(res, ' ') << "^\n" << m_GradingFunction->ErrorMsg() << "\n";
 	return false;
 }

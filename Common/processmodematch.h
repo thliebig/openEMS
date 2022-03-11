@@ -24,7 +24,7 @@ class CSFunctionParser;
 
 //! Processing class to match a mode to a given analytic function and return the integral value.
 /*!
-  The analytric function has to be definied in drawing units.
+  The analytric function has to be defined in drawing units.
   It will return the integral value and the mode purity as a secondary value.
   */
 class ProcessModeMatch : public ProcessIntegral

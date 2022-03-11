@@ -32,7 +32,7 @@ function [port] = calcPort( port, SimDir, f, varargin)
 %   port.f                  the given frequency fector
 %   port.uf.tot/inc/ref     total, incoming and reflected voltage
 %   port.if.tot/inc/ref     total, incoming and reflected current
-%   port.ZL_ref             used refernce impedance
+%   port.ZL_ref             used reference impedance
 %
 %   port.P_inc              incoming power
 %   port.P_ref              reflected power

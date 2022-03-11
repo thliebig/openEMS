@@ -74,7 +74,7 @@ void ProcessModeMatch::InitProcess()
 
 	if (m_Eng_Interface==NULL)
 	{
-		cerr << "ProcessModeMatch::InitProcess: Error, Engine_Interface is NULL, abort mode mathcing..." << endl;
+		cerr << "ProcessModeMatch::InitProcess: Error, Engine_Interface is NULL, abort mode matching..." << endl;
 		Enabled=false;
 		return;
 	}
@@ -123,7 +123,7 @@ void ProcessModeMatch::InitProcess()
 		int res = m_ModeParser[n]->Parse(m_ModeFunction[ny], "x,y,z,rho,a,r,t");
 		if (res >= 0)
 		{
-			cerr << "ProcessModeMatch::InitProcess(): Warning, an error occured parsing the mode matching function (see below) ..." << endl;
+			cerr << "ProcessModeMatch::InitProcess(): Warning, an error occurred parsing the mode matching function (see below) ..." << endl;
 			cerr << m_ModeFunction[ny] << "\n" << string(res, ' ') << "^\n" << m_ModeParser[n]->ErrorMsg() << "\n";
 			SetEnable(false);
 			Reset();
@@ -138,7 +138,7 @@ void ProcessModeMatch::InitProcess()
 	bool dualMesh = m_ModeFieldType==1;
 	unsigned int pos[3] = {0,0,0};
 	double discLine[3] = {0,0,0};
-	double gridDelta = 1; // 1 -> mode-matching function is definied in drawing units...
+	double gridDelta = 1; // 1 -> mode-matching function is defined in drawing units...
 	double var[7];
 	pos[m_ny] = start[m_ny];
 	discLine[m_ny] = Op->GetDiscLine(m_ny,pos[m_ny],dualMesh);

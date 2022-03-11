@@ -1,7 +1,7 @@
 %
 % Tutorials / Dipole SAR + Power budget
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Dipole_SAR
 %
 % Tested with

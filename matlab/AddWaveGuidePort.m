@@ -74,7 +74,7 @@ for n=1:2:numel(varargin_tmp)
     end
 end
 
-% matlab adressing
+% matlab addressing
 dir = dir + 1;
 dir_sign = sign(stop(dir) - start(dir));
 if (dir_sign==0)

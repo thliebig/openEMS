@@ -1,7 +1,7 @@
 %
 % Tutorials / MSL_NotchFilter
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Microstrip_Notch_Filter
 %
 % Tested with

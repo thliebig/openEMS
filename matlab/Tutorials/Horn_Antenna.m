@@ -1,7 +1,7 @@
 %
 % Tutorials / horn antenna
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Horn_Antenna
 %
 % Tested with

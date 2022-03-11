@@ -1,7 +1,7 @@
 %
 % Tutorials / 7T MRI Loop Coil
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_MRI_Loop_Coil
 %
 % Tested with
@@ -145,7 +145,7 @@ CSX = AddBox(CSX, 'body_model', 0, body_box.start, body_box.stop);
 % create loop mesh
 mesh = DetectEdges(CSX);
 
-% add a dense homegeneous mesh inside the human body model
+% add a dense homogeneous mesh inside the human body model
 mesh.x = [mesh.x mesh_box.start(1) mesh_box.stop(1)];
 mesh.y = [mesh.y mesh_box.start(2) mesh_box.stop(2)];
 mesh.z = [mesh.z mesh_box.start(3) mesh_box.stop(3)];
@@ -178,7 +178,7 @@ CSX = AddBox(CSX,'SAR_xz',0, body_box.start.*[1 0 1], body_box.stop.*[1 0 1]);
 %% boundary conditions
 mesh = AddPML(mesh, 10);
 
-%% finaly define the FDTD mesh grid
+%% finally define the FDTD mesh grid
 disp(['number of cells: ' num2str(1e-6*numel(mesh.x)*numel(mesh.y)*numel(mesh.z)) ' Mcells'])
 CSX = DefineRectGrid( CSX, unit, mesh );
 

@@ -455,7 +455,7 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	hid_t attribute_id = H5Acreate(loc, attr_name.c_str(), mem_type, dataspace_id, H5P_DEFAULT, H5P_DEFAULT);
 	if (attribute_id<0)
 	{
-		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to create the attrbute" << endl;
+		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to create the attribute" << endl;
 		H5Sclose(dataspace_id);
 		H5Oclose(loc);
 		H5Fclose(hdf5_file);
@@ -465,7 +465,7 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	/* Write the attribute data. */
 	if (H5Awrite(attribute_id, mem_type, value)<0)
 	{
-		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to write the attrbute" << endl;
+		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to write the attribute" << endl;
 		H5Aclose(attribute_id);
 		H5Sclose(dataspace_id);
 		H5Oclose(loc);

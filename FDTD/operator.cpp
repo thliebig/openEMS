@@ -373,7 +373,7 @@ int Operator::SnapLine2Mesh(const double* start, const double* stop, unsigned in
 		return ret;
 
 	//fixme, do we need to do something about start or stop being outside the field domain?
-	//maybe caclulate the intersection point and snap to that?
+	//maybe calculate the intersection point and snap to that?
 	//it seems to work like this as well...
 
 	return ret;
@@ -450,7 +450,7 @@ Grid_Path Operator::FindPath(double start[], double stop[])
 			currPos[minDir]+=-1;
 			minPos[minDir]-=1;
 		}
-		//check validity of current postion
+		//check validity of current position
 		for (int n=0;n<3;++n)
 			if (currPos[n]>=numLines[n])
 			{
@@ -1397,7 +1397,7 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	for (int n=0; n<4; ++n)
 		if (std::isnan(EffMat[n]) || std::isinf(EffMat[n]))
 		{
-			cerr << "Operator::" << __func__ << ": Error, an effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
+			cerr << "Operator::" << __func__ << ": Error, an effective material parameter is not a valid result, this should NOT have happened... exit..." << endl;
 			cerr << ny << "@" << n << " : " << pos[0] << "," << pos[1] << ","  << pos[2] << endl;
 			exit(0);
 		}
@@ -1510,7 +1510,7 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	for (int n=0; n<4; ++n)
 		if (std::isnan(EffMat[n]) || std::isinf(EffMat[n]))
 		{
-			cerr << "Operator::" << __func__ << ": Error, An effective material parameter is not a valid result, this should NOT have happend... exit..." << endl;
+			cerr << "Operator::" << __func__ << ": Error, An effective material parameter is not a valid result, this should NOT have happened... exit..." << endl;
 			cerr << ny << "@" << n << " : " << pos[0] << "," << pos[1] << ","  << pos[2] << endl;
 			exit(0);
 		}
@@ -1696,7 +1696,7 @@ bool Operator::Calc_LumpedElements()
 
 			}
 			else
-				cerr << "Operator::Calc_LumpedElements(): Warning: Primitves other than boxes are not supported for lumped elements! skipping "
+				cerr << "Operator::Calc_LumpedElements(): Warning: Primitives other than boxes are not supported for lumped elements! skipping "
 						<< prims.at(bn)->GetTypeName() << " ID: " << prims.at(bn)->GetID() << " @ Property: " << PLE->GetName() << endl;
 		}
 	}

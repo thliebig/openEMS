@@ -134,7 +134,7 @@ public:
 	//! Get the volume of an FDTD cell
 	virtual double GetCellVolume(const unsigned int pos[3], bool dualMesh = false) const;
 
-	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos
+	//! Get the area around an edge for a given direction \a n and a given mesh position \a pos
 	/*!
 		This will return the area around an edge with a given direction, measured at the middle of the edge.
 		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.
@@ -143,7 +143,7 @@ public:
 
 	virtual unsigned int SnapToMeshLine(int ny, double coord, bool &inside, bool dualMesh=false, bool fullMesh=false) const;
 
-	//! Snap the given coodinates to mesh indices
+	//! Snap the given coordinates to mesh indices
 	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool fullMesh=false, bool* inside=NULL) const;
 
 	//! Snap a given box to the FDTD mesh
@@ -223,7 +223,7 @@ protected:
 	/*!
 	  Get the raw disc delta for a given position and direction.
 	  The result will be positive if a disc delta inside the simulation domain is requested.
-	  The result will be the negative value of the first or last disc delta respectivly if the position is outside the field domain.
+	  The result will be the negative value of the first or last disc delta respectively if the position is outside the field domain.
 	  */
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 

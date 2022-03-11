@@ -22,9 +22,9 @@
 
 class Operator_Base;
 
-//! This is the abstact base for all Engine Interface classes.
+//! This is the abstract base for all Engine Interface classes.
 /*!
-	 This is the abstact base for all Engine Interface classes. It will provide unified access to the field information of the corresponding engine.
+	 This is the abstract base for all Engine Interface classes. It will provide unified access to the field information of the corresponding engine.
 	 All processing methods should only access this base class.
 */
 class Engine_Interface_Base

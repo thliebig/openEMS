@@ -1,7 +1,7 @@
 %
 % Stripline to Microstrip Line Transition
 %
-% Describtion at:
+% Description at:
 % <http://openems.de/index.php/Tutorial:_Stripline_to_MSL_Transition>
 %
 % Tested with
@@ -68,7 +68,7 @@ CSX = AddBox( CSX, 'RO4350B', 0, start, stop );
 CSX = AddMetal( CSX, 'gnd' ); 
 CSX = AddMetal( CSX, 'metal' ); 
 
-% Create strip line port (incl. metal stip line)
+% Create strip line port (incl. metal strip line)
 start = [-line_length -strip_width/2  0];
 stop  = [0            +strip_width/2  0];
 [CSX,port{1}] = AddStripLinePort( CSX, 100, 1, 'metal', start, stop, strip_substrate_thickness, 'x', [0 0 -1], 'ExcitePort', true, 'FeedShift', feed_shift, 'MeasPlaneShift', meas_shift );

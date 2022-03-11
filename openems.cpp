@@ -1217,7 +1217,7 @@ bool openEMS::DumpStatistics(const string& filename, double time)
 	stat_file << FDTD_Op->GetNumberCells() << "\t% number of cells" << endl;
 	stat_file << FDTD_Op->GetTimestep() << "\t% timestep (s)" << endl;
 	stat_file << FDTD_Eng->GetNumberOfTimesteps() << "\t% number of iterations" << endl;
-	stat_file << FDTD_Eng->GetNumberOfTimesteps()*FDTD_Op->GetTimestep() << "\t% total numercial time (s)" << endl;
+	stat_file << FDTD_Eng->GetNumberOfTimesteps()*FDTD_Op->GetTimestep() << "\t% total numerical time (s)" << endl;
 	stat_file << time << "\t% simulation time (s)" << endl;
 	stat_file << (double)FDTD_Op->GetNumberCells()*(double)FDTD_Eng->GetNumberOfTimesteps()/time << "\t% speed (cells/s)" << endl;
 

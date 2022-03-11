@@ -1,7 +1,7 @@
 function FDTD = InitFDTD(varargin)
 % function FDTD = InitFDTD(varargin)
 %
-% Inititalize the FDTD data-structure.
+% Initialize the FDTD data-structure.
 %
 % optional field arguments for usage with openEMS:
 %   NrTS:           max. number of timesteps to simulate (e.g. default=1e9)

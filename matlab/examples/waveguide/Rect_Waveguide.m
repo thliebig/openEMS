@@ -28,7 +28,7 @@ numTS = 50000; %max. number of timesteps
 % waveguide dimensions
 length = 1000;
 a = 1000;   %waveguide width
-b = 600;    %waveguide heigth
+b = 600;    %waveguide height
 
 %waveguide TE-mode definition
 m = 1;

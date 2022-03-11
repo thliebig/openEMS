@@ -88,7 +88,7 @@ CSX = SetMaterialWeight( CSX, 'fakepml', 'Sigma', ['pow(z-' num2str(length-abs_l
 start = [mesh.x(1)  mesh.y(1)  length-abs_length];
 stop  = [mesh.x(end) mesh.y(end) length];
 % the geometric priority is set to 0, which is lower than the priority
-% of the MSL, thus the MSL (copper) has precendence
+% of the MSL, thus the MSL (copper) has precedence
 priority = 0;
 CSX = AddBox( CSX, 'fakepml', priority, start, stop );
 

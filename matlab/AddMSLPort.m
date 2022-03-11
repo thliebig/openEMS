@@ -69,7 +69,7 @@ evec0 = evec ./ sum(evec); % evec0 is a unit vector
 
 %set defaults
 feed_shift = 0;
-feed_R = inf; %(default is open, no resitance)
+feed_R = inf; %(default is open, no resistance)
 excite = false;
 measplanepos = nan;
 PortNamePrefix = '';

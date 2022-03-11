@@ -60,14 +60,14 @@ void ErrorMsg::Error(unsigned int nr,char *chAddMsg)
 	if ((nr>0) && (nr<=NoMsg))
 	{
 		if (Msg[nr-1]!=NULL) fprintf(stderr,"%s",Msg[nr-1]);
-		else fprintf(stderr,"unkown error occured!! Error code: %d exiting...",nr);
+		else fprintf(stderr,"unknown error occurred!! Error code: %d exiting...",nr);
 		if (chAddMsg!=NULL) fprintf(stderr,"%s",chAddMsg);
 		getchar();
 		exit(nr);
 	}
 	else
 	{
-		fprintf(stderr,"unkown error occured!! Error code: %d exiting...",nr);
+		fprintf(stderr,"unknown error occurred!! Error code: %d exiting...",nr);
 		getchar();
 		exit(nr);
 	}
@@ -78,14 +78,14 @@ void ErrorMsg::Error(unsigned int nr,int addNr)
 	if ((nr>0) && (nr<=NoMsg))
 	{
 		if (Msg[nr-1]!=NULL) fprintf(stderr,"%s",Msg[nr-1]);
-		else fprintf(stderr,"unkown error occured!! Error code: %d exiting...",nr);
+		else fprintf(stderr,"unknown error occurred!! Error code: %d exiting...",nr);
 		fprintf(stderr,"%d",addNr);
 		getchar();
 		exit(nr);
 	}
 	else
 	{
-		fprintf(stderr,"unkown error occured!! Error code: %d exiting...",nr);
+		fprintf(stderr,"unknown error occurred!! Error code: %d exiting...",nr);
 		getchar();
 		exit(nr);
 	}
@@ -93,6 +93,6 @@ void ErrorMsg::Error(unsigned int nr,int addNr)
 
 void ErrorMsg::ownError(void)
 {
-	fprintf(stdout," Error occured by using Error Message class!! ... exiting...");
+	fprintf(stdout," Error occurred by using Error Message class!! ... exiting...");
 	exit(-1);
 }

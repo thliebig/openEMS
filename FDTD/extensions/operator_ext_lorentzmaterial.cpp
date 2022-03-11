@@ -314,7 +314,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 							if (L_D[n]>0)
 							{
 								v_int[n].push_back((2.0*L_D[n]-dT*R_D[n])/(2.0*L_D[n]+dT*R_D[n]));
-								// check for r==0 in clyindrical coords and get special VI cooefficient
+								// check for r==0 in clyindrical coords and get special VI coefficient
 								if (m_CC_R0_included && n==2 && pos[0]==0)
 									v_ext[n].push_back(dT/(L_D[n]+dT*R_D[n]/2.0)*m_Op_Cyl->m_Cyl_Ext->vi_R0[pos[2]]);
 								else

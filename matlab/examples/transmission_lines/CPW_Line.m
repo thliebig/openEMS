@@ -1,7 +1,7 @@
 %
 % Tutorials / CPW_Line
 %
-% Describtion at:
+% Description at:
 %
 % Tested with
 %  - Octave 3.8.1
@@ -33,7 +33,7 @@ if 1
   feed_shift_cells = 0;
   x_spacing = air_spacing;
 else % or use a waveguide with start/end in a pml
-  feed_R = inf; % CPW ends in a pml --> disable termination resitance 
+  feed_R = inf; % CPW ends in a pml --> disable termination resistance 
   feed_shift_cells = 10; % CPW ends in an 8 cells thick pml --> shift feed 10 cells
   pml_add_cells = [0 0 8 8 8 8]; % do not add air-space in x-direction
   x_spacing = 0; % do not add air-space in x-direction

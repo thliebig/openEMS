@@ -34,7 +34,7 @@ function [port] = calcTLPort( port, SimDir, f, varargin)
 %   port.if.tot/inc/ref     total, incoming and reflected current
 %   port.beta:              propagation constant
 %   port.ZL:                characteristic line impedance
-%   port.ZL_ref             used refernce impedance
+%   port.ZL_ref             used reference impedance
 %
 % example:
 %   port{1} = calcTLPort( port{1}, Sim_Path, f, 'RefImpedance', 50);

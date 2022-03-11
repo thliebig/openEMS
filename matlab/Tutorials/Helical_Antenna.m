@@ -1,7 +1,7 @@
 %
 % Tutorials / helical antenna
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Helical_Antenna
 %
 % Tested with

@@ -22,6 +22,6 @@ Install instructions for openEMS:
     make install (may require root)
 
     Note:
-      - all path informations may be stored in a localConfig.cmake
+      - all path information may be stored in a localConfig.cmake
       - the default "prefix" is /usr/local
 

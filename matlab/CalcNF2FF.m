@@ -14,7 +14,7 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % freq:     array of frequencies to analyse
 % theta,phi: spherical coordinates to evaluate the far-field on (in radians)
 %
-% optional paramater:
+% optional parameter:
 % 'Center': nf2ff phase center, default is [0 0 0]
 %           !! Make sure the center is never outside of your nf2ff box!!
 %           Definition is the correct coordinate system necessary

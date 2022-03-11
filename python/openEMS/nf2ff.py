@@ -61,7 +61,7 @@ class nf2ff:
         self.dump_type = 0  # default Et/Ht
         self.dump_mode = 1  # default cell interpolated
 
-        self.freq = None   # broadband recording by defualt
+        self.freq = None   # broadband recording by default
         if 'frequency' in kw:
             self.freq = kw['frequency']
             del kw['frequency']
@@ -147,13 +147,13 @@ class nf2ff:
         result = nf2ff_results(fn)
         if result.phi is not None:
             if not np.abs((result.r-radius)/radius)<1e-6:
-                raise Exception('Radius does not match. Did you read an invalid chached result? Try "read_cached=False"')
+                raise Exception('Radius does not match. Did you read an invalid cached result? Try "read_cached=False"')
             if not utilities.Check_Array_Equal(np.rad2deg(result.theta), self.theta, 1e-4):
-                raise Exception('Theta array does not match. Did you read an invalid chached result? Try "read_cached=False"')
+                raise Exception('Theta array does not match. Did you read an invalid cached result? Try "read_cached=False"')
             if not utilities.Check_Array_Equal(np.rad2deg(result.phi), self.phi, 1e-4):
-                raise Exception('Phi array does not match. Did you read an invalid chached result? Try "read_cached=False"')
+                raise Exception('Phi array does not match. Did you read an invalid cached result? Try "read_cached=False"')
             if not utilities.Check_Array_Equal(result.freq, self.freq, 1e-6, relative=True):
-                raise Exception('Frequency array does not match. Did you read an invalid chached result? Try "read_cached=False"')
+                raise Exception('Frequency array does not match. Did you read an invalid cached result? Try "read_cached=False"')
         return result
 
 class nf2ff_results:

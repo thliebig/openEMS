@@ -1,7 +1,7 @@
 %
 % Tutorials / 3T MRI Low Pass Birdcage coil
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_MRI_LP_Birdcage
 %
 % Estimated time to run:    ~7h @ ~65MC/s
@@ -69,7 +69,7 @@ body_model_transform = {'Rotate_X',pi,'Rotate_Z',pi, ...
                         'Translate',[0,5,-720]};
 
 %% some internal parameter
-physical_constants % load important physical constans
+physical_constants % load important physical constants
 end_crit = 1e-5;    %abort simulation at -50dB energy drop
 unit = 1e-3;        %drawing unit used
 
@@ -164,7 +164,7 @@ for n=1:BC.N_rungs
     stop  = [BC.rad a0+da_Segs/2+da_Strip/2 -0.5*BC.portlength];
     CSX = AddBox(CSX,'metal',1, start, stop);
     
-    % some additonal mesh lines
+    % some additional mesh lines
     mesh.a = [mesh.a a0+da_Segs/2];
     
     a0 = a0 + da_Segs;

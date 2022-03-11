@@ -55,7 +55,7 @@ void Engine_Ext_CylinderMultiGrid::DoPreVoltageUpdates()
 	if (!m_IsBase)
 	{
 		//cerr << "child: volt wait on base " << endl;
-		m_WaitOnBase->wait(); //wait on base to finisch current sync and/or to finisch voltage updates, than start child voltage updates
+		m_WaitOnBase->wait(); //wait on base to finish current sync and/or to finish voltage updates, than start child voltage updates
 	}
 }
 
@@ -69,14 +69,14 @@ void Engine_Ext_CylinderMultiGrid::Apply2Voltages()
 	if (m_IsBase)
 	{
 		m_WaitOnBase->wait();	//base voltage updates are done, tell child to start its voltage updates
-		m_WaitOnChild->wait();	//wait for child to finisch its updates
-		SyncVoltages();			//child is finisch, run sync and go to current updates next
+		m_WaitOnChild->wait();	//wait for child to finish its updates
+		SyncVoltages();			//child is finish, run sync and go to current updates next
 		m_WaitOnSync->wait();	//sync is done... move on and tell child to move on...
 	}
 	else
 	{
 		m_WaitOnChild->wait();	//child is finished voltage updates, will tell base to run sync
-		m_WaitOnSync->wait();	//wait for base to finisch sync before going to wait for current updates
+		m_WaitOnSync->wait();	//wait for base to finish sync before going to wait for current updates
 	}
 }
 
@@ -125,7 +125,7 @@ void Engine_Ext_CylinderMultiGrid::DoPreCurrentUpdates()
 	if (!m_IsBase)
 	{
 		//cerr << "child: curr wait on base " << endl;
-		m_WaitOnBase->wait(); //wait on base to finisch voltage sync and current updates, than start child current updates
+		m_WaitOnBase->wait(); //wait on base to finish voltage sync and current updates, than start child current updates
 	}
 }
 
@@ -140,14 +140,14 @@ void Engine_Ext_CylinderMultiGrid::Apply2Current()
 	{
 		//cerr << "Base: curr wait on base done, wait on sync" << endl;
 		m_WaitOnBase->wait();	//base current updates are done, tell child to start its current updates
-		m_WaitOnChild->wait();	//wait for child to finisch its updates
-		SyncCurrents();			//child is finisch, run sync and go to voltage updates next
+		m_WaitOnChild->wait();	//wait for child to finish its updates
+		SyncCurrents();			//child is finish, run sync and go to voltage updates next
 		m_WaitOnSync->wait();	//sync is done... move on and tell child to move on...
 	}
 	else
 	{
 		m_WaitOnChild->wait();	//child is finished current updates, will tell base to run sync...
-		m_WaitOnSync->wait();	//wait for base to finisch sync before going to wait for next voltage updates
+		m_WaitOnSync->wait();	//wait for base to finish sync before going to wait for next voltage updates
 		//cerr << "Child: curr done, wait on sync" << endl;
 	}
 }

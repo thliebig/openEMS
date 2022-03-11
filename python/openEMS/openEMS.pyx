@@ -122,7 +122,7 @@ cdef class openEMS:
     def SetEndCriteria(self, val):
         """ SetEndCriteria(val)
 
-        Set the end critera value. E.g. 1e-6 for -60dB
+        Set the end criteria value. E.g. 1e-6 for -60dB
         """
         self.thisptr.SetEndCriteria(val)
 
@@ -265,7 +265,7 @@ cdef class openEMS:
     def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, **kw):
         """ AddLumpedPort(port_nr, R, start, stop, p_dir, excite=0, **kw)
 
-        Add a lumped port wit the given values and location.
+        Add a lumped port with the given values and location.
 
         See Also
         --------
@@ -426,7 +426,7 @@ cdef class openEMS:
         Run the openEMS FDTD simulation.
 
         :param sim_path: str -- path to run in and create result data
-        :param cleanup: bool -- remove exisiting sim_path to cleanup old results
+        :param cleanup: bool -- remove existing sim_path to cleanup old results
         :param setup_only: bool -- only perform FDTD setup, do not run simulation
         :param verbose: int -- set the openEMS verbosity level 0..3
 
