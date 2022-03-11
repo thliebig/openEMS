@@ -6,10 +6,10 @@ function [port nf2ff] = Patch_Antenna_Array(Sim_Path, postproc_only, show_struct
 %
 % Sim_Path: Simulation path
 % postproc_only: set to post process only 0/1
-% show_structure: show the strucuture in AppCSXCAD 0/1
+% show_structure: show the structure in AppCSXCAD 0/1
 % xpos: the x-position for each antenna is defined
 % caps: the port capacity (will override active port)
-% resist: port resitance
+% resist: port resistance
 % active: switch port active
 %
 % References:

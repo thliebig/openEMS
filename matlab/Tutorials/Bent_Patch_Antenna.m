@@ -1,7 +1,7 @@
 %
 % Tutorials / bent patch antenna
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Bent_Patch_Antenna
 %
 % Tested with
@@ -76,7 +76,7 @@ start = [patch.radius+substrate.thickness -substr_ang_width/2 -substrate.length/
 stop  = [patch.radius+substrate.thickness +substr_ang_width/2  substrate.length/2];
 CSX = AddBox( CSX, 'Jt_patch', 0, start, stop );
 
-%% create ground (not really necessary, only for esthetic reasons)
+%% create ground (not really necessary, only for aesthetic reasons)
 CSX = AddMetal( CSX, 'gnd' ); % create a perfect electric conductor (PEC)
 start = [patch.radius -substr_ang_width/2 -substrate.length/2];
 stop  = [patch.radius +substr_ang_width/2 +substrate.length/2];
@@ -158,7 +158,7 @@ ylabel( 'reflection coefficient |S_{11}|' );
 
 drawnow
 
-%find resonance frequncy from s11
+%find resonance frequency from s11
 f_res_ind = find(s11==min(s11));
 f_res = freq(f_res_ind);
 

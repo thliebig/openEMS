@@ -1,6 +1,6 @@
 %% Simple Patch Antenna Tutorial
 %
-% Describtion at:
+% Description at:
 % <http://openems.de/index.php/Tutorial:_Simple_Patch_Antenna>
 %
 % Tested with
@@ -147,7 +147,7 @@ ylabel( 'reflection coefficient |S_{11}|' );
 drawnow
 
 %% NFFF Plots
-%find resonance frequncy from s11
+%find resonance frequency from s11
 f_res_ind = find(s11==min(s11));
 f_res = freq(f_res_ind);
 

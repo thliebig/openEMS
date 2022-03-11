@@ -40,7 +40,7 @@ public:
 	//! Create a clone of this extension, will return NULL if this is impossible
 	/*!
 		Create a clone of this extension, will return NULL if this is impossible (e.g. derived extension has no clone method and copy-constructor)...
-		BuildExtension has to be called separatly!
+		BuildExtension has to be called separately!
 	*/
 	virtual Operator_Extension* Clone(Operator* op) {UNUSED(op); return NULL;}
 

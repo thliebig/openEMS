@@ -1,7 +1,7 @@
 %
 % Tutorials / CRLH_Extraction
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_CRLH_Extraction
 %
 % Tested with

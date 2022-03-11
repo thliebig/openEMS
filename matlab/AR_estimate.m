@@ -20,7 +20,7 @@ function [val_ar t_ar f_val_ar EC] = AR_estimate( t, val, freq, nu, mu, expand_f
 %           0 --> no error
 %           1 --> input error: t and val mismatch
 %           2 --> input error: mu has to be larger than 2*nu
-%           3 --> inout error: expand_factor has to be larger than 1
+%           3 --> input error: expand_factor has to be larger than 1
 %           10 --> AR error: signal is to short for AR estimate --> decrease AR order
 %           11 --> AR error: estimated signal appears to be unstable --> use a different mu
 %

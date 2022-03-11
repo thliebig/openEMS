@@ -1,7 +1,7 @@
 %
 % Tutorials / Circ_Waveguide
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Circular_Waveguide
 %
 % Tested with

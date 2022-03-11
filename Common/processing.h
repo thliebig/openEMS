@@ -102,7 +102,7 @@ public:
 	//! Set the dump precision
 	void SetPrecision(unsigned int val) {m_precision = val;}
 
-	//! Dump probe geometry to file (will obay main or dual mesh property)
+	//! Dump probe geometry to file (will obey main or dual mesh property)
 	virtual void DumpBox2File(std::string vtkfilenameprefix) const {DumpBox2File(vtkfilenameprefix,m_dualMesh);}
 
 	//! Dump probe geometry to file
@@ -184,7 +184,7 @@ public:
 
 	void Reset();
 
-	//! Deletes all given processing's, can be helpful, but use carefull!!!
+	//! Deletes all given processing's, can be helpful, but use carefully!!!
 	void DeleteAll();
 
 	//! Invoke PreProcess() on all Processings.

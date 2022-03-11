@@ -23,11 +23,11 @@
 
 class FunctionParser;
 
-//! Operator extension implemention an uniaxial perfectly matched layer (upml)
+//! Operator extension implementation an uniaxial perfectly matched layer (upml)
 /*
   The priority for this extension should be the highest of all extensions since this operator will use the main engine to perform vital parts in the upml implementation.
   Therefore the voltages and currents as well as the operator are replaced during these update process.
-  This extension is propably incompatible with the most other extensions operating in the same regions.
+  This extension is probably incompatible with the most other extensions operating in the same regions.
   */
 class Operator_Ext_UPML : public Operator_Extension
 {

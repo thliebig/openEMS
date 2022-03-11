@@ -44,7 +44,7 @@ end
 if ischar(host_list)
     fid=fopen(host_list);
     if (fid==-1)
-        error('FindFreeSSH: cant open host file');
+        error('FindFreeSSH: cannot open host file');
     end
     clear host_list;
     host_list = {};

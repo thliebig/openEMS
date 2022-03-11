@@ -68,7 +68,7 @@ evec0 = evec ./ sum(evec); % evec0 is a unit vector
 
 %set defaults
 feed_shift = 0;
-feed_R = inf; %(default is open, no resitance)
+feed_R = inf; %(default is open, no resistance)
 excite = false;
 measplanepos = nan;
 PortNamePrefix = '';
@@ -277,7 +277,7 @@ if excite
     CSX = AddBox( CSX, [PortNamePrefix 'port_excite_2_' num2str(portnr)], prio, ex_start+width_add_start, ex_stop+width_add_stop );
 end
 
-%% CPW resitance at start of CPW line
+%% CPW resistance at start of CPW line
 ex_start(idx_prop) = start(idx_prop);
 ex_stop(idx_prop) = ex_start(idx_prop);
 
@@ -292,6 +292,6 @@ elseif feed_R == 0
     CSX = AddBox( CSX, materialname, prio, ex_start-width_add_start, ex_stop-width_add_stop );
     CSX = AddBox( CSX, materialname, prio, ex_start+width_add_start, ex_stop+width_add_stop );
 else
-    error('openEMS:AddCPWPort','CPW port with resitance <= 0 it not possible');
+    error('openEMS:AddCPWPort','CPW port with resistance <= 0 it not possible');
 end
 end

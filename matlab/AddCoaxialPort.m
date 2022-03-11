@@ -50,7 +50,7 @@ dir = DirChar2Int(dir);
 
 %set defaults
 feed_shift = 0;
-feed_R = inf; %(default is open, no resitance)
+feed_R = inf; %(default is open, no resistance)
 excite_amp = 0;
 measplanepos = nan;
 PortNamePrefix = '';

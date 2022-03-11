@@ -42,7 +42,7 @@ public:
 	///Deconstructor
 	virtual ~AdrOp();
 	///Set the current n-dim position, get 1-dim array position as return value
-	/*!A position has to be set or all other methodes will case error! \n The methode will exit with error message if invalid position is set! \sa ErrorMsg */
+	/*!A position has to be set or all other methods will case error! \n The method will exit with error message if invalid position is set! \sa ErrorMsg */
 	unsigned int SetPos(unsigned int muiIpos, unsigned int muiJpos, unsigned int muiKpos=0, unsigned int muiLpos=0);
 
 	bool SetPosChecked(unsigned int muiIpos, unsigned int muiJpos, unsigned int muiKpos=0, unsigned int muiLpos=0);
@@ -60,25 +60,25 @@ public:
 
 	double GetIndexWidth(int ny, int index);
 	double GetIndexCoord(int ny, int index);
-	///Get the gird delta at the given  index of direction ny. (if index<0 return negative value as index=0 would give, if index>=max-1 returns negative value as index=max-2 would give)
+	///Get the grid delta at the given index of direction ny. (if index<0 return negative value as index=0 would give, if index>=max-1 returns negative value as index=max-2 would give)
 	double GetIndexDelta(int ny, int index);
 
 //	double GetCellVolume(unsigned int uiCell);
 
 	unsigned int GetPosFromNode(int ny, unsigned int uiNode);
 	///Set a shift in ny direction (e.g. 0 for i-direction)
-	/*!Shift set by this methode will be ignored by methode GetPos*/
+	/*!Shift set by this method will be ignored by method GetPos*/
 	unsigned int Shift(int ny, int step);
 	///Set a checked shift in ny direction (e.g. 0 for i-direction)
-	/*!Shift set by this methode will be ignored by methode GetPos*/
+	/*!Shift set by this method will be ignored by method GetPos*/
 	bool CheckShift(int ny, int step);
-	///Returns the current 1-dim position including shift by methode "Shift" + additional (transitory) shift
+	///Returns the current 1-dim position including shift by method "Shift" + additional (transitory) shift
 	unsigned int GetShiftedPos(int ny=-1, int step=0);
-	///Reset shift set by "Shift"-methode
+	///Reset shift set by "Shift"-method
 	void ResetShift();
 	///Iterates through AdrOp; --- obsolete ---
 	unsigned int Iterate(int jump=1);
-	///Retruns size of array
+	///Returns size of array
 	unsigned int GetSize();
 	///Set mode to reflect by node
 	/*!1D-example (6 nodes): \image html node_reflect.PNG order: 0,1,2,3,4,5,4,3,...*/

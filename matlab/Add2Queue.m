@@ -1,7 +1,7 @@
 function [queue] = Add2Queue(queue,func_name, func_args, varargin)
 % function [queue] = Add2Queue(queue,func_name, func_args, varargin)
 %
-% Use this function to add a funtion to the queue.
+% Use this function to add a function to the queue.
 %
 % For more details see: InitQueue
 %

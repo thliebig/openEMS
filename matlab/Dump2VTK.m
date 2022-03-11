@@ -1,7 +1,7 @@
 function Dump2VTK(filename, fields, mesh, fieldname, varargin)
 % Dump2VTK(filename, fields, mesh, fieldname, varargin)
 %
-%   Dump fields extraced from an hdf5 file to a vtk file format
+%   Dump fields extracted from an hdf5 file to a vtk file format
 %
 %   possible arguments:
 %       'NativeDump': 0 (default) / 1, dump in native coordinate system

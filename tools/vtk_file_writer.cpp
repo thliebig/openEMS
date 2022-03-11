@@ -70,7 +70,7 @@ void VTK_File_Writer::SetMeshLines(double const* const* lines, unsigned int cons
 		vtkRectilinearGrid* RectGrid = dynamic_cast<vtkRectilinearGrid*>(m_GridData);
 		if (RectGrid==NULL)
 		{
-			cerr << "VTK_File_Writer::SetMeshLines: Error, grid invalid, this should not have happend! " << endl;
+			cerr << "VTK_File_Writer::SetMeshLines: Error, grid invalid, this should not have happened! " << endl;
 			exit(1);
 		}
 		RectGrid->SetDimensions(count[0],count[1],count[2]);
@@ -97,7 +97,7 @@ void VTK_File_Writer::SetMeshLines(double const* const* lines, unsigned int cons
 		vtkStructuredGrid* StructGrid = dynamic_cast<vtkStructuredGrid*>(m_GridData);
 		if (StructGrid==NULL)
 		{
-			cerr << "VTK_File_Writer::SetMeshLines: Error, grid invalid, this should not have happend! " << endl;
+			cerr << "VTK_File_Writer::SetMeshLines: Error, grid invalid, this should not have happened! " << endl;
 			exit(1);
 		}
 

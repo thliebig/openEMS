@@ -58,7 +58,7 @@ class Port(object):
     :param excite: float -- port excitation amplitude
     :param priority: int -- priority of all contained primtives
     :param PortNamePrefix: str -- a prefix for all ports-names
-    :param delay: float -- a positiv delay value to e.g. emulate a phase shift
+    :param delay: float -- a positive delay value to e.g. emulate a phase shift
     """
     def __init__(self, CSX, port_nr, start, stop, excite, **kw):
         self.CSX      = CSX

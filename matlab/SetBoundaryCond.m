@@ -11,7 +11,7 @@ function FDTD = SetBoundaryCond(FDTD, BC, varargin)
 % 
 % example:
 % BC = [ 1     1     0     0     2     3     ]  %using numbers or
-% BC = {'PMC' 'PMC' 'PEC' 'PEC' 'MUR' 'PML_8'}  %usign equivalent strings
+% BC = {'PMC' 'PMC' 'PEC' 'PEC' 'MUR' 'PML_8'}  %using equivalent strings
 %
 % mur-abc definitions
 % define a phase-velocity to be used by the mur-abc

@@ -267,16 +267,16 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 			return 0;
 		}
 
-		// if no valid or finally invalid cube is found, calculate an alternaive cube size
+		// if no valid or finally invalid cube is found, calculate an alternative cube size
 		if (mass_iterations==0)
 		{
-			// on first interation, try a relative resize
+			// on first iteration, try a relative resize
 			old_box_size=box_size;
 			box_size*=pow(m_avg_mass/mass,1.0/3.0);
 		}
 		else
 		{
-			// on later interations, try a newton approach
+			// on later iterations, try a newton approach
 			float new_box_size = box_size - (mass-m_avg_mass)/(mass-old_mass)*(box_size-old_box_size);
 			old_box_size = box_size;
 			box_size = new_box_size;

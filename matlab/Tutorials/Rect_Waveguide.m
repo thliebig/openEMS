@@ -1,7 +1,7 @@
 %
 % Tutorials / Rect_Waveguide
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Rectangular_Waveguide
 %
 % Tested with
@@ -21,7 +21,7 @@ unit = 1e-6; %drawing unit in um
 % waveguide dimensions
 % WR42
 a = 10700;   %waveguide width
-b = 4300;    %waveguide heigth
+b = 4300;    %waveguide height
 length = 50000;
 
 % frequency range of interest

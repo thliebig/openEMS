@@ -71,7 +71,7 @@ public:
 	//! Get the length of an FDTD edge (unit is meter).
 	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const =0;
 
-	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos
+	//! Get the area around an edge for a given direction \a n and a given mesh position \a pos
 	/*!
 		This will return the area around an edge with a given direction, measured at the middle of the edge.
 		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.
@@ -81,7 +81,7 @@ public:
 	//! Get the volume of an FDTD cell
 	virtual double GetCellVolume(const unsigned int pos[3], bool dualMesh = false) const =0;
 
-	//! Snap the given coodinates to mesh indices, return box dimension
+	//! Snap the given coordinates to mesh indices, return box dimension
 	virtual bool SnapToMesh(const double* coord, unsigned int* uicoord, bool dualMesh=false, bool fullMesh=false, bool* inside=NULL) const =0;
 
 	//! Snap a given box to the operator mesh, uiStart will be always <= uiStop

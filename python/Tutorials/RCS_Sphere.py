@@ -86,7 +86,7 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, verbose=3, cleanup=True)
 
 ### Postprocessing & plotting
-# get Gaussian pulse stength at frequency f0
+# get Gaussian pulse strength at frequency f0
 ef = UI_data('et', Sim_Path, freq=f0)
 
 Pin = 0.5*norm(E_dir)**2/Z0 * abs(ef.ui_f_val[0])**2

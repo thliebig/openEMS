@@ -60,9 +60,9 @@ public:
 
 	//! Define the Dump-Mode
 	void SetDumpMode(Engine_Interface_Base::InterpolationType mode);
-	//! This methode will dump all fields on a main cell node using 2 E-field and 4 H-fields per direction.
+	//! This method will dump all fields on a main cell node using 2 E-field and 4 H-fields per direction.
 	void SetDumpMode2Node() {SetDumpMode(Engine_Interface_Base::NODE_INTERPOLATE);}
-	//! This methode will dump all fields in the center of a main cell (dual-node) using 4 E-field and 2 H-fields per direction.
+	//! This method will dump all fields in the center of a main cell (dual-node) using 4 E-field and 2 H-fields per direction.
 	void SetDumpMode2Cell() {SetDumpMode(Engine_Interface_Base::CELL_INTERPOLATE);}
 
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...

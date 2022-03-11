@@ -184,7 +184,7 @@ ylabel( 'reflection coefficient |S_{11}|' );
 drawnow
 
 %% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%find resonance frequncy from s11
+%find resonance frequency from s11
 f_res_ind = find(s11==min(s11));
 f_res = freq(f_res_ind);
 

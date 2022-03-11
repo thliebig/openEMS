@@ -1,7 +1,7 @@
 %
 % Tutorials / CRLH_LeakyWaveAnt
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_CRLH_Leaky_Wave_Antenna
 %
 % Tested with

@@ -22,7 +22,7 @@ pic_size = round([1400 1400/4]); %define the animation picture size
 length = 500;
 width = 10;
 mesh_res = 0.5;        % mesh resolution
-height = 3*mesh_res; % hight is ony 3 lines with PEC (top/bottom) --> quasi 2D
+height = 3*mesh_res; % height is only 3 lines with PEC (top/bottom) --> quasi 2D
 
 %FDTD setup
 f0 = 5e9;         %center frequency

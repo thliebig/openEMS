@@ -90,7 +90,7 @@ public:
 	int Get_PML_Size(int idx);
 	void Set_Mur_PhaseVel(int idx, double val);
 
-	//! Get informations about external libs used by openEMS
+	//! Get information about external libs used by openEMS
 	static std::string GetExtLibsInfo(std::string prefix="\t");
 
 	//! Get welcome screen for openEMS

@@ -48,14 +48,14 @@ public:
 	//! Get the coordinates for a given node index and component, according to the cylindrical yee-algorithm. Returns true if inside the FDTD domain.
 	virtual bool GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const;
 
-	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
+	//! Get the node width for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeWidth(int ny, const unsigned int pos[3], bool dualMesh = false) const;
-	//! Get the node width for a given direction \a n and a given mesh posisition \a pos
+	//! Get the node width for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeWidth(int ny, const int pos[3], bool dualMesh = false) const;
 
-	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
+	//! Get the node area for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeArea(int n, const unsigned int* pos, bool dualMesh=false) const;
-	//! Get the node area for a given direction \a n and a given mesh posisition \a pos
+	//! Get the node area for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeArea(int ny, const int pos[3], bool dualMesh = false) const;
 
 	//! Get the length of an FDTD edge, including radius corrected alpha-mesh width.
@@ -64,7 +64,7 @@ public:
 	//! Get the volume of an FDTD cell
 	virtual double GetCellVolume(const unsigned int pos[3], bool dualMesh = false) const;
 
-	//! Get the area around an edge for a given direction \a n and a given mesh posisition \a pos
+	//! Get the area around an edge for a given direction \a n and a given mesh position \a pos
 	/*!
 		This will return the area around an edge with a given direction, measured at the middle of the edge.
 		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.

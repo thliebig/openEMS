@@ -53,7 +53,7 @@ double Operator_MPI::CalcTimestep()
 		return ret;
 
 	double local_dT = dT;
-	//find the smallest time-step requestes by all processings
+	//find the smallest time-step requests by all processings
 	MPI_Reduce(&local_dT, &dT, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
 	//send the smallest time-step to all
 	MPI_Bcast(&dT, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);

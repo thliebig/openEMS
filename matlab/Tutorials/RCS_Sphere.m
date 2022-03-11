@@ -1,7 +1,7 @@
 %
 % Tutorials / radar cross section of a metal sphere
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_RCS_Sphere
 %
 % Tested with

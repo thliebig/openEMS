@@ -32,7 +32,7 @@ public:
 	ErrorMsg(unsigned int NoMessage=0);
 	///Deconstructor
 	virtual ~ErrorMsg();
-	///Methode for defining error messages
+	///Method for defining error messages
 	/*! \param nr Number of defining error message \param *Message Set error message string  \sa Error */
 	void SetMsg(unsigned int nr, const char *Message);
 	///Call an error message. Will exit the program!

@@ -1,7 +1,7 @@
 %
 % Tutorials / Patch Antenna Phased Array
 %
-% Describtion at:
+% Description at:
 %
 % Tested with
 %  - Matlab 2011a
@@ -122,7 +122,7 @@ disp(['I2/I1: Matlab: ' num2str(I_out(2)/I_out(1))])
 disp(['I3/I1: Matlab: ' num2str(I_out(3)/I_out(1))])
 
 
-%% do a referenc simulation for the given C2/C3 values
+%% do a reference simulation for the given C2/C3 values
 if (do_reference_simulation)
     active = [1 0 0];
     caps = [0 C2 C3];
@@ -132,7 +132,7 @@ if (do_reference_simulation)
     port_ref = calcPort( port_ref, Sim_Path, f, 'RefImpedance', 50);
     nf2ff_ref = CalcNF2FF(nf2ff_ref, Sim_Path, f0, [-180:2:180]*pi/180, 0);
 
-    % extract currents from referenc simulation
+    % extract currents from reference simulation
     for p=1:3
         I_ref(p,1) = interp1(f, port_ref{p}.if.tot,f0);
     end
@@ -141,7 +141,7 @@ if (do_reference_simulation)
     disp(['I3/I1: openEMS: ' num2str(I_ref(3)/I_ref(1))])
 end
 
-%% calculate and apply weighting cooefficients [3]
+%% calculate and apply weighting coefficients [3]
 % calculate
 coeff = I\I_out;
 

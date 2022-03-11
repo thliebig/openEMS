@@ -56,7 +56,7 @@ end
 
 if (do_FD_dump)
     if (~isfield(field,'FD'))
-        warning('openEMS:ConvertHDF5_VTK','no FD data found skipping frequency domian vtk dump...');
+        warning('openEMS:ConvertHDF5_VTK','no FD data found skipping frequency domain vtk dump...');
     else
         %set weighting
         if (numel(weight)~=numel(field.FD.frequency))
@@ -88,7 +88,7 @@ end
 
 if (do_TD_dump)
     if (~isfield(field,'TD'))
-        warning('openEMS:ConvertHDF5_VTK','no TD data found skipping time domian vtk dump...');
+        warning('openEMS:ConvertHDF5_VTK','no TD data found skipping time domain vtk dump...');
     else
         disp('dumping time domain data...')
         acc = ['%0' int2str(ceil(log10(numel(field.TD.time)+1))) 'd'];

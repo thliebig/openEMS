@@ -1,7 +1,7 @@
 %
 % Tutorials / conical horn antenna
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Conical_Horn_Antenna
 %
 % Tested with

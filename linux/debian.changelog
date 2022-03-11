@@ -17,7 +17,7 @@ openems (0.0.25-4) stable; urgency=low
   * Upstream fixes
  -- Sebastian Held <sebastian.held@gmx.de>  Sun, 25 Dec 2011 21:23:38 +0100
 openems (0.0.25-3) stable; urgency=low
-  * Changed dependancy on boost to enable build on oneiric
+  * Changed dependency on boost to enable build on oneiric
  -- Sebastian Held <sebastian.held@gmx.de>  Sun, 18 Dec 2011 21:39:38 +0100
 openems (0.0.25-2) stable; urgency=low
   * New upstream release

@@ -2,7 +2,7 @@
 """
  Microstrip Notch Filter Tutorial
 
- Describtion at:
+ Description at:
  http://openems.de/doc/openEMS/Tutorials.html#microstrip-notch-filter
 
  Tested with

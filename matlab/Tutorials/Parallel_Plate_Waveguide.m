@@ -1,7 +1,7 @@
 %
 % Tutorials / Parallel_Plate_Waveguide
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_Parallel_Plate_Waveguide
 %
 % Tested with

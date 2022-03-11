@@ -64,7 +64,7 @@ public:
 	//! Get the length of the excitation signal
 	unsigned int GetLength() const {return Length;}
 
-	//! Get the max frequeny excited by this signal
+	//! Get the max frequency excited by this signal
 	double GetMaxFrequency() const {return m_f_max;}
 
 	//! Get the frequency of interest

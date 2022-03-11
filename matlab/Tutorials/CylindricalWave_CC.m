@@ -1,7 +1,7 @@
 %
 % Tutorials / CylindricalWave_CC
 %
-% Describtion at:
+% Description at:
 % http://openems.de/index.php/Tutorial:_2D_Cylindrical_Wave
 %
 % Tested with

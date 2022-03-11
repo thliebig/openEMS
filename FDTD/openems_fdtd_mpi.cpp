@@ -334,7 +334,7 @@ unsigned int openEMS_FDTD_MPI::GetNextStep()
 
 	int local_step=step;
 
-	//find the smallest next step requestes by all processings
+	//find the smallest next step requests by all processings
 	MPI_Reduce(&local_step, &step, 1, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
 	//send the smallest next step to all
 	MPI_Bcast(&step, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -397,7 +397,7 @@ bool openEMS_FDTD_MPI::SetupProcessing()
 			if (dynamic_cast<ProcessIntegral*>(proc)!=NULL)
 			{
 				//type is integral processing --> disable! Needs to be fixed!
-				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Warning: Processing: " << proc->GetName() << " occures multiple times and is being deactivated..." << endl;
+				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Warning: Processing: " << proc->GetName() << " occurs multiple times and is being deactivated..." << endl;
 				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Note: Processing: Make sure that there are no splits inside probes or sources." << endl;
 				deactivate = true;
 				rename = false;
@@ -405,12 +405,12 @@ bool openEMS_FDTD_MPI::SetupProcessing()
 			if (dynamic_cast<ProcessFields*>(proc)!=NULL)
 			{
 				//type is field processing --> renameing! Needs to be fixed!
-				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Warning: Processing: " << proc->GetName() << " occures multiple times and is being renamed..." << endl;
+				cerr << "openEMS_FDTD_MPI::SetupProcessing(): Warning: Processing: " << proc->GetName() << " occurs multiple times and is being renamed..." << endl;
 				deactivate = false;
 				rename = true;
 			}
 		}
-		//broadcast informations to all
+		//broadcast information to all
 		MPI_Bcast(&deactivate, 1, MPI::BOOL, 0, MPI_COMM_WORLD);
 		MPI_Bcast(&rename, 1, MPI::BOOL, 0, MPI_COMM_WORLD);
 		if (deactivate)

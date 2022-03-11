@@ -37,7 +37,7 @@ disp( ['DONE. L = ' num2str(L(1)/1e-6) ' uH'] );
 goal   = 2e-6; % specify the goal: 2 uH
 result = abs(goal - L(1)); % costs must not be negative
 
-% restore curent folder
+% restore current folder
 cd( oldpwd );
 
 

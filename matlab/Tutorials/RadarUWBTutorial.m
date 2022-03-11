@@ -27,7 +27,7 @@ physical_constants;
 % in different channels.
 % 
 % The Gaussian excitation is set to the same 3dB bandwidth as the
-% channels of the IEEE 802.15.4 UWB PHY. One exeption is channel4twice
+% channels of the IEEE 802.15.4 UWB PHY. One exception is channel4twice
 % which has the double bandwidth of channel 4. It can be seen that the
 % delay is larger and the fidelity is smaller in the vicinity of the
 % (undesired) resonances of the antenna. Note that for a real UWB system
@@ -117,7 +117,7 @@ CSX = AddBox(CSX, 'Patch', 2, [-patchsize/2, gap, 0], [patchsize/2, gap + patchs
 mesh.x = [];
 mesh.y = [];
 
-% two mesh lines for the metal coatings of teh substrate
+% two mesh lines for the metal coatings of the substrate
 mesh.z = linspace(-substrate.height, 0, substrate.cells +1);
 
 % find optimal mesh lines for the patch and ground, not yes the microstrip line
@@ -139,7 +139,7 @@ mesh.x = [mesh.x meshline.x];
 % and only the top of the substrate, the other edges are covered by the ground plane
 mesh.y = [mesh.y, meshsubstrate.y(end)]; % top of substrate
 
-% for now we have only the edges, now calculate mesh lines inbetween
+% for now we have only the edges, now calculate mesh lines in between
 mesh = SmoothMesh(mesh, fineResolution);
 
 % add the outer boundary
@@ -228,7 +228,7 @@ figure %("visible", "off");
 polarFF(nf2ff, 'xaxis', 'theta', 'logscale', [minplot, maxplot]);
 title(["fidelity ", suffix, " / %"]);
 
-% save the plots in order to compare them afer simulating the different channels
+% save the plots in order to compare them after simulating the different channels
 print(1, ["s11_", suffix, ".png"]);
 print(2, ["farfield_", suffix, ".png"]);
 print(3, ["delay_mm_", suffix, ".png"]);
