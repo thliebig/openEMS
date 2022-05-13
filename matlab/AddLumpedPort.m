@@ -82,10 +82,10 @@ port.direction = direction;
 port.Feed_R = R;
 if (R>0 && (~isinf(R)))
     CSX = AddLumpedElement(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)],  n_dir-1, 'Caps', 1, 'R', R);
-    CSX = AddBox(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)], prio, start, stop);
+    CSX = AddBox(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)], prio, start, stop, varargin{:});
 elseif (R<=0)
     CSX = AddMetal(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)]);
-    CSX = AddBox(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)], prio, start, stop);
+    CSX = AddBox(CSX,[PortNamePrefix 'port_resist_' int2str(portnr)], prio, start, stop, varargin{:});
 end
 
 if (nargin < 8)
@@ -106,7 +106,7 @@ port.excite = excite;
 % create excitation
 if (excite)
     CSX = AddExcitation( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], 0, -dir*direction, varargin{:});
-	CSX = AddBox( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], prio, start, stop );
+	CSX = AddBox( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], prio, start, stop, varargin{:} );
 end
 
 u_start = 0.5*(start + stop);
