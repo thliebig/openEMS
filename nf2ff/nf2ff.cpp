@@ -38,6 +38,7 @@ using namespace std;
 
 nf2ff::nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, vector<float> center, unsigned int numThreads)
 {
+	std::setlocale(LC_NUMERIC, "en_US.UTF-8");
 	m_freq = freq;
 
 	m_numTheta = theta.size();

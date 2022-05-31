@@ -64,6 +64,7 @@ double CalcDiffTime(timeval t1, timeval t2)
 
 openEMS::openEMS()
 {
+	std::setlocale(LC_NUMERIC, "en_US.UTF-8");
 	FDTD_Op=NULL;
 	FDTD_Eng=NULL;
 	Eng_Ext_SSD=NULL;

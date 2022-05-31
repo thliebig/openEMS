@@ -228,6 +228,7 @@ void Excitation::CalcCustomExcitation(double f0, int nTS, string signal)
 	delete[] Signal_curr;
 	Signal_volt = new FDTD_FLOAT[Length];
 	Signal_curr = new FDTD_FLOAT[Length];
+	std::setlocale(LC_NUMERIC, "en_US.UTF-8");
 	FunctionParser fParse;
 	fParse.AddConstant("pi", 3.14159265358979323846);
 	fParse.AddConstant("e", 2.71828182845904523536);
