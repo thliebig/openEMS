@@ -105,67 +105,24 @@ void Engine::Reset()
 	ClearExtensions();
 }
 
-void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
-{
-	unsigned int pos[3];
-	bool shift[3];
+[[gnu::target("default")]]
+#include "update_voltages.inc"
 
-	pos[0] = startX;
-	//voltage updates
-	for (unsigned int posX=0; posX<numX; ++posX)
-	{
-		shift[0]=pos[0];
-		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-		{
-			shift[1]=pos[1];
-			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-			{
-				shift[2]=pos[2];
-				//do the updates here
-				//for x
-				volt[0][pos[0]][pos[1]][pos[2]] *= Op->vv[0][pos[0]][pos[1]][pos[2]];
-				volt[0][pos[0]][pos[1]][pos[2]] += Op->vi[0][pos[0]][pos[1]][pos[2]] * ( curr[2][pos[0]][pos[1]][pos[2]] - curr[2][pos[0]][pos[1]-shift[1]][pos[2]] - curr[1][pos[0]][pos[1]][pos[2]] + curr[1][pos[0]][pos[1]][pos[2]-shift[2]]);
+[[gnu::target("avx2,fma")]]
+#include "update_voltages.inc"
 
-				//for y
-				volt[1][pos[0]][pos[1]][pos[2]] *= Op->vv[1][pos[0]][pos[1]][pos[2]];
-				volt[1][pos[0]][pos[1]][pos[2]] += Op->vi[1][pos[0]][pos[1]][pos[2]] * ( curr[0][pos[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]-shift[2]] - curr[2][pos[0]][pos[1]][pos[2]] + curr[2][pos[0]-shift[0]][pos[1]][pos[2]]);
+[[gnu::target("avx512f")]]
+#include "update_voltages.inc"
 
-				//for z
-				volt[2][pos[0]][pos[1]][pos[2]] *= Op->vv[2][pos[0]][pos[1]][pos[2]];
-				volt[2][pos[0]][pos[1]][pos[2]] += Op->vi[2][pos[0]][pos[1]][pos[2]] * ( curr[1][pos[0]][pos[1]][pos[2]] - curr[1][pos[0]-shift[0]][pos[1]][pos[2]] - curr[0][pos[0]][pos[1]][pos[2]] + curr[0][pos[0]][pos[1]-shift[1]][pos[2]]);
-			}
-		}
-		++pos[0];
-	}
-}
 
-void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
-{
-	unsigned int pos[3];
-	pos[0] = startX;
-	for (unsigned int posX=0; posX<numX; ++posX)
-	{
-		for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
-		{
-			for (pos[2]=0; pos[2]<numLines[2]-1; ++pos[2])
-			{
-				//do the updates here
-				//for x
-				curr[0][pos[0]][pos[1]][pos[2]] *= Op->ii[0][pos[0]][pos[1]][pos[2]];
-				curr[0][pos[0]][pos[1]][pos[2]] += Op->iv[0][pos[0]][pos[1]][pos[2]] * ( volt[2][pos[0]][pos[1]][pos[2]] - volt[2][pos[0]][pos[1]+1][pos[2]] - volt[1][pos[0]][pos[1]][pos[2]] + volt[1][pos[0]][pos[1]][pos[2]+1]);
+[[gnu::target("default")]]
+#include "update_currents.inc"
 
-				//for y
-				curr[1][pos[0]][pos[1]][pos[2]] *= Op->ii[1][pos[0]][pos[1]][pos[2]];
-				curr[1][pos[0]][pos[1]][pos[2]] += Op->iv[1][pos[0]][pos[1]][pos[2]] * ( volt[0][pos[0]][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]+1] - volt[2][pos[0]][pos[1]][pos[2]] + volt[2][pos[0]+1][pos[1]][pos[2]]);
+[[gnu::target("avx2,fma")]]
+#include "update_currents.inc"
 
-				//for z
-				curr[2][pos[0]][pos[1]][pos[2]] *= Op->ii[2][pos[0]][pos[1]][pos[2]];
-				curr[2][pos[0]][pos[1]][pos[2]] += Op->iv[2][pos[0]][pos[1]][pos[2]] * ( volt[1][pos[0]][pos[1]][pos[2]] - volt[1][pos[0]+1][pos[1]][pos[2]] - volt[0][pos[0]][pos[1]][pos[2]] + volt[0][pos[0]][pos[1]+1][pos[2]]);
-			}
-		}
-		++pos[0];
-	}
-}
+[[gnu::target("avx512f")]]
+#include "update_currents.inc"
 
 void Engine::DoPreVoltageUpdates()
 {

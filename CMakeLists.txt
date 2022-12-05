@@ -21,6 +21,12 @@ IF(EXISTS ${PROJECT_SOURCE_DIR}/localConfig.cmake)
    include(${PROJECT_SOURCE_DIR}/localConfig.cmake)
 ENDIF()
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+  add_compile_options(-fopenmp -ftree-vectorize)
+elseif(MSVC)
+  add_compile_options(/Qvec)
+endif()
+
 #ADD_DEFINITIONS( -D__SSE2__ )
 
 set(VERSION "v0.0.35")
@@ -35,7 +41,7 @@ IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
     OUTPUT_VARIABLE GITREV
   )
   set(VERSION ${GITREV})
-  string(STRIP ${VERSION} VERSION)
+  string(STRIP "${VERSION}" VERSION)
   message(STATUS "Found Git repository, ${PROJECT_NAME} version tag: ${VERSION}")
 ENDIF()
 
