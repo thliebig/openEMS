@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-cimport _nf2ff
+cimport openEMS._nf2ff
 import numpy as np
 import os
 from CSXCAD.Utilities import CheckNyDir

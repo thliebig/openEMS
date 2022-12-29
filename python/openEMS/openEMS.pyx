@@ -19,7 +19,7 @@
 import os, sys, shutil
 import numpy as np
 cimport openEMS
-from . import ports, nf2ff, automesh
+from openEMS import ports, nf2ff, automesh
 
 from CSXCAD.Utilities import GetMultiDirs
 
