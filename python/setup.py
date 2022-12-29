@@ -41,7 +41,7 @@ setup(
   maintainer = 'Thorsten Liebig',
   maintainer_email = 'Thorsten.Liebig@gmx.de',
   url = 'https://openEMS.de',
-  packages=["openEMS", ],
+  packages=["openEMS", "openEMS.GUI"],
   package_data={'openEMS': ['*.pxd']},
   ext_modules = cythonize(extensions, language_level = "3")
  )

@@ -105,8 +105,10 @@ if 0:  # debugging only
     os.system(r'AppCSXCAD "{}"'.format(CSX_file))
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, verbose=3, cleanup=True)
-
+    from openEMS.GUI import runOpenEMS
+    if not runOpenEMS(FDTD, Sim_Path, verbose=1, cleanup=True, auto_close=False):
+        exit(-1)
+    #FDTD.Run(Sim_Path, verbose=3, cleanup=True)
 
 ### Post-processing and plotting
 f = np.linspace(max(1e9,f0-fc),f0+fc,401)
