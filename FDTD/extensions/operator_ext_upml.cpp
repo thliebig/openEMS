@@ -25,7 +25,7 @@ using namespace std;
 
 Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 {
-	std::setlocale(LC_NUMERIC, "en_US.UTF-8");
+	setlocale(LC_NUMERIC, "en_US.UTF-8");
 	m_GradingFunction = new FunctionParser();
 	//default grading function
 	SetGradingFunction(" -log(1e-6)*log(2.5)/(2*dl*Z*(pow(2.5,W/dl)-1)) * pow(2.5, D/dl) ");

@@ -64,7 +64,7 @@ double CalcDiffTime(timeval t1, timeval t2)
 
 openEMS::openEMS()
 {
-	std::setlocale(LC_NUMERIC, "en_US.UTF-8");
+	setlocale(LC_NUMERIC, "en_US.UTF-8");
 	FDTD_Op=NULL;
 	FDTD_Eng=NULL;
 	Eng_Ext_SSD=NULL;
@@ -394,7 +394,7 @@ bool openEMS::SetupProcessing()
 				if (pb->GetProbeType()==0)
 				{
 					CSPrimBox* box = prim->ToBox();
-					if (!(box) or box->GetDimension()!=1)
+					if (!(box) || box->GetDimension()!=1)
 					{
 						cerr << "openEMS::SetupProcessing: Error: Probe primitive type or dimension not suitable ... skipping probe " << pb->GetName() << endl;
 						continue;
