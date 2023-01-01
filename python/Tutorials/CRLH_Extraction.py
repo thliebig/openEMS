@@ -44,36 +44,39 @@ class CRLH_Cells:
         self.edge_resolution = res
 
     def createCell(self, translate = [0,0,0]):
-        def append_mesh(mesh1, mesh2):
-            for n in range(3):
-                if mesh1[n] is None:
-                    mesh1[n] = mesh2[n]
-                elif mesh2[n] is None:
-                    continue
-                else:
-                    mesh1[n] += mesh2[n]
-            return mesh1
+        mesh = [[],[],None]
+        third_res = self.edge_resolution/3
         translate = array(translate)
         start = [-self.LL/2 , -self.LW/2, self.Top] + translate
         stop  = [-self.GLT/2,  self.LW/2, self.Top] + translate
         box = self.props['metal_top'].AddBox(start, stop, priority=10)
-        mesh = box.GetGridHint('x', metal_edge_res=self.edge_resolution, down_dir=False)
-        append_mesh(mesh, box.GetGridHint('y', metal_edge_res=self.edge_resolution) )
+        # create edge mesh at +x and -+y
+        mesh[0] += [stop[0]-third_res, stop[0]+2*third_res]
+        mesh[1] += [stop[1]-third_res, stop[1]+2*third_res]
+        mesh[1] += [start[1]-2*third_res, start[1]+third_res]
+
 
         start = [+self.LL/2 , -self.LW/2, self.Top] + translate
         stop  = [+self.GLT/2,  self.LW/2, self.Top] + translate
         box = self.props['metal_top'].AddBox(start, stop, priority=10)
-        append_mesh(mesh, box.GetGridHint('x', metal_edge_res=self.edge_resolution, up_dir=False) )
+        # create edge mesh at -x
+        mesh[0] += [stop[0]-2*third_res, stop[0]+third_res]
 
         start = [-(self.LL-self.GLB)/2, -self.LW/2, self.Bot] + translate
         stop  = [+(self.LL-self.GLB)/2,  self.LW/2, self.Bot] + translate
         box = self.props['metal_bot'].AddBox(start, stop, priority=10)
-        append_mesh(mesh, box.GetGridHint('x', metal_edge_res=self.edge_resolution) )
+        # create edge mesh at -+x
+        mesh[0] += [start[0]+third_res, start[0]-2*third_res]
+        mesh[0] += [stop[0]-third_res, stop[0]+2*third_res]
 
         start = [-self.SW/2, -self.LW/2-self.SL, self.Bot] + translate
         stop  = [+self.SW/2,  self.LW/2+self.SL, self.Bot] + translate
         box = self.props['metal_bot'].AddBox(start, stop, priority=10)
-        append_mesh(mesh, box.GetGridHint('xy', metal_edge_res=self.edge_resolution) )
+        # create edge mesh at -+x and -+y
+        mesh[0] += [start[0]+third_res, start[0]-2*third_res]
+        mesh[0] += [stop[0]-third_res, stop[0]+2*third_res]
+        mesh[1] += [start[1]+third_res, start[1]-2*third_res]
+        mesh[1] += [stop[1]-third_res, stop[1]+2*third_res]
 
         start = [0, -self.LW/2-self.SL+self.SW/2, 0       ] + translate
         stop  = [0, -self.LW/2-self.SL+self.SW/2, self.Bot] + translate
