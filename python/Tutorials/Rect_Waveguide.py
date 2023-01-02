@@ -2,14 +2,11 @@
 """
  Rectangular Waveguide Tutorial
 
- Description at:
- http://openems.de/doc/openEMS/Tutorials.html#rectangular-waveguide
-
  Tested with
-  - python 3.4
-  - openEMS v0.0.34+
+  - python 3.10
+  - openEMS v0.0.35+
 
- (C) 2015-2016 Thorsten Liebig <thorsten.liebig@gmx.de>
+ (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 """
 
@@ -92,7 +89,7 @@ if 0:  # debugging only
     os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, verbose=3, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True)
 
 ### Postprocessing & plotting
 freq = linspace(f_start,f_stop,201)

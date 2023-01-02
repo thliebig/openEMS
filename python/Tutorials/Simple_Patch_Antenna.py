@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Dec 18 20:56:53 2015
+ Simple Patch Antenna Tutorial
 
-@author: thorsten
+ Tested with
+  - python 3.10
+  - openEMS v0.0.34+
+
+ (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
+
 """
 
 ### Import Libraries

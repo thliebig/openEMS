@@ -2,14 +2,11 @@
 """
  Microstrip Notch Filter Tutorial
 
- Description at:
- http://openems.de/doc/openEMS/Tutorials.html#microstrip-notch-filter
-
  Tested with
-  - python 3.4
-  - openEMS v0.0.34+
+  - python 3.10
+  - openEMS v0.0.35+
 
- (C) 2016 Thorsten Liebig <thorsten.liebig@gmx.de>
+ (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 """
 
@@ -103,7 +100,7 @@ if 0:  # debugging only
 
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, verbose=3, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True)
 
 ### Post-processing and plotting
 f = linspace( 1e6, f_max, 1601 )
