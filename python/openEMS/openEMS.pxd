@@ -55,8 +55,10 @@ cdef extern from "openEMS/openems.h":
         void SetAbort(bool val)
 
         void SetVerboseLevel(int level)
-        void DebugPEC()      nogil
         void DebugMaterial() nogil
+        void DebugPEC()      nogil
+        void DebugOperator() nogil
+        void DebugBox()      nogil
         void DebugCSX()      nogil
 
         int SetupFDTD() nogil
