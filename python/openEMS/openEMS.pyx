@@ -447,7 +447,8 @@ cdef class openEMS:
                     continue
                 grid.AddLine(n, hint[n])
 
-    def Run(self, sim_path, cleanup=False, setup_only=False, debug_pec=False, verbose=None, **kw):
+    def Run(self, sim_path, cleanup=False,setup_only=False, debug_material=False, debug_pec=False,
+            debug_operator=False, debug_boxes=False, debug_csx=False, verbose=None, **kw):
         """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
 
         Run the openEMS FDTD simulation.
@@ -468,9 +469,21 @@ cdef class openEMS:
         os.chdir(sim_path)
         if verbose is not None:
             self.thisptr.SetVerboseLevel(verbose)
+        if debug_material:
+            with nogil:
+                self.thisptr.DebugMaterial()
         if debug_pec:
             with nogil:
                 self.thisptr.DebugPEC()
+        if debug_operator:
+            with nogil:
+                self.thisptr.DebugOperator()
+        if debug_boxes:
+            with nogil:
+                self.thisptr.DebugBox()
+        if debug_csx:
+            with nogil:
+                self.thisptr.DebugCSX()
         if 'numThreads' in kw:
             self.thisptr.SetNumberOfThreads(int(kw['numThreads']))
         assert os.getcwd() == sim_path
