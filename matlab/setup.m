@@ -18,15 +18,22 @@ if isOctave()
     disp('compiling oct files')
     fflush(stdout);
     if isunix
-        [res, fn_so] = unix('find /usr/lib     -name libhdf5.so');
-        [res, fn_h]  = unix('find /usr/include -name hdf5.h | sort -r | head -1');
+        dylib_extension = 'so';
+        search_path = "/usr";
+        if ismac
+            dylib_extension = 'dylib';
+            [res, search_path] = unix('brew --prefix');
+            search_path = strtrim(search_path);
+        end
+        [res, fn_so] = unix(['find ' search_path '/lib     -name libhdf5.' dylib_extension]);
+        [res, fn_h]  = unix(['find ' search_path '/include -name hdf5.h | sort -r | head -1']);
         if length(fn_so)>0 && length(fn_h)>0
             [hdf5lib_dir, hdf5lib_fn, ext] = fileparts(fn_so);
             disp(["HDF5 library path found at: " hdf5lib_dir])
 
             [hdf5inc_dir, hdf5inc_fn, ext] = fileparts(fn_h);
             disp(["HDF5 include path found at: " hdf5inc_dir])
-            mkoctfile("h5readatt_octave.cc", ["-L" hdf5lib_dir], ["-I" hdf5inc_dir], "-L hdf5")
+            mkoctfile("h5readatt_octave.cc", ["-L" hdf5lib_dir], ["-I" hdf5inc_dir], "-lhdf5")
         else
             mkoctfile -lhdf5 h5readatt_octave.cc
         end
