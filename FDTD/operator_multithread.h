@@ -64,6 +64,7 @@ protected:
 
 	boost::thread_group m_thread_group;
 	unsigned int m_numThreads; // number of worker threads
+	unsigned int m_orig_numThreads;
 
 	//! Calculate the start/stop lines for the multithreading operator and engine.
 	/*!

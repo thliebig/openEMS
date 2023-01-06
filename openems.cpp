@@ -245,6 +245,13 @@ bool openEMS::parseCommandLineArgument( const char *argv )
 	return false;
 }
 
+void openEMS::SetNumberOfThreads(int val)
+{
+	if ((val<0) || (val>boost::thread::hardware_concurrency()))
+		val = boost::thread::hardware_concurrency();
+	m_engine_numThreads = val;
+}
+
 string openEMS::GetExtLibsInfo(string prefix)
 {
 	stringstream str;
@@ -1203,6 +1210,7 @@ void openEMS::RunFDTD()
 
 			if (m_DumpStats)
 				DumpRunStatistics(__OPENEMS_RUN_STAT_FILE__, t_run, currTS, speed, currE);
+			FDTD_Eng->NextInterval(speed);
 		}
 	}
 	if ((change>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))

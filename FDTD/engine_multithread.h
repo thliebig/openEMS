@@ -90,6 +90,7 @@ public:
 	virtual void setNumThreads( unsigned int numThreads );
 	virtual void Init();
 	virtual void Reset();
+	virtual void NextInterval(float curr_speed);
 
 	//! Iterate \a iterTS number of timesteps
 	virtual bool IterateTS(unsigned int iterTS);
@@ -104,13 +105,17 @@ public:
 
 protected:
 	Engine_Multithread(const Operator_Multithread* op);
+	void changeNumThreads(unsigned int numThreads);
 	const Operator_Multithread* m_Op_MT;
-	boost::thread_group m_thread_group;
+	boost::thread_group *m_thread_group;
 	boost::barrier *m_startBarrier, *m_stopBarrier;
 	boost::barrier *m_IterateBarrier;
 	volatile unsigned int m_iterTS;
 	unsigned int m_numThreads; //!< number of worker threads
+	unsigned int m_max_numThreads; //!< max. number of worker threads
 	volatile bool m_stopThreads;
+	bool m_opt_speed;
+	float m_last_speed;
 
 #ifdef MPI_SUPPORT
 	/*! Workaround needed for subgridding scheme... (see Engine_CylinderMultiGrid)

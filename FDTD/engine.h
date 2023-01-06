@@ -47,6 +47,8 @@ public:
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;}
 
+	virtual void NextInterval(float curr_speed) {};
+
 	//this access functions muss be overloaded by any new engine using a different storage model
 	inline virtual FDTD_FLOAT GetVolt( unsigned int n, unsigned int x, unsigned int y, unsigned int z )		const { return volt[n][x][y][z]; }
 	inline virtual FDTD_FLOAT GetVolt( unsigned int n, const unsigned int pos[3] )							const { return volt[n][pos[0]][pos[1]][pos[2]]; }

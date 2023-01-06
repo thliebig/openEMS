@@ -36,11 +36,12 @@ Operator_Multithread::~Operator_Multithread()
 void Operator_Multithread::setNumThreads( unsigned int numThreads )
 {
 	m_numThreads = numThreads;
+	m_orig_numThreads = numThreads;
 }
 
 Engine* Operator_Multithread::CreateEngine()
 {
-	m_Engine = Engine_Multithread::New(this,m_numThreads);
+	m_Engine = Engine_Multithread::New(this, m_orig_numThreads);
 	return m_Engine;
 }
 
@@ -106,7 +107,7 @@ void Operator_Multithread::CalcStartStopLines(unsigned int &numThreads, vector<u
 
 int Operator_Multithread::CalcECOperator( DebugFlags debugFlags )
 {
-	if (m_numThreads == 0)
+	if ((m_numThreads == 0) || (m_numThreads > boost::thread::hardware_concurrency()))
 		m_numThreads = boost::thread::hardware_concurrency();
 
 	vector<unsigned int> m_Start_Lines;

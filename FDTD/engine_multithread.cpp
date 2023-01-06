@@ -55,6 +55,12 @@ Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : ENGINE_
 	m_IterateBarrier = 0;
 	m_startBarrier = 0;
 	m_stopBarrier = 0;
+	m_thread_group = 0;
+	m_max_numThreads = boost::thread::hardware_concurrency();
+	m_numThreads = 0;
+	m_last_speed = 0;
+	m_opt_speed = false;
+	m_stopThreads = true;
 
 #ifdef ENABLE_DEBUG_TIME
 	m_MPI_Barrier = 0;
@@ -92,27 +98,91 @@ void Engine_Multithread::setNumThreads( unsigned int numThreads )
 void Engine_Multithread::Init()
 {
 	m_stopThreads = true;
+	m_opt_speed = false;
 	ENGINE_MULTITHREAD_BASE::Init();
 
 	// initialize threads
 	m_stopThreads = false;
 	if (m_numThreads == 0)
-		m_numThreads = boost::thread::hardware_concurrency();
+	{
+		m_opt_speed = true;
+		m_numThreads = 1;
+	}
+	else if (m_numThreads > m_max_numThreads)
+		m_numThreads = m_max_numThreads;
+
+#ifdef MPI_SUPPORT
+	m_MPI_Barrier = 0;
+#endif
+	this->changeNumThreads(m_numThreads);
+}
+
+void Engine_Multithread::Reset()
+{
+	if (!m_stopThreads) // prevent multiple invocations
+	{
+		ClearExtensions(); //prevent extensions from interfering with thread reset...
+
+		// stop the threads
+		//NS_Engine_Multithread::DBG().cout() << "stopping all threads" << endl;
+		m_iterTS = 1;
+		m_startBarrier->wait(); // start the threads
+		m_stopThreads = true;
+		m_stopBarrier->wait(); // wait for the threads to finish
+		m_thread_group->join_all(); // wait for termination
+		delete m_IterateBarrier;
+		m_IterateBarrier = 0;
+		delete m_startBarrier;
+		m_startBarrier = 0;
+		delete m_stopBarrier;
+		m_stopBarrier = 0;
+		delete m_thread_group;
+		m_thread_group = 0;
+	}
+
+	ENGINE_MULTITHREAD_BASE::Reset();
+}
+
+void Engine_Multithread::changeNumThreads(unsigned int numThreads)
+{
+	if (m_thread_group!=0)
+	{
+		m_thread_group->interrupt_all();
+		//m_stopThreads = true;
+		//m_startBarrier->wait(); // start the threads
+		m_thread_group->join_all(); // wait for termination
+
+		delete m_thread_group;
+		m_thread_group = 0;
+		//m_stopThreads = false;
+	}
+
+	m_numThreads = numThreads;
+
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
 
 	vector<unsigned int> m_Start_Lines;
 	vector<unsigned int> m_Stop_Lines;
 	m_Op_MT->CalcStartStopLines( m_numThreads, m_Start_Lines, m_Stop_Lines );
 
-	if (g_settings.GetVerboseLevel()>0)
-		cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
+	if (m_IterateBarrier!=0)
+		delete m_IterateBarrier;
+	// make sure all threads are waiting
 	m_IterateBarrier = new boost::barrier(m_numThreads); // numThread workers
 
+	if (m_startBarrier!=0)
+		delete m_startBarrier;
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
+
+	if (m_stopBarrier!=0)
+		delete m_stopBarrier;
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 #ifdef MPI_SUPPORT
 	m_MPI_Barrier = 0;
 #endif
 
+	m_thread_group = new boost::thread_group();
 	for (unsigned int n=0; n<m_numThreads; n++)
 	{
 		unsigned int start = m_Start_Lines.at(n);
@@ -130,48 +200,42 @@ void Engine_Multithread::Init()
 				cout << stop-start+1 << ";";
 //		NS_Engine_Multithread::DBG().cout() << "###DEBUG## Thread " << n << ": start=" << start << " stop=" << stop  << " stop_h=" << stop_h << std::endl;
 		boost::thread *t = new boost::thread( NS_Engine_Multithread::thread(this,start,stop,stop_h,n) );
-		m_thread_group.add_thread( t );
+		m_thread_group->add_thread( t );
 	}
 
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		m_Eng_exts.at(n)->SetNumberOfThreads(m_numThreads);
 }
 
-void Engine_Multithread::Reset()
-{
-	if (!m_stopThreads) // prevent multiple invocations
-	{
-		ClearExtensions(); //prevent extensions from interfering with thread reset...
-
-		// stop the threads
-		//NS_Engine_Multithread::DBG().cout() << "stopping all threads" << endl;
-		m_iterTS = 1;
-		m_startBarrier->wait(); // start the threads
-		m_stopThreads = true;
-		m_stopBarrier->wait(); // wait for the threads to finish
-		m_thread_group.join_all(); // wait for termination
-		delete m_IterateBarrier;
-		m_IterateBarrier = 0;
-		delete m_startBarrier;
-		m_startBarrier = 0;
-		delete m_stopBarrier;
-		m_stopBarrier = 0;
-	}
-
-	ENGINE_MULTITHREAD_BASE::Reset();
-}
-
 bool Engine_Multithread::IterateTS(unsigned int iterTS)
 {
 	m_iterTS = iterTS;
 
-	//cout << "bool Engine_Multithread::IterateTS(): starting threads ...";
+	//cerr << "bool Engine_Multithread::IterateTS(): starting threads ...";
 	m_startBarrier->wait(); // start the threads
 
-	//cout << "... threads started";
+	//cerr << "... threads started" << endl;
 
 	m_stopBarrier->wait(); // wait for the threads to finish <iterTS> time steps
+
 	return true;
+}
+
+void Engine_Multithread::NextInterval(float curr_speed)
+{
+	ENGINE_MULTITHREAD_BASE::NextInterval(curr_speed);
+	if (!m_opt_speed) return;
+	if (curr_speed<m_last_speed)
+	{
+		this->changeNumThreads(m_numThreads-1);
+		cout << "Multithreaded Engine: Best performance found using " << m_numThreads << " threads." << std::endl;
+		m_opt_speed = false;
+	}
+	else if (m_numThreads<m_max_numThreads)
+	{
+		m_last_speed = curr_speed;
+		this->changeNumThreads(m_numThreads+1);
+	}
 }
 
 void Engine_Multithread::DoPreVoltageUpdates(int threadID)
@@ -268,6 +332,11 @@ void thread::operator()()
 		//DBG().cout() << "Thread " << m_threadID << " (" << boost::this_thread::get_id() << ") waiting..." << endl;
 		m_enginePtr->m_startBarrier->wait();
 		//cout << "Thread " << boost::this_thread::get_id() << " waiting... started." << endl;
+
+		if (m_enginePtr->m_stopThreads)
+		{
+			return;
+		}
 
 		DEBUG_TIME( Timer timer1 );
 

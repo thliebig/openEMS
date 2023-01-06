@@ -51,7 +51,7 @@ Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(vector<double> Split
 
 Engine* Operator_CylinderMultiGrid::CreateEngine()
 {
-	m_Engine = Engine_CylinderMultiGrid::New(this,m_numThreads);
+	m_Engine = Engine_CylinderMultiGrid::New(this, m_orig_numThreads);
 	return m_Engine;
 }
 

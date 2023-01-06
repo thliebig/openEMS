@@ -46,7 +46,7 @@ Operator_Cylinder::~Operator_Cylinder()
 Engine* Operator_Cylinder::CreateEngine()
 {
 	//! create a special cylindrical-engine
-	m_Engine = Engine_Cylinder::New(this, m_numThreads);
+	m_Engine = Engine_Cylinder::New(this, m_orig_numThreads);
 	return m_Engine;
 }
 
