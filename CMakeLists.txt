@@ -7,7 +7,7 @@ ELSE()
 ENDIF()
 
 PROJECT(openEMS CXX C)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 # default
 set(LIB_VERSION_MAJOR 0)
@@ -60,7 +60,6 @@ if(UNIX AND ENABLE_RPATH)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
-
 
 if (WITH_MPI)
 	ADD_DEFINITIONS(-DMPI_SUPPORT)
@@ -138,14 +137,7 @@ INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
 find_package(VTK COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE REQUIRED)
 
 message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
-if("${VTK_MAJOR_VERSION}" GREATER 5)
-    set( vtk_LIBS ${VTK_LIBRARIES} )
-else()
-    set( vtk_LIBS
-        vtkCommon
-        vtkIO
-    )    
-endif()
+set( vtk_LIBS ${VTK_LIBRARIES} )
 message(STATUS "vtk libraries " ${vtk_LIBS})
 
 include(${VTK_USE_FILE})
