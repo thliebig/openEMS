@@ -64,8 +64,8 @@ class Port(object):
         self.CSX      = CSX
         self.number   = port_nr
         self.excite   = excite
-        self.start    = np.array(start, np.float)
-        self.stop     = np.array(stop, np.float)
+        self.start    = np.array(start, np.double)
+        self.stop     = np.array(stop, np.double)
         self.Z_ref    = None
         self.U_filenames = kw.get('U_filenames', [])
         self.I_filenames = kw.get('I_filenames', [])
