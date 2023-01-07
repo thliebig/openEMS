@@ -11,6 +11,19 @@ import numpy as np
 from CSXCAD import CSPrimitives
 from CSXCAD.Utilities import CheckNyDir, GetMultiDirs
 
+def mesh_combine(mesh1, mesh2, sort=True):
+    mesh = [None, None, None]
+    for ny in range(3):
+        if mesh1[ny] is None and mesh2[ny] is None:
+            continue
+        elif mesh1[ny] is None:
+            mesh[ny] = mesh2[ny]
+        elif mesh2[ny] is None:
+            mesh[ny] = mesh1[ny]
+        else:
+            mesh[ny] = list(sorted(mesh1[ny] + mesh2[ny]))
+    return mesh
+
 def mesh_hint_from_primitive(primitive, dirs, **kw):
     if primitive.GetType() is CSPrimitives.POINT:
         return mesh_hint_from_point(primitive, dirs, **kw)
@@ -25,12 +38,15 @@ def mesh_hint_from_point(point, dirs, **kw):
     Get a grid hint for the coordinates of the point.
 
     :param dirs: str -- 'x','y','z' or 'xy', 'yz' or 'xyz' or 'all'
+    :param mesh: combine mesh hint to existing mesh
     :returns: (3,) list of mesh hints
     """
     hint = [None, None, None]
     coord = point.GetCoord()
     for ny in GetMultiDirs(dirs):
         hint[ny] = [coord[ny],]
+    if 'mesh' in kw:
+        return mesh_combine(hint, kw['mesh'])
     return hint
 
 def mesh_hint_from_box(box, dirs, **kw):
@@ -41,6 +57,9 @@ def mesh_hint_from_box(box, dirs, **kw):
 
     :param dirs: str -- 'x','y','z' or 'xy', 'yz' or 'xyz' or 'all'
     :param metal_edge_res: float -- 2D flat edge resolution
+    :param up_dir: bool -- Enable upper edge
+    :param down_dir: bool -- Enable lower edge
+    :param mesh: combine mesh hint to existing mesh
     :returns: (3,) list of mesh hints
     """
     metal_edge_res = kw.get('metal_edge_res', None)
@@ -73,5 +92,7 @@ def mesh_hint_from_box(box, dirs, **kw):
                 hint[ny].append(stop[ny])
         else:
             hint[ny].append(start[ny])
+    if 'mesh' in kw:
+        return mesh_combine(hint, kw['mesh'])
     return hint
 
