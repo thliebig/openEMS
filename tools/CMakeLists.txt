@@ -16,6 +16,7 @@ set(SOURCES
 #set(HEADERS
 #  constants.h
 #  array_ops.h
+#  flat_array_ops.h
 #  global.h
 #  useful.h
 #  aligned_allocator.h
