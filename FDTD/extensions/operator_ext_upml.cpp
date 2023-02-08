@@ -18,7 +18,6 @@
 #include "operator_ext_upml.h"
 #include "FDTD/operator_cylindermultigrid.h"
 #include "engine_ext_upml.h"
-#include "tools/array_ops.h"
 #include "fparser.hh"
 
 using namespace std;
@@ -41,12 +40,12 @@ Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 		m_numLines[n]=0;
 	}
 
-	vv = NULL;
-	vvfo = NULL;
-	vvfn = NULL;
-	ii = NULL;
-	iifo = NULL;
-	iifn = NULL;
+	vv_ptr = NULL;
+	vvfo_ptr = NULL;
+	vvfn_ptr = NULL;
+	ii_ptr = NULL;
+	iifo_ptr = NULL;
+	iifn_ptr = NULL;
 }
 
 Operator_Ext_UPML::~Operator_Ext_UPML()
@@ -257,18 +256,18 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 
 void Operator_Ext_UPML::DeleteOp()
 {
-	Delete_N_3DArray<FDTD_FLOAT>(vv,m_numLines);
-	vv = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(vvfo,m_numLines);
-	vvfo = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(vvfn,m_numLines);
-	vvfn = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(ii,m_numLines);
-	ii = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(iifo,m_numLines);
-	iifo = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(iifn,m_numLines);
-	iifn = NULL;
+	Delete_Flat_N_3DArray(vv_ptr,m_numLines);
+	vv_ptr = NULL;
+	Delete_Flat_N_3DArray(vvfo_ptr,m_numLines);
+	vvfo_ptr = NULL;
+	Delete_Flat_N_3DArray(vvfn_ptr,m_numLines);
+	vvfn_ptr = NULL;
+	Delete_Flat_N_3DArray(ii_ptr,m_numLines);
+	ii_ptr = NULL;
+	Delete_Flat_N_3DArray(iifo_ptr,m_numLines);
+	iifo_ptr = NULL;
+	Delete_Flat_N_3DArray(iifn_ptr,m_numLines);
+	iifn_ptr = NULL;
 }
 
 
@@ -373,12 +372,12 @@ bool Operator_Ext_UPML::BuildExtension()
 		return false;
 
 	DeleteOp();
-	vv = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	vvfo = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	vvfn = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	ii = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	iifo = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	iifn = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
+	vv_ptr = Create_Flat_N_3DArray<FDTD_FLOAT>(m_numLines);
+	vvfo_ptr = Create_Flat_N_3DArray<FDTD_FLOAT>(m_numLines);
+	vvfn_ptr = Create_Flat_N_3DArray<FDTD_FLOAT>(m_numLines);
+	ii_ptr = Create_Flat_N_3DArray<FDTD_FLOAT>(m_numLines);
+	iifo_ptr = Create_Flat_N_3DArray<FDTD_FLOAT>(m_numLines);
+	iifn_ptr = Create_Flat_N_3DArray<FDTD_FLOAT>(m_numLines);
 
 	unsigned int pos[3];
 	unsigned int loc_pos[3];
