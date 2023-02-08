@@ -20,15 +20,6 @@
 
 using namespace std;
 
-#ifdef WIN32
-#include <malloc.h>
-#define MEMALIGN( array, alignment, size ) !(*array = _mm_malloc( size, alignment ))
-#define FREE( array ) _mm_free( array )
-#else
-#define MEMALIGN( array, alignment, size ) posix_memalign( array, alignment, size )
-#define FREE( array ) free( array )
-#endif
-
 void Delete1DArray_v4sf(f4vector* array)
 {
 	if (array==NULL) return;

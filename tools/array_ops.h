@@ -33,6 +33,15 @@
 
 #define F4VECTOR_SIZE 16 // sizeof(typeid(f4vector))
 
+#ifdef WIN32
+#include <malloc.h>
+#define MEMALIGN( array, alignment, size ) !(*array = _mm_malloc( size, alignment ))
+#define FREE( array ) _mm_free( array )
+#else
+#define MEMALIGN( array, alignment, size ) posix_memalign( array, alignment, size )
+#define FREE( array ) free( array )
+#endif
+
 #ifdef __GNUC__ // GCC
 typedef float v4sf __attribute__ ((vector_size (F4VECTOR_SIZE))); // vector of four single floats
 union f4vector
