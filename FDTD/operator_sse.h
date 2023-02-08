@@ -19,7 +19,7 @@
 #define OPERATOR_SSE_H
 
 #include "operator.h"
-#include "tools/array_ops.h"
+#include "tools/flat_array_ops.h"
 
 class Operator_sse : public Operator
 {
@@ -31,15 +31,47 @@ public:
 
 	virtual Engine* CreateEngine();
 
-	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vv[n][x][y][z%numVectors].f[z/numVectors]; }
-	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_vi[n][x][y][z%numVectors].f[z/numVectors]; }
-	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_ii[n][x][y][z%numVectors].f[z/numVectors]; }
-	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return f4_iv[n][x][y][z%numVectors].f[z/numVectors]; }
+	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const
+	{
+		Flat_N_3DArray<f4vector> &f4_vv = *f4_vv_ptr;
+		return f4_vv(n, x, y, z%numVectors).f[z/numVectors];
+	}
+	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const
+	{
+		Flat_N_3DArray<f4vector> &f4_vi = *f4_vi_ptr;
+		return f4_vi(n, x, y, z%numVectors).f[z/numVectors];
+	}
+	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const
+	{
+		Flat_N_3DArray<f4vector> &f4_ii = *f4_ii_ptr;
+		return f4_ii(n, x, y, z%numVectors).f[z/numVectors];
+	}
+	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const
+	{
+		Flat_N_3DArray<f4vector> &f4_iv = *f4_iv_ptr;
+		return f4_iv(n, x, y, z%numVectors).f[z/numVectors];
+	}
 
-	inline virtual void SetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_vv[n][x][y][z%numVectors].f[z/numVectors] = value; }
-	inline virtual void SetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_vi[n][x][y][z%numVectors].f[z/numVectors] = value; }
-	inline virtual void SetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_ii[n][x][y][z%numVectors].f[z/numVectors] = value; }
-	inline virtual void SetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { f4_iv[n][x][y][z%numVectors].f[z/numVectors] = value; }
+	inline virtual void SetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value )
+	{
+		Flat_N_3DArray<f4vector> &f4_vv = *f4_vv_ptr;
+		f4_vv(n, x, y, z%numVectors).f[z/numVectors] = value;
+	}
+	inline virtual void SetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value )
+	{
+		Flat_N_3DArray<f4vector> &f4_vi = *f4_vi_ptr;
+		f4_vi(n, x, y, z%numVectors).f[z/numVectors] = value;
+	}
+	inline virtual void SetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value )
+	{
+		Flat_N_3DArray<f4vector> &f4_ii = *f4_ii_ptr;
+		f4_ii(n, x, y, z%numVectors).f[z/numVectors] = value;
+	}
+	inline virtual void SetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value )
+	{
+		Flat_N_3DArray<f4vector> &f4_iv = *f4_iv_ptr;
+		f4_iv(n, x, y, z%numVectors).f[z/numVectors] = value;
+	}
 
 protected:
 	//! use New() for creating a new Operator
@@ -54,10 +86,10 @@ protected:
 
 	// engine/post-proc needs access
 public:
-	f4vector**** f4_vv; //calc new voltage from old voltage
-	f4vector**** f4_vi; //calc new voltage from old current
-	f4vector**** f4_iv; //calc new current from old current
-	f4vector**** f4_ii; //calc new current from old voltage
+	Flat_N_3DArray<f4vector>* f4_vv_ptr; //calc new voltage from old voltage
+	Flat_N_3DArray<f4vector>* f4_vi_ptr; //calc new voltage from old current
+	Flat_N_3DArray<f4vector>* f4_iv_ptr; //calc new current from old current
+	Flat_N_3DArray<f4vector>* f4_ii_ptr; //calc new current from old voltage
 };
 
 #endif // OPERATOR_SSE_H

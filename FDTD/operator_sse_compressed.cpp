@@ -124,6 +124,11 @@ bool Operator_SSE_Compressed::CompressOperator()
 
 	map<SSE_coeff,unsigned int> lookUpMap;
 
+	Flat_N_3DArray<f4vector> &f4_vv = *f4_vv_ptr;
+	Flat_N_3DArray<f4vector> &f4_vi = *f4_vi_ptr;
+	Flat_N_3DArray<f4vector> &f4_iv = *f4_iv_ptr;
+	Flat_N_3DArray<f4vector> &f4_ii = *f4_ii_ptr;
+
 	unsigned int pos[3];
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
@@ -131,10 +136,10 @@ bool Operator_SSE_Compressed::CompressOperator()
 		{
 			for (pos[2]=0; pos[2]<numVectors; ++pos[2])
 			{
-				f4vector vv[3] = { f4_vv[0][pos[0]][pos[1]][pos[2]], f4_vv[1][pos[0]][pos[1]][pos[2]], f4_vv[2][pos[0]][pos[1]][pos[2]] };
-				f4vector vi[3] = { f4_vi[0][pos[0]][pos[1]][pos[2]], f4_vi[1][pos[0]][pos[1]][pos[2]], f4_vi[2][pos[0]][pos[1]][pos[2]] };
-				f4vector iv[3] = { f4_iv[0][pos[0]][pos[1]][pos[2]], f4_iv[1][pos[0]][pos[1]][pos[2]], f4_iv[2][pos[0]][pos[1]][pos[2]] };
-				f4vector ii[3] = { f4_ii[0][pos[0]][pos[1]][pos[2]], f4_ii[1][pos[0]][pos[1]][pos[2]], f4_ii[2][pos[0]][pos[1]][pos[2]] };
+				f4vector vv[3] = { f4_vv(0, pos[0], pos[1], pos[2]), f4_vv(1, pos[0], pos[1], pos[2]), f4_vv(2, pos[0], pos[1], pos[2]) };
+				f4vector vi[3] = { f4_vi(0, pos[0], pos[1], pos[2]), f4_vi(1, pos[0], pos[1], pos[2]), f4_vi(2, pos[0], pos[1], pos[2]) };
+				f4vector iv[3] = { f4_iv(0, pos[0], pos[1], pos[2]), f4_iv(1, pos[0], pos[1], pos[2]), f4_iv(2, pos[0], pos[1], pos[2]) };
+				f4vector ii[3] = { f4_ii(0, pos[0], pos[1], pos[2]), f4_ii(1, pos[0], pos[1], pos[2]), f4_ii(2, pos[0], pos[1], pos[2]) };
 				SSE_coeff c( vv, vi, iv, ii );
 
 				map<SSE_coeff,unsigned int>::iterator it;
@@ -163,14 +168,14 @@ bool Operator_SSE_Compressed::CompressOperator()
 		}
 	}
 
-	Delete_N_3DArray_v4sf(f4_vv,numLines);
-	Delete_N_3DArray_v4sf(f4_vi,numLines);
-	Delete_N_3DArray_v4sf(f4_iv,numLines);
-	Delete_N_3DArray_v4sf(f4_ii,numLines);
-	f4_vv = 0;
-	f4_vi = 0;
-	f4_iv = 0;
-	f4_ii = 0;
+	Delete_Flat_N_3DArray(f4_vv_ptr,numLines);
+	Delete_Flat_N_3DArray(f4_vi_ptr,numLines);
+	Delete_Flat_N_3DArray(f4_iv_ptr,numLines);
+	Delete_Flat_N_3DArray(f4_ii_ptr,numLines);
+	f4_vv_ptr = 0;
+	f4_vi_ptr = 0;
+	f4_iv_ptr = 0;
+	f4_ii_ptr = 0;
 
 	return true;
 }

@@ -93,6 +93,9 @@ void Engine_Ext_CylinderMultiGrid::SyncVoltages()
 	Engine_Multithread* m_InnerEng = m_Eng_MG->m_InnerEngine;
 
 	//interpolate voltages from base engine to child engine...
+	Flat_N_3DArray<f4vector> eng_inner_f4_volt = *m_InnerEng->f4_volt_ptr;
+	Flat_N_3DArray<f4vector> eng_mg_f4_volt = *m_Eng_MG->f4_volt_ptr;
+
 	unsigned int pos[3];
 	pos[0] = m_Eng_MG->Op_CMG->GetSplitPos()-1;
 	unsigned int pos1_half = 0;
@@ -107,14 +110,14 @@ void Engine_Ext_CylinderMultiGrid::SyncVoltages()
 		for (pos[2]=0; pos[2]<m_Eng_MG->numVectors; ++pos[2])
 		{
 			//r - direczion
-			m_InnerEng->f4_volt[0][pos[0]][pos1_half][pos[2]].v = v_null.v;
+			eng_inner_f4_volt(0, pos[0], pos1_half, pos[2]).v = v_null.v;
 
 			//z - direction
-			m_InnerEng->f4_volt[2][pos[0]][pos1_half][pos[2]].v = m_Eng_MG->f4_volt[2][pos[0]][pos[1]][pos[2]].v;
+			eng_inner_f4_volt(2, pos[0], pos1_half, pos[2]).v = eng_mg_f4_volt(2, pos[0], pos[1], pos[2]).v;
 
 			//alpha - direction
-			m_InnerEng->f4_volt[1][pos[0]][pos1_half][pos[2]].v  = m_Eng_MG->f4_volt[1][pos[0]][pos[1]][pos[2]].v;
-			m_InnerEng->f4_volt[1][pos[0]][pos1_half][pos[2]].v += m_Eng_MG->f4_volt[1][pos[0]][pos[1]+1][pos[2]].v;
+			eng_inner_f4_volt(1, pos[0], pos1_half, pos[2]).v  = eng_mg_f4_volt(1, pos[0], pos[1], pos[2]).v;
+			eng_inner_f4_volt(1, pos[0], pos1_half, pos[2]).v += eng_mg_f4_volt(1, pos[0], pos[1]+1, pos[2]).v;
 		}
 	}
 }

@@ -39,6 +39,9 @@ Engine_SSE_Compressed::~Engine_SSE_Compressed()
 
 void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int numX)
 {
+	Flat_N_3DArray<f4vector> &f4_volt = *f4_volt_ptr;
+	Flat_N_3DArray<f4vector> &f4_curr = *f4_curr_ptr;
+
 	unsigned int pos[3];
 	bool shift[2];
 	f4vector temp;
@@ -55,36 +58,36 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 			{
 				index = Op->m_Op_index[pos[0]][pos[1]][pos[2]];
 				// x-polarization
-				f4_volt[0][pos[0]][pos[1]][pos[2]].v *=
+				f4_volt(0, pos[0], pos[1], pos[2]).v *=
 				    Op->f4_vv_Compressed[0][index].v;
-				f4_volt[0][pos[0]][pos[1]][pos[2]].v +=
+				f4_volt(0, pos[0], pos[1], pos[2]).v +=
 				    Op->f4_vi_Compressed[0][index].v * (
-				        f4_curr[2][pos[0]][pos[1]         ][pos[2]  ].v -
-				        f4_curr[2][pos[0]][pos[1]-shift[1]][pos[2]  ].v -
-				        f4_curr[1][pos[0]][pos[1]         ][pos[2]  ].v +
-				        f4_curr[1][pos[0]][pos[1]         ][pos[2]-1].v
+				        f4_curr(2, pos[0], pos[1],          pos[2]  ).v -
+				        f4_curr(2, pos[0], pos[1]-shift[1], pos[2]  ).v -
+				        f4_curr(1, pos[0], pos[1],          pos[2]  ).v +
+				        f4_curr(1, pos[0], pos[1],          pos[2]-1).v
 				    );
 
 				// y-polarization
-				f4_volt[1][pos[0]][pos[1]][pos[2]].v *=
+				f4_volt(1, pos[0], pos[1], pos[2]).v *=
 				    Op->f4_vv_Compressed[1][index].v;
-				f4_volt[1][pos[0]][pos[1]][pos[2]].v +=
+				f4_volt(1, pos[0], pos[1], pos[2]).v +=
 				    Op->f4_vi_Compressed[1][index].v * (
-				        f4_curr[0][pos[0]         ][pos[1]][pos[2]  ].v -
-				        f4_curr[0][pos[0]         ][pos[1]][pos[2]-1].v -
-				        f4_curr[2][pos[0]         ][pos[1]][pos[2]  ].v +
-				        f4_curr[2][pos[0]-shift[0]][pos[1]][pos[2]  ].v
+				        f4_curr(0, pos[0],          pos[1], pos[2]  ).v -
+				        f4_curr(0, pos[0],          pos[1], pos[2]-1).v -
+				        f4_curr(2, pos[0],          pos[1], pos[2]  ).v +
+				        f4_curr(2, pos[0]-shift[0], pos[1], pos[2]  ).v
 				    );
 
 				// z-polarization
-				f4_volt[2][pos[0]][pos[1]][pos[2]].v *=
+				f4_volt(2, pos[0], pos[1], pos[2]).v *=
 				    Op->f4_vv_Compressed[2][index].v;
-				f4_volt[2][pos[0]][pos[1]][pos[2]].v +=
+				f4_volt(2, pos[0], pos[1], pos[2]).v +=
 				    Op->f4_vi_Compressed[2][index].v * (
-				        f4_curr[1][pos[0]         ][pos[1]]         [pos[2]].v -
-				        f4_curr[1][pos[0]-shift[0]][pos[1]]         [pos[2]].v -
-				        f4_curr[0][pos[0]         ][pos[1]]         [pos[2]].v +
-				        f4_curr[0][pos[0]         ][pos[1]-shift[1]][pos[2]].v
+				        f4_curr(1, pos[0],          pos[1],          pos[2]).v -
+				        f4_curr(1, pos[0]-shift[0], pos[1],          pos[2]).v -
+				        f4_curr(0, pos[0],          pos[1],          pos[2]).v +
+				        f4_curr(0, pos[0],          pos[1]-shift[1], pos[2]).v
 				    );
 			}
 
@@ -93,54 +96,54 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 			index = Op->m_Op_index[pos[0]][pos[1]][0];
 #ifdef __SSE2__
 			temp.v = (__m128)_mm_slli_si128(
-			             (__m128i)f4_curr[1][pos[0]][pos[1]][numVectors-1].v, 4
+			             (__m128i)f4_curr(1, pos[0], pos[1], numVectors-1).v, 4
 			         );
 #else
 			temp.f[0] = 0;
-			temp.f[1] = f4_curr[1][pos[0]][pos[1]][numVectors-1].f[0];
-			temp.f[2] = f4_curr[1][pos[0]][pos[1]][numVectors-1].f[1];
-			temp.f[3] = f4_curr[1][pos[0]][pos[1]][numVectors-1].f[2];
+			temp.f[1] = f4_curr(1, pos[0], pos[1], numVectors-1).f[0];
+			temp.f[2] = f4_curr(1, pos[0], pos[1], numVectors-1).f[1];
+			temp.f[3] = f4_curr(1, pos[0], pos[1], numVectors-1).f[2];
 #endif
-			f4_volt[0][pos[0]][pos[1]][0].v *=
+			f4_volt(0, pos[0], pos[1], 0).v *=
 			    Op->f4_vv_Compressed[0][index].v;
-			f4_volt[0][pos[0]][pos[1]][0].v +=
+			f4_volt(0, pos[0], pos[1], 0).v +=
 			    Op->f4_vi_Compressed[0][index].v * (
-			        f4_curr[2][pos[0]][pos[1]         ][0].v -
-			        f4_curr[2][pos[0]][pos[1]-shift[1]][0].v -
-			        f4_curr[1][pos[0]][pos[1]         ][0].v +
+			        f4_curr(2, pos[0], pos[1],          0).v -
+			        f4_curr(2, pos[0], pos[1]-shift[1], 0).v -
+			        f4_curr(1, pos[0], pos[1],          0).v +
 			        temp.v
 			    );
 
 			// y-polarization
 #ifdef __SSE2__
 			temp.v = (__m128)_mm_slli_si128(
-			             (__m128i)f4_curr[0][pos[0]][pos[1]][numVectors-1].v, 4
+			             (__m128i)f4_curr(0, pos[0], pos[1], numVectors-1).v, 4
 			         );
 #else
 			temp.f[0] = 0;
-			temp.f[1] = f4_curr[0][pos[0]][pos[1]][numVectors-1].f[0];
-			temp.f[2] = f4_curr[0][pos[0]][pos[1]][numVectors-1].f[1];
-			temp.f[3] = f4_curr[0][pos[0]][pos[1]][numVectors-1].f[2];
+			temp.f[1] = f4_curr(0, pos[0], pos[1], numVectors-1).f[0];
+			temp.f[2] = f4_curr(0, pos[0], pos[1], numVectors-1).f[1];
+			temp.f[3] = f4_curr(0, pos[0], pos[1], numVectors-1).f[2];
 #endif
-			f4_volt[1][pos[0]][pos[1]][0].v *=
+			f4_volt(1, pos[0], pos[1], 0).v *=
 			    Op->f4_vv_Compressed[1][index].v;
-			f4_volt[1][pos[0]][pos[1]][0].v +=
+			f4_volt(1, pos[0], pos[1], 0).v +=
 			    Op->f4_vi_Compressed[1][index].v * (
-			        f4_curr[0][pos[0]         ][pos[1]][0].v -
+			        f4_curr(0, pos[0],          pos[1], 0).v -
 			        temp.v -
-			        f4_curr[2][pos[0]         ][pos[1]][0].v +
-			        f4_curr[2][pos[0]-shift[0]][pos[1]][0].v
+			        f4_curr(2, pos[0],          pos[1], 0).v +
+			        f4_curr(2, pos[0]-shift[0], pos[1], 0).v
 			    );
 
 			// z-polarization
-			f4_volt[2][pos[0]][pos[1]][0].v *=
+			f4_volt(2, pos[0], pos[1], 0).v *=
 			    Op->f4_vv_Compressed[2][index].v;
-			f4_volt[2][pos[0]][pos[1]][0].v +=
+			f4_volt(2, pos[0], pos[1], 0).v +=
 			    Op->f4_vi_Compressed[2][index].v * (
-			        f4_curr[1][pos[0]         ][pos[1]         ][0].v -
-			        f4_curr[1][pos[0]-shift[0]][pos[1]         ][0].v -
-			        f4_curr[0][pos[0]         ][pos[1]         ][0].v +
-			        f4_curr[0][pos[0]         ][pos[1]-shift[1]][0].v
+			        f4_curr(1, pos[0],          pos[1],          0).v -
+			        f4_curr(1, pos[0]-shift[0], pos[1],          0).v -
+			        f4_curr(0, pos[0],          pos[1],          0).v +
+			        f4_curr(0, pos[0],          pos[1]-shift[1], 0).v
 			    );
 		}
 		++pos[0];
@@ -149,6 +152,9 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 
 void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
+	Flat_N_3DArray<f4vector> &f4_volt = *f4_volt_ptr;
+	Flat_N_3DArray<f4vector> &f4_curr = *f4_curr_ptr;
+
 	unsigned int pos[3];
 	f4vector temp;
 
@@ -162,36 +168,36 @@ void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int num
 			{
 				index = Op->m_Op_index[pos[0]][pos[1]][pos[2]];
 				// x-pol
-				f4_curr[0][pos[0]][pos[1]][pos[2]].v *=
+				f4_curr(0, pos[0], pos[1], pos[2]).v *=
 				    Op->f4_ii_Compressed[0][index].v;
-				f4_curr[0][pos[0]][pos[1]][pos[2]].v +=
+				f4_curr(0, pos[0], pos[1], pos[2]).v +=
 				    Op->f4_iv_Compressed[0][index].v * (
-				        f4_volt[2][pos[0]][pos[1]  ][pos[2]  ].v -
-				        f4_volt[2][pos[0]][pos[1]+1][pos[2]  ].v -
-				        f4_volt[1][pos[0]][pos[1]  ][pos[2]  ].v +
-				        f4_volt[1][pos[0]][pos[1]  ][pos[2]+1].v
+				        f4_volt(2, pos[0], pos[1],   pos[2]  ).v -
+				        f4_volt(2, pos[0], pos[1]+1, pos[2]  ).v -
+				        f4_volt(1, pos[0], pos[1],   pos[2]  ).v +
+				        f4_volt(1, pos[0], pos[1],   pos[2]+1).v
 				    );
 
 				// y-pol
-				f4_curr[1][pos[0]][pos[1]][pos[2]].v *=
+				f4_curr(1, pos[0], pos[1], pos[2]).v *=
 				    Op->f4_ii_Compressed[1][index].v;
-				f4_curr[1][pos[0]][pos[1]][pos[2]].v +=
+				f4_curr(1, pos[0], pos[1], pos[2]).v +=
 				    Op->f4_iv_Compressed[1][index].v * (
-				        f4_volt[0][pos[0]  ][pos[1]][pos[2]  ].v -
-				        f4_volt[0][pos[0]  ][pos[1]][pos[2]+1].v -
-				        f4_volt[2][pos[0]  ][pos[1]][pos[2]  ].v +
-				        f4_volt[2][pos[0]+1][pos[1]][pos[2]  ].v
+				        f4_volt(0, pos[0],   pos[1], pos[2]  ).v -
+				        f4_volt(0, pos[0],   pos[1], pos[2]+1).v -
+				        f4_volt(2, pos[0],   pos[1], pos[2]  ).v +
+				        f4_volt(2, pos[0]+1, pos[1], pos[2]  ).v
 				    );
 
 				// z-pol
-				f4_curr[2][pos[0]][pos[1]][pos[2]].v *=
+				f4_curr(2, pos[0], pos[1], pos[2]).v *=
 				    Op->f4_ii_Compressed[2][index].v;
-				f4_curr[2][pos[0]][pos[1]][pos[2]].v +=
+				f4_curr(2, pos[0], pos[1], pos[2]).v +=
 				    Op->f4_iv_Compressed[2][index].v * (
-				        f4_volt[1][pos[0]  ][pos[1]  ][pos[2]].v -
-				        f4_volt[1][pos[0]+1][pos[1]  ][pos[2]].v -
-				        f4_volt[0][pos[0]  ][pos[1]  ][pos[2]].v +
-				        f4_volt[0][pos[0]  ][pos[1]+1][pos[2]].v
+				        f4_volt(1, pos[0],   pos[1],   pos[2]).v -
+				        f4_volt(1, pos[0]+1, pos[1],   pos[2]).v -
+				        f4_volt(0, pos[0],   pos[1],   pos[2]).v +
+				        f4_volt(0, pos[0],   pos[1]+1, pos[2]).v
 				    );
 			}
 
@@ -200,54 +206,54 @@ void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int num
 			// x-pol
 #ifdef __SSE2__
 			temp.v = (__m128)_mm_srli_si128(
-			             (__m128i)f4_volt[1][pos[0]][pos[1]][0].v, 4
+			             (__m128i)f4_volt(1, pos[0], pos[1], 0).v, 4
 			         );
 #else
-			temp.f[0] = f4_volt[1][pos[0]][pos[1]][0].f[1];
-			temp.f[1] = f4_volt[1][pos[0]][pos[1]][0].f[2];
-			temp.f[2] = f4_volt[1][pos[0]][pos[1]][0].f[3];
+			temp.f[0] = f4_volt(1, pos[0], pos[1], 0).f[1];
+			temp.f[1] = f4_volt(1, pos[0], pos[1], 0).f[2];
+			temp.f[2] = f4_volt(1, pos[0], pos[1], 0).f[3];
 			temp.f[3] = 0;
 #endif
-			f4_curr[0][pos[0]][pos[1]][numVectors-1].v *=
+			f4_curr(0, pos[0], pos[1], numVectors-1).v *=
 			    Op->f4_ii_Compressed[0][index].v;
-			f4_curr[0][pos[0]][pos[1]][numVectors-1].v +=
+			f4_curr(0, pos[0], pos[1], numVectors-1).v +=
 			    Op->f4_iv_Compressed[0][index].v * (
-			        f4_volt[2][pos[0]][pos[1]  ][numVectors-1].v -
-			        f4_volt[2][pos[0]][pos[1]+1][numVectors-1].v -
-			        f4_volt[1][pos[0]][pos[1]  ][numVectors-1].v +
+			        f4_volt(2, pos[0], pos[1],   numVectors-1).v -
+			        f4_volt(2, pos[0], pos[1]+1, numVectors-1).v -
+			        f4_volt(1, pos[0], pos[1],   numVectors-1).v +
 			        temp.v
 			    );
 
 			// y-pol
 #ifdef __SSE2__
 			temp.v = (__m128)_mm_srli_si128(
-			             (__m128i)f4_volt[0][pos[0]][pos[1]][0].v, 4
+			             (__m128i)f4_volt(0, pos[0], pos[1], 0).v, 4
 			         );
 #else
-			temp.f[0] = f4_volt[0][pos[0]][pos[1]][0].f[1];
-			temp.f[1] = f4_volt[0][pos[0]][pos[1]][0].f[2];
-			temp.f[2] = f4_volt[0][pos[0]][pos[1]][0].f[3];
+			temp.f[0] = f4_volt(0, pos[0], pos[1], 0).f[1];
+			temp.f[1] = f4_volt(0, pos[0], pos[1], 0).f[2];
+			temp.f[2] = f4_volt(0, pos[0], pos[1], 0).f[3];
 			temp.f[3] = 0;
 #endif
-			f4_curr[1][pos[0]][pos[1]][numVectors-1].v *=
+			f4_curr(1, pos[0], pos[1], numVectors-1).v *=
 			    Op->f4_ii_Compressed[1][index].v;
-			f4_curr[1][pos[0]][pos[1]][numVectors-1].v +=
+			f4_curr(1, pos[0], pos[1], numVectors-1).v +=
 			    Op->f4_iv_Compressed[1][index].v * (
-			        f4_volt[0][pos[0]  ][pos[1]][numVectors-1].v -
+			        f4_volt(0, pos[0],   pos[1], numVectors-1).v -
 			        temp.v -
-			        f4_volt[2][pos[0]  ][pos[1]][numVectors-1].v +
-			        f4_volt[2][pos[0]+1][pos[1]][numVectors-1].v
+			        f4_volt(2, pos[0],   pos[1], numVectors-1).v +
+			        f4_volt(2, pos[0]+1, pos[1], numVectors-1).v
 			    );
 
 			// z-pol
-			f4_curr[2][pos[0]][pos[1]][numVectors-1].v *=
+			f4_curr(2, pos[0], pos[1], numVectors-1).v *=
 			    Op->f4_ii_Compressed[2][index].v;
-			f4_curr[2][pos[0]][pos[1]][numVectors-1].v +=
+			f4_curr(2, pos[0], pos[1], numVectors-1).v +=
 			    Op->f4_iv_Compressed[2][index].v * (
-			        f4_volt[1][pos[0]  ][pos[1]  ][numVectors-1].v -
-			        f4_volt[1][pos[0]+1][pos[1]  ][numVectors-1].v -
-			        f4_volt[0][pos[0]  ][pos[1]  ][numVectors-1].v +
-			        f4_volt[0][pos[0]  ][pos[1]+1][numVectors-1].v
+			        f4_volt(1, pos[0],   pos[1],   numVectors-1).v -
+			        f4_volt(1, pos[0]+1, pos[1],   numVectors-1).v -
+			        f4_volt(0, pos[0],   pos[1],   numVectors-1).v +
+			        f4_volt(0, pos[0],   pos[1]+1, numVectors-1).v
 			    );
 		}
 		++pos[0];
