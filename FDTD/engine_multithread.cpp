@@ -119,16 +119,13 @@ void Engine_Multithread::Init()
 
 void Engine_Multithread::Reset()
 {
-	if (!m_stopThreads) // prevent multiple invocations
+	if (m_thread_group!=0) // prevent multiple invocations
 	{
 		ClearExtensions(); //prevent extensions from interfering with thread reset...
 
 		// stop the threads
 		//NS_Engine_Multithread::DBG().cout() << "stopping all threads" << endl;
-		m_iterTS = 1;
-		m_startBarrier->wait(); // start the threads
-		m_stopThreads = true;
-		m_stopBarrier->wait(); // wait for the threads to finish
+		m_thread_group->interrupt_all();
 		m_thread_group->join_all(); // wait for termination
 		delete m_IterateBarrier;
 		m_IterateBarrier = 0;
@@ -148,10 +145,7 @@ void Engine_Multithread::changeNumThreads(unsigned int numThreads)
 	if (m_thread_group!=0)
 	{
 		m_thread_group->interrupt_all();
-		//m_stopThreads = true;
-		//m_startBarrier->wait(); // start the threads
 		m_thread_group->join_all(); // wait for termination
-
 		delete m_thread_group;
 		m_thread_group = 0;
 		//m_stopThreads = false;
@@ -335,6 +329,7 @@ void thread::operator()()
 
 		if (m_enginePtr->m_stopThreads)
 		{
+			//DBG().cout() << "Thread " << m_threadID << " (" << boost::this_thread::get_id() << ") stop!." << endl;
 			return;
 		}
 
