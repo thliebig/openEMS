@@ -243,7 +243,7 @@ class MSLPort(Port):
         if meas_pos_idx>=len(prop_lines)-1:
             meas_pos_idx=len(prop_lines)-2
         self.measplane_shift = np.abs(self.start[self.prop_ny]-prop_lines[meas_pos_idx])
-        prope_idx = np.array([meas_pos_idx-1, meas_pos_idx, meas_pos_idx+1], np.int)
+        prope_idx = np.array([meas_pos_idx-1, meas_pos_idx, meas_pos_idx+1], int)
         if self.direction<0:
             prope_idx = np.flipud(prope_idx)
         u_prope_pos = prop_lines[prope_idx]
