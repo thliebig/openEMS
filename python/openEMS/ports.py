@@ -126,7 +126,7 @@ class Port(object):
         self.uf_ref = self.uf_tot - self.uf_inc
         self.if_ref = self.if_inc - self.if_tot
 
-        if type(self.Z_ref) == float:
+        if type(self.Z_ref) in [int, float]:
             self.ut_inc = 0.5 * ( self.ut_tot + self.it_tot * self.Z_ref )
             self.it_inc = 0.5 * ( self.it_tot + self.ut_tot / self.Z_ref )
             self.ut_ref = self.ut_tot - self.ut_inc
@@ -300,9 +300,11 @@ class MSLPort(Port):
     def ReadUIData(self, sim_path, freq, signal_type ='pulse'):
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type )
         self.uf_tot = self.u_data.ui_f_val[1]
+        self.ut_tot = self.u_data.ui_val[1]
 
         self.i_data = UI_data(self.I_filenames, sim_path, freq, signal_type )
         self.if_tot = 0.5*(self.i_data.ui_f_val[0]+self.i_data.ui_f_val[1])
+        self.it_tot = 0.5*(self.i_data.ui_val[0]+self.i_data.ui_val[1])
 
         unit = self.CSX.GetGrid().GetDeltaUnit()
         Et = self.u_data.ui_f_val[1]
