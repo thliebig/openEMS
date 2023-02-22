@@ -462,7 +462,7 @@ cdef class openEMS:
         :param numThreads: int -- set the number of threads (default 0 --> max)
         """
         if cleanup and os.path.exists(sim_path):
-            shutil.rmtree(sim_path)
+            shutil.rmtree(sim_path, ignore_errors=True)
             os.mkdir(sim_path)
         if not os.path.exists(sim_path):
             os.mkdir(sim_path)
