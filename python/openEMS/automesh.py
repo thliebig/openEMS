@@ -75,26 +75,19 @@ def mesh_hint_from_box(box, dirs, **kw):
             hint[ny].append(start[ny])
     return hint
 
-def mesh_estimate_cfl_timestep(box):
-    """ mesh_estimate_cfl_timestep(box)
+def mesh_estimate_cfl_timestep(mesh):
+    """ mesh_estimate_cfl_timestep(mesh)
 
-    Estimate the maximum CFL time step of the given box needed to ensure numerical stability,
+    Estimate the maximum CFL time step of the given mesh needed to ensure numerical stability,
     assuming propagation in pure vacuum.
 
     :returns: the maximum CFL time step, in seconds
     """
-    minDiff = [None, None, None]
+    invMinDiff = [None, None, None]
     for ny in range(3):
-        lines = box.GetQtyLines(ny)
-        for i in range(1, lines):
-            delta = box.GetLine(ny, i) - box.GetLine(ny, i - 1)
-            if minDiff[ny] is None or delta < minDiff[ny]:
-                minDiff[ny] = delta
-    if None in minDiff:
-        sys.stderr.write('FDTD::automesh: Warning, mesh is ill-defined (no lines in certain directions?)\n')
-        return 0
+        invMinDiff[ny] = np.min(np.diff(mesh.GetLines(ny))) ** -2
 
-    delta_t = box.GetDeltaUnit() / (C0 * np.sqrt(np.sum(np.array(minDiff) ** -2)))
+    delta_t = mesh.GetDeltaUnit() / (C0 * np.sqrt(np.sum(invMinDiff)))
 
     return delta_t
 
