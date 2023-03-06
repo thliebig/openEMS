@@ -10,6 +10,7 @@ import numpy as np
 
 from CSXCAD import CSPrimitives
 from CSXCAD.Utilities import CheckNyDir, GetMultiDirs
+from openEMS.physical_constants import C0
 
 def mesh_hint_from_primitive(primitive, dirs, **kw):
     if primitive.GetType() is CSPrimitives.POINT:
