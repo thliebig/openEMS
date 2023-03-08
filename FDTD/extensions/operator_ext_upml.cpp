@@ -404,7 +404,9 @@ bool Operator_Ext_UPML::BuildExtension()
 					CalcGradingKappa(n, pos,__Z0__ ,kappa_v ,kappa_i);
 					nP = (n+1)%3;
 					nPP = (n+2)%3;
-					if ((kappa_v[0]+kappa_v[1]+kappa_v[2])!=0)
+					// if eff_Mat[1] > 1e3 assume a metal and disable PML to continue a signal layer
+					// sigma > 1000 S/m is "very lossy" already...
+					if (((kappa_v[0]+kappa_v[1]+kappa_v[2])!=0) && (eff_Mat[1]<1e3))
 					{
 						//check if pos is on PEC
 						if ( (m_Op->GetVV(n,pos[0],pos[1],pos[2]) + m_Op->GetVI(n,pos[0],pos[1],pos[2])) != 0 )
