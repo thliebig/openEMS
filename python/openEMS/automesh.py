@@ -10,6 +10,7 @@ import numpy as np
 
 from CSXCAD import CSPrimitives
 from CSXCAD.Utilities import CheckNyDir, GetMultiDirs
+from openEMS.physical_constants import C0
 
 def mesh_combine(mesh1, mesh2, sort=True):
     mesh = [None, None, None]
@@ -95,4 +96,20 @@ def mesh_hint_from_box(box, dirs, **kw):
     if 'mesh' in kw:
         return mesh_combine(hint, kw['mesh'])
     return hint
+
+def mesh_estimate_cfl_timestep(mesh):
+    """ mesh_estimate_cfl_timestep(mesh)
+
+    Estimate the maximum CFL time step of the given mesh needed to ensure numerical stability,
+    assuming propagation in pure vacuum.
+
+    :returns: the maximum CFL time step, in seconds
+    """
+    invMinDiff = [None, None, None]
+    for ny in range(3):
+        invMinDiff[ny] = np.min(np.diff(mesh.GetLines(ny))) ** -2
+
+    delta_t = mesh.GetDeltaUnit() / (C0 * np.sqrt(np.sum(invMinDiff)))
+
+    return delta_t
 
