@@ -25,7 +25,7 @@ if isOctave()
             [res, search_path] = unix('brew --prefix');
             search_path = strtrim(search_path);
         end
-        [res, fn_so] = unix(['find ' search_path '/lib     -name libhdf5.' dylib_extension]);
+        [res, fn_so] = unix(['find ' search_path '/lib     -name libhdf5.' dylib_extension ' | head -1']);
         [res, fn_h]  = unix(['find ' search_path '/include -name hdf5.h | grep -v opencv | sort -r | head -1']);
         if length(fn_so)>0 && length(fn_h)>0
             [hdf5lib_dir, hdf5lib_fn, ext] = fileparts(fn_so);
