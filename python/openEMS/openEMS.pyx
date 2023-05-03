@@ -486,7 +486,7 @@ cdef class openEMS:
                 self.thisptr.DebugCSX()
         if 'numThreads' in kw:
             self.thisptr.SetNumberOfThreads(int(kw['numThreads']))
-        assert os.getcwd() == sim_path
+        assert os.getcwd() == os.path.realpath(sim_path)
         _openEMS.WelcomeScreen()
         cdef int EC
         with nogil:
