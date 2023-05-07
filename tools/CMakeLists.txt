@@ -4,6 +4,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/AdrOp.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ErrorMsg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/array_ops.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/signal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/global.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/hdf5_file_reader.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/hdf5_file_writer.cpp

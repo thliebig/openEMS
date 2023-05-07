@@ -20,6 +20,7 @@
 #include <iostream>
 #include <fstream>
 #include "tools/array_ops.h"
+#include "tools/signal.h"
 #include "tools/useful.h"
 #include "FDTD/operator_cylinder.h"
 #include "FDTD/operator_cylindermultigrid.h"
@@ -898,14 +899,18 @@ int openEMS::SetupFDTD()
 	timeval startTime;
 	gettimeofday(&startTime,NULL);
 
+	Signal::SetupHandlerForSIGINT(SIGNAL_EXIT_FORCE);
+
 	if (m_CSX==NULL)
 	{
 		cerr << "openEMS::SetupFDTD: Error: CSXCAD is not set!" << endl;
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 3;
 	}
 	if (m_CSX==NULL)
 	{
 		cerr << "openEMS::SetupFDTD: Error: CSXCAD is not set!" << endl;
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 3;
 	}
 	std::string ec = m_CSX->Update();
@@ -926,7 +931,10 @@ int openEMS::SetupFDTD()
 
 	//*************** setup operator ************//
 	if (SetupOperator()==false)
+	{
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 2;
+	}
 
 	// default material averaging is quarter cell averaging
 	FDTD_Op->SetQuarterCellMaterialAvg();
@@ -941,6 +949,7 @@ int openEMS::SetupFDTD()
 	if (m_Exc==NULL)
 	{
 		cerr << "openEMS::SetupFDTD: Error, excitation is not defined! Abort!" << endl;
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 3;
 	}
 
@@ -949,7 +958,11 @@ int openEMS::SetupFDTD()
 	if (!CylinderCoords)
 		FDTD_Op->AddExtension(new Operator_Ext_TFSF(FDTD_Op));
 
-	if (FDTD_Op->SetGeometryCSX(m_CSX)==false) return(2);
+	if (FDTD_Op->SetGeometryCSX(m_CSX)==false)
+	{
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
+		return(2);
+	}
 
 	SetupBoundaryConditions();
 
@@ -1061,6 +1074,7 @@ int openEMS::SetupFDTD()
 	if (m_no_simulation)
 	{
 		// simulation was disabled (to generate debug output only)
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 1;
 	}
 
@@ -1075,7 +1089,10 @@ int openEMS::SetupFDTD()
 
 	//setup all processing classes
 	if (SetupProcessing()==false)
+	{
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 2;
+	}
 
 	// Cleanup all unused material storages...
 	FDTD_Op->CleanupMaterialStorage();
@@ -1089,6 +1106,7 @@ int openEMS::SetupFDTD()
 		PA->DumpBoxes2File("box_dump_");
 	}
 
+	Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 	return 0;
 }
 
@@ -1114,12 +1132,19 @@ bool openEMS::CheckAbortCond()
 	if (m_Abort) //abort was set externally
 		return true;
 
+	//check whether SIGINT is received
+	if (Signal::ReceivedSIGINT())
+	{
+		cerr << "openEMS::CheckAbortCond(): Received SIGINT, aborting simulation gracefully..." << endl;
+		return true;
+	}
+
 	//check whether the file "ABORT" exist in current working directory
 	ifstream ifile("ABORT");
 	if (ifile)
 	{
 		ifile.close();
-		cerr << "openEMS::CheckAbortCond(): Found file \"ABORT\", aborting simulation..." << endl;
+		cerr << "openEMS::CheckAbortCond(): Found file \"ABORT\", aborting simulation gracefully..." << endl;
 		return true;
 	}
 
@@ -1129,6 +1154,8 @@ bool openEMS::CheckAbortCond()
 void openEMS::RunFDTD()
 {
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
+
+	Signal::SetupHandlerForSIGINT(SIGNAL_EXIT_GRACEFUL);
 
 	//special handling of a field processing, needed to realize the end criteria...
 	ProcessFields* ProcField = new ProcessFields(NewEngineInterface());
@@ -1228,6 +1255,8 @@ void openEMS::RunFDTD()
 
 	//*************** postproc ************//
 	PA->PostProcess();
+
+	Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 }
 
 bool openEMS::DumpStatistics(const string& filename, double time)
