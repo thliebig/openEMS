@@ -270,7 +270,7 @@ cdef class openEMS:
         * 0 or 'PEC' : perfect electric conductor (default)
         * 1 or 'PMC' : perfect magnetic conductor, useful for symmetries
         * 2 or 'MUR' : simple MUR absorbing boundary conditions
-        * 3 or 'PML-8' : PML absorbing boundary conditions
+        * 3 or 'PML_8' : PML absorbing boundary conditions
 
         :param BC: (8,) array or list -- see options above
         """
