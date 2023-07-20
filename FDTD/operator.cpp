@@ -790,7 +790,7 @@ void Operator::DumpMaterial2File(string filename)
 	delete vtk_Writer;
 }
 
- bool Operator::SetupCSXGrid(CSRectGrid* grid)
+bool Operator::SetupCSXGrid(CSRectGrid* grid)
  {
 	 for (int n=0; n<3; ++n)
 	 {
