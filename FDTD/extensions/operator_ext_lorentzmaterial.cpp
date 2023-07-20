@@ -205,6 +205,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
 				vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(pos[0], pos[1], -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
+
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
 					unsigned int index = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
@@ -230,6 +231,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 
 						if ((mat = prop->ToLorentzMaterial()))
 						{
+
 							w_plasma = mat->GetEpsPlasmaFreqWeighted(order,n,coord) * 2 * PI;
 							if ((w_plasma>0) && (m_Op->EC_C[n][index]>0))
 							{
