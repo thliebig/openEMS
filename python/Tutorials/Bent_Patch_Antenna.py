@@ -175,7 +175,7 @@ else:
 
     figure(figsize=(15, 7))
     ax = subplot(121, polar=True)
-    E_norm = 20.0*np.log10(nf2ff_res_phi0.E_norm/np.max(nf2ff_res_phi0.E_norm)) + nf2ff_res_phi0.Dmax
+    E_norm = 20.0*np.log10(nf2ff_res_phi0.E_norm/np.max(nf2ff_res_phi0.E_norm)) + 10.0*np.log10(nf2ff_res_phi0.Dmax)
     ax.plot(np.deg2rad(theta), 10**(np.squeeze(E_norm)/20), linewidth=2, label='xz-plane')
     ax.grid(True)
     ax.set_xlabel('theta (deg)')
@@ -187,11 +187,11 @@ else:
     nf2ff_res_theta90 = nf2ff.CalcNF2FF(Sim_Path, f_res, 90, phi, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xy.h5')
 
     ax = subplot(122, polar=True)
-    E_norm = 20.0*np.log10(nf2ff_res_theta90.E_norm/np.max(nf2ff_res_theta90.E_norm)) + nf2ff_res_theta90.Dmax
+    E_norm = 20.0*np.log10(nf2ff_res_theta90.E_norm/np.max(nf2ff_res_theta90.E_norm)) + 10.0*np.log10(nf2ff_res_theta90.Dmax)
     ax.plot(np.deg2rad(phi), 10**(np.squeeze(E_norm)/20), linewidth=2, label='xy-plane')
     ax.grid(True)
     ax.set_xlabel('phi (deg)')
-    suptitle('Bent Patch Anteanna Pattern\nFrequency: {} GHz'.format(f_res/1e9), fontsize=14)
+    suptitle('Bent Patch Antenna Pattern\nFrequency: {} GHz'.format(f_res/1e9), fontsize=14)
     ax.legend(loc=3)
 
     print( 'radiated power: Prad = {:.2e} Watt'.format(nf2ff_res_theta90.Prad[0]))
