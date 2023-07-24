@@ -16,7 +16,7 @@
 
 #include "CSPrimBox.h"
 #include "CSProperties.h"
-#include "CSPropLumpedRLC.h"
+#include "CSPropLumpedElement.h"
 
 #define COPY_V2A(V,A) std::copy(V.begin(),V.end(),A)
 
@@ -109,7 +109,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 	vector<CSProperties*> cs_props;
 
 	int 			dir;
-	RLCtype 		lumpedType;
+	LEtype 			lumpedType;
 
 	vector<uint> 	v_pos[3];
 
@@ -157,7 +157,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 	for(size_t n = 0 ; n < cs_props.size() ; ++n)
 	{
 		// Cast current property to lumped RLC property continuous structure properties
-		CSPropLumpedRLC* cs_RLC_props = dynamic_cast<CSPropLumpedRLC*>(cs_props.at(n));
+		CSPropLumpedElement* cs_RLC_props = dynamic_cast<CSPropLumpedElement*>(cs_props.at(n));
 		if (cs_RLC_props==NULL)
 			return false; //sanity check: this should never happen!
 
@@ -165,11 +165,11 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		dir = cs_RLC_props->GetDirection();
 		lumpedType = cs_RLC_props->GetRLCtype();
 
-		if (lumpedType == RLCtype::INVALID)
+		if (lumpedType == LEtype::INVALID)
 		{
 			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning: RLCtype is invalid! considering as parallel. "
 					<< " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
-			lumpedType = RLCtype::PARALLEL;
+			lumpedType = LEtype::PARALLEL;
 		}
 
 		// Extract R, L and C from property class
@@ -266,7 +266,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 				// Special case: If this is a parallel resonant circuit, and there is no
 				// parallel resistor, use zero conductivity. May be risky when low-loss
 				// simulations are involved
-				if (lumpedType == RLCtype::PARALLEL)
+				if (lumpedType == LEtype::PARALLEL)
 					if (R == 0)
 						dG = 0;
 
@@ -287,7 +287,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 							// Separate to two different cases. Parallel and series
 							switch (lumpedType)
 							{
-								case RLCtype::PARALLEL:
+								case LEtype::PARALLEL:
 									// Update capacitor either way.
 									if (dC > 0)
 										m_Op->EC_C[dir][iPos] = dC;
@@ -316,9 +316,9 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 										Zcd_min = 1.0/(2.0*PI*fMax*Cd);
 
 										// Check if the "parasitic" capcitance is not small enough
-										if (Zcd_min < 20.0*Zmin)
+										if (Zcd_min < LUMPED_RLC_Z_FACT*Zmin)
 										{
-											Cd = 1.0/(2*PI*fMax*Zmin*20.0);
+											Cd = 1.0/(2*PI*fMax*Zmin*LUMPED_RLC_Z_FACT);
 											m_Op->EC_C[dir][iPos] = Cd;
 										}
 									}
@@ -338,7 +338,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 									break;
 
-								case RLCtype::SERIES:
+								case LEtype::SERIES:
 									m_Op->EC_G[dir][iPos] = 0.0;
 
 									// is a series inductor, modeled separately.
@@ -349,9 +349,9 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 									Zcd_min = 1.0/(2.0*PI*fMax*Cd);
 
 									// Check if the "parasitic" capcitance is not small enough
-									if (Zcd_min < 20.0*Zmin)
+									if (Zcd_min < LUMPED_RLC_Z_FACT*Zmin)
 									{
-										Cd = 1.0/(2*PI*fMax*Zmin*20.0);
+										Cd = 1.0/(2*PI*fMax*Zmin*LUMPED_RLC_Z_FACT);
 										m_Op->EC_C[dir][iPos] = Cd;
 									}
 
@@ -383,43 +383,43 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 					}
 				}
 
+				// Build metallic caps
+				if (cs_RLC_props->GetCaps())
+					for (pos[dir_p1] = uiStart[dir_p1] ; pos[dir_p1] <= uiStop[dir_p1] ; ++pos[dir_p1])
+					{
+						for (pos[dir_p2] = uiStart[dir_p2] ; pos[dir_p2] <= uiStop[dir_p2] ; ++pos[dir_p2])
+						{
+							pos[dir]=uiStart[dir];
+							if (pos[dir_p1]<uiStop[dir_p1])
+							{
+								m_Op->SetVV(dir_p1,pos[0],pos[1],pos[2], 0 );
+								m_Op->SetVI(dir_p1,pos[0],pos[1],pos[2], 0 );
+								++(m_Op->m_Nr_PEC[dir_p1]);
+							}
 
-//				// Build metallic caps
-//				for (pos[dir_p1] = uiStart[dir_p1] ; pos[dir_p1] <= uiStop[dir_p1] ; ++pos[dir_p1])
-//				{
-//					for (pos[dir_p2] = uiStart[dir_p2] ; pos[dir_p2] <= uiStop[dir_p2] ; ++pos[dir_p2])
-//					{
-//						pos[dir]=uiStart[dir];
-//						if (pos[dir_p1]<uiStop[dir_p1])
-//						{
-//							m_Op->SetVV(dir_p1,pos[0],pos[1],pos[2], 0 );
-//							m_Op->SetVI(dir_p1,pos[0],pos[1],pos[2], 0 );
-//							++(m_Op->m_Nr_PEC[dir_p1]);
-//						}
-//
-//						if (pos[dir_p2]<uiStop[dir_p2])
-//						{
-//							m_Op->SetVV(dir_p2,pos[0],pos[1],pos[2], 0 );
-//							m_Op->SetVI(dir_p2,pos[0],pos[1],pos[2], 0 );
-//							++(m_Op->m_Nr_PEC[dir_p2]);
-//						}
-//
-//						pos[dir]=uiStop[dir];
-//						if (pos[dir_p1]<uiStop[dir_p1])
-//						{
-//							m_Op->SetVV(dir_p1,pos[0],pos[1],pos[2], 0 );
-//							m_Op->SetVI(dir_p1,pos[0],pos[1],pos[2], 0 );
-//							++(m_Op->m_Nr_PEC[dir_p1]);
-//						}
-//
-//						if (pos[dir_p2]<uiStop[dir_p2])
-//						{
-//							m_Op->SetVV(dir_p2,pos[0],pos[1],pos[2], 0 );
-//							m_Op->SetVI(dir_p2,pos[0],pos[1],pos[2], 0 );
-//							++(m_Op->m_Nr_PEC[dir_p2]);
-//						}
-//					}
-//				}
+							if (pos[dir_p2]<uiStop[dir_p2])
+							{
+								m_Op->SetVV(dir_p2,pos[0],pos[1],pos[2], 0 );
+								m_Op->SetVI(dir_p2,pos[0],pos[1],pos[2], 0 );
+								++(m_Op->m_Nr_PEC[dir_p2]);
+							}
+
+							pos[dir]=uiStop[dir];
+							if (pos[dir_p1]<uiStop[dir_p1])
+							{
+								m_Op->SetVV(dir_p1,pos[0],pos[1],pos[2], 0 );
+								m_Op->SetVI(dir_p1,pos[0],pos[1],pos[2], 0 );
+								++(m_Op->m_Nr_PEC[dir_p1]);
+							}
+
+							if (pos[dir_p2]<uiStop[dir_p2])
+							{
+								m_Op->SetVV(dir_p2,pos[0],pos[1],pos[2], 0 );
+								m_Op->SetVI(dir_p2,pos[0],pos[1],pos[2], 0 );
+								++(m_Op->m_Nr_PEC[dir_p2]);
+							}
+						}
+					}
 
 
 				// Mark as used
