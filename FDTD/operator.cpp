@@ -1536,11 +1536,21 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, v
 bool Operator::Calc_LumpedElements()
 {
 	vector<CSProperties*> props = CSX->GetPropertyByType(CSProperties::LUMPED_ELEMENT);
+
 	for (size_t i=0;i<props.size();++i)
 	{
+		// Check: Is this some sort of lumped element extension?
+		int i_propType = props.at(i)->GetType();
+		// Shut down LUMPED_ELEMENT bits
+		i_propType &= ~(CSProperties::LUMPED_ELEMENT);
+		if (i_propType)	// If this is non-zero, skip this lumped element. This is an extension.
+			continue;
+
 		CSPropLumpedElement* PLE = dynamic_cast<CSPropLumpedElement*>(props.at(i));
+
 		if (PLE==NULL)
 			return false; //sanity check: this should never happen!
+
 		vector<CSPrimitives*> prims = PLE->GetAllPrimitives();
 		for (size_t bn=0;bn<prims.size();++bn)
 		{
