@@ -16,6 +16,8 @@
 
 #include "engine_ext_lumpedRLC.h"
 
+#define LUMPED_RLC_Z_FACT 20.0
+
 class Operator_Ext_LumpedRLC : public Operator_Extension
 {
 	friend class Engine_Ext_LumpedRLC;
