@@ -21,11 +21,6 @@
 class Operator_Ext_LumpedRLC : public Operator_Extension
 {
 	friend class Engine_Ext_LumpedRLC;
-	friend class Operator;
-	friend class AdrOp;
-	friend class ContinuousStructure;
-	friend class Operator_Base;
-
 public:
 	Operator_Ext_LumpedRLC(Operator* op);
 
@@ -44,6 +39,8 @@ public:
 	virtual string GetExtensionName() const {return string("Series\\Parallel Lumped RLC load");}
 
 	virtual void ShowStat(ostream &ostr) const;
+
+	virtual bool IsLElumpedRLC(const CSPropLumpedElement* const p_prop);
 
 protected:
 	//! Copy constructor

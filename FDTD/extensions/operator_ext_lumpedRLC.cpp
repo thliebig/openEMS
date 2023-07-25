@@ -66,27 +66,30 @@ Operator_Ext_LumpedRLC::Operator_Ext_LumpedRLC(Operator* op, Operator_Ext_Lumped
 
 Operator_Ext_LumpedRLC::~Operator_Ext_LumpedRLC()
 {
-	// Parallel circuit coefficients
-	delete[] v_RLC_ilv;
-	delete[] v_RLC_i2v;
+	if (this->RLC_count)
+	{
+		// Parallel circuit coefficients
+		delete[] v_RLC_ilv;
+		delete[] v_RLC_i2v;
 
-	// Series circuit coefficients
-	delete[] v_RLC_vv2;
-	delete[] v_RLC_vj1;
-	delete[] v_RLC_vj2;
-	delete[] v_RLC_vvd;
-	delete[] v_RLC_ib0;
-	delete[] v_RLC_b1;
-	delete[] v_RLC_b2;
+		// Series circuit coefficients
+		delete[] v_RLC_vv2;
+		delete[] v_RLC_vj1;
+		delete[] v_RLC_vj2;
+		delete[] v_RLC_vvd;
+		delete[] v_RLC_ib0;
+		delete[] v_RLC_b1;
+		delete[] v_RLC_b2;
 
-	// Additional containers
-	delete[] v_RLC_dir;
+		// Additional containers
+		delete[] v_RLC_dir;
 
-	for (uint dIdx = 0 ; dIdx < 3 ; dIdx++)
-		delete[] v_RLC_pos[dIdx];
+		for (uint dIdx = 0 ; dIdx < 3 ; dIdx++)
+			delete[] v_RLC_pos[dIdx];
 
-	delete[] v_RLC_pos;
+		delete[] v_RLC_pos;
 
+	}
 }
 
 Operator_Extension* Operator_Ext_LumpedRLC::Clone(Operator* op)
@@ -146,14 +149,12 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 	v_b1.clear();
 	v_b2.clear();
 
-
 	// Obtain from CSX (continuous structure) all the lumped RLC properties
 	// Properties are material properties, not the objects themselves
-	cs_props = m_Op->CSX->GetPropertyByType(CSProperties::LUMPED_RLC);
+	cs_props = m_Op->CSX->GetPropertyByType(CSProperties::LUMPED_ELEMENT);
 
 	// Iterate through various properties. In theory, there should be a property set per-
 	// primitive, as each lumped element should have it's own unique properties.
-
 	for(size_t n = 0 ; n < cs_props.size() ; ++n)
 	{
 		// Cast current property to lumped RLC property continuous structure properties
@@ -163,7 +164,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 		// Store direction and type
 		dir = cs_RLC_props->GetDirection();
-		lumpedType = cs_RLC_props->GetRLCtype();
+		lumpedType = cs_RLC_props->GetLEtype();
 
 		if (lumpedType == LEtype::INVALID)
 		{
@@ -183,12 +184,9 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		if (L < 0)
 			L = NAN;
 
-//		if ((std::isnan(R)) || (std::isnan(C)) || (std::isnan(L)))
-//		{
-//			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning: Lumped Element R, L or C not specified! skipping. "
-//					<< " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
-//			continue;
-//		}
+		// Check that this is a lumped RLC
+		if (!(this->IsLElumpedRLC(cs_RLC_props)))
+			continue;
 
 		if ((dir < 0) || (dir > 2))
 		{
@@ -267,10 +265,10 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 				// parallel resistor, use zero conductivity. May be risky when low-loss
 				// simulations are involved
 				if (lumpedType == LEtype::PARALLEL)
-					if (R == 0)
-						dG = 0;
+					if (R == 0.0)
+						dG = 0.0;
 
-				int iPos=0;
+				int iPos = 0;
 
 				double Zmin,Zcd_min;
 
@@ -429,46 +427,49 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 	}
 
-
 	// Start data storage
 	RLC_count = v_dir.size();
 
-	// Allocate space to all variables
-	v_RLC_dir 	= new int[RLC_count];
+	// values
+	if (RLC_count)
+	{
+		// Allocate space to all variables
+		v_RLC_dir 	= new int[RLC_count];
 
-	// Parallel circuit coefficients
-	v_RLC_ilv 	= new FDTD_FLOAT[RLC_count];
-	v_RLC_i2v 	= new FDTD_FLOAT[RLC_count];
+		// Parallel circuit coefficients
+		v_RLC_ilv 	= new FDTD_FLOAT[RLC_count];
+		v_RLC_i2v 	= new FDTD_FLOAT[RLC_count];
 
-	// Series circuit coefficients
-	v_RLC_vv2 = new FDTD_FLOAT[RLC_count];
-	v_RLC_vj1 = new FDTD_FLOAT[RLC_count];
-	v_RLC_vj2 = new FDTD_FLOAT[RLC_count];
-	v_RLC_vvd = new FDTD_FLOAT[RLC_count];
-	v_RLC_ib0 = new FDTD_FLOAT[RLC_count];
-	v_RLC_b1 = new FDTD_FLOAT[RLC_count];
-	v_RLC_b2 = new FDTD_FLOAT[RLC_count];
+		// Series circuit coefficients
+		v_RLC_vv2 = new FDTD_FLOAT[RLC_count];
+		v_RLC_vj1 = new FDTD_FLOAT[RLC_count];
+		v_RLC_vj2 = new FDTD_FLOAT[RLC_count];
+		v_RLC_vvd = new FDTD_FLOAT[RLC_count];
+		v_RLC_ib0 = new FDTD_FLOAT[RLC_count];
+		v_RLC_b1 = new FDTD_FLOAT[RLC_count];
+		v_RLC_b2 = new FDTD_FLOAT[RLC_count];
 
-	v_RLC_pos = new uint*[3];
-	for (uint dIdx = 0 ; dIdx < 3 ; ++dIdx)
-		v_RLC_pos[dIdx] = new uint[RLC_count];
+		v_RLC_pos = new uint*[3];
+		for (uint dIdx = 0 ; dIdx < 3 ; ++dIdx)
+			v_RLC_pos[dIdx] = new uint[RLC_count];
 
-	// Copy all vectors to arrays
-	COPY_V2A(v_dir, v_RLC_dir);
+		// Copy all vectors to arrays
+		COPY_V2A(v_dir, v_RLC_dir);
 
-	COPY_V2A(v_ilv, v_RLC_ilv);
-	COPY_V2A(v_i2v, v_RLC_i2v);
+		COPY_V2A(v_ilv, v_RLC_ilv);
+		COPY_V2A(v_i2v, v_RLC_i2v);
 
-	COPY_V2A(v_vv2,v_RLC_vv2);
-	COPY_V2A(v_vj1,v_RLC_vj1);
-	COPY_V2A(v_vj2,v_RLC_vj2);
-	COPY_V2A(v_vvd,v_RLC_vvd);
-	COPY_V2A(v_ib0,v_RLC_ib0);
-	COPY_V2A(v_b1,v_RLC_b1);
-	COPY_V2A(v_b2,v_RLC_b2);
+		COPY_V2A(v_vv2,v_RLC_vv2);
+		COPY_V2A(v_vj1,v_RLC_vj1);
+		COPY_V2A(v_vj2,v_RLC_vj2);
+		COPY_V2A(v_vvd,v_RLC_vvd);
+		COPY_V2A(v_ib0,v_RLC_ib0);
+		COPY_V2A(v_b1,v_RLC_b1);
+		COPY_V2A(v_b2,v_RLC_b2);
 
-	for (uint dIdx = 0 ; dIdx < 3 ; ++dIdx)
-		COPY_V2A(v_pos[dIdx],v_RLC_pos[dIdx]);
+		for (uint dIdx = 0 ; dIdx < 3 ; ++dIdx)
+			COPY_V2A(v_pos[dIdx],v_RLC_pos[dIdx]);
+	}
 
 	return true;
 }
@@ -485,6 +486,18 @@ void Operator_Ext_LumpedRLC::ShowStat(ostream &ostr)  const
 	string On_Off[2] = {"Off", "On"};
 
 	ostr << "Active cells\t\t: " << RLC_count << endl;
-	ostr << "v_C_ADE is \t: " << On_Off[1] << endl;
-	ostr << "i_L_ADE is \t: " << On_Off[1] << endl;
 }
+
+bool Operator_Ext_LumpedRLC::IsLElumpedRLC(const CSPropLumpedElement* const p_prop)
+{
+	LEtype lumpedType = p_prop->GetLEtype();
+
+	double L = p_prop->GetInductance();
+
+	bool isParallelRLC = (lumpedType == LEtype::PARALLEL) && (L > 0.0);
+	bool isSeriesRLC = lumpedType == LEtype::SERIES;
+
+	// This needs to be something that isn't a parallel RC circuit to add data to this extension.
+	return isParallelRLC || isSeriesRLC;
+}
+
