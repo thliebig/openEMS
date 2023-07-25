@@ -248,6 +248,9 @@ protected:
 	//! Calculate and setup lumped elements
 	virtual bool Calc_LumpedElements();
 
+	//! Condition to determine if this is a lumped RC, to invoke Calc_LumpedElements
+	virtual bool IsLEparRC(const CSPropLumpedElement* const p_prop);
+
 	//! Store the size of the applied boundary conditions
 	int m_BC_Size[6];
 

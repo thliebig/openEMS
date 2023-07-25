@@ -379,7 +379,6 @@ int Operator::SnapLine2Mesh(const double* start, const double* stop, unsigned in
 	return ret;
 }
 
-
 Grid_Path Operator::FindPath(double start[], double stop[])
 {
 	Grid_Path path;
@@ -1539,12 +1538,6 @@ bool Operator::Calc_LumpedElements()
 
 	for (size_t i=0;i<props.size();++i)
 	{
-		// Check: Is this some sort of lumped element extension?
-		int i_propType = props.at(i)->GetType();
-		// Shut down LUMPED_ELEMENT bits
-		i_propType &= ~(CSProperties::LUMPED_ELEMENT);
-		if (i_propType)	// If this is non-zero, skip this lumped element. This is an extension.
-			continue;
 
 		CSPropLumpedElement* PLE = dynamic_cast<CSPropLumpedElement*>(props.at(i));
 
@@ -1564,6 +1557,11 @@ bool Operator::Calc_LumpedElements()
 				double R = PLE->GetResistance();
 				if (R<0)
 					R = NAN;
+
+				// If this is not a parallel RC, skip this.
+				if (!(this->IsLEparRC(PLE)))
+					continue;
+
 
 				if ((std::isnan(R)) && (std::isnan(C)))
 				{
@@ -1711,6 +1709,18 @@ bool Operator::Calc_LumpedElements()
 		}
 	}
 	return true;
+}
+
+bool Operator::IsLEparRC(const CSPropLumpedElement* const p_prop)
+{
+	LEtype lumpedType = p_prop->GetLEtype();
+
+	double L = p_prop->GetInductance();
+
+	bool IsParallelRC = (lumpedType == LEtype::PARALLEL) && !(L > 0.0);
+
+	// This needs to be something that isn't a parallel RC circuit to add data to this extension.
+	return IsParallelRC;
 }
 
 void Operator::Init_EC()
