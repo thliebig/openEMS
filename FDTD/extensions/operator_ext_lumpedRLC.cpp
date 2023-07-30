@@ -112,7 +112,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 	vector<CSProperties*> cs_props;
 
 	int 			dir;
-	LEtype 			lumpedType;
+	CSPropLumpedElement::LEtype lumpedType;
 
 	vector<uint> 	v_pos[3];
 
@@ -166,11 +166,12 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		dir = cs_RLC_props->GetDirection();
 		lumpedType = cs_RLC_props->GetLEtype();
 
-		if (lumpedType == LEtype::INVALID)
+		//		if (lumpedType == LEtype::INVALID
+		if (lumpedType == CSPropLumpedElement::INVALID)
 		{
 			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning: RLCtype is invalid! considering as parallel. "
 					<< " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
-			lumpedType = LEtype::PARALLEL;
+			lumpedType = CSPropLumpedElement::PARALLEL;
 		}
 
 		// Extract R, L and C from property class
@@ -264,7 +265,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 				// Special case: If this is a parallel resonant circuit, and there is no
 				// parallel resistor, use zero conductivity. May be risky when low-loss
 				// simulations are involved
-				if (lumpedType == LEtype::PARALLEL)
+				if (lumpedType == CSPropLumpedElement::PARALLEL)
 					if (R == 0.0)
 						dG = 0.0;
 
@@ -285,7 +286,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 							// Separate to two different cases. Parallel and series
 							switch (lumpedType)
 							{
-								case LEtype::PARALLEL:
+								case CSPropLumpedElement::PARALLEL:
 									// Update capacitor either way.
 									if (dC > 0)
 										m_Op->EC_C[dir][iPos] = dC;
@@ -336,7 +337,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 									break;
 
-								case LEtype::SERIES:
+								case CSPropLumpedElement::SERIES:
 									m_Op->EC_G[dir][iPos] = 0.0;
 
 									// is a series inductor, modeled separately.
@@ -490,12 +491,12 @@ void Operator_Ext_LumpedRLC::ShowStat(ostream &ostr)  const
 
 bool Operator_Ext_LumpedRLC::IsLElumpedRLC(const CSPropLumpedElement* const p_prop)
 {
-	LEtype lumpedType = p_prop->GetLEtype();
+	CSPropLumpedElement::LEtype lumpedType = p_prop->GetLEtype();
 
 	double L = p_prop->GetInductance();
 
-	bool isParallelRLC = (lumpedType == LEtype::PARALLEL) && (L > 0.0);
-	bool isSeriesRLC = lumpedType == LEtype::SERIES;
+	bool isParallelRLC = (lumpedType == CSPropLumpedElement::PARALLEL) && (L > 0.0);
+	bool isSeriesRLC = lumpedType == CSPropLumpedElement::SERIES;
 
 	// This needs to be something that isn't a parallel RC circuit to add data to this extension.
 	return isParallelRLC || isSeriesRLC;
