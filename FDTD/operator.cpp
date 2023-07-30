@@ -1713,11 +1713,11 @@ bool Operator::Calc_LumpedElements()
 
 bool Operator::IsLEparRC(const CSPropLumpedElement* const p_prop)
 {
-	LEtype lumpedType = p_prop->GetLEtype();
+	CSPropLumpedElement::LEtype lumpedType = p_prop->GetLEtype();
 
 	double L = p_prop->GetInductance();
 
-	bool IsParallelRC = (lumpedType == LEtype::PARALLEL) && !(L > 0.0);
+	bool IsParallelRC = (lumpedType == CSPropLumpedElement::PARALLEL) && !(L > 0.0);
 
 	// This needs to be something that isn't a parallel RC circuit to add data to this extension.
 	return IsParallelRC;
