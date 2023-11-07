@@ -75,8 +75,7 @@ void ProcessIntegral::InitProcess()
 	{
 		for (size_t n=0; n<m_FD_Samples.size(); ++n)
 		{
-			double_complex z = 0;
-			m_FD_Results[i].push_back(z);
+			m_FD_Results[i].push_back(0);
 		}
 	}
 }
