@@ -33,12 +33,16 @@ class Operator : public Operator_Base
 {
 	friend class Engine;
 	friend class Engine_Interface_FDTD;
-	friend class Operator_Ext_LorentzMaterial; //we need to find a way around this... friend class Operator_Extension only would be nice
-	friend class Operator_Ext_ConductingSheet; //we need to find a way around this... friend class Operator_Extension only would be nice
+	friend class Operator_Ext_LorentzMaterial; 	// We need to find a way around this... friend class Operator_Extension only would be nice
+	friend class Operator_Ext_ConductingSheet; 	// We need to find a way around this... friend class Operator_Extension only would be nice
 	friend class Operator_Ext_PML_SF_Plane;
 	friend class Operator_Ext_Excitation;
 	friend class Operator_Ext_UPML;
 	friend class Operator_Ext_Cylinder;
+	friend class Operator_Ext_LumpedRLC;		// Gadi: I now know why the two previous remarks are here.
+
+	// So apparaently I have to use functionality from operator
+	// in my "lumpedRLC" class. This is ugly...
 public:
 	enum DebugFlags {None=0,debugMaterial=1,debugOperator=2,debugPEC=4};
 
@@ -243,6 +247,9 @@ protected:
 
 	//! Calculate and setup lumped elements
 	virtual bool Calc_LumpedElements();
+
+	//! Condition to determine if this is a lumped RC, to invoke Calc_LumpedElements
+	virtual bool IsLEparRC(const CSPropLumpedElement* const p_prop);
 
 	//! Store the size of the applied boundary conditions
 	int m_BC_Size[6];

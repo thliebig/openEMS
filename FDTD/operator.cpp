@@ -379,7 +379,6 @@ int Operator::SnapLine2Mesh(const double* start, const double* stop, unsigned in
 	return ret;
 }
 
-
 Grid_Path Operator::FindPath(double start[], double stop[])
 {
 	Grid_Path path;
@@ -790,7 +789,7 @@ void Operator::DumpMaterial2File(string filename)
 	delete vtk_Writer;
 }
 
- bool Operator::SetupCSXGrid(CSRectGrid* grid)
+bool Operator::SetupCSXGrid(CSRectGrid* grid)
  {
 	 for (int n=0; n<3; ++n)
 	 {
@@ -1536,11 +1535,15 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, v
 bool Operator::Calc_LumpedElements()
 {
 	vector<CSProperties*> props = CSX->GetPropertyByType(CSProperties::LUMPED_ELEMENT);
+
 	for (size_t i=0;i<props.size();++i)
 	{
+
 		CSPropLumpedElement* PLE = dynamic_cast<CSPropLumpedElement*>(props.at(i));
+
 		if (PLE==NULL)
 			return false; //sanity check: this should never happen!
+
 		vector<CSPrimitives*> prims = PLE->GetAllPrimitives();
 		for (size_t bn=0;bn<prims.size();++bn)
 		{
@@ -1554,6 +1557,11 @@ bool Operator::Calc_LumpedElements()
 				double R = PLE->GetResistance();
 				if (R<0)
 					R = NAN;
+
+				// If this is not a parallel RC, skip this.
+				if (!(this->IsLEparRC(PLE)))
+					continue;
+
 
 				if ((std::isnan(R)) && (std::isnan(C)))
 				{
@@ -1701,6 +1709,18 @@ bool Operator::Calc_LumpedElements()
 		}
 	}
 	return true;
+}
+
+bool Operator::IsLEparRC(const CSPropLumpedElement* const p_prop)
+{
+	CSPropLumpedElement::LEtype lumpedType = p_prop->GetLEtype();
+
+	double L = p_prop->GetInductance();
+
+	bool IsParallelRC = (lumpedType == CSPropLumpedElement::PARALLEL) && !(L > 0.0);
+
+	// This needs to be something that isn't a parallel RC circuit to add data to this extension.
+	return IsParallelRC;
 }
 
 void Operator::Init_EC()

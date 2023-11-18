@@ -30,6 +30,7 @@
 #include "FDTD/extensions/operator_ext_mur_abc.h"
 #include "FDTD/extensions/operator_ext_upml.h"
 #include "FDTD/extensions/operator_ext_lorentzmaterial.h"
+#include "FDTD/extensions/operator_ext_lumpedRLC.h"
 #include "FDTD/extensions/operator_ext_conductingsheet.h"
 #include "FDTD/extensions/operator_ext_steadystate.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
@@ -292,7 +293,7 @@ void openEMS::WelcomeScreen()
 #endif
 
 	cout << " ---------------------------------------------------------------------- " << endl;
-	cout << " | openEMS " << bits << " -- version " GIT_VERSION << endl;
+	cout << " | openEMS " << bits << " -- version " << GIT_VERSION << endl;
 	cout << " | (C) 2010-2023 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << openEMS::GetExtLibsInfo("\t") << endl;
@@ -995,6 +996,9 @@ int openEMS::SetupFDTD()
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
 	if (m_CSX->GetQtyPropertyType(CSProperties::CONDUCTINGSHEET)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op, m_Exc->GetMaxFreq()));
+	if (m_CSX->GetQtyPropertyType(CSProperties::LUMPED_ELEMENT)>0)
+		FDTD_Op->AddExtension(new Operator_Ext_LumpedRLC(FDTD_Op));
+
 
 	//check all properties to request material storage during operator creation...
 	SetupMaterialStorages();
