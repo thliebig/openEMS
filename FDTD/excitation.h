@@ -25,7 +25,8 @@
 class Excitation
 {
 public:
-	enum ExciteTypes {UNDEFINED=-1, GaissianPulse=0, Sinusoidal=1, DiracPulse=2, Step=3, CustomExcite=10};
+	enum ExciteTypes {UNDEFINED=-1, GaissianPulse=0, Sinusoidal=1, DiracPulse=2, Step=3, Noise=4, Dump=5, CustomExcite=10};
+	enum NoiseTypes {UNDEFINED=-1, WhiteNoise=0, PinkNoise=1};
 	Excitation();
 	virtual ~Excitation();
 
@@ -35,6 +36,8 @@ public:
 	void SetupSinusoidal(double f0);
 	void SetupDiracPulse(double fmax);
 	void SetupStepExcite(double fmax);
+	void SetupNoiseExcite(NoiseTypes noiseType, double zeroEnergy, double duration);
+	void SetupDumpedExcite(std::string voltageDump, std::string currentDump);
 	void SetupCustomExcite(std::string str, double f0, double fmax);
 
 	double GetCenterFreq() {return m_f0;}

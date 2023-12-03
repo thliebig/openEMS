@@ -842,6 +842,12 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);
 		exc->SetupStepExcite(f_max);
 		break;
+	case Excitation::Noise:
+		throw std::logic_error("not implemented");
+		break;
+	case Excitation::Dump:
+		throw std::logic_error("not implemented");
+		break;
 	case Excitation::CustomExcite:
 		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
 		FDTD_Opts->QueryDoubleAttribute("f_max",&f_max);

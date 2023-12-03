@@ -84,6 +84,20 @@ void Excitation::SetupStepExcite(double fmax)
 	m_f_max = fmax;
 }
 
+void Excitation::SetupNoiseExcite(NoiseTypes noiseType, double zeroEnergy, double duration)
+{
+	m_Excit_Type = Excitation::Noise;
+	m_SignalPeriod = 0;
+	throw std::logic_error("not implemented");
+}
+
+void Excitation::SetupDumpedExcite(std::string voltageDump, std::string currentDump)
+{
+	m_Excit_Type = Excitation::Dump;
+	m_SignalPeriod = 0;
+	throw std::logic_error("not implemented");
+}
+
 void Excitation::SetupCustomExcite(string str, double f0, double fmax)
 {
 	m_Excit_Type = Excitation::CustomExcite;
