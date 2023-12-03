@@ -260,6 +260,41 @@ cdef class openEMS:
         self.thisptr.SetStepExcite(f_max)
 
 
+    def SetNoiseExcite(self, noiseType, zeroEnergy, duration):
+        """ SetNoiseExcite(noiseType, zeroEnergy, duration)
+
+        Set a guassian shaped continuous white noise function as excitation signal.
+
+        :param noiseType: int -- Type of noise, either white noise or pink noise.
+        :param zeroEnergy: double -- Energy considered "RF zero" to frame/cutoff the gaussian envelope.
+        :param duration: double -- Time in seconds for running the envelope once (starting with "RF zero" energy, peaking mid of period, and the vanishing to "RF zero").
+        """
+        self.thisptr.SetNoisesExcite(noiseType, zeroEnergy, duration)
+
+
+    def SetDumpedExcite(self, voltageDump, currentDump):
+        """ SetDumpedExcite(voltageDump, currentDump)
+
+        Set a step function as excitation signal.
+
+        :param voltageDump: str -- Filename with ASCII data containing previously recorded and saved voltage dump.
+        :param currentDump: str -- Filename with ASCII data containing previously recorded and saved current dump.
+        """
+        self.thisptr.SetDumpedExcite(voltageDump, currentDump)
+
+
+    def SetCustomExcite(self, _str, f0, fmax):
+        """ SetCustomExcite(_str, f0, fmax)
+
+        Set a step function as excitation signal.
+
+        :param _str: str -- Custom function as string literal (this gets parsed using http://warp.povusers.org/FunctionParser/fparser.html).
+        :param f0: -- Base frequency.
+        :param fmax: -- Maximum frequency.
+        """
+        self.thisptr.SetCustomExcite(_str, f0, fmax)
+
+
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)
 
