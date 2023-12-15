@@ -20,7 +20,6 @@ from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp.complex cimport complex
 from libcpp cimport bool
-cimport cython
 
 cdef extern from "openEMS/nf2ff.h":
     cdef cppclass cpp_nf2ff "nf2ff":
