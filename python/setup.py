@@ -22,7 +22,7 @@ extensions = [
 
 setup(
   name="openEMS",
-  version = '0.0.33',
+  version = '0.0.36',
   description = "Python interface for the openEMS FDTD library",
   classifiers = [
       'Development Status :: 3 - Alpha',
