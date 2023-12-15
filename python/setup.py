@@ -31,6 +31,12 @@ setup(
       'Intended Audience :: Science/Research',
       'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
       'Programming Language :: Python',
+      'Programming Language :: Python :: 3',
+      'Programming Language :: Python :: 3.9',
+      'Programming Language :: Python :: 3.10',
+      'Programming Language :: Python :: 3.11',
+      'Programming Language :: Python :: 3.12',
+      'Programming Language :: Python :: Implementation :: CPython',
       'Topic :: Scientific/Engineering',
       'Topic :: Software Development :: Libraries :: Python Modules',
       'Operating System :: POSIX :: Linux',
@@ -43,5 +49,6 @@ setup(
   url = 'https://openEMS.de',
   packages=["openEMS", ],
   package_data={'openEMS': ['*.pxd']},
+  python_requires='>=3.9',
   ext_modules = cythonize(extensions, language_level = "3")
  )
