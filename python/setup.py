@@ -55,5 +55,5 @@ setup(
     'h5py>=3.10.0',   # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
     'numpy>=1.26.2',  # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
   ],
-  ext_modules = cythonize(extensions, language_level = "3")
+  ext_modules = cythonize(extensions, language_level = 3)
  )
