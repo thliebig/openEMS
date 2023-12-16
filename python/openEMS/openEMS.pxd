@@ -51,6 +51,7 @@ cdef extern from "openEMS/openems.h":
         void SetSinusExcite(double f0)
         void SetDiracExcite(double f_max)
         void SetStepExcite(double f_max)
+        void SetCustomExcite(string _str, double f0, double fmax)
 
         void SetAbort(bool val)
 
