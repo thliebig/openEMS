@@ -259,6 +259,17 @@ cdef class openEMS:
         """
         self.thisptr.SetStepExcite(f_max)
 
+    def SetCustomExcite(self, _str, f0, fmax):
+        """ SetCustomExcite(_str, f0, fmax)
+
+        Set a custom function as excitation signal. The custom function is supplied as a string which gets
+        parsed using `Function Parser for C++ <http://warp.povusers.org/FunctionParser/fparser.html>`_.
+
+        :param _str: str -- Custom function as string literal
+        :param f0: -- Base frequency.
+        :param fmax: -- Maximum frequency.
+        """
+        self.thisptr.SetCustomExcite(_str, f0, fmax)
 
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)

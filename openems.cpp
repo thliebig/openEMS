@@ -882,6 +882,12 @@ void openEMS::SetStepExcite(double f_max)
 	m_Exc->SetupStepExcite(f_max);
 }
 
+void openEMS::SetCustomExcite(std::string str, double f0, double fmax)
+{
+	this->InitExcitation();
+	m_Exc->SetupCustomExcite(str, f0, fmax);
+}
+
 Excitation* openEMS::InitExcitation()
 {
 	delete m_Exc;
