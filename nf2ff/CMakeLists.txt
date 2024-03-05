@@ -33,6 +33,7 @@ set(HEADERS
 
 add_library( nf2ff SHARED ${SOURCES})
 set_target_properties(nf2ff PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR})
+set_target_properties(nf2ff PROPERTIES CXX_STANDARD 11)
 if (WIN32)
     target_compile_definitions(nf2ff PRIVATE -DBUILD_NF2FF_LIB )
 endif (WIN32)
