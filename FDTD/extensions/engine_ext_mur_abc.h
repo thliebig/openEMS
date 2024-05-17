@@ -21,6 +21,7 @@
 #include "engine_extension.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
+#include "engine_extension_dispatcher.h"
 
 class Operator_Ext_Mur_ABC;
 
@@ -40,6 +41,15 @@ public:
 	virtual void Apply2Voltages(int threadID);
 
 protected:
+	template <typename EngineType>
+	void DoPreVoltageUpdatesImpl(EngineType* eng, int threadID);
+
+	template <typename EngineType>
+	void DoPostVoltageUpdatesImpl(EngineType* eng, int threadID);
+
+	template <typename EngineType>
+	void Apply2VoltagesImpl(EngineType* eng, int threadID);
+
 	Operator_Ext_Mur_ABC* m_Op_mur;
 
 	inline bool IsActive() {if (m_Eng->GetNumberOfTimesteps()<m_start_TS) return false; return true;}
