@@ -21,6 +21,7 @@
 #include "engine_extension.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
+#include "engine_extension_dispatcher.h"
 
 class Operator_Ext_LumpedRLC;
 
@@ -39,6 +40,9 @@ public:
 	virtual void Apply2Voltages();
 
 protected:
+	template <typename EngineType>
+	void Apply2VoltagesImpl(EngineType* eng);
+
 	Operator_Ext_LumpedRLC* m_Op_Ext_RLC;
 
 	// Auxilliary containers
