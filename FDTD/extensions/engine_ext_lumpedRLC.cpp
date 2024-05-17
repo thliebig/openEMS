@@ -99,7 +99,8 @@ void Engine_Ext_LumpedRLC::DoPreVoltageUpdates()
 	return;
 }
 
-void Engine_Ext_LumpedRLC::Apply2Voltages()
+template <typename EngineType>
+void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngineType* eng)
 {
 	unsigned int **pos = m_Op_Ext_RLC->v_RLC_pos;
 	int *dir = m_Op_Ext_RLC->v_RLC_dir;
@@ -113,31 +114,8 @@ void Engine_Ext_LumpedRLC::Apply2Voltages()
 
 
 	// Read engine calculated node voltage
-	switch (m_Eng->GetType())
-	{
-		case Engine::BASIC:
-		{
-			for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-				v_Vdn[0][pIdx] = m_Eng->Engine::GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);
-
-			break;
-		}
-		case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-				v_Vdn[0][pIdx] = eng_sse->Engine_sse::GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);
-
-			break;
-		}
-		default:
-		{
-			for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-				v_Vdn[0][pIdx] = m_Eng->GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);;
-
-			break;
-		}
-	}
+	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
+		v_Vdn[0][pIdx] = eng->EngineType::GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);
 
 	// Post process: Calculate node voltage with respect to the lumped RLC auxilliary quantity, J
 	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
@@ -162,34 +140,11 @@ void Engine_Ext_LumpedRLC::Apply2Voltages()
 
 
 	// Update node voltage
-	switch (m_Eng->GetType())
-	{
-		case Engine::BASIC:
-		{
-			for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-				m_Eng->Engine::SetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx],v_Vdn[0][pIdx]);
-
-			break;
-		}
-		case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-				eng_sse->Engine_sse::SetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx],v_Vdn[0][pIdx]);
-
-			break;
-		}
-		default:
-		{
-			for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-				m_Eng->SetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx],v_Vdn[0][pIdx]);
-
-			break;
-		}
-	}
-
-
-	return;
+	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
+		eng->EngineType::SetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx],v_Vdn[0][pIdx]);
 }
 
-
+void Engine_Ext_LumpedRLC::Apply2Voltages()
+{
+	ENG_DISPATCH(Apply2VoltagesImpl);
+}
