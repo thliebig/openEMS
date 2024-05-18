@@ -56,6 +56,7 @@
 #include "CSPropDumpBox.h"
 
 using namespace std;
+namespace po = boost::program_options;
 
 double CalcDiffTime(timeval t1, timeval t2)
 {
@@ -100,6 +101,8 @@ openEMS::openEMS()
 		m_PML_size[n] = 8;
 		m_Mur_v_ph[n] = 0;
 	}
+
+	collectCommandLineArguments();
 }
 
 openEMS::~openEMS()
@@ -122,129 +125,203 @@ void openEMS::Reset()
 	m_Exc=0;
 }
 
-void openEMS::showUsage()
+void openEMS::collectCommandLineArguments()
 {
-	cout << " Usage: openEMS <FDTD_XML_FILE> [<options>...]" << endl << endl;
-	cout << " <options>" << endl;
-	cout << "\t--disable-dumps\t\tDisable all field dumps for faster simulation" << endl;
-	cout << "\t--debug-material\tDump material distribution to a vtk file for debugging" << endl;
-	cout << "\t--debug-PEC\t\tDump metal distribution to a vtk file for debugging" << endl;
-	cout << "\t--debug-operator\tDump operator to vtk file for debugging" << endl;
-	cout << "\t--debug-boxes\t\tDump e.g. probe boxes to vtk file for debugging" << endl;
-	cout << "\t--debug-CSX\t\tWrite CSX geometry file to debugCSX.xml" << endl;
-	cout << "\t--engine=<type>\t\tChoose engine type" << endl;
-	cout << "\t\t--engine=fastest\t\tfastest available engine (default)" << endl;
-	cout << "\t\t--engine=basic\t\t\tbasic FDTD engine" << endl;
-	cout << "\t\t--engine=sse\t\t\tengine using sse vector extensions" << endl;
-	cout << "\t\t--engine=sse-compressed\t\tengine using compressed operator + sse vector extensions" << endl;
-#ifdef MPI_SUPPORT
-	cout << "\t\t--engine=MPI\t\t\tengine using compressed operator + sse vector extensions + MPI parallel processing" << endl;
-	cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + MPI + multithreading" << endl;
-#else
-	cout << "\t\t--engine=multithreaded\t\tengine using compressed operator + sse vector extensions + multithreading" << endl;
-#endif
-	cout << "\t--numThreads=<n>\tForce use n threads for multithreaded engine (needs: --engine=multithreaded)" << endl;
-	cout << "\t--no-simulation\t\tonly run preprocessing; do not simulate" << endl;
-	cout << "\t--dump-statistics\tdump simulation statistics to '" << __OPENEMS_RUN_STAT_FILE__ << "' and '" << __OPENEMS_STAT_FILE__ << "'" << endl;
-	cout << "\n\t Additional global arguments " << endl;
-	g_settings.ShowArguments(cout,"\t");
-	cout << endl;
+	// register our supported options to g_settings
+	g_settings.appendOptionDesc(optionDesc());
+	g_settings.appendOptionDesc(g_settings.optionDesc());
 }
 
-//! \brief processes a command line argument
-//! \return true if argument is known
-//! \return false if argument is unknown
-bool openEMS::parseCommandLineArgument( const char *argv )
+po::options_description
+openEMS::optionDesc()
 {
-	if (!argv)
-		return false;
+	po::options_description optdesc("Options");
+	optdesc.add_options()
+		(
+			"help,h",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					showUsage();
+					std::exit(0);
+				}
+			),
+			"Show this help message and exit"
+		)
+		(
+			"disable-dumps",
+			po::bool_switch()->notifier(
+				[&](bool val) {
+					if (!val) return;
+					cout << "openEMS - force-disabling all field dumps" << endl;
+					SetEnableDumps(!val);
+				}
+			),
+			"Disable all field dumps for faster simulation"
+		)
+		(
+			"debug-material",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dumping material to 'material_dump.vtk'" << endl;
+					DebugMaterial();
+				}
+			),
+			"Dump material distribution to a vtk file for debugging"
+		)
+		(
+			"debug-PEC",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dumping PEC info to 'PEC_dump.vtk'" << endl;
+					DebugPEC();
+				}
+			),
+			"Dump metal distribution to a vtk file for debugging"
+		)
+		(
+			"debug-operator",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
+					DebugOperator();
+				}
+			),
+			"Dump operator to vtk file for debugging"
+		)
+		(
+			"debug-boxes",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dumping boxes to 'box_dump*.vtk'" << endl;
+					DebugBox();
+				}
+			),
+			"Dump e.g. probe boxes to vtk file for debugging"
+		)
+		(
+			"debug-CSX",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dumping CSX geometry to 'debugCSX.xml'" << endl;
+					DebugCSX();
+				}
+			),
+			"Write CSX geometry file to debugCSX.xml"
+		)
+		(
+			"engine",
+			po::value<std::string>()->default_value("fastest")->notifier(
+				[&](std::string val)
+				{
+					if (val == "fastest")
+					{
+						// default, don't show console output
+						m_engine = EngineType_Multithreaded;
+					}
+					else if (val == "basic")
+					{
+						cout << "openEMS - enabled basic engine" << endl;
+						m_engine = EngineType_Basic;
+					}
+					else if (val == "sse")
+					{
+						cout << "openEMS - enabled sse engine" << endl;
+						m_engine = EngineType_SSE;
+					}
+					else if (val == "sse-compressed")
+					{
+						cout << "openEMS - enabled compressed sse engine" << endl;
+						m_engine = EngineType_SSE_Compressed;
+					}
+					else if (val == "multithreaded")
+					{
+						cout << "openEMS - enabled multithreading" << endl;
+						m_engine = EngineType_Multithreaded;
+					}
+				}
+			),
+		    "Choose engine type \n\n"
+			"  fastest: \tfastest available engine (default)\n"
+			"  basic: \tbasic FDTD engine\n"
+			"  sse: \tengine using SSE vector extensions\n"
+			"  sse-compressed: \tengine using compressed "
+			"operator + sse vector extensions\n"
+			"  multithreaded: \tengine using compressed "
+#ifdef MPI_SUPPORT
+			"operator + sse vector extensions + MPI + multithreading\n"
+#else
+			"operator + sse vector extensions + multithreading\n"
+#endif
+		)
+		(
+			"numThreads",
+			po::value<int>()->default_value(0)->notifier(
+				[&](int val)
+				{
+					this->SetNumberOfThreads(val);
+					if (val > 0)
+						cout << "openEMS - fixed number of threads: "
+							 << m_engine_numThreads << endl;
+				}
+			),
+			"Force use n threads for multithreaded engine "
+			"(needs: --engine=multithreaded)"
+		)
+		(
+			"no-simulation",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - disabling simulation => preprocessing only" << endl;
+					m_no_simulation = true;
+				}
+			),
+			"only run preprocessing; do not simulate"
+		)
+		(
+			"dump-statistics",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dump simulation statistics to '"
+						 << __OPENEMS_RUN_STAT_FILE__ << "' and '"
+						 << __OPENEMS_STAT_FILE__ << "'" << endl;
+					m_DumpStats = true;
+				}
+			),
+			"dump simulation statistics to '" __OPENEMS_RUN_STAT_FILE__
+			"' and '" __OPENEMS_STAT_FILE__ "'"
+		);
 
-	if (strcmp(argv,"--disable-dumps")==0)
-	{
-		cout << "openEMS - disabling all field dumps" << endl;
-		SetEnableDumps(false);
-		return true;
-	}
-	else if (strcmp(argv,"--debug-material")==0)
-	{
-		cout << "openEMS - dumping material to 'material_dump.vtk'" << endl;
-		DebugMaterial();
-		return true;
-	}
-	else if (strcmp(argv,"--debug-operator")==0)
-	{
-		cout << "openEMS - dumping operator to 'operator_dump.vtk'" << endl;
-		DebugOperator();
-		return true;
-	}
-	else if (strcmp(argv,"--debug-boxes")==0)
-	{
-		cout << "openEMS - dumping boxes to 'box_dump*.vtk'" << endl;
-		DebugBox();
-		return true;
-	}
-	else if (strcmp(argv,"--debug-PEC")==0)
-	{
-		cout << "openEMS - dumping PEC info to 'PEC_dump.vtk'" << endl;
-		DebugPEC();
-		return true;
-	}
-	else if (strcmp(argv,"--debug-CSX")==0)
-	{
-		cout << "openEMS - dumping CSX geometry to 'debugCSX.xml'" << endl;
-		DebugCSX();
-		return true;
-	}
-	else if (strcmp(argv,"--engine=basic")==0)
-	{
-		cout << "openEMS - enabled basic engine" << endl;
-		m_engine = EngineType_Basic;
-		return true;
-	}
-	else if (strcmp(argv,"--engine=sse")==0)
-	{
-		cout << "openEMS - enabled sse engine" << endl;
-		m_engine = EngineType_SSE;
-		return true;
-	}
-	else if (strcmp(argv,"--engine=sse-compressed")==0)
-	{
-		cout << "openEMS - enabled compressed sse engine" << endl;
-		m_engine = EngineType_SSE_Compressed;
-		return true;
-	}
-	else if (strcmp(argv,"--engine=multithreaded")==0)
-	{
-		cout << "openEMS - enabled multithreading" << endl;
-		m_engine = EngineType_Multithreaded;
-		return true;
-	}
-	else if (strncmp(argv,"--numThreads=",13)==0)
-	{
-		this->SetNumberOfThreads(atoi(argv+13));
-		cout << "openEMS - fixed number of threads: " << m_engine_numThreads << endl;
-		return true;
-	}
-	else if (strcmp(argv,"--engine=fastest")==0)
-	{
-		cout << "openEMS - enabled multithreading engine" << endl;
-		m_engine = EngineType_Multithreaded;
-		return true;
-	}
-	else if (strcmp(argv,"--no-simulation")==0)
-	{
-		cout << "openEMS - disabling simulation => preprocessing only" << endl;
-		m_no_simulation = true;
-		return true;
-	}
-	else if (strcmp(argv,"--dump-statistics")==0)
-	{
-		cout << "openEMS - dump simulation statistics to '" << __OPENEMS_RUN_STAT_FILE__ << "' and '" << __OPENEMS_STAT_FILE__ << "'" << endl;
-		m_DumpStats = true;
-		return true;
-	}
+	return optdesc;
+}
 
-	return false;
+void openEMS::showUsage()
+{
+	cout << " Usage: openEMS <FDTD_XML_FILE> [<options>...]" << endl;
+
+	cout << " ";
+	g_settings.showOptionUsage(cout);
+}
+
+// used by Python binding when running as a shared library
+void openEMS::SetLibraryArguments(std::vector<std::string> allOptions)
+{
+	g_settings.parseLibraryArguments(allOptions);
 }
 
 void openEMS::SetNumberOfThreads(int val)

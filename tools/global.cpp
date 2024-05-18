@@ -1,4 +1,5 @@
 /*
+*	Copyright (C) 2024 Yifeng Li <tomli@tomli.me>
 *	Copyright (C) 2010 Sebastian Held <sebastian.held@gmx.de>
 *
 *	This program is free software: you can redistribute it and/or modify
@@ -20,59 +21,151 @@
 #include "global.h"
 
 using namespace std;
+namespace po = boost::program_options;
 
 // create global object
 Global g_settings;
 
+//! \brief This function initializes the object
 Global::Global()
 {
 	m_showProbeDiscretization = false;
 	m_nativeFieldDumps = false;
 	m_VerboseLevel = 0;
+
 }
 
-void Global::ShowArguments(ostream& ostr, string front)
+po::options_description
+Global::optionDesc()
 {
-	ostr << front << "--showProbeDiscretization\tShow probe discretization information" << endl;
-	ostr << front << "--nativeFieldDumps\t\tDump all fields using the native field components" << endl;
-	ostr << front << "-v,-vv,-vvv\t\t\tSet debug level: 1 to 3" << endl;
+	po::options_description optdesc("Additional global arguments");
+	optdesc.add_options()
+		(
+			"showProbeDiscretization",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - showing probe discretization information" << endl;
+					m_showProbeDiscretization = true;
+				}
+			),
+			"Show probe discretization information"
+		)
+		(
+			"nativeFieldDumps",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dumping all fields using the native field components" << endl;
+					m_nativeFieldDumps = true;
+				}
+			),
+			"Dump all fields using the native field components"
+		)
+		(
+			"verbose,v",
+			po::value<unsigned int>()->implicit_value(1)->notifier(
+				[&](unsigned int val)
+				{
+					if (val == 0) return;
+					m_VerboseLevel = val;
+					cout << "openEMS - verbose level " << m_VerboseLevel << endl;
+
+				}
+			),
+            "Verbose level, select debug level 1 to 3, "
+		    "also accept -v, -vv, -vvv"
+		);
+	return optdesc;
 }
 
-//! \brief This function initializes the object
-bool Global::parseCommandLineArgument( const char *argv )
+void Global::appendOptionDesc(po::options_description desc)
 {
-	if (!argv)
+	m_optionDesc.add(desc);
+}
+
+void Global::parseLibraryArguments(std::vector<std::string> allOptions)
+{
+	clearOptions();
+
+	for (std::string& option : allOptions)
+	{
+		if (option.length() == 1)
+			option = "-" + option;
+		else
+			option = "--" + option;
+	}
+
+	// may throw
+	po::store(
+		po::command_line_parser(allOptions).options(m_optionDesc)
+			.style(
+				po::command_line_style::unix_style |
+				po::command_line_style::case_insensitive)
+			.run(),
+		m_options
+	);
+
+	// run all registered callback functions in m_optionDesc
+	po::notify(m_options);
+}
+
+void Global::parseCommandLineArguments(int argc, const char* argv[])
+{
+	// Hack: boost::program_options doesn't support repeated "-vv"
+	// and "-vvv" syntax and causes validation failure. It's
+	// not worthwhile to write a custom validator for exactly a
+	// single special case. Just change argv[] to avoid them.
+	std::pair<std::string, std::string> replaceTable[] =
+	{
+		{"-vv",  "--verbose=2"},
+		{"-vvv", "--verbose=3"},
+	};
+
+	for (int i = 0; i < argc; i++)
+	{
+		for (const auto& entry : replaceTable)
+		{
+			if (std::string(argv[i]) == entry.first)
+				argv[i] = entry.second.c_str();
+		}
+	}
+
+	// may throw
+	po::store(
+		po::command_line_parser(argc, argv).options(m_optionDesc)
+			.style(
+				po::command_line_style::unix_style |
+				po::command_line_style::case_insensitive)
+			.run(),
+		m_options
+	);
+
+	// run all registered callback functions in m_optionDesc
+	po::notify(m_options);
+}
+
+void Global::showOptionUsage(std::ostream& ostr)
+{
+	ostr << m_optionDesc << endl;
+}
+
+bool Global::hasOption(std::string option)
+{
+	if (m_options.count(option) > 0)
+		return true;
+	else
 		return false;
+}
 
-	if (strcmp(argv,"--showProbeDiscretization")==0)
-	{
-		cout << "openEMS - showing probe discretization information" << endl;
-		m_showProbeDiscretization = true;
-		return true;
-	}
-	else if (strcmp(argv,"--nativeFieldDumps")==0)
-	{
-		cout << "openEMS - dumping all fields using the native field components" << endl;
-		m_nativeFieldDumps = true;
-		return true;
-	}
-	else if (strcmp(argv,"-v")==0)
-	{
-		cout << "openEMS - verbose level 1" << endl;
-		m_VerboseLevel = 1;
-		return true;
-	}
-	else if (strcmp(argv,"-vv")==0)
-	{
-		cout << "openEMS - verbose level 2" << endl;
-		m_VerboseLevel = 2;
-		return true;
-	}
-	else if (strcmp(argv,"-vvv")==0)
-	{
-		cout << "openEMS - verbose level 3" << endl;
-		m_VerboseLevel = 3;
-		return true;
-	}
-	return false;
+po::variable_value Global::getOption(std::string option)
+{
+	return m_options[option];
+}
+
+void Global::clearOptions()
+{
+	m_options.clear();
 }
