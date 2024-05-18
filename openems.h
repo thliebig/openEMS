@@ -27,6 +27,7 @@
 #include <time.h>
 #include <vector>
 
+#include <boost/program_options.hpp>
 #include "openems_global.h"
 
 #define __OPENEMS_STAT_FILE__ "openEMS_stats.txt"
@@ -51,8 +52,8 @@ public:
 	openEMS();
 	virtual ~openEMS();
 
-	virtual bool parseCommandLineArgument( const char *argv );
-	static void showUsage();
+	boost::program_options::options_description optionDesc();
+	virtual void showUsage();
 
 	bool ParseFDTDSetup(std::string file);
 	virtual bool Parse_XML_FDTDSetup(TiXmlElement* openEMSxml);
@@ -75,6 +76,9 @@ public:
 	void SetTimeStep(double val) {m_TS=val;}
 	void SetTimeStepFactor(double val) {m_TS_fac=val;}
 	void SetMaxTime(double val) {m_maxTime=val;}
+
+	// used by Python binding when running as a shared library
+	void SetLibraryArguments(std::vector<std::string> allOptions);
 
 	void SetNumberOfThreads(int val);
 
@@ -116,6 +120,8 @@ public:
 	void SetVerboseLevel(int level);
 
 protected:
+	void collectCommandLineArguments();
+
 	bool CylinderCoords;
 	std::vector<double> m_CC_MultiGrid;
 
