@@ -54,8 +54,8 @@ void Engine_Ext_UPML::SetNumberOfThreads(int nrThread)
 		m_start.at(n) = m_start.at(n-1) + m_numX.at(n-1);
 }
 
-
-void Engine_Ext_UPML::DoPreVoltageUpdates(int threadID)
+template <typename EngineType>
+void Engine_Ext_UPML::DoPreVoltageUpdatesImpl(EngineType* eng, int threadID)
 {
 	if (m_Eng==NULL)
 		return;
@@ -66,215 +66,88 @@ void Engine_Ext_UPML::DoPreVoltageUpdates(int threadID)
 	unsigned int pos[3];
 	unsigned int loc_pos[3];
 	FDTD_FLOAT f_help;
-	switch (m_Eng->GetType())
+
+	for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
 	{
-	case Engine::BASIC:
+		loc_pos[0]=lineX+m_start.at(threadID);
+		pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
+		for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
 		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
+			pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
+			for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
 			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
+				pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
 
-						f_help = m_Op_UPML->vv[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->Engine::GetVolt(0,pos)
-						         - m_Op_UPML->vvfo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->Engine::SetVolt(0,pos, volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
+				f_help = m_Op_UPML->vv[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng->EngineType::GetVolt(0,pos)
+						 - m_Op_UPML->vvfo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				eng->EngineType::SetVolt(0,pos, volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+				volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
 
-						f_help = m_Op_UPML->vv[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->Engine::GetVolt(1,pos)
-						         - m_Op_UPML->vvfo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->Engine::SetVolt(1,pos, volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
+				f_help = m_Op_UPML->vv[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng->EngineType::GetVolt(1,pos)
+						 - m_Op_UPML->vvfo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				eng->EngineType::SetVolt(1,pos, volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+				volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
 
-						f_help = m_Op_UPML->vv[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->Engine::GetVolt(2,pos)
-						         - m_Op_UPML->vvfo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->Engine::SetVolt(2,pos, volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-					}
-				}
+				f_help = m_Op_UPML->vv[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng->EngineType::GetVolt(2,pos)
+						 - m_Op_UPML->vvfo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				eng->EngineType::SetVolt(2,pos, volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+				volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
 			}
-			break;
-		}
-	case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = m_Op_UPML->vv[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(0,pos)
-						         - m_Op_UPML->vvfo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						eng_sse->Engine_sse::SetVolt(0,pos, volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-
-						f_help = m_Op_UPML->vv[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(1,pos)
-						         - m_Op_UPML->vvfo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						eng_sse->Engine_sse::SetVolt(1,pos, volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-
-						f_help = m_Op_UPML->vv[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetVolt(2,pos)
-						         - m_Op_UPML->vvfo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						eng_sse->Engine_sse::SetVolt(2,pos, volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-					}
-				}
-			}
-			break;
-		}
-	default:
-		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = m_Op_UPML->vv[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->GetVolt(0,pos)
-						         - m_Op_UPML->vvfo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->SetVolt(0,pos, volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-
-						f_help = m_Op_UPML->vv[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->GetVolt(1,pos)
-						         - m_Op_UPML->vvfo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->SetVolt(1,pos, volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-
-						f_help = m_Op_UPML->vv[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->GetVolt(2,pos)
-						         - m_Op_UPML->vvfo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->SetVolt(2,pos, volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-					}
-				}
-			}
-			break;
 		}
 	}
+}
 
+void Engine_Ext_UPML::DoPreVoltageUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, threadID);
+}
+
+template <typename EngineType>
+void Engine_Ext_UPML::DoPostVoltageUpdatesImpl(EngineType* eng, int threadID)
+{
+	if (m_Eng==NULL)
+		return;
+	if (threadID>=m_NrThreads)
+		return;
+
+	unsigned int pos[3];
+	unsigned int loc_pos[3];
+	FDTD_FLOAT f_help;
+
+	for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
+	{
+		loc_pos[0]=lineX+m_start.at(threadID);
+		pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
+		for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
+		{
+			pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
+			for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
+			{
+				pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
+
+				f_help = volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng->EngineType::GetVolt(0,pos);
+				eng->EngineType::SetVolt(0,pos, f_help + m_Op_UPML->vvfn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+
+				f_help = volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng->EngineType::GetVolt(1,pos);
+				eng->EngineType::SetVolt(1,pos, f_help + m_Op_UPML->vvfn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+
+				f_help = volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng->EngineType::GetVolt(2,pos);
+				eng->EngineType::SetVolt(2,pos, f_help + m_Op_UPML->vvfn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+			}
+		}
+	}
 }
 
 void Engine_Ext_UPML::DoPostVoltageUpdates(int threadID)
 {
-	if (m_Eng==NULL)
-		return;
-	if (threadID>=m_NrThreads)
-		return;
-
-	unsigned int pos[3];
-	unsigned int loc_pos[3];
-	FDTD_FLOAT f_help;
-
-	switch (m_Eng->GetType())
-	{
-	case Engine::BASIC:
-		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->Engine::GetVolt(0,pos);
-						m_Eng->Engine::SetVolt(0,pos, f_help + m_Op_UPML->vvfn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->Engine::GetVolt(1,pos);
-						m_Eng->Engine::SetVolt(1,pos, f_help + m_Op_UPML->vvfn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->Engine::GetVolt(2,pos);
-						m_Eng->Engine::SetVolt(2,pos, f_help + m_Op_UPML->vvfn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-					}
-				}
-			}
-			break;
-		}
-	case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng_sse->Engine_sse::GetVolt(0,pos);
-						eng_sse->Engine_sse::SetVolt(0,pos, f_help + m_Op_UPML->vvfn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng_sse->Engine_sse::GetVolt(1,pos);
-						eng_sse->Engine_sse::SetVolt(1,pos, f_help + m_Op_UPML->vvfn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng_sse->Engine_sse::GetVolt(2,pos);
-						eng_sse->Engine_sse::SetVolt(2,pos, f_help + m_Op_UPML->vvfn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-					}
-				}
-			}
-			break;
-		}
-	default:
-		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->GetVolt(0,pos);
-						m_Eng->SetVolt(0,pos, f_help + m_Op_UPML->vvfn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->GetVolt(1,pos);
-						m_Eng->SetVolt(1,pos, f_help + m_Op_UPML->vvfn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->GetVolt(2,pos);
-						m_Eng->SetVolt(2,pos, f_help + m_Op_UPML->vvfn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * volt_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-					}
-				}
-			}
-			break;
-		}
-	}
-
+	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, threadID);
 }
 
-void Engine_Ext_UPML::DoPreCurrentUpdates(int threadID)
+template <typename EngineType>
+void Engine_Ext_UPML::DoPreCurrentUpdatesImpl(EngineType* eng, int threadID)
 {
 	if (m_Eng==NULL)
 		return;
@@ -285,209 +158,82 @@ void Engine_Ext_UPML::DoPreCurrentUpdates(int threadID)
 	unsigned int loc_pos[3];
 	FDTD_FLOAT f_help;
 
-	switch (m_Eng->GetType())
+	for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
 	{
-	case Engine::BASIC:
+		loc_pos[0]=lineX+m_start.at(threadID);
+		pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
+		for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
 		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
+			pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
+			for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
 			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
+				pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
 
-						f_help = m_Op_UPML->ii[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->Engine::GetCurr(0,pos)
-						         - m_Op_UPML->iifo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->Engine::SetCurr(0,pos, curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
+				f_help = m_Op_UPML->ii[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng->EngineType::GetCurr(0,pos)
+						 - m_Op_UPML->iifo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				eng->EngineType::SetCurr(0,pos, curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+				curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
 
-						f_help = m_Op_UPML->ii[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->Engine::GetCurr(1,pos)
-						         - m_Op_UPML->iifo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->Engine::SetCurr(1,pos, curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
+				f_help = m_Op_UPML->ii[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng->EngineType::GetCurr(1,pos)
+						 - m_Op_UPML->iifo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				eng->EngineType::SetCurr(1,pos, curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+				curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
 
-						f_help = m_Op_UPML->ii[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->Engine::GetCurr(2,pos)
-						         - m_Op_UPML->iifo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->Engine::SetCurr(2,pos, curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-					}
-				}
+				f_help = m_Op_UPML->ii[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng->EngineType::GetCurr(2,pos)
+						 - m_Op_UPML->iifo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				eng->EngineType::SetCurr(2,pos, curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
+				curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
+
 			}
-			break;
 		}
-	case Engine::SSE:
+	}
+}
+
+void Engine_Ext_UPML::DoPreCurrentUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(DoPreCurrentUpdatesImpl, threadID);
+}
+
+template <typename EngineType>
+void Engine_Ext_UPML::DoPostCurrentUpdatesImpl(EngineType* eng, int threadID)
+{
+	if (m_Eng==NULL)
+		return;
+	if (threadID>=m_NrThreads)
+		return;
+
+	unsigned int pos[3];
+	unsigned int loc_pos[3];
+	FDTD_FLOAT f_help;
+
+	for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
+	{
+		loc_pos[0]=lineX+m_start.at(threadID);
+		pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
+		for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
 		{
-			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
+			pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
+			for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
 			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
+				pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
 
-						f_help = m_Op_UPML->ii[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetCurr(0,pos)
-						         - m_Op_UPML->iifo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						eng_sse->Engine_sse::SetCurr(0,pos, curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
+				f_help = curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng->EngineType::GetCurr(0,pos);
+				eng->EngineType::SetCurr(0,pos, f_help + m_Op_UPML->iifn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
 
-						f_help = m_Op_UPML->ii[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetCurr(1,pos)
-						         - m_Op_UPML->iifo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						eng_sse->Engine_sse::SetCurr(1,pos, curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
+				f_help = curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng->EngineType::GetCurr(1,pos);
+				eng->EngineType::SetCurr(1,pos, f_help + m_Op_UPML->iifn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
 
-						f_help = m_Op_UPML->ii[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * eng_sse->Engine_sse::GetCurr(2,pos)
-						         - m_Op_UPML->iifo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						eng_sse->Engine_sse::SetCurr(2,pos, curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-
-					}
-				}
+				f_help = curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
+				curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng->EngineType::GetCurr(2,pos);
+				eng->EngineType::SetCurr(2,pos, f_help + m_Op_UPML->iifn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
 			}
-			break;
-		}
-	default:
-		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = m_Op_UPML->ii[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->GetCurr(0,pos)
-						         - m_Op_UPML->iifo[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->SetCurr(0,pos, curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-
-						f_help = m_Op_UPML->ii[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->GetCurr(1,pos)
-						         - m_Op_UPML->iifo[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->SetCurr(1,pos, curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-
-						f_help = m_Op_UPML->ii[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]   * m_Eng->GetCurr(2,pos)
-						         - m_Op_UPML->iifo[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						m_Eng->SetCurr(2,pos, curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-						curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = f_help;
-					}
-				}
-			}
-			break;
 		}
 	}
 }
 
 void Engine_Ext_UPML::DoPostCurrentUpdates(int threadID)
 {
-	if (m_Eng==NULL)
-		return;
-	if (threadID>=m_NrThreads)
-		return;
-
-	unsigned int pos[3];
-	unsigned int loc_pos[3];
-	FDTD_FLOAT f_help;
-
-	switch (m_Eng->GetType())
-	{
-	case Engine::BASIC:
-		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->Engine::GetCurr(0,pos);
-						m_Eng->Engine::SetCurr(0,pos, f_help + m_Op_UPML->iifn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->Engine::GetCurr(1,pos);
-						m_Eng->Engine::SetCurr(1,pos, f_help + m_Op_UPML->iifn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->Engine::GetCurr(2,pos);
-						m_Eng->Engine::SetCurr(2,pos, f_help + m_Op_UPML->iifn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-					}
-				}
-			}
-			break;
-		}
-	case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng_sse->Engine_sse::GetCurr(0,pos);
-						eng_sse->Engine_sse::SetCurr(0,pos, f_help + m_Op_UPML->iifn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng_sse->Engine_sse::GetCurr(1,pos);
-						eng_sse->Engine_sse::SetCurr(1,pos, f_help + m_Op_UPML->iifn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = eng_sse->Engine_sse::GetCurr(2,pos);
-						eng_sse->Engine_sse::SetCurr(2,pos, f_help + m_Op_UPML->iifn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-					}
-				}
-			}
-			break;
-		}
-	default:
-		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				loc_pos[0]=lineX+m_start.at(threadID);
-				pos[0] = loc_pos[0] + m_Op_UPML->m_StartPos[0];
-				for (loc_pos[1]=0; loc_pos[1]<m_Op_UPML->m_numLines[1]; ++loc_pos[1])
-				{
-					pos[1] = loc_pos[1] + m_Op_UPML->m_StartPos[1];
-					for (loc_pos[2]=0; loc_pos[2]<m_Op_UPML->m_numLines[2]; ++loc_pos[2])
-					{
-						pos[2] = loc_pos[2] + m_Op_UPML->m_StartPos[2];
-
-						f_help = curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->GetCurr(0,pos);
-						m_Eng->SetCurr(0,pos, f_help + m_Op_UPML->iifn[0][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[0][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->GetCurr(1,pos);
-						m_Eng->SetCurr(1,pos, f_help + m_Op_UPML->iifn[1][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[1][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-
-						f_help = curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]];
-						curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] = m_Eng->GetCurr(2,pos);
-						m_Eng->SetCurr(2,pos, f_help + m_Op_UPML->iifn[2][loc_pos[0]][loc_pos[1]][loc_pos[2]] * curr_flux[2][loc_pos[0]][loc_pos[1]][loc_pos[2]]);
-					}
-				}
-			}
-			break;
-		}
-	}
+	ENG_DISPATCH_ARGS(DoPostCurrentUpdatesImpl, threadID);
 }

@@ -30,7 +30,8 @@ Engine_Ext_Excitation::~Engine_Ext_Excitation()
 
 }
 
-void Engine_Ext_Excitation::Apply2Voltages()
+template <typename EngineType>
+void Engine_Ext_Excitation::Apply2VoltagesImpl(EngineType* eng)
 {
 	//soft voltage excitation here (E-field excite)
 	int exc_pos;
@@ -44,65 +45,29 @@ void Engine_Ext_Excitation::Apply2Voltages()
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	//switch for different engine types to access faster inline engine functions
-	switch (m_Eng->GetType())
+	for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
 	{
-	case Engine::BASIC:
-		{
-			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
-			{
-				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0);
-				exc_pos %= p;
-				exc_pos *= (exc_pos<(int)length);
-				ny = m_Op_Exc->Volt_dir[n];
-				pos[0]=m_Op_Exc->Volt_index[0][n];
-				pos[1]=m_Op_Exc->Volt_index[1][n];
-				pos[2]=m_Op_Exc->Volt_index[2][n];
-				m_Eng->Engine::SetVolt(ny,pos, m_Eng->Engine::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
-			}
-			break;
-		}
-	case Engine::SSE:
-		{
-			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
-			{
-				Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0);
-				exc_pos %= p;
-				exc_pos *= (exc_pos<(int)length);
-				ny = m_Op_Exc->Volt_dir[n];
-				pos[0]=m_Op_Exc->Volt_index[0][n];
-				pos[1]=m_Op_Exc->Volt_index[1][n];
-				pos[2]=m_Op_Exc->Volt_index[2][n];
-				eng_sse->Engine_sse::SetVolt(ny,pos, eng_sse->Engine_sse::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
-			}
-			break;
-		}
-	default:
-		{
-			for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
-			{
-				exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
-				exc_pos *= (exc_pos>0);
-				exc_pos %= p;
-				exc_pos *= (exc_pos<(int)length);
-				ny = m_Op_Exc->Volt_dir[n];
-				pos[0]=m_Op_Exc->Volt_index[0][n];
-				pos[1]=m_Op_Exc->Volt_index[1][n];
-				pos[2]=m_Op_Exc->Volt_index[2][n];
-				m_Eng->SetVolt(ny,pos, m_Eng->GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
-			}
-			break;
-		}
+		exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
+		exc_pos *= (exc_pos>0);
+		exc_pos %= p;
+		exc_pos *= (exc_pos<(int)length);
+		ny = m_Op_Exc->Volt_dir[n];
+		pos[0]=m_Op_Exc->Volt_index[0][n];
+		pos[1]=m_Op_Exc->Volt_index[1][n];
+		pos[2]=m_Op_Exc->Volt_index[2][n];
+		eng->EngineType::SetVolt(ny,pos, eng->EngineType::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
 	}
 }
 
-void Engine_Ext_Excitation::Apply2Current()
+void Engine_Ext_Excitation::Apply2Voltages()
+{
+	ENG_DISPATCH(Apply2VoltagesImpl);
+}
+
+template <typename EngineType>
+void Engine_Ext_Excitation::Apply2CurrentImpl(EngineType* eng)
 {
 	//soft current excitation here (H-field excite)
-
 	int exc_pos;
 	unsigned int ny;
 	unsigned int pos[3];
@@ -114,57 +79,21 @@ void Engine_Ext_Excitation::Apply2Current()
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	//switch for different engine types to access faster inline engine functions
-	switch (m_Eng->GetType())
+	for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
 	{
-	case Engine::BASIC:
-		{
-			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
-			{
-				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0);
-				exc_pos %= p;
-				exc_pos *= (exc_pos<(int)length);
-				ny = m_Op_Exc->Curr_dir[n];
-				pos[0]=m_Op_Exc->Curr_index[0][n];
-				pos[1]=m_Op_Exc->Curr_index[1][n];
-				pos[2]=m_Op_Exc->Curr_index[2][n];
-				m_Eng->Engine::SetCurr(ny,pos, m_Eng->Engine::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
-			}
-			break;
-		}
-	case Engine::SSE:
-		{
-			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
-			{
-				Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0);
-				exc_pos %= p;
-				exc_pos *= (exc_pos<(int)length);
-				ny = m_Op_Exc->Curr_dir[n];
-				pos[0]=m_Op_Exc->Curr_index[0][n];
-				pos[1]=m_Op_Exc->Curr_index[1][n];
-				pos[2]=m_Op_Exc->Curr_index[2][n];
-				eng_sse->Engine_sse::SetCurr(ny,pos, eng_sse->Engine_sse::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
-			}
-			break;
-		}
-	default:
-		{
-			for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
-			{
-				exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
-				exc_pos *= (exc_pos>0);
-				exc_pos %= p;
-				exc_pos *= (exc_pos<(int)length);
-				ny = m_Op_Exc->Curr_dir[n];
-				pos[0]=m_Op_Exc->Curr_index[0][n];
-				pos[1]=m_Op_Exc->Curr_index[1][n];
-				pos[2]=m_Op_Exc->Curr_index[2][n];
-				m_Eng->SetCurr(ny,pos, m_Eng->GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
-			}
-			break;
-		}
+		exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
+		exc_pos *= (exc_pos>0);
+		exc_pos %= p;
+		exc_pos *= (exc_pos<(int)length);
+		ny = m_Op_Exc->Curr_dir[n];
+		pos[0]=m_Op_Exc->Curr_index[0][n];
+		pos[1]=m_Op_Exc->Curr_index[1][n];
+		pos[2]=m_Op_Exc->Curr_index[2][n];
+		eng->EngineType::SetCurr(ny,pos, eng->EngineType::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
 	}
+}
+
+void Engine_Ext_Excitation::Apply2Current()
+{
+	ENG_DISPATCH(Apply2CurrentImpl);
 }

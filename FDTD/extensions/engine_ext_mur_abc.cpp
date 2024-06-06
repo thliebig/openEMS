@@ -82,7 +82,8 @@ void Engine_Ext_Mur_ABC::SetNumberOfThreads(int nrThread)
 }
 
 
-void Engine_Ext_Mur_ABC::DoPreVoltageUpdates(int threadID)
+template <typename EngineType>
+void Engine_Ext_Mur_ABC::DoPreVoltageUpdatesImpl(EngineType* eng, int threadID)
 {
 	if (IsActive()==false) return;
 	if (m_Eng==NULL) return;
@@ -93,120 +94,56 @@ void Engine_Ext_Mur_ABC::DoPreVoltageUpdates(int threadID)
 	pos[m_ny] = m_LineNr;
 	pos_shift[m_ny] = m_LineNr_Shift;
 
-	//switch for different engine types to access faster inline engine functions
-	switch (m_Eng->GetType())
+	for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
 	{
-	case Engine::BASIC:
+		pos[m_nyP]=lineX+m_start.at(threadID);
+		pos_shift[m_nyP] = pos[m_nyP];
+		for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
 		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				pos[m_nyP]=lineX+m_start.at(threadID);
-				pos_shift[m_nyP] = pos[m_nyP];
-				for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-				{
-					pos_shift[m_nyPP] = pos[m_nyPP];
-					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->Engine::GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyP,pos);
-					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->Engine::GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyPP,pos);
-				}
-			}
-			break;
+			pos_shift[m_nyPP] = pos[m_nyPP];
+			m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = eng->EngineType::GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * eng->EngineType::GetVolt(m_nyP,pos);
+			m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = eng->EngineType::GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * eng->EngineType::GetVolt(m_nyPP,pos);
 		}
-	case Engine::SSE:
+	}
+}
+
+void Engine_Ext_Mur_ABC::DoPreVoltageUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, threadID);
+}
+
+template <typename EngineType>
+void Engine_Ext_Mur_ABC::DoPostVoltageUpdatesImpl(EngineType* eng, int threadID)
+{
+	if (IsActive()==false) return;
+	if (m_Eng==NULL) return;
+	if (threadID>=m_NrThreads)
+		return;
+	unsigned int pos[] = {0,0,0};
+	unsigned int pos_shift[] = {0,0,0};
+	pos[m_ny] = m_LineNr;
+	pos_shift[m_ny] = m_LineNr_Shift;
+
+	for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
+	{
+		pos[m_nyP]=lineX+m_start.at(threadID);
+		pos_shift[m_nyP] = pos[m_nyP];
+		for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
 		{
-			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				pos[m_nyP]=lineX+m_start.at(threadID);
-				pos_shift[m_nyP] = pos[m_nyP];
-				for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-				{
-					pos_shift[m_nyPP] = pos[m_nyPP];
-					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = eng_sse->Engine_sse::GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyP,pos);
-					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = eng_sse->Engine_sse::GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyPP,pos);
-				}
-			}
-			break;
+			pos_shift[m_nyPP] = pos[m_nyPP];
+			m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * eng->EngineType::GetVolt(m_nyP,pos_shift);
+			m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * eng->EngineType::GetVolt(m_nyPP,pos_shift);
 		}
-	default:
-		for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-		{
-			pos[m_nyP]=lineX+m_start.at(threadID);
-			pos_shift[m_nyP] = pos[m_nyP];
-			for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-			{
-				pos_shift[m_nyPP] = pos[m_nyPP];
-				m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->GetVolt(m_nyP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyP,pos);
-				m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] = m_Eng->GetVolt(m_nyPP,pos_shift) - m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyPP,pos);
-			}
-		}
-		break;
 	}
 }
 
 void Engine_Ext_Mur_ABC::DoPostVoltageUpdates(int threadID)
 {
-	if (IsActive()==false) return;
-	if (m_Eng==NULL) return;
-	if (threadID>=m_NrThreads)
-		return;
-	unsigned int pos[] = {0,0,0};
-	unsigned int pos_shift[] = {0,0,0};
-	pos[m_ny] = m_LineNr;
-	pos_shift[m_ny] = m_LineNr_Shift;
-
-	//switch for different engine types to access faster inline engine functions
-	switch (m_Eng->GetType())
-	{
-	case Engine::BASIC:
-		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				pos[m_nyP]=lineX+m_start.at(threadID);
-				pos_shift[m_nyP] = pos[m_nyP];
-				for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-				{
-					pos_shift[m_nyPP] = pos[m_nyPP];
-					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyP,pos_shift);
-					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->Engine::GetVolt(m_nyPP,pos_shift);
-				}
-			}
-			break;
-		}
-
-	case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				pos[m_nyP]=lineX+m_start.at(threadID);
-				pos_shift[m_nyP] = pos[m_nyP];
-				for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-				{
-					pos_shift[m_nyPP] = pos[m_nyPP];
-					m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyP,pos_shift);
-					m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * eng_sse->Engine_sse::GetVolt(m_nyPP,pos_shift);
-				}
-			}
-			break;
-		}
-
-	default:
-		for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-		{
-			pos[m_nyP]=lineX+m_start.at(threadID);
-			pos_shift[m_nyP] = pos[m_nyP];
-			for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-			{
-				pos_shift[m_nyPP] = pos[m_nyPP];
-				m_volt_nyP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyP,pos_shift);
-				m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]] += m_Op_mur->m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] * m_Eng->GetVolt(m_nyPP,pos_shift);
-			}
-		}
-		break;
-	}
+	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, threadID);
 }
 
-void Engine_Ext_Mur_ABC::Apply2Voltages(int threadID)
+template <typename EngineType>
+void Engine_Ext_Mur_ABC::Apply2VoltagesImpl(EngineType* eng, int threadID)
 {
 	if (IsActive()==false) return;
 	if (threadID>=m_NrThreads)
@@ -215,49 +152,19 @@ void Engine_Ext_Mur_ABC::Apply2Voltages(int threadID)
 	unsigned int pos[] = {0,0,0};
 	pos[m_ny] = m_LineNr;
 
-	//switch for different engine types to access faster inline engine functions
-	switch (m_Eng->GetType())
+	Engine_sse* eng_sse = (Engine_sse*) m_Eng;
+	for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
 	{
-	case Engine::BASIC:
+		pos[m_nyP]=lineX+m_start.at(threadID);
+		for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
 		{
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				pos[m_nyP]=lineX+m_start.at(threadID);
-				for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-				{
-					m_Eng->Engine::SetVolt(m_nyP,pos, m_volt_nyP[pos[m_nyP]][pos[m_nyPP]]);
-					m_Eng->Engine::SetVolt(m_nyPP,pos, m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]]);
-				}
-			}
-			break;
+			eng->EngineType::SetVolt(m_nyP,pos, m_volt_nyP[pos[m_nyP]][pos[m_nyPP]]);
+			eng->EngineType::SetVolt(m_nyPP,pos, m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]]);
 		}
-
-	case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*) m_Eng;
-			for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-			{
-				pos[m_nyP]=lineX+m_start.at(threadID);
-				for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-				{
-					eng_sse->Engine_sse::SetVolt(m_nyP,pos, m_volt_nyP[pos[m_nyP]][pos[m_nyPP]]);
-					eng_sse->Engine_sse::SetVolt(m_nyPP,pos, m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]]);
-				}
-			}
-			break;
-		}
-
-	default:
-		for (unsigned int lineX=0; lineX<m_numX.at(threadID); ++lineX)
-		{
-			pos[m_nyP]=lineX+m_start.at(threadID);
-			for (pos[m_nyPP]=0; pos[m_nyPP]<m_numLines[1]; ++pos[m_nyPP])
-			{
-				m_Eng->SetVolt(m_nyP,pos, m_volt_nyP[pos[m_nyP]][pos[m_nyPP]]);
-				m_Eng->SetVolt(m_nyPP,pos, m_volt_nyPP[pos[m_nyP]][pos[m_nyPP]]);
-			}
-		}
-		break;
 	}
+}
 
+void Engine_Ext_Mur_ABC::Apply2Voltages(int threadID)
+{
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, threadID);
 }
