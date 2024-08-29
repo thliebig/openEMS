@@ -73,10 +73,10 @@ protected:
 
 	// Additional containers
 	int				*v_RLC_dir;
-	uint			**v_RLC_pos;
+	unsigned int			**v_RLC_pos;
 
 	// Vector length indicator
-	uint			RLC_count;
+	unsigned int			RLC_count;
 
 
 
