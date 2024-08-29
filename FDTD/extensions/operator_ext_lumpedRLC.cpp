@@ -94,7 +94,7 @@ Operator_Ext_LumpedRLC::~Operator_Ext_LumpedRLC()
 		// Additional containers
 		delete[] v_RLC_dir;
 
-		for (uint dIdx = 0 ; dIdx < 3 ; dIdx++)
+		for (unsigned int dIdx = 0 ; dIdx < 3 ; dIdx++)
 			delete[] v_RLC_pos[dIdx];
 
 		delete[] v_RLC_pos;
@@ -117,14 +117,14 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 					+
 					m_Op->GetExcitationSignal()->GetCutOffFreq();
 
-	uint 	pos[] = {0,0,0};
+	unsigned int 	pos[] = {0,0,0};
 
 	vector<CSProperties*> cs_props;
 
 	int 			dir;
 	CSPropLumpedElement::LEtype lumpedType;
 
-	vector<uint> 	v_pos[3];
+	vector<unsigned int> 	v_pos[3];
 
 	vector<int>		v_dir;
 
@@ -143,7 +143,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 	double R, L, C;
 
 	// clear all vectors to initialize them
-	for (uint dIdx = 0 ; dIdx < 3 ; dIdx++)
+	for (unsigned int dIdx = 0 ; dIdx < 3 ; dIdx++)
 		v_pos[dIdx].clear();
 
 	v_dir.clear();
@@ -385,7 +385,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 							}
 
 							// Store position and direction
-							for (uint dIdx = 0 ; dIdx < 3 ; ++dIdx)
+							for (unsigned int dIdx = 0 ; dIdx < 3 ; ++dIdx)
 								v_pos[dIdx].push_back(pos[dIdx]);
 
 						}
@@ -460,9 +460,9 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		v_RLC_b1 = new FDTD_FLOAT[RLC_count];
 		v_RLC_b2 = new FDTD_FLOAT[RLC_count];
 
-		v_RLC_pos = new uint*[3];
-		for (uint dIdx = 0 ; dIdx < 3 ; ++dIdx)
-			v_RLC_pos[dIdx] = new uint[RLC_count];
+		v_RLC_pos = new unsigned int*[3];
+		for (unsigned int dIdx = 0 ; dIdx < 3 ; ++dIdx)
+			v_RLC_pos[dIdx] = new unsigned int[RLC_count];
 
 		// Copy all vectors to arrays
 		COPY_V2A(v_dir, v_RLC_dir);
@@ -478,7 +478,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		COPY_V2A(v_b1,v_RLC_b1);
 		COPY_V2A(v_b2,v_RLC_b2);
 
-		for (uint dIdx = 0 ; dIdx < 3 ; ++dIdx)
+		for (unsigned int dIdx = 0 ; dIdx < 3 ; ++dIdx)
 			COPY_V2A(v_pos[dIdx],v_RLC_pos[dIdx]);
 	}
 
