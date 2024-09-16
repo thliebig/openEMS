@@ -23,7 +23,7 @@ ENDIF()
 
 #ADD_DEFINITIONS( -D__SSE2__ )
 
-set(VERSION "v0.0.36")
+set(VERSION "v${LIB_VERSION_STRING}")
 
 # add git revision
 IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
