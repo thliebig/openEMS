@@ -127,6 +127,7 @@ find_package(Boost 1.46 COMPONENTS
   date_time
   serialization
   chrono
+  program_options
   REQUIRED
 )
 message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")

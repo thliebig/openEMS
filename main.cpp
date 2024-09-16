@@ -36,7 +36,7 @@
 
 using namespace std;
 
-int main(int argc, char *argv[])
+int main(int argc, const char* argv[])
 {
 #ifdef MPI_SUPPORT
 	//init MPI
@@ -54,18 +54,11 @@ int main(int argc, char *argv[])
 
 	if (argc<=1)
 	{
-		openEMS::showUsage();
+		FDTD.showUsage();
 		exit(-1);
 	}
 
-	if (argc>=3)
-	{
-		for (int n=2; n<argc; ++n)
-		{
-			if ( (!FDTD.parseCommandLineArgument(argv[n])) && (!g_settings.parseCommandLineArgument(argv[n])))
-				cout << "openEMS - unknown argument: " << argv[n] << endl;
-		}
-	}
+	g_settings.parseCommandLineArguments(argc, argv);
 
 	int EC = FDTD.ParseFDTDSetup(argv[1]);
 	if(!EC) {
