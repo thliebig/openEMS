@@ -1,59 +1,54 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Dec 13 23:48:22 2015
-
-@author: thorsten
-"""
-
-from setuptools import setup
-from setuptools import Extension
+from setuptools import Extension, setup
 from Cython.Build import cythonize
+from pathlib import Path
+import sys
 
-import os, sys
-ROOT_DIR = os.path.dirname(__file__)
+# Hardcoded paths that would be better to remove but I don't know how to:
+PATH_TO_OPEN_EMS_INSTALLATION = Path(__file__).parent.parent.parent.parent
+PATH_TO_CSXCAD_PYTHON_PACKAGE = Path(__file__).parent.parent.parent/'CSXCAD/python'
 
-sys.path.append(os.path.join(ROOT_DIR,'..','..','CSXCAD','python'))
+# Define some functions to check that the packages are installed where we expect them to be installed, and raise meaningful errors otherwise:
+def check_that_folder_looks_like_openEMS_installation(path_to_some_folder:Path):
+    path_to_some_folder = Path(path_to_some_folder)
+    FILES_THAT_SHOULD_EXIST = [
+        path_to_some_folder/'bin/openEMS',
+        path_to_some_folder/'include/openEMS/openems.h',
+    ]
+    if any([not p.is_file() for p in FILES_THAT_SHOULD_EXIST]):
+        raise RuntimeError(f'I was expecting to find the installation of openEMS in {path_to_some_folder}, but it does not look like it is installed there. Please provide the path to where you have it installed and write it in `PATH_TO_OPEN_EMS_INSTALLATION` in the file {Path(__file__).resolve()}. Should you have it installed there, please create an issue in https://github.com/thliebig/openEMS reporting this. ')
+
+def check_that_folder_looks_like_CSXCAD_python_package(path_to_some_folder:Path):
+    path_to_some_folder = Path(path_to_some_folder)
+    FILES_THAT_SHOULD_EXIST = [
+        path_to_some_folder/'pyproject.toml',
+        path_to_some_folder/'CSXCAD/__init__.py',
+        path_to_some_folder/'CSXCAD/CSXCAD.pyx',
+    ]
+    if any([not p.is_file() for p in FILES_THAT_SHOULD_EXIST]):
+        raise RuntimeError(f'I was expecting to find the python package CSXCAD in {path_to_some_folder}, but it does not look like it is there. Please provide the path to where you have it installed and write it in `PATH_TO_CSXCAD_PYTHON_PACKAGE` in the file {Path(__file__).resolve()}. Should you have it installed there, please create an issue in https://github.com/thliebig/CSXCAD reporting this. ')
+
+# Check that the packages are installed there:
+check_that_folder_looks_like_openEMS_installation(PATH_TO_OPEN_EMS_INSTALLATION)
+check_that_folder_looks_like_CSXCAD_python_package(PATH_TO_CSXCAD_PYTHON_PACKAGE)
+
+# Perform the actual installation:
+
+sys.path.append(str(PATH_TO_CSXCAD_PYTHON_PACKAGE))
 
 extensions = [
-    Extension("*", [os.path.join(os.path.dirname(__file__), "openEMS","*.pyx")],
-        language="c++",             # generate C++ code
-        libraries    = ['CSXCAD','openEMS', 'nf2ff']),
+    Extension(
+        '*', 
+        ['openEMS/*.pyx',],
+        include_dirs = [str(Path(PATH_TO_OPEN_EMS_INSTALLATION)/'include')],
+        library_dirs = [str(Path(PATH_TO_OPEN_EMS_INSTALLATION)/'lib')],
+        runtime_library_dirs = [str(Path(PATH_TO_OPEN_EMS_INSTALLATION)/'lib')],
+        language = 'c++',
+        libraries = ['openEMS','nf2ff'],
+    )
 ]
 
 setup(
-  name="openEMS",
-  version = '0.0.36',
-  description = "Python interface for the openEMS FDTD library",
-  classifiers = [
-      'Development Status :: 3 - Alpha',
-      'Intended Audience :: Developers',
-      'Intended Audience :: Information Technology',
-      'Intended Audience :: Science/Research',
-      'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
-      'Programming Language :: Python',
-      'Programming Language :: Python :: 3',
-      'Programming Language :: Python :: 3.9',
-      'Programming Language :: Python :: 3.10',
-      'Programming Language :: Python :: 3.11',
-      'Programming Language :: Python :: 3.12',
-      'Programming Language :: Python :: Implementation :: CPython',
-      'Topic :: Scientific/Engineering',
-      'Topic :: Software Development :: Libraries :: Python Modules',
-      'Operating System :: POSIX :: Linux',
-      'Operating System :: Microsoft :: Windows',
-  ],
-  author = 'Thorsten Liebig',
-  author_email = 'Thorsten.Liebig@gmx.de',
-  maintainer = 'Thorsten Liebig',
-  maintainer_email = 'Thorsten.Liebig@gmx.de',
-  url = 'https://openEMS.de',
-  packages=["openEMS", ],
-  package_data={'openEMS': ['*.pxd']},
-  python_requires='>=3.9',
-  install_requires=[
-    'cython>=3.0.6',  # Apache License 2.0 (https://github.com/cython/cython/blob/master/LICENSE.txt)
-    'h5py>=3.10.0',   # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
-    'numpy>=1.26.2',  # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
-  ],
-  ext_modules = cythonize(extensions, language_level = 3)
- )
+    packages = ['openEMS'],
+    ext_modules = cythonize(extensions),
+)
+
