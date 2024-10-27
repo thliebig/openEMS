@@ -50,8 +50,8 @@ cdef class openEMS:
     >>>
     >>> FDTD.Run(sim_path='/tmp/test')
 
-    :param NrTS:           max. number of timesteps to simulate (e.g. default=1e9)
-    :param EndCriteria:    end criteria, e.g. 1e-5, simulations stops if energy has decayed by this value (<1e-4 is recommended, default=1e-5)
+    :param number_of_time_steps: Maximum number of timesteps to simulate.
+    :param energy_end_criterion: End the simulation if the energy has decayed by this value. For example, `energy_end_criterion=1e-5` will make the simulation stop if energy has decayed by a factor of `1e5`. `energy_end_criterion`<1e-4 is recommended.
     :param MaxTime:        max. real time in seconds to simulate
     :param OverSampling:   nyquist oversampling of time domain dumps
     :param CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
@@ -68,18 +68,23 @@ cdef class openEMS:
         """
         _openEMS.WelcomeScreen()
 
-    def __cinit__(self, *args, **kw):
+    def __cinit__(self, number_of_time_steps:int|float=1e9, energy_end_criterion:float=1e-5, **kw):
         self.thisptr = new _openEMS()
         self.__CSX = None
 
-        if 'NrTS' in kw:
+        if 'NrTS' in kw: # This is kept for backwards compatibility, but using `number_of_time_steps` should be preferred.
             self.SetNumberOfTimeSteps(kw['NrTS'])
             del kw['NrTS']
-        else:
-            self.SetNumberOfTimeSteps(1e9)
-        if 'EndCriteria' in kw:
+        else: # Use `number_of_time_steps`:
+            self.SetNumberOfTimeSteps(number_of_time_steps)
+
+
+        if 'EndCriteria' in kw: # This is kept for backwards compatibility, but using `energy_end_criterion` should be preferred.
             self.SetEndCriteria(kw['EndCriteria'])
             del kw['EndCriteria']
+        else: # Use `energy_end_criterion`:
+            self.SetEndCriteria(energy_end_criterion)
+
         if 'MaxTime' in kw:
             self.SetMaxTime(kw['MaxTime'])
             del kw['MaxTime']
@@ -112,19 +117,19 @@ cdef class openEMS:
         if self.__CSX is not None:
             self.__CSX.thisptr = NULL
 
-    def SetNumberOfTimeSteps(self, val):
-        """ SetNumberOfTimeSteps(val)
+    def SetNumberOfTimeSteps(self, time_steps:int|float):
+        """Set the number of timesteps."""
+        if not isinstance(time_steps, (int,float)):
+            raise TypeError(f'`time_steps` must be an instance of `int` or `float`, received object of type {type(time_steps)}. ')
+        if time_steps <= 0:
+            raise ValueError(f'`time_steps` must be > 0, received {time_steps}. ')
+        self.thisptr.SetNumberOfTimeSteps(int(time_steps))
 
-        Set the number of timesteps. E.g. 5e4 (default is 1e9)
-        """
-        self.thisptr.SetNumberOfTimeSteps(val)
-
-    def SetEndCriteria(self, val):
-        """ SetEndCriteria(val)
-
-        Set the end criteria value. E.g. 1e-6 for -60dB
-        """
-        self.thisptr.SetEndCriteria(val)
+    def SetEndCriteria(self, energy_decay_factor:float):
+        """Set the end criterion value. For example, `energy_decay_factor=1e-5` will make the simulation stop if energy has decayed by a factor of `1e5`. `1e-6` for -60dB."""
+        if not isinstance(energy_decay_factor, float):
+            raise TypeError(f'`energy_decay_factor` must be an instance of `float`, received object of type {type(energy_decay_factor)}. ')
+        self.thisptr.SetEndCriteria(float(energy_decay_factor))
 
     def SetOverSampling(self, val):
         """ SetOverSampling(val)
