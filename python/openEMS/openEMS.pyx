@@ -276,22 +276,26 @@ cdef class openEMS:
         """
         self.thisptr.SetCustomExcite(_str, f0, fmax)
 
-    def SetBoundaryCond(self, BC):
-        """ SetBoundaryCond(BC)
+    def SetBoundaryCond(self, x_min:str|int, x_max:str|int, y_min:str|int, y_max:str|int, z_min:str|int, z_max:str|int):
+        """Set the boundary conditions for all six FDTD directions.
 
-        Set the boundary conditions for all six FDTD directions.
+        Options for all the arguments `x_min`, `x_max`, ... are:
+        * 'PEC': Perfect electric conductor.
+        * 'PMC': Perfect magnetic conductor, useful for symmetries.
+        * 'MUR': Simple MUR absorbing boundary conditions.
+        * 'PML_n: PML absorbing boundary conditions, with PML size `n` between 4 and 50.
 
-        Options:
-
-        * 0 or 'PEC' : perfect electric conductor (default)
-        * 1 or 'PMC' : perfect magnetic conductor, useful for symmetries
-        * 2 or 'MUR' : simple MUR absorbing boundary conditions
-        * 3 or 'PML_8' : PML absorbing boundary conditions
-
-        :param BC: (8,) array or list -- see options above
+        Note: Each argument `x_min`, `x_max`, ... can take integer values 0, 1, 2 or 3. This is kept for backwards compatibility but its usage is discouraged.
         """
-        if not len(BC)==6:
-            raise Exception('Invalid boundary condition size!')
+        POSSIBLE_VALUES_FOR_BOUNDARY_CONDITIONS = {'PEC','PMC','MUR'} | {f'PML_{x}' for x in range(4,51)}
+        POSSIBLE_VALUES_FOR_BOUNDARY_CONDITIONS |= {0,1,2,3} # This is for backwards compatibility, but passing numbers should be avoided.
+
+        boundary_conditions = dict(x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, z_min=z_min, z_max=z_max)
+        for name,val in boundary_conditions.items():
+            if val not in POSSIBLE_VALUES_FOR_BOUNDARY_CONDITIONS:
+                raise ValueError(f'`{name}` is not one of the allowed boundary conditions, which are "PEC", "PMC", "MUR" or "PML_n" with "n" between 4 and 50. Received {repr(val)}. ')
+
+        BC = [boundary_conditions[name] for name in ['x_min','x_max','y_min','y_max','z_min','z_max']]
         for n in range(len(BC)):
             if type(BC[n])==int:
                 self.thisptr.Set_BC_Type(n, BC[n])
