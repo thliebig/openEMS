@@ -255,13 +255,13 @@ cdef class openEMS:
         """
         self.thisptr.SetDiracExcite(f_max)
 
-    def SetStepExcite(self, f_max):
-        """ SetStepExcite(f_max)
+    def SetStepExcite(self, f_max:float):
+        """Set a step function as excitation signal.
 
-        Set a step function as excitation signal.
-
-        :param f_max: float -- maximum simulated frequency in Hz.
+        :param f_max: Maximum simulated frequency in Hz.
         """
+        if not isinstance(f_max, (int,float)) or f_max<0:
+            raise ValueError(f'`f_max` must be a number >0, received {f_max}. ')
         self.thisptr.SetStepExcite(f_max)
 
     def SetCustomExcite(self, _str, f0, fmax):
