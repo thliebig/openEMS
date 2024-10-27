@@ -309,19 +309,16 @@ cdef class openEMS:
                 continue
             raise Exception('Unknown boundary condition')
 
-    def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, **kw):
-        """ AddLumpedPort(port_nr, R, start, stop, p_dir, excite=0, **kw)
-
-        Add a lumped port with the given values and location.
+    def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, edges2grid=None, **kw)->ports.LumpedPort:
+        """Add a lumped port with the given values and location.
 
         See Also
         --------
         openEMS.ports.LumpedPort
         """
         if self.__CSX is None:
-            raise Exception('AddLumpedPort: CSX is not set!')
-        port = ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
-        edges2grid = kw.get('edges2grid', None)
+            raise RuntimeError('CSX is not yet set!')
+        port = ports.LumpedPort(CSX=self.__CSX, port_nr=port_nr, R=R, start=start, stop=stop, exc_dir=p_dir, excite=excite, **kw)
         if edges2grid is not None:
             grid = self.__CSX.GetGrid()
             for n in GetMultiDirs(edges2grid):
