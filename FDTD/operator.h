@@ -60,22 +60,61 @@ public:
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	// the next four functions need to be reimplemented in a derived class
-	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[n][x][y][z]; }
-	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }
-	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return ii[n][x][y][z]; }
-	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return iv[n][x][y][z]; }
+	inline virtual FDTD_FLOAT GetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		return vv[n][x][y][z];
+	}
+
+	inline virtual FDTD_FLOAT GetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		return vi[n][x][y][z];
+	}
+
+	inline virtual FDTD_FLOAT GetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		return ii[n][x][y][z];
+	}
+	inline virtual FDTD_FLOAT GetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		return iv[n][x][y][z];
+	}
 
 	// convenient access functions
-	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int pos[3] ) const { return GetVV(n,pos[0],pos[1],pos[2]); }
-	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int pos[3] ) const { return GetVI(n,pos[0],pos[1],pos[2]); }
-	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int pos[3] ) const { return GetII(n,pos[0],pos[1],pos[2]); }
-	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int pos[3] ) const { return GetIV(n,pos[0],pos[1],pos[2]); }
+	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetVV(n, pos[0], pos[1], pos[2]);
+	}
+
+	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetVI(n, pos[0], pos[1], pos[2]);
+	}
+	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetII(n, pos[0], pos[1], pos[2]);
+	}
+	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetIV(n, pos[0], pos[1], pos[2]);
+	}
 
 	// the next four functions need to be reimplemented in a derived class
-	inline virtual void SetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { vv[n][x][y][z] = value; }
-	inline virtual void SetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { vi[n][x][y][z] = value; }
-	inline virtual void SetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { ii[n][x][y][z] = value; }
-	inline virtual void SetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { iv[n][x][y][z] = value; }
+	inline virtual void SetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		vv[n][x][y][z] = value;
+	}
+	inline virtual void SetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		vi[n][x][y][z] = value;
+	}
+	inline virtual void SetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		ii[n][x][y][z] = value;
+	}
+	inline virtual void SetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		iv[n][x][y][z] = value;
+	}
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);

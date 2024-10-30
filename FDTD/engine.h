@@ -65,7 +65,7 @@ public:
 		return curr[n][x][y][z];
 	}
 
-	inline virtual FDTD_FLOAT GetCurr(unsigned int n, const unsigned int pos[3] const
+	inline virtual FDTD_FLOAT GetCurr(unsigned int n, const unsigned int pos[3]) const
 	{
 		return curr[n][pos[0]][pos[1]][pos[2]];
 	}
