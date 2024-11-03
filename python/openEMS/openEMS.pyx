@@ -17,6 +17,7 @@
 #
 
 import os, sys, shutil
+from pathlib import Path
 import numpy as np
 cimport openEMS
 from openEMS import ports, nf2ff, automesh
@@ -464,26 +465,29 @@ cdef class openEMS:
                     continue
                 grid.AddLine(n, hint[n])
 
-    def Run(self, sim_path, cleanup=False,setup_only=False, debug_material=False, debug_pec=False,
-            debug_operator=False, debug_boxes=False, debug_csx=False, verbose=None, **kw):
-        """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
+    def Run(self, sim_path:str|Path, cleanup:bool=False, setup_only:bool=False, debug_material:bool=False, debug_pec:bool=False, debug_operator:bool=False, debug_boxes:bool=False, debug_csx:bool=False, verbose:int=0, numThreads:int=0):
+        """Run the openEMS FDTD simulation.
 
-        Run the openEMS FDTD simulation.
-
-        :param sim_path: str -- path to run in and create result data
-        :param cleanup: bool -- remove existing sim_path to cleanup old results
-        :param setup_only: bool -- only perform FDTD setup, do not run simulation
-        :param verbose: int -- set the openEMS verbosity level 0..3
-
-        Additional keyword parameter:
-        :param numThreads: int -- set the number of threads (default 0 --> max)
+        :param sim_path: Path to run in and create result data.
+        :param cleanup: Remove existing sim_path to cleanup old results.
+        :param setup_only: Only perform FDTD setup, do not run simulation.
+        :param verbose: Set the openEMS verbosity level, form 0 to 3.
+        :param numThreads: Set the number of threads.
         """
-        if cleanup and os.path.exists(sim_path):
-            shutil.rmtree(sim_path, ignore_errors=True)
-            os.mkdir(sim_path)
-        if not os.path.exists(sim_path):
-            os.mkdir(sim_path)
+        sim_path = Path(sim_path) # Check that whatever we receive can be interpreted as a path.
+        if verbose not in {0,1,2,3}:
+            raise ValueError(f'`verbose` must be 0, 1, 2 or 3, received {repr(verbose)}. ')
+        if not isinstance(numThreads, int) or numThreads<0:
+            raise ValueError(f'`numThreads` must be an int >= 0, received {repr(numThreads)}')
+        for name,val in dict(cleanup=cleanup, setup_only=setup_only, debug_material=debug_material, debug_pec=debug_pec, debug_operator=debug_operator, debug_boxes=debug_boxes, debug_csx=debug_csx).items():
+            if val not in {True,False}: # Not sure why, but Cython complains with `isinstance(val, bool)`.
+                raise TypeError(f'`{name}` must be a bool, received object of type {type(val)}. ')
+
+        if cleanup and sim_path.is_dir():
+            shutil.rmtree(str(sim_path), ignore_errors=True)
+        sim_path.mkdir(parents=True, exist_ok=False)
         os.chdir(sim_path)
+
         if verbose is not None:
             self.thisptr.SetVerboseLevel(verbose)
         if debug_material:
@@ -501,17 +505,17 @@ cdef class openEMS:
         if debug_csx:
             with nogil:
                 self.thisptr.DebugCSX()
-        if 'numThreads' in kw:
-            self.thisptr.SetNumberOfThreads(int(kw['numThreads']))
+        if numThreads is not None:
+            self.thisptr.SetNumberOfThreads(int(numThreads))
         assert os.getcwd() == os.path.realpath(sim_path)
         _openEMS.WelcomeScreen()
-        cdef int EC
+        cdef int error_code
         with nogil:
-            EC = self.thisptr.SetupFDTD()
-        if EC!=0:
-            print('Run: Setup failed, error code: {}'.format(EC))
-        if setup_only or EC!=0:
-            return EC
+            error_code = self.thisptr.SetupFDTD()
+        if error_code!=0:
+            raise RuntimeError(f'Setup failed, error code: {error_code}')
+        if setup_only:
+            return
         with nogil:
             self.thisptr.RunFDTD()
 
