@@ -71,3 +71,4 @@ cdef extern from "openEMS/openems.h":
 cdef class openEMS:
     cdef  _openEMS *thisptr
     cdef readonly ContinuousStructure __CSX      # hold a C++ instance which we're wrapping
+    cdef dict ports
