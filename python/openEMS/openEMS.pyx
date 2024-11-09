@@ -71,6 +71,8 @@ cdef class openEMS:
     def __cinit__(self, *args, **kw):
         self.thisptr = new _openEMS()
         self.__CSX = None
+        self.ports = dict()
+        """A dictionary of the form `{port_nr: port}` that is automatically filled by the methods dedicated to adding ports. `port_nr` is an integer."""
 
         if 'NrTS' in kw:
             self.SetNumberOfTimeSteps(kw['NrTS'])
@@ -300,19 +302,26 @@ cdef class openEMS:
                 continue
             raise Exception('Unknown boundary condition')
 
-    def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, **kw):
-        """ AddLumpedPort(port_nr, R, start, stop, p_dir, excite=0, **kw)
+    def _validate_port_nr(self, port_nr):
+        if not isinstance(port_nr, int):
+            raise TypeError(f'`port_nr` must be an int, received object of type {type(port_nr)}. ')
+        if port_nr < 0:
+            raise ValueError(f'`port_nr` must be >= 0, received {port_nr}. ')
+        if port_nr in self.ports:
+            raise ValueError(f'Port number `port_nr` {port_nr} already present. ')
 
-        Add a lumped port with the given values and location.
+    def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, edges2grid=None, **kw)->ports.LumpedPort:
+        """Add a lumped port with the given values and location.
 
         See Also
         --------
         openEMS.ports.LumpedPort
         """
         if self.__CSX is None:
-            raise Exception('AddLumpedPort: CSX is not set!')
-        port = ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
-        edges2grid = kw.get('edges2grid', None)
+            raise RuntimeError('CSX is not yet set!')
+        self._validate_port_nr(port_nr)
+        port = ports.LumpedPort(CSX=self.__CSX, port_nr=port_nr, R=R, start=start, stop=stop, exc_dir=p_dir, excite=excite, **kw)
+        self.ports[port_nr] = port
         if edges2grid is not None:
             grid = self.__CSX.GetGrid()
             for n in GetMultiDirs(edges2grid):
@@ -332,7 +341,10 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddWaveGuidePort: CSX is not set!')
-        return ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, **kw)
+        self._validate_port_nr(port_nr)
+        port = ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, **kw)
+        self.ports[port_nr] = port
+        return port
 
     def AddRectWaveGuidePort(self, port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw):
         """ AddRectWaveGuidePort(port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw)
@@ -345,7 +357,10 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddRectWaveGuidePort: CSX is not set!')
-        return ports.RectWGPort(self.__CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
+        self._validate_port_nr(port_nr)
+        port = ports.RectWGPort(self.__CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
+        self.ports[port_nr] = port
+        return port
 
     def AddMSLPort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw):
         """ AddMSLPort(port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw)
@@ -358,7 +373,10 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddMSLPort: CSX is not set!')
-        return ports.MSLPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
+        self._validate_port_nr(port_nr)
+        port = ports.MSLPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
+        self.ports[port_nr] = port
+        return port
 
     def CreateNF2FFBox(self, name='nf2ff', start=None, stop=None, **kw):
         """ CreateNF2FFBox(name='nf2ff', start=None, stop=None, **kw)
