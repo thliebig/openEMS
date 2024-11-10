@@ -21,6 +21,7 @@ from pathlib import Path
 import numpy as np
 cimport openEMS
 from openEMS import ports, nf2ff, automesh
+import warnings
 
 from CSXCAD.Utilities import GetMultiDirs
 
@@ -277,7 +278,37 @@ cdef class openEMS:
         """
         self.thisptr.SetCustomExcite(_str, f0, fmax)
 
-    def SetBoundaryCond(self, x_min:str|int, x_max:str|int, y_min:str|int, y_max:str|int, z_min:str|int, z_max:str|int):
+    def SetBoundaryCond(self, BC):
+        """ SetBoundaryCond(BC)
+
+        Set the boundary conditions for all six FDTD directions.
+
+        Options:
+
+        * 0 or 'PEC' : perfect electric conductor (default)
+        * 1 or 'PMC' : perfect magnetic conductor, useful for symmetries
+        * 2 or 'MUR' : simple MUR absorbing boundary conditions
+        * 3 or 'PML_8' : PML absorbing boundary conditions
+
+        :param BC: (8,) array or list -- see options above
+        """
+        warnings.warn('`SetBoundaryCond` will be deprecated in the future, please migrate to the new method `SetBoundaryConditions`. ')
+        if not len(BC)==6:
+            raise Exception('Invalid boundary condition size!')
+        for n in range(len(BC)):
+            if type(BC[n])==int:
+                self.thisptr.Set_BC_Type(n, BC[n])
+                continue
+            if BC[n] in ['PEC', 'PMC', 'MUR']:
+                self.thisptr.Set_BC_Type(n, ['PEC', 'PMC', 'MUR'].index(BC[n]))
+                continue
+            if BC[n].startswith('PML_'):
+                size = int(BC[n].strip('PML_'))
+                self.thisptr.Set_BC_PML(n, size)
+                continue
+            raise Exception('Unknown boundary condition')
+
+    def SetBoundaryConditions(self, x_min:str, x_max:str, y_min:str, y_max:str, z_min:str, z_max:str):
         """Set the boundary conditions for all six FDTD directions.
 
         Options for all the arguments `x_min`, `x_max`, ... are:
@@ -286,10 +317,9 @@ cdef class openEMS:
         * 'MUR': Simple MUR absorbing boundary conditions.
         * 'PML_n: PML absorbing boundary conditions, with PML size `n` between 4 and 50.
 
-        Note: Each argument `x_min`, `x_max`, ... can take integer values 0, 1, 2 or 3. This is kept for backwards compatibility but its usage is discouraged.
+        In the case of cylindrical coordinates, `x` means `r`, `y` means `a`, and `z` means `z`.
         """
         POSSIBLE_VALUES_FOR_BOUNDARY_CONDITIONS = {'PEC','PMC','MUR'} | {f'PML_{x}' for x in range(4,51)}
-        POSSIBLE_VALUES_FOR_BOUNDARY_CONDITIONS |= {0,1,2,3} # This is for backwards compatibility, but passing numbers should be avoided.
 
         boundary_conditions = dict(x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, z_min=z_min, z_max=z_max)
         for name,val in boundary_conditions.items():
