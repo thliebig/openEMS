@@ -22,6 +22,8 @@ import numpy as np
 cimport openEMS
 from openEMS import ports, nf2ff, automesh
 import warnings
+from typing_extensions import deprecated # The `deprecated` decorator will be available in the `warnings` standard library as of Python 3.13, see [here](https://docs.python.org/3.13/library/warnings.html#warnings.deprecated).
+
 
 from CSXCAD.Utilities import GetMultiDirs
 
@@ -278,6 +280,7 @@ cdef class openEMS:
         """
         self.thisptr.SetCustomExcite(_str, f0, fmax)
 
+    @deprecated('Please use the new method `SetBoundaryConditions`.')
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)
 
@@ -292,7 +295,6 @@ cdef class openEMS:
 
         :param BC: (8,) array or list -- see options above
         """
-        warnings.warn('`SetBoundaryCond` will be deprecated in the future, please migrate to the new method `SetBoundaryConditions`. ')
         if not len(BC)==6:
             raise Exception('Invalid boundary condition size!')
         for n in range(len(BC)):
