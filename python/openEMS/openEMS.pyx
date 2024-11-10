@@ -20,6 +20,7 @@ import os, sys, shutil
 import numpy as np
 cimport openEMS
 from openEMS import ports, nf2ff, automesh
+from pathlib import Path
 
 from CSXCAD.Utilities import GetMultiDirs
 
@@ -514,8 +515,10 @@ cdef class openEMS:
         os.chdir(sim_path)
 
         self._SetLibraryArguments(kw)
+        
+        if Path(os.getcwd()).resolve() == Path(sim_path).resolve():
+            raise RuntimeError('Current working directory is different from `sim_path`. If you encounter this error, please report it to the developers, because it should never happen in normal conditions, it is not your fault. ')
 
-        assert os.getcwd() == os.path.realpath(sim_path)
         _openEMS.WelcomeScreen()
         cdef int EC
         with nogil:
