@@ -28,14 +28,11 @@
 #include "engine_multithread.h"
 #include "extensions/engine_extension.h"
 #include "tools/array_ops.h"
+#include "tools/denormal.h"
 
 #include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/date_time/gregorian/gregorian.hpp"
 #include <iomanip>
-
-#ifndef SSE_CORRECT_DENORMALS
-#include <xmmintrin.h>
-#endif
 
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
@@ -314,11 +311,7 @@ void thread::operator()()
 	//DBG().cout() << "Thread " << m_threadID << " (" << boost::this_thread::get_id() << ") started." << endl;
 
 	// speed up the calculation of denormal floating point values (flush-to-zero)
-#ifndef SSE_CORRECT_DENORMALS
-	unsigned int oldMXCSR = _mm_getcsr(); //read the old MXCSR setting
-	unsigned int newMXCSR = oldMXCSR | 0x8040; // set DAZ and FZ bits
-	_mm_setcsr( newMXCSR ); //write the new MXCSR setting to the MXCSR
-#endif
+	Denormal::Disable();
 
 	while (!m_enginePtr->m_stopThreads)
 	{
