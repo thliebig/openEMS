@@ -17,9 +17,13 @@
 #
 
 import os, sys, shutil
+from pathlib import Path
 import numpy as np
 cimport openEMS
 from openEMS import ports, nf2ff, automesh
+import warnings
+from typing_extensions import deprecated # The `deprecated` decorator will be available in the `warnings` standard library as of Python 3.13, see [here](https://docs.python.org/3.13/library/warnings.html#warnings.deprecated).
+
 
 from CSXCAD.Utilities import GetMultiDirs
 
@@ -50,8 +54,8 @@ cdef class openEMS:
     >>>
     >>> FDTD.Run(sim_path='/tmp/test')
 
-    :param NrTS:           max. number of timesteps to simulate (e.g. default=1e9)
-    :param EndCriteria:    end criteria, e.g. 1e-5, simulations stops if energy has decayed by this value (<1e-4 is recommended, default=1e-5)
+    :param number_of_time_steps: Maximum number of timesteps to simulate.
+    :param energy_end_criterion: End the simulation if the energy has decayed by this value. For example, `energy_end_criterion=1e-5` will make the simulation stop if energy has decayed by a factor of `1e5`. `energy_end_criterion`<1e-4 is recommended.
     :param MaxTime:        max. real time in seconds to simulate
     :param OverSampling:   nyquist oversampling of time domain dumps
     :param CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
@@ -68,18 +72,23 @@ cdef class openEMS:
         """
         _openEMS.WelcomeScreen()
 
-    def __cinit__(self, *args, **kw):
+    def __cinit__(self, number_of_time_steps:int|float=1e9, energy_end_criterion:float=1e-5, **kw):
         self.thisptr = new _openEMS()
         self.__CSX = None
 
-        if 'NrTS' in kw:
+        if 'NrTS' in kw: # This is kept for backwards compatibility, but using `number_of_time_steps` should be preferred.
             self.SetNumberOfTimeSteps(kw['NrTS'])
             del kw['NrTS']
-        else:
-            self.SetNumberOfTimeSteps(1e9)
-        if 'EndCriteria' in kw:
+        else: # Use `number_of_time_steps`:
+            self.SetNumberOfTimeSteps(number_of_time_steps)
+
+
+        if 'EndCriteria' in kw: # This is kept for backwards compatibility, but using `energy_end_criterion` should be preferred.
             self.SetEndCriteria(kw['EndCriteria'])
             del kw['EndCriteria']
+        else: # Use `energy_end_criterion`:
+            self.SetEndCriteria(energy_end_criterion)
+
         if 'MaxTime' in kw:
             self.SetMaxTime(kw['MaxTime'])
             del kw['MaxTime']
@@ -112,19 +121,19 @@ cdef class openEMS:
         if self.__CSX is not None:
             self.__CSX.thisptr = NULL
 
-    def SetNumberOfTimeSteps(self, val):
-        """ SetNumberOfTimeSteps(val)
+    def SetNumberOfTimeSteps(self, time_steps:int|float):
+        """Set the number of timesteps."""
+        if not isinstance(time_steps, (int,float)):
+            raise TypeError(f'`time_steps` must be an instance of `int` or `float`, received object of type {type(time_steps)}. ')
+        if time_steps <= 0:
+            raise ValueError(f'`time_steps` must be > 0, received {time_steps}. ')
+        self.thisptr.SetNumberOfTimeSteps(int(time_steps))
 
-        Set the number of timesteps. E.g. 5e4 (default is 1e9)
-        """
-        self.thisptr.SetNumberOfTimeSteps(val)
-
-    def SetEndCriteria(self, val):
-        """ SetEndCriteria(val)
-
-        Set the end criteria value. E.g. 1e-6 for -60dB
-        """
-        self.thisptr.SetEndCriteria(val)
+    def SetEndCriteria(self, energy_decay_factor:float):
+        """Set the end criterion value. For example, `energy_decay_factor=1e-5` will make the simulation stop if energy has decayed by a factor of `1e5`. `1e-6` for -60dB."""
+        if not isinstance(energy_decay_factor, float):
+            raise TypeError(f'`energy_decay_factor` must be an instance of `float`, received object of type {type(energy_decay_factor)}. ')
+        self.thisptr.SetEndCriteria(float(energy_decay_factor))
 
     def SetOverSampling(self, val):
         """ SetOverSampling(val)
@@ -250,13 +259,13 @@ cdef class openEMS:
         """
         self.thisptr.SetDiracExcite(f_max)
 
-    def SetStepExcite(self, f_max):
-        """ SetStepExcite(f_max)
+    def SetStepExcite(self, f_max:float):
+        """Set a step function as excitation signal.
 
-        Set a step function as excitation signal.
-
-        :param f_max: float -- maximum simulated frequency in Hz.
+        :param f_max: Maximum simulated frequency in Hz.
         """
+        if not isinstance(f_max, (int,float)) or f_max<0:
+            raise ValueError(f'`f_max` must be a number >0, received {f_max}. ')
         self.thisptr.SetStepExcite(f_max)
 
     def SetCustomExcite(self, _str, f0, fmax):
@@ -271,6 +280,7 @@ cdef class openEMS:
         """
         self.thisptr.SetCustomExcite(_str, f0, fmax)
 
+    @deprecated('Please use the new method `SetBoundaryConditions`.')
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)
 
@@ -300,19 +310,48 @@ cdef class openEMS:
                 continue
             raise Exception('Unknown boundary condition')
 
-    def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, **kw):
-        """ AddLumpedPort(port_nr, R, start, stop, p_dir, excite=0, **kw)
+    def SetBoundaryConditions(self, x_min:str, x_max:str, y_min:str, y_max:str, z_min:str, z_max:str):
+        """Set the boundary conditions for all six FDTD directions.
 
-        Add a lumped port with the given values and location.
+        Options for all the arguments `x_min`, `x_max`, ... are:
+        * 'PEC': Perfect electric conductor.
+        * 'PMC': Perfect magnetic conductor, useful for symmetries.
+        * 'MUR': Simple MUR absorbing boundary conditions.
+        * 'PML_n: PML absorbing boundary conditions, with PML size `n` between 4 and 50.
+
+        In the case of cylindrical coordinates, `x` means `r`, `y` means `a`, and `z` means `z`.
+        """
+        POSSIBLE_VALUES_FOR_BOUNDARY_CONDITIONS = {'PEC','PMC','MUR'} | {f'PML_{x}' for x in range(4,51)}
+
+        boundary_conditions = dict(x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, z_min=z_min, z_max=z_max)
+        for name,val in boundary_conditions.items():
+            if val not in POSSIBLE_VALUES_FOR_BOUNDARY_CONDITIONS:
+                raise ValueError(f'`{name}` is not one of the allowed boundary conditions, which are "PEC", "PMC", "MUR" or "PML_n" with "n" between 4 and 50. Received {repr(val)}. ')
+
+        BC = [boundary_conditions[name] for name in ['x_min','x_max','y_min','y_max','z_min','z_max']]
+        for n in range(len(BC)):
+            if type(BC[n])==int:
+                self.thisptr.Set_BC_Type(n, BC[n])
+                continue
+            if BC[n] in ['PEC', 'PMC', 'MUR']:
+                self.thisptr.Set_BC_Type(n, ['PEC', 'PMC', 'MUR'].index(BC[n]))
+                continue
+            if BC[n].startswith('PML_'):
+                size = int(BC[n].strip('PML_'))
+                self.thisptr.Set_BC_PML(n, size)
+                continue
+            raise Exception('Unknown boundary condition')
+
+    def AddLumpedPort(self, port_nr, R, start, stop, p_dir, excite=0, edges2grid=None, **kw)->ports.LumpedPort:
+        """Add a lumped port with the given values and location.
 
         See Also
         --------
         openEMS.ports.LumpedPort
         """
         if self.__CSX is None:
-            raise Exception('AddLumpedPort: CSX is not set!')
-        port = ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
-        edges2grid = kw.get('edges2grid', None)
+            raise RuntimeError('CSX is not yet set!')
+        port = ports.LumpedPort(CSX=self.__CSX, port_nr=port_nr, R=R, start=start, stop=stop, exc_dir=p_dir, excite=excite, **kw)
         if edges2grid is not None:
             grid = self.__CSX.GetGrid()
             for n in GetMultiDirs(edges2grid):
@@ -476,7 +515,7 @@ cdef class openEMS:
         cdef vector[string] allOptionsBuffer = allOptions
         self.thisptr.SetLibraryArguments(allOptionsBuffer)
 
-    def Run(self, sim_path, cleanup=False, setup_only=False, **kw):
+    def Run(self, sim_path:str|Path, cleanup=False, setup_only=False, **kw):
         """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
 
         Run the openEMS FDTD simulation.
@@ -506,24 +545,31 @@ cdef class openEMS:
         * nativeFieldDumps (bool) - dump all fields using the native field
           components
         """
-        if cleanup and os.path.exists(sim_path):
-            shutil.rmtree(sim_path, ignore_errors=True)
-            os.mkdir(sim_path)
-        if not os.path.exists(sim_path):
-            os.mkdir(sim_path)
+        sim_path = Path(sim_path) # Check that whatever we receive can be interpreted as a path.
+        if verbose not in {0,1,2,3}:
+            raise ValueError(f'`verbose` must be 0, 1, 2 or 3, received {repr(verbose)}. ')
+        if not isinstance(numThreads, int) or numThreads<0:
+            raise ValueError(f'`numThreads` must be an int >= 0, received {repr(numThreads)}')
+        for name,val in dict(cleanup=cleanup, setup_only=setup_only, debug_material=debug_material, debug_pec=debug_pec, debug_operator=debug_operator, debug_boxes=debug_boxes, debug_csx=debug_csx).items():
+            if val not in {True,False}: # Not sure why, but Cython complains with `isinstance(val, bool)`.
+                raise TypeError(f'`{name}` must be a bool, received object of type {type(val)}. ')
+
+        if cleanup and sim_path.is_dir():
+            shutil.rmtree(str(sim_path), ignore_errors=True)
+        sim_path.mkdir(parents=True, exist_ok=False)
         os.chdir(sim_path)
 
         self._SetLibraryArguments(kw)
 
         assert os.getcwd() == os.path.realpath(sim_path)
         _openEMS.WelcomeScreen()
-        cdef int EC
+        cdef int error_code
         with nogil:
-            EC = self.thisptr.SetupFDTD()
-        if EC!=0:
-            print('Run: Setup failed, error code: {}'.format(EC))
-        if setup_only or EC!=0:
-            return EC
+            error_code = self.thisptr.SetupFDTD()
+        if error_code!=0:
+            raise RuntimeError(f'Setup failed, error code: {error_code}')
+        if setup_only:
+            return
         with nogil:
             self.thisptr.RunFDTD()
 

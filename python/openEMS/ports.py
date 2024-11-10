@@ -54,33 +54,25 @@ class Port(object):
     :param port_nr: int -- port number
     :param R: float -- port reference impedance, e.g. 50 (Ohms)
     :param start, stop: (3,) array -- Start/Stop box coordinates
-    :param p_dir: int -- port direction
     :param excite: float -- port excitation amplitude
     :param priority: int -- priority of all contained primtives
     :param PortNamePrefix: str -- a prefix for all ports-names
     :param delay: float -- a positive delay value to e.g. emulate a phase shift
     """
-    def __init__(self, CSX, port_nr, start, stop, excite, **kw):
+    def __init__(self, CSX, port_nr:int, start:list, stop:list, excite:float=0, priority:int=0, PortNamePrefix:str=None, delay:float=0, U_filenames:list=None, I_filenames:list=None, R:float=None):
         self.CSX      = CSX
         self.number   = port_nr
         self.excite   = excite
         self.start    = np.array(start, np.double)
         self.stop     = np.array(stop, np.double)
         self.Z_ref    = None
-        self.U_filenames = kw.get('U_filenames', [])
-        self.I_filenames = kw.get('I_filenames', [])
+        self.R = R
+        self.U_filenames = U_filenames if U_filenames is not None else []
+        self.I_filenames = I_filenames if I_filenames is not None else []
 
-        self.priority = 0
-        if 'priority' in kw:
-            self.priority = kw['priority']
-
-        self.prefix = ''
-        if 'PortNamePrefix' in kw:
-            self.prefix = kw['PortNamePrefix']
-        self.delay = 0
-
-        if 'delay' in kw:
-            self.delay = kw['delay']
+        self.priority = priority
+        self.prefix = '' if PortNamePrefix is None else PortNamePrefix
+        self.delay = delay
 
         self.lbl_temp = self.prefix + 'port_{}' +  '_{}'.format(self.number)
 
@@ -144,13 +136,15 @@ class LumpedPort(Port):
     """
     The lumped port.
 
+    :param exc_dir: Coordinate for the excitation direction.
+    :param kwargs: Keyword parameters passed to parent class `Port.__init__`.
+
     See Also
     --------
     Port
     """
-    def __init__(self, CSX,  port_nr, R, start, stop, exc_dir, excite=0, **kw):
-        super(LumpedPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
-        self.R = R
+    def __init__(self, exc_dir:int|str, **kwargs):
+        super().__init__(**kwargs)
         self.exc_ny  = CheckNyDir(exc_dir)
 
         self.direction = np.sign(self.stop[self.exc_ny]-self.start[self.exc_ny])
@@ -158,16 +152,16 @@ class LumpedPort(Port):
             raise Exception('LumpedPort: start and stop may not be identical in excitation direction')
 
         if self.R > 0:
-            lumped_R = CSX.AddLumpedElement(self.lbl_temp.format('resist'), ny=self.exc_ny, caps=True, R=self.R)
+            lumped_R = self.CSX.AddLumpedElement(self.lbl_temp.format('resist'), ny=self.exc_ny, caps=True, R=self.R)
         elif self.R==0:
-            lumped_R = CSX.AddMetal(self.lbl_temp.format('resist'))
+            lumped_R = self.CSX.AddMetal(self.lbl_temp.format('resist'))
 
         lumped_R.AddBox(self.start, self.stop, priority=self.priority)
 
-        if excite!=0:
+        if self.excite!=0:
             exc_vec = np.zeros(3)
-            exc_vec[self.exc_ny] = -1*self.direction*excite
-            exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0, exc_val=exc_vec, delay=self.delay)
+            exc_vec[self.exc_ny] = -1*self.direction*self.excite
+            exc = self.CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0, exc_val=exc_vec, delay=self.delay)
             exc.AddBox(self.start, self.stop, priority=self.priority)
 
         self.U_filenames = [self.lbl_temp.format('ut'), ]
@@ -175,7 +169,7 @@ class LumpedPort(Port):
         u_start[self.exc_ny] = self.start[self.exc_ny]
         u_stop  = 0.5*(self.start+self.stop)
         u_stop[self.exc_ny]  = self.stop[self.exc_ny]
-        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=0, weight=-1)
+        u_probe = self.CSX.AddProbe(self.U_filenames[0], p_type=0, weight=-1)
         u_probe.AddBox(u_start, u_stop)
 
         self.I_filenames = [self.lbl_temp.format('it'), ]
@@ -183,7 +177,7 @@ class LumpedPort(Port):
         i_start[self.exc_ny] = 0.5*(self.start[self.exc_ny]+self.stop[self.exc_ny])
         i_stop  = np.array(self.stop)
         i_stop[self.exc_ny]  = 0.5*(self.start[self.exc_ny]+self.stop[self.exc_ny])
-        i_probe = CSX.AddProbe(self.I_filenames[0], p_type=1, weight=self.direction, norm_dir=self.exc_ny)
+        i_probe = self.CSX.AddProbe(self.I_filenames[0], p_type=1, weight=self.direction, norm_dir=self.exc_ny)
         i_probe.AddBox(i_start, i_stop)
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
