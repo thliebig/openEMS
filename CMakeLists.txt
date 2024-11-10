@@ -115,7 +115,6 @@ INCLUDE_DIRECTORIES( ${TinyXML_INCLUDE_DIR} )
 # hdf5
 find_package(HDF5 1.8 COMPONENTS C HL REQUIRED)
 INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIRS})
-link_directories(${HDF5_LIBRARIES})
 # hdf5 compat
 #ADD_DEFINITIONS( -DH5_USE_16_API )
 #ADD_DEFINITIONS( -DH5_BUILT_AS_DYNAMIC_LIB )
@@ -127,6 +126,7 @@ find_package(Boost 1.46 COMPONENTS
   date_time
   serialization
   chrono
+  program_options
   REQUIRED
 )
 message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
@@ -142,38 +142,6 @@ message(STATUS "vtk libraries " ${vtk_LIBS})
 
 include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIR})
-
-if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-  set(ARCH "x86_64")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64")
-  set(ARCH "x86_64")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "AMD64")
-  set(ARCH "x86_64")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ppc64.*|PPC64.*|powerpc64.*)")
-  set(ARCH "ppc64")
-elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^(aarch64|arm64)")
-  set(ARCH "aarch64")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "unknown")
-  set(ARCH "unknown")
-  message(FATAL_ERROR "Unable to determine target architecture!  Try setting CMAKE_SYSTEM_PROCESSOR to a valid value.")
-else()
-  set(ARCH "unsupported")
-endif()
-
-if(${ARCH} STREQUAL "x86_64")
-  message(STATUS "Detected 64-bit x86 target")
-  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -march=native")
-elseif(${ARCH} STREQUAL "ppc64")
-  message(STATUS "Detected 64-bit POWER target")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNO_WARN_X86_INTRINSICS -DSSE_CORRECT_DENORMALS")
-elseif(${ARCH} STREQUAL "aarch64")
-  message(STATUS "Detected 64-bit ARM target")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNO_WARN_X86_INTRINSICS -DSSE_CORRECT_DENORMALS")
-elseif(${ARCH} STREQUAL "unsupported")
-  message(FATAL_ERROR "Unsupported target architecture!  Try porting openEMS to your architecture...")
-else()
-  message(FATAL_ERROR "Unable to determine target architecture!  Aborting.")
-endif()
 
 # independent tool
 ADD_SUBDIRECTORY( nf2ff )

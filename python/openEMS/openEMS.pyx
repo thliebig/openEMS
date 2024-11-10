@@ -459,8 +459,25 @@ cdef class openEMS:
                     continue
                 grid.AddLine(n, hint[n])
 
-    def Run(self, sim_path, cleanup=False,setup_only=False, debug_material=False, debug_pec=False,
-            debug_operator=False, debug_boxes=False, debug_csx=False, verbose=None, **kw):
+    def _SetLibraryArguments(self, arguments):
+        allOptions = []
+
+        for key, val in arguments.items():
+            key = key.replace("_", "-")
+            key = key.replace("setup-only", "no-simulation")
+
+            # boolean options are implicit
+            if val and (val is not True) and (val is not False):
+                opt = "%s=%s" % (key, val)
+            else:
+                opt = "%s" % key
+
+            allOptions.append(opt.encode("UTF-8"))
+
+        cdef vector[string] allOptionsBuffer = allOptions
+        self.thisptr.SetLibraryArguments(allOptionsBuffer)
+
+    def Run(self, sim_path, cleanup=False, setup_only=False, **kw):
         """ Run(sim_path, cleanup=False, setup_only=False, verbose=None)
 
         Run the openEMS FDTD simulation.
@@ -468,10 +485,27 @@ cdef class openEMS:
         :param sim_path: str -- path to run in and create result data
         :param cleanup: bool -- remove existing sim_path to cleanup old results
         :param setup_only: bool -- only perform FDTD setup, do not run simulation
-        :param verbose: int -- set the openEMS verbosity level 0..3
 
-        Additional keyword parameter:
-        :param numThreads: int -- set the number of threads (default 0 --> max)
+        One can also pass almost all command-line options supported by the main
+        openEMS executable via keyword parameters (replace dashes with
+        underscores). Supported options may vary from versions to versions,
+        see `./openEMS --help`). Examples are:
+
+        * verbose (int) -- set the openEMS verbosity level 0..3
+        * numThreads (int) -- set the number of threads (default 0 --> max)
+        * disable_dumps (bool) -- disable all field dumps for faster simulation
+        * debug_material (bool) - dump material distribution to a vtk file for
+          debugging.
+        * debug_PEC (bool) - dump metal distribution to a vtk file for debugging
+        * debug_operator (bool) - dump operator to vtk file for debugging
+        * debug_boxes (bool) - Dump e.g. probe boxes to vtk file for debugging
+        * debug_CSX (bool) - Write CSX geometry file to debugCSX.xml
+        * dump_statistics (bool) - dump simulation statistics to
+          `openEMS_run_stats.txt` and `openEMS_stats.txt`
+        * showProbeDiscretization (bool) - show probe discretization information
+          for debugging
+        * nativeFieldDumps (bool) - dump all fields using the native field
+          components
         """
         if cleanup and os.path.exists(sim_path):
             shutil.rmtree(sim_path, ignore_errors=True)
@@ -479,25 +513,6 @@ cdef class openEMS:
         if not os.path.exists(sim_path):
             os.mkdir(sim_path)
         os.chdir(sim_path)
-        if verbose is not None:
-            self.thisptr.SetVerboseLevel(verbose)
-        if debug_material:
-            with nogil:
-                self.thisptr.DebugMaterial()
-        if debug_pec:
-            with nogil:
-                self.thisptr.DebugPEC()
-        if debug_operator:
-            with nogil:
-                self.thisptr.DebugOperator()
-        if debug_boxes:
-            with nogil:
-                self.thisptr.DebugBox()
-        if debug_csx:
-            with nogil:
-                self.thisptr.DebugCSX()
-        if 'numThreads' in kw:
-            self.thisptr.SetNumberOfThreads(int(kw['numThreads']))
 
         if Path(os.getcwd()).resolve() == Path(sim_path).resolve():
             raise RuntimeError('Current working directory is different from `sim_path`. If you encounter this error, please report it to the developers, because it should never happen in normal conditions, it is not your fault. ')
