@@ -122,6 +122,11 @@ bool Operator_SSE_Compressed::CompressOperator()
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Compressing the FDTD operator... this may take a while..." << endl;
 
+	ArrayLib::ArrayNIJK<f4vector>& f4_vv = *f4_vv_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_vi = *f4_vi_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_iv = *f4_iv_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_ii = *f4_ii_ptr;
+
 	map<SSE_coeff,unsigned int> lookUpMap;
 
 	unsigned int pos[3];
@@ -163,14 +168,14 @@ bool Operator_SSE_Compressed::CompressOperator()
 		}
 	}
 
-	Delete_N_3DArray_v4sf(f4_vv,numLines);
-	Delete_N_3DArray_v4sf(f4_vi,numLines);
-	Delete_N_3DArray_v4sf(f4_iv,numLines);
-	Delete_N_3DArray_v4sf(f4_ii,numLines);
-	f4_vv = 0;
-	f4_vi = 0;
-	f4_iv = 0;
-	f4_ii = 0;
+	delete f4_vv_ptr;
+	delete f4_vi_ptr;
+	delete f4_iv_ptr;
+	delete f4_ii_ptr;
+	f4_vv_ptr = NULL;
+	f4_vi_ptr = NULL;
+	f4_iv_ptr = NULL;
+	f4_ii_ptr = NULL;
 
 	return true;
 }
