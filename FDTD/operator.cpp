@@ -79,10 +79,10 @@ void Operator::Init()
 	iv=NULL;
 	ii=NULL;
 
-	m_epsR=NULL;
-	m_kappa=NULL;
-	m_mueR=NULL;
-	m_sigma=NULL;
+	m_epsR_ptr = NULL;
+	m_kappa_ptr = NULL;
+	m_mueR_ptr = NULL;
+	m_sigma_ptr = NULL;
 
 	MainOp=NULL;
 
@@ -117,14 +117,14 @@ void Operator::Delete()
 		delete[] EC_R[n];EC_R[n]=0;
 	}
 
-	Delete_N_3DArray(m_epsR,numLines);
-	m_epsR=0;
-	Delete_N_3DArray(m_kappa,numLines);
-	m_kappa=0;
-	Delete_N_3DArray(m_mueR,numLines);
-	m_mueR=0;
-	Delete_N_3DArray(m_sigma,numLines);
-	m_sigma=0;
+	delete m_epsR_ptr;
+	m_epsR_ptr = NULL;
+	delete m_kappa_ptr;
+	m_kappa_ptr = NULL;
+	delete m_mueR_ptr;
+	m_mueR_ptr = NULL;
+	delete m_sigma_ptr;
+	m_sigma_ptr = NULL;
 }
 
 void Operator::Reset()
@@ -742,10 +742,10 @@ void Operator::DumpMaterial2File(string filename)
 
 	cout << "Operator: Dumping material information to vtk file: " << filename << " ..."  << flush;
 
-	FDTD_FLOAT**** epsilon = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	FDTD_FLOAT**** mue     = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	FDTD_FLOAT**** kappa   = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	FDTD_FLOAT**** sigma   = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> epsilon("epsilonR", numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> mue("mueR", numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> kappa("kappa", numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> sigma("sigma", numLines);
 
 	unsigned int pos[3];
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
@@ -775,13 +775,9 @@ void Operator::DumpMaterial2File(string filename)
 	vtk_Writer->SetNativeDump(true);
 
 	vtk_Writer->AddVectorField("epsilon",epsilon);
-	Delete_N_3DArray(epsilon,numLines);
 	vtk_Writer->AddVectorField("mue",mue);
-	Delete_N_3DArray(mue,numLines);
 	vtk_Writer->AddVectorField("kappa",kappa);
-	Delete_N_3DArray(kappa,numLines);
 	vtk_Writer->AddVectorField("sigma",sigma);
-	Delete_N_3DArray(sigma,numLines);
 
 	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpMaterial2File: Error: Can't write file... skipping!" << endl;
@@ -853,61 +849,57 @@ void Operator::InitDataStorage()
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::InitDataStorage(): Storing epsR material data..." << endl;
-		Delete_N_3DArray(m_epsR,numLines);
-		m_epsR = Create_N_3DArray<float>(numLines);
+		m_epsR_ptr = new ArrayLib::ArrayNIJK<float>("m_epsR", numLines);
 	}
 	if (m_StoreMaterial[1])
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::InitDataStorage(): Storing kappa material data..." << endl;
-		Delete_N_3DArray(m_kappa,numLines);
-		m_kappa = Create_N_3DArray<float>(numLines);
+		m_kappa_ptr = new ArrayLib::ArrayNIJK<float>("m_kappa", numLines);
 	}
 	if (m_StoreMaterial[2])
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::InitDataStorage(): Storing muR material data..." << endl;
-		Delete_N_3DArray(m_mueR,numLines);
-		m_mueR = Create_N_3DArray<float>(numLines);
+		m_mueR_ptr = new ArrayLib::ArrayNIJK<float>("m_mueR", numLines);
 	}
 	if (m_StoreMaterial[3])
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::InitDataStorage(): Storing sigma material data..." << endl;
-		Delete_N_3DArray(m_sigma,numLines);
-		m_sigma = Create_N_3DArray<float>(numLines);
+		m_sigma_ptr = new ArrayLib::ArrayNIJK<float>("m_sigma", numLines);
 	}
 }
 
 void Operator::CleanupMaterialStorage()
 {
-	if (!m_StoreMaterial[0] && m_epsR)
+	if (!m_StoreMaterial[0] && m_epsR_ptr)
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::CleanupMaterialStorage(): Delete epsR material data..." << endl;
-		Delete_N_3DArray(m_epsR,numLines);
-		m_epsR = NULL;
+		delete m_epsR_ptr;
+		m_epsR_ptr = NULL;
 	}
-	if (!m_StoreMaterial[1] && m_kappa)
+	if (!m_StoreMaterial[1] && m_kappa_ptr)
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::CleanupMaterialStorage(): Delete kappa material data..." << endl;
-		Delete_N_3DArray(m_kappa,numLines);
-		m_kappa = NULL;
+		delete m_kappa_ptr;
+		m_kappa_ptr = NULL;
 	}
-	if (!m_StoreMaterial[2] && m_mueR)
+	if (!m_StoreMaterial[2] && m_mueR_ptr)
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::CleanupMaterialStorage(): Delete mueR material data..." << endl;
-		Delete_N_3DArray(m_mueR,numLines);
-		m_mueR = NULL;
+		delete m_mueR_ptr;
+		m_mueR_ptr = NULL;
 	}
-	if (!m_StoreMaterial[3] && m_sigma)
+	if (!m_StoreMaterial[3] && m_sigma_ptr)
 	{
 		if (g_settings.GetVerboseLevel()>0)
 			cerr << "Operator::CleanupMaterialStorage(): Delete sigma material data..." << endl;
-		Delete_N_3DArray(m_sigma,numLines);
-		m_sigma = NULL;
+		delete m_sigma_ptr;
+		m_sigma_ptr = NULL;
 	}
 }
 
@@ -916,21 +908,37 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 	switch (type)
 	{
 	case 0:
-		if (m_epsR==0)
+		if (m_epsR_ptr == NULL)
 			return 0;
-		return m_epsR[n][pos[0]][pos[1]][pos[2]];
+		else
+		{
+			ArrayLib::ArrayNIJK<float>& m_epsR = *m_epsR_ptr;
+			return m_epsR[n][pos[0]][pos[1]][pos[2]];
+		}
 	case 1:
-		if (m_kappa==0)
+		if (m_kappa_ptr == NULL)
 			return 0;
-		return m_kappa[n][pos[0]][pos[1]][pos[2]];
+		else
+		{
+			ArrayLib::ArrayNIJK<float>& m_kappa = *m_kappa_ptr;
+			return m_kappa[n][pos[0]][pos[1]][pos[2]];
+		}
 	case 2:
-		if (m_mueR==0)
+		if (m_mueR_ptr == NULL)
 			return 0;
-		return m_mueR[n][pos[0]][pos[1]][pos[2]];
+		else
+		{
+			ArrayLib::ArrayNIJK<float>& m_mueR = *m_mueR_ptr;
+			return m_mueR[n][pos[0]][pos[1]][pos[2]];
+		}
 	case 3:
-		if (m_sigma==0)
+		if (m_sigma_ptr == NULL)
 			return 0;
-		return m_sigma[n][pos[0]][pos[1]][pos[2]];
+		else
+		{
+			ArrayLib::ArrayNIJK<float>& m_sigma = *m_sigma_ptr;
+			return m_sigma[n][pos[0]][pos[1]][pos[2]];
+		}
 	}
 	return 0;
 }
@@ -1178,14 +1186,26 @@ bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC, vector<CS
 	double EffMat[4];
 	Calc_EffMatPos(ny,pos,EffMat, vPrims);
 
-	if (m_epsR)
+	if (m_epsR_ptr)
+	{
+		ArrayLib::ArrayNIJK<float>& m_epsR = *m_epsR_ptr;
 		m_epsR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[0];
-	if (m_kappa)
+	}
+	if (m_kappa_ptr)
+	{
+		ArrayLib::ArrayNIJK<float>& m_kappa = *m_kappa_ptr;
 		m_kappa[ny][pos[0]][pos[1]][pos[2]] =  EffMat[1];
-	if (m_mueR)
+	}
+	if (m_mueR_ptr)
+	{
+		ArrayLib::ArrayNIJK<float>& m_mueR = *m_mueR_ptr;
 		m_mueR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[2];
-	if (m_sigma)
+	}
+	if (m_sigma_ptr)
+	{
+		ArrayLib::ArrayNIJK<float>& m_sigma = *m_sigma_ptr;
 		m_sigma[ny][pos[0]][pos[1]][pos[2]] =  EffMat[3];
+	}
 
 	double delta = GetEdgeLength(ny,pos);
 	double area  = GetEdgeArea(ny,pos);

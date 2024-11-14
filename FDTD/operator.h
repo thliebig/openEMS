@@ -23,6 +23,8 @@
 #include "excitation.h"
 #include "Common/operator_base.h"
 
+#include "tools/arraylib/array_nijk.h"
+
 class Operator_Extension;
 class Operator_Ext_Excitation;
 class Engine;
@@ -294,10 +296,10 @@ protected:
 	int m_BC_Size[6];
 
 	//store material properties for post-processing
-	float**** m_epsR;
-	float**** m_kappa;
-	float**** m_mueR;
-	float**** m_sigma;
+	ArrayLib::ArrayNIJK<float>* m_epsR_ptr;
+	ArrayLib::ArrayNIJK<float>* m_kappa_ptr;
+	ArrayLib::ArrayNIJK<float>* m_mueR_ptr;
+	ArrayLib::ArrayNIJK<float>* m_sigma_ptr;
 
 	//EC elements, internal only!
 	virtual void Init_EC();
