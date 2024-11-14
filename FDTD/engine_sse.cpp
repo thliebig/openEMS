@@ -49,10 +49,12 @@ void Engine_sse::Init()
 {
 	Engine::Init();
 
-	Delete_N_3DArray(volt,numLines);
-	volt=NULL; // not used
-	Delete_N_3DArray(curr,numLines);
-	curr=NULL; // not used
+	// This engine uses its own SIMD arrays to represent E&M fields, so
+	// free the arrays from the base class.
+	delete volt_ptr;
+	volt_ptr = NULL;
+	delete curr_ptr;
+	curr_ptr = NULL;
 
 	f4_volt = Create_N_3DArray_v4sf(numLines);
 	f4_curr = Create_N_3DArray_v4sf(numLines);
