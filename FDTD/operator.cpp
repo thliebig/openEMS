@@ -568,30 +568,29 @@ void Operator::DumpOperator2File(string filename)
 
 	if (Op_Ext_Exc)
 	{
-		FDTD_FLOAT**** exc = NULL;
 		if (Op_Ext_Exc->Volt_Count>0)
 		{
-			exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
+			ArrayLib::ArrayNIJK<FDTD_FLOAT> exc("exc", numLines);
+
 			for (unsigned int n=0; n<  Op_Ext_Exc->Volt_Count; ++n)
 				exc[  Op_Ext_Exc->Volt_dir[n]][  Op_Ext_Exc->Volt_index[0][n]][  Op_Ext_Exc->Volt_index[1][n]][  Op_Ext_Exc->Volt_index[2][n]] =   Op_Ext_Exc->Volt_amp[n];
 			vtk_Writer->AddVectorField("exc_volt",exc);
-			Delete_N_3DArray(exc,numLines);
 		}
 
 		if (  Op_Ext_Exc->Curr_Count>0)
 		{
-			exc = Create_N_3DArray<FDTD_FLOAT>(numLines);
+			ArrayLib::ArrayNIJK<FDTD_FLOAT> exc("exc", numLines);
+
 			for (unsigned int n=0; n<  Op_Ext_Exc->Curr_Count; ++n)
 				exc[  Op_Ext_Exc->Curr_dir[n]][  Op_Ext_Exc->Curr_index[0][n]][  Op_Ext_Exc->Curr_index[1][n]][  Op_Ext_Exc->Curr_index[2][n]] =   Op_Ext_Exc->Curr_amp[n];
 			vtk_Writer->AddVectorField("exc_curr",exc);
-			Delete_N_3DArray(exc,numLines);
 		}
 	}
 
-	FDTD_FLOAT**** vv_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	FDTD_FLOAT**** vi_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	FDTD_FLOAT**** iv_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	FDTD_FLOAT**** ii_temp = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> vv_temp("vv", numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> vi_temp("vi", numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> iv_temp("iv", numLines);
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> ii_temp("ii", numLines);
 
 	unsigned int pos[3], n;
 	for (n=0; n<3; n++)
@@ -607,13 +606,9 @@ void Operator::DumpOperator2File(string filename)
 
 
 	vtk_Writer->AddVectorField("vv",vv_temp);
-	Delete_N_3DArray(vv_temp,numLines);
 	vtk_Writer->AddVectorField("vi",vi_temp);
-	Delete_N_3DArray(vi_temp,numLines);
 	vtk_Writer->AddVectorField("iv",iv_temp);
-	Delete_N_3DArray(iv_temp,numLines);
 	vtk_Writer->AddVectorField("ii",ii_temp);
-	Delete_N_3DArray(ii_temp,numLines);
 
 	if (vtk_Writer->Write()==false)
 		cerr << "Operator::DumpOperator2File: Error: Can't write file... skipping!" << endl;
