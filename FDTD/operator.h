@@ -64,20 +64,24 @@ public:
 	// the next four functions need to be reimplemented in a derived class
 	inline virtual FDTD_FLOAT GetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vv = *vv_ptr;
 		return vv[n][x][y][z];
 	}
 
 	inline virtual FDTD_FLOAT GetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vi = *vi_ptr;
 		return vi[n][x][y][z];
 	}
 
 	inline virtual FDTD_FLOAT GetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& ii = *ii_ptr;
 		return ii[n][x][y][z];
 	}
 	inline virtual FDTD_FLOAT GetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& iv = *iv_ptr;
 		return iv[n][x][y][z];
 	}
 
@@ -103,18 +107,22 @@ public:
 	// the next four functions need to be reimplemented in a derived class
 	inline virtual void SetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vv = *vv_ptr;
 		vv[n][x][y][z] = value;
 	}
 	inline virtual void SetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vi = *vi_ptr;
 		vi[n][x][y][z] = value;
 	}
 	inline virtual void SetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& ii = *ii_ptr;
 		ii[n][x][y][z] = value;
 	}
 	inline virtual void SetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& iv = *iv_ptr;
 		iv[n][x][y][z] = value;
 	}
 
@@ -323,10 +331,10 @@ protected:
 	// engine/post-proc needs access
 public:
 	//EC operator
-	FDTD_FLOAT**** vv; //calc new voltage from old voltage
-	FDTD_FLOAT**** vi; //calc new voltage from old current
-	FDTD_FLOAT**** ii; //calc new current from old current
-	FDTD_FLOAT**** iv; //calc new current from old voltage
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* vv_ptr; //calc new voltage from old voltage
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* vi_ptr; //calc new voltage from old current
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* ii_ptr; //calc new current from old current
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* iv_ptr; //calc new current from old voltage
 };
 
 inline Operator::DebugFlags operator|( Operator::DebugFlags a, Operator::DebugFlags b ) { return static_cast<Operator::DebugFlags>(static_cast<int>(a) | static_cast<int>(b)); }

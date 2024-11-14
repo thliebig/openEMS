@@ -74,10 +74,10 @@ void Operator::Init()
 
 	Operator_Base::Init();
 
-	vv=NULL;
-	vi=NULL;
-	iv=NULL;
-	ii=NULL;
+	vv_ptr = NULL;
+	vi_ptr = NULL;
+	iv_ptr = NULL;
+	ii_ptr = NULL;
 
 	m_epsR_ptr = NULL;
 	m_kappa_ptr = NULL;
@@ -103,11 +103,15 @@ void Operator::Delete()
 {
 	CSX = NULL;
 
-	Delete_N_3DArray(vv,numLines);
-	Delete_N_3DArray(vi,numLines);
-	Delete_N_3DArray(iv,numLines);
-	Delete_N_3DArray(ii,numLines);
-	vv=vi=iv=ii=0;
+	delete vv_ptr;
+	delete vi_ptr;
+	delete iv_ptr;
+	delete ii_ptr;
+	vv_ptr = NULL;
+	vi_ptr = NULL;
+	iv_ptr = NULL;
+	ii_ptr = NULL;
+
 	delete MainOp; MainOp=0;
 	for (int n=0; n<3; ++n)
 	{
@@ -833,14 +837,14 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 
 void Operator::InitOperator()
 {
-	Delete_N_3DArray(vv,numLines);
-	Delete_N_3DArray(vi,numLines);
-	Delete_N_3DArray(iv,numLines);
-	Delete_N_3DArray(ii,numLines);
-	vv = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	vi = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	iv = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	ii = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	delete vv_ptr;
+	delete vi_ptr;
+	delete iv_ptr;
+	delete ii_ptr;
+	vv_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("vv", numLines);
+	vi_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("vi", numLines);
+	iv_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("iv", numLines);
+	ii_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("ii", numLines);
 }
 
 void Operator::InitDataStorage()
