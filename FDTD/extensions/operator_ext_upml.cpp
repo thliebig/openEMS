@@ -40,13 +40,6 @@ Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 		m_StartPos[n]=0;
 		m_numLines[n]=0;
 	}
-
-	vv = NULL;
-	vvfo = NULL;
-	vvfn = NULL;
-	ii = NULL;
-	iifo = NULL;
-	iifn = NULL;
 }
 
 Operator_Ext_UPML::~Operator_Ext_UPML()
@@ -257,18 +250,6 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 
 void Operator_Ext_UPML::DeleteOp()
 {
-	Delete_N_3DArray<FDTD_FLOAT>(vv,m_numLines);
-	vv = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(vvfo,m_numLines);
-	vvfo = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(vvfn,m_numLines);
-	vvfn = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(ii,m_numLines);
-	ii = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(iifo,m_numLines);
-	iifo = NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(iifn,m_numLines);
-	iifn = NULL;
 }
 
 
@@ -372,13 +353,12 @@ bool Operator_Ext_UPML::BuildExtension()
 	if (m_Op==NULL)
 		return false;
 
-	DeleteOp();
-	vv = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	vvfo = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	vvfn = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	ii = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	iifo = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
-	iifn = Create_N_3DArray<FDTD_FLOAT>(m_numLines);
+	vv.Init("vv", m_numLines);
+	vvfo.Init("vvfo", m_numLines);
+	vvfn.Init("vvfn", m_numLines);
+	ii.Init("ii", m_numLines);
+	iifo.Init("iifo", m_numLines);
+	iifn.Init("iifn", m_numLines);
 
 	unsigned int pos[3];
 	unsigned int loc_pos[3];
