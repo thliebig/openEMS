@@ -22,6 +22,7 @@
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
 #include "engine_extension_dispatcher.h"
+#include "tools/arraylib/array_ij.h"
 
 class Operator_Ext_Mur_ABC;
 
@@ -64,10 +65,10 @@ protected:
 	vector<unsigned int> m_start;
 	vector<unsigned int> m_numX;
 
-	FDTD_FLOAT** m_Mur_Coeff_nyP;
-	FDTD_FLOAT** m_Mur_Coeff_nyPP;
-	FDTD_FLOAT** m_volt_nyP; //n+1 direction
-	FDTD_FLOAT** m_volt_nyPP; //n+2 direction
+	ArrayLib::ArrayIJ<FDTD_FLOAT>& m_Mur_Coeff_nyP;
+	ArrayLib::ArrayIJ<FDTD_FLOAT>& m_Mur_Coeff_nyPP;
+	ArrayLib::ArrayIJ<FDTD_FLOAT> m_volt_nyP; //n+1 direction
+	ArrayLib::ArrayIJ<FDTD_FLOAT> m_volt_nyPP; //n+2 direction
 };
 
 #endif // ENGINE_EXT_MUR_ABC_H
