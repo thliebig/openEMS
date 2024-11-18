@@ -516,7 +516,7 @@ cdef class openEMS:
 
         self._SetLibraryArguments(kw)
 
-        if Path(os.getcwd()).resolve() == Path(sim_path).resolve():
+        if Path(os.getcwd()).resolve() != Path(sim_path).resolve():
             raise RuntimeError('Current working directory is different from `sim_path`. If you encounter this error, please report it to the developers, because it should never happen in normal conditions, it is not your fault. ')
 
         _openEMS.WelcomeScreen()
