@@ -1,0 +1,212 @@
+FROM ubuntu:22.04
+
+MAINTAINER typedef int GmbH <support@typedefint.eu>
+
+# these build arguments should be defined _after_ FROM, so the values are available later on
+ARG TYPEDEFINT_BUILD_HOST
+ARG TYPEDEFINT_BUILD_DATE
+ARG OPENEMS_VERSION
+
+# while these are defined, and we copy over to env vars (available in container at run-time)
+ENV TYPEDEFINT_BUILD_HOST $TYPEDEFINT_BUILD_HOST
+ENV TYPEDEFINT_BUILD_DATE $TYPEDEFINT_BUILD_DATE
+ENV OPENEMS_VERSION $OPENEMS_VERSION
+
+RUN    echo "export TYPEDEFINT_BUILD_HOST=$TYPEDEFINT_BUILD_HOST" >> /etc/profile.d/typedefint.sh \
+    && echo "export TYPEDEFINT_BUILD_DATE=$TYPEDEFINT_BUILD_DATE" >> /etc/profile.d/typedefint.sh \
+    && echo "export OPENEMS_VERSION=$OPENEMS_VERSION" >> /etc/profile.d/typedefint.sh \
+    && chmod +x /etc/profile.d/typedefint.sh
+
+# http://bugs.python.org/issue19846
+# > At the moment, setting "LANG=C" on a Linux system *fundamentally breaks Python 3*, and that's not OK.
+ENV LANG C.UTF-8
+ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED 1
+
+# ensure locally installed tools are found and preferred
+ENV PATH /usr/local/bin:$PATH
+
+# use Bash also later inside containers
+# https://github.com/moby/moby/issues/7281#issuecomment-389440503
+SHELL ["/bin/bash", "-c"]
+
+# see: https://docs.openems.de/install/requirements.html#debian-ubuntu
+RUN    apt-get update \
+    && apt-get -y dist-upgrade \
+    && apt-get install -y --no-install-recommends \
+               ca-certificates procps iputils-ping net-tools htop curl wget expat git \
+               build-essential cmake  \
+               libssl-dev libffi-dev libunwind-dev libreadline-dev zlib1g-dev libbz2-dev libsqlite3-dev libncurses5-dev libsnappy-dev \
+    && rm -rf ~/.cache \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV HOME /openems
+WORKDIR /openems
+VOLUME /openems
+
+
+##############################################################################
+##
+## Build CPython from sources
+##
+
+RUN    cd /openems \
+    && wget https://www.python.org/ftp/python/3.12.1/Python-3.12.1.tar.xz \
+    && tar xvf Python-3.12.1.tar.xz \
+    && cd Python-3.12.1 \
+    && ./configure --prefix=/openems/cpy312 --enable-shared \
+    && make -j4 \
+    && make install \
+    && cd ..
+
+RUN    echo "/openems/cpy312/lib" >> /etc/ld.so.conf.d/cpy312.conf \
+    && ldconfig \
+    && export LD_LIBRARY_PATH="/openems/cpy312/lib:${LD_LIBRARY_PATH}" \
+    && /openems/cpy312/bin/python3 -V \
+    && /openems/cpy312/bin/pip3 install -U pip setuptools wheel twine \
+    && /openems/cpy312/bin/python3 -m venv /openems/cpy312_1 \
+    && source /openems/cpy312_1/bin/activate \
+    && which python && python -V
+
+
+##############################################################################
+##
+## Build VTK from sources
+##
+## https://wiki.qt.io/Building_Qt_Creator_from_Git_on_Ubuntu_22.04
+##
+
+RUN    apt-get update \
+    && apt-get install -y cmake ninja-build libgl1-mesa-dev clang-15 clangd-15 libclang-15-dev
+
+RUN    apt-get update \
+    && apt-get install -y qt6-base-dev qt6-base-private-dev qt6-declarative-dev qt6-declarative-private-dev \
+        qt6-tools-dev qt6-tools-private-dev qt6-scxml-dev qt6-documentation-tools libqt6core5compat6-dev \
+        qt6-tools-dev-tools qt6-l10n-tools qt6-shader-baker libqt6shadertools6-dev qt6-quick3d-dev \
+        qt6-quick3d-dev-tools libqt6svg6-dev libqt6quicktimeline6-dev libqt6serialport6-dev
+
+ENV VTK_DIR /usr/local/include/vtk-9.3
+
+RUN    cd /openems \
+    && wget https://www.vtk.org/files/release/9.3/VTK-9.3.0.tar.gz \
+    && tar xvf VTK-9.3.0.tar.gz
+
+RUN    ls -la /openems/cpy312/bin/python3 \
+    && ls -la /openems/cpy312/lib/python3.12 \
+    && ls -la /openems/cpy312/include/python3.12
+
+RUN    cd /openems \
+    && mkdir .build-vtk \
+    && cd .build-vtk \
+    && cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DVTK_GROUP_ENABLE_Qt=YES \
+        -DVTK_WRAP_PYTHON=YES \
+        -DPython3_EXECUTABLE=/openems/cpy312/bin/python3 \
+        /openems/VTK-9.3.0/ \
+    && cmake --build . \
+    && cmake --install .
+
+
+##############################################################################
+##
+## Build openEMS and all dependencies from sources
+##
+
+ENV OPENEMS_HOME /openems/.local
+
+RUN    cd /openems \
+    && export OPENEMS_HOME=/openems/.local \
+    && export PATH=${OPENEMS_HOME}/bin:${PATH} \
+    && mkdir -p ./scm/openems \
+    && mkdir ./.local \
+    && cd ./scm/openems \
+    && git clone https://github.com/thliebig/openEMS-Project.git \
+    && cd openEMS-Project \
+    && git checkout $OPENEMS_VERSION \
+    && export "OPENEMS_BUILD_ID=${OPENEMS_VERSION}-`git rev-parse --short master`-`date -u +"%Y%m%d"`" \
+    && echo "export OPENEMS_BUILD_ID=${OPENEMS_BUILD_ID}" >> /etc/profile.d/typedefint.sh \
+    && git submodule update --init --recursive
+
+RUN    cd /openems/scm/openems/openEMS-Project/fparser \
+    && export OPENEMS_HOME=/openems/.local \
+    && export PATH=${OPENEMS_HOME}/bin:${PATH} \
+    && mkdir build \
+    && cd build \
+    && cmake ../ -DCMAKE_INSTALL_PREFIX=${OPENEMS_HOME} \
+    && make \
+    && make install
+
+# FIXME
+RUN apt-get update && apt-get install -y libtinyxml-dev libtinyxml2-dev libhdf5-dev libcgal-dev
+
+RUN    cd /openems/scm/openems/openEMS-Project/CSXCAD \
+    && export OPENEMS_HOME=/openems/.local \
+    && export PATH=${OPENEMS_HOME}/bin:${PATH} \
+    && mkdir build \
+    && cd build \
+    && cmake ../ -DCMAKE_INSTALL_PREFIX=${OPENEMS_HOME} \
+    && make \
+    && make install
+
+RUN    cd /openems/scm/openems/openEMS-Project/openEMS \
+    && export OPENEMS_HOME=/openems/.local \
+    && export PATH=${OPENEMS_HOME}/bin:${PATH} \
+    && mkdir build \
+    && cd build \
+    && cmake ../ -DCMAKE_INSTALL_PREFIX=${OPENEMS_HOME} -DFPARSER_ROOT_DIR=${OPENEMS_HOME} -DCSXCAD_ROOT_DIR=${OPENEMS_HOME} \
+    && make \
+    && make install
+
+RUN    cd /openems/scm/openems/openEMS-Project/QCSXCAD \
+    && export OPENEMS_HOME=/openems/.local \
+    && export PATH=${OPENEMS_HOME}/bin:${PATH} \
+    && mkdir build \
+    && cd build \
+    && cmake ../ -DCMAKE_INSTALL_PREFIX=${OPENEMS_HOME} \
+    && make \
+    && make install
+
+RUN    cd /openems/scm/openems/openEMS-Project/AppCSXCAD \
+    && export OPENEMS_HOME=/openems/.local \
+    && export PATH=${OPENEMS_HOME}/bin:${PATH} \
+    && mkdir build \
+    && cd build \
+    && cmake ../ -DCMAKE_INSTALL_PREFIX=${OPENEMS_HOME} \
+    && make \
+    && make install
+
+RUN /openems/cpy312_1/bin/pip3 install numpy matplotlib
+
+RUN /openems/cpy312_1/bin/pip3 install setuptools Cython
+
+RUN    cd /openems/scm/openems/openEMS-Project/openEMS/python/ \
+    && CFLAGS="-I/openems/.local/include" LDFLAGS="-L/openems/.local/lib" /openems/cpy312_1/bin/python3 setup.py install
+
+RUN    cd /openems/scm/openems/openEMS-Project/CSXCAD/python/ \
+    && CFLAGS="-I/openems/.local/include" LDFLAGS="-L/openems/.local/lib" /openems/cpy312_1/bin/python3 setup.py install
+
+# /openems/.local/lib
+
+RUN    echo "export TYPEDEFINT_BUILD_HOST=$TYPEDEFINT_BUILD_HOST" >> /etc/profile.d/typedefint.sh \
+    && echo "export TYPEDEFINT_BUILD_DATE=$TYPEDEFINT_BUILD_DATE" >> /etc/profile.d/typedefint.sh \
+    && echo "export OPENEMS_VERSION=$OPENEMS_VERSION" >> /etc/profile.d/typedefint.sh \
+    && echo "export OPENEMS_HOME=/openems/.local" >> /etc/profile.d/typedefint.sh \
+    && chmod +x /etc/profile.d/typedefint.sh
+
+RUN    echo "/openems/.local/lib" >> /etc/ld.so.conf.d/openems.conf \
+    && ldconfig
+
+# FIXME
+# https://forum.qt.io/topic/111553/solved-qt-qpa-plugin-could-not-find-the-qt-platform-plugin-xcb-in/7
+# https://stackoverflow.com/questions/68036484/qt6-qt-qpa-plugin-could-not-load-the-qt-platform-plugin-xcb-in-even-thou
+RUN apt-get update && apt-get install -y xcb libxcb1-dev libxcb-cursor-dev qt6-qpa-plugins
+
+# RUN /openems/cpy312_1/bin/pip3 install PyQt5
+RUN /openems/cpy312_1/bin/pip3 install PyQt6
+
+
+ENTRYPOINT ["/usr/bin/bash"]
+# ENTRYPOINT ["/openems/.local/bin/openEMS"]
+# ENTRYPOINT ["/usr/bin/python3"]
+# ENTRYPOINT ["/openems/cpy312_1/bin/python3"]
