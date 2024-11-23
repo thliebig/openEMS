@@ -80,8 +80,8 @@ Global::optionDesc()
 					cout << "openEMS - verbose level " << m_VerboseLevel << endl;
 				}
 			),
-            "Verbose level, select debug level 1 to 3, "
-		    "also accept -v, -vv, -vvv"
+			"Verbose level, select debug level 1 to 3, "
+			"also accept -v, -vv, -vvv"
 		);
 	return optdesc;
 }
