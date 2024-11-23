@@ -66,13 +66,18 @@ Global::optionDesc()
 		)
 		(
 			"verbose,v",
-			po::value<unsigned int>()->implicit_value(1)->notifier(
+			po::value<unsigned int>()->default_value(0)->implicit_value(1)->
+			notifier(
 				[&](unsigned int val)
 				{
-					if (val == 0) return;
+					// Don't apply settings if the default value 0 is unchanged,
+					// Apply settings and print messages if we have a non-default value
+					// or if the non-default value is changed back to default in another
+					// call (when running as a shared library).
+					if (val == 0 && m_VerboseLevel == 0) return;
+
 					m_VerboseLevel = val;
 					cout << "openEMS - verbose level " << m_VerboseLevel << endl;
-
 				}
 			),
             "Verbose level, select debug level 1 to 3, "
