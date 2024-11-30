@@ -54,13 +54,16 @@ double Engine_Interface_SSE_FDTD::CalcFastEnergy() const
 		{
 			for (pos[2]=0; pos[2]<m_Op_SSE->numVectors; ++pos[2])
 			{
-				E_energy.v += m_Eng_SSE->Engine_sse::f4_volt[0][pos[0]][pos[1]][pos[2]].v * m_Eng_SSE->Engine_sse::f4_volt[0][pos[0]][pos[1]][pos[2]].v;
-				E_energy.v += m_Eng_SSE->Engine_sse::f4_volt[1][pos[0]][pos[1]][pos[2]].v * m_Eng_SSE->Engine_sse::f4_volt[1][pos[0]][pos[1]][pos[2]].v;
-				E_energy.v += m_Eng_SSE->Engine_sse::f4_volt[2][pos[0]][pos[1]][pos[2]].v * m_Eng_SSE->Engine_sse::f4_volt[2][pos[0]][pos[1]][pos[2]].v;
+				ArrayLib::ArrayNIJK<f4vector>& f4_volt = *m_Eng_SSE->Engine_sse::f4_volt_ptr;
+				ArrayLib::ArrayNIJK<f4vector>& f4_curr = *m_Eng_SSE->Engine_sse::f4_curr_ptr;
 
-				H_energy.v += m_Eng_SSE->Engine_sse::f4_curr[0][pos[0]][pos[1]][pos[2]].v * m_Eng_SSE->Engine_sse::f4_curr[0][pos[0]][pos[1]][pos[2]].v;
-				H_energy.v += m_Eng_SSE->Engine_sse::f4_curr[1][pos[0]][pos[1]][pos[2]].v * m_Eng_SSE->Engine_sse::f4_curr[1][pos[0]][pos[1]][pos[2]].v;
-				H_energy.v += m_Eng_SSE->Engine_sse::f4_curr[2][pos[0]][pos[1]][pos[2]].v * m_Eng_SSE->Engine_sse::f4_curr[2][pos[0]][pos[1]][pos[2]].v;
+				E_energy.v += f4_volt[0][pos[0]][pos[1]][pos[2]].v * f4_volt[0][pos[0]][pos[1]][pos[2]].v;
+				E_energy.v += f4_volt[1][pos[0]][pos[1]][pos[2]].v * f4_volt[1][pos[0]][pos[1]][pos[2]].v;
+				E_energy.v += f4_volt[2][pos[0]][pos[1]][pos[2]].v * f4_volt[2][pos[0]][pos[1]][pos[2]].v;
+
+				H_energy.v += f4_curr[0][pos[0]][pos[1]][pos[2]].v * f4_curr[0][pos[0]][pos[1]][pos[2]].v;
+				H_energy.v += f4_curr[1][pos[0]][pos[1]][pos[2]].v * f4_curr[1][pos[0]][pos[1]][pos[2]].v;
+				H_energy.v += f4_curr[2][pos[0]][pos[1]][pos[2]].v * f4_curr[2][pos[0]][pos[1]][pos[2]].v;
 			}
 		}
 	}

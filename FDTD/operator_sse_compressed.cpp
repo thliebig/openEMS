@@ -33,7 +33,6 @@ Operator_SSE_Compressed* Operator_SSE_Compressed::New()
 
 Operator_SSE_Compressed::Operator_SSE_Compressed() : Operator_sse()
 {
-	m_Op_index = NULL;
 	m_Use_Compression = false;	
 }
 
@@ -65,17 +64,10 @@ void Operator_SSE_Compressed::Init()
 {
 	Operator_sse::Init();
 	m_Use_Compression = false;
-	m_Op_index = NULL;
 }
 
 void Operator_SSE_Compressed::Delete()
 {
-	if (m_Op_index)
-	{
-		Delete3DArray<unsigned int>( m_Op_index, numLines );
-		m_Op_index = 0;
-	}
-
 	m_Use_Compression = false;
 	for (int n=0; n<3; n++)
 	{
@@ -105,7 +97,7 @@ void Operator_SSE_Compressed::InitOperator()
 	}
 
 	Operator_sse::InitOperator();
-	m_Op_index = Create3DArray<unsigned int>( numLines );
+	m_Op_index.Init("Op_index", numLines);
 }
 
 void Operator_SSE_Compressed::ShowStat() const
@@ -121,6 +113,11 @@ bool Operator_SSE_Compressed::CompressOperator()
 {
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Compressing the FDTD operator... this may take a while..." << endl;
+
+	ArrayLib::ArrayNIJK<f4vector>& f4_vv = *f4_vv_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_vi = *f4_vi_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_iv = *f4_iv_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_ii = *f4_ii_ptr;
 
 	map<SSE_coeff,unsigned int> lookUpMap;
 
@@ -163,14 +160,14 @@ bool Operator_SSE_Compressed::CompressOperator()
 		}
 	}
 
-	Delete_N_3DArray_v4sf(f4_vv,numLines);
-	Delete_N_3DArray_v4sf(f4_vi,numLines);
-	Delete_N_3DArray_v4sf(f4_iv,numLines);
-	Delete_N_3DArray_v4sf(f4_ii,numLines);
-	f4_vv = 0;
-	f4_vi = 0;
-	f4_iv = 0;
-	f4_ii = 0;
+	delete f4_vv_ptr;
+	delete f4_vi_ptr;
+	delete f4_iv_ptr;
+	delete f4_ii_ptr;
+	f4_vv_ptr = NULL;
+	f4_vi_ptr = NULL;
+	f4_iv_ptr = NULL;
+	f4_ii_ptr = NULL;
 
 	return true;
 }
