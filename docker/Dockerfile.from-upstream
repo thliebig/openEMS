@@ -1,0 +1,64 @@
+FROM ubuntu:22.04
+
+MAINTAINER typedef int GmbH <support@typedefint.eu>
+
+# these build arguments should be defined _after_ FROM, so the values are available later on
+ARG TYPEDEFINT_BUILD_HOST
+ARG TYPEDEFINT_BUILD_DATE
+ARG OPENEMS_VERSION
+
+# while these are defined, and we copy over to env vars (available in container at run-time)
+ENV TYPEDEFINT_BUILD_HOST $TYPEDEFINT_BUILD_HOST
+ENV TYPEDEFINT_BUILD_DATE $TYPEDEFINT_BUILD_DATE
+ENV OPENEMS_VERSION $OPENEMS_VERSION
+
+RUN    echo "export TYPEDEFINT_BUILD_HOST=$TYPEDEFINT_BUILD_HOST" >> /etc/profile.d/typedefint.sh \
+    && echo "export TYPEDEFINT_BUILD_DATE=$TYPEDEFINT_BUILD_DATE" >> /etc/profile.d/typedefint.sh \
+    && echo "export OPENEMS_VERSION=$OPENEMS_VERSION" >> /etc/profile.d/typedefint.sh \
+    && chmod +x /etc/profile.d/typedefint.sh
+
+# http://bugs.python.org/issue19846
+# > At the moment, setting "LANG=C" on a Linux system *fundamentally breaks Python 3*, and that's not OK.
+ENV LANG C.UTF-8
+ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED 1
+
+# ensure locally installed tools are found and preferred
+ENV PATH /usr/local/bin:$PATH
+
+# use Bash also later inside containers
+# https://github.com/moby/moby/issues/7281#issuecomment-389440503
+SHELL ["/bin/bash", "-c"]
+
+# see: https://docs.openems.de/install/requirements.html#debian-ubuntu
+RUN    apt-get update \
+    && apt-get install -y --no-install-recommends \
+               ca-certificates procps iputils-ping net-tools htop curl expat git \
+               build-essential cmake git libhdf5-dev libvtk9-dev libboost-all-dev libcgal-dev libtinyxml-dev \
+               qtbase5-dev libvtk9-qt-dev \
+               octave liboctave-dev \
+               python3-numpy python3-matplotlib cython3 python3-h5py \
+               paraview \
+               gengetopt help2man groff pod2pdf bison flex libhpdf-dev libtool \
+    && rm -rf ~/.cache \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV HOME /openems
+WORKDIR /openems
+VOLUME /openems
+
+RUN    cd /openems \
+    && mkdir -p ./scm/openems \
+    && mkdir ./.local \
+    && cd ./scm/openems \
+    && git clone https://github.com/thliebig/openEMS-Project.git \
+    && cd openEMS-Project \
+    && git checkout $OPENEMS_VERSION \
+    && export "OPENEMS_BUILD_ID=${OPENEMS_VERSION}-`git rev-parse --short master`-`date -u +"%Y%m%d"`" \
+    && echo "export OPENEMS_BUILD_ID=${OPENEMS_BUILD_ID}" >> /etc/profile.d/typedefint.sh \
+    && git submodule update --init --recursive \
+    && ./update_openEMS.sh /openems/.local --with-hyp2mat --with-CTB --python
+
+# ENTRYPOINT ["/usr/bin/bash"]
+# ENTRYPOINT ["/openems/.local/bin/openEMS"]
+ENTRYPOINT ["/usr/bin/python3"]
