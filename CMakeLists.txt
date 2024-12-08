@@ -134,7 +134,7 @@ message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
 INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
 
 # vtk
-find_package(VTK)
+find_package(VTK COMPONENTS CommonCore QUIET)
 if (${VTK_VERSION} VERSION_GREATER "9")
     find_package(VTK REQUIRED COMPONENTS IOXML IOGeometry IOLegacy IOPLY NO_MODULE REQUIRED)
 else()
