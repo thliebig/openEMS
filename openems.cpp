@@ -34,6 +34,7 @@
 #include "FDTD/extensions/operator_ext_lumpedRLC.h"
 #include "FDTD/extensions/operator_ext_conductingsheet.h"
 #include "FDTD/extensions/operator_ext_steadystate.h"
+#include "FDTD/extensions/operator_ext_absorbing_bc.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
 #include "FDTD/engine_interface_fdtd.h"
 #include "FDTD/engine_interface_cylindrical_fdtd.h"
@@ -409,6 +410,42 @@ bool openEMS::SetupBoundaryConditions()
 	Operator_Ext_UPML::Create_UPML(FDTD_Op, m_BC_type, m_PML_size, string());
 
 	return true;
+}
+
+void openEMS::SetupAbsorbingSheets()
+{
+	vector<CSProperties*>	cs_props;
+	cs_props = m_CSX->GetPropertyByType(CSProperties::ABSORBING_BC);
+
+	for(size_t n = 0 ; n < cs_props.size() ; ++n)
+	{
+		CSPropAbsorbingBC * cABCprops = dynamic_cast<CSPropAbsorbingBC*>(cs_props.at(n));
+
+		// Now start iterating through primitives
+		vector<CSPrimitives*> cs_abc_prims = cABCprops->GetAllPrimitives();
+		for (size_t sheetIdx = 0 ; sheetIdx < cs_abc_prims.size() ; ++sheetIdx)
+		{
+
+			// Attempt to initialize operator extension
+			Operator_Ext_Absorbing_BC* op_ext_abc = new Operator_Ext_Absorbing_BC(FDTD_Op);
+
+			CSPrimitives* cPrimitive = cs_abc_prims.at(sheetIdx);
+
+			// Initialize all necessary parameters so the extension operator can be
+			// built later on.
+			if (op_ext_abc->SetInitParams(cPrimitive,cABCprops))
+				// Finally, add the extension
+				FDTD_Op->AddExtension(op_ext_abc);
+			else
+			{
+				cerr << "openEMS::SetupAbsorbingSheets(): Warning: Absorbing sheet #" << sheetIdx << " setup failed.";
+				delete op_ext_abc;
+			}
+
+		}
+
+	}
+
 }
 
 Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
@@ -1100,6 +1137,8 @@ int openEMS::SetupFDTD()
 		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op, m_Exc->GetMaxFreq()));
 	if (m_CSX->GetQtyPropertyType(CSProperties::LUMPED_ELEMENT)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LumpedRLC(FDTD_Op));
+	if (m_CSX->GetQtyPropertyType(CSProperties::ABSORBING_BC)>0)
+		SetupAbsorbingSheets();
 
 
 	//check all properties to request material storage during operator creation...
