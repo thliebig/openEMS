@@ -40,16 +40,13 @@ public:
 	static bool ReceivedSIGINT(void);
 
 private:
-	inline static volatile std::sig_atomic_t m_sigintAbort = 0;
 	static void SafeStderrWrite(const char *buf);
 
 #ifndef WIN32
-	inline static void (*m_sigHandlerOriginal)(int) = NULL;
 	static void UnixSetupHandlerForSIGINT(int type);
 	static void UnixGracefulExitHandler(int signal);
 	static void UnixForceExitHandler(int signal);
 #else
-	inline static PHANDLER_ROUTINE m_sigHandlerRegistered = NULL;
 	static void Win32SetupHandlerForConsoleCtrl(int type);
 	static BOOL Win32GracefulExitHandler(DWORD fdwCtrlType);
 	static BOOL Win32ForceExitHandler(DWORD fdwCtrlType);
