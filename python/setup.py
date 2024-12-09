@@ -51,9 +51,9 @@ setup(
   package_data={'openEMS': ['*.pxd']},
   python_requires='>=3.9',
   install_requires=[
-    'cython>=3.0.6',  # Apache License 2.0 (https://github.com/cython/cython/blob/master/LICENSE.txt)
-    'h5py>=3.10.0',   # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
-    'numpy>=1.26.2',  # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
+    'cython', # Apache License 2.0 (https://github.com/cython/cython/blob/master/LICENSE.txt)
+    'h5py',   # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
+    'numpy',  # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
   ],
   ext_modules = cythonize(extensions, language_level = 3)
  )
