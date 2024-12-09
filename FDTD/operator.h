@@ -40,6 +40,7 @@ class Operator : public Operator_Base
 	friend class Operator_Ext_UPML;
 	friend class Operator_Ext_Cylinder;
 	friend class Operator_Ext_LumpedRLC;		// Gadi: I now know why the two previous remarks are here.
+	friend class Operator_Ext_Absorbing_BC;		// Gadi: I now know why the two previous remarks are here.
 
 	// So apparaently I have to use functionality from operator
 	// in my "lumpedRLC" class. This is ugly...
