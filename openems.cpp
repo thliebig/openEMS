@@ -34,6 +34,7 @@
 #include "FDTD/extensions/operator_ext_lumpedRLC.h"
 #include "FDTD/extensions/operator_ext_conductingsheet.h"
 #include "FDTD/extensions/operator_ext_steadystate.h"
+#include "FDTD/extensions/operator_ext_absorbing_bc.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
 #include "FDTD/engine_interface_fdtd.h"
 #include "FDTD/engine_interface_cylindrical_fdtd.h"
@@ -1094,6 +1095,8 @@ int openEMS::SetupFDTD()
 		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op, m_Exc->GetMaxFreq()));
 	if (m_CSX->GetQtyPropertyType(CSProperties::LUMPED_ELEMENT)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LumpedRLC(FDTD_Op));
+	if (m_CSX->GetQtyPropertyType(CSProperties::ABSORBING_BC)>0)
+		FDTD_Op->AddExtension(new Operator_Ext_Absorbing_BC(FDTD_Op,m_engine_numThreads));
 
 
 	//check all properties to request material storage during operator creation...
