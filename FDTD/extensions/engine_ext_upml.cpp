@@ -29,18 +29,14 @@ Engine_Ext_UPML::Engine_Ext_UPML(Operator_Ext_UPML* op_ext) : Engine_Extension(o
 	//this ABC extension should be executed first!
 	m_Priority = ENG_EXT_PRIO_UPML;
 
-	volt_flux = Create_N_3DArray<FDTD_FLOAT>(m_Op_UPML->m_numLines);
-	curr_flux = Create_N_3DArray<FDTD_FLOAT>(m_Op_UPML->m_numLines);
+	volt_flux.Init("volt_flux", m_Op_UPML->m_numLines);
+	curr_flux.Init("curr_flux", m_Op_UPML->m_numLines);
 
 	SetNumberOfThreads(1);
 }
 
 Engine_Ext_UPML::~Engine_Ext_UPML()
 {
-	Delete_N_3DArray<FDTD_FLOAT>(volt_flux,m_Op_UPML->m_numLines);
-	volt_flux=NULL;
-	Delete_N_3DArray<FDTD_FLOAT>(curr_flux,m_Op_UPML->m_numLines);
-	curr_flux=NULL;
 }
 
 void Engine_Ext_UPML::SetNumberOfThreads(int nrThread)
