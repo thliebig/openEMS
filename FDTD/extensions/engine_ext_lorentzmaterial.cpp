@@ -76,8 +76,8 @@ Engine_Ext_LorentzMaterial::~Engine_Ext_LorentzMaterial()
 	volt_Lor_ADE=NULL;
 }
 
-template <typename EngineType>
-void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngineType* eng)
+template <typename EngType>
+void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 {
 	for (int o=0;o<m_Order;++o)
 	{
@@ -91,15 +91,15 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngineType* eng)
 			{
 				volt_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->v_Lor_ADE[o][0][i]*volt_ADE[o][0][i];
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
-				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * (eng->EngineType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][0][i]);
+				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * (eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][0][i]);
 
 				volt_Lor_ADE[o][1][i]+=m_Op_Ext_Lor->v_Lor_ADE[o][1][i]*volt_ADE[o][1][i];
 				volt_ADE[o][1][i] *= m_Op_Ext_Lor->v_int_ADE[o][1][i];
-				volt_ADE[o][1][i] += m_Op_Ext_Lor->v_ext_ADE[o][1][i] * (eng->EngineType::GetVolt(1,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][1][i]);
+				volt_ADE[o][1][i] += m_Op_Ext_Lor->v_ext_ADE[o][1][i] * (eng->EngType::GetVolt(1,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][1][i]);
 
 				volt_Lor_ADE[o][2][i]+=m_Op_Ext_Lor->v_Lor_ADE[o][2][i]*volt_ADE[o][2][i];
 				volt_ADE[o][2][i] *= m_Op_Ext_Lor->v_int_ADE[o][2][i];
-				volt_ADE[o][2][i] += m_Op_Ext_Lor->v_ext_ADE[o][2][i] * (eng->EngineType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][2][i]);
+				volt_ADE[o][2][i] += m_Op_Ext_Lor->v_ext_ADE[o][2][i] * (eng->EngType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][2][i]);
 			}
 		}
 		else
@@ -107,13 +107,13 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngineType* eng)
 			for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
 			{
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
-				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * eng->EngineType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
+				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
 
 				volt_ADE[o][1][i] *= m_Op_Ext_Lor->v_int_ADE[o][1][i];
-				volt_ADE[o][1][i] += m_Op_Ext_Lor->v_ext_ADE[o][1][i] * eng->EngineType::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]);
+				volt_ADE[o][1][i] += m_Op_Ext_Lor->v_ext_ADE[o][1][i] * eng->EngType::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]);
 
 				volt_ADE[o][2][i] *= m_Op_Ext_Lor->v_int_ADE[o][2][i];
-				volt_ADE[o][2][i] += m_Op_Ext_Lor->v_ext_ADE[o][2][i] * eng->EngineType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]);
+				volt_ADE[o][2][i] += m_Op_Ext_Lor->v_ext_ADE[o][2][i] * eng->EngType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]);
 			}
 		}
 	}
@@ -124,8 +124,8 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates()
 	ENG_DISPATCH(DoPreVoltageUpdatesImpl);
 }
 
-template <typename EngineType>
-void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngineType* eng)
+template <typename EngType>
+void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
 {
 	for (int o=0;o<m_Order;++o)
 	{
@@ -139,15 +139,15 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngineType* eng)
 			{
 				curr_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->i_Lor_ADE[o][0][i]*curr_ADE[o][0][i];
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
-				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * (eng->EngineType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][0][i]);
+				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * (eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][0][i]);
 
 				curr_Lor_ADE[o][1][i]+=m_Op_Ext_Lor->i_Lor_ADE[o][1][i]*curr_ADE[o][1][i];
 				curr_ADE[o][1][i] *= m_Op_Ext_Lor->i_int_ADE[o][1][i];
-				curr_ADE[o][1][i] += m_Op_Ext_Lor->i_ext_ADE[o][1][i] * (eng->EngineType::GetCurr(1,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][1][i]);
+				curr_ADE[o][1][i] += m_Op_Ext_Lor->i_ext_ADE[o][1][i] * (eng->EngType::GetCurr(1,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][1][i]);
 
 				curr_Lor_ADE[o][2][i]+=m_Op_Ext_Lor->i_Lor_ADE[o][2][i]*curr_ADE[o][2][i];
 				curr_ADE[o][2][i] *= m_Op_Ext_Lor->i_int_ADE[o][2][i];
-				curr_ADE[o][2][i] += m_Op_Ext_Lor->i_ext_ADE[o][2][i] * (eng->EngineType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][2][i]);
+				curr_ADE[o][2][i] += m_Op_Ext_Lor->i_ext_ADE[o][2][i] * (eng->EngType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][2][i]);
 			}
 		}
 		else
@@ -155,13 +155,13 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngineType* eng)
 			for (unsigned int i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
 			{
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
-				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * eng->EngineType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);
+				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);
 
 				curr_ADE[o][1][i] *= m_Op_Ext_Lor->i_int_ADE[o][1][i];
-				curr_ADE[o][1][i] += m_Op_Ext_Lor->i_ext_ADE[o][1][i] * eng->EngineType::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]);
+				curr_ADE[o][1][i] += m_Op_Ext_Lor->i_ext_ADE[o][1][i] * eng->EngType::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]);
 
 				curr_ADE[o][2][i] *= m_Op_Ext_Lor->i_int_ADE[o][2][i];
-				curr_ADE[o][2][i] += m_Op_Ext_Lor->i_ext_ADE[o][2][i] * eng->EngineType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]);
+				curr_ADE[o][2][i] += m_Op_Ext_Lor->i_ext_ADE[o][2][i] * eng->EngType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]);
 			}
 		}
 	}

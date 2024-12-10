@@ -33,11 +33,11 @@ public:
 	virtual void DoPreCurrentUpdates();
 
 protected:
-	template <typename EngineType>
-	void DoPreVoltageUpdatesImpl(EngineType* eng);
+	template <typename EngType>
+	void DoPreVoltageUpdatesImpl(EngType* eng);
 
-	template <typename EngineType>
-	void DoPreCurrentUpdatesImpl(EngineType* eng);
+	template <typename EngType>
+	void DoPreCurrentUpdatesImpl(EngType* eng);
 
 	Operator_Ext_LorentzMaterial* m_Op_Ext_Lor;
 

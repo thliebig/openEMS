@@ -41,14 +41,14 @@ public:
 	virtual void Apply2Voltages(int threadID);
 
 protected:
-	template <typename EngineType>
-	void DoPreVoltageUpdatesImpl(EngineType* eng, int threadID);
+	template <typename EngType>
+	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
 
-	template <typename EngineType>
-	void DoPostVoltageUpdatesImpl(EngineType* eng, int threadID);
+	template <typename EngType>
+	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
 
-	template <typename EngineType>
-	void Apply2VoltagesImpl(EngineType* eng, int threadID);
+	template <typename EngType>
+	void Apply2VoltagesImpl(EngType* eng, int threadID);
 
 	Operator_Ext_Mur_ABC* m_Op_mur;
 

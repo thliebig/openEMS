@@ -40,8 +40,8 @@ public:
 	virtual void Apply2Voltages();
 
 protected:
-	template <typename EngineType>
-	void Apply2VoltagesImpl(EngineType* eng);
+	template <typename EngType>
+	void Apply2VoltagesImpl(EngType* eng);
 
 	Operator_Ext_LumpedRLC* m_Op_Ext_RLC;
 
