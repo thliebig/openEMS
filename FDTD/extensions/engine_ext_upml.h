@@ -44,17 +44,17 @@ public:
 	virtual void DoPostCurrentUpdates(int threadID);
 
 protected:
-	template <typename EngineType>
-	void DoPreVoltageUpdatesImpl(EngineType* eng, int threadID);
+	template <typename EngType>
+	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
 
-	template <typename EngineType>
-	void DoPostVoltageUpdatesImpl(EngineType* eng, int threadID);
+	template <typename EngType>
+	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
 
-	template <typename EngineType>
-	void DoPreCurrentUpdatesImpl(EngineType* eng, int threadID);
+	template <typename EngType>
+	void DoPreCurrentUpdatesImpl(EngType* eng, int threadID);
 
-	template <typename EngineType>
-	void DoPostCurrentUpdatesImpl(EngineType* eng, int threadID);
+	template <typename EngType>
+	void DoPostCurrentUpdatesImpl(EngType* eng, int threadID);
 
 	Operator_Ext_UPML* m_Op_UPML;
 

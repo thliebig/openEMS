@@ -30,8 +30,8 @@ Engine_Ext_Excitation::~Engine_Ext_Excitation()
 
 }
 
-template <typename EngineType>
-void Engine_Ext_Excitation::Apply2VoltagesImpl(EngineType* eng)
+template <typename EngType>
+void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
 {
 	//soft voltage excitation here (E-field excite)
 	int exc_pos;
@@ -55,7 +55,7 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngineType* eng)
 		pos[0]=m_Op_Exc->Volt_index[0][n];
 		pos[1]=m_Op_Exc->Volt_index[1][n];
 		pos[2]=m_Op_Exc->Volt_index[2][n];
-		eng->EngineType::SetVolt(ny,pos, eng->EngineType::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
+		eng->EngType::SetVolt(ny,pos, eng->EngType::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
 	}
 }
 
@@ -64,8 +64,8 @@ void Engine_Ext_Excitation::Apply2Voltages()
 	ENG_DISPATCH(Apply2VoltagesImpl);
 }
 
-template <typename EngineType>
-void Engine_Ext_Excitation::Apply2CurrentImpl(EngineType* eng)
+template <typename EngType>
+void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
 {
 	//soft current excitation here (H-field excite)
 	int exc_pos;
@@ -89,7 +89,7 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngineType* eng)
 		pos[0]=m_Op_Exc->Curr_index[0][n];
 		pos[1]=m_Op_Exc->Curr_index[1][n];
 		pos[2]=m_Op_Exc->Curr_index[2][n];
-		eng->EngineType::SetCurr(ny,pos, eng->EngineType::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
+		eng->EngType::SetCurr(ny,pos, eng->EngType::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
 	}
 }
 
