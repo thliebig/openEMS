@@ -20,6 +20,14 @@
 #include <cstdlib>
 #include "signal.h"
 
+static volatile std::sig_atomic_t m_sigintAbort = 0;
+
+#ifndef WIN32
+static void (*m_sigHandlerOriginal)(int) = NULL;
+#else
+static PHANDLER_ROUTINE m_sigHandlerRegistered = NULL;
+#endif
+
 void Signal::SetupHandlerForSIGINT(int type)
 {
 	m_sigintAbort = 0;

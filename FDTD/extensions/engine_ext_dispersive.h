@@ -35,11 +35,11 @@ public:
 	virtual void Apply2Current();
 
 protected:
-	template <typename EngineType>
-	void Apply2VoltagesImpl(EngineType* eng);
+	template <typename EngType>
+	void Apply2VoltagesImpl(EngType* eng);
 
-	template <typename EngineType>
-	void Apply2CurrentImpl(EngineType* eng);
+	template <typename EngType>
+	void Apply2CurrentImpl(EngType* eng);
 
 	Operator_Ext_Dispersive* m_Op_Ext_Disp;
 

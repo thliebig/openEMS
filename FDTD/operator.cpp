@@ -1030,7 +1030,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	bool PEC[6]={1,1,1,1,1,1};
 	//make an exception for BC == -1
 	for (int n=0; n<6; ++n)
-		if ((m_BC[n]==-1))
+		if (m_BC[n]==-1)
 			PEC[n] = false;
 	ApplyElectricBC(PEC);
 
