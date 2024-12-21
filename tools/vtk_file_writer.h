@@ -25,6 +25,8 @@
 #include <vector>
 #include <complex>
 
+#include "tools/arraylib/array_nijk.h"
+
 class vtkDataSet;
 
 class VTK_File_Writer
@@ -53,6 +55,7 @@ public:
 	virtual void AddScalarField(std::string fieldname, float const* const* const* field);
 	virtual void AddVectorField(std::string fieldname, double const* const* const* const* field);
 	virtual void AddVectorField(std::string fieldname, float const* const* const* const* field);
+	virtual void AddVectorField(std::string fieldname, ArrayLib::ArrayNIJK<float>& field);
 
 	virtual int GetNumberOfFields() const;
 	virtual void ClearAllFields();

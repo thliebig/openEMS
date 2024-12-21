@@ -29,10 +29,6 @@ Operator_Ext_Mur_ABC::Operator_Ext_Mur_ABC(Operator* op) : Operator_Extension(op
 
 Operator_Ext_Mur_ABC::~Operator_Ext_Mur_ABC()
 {
-	Delete2DArray(m_Mur_Coeff_nyP,m_numLines);
-	m_Mur_Coeff_nyP = NULL;
-	Delete2DArray(m_Mur_Coeff_nyPP,m_numLines);
-	m_Mur_Coeff_nyPP = NULL;
 }
 
 Operator_Ext_Mur_ABC::Operator_Ext_Mur_ABC(Operator* op, Operator_Ext_Mur_ABC* op_ext) : Operator_Extension(op, op_ext)
@@ -78,9 +74,6 @@ void Operator_Ext_Mur_ABC::Initialize()
 
 	m_v_phase = 0.0;
 
-	m_Mur_Coeff_nyP = NULL;
-	m_Mur_Coeff_nyPP = NULL;
-
 	m_numLines[0]=0;
 	m_numLines[1]=0;
 }
@@ -89,9 +82,6 @@ void Operator_Ext_Mur_ABC::SetDirection(int ny, bool top_ny)
 {
 	if ((ny<0) || (ny>2))
 		return;
-
-	Delete2DArray(m_Mur_Coeff_nyP,m_numLines);
-	Delete2DArray(m_Mur_Coeff_nyPP,m_numLines);
 
 	m_ny = ny;
 	m_top = top_ny;
@@ -111,9 +101,8 @@ void Operator_Ext_Mur_ABC::SetDirection(int ny, bool top_ny)
 	m_numLines[0] = m_Op->GetNumberOfLines(m_nyP,true);
 	m_numLines[1] = m_Op->GetNumberOfLines(m_nyPP,true);
 
-	m_Mur_Coeff_nyP = Create2DArray<FDTD_FLOAT>(m_numLines);
-	m_Mur_Coeff_nyPP = Create2DArray<FDTD_FLOAT>(m_numLines);
-
+	m_Mur_Coeff_nyP.Init("Mur_Coeff_nyP", m_numLines);
+	m_Mur_Coeff_nyPP.Init("Mur_Coeff_nyPP", m_numLines);
 }
 
 bool Operator_Ext_Mur_ABC::BuildExtension()

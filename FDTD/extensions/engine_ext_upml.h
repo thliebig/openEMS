@@ -61,8 +61,8 @@ protected:
 	vector<unsigned int> m_start;
 	vector<unsigned int> m_numX;
 
-	FDTD_FLOAT**** volt_flux;
-	FDTD_FLOAT**** curr_flux;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> volt_flux;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> curr_flux;
 };
 
 #endif // ENGINE_EXT_UPML_H

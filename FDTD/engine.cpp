@@ -37,8 +37,8 @@ Engine::Engine(const Operator* op)
 	Op = op;
 	for (int n=0; n<3; ++n)
 		numLines[n] = Op->GetNumberOfLines(n, true);
-	volt=NULL;
-	curr=NULL;
+	volt_ptr = NULL;
+	curr_ptr = NULL;
 }
 
 Engine::~Engine()
@@ -49,8 +49,8 @@ Engine::~Engine()
 void Engine::Init()
 {
 	numTS = 0;
-	volt = Create_N_3DArray<FDTD_FLOAT>(numLines);
-	curr = Create_N_3DArray<FDTD_FLOAT>(numLines);
+	volt_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("volt", numLines);
+	curr_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("curr", numLines);
 
 	InitExtensions();
 	SortExtensionByPriority();
@@ -97,16 +97,21 @@ void Engine::SortExtensionByPriority()
 
 void Engine::Reset()
 {
-	Delete_N_3DArray(volt,numLines);
-	volt=NULL;
-	Delete_N_3DArray(curr,numLines);
-	curr=NULL;
+	delete volt_ptr;
+	volt_ptr = NULL;
+	delete curr_ptr;
+	curr_ptr = NULL;
 
 	ClearExtensions();
 }
 
 void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 {
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& vv = *Op->vv_ptr;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& vi = *Op->vi_ptr;
+
 	unsigned int pos[3];
 	bool shift[3];
 
@@ -124,9 +129,9 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 				//do the updates here
 				//for x
 				volt[0][pos[0]][pos[1]][pos[2]] *=
-				    Op->vv[0][pos[0]][pos[1]][pos[2]];
+				    vv[0][pos[0]][pos[1]][pos[2]];
 				volt[0][pos[0]][pos[1]][pos[2]] +=
-				    Op->vi[0][pos[0]][pos[1]][pos[2]] * (
+				    vi[0][pos[0]][pos[1]][pos[2]] * (
 				        curr[2][pos[0]][pos[1]         ][pos[2]         ] -
 				        curr[2][pos[0]][pos[1]-shift[1]][pos[2]         ] -
 				        curr[1][pos[0]][pos[1]         ][pos[2]         ] +
@@ -135,9 +140,9 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 
 				//for y
 				volt[1][pos[0]][pos[1]][pos[2]] *=
-				    Op->vv[1][pos[0]][pos[1]][pos[2]];
+				    vv[1][pos[0]][pos[1]][pos[2]];
 				volt[1][pos[0]][pos[1]][pos[2]] +=
-				    Op->vi[1][pos[0]][pos[1]][pos[2]] * (
+				    vi[1][pos[0]][pos[1]][pos[2]] * (
 				        curr[0][pos[0]         ][pos[1]][pos[2]         ] -
 				        curr[0][pos[0]         ][pos[1]][pos[2]-shift[2]] -
 				        curr[2][pos[0]         ][pos[1]][pos[2]         ] +
@@ -146,9 +151,9 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 
 				//for z
 				volt[2][pos[0]][pos[1]][pos[2]] *=
-				    Op->vv[2][pos[0]][pos[1]][pos[2]];
+				    vv[2][pos[0]][pos[1]][pos[2]];
 				volt[2][pos[0]][pos[1]][pos[2]] +=
-				    Op->vi[2][pos[0]][pos[1]][pos[2]] * (
+				    vi[2][pos[0]][pos[1]][pos[2]] * (
 				        curr[1][pos[0]         ][pos[1]         ][pos[2]] -
 				        curr[1][pos[0]-shift[0]][pos[1]         ][pos[2]] -
 				        curr[0][pos[0]         ][pos[1]         ][pos[2]] +
@@ -162,6 +167,11 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 
 void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& ii = *Op->ii_ptr;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& iv = *Op->iv_ptr;
+
 	unsigned int pos[3];
 	pos[0] = startX;
 	for (unsigned int posX=0; posX<numX; ++posX)
@@ -173,9 +183,9 @@ void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 				//do the updates here
 				//for x
 				curr[0][pos[0]][pos[1]][pos[2]] *=
-				    Op->ii[0][pos[0]][pos[1]][pos[2]];
+				    ii[0][pos[0]][pos[1]][pos[2]];
 				curr[0][pos[0]][pos[1]][pos[2]] +=
-				    Op->iv[0][pos[0]][pos[1]][pos[2]] * (
+				    iv[0][pos[0]][pos[1]][pos[2]] * (
 				        volt[2][pos[0]][pos[1]  ][pos[2]  ] -
 				        volt[2][pos[0]][pos[1]+1][pos[2]  ] -
 				        volt[1][pos[0]][pos[1]  ][pos[2]  ] +
@@ -184,9 +194,9 @@ void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 
 				//for y
 				curr[1][pos[0]][pos[1]][pos[2]] *=
-				    Op->ii[1][pos[0]][pos[1]][pos[2]];
+				    ii[1][pos[0]][pos[1]][pos[2]];
 				curr[1][pos[0]][pos[1]][pos[2]] +=
-				    Op->iv[1][pos[0]][pos[1]][pos[2]] * (
+				    iv[1][pos[0]][pos[1]][pos[2]] * (
 				        volt[0][pos[0]  ][pos[1]][pos[2]  ] -
 				        volt[0][pos[0]  ][pos[1]][pos[2]+1] -
 				        volt[2][pos[0]  ][pos[1]][pos[2]  ] +
@@ -195,9 +205,9 @@ void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 
 				//for z
 				curr[2][pos[0]][pos[1]][pos[2]] *=
-				    Op->ii[2][pos[0]][pos[1]][pos[2]];
+				    ii[2][pos[0]][pos[1]][pos[2]];
 				curr[2][pos[0]][pos[1]][pos[2]] +=
-				    Op->iv[2][pos[0]][pos[1]][pos[2]] * (
+				    iv[2][pos[0]][pos[1]][pos[2]] * (
 				        volt[1][pos[0]  ][pos[1]  ][pos[2]] -
 				        volt[1][pos[0]+1][pos[1]  ][pos[2]] -
 				        volt[0][pos[0]  ][pos[1]  ][pos[2]] +
