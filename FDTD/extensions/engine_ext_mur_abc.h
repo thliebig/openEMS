@@ -56,8 +56,8 @@ protected:
 	inline bool IsActive() {if (m_Eng->GetNumberOfTimesteps()<m_start_TS) return false; return true;}
 	unsigned int m_start_TS;
 
-	int m_ny;
-	int m_nyP,m_nyPP;
+	// See detailed comments in operator_ext_mur_abc.h, not repeated here.
+	int m_ny, m_nyP, m_nyPP;
 	unsigned int m_LineNr;
 	int m_LineNr_Shift;
 	unsigned int m_numLines[2];
