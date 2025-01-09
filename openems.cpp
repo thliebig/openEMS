@@ -34,6 +34,7 @@
 #include "FDTD/extensions/operator_ext_lumpedRLC.h"
 #include "FDTD/extensions/operator_ext_conductingsheet.h"
 #include "FDTD/extensions/operator_ext_steadystate.h"
+#include "FDTD/extensions/operator_ext_absorbing_bc.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
 #include "FDTD/engine_interface_fdtd.h"
 #include "FDTD/engine_interface_cylindrical_fdtd.h"
@@ -507,9 +508,24 @@ bool openEMS::SetupProcessing()
 				{
 					ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
 					pmm->SetFieldType(pb->GetProbeType()-10);
-					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
-					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
-					pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+
+					// Check if this has manually initialized weight functions or not
+					std::vector<float> testMW = pb->GetManualWeights(0);
+					// If there are elements in the test vector, assume that there were manual weights set
+					if (testMW.size())
+					{
+						for (uint dirIdx = 0 ; dirIdx < 3 ; dirIdx++)
+						{
+							pmm->SetManualWeights(dirIdx, pb->GetManualWeights(dirIdx));
+							pmm->SetManualCoors(dirIdx, pb->GetManualWeightCoors(dirIdx));
+						}
+					}
+					else
+					{
+						pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
+						pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
+						pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+					}
 					proc = pmm;
 				}
 				else
@@ -1094,6 +1110,8 @@ int openEMS::SetupFDTD()
 		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op, m_Exc->GetMaxFreq()));
 	if (m_CSX->GetQtyPropertyType(CSProperties::LUMPED_ELEMENT)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LumpedRLC(FDTD_Op));
+	if (m_CSX->GetQtyPropertyType(CSProperties::ABSORBING_BC)>0)
+		FDTD_Op->AddExtension(new Operator_Ext_Absorbing_BC(FDTD_Op,m_engine_numThreads));
 
 
 	//check all properties to request material storage during operator creation...
