@@ -113,6 +113,9 @@ cdef class openEMS:
         if self.__CSX is not None:
             self.__CSX.thisptr = NULL
 
+    def Reset(self):
+        self.thisptr.Reset()
+
     def SetNumberOfTimeSteps(self, val):
         """ SetNumberOfTimeSteps(val)
 
