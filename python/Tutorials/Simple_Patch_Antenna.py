@@ -111,7 +111,7 @@ if 0:  # debugging only
     os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, verbose=3, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True)
 
 
 ### Post-processing and plotting
