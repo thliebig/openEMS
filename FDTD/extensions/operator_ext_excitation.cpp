@@ -161,6 +161,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
+						if (!elec->GetEnabled())
+							continue;
 						// Case #1: Excitaion type 0 or 1 E-field excitation (soft) or current source (hard)
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 						{
