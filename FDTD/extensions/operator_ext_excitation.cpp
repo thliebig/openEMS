@@ -163,7 +163,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 							continue;
 						if (!elec->GetEnabled())
 							continue;
-						// Case #1: Excitaion type 0 or 1 E-field excitation (soft) or current source (hard)
+            
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 						{
 							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos);// delta[n]*gridDelta;
@@ -197,6 +197,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 					{
 						elec = prop->ToExcitation();
 						if (elec==NULL)
+							continue;
+						if (!elec->GetEnabled())
 							continue;
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 						{

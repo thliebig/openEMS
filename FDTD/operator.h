@@ -35,14 +35,14 @@ class Operator : public Operator_Base
 {
 	friend class Engine;
 	friend class Engine_Interface_FDTD;
-	friend class Operator_Ext_LorentzMaterial; 	// We need to find a way around this... friend class Operator_Extension only would be nice
-	friend class Operator_Ext_ConductingSheet; 	// We need to find a way around this... friend class Operator_Extension only would be nice
+	friend class Operator_Ext_LorentzMaterial;
+	friend class Operator_Ext_ConductingSheet;
 	friend class Operator_Ext_PML_SF_Plane;
 	friend class Operator_Ext_Excitation;
 	friend class Operator_Ext_UPML;
 	friend class Operator_Ext_Cylinder;
 	friend class Operator_Ext_LumpedRLC;
-	friend class Operator_Ext_Absorbing_BC;
+  friend class Operator_Ext_Absorbing_BC;
 
 public:
 	enum DebugFlags {None=0,debugMaterial=1,debugOperator=2,debugPEC=4};
