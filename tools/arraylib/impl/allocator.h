@@ -67,7 +67,7 @@ public:
 
 		T* buf;
 #ifdef WIN32
-		buf = _mm_malloc(numelem * sizeof(T), alignment);
+		buf = (T*) _mm_malloc(numelem * sizeof(T), alignment);
 		if (buf == NULL)
 		{
 			std::cerr << "Failed to allocate aligned memory" << std::endl;
