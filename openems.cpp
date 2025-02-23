@@ -553,9 +553,24 @@ bool openEMS::SetupProcessing()
 				{
 					ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
 					pmm->SetFieldType(pb->GetProbeType()-10);
-					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
-					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
-					pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+
+					// Check if this has manually initialized weight functions or not
+					std::vector<float> testMW = pb->GetManualWeights(0);
+					// If there are elements in the test vector, assume that there were manual weights set
+					if (testMW.size())
+					{
+						for (uint dirIdx = 0 ; dirIdx < 3 ; dirIdx++)
+						{
+							pmm->SetManualWeights(dirIdx, pb->GetManualWeights(dirIdx));
+							pmm->SetManualCoords(dirIdx, pb->GetManualWeightCoords(dirIdx));
+						}
+					}
+					else
+					{
+						pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
+						pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
+						pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+					}
 					proc = pmm;
 				}
 				else
