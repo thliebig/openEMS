@@ -100,14 +100,14 @@ class Port(object):
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type )
         self.uf_tot = 0
         self.ut_tot = 0
-        for n in range(len(self.U_filenames)):
+        for n in range(len(self.u_data.fns)):
             self.uf_tot += self.u_data.ui_f_val[n]
             self.ut_tot += self.u_data.ui_val[n]
 
         self.i_data = UI_data(self.I_filenames, sim_path, freq, signal_type )
         self.if_tot = 0
         self.it_tot = 0
-        for n in range(len(self.U_filenames)):
+        for n in range(len(self.i_data.fns)):
             self.if_tot += self.i_data.ui_f_val[n]
             self.it_tot += self.i_data.ui_val[n]
 
