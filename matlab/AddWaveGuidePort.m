@@ -7,43 +7,44 @@ function [CSX,port] = AddWaveGuidePort( CSX, prio, portnr, start, stop, dir, E_W
 %       - The voltage and current probes at the stop position in the given direction
 %
 % parameter:
-%   CSX:        complete CSX structure (must contain a mesh)
-%   prio:       priority of primitives
-%   start:      start coordinates of waveguide port box
-%   stop:       stop  coordinates of waveguide port box
-%   dir:        direction of port (0/1/2 or 'x'/'y'/'z'-direction)
-%   E_WG_func:  electric field mode profile function as a string
-%   H_WG_func:  magnetic field mode profile function as a string
-%   kc:         cutoff wavenumber (defined by the waveguide dimensions)
-%   exc_amp:    excitation amplitude (set 0 to be passive)
+% - CSX:        complete CSX structure (must contain a mesh)
+% - prio:       priority of primitives
+% - start:      start coordinates of waveguide port box
+% - stop:       stop  coordinates of waveguide port box
+% - dir:        direction of port (0/1/2 or 'x'/'y'/'z'-direction)
+% - E_WG_func:  electric field mode profile function as a string
+% - H_WG_func:  magnetic field mode profile function as a string
+% - kc:         cutoff wavenumber (defined by the waveguide dimensions)
+% - exc_amp:    excitation amplitude (set 0 to be passive)
 %
 % optional (key/values):
-%   varargin:   optional additional excitations options, see also AddExcitation
-%   'PortNamePrefix': a prefix to the port name
+% - varargin:   optional additional excitations options, see also AddExcitation
+% - 'PortNamePrefix': a prefix to the port name
 %
 % output:
-%   CSX:        modified CSX structure
-%   port:       port structure to use with calcPort
+% - CSX:        modified CSX structure
+% - port:       port structure to use with calcPort
 %
 % example:
-%   % create a TE11 circular waveguide mode, using cylindircal coordinates
-%   p11 = 1.841;
-%   kc = p11 / radius;  % cutoff wavenumber with radius in meter
-%   kc_draw = kc*unit;  % cutoff wavenumber in drawing units
 %
-%   % electric field mode profile
-%   func_E{1} = [ num2str(-1/kc_draw^2,15) '/rho*cos(a)*j1('  num2str(kc_draw,15) '*rho)'];
-%   func_E{2} = [ num2str(1/kc_draw,15) '*sin(a)*0.5*(j0('  num2str(kc_draw,15) '*rho)-jn(2,'  num2str(kc_draw,15) '*rho))'];
-%   func_E{3} = 0;
+%     % create a TE11 circular waveguide mode, using cylindircal coordinates
+%     p11 = 1.841;
+%     kc = p11 / radius;  % cutoff wavenumber with radius in meter
+%     kc_draw = kc*unit;  % cutoff wavenumber in drawing units
 %
-%   % magnetic field mode profile
-%   func_H{1} = [ '-1*' num2str(1/kc_draw,15) '*sin(a)*0.5*(j0('  num2str(kc_draw,15) '*rho)-jn(2,'  num2str(kc_draw,15) '*rho))'];
-%   func_H{2} = [ num2str(-1/kc_draw^2,15) '/rho*cos(a)*j1('  num2str(kc_draw,15) '*rho)'];
-%   func_H{3} = 0;
+%     % electric field mode profile
+%     func_E{1} = [ num2str(-1/kc_draw^2,15) '/rho*cos(a)*j1('  num2str(kc_draw,15) '*rho)'];
+%     func_E{2} = [ num2str(1/kc_draw,15) '*sin(a)*0.5*(j0('  num2str(kc_draw,15) '*rho)-jn(2,'  num2str(kc_draw,15) '*rho))'];
+%     func_E{3} = 0;
 %
-%   start=[mesh.r(1)   mesh.a(1)   0  ];
-%   stop =[mesh.r(end) mesh.a(end) 100];
-%   [CSX, port{1}] = AddWaveGuidePort(CSX, 0, 1, start, stop, 2, func_E, func_H, kc, 1);
+%     % magnetic field mode profile
+%     func_H{1} = [ '-1*' num2str(1/kc_draw,15) '*sin(a)*0.5*(j0('  num2str(kc_draw,15) '*rho)-jn(2,'  num2str(kc_draw,15) '*rho))'];
+%     func_H{2} = [ num2str(-1/kc_draw^2,15) '/rho*cos(a)*j1('  num2str(kc_draw,15) '*rho)'];
+%     func_H{3} = 0;
+%
+%     start=[mesh.r(1)   mesh.a(1)   0  ];
+%     stop =[mesh.r(end) mesh.a(end) 100];
+%     [CSX, port{1}] = AddWaveGuidePort(CSX, 0, 1, start, stop, 2, func_E, func_H, kc, 1);
 %
 % openEMS matlab interface
 % -----------------------

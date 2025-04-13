@@ -2,23 +2,23 @@ function [params,result] = optimize( optimdir, params, options, algorithm )
 %params = optimize( optimdir, params, options, algorithm )
 %
 % input:
-%   optimdir:   folder where to optimize
-%   params:     array of structures with parameters to optimize
-%     .name       char string   parameter name (e.g. 'length1')
-%     .value      number  
-%     .step       number        discretization of .value
-%     .range      row vector    range of .value (e.g. [1 10])
-%     .active     (0/1)         1=optimize this parameter
-%   options:    structure
-%     .folder_matlabstart   set the startup folder for matlab or octave
-%     .simfun               char string with the simulation function name
-%     .octave_exe           if this field is present, octave is used
-%     .clean                clean the optimization folder before optimization start
-%   algorithm:  'asco' or 'simplex-downhill'
+% - optimdir:   folder where to optimize
+% - params:     array of structures with parameters to optimize
+%   - .name -     char string - parameter name (e.g. 'length1')
+%   - .value -    number  
+%   - .step -     number      - discretization of .value
+%   - .range -    row vector  - range of .value (e.g. [1 10])
+%   - .active -   (0/1)       - 1=optimize this parameter
+% - options:    structure
+%   - .folder_matlabstart:  set the startup folder for matlab or octave
+%   - .simfun:              char string with the simulation function name
+%   - .octave_exe:          if this field is present, octave is used
+%   - .clean:               clean the optimization folder before optimization start
+% - algorithm:  'asco' or 'simplex-downhill'
 %   
 % output:
-%   params: optimal values
-%   result: optimization criterion for optimal values
+% - params: optimal values
+% - result: optimization criterion for optimal values
 %
 % example:
 %   see openEMS/matlab/examples/optimizer

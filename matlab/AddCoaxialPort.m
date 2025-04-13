@@ -1,30 +1,30 @@
 function [CSX,port] = AddCoaxialPort( CSX, prio, portnr, pec_name, materialname, start, stop, dir, r_i, r_o, r_os, varargin )
 % function [CSX,port] = AddCoaxialPort( CSX, prio, portnr, pec_name, materialname, start, stop, dir, r_i, r_o, r_os, varargin )
 %
-% CSX:          CSX-object created by InitCSX()
-% prio:         priority for excitation and probe boxes
-% portnr:       (integer) number of the port
-% pec_name:     metal property for coaxial inner/outer conductor (created by AddMetal())
-% materialname: substrate property for coaxial line (created by AddMaterial())
-%               Note: this may be empty for an "air filled" coaxial line
-% start:        3D start rowvector for coaxial cable axis
-% stop:         3D end rowvector for coaxial cable axis
-% dir:          direction of wave propagation (choices: 0, 1, 2 or 'x','y','z')
-% r_i:          inner coaxial radius (in drawing unit)
-% r_o:          outer coaxial radius (in drawing unit)
-% r_os:         outer shell coaxial radius (in drawing unit)
+% - CSX:          CSX-object created by InitCSX()
+% - prio:         priority for excitation and probe boxes
+% - portnr:       (integer) number of the port
+% - pec_name:     metal property for coaxial inner/outer conductor (created by AddMetal())
+% - materialname: substrate property for coaxial line (created by AddMaterial())
+%                 Note: this may be empty for an "air filled" coaxial line
+% - start:        3D start rowvector for coaxial cable axis
+% - stop:         3D end rowvector for coaxial cable axis
+% - dir:          direction of wave propagation (choices: 0, 1, 2 or 'x','y','z')
+% - r_i:          inner coaxial radius (in drawing unit)
+% - r_o:          outer coaxial radius (in drawing unit)
+% - r_os:         outer shell coaxial radius (in drawing unit)
 %
 % variable input:
-%  varargin:    optional additional excitations options, see also AddExcitation
-% 'ExciteAmp'   excitation amplitude of transversal electric field profile,
-%               set to 0 (default) for a passive port
-% 'FeedShift'   shift to port from start by a given distance in drawing
-%               units. Default is 0. Only active if 'ExciteAmp' is set!
-% 'Feed_R'      Specify a lumped port resistance. Default is no lumped
-%               port resistance --> port has to end in an ABC.
-% 'MeasPlaneShift'  Shift the measurement plane from start t a given distance
-%               in drawing units. Default is the middle of start/stop.
-% 'PortNamePrefix' a prefix to the port name
+% -  varargin:    optional additional excitations options, see also AddExcitation
+% - 'ExciteAmp'   excitation amplitude of transversal electric field profile,
+%                 set to 0 (default) for a passive port
+% - 'FeedShift'   shift to port from start by a given distance in drawing
+%                 units. Default is 0. Only active if 'ExciteAmp' is set!
+% - 'Feed_R'      Specify a lumped port resistance. Default is no lumped
+%                 port resistance --> port has to end in an ABC.
+% - 'MeasPlaneShift'  Shift the measurement plane from start t a given distance
+%                 in drawing units. Default is the middle of start/stop.
+% - 'PortNamePrefix' a prefix to the port name
 %
 % the mesh must be already initialized
 %

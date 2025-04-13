@@ -5,13 +5,13 @@ function host = FindFreeSSH(host_list, Settings, wait_time, command)
 % 
 % internal function used by RunOpenEMS
 % 
-% host_list: give a list of possible host
+% - host_list: give a list of possible host
 % 
-% wait_time: wait x seconds after not finding a free host and rechecking
+% - wait_time: wait x seconds after not finding a free host and rechecking
 %            default: 600 seconds
 % 
-% command: unix command to check for free host (empty result --> free)
-%          default: 'ps -e | grep openEMS'
+% - command: unix command to check for free host (empty result --> free)
+%            default: 'ps -e | grep openEMS'
 %
 % See also RunOpenEMS
 %

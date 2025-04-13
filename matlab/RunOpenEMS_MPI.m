@@ -3,14 +3,14 @@ function RunOpenEMS_MPI(Sim_Path, Sim_File, opts, Settings)
 %
 % Run an openEMS simulation with MPI support
 %
-% % mpi binary path on all nodes needed
-% Settings.MPI.Binary = '/opt/openEMS/openEMS';
-% % number of processes to run
-% Settings.MPI.NrProc = 3;
-% % define the mpi hosts :
-% Settings.MPI.Hosts = {'host1','host2','host3'};
+%     % mpi binary path on all nodes needed
+%     Settings.MPI.Binary = '/opt/openEMS/openEMS';
+%     % number of processes to run
+%     Settings.MPI.NrProc = 3;
+%     % define the mpi hosts :
+%     Settings.MPI.Hosts = {'host1','host2','host3'};
 %
-% RunOpenEMS(Sim_Path, Sim_File, NrProc, opts, Settings)
+%     RunOpenEMS(Sim_Path, Sim_File, NrProc, opts, Settings)
 %
 % See also SetupMPI, WriteOpenEMS, RunOpenEMS
 %

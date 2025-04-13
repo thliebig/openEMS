@@ -3,32 +3,34 @@ function [CSX,port] = AddCircWaveGuidePort( CSX, prio, portnr, start, stop, radi
 % 
 % Create a circular waveguide port, including an optional excitation and probes
 % 
-% Note: - The excitation will be located at the start position in the given direction
-%       - The voltage and current probes at the stop position in the given direction
+% Note:
+% - The excitation will be located at the start position in the given direction
+% - The voltage and current probes at the stop position in the given direction
 %
 % input:
-%   CSX:        complete CSX structure (must contain a mesh)
-%   prio:       priority of primitives
-%   start:      start coordinates of waveguide port box
-%   stop:       stop  coordinates of waveguide port box
-%   radius:     circular waveguide radius (in meter)
-%   mode_name:  mode name, e.g. 'TE11' or 'TM21'
-%   pol_ang:    polarization angle (e.g. 0 = horizontal, pi/2 = vertical)
-%   exc_amp:    excitation amplitude (set 0 to be passive)
+% - CSX:        complete CSX structure (must contain a mesh)
+% - prio:       priority of primitives
+% - start:      start coordinates of waveguide port box
+% - stop:       stop  coordinates of waveguide port box
+% - radius:     circular waveguide radius (in meter)
+% - mode_name:  mode name, e.g. 'TE11' or 'TM21'
+% - pol_ang:    polarization angle (e.g. 0 = horizontal, pi/2 = vertical)
+% - exc_amp:    excitation amplitude (set 0 to be passive)
 %
 % optional (key/values):
-%   varargin:   optional additional excitations options, see also AddExcitation
-%   'PortNamePrefix': a prefix to the port name
+% * varargin:   optional additional excitations options, see also AddExcitation
+% * 'PortNamePrefix': a prefix to the port name
 %
 % output:
-%   CSX:        modified CSX structure
-%   port:       port structure to use with calcPort
+% * CSX:        modified CSX structure
+% * port:       port structure to use with calcPort
 %
 % example:
-%   % create a TE11 circular waveguide mode, using cylindircal coordinates
-%   start=[mesh.r(1)   mesh.a(1)   0  ];
-%   stop =[mesh.r(end) mesh.a(end) 100];
-%   [CSX,port] = AddCircWaveGuidePort( CSX, 99, 1, start, stop, 320e-3, 'TE11', 0, 1);
+%
+%     % create a TE11 circular waveguide mode, using cylindircal coordinates
+%     start=[mesh.r(1)   mesh.a(1)   0  ];
+%     stop =[mesh.r(end) mesh.a(end) 100];
+%     [CSX,port] = AddCircWaveGuidePort( CSX, 99, 1, start, stop, 320e-3, 'TE11', 0, 1);
 %
 % openEMS matlab interface
 % -----------------------

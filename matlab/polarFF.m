@@ -4,36 +4,37 @@ function h = polarFF(nf2ff,varargin)
 %  plot polar far field pattern
 %
 % input:
-%   nf2ff:      output of CalcNF2FF
+% - nf2ff:      output of CalcNF2FF
 %
 % variable input:
-%   'freq_index':  - use the given frequency index, see nf2ff.freq
-%                  - default is 1
-%   'xaxis':       - 'phi' (default) or 'theta'
-%   'param':       - array positions of parametric plot
-%                  - if xaxis='phi', theta is parameter, and vice versa
-%                  - default is 1
-%   'normalize':   - true/false, normalize linear plot
-%                  - default is false, log-plot is always normalized!
-%   'logscale':    - if set, plot logarithmic polar
-%                  - set the dB value for point of origin if scalar
-%                  - set point of origin and maximum if 2-element array
-%                  - values below minimum will be clamped
-%                  - default is -20
-%   'xtics':       - set the number of tics for polar grid
-%                  - default is 5
+% - 'freq_index':  use the given frequency index, see nf2ff.freq
+%                  default is 1
+% - 'xaxis':       'phi' (default) or 'theta'
+% - 'param':       array positions of parametric plot
+%                  if xaxis='phi', theta is parameter, and vice versa
+%                  default is 1
+% - 'normalize':   true/false, normalize linear plot
+%                  default is false, log-plot is always normalized!
+% - 'logscale':    if set, plot logarithmic polar
+%                  set the dB value for point of origin if scalar
+%                  set point of origin and maximum if 2-element array
+%                  values below minimum will be clamped
+%                  default is -20
+% - 'xtics':       set the number of tics for polar grid
+%                  default is 5
 %
-%   example:
-%       polarFF(nf2ff, 'freq_index', 2, ...
-%                      'xaxis', 'phi', 'param', [1 46 91] );
+% example:
 %
-%       polarFF(..., 'normalize', true );
-%       polarFF(..., 'logscale', -30 );
-%       polarFF(..., 'logscale', [-30 10]);
+%     polarFF(nf2ff, 'freq_index', 2, ...
+%                    'xaxis', 'phi', 'param', [1 46 91] );
 %
-%       polarFF(..., 'xtics', 10);
+%     polarFF(..., 'normalize', true );
+%     polarFF(..., 'logscale', -30 );
+%     polarFF(..., 'logscale', [-30 10]);
 %
-%       see examples/antenna/infDipol.m
+%     polarFF(..., 'xtics', 10);
+%
+% see examples/antenna/infDipol.m
 %
 % See also CalcNF2FF, plotFFdB, plotFF3D
 % 
