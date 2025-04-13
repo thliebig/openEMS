@@ -5,9 +5,9 @@
 % http://openems.de/index.php/Tutorial:_Dipole_SAR
 %
 % Tested with
-%  - openEMS v0.0.33
+%  - openEMS v0.0.36
 %
-% (C) 2013-2015 Thorsten Liebig <thorsten.liebig@uni-due.de>
+% (C) 2013-2025 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 close all
 clear
@@ -58,11 +58,11 @@ lambda_min = c0/f_stop;
 mesh_res_air = lambda_min/20/unit;
 mesh_res_phantom = 2.5;
 
-dipole_length = 0.46*lambda0/unit;
+dipole_length = 0.48*lambda0/unit;
 disp(['Lambda-half dipole length: ' num2str(dipole_length) 'mm'])
 
 %%
-FDTD = InitFDTD();
+FDTD = InitFDTD('CellConstantMaterial', 1); % make sure the material is constant per voxel
 FDTD = SetGaussExcite( FDTD, 0, f_stop );
 % apply PML-8 boundary conditions in all directions
 BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};
@@ -84,7 +84,7 @@ mesh.z = [-dipole_length/2-[-1/3 2/3]*mesh_res_phantom dipole_length/2+[-1/3 2/3
 for n=1:numel(phantom)
   CSX = AddMaterial( CSX, phantom{n}.name );
   CSX = SetMaterialProperty( CSX, phantom{n}.name, 'Epsilon', phantom{n}.epsR, 'Kappa', phantom{n}.kappa, 'Density', phantom{n}.density);
-  CSX = AddSphere( CSX, phantom{n}.name, 10+n, [0 0 0], 1,'Transform',{'Scale',phantom{n}.radius, 'Translate', phantom{n}.center} ); 
+  CSX = AddSphere( CSX, phantom{n}.name, 10+n, [0 0 0], 1,'Transform',{'Scale',phantom{n}.radius, 'Translate', phantom{n}.center} );
 
   %% mesh lines for the dielectrics
   mesh.x = [mesh.x phantom{n}.radius(1)*[-1 1]+phantom{n}.center(1) ];
@@ -110,9 +110,9 @@ mesh.z = [mesh.z -250 250];
 mesh = SmoothMesh(mesh, mesh_res_air, 1.2);
 
 %% dump SAR
-start = [-10 -100 -100];
-stop = [180  100  100];
-CSX = AddDump( CSX, 'SAR', 'DumpType', 20, 'Frequency', f0,'FileType',1,'DumpMode',2);
+start = [-30 -120 -120];
+stop = [200  120  120];
+CSX = AddDump( CSX, 'SAR', 'DumpType', 29, 'Frequency', f0,'FileType',1,'DumpMode',2);
 CSX = AddBox( CSX, 'SAR', 0, start, stop);
 
 %% nf2ff calc
@@ -173,11 +173,15 @@ title( 'reflection coefficient' );
 xlabel( 'frequency f / MHz' );
 ylabel( 'S_{11} (dB)' );
 
+SAR_fn = [Sim_Path '/SAR_1g.h5'] % calculated SAR output
+CalcSAR([Sim_Path '/SAR.h5'], SAR_fn, 'mass', 1, 'method', 'IEEE_62704')
+
 %% read SAR and visualize
-SAR_field = ReadHDF5Dump([Sim_Path '/SAR.h5']);
+SAR_field = ReadHDF5Dump(SAR_fn);
 
 SAR = SAR_field.FD.values{1};
-ptotal = ReadHDF5Attribute([Sim_Path '/SAR.h5'],'/FieldData/FD/f0','power');
+ptotal = ReadHDF5Attribute(SAR_fn,'/FieldData/FD/f0','power');
+mass = ReadHDF5Attribute(SAR_fn,'/FieldData/FD/f0','mass');
 
 %% calculate 3D pattern
 phi = 0:3:360;
@@ -188,13 +192,14 @@ nf2ff = CalcNF2FF(nf2ff, Sim_Path, f0, theta*pi/180, phi*pi/180, 'Outfile','3D_P
 
 %%
 disp(['max SAR: ' num2str(max(SAR(:))/Pin_f0) ' W/kg normalized to 1 W accepted power']);
+disp(['whole body SAR: ' num2str(ptotal/Pin_f0/mass) ' W/kg normalized to 1 W accepted power']);
 disp(['accepted power: ' num2str(Pin_f0) ' W (100 %)']);
 disp(['radiated power: ' num2str(nf2ff.Prad) ' W ( ' num2str(round(100*(nf2ff.Prad) / Pin_f0)) ' %)']);
 disp(['absorbed power: ' num2str(ptotal) ' W ( ' num2str(round(100*(ptotal) / Pin_f0)) ' %)']);
 disp(['power budget:   ' num2str(100*(nf2ff.Prad + ptotal) / Pin_f0) ' %']);
 
 %%  plot on a x/y-plane
-[SAR_field SAR_mesh] = ReadHDF5Dump([Sim_Path '/SAR.h5'],'Range',{[],[],0});
+[SAR_field SAR_mesh] = ReadHDF5Dump(SAR_fn,'Range',{[],[],0});
 figure
 [X Y] = ndgrid(SAR_mesh.lines{1},SAR_mesh.lines{2});
 h = pcolor(X,Y,log10(SAR_field.FD.values{1}/abs(Pin_f0)));
@@ -205,7 +210,7 @@ axis equal tight
 set(h,'EdgeColor','none');
 
 %%  plot on a x/z-plane
-[SAR_field SAR_mesh] = ReadHDF5Dump([Sim_Path '/SAR.h5'],'Range',{[],0,[]});
+[SAR_field SAR_mesh] = ReadHDF5Dump(SAR_fn,'Range',{[],0,[]});
 figure
 [X Z] = ndgrid(SAR_mesh.lines{1},SAR_mesh.lines{3});
 h = pcolor(X,Z,log10(squeeze(SAR_field.FD.values{1}))/abs(Pin_f0));
@@ -216,6 +221,6 @@ axis equal tight
 set(h,'EdgeColor','none');
 
 %% dump SAR to vtk file
-disp(['Full local/normalized SAR has been dumped to vtk file! Use Paraview to visualize']);
-ConvertHDF5_VTK([Sim_Path '/SAR.h5'],[Sim_Path '/SAR'],'weight',1/abs(Pin_f0),'FieldName','SAR_local' );
+disp(['Full 1g normalized SAR has been dumped to vtk file! Use Paraview to visualize']);
+ConvertHDF5_VTK(SAR_fn,[Sim_Path '/SAR'],'weight',1/abs(Pin_f0),'FieldName','SAR_1g' );
 
