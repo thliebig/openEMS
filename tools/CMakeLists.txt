@@ -27,3 +27,14 @@ set(SOURCES
 # tools lib
 #add_library(tools STATIC ${SOURCES} )
 
+
+
+PROJECT(sar CXX)
+cmake_minimum_required(VERSION 2.8)
+
+ADD_EXECUTABLE( sar_bin sar_calc.cpp)
+SET_TARGET_PROPERTIES(sar_bin PROPERTIES OUTPUT_NAME sar_calc)
+TARGET_LINK_LIBRARIES(sar_bin openEMS)
+
+INSTALL(TARGETS sar_bin DESTINATION bin)
+
