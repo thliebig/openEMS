@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2011-2025 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -173,9 +173,16 @@ bool HDF5_File_Reader::ReadAttribute(string grp_name, string attr_name, vector<d
 
 bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims, float* &data)
 {
+	float* f_data;
 	double* d_data;
-	if (ReadDataSet(ds_name, nDim, dims, d_data)==false)
+	if (!ReadDataSet(ds_name, nDim, dims, f_data, d_data))
 		return false;
+	if (f_data != NULL)
+	{
+		data = f_data;
+		return true;
+	}
+
 	hsize_t data_size = 1;
 	for (unsigned int d=0;d<nDim;++d)
 		data_size*=dims[d];
@@ -183,10 +190,34 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 	for (size_t n=0;n<data_size;++n)
 		data[n]=d_data[n];
 	delete[] d_data;
+	d_data = NULL;
 	return true;
 }
 
 bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims, double* &data)
+{
+	float* f_data;
+	double* d_data;
+	if (!ReadDataSet(ds_name, nDim, dims, f_data, d_data))
+		return false;
+	if (d_data != NULL)
+	{
+		data = d_data;
+		return true;
+	}
+
+	hsize_t data_size = 1;
+	for (unsigned int d=0;d<nDim;++d)
+		data_size*=dims[d];
+	data = new double[data_size];
+	for (size_t n=0;n<data_size;++n)
+		data[n]=f_data[n];
+	delete[] f_data;
+	f_data = NULL;
+	return true;
+}
+
+bool HDF5_File_Reader::ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, float* &f_data, double* &d_data)
 {
 	if (IsValid()==false)
 		return false;
@@ -230,36 +261,59 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 		data_size*=dims[d];
 
 	void *value=NULL;
-	float *f_value=NULL;
-	data = new double[data_size];
-	if (H5Tget_size(type)==sizeof(float))
+	if (H5Tequal(type,H5T_NATIVE_FLOAT))
 	{
-		f_value = new float[data_size];
-		value = f_value;
+		f_data = new float[data_size];
+		d_data = NULL;
+		value = f_data;
+	}
+	else if (H5Tequal(type,H5T_NATIVE_DOUBLE))
+	{
+		f_data = NULL;
+		d_data = new double[data_size];
+		value = d_data;
 	}
 	else
-		value = data;
+	{
+		H5Dclose(dataset);
+		H5Fclose(hdf5_file);
+		f_data = NULL;
+		d_data = NULL;
+		return false;
+	}
 
 	if (H5Dread(dataset,type,H5S_ALL,H5S_ALL,H5P_DEFAULT,value)<0)
 	{
 		cerr << "HDF5_File_Reader::ReadDataSet: error reading data" << endl;
 		H5Dclose(dataset);
 		H5Fclose(hdf5_file);
-		delete[] data;
-		delete[] f_value;
-		data=NULL;
+		delete[] f_data;
+		f_data = NULL;
+		delete[] d_data;
+		d_data = NULL;
 		return false;
 	}
-	if (f_value)
-		for (size_t n=0;n<data_size;++n)
-			data[n]=f_value[n];
-	delete[] f_value;
 	H5Dclose(dataset);
+	// H5Tclose(data_size);
 	H5Fclose(hdf5_file);
 	return true;
 }
 
-bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &meshType)
+bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &meshType, std::string s_mesh_grp)
+{
+	double* d_lines[3]={NULL,NULL,NULL};
+	if (!ReadMesh(d_lines, numLines, meshType, s_mesh_grp))
+		return false;
+	for (int n=0;n<3;++n)
+	{
+		lines[n] = new float[numLines[n]];
+		for (unsigned int i=0; i<numLines[n]; ++i)
+			lines[n][i]=d_lines[n][i];
+	}
+	return true;
+}
+
+bool HDF5_File_Reader::ReadMesh(double** lines, unsigned int* numLines, int &meshType, std::string s_mesh_grp)
 {
 	if (IsValid()==false)
 		return false;
@@ -270,21 +324,25 @@ bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &mesh
 		cerr << "HDF5_File_Reader::ReadMesh: opening the given file """ << m_filename << """ failed" << endl;
 		return false;
 	}
-
+	std::string sx = s_mesh_grp + "/x";
+	std::string sr = s_mesh_grp + "/rho";
+	std::string sy = s_mesh_grp + "/y";
+	std::string sa = s_mesh_grp + "/alpha";
+	std::string sz = s_mesh_grp + "/z";
 	vector<string> Mesh_Names;
-	if (H5Lexists(hdf5_file, "/Mesh/x", H5P_DEFAULT) && H5Lexists(hdf5_file, "/Mesh/y", H5P_DEFAULT) && H5Lexists(hdf5_file, "/Mesh/z", H5P_DEFAULT))
+	if (H5Lexists(hdf5_file, sx.c_str(), H5P_DEFAULT) && H5Lexists(hdf5_file, sy.c_str(), H5P_DEFAULT) && H5Lexists(hdf5_file, sz.c_str(), H5P_DEFAULT))
 	{
 		meshType = 0;
-		Mesh_Names.push_back("/Mesh/x");
-		Mesh_Names.push_back("/Mesh/y");
-		Mesh_Names.push_back("/Mesh/z");
+		Mesh_Names.push_back(sx);
+		Mesh_Names.push_back(sy);
+		Mesh_Names.push_back(sz);
 	}
-	else if (H5Lexists(hdf5_file, "/Mesh/rho", H5P_DEFAULT) && H5Lexists(hdf5_file, "/Mesh/alpha", H5P_DEFAULT) && H5Lexists(hdf5_file, "/Mesh/z", H5P_DEFAULT))
+	else if (H5Lexists(hdf5_file, sr.c_str(), H5P_DEFAULT) && H5Lexists(hdf5_file, sa.c_str(), H5P_DEFAULT) && H5Lexists(hdf5_file, sz.c_str(), H5P_DEFAULT))
 	{
 		meshType = 1;
-		Mesh_Names.push_back("/Mesh/rho");
-		Mesh_Names.push_back("/Mesh/alpha");
-		Mesh_Names.push_back("/Mesh/z");
+		Mesh_Names.push_back(sr);
+		Mesh_Names.push_back(sa);
+		Mesh_Names.push_back(sz);
 	}
 	else
 	{
@@ -297,7 +355,7 @@ bool HDF5_File_Reader::ReadMesh(float** lines, unsigned int* numLines, int &mesh
 	{
 		hsize_t nDim;
 		hsize_t* dims=NULL;
-		float* data=NULL;
+		double* data=NULL;
 		ReadDataSet(Mesh_Names.at(n), nDim, dims, data);
 		if (nDim!=1)
 		{
@@ -447,7 +505,7 @@ float**** HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, unsigned in
 
 	hsize_t nDim;
 	hsize_t* dims=NULL;
-	double* data=NULL;
+	float* data=NULL;
 	ReadDataSet(ds_name, nDim, dims, data);
 	if (nDim!=4)
 	{
@@ -513,11 +571,44 @@ bool HDF5_File_Reader::ReadFrequencies(vector<double> &frequencies)
 }
 
 
+float*** HDF5_File_Reader::Read3DDataSet(std::string ds_name, unsigned int data_size[3])
+{
+	hsize_t nDim;
+	hsize_t* dims=NULL;
+	float* data=NULL;
+
+	// read real values
+	if (ReadDataSet(ds_name, nDim, dims, data) == false)
+		return NULL;
+
+	if (nDim!=3)
+	{
+		cerr << "HDF5_File_Reader::Read3DDataSet: data dimension invalid" << endl;
+		delete[] dims;
+		delete[] data;
+		return NULL;
+	}
+	data_size[0]=dims[2];
+	data_size[1]=dims[1];
+	data_size[2]=dims[0];
+	delete[] dims;
+	size_t pos = 0;
+	float*** outdata = Create3DArray<float>(data_size);
+	for (unsigned int k=0;k<data_size[2];++k)
+		for (unsigned int j=0;j<data_size[1];++j)
+			for (unsigned int i=0;i<data_size[0];++i)
+			{
+				outdata[i][j][k]=data[pos++];
+			}
+	delete[] data;
+	return outdata;
+}
+
 complex<float>**** HDF5_File_Reader::GetFDVectorData(size_t idx, unsigned int data_size[])
 {
 	hsize_t nDim;
 	hsize_t* dims=NULL;
-	double* data=NULL;
+	float* data=NULL;
 	stringstream ds_name;
 
 	// read real values
@@ -589,7 +680,7 @@ complex<float>**** HDF5_File_Reader::GetFDVectorData(size_t idx, unsigned int da
 	delete[] dims;
 
 	pos = 0;
-	complex<double> I(0,1);
+	complex<float> I(0,1);
 	for (unsigned int d=0;d<3;++d)
 		for (unsigned int k=0;k<data_size[2];++k)
 			for (unsigned int j=0;j<data_size[1];++j)

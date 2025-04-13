@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2011-2025 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -30,7 +30,8 @@ public:
 	HDF5_File_Reader(std::string filename);
 	virtual ~HDF5_File_Reader();
 
-	bool ReadMesh(float** lines, unsigned int* numLines, int &meshType);
+	bool ReadMesh(double** lines, unsigned int* numLines, int &meshType, std::string s_mesh_grp="/Mesh");
+	bool ReadMesh(float** lines, unsigned int* numLines, int &meshType, std::string s_mesh_grp="/Mesh");
 
 	//! Get the number of timesteps stored at /FieldData/TD/<NUMBER_OF_TS>
 	unsigned int GetNumTimeSteps();
@@ -65,11 +66,14 @@ public:
 	bool ReadAttribute(std::string grp_name, std::string attr_name, std::vector<double> &attr_values);
 	bool ReadAttribute(std::string grp_name, std::string attr_name, std::vector<float> &attr_values);
 
+	float*** Read3DDataSet(std::string ds_name, unsigned int data_size[3]);
+
 	bool IsValid();
 
 protected:
 	std::string m_filename;
 
+	bool ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, float* &f_data, double* &d_data);
 	bool ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, double* &data);
 	bool ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, float* &data);
 

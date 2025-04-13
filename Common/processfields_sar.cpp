@@ -233,10 +233,10 @@ void ProcessFieldsSAR::DumpFDData()
 	if (found_UnIsotropic)
 		cerr << "ProcessFieldsSAR::DumpFDData(): Warning, found unisotropic material in SAR calculation... this is unsupported!" << endl;
 
-	float* cellWidth[3];
+	double* cellWidth[3];
 	for (int n=0;n<3;++n)
 	{
-		cellWidth[n]=new float[numLines[n]];
+		cellWidth[n]=new double[numLines[n]];
 		for (unsigned int i=0;i<numLines[n];++i)
 			cellWidth[n][i]=Op->GetDiscDelta(n,posLines[n][i])*Op->GetGridDelta();
 	}
@@ -258,6 +258,7 @@ void ProcessFieldsSAR::DumpFDData()
 				cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
 		}
 
+		m_HDF5_Dump_File->WriteRectMesh(numLines,cellWidth,(int)m_Mesh_Type,1,"/CellWidth");
 		m_HDF5_Dump_File->SetCurrentGroup("/CellData");
 		if (m_UseCellKappa==false)
 			cerr <<  "ProcessFieldsSAR::DumpFDData: Error, cell conductivity data not available, this should not happen... skipping! " << endl;
@@ -288,12 +289,15 @@ void ProcessFieldsSAR::DumpFDData()
 		SAR_Calc.SetCellWidth(cellWidth);
 		SAR_Calc.SetCellVolumes(cell_volume);
 		SAR_Calc.SetCellCondictivity(cell_kappa); // cell_kappa will be NULL if m_UseCellKappa is false
+		double mass = SAR_Calc.CalcTotalMass();
 
 		for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 		{
 			SAR_Calc.SetEField(m_E_FD_Fields.at(n));
 			if (!m_UseCellKappa)
 				SAR_Calc.SetJField(m_J_FD_Fields.at(n));
+			power = SAR_Calc.CalcSARPower();
+			SAR_Calc.SetCellVolumes(cell_volume);
 			power = SAR_Calc.CalcSARPower();
 			SAR_Calc.CalcSAR(SAR);
 
@@ -315,12 +319,12 @@ void ProcessFieldsSAR::DumpFDData()
 				size_t datasize[]={numLines[0],numLines[1],numLines[2]};
 				if (m_HDF5_Dump_File->WriteScalarField(ss.str(), SAR, datasize)==false)
 					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
-				float freq[1] = {(float)m_FD_Samples.at(n)};
-				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",freq,1)==false)
+				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",(float)m_FD_Samples.at(n))==false)
 					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
-				float pow[1] = {(float)power};
-				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"power",pow,1)==false)
-					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
+				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"mass",mass)==false)
+					cerr << "ProcessFieldsSAR::DumpFDData: can't dump mass to file...! " << endl;
+				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"power",power)==false)
+					cerr << "ProcessFieldsSAR::DumpFDData: can't dump power to file...! " << endl;
 			}
 			else
 				cerr << "ProcessFieldsSAR::DumpFDData: unknown File-Type" << endl;
