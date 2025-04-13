@@ -1,10 +1,10 @@
 function Y = calc_ypar( f, ports, Sim_Path_Prefix )
 % Y = calc_ypar( f, ports, Sim_Path_Prefix )
 %
-% f: frequency vector (Hz)
-% ports: cell array of ports (see AddMSLPort() and AddLumpedPort())
-% Sim_Path_Prefix: prefix of the simulation dirs (will be postfixed by
-% excitation port number)
+% - f: frequency vector (Hz)
+% - ports: cell array of ports (see AddMSLPort() and AddLumpedPort())
+% - Sim_Path_Prefix: prefix of the simulation dirs (will be postfixed by
+%   excitation port number)
 %
 % This function calculates the Y-matrix representation of the ports
 %

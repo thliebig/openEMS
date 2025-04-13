@@ -1,24 +1,25 @@
 function [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 % [field_i mesh_i] = GetField_Interpolation(field, mesh, lines, varargin)
 %
-%   Get an interpolated field, e.g. read by ReadHDF5Dump 
+% Get an interpolated field, e.g. read by ReadHDF5Dump 
 % 
-%   homogeneous interpolation given by a 3x1 vector: e.g. [21,1,101]
+% homogeneous interpolation given by a 3x1 vector: e.g. [21,1,101]
 % 
-%   arbitrary interpolation on a given mesh:
-%               e.g.:   mesh_interp{1} = linspace(0,  1,101) * 1e-3;
-%                       mesh_interp{2} = linspace(0,0.5, 51) * 1e-3;
-%                       mesh_interp{3} = linspace(0,0.2, 21) * 1e-3;
+% arbitrary interpolation on a given mesh, e.g.:
+%     mesh_interp{1} = linspace(0,  1,101) * 1e-3;
+%     mesh_interp{2} = linspace(0,0.5, 51) * 1e-3;
+%     mesh_interp{3} = linspace(0,0.2, 21) * 1e-3;
 % 
-%   example:
-%   [field mesh] = ReadHDF5Dump('Et.h5');
-%   %interpolate on a mesh with 21x21x101 lines
-%   [field_i mesh_i] = GetField_Interpolation(field, mesh, [21 21 101]);
-%   or
-%   [field_i mesh_i] = GetField_Interpolation(field, mesh, mesh_interp);
-%   
-%   %or both steps in one with the same result:
-%   [field_i mesh_i] = ReadHDF5Dump('Et.h5','Interpolation', [21 21 101]);
+% example:
+%
+%     [field mesh] = ReadHDF5Dump('Et.h5');
+%     %interpolate on a mesh with 21x21x101 lines
+%     [field_i mesh_i] = GetField_Interpolation(field, mesh, [21 21 101]);
+%     or
+%     [field_i mesh_i] = GetField_Interpolation(field, mesh, mesh_interp);
+%     
+%     %or both steps in one with the same result:
+%     [field_i mesh_i] = ReadHDF5Dump('Et.h5','Interpolation', [21 21 101]);
 %
 % openEMS matlab interface
 % -----------------------

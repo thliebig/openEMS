@@ -4,24 +4,24 @@ function [CSX nf2ff] = CreateNF2FFBox(CSX, name, start, stop, varargin)
 % create the dump boxes needed for the near field to far field transformation
 % 
 % input:
-%   name:       name of this nf2ff box
-%   start/stop: start/stop coordinates for the nf2ff box (this box has to
+% - name:       name of this nf2ff box
+% - start/stop: start/stop coordinates for the nf2ff box (this box has to
 %               enclose all radiating structures!)
 % optional inputs:
-%   'Directions': enable/disable specific directions, e.g.
+% - 'Directions': enable/disable specific directions, e.g.
 %                 'Directions',[1 1 0 0 1 1]
 %                   -> disable nf2ff in +/-y direction
-%   'Frequency': dump nf2ff in frequency domain, this will save disk-space
+% - 'Frequency': dump nf2ff in frequency domain, this will save disk-space
 %                but is less flexible, since only this frequencies can be
 %                used for the nf2ff calculations by CalcNF2FF
 %                See also AddDump for more information
-%   'OptResolution': specify a dump resolution, this will save disk-space
+% - 'OptResolution': specify a dump resolution, this will save disk-space
 %                    See also AddDump for more information
 %                    e.g.: 'OptResolution', c0/max_freq/unit/15
 %
 % example:
-%   see Tutorials/Simple_Patch_Antenna.m
-%   see Tutorials/Helical_Antenna.m
+% -  see Tutorials/Simple_Patch_Antenna.m
+% -  see Tutorials/Helical_Antenna.m
 % 
 % See also CalcNF2FF
 %

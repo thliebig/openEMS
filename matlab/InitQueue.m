@@ -7,9 +7,9 @@ function [queue] = InitQueue(varargin)
 % on multiple remote machines.
 %
 % Options:
-%   DependPath: Add multiple paths, your script may depend on
-%   UseOctave:  Enable/Disable octave usage
-%   MaxThreads: max. number of parallel executions
+% - DependPath: Add multiple paths, your script may depend on
+% - UseOctave:  Enable/Disable octave usage
+% - MaxThreads: max. number of parallel executions
 %
 % Note:
 %   - Currently only Linux/Unix is supported
@@ -21,27 +21,28 @@ function [queue] = InitQueue(varargin)
 %   machines using a SSH.host_list setting --> See also RunOpenEMS
 %
 % Example:
-%   %serial version:
-%   for n=1:10
-%       % manipulate parameter etc.
-%       [result1(n) result2(n)] = Parallel_Func_Name(param1, param2);
-%   end
 %
-%   %parallel version:
-%   queue = InitQueue('DependPath',{'/opt/openEMS/CSXCAD/matlab', ...
-%                                   '/opt/openEMS/openEMS/matlab'});
-%   for n=1:10
-%       % manipulate parameter etc.
-%       queue = Add2Queue(queue, 'Parallel_Func_Name', {param1, param2});
-%   end
+%     %serial version:
+%     for n=1:10
+%         % manipulate parameter etc.
+%         [result1(n) result2(n)] = Parallel_Func_Name(param1, param2);
+%     end
 %
-%   % wait for all to finish
-%   [queue] = FinishQueue(queue);
+%     %parallel version:
+%     queue = InitQueue('DependPath',{'/opt/openEMS/CSXCAD/matlab', ...
+%                                     '/opt/openEMS/openEMS/matlab'});
+%     for n=1:10
+%         % manipulate parameter etc.
+%         queue = Add2Queue(queue, 'Parallel_Func_Name', {param1, param2});
+%     end
 %
-%   % retrieve result
-%   for n=1:numel(stub_sweep)
-%     [result1(n) result2(n)] = ResultsQueue(queue,n);
-%   end
+%     % wait for all to finish
+%     [queue] = FinishQueue(queue);
+%
+%     % retrieve result
+%     for n=1:numel(stub_sweep)
+%       [result1(n) result2(n)] = ResultsQueue(queue,n);
+%     end
 %
 % See also: Add2Queue, FinishQueue, ResultsQueue, RunOpenEMS,
 %           RunOpenEMS_Parallel, FindFreeSSH

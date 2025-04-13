@@ -8,31 +8,32 @@ function [delay, fidelity, nf2ff_out] = DelayFidelity(nf2ff, port, path, weight_
 % Oversampling is an input parameter to InitFDTD. The rows of delay and fidelity correspond to theta and the columns to phi.
 % 
 % input:
-%   nf2ff: return value of CreateNF2FFBox.
-%   port: return value of AddLumpedPort
-%   path: path of the simulation results.
-%   weight_theta: weight of the E_theta component 
-%   weight_phi: weight of the E_phi component
+% - nf2ff: return value of CreateNF2FFBox.
+% - port: return value of AddLumpedPort
+% - path: path of the simulation results.
+% - weight_theta: weight of the E_theta component 
+% - weight_phi: weight of the E_phi component
 %     -> with both (possibly complex) parameters any polarization can be examined
-%   theta: theta values to be simulated
-%   phi: phi values to be simulated
-%   f_0: center frequency of SetGaussExcite
-%   f_c: cutoff frequency of SetGaussExcite
+% - theta: theta values to be simulated
+% - phi: phi values to be simulated
+% - f_0: center frequency of SetGaussExcite
+% - f_c: cutoff frequency of SetGaussExcite
 %
 % variable input:
-%   'Center': phase center of the antenna for CalcNF2FF
-%   'Radius': radius for CalcNF2FF
-%   'Mode': mode CalcNF2FF
+% - 'Center': phase center of the antenna for CalcNF2FF
+% - 'Radius': radius for CalcNF2FF
+% - 'Mode': mode CalcNF2FF
 %   
 % example:
-%   theta = [-180:10:180] * pi / 180;
-%   phi = [0, 90] * pi / 180;
-%   % use circular right handed polarization
-%   [delay, fidelity] = DelayFidelity2(nf2ff, port, Sim_Path, -1i, 1, theta, phi, f_0, f_c, 'Mode', 1);
-%   figure
-%   polar(theta.', delay(:,1) * 3e11); % delay in mm
-%   figure
-%   polar(theta', (fidelity(:,1)-0.95)/0.05); % last 5 percent of fidelity
+%
+%     theta = [-180:10:180] * pi / 180;
+%     phi = [0, 90] * pi / 180;
+%     % use circular right handed polarization
+%     [delay, fidelity] = DelayFidelity2(nf2ff, port, Sim_Path, -1i, 1, theta, phi, f_0, f_c, 'Mode', 1);
+%     figure
+%     polar(theta.', delay(:,1) * 3e11); % delay in mm
+%     figure
+%     polar(theta', (fidelity(:,1)-0.95)/0.05); % last 5 percent of fidelity
 % 
 % Author: Georg Michel 
 

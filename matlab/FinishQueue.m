@@ -4,7 +4,7 @@ function [queue] = FinishQueue(queue, query_time)
 % Wait for the given queue to finish.
 %
 % Parameter:
-%   query_time (optional): time interval to check for finished tasks
+% - query_time (optional): time interval to check for finished tasks
 %                          (in seconds, default is 5)
 %
 % For more details see: InitQueue

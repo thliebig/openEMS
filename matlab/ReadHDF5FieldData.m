@@ -2,22 +2,24 @@ function hdf_fielddata = ReadHDF5FieldData(file)
 % function hdf_fielddata = ReadHDF5FieldData(file)
 %
 % returns:
-% % time domain data (if exist)
-% hdf_fielddata.TD.time
-% hdf_fielddata.TD.names
-% hdf_fielddata.TD.values
-% hdf_fielddata.TD.DataType (0 --> real value data)
+% - time domain data (if exist)
+%   - hdf_fielddata.TD.time
+%   - hdf_fielddata.TD.names
+%   - hdf_fielddata.TD.values
+%   - hdf_fielddata.TD.DataType (0 --> real value data)
 %
-% % frequency domain data (if exist)
-% hdf_fielddata.FD.frequency
-% hdf_fielddata.FD.values
-% hdf_fielddata.FD.DataType (0 / 1 --> real / complex value data)
+% - frequency domain data (if exist)
+%   - hdf_fielddata.FD.frequency
+%   - hdf_fielddata.FD.values
+%   - hdf_fielddata.FD.DataType (0 / 1 --> real / complex value data)
 %
 % example: values of timestep 12:
-% hdf_fielddata.TD.values{12}: array (x,y,z,polarization)
+%
+%     hdf_fielddata.TD.values{12}: array (x,y,z,polarization)
 %
 % plot z-field component along y-direction for timestep 12:
-% plot( hdf_fielddata.TD.values{12}(1,:,1,3) )
+%
+%     plot( hdf_fielddata.TD.values{12}(1,:,1,3) )
 %
 % openEMS matlab interface
 % -----------------------

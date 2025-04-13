@@ -4,7 +4,7 @@ function [queue running] = CheckQueue(queue, query_time)
 % Check the given queue for finished tasks.
 %
 % Parameter:
-%   query_time (optional): time interval to check for finished tasks
+% - query_time (optional): time interval to check for finished tasks
 %                          (in seconds, default is 5)
 %
 % For more details see: InitQueue

@@ -5,26 +5,28 @@ function [CSX,port] = AddCurvePort( CSX, prio, portnr, R, start, stop, excite, v
 % The mesh must already be initialized.
 %
 % input:
-%   CSX:    CSX-object created by InitCSX()
-%   prio:   priority for excitation, metal, sheet and probe boxes
-%   portnr: (integer) number of the port
-%   R:      internal resistance of the port
-%   start:  3D start rowvector for port definition
-%   stop:   3D end rowvector for port definition
-%   excite (optional): if true, the port will be switched on (see AddExcitation())
+% - CSX:    CSX-object created by InitCSX()
+% - prio:   priority for excitation, metal, sheet and probe boxes
+% - portnr: (integer) number of the port
+% - R:      internal resistance of the port
+% - start:  3D start rowvector for port definition
+% - stop:   3D end rowvector for port definition
+% - excite (optional): if true, the port will be switched on (see AddExcitation())
 %                       Note: for legacy support a string will be accepted
 % optional (key/values):
 %   varargin:   optional additional excitations options, see also AddExcitation
 %   'PortNamePrefix': a prefix to the port name
 %
 % output:
-%   CSX:
-%   port:
+% - CSX:
+% - port:
 %
 % example:
-%   start = [0 0 0]; stop = [0 0 12];
-%   this defines a lumped port in z-direction
-%   the excitation/probe is placed between start(1) and stop(1)
+%
+%     start = [0 0 0]; stop = [0 0 12];
+%
+% this defines a lumped port in z-direction
+% the excitation/probe is placed between start(1) and stop(1)
 %
 % (C) 2010 Sebastian Held <sebastian.held@uni-due.de>
 % See also InitCSX AddExcitation

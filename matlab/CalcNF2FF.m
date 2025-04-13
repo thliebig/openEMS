@@ -9,30 +9,30 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 % position! See optional parameter below!! Default is [0 0 0]
 %
 % parameter:
-% nf2ff:    data structure created by CreateNF2FFBox
-% Sim_Path: path to simulation data
-% freq:     array of frequencies to analyse
-% theta,phi: spherical coordinates to evaluate the far-field on (in radians)
+% - nf2ff:    data structure created by CreateNF2FFBox
+% - Sim_Path: path to simulation data
+% - freq:     array of frequencies to analyse
+% - theta,phi: spherical coordinates to evaluate the far-field on (in radians)
 %
 % optional parameter:
-% 'Center': nf2ff phase center, default is [0 0 0]
-%           !! Make sure the center is never outside of your nf2ff box!!
-%           Definition is the correct coordinate system necessary
-%           --> either Cartesian or cylindrical coordinates
-% 'Mode':   'Mode', 0 -> read only, if data already exist (default)
-%           'Mode', 1 -> calculate anyway, overwrite existing
-%           'Mode', 2 -> read only, fail if not existing
-% 'Outfile': alternative nf2ff result hdf5 file name
-%            default is: <nf2ff.name>.h5
-% 'Verbose': set verbose level for the nf2ff calculation 0-2 supported
-% 'Radius':  specify the radius for the nf2ff
-% 'Eps_r':   specify the relative electric permittivity for the nf2ff
-% 'Mue_r':   specify the relative magnetic permeability for the nf2ff
+% - 'Center': nf2ff phase center, default is [0 0 0]
+%             !! Make sure the center is never outside of your nf2ff box!!
+%             Definition is the correct coordinate system necessary
+%             --> either Cartesian or cylindrical coordinates
+% - 'Mode':   'Mode', 0 -> read only, if data already exist (default)
+%             'Mode', 1 -> calculate anyway, overwrite existing
+%             'Mode', 2 -> read only, fail if not existing
+% - 'Outfile': alternative nf2ff result hdf5 file name
+%              default is: <nf2ff.name>.h5
+% - 'Verbose': set verbose level for the nf2ff calculation 0-2 supported
+% - 'Radius':  specify the radius for the nf2ff
+% - 'Eps_r':   specify the relative electric permittivity for the nf2ff
+% - 'Mue_r':   specify the relative magnetic permeability for the nf2ff
 %
-% 'Mirror':  Add mirroring in a given direction (dir), with a given 
-%            mirror type (PEC or PMC) and a mirror position in the given
-%            direction.
-%            Example: 'Mirror', {0, 'PMC', +100}
+% - 'Mirror':  Add mirroring in a given direction (dir), with a given 
+%              mirror type (PEC or PMC) and a mirror position in the given
+%              direction.
+%              Example: 'Mirror', {0, 'PMC', +100}
 %
 % See also: CreateNF2FFBox, ReadNF2FF
 %

@@ -4,21 +4,22 @@ function h = plotFFdB(nf2ff,varargin)
 %  plot far field pattern in dBi
 %
 % input:
-%   nf2ff:      output of CalcNF2FF
+% -  nf2ff:      output of CalcNF2FF
 %
 % variable input:
-%   'freq_index':  - use the given frequency index, see nf2ff.freq
-%                  - default is 1
-%   'xaxis':       - 'phi' (default) or 'theta'
-%   'param':       - array positions of parametric plot
-%                  - if xaxis='phi', theta is parameter, and vice versa
-%                  - default is 1
+% -  'freq_index':   use the given frequency index, see nf2ff.freq
+%                    default is 1
+% -  'xaxis':        'phi' (default) or 'theta'
+% -  'param':        array positions of parametric plot
+%                    if xaxis='phi', theta is parameter, and vice versa
+%                    default is 1
 %
-%   example:
-%       plotFFdB(nf2ff, 'freq_index', 2, ...
-%                       'xaxis', 'phi', 'param', [1 46 91])
+% example:
 %
-%       see examples/NF2FF/infDipol.m
+%     plotFFdB(nf2ff, 'freq_index', 2, ...
+%                     'xaxis', 'phi', 'param', [1 46 91])
+%
+% see examples/NF2FF/infDipol.m
 %
 % See also CalcNF2FF, plotFF3D, polarFF
 % 

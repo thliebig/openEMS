@@ -8,21 +8,23 @@ function h = plotRefl(port, varargin)
 %  the lowest reflection.
 %
 % input:
-%   port:      port data structure. Call calcPort with an appropriate 
-%              frequency vector before calling this routine
+% -  port:      port data structure. Call calcPort with an appropriate 
+%               frequency vector before calling this routine
 % 
 % output:      graphics handle for further modification of the plot.
 %
 % variable input:
-%   'precision':   - number of decimal places (floating point precision) 
-%                    for the frequency (always in MHz), default is 0
-%   'threshold':   - Threshold value (in dB) for the upper and lower
-%                    cutoff frequency, default is -3
-%   'fmarkers':    - set lower and upper frequency marker in Hz manually, 
+% - 'precision':     number of decimal places (floating point precision) 
+%                     for the frequency (always in MHz), default is 0
+% - 'threshold':     Threshold value (in dB) for the upper and lower
+%                     cutoff frequency, default is -3
+% - 'fmarkers':      set lower and upper frequency marker in Hz manually, 
 %                    like so: [4e9, 6.5e9]
-%   example:
-%       myport = calcPort(myport, Sim_Path, linspace(f_0-f_c, f_0+f_c, 200));
-%       plotRefl(myport, 'fmarkers', [4e9, 6.5e9]);
+%
+% example:
+%
+%     myport = calcPort(myport, Sim_Path, linspace(f_0-f_c, f_0+f_c, 200));
+%     plotRefl(myport, 'fmarkers', [4e9, 6.5e9]);
 %
 % See also calcPort
 % 

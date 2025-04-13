@@ -4,8 +4,8 @@ function Dump2VTK(filename, fields, mesh, fieldname, varargin)
 %   Dump fields extracted from an hdf5 file to a vtk file format
 %
 %   possible arguments:
-%       'NativeDump': 0 (default) / 1, dump in native coordinate system
-%       'CloseAlpha': 0 (default) / 1, repeat first/last line in
+%   -   'NativeDump': 0 (default) / 1, dump in native coordinate system
+%   -   'CloseAlpha': 0 (default) / 1, repeat first/last line in
 %                     alpha-direction for a full cylindrical mesh
 %
 %   example:

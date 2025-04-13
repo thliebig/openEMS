@@ -1,12 +1,14 @@
 function FDTD = SetGaussExcite(FDTD,f0,fc)
 % function FDTD = SetGaussExcite(FDTD,f0,fc);
 %
-% f0 : center frequency
-% fc : 20dB cutoff frequency --> bandwidth is 2*fc
+% - f0 : center frequency
+% - fc : 20dB cutoff frequency --> bandwidth is 2*fc
 %
 % see also SetSinusExcite SetCustomExcite
 %
-% e.g FDTD = SetGaussExcite(FDTD,1e9,1e8);
+% e.g
+%
+%     FDTD = SetGaussExcite(FDTD,1e9,1e8);
 %
 % openEMS matlab interface
 % -----------------------

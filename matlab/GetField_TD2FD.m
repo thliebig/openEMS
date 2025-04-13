@@ -5,9 +5,10 @@ function field = GetField_TD2FD(field, freq)
 % Auto-corrects the half-timestep offset of the H-field
 % 
 % example:
-%   freq = linspace(0,1e9,100); %target frequency vector (Hz)
-%   field = ReadHDF5FieldData('tmp/Ht.h5');
-%   field_FD = GetField_TD2FD(field, freq);
+%
+%     freq = linspace(0,1e9,100); %target frequency vector (Hz)
+%     field = ReadHDF5FieldData('tmp/Ht.h5');
+%     field_FD = GetField_TD2FD(field, freq);
 %
 % openEMS matlab interface
 % -----------------------

@@ -2,12 +2,13 @@ function PlotHDF5FieldData(file, PlotArgs)
 % function PlotHDF5FieldData(file, PlotArgs)
 %
 % e.g.
-% PlotArgs.slice = {0 [10 20] 0};
-% PlotArgs.pauseTime=0.01;
-% PlotArgs.component=2;
-% PlotArgs.Limit = 'auto';
+%
+%     PlotArgs.slice = {0 [10 20] 0};
+%     PlotArgs.pauseTime=0.01;
+%     PlotArgs.component=2;
+%     PlotArgs.Limit = 'auto';
 % 
-% PlotHDF5FieldData('tmp/Et.h5',PlotArgs)
+%     PlotHDF5FieldData('tmp/Et.h5',PlotArgs)
 %
 % openEMS matlab interface
 % -----------------------
