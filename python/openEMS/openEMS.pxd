@@ -24,7 +24,7 @@ from CSXCAD.CSXCAD cimport _ContinuousStructure, ContinuousStructure
 
 cdef extern from "openEMS/openems.h":
     cdef cppclass _openEMS "openEMS":
-        _openEMS() nogil except +
+        _openEMS() except + nogil
         void Reset()
 
         void SetNumberOfTimeSteps(unsigned int val)
