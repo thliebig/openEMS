@@ -23,7 +23,7 @@ from libcpp cimport bool
 
 cdef extern from "openEMS/nf2ff.h":
     cdef cppclass cpp_nf2ff "nf2ff":
-        cpp_nf2ff(vector[float] freq, vector[float] theta, vector[float] phi, vector[float] center, unsigned int numThreads) except + nogil
+        cpp_nf2ff(vector[float] freq, vector[float] theta, vector[float] phi, vector[float] center, unsigned int numThreads) nogil except +
 
         bool AnalyseFile(string E_Field_file, string H_Field_file) nogil
 
