@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cmath>
+#include <cstring>
 
 namespace ArrayLib
 {
