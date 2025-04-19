@@ -163,6 +163,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 							continue;
 						if (!elec->GetEnabled())
 							continue;
+            
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 						{
 							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos);// delta[n]*gridDelta;
