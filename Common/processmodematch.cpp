@@ -1,5 +1,6 @@
 /*
 *	Copyright (C) 2010 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2025 Gadi Lahav <gadi@rfwithcare.com>
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -28,9 +29,16 @@ ProcessModeMatch::ProcessModeMatch(Engine_Interface_Base* eng_if) : ProcessInteg
 	{
 		m_ModeParser[n] = new CSFunctionParser();
 		m_ModeDist[n] = NULL;
+
+		m_MWeights[n].clear();
+		m_MCoords[n].clear();
 	}
 	delete[] m_Results;
 	m_Results = new double[2];
+
+	m_ModeFieldType = 0;
+	m_ny = 0;
+
 }
 
 ProcessModeMatch::~ProcessModeMatch()
@@ -117,16 +125,20 @@ void ProcessModeMatch::InitProcess()
 	m_numLines[0] = stop[nP] - start[nP] + 1;
 	m_numLines[1] = stop[nPP] - start[nPP] + 1;
 
-	for (int n=0; n<2; ++n)
+	// Check that this isn't a custom mode, before running this test
+	if (m_MWeights[0].size() == 0)
 	{
-		int ny = (m_ny+n+1)%3;
-		int res = m_ModeParser[n]->Parse(m_ModeFunction[ny], "x,y,z,rho,a,r,t");
-		if (res >= 0)
+		for (int n=0; n<2; ++n)
 		{
-			cerr << "ProcessModeMatch::InitProcess(): Warning, an error occurred parsing the mode matching function (see below) ..." << endl;
-			cerr << m_ModeFunction[ny] << "\n" << string(res, ' ') << "^\n" << m_ModeParser[n]->ErrorMsg() << "\n";
-			SetEnable(false);
-			Reset();
+			int ny = (m_ny+n+1)%3;
+			int res = m_ModeParser[n]->Parse(m_ModeFunction[ny], "x,y,z,rho,a,r,t");
+			if (res >= 0)
+			{
+				cerr << "ProcessModeMatch::InitProcess(): Warning, an error occurred parsing the mode matching function (see below) ..." << endl;
+				cerr << m_ModeFunction[ny] << "\n" << string(res, ' ') << "^\n" << m_ModeParser[n]->ErrorMsg() << "\n";
+				SetEnable(false);
+				Reset();
+			}
 		}
 	}
 
@@ -144,7 +156,15 @@ void ProcessModeMatch::InitProcess()
 	discLine[m_ny] = Op->GetDiscLine(m_ny,pos[m_ny],dualMesh);
 	double norm = 0;
 	double area = 0;
-	for (unsigned int posP = 0; posP<m_numLines[0]; ++posP)
+
+	// Remove 1 from the number of lines if this is a magentic field. It samples 1 cell too many
+	if (dualMesh)
+	{
+		m_numLines[0]--;
+		m_numLines[1]--;
+	}
+
+	for (unsigned int posP = 0; posP < m_numLines[0]; ++posP)
 	{
 		pos[nP] = start[nP] + posP;
 		discLine[nP] = Op->GetDiscLine(nP,pos[nP],dualMesh);
@@ -171,14 +191,38 @@ void ProcessModeMatch::InitProcess()
 				var[6] = asin(1)-atan(var[2]/var[3]); //theta (t)
 			}
 			area = Op->GetNodeArea(m_ny,pos,dualMesh);
-			for (int n=0; n<2; ++n)
+
+			// First pass: extract m_ModeDist values
+			// Check if there are manual weights
+			if (m_MWeights[0].size())
 			{
-				m_ModeDist[n][posP][posPP] = m_ModeParser[n]->Eval(var); //calc mode template
-				if ((std::isnan(m_ModeDist[n][posP][posPP])) || (std::isinf(m_ModeDist[n][posP][posPP])))
-					m_ModeDist[n][posP][posPP] = 0.0;
-				norm += pow(m_ModeDist[n][posP][posPP],2) * area;
+				uint weightIdx = GetClosestManualWeightIdx(discLine);
+
+				//double modeVect[3] = {0.0,0.0,0.0};
+
+				for (int n = 0 ; n < 2; ++n)
+				{
+					int ny = (m_ny+n+1)%3;
+					m_ModeDist[n][posP][posPP] = m_MWeights[ny].at(weightIdx);
+					//modeVect[ny] = m_MWeights[ny].at(weightIdx);
+				}
 			}
-//			cerr << discLine[0] << " " << discLine[1] << " : " << m_ModeDist[0][posP][posPP] << " , " << m_ModeDist[1][posP][posPP] << endl;
+
+
+
+			else
+				for (int n = 0; n < 2; ++n)
+				{
+					m_ModeDist[n][posP][posPP] = m_ModeParser[n]->Eval(var); //calc mode template
+					if ((std::isnan(m_ModeDist[n][posP][posPP])) || (std::isinf(m_ModeDist[n][posP][posPP])))
+						m_ModeDist[n][posP][posPP] = 0.0;
+
+				}
+
+			// Second pass, for normalization
+			for (int n=0; n<2; ++n)
+				norm += pow(m_ModeDist[n][posP][posPP],2) * area;
+
 		}
 	}
 
@@ -208,11 +252,55 @@ void ProcessModeMatch::Reset()
 	}
 }
 
-
 void ProcessModeMatch::SetModeFunction(int ny, string function)
 {
 	if ((ny<0) || (ny>2)) return;
 	m_ModeFunction[ny] = function;
+}
+
+void ProcessModeMatch::SetManualWeights(uint dir, const std::vector<float> & v)
+{
+	m_MWeights[dir].clear();
+	m_MWeights[dir].assign(v.begin(),v.end());
+}
+
+void ProcessModeMatch::SetManualCoords(uint dir, const std::vector<float> & v)
+{
+	m_MCoords[dir].clear();
+	m_MCoords[dir].assign(v.begin(),v.end());
+}
+
+void ProcessModeMatch::ClearManualWeights()
+{
+	for(uint dirIdx = 0 ; dirIdx < 3 ; dirIdx++)
+	{
+		m_MWeights[dirIdx].clear();
+		m_MCoords[dirIdx].clear();
+	}
+}
+
+uint ProcessModeMatch::GetClosestManualWeightIdx(const double* coords)
+{
+	// Check if manual weights are set. If so, look for coordinate there
+	float minDr = std::numeric_limits<float>::infinity();	// Container for minimal found dr
+	float dr; 												// Container for distance between requested coordiante and stored coordinate
+	uint minIdx;
+	// Check all the coordinates within this excitation to see which is the closest.
+	for (uint coorIdx = 0 ; coorIdx < m_MWeights[0].size() ; coorIdx++)
+	{
+		dr = sqrtf(	powf(coords[0] - m_MCoords[0].at(coorIdx),2.0f) +
+					powf(coords[1] - m_MCoords[1].at(coorIdx),2.0f) +
+					powf(coords[2] - m_MCoords[2].at(coorIdx),2.0f));
+
+		if (dr < minDr)
+		{
+			minDr = dr;
+			minIdx = coorIdx;
+		}
+
+	}
+
+	return minIdx;
 }
 
 void ProcessModeMatch::SetFieldType(int type)
