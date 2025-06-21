@@ -97,7 +97,7 @@ jobs:
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
             dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave python3-Cython python3-h5py \
+                           CGAL-devel octave python3-setuptools python3-Cython python3-h5py \
                            python3-matplotlib
           elif grep -q 'ID="almalinux"' /etc/os-release; then
             dnf install -y epel-release
@@ -486,6 +486,7 @@ jobs:
           run: |
             echo "Install dependencies..."
             sudo pkg install -y cmake git boost-libs tinyxml vtk9 hdf5 cgal octave python3 \
+                                py311-setuptools \
                                 py311-cython3 py311-numpy py311-h5py py311-matplotlib
                                 # prefix must match FreeBSD's default python
                                 # version. FreeBSD 14.2 uses Python 3.11 so
