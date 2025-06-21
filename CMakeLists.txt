@@ -7,7 +7,11 @@ ELSE()
 ENDIF()
 
 PROJECT(openEMS CXX C)
-cmake_minimum_required(VERSION 3.0)
+
+# In CMake 4, 3.10 is deprecated and 3.5 has been removed.
+# use 3.0...3.10 so all of these versions are acceptable as min. version.
+# https://cmake.org/cmake/help/latest/command/cmake_minimum_required.html
+cmake_minimum_required(VERSION 3.0...3.10)
 
 # default
 set(LIB_VERSION_MAJOR 0)
