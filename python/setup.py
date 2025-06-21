@@ -14,10 +14,19 @@ ROOT_DIR = os.path.dirname(__file__)
 
 sys.path.append(os.path.join(ROOT_DIR,'..','..','CSXCAD','python'))
 
+# Strictly speaking we should detect compiler, not platform,
+# unfortunately there's no easy way to do so without implementing
+# full compiler detection logic. This is good enough for 90% of
+# use cases.
+cxxflags = []
+if os.name == "posix":
+    cxxflags.append("-std=c++11")
+
 extensions = [
     Extension("*", [os.path.join(os.path.dirname(__file__), "openEMS","*.pyx")],
         language="c++",             # generate C++ code
-        libraries    = ['CSXCAD','openEMS', 'nf2ff']),
+        libraries    = ['CSXCAD','openEMS', 'nf2ff'],
+        extra_compile_args=cxxflags),
 ]
 
 setup(
