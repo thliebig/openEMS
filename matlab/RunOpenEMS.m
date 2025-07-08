@@ -4,60 +4,62 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 % Run an openEMS simulation.
 %
 % arguments:
-% Sim_Path: specify the simulation folder (folder must exist!)
-% Sim_File: xml-filename to simulate, created by WriteOpenEMS
+% _ Sim_Path: specify the simulation folder (folder must exist!)
+% _ Sim_File: xml-filename to simulate, created by WriteOpenEMS
 %
 % optional arguments
 % 
 % opts:  list of openEMS options
-%        possible options:
-%         --disable-dumps      Disable all field dumps for faster simulation
-%         --debug-material     Dump material distribution to a vtk file for debugging
-%         --debug-PEC          Dump metal distribution to a vtk file for debugging
-%         --debug-operator     Dump operator to vtk file for debugging
-%         --debug-boxes        Dump e.g. probe boxes to vtk file for debugging
-%         --debug-CSX          Write CSX geometry file to debugCSX.xml
-%         --engine=<type>      Choose engine type
-%             --engine=fastest         fastest available engine (default)
-%             --engine=basic           basic FDTD engine
-%             --engine=sse             engine using sse vector extensions
-%             --engine=sse-compressed  engine using compressed operator + sse vector extensions
-%             --engine=MPI             engine using compressed operator + sse vector extensions + MPI parallel processing
-%             --engine=multithreaded   engine using compressed operator + sse vector extensions + MPI + multithreading
-%         --numThreads=<n>     Force use n threads for multithreaded engine
-%         --no-simulation      only run preprocessing; do not simulate
-%         --dump-statistics    dump simulation statistics to 'openEMS_run_stats.txt' and 'openEMS_stats.txt'
 %
-%          Additional global arguments
-%         --showProbeDiscretization    Show probe discretization information
-%         --nativeFieldDumps           Dump all fields using the native field components
-%         -v,-vv,-vvv                  Set debug level: 1 to 3
+%     possible options:
+%      --disable-dumps      Disable all field dumps for faster simulation
+%      --debug-material     Dump material distribution to a vtk file for debugging
+%      --debug-PEC          Dump metal distribution to a vtk file for debugging
+%      --debug-operator     Dump operator to vtk file for debugging
+%      --debug-boxes        Dump e.g. probe boxes to vtk file for debugging
+%      --debug-CSX          Write CSX geometry file to debugCSX.xml
+%      --engine=<type>      Choose engine type
+%          --engine=fastest         fastest available engine (default)
+%          --engine=basic           basic FDTD engine
+%          --engine=sse             engine using sse vector extensions
+%          --engine=sse-compressed  engine using compressed operator + sse vector extensions
+%          --engine=MPI             engine using compressed operator + sse vector extensions + MPI parallel processing
+%          --engine=multithreaded   engine using compressed operator + sse vector extensions + MPI + multithreading
+%      --numThreads=<n>     Force use n threads for multithreaded engine
+%      --no-simulation      only run preprocessing; do not simulate
+%      --dump-statistics    dump simulation statistics to 'openEMS_run_stats.txt' and 'openEMS_stats.txt'
+%
+%       Additional global arguments
+%      --showProbeDiscretization    Show probe discretization information
+%      --nativeFieldDumps           Dump all fields using the native field components
+%      -v,-vv,-vvv                  Set debug level: 1 to 3
 %
 %
 % settings: list of Matlab settings
-%       possible settings:
-%           Settings.LogFile = 'openEMS.log'
-%           Settings.Silent  = 0
+% - possible settings:
+%   - Settings.LogFile = 'openEMS.log'
+%   - Settings.Silent  = 0
 %
-%       additional remote simulation settings
-%       Note: ssh only on unix with working ssh client or windows with putty client
-%           openEMS Linux server or Windows with cygwin necessary
-%       Settings.SSH.host = '<hostname or ip>'
-%       Settings.SSH.bin = '<path_to_openEMS>/openEMS.sh'
-%       ssh optional:
-%       Settings.SSH.host_list = {'list','of','hosts'}; %searches for a free host
-%       %on Windows needed additionally
-%       Settings.SSH.Putty.Path = '<path_to>\putty';
-%       Settings.SSH.Putty.Key = '<path_to>\putty_private_key.ppk';
+% - additional remote simulation settings
+%   Note: ssh only on unix with working ssh client or windows with putty client
+%   openEMS Linux server or Windows with cygwin necessary
 %
-%       MPI settings:
-%       Settings.MPI.xxx --> help RunOpenEMS_MPI
-% 
+%   - Settings.SSH.host = '<hostname or ip>'
+%   - Settings.SSH.bin = '<path_to_openEMS>/openEMS.sh'
+% - ssh optional:
+%   - Settings.SSH.host_list = {'list','of','hosts'}; %searches for a free host
+%   - %on Windows needed additionally
+%     Settings.SSH.Putty.Path = '<path_to>\putty';
+%     Settings.SSH.Putty.Key = '<path_to>\putty_private_key.ppk';
+%
+% - MPI settings:
+%   - Settings.MPI.xxx --> help RunOpenEMS_MPI
 %
 % example:
-% %create CSX and FDTD
-% WriteOpenEMS('/tmp/path_to_run_in/myfile.xml', FDTD, CSX)
-% RunOpenEMS('/tmp/path_to_run_in','myfile.xml','-v')
+%
+%     %create CSX and FDTD
+%     WriteOpenEMS('/tmp/path_to_run_in/myfile.xml', FDTD, CSX)
+%     RunOpenEMS('/tmp/path_to_run_in','myfile.xml','-v')
 %
 % See also WriteOpenEMS FindFreeSSH InitCSX InitFDTD RunOpenEMS_MPI
 %

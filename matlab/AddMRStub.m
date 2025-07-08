@@ -1,24 +1,24 @@
 function CSX = AddMRStub( CSX, materialname, prio, MSL_width, len, alpha, resolution, orientation, normVector, position )
-% CSX = AddMRStub( CSX, materialname, prio, MSL_width, len, alpha,
-% resolution, orientation, normVector, position )
+% CSX = AddMRStub( CSX, materialname, prio, MSL_width, len, alpha, resolution, orientation, normVector, position )
 %
 % Microstrip Radial Stub
 %
-% CSX: CSX-object created by InitCSX()
-% materialname: property for the MSL (created by AddMetal() or AddMaterial())
-% prio: priority
-% MSL_width: width of the MSL to connect the stub to
-% len: length of the radial stub
-% alpha: angle subtended by the radial stub (degrees) 
-% resolution: discrete angle spacing (degrees)
-% orientation: angle of main direction of the radial stub (degrees)
-% normVector: normal vector of the stub
-% position: position of the end of the MSL
+% - CSX: CSX-object created by InitCSX()
+% - materialname: property for the MSL (created by AddMetal() or AddMaterial())
+% - prio: priority
+% - MSL_width: width of the MSL to connect the stub to
+% - len: length of the radial stub
+% - alpha: angle subtended by the radial stub (degrees) 
+% - resolution: discrete angle spacing (degrees)
+% - orientation: angle of main direction of the radial stub (degrees)
+% - normVector: normal vector of the stub
+% - position: position of the end of the MSL
 %
 % This radial stub definition is equivalent to the one Agilent ADS uses.
 %
 % example:
-% CSX = AddMRStub( CSX, 'PEC', 10, 1000, 5900, 30, 1, -90, [0 0 1], [0 -10000 254] );
+%
+%     CSX = AddMRStub( CSX, 'PEC', 10, 1000, 5900, 30, 1, -90, [0 0 1], [0 -10000 254] );
 %
 %
 % Sebastian Held <sebastian.held@gmx.de>

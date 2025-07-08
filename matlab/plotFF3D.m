@@ -4,21 +4,22 @@ function h = plotFF3D(nf2ff,varargin)
 %  plot normalized 3D far field pattern
 %
 % input:
-%   nf2ff:      output of CalcNF2FF
+% - nf2ff:      output of CalcNF2FF
 %
 % variable input:
-%   'freq_index':  - use the given frequency index, see nf2ff.freq
-%                  - default is 1
-%   'logscale':    - if set, show far field with logarithmic scale
-%                  - set the dB value for point of origin
-%                  - values below will be clamped
-%   'normalize':   - true/false, normalize linear plot
-%                  - default is false, log-plot is always normalized!
+% - 'freq_index':    use the given frequency index, see nf2ff.freq
+%                    default is 1
+% - 'logscale':      if set, show far field with logarithmic scale
+%                    set the dB value for point of origin
+%                    values below will be clamped
+% - 'normalize':     true/false, normalize linear plot
+%                    default is false, log-plot is always normalized!
 %
-%   example:
-%       plotFF3D(nf2ff, 'freq_index', 2, 'logscale', -20)
+% example:
 %
-%       see examples/antennas/infDipol.m
+%     plotFF3D(nf2ff, 'freq_index', 2, 'logscale', -20)
+%
+% see examples/antennas/infDipol.m
 %
 % See also CalcNF2FF, plotFFdB, polarFF
 % 

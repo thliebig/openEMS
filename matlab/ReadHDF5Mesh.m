@@ -4,9 +4,10 @@ function hdf_mesh = ReadHDF5Mesh(file)
 %   Get the raw mesh data stored in the hdf5 dump file created by openEMS
 %
 % returns:
-% hdf_mesh.type     (0-> Cartesian, 1-> cylindrical mesh type)
-% hdf_mesh.names    (e.g. 'Mesh/y')
-% hdf_mesh.lines    (e.g. [0,1,2,3,4])
+%
+% - hdf_mesh.type     (0-> Cartesian, 1-> cylindrical mesh type)
+% - hdf_mesh.names    (e.g. 'Mesh/y')
+% - hdf_mesh.lines    (e.g. [0,1,2,3,4])
 %
 % openEMS matlab interface
 % -----------------------

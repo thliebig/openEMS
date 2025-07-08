@@ -11,19 +11,20 @@ function UI = ReadUI(files, path, freq, varargin)
 %    exp(-j*w*t(1))
 %
 % optional parameter:
-% freq: frequency-domain values will be calculated according to 'freq'
-%       if 'freq' is not given, a (zero padded) FFT will be used
+% - freq: frequency-domain values will be calculated according to 'freq'
+%         if 'freq' is not given, a (zero padded) FFT will be used
 %
 % optional key,value pairs:
-% 'AR'  : auto-regressive model to improve FD accuracy
-%         values: order to use within an AR model or 'auto'
+% - 'AR'  : auto-regressive model to improve FD accuracy
+%           values: order to use within an AR model or 'auto'
 %
-% % examples:
-% U = ReadUI({'ut1_1','ut1_2'},'tmp' );
-% I = ReadUI('it1'            ,'tmp',[0.5e9 1e9 1.5e9]);
-% 
-% % using the auto-regressive model
-% U = ReadUI('port_ut1' , 'tmp', 'AR', 'auto');
+% examples:
+%
+%     U = ReadUI({'ut1_1','ut1_2'},'tmp' );
+%     I = ReadUI('it1'            ,'tmp',[0.5e9 1e9 1.5e9]);
+%     
+%     % using the auto-regressive model
+%     U = ReadUI('port_ut1' , 'tmp', 'AR', 'auto');
 % 
 % openEMS matlab interface
 % -----------------------

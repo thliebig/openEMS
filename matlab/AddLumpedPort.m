@@ -6,26 +6,30 @@ function [CSX, port] = AddLumpedPort( CSX, prio, portnr, R, start, stop, dir, ex
 % A lumped port consists of an excitation, a lumped resistor, a voltage and
 % current probe.
 %
-% CSX:      CSX-object created by InitCSX()
-% prio:     priority for substrate and probe boxes
-% portnr:   (integer) number of the port
-% R:        internal resistance of the port (lumped element)
-% start:    3D start rowvector for port definition
-% stop:     3D end rowvector for port definition
-% dir:      direction/amplitude of port (e.g.: [1 0 0], [0 1 0] or [0 0 1])
-% excite (optional): if true, the port will be switched on (see AddExcitation())
+% - CSX:      CSX-object created by InitCSX()
+% - prio:     priority for substrate and probe boxes
+% - portnr:   (integer) number of the port
+% - R:        internal resistance of the port (lumped element)
+% - start:    3D start rowvector for port definition
+% - stop:     3D end rowvector for port definition
+% - dir:      direction/amplitude of port (e.g.: [1 0 0], [0 1 0] or [0 0 1])
+% - excite (optional): if true, the port will be switched on (see AddExcitation())
 %                       Note: for legacy support a string will be accepted
-% V_Probe_Weight:  additional weight for the voltage probes
-% I_Probe_Weight:  additional weight for the current probes
+% - V_Probe_Weight:  additional weight for the voltage probes
+% - I_Probe_Weight:  additional weight for the current probes
+%
 % optional (key/values):
-%   'PortNamePrefix': an prefix to the port name
+%
+% - 'PortNamePrefix': an prefix to the port name
+%
 % varargin (optional): additional excitations options, see also AddExcitation
 %
 % example:
-%   start = [0 -width/2 0];
-%   stop  = [0  width/2 height];
-%   [CSX] = AddLumpedPort(CSX, 5 ,1 , 50, start, stop, [0 0 1], true);
-%   %this defines an active lumped port in z-direction with a 50 Ohm port impedance
+%
+%     start = [0 -width/2 0];
+%     stop  = [0  width/2 height];
+%     [CSX] = AddLumpedPort(CSX, 5 ,1 , 50, start, stop, [0 0 1], true);
+%     %this defines an active lumped port in z-direction with a 50 Ohm port impedance
 %
 % openEMS matlab interface
 % -----------------------

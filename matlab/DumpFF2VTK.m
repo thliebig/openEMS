@@ -4,25 +4,26 @@ function DumpFF2VTK(filename, farfield, thetaRange, phiRange, varargin)
 %  Dump 3D far field pattern to a vtk file
 %
 % input:
-%   filename:      filename of VTK file, existing file will be overwritten
-%   farfield:      far field in V/m
-%   thetaRange:    theta range in deg
-%   phiRange:      phi range in deg
+% - filename:      filename of VTK file, existing file will be overwritten
+% - farfield:      far field in V/m
+% - thetaRange:    theta range in deg
+% - phiRange:      phi range in deg
 %
 % variable input:
-%   'scale':       - linear scale of plot, doesn't affect gain values
-%   'logscale':    - if set, show far field with logarithmic scale
-%                  - set the dB value for point of origin
-%                  - values below will be clamped
-%   'maxgain':     - add max gain in dB to normalized far field
-%                  - only valid if logscale is set
-%                  - default is 0dB
+% - 'scale':       linear scale of plot, doesn't affect gain values
+% - 'logscale':    if set, show far field with logarithmic scale
+%                  set the dB value for point of origin
+%                  values below will be clamped
+% - 'maxgain':     add max gain in dB to normalized far field
+%                  only valid if logscale is set
+%                  default is 0dB
 %
-%   example:
-%       DumpFF2VTK(filename, farfield, thetaRange, phiRange, ...
-%                    'scale', 2, 'logscale', -20, 'maxgain', 3)
+% example:
 %
-%       see also examples/NF2FF/infDipol.m
+%      DumpFF2VTK(filename, farfield, thetaRange, phiRange, ...
+%                   'scale', 2, 'logscale', -20, 'maxgain', 3)
+%
+% - see also examples/NF2FF/infDipol.m
 %
 % See also CreateNF2FFBox, CalcNF2FF
 % 

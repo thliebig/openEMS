@@ -3,26 +3,28 @@ function [val_ar t_ar f_val_ar EC] = AR_estimate( t, val, freq, nu, mu, expand_f
 %
 % apply autoregressive signal model to improve dft results
 %
-% t     : time vector
-% val   : time domain values
-% freq  : frequency vector for dft
+% * t     : time vector
+% * val   : time domain values
+% * freq  : frequency vector for dft
 %
 % optional
-% nu    : AR order (default 40)
-% mu    : number of timesteps to train the model (default 3*nu)
-% expand_factor : increase signal length by this factor (default 5)
+%
+% * nu    : AR order (default 40)
+% * mu    : number of timesteps to train the model (default 3*nu)
+% * expand_factor : increase signal length by this factor (default 5)
 %
 % return values:
-% val_ar:   AR estimated time signal
-% t_ar:     time vector
-% f_val_ar: FD transformed AR estimated signal
-% EC:       error code
-%           0 --> no error
-%           1 --> input error: t and val mismatch
-%           2 --> input error: mu has to be larger than 2*nu
-%           3 --> input error: expand_factor has to be larger than 1
-%           10 --> AR error: signal is to short for AR estimate --> decrease AR order
-%           11 --> AR error: estimated signal appears to be unstable --> use a different mu
+%
+% * val_ar:   AR estimated time signal
+% * t_ar:     time vector
+% * f_val_ar: FD transformed AR estimated signal
+% * EC:       error code
+%             0 --> no error
+%             1 --> input error: t and val mismatch
+%             2 --> input error: mu has to be larger than 2*nu
+%             3 --> input error: expand_factor has to be larger than 1
+%             10 --> AR error: signal is to short for AR estimate --> decrease AR order
+%             11 --> AR error: estimated signal appears to be unstable --> use a different mu
 %
 % openEMS matlab interface
 % -----------------------

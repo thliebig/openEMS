@@ -123,6 +123,8 @@ void openEMS::Reset()
 	m_CSX=0;
 	delete m_Exc;
 	m_Exc=0;
+	delete Eng_Ext_SSD;
+	Eng_Ext_SSD=0;
 }
 
 void openEMS::collectCommandLineArguments()

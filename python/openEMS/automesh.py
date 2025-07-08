@@ -26,9 +26,9 @@ def mesh_combine(mesh1, mesh2, sort=True):
     return mesh
 
 def mesh_hint_from_primitive(primitive, dirs, **kw):
-    if primitive.GetType() == CSPrimitives.POINT:
+    if primitive.GetType() == CSPrimitives.PrimitiveType.POINT:
         return mesh_hint_from_point(primitive, dirs, **kw)
-    if primitive.GetType() == CSPrimitives.BOX:
+    if primitive.GetType() == CSPrimitives.PrimitiveType.BOX:
         return mesh_hint_from_box(primitive, dirs, **kw)
     else:
         return None

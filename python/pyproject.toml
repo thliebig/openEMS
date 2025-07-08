@@ -37,5 +37,10 @@ Documentation = 'https://openEMS.de'
 Source = 'https://github.com/thliebig/CSXCAD/tree/master/python'
 
 [build-system]
-requires = ['setuptools','Cython']
+requires = [
+	'setuptools',
+	'cython', # Apache License 2.0 (https://github.com/cython/cython/blob/master/LICENSE.txt)
+    'h5py',   # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
+    'numpy',  # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
+]
 build-backend = 'setuptools.build_meta'

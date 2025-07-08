@@ -7,7 +7,11 @@ ELSE()
 ENDIF()
 
 PROJECT(openEMS CXX C)
-cmake_minimum_required(VERSION 3.0)
+
+# In CMake 4, 3.10 is deprecated and 3.5 has been removed.
+# use 3.0...3.10 so all of these versions are acceptable as min. version.
+# https://cmake.org/cmake/help/latest/command/cmake_minimum_required.html
+cmake_minimum_required(VERSION 3.0...3.10)
 
 # default
 set(LIB_VERSION_MAJOR 0)
@@ -113,7 +117,7 @@ message(STATUS "TinyXML_LIBRARY: ${TinyXML_LIBRARY}")
 INCLUDE_DIRECTORIES( ${TinyXML_INCLUDE_DIR} )
 
 # hdf5
-find_package(HDF5 1.8 COMPONENTS C HL REQUIRED)
+find_package(HDF5 COMPONENTS C HL REQUIRED)
 INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIRS})
 # hdf5 compat
 #ADD_DEFINITIONS( -DH5_USE_16_API )
@@ -134,13 +138,18 @@ message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
 INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
 
 # vtk
-find_package(VTK COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE REQUIRED)
+find_package(VTK COMPONENTS vtkCommonCore NO_MODULE QUIET)
+if (${VTK_VERSION} VERSION_GREATER "9")
+    find_package(VTK REQUIRED COMPONENTS IOXML IOGeometry IOLegacy IOPLY NO_MODULE REQUIRED)
+else()
+    find_package(VTK REQUIRED COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE REQUIRED)
+    include(${VTK_USE_FILE})
+endif()
 
 message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
 set( vtk_LIBS ${VTK_LIBRARIES} )
 message(STATUS "vtk libraries " ${vtk_LIBS})
 
-include(${VTK_USE_FILE})
 INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIR})
 
 # independent tool

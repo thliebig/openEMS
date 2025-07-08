@@ -123,6 +123,14 @@ void ProcessFieldsFD::DumpFDData()
 
 		for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 		{
+			std::string str_freq;
+			double freq = m_FD_Samples.at(n);
+			if ((freq-long(freq))==0)
+				// if the frequency is a natural number, export as long
+				str_freq = std::to_string(long(freq));
+			else
+				str_freq = std::to_string(freq);
+
 			//dump multiple phase to vtk-files
 			for (int p=0; p<Nr_Ph; ++p)
 			{
@@ -142,7 +150,7 @@ void ProcessFieldsFD::DumpFDData()
 					}
 				}
 				stringstream ss;
-				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_p=" << std::setw( 3 ) << std::setfill( '0' ) <<(int)(angle * 180 / M_PI);
+				ss << m_filename << fixed << "_f=" << str_freq << "_p=" << std::setw( 3 ) << std::setfill( '0' ) <<(int)(angle * 180 / M_PI);
 
 				m_Vtk_Dump_File->SetFilename(ss.str());
 				m_Vtk_Dump_File->ClearAllFields();
@@ -166,7 +174,7 @@ void ProcessFieldsFD::DumpFDData()
 					}
 				}
 				stringstream ss;
-				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_abs";
+				ss << m_filename << fixed << "_f=" << str_freq << "_abs";
 				m_Vtk_Dump_File->SetFilename(ss.str());
 				m_Vtk_Dump_File->ClearAllFields();
 				m_Vtk_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field);
@@ -189,7 +197,7 @@ void ProcessFieldsFD::DumpFDData()
 					}
 				}
 				stringstream ss;
-				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n) << "_arg";
+				ss << m_filename << fixed << "_f=" << str_freq << "_arg";
 				m_Vtk_Dump_File->SetFilename(ss.str());
 				m_Vtk_Dump_File->ClearAllFields();
 				m_Vtk_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),field);

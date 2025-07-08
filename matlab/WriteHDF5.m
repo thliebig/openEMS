@@ -2,12 +2,12 @@ function WriteHDF5(filename,hdf_fielddata,hdf_mesh)
 % function WriteHDF5(filename,hdf_fielddata,hdf_mesh)
 %
 % input:
-%   hdf_fielddata.time
-%   hdf_fielddata.names
-%   hdf_fielddata.values
-%   hdf_mesh.type
-%   hdf_mesh.names
-%   hdf_mesh.lines
+% - hdf_fielddata.time
+% - hdf_fielddata.names
+% - hdf_fielddata.values
+% - hdf_mesh.type
+% - hdf_mesh.names
+% - hdf_mesh.lines
 %
 % openEMS matlab interface
 % -----------------------

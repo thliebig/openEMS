@@ -73,7 +73,8 @@ Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
 	volt_ADE=NULL;
 }
 
-void Engine_Ext_Dispersive::Apply2Voltages()
+template <typename EngType>
+void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -81,43 +82,28 @@ void Engine_Ext_Dispersive::Apply2Voltages()
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		//switch for different engine types to access faster inline engine functions
-		switch (m_Eng->GetType())
+		for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
 		{
-		case Engine::BASIC:
-		{
-			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
-			{
-				m_Eng->Engine::SetVolt(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]);
-				m_Eng->Engine::SetVolt(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][1][i]);
-				m_Eng->Engine::SetVolt(2,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][2][i]);
-			}
-			break;
-		}
-		case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
-			{
-				eng_sse->Engine_sse::SetVolt(0,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]);
-				eng_sse->Engine_sse::SetVolt(1,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][1][i]);
-				eng_sse->Engine_sse::SetVolt(2,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][2][i]);
-			}
-			break;
-		}
-		default:
-			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
-			{
-				m_Eng->SetVolt(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]);
-				m_Eng->SetVolt(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][1][i]);
-				m_Eng->SetVolt(2,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][2][i]);
-			}
-			break;
+			eng->EngType::SetVolt(0,pos[0][i],pos[1][i],pos[2][i],
+				eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]
+			);
+			eng->EngType::SetVolt(1,pos[0][i],pos[1][i],pos[2][i],
+				eng->EngType::GetVolt(1,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][1][i]
+			);
+			eng->EngType::SetVolt(2,pos[0][i],pos[1][i],pos[2][i],
+				eng->EngType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][2][i]
+			);
 		}
 	}
 }
 
-void Engine_Ext_Dispersive::Apply2Current()
+void Engine_Ext_Dispersive::Apply2Voltages()
+{
+	ENG_DISPATCH(Apply2VoltagesImpl);
+}
+
+template <typename EngType>
+void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -125,38 +111,22 @@ void Engine_Ext_Dispersive::Apply2Current()
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		//switch for different engine types to access faster inline engine functions
-		switch (m_Eng->GetType())
+		for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
 		{
-		case Engine::BASIC:
-		{
-			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
-			{
-				m_Eng->Engine::SetCurr(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]);
-				m_Eng->Engine::SetCurr(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][1][i]);
-				m_Eng->Engine::SetCurr(2,pos[0][i],pos[1][i],pos[2][i], m_Eng->Engine::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][2][i]);
-			}
-			break;
-		}
-		case Engine::SSE:
-		{
-			Engine_sse* eng_sse = (Engine_sse*)m_Eng;
-			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
-			{
-				eng_sse->Engine_sse::SetCurr(0,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]);
-				eng_sse->Engine_sse::SetCurr(1,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][1][i]);
-				eng_sse->Engine_sse::SetCurr(2,pos[0][i],pos[1][i],pos[2][i], eng_sse->Engine_sse::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][2][i]);
-			}
-			break;
-		}
-		default:
-			for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
-			{
-				m_Eng->SetCurr(0,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]);
-				m_Eng->SetCurr(1,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][1][i]);
-				m_Eng->SetCurr(2,pos[0][i],pos[1][i],pos[2][i], m_Eng->GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][2][i]);
-			}
-			break;
+			eng->EngType::SetCurr(0,pos[0][i],pos[1][i],pos[2][i],
+				eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]
+			);
+			eng->EngType::SetCurr(1,pos[0][i],pos[1][i],pos[2][i],
+				eng->EngType::GetCurr(1,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][1][i]
+			);
+			eng->EngType::SetCurr(2,pos[0][i],pos[1][i],pos[2][i],
+				eng->EngType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][2][i]
+			);
 		}
 	}
+}
+
+void Engine_Ext_Dispersive::Apply2Current()
+{
+	ENG_DISPATCH(Apply2CurrentImpl);
 }

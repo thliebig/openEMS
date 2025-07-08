@@ -47,6 +47,9 @@ Engine_SSE_Compressed::~Engine_SSE_Compressed()
 
 void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int numX)
 {
+	ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
+
 	unsigned int pos[3];
 	bool shift[2];
 	f4vector temp;
@@ -157,6 +160,9 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 
 void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
+	ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
+	ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
+
 	unsigned int pos[3];
 	f4vector temp;
 

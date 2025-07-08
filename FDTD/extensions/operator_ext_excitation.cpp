@@ -161,6 +161,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
+						if (!elec->GetEnabled())
+							continue;
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 						{
 							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos);// delta[n]*gridDelta;
@@ -194,6 +196,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 					{
 						elec = prop->ToExcitation();
 						if (elec==NULL)
+							continue;
+						if (!elec->GetEnabled())
 							continue;
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 						{

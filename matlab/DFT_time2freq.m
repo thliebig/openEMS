@@ -4,23 +4,24 @@ function f_val = DFT_time2freq( t, val, freq, signal_type )
 % computes the DFT at the given frequencies
 %
 % parameter:
-% t  : time vector
-% val: data vector
-% freq: DFT frequency vector
-% signal_type: 'pulse' (default), 'periodic'
+% - t  : time vector
+% - val: data vector
+% - freq: DFT frequency vector
+% - signal_type: 'pulse' (default), 'periodic'
 %
 % return values:
-% f_val:  single-sided spectrum
+% - f_val:  single-sided spectrum
 %
 % example:
-%   t=linspace(0,1,100);
-%   t_val=0.9*sin(2*pi*3*t); % sine wave; amplitude 0.9; frequency 3 Hz
-%   f=linspace(1,5,101);
-%   f_val=DFT_time2freq( t, t_val, f, 'periodic' );
-%   interp1(f,abs(f_val),3)
-% ans = 0.8910
-%   plot( t, t_val )
-%   plot( f, abs(f_val) )
+%
+%     t=linspace(0,1,100);
+%     t_val=0.9*sin(2*pi*3*t); % sine wave; amplitude 0.9; frequency 3 Hz
+%     f=linspace(1,5,101);
+%     f_val=DFT_time2freq( t, t_val, f, 'periodic' );
+%     interp1(f,abs(f_val),3)
+%     % ans = 0.8910
+%     plot( t, t_val )
+%     plot( f, abs(f_val) )
 
 if numel(t) ~= numel(val)
     error 'numel(t) ~= numel(val)'

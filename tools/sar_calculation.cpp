@@ -74,7 +74,7 @@ void SAR_Calculation::SetAveragingMethod(SARAveragingMethod method, bool silent)
 {
 	if (method==IEEE_62704)
 	{
-		m_massTolerance = 0.0001;
+		m_massTolerance = 0.000001;  // yes, this low mass tolerance is in IEC/IEEE 62704-1
 		m_maxMassIterations = 100;
 		m_maxBGRatio = 0.1;
 		m_markPartialAsUsed = false;
@@ -266,6 +266,13 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 			// valid cube found
 			return 0;
 		}
+		if ((mass_iterations>0) && (face_valid==false) && (mass == old_mass) && (box_size>old_box_size) && (bg_ratio>=m_maxBGRatio))
+		{
+			// this is an invalid cube with a mass that cannot increase anymore
+			if (ignoreFaceValid)
+				return 0;
+			return 2;
+		}
 
 		// if no valid or finally invalid cube is found, calculate an alternative cube size
 		if (mass_iterations==0)
@@ -295,7 +302,7 @@ bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], double box_size, unsig
 {
 	if ((box_size<=0) || std::isnan(box_size) || std::isinf(box_size))
 	{
-		cerr << "SAR_Calculation::GetCubicalMass: critical error: invalid averaging box size!! EXIT" << endl;
+		cerr << "SAR_Calculation::GetCubicalMass: critical error: invalid averaging box size: " << box_size << " !! EXIT" << endl;
 		exit(-1);
 	}
 	bool face_valid=true;

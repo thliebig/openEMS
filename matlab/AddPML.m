@@ -9,26 +9,29 @@ function mesh = AddPML( mesh, numcells, CoordSystem )
 % The mesh is sorted and duplicate lines are removed.
 %
 % input:
-%   mesh:     mesh structure
-%   numcells: 1x6 vector (xmin,xmax,ymin,ymax,zmin,zmax) with number of
+%
+% - mesh:     mesh structure
+% - numcells: 1x6 vector (xmin,xmax,ymin,ymax,zmin,zmax) with number of
 %             cells to add to this direction
-%   CoordSystem (optional): set to 1 in case of cylindrical mesh using
-%               mesh.r, mesh.a and mesh.z
+% - CoordSystem (optional): set to 1 in case of cylindrical mesh using
+%                           mesh.r, mesh.a and mesh.z
 %
 % output:
-%   mesh:     new mesh with the added lines
+%
+% - mesh:     new mesh with the added lines
 %
 % example:
-%   % some fixed mesh lines
-%   mesh.x = [-100 0 100];
-%   mesh.y = [-100 0 100];
-%   mesh.z = [0 500];
-%   mesh = DetectEdges(CSX, mesh); %detect edges
-%   mesh = SmoothMesh(mesh, c0/fmax/20/unit); % smooth the mesh
 %
-%   mesh = AddPML(mesh, 8); % add 8 lines to all directions
-%   % or
-%   mesh = AddPML(mesh, [0 0 0 0 8 8]); % add 8 lines in both z-directions
+%     % some fixed mesh lines
+%     mesh.x = [-100 0 100];
+%     mesh.y = [-100 0 100];
+%     mesh.z = [0 500];
+%     mesh = DetectEdges(CSX, mesh); %detect edges
+%     mesh = SmoothMesh(mesh, c0/fmax/20/unit); % smooth the mesh
+%
+%     mesh = AddPML(mesh, 8); % add 8 lines to all directions
+%     % or
+%     mesh = AddPML(mesh, [0 0 0 0 8 8]); % add 8 lines in both z-directions
 %
 % See also DefineRectGrid, SmoothMesh, DetectEdges
 %

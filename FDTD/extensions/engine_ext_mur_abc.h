@@ -21,6 +21,8 @@
 #include "engine_extension.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
+#include "engine_extension_dispatcher.h"
+#include "tools/arraylib/array_ij.h"
 
 class Operator_Ext_Mur_ABC;
 
@@ -40,13 +42,22 @@ public:
 	virtual void Apply2Voltages(int threadID);
 
 protected:
+	template <typename EngType>
+	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
+
+	template <typename EngType>
+	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
+
+	template <typename EngType>
+	void Apply2VoltagesImpl(EngType* eng, int threadID);
+
 	Operator_Ext_Mur_ABC* m_Op_mur;
 
 	inline bool IsActive() {if (m_Eng->GetNumberOfTimesteps()<m_start_TS) return false; return true;}
 	unsigned int m_start_TS;
 
-	int m_ny;
-	int m_nyP,m_nyPP;
+	// See detailed comments in operator_ext_mur_abc.h, not repeated here.
+	int m_ny, m_nyP, m_nyPP;
 	unsigned int m_LineNr;
 	int m_LineNr_Shift;
 	unsigned int m_numLines[2];
@@ -54,10 +65,10 @@ protected:
 	vector<unsigned int> m_start;
 	vector<unsigned int> m_numX;
 
-	FDTD_FLOAT** m_Mur_Coeff_nyP;
-	FDTD_FLOAT** m_Mur_Coeff_nyPP;
-	FDTD_FLOAT** m_volt_nyP; //n+1 direction
-	FDTD_FLOAT** m_volt_nyPP; //n+2 direction
+	ArrayLib::ArrayIJ<FDTD_FLOAT>& m_Mur_Coeff_nyP;
+	ArrayLib::ArrayIJ<FDTD_FLOAT>& m_Mur_Coeff_nyPP;
+	ArrayLib::ArrayIJ<FDTD_FLOAT> m_volt_nyP; //n+1 direction
+	ArrayLib::ArrayIJ<FDTD_FLOAT> m_volt_nyPP; //n+2 direction
 };
 
 #endif // ENGINE_EXT_MUR_ABC_H

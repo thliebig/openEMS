@@ -23,6 +23,8 @@
 #include "excitation.h"
 #include "Common/operator_base.h"
 
+#include "tools/arraylib/array_nijk.h"
+
 class Operator_Extension;
 class Operator_Ext_Excitation;
 class Engine;
@@ -33,16 +35,13 @@ class Operator : public Operator_Base
 {
 	friend class Engine;
 	friend class Engine_Interface_FDTD;
-	friend class Operator_Ext_LorentzMaterial; 	// We need to find a way around this... friend class Operator_Extension only would be nice
-	friend class Operator_Ext_ConductingSheet; 	// We need to find a way around this... friend class Operator_Extension only would be nice
+	friend class Operator_Ext_LorentzMaterial;
+	friend class Operator_Ext_ConductingSheet;
 	friend class Operator_Ext_PML_SF_Plane;
 	friend class Operator_Ext_Excitation;
 	friend class Operator_Ext_UPML;
 	friend class Operator_Ext_Cylinder;
-	friend class Operator_Ext_LumpedRLC;		// Gadi: I now know why the two previous remarks are here.
-
-	// So apparaently I have to use functionality from operator
-	// in my "lumpedRLC" class. This is ugly...
+	friend class Operator_Ext_LumpedRLC;
 public:
 	enum DebugFlags {None=0,debugMaterial=1,debugOperator=2,debugPEC=4};
 
@@ -60,22 +59,69 @@ public:
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
 	// the next four functions need to be reimplemented in a derived class
-	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vv[n][x][y][z]; }
-	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return vi[n][x][y][z]; }
-	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return ii[n][x][y][z]; }
-	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z ) const { return iv[n][x][y][z]; }
+	inline virtual FDTD_FLOAT GetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vv = *vv_ptr;
+		return vv[n][x][y][z];
+	}
+
+	inline virtual FDTD_FLOAT GetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vi = *vi_ptr;
+		return vi[n][x][y][z];
+	}
+
+	inline virtual FDTD_FLOAT GetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& ii = *ii_ptr;
+		return ii[n][x][y][z];
+	}
+	inline virtual FDTD_FLOAT GetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& iv = *iv_ptr;
+		return iv[n][x][y][z];
+	}
 
 	// convenient access functions
-	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int pos[3] ) const { return GetVV(n,pos[0],pos[1],pos[2]); }
-	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int pos[3] ) const { return GetVI(n,pos[0],pos[1],pos[2]); }
-	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int pos[3] ) const { return GetII(n,pos[0],pos[1],pos[2]); }
-	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int pos[3] ) const { return GetIV(n,pos[0],pos[1],pos[2]); }
+	inline virtual FDTD_FLOAT GetVV( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetVV(n, pos[0], pos[1], pos[2]);
+	}
+
+	inline virtual FDTD_FLOAT GetVI( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetVI(n, pos[0], pos[1], pos[2]);
+	}
+	inline virtual FDTD_FLOAT GetII( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetII(n, pos[0], pos[1], pos[2]);
+	}
+	inline virtual FDTD_FLOAT GetIV( unsigned int n, unsigned int pos[3] ) const
+	{
+		return GetIV(n, pos[0], pos[1], pos[2]);
+	}
 
 	// the next four functions need to be reimplemented in a derived class
-	inline virtual void SetVV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { vv[n][x][y][z] = value; }
-	inline virtual void SetVI( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { vi[n][x][y][z] = value; }
-	inline virtual void SetII( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { ii[n][x][y][z] = value; }
-	inline virtual void SetIV( unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value ) { iv[n][x][y][z] = value; }
+	inline virtual void SetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vv = *vv_ptr;
+		vv[n][x][y][z] = value;
+	}
+	inline virtual void SetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vi = *vi_ptr;
+		vi[n][x][y][z] = value;
+	}
+	inline virtual void SetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& ii = *ii_ptr;
+		ii[n][x][y][z] = value;
+	}
+	inline virtual void SetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+	{
+		ArrayLib::ArrayNIJK<FDTD_FLOAT>& iv = *iv_ptr;
+		iv[n][x][y][z] = value;
+	}
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries
 	virtual void ApplyMagneticBC(bool* dirs);
@@ -255,10 +301,10 @@ protected:
 	int m_BC_Size[6];
 
 	//store material properties for post-processing
-	float**** m_epsR;
-	float**** m_kappa;
-	float**** m_mueR;
-	float**** m_sigma;
+	ArrayLib::ArrayNIJK<float>* m_epsR_ptr;
+	ArrayLib::ArrayNIJK<float>* m_kappa_ptr;
+	ArrayLib::ArrayNIJK<float>* m_mueR_ptr;
+	ArrayLib::ArrayNIJK<float>* m_sigma_ptr;
 
 	//EC elements, internal only!
 	virtual void Init_EC();
@@ -282,10 +328,10 @@ protected:
 	// engine/post-proc needs access
 public:
 	//EC operator
-	FDTD_FLOAT**** vv; //calc new voltage from old voltage
-	FDTD_FLOAT**** vi; //calc new voltage from old current
-	FDTD_FLOAT**** ii; //calc new current from old current
-	FDTD_FLOAT**** iv; //calc new current from old voltage
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* vv_ptr; //calc new voltage from old voltage
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* vi_ptr; //calc new voltage from old current
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* ii_ptr; //calc new current from old current
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>* iv_ptr; //calc new current from old voltage
 };
 
 inline Operator::DebugFlags operator|( Operator::DebugFlags a, Operator::DebugFlags b ) { return static_cast<Operator::DebugFlags>(static_cast<int>(a) | static_cast<int>(b)); }

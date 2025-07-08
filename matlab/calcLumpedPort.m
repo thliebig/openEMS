@@ -6,30 +6,32 @@ function [port] = calcLumpedPort( port, SimDir, f, varargin)
 % The port has to be created by e.g. AddLumpedPort().
 %
 % input:
-%   port:       return value of e.g. AddMSLPort()
-%   SimDir:     directory, where the simulation files are
-%   f:          frequency vector for DFT
+% - port:       return value of e.g. AddMSLPort()
+% - SimDir:     directory, where the simulation files are
+% - f:          frequency vector for DFT
 %
 % variable input:
-%   'RefImpedance':  - use a given reference impedance to calculate inc and
+% - 'RefImpedance':    use a given reference impedance to calculate inc and
 %                      ref voltages and currents
-%                    - default is given port or calculated line impedance
-%   'SwitchDirection': 0/1, switch assumed direction of propagation
+%                      default is given port or calculated line impedance
+% - 'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output:
-%   % output signals/values in time domain (TD):
-%   port.ut.tot     total voltage (time-domain)
-%   port.ut.time    voltage time vector
-%   port.it.tot     total current (time-domain)
-%   port.it.time    current time vector
 %
-%   % output signals/values in frequency domain (FD):
-%   port.f                  the given frequency factor
-%   port.uf.tot/inc/ref     total, incoming and reflected voltage
-%   port.if.tot/inc/ref     total, incoming and reflected current
+% - output signals/values in time domain (TD):
+%   - port.ut.tot:    total voltage (time-domain)
+%   - port.ut.time:   voltage time vector
+%   - port.it.tot:    total current (time-domain)
+%   - port.it.time:   current time vector
+%
+% - output signals/values in frequency domain (FD):
+%   - port.f:                 the given frequency factor
+%   - port.uf.tot/inc/ref:    total, incoming and reflected voltage
+%   - port.if.tot/inc/ref:    total, incoming and reflected current
 %
 % example:
-%   port{1} = calcLumpedPort( port{1}, Sim_Path, f, 'RefImpedance', 50);
+%
+%     port{1} = calcLumpedPort( port{1}, Sim_Path, f, 'RefImpedance', 50);
 %
 % openEMS matlab interface
 % -----------------------

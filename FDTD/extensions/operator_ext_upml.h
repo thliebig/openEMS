@@ -21,6 +21,8 @@
 #include "FDTD/operator.h"
 #include "operator_extension.h"
 
+#include "tools/arraylib/array_nijk.h"
+
 class FunctionParser;
 
 //! Operator extension implementation an uniaxial perfectly matched layer (upml)
@@ -95,12 +97,12 @@ protected:
 	virtual FDTD_FLOAT& GetIIFO(int ny, unsigned int pos[3]) {return iifo[ny][pos[0]][pos[1]][pos[2]];}
 	virtual FDTD_FLOAT& GetIIFN(int ny, unsigned int pos[3]) {return iifn[ny][pos[0]][pos[1]][pos[2]];}
 
-	FDTD_FLOAT**** vv;   //calc new voltage from old voltage
-	FDTD_FLOAT**** vvfo; //calc new voltage from old voltage flux
-	FDTD_FLOAT**** vvfn; //calc new voltage from new voltage flux
-	FDTD_FLOAT**** ii;   //calc new current from old current
-	FDTD_FLOAT**** iifo; //calc new current from old current flux
-	FDTD_FLOAT**** iifn; //calc new current from new current flux
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> vv;   //calc new voltage from old voltage
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> vvfo; //calc new voltage from old voltage flux
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> vvfn; //calc new voltage from new voltage flux
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> ii;   //calc new current from old current
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> iifo; //calc new current from old current flux
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> iifn; //calc new current from new current flux
 };
 
 #endif // OPERATOR_EXT_UPML_H

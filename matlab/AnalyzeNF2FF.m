@@ -4,18 +4,18 @@ function [E_theta,E_phi,Prad,Dmax] = AnalyzeNF2FF( Sim_Path, nf2ff, f, theta, ph
 % calculates the farfield via a near field to far field transformation
 %
 % input:
-%   Sim_Path:    simulation directory
-%   nf2ff:       structure on filenames etc. as created by CreateNF2FFBox 
-%   f:           frequency (Hz) for far field calculation
-%   theta:       (degrees) vector of discrete theta values to calculate the far field for
-%   phi:         (degrees) vector of discrete phi values to calculate the far field for
-%   r:           (optional) Radius (m) at which the E-fields are calculated (default: 1 m)
+% - Sim_Path:    simulation directory
+% - nf2ff:       structure on filenames etc. as created by CreateNF2FFBox 
+% - f:           frequency (Hz) for far field calculation
+% - theta:       (degrees) vector of discrete theta values to calculate the far field for
+% - phi:         (degrees) vector of discrete phi values to calculate the far field for
+% - r:           (optional) Radius (m) at which the E-fields are calculated (default: 1 m)
 %
 % output:
-%   E_theta:     E_theta(theta,phi); theta component of the electric field strength at radius r
-%   E_phi:       E_phi(theta,phi);     phi component of the electric field strength at radius r
-%   Prad:        time averaged radiated power
-%   Dmax:        maximum directivity
+% - E_theta:     E_theta(theta,phi); theta component of the electric field strength at radius r
+% - E_phi:       E_phi(theta,phi);     phi component of the electric field strength at radius r
+% - Prad:        time averaged radiated power
+% - Dmax:        maximum directivity
 %
 % example:
 %   see examples/NF2FF/infDipol.m

@@ -1,9 +1,9 @@
 function [field_i mesh_i] = GetField_SubSampling(field, mesh, subsampling, varargin)
 % [field_i mesh_i] = GetField_SubSampling(field, mesh, subsampling, varargin)
 %
-%   Get a sub-sampled field, e.g. read by ReadHDF5Dump
+% Get a sub-sampled field, e.g. read by ReadHDF5Dump
 %
-%   sub-sampling e.g. skipping every second line in x/r direction: [2 1 1]
+% sub-sampling e.g. skipping every second line in x/r direction: [2 1 1]
 %
 % openEMS matlab interface
 % -----------------------

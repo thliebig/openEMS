@@ -30,10 +30,10 @@ Operator_sse* Operator_sse::New()
 
 Operator_sse::Operator_sse() : Operator()
 {
-	f4_vv = 0;
-	f4_vi = 0;
-	f4_iv = 0;
-	f4_ii = 0;
+	f4_vv_ptr = NULL;
+	f4_vi_ptr = NULL;
+	f4_iv_ptr = NULL;
+	f4_ii_ptr = NULL;
 }
 
 Operator_sse::~Operator_sse()
@@ -51,22 +51,22 @@ Engine* Operator_sse::CreateEngine()
 void Operator_sse::Init()
 {
 	Operator::Init();
-	f4_vv = 0;
-	f4_vi = 0;
-	f4_iv = 0;
-	f4_ii = 0;
+	f4_vv_ptr = NULL;
+	f4_vi_ptr = NULL;
+	f4_iv_ptr = NULL;
+	f4_ii_ptr = NULL;
 }
 
 void Operator_sse::Delete()
 {
-	Delete_N_3DArray_v4sf(f4_vv,numLines);
-	Delete_N_3DArray_v4sf(f4_vi,numLines);
-	Delete_N_3DArray_v4sf(f4_iv,numLines);
-	Delete_N_3DArray_v4sf(f4_ii,numLines);
-	f4_vv = 0;
-	f4_vi = 0;
-	f4_iv = 0;
-	f4_ii = 0;
+	delete f4_vv_ptr;
+	delete f4_vi_ptr;
+	delete f4_iv_ptr;
+	delete f4_ii_ptr;
+	f4_vv_ptr = NULL;
+	f4_vi_ptr = NULL;
+	f4_iv_ptr = NULL;
+	f4_ii_ptr = NULL;
 }
 
 void Operator_sse::Reset()
@@ -78,14 +78,23 @@ void Operator_sse::Reset()
 
 void Operator_sse::InitOperator()
 {
-	Delete_N_3DArray_v4sf(f4_vv,numLines);
-	Delete_N_3DArray_v4sf(f4_vi,numLines);
-	Delete_N_3DArray_v4sf(f4_iv,numLines);
-	Delete_N_3DArray_v4sf(f4_ii,numLines);
-	f4_vv = Create_N_3DArray_v4sf(numLines);
-	f4_vi = Create_N_3DArray_v4sf(numLines);
-	f4_iv = Create_N_3DArray_v4sf(numLines);
-	f4_ii = Create_N_3DArray_v4sf(numLines);
+	delete f4_vv_ptr;
+	delete f4_vi_ptr;
+	delete f4_iv_ptr;
+	delete f4_ii_ptr;
 
 	numVectors =  ceil((double)numLines[2]/4.0);
+
+	f4_vv_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+		"f4_vv", {numLines[0], numLines[1], numVectors}
+	);
+	f4_vi_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+		"f4_vi", {numLines[0], numLines[1], numVectors}
+	);
+	f4_iv_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+		"f4_iv", {numLines[0], numLines[1], numVectors}
+	);
+	f4_ii_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+		"f4_ii", {numLines[0], numLines[1], numVectors}
+	);
 }

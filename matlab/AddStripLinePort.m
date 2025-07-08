@@ -1,36 +1,37 @@
 function [CSX,port] = AddStripLinePort( CSX, prio, portnr, materialname, start, stop, height, dir, evec, varargin )
 % [CSX,port] = AddStripLinePort( CSX, prio, portnr, materialname, start, stop, height, dir, evec, varargin )
 %
-% CSX:          CSX-object created by InitCSX()
-% prio:         priority for excitation and probe boxes
-% portnr:       (integer) number of the port
-% materialname: property for the stripline (created by AddMetal())
-% start:        3D start rowvector for port definition
-% stop:         3D end rowvector for port definition
-% height:       height of the stripline (top and bottom)
-% dir:          direction of wave propagation (choices: 0, 1, 2 or 'x','y','z')
-% evec:         excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
+% - CSX:          CSX-object created by InitCSX()
+% - prio:         priority for excitation and probe boxes
+% - portnr:       (integer) number of the port
+% - materialname: property for the stripline (created by AddMetal())
+% - start:        3D start rowvector for port definition
+% - stop:         3D end rowvector for port definition
+% - height:       height of the stripline (top and bottom)
+% - dir:          direction of wave propagation (choices: 0, 1, 2 or 'x','y','z')
+% - evec:         excitation vector, which defines the direction of the e-field (must be the same as used in AddExcitation())
 %
 % variable input:
-%  varargin:    optional additional excitations options, see also AddExcitation
-% 'ExcitePort'  true/false to make the port an active feeding port (default
-%               is false)
-% 'FeedShift'   shift to port from start by a given distance in drawing
-%               units. Default is 0. Only active if 'ExcitePort' is set!
-% 'Feed_R'      Specify a lumped port resistance. Default is no lumped
-%               port resistance --> port has to end in an ABC.
-% 'MeasPlaneShift'  Shift the measurement plane from start t a given distance
-%               in drawing units. Default is the middle of start/stop.
-% 'PortNamePrefix' a prefix to the port name
+% - varargin:    optional additional excitations options, see also AddExcitation
+% - 'ExcitePort'  true/false to make the port an active feeding port (default
+%                 is false)
+% - 'FeedShift'   shift to port from start by a given distance in drawing
+%                 units. Default is 0. Only active if 'ExcitePort' is set!
+% - 'Feed_R'      Specify a lumped port resistance. Default is no lumped
+%                 port resistance --> port has to end in an ABC.
+% - 'MeasPlaneShift'  Shift the measurement plane from start t a given distance
+%                 in drawing units. Default is the middle of start/stop.
+% - 'PortNamePrefix' a prefix to the port name
 %
 % Important: The mesh has to be already set and defined by DefineRectGrid!
 %
 % example:
-%   CSX = AddMetal( CSX, 'metal' ); %create a PEC called 'metal'
-%   start = [0       -width/2  0];
-%   stop  = [length  +width/2  0];
-%   [CSX,port] = AddStripLinePort( CSX, 0, 1, 'metal', start, stop, height, 'x', ...
-%                                   [0 0 -1], 'ExcitePort', true, 'Feed_R', 50 )
+%
+%     CSX = AddMetal( CSX, 'metal' ); %create a PEC called 'metal'
+%     start = [0       -width/2  0];
+%     stop  = [length  +width/2  0];
+%     [CSX,port] = AddStripLinePort( CSX, 0, 1, 'metal', start, stop, height, 'x', ...
+%                                     [0 0 -1], 'ExcitePort', true, 'Feed_R', 50 )
 % Explanation:
 %   - this defines a stripline in x-direction (dir='x')
 %     --> the wave travels along the x-direction

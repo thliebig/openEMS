@@ -239,6 +239,37 @@ void VTK_File_Writer::AddVectorField(string fieldname, float const* const* const
 	array->Delete();
 }
 
+void VTK_File_Writer::AddVectorField(string fieldname, ArrayLib::ArrayNIJK<float>& field)
+{
+	vtkFloatArray* array = vtkFloatArray::New();
+	array->SetNumberOfComponents(3);
+	array->SetNumberOfTuples(m_MeshLines[0].size()*m_MeshLines[1].size()*m_MeshLines[2].size());
+	array->SetName(fieldname.c_str());
+	int id=0;
+	float out[3];
+	for (unsigned int k=0;k<m_MeshLines[2].size();++k)
+	{
+		for (unsigned int j=0;j<m_MeshLines[1].size();++j)
+		{
+			float cos_a = cos(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
+			float sin_a = sin(m_MeshLines[1].at(j)); //needed only for m_MeshType==1 (cylindrical mesh)
+			for (unsigned int i=0;i<m_MeshLines[0].size();++i)
+			{
+				if ((m_MeshType==0) || (m_NativeDump))
+					array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
+				else
+				{
+					out[0] = field[0][i][j][k] * cos_a - field[1][i][j][k] * sin_a;
+					out[1] = field[0][i][j][k] * sin_a + field[1][i][j][k] * cos_a;
+					out[2] = field[2][i][j][k];
+					array->SetTuple3(id++,out[0],out[1],out[2]);
+				}
+			}
+		}
+	}
+	m_GridData->GetPointData()->AddArray(array);
+	array->Delete();
+}
 
 int VTK_File_Writer::GetNumberOfFields() const
 {

@@ -42,15 +42,24 @@ if not looks_like_CSXCAD_python_package(PATH_TO_CSXCAD_PYTHON_PACKAGE):
 
 sys.path.append(str(PATH_TO_CSXCAD_PYTHON_PACKAGE))
 
+# Strictly speaking we should detect compiler, not platform,
+# unfortunately there's no easy way to do so without implementing
+# full compiler detection logic. This is good enough for 90% of
+# use cases.
+cxxflags = []
+if os.name == "posix":
+    cxxflags.append("-std=c++11")
+
 extensions = [
     Extension(
-        '*', 
+        '*',
         ['openEMS/*.pyx',],
         include_dirs = [str(path_to_openEMS_installation/'include')],
         library_dirs = [str(path_to_openEMS_installation/'lib')],
         runtime_library_dirs = [str(path_to_openEMS_installation/'lib')],
         language = 'c++',
         libraries = ['openEMS','nf2ff'],
+        extra_compile_args = cxxflags,
     )
 ]
 
@@ -58,4 +67,3 @@ setup(
     packages = ['openEMS'],
     ext_modules = cythonize(extensions),
 )
-

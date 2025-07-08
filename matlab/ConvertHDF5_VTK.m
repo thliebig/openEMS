@@ -4,22 +4,23 @@ function ConvertHDF5_VTK(hdf_file, vtk_prefix, varargin)
 % Convert openEMS field data stored in the given hdf5 file to a vtk file.
 %
 % arguments:
-%   hdf_file:   source hdf5 file
-%   vtk_prefix: output vtk files prefix
+% - hdf_file:   source hdf5 file
+% - vtk_prefix: output vtk files prefix
 %
 % optional arguments:
-%   'TD_Dump':  activate dump for time-domain data (default is off)
-%   'FD_Dump':  activate dump for frequency-domain data (default is on)
-%   'NumPhase': number of phase to dump frequency domain data animation
+% - 'TD_Dump':  activate dump for time-domain data (default is off)
+% - 'FD_Dump':  activate dump for frequency-domain data (default is on)
+% - 'NumPhase': number of phase to dump frequency domain data animation
 %               (default is 36 --> 10°)
-%   'FieldName': field name written to vtk, e.g. 'E-Field'
-%   'weight':   field weighting
+% - 'FieldName': field name written to vtk, e.g. 'E-Field'
+% - 'weight':   field weighting
 %
 %   for more optional augments have a look at ReadHDF5Dump
 %
 % example:
-%   % read time-domian data from hdf5, perform dft and dump as vtk
-%   ConvertHDF5_VTK('Et.h5','Ef','NumPhase',18,'Frequency',1e9)
+%
+%     % read time-domian data from hdf5, perform dft and dump as vtk
+%     ConvertHDF5_VTK('Et.h5','Ef','NumPhase',18,'Frequency',1e9)
 %
 % openEMS matlab interface
 % -----------------------

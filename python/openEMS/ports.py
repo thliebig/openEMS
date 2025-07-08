@@ -69,6 +69,7 @@ class Port(object):
         self.Z_ref    = None
         self.U_filenames = kw.get('U_filenames', [])
         self.I_filenames = kw.get('I_filenames', [])
+        self.port_props = []
 
         self.priority = 0
         if 'priority' in kw:
@@ -84,18 +85,29 @@ class Port(object):
 
         self.lbl_temp = self.prefix + 'port_{}' +  '_{}'.format(self.number)
 
+    def SetEnabled(self, val):
+        from CSXCAD.CSProperties import CSPropExcitation
+        found_any = False
+        for prop in self.port_props:
+            if type(prop) == CSPropExcitation:
+                prop.SetEnabled(val)
+                found_any = True
+        if not found_any and val:
+            # if we attempt to activate this port and it does not have any excitation set, raise an exception!
+            raise Exception('Unable to enable port! No excitation found!')
+
     def ReadUIData(self, sim_path, freq, signal_type ='pulse'):
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type )
         self.uf_tot = 0
         self.ut_tot = 0
-        for n in range(len(self.U_filenames)):
+        for n in range(len(self.u_data.fns)):
             self.uf_tot += self.u_data.ui_f_val[n]
             self.ut_tot += self.u_data.ui_val[n]
 
         self.i_data = UI_data(self.I_filenames, sim_path, freq, signal_type )
         self.if_tot = 0
         self.it_tot = 0
-        for n in range(len(self.U_filenames)):
+        for n in range(len(self.i_data.fns)):
             self.if_tot += self.i_data.ui_f_val[n]
             self.it_tot += self.i_data.ui_val[n]
 
@@ -161,7 +173,7 @@ class LumpedPort(Port):
             lumped_R = CSX.AddLumpedElement(self.lbl_temp.format('resist'), ny=self.exc_ny, caps=True, R=self.R)
         elif self.R==0:
             lumped_R = CSX.AddMetal(self.lbl_temp.format('resist'))
-
+        self.port_props.append(lumped_R)
         lumped_R.AddBox(self.start, self.stop, priority=self.priority)
 
         if excite!=0:
@@ -169,6 +181,7 @@ class LumpedPort(Port):
             exc_vec[self.exc_ny] = -1*self.direction*excite
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0, exc_val=exc_vec, delay=self.delay)
             exc.AddBox(self.start, self.stop, priority=self.priority)
+            self.port_props.append(exc)
 
         self.U_filenames = [self.lbl_temp.format('ut'), ]
         u_start = 0.5*(self.start+self.stop)
@@ -177,6 +190,7 @@ class LumpedPort(Port):
         u_stop[self.exc_ny]  = self.stop[self.exc_ny]
         u_probe = CSX.AddProbe(self.U_filenames[0], p_type=0, weight=-1)
         u_probe.AddBox(u_start, u_stop)
+        self.port_props.append(u_probe)
 
         self.I_filenames = [self.lbl_temp.format('it'), ]
         i_start = np.array(self.start)
@@ -185,6 +199,7 @@ class LumpedPort(Port):
         i_stop[self.exc_ny]  = 0.5*(self.start[self.exc_ny]+self.stop[self.exc_ny])
         i_probe = CSX.AddProbe(self.I_filenames[0], p_type=1, weight=self.direction, norm_dir=self.exc_ny)
         i_probe.AddBox(i_start, i_stop)
+        self.port_props.append(i_probe)
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
         if ref_impedance is None:
@@ -261,6 +276,7 @@ class MSLPort(Port):
             self.U_filenames.append(u_name)
             u_probe = CSX.AddProbe(u_name, p_type=0)
             u_probe.AddBox(u_start, u_stop)
+            self.port_props.append(u_probe)
 
         i_prope_pos = u_prope_pos[0:2] + np.diff(u_prope_pos)/2.0
         self.I_filenames = []
@@ -275,6 +291,7 @@ class MSLPort(Port):
             self.I_filenames.append(i_name)
             i_probe = CSX.AddProbe(i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
             i_probe.AddBox(i_start, i_stop)
+            self.port_props.append(i_probe)
 
         if excite!=0:
             excide_pos_idx = np.argmin(np.abs(prop_lines-(self.start[self.prop_ny] + self.feed_shift*self.direction)))
@@ -286,6 +303,7 @@ class MSLPort(Port):
             exc_vec[self.exc_ny] = -1*self.upside_down*excite
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0, exc_val=exc_vec, delay=self.delay)
             exc.AddBox(exc_start, exc_stop, priority=self.priority)
+            self.port_props.append(exc)
 
         if self.feed_R>=0 and not np.isinf(self.feed_R):
             R_start = np.array(self.start)
@@ -296,6 +314,7 @@ class MSLPort(Port):
             else:
                 lumped_R = CSX.AddLumpedElement(self.lbl_temp.format('resist'), ny=self.exc_ny, caps=True, R=self.feed_R)
                 lumped_R.AddBox(R_start, R_stop)
+                self.port_props.append(lumped_R)
 
     def ReadUIData(self, sim_path, freq, signal_type ='pulse'):
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type )
@@ -352,6 +371,7 @@ class WaveguidePort(Port):
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0, exc_val=e_vec, delay=self.delay)
             exc.SetWeightFunction([str(x) for x in self.E_func])
             exc.AddBox(e_start, e_stop, priority=self.priority)
+            self.port_props.append(exc)
 
         # voltage/current planes
         m_start = np.array(start)
@@ -363,10 +383,12 @@ class WaveguidePort(Port):
 
         u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
         u_probe.AddBox(m_start, m_stop)
+        self.port_props.append(u_probe)
 
         self.I_filenames = [self.lbl_temp.format('it'), ]
         i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_function=self.H_func)
         i_probe.AddBox(m_start, m_stop)
+        self.port_props.append(i_probe)
 
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):

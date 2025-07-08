@@ -20,6 +20,7 @@ import os, sys, shutil
 import numpy as np
 cimport openEMS
 from openEMS import ports, nf2ff, automesh
+from pathlib import Path
 
 from CSXCAD.Utilities import GetMultiDirs
 
@@ -111,6 +112,9 @@ cdef class openEMS:
         del self.thisptr
         if self.__CSX is not None:
             self.__CSX.thisptr = NULL
+
+    def Reset(self):
+        self.thisptr.Reset()
 
     def SetNumberOfTimeSteps(self, val):
         """ SetNumberOfTimeSteps(val)
@@ -460,16 +464,29 @@ cdef class openEMS:
 
     def _SetLibraryArguments(self, arguments):
         allOptions = []
+        integerOptions = ["verbose", "numthreads"]
 
         for key, val in arguments.items():
             key = key.replace("_", "-")
             key = key.replace("setup-only", "no-simulation")
 
-            # boolean options are implicit
-            if val and (val is not True) and (val is not False):
-                opt = "%s=%s" % (key, val)
-            else:
+            # Using 1/0 instead of True/False is tolerated, but only
+            # if the option is not an integer (which is ambiguous)
+            if key.lower() not in integerOptions:
+                if val == 1:
+                    val = True
+                elif val == 0:
+                    val = False
+
+            if val is True:
+                # "True" boolean options are implicit
                 opt = "%s" % key
+            elif val is False:
+                # "False" boolean options are ignored
+                opt = ""
+            elif (val is not True) and (val is not False):
+                # integer and string options are explicit
+                opt = "%s=%s" % (key, val)
 
             allOptions.append(opt.encode("UTF-8"))
 
@@ -515,7 +532,9 @@ cdef class openEMS:
 
         self._SetLibraryArguments(kw)
 
-        assert os.getcwd() == os.path.realpath(sim_path)
+        if Path(os.getcwd()).resolve() != Path(sim_path).resolve():
+            raise RuntimeError('Current working directory is different from `sim_path`. If you encounter this error, please report it to the developers, because it should never happen in normal conditions, it is not your fault. ')
+
         _openEMS.WelcomeScreen()
         cdef int EC
         with nogil:

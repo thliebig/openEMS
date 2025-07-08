@@ -7,12 +7,12 @@ function [stdout, stderr] = RunOpenEMS_Parallel(Sim_Paths, Sim_Files, opts, Sett
 % This function relies on InitQueue etc.
 % 
 % input:
-%       Sim_Paths:  cell array of paths to simulate by RunOpenEMS
-%       Sim_Files:  filename or cell array of filenames to simulate
-%       opts:       openEMS options. see also RunOpenEMS
-%       Settings:   use the settings to define multiple host for simulation
-%                   e.g.: Settings.SSH.bin ='<path_to_openEMS>/openEMS.sh';
-%                         Settings.SSH.host_list = {'list','of','hosts'};
+% - Sim_Paths:  cell array of paths to simulate by RunOpenEMS
+% - Sim_Files:  filename or cell array of filenames to simulate
+% - opts:       openEMS options. see also RunOpenEMS
+% - Settings:   use the settings to define multiple host for simulation
+%               e.g.: Settings.SSH.bin ='<path_to_openEMS>/openEMS.sh';
+%                     Settings.SSH.host_list = {'list','of','hosts'};
 % 
 % Note: If no SSH host_list is defined, this function will skip the
 %       parallel run and switch back to a default RunOpenEMS!

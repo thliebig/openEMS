@@ -7,40 +7,44 @@ function [port] = calcTLPort( port, SimDir, f, varargin)
 % The port has to be created by e.g. AddMSLPort().
 %
 % input:
-%   port:       return value of e.g. AddMSLPort()
-%   SimDir:     directory, where the simulation files are
-%   f:          frequency vector for DFT
+% - port:       return value of e.g. AddMSLPort()
+% - SimDir:     directory, where the simulation files are
+% - f:          frequency vector for DFT
 %
 % variable input:
-%   'RefImpedance':  - use a given reference impedance to calculate inc and
+% - 'RefImpedance':  - use a given reference impedance to calculate inc and
 %                      ref voltages and currents
 %                    - default is given port or calculated line impedance
-%   'RefPlaneShift': - use a given reference plane shift from port beginning
+% - 'RefPlaneShift': - use a given reference plane shift from port beginning
 %                      for a desired phase correction
 %                    - default is the measurement plane
 %                    - the plane shift has to be given in drawing units!
-%   'SwitchDirection': 0/1, switch assumed direction of propagation
+% - 'SwitchDirection': 0/1, switch assumed direction of propagation
 %
 % output:
-%   % output signals/values in time domain (TD):
-%   port.ut.tot     total voltage (time-domain)
-%   port.ut.time    voltage time vector
-%   port.it.tot     total current (time-domain)
-%   port.it.time    current time vector
 %
-%   % output signals/values in frequency domain (FD):
-%   port.f                  the given frequency fector
-%   port.uf.tot/inc/ref     total, incoming and reflected voltage
-%   port.if.tot/inc/ref     total, incoming and reflected current
-%   port.beta:              propagation constant
-%   port.ZL:                characteristic line impedance
-%   port.ZL_ref             used reference impedance
+% - output signals/values in time domain (TD):
+%   - port.ut.tot     total voltage (time-domain)
+%   - port.ut.time    voltage time vector
+%   - port.it.tot     total current (time-domain)
+%   - port.it.time    current time vector
+%
+% - output signals/values in frequency domain (FD):
+%   - port.f                  the given frequency fector
+%   - port.uf.tot/inc/ref     total, incoming and reflected voltage
+%   - port.if.tot/inc/ref     total, incoming and reflected current
+%   - port.beta:              propagation constant
+%   - port.ZL:                characteristic line impedance
+%   - port.ZL_ref             used reference impedance
 %
 % example:
-%   port{1} = calcTLPort( port{1}, Sim_Path, f, 'RefImpedance', 50);
 %
-% reference: W. K. Gwarek, "A Differential Method of Reflection Coefficient Extraction From FDTD Simulations",
-%            IEEE Microwave and Guided Wave Letters, Vol. 6, No. 5, May 1996
+%     port{1} = calcTLPort( port{1}, Sim_Path, f, 'RefImpedance', 50);
+%
+% reference:
+%
+% = W. K. Gwarek, "A Differential Method of Reflection Coefficient Extraction From FDTD Simulations",
+%   IEEE Microwave and Guided Wave Letters, Vol. 6, No. 5, May 1996
 %
 % openEMS matlab interface
 % -----------------------

@@ -106,15 +106,18 @@ void Engine_Ext_CylinderMultiGrid::SyncVoltages()
 		pos1_half = pos[1]/2;
 		for (pos[2]=0; pos[2]<m_Eng_MG->numVectors; ++pos[2])
 		{
+			ArrayLib::ArrayNIJK<f4vector>& mgEng_f4_volt = *m_Eng_MG->f4_volt_ptr;
+			ArrayLib::ArrayNIJK<f4vector>& innerEng_f4_volt = *m_InnerEng->f4_volt_ptr;
+
 			//r - direczion
-			m_InnerEng->f4_volt[0][pos[0]][pos1_half][pos[2]].v = v_null.v;
+			innerEng_f4_volt[0][pos[0]][pos1_half][pos[2]].v = v_null.v;
 
 			//z - direction
-			m_InnerEng->f4_volt[2][pos[0]][pos1_half][pos[2]].v = m_Eng_MG->f4_volt[2][pos[0]][pos[1]][pos[2]].v;
+			innerEng_f4_volt[2][pos[0]][pos1_half][pos[2]].v = mgEng_f4_volt[2][pos[0]][pos[1]][pos[2]].v;
 
 			//alpha - direction
-			m_InnerEng->f4_volt[1][pos[0]][pos1_half][pos[2]].v  = m_Eng_MG->f4_volt[1][pos[0]][pos[1]][pos[2]].v;
-			m_InnerEng->f4_volt[1][pos[0]][pos1_half][pos[2]].v += m_Eng_MG->f4_volt[1][pos[0]][pos[1]+1][pos[2]].v;
+			innerEng_f4_volt[1][pos[0]][pos1_half][pos[2]].v  = mgEng_f4_volt[1][pos[0]][pos[1]][pos[2]].v;
+			innerEng_f4_volt[1][pos[0]][pos1_half][pos[2]].v += mgEng_f4_volt[1][pos[0]][pos[1]+1][pos[2]].v;
 		}
 	}
 }

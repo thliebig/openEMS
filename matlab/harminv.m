@@ -2,13 +2,15 @@ function [f,decay,Q,amp,phase,err]=harminv( timeseries, timestep, start_freq, st
 % [f,decay,Q,amp,phase,err]=harminv( timeseries, timestep, start_freq, stop_freq )
 %
 % reconstruct time signal with:
-% real(amp(n) * exp(-1i*(2*pi*freq(n)*t-phase(n))-decay(n)*t)));
+%
+%     real(amp(n) * exp(-1i*(2*pi*freq(n)*t-phase(n))-decay(n)*t)));
 %
 % example:
-% t = linspace(0,(1/0.3e9)*5,1000);
-% u =     0.8 * sin(2*pi*0.7e9 * t + 0/180*pi);
-% u = u + 0.3 * sin(2*pi*0.3e9 * t + 0/180*pi);
-% [freq,decay,Q,amp,phase,err]=harminv( u, t(2)-t(1), 0, 1e9 );
+%
+%     t = linspace(0,(1/0.3e9)*5,1000);
+%     u =     0.8 * sin(2*pi*0.7e9 * t + 0/180*pi);
+%     u = u + 0.3 * sin(2*pi*0.3e9 * t + 0/180*pi);
+%     [freq,decay,Q,amp,phase,err]=harminv( u, t(2)-t(1), 0, 1e9 );
 %
 % -----------------------
 % Sebastian Held <sebastian.held@gmx.de>

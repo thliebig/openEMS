@@ -21,6 +21,7 @@
 #include "engine_extension.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
+#include "engine_extension_dispatcher.h"
 
 class Operator_Ext_UPML;
 
@@ -43,13 +44,25 @@ public:
 	virtual void DoPostCurrentUpdates(int threadID);
 
 protected:
+	template <typename EngType>
+	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
+
+	template <typename EngType>
+	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
+
+	template <typename EngType>
+	void DoPreCurrentUpdatesImpl(EngType* eng, int threadID);
+
+	template <typename EngType>
+	void DoPostCurrentUpdatesImpl(EngType* eng, int threadID);
+
 	Operator_Ext_UPML* m_Op_UPML;
 
 	vector<unsigned int> m_start;
 	vector<unsigned int> m_numX;
 
-	FDTD_FLOAT**** volt_flux;
-	FDTD_FLOAT**** curr_flux;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> volt_flux;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> curr_flux;
 };
 
 #endif // ENGINE_EXT_UPML_H
