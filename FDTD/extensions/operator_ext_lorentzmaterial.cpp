@@ -53,6 +53,8 @@ Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op, Operato
 
 Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 {
+	if ((m_curr_Lor_ADE_On==NULL) || (m_volt_Lor_ADE_On==NULL)) // all data already cleaned up or never used
+		return;
 	for (int i=0;i<m_Order;++i)
 	{
 		for (int n=0; n<3; ++n)
