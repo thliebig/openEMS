@@ -58,6 +58,14 @@ cxxflags = []
 if os.name == "posix":
     cxxflags.append("-std=c++11")
 
+# Strictly speaking we should detect compiler, not platform,
+# unfortunately there's no easy way to do so without implementing
+# full compiler detection logic. This is good enough for 90% of
+# use cases.
+cxxflags = []
+if os.name == "posix":
+    cxxflags.append("-std=c++11")
+
 extensions = [
 <<<<<<< ours
     Extension(
