@@ -186,22 +186,53 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 		// Extract R, L and C from property class
 		C = cs_RLC_props->GetCapacity();
-		if (C < 0)
-			C = NAN;
-		R = cs_RLC_props->GetResistance();
-		if (R < 0)
-			R = NAN;
-		L = cs_RLC_props->GetInductance();
-		if (L < 0)
-			L = NAN;
+		if (C < 0.0)
+		{
+			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning:";
+			if (C < 0.0)
+				cerr << " Value of C is smaller than zero, automatically set to 0.";
+			if (lumpedType == CSPropLumpedElement::SERIES)
+				cerr << " In a series RLC, C = 0 will be considered as Short-Circuit.";
 
-		// Check that this is a lumped RLC
+			cerr << " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+			C = 0.0;
+		}
+		R = cs_RLC_props->GetResistance();
+		if (R < 0.0)
+		{
+			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning:";
+			if (R < 0.0)
+				cerr << "Value of R is smaller than zero, automatically set to 0.";
+			if (lumpedType == CSPropLumpedElement::PARALLEL)
+				cerr << " In a parallel RLC, R = 0 will be considered as Open-Circuit.";
+			cerr << " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+			R = 0;
+
+		}
+		L = cs_RLC_props->GetInductance();
+		if (L < 0.0)
+		{
+			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning:";
+			if (L < 0.0)
+				cerr << " Value of L is smaller than zero, automatically set to zero.";
+			if (lumpedType == CSPropLumpedElement::PARALLEL)
+				cerr << " In a parallel RLC, L = 0 will be considered as Open-Circuit.";
+			cerr << " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+			L = 0;
+		}
+
+		// Validate they are non NaNs
+		if (isnan(C)) C = 0.0;
+		if (isnan(L)) L = 0.0;
+		if (isnan(R)) R = 0.0;
+
+		// Check that this is a lumped RLC. If this is a regular parallel LC, this is handled by the regular engine.
 		if (!(this->IsLElumpedRLC(cs_RLC_props)))
 			continue;
 
 		if ((dir < 0) || (dir > 2))
 		{
-			cerr << "Operator_Ext_LumpedRLC::Calc_LumpedElements(): Warning: Lumped Element direction is invalid! skipping. "
+			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning: Lumped Element direction is invalid! skipping. "
 					<< " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
 			continue;
 		}
@@ -268,9 +299,18 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 						dG = (1/R)*Ncells_0/Npar,
 						dC = C*Ncells_0/Npar;
 
+				// Elements for series RLC
 				double	ib0	= 2.0*dT*dC/(4.0*dL*dC + 2.0*dT*dR*dC + dT*dT),
 						b1	= (dT*dT - 4.0*dL*dC)/(dT*dC),
 						b2	= (4.0*dL*dC - 2.0*dT*dR*dC + dT*dT)/(2.0*dT*dC);
+
+				// In a series RLC setup, re-set the coefficients in case they are zero
+				if ((lumpedType == CSPropLumpedElement::SERIES)  && (C == 0))
+				{
+					ib0 = dT/(2.0*dL + dT*dR);
+					b1 = -4.0*dL/dT;
+					b2 = (2.0*dL - dT*dR)/dT;
+				}
 
 				// Special case: If this is a parallel resonant circuit, and there is no
 				// parallel resistor, use zero conductivity. May be risky when low-loss
@@ -297,7 +337,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 							switch (lumpedType)
 							{
 								case CSPropLumpedElement::PARALLEL:
-									// Update capacitor either way.
+									// If a capacitor was set, use it. Otherwise, use the existing node capacitor
 									if (dC > 0)
 										m_Op->EC_C[dir][iPos] = dC;
 									else
@@ -354,7 +394,11 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 									FDTD_FLOAT Cd = m_Op->EC_C[dir][iPos];
 
 									// Calculate minimum impedance, at maximum frequency
-									Zmin = sqrt(pow(dR,2) + pow(2*PI*fMax*dL - 1.0/(dC*2*PI*fMax),2));
+									if (dC)
+										Zmin = sqrt(pow(dR,2) + pow(2*PI*fMax*dL - 1.0/(dC*2*PI*fMax),2));
+									else
+										Zmin = sqrt(pow(dR,2) + pow(2*PI*fMax*dL,2));
+
 									Zcd_min = 1.0/(2.0*PI*fMax*Cd);
 
 									// Check if the "parasitic" capcitance is not small enough
