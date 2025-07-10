@@ -16,10 +16,24 @@ def theoretical_resonance_frequencies(
 		# Size of the cavity in meters. E.g. `numpy.array((1,2,3))`.
 	mode_number:numpy.ndarray,
 		# Mode number. E.g. `numpy.array((1,0,0))` is the fundamental mode in `x` direction.
+	E_field_direction:str,
+		# Direction of the electric field, either `'x'`, `'y'` or `'z'`.
 ):
 	if sum(mode_number) in {0,1}:
 		# This means there is no excitation of the EM field at all, see the expressions of the fields [here](https://www.brainkart.com/article/Rectangular-and-circular-cavity-resonators_12513/).
 		return float('NaN')
+	match E_field_direction:
+		case 'x':
+			if mode_number[1]==0 or mode_number[2]==0:
+				return float('NaN')
+		case 'y':
+			if mode_number[0]==0 or mode_number[2]==0:
+				return float('NaN')
+		case 'z':
+			if mode_number[1]==0 or mode_number[0]==0:
+				return float('NaN')
+		case _:
+			raise ValueError(f'Wrong `E_field_direction`. ')
 	return c/2*(sum((mode_number/cavity_size_meters)**2))**.5
 
 def configure_rectangular_cavity_simulation(
@@ -126,10 +140,10 @@ def analyze_results(path_to_folder_where_to_write_output:Path, cavity_size:tuple
 		)
 	)
 	# Draw theoretical resonance frequencies:
-	for nx in range(11):
-		for ny in range(11):
-			for nz in range(11):
-				resonance_frequency = theoretical_resonance_frequencies(numpy.array(cavity_size),numpy.array((nx,ny,nz)))
+	for nx in range(5):
+		for ny in range(5):
+			for nz in range(5):
+				resonance_frequency = theoretical_resonance_frequencies(numpy.array(cavity_size),numpy.array((nx,ny,nz)), E_field_direction='x')
 				if resonance_frequency > f_max or numpy.isnan(resonance_frequency):
 					continue
 				fig.add_vline(
@@ -156,7 +170,7 @@ def main():
 		simulation = simulation,
 		path_to_folder_where_to_write_output = PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT,
 	)
-	simulation = analyze_results(
+	analyze_results(
 		path_to_folder_where_to_write_output = PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT,
 		cavity_size = CAVITY_SIZE,
 		f_max = F_MAX,
