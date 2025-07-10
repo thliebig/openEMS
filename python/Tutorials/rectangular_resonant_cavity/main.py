@@ -42,9 +42,11 @@ def configure_rectangular_cavity_simulation(
 		# Folder where to save the results.
 	cavity_size:tuple,
 		# Size of the cavity, in meters, e.g. `(1,2,3)`.
-	f_max:float = 1e9,
+	E_field_direction:str,
+		# Direction of the electric field, either `'x'`, `'y'` or `'z'`.
+	f_max:float,
 		# Highest frequency to be used in the excitation, in Hz.
-	frequency_resolution:float = 1e6,
+	frequency_resolution:float,
 		# Frequency resolution in Hz. Higher resolution require more time steps.
 ):
 	SIMULATION_VOLUME_START = numpy.array(cavity_size)/2 # Position of bottom left cornrer.
@@ -76,7 +78,7 @@ def configure_rectangular_cavity_simulation(
 		R = 1e99, # Infinite resistance
 		start = port_in_start,
 		stop = (port_in_start + port_size),
-		p_dir = 'x',
+		p_dir = E_field_direction,
 		excite = 1, # V m⁻¹
 	)
 
@@ -99,38 +101,49 @@ def run_simulation(simulation, path_to_folder_where_to_write_output:Path):
 
 def analyze_results(path_to_folder_where_to_write_output:Path, cavity_size:tuple, f_max:float):
 	logger.info('Analyzing results...')
-	time_domain_data = pandas.read_csv(
-		path_to_folder_where_to_write_output/f'data/port_ut_1',
-		comment = '%',
-		names = ['Time (s)', 'Voltage (V)'],
-		sep = '\t',
-	)
+	time_domain_data = []
+	for E_field_direction in ['x','y','z']:
+		df = pandas.read_csv(
+			path_to_folder_where_to_write_output/f'{E_field_direction}/data/port_ut_1',
+			comment = '%',
+			names = ['Time (s)', 'Voltage (V)'],
+			sep = '\t',
+		)
+		df['E_field_direction'] = E_field_direction
+		time_domain_data.append(df)
+	time_domain_data = pandas.concat(time_domain_data)
 
 	MAX_POINTS_TO_PLOT = int(10e3) # To avoid heavy plots, which is a weak point of plotly.
 	fig = px.line(
 		title = 'Time domain simulation results',
-		data_frame = time_domain_data if len(time_domain_data)<MAX_POINTS_TO_PLOT else time_domain_data.sample(n=MAX_POINTS_TO_PLOT).sort_index(),
+		data_frame = (time_domain_data if len(time_domain_data)<MAX_POINTS_TO_PLOT else time_domain_data.sample(n=MAX_POINTS_TO_PLOT)).sort_values(['Time (s)','E_field_direction']),
 		x = 'Time (s)',
 		y = 'Voltage (V)',
+		color = 'E_field_direction',
 	)
 	fig.write_html(path_to_folder_where_to_write_output/'voltage vs time.html')
 
-	frequency_domain_data = pandas.DataFrame(
-		{
-			'fft': fft(time_domain_data['Voltage (V)'])[0:len(time_domain_data)//2],
-			'Frequency (Hz)': fftfreq(len(time_domain_data), numpy.diff(time_domain_data['Time (s)'])[0])[:len(time_domain_data)//2],
-		},
-	)
-	frequency_domain_data = frequency_domain_data.sort_values('Frequency (Hz)')
+	frequency_domain_data = []
+	for E_field_direction, df in time_domain_data.groupby('E_field_direction'):
+		fft_df = pandas.DataFrame(
+			{
+				'fft': fft(df['Voltage (V)'])[0:len(df)//2],
+				'Frequency (Hz)': fftfreq(len(df), numpy.diff(df['Time (s)'])[0])[:len(df)//2],
+			},
+		)
+		fft_df['E_field_direction'] = E_field_direction
+		frequency_domain_data.append(fft_df)
+	frequency_domain_data = pandas.concat(frequency_domain_data)
 	frequency_domain_data['abs(fft)'] = numpy.abs(frequency_domain_data['fft'])
 
 	frequency_domain_data = frequency_domain_data.query(f'`Frequency (Hz)` < {f_max}')
 	frequency_domain_data = frequency_domain_data.query(f'`Frequency (Hz)` > 0') # Drop the DC component.
 	fig = px.line(
 		title = 'Frequency domain simulation results<br><sup>Dashed lines indicate theoretical resonance frequencies</sup>',
-		data_frame = frequency_domain_data,
+		data_frame = frequency_domain_data.sort_values(['Frequency (Hz)','E_field_direction']),
 		x = 'Frequency (Hz)',
 		y = 'abs(fft)',
+		color = 'E_field_direction',
 		log_y = True,
 		markers = True,
 	)
@@ -140,36 +153,49 @@ def analyze_results(path_to_folder_where_to_write_output:Path, cavity_size:tuple
 		)
 	)
 	# Draw theoretical resonance frequencies:
-	for nx in range(5):
-		for ny in range(5):
-			for nz in range(5):
-				resonance_frequency = theoretical_resonance_frequencies(numpy.array(cavity_size),numpy.array((nx,ny,nz)), E_field_direction='x')
-				if resonance_frequency > f_max or numpy.isnan(resonance_frequency):
-					continue
-				fig.add_vline(
-					x = resonance_frequency,
-					line_dash = 'dot',
-				)
+	colors = iter(px.colors.qualitative.Plotly)
+	line_dashes = iter(['longdash','dash','dot'])
+	for E_field_direction in ['x','y','z']:
+		color = next(colors)
+		line_dash = next(line_dashes)
+		for nx in range(5):
+			for ny in range(5):
+				for nz in range(5):
+					resonance_frequency = theoretical_resonance_frequencies(numpy.array(cavity_size),numpy.array((nx,ny,nz)), E_field_direction=E_field_direction)
+					if resonance_frequency > f_max or numpy.isnan(resonance_frequency):
+						continue
+					fig.add_vline(
+						x = resonance_frequency,
+						line_color = color,
+						line_dash = line_dash,
+					)
 	fig.write_html(path_to_folder_where_to_write_output/'frequency_domain.html')
 
 	logger.info(f'Plots available in {path_to_folder_where_to_write_output}')
 
 def main():
 	PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT = Path(__file__).parent/'simulation_results'
-	CAVITY_SIZE = (1,1,1)
-	F_MAX = 1e9
+	CAVITY_SIZE = (2,3,7)
+	F_MAX = c/min(CAVITY_SIZE)
 
 	PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT.mkdir(exist_ok=True, parents=True)
 
-	simulation = configure_rectangular_cavity_simulation(
-		path_to_folder_where_to_write_output = PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT,
-		cavity_size = CAVITY_SIZE,
-		f_max = F_MAX,
-	)
-	run_simulation(
-		simulation = simulation,
-		path_to_folder_where_to_write_output = PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT,
-	)
+	# Run one simulation for each polarization of the E field:
+	for E_field_direction in ['x','y','z']:
+		simulation_folder = PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT/E_field_direction
+		simulation_folder.mkdir(exist_ok=True)
+		simulation = configure_rectangular_cavity_simulation(
+			path_to_folder_where_to_write_output = simulation_folder,
+			cavity_size = CAVITY_SIZE,
+			f_max = F_MAX,
+			E_field_direction = E_field_direction,
+			frequency_resolution = c/max(CAVITY_SIZE)/100,
+		)
+		run_simulation(
+			simulation = simulation,
+			path_to_folder_where_to_write_output = simulation_folder,
+		)
+
 	analyze_results(
 		path_to_folder_where_to_write_output = PATH_TO_FOLDER_WHERE_TO_WRITE_SIMULATION_OUTPUT,
 		cavity_size = CAVITY_SIZE,
