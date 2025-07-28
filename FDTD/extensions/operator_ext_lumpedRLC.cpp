@@ -222,9 +222,9 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		}
 
 		// Validate they are non NaNs
-		if (isnan(C)) C = 0.0;
-		if (isnan(L)) L = 0.0;
-		if (isnan(R)) R = 0.0;
+		if (std::isnan(C)) C = 0.0;
+		if (std::isnan(L)) L = 0.0;
+		if (std::isnan(R)) R = 0.0;
 
 		// Check that this is a lumped RLC. If this is a regular parallel LC, this is handled by the regular engine.
 		if (!(this->IsLElumpedRLC(cs_RLC_props)))
