@@ -27,8 +27,6 @@ ENDIF()
 
 #ADD_DEFINITIONS( -D__SSE2__ )
 
-set(VERSION "v0.0.36")
-
 # add git revision
 IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
   FIND_PACKAGE(Git)
