@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
         string ifile, ofile, method;
         double m_avg = 0;
         bool debug = false;
+		bool export_cube_stats = false;
 
         desc.add_options()
 		("help,h"  , "print usage message")
@@ -43,7 +44,8 @@ int main(int argc, char *argv[])
 		("output,o", value(&ofile)->required(), "pathname for output hdf5 file")
 		("method",   value(&method)->default_value("SIMPLE"), "set SAR method: IEEE_C95_3, IEEE_62704, SIMPLE")
 		("mass,m"  , value(&m_avg), "averaging mass in g")
-		("verbose,v", bool_switch(&debug), "verbose");
+		("verbose,v", bool_switch(&debug), "verbose")
+		("export_cube_stats,e", bool_switch(&export_cube_stats), "Export Cube Statistics");
 
         store(parse_command_line(argc, argv, desc), vm);
 
@@ -60,7 +62,7 @@ int main(int argc, char *argv[])
 		//sar_calc.SetAveragingMethod(SAR_Calculation::IEEE_62704);
 		if (!sar_calc.SetAveragingMethod(method, !debug))
 			return -1;
-		sar_calc.CalcFromHDF5(ifile, ofile);
+		sar_calc.CalcFromHDF5(ifile, ofile, export_cube_stats);
 		return 0;
     }
     catch(exception& e) {

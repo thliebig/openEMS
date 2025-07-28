@@ -71,7 +71,7 @@ public:
 	//! Calculate the total mass
 	double CalcTotalMass();
 
-	bool CalcFromHDF5(std::string h5_fn, std::string out_name);
+	bool CalcFromHDF5(std::string h5_fn, std::string out_name, bool export_cube_stats=false);
 
 protected:
 	unsigned int m_numLines[3];
@@ -84,11 +84,15 @@ protected:
 	std::complex<float>**** m_E_field;
 	std::complex<float>**** m_J_field;
 
-
+	// save some statistical data
 	unsigned int m_Valid;
 	unsigned int m_Used;
 	unsigned int m_Unused;
 	unsigned int m_AirVoxel;
+
+	ArrayLib::ArrayIJK<unsigned char> m_cube_type;
+	ArrayLib::ArrayIJK<float> m_cube_mass;
+	ArrayLib::ArrayIJK<float> m_cube_volume;
 
 	int m_DebugLevel;
 
