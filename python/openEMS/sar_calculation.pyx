@@ -20,8 +20,19 @@ cimport openEMS.sar_calculation
 import os
 
 cdef class SAR_Calculation:
-    def __cinit__(self):
+    def __cinit__(self, **kw):
         self.thisptr = new _SAR_Calculation()
+        for k, v in kw.items():
+            if k == 'mass':
+                self.SetAveragingMass(v)
+            elif k=='method':
+                self.SetAveragingMethod(v)
+            elif k=='verbose':
+                self.SetDebugLevel(int(v))
+            elif k=='debug':
+                self.SetDebugLevel(int(v))
+            else:
+                raise Exception('Unknown keyword argument: "{}"'.format(k))
 
     def SetDebugLevel(self, level):
         self.thisptr.SetDebugLevel(level)
@@ -35,12 +46,13 @@ cdef class SAR_Calculation:
          #cdef string c_method = method.encode('UTF-8')
          return self.thisptr.SetAveragingMethod(method.encode('UTF-8'), silent)
 
-    def CalcFromHDF5(self, h5_fn, out_name):
+    def CalcFromHDF5(self, h5_fn, out_name, export_cube_stats=False):
         if not os.path.exists(h5_fn):
             raise Exception('File "{}" does not exist'.format(h5_fn))
         cdef string in_fn = h5_fn.encode('UTF-8')
         cdef string out_fn = out_name.encode('UTF-8')
+        cdef bool ecs = export_cube_stats
         with nogil:
-            ok = self.thisptr.CalcFromHDF5(in_fn, out_fn)
+            ok = self.thisptr.CalcFromHDF5(in_fn, out_fn, ecs)
         return ok
 
