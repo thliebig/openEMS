@@ -27,10 +27,9 @@ set(SOURCES
 # tools lib
 #add_library(tools STATIC ${SOURCES} )
 
-
+cmake_minimum_required(VERSION 3.0...3.10)
 
 PROJECT(sar CXX)
-cmake_minimum_required(VERSION 2.8)
 
 ADD_EXECUTABLE( sar_bin sar_calc.cpp)
 SET_TARGET_PROPERTIES(sar_bin PROPERTIES OUTPUT_NAME sar_calc)
