@@ -167,8 +167,8 @@ Gref = (Zref - Z0)/(Zref + Z0)
 Sref = Gref.reshape(-1, 1, 1)
 
 # De-embed simulation, using naive matched line de-embedding
-Dk_eff = 0.5*(substrate_epsR + 1.0)
-s11 = s11/exp(-2*1j*substrate_length*1e-3*2*pi*f/(0.87*C0/sqrt(Dk_eff)))
+Dk_eff = 0.5*(substrate_epsR + 1.0)*(1 + 1/sqrt(1 + 12*(substrate_thickness/microstrip_W)))
+s11 = s11/exp(-2*1j*substrate_length*1e-3*2*pi*f/(C0/sqrt(Dk_eff)))
 
 # Setup smith plot
 if networkType == LEtype.LE_SERIES:
