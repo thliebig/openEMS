@@ -1,11 +1,11 @@
 # openEMS python interface
 
 ## Install
-If openEMS was installed into `~/opt/openEMS`, then install this package with:
-
+1. Set the environment variable `OPENEMS_INSTALL_PATH` to point to the installation of openEMS, for example in Linux:
 ```bash
-python setup.py build_ext -I ~/opt/openEMS/include -L ~/opt/openEMS/lib -R ~/opt/openEMS/lib
-python setup.py install
+export OPENEMS_INSTALL_PATH="/this/is/where/I/installed/openEMS"
 ```
-
-Otherwise, replace `~/opt/openEMS` with the path to the place where it was installed.
+2. Run
+```bash
+pip install /path/to/the/folder/where/this/README.md/is
+```
