@@ -32,7 +32,7 @@ Global::Global()
 	m_showProbeDiscretization = false;
 	m_nativeFieldDumps = false;
 	m_VerboseLevel = 0;
-
+	m_optionDesc = NULL;
 }
 
 po::options_description
@@ -86,9 +86,18 @@ Global::optionDesc()
 	return optdesc;
 }
 
+void Global::clearOptionDesc()
+{
+	delete m_optionDesc;
+	m_optionDesc = NULL;
+}
+
 void Global::appendOptionDesc(po::options_description desc)
 {
-	m_optionDesc.add(desc);
+	if (m_optionDesc == NULL)
+		m_optionDesc = new po::options_description();
+
+	m_optionDesc->add(desc);
 }
 
 void Global::parseLibraryArguments(std::vector<std::string> allOptions)
@@ -105,7 +114,7 @@ void Global::parseLibraryArguments(std::vector<std::string> allOptions)
 
 	// may throw
 	po::store(
-		po::command_line_parser(allOptions).options(m_optionDesc)
+		po::command_line_parser(allOptions).options(*m_optionDesc)
 			.style(
 				po::command_line_style::unix_style |
 				po::command_line_style::case_insensitive)
@@ -140,7 +149,7 @@ void Global::parseCommandLineArguments(int argc, const char* argv[])
 
 	// may throw
 	po::store(
-		po::command_line_parser(argc, argv).options(m_optionDesc)
+		po::command_line_parser(argc, argv).options(*m_optionDesc)
 			.style(
 				po::command_line_style::unix_style |
 				po::command_line_style::case_insensitive)
@@ -154,7 +163,7 @@ void Global::parseCommandLineArguments(int argc, const char* argv[])
 
 void Global::showOptionUsage(std::ostream& ostr)
 {
-	ostr << m_optionDesc << endl;
+	ostr << *m_optionDesc << endl;
 }
 
 bool Global::hasOption(std::string option)
