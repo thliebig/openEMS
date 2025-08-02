@@ -129,6 +129,9 @@ void openEMS::Reset()
 
 void openEMS::collectCommandLineArguments()
 {
+	// see commands in tools/global.h
+	g_settings.clearOptionDesc();
+
 	// register our supported options to g_settings
 	g_settings.appendOptionDesc(optionDesc());
 	g_settings.appendOptionDesc(g_settings.optionDesc());
@@ -323,6 +326,7 @@ void openEMS::showUsage()
 // used by Python binding when running as a shared library
 void openEMS::SetLibraryArguments(std::vector<std::string> allOptions)
 {
+	collectCommandLineArguments();
 	g_settings.parseLibraryArguments(allOptions);
 }
 

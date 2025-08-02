@@ -87,6 +87,23 @@ public:
 	// calling appendOptionDesc.
 	void appendOptionDesc(boost::program_options::options_description desc);
 
+	// If multiple openEMS() instances are created within the application, two
+	// problem occurs. First, identical optionDesc are registered to Global()
+	// more than once creating command-line option conflict everywhere. This
+	// problem can't be prevented by registering only once - re-registering is
+	// needed because callback functions are specific to a particular openEMS()
+	// instance, so all argument changes would only be applied to the first one.
+	// Thus, we always call clearOptionDesc() just before we start parsing
+	// arguments in collectCommandLineArguments(), so that the callback handlers
+	// are always installed to the current openEMS() instance.
+	//
+	// FIXME: This is only a workaround. Global() options are still fundamentally
+	// thread-unsafe (in rare cases, one openEMS instance may change the global
+	// options within one thread, while the other openEMS instance is still trying
+	// to read their values). In the future, rewrite Global() to make it a
+	// per-openEMS instance or per-thread entity.
+	void clearOptionDesc();
+
 	// Parse all options provided as a std::vector of std::strings,
 	// used when running as a shared library. May throw.
 	void parseLibraryArguments(std::vector<std::string> allOptions);
@@ -111,7 +128,7 @@ protected:
 	int m_SavedVerboseLevel;
 
 	boost::program_options::variables_map m_options;
-	boost::program_options::options_description m_optionDesc;
+	boost::program_options::options_description* m_optionDesc;
 };
 
 OPENEMS_EXPORT extern Global g_settings;
