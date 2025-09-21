@@ -349,7 +349,6 @@ class WaveguidePort(Port):
     """
     def __init__(self, CSX, port_nr, start, stop, exc_dir, E_WG_func, H_WG_func, kc, excite=0, excite_type=0, **kw):
         
-        
         super(WaveguidePort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, excite_type=excite_type, **kw)
         self.exc_ny  = CheckNyDir(exc_dir)
         self.ny_P  = (self.exc_ny+1)%3
@@ -357,16 +356,13 @@ class WaveguidePort(Port):
         self.direction = np.sign(stop[self.exc_ny]-start[self.exc_ny])
         self.ref_index = 1
         
-        # This doesn't make any sense. I'll disable this in the my use case, just for this to not be nullified.
-        if (self.excite != 0) and (stop[self.exc_ny] == start[self.exc_ny]):
+        if (self.excite!=0 and stop[self.exc_ny]==start[self.exc_ny]):
             raise Exception('Port length in excitation direction may not be zero if port is excited!')
         
         self.kc = kc
         self.E_func = E_WG_func
         self.H_func = H_WG_func
         
-        isEcustomWeighting = False    
-        isHcustomWeighting = False
         
         if excite != 0:
             e_start = np.array(start)
@@ -375,67 +371,63 @@ class WaveguidePort(Port):
             e_vec = np.ones(3)
             e_vec[self.exc_ny] = 0
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=excite_type, exc_val=e_vec, delay=self.delay)
-        
             
+            E_is_str = type(self.E_func) is str
+            H_is_str = type(self.H_func) is str
             # Check wether this is manual weighting or string function
-            
-            if self.E_func.__class__.__name__ == 'ndarray':
-                if not (self.E_func.shape[1] == 6):
-                    raise Exception('"E_func" must have 6 columns')
-                                        
-                isEcustomWeighting = True
-            elif len(self.E_func) == 3:
+            if E_is_str or H_is_str:
+                if not H_is_str:
+                    raise Exception ('Both E_func and H_func must be files')
+                
+                _,Eext = os.path.splitext(self.E_func)
+                _,Hext = os.path.splitext(self.H_func)
+                if not ((Eext == '.csv') and (Hext = '.csv')):
+                    raise Exception('Both E_func and H_func must be CSV files in case of mode files')
+                
+                # E-field (TE case)
+                if excite_type == 0:
+                    exc.SetModeFileName(self.E_func)
+                # H-field (TM case)
+                elif excite_type == 2:
+                    exc.SetModeFileName(self.H_func)
+                else:
+                    raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
+                    
+            else: (type(self.E_func) is list):
                 if excite_type == 0:
                     exc.SetWeightFunction([str(x) for x in self.E_func])
-            else:
-                raise Exception('Unsupported list length {} for "E_func"'.format(len(self.E_func)))
-                        
-            if self.H_func.__class__.__name__ == 'ndarray':
-                # Now check everything is of "float" type
-                
-                if not ((self.H_func.shape[0] == self.E_func.shape[0]) and (self.H_func.shape[1] == 6)):
-                    raise Exception('"H_func" must be of equal length to E_func')
-                        
-                isHcustomWeighting = True
-            elif len(self.H_func) == 3:
-                if excite_type == 2:
+                elif excite_type == 2:
                     exc.SetWeightFunction([str(x) for x in self.H_func])
-            else:
-                raise Exception('Unsupported list length {} for "H_func"'.format(len(self.H_func)))
+                else:
+                    raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
         
-            if isEcustomWeighting != isHcustomWeighting:
-                raise Exception('Both "E_func" and "H_func" must both be custom or string.')
-            if isEcustomWeighting and (excite_type == 0):
-                exc.SetManualWeights(self.E_func)
-            if isHcustomWeighting and (excite_type == 2):
-                exc.SetManualWeights(self.H_func)
-            
+            # Finally, add the box
             exc.AddBox(e_start, e_stop, priority=self.priority)
             self.port_props.append(exc)
 
         # voltage/current planes
         m_start = np.array(start)
         m_stop  = np.array(stop)
-        
-        # In case this is a custom probe, measure on the plane (why do otherwise, anyway?)
-        # if (isEcustomWeighting or isHcustomWeighting):
-        #     m_stop[self.exc_ny] = m_start[self.exc_ny]
-        # else:
-        #     m_start[self.exc_ny] = m_stop[self.exc_ny]
         m_start[self.exc_ny] = m_stop[self.exc_ny]
-            
         self.measplane_shift = np.abs(stop[self.exc_ny] - start[self.exc_ny])
         
         self.U_filenames = [self.lbl_temp.format('ut'), ]
-        
-        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
+        # Initialize variable here so it will be in context post the if statement
+        u_probe = None
+        if E_is_str:
+            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.E_func)
+        else:
+            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
         u_probe.AddBox(m_start, m_stop)
         self.port_props.append(u_probe)
 
+        i_probe = None
+        if E_is_str:
+            i_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.H_func)
+        else:
+            i_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.H_func)
         self.I_filenames = [self.lbl_temp.format('it'), ]
-        i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_function=self.H_func)
         i_probe.AddBox(m_start, m_stop)
-
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse', ZL = -1):
         k = 2.0*np.pi*freq/C0*self.ref_index

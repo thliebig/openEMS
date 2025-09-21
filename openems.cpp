@@ -557,7 +557,7 @@ bool openEMS::SetupProcessing()
 					// If the data is taken from a file, store the file name
 					// in the processmodematch object
 					if (pb->GetFieldSourceIsFile())
-						pmm->SetModeFileName(fileNamepb->GetModeFileName());
+						pmm->SetModeFileName(pb->GetModeFileName());
 					else
 					{
 						pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));

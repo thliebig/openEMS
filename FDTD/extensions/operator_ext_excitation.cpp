@@ -22,6 +22,7 @@
 
 #include "CSPrimCurve.h"
 #include "CSPropExcitation.h"
+#include "CSPrimBox.h"
 
 using std::cout;
 using std::cerr;
@@ -112,7 +113,8 @@ bool Operator_Ext_Excitation::shiftCoordsForModeFile(double const * coord0, CSPr
 	}
 
 	for (int dirIdx = 0 ; dirIdx < 3 ; dirIdx++)
-		coord0[dirIdx] -= primBox->GetCoord(dirIdx*2);
+		double OS = primBox->GetCoord(int(dirIdx*2));
+		// coord0[dirIdx] -=
 
 	return true;
 }

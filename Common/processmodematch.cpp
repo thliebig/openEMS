@@ -247,6 +247,14 @@ void ProcessModeMatch::Reset()
 	}
 }
 
+void ProcessModeMatch::SetModeFunction(int ny, string function)
+{
+	if ((ny<0) || (ny>2)) return;
+	m_ModeFunction[ny] = function;
+
+	this->m_ModeFileName.clear();
+}
+
 void ProcessModeMatch::SetFieldType(int type)
 {
 	m_ModeFieldType = type;
