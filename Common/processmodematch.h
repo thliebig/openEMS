@@ -54,7 +54,7 @@ public:
 	virtual int GetNumberOfIntegrals() const {return 2;}
 	virtual double* CalcMultipleIntegrals();
 
-protected:
+protected:ProcessModeMatch
 	//normal direction of the mode plane
 	int m_ny;
 
