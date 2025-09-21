@@ -196,20 +196,14 @@ void ProcessModeMatch::InitProcess()
 			}
 			area = Op->GetNodeArea(m_ny,pos,dualMesh);
 
-			// Pull from mode parser if it's
 			if (m_FieldSourceIsFile)
 			{
-				double locCoord[3] =
-				uint weightIdx = GetClosestManualWeightIdx(discLine);
+				double locCoord[3] = {
+						discLine[0] - Op->GetDiscLine(0,start[0],dualMesh),
+						discLine[1] - Op->GetDiscLine(1,start[1],dualMesh),
+						discLine[2] - Op->GetDiscLine(2,start[2],dualMesh)};
 
-				//double modeVect[3] = {0.0,0.0,0.0};
-
-				for (int n = 0 ; n < 2; ++n)
-				{
-					int ny = (m_ny+n+1)%3;
-					m_ModeDist[n][posP][posPP] = m_MWeights[ny].at(weightIdx);
-					//modeVect[ny] = m_MWeights[ny].at(weightIdx);
-				}
+				modeFile.linInterp2(locCoord[nP],locCoord[nPP],m_ModeDist[0][posP][posPP],m_ModeDist[1][posP][posPP]);
 			}
 			else
 				for (int n = 0; n < 2; ++n)
