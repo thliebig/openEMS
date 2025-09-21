@@ -29,9 +29,6 @@ ProcessModeMatch::ProcessModeMatch(Engine_Interface_Base* eng_if) : ProcessInteg
 	{
 		m_ModeParser[n] = new CSFunctionParser();
 		m_ModeDist[n] = NULL;
-
-		m_MWeights[n].clear();
-		m_MCoords[n].clear();
 	}
 	delete[] m_Results;
 	m_Results = new double[2];
@@ -39,6 +36,8 @@ ProcessModeMatch::ProcessModeMatch(Engine_Interface_Base* eng_if) : ProcessInteg
 	m_ModeFieldType = 0;
 	m_ny = 0;
 
+	m_ModeFileName.clear();
+	m_FieldSourceIsFile = false;
 }
 
 ProcessModeMatch::~ProcessModeMatch()
@@ -126,7 +125,7 @@ void ProcessModeMatch::InitProcess()
 	m_numLines[1] = stop[nPP] - start[nPP] + 1;
 
 	// Check that this isn't a custom mode, before running this test
-	if (m_MWeights[0].size() == 0)
+	if (!m_FieldSourceIsFile)
 	{
 		for (int n=0; n<2; ++n)
 		{
@@ -164,6 +163,11 @@ void ProcessModeMatch::InitProcess()
 		m_numLines[1]--;
 	}
 
+	// If necessary, parse the file now
+	ModeFileParser modeFile;
+	if (m_FieldSourceIsFile)
+		modeFile.parseFile(m_ModeFileName);
+
 	for (unsigned int posP = 0; posP < m_numLines[0]; ++posP)
 	{
 		pos[nP] = start[nP] + posP;
@@ -192,10 +196,10 @@ void ProcessModeMatch::InitProcess()
 			}
 			area = Op->GetNodeArea(m_ny,pos,dualMesh);
 
-			// First pass: extract m_ModeDist values
-			// Check if there are manual weights
-			if (m_MWeights[0].size())
+			// Pull from mode parser if it's
+			if (m_FieldSourceIsFile)
 			{
+				double locCoord[3] =
 				uint weightIdx = GetClosestManualWeightIdx(discLine);
 
 				//double modeVect[3] = {0.0,0.0,0.0};
@@ -207,9 +211,6 @@ void ProcessModeMatch::InitProcess()
 					//modeVect[ny] = m_MWeights[ny].at(weightIdx);
 				}
 			}
-
-
-
 			else
 				for (int n = 0; n < 2; ++n)
 				{
@@ -250,57 +251,6 @@ void ProcessModeMatch::Reset()
 		Delete2DArray<double>(m_ModeDist[n],m_numLines);
 		m_ModeDist[n] = NULL;
 	}
-}
-
-void ProcessModeMatch::SetModeFunction(int ny, string function)
-{
-	if ((ny<0) || (ny>2)) return;
-	m_ModeFunction[ny] = function;
-}
-
-void ProcessModeMatch::SetManualWeights(uint dir, const std::vector<float> & v)
-{
-	m_MWeights[dir].clear();
-	m_MWeights[dir].assign(v.begin(),v.end());
-}
-
-void ProcessModeMatch::SetManualCoords(uint dir, const std::vector<float> & v)
-{
-	m_MCoords[dir].clear();
-	m_MCoords[dir].assign(v.begin(),v.end());
-}
-
-void ProcessModeMatch::ClearManualWeights()
-{
-	for(uint dirIdx = 0 ; dirIdx < 3 ; dirIdx++)
-	{
-		m_MWeights[dirIdx].clear();
-		m_MCoords[dirIdx].clear();
-	}
-}
-
-uint ProcessModeMatch::GetClosestManualWeightIdx(const double* coords)
-{
-	// Check if manual weights are set. If so, look for coordinate there
-	float minDr = std::numeric_limits<float>::infinity();	// Container for minimal found dr
-	float dr; 												// Container for distance between requested coordiante and stored coordinate
-	uint minIdx;
-	// Check all the coordinates within this excitation to see which is the closest.
-	for (uint coorIdx = 0 ; coorIdx < m_MWeights[0].size() ; coorIdx++)
-	{
-		dr = sqrtf(	powf(coords[0] - m_MCoords[0].at(coorIdx),2.0f) +
-					powf(coords[1] - m_MCoords[1].at(coorIdx),2.0f) +
-					powf(coords[2] - m_MCoords[2].at(coorIdx),2.0f));
-
-		if (dr < minDr)
-		{
-			minDr = dr;
-			minIdx = coorIdx;
-		}
-
-	}
-
-	return minIdx;
 }
 
 void ProcessModeMatch::SetFieldType(int type)
@@ -352,4 +302,13 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 		m_Results[1] = 0;
 	m_Results[0] = value;
 	return m_Results;
+}
+
+void ProcessModeMatch::SetModeFileName(std::string fileName)
+{
+	if (fileName.length())
+	{
+		m_ModeFileName = fileName;
+		m_FieldSourceIsFile = true;
+	}
 }

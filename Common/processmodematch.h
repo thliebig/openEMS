@@ -19,6 +19,7 @@
 #define PROCESSMODEMATCH_H
 
 #include "processintegral.h"
+#include "ModeFileParser.h"
 
 class CSFunctionParser;
 
@@ -45,17 +46,13 @@ public:
 	//! Set the mode function in the given direction ny. For example: SetModeFunction(0,"cos(pi/1000*x)*sin(pi/500*y)");
 	void SetModeFunction(int ny, std::string function);
 
+	void		SetModeFileName(std::string fileName);
+	std::string GetModeFileName() {return m_ModeFileName;};
+	bool		GetFieldSourceIsFile() {return m_FieldSourceIsFile;};
+	void		SetFieldSourceIsFile(bool isFile) {m_FieldSourceIsFile = isFile;};
+
 	virtual int GetNumberOfIntegrals() const {return 2;}
 	virtual double* CalcMultipleIntegrals();
-
-	void SetManualWeights(uint dir, const std::vector<float> & v);
-	void SetManualCoords(uint dir, const std::vector<float> & v);
-	std::vector<float> GetManualWeights(uint dir) {return m_MWeights[dir];}
-	std::vector<float> GetManualCoords(uint dir) {return m_MCoords[dir];}
-
-	void ClearManualWeights();
-
-	uint GetClosestManualWeightIdx(const double* coords);
 
 protected:
 	//normal direction of the mode plane
@@ -63,15 +60,16 @@ protected:
 
 	int m_ModeFieldType;
 
-	std::vector<float>	m_MWeights[3];	// Manual weights for mode matching
-	std::vector<float>	m_MCoords[3];	// Manual coordinates for mode matching weights
-
 	double GetField(int ny, const unsigned int pos[3]);
 	double GetEField(int ny, const unsigned int pos[3]);
 	double GetHField(int ny, const unsigned int pos[3]);
 
 	std::string m_ModeFunction[3];
 	CSFunctionParser* m_ModeParser[2];
+
+
+	std::string m_ModeFileName;
+	bool		m_FieldSourceIsFile;
 
 	unsigned int m_numLines[2];
 	double** m_ModeDist[2];
