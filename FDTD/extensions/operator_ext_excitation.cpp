@@ -103,9 +103,9 @@ Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op, Operator_Ext_Exci
 	Init();
 }
 
-bool Operator_Ext_Excitation::shiftCoordsForModeFile(double const * coord0, CSPrimitives * prim)
+bool Operator_Ext_Excitation::shiftCoordsForModeFile(double const * coord0, CSPrimitives * cPrim)
 {
-	CSPrimBox* primBox = prim->ToBox();
+	CSPrimBox* primBox = cPrim->ToBox();
 	if (primBox == NULL)
 	{
 		cerr << "Operator_Ext_Excitation::BuildExtension: Error obtaining box primitive" << endl;
@@ -189,14 +189,14 @@ bool Operator_Ext_Excitation::BuildExtension()
 						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
-						if (!elec->GetEnabled())
+						if (!elec->GetEnabled()) // @suppress("Method cannot be resolved")
 							continue;
 
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 						{
 							// If this is read from a file, the voltage coordinates need to be shifted
 							// to the start point
-							if (elec->GetFieldSourceIsFile())
+							if (elec->GetFieldSourceIsFile()) // @suppress("Method cannot be resolved")
 								if (!shiftCoordsForModeFile(volt_coord, highestPriorityPrim))
 									return false;
 
