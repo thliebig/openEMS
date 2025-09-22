@@ -363,6 +363,8 @@ class WaveguidePort(Port):
         self.E_func = E_WG_func
         self.H_func = H_WG_func
         
+        E_is_str = type(self.E_func) is str
+        H_is_str = type(self.H_func) is str
         
         if excite != 0:
             e_start = np.array(start)
@@ -372,8 +374,7 @@ class WaveguidePort(Port):
             e_vec[self.exc_ny] = 0
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=excite_type, exc_val=e_vec, delay=self.delay)
             
-            E_is_str = type(self.E_func) is str
-            H_is_str = type(self.H_func) is str
+            
             # Check wether this is manual weighting or string function
             if E_is_str or H_is_str:
                 if not H_is_str:
@@ -381,7 +382,7 @@ class WaveguidePort(Port):
                 
                 _,Eext = os.path.splitext(self.E_func)
                 _,Hext = os.path.splitext(self.H_func)
-                if not ((Eext == '.csv') and (Hext = '.csv')):
+                if not ((Eext == '.csv') and (Hext == '.csv')):
                     raise Exception('Both E_func and H_func must be CSV files in case of mode files')
                 
                 # E-field (TE case)
@@ -393,7 +394,7 @@ class WaveguidePort(Port):
                 else:
                     raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
                     
-            else: (type(self.E_func) is list):
+            elif (type(self.E_func) is list):
                 if excite_type == 0:
                     exc.SetWeightFunction([str(x) for x in self.E_func])
                 elif excite_type == 2:
@@ -401,9 +402,20 @@ class WaveguidePort(Port):
                 else:
                     raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
         
+            else:
+                raise Exception('Unsupported input type for "E_Func" or "H_func"')
+
+            # For the mode file to be used correctly, the direction of 
+            # propagation has to be explicitly set here.
+            if (E_is_str):
+                dirVect = [0,0,0]
+                dirVect[self.exc_ny] = 1
+                exc.SetPropagationDir(dirVect)
+            
             # Finally, add the box
             exc.AddBox(e_start, e_stop, priority=self.priority)
             self.port_props.append(exc)
+
 
         # voltage/current planes
         m_start = np.array(start)
