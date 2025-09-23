@@ -429,18 +429,19 @@ class WaveguidePort(Port):
         if E_is_str:
             u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.E_func)
         else:
-            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
+            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.E_func)
         u_probe.AddBox(m_start, m_stop)
         self.port_props.append(u_probe)
 
         i_probe = None
-        if E_is_str:
-            i_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.H_func)
-        else:
-            i_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.H_func)
         self.I_filenames = [self.lbl_temp.format('it'), ]
+        if H_is_str:
+            i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, mode_file_name=self.H_func)
+        else:
+            i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, mode_file_name=self.H_func)
         i_probe.AddBox(m_start, m_stop)
-
+        self.port_props.append(i_probe)
+        
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse', ZL = -1):
         k = 2.0*np.pi*freq/C0*self.ref_index
         self.beta = np.sqrt(k**2 - self.kc**2)
