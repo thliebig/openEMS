@@ -93,7 +93,7 @@ protected:
 	FDTD_FLOAT* Curr_amp; //represented as edge-currents!!
 	unsigned int* Curr_delay;
 
-	bool shiftCoordsForModeFile(double const * coords, CSPrimitives * cPrim);
+	bool shiftCoordsForModeFile(double * const coords, CSPrimitives * cPrim);
 };
 
 #endif // OPERATOR_EXT_EXCITATION_H

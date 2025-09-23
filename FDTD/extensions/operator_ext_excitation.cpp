@@ -103,7 +103,7 @@ Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op, Operator_Ext_Exci
 	Init();
 }
 
-bool Operator_Ext_Excitation::shiftCoordsForModeFile(double const * coord0, CSPrimitives * cPrim)
+bool Operator_Ext_Excitation::shiftCoordsForModeFile(double * const coord0, CSPrimitives * cPrim)
 {
 	CSPrimBox* primBox = cPrim->ToBox();
 	if (primBox == NULL)
@@ -113,10 +113,13 @@ bool Operator_Ext_Excitation::shiftCoordsForModeFile(double const * coord0, CSPr
 	}
 
 	for (int dirIdx = 0 ; dirIdx < 3 ; dirIdx++)
+	{
 		double OS = primBox->GetCoord(int(dirIdx*2));
-		// coord0[dirIdx] -=
+		coord0[dirIdx] -= OS;
+	}
 
 	return true;
+
 }
 
 bool Operator_Ext_Excitation::BuildExtension()
@@ -246,6 +249,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 									return false;
 
 							amp = elec->GetWeightedExcitation(n,curr_coord)*m_Op->GetEdgeLength(n,pos,true);// delta[n]*gridDelta;
+
 							if (amp!=0)
 							{
 								curr_vExcit.push_back(amp);
