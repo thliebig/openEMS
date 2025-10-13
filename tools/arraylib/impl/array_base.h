@@ -65,6 +65,7 @@ protected:
 
 	std::string m_name;
 	std::array<Index, rank> m_extent;
+	std::array<Index, rank> m_stride;
 	Index m_size, m_bytes;
 
 	T* __restrict m_ptr = NULL;
@@ -86,20 +87,6 @@ public:
 		return m_ptr[derived->linearIndex(tupleIndex)];
 	}
 
-	// Access array via arr[i][j][k] syntax with one index per operator[]
-	// implemented by a Subscript class, which uses template metaprogramming
-	// to either recursively return another Subscript, or return an actual
-	// reference T&. Performance of nested operator[] should be the same as
-	// as flat operator() (identical assembly code generation even on MSVC).
-	//
-	// Not recommended in new code anyway, only for legacy code compatibility.
-	Subscript<const ArrayBaseType, rank, 1>
-	operator[] (IndexType firstTupleIdx) const
-	{
-		auto subscriptAccessor = Subscript<const ArrayBaseType, rank, 0>(*this);
-		return subscriptAccessor[firstTupleIdx];
-	}
-
 	// This array must always be passed via reference, not value, because
 	// it's prohibitively expensive for GiB-sized simulation data. If the
 	// rule is ignored, different copies would hold the same underlying
@@ -111,6 +98,7 @@ public:
 	std::string                 name()              const { return m_name;     }
 	std::array<IndexType, rank> extent()            const { return m_extent;   }
 	IndexType                   extent(IndexType n) const { return m_extent[n];}
+	IndexType                   stride(IndexType n) const { return m_stride[n];}
 
 	// return the number of array elements
 	IndexType                   size()              const { return m_size;     }

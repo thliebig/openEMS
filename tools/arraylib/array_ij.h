@@ -35,9 +35,6 @@ template <typename T, typename IndexType>
 class ArrayLib::ArrayIJ :
 	public ArrayBase<ArrayIJ<T, IndexType>, T, 2, IndexType>
 {
-private:
-	IndexType m_stride;
-
 public:
 	using Base = ArrayBase<ArrayIJ<T, IndexType>, T, 2, IndexType>;
 	using Base::operator();
@@ -59,7 +56,8 @@ public:
 		this->m_ptr = Base::AllocatorType::alloc(this->m_size);
 
 		this->m_extent = extent;
-		this->m_stride = extent[1];
+		this->m_stride[0] = extent[1];
+		this->m_stride[1] = 1;
 	}
 
 	void Init(std::string name, IndexType extent[2])
@@ -80,7 +78,7 @@ public:
 
 	IndexType linearIndex(std::array<IndexType, 2> tupleIndex) const
 	{
-		return m_stride * tupleIndex[0] + tupleIndex[1];
+		return m_stride[0] * tupleIndex[0] + tupleIndex[1];
 	}
 
 	T& operator() (IndexType i, IndexType j) const

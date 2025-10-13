@@ -128,10 +128,10 @@ bool Operator_SSE_Compressed::CompressOperator()
 		{
 			for (pos[2]=0; pos[2]<numVectors; ++pos[2])
 			{
-				f4vector vv[3] = { f4_vv[0][pos[0]][pos[1]][pos[2]], f4_vv[1][pos[0]][pos[1]][pos[2]], f4_vv[2][pos[0]][pos[1]][pos[2]] };
-				f4vector vi[3] = { f4_vi[0][pos[0]][pos[1]][pos[2]], f4_vi[1][pos[0]][pos[1]][pos[2]], f4_vi[2][pos[0]][pos[1]][pos[2]] };
-				f4vector iv[3] = { f4_iv[0][pos[0]][pos[1]][pos[2]], f4_iv[1][pos[0]][pos[1]][pos[2]], f4_iv[2][pos[0]][pos[1]][pos[2]] };
-				f4vector ii[3] = { f4_ii[0][pos[0]][pos[1]][pos[2]], f4_ii[1][pos[0]][pos[1]][pos[2]], f4_ii[2][pos[0]][pos[1]][pos[2]] };
+				f4vector vv[3] = { f4_vv(0, pos[0], pos[1], pos[2]), f4_vv(1, pos[0], pos[1], pos[2]), f4_vv(2, pos[0], pos[1], pos[2]) };
+				f4vector vi[3] = { f4_vi(0, pos[0], pos[1], pos[2]), f4_vi(1, pos[0], pos[1], pos[2]), f4_vi(2, pos[0], pos[1], pos[2]) };
+				f4vector iv[3] = { f4_iv(0, pos[0], pos[1], pos[2]), f4_iv(1, pos[0], pos[1], pos[2]), f4_iv(2, pos[0], pos[1], pos[2]) };
+				f4vector ii[3] = { f4_ii(0, pos[0], pos[1], pos[2]), f4_ii(1, pos[0], pos[1], pos[2]), f4_ii(2, pos[0], pos[1], pos[2]) };
 				SSE_coeff c( vv, vi, iv, ii );
 
 				map<SSE_coeff,unsigned int>::iterator it;
@@ -148,13 +148,13 @@ bool Operator_SSE_Compressed::CompressOperator()
 						f4_ii_Compressed[n].push_back( ii[n] );
 					}
 					lookUpMap[c] = index;
-					m_Op_index[pos[0]][pos[1]][pos[2]] = index;
+					m_Op_index(pos[0], pos[1], pos[2]) = index;
 				}
 				else
 				{
 					// this operator is already in the list
 					unsigned int index = (*it).second;
-					m_Op_index[pos[0]][pos[1]][pos[2]] = index;
+					m_Op_index(pos[0], pos[1], pos[2]) = index;
 				}
 			}
 		}

@@ -35,9 +35,6 @@ template <typename T, typename IndexType>
 class ArrayLib::ArrayIJK :
 	public ArrayBase<ArrayIJK<T, IndexType>, T, 3, IndexType>
 {
-private:
-	std::array<IndexType, 3> m_stride;
-
 public:
 	using Base = ArrayBase<ArrayIJK<T, IndexType>, T, 3, IndexType>;
 	using Base::operator();
@@ -61,6 +58,7 @@ public:
 		this->m_extent = extent;
 		this->m_stride[0] = extent[1] * extent[2];
 		this->m_stride[1] = extent[2];
+		this->m_stride[2] = 1;
 	}
 
 	void Init(std::string name, IndexType extent[3])
@@ -81,9 +79,9 @@ public:
 
 	IndexType linearIndex(std::array<IndexType, 3> tupleIndex) const
 	{
-		return m_stride[0] * tupleIndex[0] +
-		       m_stride[1] * tupleIndex[1] +
-		                     tupleIndex[2];
+		return  m_stride[0] * tupleIndex[0] +
+		        m_stride[1] * tupleIndex[1] +
+		                      tupleIndex[2];
 	}
 
 	T& operator() (IndexType i, IndexType j, IndexType k) const

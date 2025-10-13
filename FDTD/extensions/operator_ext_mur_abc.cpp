@@ -154,7 +154,7 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 					c0t = m_v_phase * dT;
 				else
 					c0t = __C0__ * dT / sqrt(eps*mue);
-				m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] = (c0t - delta) / (c0t + delta);
+				m_Mur_Coeff_nyP(pos[m_nyP], pos[m_nyPP]) = (c0t - delta) / (c0t + delta);
 
 				//nPP
 				eps = mat->GetEpsilonWeighted(m_nyPP,coord);
@@ -163,7 +163,7 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 					c0t = m_v_phase * dT;
 				else
 					c0t = __C0__ * dT / sqrt(eps*mue);
-				m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] = (c0t - delta) / (c0t + delta);
+				m_Mur_Coeff_nyPP(pos[m_nyP], pos[m_nyPP]) = (c0t - delta) / (c0t + delta);
 
 			}
 			else
@@ -172,10 +172,10 @@ bool Operator_Ext_Mur_ABC::BuildExtension()
 					c0t = m_v_phase * dT;
 				else
 					c0t = __C0__ / sqrt(m_Op->GetBackgroundEpsR()*m_Op->GetBackgroundMueR()) * dT;
-				m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] = (c0t - delta) / (c0t + delta);
-				m_Mur_Coeff_nyPP[pos[m_nyP]][pos[m_nyPP]] = m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]];
+				m_Mur_Coeff_nyP (pos[m_nyP], pos[m_nyPP]) = (c0t - delta) / (c0t + delta);
+				m_Mur_Coeff_nyPP(pos[m_nyP], pos[m_nyPP]) = m_Mur_Coeff_nyP(pos[m_nyP], pos[m_nyPP]);
 			}
-//			cerr << m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] << " : " << m_Mur_Coeff_nyP[pos[m_nyP]][pos[m_nyPP]] << endl;
+//			cerr << m_Mur_Coeff_nyP(pos[m_nyP], pos[m_nyPP]) << " : " << m_Mur_Coeff_nyP(pos[m_nyP], pos[m_nyPP]) << endl;
 		}
 	}
 //	cerr << "Operator_Ext_Mur_ABC::BuildExtension(): " << m_ny << " @ " << m_LineNr << endl;

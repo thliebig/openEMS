@@ -38,49 +38,49 @@ public:
 	inline virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
-		return f4_volt[n][x][y][z%numVectors].f[z/numVectors];
+		return f4_volt(n, x, y, z%numVectors).f[z/numVectors];
 	}
 
 	inline virtual FDTD_FLOAT GetVolt(unsigned int n, const unsigned int pos[3]) const
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
-		return f4_volt[n][pos[0]][pos[1]][pos[2]%numVectors].f[pos[2]/numVectors];
+		return f4_volt(n, pos[0], pos[1], pos[2]%numVectors).f[pos[2]/numVectors];
 	}
 
 	inline virtual FDTD_FLOAT GetCurr(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
-		return f4_curr[n][x][y][z%numVectors].f[z/numVectors];
+		return f4_curr(n, x, y, z%numVectors).f[z/numVectors];
 	}
 
 	inline virtual FDTD_FLOAT GetCurr(unsigned int n, const unsigned int pos[3]) const
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
-		return f4_curr[n][pos[0]][pos[1]][pos[2]%numVectors].f[pos[2]/numVectors];
+		return f4_curr(n, pos[0], pos[1], pos[2]%numVectors).f[pos[2]/numVectors];
 	}
 
 	inline virtual void SetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
-		f4_volt[n][x][y][z%numVectors].f[z/numVectors]=value;
+		f4_volt(n, x, y, z%numVectors).f[z/numVectors]=value;
 	}
 
 	inline virtual void SetVolt(unsigned int n, const unsigned int pos[3], FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
-		f4_volt[n][pos[0]][pos[1]][pos[2]%numVectors].f[pos[2]/numVectors]=value;
+		f4_volt(n, pos[0], pos[1], pos[2]%numVectors).f[pos[2]/numVectors]=value;
 	}
 
 	inline virtual void SetCurr(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
-		f4_curr[n][x][y][z%numVectors].f[z/numVectors]=value;
+		f4_curr(n, x, y, z%numVectors).f[z/numVectors]=value;
 	}
 
 	inline virtual void SetCurr(unsigned int n, const unsigned int pos[3], FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
-		f4_curr[n][pos[0]][pos[1]][pos[2]%numVectors].f[pos[2]/numVectors]=value;
+		f4_curr(n, pos[0], pos[1], pos[2]%numVectors).f[pos[2]/numVectors]=value;
 	}
 
 protected:

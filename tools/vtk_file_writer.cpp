@@ -256,12 +256,12 @@ void VTK_File_Writer::AddVectorField(string fieldname, ArrayLib::ArrayNIJK<float
 			for (unsigned int i=0;i<m_MeshLines[0].size();++i)
 			{
 				if ((m_MeshType==0) || (m_NativeDump))
-					array->SetTuple3(id++,field[0][i][j][k],field[1][i][j][k],field[2][i][j][k]);
+					array->SetTuple3(id++,field(0, i, j, k),field(1, i, j, k),field(2, i, j, k));
 				else
 				{
-					out[0] = field[0][i][j][k] * cos_a - field[1][i][j][k] * sin_a;
-					out[1] = field[0][i][j][k] * sin_a + field[1][i][j][k] * cos_a;
-					out[2] = field[2][i][j][k];
+					out[0] = field(0, i, j, k) * cos_a - field(1, i, j, k) * sin_a;
+					out[1] = field(0, i, j, k) * sin_a + field(1, i, j, k) * cos_a;
+					out[2] = field(2, i, j, k);
 					array->SetTuple3(id++,out[0],out[1],out[2]);
 				}
 			}

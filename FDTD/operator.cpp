@@ -573,7 +573,7 @@ void Operator::DumpOperator2File(string filename)
 			ArrayLib::ArrayNIJK<FDTD_FLOAT> exc("exc", numLines);
 
 			for (unsigned int n=0; n<  Op_Ext_Exc->Volt_Count; ++n)
-				exc[  Op_Ext_Exc->Volt_dir[n]][  Op_Ext_Exc->Volt_index[0][n]][  Op_Ext_Exc->Volt_index[1][n]][  Op_Ext_Exc->Volt_index[2][n]] =   Op_Ext_Exc->Volt_amp[n];
+				exc(Op_Ext_Exc->Volt_dir[n], Op_Ext_Exc->Volt_index[0][n], Op_Ext_Exc->Volt_index[1][n], Op_Ext_Exc->Volt_index[2][n]) =   Op_Ext_Exc->Volt_amp[n];
 			vtk_Writer->AddVectorField("exc_volt",exc);
 		}
 
@@ -582,7 +582,7 @@ void Operator::DumpOperator2File(string filename)
 			ArrayLib::ArrayNIJK<FDTD_FLOAT> exc("exc", numLines);
 
 			for (unsigned int n=0; n<  Op_Ext_Exc->Curr_Count; ++n)
-				exc[  Op_Ext_Exc->Curr_dir[n]][  Op_Ext_Exc->Curr_index[0][n]][  Op_Ext_Exc->Curr_index[1][n]][  Op_Ext_Exc->Curr_index[2][n]] =   Op_Ext_Exc->Curr_amp[n];
+				exc(Op_Ext_Exc->Curr_dir[n], Op_Ext_Exc->Curr_index[0][n], Op_Ext_Exc->Curr_index[1][n], Op_Ext_Exc->Curr_index[2][n]) =   Op_Ext_Exc->Curr_amp[n];
 			vtk_Writer->AddVectorField("exc_curr",exc);
 		}
 	}
@@ -598,10 +598,10 @@ void Operator::DumpOperator2File(string filename)
 			for (pos[1]=0; pos[1]<numLines[1]; pos[1]++)
 				for (pos[2]=0; pos[2]<numLines[2]; pos[2]++)
 				{
-					vv_temp[n][pos[0]][pos[1]][pos[2]] = GetVV(n,pos);
-					vi_temp[n][pos[0]][pos[1]][pos[2]] = GetVI(n,pos);
-					iv_temp[n][pos[0]][pos[1]][pos[2]] = GetIV(n,pos);
-					ii_temp[n][pos[0]][pos[1]][pos[2]] = GetII(n,pos);
+					vv_temp(n, pos[0], pos[1], pos[2]) = GetVV(n,pos);
+					vi_temp(n, pos[0], pos[1], pos[2]) = GetVI(n,pos);
+					iv_temp(n, pos[0], pos[1], pos[2]) = GetIV(n,pos);
+					ii_temp(n, pos[0], pos[1], pos[2]) = GetII(n,pos);
 				}
 
 
@@ -758,10 +758,10 @@ void Operator::DumpMaterial2File(string filename)
 				{
 					double inMat[4];
 					Calc_EffMatPos(n, pos, inMat, vPrims);
-					epsilon[n][pos[0]][pos[1]][pos[2]] = inMat[0]/__EPS0__;
-					mue[n][pos[0]][pos[1]][pos[2]]     = inMat[2]/__MUE0__;
-					kappa[n][pos[0]][pos[1]][pos[2]]   = inMat[1];
-					sigma[n][pos[0]][pos[1]][pos[2]]   = inMat[3];
+					epsilon(n, pos[0], pos[1], pos[2]) = inMat[0]/__EPS0__;
+					mue(n, pos[0], pos[1], pos[2])     = inMat[2]/__MUE0__;
+					kappa(n, pos[0], pos[1], pos[2])   = inMat[1];
+					sigma(n, pos[0], pos[1], pos[2])   = inMat[3];
 				}
 			}
 		}
@@ -912,7 +912,7 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 		else
 		{
 			ArrayLib::ArrayNIJK<float>& m_epsR = *m_epsR_ptr;
-			return m_epsR[n][pos[0]][pos[1]][pos[2]];
+			return m_epsR(n, pos[0], pos[1], pos[2]);
 		}
 	case 1:
 		if (m_kappa_ptr == NULL)
@@ -920,7 +920,7 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 		else
 		{
 			ArrayLib::ArrayNIJK<float>& m_kappa = *m_kappa_ptr;
-			return m_kappa[n][pos[0]][pos[1]][pos[2]];
+			return m_kappa(n, pos[0], pos[1], pos[2]);
 		}
 	case 2:
 		if (m_mueR_ptr == NULL)
@@ -928,7 +928,7 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 		else
 		{
 			ArrayLib::ArrayNIJK<float>& m_mueR = *m_mueR_ptr;
-			return m_mueR[n][pos[0]][pos[1]][pos[2]];
+			return m_mueR(n, pos[0], pos[1], pos[2]);
 		}
 	case 3:
 		if (m_sigma_ptr == NULL)
@@ -936,7 +936,7 @@ double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) con
 		else
 		{
 			ArrayLib::ArrayNIJK<float>& m_sigma = *m_sigma_ptr;
-			return m_sigma[n][pos[0]][pos[1]][pos[2]];
+			return m_sigma(n, pos[0], pos[1], pos[2]);
 		}
 	}
 	return 0;
@@ -1188,22 +1188,22 @@ bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC, vector<CS
 	if (m_epsR_ptr)
 	{
 		ArrayLib::ArrayNIJK<float>& m_epsR = *m_epsR_ptr;
-		m_epsR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[0];
+		m_epsR(ny, pos[0], pos[1], pos[2]) =  EffMat[0];
 	}
 	if (m_kappa_ptr)
 	{
 		ArrayLib::ArrayNIJK<float>& m_kappa = *m_kappa_ptr;
-		m_kappa[ny][pos[0]][pos[1]][pos[2]] =  EffMat[1];
+		m_kappa(ny, pos[0], pos[1], pos[2]) =  EffMat[1];
 	}
 	if (m_mueR_ptr)
 	{
 		ArrayLib::ArrayNIJK<float>& m_mueR = *m_mueR_ptr;
-		m_mueR[ny][pos[0]][pos[1]][pos[2]] =  EffMat[2];
+		m_mueR(ny, pos[0], pos[1], pos[2]) =  EffMat[2];
 	}
 	if (m_sigma_ptr)
 	{
 		ArrayLib::ArrayNIJK<float>& m_sigma = *m_sigma_ptr;
-		m_sigma[ny][pos[0]][pos[1]][pos[2]] =  EffMat[3];
+		m_sigma(ny, pos[0], pos[1], pos[2]) =  EffMat[3];
 	}
 
 	double delta = GetEdgeLength(ny,pos);

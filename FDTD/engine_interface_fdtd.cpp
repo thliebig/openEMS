@@ -139,7 +139,7 @@ double Engine_Interface_FDTD::GetRawDualField(unsigned int n, const unsigned int
 	if ((type==1) && (m_Op->m_mueR_ptr) && (delta))
 	{
 		ArrayLib::ArrayNIJK<float>& m_mueR = *m_Op->m_mueR_ptr;
-		return value * m_mueR[n][pos[0]][pos[1]][pos[2]] / delta;
+		return value * m_mueR(n, pos[0], pos[1], pos[2]) / delta;
 	}
 	return 0.0;
 }
@@ -265,11 +265,11 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 		return value/delta;
 	if ((type==1) && (m_Op->m_kappa_ptr) && (delta)) {
 		ArrayLib::ArrayNIJK<float>& kappa = *m_Op->m_kappa_ptr;
-		return value * kappa[n][pos[0]][pos[1]][pos[2]] / delta;
+		return value * kappa(n, pos[0], pos[1], pos[2]) / delta;
 	}
 	if ((type==3) && (m_Op->m_epsR_ptr) && (delta)) {
 		ArrayLib::ArrayNIJK<float>& epsR = *m_Op->m_epsR_ptr;
-		return value * epsR[n][pos[0]][pos[1]][pos[2]] / delta;
+		return value * epsR(n, pos[0], pos[1], pos[2]) / delta;
 	}
 	if (type==2) //calc rot(H)
 	{

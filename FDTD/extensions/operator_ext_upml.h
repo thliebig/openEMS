@@ -90,12 +90,12 @@ protected:
 
 	void DeleteOp();
 
-	virtual FDTD_FLOAT& GetVV(int ny, unsigned int pos[3]) {return vv[ny][pos[0]][pos[1]][pos[2]];}
-	virtual FDTD_FLOAT& GetVVFO(int ny, unsigned int pos[3]) {return vvfo[ny][pos[0]][pos[1]][pos[2]];}
-	virtual FDTD_FLOAT& GetVVFN(int ny, unsigned int pos[3]) {return vvfn[ny][pos[0]][pos[1]][pos[2]];}
-	virtual FDTD_FLOAT& GetII(int ny, unsigned int pos[3]) {return ii[ny][pos[0]][pos[1]][pos[2]];}
-	virtual FDTD_FLOAT& GetIIFO(int ny, unsigned int pos[3]) {return iifo[ny][pos[0]][pos[1]][pos[2]];}
-	virtual FDTD_FLOAT& GetIIFN(int ny, unsigned int pos[3]) {return iifn[ny][pos[0]][pos[1]][pos[2]];}
+	virtual FDTD_FLOAT& GetVV  (int ny, unsigned int pos[3]) {return vv  (ny, pos[0], pos[1], pos[2]);}
+	virtual FDTD_FLOAT& GetVVFO(int ny, unsigned int pos[3]) {return vvfo(ny, pos[0], pos[1], pos[2]);}
+	virtual FDTD_FLOAT& GetVVFN(int ny, unsigned int pos[3]) {return vvfn(ny, pos[0], pos[1], pos[2]);}
+	virtual FDTD_FLOAT& GetII  (int ny, unsigned int pos[3]) {return ii  (ny, pos[0], pos[1], pos[2]);}
+	virtual FDTD_FLOAT& GetIIFO(int ny, unsigned int pos[3]) {return iifo(ny, pos[0], pos[1], pos[2]);}
+	virtual FDTD_FLOAT& GetIIFN(int ny, unsigned int pos[3]) {return iifn(ny, pos[0], pos[1], pos[2]);}
 
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> vv;   //calc new voltage from old voltage
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> vvfo; //calc new voltage from old voltage flux

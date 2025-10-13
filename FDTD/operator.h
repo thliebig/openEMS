@@ -62,24 +62,24 @@ public:
 	inline virtual FDTD_FLOAT GetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vv = *vv_ptr;
-		return vv[n][x][y][z];
+		return vv(n, x, y, z);
 	}
 
 	inline virtual FDTD_FLOAT GetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vi = *vi_ptr;
-		return vi[n][x][y][z];
+		return vi(n, x, y, z);
 	}
 
 	inline virtual FDTD_FLOAT GetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& ii = *ii_ptr;
-		return ii[n][x][y][z];
+		return ii(n, x, y, z);
 	}
 	inline virtual FDTD_FLOAT GetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& iv = *iv_ptr;
-		return iv[n][x][y][z];
+		return iv(n, x, y, z);
 	}
 
 	// convenient access functions
@@ -105,22 +105,22 @@ public:
 	inline virtual void SetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vv = *vv_ptr;
-		vv[n][x][y][z] = value;
+		vv(n, x, y, z) = value;
 	}
 	inline virtual void SetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& vi = *vi_ptr;
-		vi[n][x][y][z] = value;
+		vi(n, x, y, z) = value;
 	}
 	inline virtual void SetII(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& ii = *ii_ptr;
-		ii[n][x][y][z] = value;
+		ii(n, x, y, z) = value;
 	}
 	inline virtual void SetIV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& iv = *iv_ptr;
-		iv[n][x][y][z] = value;
+		iv(n, x, y, z) = value;
 	}
 
 	virtual void ApplyElectricBC(bool* dirs); //applied by default to all boundaries

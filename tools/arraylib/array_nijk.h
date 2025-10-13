@@ -35,9 +35,6 @@ template <typename T, typename IndexType, size_t extentN>
 class ArrayLib::ArrayNIJK :
 	public ArrayBase<ArrayNIJK<T, IndexType>, T, 4, IndexType>
 {
-private:
-	std::array<IndexType, 2> m_stride;
-
 public:
 	using Base = ArrayBase<ArrayNIJK<T, IndexType>, T, 4, IndexType>;
 	using Base::operator();
@@ -59,8 +56,18 @@ public:
 		this->m_ptr = Base::AllocatorType::alloc(this->m_size);
 
 		this->m_extent = {extentN, extent[0], extent[1], extent[2]};
-		this->m_stride[0] = extent[1] * extent[2] * extentN;
-		this->m_stride[1] = extent[2] * extentN;
+
+		// N-I-J-K ordering
+		this->m_stride[0] = extent[0] * extent[1] * extent[2];
+		this->m_stride[1] = extent[1] * extent[2];
+		this->m_stride[2] = extent[2];
+		this->m_stride[3] = 1;
+
+		// I-J-K-N ordering
+		// this->m_stride[1] = extent[1] * extent[2] * extentN;
+		// this->m_stride[2] = extent[2] * extentN;
+		// this->m_stride[3] = extentN;
+		// this->m_stride[0] = 1;
 	}
 
 	void Init(std::string name, IndexType extent[3])
@@ -79,15 +86,12 @@ public:
 		Init(name, {extent[0], extent[1], extent[2]});
 	}
 
-	// Access syntax is (n, i, j, k) but its memory layout is (i, j, k, n),
-	// in which n is the stride-1 dimension. In openEMS, performance is
-	// 20% higher.
 	IndexType linearIndex(std::array<IndexType, 4> tupleIndex) const
 	{
-		return tupleIndex[1] * m_stride[0] + \
-		       tupleIndex[2] * m_stride[1] +
-			   tupleIndex[3] * extentN +
-			   tupleIndex[0];
+		return  m_stride[0] * tupleIndex[0] +
+		        m_stride[1] * tupleIndex[1] +
+		        m_stride[2] * tupleIndex[2] +
+		        m_stride[3] * tupleIndex[3];
 	}
 
 	T& operator() (IndexType n, IndexType i, IndexType j, IndexType k) const

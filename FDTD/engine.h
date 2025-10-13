@@ -55,49 +55,49 @@ public:
 	inline virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
-		return volt[n][x][y][z];
+		return volt(n,x,y,z);
 	}
 
 	inline virtual FDTD_FLOAT GetVolt(unsigned int n, const unsigned int pos[3]) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
-		return volt[n][pos[0]][pos[1]][pos[2]];
+		return volt(n, pos[0], pos[1], pos[2]);
 	}
 
 	inline virtual FDTD_FLOAT GetCurr(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
-		return curr[n][x][y][z];
+		return curr(n,x,y,z);
 	}
 
 	inline virtual FDTD_FLOAT GetCurr(unsigned int n, const unsigned int pos[3]) const
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
-		return curr[n][pos[0]][pos[1]][pos[2]];
+		return curr(n, pos[0], pos[1], pos[2]);
 	}
 
 	inline virtual void SetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
-		volt[n][x][y][z] = value;
+		volt(n,x,y,z) = value;
 	}
 
 	inline virtual void SetVolt(unsigned int n, const unsigned int pos[3], FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
-		volt[n][pos[0]][pos[1]][pos[2]] = value;
+		volt(n, pos[0], pos[1], pos[2]) = value;
 	}
 
 	inline virtual void SetCurr(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
-		curr[n][x][y][z] = value;
+		curr(n,x,y,z) = value;
 	}
 
 	inline virtual void SetCurr(unsigned int n, const unsigned int pos[3], FDTD_FLOAT value )
 	{
 		ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
-		curr[n][pos[0]][pos[1]][pos[2]] = value;
+		curr(n, pos[0], pos[1], pos[2]) = value;
 	}
 
 	//! Execute Pre-Voltage extension updates
