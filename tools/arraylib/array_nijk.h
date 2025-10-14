@@ -40,9 +40,7 @@ public:
 	using Base::operator();
 
 	// 2-phase initialization: user declares a dummy array object first,
-	// and calls Init() later. Ugly but needed because openEMS's FDTD
-	// engine itself uses the 2-phase initialization pattern, we can't
-	// determine simulation domain size in the constructor.
+	// and calls Init() later.
 	ArrayNIJK() {}
 
 	void Init(std::string name, std::array<IndexType, 3> extent)

@@ -27,7 +27,6 @@
 
 #include "engine_multithread.h"
 #include "extensions/engine_extension.h"
-#include "tools/array_ops.h"
 #include "tools/denormal.h"
 
 #include "boost/date_time/posix_time/posix_time.hpp"

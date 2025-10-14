@@ -55,18 +55,14 @@ template <
 >
 class ArrayLib::ArrayBase
 {
-private:
-	using ArrayBaseType = ArrayBase<
-		Derived, T, rank, Index, Allocator
-	>;
-
 protected:
+	using IndexType = Index;
 	using AllocatorType = Allocator;
 
 	std::string m_name;
-	std::array<Index, rank> m_extent;
-	std::array<Index, rank> m_stride;
-	Index m_size, m_bytes;
+	std::array<IndexType, rank> m_extent;
+	std::array<IndexType, rank> m_stride;
+	IndexType m_size, m_bytes;
 
 	T* __restrict m_ptr = NULL;
 
@@ -74,9 +70,6 @@ protected:
 	ArrayBase() {}
 
 public:
-	using IndexType = Index;
-	using ValueType = T;
-
 	// Access array via arr({i, j, k}) syntax with one array of indices.
 	// Each derived class should also implement operator(i, j, k), which
 	// is the recommended syntax.

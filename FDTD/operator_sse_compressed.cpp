@@ -18,7 +18,6 @@
 #include "operator_sse_compressed.h"
 #include "engine_sse_compressed.h"
 #include "engine_sse.h"
-#include "tools/array_ops.h"
 
 #include <map>
 #include <cstring>

@@ -18,7 +18,6 @@
 #include "operator_ext_upml.h"
 #include "FDTD/operator_cylindermultigrid.h"
 #include "engine_ext_upml.h"
-#include "tools/array_ops.h"
 #include "fparser.hh"
 
 using namespace std;

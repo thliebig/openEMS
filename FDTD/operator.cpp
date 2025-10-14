@@ -22,7 +22,6 @@
 #include "extensions/operator_extension.h"
 #include "extensions/operator_ext_excitation.h"
 #include "Common/processfields.h"
-#include "tools/array_ops.h"
 #include "tools/vtk_file_writer.h"
 #include "fparser.hh"
 #include "extensions/operator_ext_excitation.h"

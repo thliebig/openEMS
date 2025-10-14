@@ -19,7 +19,6 @@
 #include "operator_ext_upml.h"
 #include "FDTD/engine.h"
 #include "FDTD/engine_sse.h"
-#include "tools/array_ops.h"
 #include "tools/useful.h"
 
 Engine_Ext_UPML::Engine_Ext_UPML(Operator_Ext_UPML* op_ext) : Engine_Extension(op_ext)

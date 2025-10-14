@@ -17,8 +17,6 @@
 
 #include "operator_ext_dispersive.h"
 
-#include "tools/array_ops.h"
-
 using namespace std;
 
 Operator_Ext_Dispersive::Operator_Ext_Dispersive(Operator* op) : Operator_Extension(op)

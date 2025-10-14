@@ -19,7 +19,6 @@
 #include "tools/array_ops.h"
 #include "tools/constants.h"
 //#include "cond_sheet_parameter.h"
-#include "tools/AdrOp.h"
 
 #include "operator_ext_lumpedRLC.h"
 #include "engine_ext_lumpedRLC.h"

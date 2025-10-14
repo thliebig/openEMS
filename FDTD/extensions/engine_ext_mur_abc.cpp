@@ -19,7 +19,6 @@
 #include "operator_ext_mur_abc.h"
 #include "FDTD/engine.h"
 #include "FDTD/engine_sse.h"
-#include "tools/array_ops.h"
 #include "tools/useful.h"
 #include "operator_ext_excitation.h"
 

@@ -20,7 +20,6 @@
 #include "engine_sse_compressed.h"
 #include "engine_mpi.h"
 #include "extensions/operator_extension.h"
-#include "tools/array_ops.h"
 #include "tools/useful.h"
 #include "mpi.h"
 

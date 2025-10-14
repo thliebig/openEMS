@@ -18,8 +18,6 @@
 #include "operator_ext_mur_abc.h"
 #include "engine_ext_mur_abc.h"
 
-#include "tools/array_ops.h"
-
 #include "CSPropMaterial.h"
 
 Operator_Ext_Mur_ABC::Operator_Ext_Mur_ABC(Operator* op) : Operator_Extension(op)

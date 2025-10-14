@@ -17,7 +17,6 @@
 
 #include "engine_sse.h"
 #include "operator_sse.h"
-#include "tools/array_ops.h"
 //#include "processfields.h"
 
 Operator_sse* Operator_sse::New()

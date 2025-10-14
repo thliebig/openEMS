@@ -19,7 +19,6 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
-#include "tools/array_ops.h"
 #include "tools/signal.h"
 #include "tools/useful.h"
 #include "FDTD/operator_cylinder.h"
