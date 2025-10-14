@@ -76,7 +76,7 @@ public:
 
 	IndexType linearIndex(std::array<IndexType, 2> tupleIndex) const
 	{
-		return m_stride[0] * tupleIndex[0] + tupleIndex[1];
+		return this->m_stride[0] * tupleIndex[0] + tupleIndex[1];
 	}
 
 	T& operator() (IndexType i, IndexType j) const

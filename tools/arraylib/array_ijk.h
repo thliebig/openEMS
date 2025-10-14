@@ -77,8 +77,8 @@ public:
 
 	IndexType linearIndex(std::array<IndexType, 3> tupleIndex) const
 	{
-		return  m_stride[0] * tupleIndex[0] +
-		        m_stride[1] * tupleIndex[1] +
+		return  this->m_stride[0] * tupleIndex[0] +
+		        this->m_stride[1] * tupleIndex[1] +
 		                      tupleIndex[2];
 	}
 
