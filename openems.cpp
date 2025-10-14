@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2010-2015 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2010 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -378,7 +378,7 @@ void openEMS::WelcomeScreen()
 
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << " | openEMS " << bits << " -- version " << GIT_VERSION << endl;
-	cout << " | (C) 2010-2023 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
+	cout << " | (C) 2010-2025 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << openEMS::GetExtLibsInfo("\t") << endl;
 }
