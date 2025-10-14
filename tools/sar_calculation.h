@@ -20,8 +20,9 @@
 
 #include <complex>
 #include "arraylib/array_ijk.h"
+#include "../openems_global.h"
 
-class SAR_Calculation
+class OPENEMS_EXPORT SAR_Calculation
 {
 public:
 	SAR_Calculation();

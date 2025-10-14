@@ -25,6 +25,7 @@
 #include <time.h>
 #include "sar_calculation.h"
 #include "cfloat"
+#include "useful.h"
 #include "array_ops.h"
 #include "global.h"
 #include "hdf5_file_writer.h"
@@ -206,7 +207,7 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 	}
 
 	vector<float> freq;
-	if ((h5_reader.ReadFrequencies(freq)==false) or (freq.size()==0))
+	if ((h5_reader.ReadFrequencies(freq)==false) || (freq.size()==0))
 	{
 		cerr << "SAR_Calculation::CalcFromHDF5: No frequencies found..." << endl;
 		return false;
