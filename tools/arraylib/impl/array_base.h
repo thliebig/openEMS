@@ -59,10 +59,10 @@ protected:
 	using IndexType = Index;
 	using AllocatorType = Allocator;
 
-	std::string m_name;
-	std::array<IndexType, rank> m_extent;
-	std::array<IndexType, rank> m_stride;
-	IndexType m_size, m_bytes;
+	std::string m_name="";
+	std::array<IndexType, rank> m_extent = {};
+	std::array<IndexType, rank> m_stride = {};
+	IndexType m_size=0, m_bytes=0;
 
 	T* __restrict m_ptr = NULL;
 
@@ -80,6 +80,20 @@ public:
 		return m_ptr[derived->linearIndex(tupleIndex)];
 	}
 
+	void Reset()
+	{
+		if (this->m_ptr==NULL) return;
+		AllocatorType::free(this->m_ptr, this->m_size);
+		this->m_name = "";
+		this->m_ptr  = NULL;
+		this->m_size = 0;
+		for (int n=0;n<rank;++n)
+		{
+			this->m_extent[n] = 0;
+			this->m_stride[n] = 0;
+		}
+	}
+
 	// This array must always be passed via reference, not value, because
 	// it's prohibitively expensive for GiB-sized simulation data. If the
 	// rule is ignored, different copies would hold the same underlying
@@ -87,11 +101,13 @@ public:
 	// the entire program.
 	ArrayBase (const ArrayBase&) = delete;
 	ArrayBase& operator= (const ArrayBase&) = delete;
+	~ArrayBase() {Reset();}
 
 	std::string                 name()              const { return m_name;     }
 	std::array<IndexType, rank> extent()            const { return m_extent;   }
 	IndexType                   extent(IndexType n) const { return m_extent[n];}
 	IndexType                   stride(IndexType n) const { return m_stride[n];}
+	bool                        valid()             const { return m_ptr!=NULL;}
 
 	// return the number of array elements
 	IndexType                   size()              const { return m_size;     }

@@ -96,11 +96,6 @@ public:
 	{
 		return this->m_ptr[linearIndex({n, i, j, k})];
 	}
-
-	~ArrayNIJK()
-	{
-		Base::AllocatorType::free(this->m_ptr, this->m_size);
-	}
 };
 
 #endif // ARRAYLIB_ARRAY_NIJK_H

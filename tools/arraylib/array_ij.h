@@ -76,17 +76,12 @@ public:
 
 	IndexType linearIndex(std::array<IndexType, 2> tupleIndex) const
 	{
-		return this->m_stride[0] * tupleIndex[0] + tupleIndex[1];
+		return this->m_stride[0] * tupleIndex[0] + this->m_stride[1] * tupleIndex[1];
 	}
 
 	T& operator() (IndexType i, IndexType j) const
 	{
 		return this->m_ptr[linearIndex({i, j})];
-	}
-
-	~ArrayIJ()
-	{
-		Base::AllocatorType::free(this->m_ptr, this->m_size);
 	}
 };
 
