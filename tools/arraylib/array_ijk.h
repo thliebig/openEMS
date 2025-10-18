@@ -79,17 +79,12 @@ public:
 	{
 		return  this->m_stride[0] * tupleIndex[0] +
 		        this->m_stride[1] * tupleIndex[1] +
-		                      tupleIndex[2];
+		        this->m_stride[2] * tupleIndex[2];
 	}
 
 	T& operator() (IndexType i, IndexType j, IndexType k) const
 	{
 		return this->m_ptr[linearIndex({i, j, k})];
-	}
-
-	~ArrayIJK()
-	{
-		Base::AllocatorType::free(this->m_ptr, this->m_size);
 	}
 };
 
