@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2011-2025 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ using namespace std;
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include "hdf5_file_reader.h"
 
 HDF5_File_Writer::HDF5_File_Writer(string filename)
 {
@@ -34,7 +35,6 @@ HDF5_File_Writer::HDF5_File_Writer(string filename)
 	{
 		cerr << "HDF5_File_Writer::HDF5_File_Writer: Error, creating the given file """ << m_filename << """ failed" << endl;
 	}
-	WriteAtrribute("/", "openEMS_HDF5_ver", 2);
 	H5Fclose(hdf5_file);
 }
 
@@ -195,223 +195,36 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, double const*
 	return true;
 }
 
-bool HDF5_File_Writer::WriteScalarField(std::string dataSetName, float const* const* const* field, size_t datasize[3])
+template <typename T>
+bool HDF5_File_Writer::WriteScalarField(std::string dataSetName, ArrayLib::ArrayIJK<T> &data)
 {
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2];
-	size_t n_size[3]={datasize[2],datasize[1],datasize[0]};
-	float* buffer = new float[size];
-	for (size_t k=0;k<datasize[2];++k)
-		for (size_t j=0;j<datasize[1];++j)
-			for (size_t i=0;i<datasize[0];++i)
-			{
-				buffer[pos++]=field[i][j][k];
-			}
-	bool success = WriteData(dataSetName,buffer,3,n_size, "ZYX");
-	delete[] buffer;
-	return success;
+	size_t size = data.size();
+	void* buffer = (void*)data.data();
+	size_t n_size[3]={data.extent(0),data.extent(1),data.extent(2)};
+	hid_t type = HDF5_File_Reader::GetH5Type<T>();
+	// (std::string dataSetName, hid_t mem_type, void const* field_buf, size_t dim, size_t* datasize, std::string d_order="");
+	return WriteData(dataSetName, type, buffer, 3, n_size, "XYZ");
 }
 
-bool HDF5_File_Writer::WriteScalarField(std::string dataSetName, double const* const* const* field, size_t datasize[3])
+// Explicit template instantiation
+template bool HDF5_File_Writer::WriteScalarField<float>(std::string dataSetName, ArrayLib::ArrayIJK<float> &data);
+template bool HDF5_File_Writer::WriteScalarField<std::complex<float>>(std::string dataSetName, ArrayLib::ArrayIJK<std::complex<float>> &data);
+
+template <typename T>
+bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, ArrayLib::ArrayNIJK<T> &data)
 {
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2];
-	size_t n_size[3]={datasize[2],datasize[1],datasize[0]};
-	double* buffer = new double[size];
-	for (size_t k=0;k<datasize[2];++k)
-		for (size_t j=0;j<datasize[1];++j)
-			for (size_t i=0;i<datasize[0];++i)
-			{
-				buffer[pos++]=field[i][j][k];
-			}
-	bool success = WriteData(dataSetName,buffer,3,n_size, "ZYX");
-	delete[] buffer;
-	return success;
+	size_t size = data.size();
+	void* buffer = (void*)data.data();
+	size_t n_size[4]={data.extent(0),data.extent(1),data.extent(2),data.extent(3)};
+	hid_t type = HDF5_File_Reader::GetH5Type<T>();
+	return WriteData(dataSetName, type, buffer, 4, n_size, "NXYZ");
 }
 
-bool HDF5_File_Writer::WriteScalarField(std::string dataSetName, std::complex<float> const* const* const* field, size_t datasize[3])
-{
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2];
-	size_t n_size[3]={datasize[2],datasize[1],datasize[0]};
-	float* buffer = new float[size];
-	for (size_t k=0;k<datasize[2];++k)
-		for (size_t j=0;j<datasize[1];++j)
-			for (size_t i=0;i<datasize[0];++i)
-			{
-				buffer[pos++]=real(field[i][j][k]);
-			}
-	bool success = WriteData(dataSetName + "_real",buffer,3,n_size, "ZYX");
+// Explicit template instantiation
+template bool HDF5_File_Writer::WriteVectorField<float>(std::string dataSetName, ArrayLib::ArrayNIJK<float> &data);
+template bool HDF5_File_Writer::WriteVectorField<std::complex<float>>(std::string dataSetName, ArrayLib::ArrayNIJK<std::complex<float>> &data);
+template bool HDF5_File_Writer::WriteVectorField<std::complex<double>>(std::string dataSetName, ArrayLib::ArrayNIJK<std::complex<double>> &data);
 
-	pos = 0;
-	for (size_t k=0;k<datasize[2];++k)
-		for (size_t j=0;j<datasize[1];++j)
-			for (size_t i=0;i<datasize[0];++i)
-			{
-				buffer[pos++]=imag(field[i][j][k]);
-			}
-	success &= WriteData(dataSetName + "_imag",buffer,3,n_size, "ZYX");
-
-	delete[] buffer;
-	return success;
-}
-
-bool HDF5_File_Writer::WriteScalarField(std::string dataSetName, std::complex<double> const* const* const* field, size_t datasize[3])
-{
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2];
-	size_t n_size[3]={datasize[2],datasize[1],datasize[0]};
-	double* buffer = new double[size];
-	for (size_t k=0;k<datasize[2];++k)
-		for (size_t j=0;j<datasize[1];++j)
-			for (size_t i=0;i<datasize[0];++i)
-			{
-				buffer[pos++]=real(field[i][j][k]);
-			}
-	bool success = WriteData(dataSetName + "_real",buffer,3,n_size, "ZYX");
-
-	pos = 0;
-	for (size_t k=0;k<datasize[2];++k)
-		for (size_t j=0;j<datasize[1];++j)
-			for (size_t i=0;i<datasize[0];++i)
-			{
-				buffer[pos++]=imag(field[i][j][k]);
-			}
-	success &= WriteData(dataSetName + "_imag",buffer,3,n_size, "ZYX");
-
-	delete[] buffer;
-	return success;
-}
-
-bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, float const* const* const* const* field, size_t datasize[3])
-{
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2]*3;
-	float* buffer = new float[size];
-	for (int n=0;n<3;++n)
-		for (size_t k=0;k<datasize[2];++k)
-			for (size_t j=0;j<datasize[1];++j)
-				for (size_t i=0;i<datasize[0];++i)
-				{
-					buffer[pos++]=field[n][i][j][k];
-				}
-	size_t n_size[4]={3,datasize[2],datasize[1],datasize[0]};
-	bool success = WriteData(dataSetName,buffer,4,n_size, "NZYX");
-	delete[] buffer;
-	return success;
-}
-
-bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, double const* const* const* const* field, size_t datasize[3])
-{
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2]*3;
-	double* buffer = new double[size];
-	for (int n=0;n<3;++n)
-		for (size_t k=0;k<datasize[2];++k)
-			for (size_t j=0;j<datasize[1];++j)
-				for (size_t i=0;i<datasize[0];++i)
-				{
-					buffer[pos++]=field[n][i][j][k];
-				}
-	size_t n_size[4]={3,datasize[2],datasize[1],datasize[0]};
-	bool success = WriteData(dataSetName,buffer,4,n_size, "NZYX");
-	delete[] buffer;
-	return success;
-}
-
-bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, std::complex<float> const* const* const* const* field, size_t datasize[3], bool legacy_fmt)
-{
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2]*3;
-	bool success = true;
-	if (legacy_fmt)
-	{
-		size_t n_size[4]={3,datasize[2],datasize[1],datasize[0]};
-		float* buffer = new float[size];
-		for (int n=0;n<3;++n)
-			for (size_t k=0;k<datasize[2];++k)
-				for (size_t j=0;j<datasize[1];++j)
-					for (size_t i=0;i<datasize[0];++i)
-					{
-						buffer[pos++]=real(field[n][i][j][k]);
-					}
-		success &= WriteData(dataSetName + "_real",buffer,4,n_size, "NZYX");
-
-		pos = 0;
-		for (int n=0;n<3;++n)
-			for (size_t k=0;k<datasize[2];++k)
-				for (size_t j=0;j<datasize[1];++j)
-					for (size_t i=0;i<datasize[0];++i)
-					{
-						buffer[pos++]=imag(field[n][i][j][k]);
-					}
-		success &= WriteData(dataSetName + "_imag",buffer,4,n_size, "NZYX");
-		delete[] buffer;
-	}
-	else
-	{
-		std::complex<float>* c_buffer = new std::complex<float>[size];
-		pos = 0;
-		size_t c_size[4]={3,datasize[0],datasize[1],datasize[2]};
-		for (int n=0;n<3;++n)
-			for (size_t i=0;i<datasize[0];++i)
-				for (size_t j=0;j<datasize[1];++j)
-					for (size_t k=0;k<datasize[2];++k)
-					{
-						c_buffer[pos++]=field[n][i][j][k];
-					}
-		success &= WriteData(dataSetName,c_buffer,4,c_size, "NXYZ");
-		delete[] c_buffer;
-	}
-	return success;
-}
-
-bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, std::complex<double> const* const* const* const* field, size_t datasize[3], bool legacy_fmt)
-{
-	size_t pos = 0;
-	size_t size = datasize[0]*datasize[1]*datasize[2]*3;
-	bool success = true;
-	if (legacy_fmt)
-	{
-		size_t n_size[4]={3,datasize[2],datasize[1],datasize[0]};
-		double* buffer = new double[size];
-		for (int n=0;n<3;++n)
-			for (size_t k=0;k<datasize[2];++k)
-				for (size_t j=0;j<datasize[1];++j)
-					for (size_t i=0;i<datasize[0];++i)
-					{
-						buffer[pos++]=real(field[n][i][j][k]);
-					}
-		success &= WriteData(dataSetName + "_real",buffer,4,n_size, "NZYX");
-
-		pos = 0;
-		for (int n=0;n<3;++n)
-			for (size_t k=0;k<datasize[2];++k)
-				for (size_t j=0;j<datasize[1];++j)
-					for (size_t i=0;i<datasize[0];++i)
-					{
-						buffer[pos++]=imag(field[n][i][j][k]);
-					}
-		success &= WriteData(dataSetName + "_imag",buffer,4,n_size, "NXYZ");
-		delete[] buffer;
-	}
-	else
-	{
-		std::complex<double>* c_buffer = new std::complex<double>[size];
-		pos = 0;
-		size_t c_size[4]={3,datasize[0],datasize[1],datasize[2]};
-		for (int n=0;n<3;++n)
-			for (size_t i=0;i<datasize[0];++i)
-				for (size_t j=0;j<datasize[1];++j)
-					for (size_t k=0;k<datasize[2];++k)
-					{
-						c_buffer[pos++]=field[n][i][j][k];
-					}
-		success &= WriteData(dataSetName,c_buffer,4,c_size, "NXYZ");
-		delete[] c_buffer;
-	}
-	return success;
-}
 
 bool HDF5_File_Writer::WriteData(std::string dataSetName, float const* field_buf, size_t dim, size_t* datasize, std::string d_order)
 {
@@ -425,31 +238,13 @@ bool HDF5_File_Writer::WriteData(std::string dataSetName, double const* field_bu
 
 bool HDF5_File_Writer::WriteData(std::string dataSetName, std::complex<float> const* field_buf, size_t dim, size_t* datasize, std::string d_order)
 {
-	typedef struct {
-	float re;   /*real part */
-	float im;   /*imaginary part */
-	} complex_t;
-
-	// create numpy compatible complex64
-	complex_t tmp;  /*used only to compute offsets */
-	hid_t complex_id = H5Tcreate (H5T_COMPOUND, sizeof tmp);
-	H5Tinsert (complex_id, "r", HOFFSET(complex_t,re), H5T_NATIVE_FLOAT);
-	H5Tinsert (complex_id, "i", HOFFSET(complex_t,im), H5T_NATIVE_FLOAT);
+	hid_t complex_id = HDF5_File_Reader::GetH5Type<std::complex<float>>();
 	return WriteData(dataSetName, complex_id, field_buf,dim, datasize, d_order);
 }
 
 bool HDF5_File_Writer::WriteData(std::string dataSetName, std::complex<double> const* field_buf, size_t dim, size_t* datasize, std::string d_order)
 {
-	typedef struct {
-	double re;   /*real part */
-	double im;   /*imaginary part */
-	} complex_t;
-
-	// create numpy compatible complex128
-	complex_t tmp;  /*used only to compute offsets */
-	hid_t complex_id = H5Tcreate (H5T_COMPOUND, sizeof tmp);
-	H5Tinsert (complex_id, "r", HOFFSET(complex_t,re), H5T_NATIVE_DOUBLE);
-	H5Tinsert (complex_id, "i", HOFFSET(complex_t,im), H5T_NATIVE_DOUBLE);
+	hid_t complex_id = HDF5_File_Reader::GetH5Type<std::complex<double>>();
 	return WriteData(dataSetName, complex_id, field_buf,dim, datasize, d_order);
 }
 
@@ -625,4 +420,9 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	bool ok = HDF5_File_Writer::WriteAtrribute(locName, attr_name, &s_ptr, 0, tid);
 	H5Tclose(tid);
 	return ok;
+}
+
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, bool value)
+{
+	return HDF5_File_Writer::WriteAtrribute(locName, attr_name, &value, 0, H5T_NATIVE_HBOOL);
 }

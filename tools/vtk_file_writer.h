@@ -26,6 +26,7 @@
 #include <complex>
 
 #include "tools/arraylib/array_nijk.h"
+#include "tools/arraylib/array_ijk.h"
 
 class vtkDataSet;
 
@@ -51,10 +52,7 @@ public:
 
 	virtual void SetMeshLines(double const* const* lines, unsigned int const* count, double scaling=1);
 
-	virtual void AddScalarField(std::string fieldname, double const* const* const* field);
-	virtual void AddScalarField(std::string fieldname, float const* const* const* field);
-	virtual void AddVectorField(std::string fieldname, double const* const* const* const* field);
-	virtual void AddVectorField(std::string fieldname, float const* const* const* const* field);
+	virtual void AddScalarField(std::string fieldname, ArrayLib::ArrayIJK<float> &field);
 	virtual void AddVectorField(std::string fieldname, ArrayLib::ArrayNIJK<float>& field);
 
 	virtual int GetNumberOfFields() const;

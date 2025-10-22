@@ -10,7 +10,8 @@ def readSAR(fn, f_idx=0):
             sar = h5[f'/FieldData/FD/f{f_idx}']
             sar_data.update(sar.attrs)
             sar = np.array(sar)
-            sar = sar.swapaxes(0,2)
+            if h5.attrs['openEMS_HDF5_version'] <= 0.2:
+                sar = sar.swapaxes(0,2)
             mesh = [None, None, None]
             for n, d in enumerate('xyz'):
                 mesh[n] = np.array(h5['Mesh/'+d])

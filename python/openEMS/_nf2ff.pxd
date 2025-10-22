@@ -33,13 +33,6 @@ cdef extern from "openEMS/nf2ff.h":
 
         void SetMirror(int _type, int _dir, float pos);
 
-        double GetTotalRadPower(size_t f_idx)
-        double GetMaxDirectivity(size_t f_idx)
-
-        complex[double]** GetETheta(size_t f_idx)
-        complex[double]** GetEPhi(size_t f_idx)
-        double** GetRadPower(size_t f_idx)
-
         bool Write2HDF5(string filename) nogil
 
         void SetVerboseLevel(int level)

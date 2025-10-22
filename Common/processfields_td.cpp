@@ -54,8 +54,8 @@ int ProcessFieldsTD::Process()
 
 	string filename = m_filename;
 
-	float**** field = CalcField();
-	bool success = true;
+	ArrayLib::ArrayNIJK<float> field("TD_field", numLines);
+	bool success = CalcField(field);
 
 	if (m_fileType==VTK_FILETYPE)
 	{
@@ -68,8 +68,7 @@ int ProcessFieldsTD::Process()
 	{
 		stringstream ss;
 		ss << std::setw( pad_length ) << std::setfill( '0' ) << m_Eng_Interface->GetNumberOfTimesteps();
-		size_t datasize[]={numLines[0],numLines[1],numLines[2]};
-		success &= m_HDF5_Dump_File->WriteVectorField(ss.str(), field, datasize);
+		success &= m_HDF5_Dump_File->WriteVectorField<float>(ss.str(), field);
 		float time[1] = {(float)m_Eng_Interface->GetTime(m_dualTime)};
 		success &= m_HDF5_Dump_File->WriteAtrribute("/FieldData/TD/"+ss.str(),"time",time,1);
 	}
@@ -78,8 +77,6 @@ int ProcessFieldsTD::Process()
 		success = false;
 		cerr << "ProcessFieldsTD::Process: unknown File-Type" << endl;
 	}
-
-	Delete_N_3DArray<FDTD_FLOAT>(field,numLines);
 
 	if (success==false)
 	{

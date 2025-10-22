@@ -31,6 +31,8 @@
 #include "hdf5_file_writer.h"
 #include "hdf5_file_reader.h"
 
+#include "arraylib/array_nijk.h"
+
 using namespace std;
 
 SAR_Calculation::SAR_Calculation()
@@ -38,12 +40,15 @@ SAR_Calculation::SAR_Calculation()
 	m_DebugLevel = 0;
 	m_avg_mass = 0;
 	SetAveragingMethod(SIMPLE, true);
+	m_cellWidth[0]=m_cellWidth[1]=m_cellWidth[2]=NULL;
 	Reset();
 }
 
 void SAR_Calculation::Reset()
 {
 	m_numLines[0]=m_numLines[1]=m_numLines[2]=0;
+	for (unsigned int n=0;n<3;++n)
+		delete[] m_cellWidth[n];
 	m_cellWidth[0]=m_cellWidth[1]=m_cellWidth[2]=NULL;
 
 	m_cell_volume = NULL;
@@ -121,7 +126,7 @@ void SAR_Calculation::SetCellWidth(double* cellWidth[3])
 		m_cellWidth[n]=cellWidth[n];
 }
 
-float*** SAR_Calculation::CalcSAR(float*** SAR)
+bool SAR_Calculation::CalcSAR(ArrayLib::ArrayIJK<float> &SAR)
 {
 	if (CheckValid()==false)
 	{
@@ -140,11 +145,13 @@ bool SAR_Calculation::CheckValid()
 			return false;
 	if (m_E_field==NULL)
 		return false;
-	if ((m_J_field==NULL) && (m_cell_conductivity==NULL))
+	if (!m_E_field->valid())
 		return false;
-	if (m_cell_density==NULL)
+	if ( ((m_J_field==NULL) || (!m_J_field->valid())) && ((m_cell_conductivity==NULL) || (!m_cell_conductivity->valid())) )
 		return false;
-	if (m_cell_volume==NULL)
+	if ((m_cell_density==NULL) || (!m_cell_density->valid()))
+		return false;
+	if ((m_cell_volume==NULL) || (!m_cell_volume->valid()))
 		return false;
 	if (m_avg_mass<0)
 		return false;
@@ -166,7 +173,7 @@ double SAR_Calculation::CalcSARPower()
 		{
 			for (pos[2]=0; pos[2]<m_numLines[2]; ++pos[2])
 			{
-				power += CalcLocalPowerDensity(pos)*m_cell_volume[pos[0]][pos[1]][pos[2]];
+				power += CalcLocalPowerDensity(pos)*(*m_cell_volume)(pos[0], pos[1], pos[2]);
 			}
 		}
 	}
@@ -177,16 +184,10 @@ double SAR_Calculation::CalcTotalMass()
 {
 	double mass = 0;
 	unsigned int pos[3];
-	for (pos[0]=0; pos[0]<m_numLines[0]; ++pos[0])
-	{
-		for (pos[1]=0; pos[1]<m_numLines[1]; ++pos[1])
-		{
-			for (pos[2]=0; pos[2]<m_numLines[2]; ++pos[2])
-			{
-				mass += m_cell_density[pos[0]][pos[1]][pos[2]]*m_cell_volume[pos[0]][pos[1]][pos[2]];
-			}
-		}
-	}
+	float* cell_density = m_cell_density->data();
+	float* cell_volume = m_cell_volume->data();
+	for (unsigned int n=0;n<m_cell_density->size();++n)
+		mass += cell_density[n]*cell_volume[n];
 	return mass;
 }
 
@@ -239,44 +240,41 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 		return false;
 	}
 
-
-	unsigned int data_set_size[3];
-
-	float*** cell_density = h5_reader.Read3DDataSet("/CellData/Density", data_set_size);
-	if (cell_density==NULL)
+	ArrayLib::ArrayIJK<float> cell_density;
+	if (!h5_reader.ReadScalarDataSet<float>("/CellData/Density", cell_density))
 	{
 		cerr << "SAR_Calculation::CalcFromHDF5: Error reading  Density..." << endl;
 		for (int n=0;n<3;++n)
 		{
 			delete[] lines[n];
 			delete[] cellWidth[n];
+			Reset();
 		}
 		return false;
 	}
 
-	float*** cell_conductivity = h5_reader.Read3DDataSet("/CellData/Conductivity", data_set_size);
-	if (cell_conductivity==NULL)
+	ArrayLib::ArrayIJK<float> cell_conductivity;
+	if (!h5_reader.ReadScalarDataSet<float>("/CellData/Conductivity", cell_conductivity))
 	{
 		cerr << "SAR_Calculation::CalcFromHDF5: Error reading conductivity..." << endl;
-		Delete3DArray(cell_density, numLines);
 		for (int n=0;n<3;++n)
 		{
 			delete[] lines[n];
 			delete[] cellWidth[n];
+			Reset();
 		}
 		return false;
 	}
 
-	float*** cell_volume = h5_reader.Read3DDataSet("/CellData/Volume", data_set_size);
-	if (cell_volume==NULL)
+	ArrayLib::ArrayIJK<float> cell_volume;
+	if (!h5_reader.ReadScalarDataSet<float>("/CellData/Volume", cell_volume))
 	{
 		cerr << "SAR_Calculation::CalcFromHDF5: Error reading cell volumes..." << endl;
-		Delete3DArray(cell_density, numLines);
-		Delete3DArray(cell_conductivity, numLines);
 		for (int n=0;n<3;++n)
 		{
 			delete[] lines[n];
 			delete[] cellWidth[n];
+			Reset();
 		}
 		return false;
 	}
@@ -286,17 +284,17 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 
 	SetNumLines(numLines);
 	SetCellWidth(cellWidth);
-	SetCellDensities(cell_density);
-	SetCellVolumes(cell_volume);
+	SetCellDensities(&cell_density);
+	SetCellVolumes(&cell_volume);
 	double mass = CalcTotalMass();
 	if (m_DebugLevel>0)
 		cout << "Total Mass: " << mass << endl;
-	SetCellCondictivity(cell_conductivity);
+	SetCellCondictivity(&cell_conductivity);
 
 	HDF5_File_Writer out_file(out_name);
 
 	out_file.WriteRectMesh(numLines,lines, 0, 1);
-	out_file.WriteAtrribute("/","openEMS_HDF5_version",0.2);
+	out_file.WriteAtrribute("/","openEMS_HDF5_version", OPENEMS_HDF5_VERSION);
 	out_file.WriteAtrribute("/","mass",mass);
 
 	out_file.SetCurrentGroup("/FieldData/FD");
@@ -306,10 +304,8 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 	for (size_t n=0;n<3;++n)
 		dims[n]=numLines[n];
 
-	complex<float>**** E_fd_data;
-	float*** SAR = Create3DArray<float>(numLines);
-	unsigned int data_size[4];
-	size_t sar_datasize[]={numLines[0],numLines[1],numLines[2]};
+	ArrayLib::ArrayNIJK<complex<float>> E_fd_data;
+	ArrayLib::ArrayIJK<float> SAR("SAR", numLines);
 	if (export_cube_stats && (m_avg_mass>0))
 	{
 		cout << "Export Cube Statistics" << endl;
@@ -321,16 +317,12 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 	{
 		if (m_DebugLevel>0)
 			cout << "SAR_Calculation::CalcFromHDF5: Read raw data for freq-index: " << n << endl;
-		E_fd_data = h5_reader.GetFDVectorData(n,data_size);
-		if ((data_size[0]!=numLines[0]) || (data_size[1]!=numLines[1]) || (data_size[2]!=numLines[2]) )
+		//E_fd_data = h5_reader.GetFDVectorData(n,data_size);
+		if (!h5_reader.GetFDVectorData(n, E_fd_data) || (E_fd_data.extent(1)!=numLines[0]) || (E_fd_data.extent(2)!=numLines[1]) || (E_fd_data.extent(3)!=numLines[2]) )
 		{
-			cerr << data_size[0] << "," << data_size[1] << "," <<  data_size[2] << endl;
+			cerr << E_fd_data.extent(1) << "," << E_fd_data.extent(2) << "," << E_fd_data.extent(3) << endl;
 			cerr << "SAR_Calculation::CalcFromHDF5: FD data size mismatch... " << endl;
-			Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
-			Delete3DArray(cell_density, numLines);
-			Delete3DArray(cell_conductivity, numLines);
-			Delete3DArray(cell_volume, numLines);
-			Delete3DArray(SAR, numLines);
+			SAR.Reset();
 			for (int n=0;n<3;++n)
 			{
 				delete[] lines[n];
@@ -339,7 +331,7 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 			Reset();
 			return false;
 		}
-		SetEField(E_fd_data);
+		SetEField(&E_fd_data);
 		CalcSAR(SAR);
 		float pwr = CalcSARPower();
 		if (m_DebugLevel>0)
@@ -349,10 +341,10 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 			cout << "Total Power: " << pwr << endl;
 			cout << "Avg SAR: " << pwr/mass << endl;
 		}
-		Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
+		E_fd_data.Reset();
 		stringstream ss;
 		ss << "f" << n;
-		if (out_file.WriteScalarField(ss.str(), SAR, sar_datasize)==false)
+		if (out_file.WriteScalarField<float>(ss.str(), SAR)==false)
 			cerr << "SAR_Calculation::CalcFromHDF5: can't dump to file...! " << endl;
 		if (m_cube_type.data()!=NULL)
 			if (out_file.WriteData(ss.str() + "_CubeType", H5T_NATIVE_UCHAR, m_cube_type.data(), 3, dims)==false)
@@ -383,10 +375,6 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 		cout << "Processing Time: " << duration << "s" << endl;
 	out_file.WriteAtrribute("/","proc_time", duration);
 
-	Delete3DArray(cell_density, numLines);
-	Delete3DArray(cell_conductivity, numLines);
-	Delete3DArray(cell_volume, numLines);
-	Delete3DArray(SAR, numLines);
 	for (int n=0;n<3;++n)
 	{
 		delete[] lines[n];
@@ -400,24 +388,26 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 double SAR_Calculation::CalcLocalPowerDensity(unsigned int pos[3])
 {
 	double l_pow=0;
-	if (m_cell_conductivity==NULL)
+	if ((m_cell_conductivity==NULL) || (!m_cell_conductivity->valid()))
 	{
-		l_pow  = abs(m_E_field[0][pos[0]][pos[1]][pos[2]]) * abs(m_J_field[0][pos[0]][pos[1]][pos[2]]);
-		l_pow += abs(m_E_field[1][pos[0]][pos[1]][pos[2]]) * abs(m_J_field[1][pos[0]][pos[1]][pos[2]]);
-		l_pow += abs(m_E_field[2][pos[0]][pos[1]][pos[2]]) * abs(m_J_field[2][pos[0]][pos[1]][pos[2]]);
+		l_pow  = abs((*m_E_field)(0, pos[0], pos[1], pos[2])) * abs((*m_J_field)(0, pos[0], pos[1], pos[2]));
+		l_pow += abs((*m_E_field)(1, pos[0], pos[1], pos[2])) * abs((*m_J_field)(1, pos[0], pos[1], pos[2]));
+		l_pow += abs((*m_E_field)(2, pos[0], pos[1], pos[2])) * abs((*m_J_field)(2, pos[0], pos[1], pos[2]));
 	}
 	else
 	{
-		l_pow  = m_cell_conductivity[pos[0]][pos[1]][pos[2]]*abs(m_E_field[0][pos[0]][pos[1]][pos[2]]) * abs(m_E_field[0][pos[0]][pos[1]][pos[2]]);
-		l_pow += m_cell_conductivity[pos[0]][pos[1]][pos[2]]*abs(m_E_field[1][pos[0]][pos[1]][pos[2]]) * abs(m_E_field[1][pos[0]][pos[1]][pos[2]]);
-		l_pow += m_cell_conductivity[pos[0]][pos[1]][pos[2]]*abs(m_E_field[2][pos[0]][pos[1]][pos[2]]) * abs(m_E_field[2][pos[0]][pos[1]][pos[2]]);
+		l_pow  = (*m_cell_conductivity)(pos[0], pos[1], pos[2])*abs((*m_E_field)(0, pos[0], pos[1], pos[2])) * abs((*m_E_field)(0, pos[0], pos[1], pos[2]));
+		l_pow += (*m_cell_conductivity)(pos[0], pos[1], pos[2])*abs((*m_E_field)(1, pos[0], pos[1], pos[2])) * abs((*m_E_field)(1, pos[0], pos[1], pos[2]));
+		l_pow += (*m_cell_conductivity)(pos[0], pos[1], pos[2])*abs((*m_E_field)(2, pos[0], pos[1], pos[2])) * abs((*m_E_field)(2, pos[0], pos[1], pos[2]));
 	}
 	l_pow*=0.5;
 	return l_pow;
 }
 
-float*** SAR_Calculation::CalcLocalSAR(float*** SAR)
+bool SAR_Calculation::CalcLocalSAR(ArrayLib::ArrayIJK<float> & SAR)
 {
+	if (!SAR.valid())
+		return false;
 	unsigned int pos[3];
 	m_Valid=0;
 	m_Used=0;
@@ -429,20 +419,20 @@ float*** SAR_Calculation::CalcLocalSAR(float*** SAR)
 		{
 			for (pos[2]=0; pos[2]<m_numLines[2]; ++pos[2])
 			{
-				if (m_cell_density[pos[0]][pos[1]][pos[2]]>0)
+				if ((*m_cell_density)(pos[0], pos[1], pos[2])>0)
 				{
 					++m_Valid;
-					SAR[pos[0]][pos[1]][pos[2]]	= CalcLocalPowerDensity(pos)/m_cell_density[pos[0]][pos[1]][pos[2]];
+					SAR(pos[0], pos[1], pos[2])	= CalcLocalPowerDensity(pos)/(*m_cell_density)(pos[0], pos[1], pos[2]);
 				}
 				else
 				{
 					++m_AirVoxel;
-					SAR[pos[0]][pos[1]][pos[2]] = 0;
+					SAR(pos[0], pos[1], pos[2]) = 0;
 				}
 			}
 		}
 	}
-	return SAR;
+	return true;
 }
 
 int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
@@ -621,12 +611,12 @@ bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], double box_size, unsig
 				if (f_pos[2]==stop[2])
 					weight[2]*=abs(partial_stop[2]);
 
-				cell_vol = m_cell_volume[f_pos[0]][f_pos[1]][f_pos[2]]*weight[0]*weight[1]*weight[2];
+				cell_vol = (*m_cell_volume)(f_pos[0], f_pos[1], f_pos[2])*weight[0]*weight[1]*weight[2];
 
-				mass += m_cell_density[f_pos[0]][f_pos[1]][f_pos[2]]*cell_vol;
+				mass += (*m_cell_density)(f_pos[0], f_pos[1], f_pos[2])*cell_vol;
 				volume += cell_vol;
 
-				if (m_cell_density[f_pos[0]][f_pos[1]][f_pos[2]]==0)
+				if ((*m_cell_density)(f_pos[0], f_pos[1], f_pos[2])==0)
 					bg_volume += cell_vol;
 				else
 				{
@@ -650,7 +640,7 @@ bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], double box_size, unsig
 	return face_valid;
 }
 
-float SAR_Calculation::CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
+float SAR_Calculation::CalcCubicalSAR(ArrayLib::ArrayIJK<float> &SAR, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
 									  float partial_start[3], float partial_stop[3],
 									  ArrayLib::ArrayIJK<float> &local_pwr, ArrayLib::ArrayIJK<bool> &Vx_Used, ArrayLib::ArrayIJK<bool> &Vx_Valid,
 									  bool assignUsed)
@@ -683,9 +673,9 @@ float SAR_Calculation::CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigne
 				if (f_pos[2]==stop[2])
 					weight[2]*=abs(partial_stop[2]);
 
-				if (m_cell_density[f_pos[0]][f_pos[1]][f_pos[2]]>=0)
+				if ((*m_cell_density)(f_pos[0], f_pos[1], f_pos[2])>=0)
 				{
-					mass += m_cell_density[f_pos[0]][f_pos[1]][f_pos[2]]*m_cell_volume[f_pos[0]][f_pos[1]][f_pos[2]]*weight[0]*weight[1]*weight[2];
+					mass += (*m_cell_density)(f_pos[0], f_pos[1], f_pos[2])*(*m_cell_volume)(f_pos[0], f_pos[1], f_pos[2])*weight[0]*weight[1]*weight[2];
 					power_mass += local_pwr(f_pos[0],f_pos[1],f_pos[2])*weight[0]*weight[1]*weight[2];
 
 				}
@@ -693,10 +683,10 @@ float SAR_Calculation::CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigne
 		}
 	}
 	float vx_SAR = power_mass/mass;
-	if (SAR==NULL)
+	if (!SAR.valid()) // dummy SAR given
 		return vx_SAR;
 
-	SAR[pos[0]][pos[1]][pos[2]]=vx_SAR;
+	SAR(pos[0], pos[1], pos[2])=vx_SAR;
 
 	if (assignUsed==false)
 		return vx_SAR;
@@ -726,10 +716,10 @@ float SAR_Calculation::CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigne
 
 				if ( (!is_partial[0] && !is_partial[1] && !is_partial[2]) || m_markPartialAsUsed)
 				{
-					if (!Vx_Valid(f_pos[0],f_pos[1],f_pos[2]) && (m_cell_density[f_pos[0]][f_pos[1]][f_pos[2]]>0))
+					if (!Vx_Valid(f_pos[0],f_pos[1],f_pos[2]) && ((*m_cell_density)(f_pos[0], f_pos[1], f_pos[2])>0))
 					{
 						Vx_Used(f_pos[0],f_pos[1],f_pos[2])=true;
-						SAR[f_pos[0]][f_pos[1]][f_pos[2]]=max(SAR[f_pos[0]][f_pos[1]][f_pos[2]], vx_SAR);
+						SAR(f_pos[0], f_pos[1], f_pos[2])=max(SAR(f_pos[0], f_pos[1], f_pos[2]), vx_SAR);
 					}
 				}
 			}
@@ -739,7 +729,7 @@ float SAR_Calculation::CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigne
 }
 
 
-float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
+bool SAR_Calculation::CalcAveragedSAR(ArrayLib::ArrayIJK<float> & SAR)
 {
 	unsigned int pos[3];
 
@@ -766,13 +756,14 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 	ArrayLib::ArrayIJK<float> local_pwr("local_pwr", m_numLines);
 	float* data = local_pwr.data();
 	unsigned int loc = 0;
+	float* cell_vol = m_cell_volume->data();
 	for (pos[0]=0; pos[0]<m_numLines[0]; ++pos[0])
 	{
 		for (pos[1]=0; pos[1]<m_numLines[1]; ++pos[1])
 		{
 			for (pos[2]=0; pos[2]<m_numLines[2]; ++pos[2])
 			{
-				data[loc] = CalcLocalPowerDensity(pos)*m_cell_volume[pos[0]][pos[1]][pos[2]];
+				data[loc] = CalcLocalPowerDensity(pos)*cell_vol[loc];
 				loc++;
 			}
 		}
@@ -785,6 +776,7 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 	unsigned char* vx_cube_type = m_cube_type.data();
 	float* cube_mass =  m_cube_mass.data();
 	float* cube_vol = m_cube_volume.data();
+	float* cell_density = m_cell_density->data();
 	loc = 0;
 	for (pos[0]=0; pos[0]<m_numLines[0]; ++pos[0])
 	{
@@ -792,16 +784,16 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 		{
 			for (pos[2]=0; pos[2]<m_numLines[2]; ++pos[2])
 			{
-				if (m_cell_density[pos[0]][pos[1]][pos[2]]==0)
+				if (cell_density[loc]==0)
 				{
-					SAR[pos[0]][pos[1]][pos[2]] = 0;
+					SAR(pos[0], pos[1], pos[2]) = 0;
 					++m_AirVoxel;
 					++loc;
 					continue;
 				}
 
 				// guess an initial box size and find a fitting cube
-				EC = FindFittingCubicalMass(pos, pow(m_avg_mass/m_cell_density[pos[0]][pos[1]][pos[2]],1.0/3.0)/2, start, stop,
+				EC = FindFittingCubicalMass(pos, pow(m_avg_mass/cell_density[loc],1.0/3.0)/2, start, stop,
 											partial_start, partial_stop, total_mass, voxel_volume, bg_ratio, -1, m_IgnoreFaceValid);
 
 				if (EC==0)
@@ -840,6 +832,7 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 		cerr << "Number of invalid cubes (failed to converge): " << cnt_NoConvergence << endl;
 	}
 
+	ArrayLib::ArrayIJK<float> dummy_SAR;
 	// count all used and unused etc. + special handling of unused voxels!!
 	m_Used=0;
 	m_Unused=0;
@@ -856,11 +849,11 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 					if (vx_cube_type!=NULL)
 						vx_cube_type[loc] = 8;
 				}
-				if ((m_cell_density[pos[0]][pos[1]][pos[2]]>0) && !vx_valid_data[loc] && !vx_used_data[loc])
+				if ((cell_density[loc]>0) && !vx_valid_data[loc] && !vx_used_data[loc])
 				{
 					++m_Unused;
 
-					SAR[pos[0]][pos[1]][pos[2]] = 0;
+					SAR(pos[0], pos[1], pos[2]) = 0;
 					double unused_volumes[6];
 					double unused_mass[6];
 					float unused_SAR[6];
@@ -870,12 +863,12 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 					// special handling of unused voxels:
 					for (int n=0;n<6;++n)
 					{
-						EC = FindFittingCubicalMass(pos, pow(m_avg_mass/m_cell_density[pos[0]][pos[1]][pos[2]],1.0/3.0)/2, start, stop,
+						EC = FindFittingCubicalMass(pos, pow(m_avg_mass/cell_density[loc],1.0/3.0)/2, start, stop,
 													partial_start, partial_stop, unused_mass[n], unused_volumes[n], bg_ratio, n, true);
 						if (EC==0)
 						{
 							// cerr << "calc unused SAR " << n << ": " << pos[n/2] << " " << start[n/2] << "; " << partial_start[n/2] << " " << stop[n/2] << " " << partial_stop[n/2] << endl;
-							unused_SAR[n]=CalcCubicalSAR(NULL, pos, start, stop, partial_start, partial_stop, local_pwr, Vx_Used, Vx_Valid, false);
+							unused_SAR[n]=CalcCubicalSAR(dummy_SAR, pos, start, stop, partial_start, partial_stop, local_pwr, Vx_Used, Vx_Valid, false);
 							min_Vol = min(min_Vol,unused_volumes[n]);
 						}
 						else if (EC==2)
@@ -893,9 +886,9 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 					for (int n=0;n<6;++n)
 					{
 						if (unused_volumes[n]<=m_UnusedRelativeVolLimit*min_Vol)
-							if (unused_SAR[n]>SAR[pos[0]][pos[1]][pos[2]])
+							if (unused_SAR[n]>SAR(pos[0], pos[1], pos[2]))
 							{
-								SAR[pos[0]][pos[1]][pos[2]] = unused_SAR[n];
+								SAR(pos[0], pos[1], pos[2]) = unused_SAR[n];
 								if (vx_cube_type!=NULL)
 									vx_cube_type[loc] = n+1;
 								if (cube_mass!=NULL)
@@ -903,7 +896,6 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 								if (cube_vol!=NULL)
 									cube_vol[loc]=unused_volumes[n];
 							}
-							//SAR[pos[0]][pos[1]][pos[2]] = max(SAR[pos[0]][pos[1]][pos[2]],unused_SAR[n]);
 					}
 				}
 				++loc;
@@ -920,5 +912,5 @@ float*** SAR_Calculation::CalcAveragedSAR(float*** SAR)
 	if (m_DebugLevel>0)
 		cerr << "SAR_Calculation::CalcAveragedSAR: Stats: Valid=" << m_Valid << " Used=" << m_Used << " Unused=" << m_Unused << " Air-Voxel=" << m_AirVoxel << endl;
 
-	return SAR;
+	return true;
 }

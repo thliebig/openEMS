@@ -34,11 +34,11 @@ ProcessFieldsSAR::ProcessFieldsSAR(Engine_Interface_Base* eng_if) : ProcessField
 ProcessFieldsSAR::~ProcessFieldsSAR()
 {
 	for (size_t n = 0; n<m_E_FD_Fields.size(); ++n)
-		Delete_N_3DArray(m_E_FD_Fields.at(n),numLines);
+		delete m_E_FD_Fields.at(n);
 	m_E_FD_Fields.clear();
 
 	for (size_t n = 0; n<m_J_FD_Fields.size(); ++n)
-		Delete_N_3DArray(m_J_FD_Fields.at(n),numLines);
+		delete m_J_FD_Fields.at(n);
 	m_J_FD_Fields.clear();
 }
 
@@ -95,9 +95,9 @@ void ProcessFieldsSAR::InitProcess()
 	//create data structures...
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
-		m_E_FD_Fields.push_back(Create_N_3DArray<std::complex<float> >(numLines));
+		m_E_FD_Fields.push_back(new ArrayLib::ArrayNIJK<std::complex<float>>("E_FD", numLines)); //Create_N_3DArray<std::complex<float> >(numLines));
 		if (!m_UseCellKappa)
-			m_J_FD_Fields.push_back(Create_N_3DArray<std::complex<float> >(numLines));
+			m_J_FD_Fields.push_back(new ArrayLib::ArrayNIJK<std::complex<float>>("J_FD", numLines)); //Create_N_3DArray<std::complex<float> >(numLines));
 	}
 }
 
@@ -109,65 +109,51 @@ int ProcessFieldsSAR::Process()
 	if ((m_FD_Interval==0) || (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval!=0))
 		return GetNextInterval();
 
-	std::complex<float>**** field_fd = NULL;
+	std::complex<float>* field_fd = NULL;
 	unsigned int pos[3];
 	double T;
-	FDTD_FLOAT**** field_td=NULL;
 
 	//save dump type
 	DumpType save_dump_type = m_DumpType;
 
 	// calc E-field
 	m_DumpType = E_FIELD_DUMP;
-	field_td = CalcField();
+	FDTD_FLOAT* field_td=NULL;
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> tmp_field_td;
+	CalcField(tmp_field_td);
+	field_td = tmp_field_td.data();
 	T = m_Eng_Interface->GetTime(m_dualTime);
+	unsigned int N;
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
 		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * _I * M_PI * m_FD_Samples.at(n) * T) );
 		exp_jwt_2_dt *= 2; // *2 for single-sided spectrum
 		exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
-		field_fd = m_E_FD_Fields.at(n);
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-		{
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-			{
-				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-				{
-					field_fd[0][pos[0]][pos[1]][pos[2]] += field_td[0][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
-					field_fd[1][pos[0]][pos[1]][pos[2]] += field_td[1][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
-					field_fd[2][pos[0]][pos[1]][pos[2]] += field_td[2][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
-				}
-			}
-		}
+		N = m_E_FD_Fields.at(n)->size();
+		field_fd = m_E_FD_Fields.at(n)->data();
+		for (unsigned int ijk=0;ijk<N;++ijk)
+			field_fd[ijk] += field_td[ijk] * exp_jwt_2_dt;
 	}
-	Delete_N_3DArray<FDTD_FLOAT>(field_td,numLines);
+	tmp_field_td.Reset(); // free memory before next calc step
 
 	// calc J-field
 	if (!m_UseCellKappa)
 	{
 		m_DumpType = J_FIELD_DUMP;
-		field_td = CalcField();
+		CalcField(tmp_field_td);
+		field_td = tmp_field_td.data();
 		T = m_Eng_Interface->GetTime(m_dualTime);
 		for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 		{
 			std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * _I * M_PI * m_FD_Samples.at(n) * T) );
 			exp_jwt_2_dt *= 2; // *2 for single-sided spectrum
 			exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
-			field_fd = m_J_FD_Fields.at(n);
-			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-			{
-				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-				{
-					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-					{
-						field_fd[0][pos[0]][pos[1]][pos[2]] += field_td[0][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
-						field_fd[1][pos[0]][pos[1]][pos[2]] += field_td[1][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
-						field_fd[2][pos[0]][pos[1]][pos[2]] += field_td[2][pos[0]][pos[1]][pos[2]] * exp_jwt_2_dt;
-					}
-				}
-			}
+			N = m_E_FD_Fields.at(n)->size();
+			field_fd = m_E_FD_Fields.at(n)->data();
+			for (unsigned int ijk=0;ijk<N;++ijk)
+				field_fd[ijk] += field_td[ijk] * exp_jwt_2_dt;
 		}
-		Delete_N_3DArray<FDTD_FLOAT>(field_td,numLines);
+		tmp_field_td.Reset();
 	}
 
 	//reset dump type
@@ -182,7 +168,7 @@ void ProcessFieldsSAR::DumpFDData()
 	if (Enabled==false) return;
 	unsigned int pos[3];
 	unsigned int orig_pos[3];
-	float*** SAR = Create3DArray<float>(numLines);
+	ArrayLib::ArrayIJK<float> SAR("SAR", numLines);
 	double coord[3];
 	ContinuousStructure* CSX = Op->GetGeometryCSX();
 	CSProperties* prop = NULL;
@@ -190,11 +176,11 @@ void ProcessFieldsSAR::DumpFDData()
 
 	double power;
 
-	float*** cell_volume = Create3DArray<float>(numLines);
-	float*** cell_density = Create3DArray<float>(numLines);
-	float*** cell_kappa = NULL;
+	ArrayLib::ArrayIJK<float> cell_volume("cell_volume", numLines);
+	ArrayLib::ArrayIJK<float> cell_density("cell_density", numLines);
+	ArrayLib::ArrayIJK<float> cell_kappa;
 	if (m_UseCellKappa)
-		cell_kappa = Create3DArray<float>(numLines);
+		cell_kappa.Init("cell_kappa", numLines);
 
 	bool found_UnIsotropic=false;
 
@@ -210,8 +196,8 @@ void ProcessFieldsSAR::DumpFDData()
 			{
 				orig_pos[2] = posLines[2][pos[2]];
 
-				cell_volume[pos[0]][pos[1]][pos[2]] = Op->GetCellVolume(orig_pos);
-				cell_density[pos[0]][pos[1]][pos[2]] = 0.0;
+				cell_volume(pos[0], pos[1], pos[2]) = Op->GetCellVolume(orig_pos);
+				cell_density(pos[0], pos[1], pos[2]) = 0.0;
 
 				Op->GetCellCenterMaterialAvgCoord(orig_pos, coord);
 				prop = CSX->GetPropertyByCoordPriority(coord, vPrims);
@@ -222,9 +208,9 @@ void ProcessFieldsSAR::DumpFDData()
 					if (matProp)
 					{
 						found_UnIsotropic |= !matProp->GetIsotropy();
-						cell_density[pos[0]][pos[1]][pos[2]] = matProp->GetDensityWeighted(coord);
+						cell_density(pos[0], pos[1], pos[2]) = matProp->GetDensityWeighted(coord);
 						if (m_UseCellKappa)
-							cell_kappa[pos[0]][pos[1]][pos[2]] = matProp->GetKappaWeighted(0,coord);
+							cell_kappa(pos[0], pos[1], pos[2]) = matProp->GetKappaWeighted(0,coord);
 					}
 				}
 			}
@@ -249,12 +235,11 @@ void ProcessFieldsSAR::DumpFDData()
 			return;
 		}
 
-		size_t datasize[]={numLines[0],numLines[1],numLines[2]};
 		for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 		{
 			stringstream ss;
 			ss << "f" << n;
-			if (m_HDF5_Dump_File->WriteVectorField(ss.str(), m_E_FD_Fields.at(n), datasize)==false)
+			if (m_HDF5_Dump_File->WriteVectorField<std::complex<float>>(ss.str(), *m_E_FD_Fields.at(n))==false)
 				cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
 		}
 
@@ -262,11 +247,11 @@ void ProcessFieldsSAR::DumpFDData()
 		m_HDF5_Dump_File->SetCurrentGroup("/CellData");
 		if (m_UseCellKappa==false)
 			cerr <<  "ProcessFieldsSAR::DumpFDData: Error, cell conductivity data not available, this should not happen... skipping! " << endl;
-		else if (m_HDF5_Dump_File->WriteScalarField("Conductivity", cell_kappa, datasize)==false)
+		else if (m_HDF5_Dump_File->WriteScalarField<float>("Conductivity", cell_kappa)==false)
 			cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
-		if (m_HDF5_Dump_File->WriteScalarField("Density", cell_density, datasize)==false)
+		if (m_HDF5_Dump_File->WriteScalarField<float>("Density", cell_density)==false)
 			cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
-		if (m_HDF5_Dump_File->WriteScalarField("Volume", cell_volume, datasize)==false)
+		if (m_HDF5_Dump_File->WriteScalarField<float>("Volume", cell_volume)==false)
 			cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
 	}
 	else
@@ -285,10 +270,10 @@ void ProcessFieldsSAR::DumpFDData()
 		{
 			cerr << "ProcessFieldsSAR::DumpFDData: unknown SAR dump type...!" << endl;
 		}
-		SAR_Calc.SetCellDensities(cell_density);
+		SAR_Calc.SetCellDensities(&cell_density);
 		SAR_Calc.SetCellWidth(cellWidth);
-		SAR_Calc.SetCellVolumes(cell_volume);
-		SAR_Calc.SetCellCondictivity(cell_kappa); // cell_kappa will be NULL if m_UseCellKappa is false
+		SAR_Calc.SetCellVolumes(&cell_volume);
+		SAR_Calc.SetCellCondictivity(&cell_kappa); // cell_kappa will be NULL if m_UseCellKappa is false
 		double mass = SAR_Calc.CalcTotalMass();
 
 		for (size_t n = 0; n<m_FD_Samples.size(); ++n)
@@ -297,7 +282,7 @@ void ProcessFieldsSAR::DumpFDData()
 			if (!m_UseCellKappa)
 				SAR_Calc.SetJField(m_J_FD_Fields.at(n));
 			power = SAR_Calc.CalcSARPower();
-			SAR_Calc.SetCellVolumes(cell_volume);
+			SAR_Calc.SetCellVolumes(&cell_volume);
 			power = SAR_Calc.CalcSARPower();
 			SAR_Calc.CalcSAR(SAR);
 
@@ -316,8 +301,7 @@ void ProcessFieldsSAR::DumpFDData()
 			{
 				stringstream ss;
 				ss << "f" << n;
-				size_t datasize[]={numLines[0],numLines[1],numLines[2]};
-				if (m_HDF5_Dump_File->WriteScalarField(ss.str(), SAR, datasize)==false)
+				if (m_HDF5_Dump_File->WriteScalarField<float>(ss.str(), SAR)==false)
 					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
 				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",(float)m_FD_Samples.at(n))==false)
 					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
@@ -332,8 +316,4 @@ void ProcessFieldsSAR::DumpFDData()
 	}
 	for (int n=0;n<3;++n)
 		delete[] cellWidth[n];
-	Delete3DArray(cell_volume,numLines);
-	Delete3DArray(cell_density,numLines);
-	Delete3DArray(cell_kappa,numLines);
-	Delete3DArray(SAR,numLines);
 }

@@ -57,10 +57,6 @@ public:
 	double GetTotalRadPower(size_t f_idx) const;
 	double GetMaxDirectivity(size_t f_idx) const;
 
-	complex<double>** GetETheta(size_t f_idx) const;
-	complex<double>** GetEPhi(size_t f_idx) const;
-	double** GetRadPower(size_t f_idx) const;
-
 	//! Write results to a hdf5 file
 	bool Write2HDF5(string filename);
 

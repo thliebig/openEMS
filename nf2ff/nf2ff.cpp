@@ -18,6 +18,7 @@
 #include "nf2ff.h"
 #include "nf2ff_calc.h"
 #include "../tools/array_ops.h"
+#include "../tools/arraylib/array_ij.h"
 #include "../tools/useful.h"
 #include "../tools/hdf5_file_reader.h"
 #include "../tools/hdf5_file_writer.h"
@@ -143,21 +144,6 @@ double nf2ff::GetTotalRadPower(size_t f_idx) const
 double nf2ff::GetMaxDirectivity(size_t f_idx) const
 {
 	return m_nf2ff.at(f_idx)->GetMaxDirectivity();
-}
-
-complex<double>** nf2ff::GetETheta(size_t f_idx) const
-{
-	return m_nf2ff.at(f_idx)->GetETheta();
-}
-
-complex<double>** nf2ff::GetEPhi(size_t f_idx) const
-{
-	return m_nf2ff.at(f_idx)->GetEPhi();
-}
-
-double** nf2ff::GetRadPower(size_t f_idx) const
-{
-	return m_nf2ff.at(f_idx)->GetRadPower();
 }
 
 bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
@@ -450,50 +436,54 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 
 	if (fallBack_TD)
 	{
-		vector<complex<float>****> E_fd_data;
-		vector<complex<float>****> H_fd_data;
+		vector<ArrayLib::ArrayNIJK<std::complex<float>>*> E_fd_data;
+		vector<ArrayLib::ArrayNIJK<std::complex<float>>*> H_fd_data;
 
 		if (m_Verbose>1)
 			cerr << "nf2ff: calculate dft..." << endl;
 
 		unsigned int data_size[4];
-		if (E_file.CalcFDVectorData(m_freq,E_fd_data,data_size)==false)
+		if (E_file.CalcFDVectorData(m_freq,E_fd_data)==false)
 		{
 			for (int n=0;n<3;++n)
 				delete[] E_lines[n];
 			return false;
 		}
-		if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+		for (size_t fn=0;fn<E_fd_data.size();++fn)
 		{
-			for (size_t fn=0;fn<m_nf2ff.size();++fn)
+			if ((E_fd_data.at(fn)->extent(1)!=E_numLines[0]) || (E_fd_data.at(fn)->extent(2)!=E_numLines[1]) || (E_fd_data.at(fn)->extent(3)!=E_numLines[2]) )
 			{
-				Delete_N_3DArray<complex<float> >(E_fd_data.at(fn),data_size);
+				cerr << "nf2ff::AnalyseFile: E FD data size mismatch... " << endl;
+				for (size_t fn=0;fn<m_nf2ff.size();++fn)
+					delete E_fd_data.at(fn);
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
 			}
-			for (int n=0;n<3;++n)
-				delete[] E_lines[n];
-			return false;
 		}
 
-		if (H_file.CalcFDVectorData(m_freq,H_fd_data,data_size)==false)
+		if (H_file.CalcFDVectorData(m_freq,H_fd_data)==false)
 		{
 			for (size_t fn=0;fn<m_nf2ff.size();++fn)
-				Delete_N_3DArray<complex<float> >(E_fd_data.at(fn),data_size);
+				delete E_fd_data.at(fn);
 			for (int n=0;n<3;++n)
 				delete[] E_lines[n];
 			return false;
 		}
-		if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+		for (size_t fn=0;fn<E_fd_data.size();++fn)
 		{
-			for (size_t fn=0;fn<m_nf2ff.size();++fn)
+			if ((H_fd_data.at(fn)->extent(1)!=E_numLines[0]) || (H_fd_data.at(fn)->extent(2)!=E_numLines[1]) || (H_fd_data.at(fn)->extent(3)!=E_numLines[2]) )
 			{
-				Delete_N_3DArray<complex<float> >(E_fd_data.at(fn),data_size);
-				Delete_N_3DArray<complex<float> >(H_fd_data.at(fn),data_size);
+				cerr << "nf2ff::AnalyseFile: E FD data size mismatch... " << endl;
+				for (size_t fn=0;fn<m_nf2ff.size();++fn)
+					delete E_fd_data.at(fn);
+				for (size_t fn=0;fn<m_nf2ff.size();++fn)
+					delete H_fd_data.at(fn);
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
 			}
-			for (int n=0;n<3;++n)
-				delete[] E_lines[n];
-			return false;
 		}
-
 		if (m_Verbose>0)
 			cerr << "nf2ff: Analysing far-field for " <<  m_nf2ff.size() << " frequencies.  " << endl;
 
@@ -501,7 +491,7 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 		{
 			if (m_Verbose>1)
 				cerr << "nf2ff: f = " << m_freq.at(fn) << "Hz (" << fn+1 << "/" << m_freq.size() << ") ...";
-			m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, E_fd_data.at(fn), H_fd_data.at(fn),E_meshType);
+			m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, *E_fd_data.at(fn), *H_fd_data.at(fn),E_meshType);
 			if (m_Verbose>1)
 				cerr << " done." << endl;
 		}
@@ -509,46 +499,44 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 	}
 	else
 	{
-		complex<float>**** E_fd_data;
-		complex<float>**** H_fd_data;
+		ArrayLib::ArrayNIJK<std::complex<float>> E_fd_data;
+		ArrayLib::ArrayNIJK<std::complex<float>> H_fd_data;
 		unsigned int data_size[4];
 		for (size_t n=0;n<m_freq.size();++n)
 		{
-			E_fd_data = E_file.GetFDVectorData(FD_index.at(n),data_size);
-			if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+			if (!E_file.GetFDVectorData(FD_index.at(n), E_fd_data))
 			{
-				cerr << data_size[0] << "," << data_size[1] << "," <<  data_size[2] << endl;
-				cerr << "nf2ff::AnalyseFile: FD data size mismatch... " << endl;
-				Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
+			}
+			if ((E_fd_data.extent(1)!=E_numLines[0]) || (E_fd_data.extent(2)!=E_numLines[1]) || (E_fd_data.extent(3)!=E_numLines[2]) )
+			{
+				cerr << E_fd_data.extent(1) << " != " << E_numLines[0]  << ", " <<  E_fd_data.extent(2) << " != " << E_numLines[1]  << ", " <<  E_fd_data.extent(3) << " != " << E_numLines[2] << endl;
+				cerr << "nf2ff::AnalyseFile: E FD data size mismatch... " << endl;
 				for (int n=0;n<3;++n)
 					delete[] E_lines[n];
 				return false;
 			}
 
-			H_fd_data = H_file.GetFDVectorData(FD_index.at(n),data_size);
-			if ((data_size[0]!=E_numLines[0]) || (data_size[1]!=E_numLines[1]) || (data_size[2]!=E_numLines[2]) )
+			if (!H_file.GetFDVectorData(FD_index.at(n), H_fd_data))
 			{
-				cerr << data_size[0] << "," << data_size[1] << "," <<  data_size[2] << endl;
-				cerr << "nf2ff::AnalyseFile: FD data size mismatch... " << endl;
-				Delete_N_3DArray<complex<float> >(H_fd_data,data_size);
-				Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
+			}
+			if ((H_fd_data.extent(1)!=E_numLines[0]) || (H_fd_data.extent(2)!=E_numLines[1]) || (H_fd_data.extent(3)!=E_numLines[2]) )
+			{
+				cerr << H_fd_data.extent(1) << " != " << E_numLines[0]  << ", " <<  H_fd_data.extent(2) << " != " << E_numLines[1]  << ", " <<  H_fd_data.extent(3) << " != " << E_numLines[2] << endl;
+				cerr << "nf2ff::AnalyseFile: H- FD data size mismatch... " << endl;
 				for (int n=0;n<3;++n)
 					delete[] E_lines[n];
 				return false;
 			}
 
-			if ((E_fd_data==NULL) || (H_fd_data==NULL))
-			{
-				cerr << "nf2ff::AnalyseFile: Reaing FD data failed... " << endl;
-				Delete_N_3DArray<complex<float> >(E_fd_data,data_size);
-				Delete_N_3DArray<complex<float> >(H_fd_data,data_size);
-				for (int n=0;n<3;++n)
-					delete[] E_lines[n];
-				return false;
-			}
 			if (m_Verbose>1)
 				cerr << "nf2ff: f = " << m_freq.at(n) << "Hz (" << n+1 << "/" << m_freq.size() << ") ...";
-			m_nf2ff.at(n)->AddPlane(E_lines, E_numLines, E_fd_data, H_fd_data,E_meshType);
+			m_nf2ff.at(n)->AddPlane(E_lines, E_numLines, E_fd_data, H_fd_data, E_meshType);
 			if (m_Verbose>1)
 				cerr << " done." << endl;
 		}
@@ -586,7 +574,7 @@ bool nf2ff::Write2HDF5(string filename)
 	size_t datasize[2]={m_numPhi,m_numTheta};
 	size_t size = datasize[0]*datasize[1];
 	double* buffer = new double[size];
-	complex<double>** field_data;
+	ArrayLib::ArrayIJ<std::complex<double> >* field_data;
 	string field_names[2]={"E_theta", "E_phi"};
 	for (int n=0;n<2;++n)
 	{
@@ -597,13 +585,13 @@ bool nf2ff::Write2HDF5(string filename)
 			ss << "f" << fn;
 			pos = 0;
 			if (n==0)
-				field_data = GetETheta(fn);
+				field_data = m_nf2ff.at(fn)->GetETheta();
 			else
-				field_data = GetEPhi(fn);
+				field_data = m_nf2ff.at(fn)->GetEPhi();
 			for (size_t j=0;j<m_numPhi;++j)
 				for (size_t i=0;i<m_numTheta;++i)
 				{
-					buffer[pos++]=real(field_data[i][j]);
+					buffer[pos++]=real((*field_data)(i, j));
 				}
 			if (hdf_file.WriteData(ss.str() + "_real",buffer,dim,datasize)==false)
 			{
@@ -616,7 +604,7 @@ bool nf2ff::Write2HDF5(string filename)
 			for (size_t j=0;j<m_numPhi;++j)
 				for (size_t i=0;i<m_numTheta;++i)
 				{
-					buffer[pos++]=imag(field_data[i][j]);
+					buffer[pos++]=imag((*field_data)(i, j));
 				}
 			if (hdf_file.WriteData(ss.str() + "_imag",buffer,dim,datasize)==false)
 			{
@@ -634,11 +622,11 @@ bool nf2ff::Write2HDF5(string filename)
 		stringstream ss;
 		ss << "f" << fn;
 		pos = 0;
-		double** field_data = GetRadPower(fn);
+		ArrayLib::ArrayIJ<double>* field_data = m_nf2ff.at(fn)->GetRadPower();
 		for (size_t j=0;j<m_numPhi;++j)
 			for (size_t i=0;i<m_numTheta;++i)
 			{
-				buffer[pos++]=field_data[i][j];
+				buffer[pos++]=(*field_data)(i, j);
 			}
 		if (hdf_file.WriteData(ss.str(),buffer,dim,datasize)==false)
 		{

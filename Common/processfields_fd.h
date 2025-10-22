@@ -19,6 +19,7 @@
 #define PROCESSFIELDS_FD_H
 
 #include "processfields.h"
+#include "tools/arraylib/array_nijk.h"
 
 class ProcessFieldsFD : public ProcessFields
 {
@@ -37,7 +38,7 @@ protected:
 	virtual void DumpFDData();
 
 	//! frequency domain field storage
-	std::vector<std::complex<float>****> m_FD_Fields;
+	std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*> m_FD_Fields;
 };
 
 #endif // PROCESSFIELDS_FD_H
