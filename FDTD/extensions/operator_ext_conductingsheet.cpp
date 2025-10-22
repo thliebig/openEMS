@@ -16,7 +16,7 @@
 */
 
 #include "operator_ext_conductingsheet.h"
-#include "tools/array_ops.h"
+#include "tools/arraylib/array_nijk.h"
 #include "tools/constants.h"
 #include "cond_sheet_parameter.h"
 
@@ -48,9 +48,9 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 
 	m_Order = 0;
 	vector<unsigned int> v_pos[3];
-	int ****tanDir = Create_N_3DArray<int>(numLines);
-	float ****Conductivity = Create_N_3DArray<float>(numLines);
-	float ****Thickness = Create_N_3DArray<float>(numLines);
+	ArrayLib::ArrayNIJK<int8_t> tanDir("tanDir", numLines);
+	ArrayLib::ArrayNIJK<float> Conductivity("Conductivity", numLines);
+	ArrayLib::ArrayNIJK<float> Thickness("Thickness", numLines);
 
 	CSPrimitives* cs_sheet = NULL;
 	double box[6];
@@ -76,9 +76,9 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 					nP = (n+1)%3;
 					nPP = (n+2)%3;
 
-					tanDir[n][pos[0]][pos[1]][pos[2]] = -1; //deactivate by default
-					Conductivity[n][pos[0]][pos[1]][pos[2]] = 0; //deactivate by default
-					Thickness[n][pos[0]][pos[1]][pos[2]] = 0; //deactivate by default
+					tanDir(n, pos[0], pos[1], pos[2]) = -1; //deactivate by default
+					Conductivity(n, pos[0], pos[1], pos[2]) = 0; //deactivate by default
+					Thickness(n, pos[0], pos[1], pos[2]) = 0; //deactivate by default
 
 					if (m_Op->GetYeeCoords(n,pos,coord,false)==false)
 						continue;
@@ -112,10 +112,10 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 							continue;
 						}
 
-						Conductivity[n][pos[0]][pos[1]][pos[2]] = cs_prop->GetConductivity();
-						Thickness[n][pos[0]][pos[1]][pos[2]] = cs_prop->GetThickness();
+						Conductivity(n, pos[0], pos[1], pos[2]) = cs_prop->GetConductivity();
+						Thickness(n, pos[0], pos[1], pos[2]) = cs_prop->GetThickness();
 
-						if ((Conductivity[n][pos[0]][pos[1]][pos[2]]<=0) || (Thickness[n][pos[0]][pos[1]][pos[2]]<=0))
+						if ((Conductivity(n, pos[0], pos[1], pos[2])<=0) || (Thickness(n, pos[0], pos[1], pos[2])<=0))
 						{
 							cerr << "Operator_Ext_ConductingSheet::BuildExtension: Warning: Zero conductivity or thickness detected... fallback to PEC!" << endl;
 							m_Op->SetVV(n,pos[0],pos[1],pos[2], 0 );
@@ -126,9 +126,9 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 
 						cs_sheet->GetBoundBox(box);
 						if (box[2*nP]!=box[2*nP+1])
-							tanDir[n][pos[0]][pos[1]][pos[2]] = nP;
+							tanDir(n, pos[0], pos[1], pos[2]) = nP;
 						if (box[2*nPP]!=box[2*nPP+1])
-							tanDir[n][pos[0]][pos[1]][pos[2]] = nPP;
+							tanDir(n, pos[0], pos[1], pos[2]) = nPP;
 						b_pos_on = true;
 					}
 				}
@@ -204,9 +204,9 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 		for (int n=0;n<3;++n)
 		{
 			tpos[0]=pos[0];tpos[1]=pos[1];tpos[2]=pos[2];
-			t_dir = tanDir[n][pos[0]][pos[1]][pos[2]];
-			G0 = Conductivity[n][pos[0]][pos[1]][pos[2]]*Thickness[n][pos[0]][pos[1]][pos[2]];
-			w0 = 8.0/ G0 / Thickness[n][pos[0]][pos[1]][pos[2]]/__MUE0__;
+			t_dir = tanDir(n, pos[0], pos[1], pos[2]);
+			G0 = Conductivity(n, pos[0], pos[1], pos[2])*Thickness(n, pos[0], pos[1], pos[2]);
+			w0 = 8.0/ G0 / Thickness(n, pos[0], pos[1], pos[2])/__MUE0__;
 			Omega_max = w_stop/w0;
 			for (optParaPos=0;optParaPos<numOptPara;++optParaPos)
 				if (omega_stop[optParaPos]>Omega_max)
@@ -214,7 +214,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 			if (optParaPos>=numOptPara)
 			{
 				cerr << "Operator_Ext_ConductingSheet::BuildExtension(): Error, conductor thickness, conductivity or max. simulation frequency of interest is too high! Check parameter!" << endl;
-				cerr << " --> max f: " << m_f_max << "Hz,  Conductivity: " << Conductivity[n][pos[0]][pos[1]][pos[2]] << "S/m, Thickness " << Thickness[n][pos[0]][pos[1]][pos[2]]*1e6 << "um" << endl;
+				cerr << " --> max f: " << m_f_max << "Hz,  Conductivity: " << Conductivity(n, pos[0], pos[1], pos[2]) << "S/m, Thickness " << Thickness(n, pos[0], pos[1], pos[2])*1e6 << "um" << endl;
 				optParaPos = numOptPara-1;
 			}
 			v_int_ADE[0][n][i]=0;
@@ -225,10 +225,10 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 			{
 				wtl = m_Op->GetEdgeLength(n,pos)/m_Op->GetNodeWidth(t_dir,pos);
 				factor = 1;
-				if (tanDir[t_dir][tpos[0]][tpos[1]][tpos[2]]<0)
+				if (tanDir(t_dir, tpos[0], tpos[1], tpos[2])<0)
 					factor = 2;
 				--tpos[t_dir];
-				if (tanDir[t_dir][tpos[0]][tpos[1]][tpos[2]]<0)
+				if (tanDir(t_dir, tpos[0], tpos[1], tpos[2])<0)
 					factor = 2;
 
 				L1 = l1[optParaPos]/G0/w0*factor;

@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2011-2025 Thorsten Liebig (Thorsten.Liebig@gmx.de)
+*	Copyright (C) 2011 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -23,6 +23,11 @@
 #include <complex>
 #include <hdf5.h>
 
+#include "arraylib/array_nijk.h"
+#include "arraylib/array_ijk.h"
+
+#define OPENEMS_HDF5_VERSION 0.3
+
 class HDF5_File_Writer
 {
 public:
@@ -32,17 +37,12 @@ public:
 	bool WriteRectMesh(unsigned int const* numLines, double const* const* discLines, int MeshType=0, double scaling=1, std::string s_mesh_grp="/Mesh");
 	bool WriteRectMesh(unsigned int const* numLines, float const* const* discLines, int MeshType=0, double scaling=1, std::string s_mesh_grp="/Mesh");
 
-	bool WriteScalarField(std::string dataSetName, float const* const* const* field, size_t datasize[3]);
-	bool WriteScalarField(std::string dataSetName, double const* const* const* field, size_t datasize[3]);
+	template <typename T>
+	bool WriteScalarField(std::string dataSetName, ArrayLib::ArrayIJK<T> &data);
 
-	bool WriteScalarField(std::string dataSetName, std::complex<float> const* const* const* field, size_t datasize[3]);
-	bool WriteScalarField(std::string dataSetName, std::complex<double> const* const* const* field, size_t datasize[3]);
+	template <typename T>
+	bool WriteVectorField(std::string dataSetName, ArrayLib::ArrayNIJK<T> &data);
 
-	bool WriteVectorField(std::string dataSetName, float const* const* const* const* field, size_t datasize[3]);
-	bool WriteVectorField(std::string dataSetName, double const* const* const* const* field, size_t datasize[3]);
-
-	bool WriteVectorField(std::string dataSetName, std::complex<float> const* const* const* const* field, size_t datasize[3], bool legacy_fmt=true);
-	bool WriteVectorField(std::string dataSetName, std::complex<double> const* const* const* const* field, size_t datasize[3], bool legacy_fmt=true);
 
 	bool WriteData(std::string dataSetName, float const* field_buf, size_t dim, size_t* datasize, std::string d_order="");
 	bool WriteData(std::string dataSetName, double const* field_buf, size_t dim, size_t* datasize, std::string d_order="");
@@ -58,6 +58,7 @@ public:
 	bool WriteAtrribute(std::string locName, std::string attr_name, int value);
 	bool WriteAtrribute(std::string locName, std::string attr_name, unsigned int value);
 	bool WriteAtrribute(std::string locName, std::string attr_name, std::string value);
+	bool WriteAtrribute(std::string locName, std::string attr_name, bool value);
 
 	void SetCurrentGroup(std::string group, bool createGrp=true);
 

@@ -20,9 +20,19 @@
 
 #include <complex>
 #include "arraylib/array_ijk.h"
-#include "../openems_global.h"
+#include "arraylib/array_nijk.h"
 
-class OPENEMS_EXPORT SAR_Calculation
+#if defined(WIN32)
+	#ifdef BUILD_OPENEMS_LIB
+	#define SAR_EXPORT __declspec(dllexport)
+	#else
+	#define SAR_EXPORT __declspec(dllimport)
+	#endif
+#else
+#define SAR_EXPORT
+#endif
+
+class SAR_EXPORT SAR_Calculation
 {
 public:
 	SAR_Calculation();
@@ -50,21 +60,21 @@ public:
 	void SetAveragingMass(float mass) {m_avg_mass=mass;}
 
 	//! Set the cell volumes (optional for speedup)
-	void SetCellVolumes(float*** cell_volume) {m_cell_volume=cell_volume;}
+	void SetCellVolumes(ArrayLib::ArrayIJK<float>* cell_volume) {m_cell_volume=cell_volume;}
 
 	//! Set the cell densities (mandatory information)
-	void SetCellDensities(float*** cell_density) {m_cell_density=cell_density;}
+	void SetCellDensities(ArrayLib::ArrayIJK<float>* cell_density) {m_cell_density=cell_density;}
 
 	//! Set the cell conductivities (mandatory if no current density field is given)
-	void SetCellCondictivity(float*** cell_conductivity) {m_cell_conductivity=cell_conductivity;}
+	void SetCellCondictivity(ArrayLib::ArrayIJK<float>* cell_conductivity) {m_cell_conductivity=cell_conductivity;}
 
 	//! Set the electric field (mandatory information)
-	void SetEField(std::complex<float>**** field) {m_E_field=field;}
+	void SetEField(ArrayLib::ArrayNIJK<std::complex<float>>* field) {m_E_field=field;}
 	//! Set the current density field (mandatory if no conductivity distribution is given)
-	void SetJField(std::complex<float>**** field) {m_J_field=field;}
+	void SetJField(ArrayLib::ArrayNIJK<std::complex<float>>* field) {m_J_field=field;}
 
 	//! Calculate the SAR, requires a preallocated 3D array
-	float*** CalcSAR(float*** SAR);
+	bool CalcSAR(ArrayLib::ArrayIJK<float> &SAR);
 
 	//! Calculate the total power dumped
 	double CalcSARPower();
@@ -79,11 +89,11 @@ protected:
 	double* m_cellWidth[3];
 
 	float m_avg_mass;
-	float*** m_cell_volume;
-	float*** m_cell_density;
-	float*** m_cell_conductivity;
-	std::complex<float>**** m_E_field;
-	std::complex<float>**** m_J_field;
+	ArrayLib::ArrayIJK<float>* m_cell_volume;
+	ArrayLib::ArrayIJK<float>* m_cell_density;
+	ArrayLib::ArrayIJK<float>* m_cell_conductivity;
+	ArrayLib::ArrayNIJK<std::complex<float>>* m_E_field;
+	ArrayLib::ArrayNIJK<std::complex<float>>* m_J_field;
 
 	// save some statistical data
 	unsigned int m_Valid;
@@ -109,18 +119,18 @@ protected:
 	double CalcLocalPowerDensity(unsigned int pos[3]);
 
 	//! Calculate the local SAR
-	float*** CalcLocalSAR(float*** SAR);
+	bool CalcLocalSAR(ArrayLib::ArrayIJK<float> &SAR);
 
 	/****** start SAR averaging and all necessary methods ********/
 	//! Calculate the averaged SAR
-	float*** CalcAveragedSAR(float*** SAR);
+	bool CalcAveragedSAR(ArrayLib::ArrayIJK<float> &SAR);
 
 	int FindFittingCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
 						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1, bool ignoreFaceValid=false);
 	bool GetCubicalMass(unsigned int pos[3], double box_size, unsigned int start[3], unsigned int stop[3],
 						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1);
 
-	float CalcCubicalSAR(float*** SAR, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
+	float CalcCubicalSAR(ArrayLib::ArrayIJK<float> &SAR, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
 						 float partial_start[3], float partial_stop[3], ArrayLib::ArrayIJK<float> &local_pwr,
 						 ArrayLib::ArrayIJK<bool> &Vx_Used, ArrayLib::ArrayIJK<bool> &Vx_Valid,
 						 bool assignUsed=false);
