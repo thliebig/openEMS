@@ -32,13 +32,13 @@ int main(int argc, char *argv[])
 
 	options_description desc("Options");
 	variables_map vm;
-    try {
-        string ifile, ofile, method;
-        double m_avg = 0;
-        bool debug = false;
+	try {
+		string ifile, ofile, method;
+		double m_avg = 0;
+		bool debug = false;
 		bool export_cube_stats = false;
 
-        desc.add_options()
+		desc.add_options()
 		("help,h"  , "print usage message")
 		("input,i" , value(&ifile)->required(), "pathname to input hdf5 file")
 		("output,o", value(&ofile)->required(), "pathname for output hdf5 file")
@@ -47,14 +47,14 @@ int main(int argc, char *argv[])
 		("verbose,v", bool_switch(&debug), "verbose")
 		("export_cube_stats,e", bool_switch(&export_cube_stats), "Export Cube Statistics");
 
-        store(parse_command_line(argc, argv, desc), vm);
+		store(parse_command_line(argc, argv, desc), vm);
 
-        if (vm.count("help")) {
-            cout << desc << "\n";
-            return 0;
-        }
+		if (vm.count("help")) {
+			cout << desc << "\n";
+			return 0;
+		}
 
-        notify(vm);
+		notify(vm);
 
 		SAR_Calculation sar_calc;
 		sar_calc.SetDebugLevel(int(debug));
@@ -64,8 +64,8 @@ int main(int argc, char *argv[])
 			return -1;
 		sar_calc.CalcFromHDF5(ifile, ofile, export_cube_stats);
 		return 0;
-    }
-    catch(exception& e) {
-        cerr << e.what() << "\n";
-    }
+	}
+	catch(exception& e) {
+		cerr << e.what() << "\n";
+	}
 }

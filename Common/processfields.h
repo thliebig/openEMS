@@ -20,6 +20,7 @@
 
 #include "processing.h"
 #include "tools/array_ops.h"
+#include "tools/arraylib/array_nijk.h"
 
 #define __VTK_DATA_TYPE__ "double"
 
@@ -100,7 +101,7 @@ protected:
 	double* discLines[3];		//mesh disc lines to dump
 
 	//! Calculate and return the defined field. Caller has to cleanup the array.
-	FDTD_FLOAT**** CalcField();
+	bool CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field);
 };
 
 #endif // PROCESSFIELDS_H

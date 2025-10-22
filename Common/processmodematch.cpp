@@ -18,7 +18,6 @@
 #include "processmodematch.h"
 #include "CSFunctionParser.h"
 #include "Common/operator_base.h"
-#include "tools/array_ops.h"
 
 using namespace std;
 
@@ -27,7 +26,6 @@ ProcessModeMatch::ProcessModeMatch(Engine_Interface_Base* eng_if) : ProcessInteg
 	for (int n=0; n<2; ++n)
 	{
 		m_ModeParser[n] = new CSFunctionParser();
-		m_ModeDist[n] = NULL;
 	}
 	delete[] m_Results;
 	m_Results = new double[2];
@@ -38,7 +36,6 @@ ProcessModeMatch::~ProcessModeMatch()
 	for (int n=0; n<2; ++n)
 	{
 		delete m_ModeParser[n];
-		m_ModeParser[n] = NULL;
 	}
 	Reset();
 }
@@ -130,10 +127,7 @@ void ProcessModeMatch::InitProcess()
 		}
 	}
 
-	for (int n=0; n<2; ++n)
-	{
-		m_ModeDist[n] = Create2DArray<double>(m_numLines);
-	}
+	m_ModeDist.Init("ModeDist", {2, m_numLines[0], m_numLines[1]});
 
 	bool dualMesh = m_ModeFieldType==1;
 	unsigned int pos[3] = {0,0,0};
@@ -173,12 +167,12 @@ void ProcessModeMatch::InitProcess()
 			area = Op->GetNodeArea(m_ny,pos,dualMesh);
 			for (int n=0; n<2; ++n)
 			{
-				m_ModeDist[n][posP][posPP] = m_ModeParser[n]->Eval(var); //calc mode template
-				if ((std::isnan(m_ModeDist[n][posP][posPP])) || (std::isinf(m_ModeDist[n][posP][posPP])))
-					m_ModeDist[n][posP][posPP] = 0.0;
-				norm += pow(m_ModeDist[n][posP][posPP],2) * area;
+				m_ModeDist(n, posP, posPP) = m_ModeParser[n]->Eval(var); //calc mode template
+				if ((std::isnan(m_ModeDist(n, posP, posPP))) || (std::isinf(m_ModeDist(n, posP, posPP))))
+					m_ModeDist(n, posP, posPP) = 0.0;
+				norm += pow(m_ModeDist(n, posP, posPP),2) * area;
 			}
-//			cerr << discLine[0] << " " << discLine[1] << " : " << m_ModeDist[0][posP][posPP] << " , " << m_ModeDist[1][posP][posPP] << endl;
+//			cerr << discLine[0] << " " << discLine[1] << " : " << m_ModeDist[0](posP, posPP) << " , " << m_ModeDist[1](posP, posPP) << endl;
 		}
 	}
 
@@ -190,9 +184,9 @@ void ProcessModeMatch::InitProcess()
 		{
 			for (int n=0; n<2; ++n)
 			{
-				m_ModeDist[n][posP][posPP] /= norm;
+				m_ModeDist(n, posP, posPP) /= norm;
 			}
-//			cerr << posP << " " << posPP << " : " << m_ModeDist[0][posP][posPP] << " , " << m_ModeDist[1][posP][posPP] << endl;
+//			cerr << posP << " " << posPP << " : " << m_ModeDist[0](posP, posPP) << " , " << m_ModeDist[1](posP, posPP) << endl;
 		}
 
 	ProcessIntegral::InitProcess();
@@ -201,11 +195,7 @@ void ProcessModeMatch::InitProcess()
 void ProcessModeMatch::Reset()
 {
 	ProcessIntegral::Reset();
-	for (int n=0; n<2; ++n)
-	{
-		Delete2DArray<double>(m_ModeDist[n],m_numLines);
-		m_ModeDist[n] = NULL;
-	}
+	m_ModeDist.Reset();
 }
 
 
@@ -253,7 +243,7 @@ double* ProcessModeMatch::CalcMultipleIntegrals()
 			for (int n=0; n<2; ++n)
 			{
 				field = out[(m_ny+n+1)%3];
-				value += field * m_ModeDist[n][posP][posPP] * area;
+				value += field * m_ModeDist(n, posP, posPP) * area;
 				purity += field*field * area;
 			}
 		}
