@@ -84,16 +84,16 @@ void Operator_sse::InitOperator()
 
 	numVectors =  ceil((double)numLines[2]/4.0);
 
-	f4_vv_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+	f4_vv_ptr = new ArrayLib::ArrayENG<f4vector>(
 		"f4_vv", {numLines[0], numLines[1], numVectors}
 	);
-	f4_vi_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+	f4_vi_ptr = new ArrayLib::ArrayENG<f4vector>(
 		"f4_vi", {numLines[0], numLines[1], numVectors}
 	);
-	f4_iv_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+	f4_iv_ptr = new ArrayLib::ArrayENG<f4vector>(
 		"f4_iv", {numLines[0], numLines[1], numVectors}
 	);
-	f4_ii_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+	f4_ii_ptr = new ArrayLib::ArrayENG<f4vector>(
 		"f4_ii", {numLines[0], numLines[1], numVectors}
 	);
 }

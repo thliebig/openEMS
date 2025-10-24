@@ -43,7 +43,7 @@ public:
 	// and calls Init() later.
 	ArrayNIJK() {}
 
-	void Init(std::string name, std::array<IndexType, 3> extent)
+	virtual void Init(std::string name, std::array<IndexType, 3> extent)
 	{
 		if (this->m_ptr != NULL)
 			Base::AllocatorType::free(this->m_ptr, this->m_size);
@@ -60,12 +60,6 @@ public:
 		this->m_stride[1] = extent[1] * extent[2];
 		this->m_stride[2] = extent[2];
 		this->m_stride[3] = 1;
-
-		// I-J-K-N ordering
-		// this->m_stride[1] = extent[1] * extent[2] * extentN;
-		// this->m_stride[2] = extent[2] * extentN;
-		// this->m_stride[3] = extentN;
-		// this->m_stride[0] = 1;
 	}
 
 	void Init(std::string name, IndexType extent[3])

@@ -56,10 +56,10 @@ void Engine_sse::Init()
 	delete curr_ptr;
 	curr_ptr = NULL;
 
-	f4_volt_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+	f4_volt_ptr = new ArrayLib::ArrayENG<f4vector>(
 		"f4_volt", {numLines[0], numLines[1], numVectors}
 	);
-	f4_curr_ptr = new ArrayLib::ArrayNIJK<f4vector>(
+	f4_curr_ptr = new ArrayLib::ArrayENG<f4vector>(
 		"f4_curr", {numLines[0], numLines[1], numVectors}
 	);
 }
@@ -75,10 +75,10 @@ void Engine_sse::Reset()
 
 void Engine_sse::UpdateVoltages(unsigned int startX, unsigned int numX)
 {
-	ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
-	ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
-	ArrayLib::ArrayNIJK<f4vector>& f4_vv = *Op->f4_vv_ptr;
-	ArrayLib::ArrayNIJK<f4vector>& f4_vi = *Op->f4_vi_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_volt = *f4_volt_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_curr = *f4_curr_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_vv = *Op->f4_vv_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_vi = *Op->f4_vi_ptr;
 
 	unsigned int pos[3];
 	bool shift[2];
@@ -175,10 +175,10 @@ void Engine_sse::UpdateVoltages(unsigned int startX, unsigned int numX)
 
 void Engine_sse::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
-	ArrayLib::ArrayNIJK<f4vector>& f4_curr = *f4_curr_ptr;
-	ArrayLib::ArrayNIJK<f4vector>& f4_volt = *f4_volt_ptr;
-	ArrayLib::ArrayNIJK<f4vector>& f4_ii = *Op->f4_ii_ptr;
-	ArrayLib::ArrayNIJK<f4vector>& f4_iv = *Op->f4_iv_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_curr = *f4_curr_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_volt = *f4_volt_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_ii = *Op->f4_ii_ptr;
+	ArrayLib::ArrayENG<f4vector>& f4_iv = *Op->f4_iv_ptr;
 
 	unsigned int pos[5];
 	f4vector temp;
