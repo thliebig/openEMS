@@ -1,3 +1,11 @@
+"""
+ Microstrip Line with local absorber test
+
+ (c) 20@3-2025 Gadi Lahav <gadi@rfwithcare.com>
+
+"""
+
+
 ### Import Libraries
 import os, tempfile
 from pylab import *
@@ -70,14 +78,13 @@ mesh = CSX.GetGrid()
 mesh.SetDeltaUnit(1e-3)
 mesh_res = ((C0/(f0+fc))/1e-3)/75
 
-### Generate propertiesprimitives and mesh-grid
+### Generate properties, primitives and mesh-grid
 #initialize the mesh with the "air-box" dimensions
 mesh.AddLine('x', SimBox[0:2])
 mesh.AddLine('y', SimBox[2:4])
 mesh.AddLine('z', SimBox[4:6])
 
 # create line and ground
-# line = CSX.AddMaterial('cu_top',kappa=56000000)
 line = CSX.AddMetal('cu_top')
 start = [-microstrip_W/2, substrate_thickness, 0.0]
 stop  = [ microstrip_W/2, substrate_thickness + cu_thick, substrate_length]
@@ -87,19 +94,7 @@ mesh.AddLine('x',[start[0],stop[0]])
 mesh.AddLine('y',[start[1],stop[1]])
 mesh.AddLine('z',[start[2],stop[2]])
 
-# PEC block for Z = 0
-# port1_block = CSX.AddMetal('PEC')
-# start = [-microstrip_W*(1.0 + port_w_fact)*0.5, 0.0, -port_thick_mm]
-# stop  = [ microstrip_W*(1.0 + port_w_fact)*0.5, substrate_thickness*(1.0 + port_h_fact), 0.0]
-# port1_block.AddBox(priority=12, start=start, stop=stop) # add a box-primitive to the metal property 'patch'
-# FDTD.AddEdges2Grid(dirs='xyz', properties=port1_block)
-# mesh.AddLine('x',[start[0],stop[0]])
-# mesh.AddLine('y',[start[1],stop[1]])
-# mesh.AddLine('z',[start[2],stop[2]])
-
-# Extra pad for port not to take a lot of space
-# mesh.AddLine('z',np.array([0.25,0.5,0.8,1])*mesh_res)
-
+# Port PEC block
 port2_block = CSX.AddMetal('PEC')
 start = [-microstrip_W*(1.0 + port_w_fact)*0.5, -cu_thick, substrate_length - port_shift_mm]
 stop  = [ microstrip_W*(1.0 + port_w_fact)*0.5, substrate_thickness*(1.0 + port_h_fact), substrate_length + port_thick_mm - port_shift_mm]
@@ -108,7 +103,6 @@ FDTD.AddEdges2Grid(dirs='xyz', properties=port2_block)
 mesh.AddLine('x',[start[0],stop[0]])
 mesh.AddLine('y',[start[1],stop[1]])
 mesh.AddLine('z',[start[2],stop[2]])
-
 
 # Extra pad for port not to take a lot of space
 mesh.AddLine('z',substrate_length - port_shift_mm - np.array([0.5,1])*mesh_res)
@@ -135,7 +129,6 @@ FDTD.AddEdges2Grid(dirs='xyz', properties=gnd)
 
 mesh.SmoothMeshLines('all', mesh_res, 1.4)
 
-
 # Find start\stop mesh lines
 Zz = mesh.GetLines('z')
 idxTerm = (np.where(Zz == (substrate_length - port_shift_mm))[0]).item(0)
@@ -151,7 +144,6 @@ port1 = FDTD.AddLumpedPort(1, 50.0, start, stop, 'y', 1.0, priority=15, edges2gr
 # Place absorber for port #2
 
 v_phase = np.sqrt(1/(0.5*(1 + substrate_epsR)))*C0
-
 
 start = [-microstrip_W*(1.0 + port_w_fact)*0.5, -cu_thick, Zz.item(idxTerm)]
 stop  = [ microstrip_W*(1.0 + port_w_fact)*0.5, substrate_thickness*(1.0 + port_h_fact), Zz.item(idxTerm)]

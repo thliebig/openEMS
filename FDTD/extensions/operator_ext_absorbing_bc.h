@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2023-2025 Gadi Lahav (gadi@rfwithcare.com)
+*	Copyright (C) 2023-2025 Gadi Lahav (gadi@rfwithcare.com), Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by

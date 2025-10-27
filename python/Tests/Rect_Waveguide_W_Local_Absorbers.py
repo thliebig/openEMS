@@ -1,12 +1,7 @@
-# -*- coding: utf-8 -*-
 """
- Rectangular Waveguide Tutorial
+ Rectangular Waveguide with local absorber test
 
- Tested with
-  - python 3.10
-  - openEMS v0.0.35+
-
- (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
+ (c) 20@3-2025 Gadi Lahav <gadi@rfwithcare.com>
 
 """
 

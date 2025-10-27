@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2023-2025 Gadi Lahav (gadi@rfwithcare.com)
+*	Copyright (C) 2023-2025 Gadi Lahav (gadi@rfwithcare.com), Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -234,13 +234,13 @@ bool Operator_Ext_Absorbing_BC::BuildExtension()
 
 			// If more boundary types of boundary conditions are added in the future,
 			// this needs to be in a condition, as well.
-			m_K1_nyP[arrI][arrJ]  = (vt_nyP  - delta) / (vt_nyP  + delta);
-			m_K1_nyPP[arrI][arrJ] = (vt_nyPP - delta) / (vt_nyPP + delta);
+			m_K1_nyP(arrI,arrJ)  = (vt_nyP  - delta) / (vt_nyP  + delta);
+			m_K1_nyPP(arrI,arrJ) = (vt_nyPP - delta) / (vt_nyPP + delta);
 
 			if (m_ABCtype == ABCtype::MUR_1ST_SA)
 			{
-				m_K2_nyP[arrI][arrJ]  = vt_nyP /delta;
-				m_K2_nyPP[arrI][arrJ] = vt_nyPP/delta;
+				m_K2_nyP(arrI,arrJ)  = vt_nyP /delta;
+				m_K2_nyPP(arrI,arrJ) = vt_nyPP/delta;
 			}
 
 			arrJ++;

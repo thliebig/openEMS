@@ -1,5 +1,5 @@
 /*
-*	Copyright (C) 2023-2025 Gadi Lahav (gadi@rfwithcare.com)
+*	Copyright (C) 2023-2025 Gadi Lahav (gadi@rfwithcare.com), Thorsten Liebig (Thorsten.Liebig@gmx.de)
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -129,8 +129,8 @@ void Engine_Ext_Absorbing_BC::DoPreVoltageUpdatesImpl(EngType* eng, int threadID
 			pos_shift[m_nyPP] = pos[m_nyPP] = m_posStart[m_nyPP] + j;
 
 			// E(i + s,n) - K1*E(i,n)
-			m_V_nyP [i][j] = eng->EngType::GetVolt(m_nyP ,pos_shift) - m_Op_ABC->m_K1_nyP [i][j] * eng->EngType::GetVolt(m_nyP ,pos);
-			m_V_nyPP[i][j] = eng->EngType::GetVolt(m_nyPP,pos_shift) - m_Op_ABC->m_K1_nyPP[i][j] * eng->EngType::GetVolt(m_nyPP,pos);
+			m_V_nyP (i,j) = eng->EngType::GetVolt(m_nyP ,pos_shift) - m_Op_ABC->m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos);
+			m_V_nyPP(i,j) = eng->EngType::GetVolt(m_nyPP,pos_shift) - m_Op_ABC->m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos);
 		}
 
 	}
@@ -165,8 +165,8 @@ void Engine_Ext_Absorbing_BC::DoPostVoltageUpdatesImpl(EngType* eng, int threadI
 
 			// E(i + s,n) - K1*E(i,n) + K1*E(i + s,n) =
 			// E(i + s,n) + [K1*E(i + s,n) - K1*E(i,n)]
-			m_V_nyP [i][j] += m_K1_nyP [i][j] * eng->EngType::GetVolt(m_nyP ,pos_shift);
-			m_V_nyPP[i][j] += m_K1_nyPP[i][j] * eng->EngType::GetVolt(m_nyPP,pos_shift);
+			m_V_nyP (i,j) += m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos_shift);
+			m_V_nyPP(i,j) += m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos_shift);
 		}
 
 	}
@@ -200,8 +200,8 @@ void Engine_Ext_Absorbing_BC::Apply2VoltagesImpl(EngType* eng, int threadID)
 			pos[m_nyPP] = m_posStart[m_nyPP] + j;
 
 			// E(i,n + 1) = E(i + s,n) + [K1*E(i + s,n) - K1*E(i,n)]
-			eng->EngType::SetVolt(m_nyP ,pos, m_V_nyP [i][j]);
-			eng->EngType::SetVolt(m_nyPP,pos, m_V_nyPP[i][j]);
+			eng->EngType::SetVolt(m_nyP ,pos, m_V_nyP (i,j));
+			eng->EngType::SetVolt(m_nyPP,pos, m_V_nyPP(i,j));
 		}
 
 	}
@@ -246,8 +246,8 @@ void Engine_Ext_Absorbing_BC::DoPreCurrentUpdatesImpl(EngType* eng, int threadID
 			pos_shift[m_nyPP] = pos[m_nyPP] = m_posStart[m_nyPP] + j;
 
 			// H(i + s,n) - K1*H(i,n)
-			m_I_nyP [i][j] = eng->EngType::GetCurr(m_nyP ,pos_shift) - m_K1_nyP [i][j]*eng->EngType::GetCurr(m_nyP ,pos);
-			m_I_nyPP[i][j] = eng->EngType::GetCurr(m_nyPP,pos_shift) - m_K1_nyPP[i][j]*eng->EngType::GetCurr(m_nyPP,pos);
+			m_I_nyP (i,j) = eng->EngType::GetCurr(m_nyP ,pos_shift) - m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos);
+			m_I_nyPP(i,j) = eng->EngType::GetCurr(m_nyPP,pos_shift) - m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos);
 		}
 	}
 
@@ -300,8 +300,8 @@ void Engine_Ext_Absorbing_BC::DoPostCurrentUpdatesImpl(EngType* eng, int threadI
 			pos_shift[m_nyPP] = m_posStart[m_nyPP] + j;
 
 			// H(i + s,n) + K1*[H(i,n + 1) - H(i,n)]
-			m_I_nyP [i][j] += m_K1_nyP [i][j]*eng->EngType::GetCurr(m_nyP ,pos_shift);
-			m_I_nyPP[i][j] += m_K1_nyPP[i][j]*eng->EngType::GetCurr(m_nyPP,pos_shift);
+			m_I_nyP (i,j) += m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos_shift);
+			m_I_nyPP(i,j) += m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos_shift);
 
 		}
 	}
@@ -342,8 +342,8 @@ void Engine_Ext_Absorbing_BC::Apply2CurrentImpl(EngType* eng, int threadID)
 			pos[m_nyPP] = m_posStart[m_nyPP] + j;
 
 			// H(i + s,n) = (Hsa*K2 + Hc)/(1 + K2)
-			eng->EngType::SetCurr(m_nyP ,pos, (m_I_nyP [i][j]*m_K2_nyP [i][j] + eng->EngType::GetCurr(m_nyP ,pos))/(m_K2_nyP [i][j] + 1.0));
-			eng->EngType::SetCurr(m_nyPP,pos, (m_I_nyPP[i][j]*m_K2_nyPP[i][j] + eng->EngType::GetCurr(m_nyPP,pos))/(m_K2_nyPP[i][j] + 1.0));
+			eng->EngType::SetCurr(m_nyP ,pos, (m_I_nyP (i,j)*m_K2_nyP (i,j) + eng->EngType::GetCurr(m_nyP ,pos))/(m_K2_nyP (i,j) + 1.0));
+			eng->EngType::SetCurr(m_nyPP,pos, (m_I_nyPP(i,j)*m_K2_nyPP(i,j) + eng->EngType::GetCurr(m_nyPP,pos))/(m_K2_nyPP(i,j) + 1.0));
 
 
 		}
