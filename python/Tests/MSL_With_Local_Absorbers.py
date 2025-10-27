@@ -41,7 +41,7 @@ mesh_res = 0.1
 port_w_fact = 6
 port_h_fact = 5.5
 port_thick_mm = 0.5
-port_shift_mm = 30
+port_shift_mm = 15
 
 
 cu_thick = 0.1
@@ -132,7 +132,6 @@ mesh.SmoothMeshLines('all', mesh_res, 1.4)
 # Find start\stop mesh lines
 Zz = mesh.GetLines('z')
 idxTerm = (np.where(Zz == (substrate_length - port_shift_mm))[0]).item(0)
-# idxTerm = (np.where(Zz == (substrate_length - port_shift_mm)[0])).item(0)
 
 # apply the excitation & resist as a current source
 # Define port mode 
@@ -145,8 +144,14 @@ port1 = FDTD.AddLumpedPort(1, 50.0, start, stop, 'y', 1.0, priority=15, edges2gr
 
 v_phase = np.sqrt(1/(0.5*(1 + substrate_epsR)))*C0
 
+# Use this option to place directly on PEC. Absorption is ~ 3dB worse, this way, but less leakage.
 start = [-microstrip_W*(1.0 + port_w_fact)*0.5, -cu_thick, Zz.item(idxTerm)]
 stop  = [ microstrip_W*(1.0 + port_w_fact)*0.5, substrate_thickness*(1.0 + port_h_fact), Zz.item(idxTerm)]
+# This places the absorber one mesh cell farther. 
+# start = [-microstrip_W*(1.0 + port_w_fact)*0.5, -cu_thick, Zz.item(idxTerm - 1)]
+# stop  = [ microstrip_W*(1.0 + port_w_fact)*0.5, substrate_thickness*(1.0 + port_h_fact), Zz.item(idxTerm - 1)]
+
+# In this application, MUR_1ST_SA may cause instability
 abs2 = CSX.AddAbsorbingBC('abs2',NormalSignPositive = False, AbsorbingBoundaryType = ABCtype.MUR_1ST)
 abs2.AddBox(start, stop, priority=20)
 
