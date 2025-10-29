@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+	# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2015,20016 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 #
@@ -347,54 +347,108 @@ class WaveguidePort(Port):
     Port, RectWGPort
 
     """
-    def __init__(self, CSX, port_nr, start, stop, exc_dir, E_WG_func, H_WG_func, kc, excite=0, **kw):
-        super(WaveguidePort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
+    def __init__(self, CSX, port_nr, start, stop, exc_dir, E_WG_func, H_WG_func, kc, excite=0, excite_type=0, **kw):
+        
+        super(WaveguidePort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, excite_type=excite_type, **kw)
         self.exc_ny  = CheckNyDir(exc_dir)
         self.ny_P  = (self.exc_ny+1)%3
         self.ny_PP = (self.exc_ny+2)%3
         self.direction = np.sign(stop[self.exc_ny]-start[self.exc_ny])
         self.ref_index = 1
-
+        
         if (self.excite!=0 and stop[self.exc_ny]==start[self.exc_ny]):
             raise Exception('Port length in excitation direction may not be zero if port is excited!')
-
+        
         self.kc = kc
         self.E_func = E_WG_func
         self.H_func = H_WG_func
-
-        if excite!=0:
+        
+        E_is_str = type(self.E_func) is str
+        H_is_str = type(self.H_func) is str
+        
+        if excite != 0:
             e_start = np.array(start)
             e_stop  = np.array(stop)
             e_stop[self.exc_ny] = e_start[self.exc_ny]
             e_vec = np.ones(3)
-            e_vec[self.exc_ny]=0
-            exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0, exc_val=e_vec, delay=self.delay)
-            exc.SetWeightFunction([str(x) for x in self.E_func])
+            e_vec[self.exc_ny] = 0
+            exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=excite_type, exc_val=e_vec, delay=self.delay)
+            
+            
+            # Check wether this is manual weighting or string function
+            if E_is_str or H_is_str:
+                if not H_is_str:
+                    raise Exception ('Both E_func and H_func must be files')
+                
+                _,Eext = os.path.splitext(self.E_func)
+                _,Hext = os.path.splitext(self.H_func)
+                if not ((Eext == '.csv') and (Hext == '.csv')):
+                    raise Exception('Both E_func and H_func must be CSV files in case of mode files')
+                
+                # E-field (TE case)
+                if excite_type == 0:
+                    exc.SetModeFileName(self.E_func)
+                # H-field (TM case)
+                elif excite_type == 2:
+                    exc.SetModeFileName(self.H_func)
+                else:
+                    raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
+                    
+            elif (type(self.E_func) is list):
+                if excite_type == 0:
+                    exc.SetWeightFunction([str(x) for x in self.E_func])
+                elif excite_type == 2:
+                    exc.SetWeightFunction([str(x) for x in self.H_func])
+                else:
+                    raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
+        
+            else:
+                raise Exception('Unsupported input type for "E_Func" or "H_func"')
+
+            # For the mode file to be used correctly, the direction of 
+            # propagation has to be explicitly set here.
+            if (E_is_str):
+                dirVect = [0,0,0]
+                dirVect[self.exc_ny] = 1
+                exc.SetPropagationDir(dirVect)
+            
+            # Finally, add the box
             exc.AddBox(e_start, e_stop, priority=self.priority)
             self.port_props.append(exc)
+
 
         # voltage/current planes
         m_start = np.array(start)
         m_stop  = np.array(stop)
         m_start[self.exc_ny] = m_stop[self.exc_ny]
         self.measplane_shift = np.abs(stop[self.exc_ny] - start[self.exc_ny])
-
+        
         self.U_filenames = [self.lbl_temp.format('ut'), ]
-
-        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
+        # Initialize variable here so it will be in context post the if statement
+        u_probe = None
+        if E_is_str:
+            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.E_func)
+        else:
+            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
         u_probe.AddBox(m_start, m_stop)
         self.port_props.append(u_probe)
 
+        i_probe = None
         self.I_filenames = [self.lbl_temp.format('it'), ]
-        i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_function=self.H_func)
+        if H_is_str:
+            i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_file_name=self.H_func)
+        else:
+            i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_function=self.H_func)
         i_probe.AddBox(m_start, m_stop)
         self.port_props.append(i_probe)
-
-
-    def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
+        
+    def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse', ZL = -1):
         k = 2.0*np.pi*freq/C0*self.ref_index
         self.beta = np.sqrt(k**2 - self.kc**2)
-        self.ZL = k * Z0 / self.beta    #analytic waveguide impedance
+        if ZL <= 0:
+            self.ZL = k * Z0 / self.beta    #analytic waveguide impedance
+        else:
+            self.ZL = ZL
         if ref_impedance is None:
             self.Z_ref = self.ZL
         super(WaveguidePort, self).CalcPort(sim_path, freq, ref_impedance, ref_plane_shift, signal_type)
