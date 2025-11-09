@@ -38,10 +38,10 @@ public:
 	bool WriteRectMesh(unsigned int const* numLines, float const* const* discLines, int MeshType=0, double scaling=1, std::string s_mesh_grp="/Mesh");
 
 	template <typename T>
-	bool WriteScalarField(std::string dataSetName, ArrayLib::ArrayIJK<T> &data);
+	bool WriteScalarField(std::string dataSetName, ArrayLib::ArrayIJK<T> &data, bool legacy_fmt=false);
 
 	template <typename T>
-	bool WriteVectorField(std::string dataSetName, ArrayLib::ArrayNIJK<T> &data);
+	bool WriteVectorField(std::string dataSetName, ArrayLib::ArrayNIJK<T> &data, bool legacy_fmt=false);
 
 
 	bool WriteData(std::string dataSetName, float const* field_buf, size_t dim, size_t* datasize, std::string d_order="");

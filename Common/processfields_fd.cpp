@@ -184,7 +184,7 @@ void ProcessFieldsFD::DumpFDData()
 			stringstream ss;
 			ss << "f" << n;
 			// size_t datasize[]={numLines[0],numLines[1],numLines[2]};
-			if (m_HDF5_Dump_File->WriteVectorField<std::complex<float>>(ss.str(), *m_FD_Fields.at(n))==false)
+			if (m_HDF5_Dump_File->WriteVectorField<std::complex<float>>(ss.str(), *m_FD_Fields.at(n), g_settings.GetLegacyHFD5Dumps())==false)
 				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
 
 			//legacy support, use /FieldData/FD frequency-Attribute in the future

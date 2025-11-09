@@ -191,7 +191,7 @@ double SAR_Calculation::CalcTotalMass()
 	return mass;
 }
 
-bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool export_cube_stats)
+bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool export_cube_stats, bool legacyHDF5)
 {
 	Reset();
 	if (m_DebugLevel>0)
@@ -344,7 +344,7 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 		E_fd_data.Reset();
 		stringstream ss;
 		ss << "f" << n;
-		if (out_file.WriteScalarField<float>(ss.str(), SAR)==false)
+		if (out_file.WriteScalarField<float>(ss.str(), SAR, legacyHDF5)==false)
 			cerr << "SAR_Calculation::CalcFromHDF5: can't dump to file...! " << endl;
 		if (m_cube_type.data()!=NULL)
 			if (out_file.WriteData(ss.str() + "_CubeType", H5T_NATIVE_UCHAR, m_cube_type.data(), 3, dims)==false)

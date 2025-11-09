@@ -109,6 +109,15 @@ public:
 	IndexType                   stride(IndexType n) const { return m_stride[n];}
 	bool                        valid()             const { return m_ptr!=NULL;}
 
+	// allow to swap axis
+	void swapAxis(int a, int b)
+	{
+		if ((a<0) || (b<0) || (a>=rank) || (b>=rank) || (a==b))
+			return;
+		std::swap(m_extent[a], m_extent[b]);
+		std::swap(m_stride[a], m_stride[b]);
+	}
+
 	// return the number of array elements
 	IndexType                   size()              const { return m_size;     }
 

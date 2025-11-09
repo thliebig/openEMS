@@ -196,34 +196,111 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, double const*
 }
 
 template <typename T>
-bool HDF5_File_Writer::WriteScalarField(std::string dataSetName, ArrayLib::ArrayIJK<T> &data)
+bool HDF5_File_Writer::WriteScalarField(std::string dataSetName, ArrayLib::ArrayIJK<T> &data, bool legacy_fmt)
 {
+	hid_t type = HDF5_File_Reader::GetH5Type<T>();
 	size_t size = data.size();
+
+	// legacy scalar field export, backwards ordering for Octave/Matlab
+	if (legacy_fmt)
+	{
+		size_t pos = 0;
+		size_t n_size[3]={data.extent(2),data.extent(1),data.extent(0)};
+		bool success = false;
+		if (typeid(T) == typeid(complex<float>))
+		{
+			float* buffer = new float[size];
+			for (size_t k=0;k<data.extent(2);++k)
+				for (size_t j=0;j<data.extent(1);++j)
+					for (size_t i=0;i<data.extent(0);++i)
+						buffer[pos++]=real(data(i,j,k));
+			success = WriteData(dataSetName + "_real", H5T_NATIVE_FLOAT, buffer, 3, n_size, "ZYX");
+			pos = 0;
+			for (size_t k=0;k<data.extent(2);++k)
+				for (size_t j=0;j<data.extent(1);++j)
+					for (size_t i=0;i<data.extent(0);++i)
+						buffer[pos++]=imag(data(i,j,k));
+			success &= WriteData(dataSetName + "_imag", H5T_NATIVE_FLOAT, buffer, 3, n_size, "ZYX");
+			delete[] buffer;
+		}
+		else
+		{
+			T* buffer = new T[size];
+			for (size_t k=0;k<data.extent(2);++k)
+				for (size_t j=0;j<data.extent(1);++j)
+					for (size_t i=0;i<data.extent(0);++i)
+						buffer[pos++]=data(i,j,k);
+			success = WriteData(dataSetName, type, buffer, 3, n_size, "ZYX");
+			delete[] buffer;
+		}
+		return success;
+	}
+
 	void* buffer = (void*)data.data();
 	size_t n_size[3]={data.extent(0),data.extent(1),data.extent(2)};
-	hid_t type = HDF5_File_Reader::GetH5Type<T>();
 	// (std::string dataSetName, hid_t mem_type, void const* field_buf, size_t dim, size_t* datasize, std::string d_order="");
 	return WriteData(dataSetName, type, buffer, 3, n_size, "XYZ");
+
+
 }
 
 // Explicit template instantiation
-template bool HDF5_File_Writer::WriteScalarField<float>(std::string dataSetName, ArrayLib::ArrayIJK<float> &data);
-template bool HDF5_File_Writer::WriteScalarField<std::complex<float>>(std::string dataSetName, ArrayLib::ArrayIJK<std::complex<float>> &data);
+template bool HDF5_File_Writer::WriteScalarField<float>(std::string dataSetName, ArrayLib::ArrayIJK<float> &data, bool legacy_fmt);
+template bool HDF5_File_Writer::WriteScalarField<std::complex<float>>(std::string dataSetName, ArrayLib::ArrayIJK<std::complex<float>> &data, bool legacy_fmt);
 
 template <typename T>
-bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, ArrayLib::ArrayNIJK<T> &data)
+bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, ArrayLib::ArrayNIJK<T> &data, bool legacy_fmt)
 {
 	size_t size = data.size();
+	hid_t type = HDF5_File_Reader::GetH5Type<T>();
+
+	// legacy vector field export, backwards ordering for Octave/Matlab
+	if (legacy_fmt)
+	{
+		size_t pos = 0;
+		size_t n_size[4]={data.extent(0),data.extent(3),data.extent(2),data.extent(1)};
+		bool success = false;
+		if (typeid(T) == typeid(complex<float>))
+		{
+			float* buffer = new float[size];
+			for (int n=0;n<data.extent(0);++n)
+				for (size_t k=0;k<data.extent(3);++k)
+					for (size_t j=0;j<data.extent(2);++j)
+						for (size_t i=0;i<data.extent(1);++i)
+							buffer[pos++]=real(data(n,i,j,k));
+			success = WriteData(dataSetName + "_real", H5T_NATIVE_FLOAT, buffer, 4, n_size, "NZYX");
+			pos = 0;
+			for (int n=0;n<data.extent(0);++n)
+				for (size_t k=0;k<data.extent(3);++k)
+					for (size_t j=0;j<data.extent(2);++j)
+						for (size_t i=0;i<data.extent(1);++i)
+							buffer[pos++]=imag(data(n,i,j,k));
+			success &= WriteData(dataSetName + "_imag", H5T_NATIVE_FLOAT, buffer, 4, n_size, "NZYX");
+			delete[] buffer;
+		}
+		else
+		{
+			T* buffer = new T[size];
+			for (int n=0;n<data.extent(0);++n)
+				for (size_t k=0;k<data.extent(3);++k)
+					for (size_t j=0;j<data.extent(2);++j)
+						for (size_t i=0;i<data.extent(1);++i)
+							buffer[pos++]=data(n,i,j,k);
+			success = WriteData(dataSetName, type, buffer, 4, n_size, "NZYX");
+			delete[] buffer;
+		}
+		return success;
+	}
+
 	void* buffer = (void*)data.data();
 	size_t n_size[4]={data.extent(0),data.extent(1),data.extent(2),data.extent(3)};
-	hid_t type = HDF5_File_Reader::GetH5Type<T>();
 	return WriteData(dataSetName, type, buffer, 4, n_size, "NXYZ");
 }
 
 // Explicit template instantiation
-template bool HDF5_File_Writer::WriteVectorField<float>(std::string dataSetName, ArrayLib::ArrayNIJK<float> &data);
-template bool HDF5_File_Writer::WriteVectorField<std::complex<float>>(std::string dataSetName, ArrayLib::ArrayNIJK<std::complex<float>> &data);
-template bool HDF5_File_Writer::WriteVectorField<std::complex<double>>(std::string dataSetName, ArrayLib::ArrayNIJK<std::complex<double>> &data);
+template bool HDF5_File_Writer::WriteVectorField<float>(std::string dataSetName, ArrayLib::ArrayNIJK<float> &data, bool legacy_fmt);
+template bool HDF5_File_Writer::WriteVectorField<std::complex<float>>(std::string dataSetName, ArrayLib::ArrayNIJK<std::complex<float>> &data, bool legacy_fmt);
+template bool HDF5_File_Writer::WriteVectorField<std::complex<double>>(std::string dataSetName, ArrayLib::ArrayNIJK<std::complex<double>> &data, bool legacy_fmt);
 
 
 bool HDF5_File_Writer::WriteData(std::string dataSetName, float const* field_buf, size_t dim, size_t* datasize, std::string d_order)

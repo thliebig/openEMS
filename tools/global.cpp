@@ -31,6 +31,7 @@ Global::Global()
 {
 	m_showProbeDiscretization = false;
 	m_nativeFieldDumps = false;
+	m_legacyHDF5 = false;
 	m_VerboseLevel = 0;
 	m_optionDesc = NULL;
 }
@@ -63,6 +64,18 @@ Global::optionDesc()
 				}
 			),
 			"Dump all fields using the native field components"
+		)
+		(
+			"legacyHDF5Dumps",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dumping all fields using the legacy HDF5 file format as required for Octave/Matlab import" << endl;
+					m_legacyHDF5 = true;
+				}
+			),
+			"Dump all fields using the legacy HDF5 file format as required for Octave/Matlab import"
 		)
 		(
 			"verbose,v",
