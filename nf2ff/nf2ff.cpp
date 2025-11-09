@@ -453,6 +453,7 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 		{
 			if ((E_fd_data.at(fn)->extent(1)!=E_numLines[0]) || (E_fd_data.at(fn)->extent(2)!=E_numLines[1]) || (E_fd_data.at(fn)->extent(3)!=E_numLines[2]) )
 			{
+				cerr << E_fd_data.at(fn)->extent(1) << " != " << E_numLines[0]  << ", " <<  E_fd_data.at(fn)->extent(2) << " != " << E_numLines[1]  << ", " <<  E_fd_data.at(fn)->extent(3) << " != " << E_numLines[2] << endl;
 				cerr << "nf2ff::AnalyseFile: E FD data size mismatch... " << endl;
 				for (size_t fn=0;fn<m_nf2ff.size();++fn)
 					delete E_fd_data.at(fn);
@@ -474,6 +475,7 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 		{
 			if ((H_fd_data.at(fn)->extent(1)!=E_numLines[0]) || (H_fd_data.at(fn)->extent(2)!=E_numLines[1]) || (H_fd_data.at(fn)->extent(3)!=E_numLines[2]) )
 			{
+				cerr << H_fd_data.at(fn)->extent(1) << " != " << E_numLines[0]  << ", " <<  H_fd_data.at(fn)->extent(2) << " != " << E_numLines[1]  << ", " <<  H_fd_data.at(fn)->extent(3) << " != " << E_numLines[2] << endl;
 				cerr << "nf2ff::AnalyseFile: E FD data size mismatch... " << endl;
 				for (size_t fn=0;fn<m_nf2ff.size();++fn)
 					delete E_fd_data.at(fn);
@@ -513,7 +515,7 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 			if ((E_fd_data.extent(1)!=E_numLines[0]) || (E_fd_data.extent(2)!=E_numLines[1]) || (E_fd_data.extent(3)!=E_numLines[2]) )
 			{
 				cerr << E_fd_data.extent(1) << " != " << E_numLines[0]  << ", " <<  E_fd_data.extent(2) << " != " << E_numLines[1]  << ", " <<  E_fd_data.extent(3) << " != " << E_numLines[2] << endl;
-				cerr << "nf2ff::AnalyseFile: E FD data size mismatch... " << endl;
+				cerr << "nf2ff::AnalyseFile: E- FD data size mismatch... " << endl;
 				for (int n=0;n<3;++n)
 					delete[] E_lines[n];
 				return false;

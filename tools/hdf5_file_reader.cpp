@@ -37,7 +37,7 @@ HDF5_File_Reader::HDF5_File_Reader(string filename)
 
 	if (m_file_ver>0.2)
 	{
-		if (!ReadAttribute<bool>("/", "openEMS_legacy_format", m_legacy_fmt, true))
+		if (!ReadAttribute<bool>("/", "legacy_fmt", m_legacy_fmt, true))
 			m_legacy_fmt = false; // set as default/fallback
 	}
 	else if (m_file_ver>0)
@@ -806,7 +806,34 @@ bool HDF5_File_Reader::GetFDVectorData(size_t idx, ArrayLib::ArrayNIJK<std::comp
 {
 	stringstream ds_name;
 	ds_name << "/FieldData/FD/f" << idx;
-	return ReadVectorDataSet<std::complex<float>>(ds_name.str(), data);
+
+	// if not legacy format... this is trivial
+	if (!m_legacy_fmt)
+		return ReadVectorDataSet<std::complex<float>>(ds_name.str(), data);
+
+	// legacy case
+	ArrayLib::ArrayNIJK<float> tmp;
+	if (!ReadVectorDataSet<float>(ds_name.str() + "_real", tmp))
+		return false;
+
+	// in case of the legacy file format, 3D vector data is stored as NZYX
+	// the ReadVectorDataSet has this already swapped to NXYZ
+	// create the data backwards too for identical data buffer layout
+	unsigned int ui_dim[3] = {tmp.extent(3),tmp.extent(2),tmp.extent(1)};
+	data.Init(ds_name.str(),ui_dim);
+	std::complex<float> *buffer = data.data();
+	float *tmp_buffer = tmp.data();
+	for (size_t n=0;n<tmp.size();++n)
+		buffer[n].real(tmp_buffer[n]); // assign real part
+
+	if (!ReadVectorDataSet<float>(ds_name.str() + "_imag", tmp))
+		return false;
+	for (size_t n=0;n<tmp.size();++n)
+		buffer[n].imag(tmp_buffer[n]); // assign imag part
+
+	// finally swap to NXYZ
+	data.swapAxis(1,3);
+	return true;
 }
 
 template <typename T>
@@ -844,6 +871,10 @@ bool HDF5_File_Reader::ReadVectorDataSet(std::string ds_name, ArrayLib::ArrayNIJ
 
 	data.Init(ds_name, ui_dim);
 	bool ok = ReadDataSet(ds_name, type, (void*)data.data());
+
+	if (m_legacy_fmt)
+		data.swapAxis(1,3);
+
 	delete[] dims;
 	return ok;
 
@@ -878,10 +909,14 @@ bool HDF5_File_Reader::CalcFDVectorData(vector<float> &frequencies, std::vector<
 
 	//init
 	unsigned int datasize[3] = {field.extent(1), field.extent(2), field.extent(3)};
+	if (m_legacy_fmt)
+		std:swap(datasize[0], datasize[2]); //data order was/is ZYX
 	FD_data.resize(frequencies.size(), NULL);
 	for (size_t fn=0;fn<frequencies.size();++fn)
 	{
 		ArrayLib::ArrayNIJK<std::complex<float>>* field_arr = new ArrayLib::ArrayNIJK<std::complex<float>>("FD", datasize);
+		if (m_legacy_fmt)
+			field_arr->swapAxis(1,3); // NZYX to NXYZ
 		FD_data.at(fn) = field_arr;
 	}
 

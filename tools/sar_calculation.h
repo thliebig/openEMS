@@ -82,7 +82,7 @@ public:
 	//! Calculate the total mass
 	double CalcTotalMass();
 
-	bool CalcFromHDF5(std::string h5_fn, std::string out_name, bool export_cube_stats=false);
+	bool CalcFromHDF5(std::string h5_fn, std::string out_name, bool export_cube_stats=false, bool legacyHDF5=false);
 
 protected:
 	unsigned int m_numLines[3];

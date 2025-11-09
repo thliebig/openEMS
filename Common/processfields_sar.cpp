@@ -301,7 +301,7 @@ void ProcessFieldsSAR::DumpFDData()
 			{
 				stringstream ss;
 				ss << "f" << n;
-				if (m_HDF5_Dump_File->WriteScalarField<float>(ss.str(), SAR)==false)
+				if (m_HDF5_Dump_File->WriteScalarField<float>(ss.str(), SAR, g_settings.GetLegacyHFD5Dumps())==false)
 					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
 				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",(float)m_FD_Samples.at(n))==false)
 					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
