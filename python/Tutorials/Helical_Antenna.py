@@ -3,10 +3,10 @@
  Helical Antenna Tutorial
 
  Tested with
-  - python 3.10
-  - openEMS v0.0.35+
+  - python 3.13
+  - openEMS v0.0.36+
 
- (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
+ (c) 2015-2025 Thorsten Liebig <thorsten.liebig@gmx.de>
 
 """
 
@@ -22,7 +22,7 @@ from openEMS.physical_constants import *
 
 ### Setup the simulation
 Sim_Path = os.path.join(tempfile.gettempdir(), 'Helical_Ant')
-post_proc_only = False
+force_re_sim = False
 
 unit = 1e-3 # all length in mm
 
@@ -126,7 +126,7 @@ if 0:  # debugging only
     from CSXCAD import AppCSXCAD_BIN
     os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
-if not post_proc_only:
+if force_re_sim or not os.path.exists(os.path.join(Sim_Path, 'et')):
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Postprocessing & plotting
@@ -158,7 +158,7 @@ ylabel( 'reflection coefficient $|S_{11}|$' )
 ## * calculate the far field at phi=0 degrees and at phi=90 degrees
 theta = arange(0.,180.,1.)
 phi = arange(-180,180,2)
-disp( 'calculating the 3D far field...' )
+print( 'calculating the 3D far field...' )
 
 nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, theta, phi, read_cached=True, verbose=True )
 
@@ -168,10 +168,10 @@ E_norm = 20.0*log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10*log10(
 theta_HPBW = theta[ np.where(squeeze(E_norm[:,phi==0])<Dmax_dB-3)[0][0] ]
 
 ## * Display power and directivity
-print('radiated power: Prad = {} W'.format(nf2ff_res.Prad[0]))
-print('directivity: Dmax = {} dBi'.format(Dmax_dB))
-print('efficiency: nu_rad = {} %'.format(100*nf2ff_res.Prad[0]/interp(f0, freq, port.P_acc)))
-print('theta_HPBW = {} °'.format(theta_HPBW))
+print('radiated power: Prad = {:.5g} W'.format(nf2ff_res.Prad[0]))
+print('directivity: Dmax = {:.2f} dBi'.format(Dmax_dB))
+print('efficiency: nu_rad = {:.1f} %'.format(100*nf2ff_res.Prad[0]/interp(f0, freq, port.P_acc)))
+print('theta_HPBW = {:.1f} °'.format(theta_HPBW))
 
 E_norm = 20.0*log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10*log10(nf2ff_res.Dmax[0])
 E_CPRH = 20.0*log10(np.abs(nf2ff_res.E_cprh[0])/np.max(nf2ff_res.E_norm[0])) + 10*log10(nf2ff_res.Dmax[0])
@@ -185,7 +185,7 @@ plot(theta, E_CPLH[:,phi==0],'r-.', linewidth=2, label='$|E_{CPLH}|$')
 grid()
 xlabel('theta (deg)')
 ylabel('directivity (dBi)')
-title('Frequency: {} GHz'.format(nf2ff_res.freq[0]/1e9))
+title('Frequency: {:.2f} GHz'.format(nf2ff_res.freq[0]/1e9))
 legend()
 
 show()
