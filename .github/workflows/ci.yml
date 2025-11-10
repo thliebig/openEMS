@@ -14,6 +14,11 @@ jobs:
         shell: bash
 
     strategy:
+      # Use "false" means a single failed build won't terminate other combinations
+      # in the matrix. This wastes CPU time, but is an important debugging tool to
+      # prevent a single broken platform from stopping the whole matrix.
+      fail-fast: false
+
       matrix:
         os:
           # name: OS name (only a name for humans to read).
