@@ -1,0 +1,48 @@
+[build-system]
+requires = [
+    "setuptools",
+    "cython",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openEMS"
+version = '0.0.36'
+dependencies = [
+    # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
+    "numpy",
+
+    # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
+    'h5py',
+
+    # LGPLv3+ (https://github.com/thliebig/CSXCAD/blob/master/COPYING)
+    'CSXCAD'
+]
+requires-python = ">=3.4"
+authors = [
+    {name = "Thorsten Liebig", email = "Thorsten.Liebig@gmx.de"}
+]
+maintainers = [
+    {name = "Thorsten Liebig", email = "Thorsten.Liebig@gmx.de"}
+]
+description = "Python interface for the openEMS FDTD library"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Intended Audience :: Developers',
+    'Intended Audience :: Information Technology',
+    'Intended Audience :: Science/Research',
+    'Programming Language :: Python',
+    'Topic :: Scientific/Engineering :: Physics',
+    'Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Operating System :: POSIX',
+    'Operating System :: Microsoft :: Windows',
+]
+
+[project.urls]
+Homepage = "https://openems.de"
+Documentation = "https://docs.openems.de"
+Repository = "https://github.com/thliebig/openEMS.git"
+"Bug Tracker" = "https://github.com/thliebig/openEMS/issues"

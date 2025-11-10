@@ -176,39 +176,24 @@ extensions = get_modules_list(
 
 setup(
   name="openEMS",
-  version = '0.0.36',
-  description = "Python interface for the openEMS FDTD library",
-  classifiers = [
-      'Development Status :: 3 - Alpha',
-      'Intended Audience :: Developers',
-      'Intended Audience :: Information Technology',
-      'Intended Audience :: Science/Research',
-      'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
-      'Programming Language :: Python',
-      'Programming Language :: Python :: 3',
-      'Programming Language :: Python :: 3.9',
-      'Programming Language :: Python :: 3.10',
-      'Programming Language :: Python :: 3.11',
-      'Programming Language :: Python :: 3.12',
-      'Programming Language :: Python :: Implementation :: CPython',
-      'Topic :: Scientific/Engineering',
-      'Topic :: Software Development :: Libraries :: Python Modules',
-      'Operating System :: POSIX :: Linux',
-      'Operating System :: Microsoft :: Windows',
-  ],
-  author = 'Thorsten Liebig',
-  author_email = 'Thorsten.Liebig@gmx.de',
-  maintainer = 'Thorsten Liebig',
-  maintainer_email = 'Thorsten.Liebig@gmx.de',
-  url = 'https://openEMS.de',
   packages=["openEMS", ],
   package_data={'openEMS': ['*.pxd']},
-  python_requires='>=3.9',
-  install_requires=[
-    'cython', # Apache License 2.0 (https://github.com/cython/cython/blob/master/LICENSE.txt)
-    'h5py',   # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
-    'numpy',  # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
+  # DO NOT add any new build-time dependency in setup_requires.
+  # We should use pyproject.toml exclusively. The only item
+  # "cython" is meant to activate auto-Cython feature in
+  # setuptools 18.
+  setup_requires=[
+    'cython'
   ],
-  setup_requires=['cython'],
+  # DO add new run-time dependencies here to keep it in sync with
+  # pyproject.toml.
+  install_requires=[
+    # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
+    'h5py',
+    # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
+    'numpy',
+    # LGPLv3+ (https://github.com/thliebig/CSXCAD/blob/master/COPYING)
+    'CSXCAD'
+  ],
   ext_modules=extensions
- )
+)
