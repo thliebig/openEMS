@@ -2,9 +2,11 @@ name: "CI"
 
 on:
   push:
-    branches: ["master", "CI_testing"]
+    branches:
+      - '**'
   pull_request:
-    branches: ["master"]
+    branches:
+      - "**"
 
 jobs:
   Linux:
