@@ -38,6 +38,7 @@ class Engine;
 class Engine_Interface_FDTD;
 class ProcessingArray;
 class TiXmlElement;
+class TiXmlNode;
 class ContinuousStructure;
 class Engine_Interface_FDTD;
 class Excitation;
@@ -118,6 +119,10 @@ public:
 	Engine_Interface_FDTD* NewEngineInterface(int multigridlevel = 0);
 
 	void SetVerboseLevel(int level);
+
+	bool Write2XML(TiXmlNode* rootNode);
+	bool Write2XML(std::string file);
+	bool ReadFromXML(std::string file);
 
 protected:
 	void collectCommandLineArguments();

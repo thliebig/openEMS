@@ -548,3 +548,23 @@ cdef class openEMS:
 
     def SetAbort(self, val):
         self.thisptr.SetAbort(val)
+
+    def Write2XML(self, file):
+        """ Write2XML(file)
+
+        Write the openEMS FDTD setup and CSX data into an *.xml file.
+        Can be run by the standalone openEMS binary.
+
+        :param file: xml file name
+        """
+        return self.thisptr.Write2XML(file.encode('UTF-8'))
+
+    def ReadFromXML(self, file):
+        """ ReadFromXML(file)
+
+        Read the openEMS FDTD setup and CSX data from an *.xml file.
+        Warning: Will call reset before reading the file!
+
+        :param file: xml file name
+        """
+        return self.thisptr.ReadFromXML(file.encode('UTF-8'))

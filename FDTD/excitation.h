@@ -25,7 +25,7 @@
 class Excitation
 {
 public:
-	enum ExciteTypes {UNDEFINED=-1, GaissianPulse=0, Sinusoidal=1, DiracPulse=2, Step=3, CustomExcite=10};
+	enum ExciteTypes {UNDEFINED=-1, GaussianPulse=0, Sinusoidal=1, DiracPulse=2, Step=3, CustomExcite=10};
 	Excitation();
 	virtual ~Excitation();
 
@@ -72,6 +72,8 @@ public:
 
 	//! Get the signal period, 0 if not a periodical signal
 	double GetSignalPeriod() const {return m_SignalPeriod;}
+
+	std::string GetCustomFunction() const {return m_CustomExc_Str;}
 
 	FDTD_FLOAT* GetVoltageSignal() const {return Signal_volt;}
 	FDTD_FLOAT* GetCurrentSignal() const {return Signal_curr;}

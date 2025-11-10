@@ -61,6 +61,9 @@ cdef extern from "openEMS/openems.h":
         int SetupFDTD() nogil
         void RunFDTD()  nogil
 
+        bool Write2XML(string file)
+        bool ReadFromXML(string file)
+
         @staticmethod
         void WelcomeScreen()
 

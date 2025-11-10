@@ -73,16 +73,12 @@ openEMS::openEMS()
 	Eng_Ext_SSD=NULL;
 	m_CSX=NULL;
 	PA=NULL;
-	CylinderCoords = false;
 	Enable_Dumps = true;
 	DebugMat = false;
 	DebugOp = false;
 	m_debugCSX = false;
 	m_debugBox = m_debugPEC = m_no_simulation = false;
 	m_DumpStats = false;
-	endCrit = 1e-6;
-	m_OverSampling = 4;
-	m_CellConstantMaterial=false;
 
 	m_engine = EngineType_Multithreaded; //default engine type
 	m_engine_numThreads = 0;
@@ -90,17 +86,7 @@ openEMS::openEMS()
 	m_Abort = false;
 	m_Exc = 0;
 
-	m_TS_method=3;
-	m_TS=0;
-	m_TS_fac=1.0;
-	m_maxTime=0.0;
-
-	for (int n=0;n<6;++n)
-	{
-		m_BC_type[n]  = 0;
-		m_PML_size[n] = 8;
-		m_Mur_v_ph[n] = 0;
-	}
+	Reset();
 
 	collectCommandLineArguments();
 }
@@ -125,6 +111,24 @@ void openEMS::Reset()
 	m_Exc=0;
 	delete Eng_Ext_SSD;
 	Eng_Ext_SSD=0;
+
+	CylinderCoords = false;
+	m_CC_MultiGrid.clear();
+	m_CellConstantMaterial=false;
+	endCrit = 1e-6;
+	m_OverSampling = 4;
+
+	m_TS_method=3;
+	m_TS=0;
+	m_TS_fac=1.0;
+	m_maxTime=0.0;
+
+	for (int n=0;n<6;++n)
+	{
+		m_BC_type[n]  = 0;
+		m_PML_size[n] = 8;
+		m_Mur_v_ph[n] = 0;
+	}
 }
 
 void openEMS::collectCommandLineArguments()
@@ -944,7 +948,7 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 	m_Excite_Elem->QueryIntAttribute("Type",&ihelp);
 	switch (ihelp)
 	{
-	case Excitation::GaissianPulse:
+	case Excitation::GaussianPulse:
 		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
 		m_Excite_Elem->QueryDoubleAttribute("fc",&fc);
 		exc->SetupGaussianPulse(f0, fc);
@@ -975,6 +979,107 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 	if (FDTD_Opts->QueryDoubleAttribute("TimeStepFactor",&dhelp)==TIXML_SUCCESS)
 		this->SetTimeStepFactor(dhelp);
 	return true;
+}
+
+
+bool openEMS::Write2XML(TiXmlNode* rootNode)
+{
+	TiXmlElement main("openEMS");
+
+	TiXmlElement fdtd("FDTD");
+	fdtd.SetAttribute("NumberOfTimesteps", this->NrTS);
+
+	if (this->CylinderCoords)
+	{
+		fdtd.SetAttribute("CylinderCoords", this->CylinderCoords);
+		if (this->m_CC_MultiGrid.size()>0)
+		{
+			string mg = std::to_string(m_CC_MultiGrid.at(0));
+			for (int n=1;n<m_CC_MultiGrid.size();++n)
+			{
+				mg += "," + std::to_string(m_CC_MultiGrid.at(n));
+			}
+			fdtd.SetAttribute("MultiGrid", mg);
+		}
+	}
+	if (this->m_maxTime>0)
+		fdtd.SetDoubleAttribute("MaxTime", this->m_maxTime);
+	fdtd.SetDoubleAttribute("endCriteria", this->endCrit);
+	fdtd.SetAttribute("OverSampling", this->m_OverSampling);
+	if (this->m_CellConstantMaterial)
+		fdtd.SetAttribute("CellConstantMaterial", this->m_CellConstantMaterial);
+
+
+	TiXmlElement exc("Excitation");
+	exc.SetAttribute("Type", m_Exc->GetExciteType());
+	switch (m_Exc->GetExciteType())
+	{
+	case Excitation::GaussianPulse:
+		exc.SetDoubleAttribute("f0", m_Exc->GetCenterFreq());
+		exc.SetDoubleAttribute("fc", m_Exc->GetCutOffFreq());
+		break;
+	case Excitation::Sinusoidal:  // sinusoidal excite
+		exc.SetDoubleAttribute("f0", m_Exc->GetCenterFreq());
+		break;
+	case Excitation::DiracPulse:
+		fdtd.SetDoubleAttribute("f_max", m_Exc->GetMaxFreq());
+		break;
+	case Excitation::Step:
+		fdtd.SetDoubleAttribute("f_max", m_Exc->GetMaxFreq());
+		break;
+	case Excitation::CustomExcite:
+		exc.SetDoubleAttribute("f0", m_Exc->GetCenterFreq());
+		fdtd.SetDoubleAttribute("f_max", m_Exc->GetMaxFreq());
+		exc.SetAttribute("Function", m_Exc->GetCustomFunction());
+		break;
+	}
+
+	fdtd.SetAttribute("TimeStepMethod", m_TS_method);
+	if (m_TS>0)
+		fdtd.SetDoubleAttribute("TimeStep", m_TS);
+	if (m_TS_fac>1)
+		fdtd.SetDoubleAttribute("TimeStepFactor", m_TS_fac);
+	fdtd.InsertEndChild(exc);
+
+	TiXmlElement BC("BoundaryCond");
+	string bound_names[] = {"xmin","xmax","ymin","ymax","zmin","zmax"};
+	string BC_names[] = {"PEC", "PMC", "MUR", "PML_"};
+	for (int n=0; n<6; ++n)
+	{
+		if (m_BC_type[n]==3)
+			BC.SetAttribute(bound_names[n], "PML_" + std::to_string(m_PML_size[n]));
+		else if ((m_BC_type[n]<3) && (m_BC_type[n]>=0))
+			BC.SetAttribute(bound_names[n], BC_names[m_BC_type[n]]);
+		else
+			BC.SetAttribute(bound_names[n], m_BC_type[n]);
+
+		if (m_Mur_v_ph[n]>0)
+			BC.SetAttribute("MUR_PhaseVelocity_" + bound_names[n], m_Mur_v_ph[n]);
+	}
+	fdtd.InsertEndChild(BC);
+
+	main.InsertEndChild(fdtd);
+	this->m_CSX->Write2XML(&main);
+	rootNode->InsertEndChild(main);
+	return true;
+}
+
+bool openEMS::Write2XML(std::string file)
+{
+	setlocale(LC_NUMERIC, "en_US.UTF-8");
+	TiXmlDocument doc(file);
+	doc.InsertEndChild(TiXmlDeclaration("1.0","UTF-8","yes"));
+
+	if (Write2XML(&doc)==false) return false;
+
+	doc.SaveFile();
+	return doc.SaveFile();
+}
+
+bool openEMS::ReadFromXML(std::string file)
+{
+	this->Reset();
+	return this->ParseFDTDSetup(file);
 }
 
 void openEMS::SetGaussExcite(double f0, double fc)
