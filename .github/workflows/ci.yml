@@ -104,7 +104,7 @@ jobs:
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
             dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave python3-setuptools python3-Cython python3-h5py \
+                           CGAL-devel octave python3-pip python3-setuptools python3-Cython python3-h5py \
                            python3-matplotlib
           elif grep -q 'ID="almalinux"' /etc/os-release; then
             dnf install -y epel-release
@@ -112,7 +112,7 @@ jobs:
 
             dnf install -y git
             dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave python3-Cython python3-h5py \
+                           CGAL-devel octave python3-pip python3-Cython python3-h5py \
                            python3-matplotlib
           elif grep -q "ID=debian" /etc/os-release || grep -q "ID=ubuntu" /etc/os-release; then
             # retry failed downloads 3 times
@@ -122,7 +122,7 @@ jobs:
             apt-get install -y build-essential git \
                                libhdf5-dev libtinyxml-dev \
                                octave \
-                               python3-setuptools python3-numpy \
+                               python3-pip python3-setuptools python3-numpy \
                                python3-matplotlib python3-h5py
 
             # VTK9 or VTK7, at least one must succeed (depending on Debian version)
@@ -149,12 +149,21 @@ jobs:
               cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/opt
               make -j`nproc` && make install
 
-              # Ubuntu 14.04's cython3 package is ancient, install via pip instead
-              apt-get install -y python3-pip
-
               # Must use Cython 3.0 or lower, since 3.1 uses f-string which is
               # incompatible with Python 3.4.
               pip3 install "cython<3.1"
+
+              # Ubuntu 14.04's matplotlib package is ancient, install the
+              # minimum version and its dependencies via pip. Note that the
+              # native build uses Python 3.4 while the venv build (tested
+              # later) uses Python 3.5 without these problems.
+              #
+              # pip's pyparsing is incompatible with Python 3.4
+              apt-get install -y python3-pyparsing
+
+              # same, newer cycler has incompatible type annotation
+              pip3 install "cycler==0.10.0"
+              pip3 install "matplotlib==2.1.0"
             else
               apt-get install -y libboost-all-dev
               apt-get install -y libcgal-dev
@@ -167,7 +176,7 @@ jobs:
                     boost-dev tinyxml-dev hdf5-dev cgal-dev vtk-dev \
                     octave \
                     python3-dev cython \
-                    py3-setuptools \
+                    py3-pip py3-setuptools \
                     py3-matplotlib py3-numpy py3-h5py
           elif [ -f /etc/centos-release ]; then
             # IPv6 on GitHub Actions is broken, causing random network failures
@@ -305,8 +314,9 @@ jobs:
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/CSXCAD/python
-          python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-          python3 setup.py install --user
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          pip3 install . --user --verbose || \
+              pip3 install . --user --break-system-packages --verbose
 
       - name: Build and install openEMS
         run: |
@@ -333,8 +343,9 @@ jobs:
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/python
-          python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-          python3 setup.py install --user
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          pip3 install . --user --verbose || \
+              pip3 install . --user --break-system-packages --verbose
 
       - name: Smoketest Octave execution
         run: |
@@ -475,8 +486,8 @@ jobs:
         run: |
           source ~/.zprofile
           cd $GITHUB_WORKSPACE/CSXCAD/python
-          $HOME/opt/bin/python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-          $HOME/opt/bin/python3 setup.py install
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          $HOME/opt/bin/pip3 install . --verbose
 
       - name: Build and install openEMS
         run: |
@@ -493,12 +504,8 @@ jobs:
         run: |
           source ~/.zprofile
           cd $GITHUB_WORKSPACE/openEMS/python
-
-          $HOME/opt/bin/python3 setup.py build_ext \
-            -I "$HOME/opt/include:/opt/homebrew/include" \
-            -L "$HOME/opt/lib:/opt/homebrew/lib" \
-            -R $HOME/opt/lib
-          $HOME/opt/bin/python3 setup.py install
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          $HOME/opt/bin/pip3 install . --verbose
 
       - name: Smoketest Octave execution
         run: |
@@ -544,7 +551,7 @@ jobs:
           run: |
             echo "Install dependencies..."
             sudo pkg install -y cmake git boost-libs tinyxml vtk9 hdf5 cgal octave python3 \
-                                py311-setuptools \
+                                py311-pip py311-setuptools \
                                 py311-cython3 py311-numpy py311-h5py py311-matplotlib
                                 # prefix must match FreeBSD's default python
                                 # version. FreeBSD 14.2 uses Python 3.11 so
@@ -586,8 +593,8 @@ jobs:
 
             echo "Build and install CSXCAD Python module..."
             cd ~/CSXCAD/python
-            python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-            python3 setup.py install --user
+            export CSXCAD_INSTALL_PATH=$HOME/opt/
+            pip install . --user --break-system-packages --verbose
 
             echo "Build and install openEMS..."
             cd ~/openEMS
@@ -600,11 +607,8 @@ jobs:
 
             echo "Build and install openEMS Python module..."
             cd ~/openEMS/python
-            python3 setup.py build_ext \
-              -I "$HOME/opt/include:/usr/local/include" \
-              -L "$HOME/opt/lib:/usr/local/lib" \
-              -R $HOME/opt/lib
-            python3 setup.py install --user
+            export CSXCAD_INSTALL_PATH=$HOME/opt/
+            pip install . --user --break-system-packages --verbose
 
             echo "Smoketest Octave execution..."
             cd ~/openEMS/.github/smoketests/octave/
