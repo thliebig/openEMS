@@ -169,6 +169,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 				{
 					if (m_Op->GetYeeCoords(n,pos,volt_coord,false)==false)
 						continue;
+
 					if (m_CC_R0_included && (n==2) && (pos[0]==0))
 						volt_coord[1] = m_Op->GetDiscLine(1,0);
 
@@ -184,7 +185,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 						elec = prop->ToExcitation();
 						if (elec==NULL)
 							continue;
-						if (!elec->GetEnabled()) // @suppress("Method cannot be resolved")
+						if (!elec->GetEnabled())
 							continue;
 
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
@@ -195,7 +196,7 @@ bool Operator_Ext_Excitation::BuildExtension()
 								if (!shiftCoordsForModeFile(volt_coord, highestPriorityPrim))
 									return false;
 
-							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos);// delta[n]*gridDelta;
+							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos); // delta[n]*gridDelta;
 
 							if (amp!=0)
 							{
@@ -205,6 +206,9 @@ bool Operator_Ext_Excitation::BuildExtension()
 								volt_vIndex[0].push_back(pos[0]);
 								volt_vIndex[1].push_back(pos[1]);
 								volt_vIndex[2].push_back(pos[2]);
+
+								// IFF it got this far, set this primitive as used
+								if(!highestPriorityPrim->GetPrimitiveUsed()) highestPriorityPrim->SetPrimitiveUsed(true);
 							}
 							if (elec->GetExcitType()==1) //hard excite
 							{
@@ -232,8 +236,10 @@ bool Operator_Ext_Excitation::BuildExtension()
 							continue;
 						if (!elec->GetEnabled())
 							continue;
+
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 						{
+
 							// If this is read from a file, the voltage coordinates need to be shifted
 							// to the start point
 							if (elec->GetFieldSourceIsFile())
@@ -250,6 +256,9 @@ bool Operator_Ext_Excitation::BuildExtension()
 								curr_vIndex[0].push_back(pos[0]);
 								curr_vIndex[1].push_back(pos[1]);
 								curr_vIndex[2].push_back(pos[2]);
+
+								// IFF it got this far, set this primitive as used
+								if(!highestPriorityPrim->GetPrimitiveUsed()) highestPriorityPrim->SetPrimitiveUsed(true);
 							}
 							if (elec->GetExcitType()==3) //hard excite
 							{

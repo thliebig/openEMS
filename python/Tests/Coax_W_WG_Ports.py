@@ -1,3 +1,10 @@
+"""
+ Coaxial waveguidde with waveguide ports
+
+ (c) 20@3-2025 Gadi Lahav <gadi@rfwithcare.com>
+
+"""
+
 ### Import Libraries
 import os, tempfile, shutil
 from pylab import *
@@ -12,6 +19,8 @@ import scipy.io
 Sim_Path = os.path.join(tempfile.gettempdir(), 'Test_Coax_WG_Ports')
 
 print("Copying files ""Coax_Er.csv"" and ""Coax_Hr.csv"" to {}".format(Sim_Path))
+if not os.path.exists(Sim_Path):
+    os.mkdir(Sim_Path)
 shutil.copy("Coax_Er.csv",Sim_Path)
 shutil.copy("Coax_Hr.csv",Sim_Path)
 
@@ -48,7 +57,7 @@ fc = 1e9 # 20 dB corner frequency
 ### FDTD setup
 ## * Limit the simulation to 30k timesteps
 ## * Define a reduced end criteria of -40dB
-FDTD = openEMS(NrTS=30000, EndCriteria=1e-4)
+FDTD = openEMS(NrTS=300000, EndCriteria=1e-4)
 FDTD.SetGaussExcite( f0, fc )
 FDTD.SetBoundaryCond( ['MUR', 'MUR', 'MUR', 'MUR', 'MUR', 'MUR'] )
 # FDTD.SetBoundaryCond( ['PML_8', 'PML_8', 'PML_8', 'PML_8', 'PML_8', 'PML_8'] )
@@ -124,11 +133,11 @@ Zl = np.array([52.43928218])
 # Define port mode 
 start = [-coax_D*0.5-coax_shield_thick, -coax_D*0.5-coax_shield_thick, Zz.item(idxPort1 + 0)]
 stop  = [coax_D*0.5+coax_shield_thick, coax_D*0.5+coax_shield_thick, Zz.item(idxPort1 + 1)]
-port1 = FDTD.AddWaveGuidePort( 1, start, stop, 'z', "Coax_Er.csv", "Coax_Hr.csv", 0.0, excite=1, excite_type = 0)
+port1 = FDTD.AddWaveGuidePort( 1, start, stop, 'z', E_file = "Coax_Er.csv", H_file = "Coax_Hr.csv", kc = 0.0, excite = 1, excite_type = 0)
 
 start = [-coax_D*0.5-coax_shield_thick, -coax_D*0.5-coax_shield_thick, Zz.item(idxPort2 - 0)]
 stop  = [coax_D*0.5+coax_shield_thick, coax_D*0.5+coax_shield_thick, Zz.item(idxPort2 - 1)]
-port2 = FDTD.AddWaveGuidePort( 2, start, stop, 'z', "Coax_Er.csv", "Coax_Hr.csv", 0.0, excite=0, excite_type = 0)
+port2 = FDTD.AddWaveGuidePort( 2, start, stop, 'z', E_file = "Coax_Er.csv", H_file = "Coax_Hr.csv", kc = 0.0, excite = 0, excite_type = 0)
 
 # Define dump box...
 # Et = CSX.AddDump('Et', file_type=0, dump_type=0, dump_mode=1)
