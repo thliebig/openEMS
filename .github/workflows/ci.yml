@@ -98,8 +98,7 @@ jobs:
         run: |
           cat /etc/os-release
 
-          touch ~/.bash_profile
-          echo 'export CXXFLAGS="-std=c++11"' >> ~/.bash_profile
+          touch ~/.bash_profile  # set environment variables here
 
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
@@ -365,7 +364,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          echo 'export CXXFLAGS="-std=c++11"' >> ~/.zprofile
+          touch ~/.zprofile  # set environment variables here
 
           brew install cmake boost hdf5 cgal vtk python3 octave
 
