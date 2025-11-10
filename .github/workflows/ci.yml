@@ -345,8 +345,8 @@ jobs:
           cd $GITHUB_WORKSPACE/openEMS/python
           export CSXCAD_INSTALL_PATH=$HOME/opt/
           export OPENEMS_INSTALL_PATH=$HOME/opt/
-          python3 setup.py build_ext
-          python3 setup.py install --user
+          pip3 install . --user --verbose || \
+              pip3 install . --user --break-system-packages --verbose
 
       - name: Smoketest Octave execution
         run: |
@@ -508,8 +508,7 @@ jobs:
           cd $GITHUB_WORKSPACE/openEMS/python
           export CSXCAD_INSTALL_PATH=$HOME/opt/
           export OPENEMS_INSTALL_PATH=$HOME/opt/
-          $HOME/opt/bin/python3 setup.py build_ext
-          $HOME/opt/bin/python3 setup.py install
+          $HOME/opt/bin/pip3 install . --verbose
 
       - name: Smoketest Octave execution
         run: |
@@ -614,8 +613,7 @@ jobs:
             cd ~/openEMS/python
             export CSXCAD_INSTALL_PATH=$HOME/opt/
             export OPENEMS_INSTALL_PATH=$HOME/opt/
-            python3 setup.py build_ext
-            python3 setup.py install --user
+            pip install . --user --break-system-packages --verbose
 
             echo "Smoketest Octave execution..."
             cd ~/openEMS/.github/smoketests/octave/
