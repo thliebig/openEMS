@@ -326,8 +326,8 @@ cdef class openEMS:
                     grid.AddLine(n, stop[n])
         return port
         
-    def AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func, H_func, kc, excite=0, excite_type=0, **kw):
-        """ AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func, H_func, kc, excite=0, **kw)
+    def AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func = None, H_func = None, kc = 0.0, excite = 0, excite_type = 0, E_file = None, H_file = None, **kw):
+        """ AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func = None, H_func = None, kc = 0.0, excite = 0, excite_type = 0, E_file = None, H_file = None, **kw)
 
         Add a arbitrary waveguide port.
 
@@ -337,7 +337,7 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddWaveGuidePort: CSX is not set!')
-        return ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, excite_type, **kw)
+        return ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, excite_type, E_file, H_file, **kw)
 
     def AddRectWaveGuidePort(self, port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw):
         """ AddRectWaveGuidePort(port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw)

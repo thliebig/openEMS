@@ -1,4 +1,4 @@
-	# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2015,20016 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 #
@@ -347,7 +347,7 @@ class WaveguidePort(Port):
     Port, RectWGPort
 
     """
-    def __init__(self, CSX, port_nr, start, stop, exc_dir, E_WG_func, H_WG_func, kc, excite=0, excite_type=0, **kw):
+    def __init__(self, CSX, port_nr, start, stop, exc_dir, E_WG_func, H_WG_func, kc, excite = 0, excite_type = 0, E_WG_file = None, H_WG_file = None, **kw):
         
         super(WaveguidePort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, excite_type=excite_type, **kw)
         self.exc_ny  = CheckNyDir(exc_dir)
@@ -362,9 +362,19 @@ class WaveguidePort(Port):
         self.kc = kc
         self.E_func = E_WG_func
         self.H_func = H_WG_func
+        self.E_file = E_WG_file
+        self.H_file = H_WG_file
         
-        E_is_str = type(self.E_func) is str
-        H_is_str = type(self.H_func) is str
+        
+        # Validate inputs. Prioritize <E/H>_func behavior
+        use_function_expr = None
+        if (self.E_func is not None) and (self.H_func is not None):
+        	use_function_expr = True
+        else:
+        	use_function_expr = False
+        
+        if use_function_expr is None:
+        	raise Exception("Cannot decide if function expression is used or mode file")
         
         if excite != 0:
             e_start = np.array(start)
@@ -376,25 +386,28 @@ class WaveguidePort(Port):
             
             
             # Check wether this is manual weighting or string function
-            if E_is_str or H_is_str:
-                if not H_is_str:
+            if not use_function_expr:
+                if not ((type(self.E_file) is str) and (type(self.H_file) is str)):
                     raise Exception ('Both E_func and H_func must be files')
                 
-                _,Eext = os.path.splitext(self.E_func)
-                _,Hext = os.path.splitext(self.H_func)
+                _,Eext = os.path.splitext(self.E_file)
+                _,Hext = os.path.splitext(self.H_file)
                 if not ((Eext == '.csv') and (Hext == '.csv')):
-                    raise Exception('Both E_func and H_func must be CSV files in case of mode files')
+                    raise Exception('Both E_file and H_func must be CSV files in case of mode files')
                 
                 # E-field (TE case)
                 if excite_type == 0:
-                    exc.SetModeFileName(self.E_func)
+                    exc.SetModeFileName(self.E_file)
                 # H-field (TM case)
                 elif excite_type == 2:
-                    exc.SetModeFileName(self.H_func)
+                    exc.SetModeFileName(self.H_file)
                 else:
                     raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
-                    
-            elif (type(self.E_func) is list):
+            			
+            else:
+                if not (type(self.E_func) is list):
+                    raise Exception('Unsupported input type for "E_Func" or "H_func". Expected a list of string')
+            
                 if excite_type == 0:
                     exc.SetWeightFunction([str(x) for x in self.E_func])
                 elif excite_type == 2:
@@ -402,12 +415,11 @@ class WaveguidePort(Port):
                 else:
                     raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
         
-            else:
-                raise Exception('Unsupported input type for "E_Func" or "H_func"')
+            
 
             # For the mode file to be used correctly, the direction of 
-            # propagation has to be explicitly set here.
-            if (E_is_str):
+            # propagation has to be explicitly set.
+            if not use_function_expr:
                 dirVect = [0,0,0]
                 dirVect[self.exc_ny] = 1
                 exc.SetPropagationDir(dirVect)
@@ -424,21 +436,24 @@ class WaveguidePort(Port):
         self.measplane_shift = np.abs(stop[self.exc_ny] - start[self.exc_ny])
         
         self.U_filenames = [self.lbl_temp.format('ut'), ]
+        
         # Initialize variable here so it will be in context post the if statement
         u_probe = None
-        if E_is_str:
-            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.E_func)
+        if use_function_expr:
+        	u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
         else:
-            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_function=self.E_func)
+            u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, mode_file_name=self.E_file)
+        
         u_probe.AddBox(m_start, m_stop)
         self.port_props.append(u_probe)
-
+		
         i_probe = None
         self.I_filenames = [self.lbl_temp.format('it'), ]
-        if H_is_str:
-            i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_file_name=self.H_func)
+        if use_function_expr:
+        	i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_function=self.H_func)
         else:
-            i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_function=self.H_func)
+            i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, mode_file_name=self.H_file)
+        
         i_probe.AddBox(m_start, m_stop)
         self.port_props.append(i_probe)
         
