@@ -23,7 +23,7 @@ if os.name == "posix":
     cxxflags.append("-std=c++11")
 
 extensions = [
-    Extension("*", [os.path.join(os.path.dirname(__file__), "openEMS","*.pyx")],
+    Extension("*", [os.path.join("openEMS","*.pyx")],
         language="c++",             # generate C++ code
         libraries    = ['CSXCAD','openEMS', 'nf2ff'],
         extra_compile_args=cxxflags),
