@@ -2,22 +2,20 @@
 requires = [
     "setuptools",
     "cython",
+    # CSXCAD is dynamically added, see below
 ]
-build-backend = "setuptools.build_meta"
+
+# A thin wrapper above setuptools.build_meta, which inserts an
+# additional dependencies dynamically (because we can't use
+# relative paths or any variables in "requires". Currently we
+# add CSXCAD either from the filesystem or GitHub based on heuristics.
+build-backend = "setuptools_build_meta_custom"
+backend-path = ["bootstrap"]
 
 [project]
 name = "openEMS"
 version = '0.0.36'
-dependencies = [
-    # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
-    "numpy",
-
-    # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
-    'h5py',
-
-    # LGPLv3+ (https://github.com/thliebig/CSXCAD/blob/master/COPYING)
-    'CSXCAD'
-]
+dynamic = ["dependencies"]
 requires-python = ">=3.4"
 authors = [
     {name = "Thorsten Liebig", email = "Thorsten.Liebig@gmx.de"}
