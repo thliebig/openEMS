@@ -343,6 +343,16 @@ jobs:
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/python
+
+          # Python "exit(False)" = bash "if true"
+          # Python "exit(True)" = bash "if false"
+          if python3 -c "import pip; exit(int(pip.__version__.split('.')[0]) > 20)"; then
+            # old pip < 21.3 (checking <= 21 here for simplicity),
+            # CSXCAD needs CSXCAD_PYSRC_PATH as auto-detection is
+            # not reliable.
+            export CSXCAD_PYSRC_PATH=$GITHUB_WORKSPACE/CSXCAD/python/
+          fi
+
           export CSXCAD_INSTALL_PATH=$HOME/opt/
           export OPENEMS_INSTALL_PATH=$HOME/opt/
           pip3 install . --user --verbose || \

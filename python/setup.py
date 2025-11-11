@@ -17,10 +17,11 @@ import subprocess
 import pathlib
 import glob
 
-
-ROOT_DIR = os.path.dirname(__file__)
-
-sys.path.append(os.path.join(ROOT_DIR,'..','..','CSXCAD','python'))
+# If users want to import local modules (for setup.py itself), they are
+# recommended to explicitly add the current directory to sys.path
+# https://github.com/pypa/setuptools/issues/3939
+sys.path.append(str(pathlib.Path(__file__).parent))
+from bootstrap.find_package import add_csxcad
 
 
 def normalize_path_subdir(path_str, subdir):
@@ -174,6 +175,26 @@ extensions = get_modules_list(
     build_options=build_opt
 )
 
+# DO add new run-time dependencies here.
+install_requires = [
+    # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
+    'h5py',
+    # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
+    'numpy',
+]
+
+try:
+    # CSXCAD already installed, use a plain package name as dependency,
+    # pip won't rebuild it. This ensures manual package management still
+    # works, and pip won't redownload anything from git.
+    import CSXCAD
+    install_requires += ["CSXCAD"]
+except ImportError:
+    # CSXCAD not installed, use CSXCAD with file:// or git:// as dependency.
+    # As a side-effect, pip always rebuilds CSXCAD from scratch regardless
+    # of whether it's installed. We don't want this side-effect.
+    install_requires += add_csxcad()
+
 setup(
   name="openEMS",
   packages=["openEMS", ],
@@ -185,15 +206,6 @@ setup(
   setup_requires=[
     'cython'
   ],
-  # DO add new run-time dependencies here to keep it in sync with
-  # pyproject.toml.
-  install_requires=[
-    # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
-    'h5py',
-    # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
-    'numpy',
-    # LGPLv3+ (https://github.com/thliebig/CSXCAD/blob/master/COPYING)
-    'CSXCAD'
-  ],
+  install_requires=install_requires,
   ext_modules=extensions
 )
