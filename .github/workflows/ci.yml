@@ -99,6 +99,7 @@ jobs:
           cat /etc/os-release
 
           touch ~/.bash_profile  # set environment variables here
+          echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.bash_profile
 
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
@@ -365,6 +366,7 @@ jobs:
       - name: Install dependencies
         run: |
           touch ~/.zprofile  # set environment variables here
+          echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.zprofile
 
           brew install cmake boost hdf5 cgal vtk python3 octave
 
@@ -556,6 +558,7 @@ jobs:
                                 # version. FreeBSD 14.2 uses Python 3.11 so
                                 # use "py311-"
 
+            export CXXFLAGS="-Wall -Wextra -Wno-error"
             export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')
 
             echo "Clone repos..."
