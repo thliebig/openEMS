@@ -102,3 +102,10 @@ def add_csxcad(version_str=""):
             "pip install . '). "
             "(3) Upgrade to pip 21.3 or newer."
         )
+
+
+def add_setuptool_scm():
+    if "OPENEMS_NOSCM" in os.environ:
+        return []
+    else:
+        return ['setuptools_scm >= 8; python_version >= "3.9"']

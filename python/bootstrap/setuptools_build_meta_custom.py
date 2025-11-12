@@ -1,4 +1,4 @@
-from find_package import add_csxcad
+from find_package import add_csxcad, add_setuptool_scm
 from setuptools import build_meta as _orig
 
 try:
@@ -19,10 +19,12 @@ from setuptools.build_meta import *
 def get_requires_for_build_wheel(self, config_settings=None):
     orig_list = _orig.get_requires_for_build_wheel(config_settings)
     orig_list += add_csxcad()
+    orig_list += add_setuptool_scm()
     return orig_list
 
 
 def get_requires_for_build_sdist(self, config_settings=None):
     orig_list = _orig.get_requires_for_build_sdist(config_settings)
     orig_list += add_csxcad()
+    orig_list += add_setuptool_scm()
     return orig_list
