@@ -2,7 +2,7 @@
  Coplanar waveguide with waveguide ports and
  local absorbers as terminations.
 
- (c) 20@3-2025 Gadi Lahav <gadi@rfwithcare.com>
+ (c) 2023-2025 Gadi Lahav <gadi@rfwithcare.com>
 
 """
 
@@ -29,10 +29,13 @@ CPW_gap = 0.3
 
 #substrate setup
 substrate_epsR   = 4.3
-substrate_width  = 15
+substrate_width  = 11
 substrate_length = 50
 substrate_thickness = 1
+
+gap_cells = 2
 substrate_cells = 3
+
 
 # Port setup
 port_w_fact = 7.5
@@ -66,11 +69,11 @@ shutil.copy("CPW_E.csv",Sim_Path)
 shutil.copy("CPW_H.csv",Sim_Path)
 
 ### FDTD setup
-## * Limit the simulation to 30k timesteps
+## * Limit the simulation to 40k timesteps
 ## * Define a reduced end criteria of -40dB
 FDTD = openEMS(NrTS=40000, EndCriteria=1e-4)
 FDTD.SetGaussExcite( f0, fc )
-FDTD.SetBoundaryCond( ['PML_8', 'PML_8', 'PML_8', 'PML_8', 'PML_8', 'PML_8'] )
+FDTD.SetBoundaryCond( ['MUR', 'MUR', 'MUR', 'MUR', 'MUR', 'MUR'] )
 
 CSX = ContinuousStructure()
 FDTD.SetCSX(CSX)
@@ -150,6 +153,10 @@ mesh.AddLine('x',[start[0],stop[0]])
 mesh.AddLine('y',[start[1],stop[1]])
 mesh.AddLine('z',[start[2],stop[2]])
 
+# Add extra mesh lines for CPW gaps
+mesh.AddLine('x',linspace(-0.5*(Line_W + CPW_gap*2),-Line_W*0.5,gap_cells))
+mesh.AddLine('x',linspace(Line_W*0.5,0.5*(Line_W + CPW_gap*2),gap_cells))
+
 #################
 # Generate mesh #
 #################
@@ -158,14 +165,14 @@ mesh.SmoothMeshLines('all', mesh_res, 1.4)
 
 # Find start\stop mesh lines
 Yz = mesh.GetLines('y')
-idxPort1 = (np.where(Yz == 0.0)[0] + 1).item(0)
-idxPort2 = (np.where(Yz == substrate_length)[0] - 1).item(0)
+idxPort1 = (np.where(Yz == 0.0)[0] + 2).item(0)
+idxPort2 = (np.where(Yz == substrate_length)[0] - 2).item(0)
 idxAbs1 = idxPort1 - 1
 idxAbs2 = idxPort2 + 1
 
 
 # Calculate v_phase
-beta = 62.77051201936845
+beta = 62.5
 v_phase = 2*pi*f0/beta
 
 
@@ -210,8 +217,8 @@ if 1:  # debugging only
 if not post_proc_only:
     FDTD.Run(Sim_Path, verbose=0, cleanup=False)
 
-Zl = 36.036
-Zw = 276.305
+Zl = 45
+Zw = 254
 
 ### Post-processing and plotting
 f = np.linspace(max(1e9,f0-fc),f0+fc,401)
