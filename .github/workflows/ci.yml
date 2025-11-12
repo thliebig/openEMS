@@ -370,6 +370,8 @@ jobs:
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
           python3 MSL_NotchFilter.py
 
       - name: Create Python venv and install dependencies
@@ -436,6 +438,8 @@ jobs:
           source ~/.bash_profile
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
           python3 MSL_NotchFilter.py
 
   macOS:
@@ -577,6 +581,8 @@ jobs:
       - name: Smoketest Python execution
         run: |
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
           python3 MSL_NotchFilter.py
 
       - name: Create Python venv and install dependencies
@@ -604,6 +610,8 @@ jobs:
         run: |
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
           python3 MSL_NotchFilter.py
 
   FreeBSD:
@@ -707,6 +715,8 @@ jobs:
 
             echo "Smoketest Python execution..."
             cd ~/openEMS/.github/smoketests/python
+            python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+            python3 -c "import openEMS; print(openEMS.__version__)"
             python3 MSL_NotchFilter.py
 
             echo "Create Python venv and install dependencies..."
@@ -727,4 +737,6 @@ jobs:
 
             echo "Smoketest Python execution in venv..."
             cd ~/openEMS/.github/smoketests/python
+            python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+            python3 -c "import openEMS; print(openEMS.__version__)"
             python3 MSL_NotchFilter.py

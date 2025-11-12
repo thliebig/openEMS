@@ -24,6 +24,25 @@ sys.path.append(str(pathlib.Path(__file__).parent))
 from bootstrap.find_package import add_csxcad
 
 
+def get_fallback_version(pyproject_toml, fallback_file):
+    try:
+        # pyproject.toml is respected by new pip, which calls setuptools_scm
+        # to inject a version automatically.
+        import setuptools_scm
+        return None
+    except ImportError:
+        with open(pyproject_toml, 'r') as toml:
+            matching_list = [
+                line for line in toml if line.startswith("fallback_version")
+            ]
+            version_quoted = matching_list[0].split("=")[1]
+            version = version_quoted.replace('"', "").strip()
+
+        with open(fallback_file, "w+") as fallback_file:
+            fallback_file.write("__fallback_version__ = '%s'" % version)
+        return version
+
+
 def normalize_path_subdir(path_str, subdir):
     # We want to find the correct $CSXCAD_INSTALL_PATH even if the
     # user input is slightly "incorrect".
@@ -197,6 +216,9 @@ except ImportError:
 
 setup(
   name="openEMS",
+  version=get_fallback_version(
+    "pyproject.toml", "openEMS/__fallback_version__.py"
+  ),
   packages=["openEMS", ],
   package_data={'openEMS': ['*.pxd']},
   # DO NOT add any new build-time dependency in setup_requires.
