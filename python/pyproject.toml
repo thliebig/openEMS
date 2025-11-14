@@ -1,0 +1,62 @@
+[build-system]
+requires = [
+    "setuptools",
+    "cython",
+    # CSXCAD is dynamically added, see below
+]
+
+# A thin wrapper above setuptools.build_meta, which inserts an
+# additional dependencies dynamically (because we can't use
+# relative paths or any variables in "requires". Currently we
+# add CSXCAD either from the filesystem or GitHub based on heuristics.
+#
+# We also insert setuptools_scm:
+#
+#     'setuptools_scm >= 8; python_version >= "3.9"'
+#
+# To disable it, use "export OPENEMS_NOSCM=1".
+build-backend = "setuptools_build_meta_custom"
+backend-path = ["bootstrap"]
+
+[tool.setuptools_scm]
+root = "../"
+version_file = "openEMS/__version__.py"
+version_scheme = "no-guess-dev"
+
+# Make sure the following line can be understood by the brute-force
+# parser in setup.py, which finds "fallback_version" and reads everything
+# after the equal (=) sign, on legacy usage without setuptools_scm (e.g.
+# calling setup.py directly).
+fallback_version = "0.0.36"
+
+[project]
+name = "openEMS"
+dynamic = ["version", "dependencies"]
+requires-python = ">=3.4"
+authors = [
+    {name = "Thorsten Liebig", email = "Thorsten.Liebig@gmx.de"}
+]
+maintainers = [
+    {name = "Thorsten Liebig", email = "Thorsten.Liebig@gmx.de"}
+]
+description = "Python interface for the openEMS FDTD library"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Intended Audience :: Developers',
+    'Intended Audience :: Information Technology',
+    'Intended Audience :: Science/Research',
+    'Programming Language :: Python',
+    'Topic :: Scientific/Engineering :: Physics',
+    'Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Operating System :: POSIX',
+    'Operating System :: Microsoft :: Windows',
+]
+
+[project.urls]
+Homepage = "https://openems.de"
+Documentation = "https://docs.openems.de"
+Repository = "https://github.com/thliebig/openEMS.git"
+"Bug Tracker" = "https://github.com/thliebig/openEMS/issues"

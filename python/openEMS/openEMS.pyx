@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# cython: language_level=3
 #
 # Copyright (C) 2015,20016 Thorsten Liebig (Thorsten.Liebig@gmx.de)
 #

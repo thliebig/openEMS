@@ -2,9 +2,11 @@ name: "CI"
 
 on:
   push:
-    branches: ["master", "CI_testing"]
+    branches:
+      - '**'
   pull_request:
-    branches: ["master"]
+    branches:
+      - "**"
 
 jobs:
   Linux:
@@ -14,6 +16,11 @@ jobs:
         shell: bash
 
     strategy:
+      # Use "false" means a single failed build won't terminate other combinations
+      # in the matrix. This wastes CPU time, but is an important debugging tool to
+      # prevent a single broken platform from stopping the whole matrix.
+      fail-fast: false
+
       matrix:
         os:
           # name: OS name (only a name for humans to read).
@@ -91,13 +98,13 @@ jobs:
         run: |
           cat /etc/os-release
 
-          touch ~/.bash_profile
-          echo 'export CXXFLAGS="-std=c++11"' >> ~/.bash_profile
+          touch ~/.bash_profile  # set environment variables here
+          echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.bash_profile
 
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
             dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave python3-setuptools python3-Cython python3-h5py \
+                           CGAL-devel octave python3-pip python3-setuptools python3-Cython python3-h5py \
                            python3-matplotlib
           elif grep -q 'ID="almalinux"' /etc/os-release; then
             dnf install -y epel-release
@@ -105,7 +112,7 @@ jobs:
 
             dnf install -y git
             dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave python3-Cython python3-h5py \
+                           CGAL-devel octave python3-pip python3-Cython python3-h5py \
                            python3-matplotlib
           elif grep -q "ID=debian" /etc/os-release || grep -q "ID=ubuntu" /etc/os-release; then
             # retry failed downloads 3 times
@@ -115,7 +122,7 @@ jobs:
             apt-get install -y build-essential git \
                                libhdf5-dev libtinyxml-dev \
                                octave \
-                               python3-setuptools python3-numpy \
+                               python3-pip python3-setuptools python3-numpy \
                                python3-matplotlib python3-h5py
 
             # VTK9 or VTK7, at least one must succeed (depending on Debian version)
@@ -139,19 +146,32 @@ jobs:
               apt-get install -y libgmp-dev libmpfr-dev
               git clone $GITHUB_SERVER_URL/CGAL/cgal.git --depth=1 --branch=v4.14.3
               cd cgal && mkdir build && cd build
-              cmake ../ && make && make install
-
-              # Ubuntu 14.04's cython3 package is ancient, install via pip instead
-              apt-get install -y python3-pip
+              cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/opt
+              make -j`nproc` && make install
 
               # Must use Cython 3.0 or lower, since 3.1 uses f-string which is
               # incompatible with Python 3.4.
               pip3 install "cython<3.1"
+
+              # Ubuntu 14.04's matplotlib package is ancient, install the
+              # minimum version and its dependencies via pip. Note that the
+              # native build uses Python 3.4 while the venv build (tested
+              # later) uses Python 3.5 without these problems.
+              #
+              # pip's pyparsing is incompatible with Python 3.4
+              apt-get install -y python3-pyparsing
+
+              # same, newer cycler has incompatible type annotation
+              pip3 install "cycler==0.10.0"
+              pip3 install "matplotlib==2.1.0"
             else
               apt-get install -y libboost-all-dev
               apt-get install -y libcgal-dev
               apt-get install -y cmake
               apt-get install -y cython3
+
+              # testing Python packages in isolated venv
+              apt-get install -y python3-venv
             fi
           elif grep -q "ID=alpine" /etc/os-release; then
             apk add bash \
@@ -159,7 +179,7 @@ jobs:
                     boost-dev tinyxml-dev hdf5-dev cgal-dev vtk-dev \
                     octave \
                     python3-dev cython \
-                    py3-setuptools \
+                    py3-pip py3-setuptools \
                     py3-matplotlib py3-numpy py3-h5py
           elif [ -f /etc/centos-release ]; then
             # IPv6 on GitHub Actions is broken, causing random network failures
@@ -219,7 +239,8 @@ jobs:
             # to CXX compiler "GNU" version 4.8.5.
             git clone $GITHUB_SERVER_URL/CGAL/cgal.git --depth=1 --branch=v4.14.3
             cd cgal && mkdir build && cd build
-            cmake ../ && make && make install
+            cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/opt
+            make -j`nproc` && make install
           else
             echo "Unknown system!"
             exit 1
@@ -296,8 +317,9 @@ jobs:
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/CSXCAD/python
-          python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-          python3 setup.py install --user
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          pip3 install . --user --verbose || \
+              pip3 install . --user --break-system-packages --verbose
 
       - name: Build and install openEMS
         run: |
@@ -324,8 +346,20 @@ jobs:
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/python
-          python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-          python3 setup.py install --user
+
+          # Python "exit(False)" = bash "if true"
+          # Python "exit(True)" = bash "if false"
+          if python3 -c "import pip; exit(int(pip.__version__.split('.')[0]) > 20)"; then
+            # old pip < 21.3 (checking <= 21 here for simplicity),
+            # CSXCAD needs CSXCAD_PYSRC_PATH as auto-detection is
+            # not reliable.
+            export CSXCAD_PYSRC_PATH=$GITHUB_WORKSPACE/CSXCAD/python/
+          fi
+
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          export OPENEMS_INSTALL_PATH=$HOME/opt/
+          pip3 install . --user --verbose || \
+              pip3 install . --user --break-system-packages --verbose
 
       - name: Smoketest Octave execution
         run: |
@@ -336,6 +370,76 @@ jobs:
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
+          python3 MSL_NotchFilter.py
+
+      - name: Create Python venv and install dependencies
+        run: |
+          source ~/.bash_profile
+          cd ~/
+
+          if grep -q "ID=ubuntu" /etc/os-release && \
+            grep -q 'VERSION_ID="14.04"' /etc/os-release; then
+              # Use Python 3.5 instead of the default Python 3.4 because
+              # 3.5 is the latest available version on Ubuntu 14.04, and
+              # also because Python 3.5 is the first Python that supported
+              # type annotation, while Python 3.4 is locked out from most
+              # modern packages.
+              apt-get install -y curl python3.5-dev
+
+              # Ubuntu 14.04 is ancient, and the python3.5-venv package is
+              # broken. So the best approach is to install a bare Python 3.5
+              # interpreter from apt, and bootstrapping pip ourselves.
+              python3.5 -m venv ~/venv --without-pip
+              curl -O https://bootstrap.pypa.io/pip/3.5/get-pip.py
+              source ~/venv/bin/activate
+              python3.5 get-pip.py
+          else
+            python3 -m venv ~/venv
+            source ~/venv/bin/activate
+          fi
+
+          pip install --upgrade pip
+
+          if [ -f /etc/centos-release ]; then
+            pip3 install "cython<3.1"
+          fi
+
+      - name: Build and install CSXCAD Python module in venv
+        run: |
+          source ~/.bash_profile
+          source ~/venv/bin/activate
+          cd $GITHUB_WORKSPACE/CSXCAD/python
+          export CSXCAD_INSTALL_PATH="$HOME/opt"
+          pip3 install . --verbose
+
+      - name: Build and install openEMS Python module in venv
+        run: |
+          source ~/.bash_profile
+          source ~/venv/bin/activate
+          cd $GITHUB_WORKSPACE/openEMS/python
+
+          # Python "exit(False)" = bash "if true"
+          # Python "exit(True)" = bash "if false"
+          if python3 -c "import pip; exit(int(pip.__version__.split('.')[0]) > 20)"; then
+            # old pip < 21.3 (checking <= 21 here for simplicity),
+            # CSXCAD needs CSXCAD_PYSRC_PATH as auto-detection is
+            # not reliable.
+            export CSXCAD_PYSRC_PATH=$GITHUB_WORKSPACE/CSXCAD/python/
+          fi
+
+          export CSXCAD_INSTALL_PATH="$HOME/opt"
+          export OPENEMS_INSTALL_PATH="$HOME/opt"
+          pip3 install . --verbose
+
+      - name: Smoketest Python execution in venv
+        run: |
+          source ~/.bash_profile
+          source ~/venv/bin/activate
+          cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
           python3 MSL_NotchFilter.py
 
   macOS:
@@ -345,9 +449,13 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          echo 'export CXXFLAGS="-std=c++11"' >> ~/.zprofile
+          touch ~/.zprofile  # set environment variables here
+          echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.zprofile
 
-          brew install cmake boost hdf5 cgal vtk python3 octave
+          brew install cmake boost hdf5 cgal vtk python3 octave numpy python-matplotlib
+
+          echo "export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')" >> ~/.zprofile
+          source ~/.zprofile
 
           # TinyXML has been disabled by Homebrew at it's unmaintained
           # since 2011, TinyXML2 is not API-compatible. As a stop-gap,
@@ -391,27 +499,7 @@ jobs:
 
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j`nproc` && make install
-
-          # cython is keg-only, which means it was not symlinked into /opt/homebrew,
-          # because this formula is mainly used internally by other formulae.
-          # Users are advised to use `pip` to install cython.
-          #
-          # So Python will NOT be able to find cython from "site-package", nor
-          # will the shell finds a cython executable from "bin"
-          #
-          # But then, `pip` can't be used directly due to PEP 668, which asks us
-          # to install cython via the system's package manager, buh Howebrew does
-          # not provide a fully-function package (unless you hack the symlinks
-          # manually).
-          #
-          # So, the real solution is creating a virtualenv specifically for openEMS
-          # usage.
-          #
-          # TODO: completely update openEMS documentation and scripts to enable and
-          # teach users about virtualenv
-          python3 -m venv $HOME/opt
-          $HOME/opt/bin/pip3 install setuptools cython numpy h5py matplotlib
+          make -j$NCPUS && make install
 
       - name: Checkout openEMS.git
         uses: actions/checkout@v4
@@ -442,7 +530,7 @@ jobs:
           cd $GITHUB_WORKSPACE/fparser
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j`nproc` && make install
+          make -j$NCPUS && make install
 
       - name: Build and install CSXCAD
         run: |
@@ -457,14 +545,14 @@ jobs:
           cd $GITHUB_WORKSPACE/CSXCAD
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j`nproc` && make install
+          make -j$NCPUS && make install
 
       - name: Build and install CSXCAD Python module
         run: |
           source ~/.zprofile
           cd $GITHUB_WORKSPACE/CSXCAD/python
-          $HOME/opt/bin/python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-          $HOME/opt/bin/python3 setup.py install
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          pip3 install . --break-system-packages --verbose
 
       - name: Build and install openEMS
         run: |
@@ -472,7 +560,7 @@ jobs:
           cd $GITHUB_WORKSPACE/openEMS
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt
-          make -j`nproc` && make install
+          make -j$NCPUS && make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
           echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
@@ -481,12 +569,9 @@ jobs:
         run: |
           source ~/.zprofile
           cd $GITHUB_WORKSPACE/openEMS/python
-
-          $HOME/opt/bin/python3 setup.py build_ext \
-            -I "$HOME/opt/include:/opt/homebrew/include" \
-            -L "$HOME/opt/lib:/opt/homebrew/lib" \
-            -R $HOME/opt/lib
-          $HOME/opt/bin/python3 setup.py install
+          export CSXCAD_INSTALL_PATH=$HOME/opt/
+          export OPENEMS_INSTALL_PATH=$HOME/opt/
+          pip3 install . --break-system-packages --verbose
 
       - name: Smoketest Octave execution
         run: |
@@ -496,7 +581,38 @@ jobs:
       - name: Smoketest Python execution
         run: |
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
-          $HOME/opt/bin/python3 MSL_NotchFilter.py
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
+          python3 MSL_NotchFilter.py
+
+      - name: Create Python venv and install dependencies
+        run: |
+          python3 -m venv ~/venv
+          source ~/venv/bin/activate
+          pip install --upgrade pip
+
+      - name: Build and install CSXCAD Python module in venv
+        run: |
+          source ~/venv/bin/activate
+          cd $GITHUB_WORKSPACE/CSXCAD/python
+          export CSXCAD_INSTALL_PATH="$HOME/opt"
+          pip3 install . --verbose
+
+      - name: Build and install openEMS Python module in venv
+        run: |
+          source ~/venv/bin/activate
+          cd $GITHUB_WORKSPACE/openEMS/python
+          export CSXCAD_INSTALL_PATH="$HOME/opt"
+          export OPENEMS_INSTALL_PATH="$HOME/opt"
+          pip3 install . --verbose
+
+      - name: Smoketest Python execution in venv
+        run: |
+          source ~/venv/bin/activate
+          cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
+          python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+          python3 -c "import openEMS; print(openEMS.__version__)"
+          python3 MSL_NotchFilter.py
 
   FreeBSD:
     runs-on: ubuntu-latest
@@ -532,11 +648,14 @@ jobs:
           run: |
             echo "Install dependencies..."
             sudo pkg install -y cmake git boost-libs tinyxml vtk9 hdf5 cgal octave python3 \
-                                py311-setuptools \
+                                py311-pip py311-setuptools \
                                 py311-cython3 py311-numpy py311-h5py py311-matplotlib
                                 # prefix must match FreeBSD's default python
                                 # version. FreeBSD 14.2 uses Python 3.11 so
                                 # use "py311-"
+
+            export CXXFLAGS="-Wall -Wextra -Wno-error"
+            export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')
 
             echo "Clone repos..."
             cd ~/
@@ -555,7 +674,7 @@ jobs:
             cd ~/fparser
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-            make -j`nproc` && make install
+            make -j$NCPUS && make install
 
             echo "Build and install CSXCAD..."
             # cmake may fail with "fatal: No names found, cannot describe anything."
@@ -568,29 +687,27 @@ jobs:
             cd ~/CSXCAD
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-            make -j`nproc` && make install
+            make -j$NCPUS && make install
 
             echo "Build and install CSXCAD Python module..."
             cd ~/CSXCAD/python
-            python3 setup.py build_ext -I $HOME/opt/include -L $HOME/opt/lib -R $HOME/opt/lib
-            python3 setup.py install --user
+            export CSXCAD_INSTALL_PATH=$HOME/opt/
+            pip install . --user --break-system-packages --verbose
 
             echo "Build and install openEMS..."
             cd ~/openEMS
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt
-            make -j`nproc` && make install
+            make -j$NCPUS && make install
 
             echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
             echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
 
             echo "Build and install openEMS Python module..."
             cd ~/openEMS/python
-            python3 setup.py build_ext \
-              -I "$HOME/opt/include:/usr/local/include" \
-              -L "$HOME/opt/lib:/usr/local/lib" \
-              -R $HOME/opt/lib
-            python3 setup.py install --user
+            export CSXCAD_INSTALL_PATH=$HOME/opt/
+            export OPENEMS_INSTALL_PATH=$HOME/opt/
+            pip install . --user --break-system-packages --verbose
 
             echo "Smoketest Octave execution..."
             cd ~/openEMS/.github/smoketests/octave/
@@ -598,4 +715,28 @@ jobs:
 
             echo "Smoketest Python execution..."
             cd ~/openEMS/.github/smoketests/python
+            python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+            python3 -c "import openEMS; print(openEMS.__version__)"
+            python3 MSL_NotchFilter.py
+
+            echo "Create Python venv and install dependencies..."
+            python3 -m venv ~/venv
+            . ~/venv/bin/activate
+            pip install --upgrade pip
+
+            echo "Build and install CSXCAD Python module in venv..."
+            cd ~/CSXCAD/python
+            export CSXCAD_INSTALL_PATH="$HOME/opt"
+            pip install . --verbose
+
+            echo "Build and install openEMS Python module in venv..."
+            cd ~/openEMS/python
+            export CSXCAD_INSTALL_PATH="$HOME/opt"
+            export OPENEMS_INSTALL_PATH="$HOME/opt"
+            pip install . --verbose
+
+            echo "Smoketest Python execution in venv..."
+            cd ~/openEMS/.github/smoketests/python
+            python3 -c "import CSXCAD; print(CSXCAD.__version__)"
+            python3 -c "import openEMS; print(openEMS.__version__)"
             python3 MSL_NotchFilter.py
