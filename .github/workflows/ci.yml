@@ -139,7 +139,8 @@ jobs:
               apt-get install -y libgmp-dev libmpfr-dev
               git clone $GITHUB_SERVER_URL/CGAL/cgal.git --depth=1 --branch=v4.14.3
               cd cgal && mkdir build && cd build
-              cmake ../ && make && make install
+              cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/opt
+              make -j`nproc` && make install
 
               # Ubuntu 14.04's cython3 package is ancient, install via pip instead
               apt-get install -y python3-pip
@@ -219,7 +220,8 @@ jobs:
             # to CXX compiler "GNU" version 4.8.5.
             git clone $GITHUB_SERVER_URL/CGAL/cgal.git --depth=1 --branch=v4.14.3
             cd cgal && mkdir build && cd build
-            cmake ../ && make && make install
+            cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/opt
+            make -j`nproc` && make install
           else
             echo "Unknown system!"
             exit 1
