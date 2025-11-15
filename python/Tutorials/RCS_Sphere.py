@@ -10,13 +10,14 @@
 """
 
 ### Import Libraries
-import os, tempfile
-from pylab import *
-
-from CSXCAD  import ContinuousStructure
+import os
+import tempfile
+import matplotlib.pyplot as plt
+import numpy as np
+from CSXCAD import ContinuousStructure
 from openEMS import openEMS
+from openEMS.ports import *
 from openEMS.physical_constants import *
-from openEMS.ports  import UI_data
 
 ### Setup the simulation
 Sim_Path = os.path.join(tempfile.gettempdir(), 'RCS_Sphere')
@@ -59,7 +60,7 @@ sphere_metal = CSX.AddMetal( 'sphere' ) # create a perfect electric conductor (P
 sphere_metal.AddSphere(priority=10, center=[0, 0, 0], radius=sphere_rad)
 
 # plane wave excitation
-k_dir = [cos(np.deg2rad(inc_angle)), sin(np.deg2rad(inc_angle)), 0] # plane wave direction
+k_dir = [np.cos(np.deg2rad(inc_angle)), np.sin(np.deg2rad(inc_angle)), 0] # plane wave direction
 E_dir = [0, 0, 1] # plane wave polarization --> E_z
 
 pw_exc = CSX.AddExcitation('plane_wave', exc_type=10, exc_val=E_dir)
@@ -90,38 +91,36 @@ if not post_proc_only:
 # get Gaussian pulse strength at frequency f0
 ef = UI_data('et', Sim_Path, freq=f0)
 
-Pin = 0.5*norm(E_dir)**2/Z0 * abs(ef.ui_f_val[0])**2
-#
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, 90, arange(-180, 180.1, 2))
-RCS = 4*pi/Pin[0]*nf2ff_res.P_rad[0]
+Pin = 0.5*np.linalg.norm(E_dir)**2/Z0 * abs(ef.ui_f_val[0])**2
+nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, 90, np.arange(-180, 180.1, 2))
+RCS = 4*np.pi/Pin[0]*nf2ff_res.P_rad[0]
 
-fig = figure()
+fig = plt.figure()
 ax  = fig.add_subplot(111, polar=True)
 ax.plot( nf2ff_res.phi, RCS[0], 'k-', linewidth=2 )
 ax.grid(True)
 
 # calculate RCS over frequency
-freq = linspace(f_start,f_stop,100)
+freq = np.linspace(f_start,f_stop,100)
 ef = UI_data( 'et', Sim_Path, freq ) # time domain/freq domain voltage
-Pin = 0.5*norm(E_dir)**2/Z0 * abs(np.array(ef.ui_f_val[0]))**2
+Pin = 0.5*np.linalg.norm(E_dir)**2/Z0 * abs(np.array(ef.ui_f_val[0]))**2
 
 nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, freq, 90, 180+inc_angle, outfile='back_nf2ff.h5')
 
-back_scat = np.array([4*pi/Pin[fn]*nf2ff_res.P_rad[fn][0][0] for fn in range(len(freq))])
+back_scat = np.array([4*np.pi/Pin[fn]*nf2ff_res.P_rad[fn][0][0] for fn in range(len(freq))])
 
-figure()
-plot(freq/1e6,back_scat, linewidth=2)
-grid()
-xlabel('frequency (MHz)')
-ylabel('RCS ($m^2$)')
-title('radar cross section')
+plt.figure()
+plt.plot(freq/1e6,back_scat, linewidth=2)
+plt.grid()
+plt.xlabel('frequency (MHz)')
+plt.ylabel('RCS ($m^2$)')
+plt.title('radar cross section')
 
-figure()
-semilogy(sphere_rad*unit/C0*freq,back_scat/(pi*sphere_rad*unit*sphere_rad*unit), linewidth=2)
-ylim([10^-2, 10^1])
-grid()
-xlabel('sphere radius / wavelength')
-ylabel('RCS / ($\pi a^2$)')
-title('normalized radar cross section')
-
-show()
+plt.figure()
+plt.semilogy(sphere_rad*unit/C0*freq,back_scat/(np.pi*sphere_rad*unit*sphere_rad*unit), linewidth=2)
+plt.ylim([10^-2, 10^1])
+plt.grid()
+plt.xlabel('sphere radius / wavelength')
+plt.ylabel('RCS / ($\pi a^2$)')
+plt.title('normalized radar cross section')
+plt.show()
