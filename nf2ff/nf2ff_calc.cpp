@@ -522,7 +522,9 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, complex<f
 	delete[] edge_length_PP; edge_length_PP=NULL;
 	delete[] thread_data; thread_data=NULL;
 
-	m_maxDir = 4*M_PI*P_max / m_radPower;
+	// Maximum directivity (unitless) across sampled angles theta and phi
+	// P_max (W/m^2), m_radPower (W), m_radius (m)
+	m_maxDir = P_max * (4*M_PI * m_radius*m_radius / m_radPower);
 
 	return true;
 }
