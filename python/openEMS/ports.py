@@ -438,14 +438,8 @@ class RectWGPort(WaveguidePort):
         b = self.WG_size[1]
 
         xyz = 'xyz'
-        if self.start[self.ny_P]!=0:
-            name_P = '({}-{})'.format(xyz[self.ny_P], self.start[self.ny_P])
-        else:
-            name_P = xyz[self.ny_P]
-        if self.start[self.ny_PP]!=0:
-            name_PP = '({}-{})'.format(xyz[self.ny_P], self.start[self.ny_P])
-        else:
-            name_PP = xyz[self.ny_P]
+        name_P = '({}-{})'.format(xyz[self.ny_P], self.start[self.ny_P])
+        name_PP = '({}-{})'.format(xyz[self.ny_PP], self.start[self.ny_PP])
 
         kc = np.sqrt((self.M*np.pi/a)**2 + (self.N*np.pi/b)**2)
 
