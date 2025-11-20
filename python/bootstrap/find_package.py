@@ -74,7 +74,7 @@ def add_csxcad(version_str=""):
 
     # found path
     if path:
-        return ["CSXCAD %s @ file://localhost/%s" % (version_str, str(path))]
+        return ["CSXCAD %s @ file://localhost/%s" % (version_str, path.resolve())]
 
     # path not found, try fallbacks
     if pip_in_tree_build():
