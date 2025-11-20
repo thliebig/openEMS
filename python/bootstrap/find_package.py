@@ -54,7 +54,7 @@ def add_csxcad(version_str=""):
             # See:
             # https://github.com/pypa/packaging/commit/eb0243865079c7c2179730da93130447556ea020
             # https://github.com/pypa/pip/blob/7e49dca9277bf4e325b85cfb9ebe70401f194fb6/src/pip/_internal/utils/urls.py#L30
-            return ["CSXCAD %s @ file://localhost/%s" % (version_str, str(path))]
+            return ["CSXCAD %s @ file://localhost%s" % (version_str, str(path))]
 
     # User provides no path, let's try some heuristics now.
     path = None
@@ -74,7 +74,7 @@ def add_csxcad(version_str=""):
 
     # found path
     if path:
-        return ["CSXCAD %s @ file://localhost/%s" % (version_str, path.resolve())]
+        return ["CSXCAD %s @ file://localhost%s" % (version_str, path.resolve())]
 
     # path not found, try fallbacks
     if pip_in_tree_build():
