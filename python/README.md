@@ -524,6 +524,26 @@ Make sure to provide detailed information about your system
 (operating systems name and version, any error messages and
 debugging outputs).
 
+### FileNotFoundError: [Errno 2] No such file or directory: '/CSXCAD/python'
+
+If you see a similar error message during installation:
+
+```
+ERROR: Could not install packages due to an OSError.
+FileNotFoundError: [Errno 2] No such file or directory: '/CSXCAD/python'
+error: subprocess-exited-with-error
+```
+
+It means the installer detected an incorrect CSXCAD Python source code path,
+and it's unable to install the CSXCAD Python extension as a dependency.
+
+Rerun pip with `pip install . --no-build-isolation`. Without
+build isolation, the CSXCAD Python extension which you've already installed
+will be used. Just ensure to install `CSXCAD/python` before `openEMS/python`.
+
+Alternatively, provide the path manually via `CSXCAD_PYSRC_PATH` instead, and
+rerun pip. See the section *Override `CSXCAD_PYSRC_PATH`* in the documentation.
+
 ### Unable to detect CSXCAD's Python source code path
 
 If you see the following error message during installation:
