@@ -30,7 +30,7 @@ fallback_version = "0.0.36"
 
 [project]
 name = "openEMS"
-dynamic = ["version", "dependencies"]
+dynamic = ["version", "license", "dependencies"]
 requires-python = ">=3.4"
 authors = [
     {name = "Thorsten Liebig", email = "Thorsten.Liebig@gmx.de"}
@@ -40,7 +40,6 @@ maintainers = [
 ]
 description = "Python interface for the openEMS FDTD library"
 readme = "README.md"
-license = "GPL-3.0-or-later"
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
