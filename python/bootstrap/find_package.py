@@ -109,3 +109,22 @@ def add_setuptool_scm():
         return []
     else:
         return ['setuptools_scm >= 8; python_version >= "3.9"']
+
+
+def add_h5py():
+    try:
+        import h5py
+        from importlib.metadata import version, PackageNotFoundError
+    except ImportError:
+        return ["h5py"]
+
+    try:
+        version("h5py")
+        return ["h5py"]
+    except PackageNotFoundError:
+        # h5py installed and can be imported (must be --no-build-isolation),
+        # but on Debian oldstable (Debian 12) the package name is known as
+        # "h5py.-debian-h5py-serial" or "h5py.-debian-h5py-mpi". We should
+        # use this on Debian name on Debian. Newer Debian such as Debian
+        # stable installs h5py as both "h5py" and "h5py.-debian-h5py-serial".
+        return ["h5py.-debian-h5py-serial"]
