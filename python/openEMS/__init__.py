@@ -7,7 +7,8 @@ from __future__ import absolute_import
 import CSXCAD
 
 try:
-    from openEMS.__version__ import __version__
+    from importlib.metadata import version
+    __version__ = version("openEMS")
 except ImportError:
     try:
         from openEMS.__fallback_version__ import __fallback_version__

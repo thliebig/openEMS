@@ -25,22 +25,29 @@ from bootstrap.find_package import add_csxcad
 
 
 def get_fallback_version(pyproject_toml, fallback_file):
+    # Always generate a fallback_version in case importlib.metadata
+    # introspection is unsupported or fails.
+    with open(pyproject_toml, 'r') as toml:
+        matching_list = [
+            line for line in toml if line.startswith("fallback_version")
+        ]
+        fallback_version_quoted = matching_list[0].split("=")[1]
+        fallback_version = fallback_version_quoted.replace('"', "").strip()
+
+    with open(fallback_file, "w+") as fallback_file:
+       fallback_file.write("__fallback_version__ = '%s'" % fallback_version)
+
     try:
         # pyproject.toml is respected by new pip, which calls setuptools_scm
         # to inject a version automatically.
         import setuptools_scm
-        return None
-    except ImportError:
-        with open(pyproject_toml, 'r') as toml:
-            matching_list = [
-                line for line in toml if line.startswith("fallback_version")
-            ]
-            version_quoted = matching_list[0].split("=")[1]
-            version = version_quoted.replace('"', "").strip()
-
-        with open(fallback_file, "w+") as fallback_file:
-            fallback_file.write("__fallback_version__ = '%s'" % version)
-        return version
+        from importlib.metadata import version
+        if int(version("setuptools_scm").split(".")[0]) >= 8:
+            return None
+        else:
+            raise ValueError("setuptools_scm version too low.")
+    except (ImportError, ValueError):
+        return fallback_version
 
 
 def normalize_path_subdir(path_str, subdir):
