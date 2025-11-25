@@ -1,5 +1,4 @@
 from find_package import add_csxcad, add_setuptool_scm
-from setuptools import build_meta as _orig
 
 try:
     from setuptools import build_meta as _orig
