@@ -120,6 +120,7 @@ def determine_build_options():
         # system but are not used by compilers by default (such as a custom Boost).
         # On macOS, the required prefix are -L $(brew --prefix)/include and
         # -R $(brew --prefix)/lib respectively. Hardcode it as a special treatment.
+        path = None
         try:
             status = subprocess.run(["brew", "--prefix"], capture_output=True)
             path = status.stdout.decode("UTF-8").replace("\n", "")
@@ -128,6 +129,22 @@ def determine_build_options():
             )
         except FileNotFoundError:
             pass
+
+        # If pip build isolation is disbled, users must install
+        # dependencies manually. Unfortunately Homebrew's Cython
+        # is a keg-only internal package outside the search path.
+        # Add Cython to Python path manually.
+        if path and not any(["pip-build-env" in i for i in sys.path]):
+            homebrew_prefix = pathlib.Path(path) / "Cellar" / "cython"
+            python_ver = (sys.version_info.major, sys.version_info.minor)
+            python_dir = "python%d.%d/site-packages" % python_ver
+
+            find_candidate_cython_list = [
+                i for i in homebrew_prefix.rglob(python_dir) if i.is_dir()
+            ]
+            if find_candidate_cython_list:
+                sys.path.append(str(find_candidate_cython_list[0].resolve()))
+
     if os.name == "posix":
         # The path /usr/local is also too common on Unix systems, so we hardcode it
         # as a special treatment on Unix-like systems. For example, on CentOS, the
