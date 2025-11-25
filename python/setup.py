@@ -21,7 +21,7 @@ import glob
 # recommended to explicitly add the current directory to sys.path
 # https://github.com/pypa/setuptools/issues/3939
 sys.path.append(str(pathlib.Path(__file__).parent))
-from bootstrap.find_package import add_csxcad
+from bootstrap.find_package import add_csxcad, add_h5py
 
 
 LICENSE = "GPL-3.0-or-later"
@@ -231,11 +231,12 @@ extensions = get_modules_list(
 
 # DO add new run-time dependencies here.
 install_requires = [
-    # BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
-    'h5py',
     # BSD 3-Clause (https://github.com/numpy/numpy/blob/main/LICENSE.txt)
     'numpy',
 ]
+
+# BSD 3-Clause (https://github.com/h5py/h5py/blob/master/LICENSE)
+install_requires += add_h5py()
 
 try:
     # CSXCAD already installed, use a plain package name as dependency,
