@@ -24,6 +24,17 @@ sys.path.append(str(pathlib.Path(__file__).parent))
 from bootstrap.find_package import add_csxcad
 
 
+LICENSE = "GPL-3.0-or-later"
+
+
+def get_license():
+    # mutually exclusive "license" and "license_expression"
+    if int(setuptools_version.split(".")[0]) < 77:
+        return {"license": LICENSE}
+    else:
+        return {"license_expression": LICENSE}
+
+
 def get_fallback_version(pyproject_toml, fallback_file):
     # Always generate a fallback_version in case importlib.metadata
     # introspection is unsupported or fails.
@@ -236,5 +247,6 @@ setup(
     'cython'
   ],
   install_requires=install_requires,
-  ext_modules=extensions
+  ext_modules=extensions,
+  **get_license()
 )
