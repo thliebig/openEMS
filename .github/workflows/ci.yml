@@ -84,6 +84,8 @@ jobs:
 
     container:
       image: ${{ matrix.os.docker-image }}
+      # allow mount/netns
+      options: "--cap-add CAP_SYS_ADMIN --cap-add NET_ADMIN --security-opt apparmor=unconfined"
 
     name: "${{ matrix.os.libc }}/Linux (${{ matrix.os.name }})"
 
@@ -104,16 +106,24 @@ jobs:
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
             dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave python3-pip python3-setuptools python3-Cython python3-h5py \
-                           python3-matplotlib
+                           CGAL-devel octave python3-pip \
+                           python3-setuptools python3-setuptools_scm \
+                           python3-Cython python3-numpy python3-h5py python3-matplotlib
+
+            # only for CI/CD test builds without networks.
+            dnf install -y iproute
           elif grep -q 'ID="almalinux"' /etc/os-release; then
             dnf install -y epel-release
             dnf config-manager --set-enabled powertools || dnf config-manager --set-enabled crb
 
             dnf install -y git
             dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave python3-pip python3-Cython python3-h5py \
-                           python3-matplotlib
+                           CGAL-devel octave python3-pip \
+                           python3-setuptools python3-setuptools_scm \
+                           python3-Cython python3-numpy python3-h5py python3-matplotlib
+
+            # only for CI/CD test builds without networks.
+            dnf install -y iproute
           elif grep -q "ID=debian" /etc/os-release || grep -q "ID=ubuntu" /etc/os-release; then
             # retry failed downloads 3 times
             echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries
@@ -122,14 +132,17 @@ jobs:
             apt-get install -y build-essential git \
                                libhdf5-dev libtinyxml-dev \
                                octave \
-                               python3-pip python3-setuptools python3-numpy \
-                               python3-matplotlib python3-h5py
+                               python3-pip \
+                               python3-setuptools python3-numpy python3-matplotlib python3-h5py
 
             # VTK9 or VTK7, at least one must succeed (depending on Debian version)
             # VTK9,  VTK7, or VTK6, at least one must succeed (depending on Debian version)
             apt-get install -y libvtk9-dev || \
                 apt-get install -y libvtk7-dev || \
                   apt-get install -y libvtk6-dev
+
+            # only for CI/CD test builds without networks.
+            apt-get install -y iproute2
 
             if grep -q 'VERSION_ID="14.04"' /etc/os-release; then
               # Ubuntu 14.04 has CMake 2 by default, but we require CMake 3
@@ -168,7 +181,7 @@ jobs:
               apt-get install -y libboost-all-dev
               apt-get install -y libcgal-dev
               apt-get install -y cmake
-              apt-get install -y cython3
+              apt-get install -y python3-setuptools-scm cython3 python3-matplotlib
 
               # testing Python packages in isolated venv
               apt-get install -y python3-venv
@@ -178,9 +191,12 @@ jobs:
                     build-base gmp-dev mpfr-dev git cmake \
                     boost-dev tinyxml-dev hdf5-dev cgal-dev vtk-dev \
                     octave \
-                    python3-dev cython \
-                    py3-pip py3-setuptools \
-                    py3-matplotlib py3-numpy py3-h5py
+                    python3-dev py3-pip \
+                    py3-setuptools py3-setuptools_scm cython \
+                    py3-numpy py3-h5py py3-matplotlib
+
+            # only for CI/CD test builds without networks.
+            apk add iproute2
           elif [ -f /etc/centos-release ]; then
             # IPv6 on GitHub Actions is broken, causing random network failures
             # if a CDN rosolves to IPv6.
@@ -201,8 +217,12 @@ jobs:
             yum install -y epel-release
             yum install -y git
             yum install -y gcc gcc-c++ gmp-devel mpfr-devel \
-                           cmake3 git tinyxml-devel vtk-devel hdf5-devel \
-                           octave python3-pip python3-devel python3-Cython
+                           cmake3 git tinyxml-devel vtk-devel hdf5-devel octave \
+                           python3-devel python3-pip \
+                           python3-setuptools python3-setuptools_scm python3-Cython
+
+            # only for CI/CD test builds without networks.
+            yum install -y iproute
 
             # use cmake3 instead of default cmake2
             alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 99
@@ -313,13 +333,25 @@ jobs:
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
           make -j`nproc` && make install
 
-      - name: Build and install CSXCAD Python module
+      - name: Build and install CSXCAD Python module with --no-build-isolation
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/CSXCAD/python
           export CSXCAD_INSTALL_PATH=$HOME/opt/
-          pip3 install . --user --verbose || \
-              pip3 install . --user --break-system-packages --verbose
+
+          pip_opts=( "--user" "--verbose" )
+          # some systems don't have --no-build-isolation, some systems don't have
+          # --break-system-packages, the oldest systems don't have both.
+          if pip3 install --help | grep -q no-build-isolation; then
+            pip_opts+=( "--no-build-isolation" )
+          fi
+          if pip3 install --help | grep -q break-system-packages; then
+            pip_opts+=( "--break-system-packages" )
+          fi
+          # run in an isolated container without network, ensure
+          # pip install really works without auto-downloads.
+          ip netns add no-network
+          ip netns exec no-network pip3 install . "${pip_opts[@]}"
 
       - name: Build and install openEMS
         run: |
@@ -342,7 +374,7 @@ jobs:
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
           echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
 
-      - name: Build and install openEMS Python module
+      - name: Build and install openEMS Python module with --no-build-isolation
         run: |
           source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/python
@@ -356,10 +388,21 @@ jobs:
             export CSXCAD_PYSRC_PATH=$GITHUB_WORKSPACE/CSXCAD/python/
           fi
 
+          pip_opts=( "--user" "--verbose" )
+          # some systems don't have --no-build-isolation, some systems don't have
+          # --break-system-packages, the oldest systems don't have both.
+          if pip3 install --help | grep -q no-build-isolation; then
+            pip_opts+=( "--no-build-isolation" )
+          fi
+          if pip3 install --help | grep -q break-system-packages; then
+            pip_opts+=( "--break-system-packages" )
+          fi
+
           export CSXCAD_INSTALL_PATH=$HOME/opt/
           export OPENEMS_INSTALL_PATH=$HOME/opt/
-          pip3 install . --user --verbose || \
-              pip3 install . --user --break-system-packages --verbose
+          # run in an isolated container without network, ensure
+          # pip install really works without auto-downloads.
+          ip netns exec no-network pip3 install . "${pip_opts[@]}"
 
       - name: Smoketest Octave execution
         run: |
@@ -452,7 +495,8 @@ jobs:
           touch ~/.zprofile  # set environment variables here
           echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.zprofile
 
-          brew install cmake boost hdf5 cgal vtk python3 octave numpy python-matplotlib
+          brew install cmake boost hdf5 cgal vtk octave python3 \
+                       python-setuptools cython numpy python-matplotlib
 
           echo "export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')" >> ~/.zprofile
           source ~/.zprofile
@@ -547,12 +591,12 @@ jobs:
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
           make -j$NCPUS && make install
 
-      - name: Build and install CSXCAD Python module
+      - name: Build and install CSXCAD Python module with --no-build-isolation
         run: |
           source ~/.zprofile
           cd $GITHUB_WORKSPACE/CSXCAD/python
           export CSXCAD_INSTALL_PATH=$HOME/opt/
-          pip3 install . --break-system-packages --verbose
+          pip3 install . --user --break-system-packages --no-build-isolation --verbose
 
       - name: Build and install openEMS
         run: |
@@ -565,13 +609,13 @@ jobs:
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
           echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
 
-      - name: Build and install openEMS Python module
+      - name: Build and install openEMS Python module with --no-build-isolation
         run: |
           source ~/.zprofile
           cd $GITHUB_WORKSPACE/openEMS/python
           export CSXCAD_INSTALL_PATH=$HOME/opt/
           export OPENEMS_INSTALL_PATH=$HOME/opt/
-          pip3 install . --break-system-packages --verbose
+          pip3 install . --user --break-system-packages --no-build-isolation --verbose
 
       - name: Smoketest Octave execution
         run: |
@@ -587,9 +631,13 @@ jobs:
 
       - name: Create Python venv and install dependencies
         run: |
+          # remove Python dependencies to see if venv really works
+          pip3 uninstall -y CSXCAD openEMS --break-system-packages
+          brew remove python-setuptools cython numpy python-matplotlib
+
           python3 -m venv ~/venv
           source ~/venv/bin/activate
-          pip install --upgrade pip
+          pip3 install --upgrade pip
 
       - name: Build and install CSXCAD Python module in venv
         run: |
@@ -648,7 +696,8 @@ jobs:
           run: |
             echo "Install dependencies..."
             sudo pkg install -y cmake git boost-libs tinyxml vtk9 hdf5 cgal octave python3 \
-                                py311-pip py311-setuptools \
+                                py311-pip \
+                                py311-setuptools py311-wheel py311-setuptools-scm \
                                 py311-cython3 py311-numpy py311-h5py py311-matplotlib
                                 # prefix must match FreeBSD's default python
                                 # version. FreeBSD 14.2 uses Python 3.11 so
@@ -689,10 +738,10 @@ jobs:
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
             make -j$NCPUS && make install
 
-            echo "Build and install CSXCAD Python module..."
+            echo "Build and install CSXCAD Python module with --no-build-isolation..."
             cd ~/CSXCAD/python
             export CSXCAD_INSTALL_PATH=$HOME/opt/
-            pip install . --user --break-system-packages --verbose
+            pip install . --user --break-system-packages --no-build-isolation --verbose
 
             echo "Build and install openEMS..."
             cd ~/openEMS
@@ -703,11 +752,11 @@ jobs:
             echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
             echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
 
-            echo "Build and install openEMS Python module..."
+            echo "Build and install openEMS Python module with --no-build-isolation..."
             cd ~/openEMS/python
             export CSXCAD_INSTALL_PATH=$HOME/opt/
             export OPENEMS_INSTALL_PATH=$HOME/opt/
-            pip install . --user --break-system-packages --verbose
+            pip install . --user --break-system-packages --no-build-isolation --verbose
 
             echo "Smoketest Octave execution..."
             cd ~/openEMS/.github/smoketests/octave/
@@ -720,6 +769,11 @@ jobs:
             python3 MSL_NotchFilter.py
 
             echo "Create Python venv and install dependencies..."
+            # remove Python dependencies to see if venv really works
+            pip uninstall -y CSXCAD openEMS --break-system-packages
+            sudo pkg remove -y py311-pip \
+                               py311-setuptools py311-wheel py311-setuptools-scm \
+                               py311-cython3 py311-numpy py311-h5py py311-matplotlib
             python3 -m venv ~/venv
             . ~/venv/bin/activate
             pip install --upgrade pip
