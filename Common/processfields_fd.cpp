@@ -187,9 +187,7 @@ void ProcessFieldsFD::DumpFDData()
 			if (m_HDF5_Dump_File->WriteVectorField<std::complex<float>>(ss.str(), *m_FD_Fields.at(n), g_settings.GetLegacyHFD5Dumps())==false)
 				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
 
-			//legacy support, use /FieldData/FD frequency-Attribute in the future
-			float freq = (float)m_FD_Samples.at(n);
-			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",freq)==false)
+			if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(), "frequency", m_FD_Samples.at(n))==false)
 				cerr << "ProcessFieldsFD::Process: can't dump to file...! " << endl;
 		}
 		return;
