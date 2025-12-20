@@ -19,6 +19,9 @@
 #include "engine_ext_cylindermultigrid.h"
 #include "FDTD/engine_cylindermultigrid.h"
 
+using std::cerr;
+using std::endl;
+
 Engine_Ext_CylinderMultiGrid::Engine_Ext_CylinderMultiGrid(Operator_Extension* op_ext, bool isBase) : Engine_Extension(op_ext)
 {
 	m_IsBase = isBase;

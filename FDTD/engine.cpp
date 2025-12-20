@@ -19,6 +19,9 @@
 #include "extensions/engine_extension.h"
 #include "extensions/operator_extension.h"
 
+using std::cout;
+using std::endl;
+
 //! \brief construct an Engine instance
 //! it's the responsibility of the caller to free the returned pointer
 Engine* Engine::New(const Operator* op)

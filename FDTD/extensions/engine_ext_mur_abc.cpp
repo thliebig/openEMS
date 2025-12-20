@@ -22,6 +22,9 @@
 #include "tools/useful.h"
 #include "operator_ext_excitation.h"
 
+using std::cerr;
+using std::endl;
+
 Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) :
 	Engine_Extension(op_ext),
 	m_Mur_Coeff_nyP (op_ext->m_Mur_Coeff_nyP),

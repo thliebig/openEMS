@@ -55,9 +55,12 @@ public:
 	virtual bool IsCylindricalMultiGridSave(bool child) const;
 	virtual bool IsMPISave() const {return true;}
 
-	virtual string GetExtensionName() const {return string("Mur ABC Extension");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Mur ABC Extension");
+	}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 protected:
 	Operator_Ext_Mur_ABC(Operator* op, Operator_Ext_Mur_ABC* op_ext);

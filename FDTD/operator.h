@@ -231,7 +231,12 @@ public:
 
 	virtual double CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const;
 
-	virtual vector<CSPrimitives*> GetPrimitivesBoundBox(int posX, int posY, int posZ, CSProperties::PropertyType type=CSProperties::ANY) const;
+	virtual std::vector<CSPrimitives*> GetPrimitivesBoundBox(
+		int posX,
+		int posY,
+		int posZ,
+		CSProperties::PropertyType type=CSProperties::ANY
+	) const;
 
 protected:
 	//! use New() for creating a new Operator
@@ -248,9 +253,9 @@ protected:
 	virtual Grid_Path FindPath(double start[], double stop[]);
 
 	// debug
-	virtual void DumpOperator2File(string filename);
-	virtual void DumpMaterial2File(string filename);
-	virtual void DumpPEC2File( string filename, unsigned int *range = NULL );
+	virtual void DumpOperator2File(std::string filename);
+	virtual void DumpMaterial2File(std::string filename);
+	virtual void DumpPEC2File( std::string filename, unsigned int *range = NULL );
 
 	unsigned int m_Nr_PEC[3]; //count PEC edges
 	virtual bool CalcPEC();
@@ -263,13 +268,17 @@ protected:
 	virtual double CalcTimestep();
 	double opt_dT;
 	bool m_InvaildTimestep;
-	string m_Used_TS_Name;
+	std::string m_Used_TS_Name;
 
 	double CalcTimestep_Var1();
 	double CalcTimestep_Var3();
 
 	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
-	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC, vector<CSPrimitives *> vPrims) const;
+	virtual bool Calc_ECPos(
+		int ny,
+		const unsigned int* pos,
+		double* EC, std::vector<CSPrimitives *> vPrims
+	) const;
 
 	//! Get the FDTD raw disc delta, needed by Calc_EffMatPos() \sa Calc_EffMatPos
 	/*!
@@ -280,15 +289,37 @@ protected:
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
 	//! Get the material at a given coordinate, direction and type from CSX (internal use only)
-	virtual double GetMaterial(int ny, const double coords[3], int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
+	virtual double GetMaterial(
+		int ny,
+		const double coords[3],
+		int MatType,
+		std::vector<CSPrimitives*> vPrims,
+		bool markAsUsed=true
+	) const;
 
 	MatAverageMethods m_MatAverageMethod;
 
 	//! Calculate the effective/averaged material properties at the given position and direction ny.
-	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const;
+	virtual bool Calc_EffMatPos(
+		int ny,
+		const unsigned int* pos,
+		double* EffMat,
+		std::vector<CSPrimitives*> vPrims
+	) const;
 
-	virtual bool AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const;
-	virtual bool AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const;
+	virtual bool AverageMatCellCenter(
+		int ny,
+		const unsigned int* pos,
+		double* EffMat,
+		std::vector<CSPrimitives*> vPrims
+	) const;
+
+	virtual bool AverageMatQuarterCell(
+		int ny,
+		const unsigned int* pos,
+		double* EffMat,
+		std::vector<CSPrimitives*> vPrims
+	) const;
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
@@ -319,7 +350,7 @@ protected:
 
 	AdrOp* MainOp;
 
-	vector<Operator_Extension*> m_Op_exts;
+	std::vector<Operator_Extension*> m_Op_exts;
 
 	Engine* m_Engine;
 

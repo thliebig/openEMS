@@ -18,6 +18,9 @@
 #include "engine_sse.h"
 #include "tools/denormal.h"
 
+using std::cout;
+using std::endl;
+
 //! \brief construct an Engine_sse instance
 //! it's the responsibility of the caller to free the returned pointer
 Engine_sse* Engine_sse::New(const Operator_sse* op)

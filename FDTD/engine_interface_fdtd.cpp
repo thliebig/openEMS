@@ -17,6 +17,9 @@
 
 #include "engine_interface_fdtd.h"
 
+using std::cerr;
+using std::endl;
+
 Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op) : Engine_Interface_Base(op)
 {
 	if (op==NULL)

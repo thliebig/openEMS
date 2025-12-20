@@ -29,6 +29,9 @@
 
 #define COPY_V2A(V,A) std::copy(V.begin(),V.end(),A)
 
+using std::cerr;
+using std::endl;
+
 Operator_Ext_LumpedRLC::Operator_Ext_LumpedRLC(Operator* op) : Operator_Extension(op)
 {
 	// Parallel circuit coefficients
@@ -118,25 +121,25 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 	unsigned int 	pos[] = {0,0,0};
 
-	vector<CSProperties*> cs_props;
+	std::vector<CSProperties*> cs_props;
 
 	int 			dir;
 	CSPropLumpedElement::LEtype lumpedType;
 
-	vector<unsigned int> 	v_pos[3];
+	std::vector<unsigned int> 	v_pos[3];
 
-	vector<int>		v_dir;
+	std::vector<int>		v_dir;
 
-	vector<double>  v_ilv;
-	vector<double>	v_i2v;
+	std::vector<double>  v_ilv;
+	std::vector<double>	v_i2v;
 
-	vector<double>	v_vv2;
-	vector<double>	v_vj1;
-	vector<double>	v_vj2;
-	vector<double>	v_vvd;
-	vector<double>	v_ib0;
-	vector<double>	v_b1;
-	vector<double>	v_b2;
+	std::vector<double>	v_vv2;
+	std::vector<double>	v_vj1;
+	std::vector<double>	v_vj2;
+	std::vector<double>	v_vvd;
+	std::vector<double>	v_ib0;
+	std::vector<double>	v_b1;
+	std::vector<double>	v_b2;
 
 	// Lumped RLC parameters
 	double R, L, C;
@@ -242,7 +245,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 		// Now iterate through primitive(s). I still think there should be only one per-
 		// material definition, but maybe I'm wrong...
-		vector<CSPrimitives*> cs_RLC_prims = cs_RLC_props->GetAllPrimitives();
+		std::vector<CSPrimitives*> cs_RLC_prims = cs_RLC_props->GetAllPrimitives();
 
 		for (size_t boxIdx = 0 ; boxIdx < cs_RLC_prims.size() ; ++boxIdx)
 		{
@@ -360,7 +363,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 									if (dC == 0)
 									{
 										double Cd = m_Op->EC_C[dir][iPos];
-										Zmin = max(dR,2*PI*fMax*dL);
+										Zmin = std::max(dR,2*PI*fMax*dL);
 										Zcd_min = 1.0/(2.0*PI*fMax*Cd);
 
 										// Check if the "parasitic" capcitance is not small enough
@@ -534,10 +537,10 @@ Engine_Extension* Operator_Ext_LumpedRLC::CreateEngineExtention()
 	return eng_ext_RLC;
 }
 
-void Operator_Ext_LumpedRLC::ShowStat(ostream &ostr)  const
+void Operator_Ext_LumpedRLC::ShowStat(std::ostream &ostr)  const
 {
 	Operator_Extension::ShowStat(ostr);
-	string On_Off[2] = {"Off", "On"};
+	std::string On_Off[2] = {"Off", "On"};
 
 	ostr << "Active cells\t\t: " << RLC_count << endl;
 }

@@ -33,6 +33,9 @@
 #include "boost/date_time/gregorian/gregorian.hpp"
 #include <iomanip>
 
+using std::cout;
+using std::endl;
+
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
 Engine_Multithread* Engine_Multithread::New(const Operator_Multithread* op, unsigned int numThreads)
@@ -152,8 +155,8 @@ void Engine_Multithread::changeNumThreads(unsigned int numThreads)
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
 
-	vector<unsigned int> m_Start_Lines;
-	vector<unsigned int> m_Stop_Lines;
+	std::vector<unsigned int> m_Start_Lines;
+	std::vector<unsigned int> m_Stop_Lines;
 	m_Op_MT->CalcStartStopLines( m_numThreads, m_Start_Lines, m_Stop_Lines );
 
 	if (m_IterateBarrier!=0)

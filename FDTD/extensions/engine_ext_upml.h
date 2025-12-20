@@ -58,8 +58,8 @@ protected:
 
 	Operator_Ext_UPML* m_Op_UPML;
 
-	vector<unsigned int> m_start;
-	vector<unsigned int> m_numX;
+	std::vector<unsigned int> m_start;
+	std::vector<unsigned int> m_numX;
 
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> volt_flux;
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> curr_flux;

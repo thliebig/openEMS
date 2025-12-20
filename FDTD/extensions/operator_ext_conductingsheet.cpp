@@ -22,6 +22,9 @@
 
 #include "CSPropConductingSheet.h"
 
+using std::cerr;
+using std::endl;
+
 Operator_Ext_ConductingSheet::Operator_Ext_ConductingSheet(Operator* op, double f_max) : Operator_Ext_LorentzMaterial(op)
 {
 	m_f_max = f_max;
@@ -47,7 +50,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 
 	m_Order = 0;
-	vector<unsigned int> v_pos[3];
+	std::vector<unsigned int> v_pos[3];
 	int ****tanDir = Create_N_3DArray<int>(numLines);
 	float ****Conductivity = Create_N_3DArray<float>(numLines);
 	float ****Thickness = Create_N_3DArray<float>(numLines);
@@ -61,7 +64,11 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(pos[0], pos[1], -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
+			std::vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(
+				pos[0], pos[1], -1,
+				(CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL)
+			);
+
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				b_pos_on = false;

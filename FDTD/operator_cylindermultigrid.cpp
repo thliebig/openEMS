@@ -21,7 +21,14 @@
 #include "tools/useful.h"
 #include "CSUseful.h"
 
-Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(vector<double> Split_Radii, unsigned int level) : Operator_Cylinder()
+using std::cout;
+using std::cerr;
+using std::endl;
+
+Operator_CylinderMultiGrid::Operator_CylinderMultiGrid(
+	std::vector<double> Split_Radii,
+	unsigned int level
+) : Operator_Cylinder()
 {
 	m_Split_Radii = Split_Radii;
 	m_Split_Rad = m_Split_Radii.back();
@@ -34,7 +41,11 @@ Operator_CylinderMultiGrid::~Operator_CylinderMultiGrid()
 	Delete();
 }
 
-Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(vector<double> Split_Radii, unsigned int numThreads, unsigned int level)
+Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(
+	std::vector<double> Split_Radii,
+	unsigned int numThreads,
+	unsigned int level
+)
 {
 	if ((Split_Radii.size()==0) || (Split_Radii.size()>CYLIDINDERMULTIGRID_LIMIT))
 	{
@@ -189,9 +200,15 @@ void Operator_CylinderMultiGrid::SetNeighborDown(int ny, int id)
 }
 #endif
 
-void Operator_CylinderMultiGrid::CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const
+void Operator_CylinderMultiGrid::CalcStartStopLines(
+	unsigned int &numThreads,
+	std::vector<unsigned int> &start,
+	std::vector<unsigned int> &stop
+) const
 {
-	vector<unsigned int> jpt = AssignJobs2Threads(numLines[0]- m_Split_Pos + 1, numThreads, true);
+	std::vector<unsigned int> jpt = AssignJobs2Threads(
+		numLines[0]- m_Split_Pos + 1, numThreads, true
+	);
 
 	numThreads = jpt.size();
 
@@ -219,7 +236,10 @@ void Operator_CylinderMultiGrid::FillMissingDataStorage()
 		{
 			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
-				vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, CSProperties::MATERIAL);
+				std::vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(
+					pos[0], pos[1], -1, CSProperties::MATERIAL
+				);
+
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
 					Calc_EffMatPos(ny,pos,EffMat,vPrims);
@@ -293,7 +313,7 @@ int Operator_CylinderMultiGrid::CalcECOperator( DebugFlags debugFlags )
 	return retCode;
 }
 
-void Operator_CylinderMultiGrid::DumpPEC2File( string filename, unsigned int *range)
+void Operator_CylinderMultiGrid::DumpPEC2File( std::string filename, unsigned int *range)
 {
 	if (range!=NULL)
 		return Operator_Cylinder::DumpPEC2File(filename, range);

@@ -28,6 +28,9 @@
 #include <emmintrin.h>
 #endif
 
+using std::cout;
+using std::endl;
+
 Engine_SSE_Compressed* Engine_SSE_Compressed::New(const Operator_SSE_Compressed* op)
 {
 	cout << "Create FDTD engine (compressed SSE)" << endl;

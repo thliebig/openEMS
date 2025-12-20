@@ -20,6 +20,9 @@
 #include "FDTD/engine_interface_fdtd.h"
 #include <iomanip>
 
+using std::cerr;
+using std::endl;
+
 ProcessCurrent::ProcessCurrent(Engine_Interface_Base* eng_if) : ProcessIntegral(eng_if)
 {
 	m_SnapMethod=1;
@@ -29,7 +32,7 @@ ProcessCurrent::~ProcessCurrent()
 {
 }
 
-string ProcessCurrent::GetIntegralName(int row) const
+std::string ProcessCurrent::GetIntegralName(int row) const
 {
 	if (row==0)
 		return "current";

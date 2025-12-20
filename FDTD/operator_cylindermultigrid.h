@@ -32,7 +32,12 @@ class Operator_CylinderMultiGrid : public Operator_Cylinder
 {
 	friend class Engine_CylinderMultiGrid;
 public:
-	static Operator_CylinderMultiGrid* New(vector<double> Split_Radii, unsigned int numThreads = 0, unsigned int level = 0);
+	static Operator_CylinderMultiGrid* New(
+		std::vector<double> Split_Radii,
+		unsigned int numThreads = 0,
+		unsigned int level = 0
+	);
+
 	virtual ~Operator_CylinderMultiGrid();
 
 	virtual double GetNumberCells() const;
@@ -69,7 +74,7 @@ public:
 #endif
 
 protected:
-	Operator_CylinderMultiGrid(vector<double> Split_Radii, unsigned int level);
+	Operator_CylinderMultiGrid(std::vector<double> Split_Radii, unsigned int level);
 	virtual void Init();
 	void Delete();
 	virtual void Reset();
@@ -78,14 +83,14 @@ protected:
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 
-	virtual void DumpPEC2File( string filename, unsigned int *range = NULL );
+	virtual void DumpPEC2File( std::string filename, unsigned int *range = NULL );
 
 	//! The material data storage in the sub-grid area's will not be filled by the base-operator. Check and do this here!
 	void FillMissingDataStorage();
 
 	unsigned int m_MultiGridLevel;
 	double m_Split_Rad;
-	vector<double> m_Split_Radii;
+	std::vector<double> m_Split_Radii;
 	unsigned int m_Split_Pos;
 
 	Operator_Cylinder* m_InnerOp;
@@ -103,7 +108,11 @@ protected:
 
 	void SetupInterpolation();
 
-	virtual void CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const;
+	virtual void CalcStartStopLines(
+		unsigned int &numThreads,
+		std::vector<unsigned int> &start,
+		std::vector<unsigned int> &stop
+	) const;
 };
 
 #endif // OPERATOR_CYLINDERMULTIGRID_H

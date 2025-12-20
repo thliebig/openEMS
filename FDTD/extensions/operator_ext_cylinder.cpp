@@ -19,6 +19,9 @@
 #include "FDTD/operator_cylinder.h"
 #include "engine_ext_cylinder.h"
 
+using std::cerr;
+using std::endl;
+
 Operator_Ext_Cylinder::Operator_Ext_Cylinder(Operator_Cylinder* op) : Operator_Extension(op)
 {
 	m_Op_Cyl = op;
@@ -58,12 +61,20 @@ bool Operator_Ext_Cylinder::BuildExtension()
 	double inEC[4];
 	double dT = m_Op->GetTimestep();
 	pos[0]=0;
-	vector<CSPrimitives*> vPrims_metal = m_Op->GetPrimitivesBoundBox(pos[0], -1, -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
+	std::vector<CSPrimitives*> vPrims_metal = m_Op->GetPrimitivesBoundBox(
+		pos[0], -1, -1,
+		(CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL)
+	);
+
 	for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2,true); ++pos[2])
 	{
 		double C=0;
 		double G=0;
-		vector<CSPrimitives*> vPrims_mat   = m_Op->GetPrimitivesBoundBox(pos[0], -1, pos[2], CSProperties::MATERIAL);
+		std::vector<CSPrimitives*> vPrims_mat = m_Op->GetPrimitivesBoundBox(
+			pos[0], -1, pos[2],
+			CSProperties::MATERIAL
+		);
+
 		for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1,true)-2; ++pos[1])
 		{
 			m_Op_Cyl->Calc_ECPos(2,pos,inEC,vPrims_mat);
@@ -105,10 +116,10 @@ Engine_Extension* Operator_Ext_Cylinder::CreateEngineExtention()
 }
 
 
-void Operator_Ext_Cylinder::ShowStat(ostream &ostr)  const
+void Operator_Ext_Cylinder::ShowStat(std::ostream &ostr)  const
 {
 	Operator_Extension::ShowStat(ostr);
-	string On_Off[2] = {"Off", "On"};
+	std::string On_Off[2] = {"Off", "On"};
 	ostr << " Zeroth Radius\t\t: "   << On_Off[CC_R0_included] << endl;
 	ostr << " Closed Rotation\t: " << On_Off[CC_closedAlpha] << endl;
 }

@@ -72,7 +72,11 @@ protected:
 		This method is also used by the multithreading engine!
 		This method may also reduce the usable number of thread in case of too few lines or otherwise bad utilization.
 	*/
-	virtual void CalcStartStopLines(unsigned int &numThreads, vector<unsigned int> &start, vector<unsigned int> &stop) const;
+	virtual void CalcStartStopLines(
+		unsigned int &numThreads,
+		std::vector<unsigned int> &start,
+		std::vector<unsigned int> &stop
+	) const;
 };
 
 class Operator_Thread

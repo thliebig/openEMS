@@ -36,6 +36,11 @@
 #include "CSPropMaterial.h"
 #include "CSPropLumpedElement.h"
 
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::flush;
+
 Operator* Operator::New()
 {
 	cout << "Create FDTD operator" << endl;
@@ -546,7 +551,7 @@ void Operator::ShowExtStat() const
 	cout << "-----------------------------------" << endl;
 }
 
-void Operator::DumpOperator2File(string filename)
+void Operator::DumpOperator2File(std::string filename)
 {
 #ifdef OUTPUT_IN_DRAWINGUNITS
 	double discLines_scaling = 1;
@@ -618,7 +623,7 @@ void Operator::DumpOperator2File(string filename)
 //! \brief dump PEC (perfect electric conductor) information (into VTK-file)
 //! visualization via paraview
 //! visualize only one component (x, y or z)
-void Operator::DumpPEC2File(string filename , unsigned int *range)
+void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 {
 	cout << "Operator: Dumping PEC information to vtk file: " << filename << " ..." << flush;
 
@@ -730,7 +735,7 @@ void Operator::DumpPEC2File(string filename , unsigned int *range)
 	cout << " done." << endl;
 }
 
-void Operator::DumpMaterial2File(string filename)
+void Operator::DumpMaterial2File(std::string filename)
 {
 #ifdef OUTPUT_IN_DRAWINGUNITS
 	double discLines_scaling = 1;
@@ -750,7 +755,11 @@ void Operator::DumpMaterial2File(string filename)
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, CSProperties::MATERIAL);
+			std::vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(
+				pos[0], pos[1], -1,
+				CSProperties::MATERIAL
+			);
+
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				for (int n=0; n<3; ++n)
@@ -1054,7 +1063,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 		m_Op_exts.at(n)->BuildExtension();
 
 	//remove inactive extensions
-	vector<Operator_Extension*>::iterator it = m_Op_exts.begin();
+	std::vector<Operator_Extension*>::iterator it = m_Op_exts.begin();
 	while (it!=m_Op_exts.end())
 	{
 		if ( (*it)->IsActive() == false)
@@ -1179,7 +1188,12 @@ void Operator::ApplyMagneticBC(bool* dirs)
 	}
 }
 
-bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC, vector<CSPrimitives*> vPrims) const
+bool Operator::Calc_ECPos(
+	int ny,
+	const unsigned int* pos,
+	double* EC,
+	std::vector<CSPrimitives*> vPrims
+) const
 {
 	double EffMat[4];
 	Calc_EffMatPos(ny,pos,EffMat, vPrims);
@@ -1266,7 +1280,13 @@ bool Operator::GetCellCenterMaterialAvgCoord(const int pos[], double coord[3]) c
 	return true;
 }
 
-double Operator::GetMaterial(int ny, const double* coords, int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed) const
+double Operator::GetMaterial(
+	int ny,
+	const double* coords,
+	int MatType,
+	std::vector<CSPrimitives*> vPrims,
+	bool markAsUsed
+) const
 {
 	CSProperties* prop = CSX->GetPropertyByCoordPriority(coords,vPrims,markAsUsed);
 //	CSProperties* old_prop = CSX->GetPropertyByCoordPriority(coords,CSProperties::MATERIAL,markAsUsed);
@@ -1315,7 +1335,12 @@ double Operator::GetMaterial(int ny, const double* coords, int MatType, vector<C
 	}
 }
 
-bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives *> vPrims) const
+bool Operator::AverageMatCellCenter(
+	int ny,
+	const unsigned int* pos,
+	double* EffMat,
+	std::vector<CSPrimitives *> vPrims
+) const
 {
 	int n=ny;
 	double coord[3];
@@ -1421,7 +1446,12 @@ bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* Eff
 	return true;
 }
 
-bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives*> vPrims) const
+bool Operator::AverageMatQuarterCell(
+	int ny,
+	const unsigned int* pos,
+	double* EffMat,
+	std::vector<CSPrimitives*> vPrims
+) const
 {
 	int n=ny;
 	double coord[3];
@@ -1535,7 +1565,12 @@ bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* Ef
 	return true;
 }
 
-bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, vector<CSPrimitives *> vPrims) const
+bool Operator::Calc_EffMatPos(
+	int ny,
+	const unsigned int* pos,
+	double* EffMat,
+	std::vector<CSPrimitives *> vPrims
+) const
 {
 	switch (m_MatAverageMethod)
 	{
@@ -1552,7 +1587,7 @@ bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, v
 
 bool Operator::Calc_LumpedElements()
 {
-	vector<CSProperties*> props = CSX->GetPropertyByType(CSProperties::LUMPED_ELEMENT);
+	std::vector<CSProperties*> props = CSX->GetPropertyByType(CSProperties::LUMPED_ELEMENT);
 
 	for (size_t i=0;i<props.size();++i)
 	{
@@ -1562,7 +1597,7 @@ bool Operator::Calc_LumpedElements()
 		if (PLE==NULL)
 			return false; //sanity check: this should never happen!
 
-		vector<CSPrimitives*> prims = PLE->GetAllPrimitives();
+		std::vector<CSPrimitives*> prims = PLE->GetAllPrimitives();
 		for (size_t bn=0;bn<prims.size();++bn)
 		{
 			CSPrimBox* box = dynamic_cast<CSPrimBox*>(prims.at(bn));
@@ -1777,7 +1812,11 @@ bool Operator::Calc_EC()
 	return true;
 }
 
-vector<CSPrimitives*> Operator::GetPrimitivesBoundBox(int posX, int posY, int posZ, CSProperties::PropertyType type) const
+std::vector<CSPrimitives*>
+Operator::GetPrimitivesBoundBox(
+	int posX, int posY, int posZ,
+	CSProperties::PropertyType type
+) const
 {
 	double boundBox[6];
 	int BBpos[3] = {posX, posY, posZ};
@@ -1790,18 +1829,18 @@ vector<CSPrimitives*> Operator::GetPrimitivesBoundBox(int posX, int posY, int po
 		}
 		else
 		{
-			boundBox[2*n]   = this->GetDiscLine(n, max(0, BBpos[n]-1));
-			boundBox[2*n+1] = this->GetDiscLine(n, min(int(numLines[n])-1, BBpos[n]+1));
+			boundBox[2*n]   = this->GetDiscLine(n, std::max(0, BBpos[n]-1));
+			boundBox[2*n+1] = this->GetDiscLine(n, std::min(int(numLines[n])-1, BBpos[n]+1));
 		}
 	}
 
-	vector<CSPrimitives*> vPrim = this->CSX->GetPrimitivesByBoundBox(boundBox, true, type);
+	std::vector<CSPrimitives*> vPrim = this->CSX->GetPrimitivesByBoundBox(boundBox, true, type);
 	return vPrim;
 }
 
 void Operator::Calc_EC_Range(unsigned int xStart, unsigned int xStop)
 {
-//	vector<CSPrimitives*> vPrims = this->CSX->GetAllPrimitives(true, CSProperties::MATERIAL);
+//	std::vector<CSPrimitives*> vPrims = this->CSX->GetAllPrimitives(true, CSProperties::MATERIAL);
 	unsigned int ipos;
 	unsigned int pos[3];
 	double inEC[4];
@@ -1809,7 +1848,11 @@ void Operator::Calc_EC_Range(unsigned int xStart, unsigned int xStop)
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, CSProperties::MATERIAL);
+			std::vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(
+				pos[0], pos[1], -1,
+				CSProperties::MATERIAL
+			);
+
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				ipos = MainOp->GetPos(pos[0],pos[1],pos[2]);
@@ -1850,7 +1893,7 @@ double Operator::CalcTimestep()
 ////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52
 double Operator::CalcTimestep_Var1()
 {
-	m_Used_TS_Name = string("Rennings_1");
+	m_Used_TS_Name = std::string("Rennings_1");
 //	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 66, eq. 4.52" << endl;
 	dT=1e200;
 	double newT;
@@ -1915,7 +1958,7 @@ double min(double* val, unsigned int count)
 double Operator::CalcTimestep_Var3()
 {
 	dT=1e200;
-	m_Used_TS_Name = string("Rennings_2");
+	m_Used_TS_Name = std::string("Rennings_2");
 //	cout << "Operator::CalcTimestep(): Using timestep algorithm by Andreas Rennings, Dissertation @ University Duisburg-Essen, 2008, pp. 76, eq. 4.77 ff." << endl;
 	double newT;
 	unsigned int pos[3];
@@ -2009,7 +2052,11 @@ void Operator::CalcPEC_Range(unsigned int startX, unsigned int stopX, unsigned i
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
-			vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(pos[0], pos[1], -1, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
+			std::vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(
+				pos[0], pos[1], -1,
+				(CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL)
+			);
+
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
 				for (int n=0; n<3; ++n)
@@ -2043,7 +2090,7 @@ void Operator::CalcPEC_Curves()
 	double p1[3];
 	double p2[3];
 	Grid_Path path;
-	vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::METAL);
+	std::vector<CSProperties*> vec_prop = CSX->GetPropertyByType(CSProperties::METAL);
 	for (size_t p=0; p<vec_prop.size(); ++p)
 	{
 		CSProperties* prop = vec_prop.at(p);

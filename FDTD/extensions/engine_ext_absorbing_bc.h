@@ -86,8 +86,8 @@ protected:
 
 	int				m_ABCtype;					// Declared as integer here, because of the forward declaration formatting.
 
-	vector<unsigned int>	m_threadStartLine;
-	vector<unsigned int>	m_linesPerThread;
+	std::vector<unsigned int>	m_threadStartLine;
+	std::vector<unsigned int>	m_linesPerThread;
 
 	ArrayLib::ArrayIJ<FDTD_FLOAT>&	m_K1_nyP;	// Copy of first set of coefficients, direction n + 1
 	ArrayLib::ArrayIJ<FDTD_FLOAT>&	m_K1_nyPP;	// Copy of second set of coefficients, direction n + 2

@@ -62,8 +62,8 @@ protected:
 	int m_LineNr_Shift;
 	unsigned int m_numLines[2];
 
-	vector<unsigned int> m_start;
-	vector<unsigned int> m_numX;
+	std::vector<unsigned int> m_start;
+	std::vector<unsigned int> m_numX;
 
 	ArrayLib::ArrayIJ<FDTD_FLOAT>& m_Mur_Coeff_nyP;
 	ArrayLib::ArrayIJ<FDTD_FLOAT>& m_Mur_Coeff_nyPP;

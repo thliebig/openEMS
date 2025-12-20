@@ -87,14 +87,14 @@ void Engine_Ext_SteadyState::Apply2Voltages()
 				curr_pow[n] += buf[nt+new_pos]*buf[nt+new_pos];
 				diff_pow[n] += (buf[nt+old_pos]-buf[nt+new_pos])*(buf[nt+old_pos]-buf[nt+new_pos]);
 			}
-			max_pow = max(max_pow, curr_pow[n]);
+			max_pow = std::max(max_pow, curr_pow[n]);
 		}
 		for (size_t n=0;n<m_E_records.size();++n)
 		{
 			//cerr << "curr_pow: " << curr_pow[n] <<  " diff_pow: " << diff_pow[n] << " diff: " << diff_pow[n]/curr_pow[n] << endl;
 			if (curr_pow[n]>max_pow*1e-2)
 			{
-				m_last_max_diff = max(m_last_max_diff, diff_pow[n]/curr_pow[n]);
+				m_last_max_diff = std::max(m_last_max_diff, diff_pow[n]/curr_pow[n]);
 				//cerr << m_last_max_diff << endl;
 				no_valid = false;
 			}

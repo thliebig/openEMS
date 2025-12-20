@@ -232,7 +232,10 @@ void Engine_Ext_Absorbing_BC::DoPreCurrentUpdatesImpl(EngType* eng, int threadID
 		return;
 
 	// For magnetic field, -1, due to dual grid
-	unsigned int numLines_1 = min((m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID)),m_numLines[0] - 1);
+	unsigned int numLines_1 = std::min(
+		m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID),
+		m_numLines[0] - 1
+	);
 	unsigned int numLine_0 = m_threadStartLine.at(threadID);
 
 	pos[m_ny] = m_pos_ny0_I;
@@ -287,7 +290,10 @@ void Engine_Ext_Absorbing_BC::DoPostCurrentUpdatesImpl(EngType* eng, int threadI
 		return;
 
 	// For magnetic field, -1, due to dual grid
-	unsigned int numLine_1 = min<unsigned int>((m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID)),m_numLines[0] - 1);
+	unsigned int numLine_1 = std::min<unsigned int>(
+		m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID),
+		m_numLines[0] - 1
+	);
 	unsigned int numLine_0 = m_threadStartLine.at(threadID);
 
 	pos_shift[m_ny] = m_pos_ny0_shift_I;
@@ -329,7 +335,10 @@ void Engine_Ext_Absorbing_BC::Apply2CurrentImpl(EngType* eng, int threadID)
 		return;
 
 	// For magnetic field, -1, due to dual grid
-	unsigned int numLine_1 = min<unsigned int>((m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID)),m_numLines[0] - 1);
+	unsigned int numLine_1 = std::min<unsigned int>(
+		m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID),
+		m_numLines[0] - 1
+	);
 	unsigned int numLine_0 = m_threadStartLine.at(threadID);
 
 	pos[m_ny] = m_pos_ny0_I;

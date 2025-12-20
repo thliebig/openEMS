@@ -17,6 +17,9 @@
 
 #include "engine_cylinder.h"
 
+using std::cout;
+using std::endl;
+
 Engine_Cylinder::Engine_Cylinder(const Operator_Cylinder* op) : Engine_Multithread(op)
 {
 	m_Op_Cyl = op;

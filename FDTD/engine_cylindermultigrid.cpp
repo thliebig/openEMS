@@ -19,6 +19,9 @@
 #include "operator_cylindermultigrid.h"
 #include "extensions/engine_ext_cylindermultigrid.h"
 
+using std::cout;
+using std::endl;
+
 Engine_CylinderMultiGrid* Engine_CylinderMultiGrid::New(const Operator_CylinderMultiGrid* op, unsigned int numThreads)
 {
 	cout << "Create FDTD engine (cylindrical multi grid mesh using sse compression + multithreading)" << endl;

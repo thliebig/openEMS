@@ -22,6 +22,9 @@
 #include "processfields.h"
 #include "FDTD/engine_interface_fdtd.h"
 
+using std::cerr;
+using std::endl;
+
 ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 {
 	m_DumpType = E_FIELD_DUMP;
@@ -59,7 +62,7 @@ ProcessFields::~ProcessFields()
 	}
 }
 
-string ProcessFields::GetFieldNameByType(DumpType type)
+std::string ProcessFields::GetFieldNameByType(DumpType type)
 {
 	switch (type)
 	{
@@ -219,7 +222,7 @@ void ProcessFields::CalcMeshPos()
 {
 	if ((m_SampleType==SUBSAMPLE) || (m_SampleType==NONE))
 	{
-		vector<unsigned int> tmp_pos;
+		std::vector<unsigned int> tmp_pos;
 
 		for (int n=0; n<3; ++n)
 		{
@@ -242,7 +245,7 @@ void ProcessFields::CalcMeshPos()
 	}
 	if ((m_SampleType==OPT_RESOLUTION))
 	{
-		vector<unsigned int> tmp_pos;
+		std::vector<unsigned int> tmp_pos;
 		double oldPos=0;
 		for (int n=0; n<3; ++n)
 		{
