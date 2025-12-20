@@ -39,9 +39,12 @@ public:
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 	virtual bool IsMPISave() const {return true;}
 
-	virtual string GetExtensionName() const {return string("Steady-State Detection Extension");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Steady-State Detection Extension");
+	}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 	virtual void Reset();
 
@@ -52,10 +55,10 @@ protected:
 	Operator_Ext_SteadyState(Operator* op, Operator_Ext_SteadyState* op_ext);
 	double m_T_period;
 	unsigned int m_TS_period;
-	vector<unsigned int> m_E_probe_pos[3];
-	vector<unsigned int> m_E_probe_dir;
-	vector<unsigned int> m_H_probe_pos[3];
-	vector<unsigned int> m_H_probe_dir;
+	std::vector<unsigned int> m_E_probe_pos[3];
+	std::vector<unsigned int> m_E_probe_dir;
+	std::vector<unsigned int> m_H_probe_pos[3];
+	std::vector<unsigned int> m_H_probe_dir;
 };
 
 #endif // OPERATOR_EXT_STEADYSTATE_H

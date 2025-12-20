@@ -40,8 +40,8 @@ public:
 protected:
 	Operator_Ext_SteadyState* m_Op_SS;
 	double m_last_max_diff;
-	vector<double*> m_E_records;
-	vector<double*> m_H_records;
+	std::vector<double*> m_E_records;
+	std::vector<double*> m_H_records;
 
 	double last_total_energy;
 	Engine_Interface_FDTD* m_Eng_Interface;

@@ -64,9 +64,12 @@ public:
 
 	//virtual bool IsMPISave() const {return true;}
 
-	virtual string GetExtensionName() const {return string("Local absorbing boundary condition sheet");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Local absorbing boundary condition sheet");
+	}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 	//! Initialize all parameters, so the extension can be built later
 	virtual bool SetInitParams(CSPrimitives* prim, CSPropAbsorbingBC* abc_prop);

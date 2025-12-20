@@ -31,7 +31,10 @@ public:
 
 	virtual int GetDispersionOrder() {return m_Order;}
 
-	virtual std::string GetExtensionName() const {return std::string("Dispersive Material Abstract Base class");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Dispersive Material Abstract Base class");
+	}
 
 	virtual void ShowStat(std::ostream &ostr) const;
 

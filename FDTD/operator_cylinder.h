@@ -43,7 +43,7 @@ public:
 	virtual unsigned int GetNumberOfLines(int ny, bool full=false) const;
 
 	//! Get the name for the given direction: 0 -> rho, 1 -> alpha, 2 -> z
-	virtual string GetDirName(int ny) const;
+	virtual std::string GetDirName(int ny) const;
 
 	//! Get the coordinates for a given node index and component, according to the cylindrical yee-algorithm. Returns true if inside the FDTD domain.
 	virtual bool GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const;
@@ -102,7 +102,13 @@ protected:
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
-	virtual double GetMaterial(int ny, const double coords[3], int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
+	virtual double GetMaterial(
+		int ny,
+		const double coords[3],
+		int MatType,
+		std::vector<CSPrimitives*> vPrims,
+		bool markAsUsed=true
+	) const;
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 	virtual double CalcTimestep();

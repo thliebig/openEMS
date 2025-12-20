@@ -19,6 +19,9 @@
 #include "operator_sse.h"
 //#include "processfields.h"
 
+using std::cout;
+using std::endl;
+
 Operator_sse* Operator_sse::New()
 {
 	cout << "Create FDTD operator (SSE)" << endl;

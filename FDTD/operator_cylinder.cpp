@@ -23,6 +23,10 @@
 #include "extensions/operator_ext_cylinder.h"
 #include "tools/useful.h"
 
+using std::cout;
+using std::cerr;
+using std::endl;
+
 Operator_Cylinder* Operator_Cylinder::New(unsigned int numThreads)
 {
 	cout << "Create cylindrical FDTD operator" << endl;
@@ -67,7 +71,13 @@ double Operator_Cylinder::GetRawDiscDelta(int ny, const int pos) const
 	return Operator_Multithread::GetRawDiscDelta(ny,pos);
 }
 
-double Operator_Cylinder::GetMaterial(int ny, const double* coords, int MatType, vector<CSPrimitives*> vPrims, bool markAsUsed) const
+double Operator_Cylinder::GetMaterial(
+	int ny,
+	const double* coords,
+	int MatType,
+	std::vector<CSPrimitives*> vPrims,
+	bool markAsUsed
+) const
 {
 	double l_coords[] = {coords[0],coords[1],coords[2]};
 	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
@@ -109,7 +119,7 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny, bool full) const
 	return Operator_Multithread::GetNumberOfLines(ny, full);
 }
 
-string Operator_Cylinder::GetDirName(int ny) const
+std::string Operator_Cylinder::GetDirName(int ny) const
 {
 	if (ny==0) return "rho";
 	if (ny==1) return "alpha";

@@ -46,9 +46,12 @@ public:
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 	virtual bool IsMPISave() const {return true;}
 
-	virtual string GetExtensionName() const {return string("Series\\Parallel Lumped RLC load");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Series\\Parallel Lumped RLC load");
+	}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 	virtual bool IsLElumpedRLC(const CSPropLumpedElement* const p_prop);
 

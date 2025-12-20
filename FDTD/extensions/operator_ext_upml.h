@@ -62,18 +62,26 @@ public:
 
 		An empty function string will be ignored.
 	*/
-	virtual bool SetGradingFunction(string func);
+	virtual bool SetGradingFunction(std::string func);
 
 	virtual bool BuildExtension();
 
 	virtual Engine_Extension* CreateEngineExtention();
 
-	virtual string GetExtensionName() const {return string("Uniaxial PML Extension");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Uniaxial PML Extension");
+	}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 	//! Create the UPML
-	static bool Create_UPML(Operator* op, const int ui_BC[6], const unsigned int ui_size[6], const string gradFunc);
+	static bool Create_UPML(
+		Operator* op,
+		const int ui_BC[6],
+		const unsigned int ui_size[6],
+		const std::string gradFunc
+	);
 
 protected:
 	Operator_Ext_UPML(Operator* op);
@@ -83,7 +91,7 @@ protected:
 	unsigned int m_StartPos[3];
 	unsigned int m_numLines[3];
 
-	string m_GradFunc;
+	std::string m_GradFunc;
 	FunctionParser* m_GradingFunction;
 
 	void CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3]);

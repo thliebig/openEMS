@@ -38,9 +38,12 @@ public:
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 	virtual bool IsMPISave() const {return true;}
 
-	virtual string GetExtensionName() const {return string("Drude/Lorentz Dispersive Material Extension");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Drude/Lorentz Dispersive Material Extension");
+	}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 protected:
 	//! Copy constructor

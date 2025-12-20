@@ -17,6 +17,9 @@
 
 #include "engine_interface_sse_fdtd.h"
 
+using std::cerr;
+using std::endl;
+
 Engine_Interface_SSE_FDTD::Engine_Interface_SSE_FDTD(Operator_sse* op) : Engine_Interface_FDTD(op)
 {
 	m_Op_SSE = op;

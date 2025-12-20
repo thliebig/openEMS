@@ -42,9 +42,12 @@ public:
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
 	virtual bool IsMPISave() const {return true;}
 
-	virtual string GetExtensionName() const {return string("Excitation Extension");}
+	virtual std::string GetExtensionName() const
+	{
+		return std::string("Excitation Extension");
+	}
 
-	virtual void ShowStat(ostream &ostr) const;
+	virtual void ShowStat(std::ostream &ostr) const;
 
 	virtual void Init();
 	virtual void Reset();
@@ -60,10 +63,20 @@ protected:
 
 	Excitation* m_Exc;
 
-	void setupVoltageExcitation( vector<unsigned int> const volt_vIndex[3], vector<FDTD_FLOAT> const& volt_vExcit,
-								 vector<unsigned int> const& volt_vDelay, vector<unsigned int> const& volt_vDir );
-	void setupCurrentExcitation( vector<unsigned int> const curr_vIndex[3], vector<FDTD_FLOAT> const& curr_vExcit,
-								 vector<unsigned int> const& curr_vDelay, vector<unsigned int> const& curr_vDir );
+	void setupVoltageExcitation(
+		std::vector<unsigned int> const volt_vIndex[3],
+		std::vector<FDTD_FLOAT> const& volt_vExcit,
+		std::vector<unsigned int> const& volt_vDelay,
+		std::vector<unsigned int> const& volt_vDir
+	);
+
+	void setupCurrentExcitation(
+		std::vector<unsigned int> const curr_vIndex[3],
+		std::vector<FDTD_FLOAT> const& curr_vExcit,
+		std::vector<unsigned int> const& curr_vDelay,
+		std::vector<unsigned int> const& curr_vDir
+	);
+
 	//E-Field/voltage Excitation
 	unsigned int Volt_Count;
 	unsigned int Volt_Count_Dir[3];

@@ -22,6 +22,9 @@
 #include <map>
 #include <cstring>
 
+using std::cout;
+using std::endl;
+
 Operator_SSE_Compressed* Operator_SSE_Compressed::New()
 {
 	cout << "Create FDTD operator (compressed SSE)" << endl;
@@ -118,7 +121,7 @@ bool Operator_SSE_Compressed::CompressOperator()
 	ArrayLib::ArrayNIJK<f4vector>& f4_iv = *f4_iv_ptr;
 	ArrayLib::ArrayNIJK<f4vector>& f4_ii = *f4_ii_ptr;
 
-	map<SSE_coeff,unsigned int> lookUpMap;
+	std::map<SSE_coeff,unsigned int> lookUpMap;
 
 	unsigned int pos[3];
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
@@ -133,7 +136,7 @@ bool Operator_SSE_Compressed::CompressOperator()
 				f4vector ii[3] = { f4_ii(0, pos[0], pos[1], pos[2]), f4_ii(1, pos[0], pos[1], pos[2]), f4_ii(2, pos[0], pos[1], pos[2]) };
 				SSE_coeff c( vv, vi, iv, ii );
 
-				map<SSE_coeff,unsigned int>::iterator it;
+				std::map<SSE_coeff,unsigned int>::iterator it;
 				it = lookUpMap.find(c);
 				if (it == lookUpMap.end())
 				{
@@ -221,7 +224,7 @@ bool SSE_coeff::operator<( const SSE_coeff& other ) const
 	return false;
 }
 
-void SSE_coeff::print( ostream& stream ) const
+void SSE_coeff::print( std::ostream& stream ) const
 {
 	stream << "SSE_coeff: (" << endl;
 	for (int n=0; n<3; n++)

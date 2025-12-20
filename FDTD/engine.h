@@ -138,7 +138,7 @@ protected:
 
 	virtual void InitExtensions();
 	virtual void ClearExtensions();
-	vector<Engine_Extension*> m_Eng_exts;
+	std::vector<Engine_Extension*> m_Eng_exts;
 
 	friend class NS_Engine_Multithread::thread; // evil hack to access numTS from multithreading context
 };
