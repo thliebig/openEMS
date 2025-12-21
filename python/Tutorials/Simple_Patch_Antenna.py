@@ -130,7 +130,7 @@ axis.set_xmargin(0)
 axis.set_xlabel('Frequency (GHz)')
 # axis.set_ylim([-30, 10])
 axis.set_ylabel('S-Parameter (dB)')
-axis.set_title("Inductance")
+axis.set_title("Input matching")
 axis.legend()
 
 

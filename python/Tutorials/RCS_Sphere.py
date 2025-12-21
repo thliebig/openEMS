@@ -118,10 +118,10 @@ title('radar cross section')
 
 figure()
 semilogy(sphere_rad*unit/C0*freq,back_scat/(pi*sphere_rad*unit*sphere_rad*unit), linewidth=2)
-ylim([10^-2, 10^1])
+ylim([0.01, 10])
 grid()
 xlabel('sphere radius / wavelength')
-ylabel('RCS / ($\pi a^2$)')
+ylabel('RCS / ($\\pi a^2$)')
 title('normalized radar cross section')
 
 show()
