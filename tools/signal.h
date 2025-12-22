@@ -20,7 +20,7 @@
 
 #include <csignal>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <unistd.h>
 #else
 #include <windows.h>
@@ -42,7 +42,7 @@ public:
 private:
 	static void SafeStderrWrite(const char *buf);
 
-#ifndef WIN32
+#ifndef _WIN32
 	static void UnixSetupHandlerForSIGINT(int type);
 	static void UnixGracefulExitHandler(int signal);
 	static void UnixForceExitHandler(int signal);

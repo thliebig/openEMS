@@ -18,7 +18,7 @@
 #ifndef OPENEMS_GLOBAL_H
 #define OPENEMS_GLOBAL_H
 
-#if defined(WIN32)
+#if defined(_WIN32)
 	#ifdef BUILD_OPENEMS_LIB
 	#define OPENEMS_EXPORT __declspec(dllexport)
 	#else

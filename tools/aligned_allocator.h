@@ -25,7 +25,7 @@
 #include <stdexcept> // Required for std::length_error
 
 
-#ifdef WIN32
+#ifdef _WIN32
 #define __MSVCRT_VERSION__ 0x0700
 #include <malloc.h>
 #define MEMALIGN( array, alignment, size ) !(*array = _aligned_malloc( size, alignment ))

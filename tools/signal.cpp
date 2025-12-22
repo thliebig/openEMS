@@ -22,7 +22,7 @@
 
 static volatile std::sig_atomic_t m_sigintAbort = 0;
 
-#ifndef WIN32
+#ifndef _WIN32
 static void (*m_sigHandlerOriginal)(int) = NULL;
 #else
 static PHANDLER_ROUTINE m_sigHandlerRegistered = NULL;
@@ -32,14 +32,14 @@ void Signal::SetupHandlerForSIGINT(int type)
 {
 	m_sigintAbort = 0;
 
-#ifndef WIN32
+#ifndef _WIN32
 	UnixSetupHandlerForSIGINT(type);
 #else
 	Win32SetupHandlerForConsoleCtrl(type);
 #endif
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 void Signal::UnixSetupHandlerForSIGINT(int type)
 {
 	if (type == SIGNAL_ORIGINAL && m_sigHandlerOriginal)
@@ -229,7 +229,7 @@ bool Signal::ReceivedSIGINT(void)
 
 void Signal::SafeStderrWrite(const char *buf)
 {
-#ifdef WIN32
+#ifdef _WIN32
 	// On Windows, using any kind of system calls in a ANSI C signal
 	// handler is prohibited, in this case, this function should return
 	// immediately without doing anything. But, when the official way
