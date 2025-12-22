@@ -26,7 +26,7 @@
 
 using namespace std;
 
-#if defined(WIN32)
+#if defined(_WIN32)
 	#ifdef BUILD_NF2FF_LIB
 	#define NF2FF_EXPORT __declspec(dllexport)
 	#else

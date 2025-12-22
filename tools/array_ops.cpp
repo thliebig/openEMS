@@ -20,7 +20,7 @@
 
 using namespace std;
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <malloc.h>
 #define MEMALIGN( array, alignment, size ) !(*array = _mm_malloc( size, alignment ))
 #define FREE( array ) _mm_free( array )

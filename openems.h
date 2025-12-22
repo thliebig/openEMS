@@ -19,7 +19,7 @@
 #define OPENEMS_H
 
 #include <sstream>
-#ifndef __GNUC__
+#if defined(_WIN32) && !defined(__GNUC__)
 #include <Winsock2.h> // for struct timeval
 #else
 #include <sys/time.h>
