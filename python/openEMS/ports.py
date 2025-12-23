@@ -365,12 +365,11 @@ class WaveguidePort(Port):
         self.E_file = E_WG_file
         self.H_file = H_WG_file
         
-        
         # Validate inputs. Prioritize <E/H>_func behavior
         use_function_expr = None
         if (self.E_func is not None) and (self.H_func is not None):
         	use_function_expr = True
-        else:
+        elif (self.E_WG_file is not None) and (self.H_WG_file is not None):
         	use_function_expr = False
         
         if use_function_expr is None:
@@ -384,16 +383,10 @@ class WaveguidePort(Port):
             e_vec[self.exc_ny] = 0
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=excite_type, exc_val=e_vec, delay=self.delay)
             
-            
             # Check wether this is manual weighting or string function
             if not use_function_expr:
                 if not ((type(self.E_file) is str) and (type(self.H_file) is str)):
-                    raise Exception ('Both E_func and H_func must be files')
-                
-                _,Eext = os.path.splitext(self.E_file)
-                _,Hext = os.path.splitext(self.H_file)
-                if not ((Eext == '.csv') and (Hext == '.csv')):
-                    raise Exception('Both E_file and H_func must be CSV files in case of mode files')
+                    raise Exception ('Both E_func and H_func must be valid file names (strings)')
                 
                 # E-field (TE case)
                 if excite_type == 0:
@@ -413,10 +406,8 @@ class WaveguidePort(Port):
                 elif excite_type == 2:
                     exc.SetWeightFunction([str(x) for x in self.H_func])
                 else:
-                    raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')
-        
+                    raise Exception('Unsupported excitation type. Only 0 or 2 for WaveguidePort')        
             
-
             # For the mode file to be used correctly, the direction of 
             # propagation has to be explicitly set.
             if not use_function_expr:
@@ -427,7 +418,6 @@ class WaveguidePort(Port):
             # Finally, add the box
             exc.AddBox(e_start, e_stop, priority=self.priority)
             self.port_props.append(exc)
-
 
         # voltage/current planes
         m_start = np.array(start)
