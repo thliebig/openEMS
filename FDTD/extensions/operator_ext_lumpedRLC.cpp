@@ -106,8 +106,6 @@ Operator_Ext_LumpedRLC::~Operator_Ext_LumpedRLC()
 
 Operator_Extension* Operator_Ext_LumpedRLC::Clone(Operator* op)
 {
-	if (dynamic_cast<Operator_Ext_LumpedRLC*>(this)==NULL)
-		return NULL;
 	return new Operator_Ext_LumpedRLC(op, this);
 }
 
@@ -338,6 +336,10 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 							// Separate to two different cases. Parallel and series
 							switch (lumpedType)
 							{
+								case CSPropLumpedElement::INVALID:
+									// this can not happen as it is handled above and asummed as PARALLEL
+									break;
+
 								case CSPropLumpedElement::PARALLEL:
 									// If a capacitor was set, use it. Otherwise, use the existing node capacitor
 									if (dC > 0)

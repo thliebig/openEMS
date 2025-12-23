@@ -336,7 +336,7 @@ void openEMS::SetLibraryArguments(std::vector<std::string> allOptions)
 
 void openEMS::SetNumberOfThreads(int val)
 {
-	if ((val<0) || (val>boost::thread::hardware_concurrency()))
+	if ((val<0) || (val>(int)boost::thread::hardware_concurrency()))
 		val = boost::thread::hardware_concurrency();
 	m_engine_numThreads = val;
 }
@@ -995,7 +995,7 @@ bool openEMS::Write2XML(TiXmlNode* rootNode)
 		if (this->m_CC_MultiGrid.size()>0)
 		{
 			string mg = std::to_string(m_CC_MultiGrid.at(0));
-			for (int n=1;n<m_CC_MultiGrid.size();++n)
+			for (unsigned int n=1;n<m_CC_MultiGrid.size();++n)
 			{
 				mg += "," + std::to_string(m_CC_MultiGrid.at(n));
 			}

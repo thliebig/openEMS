@@ -87,7 +87,7 @@ public:
 		this->m_name = "";
 		this->m_ptr  = NULL;
 		this->m_size = 0;
-		for (int n=0;n<rank;++n)
+		for (size_t n=0;n<rank;++n)
 		{
 			this->m_extent[n] = 0;
 			this->m_stride[n] = 0;
@@ -101,7 +101,7 @@ public:
 	// the entire program.
 	ArrayBase (const ArrayBase&) = delete;
 	ArrayBase& operator= (const ArrayBase&) = delete;
-	~ArrayBase() {Reset();}
+	virtual ~ArrayBase() {Reset();}
 
 	std::string                 name()              const { return m_name;     }
 	std::array<IndexType, rank> extent()            const { return m_extent;   }

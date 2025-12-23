@@ -41,8 +41,6 @@ Operator_Ext_Mur_ABC::Operator_Ext_Mur_ABC(Operator* op, Operator_Ext_Mur_ABC* o
 
 Operator_Extension* Operator_Ext_Mur_ABC::Clone(Operator* op)
 {
-	if (dynamic_cast<Operator_Ext_Mur_ABC*>(this)==NULL)
-		return NULL;
 	return new Operator_Ext_Mur_ABC(op, this);
 }
 

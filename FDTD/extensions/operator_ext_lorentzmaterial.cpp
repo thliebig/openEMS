@@ -114,8 +114,6 @@ Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 
 Operator_Extension* Operator_Ext_LorentzMaterial::Clone(Operator* op)
 {
-	if (dynamic_cast<Operator_Ext_LorentzMaterial*>(this)==NULL)
-		return NULL;
 	return new Operator_Ext_LorentzMaterial(op, this);
 }
 

@@ -41,8 +41,6 @@ Operator_Ext_Absorbing_BC::Operator_Ext_Absorbing_BC(Operator* op, Operator_Ext_
 
 Operator_Extension* Operator_Ext_Absorbing_BC::Clone(Operator* op)
 {
-	if (dynamic_cast<Operator_Ext_Absorbing_BC*>(this)==NULL)
-		return NULL;
 	return new Operator_Ext_Absorbing_BC(op, this);
 }
 

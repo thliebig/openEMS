@@ -423,7 +423,7 @@ bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], double box_size, unsig
 	}
 	//check if all bounds have intersected a material boundary
 	for (int n=0;n<6;++n)
-		face_valid *= face_intersect[n];
+		face_valid = face_valid && face_intersect[n];
 
 	bg_ratio = bg_volume/volume;
 

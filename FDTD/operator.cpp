@@ -509,9 +509,7 @@ void Operator::SetMaterialAvgMethod(MatAverageMethods method)
 
 double Operator::GetNumberCells() const
 {
-	if (numLines)
-		return (numLines[0])*(numLines[1])*(numLines[2]); //it's more like number of nodes???
-	return 0;
+	return (numLines[0])*(numLines[1])*(numLines[2]);
 }
 
 void Operator::ShowStat() const

@@ -37,8 +37,6 @@ Operator_Ext_ConductingSheet::Operator_Ext_ConductingSheet(Operator* op, Operato
 
 Operator_Extension* Operator_Ext_ConductingSheet::Clone(Operator* op)
 {
-	if (dynamic_cast<Operator_Ext_ConductingSheet*>(this)==NULL)
-		return NULL;
 	return new Operator_Ext_ConductingSheet(op, this);
 }
 

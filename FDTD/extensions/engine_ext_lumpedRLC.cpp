@@ -82,9 +82,6 @@ Engine_Ext_LumpedRLC::~Engine_Ext_LumpedRLC()
 
 void Engine_Ext_LumpedRLC::DoPreVoltageUpdates()
 {
-	unsigned int **pos = m_Op_Ext_RLC->v_RLC_pos;
-	int *dir = m_Op_Ext_RLC->v_RLC_dir;
-
 	// Iterate Vd containers
 	FDTD_FLOAT	*v_temp;
 	v_temp = v_Vdn[2];

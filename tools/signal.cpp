@@ -19,6 +19,7 @@
 #include <cstring>
 #include <cstdlib>
 #include "signal.h"
+#include "global.h"
 
 static volatile std::sig_atomic_t m_sigintAbort = 0;
 
@@ -82,6 +83,7 @@ void Signal::UnixSetupHandlerForSIGINT(int type)
 
 void Signal::UnixGracefulExitHandler(int signal)
 {
+	UNUSED(signal);
 	m_sigintAbort = 1;
 
 	// C standard only guarantees that a sig_atomic_t variable is safe
