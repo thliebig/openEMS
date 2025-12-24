@@ -7,12 +7,14 @@
   - openEMS v0.0.35+
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
+ 15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
 
 """
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -42,8 +44,8 @@ FDTD.SetCSX(CSX)
 mesh = CSX.GetGrid()
 mesh.SetDeltaUnit(unit)
 
-resolution = C0/(f_max*sqrt(substrate_epr))/unit/50 # resolution of lambda/50
-third_mesh = array([2*resolution/3, -resolution/3])/4
+resolution = C0/(f_max*np.sqrt(substrate_epr))/unit/50 # resolution of lambda/50
+third_mesh = np.array([2*resolution/3, -resolution/3])/4
 
 ## Do manual meshing
 mesh.AddLine('x', 0)
@@ -63,7 +65,7 @@ mesh.AddLine('y', [-15*MSL_width, 15*MSL_width+stub_length])
 mesh.AddLine('y', (MSL_width/2+stub_length)+third_mesh)
 mesh.SmoothMeshLines('y', resolution)
 
-mesh.AddLine('z', linspace(0,substrate_thickness,5))
+mesh.AddLine('z', np.linspace(0,substrate_thickness,5))
 mesh.AddLine('z', 3000)
 mesh.SmoothMeshLines('z', resolution)
 
@@ -103,19 +105,24 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Post-processing and plotting
-f = linspace( 1e6, f_max, 1601 )
+f = np.linspace( 1e6, f_max, 1601 )
 for p in port:
     p.CalcPort( Sim_Path, f, ref_impedance = 50)
 
 s11 = port[0].uf_ref / port[0].uf_inc
 s21 = port[1].uf_ref / port[0].uf_inc
 
-plot(f/1e9,20*log10(abs(s11)),'k-',linewidth=2 , label='$S_{11}$')
-grid()
-plot(f/1e9,20*log10(abs(s21)),'r--',linewidth=2 , label='$S_{21}$')
-legend()
-ylabel('S-Parameter (dB)')
-xlabel('frequency (GHz)')
-ylim([-40, 2])
+## Plot s-parameter
 
-show()
+fig, axis = plt.subplots(num="S11", tight_layout=True)
+axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='dB(S11)')
+axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='dB(S21)')
+axis.grid()
+axis.set_xmargin(0)
+axis.set_xlabel('Frequency (GHz)')
+axis.set_ylabel('S-Parameter (dB)')
+axis.legend()
+
+# show all plots
+plt.show()
+

@@ -7,12 +7,14 @@
   - openEMS v0.0.35+
 
  (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
+ 15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
 
 """
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -92,7 +94,7 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Postprocessing & plotting
-freq = linspace(f_start,f_stop,201)
+freq = np.linspace(f_start,f_stop,201)
 for port in ports:
     port.CalcPort(Sim_Path, freq)
 
@@ -102,22 +104,28 @@ ZL  = ports[0].uf_tot / ports[0].if_tot
 ZL_a = ports[0].ZL # analytic waveguide impedance
 
 ## Plot s-parameter
-figure()
-plot(freq*1e-6,20*log10(abs(s11)),'k-',linewidth=2, label='$S_{11}$')
-grid()
-plot(freq*1e-6,20*log10(abs(s21)),'r--',linewidth=2, label='$S_{21}$')
-legend();
-ylabel('S-Parameter (dB)')
-xlabel(r'frequency (MHz) $\rightarrow$')
+
+fig, axis = plt.subplots(num="S11", tight_layout=True)
+axis.plot(freq/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='dB(S11)')
+axis.plot(freq/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='dB(S21)')
+axis.grid()
+axis.set_xmargin(0)
+axis.set_xlabel('Frequency (GHz)')
+axis.set_ylabel('S-Parameter (dB)')
+axis.legend()
+
 
 ## Compare analytic and numerical wave-impedance
-figure()
-plot(freq*1e-6,real(ZL), linewidth=2, label='$\Re\{Z_L\}$')
-grid()
-plot(freq*1e-6,imag(ZL),'r--', linewidth=2, label='$\Im\{Z_L\}$')
-plot(freq*1e-6,ZL_a,'g-.',linewidth=2, label='$Z_{L, analytic}$')
-ylabel('ZL $(\Omega)$')
-xlabel(r'frequency (MHz) $\rightarrow$')
-legend()
+fig, axis = plt.subplots(num="ZL", tight_layout=True)
+axis.plot(freq/1e9, np.real(ZL), 'k-',  linewidth=2, label='Re(ZL)')
+axis.plot(freq/1e9, np.imag(ZL), 'r--', linewidth=2, label='Im(ZL)')
 
-show()
+axis.plot(freq/1e9, ZL_a, 'g-.',  linewidth=2, label='Re(ZL, analytic)')
+axis.grid()
+axis.set_xmargin(0)
+axis.set_xlabel('Frequency (GHz)')
+axis.set_ylabel('ZL (Ohm)')
+axis.legend()
+
+# show all plots
+plt.show()
