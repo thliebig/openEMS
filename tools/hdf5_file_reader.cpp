@@ -22,10 +22,12 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <typeinfo>
 
-using namespace std;
+using std::cerr;
+using std::endl;
 
-HDF5_File_Reader::HDF5_File_Reader(string filename)
+HDF5_File_Reader::HDF5_File_Reader(std::string filename)
 {
 	m_filename = filename;
 	m_hdf5_file = -1;
@@ -97,7 +99,7 @@ bool HDF5_File_Reader::IsValid()
 	return true;
 }
 
-bool HDF5_File_Reader::OpenGroup(hid_t &file, hid_t &group, string groupName)
+bool HDF5_File_Reader::OpenGroup(hid_t &file, hid_t &group, std::string groupName)
 {
 	file = getFile();
 	if (file==-1)
@@ -200,9 +202,9 @@ bool HDF5_File_Reader::ReadAttribute(std::string grp_name, std::string attr_name
 	return true;
 }
 
-bool HDF5_File_Reader::ReadAttribute(string grp_name, string attr_name, vector<float> &attr_values)
+bool HDF5_File_Reader::ReadAttribute(std::string grp_name, std::string attr_name, std::vector<float> &attr_values)
 {
-	vector<double> d_attr_values;
+	std::vector<double> d_attr_values;
 	if (ReadAttribute(grp_name, attr_name, d_attr_values)==false)
 		return false;
 	attr_values.resize(d_attr_values.size(),0);
@@ -211,7 +213,7 @@ bool HDF5_File_Reader::ReadAttribute(string grp_name, string attr_name, vector<f
 	return true;
 }
 
-bool HDF5_File_Reader::ReadAttribute(string grp_name, string attr_name, vector<double> &attr_values)
+bool HDF5_File_Reader::ReadAttribute(std::string grp_name, std::string attr_name, std::vector<double> &attr_values)
 {
 	attr_values.clear();
 
@@ -288,7 +290,7 @@ bool HDF5_File_Reader::ReadAttribute(string grp_name, string attr_name, vector<d
 	return true;
 }
 
-bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims, float* &data)
+bool HDF5_File_Reader::ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, float* &data)
 {
 	float* f_data;
 	double* d_data;
@@ -311,7 +313,7 @@ bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims
 	return true;
 }
 
-bool HDF5_File_Reader::ReadDataSet(string ds_name, hsize_t &nDim, hsize_t* &dims, double* &data)
+bool HDF5_File_Reader::ReadDataSet(std::string ds_name, hsize_t &nDim, hsize_t* &dims, double* &data)
 {
 	float* f_data;
 	double* d_data;
@@ -353,7 +355,7 @@ hid_t HDF5_File_Reader::GetH5Type()
 		return H5T_NATIVE_UINT;
 	else if (typeid(T) == typeid(bool))
 		return H5T_NATIVE_HBOOL;
-	else if (typeid(T) == typeid(complex<float>))
+	else if (typeid(T) == typeid(std::complex<float>))
 	{
 		typedef struct {
 		float re;   /*real part */
@@ -367,7 +369,7 @@ hid_t HDF5_File_Reader::GetH5Type()
 		H5Tinsert (complex_id, "i", HOFFSET(complex_t,im), H5T_NATIVE_FLOAT);
 		return complex_id;
 	}
-	else if (typeid(T) == typeid(complex<double>))
+	else if (typeid(T) == typeid(std::complex<double>))
 	{
 		typedef struct {
 		double re;   /*real part */
@@ -390,8 +392,8 @@ template hid_t HDF5_File_Reader::GetH5Type<float>();
 template hid_t HDF5_File_Reader::GetH5Type<double>();
 template hid_t HDF5_File_Reader::GetH5Type<unsigned int>();
 template hid_t HDF5_File_Reader::GetH5Type<bool>();
-template hid_t HDF5_File_Reader::GetH5Type<complex<float>>();
-template hid_t HDF5_File_Reader::GetH5Type<complex<double>>();
+template hid_t HDF5_File_Reader::GetH5Type<std::complex<float>>();
+template hid_t HDF5_File_Reader::GetH5Type<std::complex<double>>();
 
 template <typename T>
 bool HDF5_File_Reader::CheckH5Type(hid_t type)
@@ -407,9 +409,9 @@ bool HDF5_File_Reader::CheckH5Type(hid_t type)
 		return true;
 	else if (H5Tequal(type, H5T_NATIVE_HBOOL) && (typeid(T) == typeid(bool)))
 		return true;
-	else if ((typeid(T) == typeid(complex<float>)) && (H5Tget_class(type)==H5T_COMPOUND) && (H5Tget_size(type)==2*sizeof(float)))
+	else if ((typeid(T) == typeid(std::complex<float>)) && (H5Tget_class(type)==H5T_COMPOUND) && (H5Tget_size(type)==2*sizeof(float)))
 		return true;
-	else if ((typeid(T) ==typeid(complex<double>)) && (H5Tget_class(type)==H5T_COMPOUND) && (H5Tget_size(type)==2*sizeof(double)))
+	else if ((typeid(T) ==typeid(std::complex<double>)) && (H5Tget_class(type)==H5T_COMPOUND) && (H5Tget_size(type)==2*sizeof(double)))
 		return true;
 	return false;
 }
@@ -569,7 +571,7 @@ bool HDF5_File_Reader::ReadMesh(double** lines, unsigned int* numLines, int &mes
 	std::string sy = s_mesh_grp + "/y";
 	std::string sa = s_mesh_grp + "/alpha";
 	std::string sz = s_mesh_grp + "/z";
-	vector<string> Mesh_Names;
+	std::vector<std::string> Mesh_Names;
 	if (H5Lexists(hdf5_file, sx.c_str(), H5P_DEFAULT) && H5Lexists(hdf5_file, sy.c_str(), H5P_DEFAULT) && H5Lexists(hdf5_file, sz.c_str(), H5P_DEFAULT))
 	{
 		meshType = 0;
@@ -631,7 +633,7 @@ unsigned int HDF5_File_Reader::GetNumTimeSteps()
 	return numObj;
 }
 
-bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<string> &names)
+bool HDF5_File_Reader::ReadTimeSteps(std::vector<unsigned int> &timestep, std::vector<std::string> &names)
 {
 	if (IsValid()==false)
 		return false;
@@ -663,7 +665,7 @@ bool HDF5_File_Reader::ReadTimeSteps(vector<unsigned int> &timestep, vector<stri
 			return false;
 		}
 
-		istringstream is(name);
+		std::istringstream is(name);
 		unsigned int num;
 		if (is >> num)
 		{
@@ -738,13 +740,13 @@ bool HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, ArrayLib::ArrayN
 
 unsigned int HDF5_File_Reader::GetNumFrequencies()
 {
-	vector<float> frequencies;
+	std::vector<float> frequencies;
 	if (ReadFrequencies(frequencies)==false)
 		return 0;
 	return frequencies.size();
 }
 
-bool HDF5_File_Reader::ReadFrequencies(vector<float> &frequencies)
+bool HDF5_File_Reader::ReadFrequencies(std::vector<float> &frequencies)
 {
 	if (IsValid()==false)
 		return false;
@@ -752,7 +754,7 @@ bool HDF5_File_Reader::ReadFrequencies(vector<float> &frequencies)
 	return ReadAttribute("/FieldData/FD","frequency",frequencies);
 }
 
-bool HDF5_File_Reader::ReadFrequencies(vector<double> &frequencies)
+bool HDF5_File_Reader::ReadFrequencies(std::vector<double> &frequencies)
 {
 	if (IsValid()==false)
 		return false;
@@ -804,7 +806,7 @@ template bool HDF5_File_Reader::ReadScalarDataSet<float>(std::string ds_name, Ar
 
 bool HDF5_File_Reader::GetFDVectorData(size_t idx, ArrayLib::ArrayNIJK<std::complex<float>> &data)
 {
-	stringstream ds_name;
+	std::stringstream ds_name;
 	ds_name << "/FieldData/FD/f" << idx;
 
 	// if not legacy format... this is trivial
@@ -885,7 +887,7 @@ bool HDF5_File_Reader::ReadVectorDataSet(std::string ds_name, ArrayLib::ArrayNIJ
 template bool HDF5_File_Reader::ReadVectorDataSet<float>(std::string ds_name, ArrayLib::ArrayNIJK<float> &data, bool type_check);
 
 
-bool HDF5_File_Reader::CalcFDVectorData(vector<float> &frequencies, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*> &FD_data)
+bool HDF5_File_Reader::CalcFDVectorData(std::vector<float> &frequencies, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*> &FD_data)
 {
 	for (unsigned int n=0;n<FD_data.size();++n)
 		delete FD_data.at(n);
@@ -910,7 +912,7 @@ bool HDF5_File_Reader::CalcFDVectorData(vector<float> &frequencies, std::vector<
 	//init
 	unsigned int datasize[3] = {field.extent(1), field.extent(2), field.extent(3)};
 	if (m_legacy_fmt)
-		std:swap(datasize[0], datasize[2]); //data order was/is ZYX
+		std::swap(datasize[0], datasize[2]); //data order was/is ZYX
 	FD_data.resize(frequencies.size(), NULL);
 	for (size_t fn=0;fn<frequencies.size();++fn)
 	{
@@ -921,9 +923,8 @@ bool HDF5_File_Reader::CalcFDVectorData(vector<float> &frequencies, std::vector<
 	}
 
 	size_t ts=0;
-	unsigned int pos[3];
-	complex<float> PI_2_I(0.0,-2.0*M_PI);
-	complex<float> exp_jwt_2_dt;
+	std::complex<float> PI_2_I(0.0,-2.0*M_PI);
+	std::complex<float> exp_jwt_2_dt;
 	float time_diff=0;
 	float time_old =0;
 	size_t N = field.size();
@@ -944,7 +945,7 @@ bool HDF5_File_Reader::CalcFDVectorData(vector<float> &frequencies, std::vector<
 		td_data = field.data();
 		for (size_t fn=0;fn<frequencies.size();++fn)
 		{
-			exp_jwt_2_dt = exp( (complex<float>)(PI_2_I * frequencies.at(fn) * time) );
+			exp_jwt_2_dt = exp( (std::complex<float>)(PI_2_I * frequencies.at(fn) * time) );
 			field_fd = FD_data.at(fn)->data();
 			for (size_t n=0;n<N;++n)
 				field_fd[n] += td_data[n] * exp_jwt_2_dt;
