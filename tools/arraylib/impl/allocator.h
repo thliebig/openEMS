@@ -22,6 +22,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <memory>
 
 namespace ArrayLib
 {
@@ -83,10 +84,7 @@ public:
 			throw std::bad_alloc();
 		}
 #endif
-		memset(buf, 0, numelem * sizeof(T));
-		for (size_t i = 0; i < numelem; i++)
-			new (buf + i) T();
-
+		std::uninitialized_fill(buf, buf + numelem, T());
 		return buf;
 	}
 
