@@ -110,9 +110,9 @@ public:
 	bool                        valid()             const { return m_ptr!=NULL;}
 
 	// allow to swap axis
-	void swapAxis(int a, int b)
+	void swapAxis(size_t a, size_t b)
 	{
-		if ((a<0) || (b<0) || (a>=rank) || (b>=rank) || (a==b))
+		if ((a>=rank) || (b>=rank) || (a==b))
 			return;
 		std::swap(m_extent[a], m_extent[b]);
 		std::swap(m_stride[a], m_stride[b]);

@@ -110,7 +110,6 @@ int ProcessFieldsSAR::Process()
 		return GetNextInterval();
 
 	std::complex<float>* field_fd = NULL;
-	unsigned int pos[3];
 	double T;
 
 	//save dump type

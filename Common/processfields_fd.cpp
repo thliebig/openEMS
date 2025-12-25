@@ -85,7 +85,6 @@ int ProcessFieldsFD::Process()
 	std::complex<float>* field_fd = NULL;
 
 	double T = m_Eng_Interface->GetTime(m_dualTime);
-	unsigned int pos[3];
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
 		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * _I * M_PI * m_FD_Samples.at(n) * T) );
@@ -109,7 +108,6 @@ void ProcessFieldsFD::DumpFDData()
 {
 	if (m_fileType==VTK_FILETYPE)
 	{
-		unsigned int pos[3];
 		ArrayLib::ArrayNIJK<float> tmp_field("field", numLines);
 		std::complex<float>* field_fd = NULL;
 		float* field = tmp_field.data();

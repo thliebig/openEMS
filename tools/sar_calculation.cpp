@@ -131,7 +131,7 @@ bool SAR_Calculation::CalcSAR(ArrayLib::ArrayIJK<float> &SAR)
 	if (CheckValid()==false)
 	{
 		cerr << "SAR_Calculation::CalcSAR: SAR calculation is invalid due to missing values... Abort..." << endl;
-		return NULL;
+		return false;
 	}
 	if (m_avg_mass<=0)
 		return CalcLocalSAR(SAR);
@@ -183,7 +183,6 @@ double SAR_Calculation::CalcSARPower()
 double SAR_Calculation::CalcTotalMass()
 {
 	double mass = 0;
-	unsigned int pos[3];
 	float* cell_density = m_cell_density->data();
 	float* cell_volume = m_cell_volume->data();
 	for (unsigned int n=0;n<m_cell_density->size();++n)
@@ -300,7 +299,7 @@ bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool
 	out_file.SetCurrentGroup("/FieldData/FD");
 	out_file.WriteAtrribute("/FieldData/FD","frequency",freq);
 
-	hsize_t* dims = new hsize_t[3];
+	size_t* dims = new size_t[3];
 	for (size_t n=0;n<3;++n)
 		dims[n]=numLines[n];
 

@@ -442,7 +442,6 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 		if (m_Verbose>1)
 			cerr << "nf2ff: calculate dft..." << endl;
 
-		unsigned int data_size[4];
 		if (E_file.CalcFDVectorData(m_freq,E_fd_data)==false)
 		{
 			for (int n=0;n<3;++n)
@@ -503,7 +502,6 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 	{
 		ArrayLib::ArrayNIJK<std::complex<float>> E_fd_data;
 		ArrayLib::ArrayNIJK<std::complex<float>> H_fd_data;
-		unsigned int data_size[4];
 		for (size_t n=0;n<m_freq.size();++n)
 		{
 			if (!E_file.GetFDVectorData(FD_index.at(n), E_fd_data))

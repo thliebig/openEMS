@@ -263,14 +263,14 @@ bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, ArrayLib::Array
 		if (typeid(T) == typeid(complex<float>))
 		{
 			float* buffer = new float[size];
-			for (int n=0;n<data.extent(0);++n)
+			for (size_t n=0;n<data.extent(0);++n)
 				for (size_t k=0;k<data.extent(3);++k)
 					for (size_t j=0;j<data.extent(2);++j)
 						for (size_t i=0;i<data.extent(1);++i)
 							buffer[pos++]=real(data(n,i,j,k));
 			success = WriteData(dataSetName + "_real", H5T_NATIVE_FLOAT, buffer, 4, n_size, "NZYX");
 			pos = 0;
-			for (int n=0;n<data.extent(0);++n)
+			for (size_t n=0;n<data.extent(0);++n)
 				for (size_t k=0;k<data.extent(3);++k)
 					for (size_t j=0;j<data.extent(2);++j)
 						for (size_t i=0;i<data.extent(1);++i)
@@ -281,7 +281,7 @@ bool HDF5_File_Writer::WriteVectorField(std::string dataSetName, ArrayLib::Array
 		else
 		{
 			T* buffer = new T[size];
-			for (int n=0;n<data.extent(0);++n)
+			for (size_t n=0;n<data.extent(0);++n)
 				for (size_t k=0;k<data.extent(3);++k)
 					for (size_t j=0;j<data.extent(2);++j)
 						for (size_t i=0;i<data.extent(1);++i)
