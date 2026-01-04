@@ -7,7 +7,7 @@
   - openEMS v0.0.34+
 
  (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
- 15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
+     04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
 
 """
 
@@ -104,7 +104,7 @@ mesh.SmoothMeshLines('all', mesh_res, 1.4)
 nf2ff = FDTD.CreateNF2FFBox()
 
 ### Run the simulation
-if True:  # debugging only
+if 0:  # debugging only
     CSX_file = os.path.join(Sim_Path, 'simp_patch.xml')
     if not os.path.exists(Sim_Path):
         os.mkdir(Sim_Path)
@@ -124,7 +124,7 @@ s11_dB = 20.0*np.log10(np.abs(s11))
 
 
 fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(f/1e9, s11_dB, 'k-',  linewidth=2, label='dB(S11)')
+axis.plot(f/1e9, s11_dB, 'k-',  linewidth=2, label='S11')
 axis.grid()
 axis.set_xmargin(0)
 axis.set_xlabel('Frequency (GHz)')
@@ -158,8 +158,8 @@ else:
 Zin = port.uf_tot/port.if_tot
 
 fig, axis = plt.subplots(num="Zin", tight_layout=True)
-axis.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='Re(Zin)')
-axis.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='Im(Zin)')
+axis.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='$\\Re\\{Z_{in}\\}$')
+axis.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='$\\Im\\{Z_{in}\\}$')
 axis.grid()
 axis.set_xmargin(0)
 axis.set_xlabel('Frequency (GHz)')

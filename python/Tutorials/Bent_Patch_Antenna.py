@@ -7,7 +7,7 @@
   - openEMS v0.0.35+
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
- 15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
+     04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
 
 """
 
@@ -148,10 +148,10 @@ s11 = port.uf_ref/port.uf_inc
 s11_dB = 20.0*np.log10(np.abs(s11))
 
 fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(f/1e9, s11_dB, 'k-',  linewidth=2, label='dB(S11)')
+axis.plot(f/1e6, s11_dB, 'k-',  linewidth=2, label='dB(S11)')
 axis.grid()
 axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
+axis.set_xlabel('Frequency (MHz)')
 axis.set_ylabel('S11 (dB)')
 axis.set_title("Input matching")
 axis.legend()
@@ -160,12 +160,12 @@ P_in = 0.5*np.real(port.uf_tot * np.conj(port.if_tot)) # antenna feed power
 
 # plot feed point impedance
 fig, axis = plt.subplots(num="Zin", tight_layout=True)
-axis.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='Re(Zin)')
-axis.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='Im(Zin)')
+axis.plot(f/1e6, np.real(Zin), 'k-', linewidth=2, label='$\\Re(Z_{in})$' )
+axis.plot(f/1e6, np.imag(Zin), 'r--', linewidth=2, label='$\\Im(Z_{in})$')
 axis.grid()
 axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
-axis.set_ylabel('Zin (Ohm)')
+axis.set_xlabel('Frequency (MHz)')
+axis.set_ylabel('Impedance ($\\Omega$)')
 axis.set_title("Input Impedance")
 axis.legend()
 
@@ -179,14 +179,11 @@ else:
     print("Calculate NF2FF")
     nf2ff_res_phi0 = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, 0, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xz.h5')
 
-    # Compute normalized E-field
-    E_norm = 20.0 * np.log10(nf2ff_res_phi0.E_norm / np.max(nf2ff_res_phi0.E_norm)) + nf2ff_res_phi0.Dmax
-
     # --- First subplot (xz-plane) ---
     fig = plt.figure(figsize=(15, 7), tight_layout=True)
 
     ax1 = fig.add_subplot(1, 2, 1, polar=True)
-    E_norm_xz = 20.0 * np.log10(nf2ff_res_phi0.E_norm / np.max(nf2ff_res_phi0.E_norm)) + nf2ff_res_phi0.Dmax
+    E_norm_xz = 20.0*np.log10(nf2ff_res_phi0.E_norm/np.max(nf2ff_res_phi0.E_norm)) + 10.0*np.log10(nf2ff_res_phi0.Dmax)
     ax1.plot(np.deg2rad(theta), 10**(np.squeeze(E_norm_xz)/20), linewidth=2, label='xz-plane')
     ax1.grid(True)
     ax1.set_xlabel('theta (deg)')
@@ -199,12 +196,11 @@ else:
 
     # --- Second subplot (xy-plane) ---
     ax2 = fig.add_subplot(1, 2, 2, polar=True)
-    E_norm_xy = 20.0 * np.log10(nf2ff_res_theta90.E_norm / np.max(nf2ff_res_theta90.E_norm)) + nf2ff_res_theta90.Dmax
+    E_norm_xy = 20.0*np.log10(nf2ff_res_theta90.E_norm/np.max(nf2ff_res_theta90.E_norm)) + 10.0*np.log10(nf2ff_res_theta90.Dmax)
+    
     ax2.plot(np.deg2rad(phi), 10**(np.squeeze(E_norm_xy)/20), linewidth=2, label='xy-plane')
     ax2.grid(True)
     ax2.set_xlabel('phi (deg)')
-    ax2.set_theta_zero_location('N')
-    ax2.set_theta_direction(-1)
     ax2.legend(loc=3)
 
     # --- Figure title ---

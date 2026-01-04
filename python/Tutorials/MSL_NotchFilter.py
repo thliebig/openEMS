@@ -115,8 +115,8 @@ s21 = port[1].uf_ref / port[0].uf_inc
 ## Plot s-parameter
 
 fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='dB(S11)')
-axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='dB(S21)')
+axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='$S_{11}$')
+axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='$S_{21}$')
 axis.grid()
 axis.set_xmargin(0)
 axis.set_xlabel('Frequency (GHz)')

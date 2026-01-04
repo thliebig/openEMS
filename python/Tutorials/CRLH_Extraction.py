@@ -7,7 +7,7 @@
   - openEMS v0.0.35+
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
- 15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
+     04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
 """
 
 
@@ -179,11 +179,10 @@ if __name__ == '__main__':
     s21 = port[1].uf_ref / port[0].uf_inc
 
     fig, axis = plt.subplots(num="S11", tight_layout=True)
-    axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='dB(S11)')
-    axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='dB(S21)')
+    axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='S11')
+    axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='S21')
     axis.grid()
     axis.set_xmargin(0)
-    axis.set_ylim([-40, 0])
     axis.set_xlabel('Frequency (GHz)')
     axis.set_ylabel('S-Parameter (dB)')
     axis.legend()

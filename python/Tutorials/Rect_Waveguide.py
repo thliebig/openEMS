@@ -7,7 +7,7 @@
   - openEMS v0.0.35+
 
  (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
- 15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
+     04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
 
 """
 
@@ -106,25 +106,25 @@ ZL_a = ports[0].ZL # analytic waveguide impedance
 ## Plot s-parameter
 
 fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(freq/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='dB(S11)')
-axis.plot(freq/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='dB(S21)')
+axis.plot(freq/1e6, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='$S_{11}$')
+axis.plot(freq/1e6, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='$S_{21}$')
 axis.grid()
 axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
+axis.set_xlabel('frequency (MHz) $\\rightarrow$')
 axis.set_ylabel('S-Parameter (dB)')
 axis.legend()
 
 
 ## Compare analytic and numerical wave-impedance
 fig, axis = plt.subplots(num="ZL", tight_layout=True)
-axis.plot(freq/1e9, np.real(ZL), 'k-',  linewidth=2, label='Re(ZL)')
-axis.plot(freq/1e9, np.imag(ZL), 'r--', linewidth=2, label='Im(ZL)')
+axis.plot(freq/1e6, np.real(ZL), 'k-',  linewidth=2, label='$\\Re\\{Z_L\\}$')
+axis.plot(freq/1e6, np.imag(ZL), 'r--', linewidth=2, label='$\\Im\\{Z_L\\}$')
 
-axis.plot(freq/1e9, ZL_a, 'g-.',  linewidth=2, label='Re(ZL, analytic)')
+axis.plot(freq/1e6, ZL_a, 'g-.',  linewidth=2, label='$Z_{L, analytic}$')
 axis.grid()
 axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
-axis.set_ylabel('ZL (Ohm)')
+axis.set_xlabel('frequency (MHz) $\\rightarrow$')
+axis.set_ylabel('ZL $(\\Omega)$')
 axis.legend()
 
 # show all plots

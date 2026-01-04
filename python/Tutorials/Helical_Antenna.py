@@ -7,7 +7,7 @@
   - openEMS v0.0.36+
 
  (c) 2015-2025 Thorsten Liebig <thorsten.liebig@gmx.de>
- 15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
+      04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
 """
 
 ### Import Libraries
@@ -140,11 +140,11 @@ s11 = port.uf_ref / port.uf_inc
 ## Plot the feed point impedance
 
 fig, axis = plt.subplots(num="Zin", tight_layout=True)
-axis.plot(freq/1e9, np.real(Zin), 'k-',  linewidth=2, label='Re(Zin)')
-axis.plot(freq/1e9, np.imag(Zin), 'r--', linewidth=2, label='Im(Zin)')
+axis.plot(freq/1e6, np.real(Zin), 'k-',  linewidth=2, label='$\\Re(Z_{in})$')
+axis.plot(freq/1e6, np.imag(Zin), 'r--', linewidth=2, label='$\\Im(Z_{in})$')
 axis.grid()
 axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
+axis.set_xlabel('frequency (MHz)')
 axis.set_ylabel('Zin (Ohm)')
 axis.set_title("feed point impedance")
 axis.legend()
@@ -152,13 +152,12 @@ axis.legend()
 
 ## Plot reflection coefficient S11
 fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(freq/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='dB(S11)')
+axis.plot(freq/1e6, 20*np.log10(abs(s11)), 'k-',  linewidth=2)
 axis.grid()
 axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
+axis.set_xlabel('frequency (MHz)')
 axis.set_ylabel('S11 (dB)')
-axis.set_title("Input matching")
-axis.legend()
+axis.set_title('reflection coefficient $S_{11}$' )
 
 
 ### Create the NFFF contour
