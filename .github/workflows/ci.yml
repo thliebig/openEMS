@@ -98,6 +98,13 @@ jobs:
 
     name: "${{ matrix.os.libc }}/Linux (${{ matrix.os.name }})"
 
+    env:
+      # Wno-error is needed because any third-party dependencies
+      # like compiler version changes or even Python libraries
+      # installed by pip can block the pipeline, this is not what
+      # we want.
+      CXXFLAGS: "-Wall -Wextra -Wno-error"
+
     steps:
       - name: Check for dockerenv file
         # bash is not installed on Alpine at this point
@@ -108,9 +115,6 @@ jobs:
         shell: sh
         run: |
           cat /etc/os-release
-
-          touch ~/.bash_profile  # set environment variables here
-          echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.bash_profile
 
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
@@ -321,7 +325,6 @@ jobs:
 
       - name: Build and install fparser
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/fparser
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
@@ -336,7 +339,6 @@ jobs:
           #
           # MPI may also fail, but this error is not fatal. The real error is often
           # the error above! There's no need to install MPI.
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/CSXCAD
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
@@ -344,7 +346,6 @@ jobs:
 
       - name: Build and install CSXCAD Python module with --no-build-isolation
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/CSXCAD/python
           export CSXCAD_INSTALL_PATH=$HOME/opt/
 
@@ -364,8 +365,6 @@ jobs:
 
       - name: Build and install openEMS
         run: |
-          source ~/.bash_profile
-
           # Hack: openEMS requires Boost Predef (1.55+), but CSXCAD requires CGAL, on
           # Ubuntu 14.04's libcgal-dev requires Boost 1.54. So we install Boost 1.55
           # after CSXCAD but before openEMS - this uninstalls libcgal-dev (but libcgal
@@ -385,7 +384,6 @@ jobs:
 
       - name: Build and install openEMS Python module with --no-build-isolation
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/python
 
           # Python "exit(False)" = bash "if true"
@@ -420,7 +418,6 @@ jobs:
 
       - name: Smoketest Python execution
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
           python3 -c "import CSXCAD; print(CSXCAD.__version__)"
           python3 -c "import openEMS; print(openEMS.__version__)"
@@ -428,7 +425,6 @@ jobs:
 
       - name: Create Python venv and install dependencies
         run: |
-          source ~/.bash_profile
           cd ~/
 
           if grep -q "ID=ubuntu" /etc/os-release && \
@@ -460,7 +456,6 @@ jobs:
 
       - name: Build and install CSXCAD Python module in venv
         run: |
-          source ~/.bash_profile
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/CSXCAD/python
           export CSXCAD_INSTALL_PATH="$HOME/opt"
@@ -468,7 +463,6 @@ jobs:
 
       - name: Build and install openEMS Python module in venv
         run: |
-          source ~/.bash_profile
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/openEMS/python
 
@@ -487,7 +481,6 @@ jobs:
 
       - name: Smoketest Python execution in venv
         run: |
-          source ~/.bash_profile
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
           python3 -c "import CSXCAD; print(CSXCAD.__version__)"
