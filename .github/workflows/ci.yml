@@ -969,3 +969,164 @@ jobs:
             python3 -c "import CSXCAD; print(CSXCAD.__version__)"
             python3 -c "import openEMS; print(openEMS.__version__)"
             python3 MSL_NotchFilter.py
+
+  Windows:
+    runs-on: windows-latest
+    needs: Dependencies
+
+    strategy:
+      # Use "false" means a single failed build won't terminate other combinations
+      # in the matrix. This wastes CPU time, but is an important debugging tool to
+      # prevent a single broken platform from stopping the whole matrix.
+      fail-fast: false
+
+      matrix:
+        toolchain:
+          # name: toonchain name (only a name for humans to read).
+          # CC, CXX: C/C++ compiler, environment variables
+          - name: "MSVC"
+            CC: "cl"
+            CXX: "cl"
+
+          - name: "clang-cl"
+            CC: "clang-cl"
+            CXX: "clang-cl"
+
+    env:
+      VS_ROOT_DIR: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/"
+      CC: "${{ matrix.toolchain.CC }}"
+      CXX: "${{ matrix.toolchain.CXX }}"
+      CFLAGS: "/D_WIN32_WINNT=0x0601"
+      CXXFLAGS: "/D_WIN32_WINNT=0x0601"
+
+      VCPKG_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/"
+      VCPKG_BINARY_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/binary"
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg-cache/binary,readwrite"
+      VCPKG_ASSET_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/asset"
+      X_VCPKG_ASSET_SOURCES: "x-azurl,file://${{ github.workspace }}/vcpkg-cache/asset,readwrite"
+
+    # allow this job to create and modify vcpkg packages for binary cache
+    permissions:
+      packages: write
+
+    name: "Windows (${{ matrix.toolchain.name }}, latest)"
+
+    steps:
+      - name: Show checkout sources
+        run: |
+          echo "$env:FPARSER_CHECKOUT_TITLE"
+          echo "$env:CSXCAD_CHECKOUT_TITLE"
+        env:
+          # convert template variables to shell variables to avoid arbitrary code injection
+          FPARSER_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+          CSXCAD_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+
+      # When checking out repos, I recommend running actions/checkout
+      # as soon as possible before anything else, and in the reverse
+      # order, from the project repo to its dependencies. This reduces
+      # race conditions due to force pushes (they are harmless but
+      # annoying).
+      - name: Checkout openEMS.git
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.csxcad_repo }}"
+          ref: "${{ needs.Dependencies.outputs.csxcad_branch }}"
+          path: CSXCAD
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.fparser_repo }}"
+          ref: "${{ needs.Dependencies.outputs.fparser_branch }}"
+          path: fparser
+
+      # It doesn't really work, because MSVC itself doesn't support long path.
+      # But for future-proofing (it does work for clang).
+      - name: Enable long paths
+        run: |
+          New-ItemProperty -Path "HKLM:/SYSTEM/CurrentControlSet/Control/FileSystem" `
+                           -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+
+      - name: Create vcpkg cache directories
+        run: |
+          mkdir -p "$env:VCPKG_CACHE_PATH"
+          mkdir -p "$env:VCPKG_BINARY_CACHE_PATH"
+          mkdir -p "$env:VCPKG_ASSET_CACHE_PATH"
+
+      - name: Restore vcpkg cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.VCPKG_CACHE_PATH }}
+          # almost always nonexistent
+          key: "Windows - ${{ matrix.toolchain.name }} - ${{ github.sha }}"
+          # use GitHub's fallback feature to pick the latest cache with this prefix
+          restore-keys: |
+            Windows - ${{ matrix.toolchain.name }}
+
+      - name: Build and install fparser
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+
+          cd "$env:GITHUB_WORKSPACE/fparser"
+          mkdir build && cd build
+          cmake ../ -GNinja -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt"
+
+          cmake --build ./ --parallel
+          cmake --install ./ --parallel 8
+
+      - name: Build and install CSXCAD
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+
+          cd "$env:GITHUB_WORKSPACE/CSXCAD"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DFPARSER_ROOT_DIR="$HOME/opt" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-release" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-release"
+
+          cmake --build ./ --parallel
+          cmake --install ./ --parallel 8
+
+      - name: Build and install openEMS
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+
+          cd "$env:GITHUB_WORKSPACE/openEMS"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DFPARSER_ROOT_DIR="$HOME/opt" `
+                    -DCSXCAD_ROOT_DIR="$HOME/opt" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-release" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-release"
+
+          cmake --build ./ --parallel
+          cmake --install ./ --parallel 8
+
+      - name: Save vcpkg cache
+        if: always()  # save even after a build failure.
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.VCPKG_CACHE_PATH }}
+          # GitHub cache is immutable and can't be overwritten
+          # save a new cache key every time
+          key: Windows - ${{ matrix.toolchain.name }} - ${{ github.sha }}
