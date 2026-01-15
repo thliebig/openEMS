@@ -497,7 +497,9 @@ jobs:
           touch ~/.zprofile  # set environment variables here
           echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.zprofile
 
-          brew install cmake boost hdf5 cgal vtk octave python3 \
+          # already installed on the CI/CD system, disable to avoid warning fatigue
+          # brew install python3 cmake
+          brew install boost hdf5 cgal vtk octave \
                        python-setuptools cython numpy python-matplotlib
 
           echo "export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')" >> ~/.zprofile
