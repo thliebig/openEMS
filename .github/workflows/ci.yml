@@ -9,8 +9,82 @@ on:
       - "**"
 
 jobs:
+  Dependencies:
+    runs-on: ubuntu-latest
+    name: "Resolve repo dependencies"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Resolve repo dependencies
+        id: resolve-dependencies
+        # writes to $GITHUB_OUTPUT file
+        run: |
+          python3 $GITHUB_WORKSPACE/.github/scripts/resolve_dependent_repos.py \
+                  --project openEMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_FORK_OWNER: ${{ github.event.pull_request.head.repo.owner.login }}
+
+      # format a human-friendly string in the following format:
+      #
+      # * Checkout XXXX.git
+      # (keep the "master" branch case boring to avoid information overload)
+      #
+      # OR:
+      #
+      # * Checkout XXXX.git | PR: https://example.com/XXXX
+      #
+      # OR:
+      #
+      # * Checkout XXXX.git | branch: feature | http://example.com/XXXX
+      - name: Format title strings
+        id: format-title
+        shell: python
+        run: |
+          import os
+
+          def format_title_string(var, repo, pr_url, branch):
+            title = "Checkout %s.git" % repo
+            if pr_url != "None":
+              title += " | PR: %s" % pr_url
+            elif branch != "master":
+              title += " | branch: %s | %s/%s/tree/%s" % (
+                branch, ${{ toJSON(github.server_url) }}, repo, branch
+              )
+            with open(os.getenv("GITHUB_OUTPUT"), "a") as output:
+              output.write("%s=%s\n" % (var, title))
+
+          format_title_string(
+            "fparser_checkout_title",
+            # escape special characters (single and double quotes) in string
+            # using JSON representation
+            ${{ toJSON(steps.resolve-dependencies.outputs.fparser_repo) }},
+            ${{ toJSON(steps.resolve-dependencies.outputs.fparser_pr_url) }},
+            ${{ toJSON(steps.resolve-dependencies.outputs.fparser_branch) }}
+          )
+          format_title_string(
+            "CSXCAD_checkout_title",
+            ${{ toJSON(steps.resolve-dependencies.outputs.csxcad_repo) }},
+            ${{ toJSON(steps.resolve-dependencies.outputs.csxcad_pr_url) }},
+            ${{ toJSON(steps.resolve-dependencies.outputs.csxcad_branch) }}
+          )
+
+    # map a step output to a job output
+    outputs:
+      fparser_repo: ${{ steps.resolve-dependencies.outputs.fparser_repo }}
+      fparser_branch: ${{ steps.resolve-dependencies.outputs.fparser_branch }}
+      fparser_checkout_title: ${{ steps.format-title.outputs.fparser_checkout_title }}
+
+      csxcad_repo: ${{ steps.resolve-dependencies.outputs.CSXCAD_repo }}
+      csxcad_branch: ${{ steps.resolve-dependencies.outputs.CSXCAD_branch }}
+      csxcad_checkout_title: ${{ steps.format-title.outputs.CSXCAD_checkout_title }}
+
   Linux:
     runs-on: ubuntu-latest
+    needs: Dependencies
+
     defaults:
       run:
         shell: bash
@@ -98,19 +172,137 @@ jobs:
 
     name: "${{ matrix.os.libc }}/Linux (${{ matrix.os.name }})"
 
+    env:
+      # Wno-error is needed because any third-party dependencies
+      # like compiler version changes or even Python libraries
+      # installed by pip can block the pipeline, this is not what
+      # we want.
+      CXXFLAGS: "-Wall -Wextra -Wno-error"
+
     steps:
       - name: Check for dockerenv file
         # bash is not installed on Alpine at this point
         shell: sh
         run: (ls /.dockerenv && echo Found dockerenv) || exit 1
 
+      - name: Show checkout sources
+        shell: sh
+        run: |
+          echo "$FPARSER_CHECKOUT_TITLE"
+          echo "$CSXCAD_CHECKOUT_TITLE"
+        env:
+          # convert template variables to shell variables to avoid arbitrary code injection
+          FPARSER_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+          CSXCAD_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+
+      # When checking out repos, I recommend running actions/checkout
+      # as soon as possible before anything else, and in the reverse
+      # order, from the project repo to its dependencies. This reduces
+      # race conditions due to force pushes (they are harmless but
+      # annoying).
+      - if: ${{ ! matrix.os.ancient }}
+        name: Checkout openEMS.git
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - if: ${{ ! matrix.os.ancient }}
+        name: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.csxcad_repo }}"
+          ref: "${{ needs.Dependencies.outputs.csxcad_branch }}"
+          path: CSXCAD
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - if: ${{ ! matrix.os.ancient }}
+        name: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.fparser_repo }}"
+          ref: "${{ needs.Dependencies.outputs.fparser_branch }}"
+          path: fparser
+
+      - if: ${{ matrix.os.ancient }}
+        name: (legacy) Work around known problems
+        run: |
+          if [ -f /etc/centos-release ]; then
+            # IPv6 on GitHub Actions is broken, causing random network failures
+            # if a CDN rosolves to IPv6.
+            echo "ip_resolve=4" >> /etc/yum.conf
+
+            # CentOS repos are EOL and desupported
+            sed -i 's|^mirrorlist|#mirrorlist|g; s|^#baseurl|baseurl|g; s|mirror.centos.org|vault.centos.org|g' \
+                /etc/yum.repos.d/CentOS-Base.repo
+
+            yum install -y centos-release-scl || true
+            sed -i 's|^mirrorlist|#mirrorlist|g; s|^#baseurl|baseurl|g;
+                    s|^# baseurl|baseurl|g; s|mirror.centos.org|vault.centos.org|g' \
+                /etc/yum.repos.d/CentOS-SCLo-scl.repo \
+                /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+          fi
+
+      - if: ${{ matrix.os.ancient }}
+        name: (legacy) Install git
+        run: |
+          if [ -f /etc/centos-release ]; then
+            yum install -y git
+          elif grep -q "ID=ubuntu" /etc/os-release && \
+            grep -q 'VERSION_ID="14.04"' /etc/os-release; then
+              apt-get install -y git
+          fi
+
+      - if: ${{ matrix.os.ancient }}
+        name: (legacy) Checkout openEMS.git
+        run: |
+          git clone "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" openEMS
+          cd "$GITHUB_WORKSPACE/openEMS"
+
+          git fetch --force "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "+refs/heads/*:refs/remotes/origin/*"
+          git fetch --force "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "+refs/pull/*/merge:refs/remotes/origin/pr/*"
+          git checkout "$GITHUB_SHA"
+
+      - if: ${{ matrix.os.ancient }}
+        name: (legacy) ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+        run: |
+          echo "Clone $REPO.git (branch $BRANCH)"
+          git clone "$GITHUB_SERVER_URL/$REPO.git"
+          cd "$GITHUB_WORKSPACE/$CHECKOUT_PATH"
+
+          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/heads/*:refs/remotes/origin/*"
+          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/pull/*/merge:refs/remotes/origin/pr/*"
+          git checkout "$BRANCH"
+        env:
+          # convert template variables to shell variables to avoid arbitrary code injection
+          REPO: ${{ needs.Dependencies.outputs.csxcad_repo }}
+          BRANCH: ${{ needs.Dependencies.outputs.csxcad_branch }}
+          CHECKOUT_PATH: CSXCAD
+
+      - if: ${{ matrix.os.ancient }}
+        name: (legacy) ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+        run: |
+          echo "Clone $REPO.git (branch $BRANCH)"
+          git clone "$GITHUB_SERVER_URL/$REPO.git"
+          cd "$GITHUB_WORKSPACE/$CHECKOUT_PATH"
+
+          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/heads/*:refs/remotes/origin/*"
+          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/pull/*/merge:refs/remotes/origin/pr/*"
+          git checkout "$BRANCH"
+        env:
+          # convert template variables to shell variables to avoid arbitrary code injection
+          REPO: ${{ needs.Dependencies.outputs.fparser_repo }}
+          BRANCH: ${{ needs.Dependencies.outputs.fparser_branch }}
+          CHECKOUT_PATH: fparser
+
       - name: Install dependencies
         shell: sh
         run: |
           cat /etc/os-release
-
-          touch ~/.bash_profile  # set environment variables here
-          echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.bash_profile
 
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
@@ -207,22 +399,7 @@ jobs:
             # only for CI/CD test builds without networks.
             apk add iproute2
           elif [ -f /etc/centos-release ]; then
-            # IPv6 on GitHub Actions is broken, causing random network failures
-            # if a CDN rosolves to IPv6.
-            echo "ip_resolve=4" >> /etc/yum.conf
-
-            # CentOS repos are EOL and desupported
-            sed -i 's|^mirrorlist|#mirrorlist|g; s|^#baseurl|baseurl|g; s|mirror.centos.org|vault.centos.org|g' \
-                /etc/yum.repos.d/CentOS-Base.repo
-
-            yum install -y centos-release-scl || true
-            sed -i 's|^mirrorlist|#mirrorlist|g; s|^#baseurl|baseurl|g;
-                    s|^# baseurl|baseurl|g; s|mirror.centos.org|vault.centos.org|g' \
-                /etc/yum.repos.d/CentOS-SCLo-scl.repo \
-                /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
-            cat /etc/yum.repos.d/CentOS-SCLo-scl.repo
-            cat /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
-
+            # "(legacy) Work around known problems" must run before this step
             yum install -y epel-release
             yum install -y git
             yum install -y gcc gcc-c++ gmp-devel mpfr-devel \
@@ -275,53 +452,8 @@ jobs:
             exit 1
           fi
 
-      - if: ${{ ! matrix.os.ancient }}
-        name: Checkout openEMS.git
-        uses: actions/checkout@v4
-        with:
-          path: openEMS
-          # checkout must be deep, not shallow.
-          # We need tags for "git describe", otherwise build fails.
-          fetch-depth: 0
-
-      - if: ${{ ! matrix.os.ancient }}
-        name: Checkout fparser.git
-        uses: actions/checkout@v4
-        with:
-          repository: "${{ github.repository_owner }}/fparser"
-          path: fparser
-
-      - if: ${{ ! matrix.os.ancient }}
-        name: Checkout CSXCAD.git
-        uses: actions/checkout@v4
-        with:
-          repository: "${{ github.repository_owner }}/CSXCAD"
-          path: CSXCAD
-          # checkout must be deep, not shallow.
-          # We need tags for "git describe", otherwise build fails.
-          fetch-depth: 0
-
-      - if: ${{ matrix.os.ancient }}
-        name: Checkout openEMS.git (legacy system only)
-        run: |
-          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git openEMS
-          cd $GITHUB_WORKSPACE/openEMS
-
-          git fetch --force $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git "+refs/heads/*:refs/remotes/origin/*"
-          git fetch --force $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git "+refs/pull/*/merge:refs/remotes/origin/pr/*"
-          git checkout $GITHUB_SHA
-
-      - if: ${{ matrix.os.ancient }}
-        name: Checkout fparser.git (legacy system only)
-        run: git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY_OWNER/fparser.git
-
-      - if: ${{ matrix.os.ancient }}
-        name: Checkout CSXCAD.git (legacy system only)
-        run: git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY_OWNER/CSXCAD.git
-
       - name: Build and install fparser
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/fparser
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
@@ -336,7 +468,6 @@ jobs:
           #
           # MPI may also fail, but this error is not fatal. The real error is often
           # the error above! There's no need to install MPI.
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/CSXCAD
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
@@ -344,7 +475,6 @@ jobs:
 
       - name: Build and install CSXCAD Python module with --no-build-isolation
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/CSXCAD/python
           export CSXCAD_INSTALL_PATH=$HOME/opt/
 
@@ -364,8 +494,6 @@ jobs:
 
       - name: Build and install openEMS
         run: |
-          source ~/.bash_profile
-
           # Hack: openEMS requires Boost Predef (1.55+), but CSXCAD requires CGAL, on
           # Ubuntu 14.04's libcgal-dev requires Boost 1.54. So we install Boost 1.55
           # after CSXCAD but before openEMS - this uninstalls libcgal-dev (but libcgal
@@ -385,7 +513,6 @@ jobs:
 
       - name: Build and install openEMS Python module with --no-build-isolation
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/python
 
           # Python "exit(False)" = bash "if true"
@@ -420,7 +547,6 @@ jobs:
 
       - name: Smoketest Python execution
         run: |
-          source ~/.bash_profile
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
           python3 -c "import CSXCAD; print(CSXCAD.__version__)"
           python3 -c "import openEMS; print(openEMS.__version__)"
@@ -428,7 +554,6 @@ jobs:
 
       - name: Create Python venv and install dependencies
         run: |
-          source ~/.bash_profile
           cd ~/
 
           if grep -q "ID=ubuntu" /etc/os-release && \
@@ -460,7 +585,6 @@ jobs:
 
       - name: Build and install CSXCAD Python module in venv
         run: |
-          source ~/.bash_profile
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/CSXCAD/python
           export CSXCAD_INSTALL_PATH="$HOME/opt"
@@ -468,7 +592,6 @@ jobs:
 
       - name: Build and install openEMS Python module in venv
         run: |
-          source ~/.bash_profile
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/openEMS/python
 
@@ -487,7 +610,6 @@ jobs:
 
       - name: Smoketest Python execution in venv
         run: |
-          source ~/.bash_profile
           source ~/venv/bin/activate
           cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
           python3 -c "import CSXCAD; print(CSXCAD.__version__)"
@@ -498,13 +620,56 @@ jobs:
     name: "macOS (ARM, latest)"
 
     runs-on: macos-latest
+    needs: Dependencies
+
     steps:
+      - name: Show checkout sources
+        run: |
+          echo "$FPARSER_CHECKOUT_TITLE"
+          echo "$CSXCAD_CHECKOUT_TITLE"
+        env:
+          # convert template variables to shell variables to avoid arbitrary code injection
+          FPARSER_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+          CSXCAD_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+
+      # When checking out repos, I recommend running actions/checkout
+      # as soon as possible before anything else, and in the reverse
+      # order, from the project repo to its dependencies. This reduces
+      # race conditions due to force pushes (they are harmless but
+      # annoying).
+      - name: Checkout openEMS.git
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.csxcad_repo }}"
+          ref: "${{ needs.Dependencies.outputs.csxcad_branch }}"
+          path: CSXCAD
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.fparser_repo }}"
+          ref: "${{ needs.Dependencies.outputs.fparser_branch }}"
+          path: fparser
+
       - name: Install dependencies
         run: |
           touch ~/.zprofile  # set environment variables here
           echo 'export CXXFLAGS="-Wall -Wextra -Wno-error"' >> ~/.zprofile
 
-          brew install cmake boost hdf5 cgal vtk octave python3 \
+          # already installed on the CI/CD system, disable to avoid warning fatigue
+          # brew install python3 cmake
+          brew install boost hdf5 cgal vtk octave \
                        python-setuptools cython numpy python-matplotlib
 
           echo "export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')" >> ~/.zprofile
@@ -553,29 +718,6 @@ jobs:
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
           make -j$NCPUS && make install
-
-      - name: Checkout openEMS.git
-        uses: actions/checkout@v4
-        with:
-          path: openEMS
-          # checkout must be deep, not shallow.
-          # We need tags for "git describe", otherwise build fails.
-          fetch-depth: 0
-
-      - name: Checkout fparser.git
-        uses: actions/checkout@v4
-        with:
-          repository: "${{ github.repository_owner }}/fparser"
-          path: fparser
-
-      - name: Checkout CSXCAD.git
-        uses: actions/checkout@v4
-        with:
-          repository: "${{ github.repository_owner }}/CSXCAD"
-          path: CSXCAD
-          # checkout must be deep, not shallow.
-          # We need tags for "git describe", otherwise build fails.
-          fetch-depth: 0
 
       - name: Build and install fparser
         run: |
@@ -673,6 +815,7 @@ jobs:
 
   FreeBSD:
     runs-on: ubuntu-latest
+    needs: Dependencies
 
     strategy:
       matrix:
@@ -692,8 +835,44 @@ jobs:
     name: "${{ matrix.machine.name }}"
 
     steps:
-      - name: Checkout repo
+      - name: Show checkout sources
+        run: |
+          echo "$FPARSER_CHECKOUT_TITLE"
+          echo "$CSXCAD_CHECKOUT_TITLE"
+        env:
+          # convert template variables to shell variables to avoid arbitrary code injection
+          FPARSER_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+          CSXCAD_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+
+      # When checking out repos, I recommend running actions/checkout
+      # as soon as possible before anything else, and in the reverse
+      # order, from the project repo to its dependencies. This reduces
+      # race conditions due to force pushes (they are harmless but
+      # annoying).
+      - name: Checkout openEMS.git
         uses: actions/checkout@v4
+        with:
+          path: openEMS
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.csxcad_repo }}"
+          ref: "${{ needs.Dependencies.outputs.csxcad_branch }}"
+          path: CSXCAD
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.fparser_repo }}"
+          ref: "${{ needs.Dependencies.outputs.fparser_branch }}"
+          path: fparser
 
       - name: Test in FreeBSD ${{ matrix.machine.version }} ${{ matrix.machine.arch }}
         uses: cross-platform-actions/action@v0.26.0
@@ -715,21 +894,8 @@ jobs:
             export CXXFLAGS="-Wall -Wextra -Wno-error"
             export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')
 
-            echo "Clone repos..."
-            cd ~/
-            git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git openEMS
-
-            cd ~/openEMS
-            git fetch --force $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git "+refs/heads/*:refs/remotes/origin/*"
-            git fetch --force $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git "+refs/pull/*/merge:refs/remotes/origin/pr/*"
-            git checkout $GITHUB_SHA
-
-            cd ~/
-            git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY_OWNER/fparser.git
-            git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY_OWNER/CSXCAD.git
-
             echo "Build and install fparser..."
-            cd ~/fparser
+            cd $GITHUB_WORKSPACE/fparser
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
             make -j$NCPUS && make install
@@ -742,18 +908,18 @@ jobs:
             #
             # MPI may also fail, but this error is not fatal. The real error is often
             # the error above! There's no need to install MPI.
-            cd ~/CSXCAD
+            cd $GITHUB_WORKSPACE/CSXCAD
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
             make -j$NCPUS && make install
 
             echo "Build and install CSXCAD Python module with --no-build-isolation..."
-            cd ~/CSXCAD/python
+            cd $GITHUB_WORKSPACE/CSXCAD/python
             export CSXCAD_INSTALL_PATH=$HOME/opt/
             pip install . --user --break-system-packages --no-build-isolation --verbose
 
             echo "Build and install openEMS..."
-            cd ~/openEMS
+            cd $GITHUB_WORKSPACE/openEMS
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt
             make -j$NCPUS && make install
@@ -762,17 +928,17 @@ jobs:
             echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
 
             echo "Build and install openEMS Python module with --no-build-isolation..."
-            cd ~/openEMS/python
+            cd $GITHUB_WORKSPACE/openEMS/python
             export CSXCAD_INSTALL_PATH=$HOME/opt/
             export OPENEMS_INSTALL_PATH=$HOME/opt/
             pip install . --user --break-system-packages --no-build-isolation --verbose
 
             echo "Smoketest Octave execution..."
-            cd ~/openEMS/.github/smoketests/octave/
+            cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/octave/
             octave MSL_NotchFilter.m
 
             echo "Smoketest Python execution..."
-            cd ~/openEMS/.github/smoketests/python
+            cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
             python3 -c "import CSXCAD; print(CSXCAD.__version__)"
             python3 -c "import openEMS; print(openEMS.__version__)"
             python3 MSL_NotchFilter.py
@@ -788,18 +954,179 @@ jobs:
             pip install --upgrade pip
 
             echo "Build and install CSXCAD Python module in venv..."
-            cd ~/CSXCAD/python
+            cd $GITHUB_WORKSPACE/CSXCAD/python
             export CSXCAD_INSTALL_PATH="$HOME/opt"
             pip install . --verbose
 
             echo "Build and install openEMS Python module in venv..."
-            cd ~/openEMS/python
+            cd $GITHUB_WORKSPACE/openEMS/python
             export CSXCAD_INSTALL_PATH="$HOME/opt"
             export OPENEMS_INSTALL_PATH="$HOME/opt"
             pip install . --verbose
 
             echo "Smoketest Python execution in venv..."
-            cd ~/openEMS/.github/smoketests/python
+            cd $GITHUB_WORKSPACE/openEMS/.github/smoketests/python
             python3 -c "import CSXCAD; print(CSXCAD.__version__)"
             python3 -c "import openEMS; print(openEMS.__version__)"
             python3 MSL_NotchFilter.py
+
+  Windows:
+    runs-on: windows-latest
+    needs: Dependencies
+
+    strategy:
+      # Use "false" means a single failed build won't terminate other combinations
+      # in the matrix. This wastes CPU time, but is an important debugging tool to
+      # prevent a single broken platform from stopping the whole matrix.
+      fail-fast: false
+
+      matrix:
+        toolchain:
+          # name: toonchain name (only a name for humans to read).
+          # CC, CXX: C/C++ compiler, environment variables
+          - name: "MSVC"
+            CC: "cl"
+            CXX: "cl"
+
+          - name: "clang-cl"
+            CC: "clang-cl"
+            CXX: "clang-cl"
+
+    env:
+      VS_ROOT_DIR: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/"
+      CC: "${{ matrix.toolchain.CC }}"
+      CXX: "${{ matrix.toolchain.CXX }}"
+      CFLAGS: "/D_WIN32_WINNT=0x0601"
+      CXXFLAGS: "/D_WIN32_WINNT=0x0601"
+
+      VCPKG_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/"
+      VCPKG_BINARY_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/binary"
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg-cache/binary,readwrite"
+      VCPKG_ASSET_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/asset"
+      X_VCPKG_ASSET_SOURCES: "x-azurl,file://${{ github.workspace }}/vcpkg-cache/asset,readwrite"
+
+    # allow this job to create and modify vcpkg packages for binary cache
+    permissions:
+      packages: write
+
+    name: "Windows (${{ matrix.toolchain.name }}, latest)"
+
+    steps:
+      - name: Show checkout sources
+        run: |
+          echo "$env:FPARSER_CHECKOUT_TITLE"
+          echo "$env:CSXCAD_CHECKOUT_TITLE"
+        env:
+          # convert template variables to shell variables to avoid arbitrary code injection
+          FPARSER_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+          CSXCAD_CHECKOUT_TITLE: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+
+      # When checking out repos, I recommend running actions/checkout
+      # as soon as possible before anything else, and in the reverse
+      # order, from the project repo to its dependencies. This reduces
+      # race conditions due to force pushes (they are harmless but
+      # annoying).
+      - name: Checkout openEMS.git
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.csxcad_repo }}"
+          ref: "${{ needs.Dependencies.outputs.csxcad_branch }}"
+          path: CSXCAD
+          # checkout must be deep, not shallow.
+          # We need tags for "git describe", otherwise build fails.
+          fetch-depth: 0
+
+      - name: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ needs.Dependencies.outputs.fparser_repo }}"
+          ref: "${{ needs.Dependencies.outputs.fparser_branch }}"
+          path: fparser
+
+      # It doesn't really work, because MSVC itself doesn't support long path.
+      # But for future-proofing (it does work for clang).
+      - name: Enable long paths
+        run: |
+          New-ItemProperty -Path "HKLM:/SYSTEM/CurrentControlSet/Control/FileSystem" `
+                           -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+
+      - name: Create vcpkg cache directories
+        run: |
+          mkdir -p "$env:VCPKG_CACHE_PATH"
+          mkdir -p "$env:VCPKG_BINARY_CACHE_PATH"
+          mkdir -p "$env:VCPKG_ASSET_CACHE_PATH"
+
+      - name: Restore vcpkg cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.VCPKG_CACHE_PATH }}
+          # almost always nonexistent
+          key: "Windows - ${{ matrix.toolchain.name }} - ${{ github.sha }}"
+          # use GitHub's fallback feature to pick the latest cache with this prefix
+          restore-keys: |
+            Windows - ${{ matrix.toolchain.name }}
+
+      - name: Build and install fparser
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+
+          cd "$env:GITHUB_WORKSPACE/fparser"
+          mkdir build && cd build
+          cmake ../ -GNinja -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt"
+
+          cmake --build ./ --parallel
+          cmake --install ./ --parallel 8
+
+      - name: Build and install CSXCAD
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+
+          cd "$env:GITHUB_WORKSPACE/CSXCAD"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DFPARSER_ROOT_DIR="$HOME/opt" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-release" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-release"
+
+          cmake --build ./ --parallel
+          cmake --install ./ --parallel 8
+
+      - name: Build and install openEMS
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+
+          cd "$env:GITHUB_WORKSPACE/openEMS"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DFPARSER_ROOT_DIR="$HOME/opt" `
+                    -DCSXCAD_ROOT_DIR="$HOME/opt" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-release" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-release"
+
+          cmake --build ./ --parallel
+          cmake --install ./ --parallel 8
+
+      - name: Save vcpkg cache
+        if: always()  # save even after a build failure.
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.VCPKG_CACHE_PATH }}
+          # GitHub cache is immutable and can't be overwritten
+          # save a new cache key every time
+          key: Windows - ${{ matrix.toolchain.name }} - ${{ github.sha }}

@@ -33,7 +33,9 @@
 
 #define F4VECTOR_SIZE 16 // sizeof(typeid(f4vector))
 
-#ifdef __GNUC__ // GCC
+// GCC/clang uses __GNUC__, clang-cl (clang in MSVC compatibility mode)
+// has no __GNUC__, but has __clang__
+#if defined(__GNUC__) || defined(__clang__)
 typedef float v4sf __attribute__ ((vector_size (F4VECTOR_SIZE))); // vector of four single floats
 union f4vector
 {
