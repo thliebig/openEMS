@@ -140,7 +140,10 @@ def determine_repo_dependency(project):
     # same name as the current repo branch, use that branch instead.
     # This allowing testing multi-repo features.
     for repo in repo_dependency:
-        if reponame_has_branch(owner, repo["name"], src_branch):
+        if (
+            repo["branch"] != src_branch and
+            reponame_has_branch(owner, repo["name"], src_branch)
+        ):
             repo["branch"] = src_branch
 
             # only warn dependencies, not current repo
