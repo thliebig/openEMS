@@ -7,13 +7,14 @@
   - openEMS v0.0.35+
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
-
+     04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
 """
 
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -45,7 +46,7 @@ class CRLH_Cells:
     def createCell(self, translate = [0,0,0]):
         mesh = [None,None,None]
         third_res = self.edge_resolution/3
-        translate = array(translate)
+        translate = np.array(translate)
         start = [-self.LL/2 , -self.LW/2, self.Top] + translate
         stop  = [-self.GLT/2,  self.LW/2, self.Top] + translate
         box = self.props['metal_top'].AddBox(start, stop, priority=10)
@@ -113,16 +114,16 @@ if __name__ == '__main__':
     FDTD.SetBoundaryCond( ['PML_8', 'PML_8', 'MUR', 'MUR', 'PEC', 'PML_8'] )
 
     ### Setup a basic mesh and create the CRLH unit cell
-    resolution = C0/(f_stop*sqrt(max(substrate_epsr)))/unit /30 # resolution of lambda/30
+    resolution = C0/(f_stop*np.sqrt(max(substrate_epsr)))/unit /30 # resolution of lambda/30
     CRLH.setEdgeResolution(resolution/4)
 
     mesh.SetLines('x', [-feed_length-CRLH.LL/2, 0, feed_length+CRLH.LL/2])
     mesh.SetLines('y', [-30000, 0, 30000])
 
-    substratelines = cumsum(substrate_thickness)
+    substratelines = np.cumsum(substrate_thickness)
     mesh.SetLines('z', [0, 20000])
-    mesh.AddLine('z', cumsum(substrate_thickness))
-    mesh.AddLine('z', linspace(substratelines[-2],substratelines[-1],4))
+    mesh.AddLine('z', np.cumsum(substrate_thickness))
+    mesh.AddLine('z', np.linspace(substratelines[-2],substratelines[-1],4))
 
     # create the CRLH unit cell (will define additional fixed mesh lines)
     mesh_hint = CRLH.createCell()
@@ -169,7 +170,7 @@ if __name__ == '__main__':
         FDTD.Run(Sim_Path, cleanup=True)
 
     ### Post-Processing
-    f = linspace( f_start, f_stop, 1601 )
+    f = np.linspace( f_start, f_stop, 1601 )
     for p in port:
         p.CalcPort( Sim_Path, f, ref_impedance = 50, ref_plane_shift = feed_length)
 
@@ -177,13 +178,14 @@ if __name__ == '__main__':
     s11 = port[0].uf_ref / port[0].uf_inc
     s21 = port[1].uf_ref / port[0].uf_inc
 
-    plot(f/1e9,20*log10(abs(s11)),'k-' , linewidth=2, label='$S_{11}$')
-    plot(f/1e9,20*log10(abs(s21)),'r--', linewidth=2, label='$S_{21}$')
-    grid()
-    legend(loc=3)
-    ylabel('S-Parameter (dB)')
-    xlabel('frequency (GHz)')
-    ylim([-40, 2])
+    fig, axis = plt.subplots(num="S11", tight_layout=True)
+    axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='S11')
+    axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='S21')
+    axis.grid()
+    axis.set_xmargin(0)
+    axis.set_xlabel('Frequency (GHz)')
+    axis.set_ylabel('S-Parameter (dB)')
+    axis.legend()
 
     ### Extract CRLH parameter form ABCD matrix
     A = ((1+s11)*(1-s11) + s21*s21)/(2*s21)
@@ -192,41 +194,44 @@ if __name__ == '__main__':
     Y = C
     Z = 2*(A-1)/C
 
-    iZ = imag(Z)
-    iY = imag(Y)
+    iZ = np.imag(Z)
+    iY = np.imag(Y)
 
-    fse = interp(0, iZ, f)
-    fsh = interp(0, iY, f)
+    fse = np.interp(0, iZ, f)
+    fsh = np.interp(0, iY, f)
 
     df = f[1]-f[0]
     fse_idx = np.where(f>fse)[0][0]
     fsh_idx = np.where(f>fsh)[0][0]
 
-    LR = 0.5*(iZ[fse_idx]-iZ[fse_idx-1])/(2*pi*df)
-    CL = 1/(2*pi*fse)**2/LR
+    LR = 0.5*(iZ[fse_idx]-iZ[fse_idx-1])/(2*np.pi*df)
+    CL = 1/(2*np.pi*fse)**2/LR
 
-    CR = 0.5*(iY[fsh_idx]-iY[fsh_idx-1])/(2*pi*df)
-    LL = 1/(2*pi*fsh)**2/CR
+    CR = 0.5*(iY[fsh_idx]-iY[fsh_idx-1])/(2*np.pi*df)
+    LL = 1/(2*np.pi*fsh)**2/CR
 
     print(' Series tank: CL = {:.2f} pF,  LR = {:.2f} nH -> f_se = {:.2f} GHz '.format(CL*1e12, LR*1e9, fse*1e-9))
     print(' Shunt  tank: CR = {:.2f} pF,  LL = {:.2f} nH -> f_sh = {:.2f} GHz '.format(CR*1e12, LL*1e9, fsh*1e-9))
 
     ### Calculate analytical wave-number of an inf-array of cells
-    w = 2*pi*f
-    wse = 2*pi*fse
-    wsh = 2*pi*fsh
-    beta_calc = real(arccos(1-(w**2-wse**2)*(w**2-wsh**2)/(2*w**2/CR/LR)))
+    w = 2*np.pi*f
+    wse = 2*np.pi*fse
+    wsh = 2*np.pi*fsh
+    beta_calc = np.real(np.arccos(1-(w**2-wse**2)*(w**2-wsh**2)/(2*w**2/CR/LR)))
 
     # plot
-    figure()
-    beta = -angle(s21)/CRLH.LL/unit
-    plot(abs(beta)*CRLH.LL*unit/pi,f*1e-9,'k-', linewidth=2, label=r'$\beta_{CRLH,\ 1\ cell}$' )
-    grid()
-    plot(beta_calc/pi,f*1e-9,'c--', linewidth=2, label=r'$\beta_{CRLH,\ \infty\ cells}$')
-    plot(real(port[1].beta)*CRLH.LL*unit/pi,f*1e-9,'g-', linewidth=2, label=r'$\beta_{MSL}$')
-    ylim([1, 6])
-    xlabel(r'$|\beta| p / \pi$')
-    ylabel('frequency (GHz)')
-    legend(loc=2)
+    beta = -np.angle(s21)/CRLH.LL/unit
+    fig, axis = plt.subplots(num="beta", tight_layout=True)
+    axis.plot(np.abs(beta)*CRLH.LL*unit/np.pi,f*1e-9, 'k-',  linewidth=2, label=r'$\beta_{CRLH,\ 1\ cell}$')
+    axis.plot(beta_calc/np.pi,f*1e-9,'c--',  linewidth=2, label=r'$\beta_{CRLH,\ \infty\ cells}$')
+    axis.plot(np.real(port[1].beta)*CRLH.LL*unit/np.pi,f*1e-9,'g-',  linewidth=2, label=r'$\beta_{MSL}$')
+    axis.grid()
+    # axis.set_xmargin(0)
+    axis.set_ylim([1, 6])
+    axis.set_xlabel(r'$|\beta| p / \pi$')
+    axis.set_ylabel('S-Parameter (dB)')
+    axis.legend(loc='upper left')
 
-    show()
+
+    # show all plots
+    plt.show()
