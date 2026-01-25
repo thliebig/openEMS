@@ -27,12 +27,14 @@ mod excitation;
 mod operator;
 mod simulation;
 mod timestep;
+mod cylindrical;
 
 pub use engine::Engine;
 pub use excitation::{Excitation, ExcitationType};
 pub use operator::Operator;
 pub use simulation::{EndCondition, Simulation, SimulationStats};
 pub use timestep::TimestepInfo;
+pub use cylindrical::{CylindricalEngine, CylindricalGrid, CylindricalOperator};
 
 /// Engine type selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

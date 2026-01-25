@@ -5,10 +5,20 @@
 //! - S-parameter calculation
 //! - Field dumps (time and frequency domain)
 //! - SAR calculation
+//! - Mode matching
 
 mod probes;
+mod sar;
+mod mode_match;
 
-pub use probes::{FieldProbe, Processing, VoltageProbe};
+pub use probes::{CurrentProbe, FieldProbe, Processing, VoltageProbe};
+pub use sar::{
+    FrequencyDomainFields, SarAveragingMethod, SarCalculation, SarConfig, SarStats,
+};
+pub use mode_match::{
+    CircularTeMode, CustomModeFunction, FieldType, ModeFunction, ModeMatch,
+    ModeMatchConfig, ModeMatchResult, RectangularTeMode, RectangularTmMode,
+};
 
 /// Probe types for extracting data from simulations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

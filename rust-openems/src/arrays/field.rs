@@ -58,6 +58,15 @@ pub struct Field3D {
     dims: Dimensions,
 }
 
+impl std::fmt::Debug for Field3D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Field3D")
+            .field("dims", &self.dims)
+            .field("data_len", &self.data.len())
+            .finish()
+    }
+}
+
 // Safety: f32 is Pod and we're using aligned allocation
 unsafe impl Send for Field3D {}
 unsafe impl Sync for Field3D {}
@@ -242,6 +251,17 @@ pub struct VectorField3D {
     pub z: Field3D,
 }
 
+impl std::fmt::Debug for VectorField3D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VectorField3D")
+            .field("dims", &self.x.dims())
+            .field("x_len", &self.x.len())
+            .field("y_len", &self.y.len())
+            .field("z_len", &self.z.len())
+            .finish()
+    }
+}
+
 impl VectorField3D {
     /// Create a new zero-initialized vector field.
     pub fn new(dims: Dimensions) -> Self {
@@ -285,6 +305,11 @@ impl VectorField3D {
         self.x.clear();
         self.y.clear();
         self.z.clear();
+    }
+
+    /// Set all components to zero (alias for clear).
+    pub fn zero(&mut self) {
+        self.clear();
     }
 
     /// Compute the total energy in the vector field.

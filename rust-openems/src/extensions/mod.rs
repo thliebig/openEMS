@@ -6,10 +6,44 @@
 //! - Dispersive materials (Lorentz, Debye, Drude)
 //! - Lumped RLC elements
 //! - Total-Field/Scattered-Field (TF/SF) boundaries
+//! - Steady-state detection
+//! - Conducting sheet model
 
 mod pml;
+mod mur_abc;
+mod dispersive;
+mod lumped_rlc;
+mod tfsf;
+mod steady_state;
+mod conducting_sheet;
 
-pub use pml::{Pml, PmlConfig};
+// PML exports
+pub use pml::{Pml, PmlConfig, PmlBoundaries, PmlBoundary, Upml};
+
+// Mur ABC exports
+pub use mur_abc::{MurAbc, MurAbcConfig};
+
+// Dispersive material exports
+pub use dispersive::{
+    DispersiveMaterial,
+    LorentzMaterial, LorentzParams,
+    DrudeMaterial, DrudeParams,
+    DebyeMaterial, DebyeParams,
+};
+
+// Lumped RLC exports
+pub use lumped_rlc::{LumpedRlc, RlcElement, RlcType};
+
+// TF/SF exports
+pub use tfsf::{TfsfBoundary, TfsfConfig, PropagationDirection, Polarization};
+
+// Steady-state exports
+pub use steady_state::{SteadyStateDetector, SteadyStateConfig, SteadyStateResult};
+
+// Conducting sheet exports
+pub use conducting_sheet::{
+    ConductingSheet, ConductingSheetConfig, ConductingSheetManager, SheetLorentzParams,
+};
 
 /// Extension trait for FDTD operator modifications.
 pub trait OperatorExtension {
