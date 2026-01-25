@@ -36,9 +36,25 @@ IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
     COMMAND ${GIT_EXECUTABLE} describe --tags
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     OUTPUT_VARIABLE GITREV
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE GIT_DESCRIBE_RESULT
   )
-  set(VERSION ${GITREV})
-  string(STRIP ${VERSION} VERSION)
+  if(GIT_DESCRIBE_RESULT EQUAL 0 AND GITREV)
+    set(VERSION ${GITREV})
+  else()
+    # Fallback to commit hash if no tags
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      OUTPUT_VARIABLE GITREV
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(GITREV)
+      set(VERSION "v${LIB_VERSION_STRING}-${GITREV}")
+    endif()
+  endif()
   message(STATUS "Found Git repository, ${PROJECT_NAME} version tag: ${VERSION}")
 ENDIF()
 
