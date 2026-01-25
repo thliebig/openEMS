@@ -1005,10 +1005,6 @@ jobs:
       VCPKG_ASSET_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/asset"
       X_VCPKG_ASSET_SOURCES: "x-azurl,file://${{ github.workspace }}/vcpkg-cache/asset,readwrite"
 
-    # allow this job to create and modify vcpkg packages for binary cache
-    permissions:
-      packages: write
-
     name: "Windows (${{ matrix.toolchain.name }}, latest)"
 
     steps:
