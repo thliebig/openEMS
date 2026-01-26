@@ -148,6 +148,7 @@ impl Array2D {
 
 /// A single local absorbing BC sheet.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct LocalAbsorbingSheet {
     /// ABC type
     abc_type: AbcType,

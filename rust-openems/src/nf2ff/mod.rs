@@ -85,8 +85,9 @@ pub struct NearFieldSurface {
     pub normal_dir: usize,
     /// Position along normal
     pub position: f64,
-    /// Grid of (E, H) field values
+    /// Grid of tangential E-field values (complex phasors)
     pub e_tangential: Vec<Vec<Complex64>>,
+    /// Grid of tangential H-field values (complex phasors)
     pub h_tangential: Vec<Vec<Complex64>>,
     /// Surface area element
     pub ds: f64,

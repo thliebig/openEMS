@@ -5,7 +5,7 @@
 //!
 //! When HDF5 is not available, a fallback using memory-mapped binary files is provided.
 
-use crate::arrays::{Dimensions, Field3D, VectorField3D};
+use crate::arrays::{Dimensions, VectorField3D};
 use num_complex::Complex64;
 use std::collections::HashMap;
 use std::fs::File;
@@ -32,6 +32,7 @@ impl From<i32> for MeshType {
 
 /// HDF5 file reader for openEMS data.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Hdf5Reader {
     /// File path
     path: String,
@@ -94,16 +95,16 @@ impl Hdf5Reader {
 
         // Read mesh lines
         let mut mesh_lines = [Vec::new(), Vec::new(), Vec::new()];
-        for i in 0..3 {
+        for lines in &mut mesh_lines {
             let mut len_buf = [0u8; 8];
             reader.read_exact(&mut len_buf)?;
             let len = u64::from_le_bytes(len_buf) as usize;
 
-            mesh_lines[i] = vec![0.0; len];
-            for j in 0..len {
+            *lines = vec![0.0; len];
+            for val in lines.iter_mut() {
                 let mut val_buf = [0u8; 8];
                 reader.read_exact(&mut val_buf)?;
-                mesh_lines[i][j] = f64::from_le_bytes(val_buf);
+                *val = f64::from_le_bytes(val_buf);
             }
         }
 
@@ -112,10 +113,10 @@ impl Hdf5Reader {
         reader.read_exact(&mut len_buf)?;
         let ts_len = u64::from_le_bytes(len_buf) as usize;
         let mut timesteps = vec![0.0; ts_len];
-        for i in 0..ts_len {
+        for ts in &mut timesteps {
             let mut val_buf = [0u8; 8];
             reader.read_exact(&mut val_buf)?;
-            timesteps[i] = f64::from_le_bytes(val_buf);
+            *ts = f64::from_le_bytes(val_buf);
         }
 
         // Read frequencies
@@ -123,10 +124,10 @@ impl Hdf5Reader {
         reader.read_exact(&mut len_buf)?;
         let freq_len = u64::from_le_bytes(len_buf) as usize;
         let mut frequencies = vec![0.0; freq_len];
-        for i in 0..freq_len {
+        for freq in &mut frequencies {
             let mut val_buf = [0u8; 8];
             reader.read_exact(&mut val_buf)?;
-            frequencies[i] = f64::from_le_bytes(val_buf);
+            *freq = f64::from_le_bytes(val_buf);
         }
 
         Ok(Self {

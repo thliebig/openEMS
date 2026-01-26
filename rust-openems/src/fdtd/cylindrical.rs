@@ -496,7 +496,7 @@ impl CylindricalEngine {
     fn update_voltage_r0(&mut self) {
         // At R=0, E_alpha and E_z are undefined or zero
         // E_rho needs special averaging from surrounding cells
-        if let (Some(ref vv_r0), Some(ref vi_r0)) = (&self.operator.vv_r0, &self.operator.vi_r0) {
+        if let (Some(ref _vv_r0), Some(ref _vi_r0)) = (&self.operator.vv_r0, &self.operator.vi_r0) {
             let dims = self.operator.grid.dimensions();
 
             for j in 0..dims.ny {

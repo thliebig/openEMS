@@ -109,6 +109,7 @@ impl RlcElement {
 
 /// Internal storage for RLC update coefficients.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct RlcCoeffs {
     /// Position
     position: [usize; 3],
@@ -131,6 +132,7 @@ struct RlcCoeffs {
 }
 
 /// Lumped RLC element extension.
+#[allow(dead_code)]
 pub struct LumpedRlc {
     /// Grid dimensions
     dims: Dimensions,
@@ -262,7 +264,7 @@ impl LumpedRlc {
     }
 
     /// Apply RLC updates after E-field update.
-    pub fn post_update_e(&mut self, e_field: &mut VectorField3D, h_field: &VectorField3D) {
+    pub fn post_update_e(&mut self, e_field: &mut VectorField3D, _h_field: &VectorField3D) {
         for elem in &mut self.elements {
             let pos = elem.position;
             let dir = elem.direction;
@@ -288,7 +290,7 @@ impl LumpedRlc {
     }
 
     /// Apply RLC updates after H-field update.
-    pub fn post_update_h(&mut self, h_field: &mut VectorField3D, e_field: &VectorField3D) {
+    pub fn post_update_h(&mut self, _h_field: &mut VectorField3D, e_field: &VectorField3D) {
         for elem in &mut self.elements {
             let pos = elem.position;
             let dir = elem.direction;

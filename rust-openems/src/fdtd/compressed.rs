@@ -103,6 +103,7 @@ impl Eq for HashableCoefficientSet {}
 /// unique coefficient sets are stored in a lookup table,
 /// and each grid point stores only an index into this table.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct CompressedCoefficients {
     /// Dimensions
     dims: Dimensions,
@@ -228,11 +229,7 @@ impl CompressedCoefficients {
         let compressed = self.coefficient_table.len() * std::mem::size_of::<CoefficientSet>()
             + 3 * 4 * size * std::mem::size_of::<u32>();
 
-        if original > compressed {
-            original - compressed
-        } else {
-            0
-        }
+        original.saturating_sub(compressed)
     }
 
     /// Get VV coefficient for direction and position.
@@ -305,11 +302,7 @@ impl CompressedCoefficients {
             total_points: size * 3,
             unique_sets: self.coefficient_table.len(),
             compression_ratio: self.compression_ratio,
-            memory_saved: if original > compressed {
-                original - compressed
-            } else {
-                0
-            },
+            memory_saved: original.saturating_sub(compressed),
             original_memory: original,
             compressed_memory: compressed,
         }

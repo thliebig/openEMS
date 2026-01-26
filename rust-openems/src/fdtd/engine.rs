@@ -54,6 +54,7 @@ impl<T> SendPtrMut<T> {
 }
 
 /// FDTD Engine state
+#[allow(dead_code)]
 pub struct Engine {
     /// Electric field components (Ex, Ey, Ez)
     e_field: VectorField3D,

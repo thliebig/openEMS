@@ -55,11 +55,9 @@ impl SignalHandler {
 
     #[cfg(unix)]
     fn install_unix(&self) -> Result<(), String> {
-        use std::io::Write;
-
         // Use signal-hook crate pattern if available, otherwise manual handling
         unsafe {
-            let result = libc::signal(libc::SIGINT, sigint_handler as usize);
+            let result = libc::signal(libc::SIGINT, sigint_handler as *const () as usize);
             if result == libc::SIG_ERR {
                 return Err("Failed to install SIGINT handler".to_string());
             }

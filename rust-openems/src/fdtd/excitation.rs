@@ -214,6 +214,7 @@ impl Excitation {
 }
 
 /// Create excitation for a rectangular waveguide TE10 mode.
+#[allow(dead_code)]
 pub fn waveguide_te10(
     _a: f64,           // waveguide width
     freq: f64,        // frequency

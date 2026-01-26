@@ -10,11 +10,17 @@ use std::f64::consts::PI;
 /// Direction of wave propagation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PropagationDirection {
+    /// Propagating in +x direction
     XPlus,
+    /// Propagating in -x direction
     XMinus,
+    /// Propagating in +y direction
     YPlus,
+    /// Propagating in -y direction
     YMinus,
+    /// Propagating in +z direction
     ZPlus,
+    /// Propagating in -z direction
     ZMinus,
 }
 
@@ -192,6 +198,7 @@ impl TfsfBoundary {
     }
 
     /// Calculate incident E-field at given time.
+    #[allow(dead_code)]
     fn incident_e(&self, t: f64) -> f64 {
         let omega = 2.0 * PI * self.config.frequency;
         self.config.amplitude * (omega * t).sin()

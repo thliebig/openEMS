@@ -31,6 +31,7 @@ fn accumulate_field_component(
 /// Accumulates time-domain field samples into frequency-domain phasors
 /// using the DFT formula: X(f) = sum(x(t) * exp(-j*2*pi*f*t) * dt)
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct FrequencyDomainFieldDump {
     /// Field dimensions
     dims: Dimensions,
@@ -319,7 +320,7 @@ impl TimeDomainFieldDump {
 
     /// Check if dump is due at this timestep.
     pub fn should_dump(&self, timestep: u64) -> bool {
-        self.interval > 0 && timestep % self.interval == 0
+        self.interval > 0 && timestep.is_multiple_of(self.interval)
     }
 
     /// Get output filename for current dump.

@@ -95,6 +95,7 @@ impl MultigridConfig {
 
 /// Multigrid operator for a single level.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct LevelOperator {
     /// Level configuration
     config: MultigridLevel,
@@ -115,7 +116,7 @@ struct LevelOperator {
 }
 
 impl LevelOperator {
-    fn new(config: MultigridLevel, z_range: [f64; 2], closed_alpha: bool, dt: f64) -> Self {
+    fn new(config: MultigridLevel, z_range: [f64; 2], _closed_alpha: bool, dt: f64) -> Self {
         let dims = Dimensions::new(config.n_rho, config.n_alpha, config.n_z);
 
         // Generate mesh lines
@@ -140,8 +141,8 @@ impl LevelOperator {
         let mut iv = VectorField3D::new(dims);
 
         // Calculate coefficients (simplified)
-        for i in 0..config.n_rho {
-            let r = rho[i] + dr * 0.5;
+        for (i, &rho_i) in rho.iter().enumerate().take(config.n_rho) {
+            let r = rho_i + dr * 0.5;
             for j in 0..config.n_alpha {
                 for k in 0..config.n_z {
                     // VV coefficients (E-field update)

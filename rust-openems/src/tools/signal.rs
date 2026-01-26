@@ -105,14 +105,14 @@ pub fn hilbert(signal: &[f64]) -> Vec<Complex64> {
     spectrum[0] = Complex64::new(spectrum[0].re, 0.0); // DC component
 
     let half_n = n / 2;
-    for i in 1..half_n {
-        spectrum[i] *= Complex64::new(2.0, 0.0);
+    for elem in spectrum.iter_mut().take(half_n).skip(1) {
+        *elem *= Complex64::new(2.0, 0.0);
     }
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         spectrum[half_n] = Complex64::new(spectrum[half_n].re, 0.0);
     }
-    for i in (half_n + 1)..n {
-        spectrum[i] = Complex64::new(0.0, 0.0);
+    for elem in spectrum.iter_mut().take(n).skip(half_n + 1) {
+        *elem = Complex64::new(0.0, 0.0);
     }
 
     // Inverse FFT

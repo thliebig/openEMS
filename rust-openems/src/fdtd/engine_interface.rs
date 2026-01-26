@@ -3,7 +3,7 @@
 //! Provides a high-level interface to access simulation fields with
 //! interpolation support.
 
-use crate::arrays::{Dimensions, Field3D, VectorField3D};
+use crate::arrays::{Dimensions, VectorField3D};
 use crate::constants::{EPS0, MU0};
 use crate::geometry::Grid;
 
@@ -413,14 +413,9 @@ impl<'a> EngineInterface<'a> {
 
         // Trilinear interpolation for each component
         let mut result = [0.0; 3];
+        let fields = [&self.e_field.x, &self.e_field.y, &self.e_field.z];
 
-        for comp in 0..3 {
-            let field = match comp {
-                0 => &self.e_field.x,
-                1 => &self.e_field.y,
-                _ => &self.e_field.z,
-            };
-
+        for (res, field) in result.iter_mut().zip(fields.iter()) {
             let i1 = (i + 1).min(dims.nx - 1);
             let j1 = (j + 1).min(dims.ny - 1);
             let k1 = (k + 1).min(dims.nz - 1);
@@ -445,7 +440,7 @@ impl<'a> EngineInterface<'a> {
             let c1 = c01 * (1.0 - fy) + c11 * fy;
 
             // Interpolate along z
-            result[comp] = c0 * (1.0 - fz) + c1 * fz;
+            *res = c0 * (1.0 - fz) + c1 * fz;
         }
 
         result
@@ -465,14 +460,9 @@ impl<'a> EngineInterface<'a> {
         let fz = fz.clamp(0.0, 1.0);
 
         let mut result = [0.0; 3];
+        let fields = [&self.h_field.x, &self.h_field.y, &self.h_field.z];
 
-        for comp in 0..3 {
-            let field = match comp {
-                0 => &self.h_field.x,
-                1 => &self.h_field.y,
-                _ => &self.h_field.z,
-            };
-
+        for (res, field) in result.iter_mut().zip(fields.iter()) {
             let i1 = (i + 1).min(dims.nx - 1);
             let j1 = (j + 1).min(dims.ny - 1);
             let k1 = (k + 1).min(dims.nz - 1);
@@ -494,7 +484,7 @@ impl<'a> EngineInterface<'a> {
             let c0 = c00 * (1.0 - fy) + c10 * fy;
             let c1 = c01 * (1.0 - fy) + c11 * fy;
 
-            result[comp] = c0 * (1.0 - fz) + c1 * fz;
+            *res = c0 * (1.0 - fz) + c1 * fz;
         }
 
         result
@@ -503,7 +493,6 @@ impl<'a> EngineInterface<'a> {
     /// Interpolation to cell center (average of 8 corners).
     fn interpolate_e_field_to_cell(&self, pos: [f64; 3]) -> [f64; 3] {
         // For cell-centered interpolation, shift position by half a cell
-        let dims = self.dims();
         let (i, j, k) = self.snap_to_grid(pos);
 
         let dx = self.grid.delta_x(i) * 0.5;
@@ -528,6 +517,7 @@ impl<'a> EngineInterface<'a> {
 }
 
 /// Mutable engine interface for field modifications.
+#[allow(dead_code)]
 pub struct EngineInterfaceMut<'a> {
     /// Mutable reference to E-field
     e_field: &'a mut VectorField3D,

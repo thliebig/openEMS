@@ -43,26 +43,22 @@ pub use compressed::{CompressedCoefficients, CoefficientSet, CompressionStats};
 pub use cylindrical_multigrid::{CylindricalMultigrid, MultigridConfig, MultigridLevel};
 
 /// Engine type selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EngineType {
     /// Single-threaded reference implementation
     Basic,
     /// SIMD-accelerated with automatic dispatch
     Simd,
     /// Multi-threaded SIMD (default)
+    #[default]
     Parallel,
 }
 
-impl Default for EngineType {
-    fn default() -> Self {
-        Self::Parallel
-    }
-}
-
 /// Boundary condition types
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum BoundaryCondition {
     /// Perfect Electric Conductor
+    #[default]
     Pec,
     /// Perfect Magnetic Conductor
     Pmc,
@@ -75,12 +71,6 @@ pub enum BoundaryCondition {
     },
     /// Periodic boundary
     Periodic,
-}
-
-impl Default for BoundaryCondition {
-    fn default() -> Self {
-        Self::Pec
-    }
 }
 
 /// Boundary conditions for all six faces of the simulation domain.

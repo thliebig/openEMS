@@ -7,13 +7,15 @@
 use crate::arrays::{Dimensions, Field3D};
 use num_complex::Complex32;
 use std::f64::consts::PI;
+use std::str::FromStr;
 
 /// SAR averaging method.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SarAveragingMethod {
     /// IEEE C95.3 method (ICNIRP standard)
     IeeeC95_3,
     /// IEEE 62704 method (IEC/IEEE standard, strictest)
+    #[default]
     Ieee62704,
     /// Simple averaging (basic cubic averaging)
     Simple,
@@ -21,21 +23,16 @@ pub enum SarAveragingMethod {
     Local,
 }
 
-impl Default for SarAveragingMethod {
-    fn default() -> Self {
-        Self::Ieee62704
-    }
-}
+impl FromStr for SarAveragingMethod {
+    type Err = String;
 
-impl SarAveragingMethod {
-    /// Parse from string.
-    pub fn from_str(s: &str) -> Option<Self> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "ieee_c95_3" | "c95.3" | "icnirp" => Some(Self::IeeeC95_3),
-            "ieee_62704" | "62704" | "iec" => Some(Self::Ieee62704),
-            "simple" => Some(Self::Simple),
-            "local" => Some(Self::Local),
-            _ => None,
+            "ieee_c95_3" | "c95.3" | "icnirp" => Ok(Self::IeeeC95_3),
+            "ieee_62704" | "62704" | "iec" => Ok(Self::Ieee62704),
+            "simple" => Ok(Self::Simple),
+            "local" => Ok(Self::Local),
+            _ => Err(format!("Unknown SAR averaging method: {}", s)),
         }
     }
 }
@@ -534,15 +531,15 @@ mod tests {
     fn test_averaging_method_parse() {
         assert_eq!(
             SarAveragingMethod::from_str("ieee_c95_3"),
-            Some(SarAveragingMethod::IeeeC95_3)
+            Ok(SarAveragingMethod::IeeeC95_3)
         );
         assert_eq!(
             SarAveragingMethod::from_str("62704"),
-            Some(SarAveragingMethod::Ieee62704)
+            Ok(SarAveragingMethod::Ieee62704)
         );
         assert_eq!(
             SarAveragingMethod::from_str("local"),
-            Some(SarAveragingMethod::Local)
+            Ok(SarAveragingMethod::Local)
         );
     }
 

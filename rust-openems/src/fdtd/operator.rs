@@ -38,6 +38,7 @@ pub struct HFieldCoefficients {
 }
 
 /// FDTD Operator containing all pre-computed coefficients.
+#[allow(dead_code)]
 pub struct Operator {
     /// Grid information
     grid: Grid,
@@ -112,8 +113,8 @@ impl Operator {
         let cb_z = (dt / (EPS0 * dz)) as f32;
 
         // Fill with vacuum coefficients
-        for dir in 0..3 {
-            ca[dir].fill(1.0);
+        for ca_dir in &mut ca {
+            ca_dir.fill(1.0);
         }
         cb[0].fill(cb_x);
         cb[1].fill(cb_y);
@@ -145,8 +146,8 @@ impl Operator {
         let db_y = -(dt / (MU0 * dy)) as f32;
         let db_z = -(dt / (MU0 * dz)) as f32;
 
-        for dir in 0..3 {
-            da[dir].fill(1.0);
+        for da_dir in &mut da {
+            da_dir.fill(1.0);
         }
         db[0].fill(db_x);
         db[1].fill(db_y);

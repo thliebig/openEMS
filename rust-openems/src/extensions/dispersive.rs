@@ -114,6 +114,7 @@ pub trait DispersiveMaterial: Send + Sync {
 }
 
 /// Lorentz dispersive material.
+#[allow(dead_code)]
 pub struct LorentzMaterial {
     /// Material parameters
     params: LorentzParams,
@@ -202,6 +203,7 @@ impl DispersiveMaterial for LorentzMaterial {
 }
 
 /// Drude dispersive material (metals, plasmas).
+#[allow(dead_code)]
 pub struct DrudeMaterial {
     /// Material parameters
     params: DrudeParams,
@@ -282,6 +284,7 @@ impl DispersiveMaterial for DrudeMaterial {
 }
 
 /// Debye dispersive material (polar molecules).
+#[allow(dead_code)]
 pub struct DebyeMaterial {
     /// Material parameters
     params: DebyeParams,

@@ -252,7 +252,7 @@ impl Simulation {
             timesteps_run += 1;
 
             // Check energy for convergence/decay
-            if timesteps_run % 100 == 0 {
+            if timesteps_run.is_multiple_of(100) {
                 let energy = engine.total_energy(operator);
                 if energy > peak_energy {
                     peak_energy = energy;

@@ -34,7 +34,7 @@ pub trait Processor: Send + Sync {
     }
 
     /// Check if processing is needed at this timestep.
-    fn needs_processing(&self, timestep: u64) -> bool {
+    fn needs_processing(&self, _timestep: u64) -> bool {
         true
     }
 
@@ -296,7 +296,7 @@ impl Processor for FieldRecorder {
     }
 
     fn needs_processing(&self, timestep: u64) -> bool {
-        self.interval == 0 || timestep % self.interval == 0
+        self.interval == 0 || timestep.is_multiple_of(self.interval)
     }
 
     fn interval(&self) -> u64 {

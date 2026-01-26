@@ -106,6 +106,7 @@ mod x86 {
 
     /// Disable Flush-To-Zero and Denormals-Are-Zero modes.
     #[inline]
+    #[allow(dead_code)]
     pub unsafe fn disable_ftz_daz() {
         let mxcsr = get_mxcsr();
         set_mxcsr(mxcsr & !(FTZ_BIT | DAZ_BIT));

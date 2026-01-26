@@ -68,11 +68,17 @@ impl PmlConfig {
 /// Boundary identifier for PML regions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PmlBoundary {
+    /// X minimum boundary (-x direction)
     XMin = 0,
+    /// X maximum boundary (+x direction)
     XMax = 1,
+    /// Y minimum boundary (-y direction)
     YMin = 2,
+    /// Y maximum boundary (+y direction)
     YMax = 3,
+    /// Z minimum boundary (-z direction)
     ZMin = 4,
+    /// Z maximum boundary (+z direction)
     ZMax = 5,
 }
 
@@ -302,7 +308,7 @@ impl Upml {
         // Calculate sigma_max using polynomial grading
         let sigma_max = -(m + 1.0) * self.boundaries.reflection_coeff.ln() / (2.0 * Z0 * width);
 
-        let dims = region.dims();
+        let _dims = region.dims();
 
         for li in 0..region.size[0] {
             for lj in 0..region.size[1] {
@@ -315,7 +321,7 @@ impl Upml {
 
                     for n in 0..3 {
                         // Calculate kappa (conductivity) for voltage and current
-                        let (kappa_v, kappa_i) = self.calculate_kappa(
+                        let (_kappa_v, _kappa_i) = self.calculate_kappa(
                             n,
                             direction,
                             pos,
@@ -326,7 +332,7 @@ impl Upml {
                             m,
                         );
 
-                        let np = (n + 1) % 3;
+                        let _np = (n + 1) % 3;
                         let npp = (n + 2) % 3;
 
                         // Calculate kappa for perpendicular directions
@@ -378,6 +384,7 @@ impl Upml {
     }
 
     /// Calculate conductivity (kappa) at a given position.
+    #[allow(clippy::too_many_arguments)]
     fn calculate_kappa(
         &self,
         component: usize,
@@ -433,6 +440,7 @@ impl Upml {
     }
 
     /// Calculate all three kappa components for a position.
+    #[allow(clippy::too_many_arguments)]
     fn calculate_all_kappa(
         &self,
         pos: [usize; 3],

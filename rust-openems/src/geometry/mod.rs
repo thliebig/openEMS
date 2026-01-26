@@ -6,18 +6,13 @@
 use crate::arrays::Dimensions;
 
 /// Supported coordinate systems
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CoordinateSystem {
     /// Standard Cartesian (x, y, z)
+    #[default]
     Cartesian,
     /// Cylindrical (r, phi, z)
     Cylindrical,
-}
-
-impl Default for CoordinateSystem {
-    fn default() -> Self {
-        Self::Cartesian
-    }
 }
 
 /// Grid definition for FDTD simulation.
@@ -269,12 +264,7 @@ impl Grid {
             return None;
         }
 
-        for i in 0..lines.len() - 1 {
-            if value >= lines[i] && value <= lines[i + 1] {
-                return Some(i);
-            }
-        }
-        None
+        (0..lines.len() - 1).find(|&i| value >= lines[i] && value <= lines[i + 1])
     }
 
     /// Get delta (cell size) in X direction at index.

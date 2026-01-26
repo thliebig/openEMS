@@ -58,6 +58,7 @@ impl MurAbcConfig {
 
 /// Storage for a single Mur ABC face.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct MurFace {
     /// Normal direction (0=x, 1=y, 2=z)
     ny: usize,

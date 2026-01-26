@@ -66,20 +66,29 @@ pub struct SimulationConfig {
 /// Excitation configuration.
 #[derive(Debug, Default)]
 pub enum ExcitationType {
+    /// Gaussian pulse excitation (default)
     #[default]
     Gaussian,
+    /// Sinusoidal (continuous wave) excitation
     Sinusoidal,
+    /// Dirac delta excitation
     Dirac,
+    /// Step function excitation
     Step,
+    /// Custom excitation waveform
     Custom,
 }
 
 /// Grid configuration.
 #[derive(Debug, Default)]
 pub struct GridConfig {
+    /// X-direction mesh lines
     pub x_lines: Vec<f64>,
+    /// Y-direction mesh lines
     pub y_lines: Vec<f64>,
+    /// Z-direction mesh lines
     pub z_lines: Vec<f64>,
+    /// Unit scaling factor
     pub unit: f64,
 }
 
@@ -89,31 +98,29 @@ fn parse_fdtd_settings(
     config: &mut SimulationConfig,
 ) -> Result<()> {
     // Parse FDTD attributes
-    for attr in start.attributes() {
-        if let Ok(attr) = attr {
-            match attr.key.as_ref() {
-                b"NumberOfTimesteps" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.num_timesteps = val.parse().unwrap_or(10000);
-                    }
+    for attr in start.attributes().flatten() {
+        match attr.key.as_ref() {
+            b"NumberOfTimesteps" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.num_timesteps = val.parse().unwrap_or(10000);
                 }
-                b"endCriteria" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.end_criteria_db = val.parse().ok();
-                    }
-                }
-                b"f0" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.f0 = val.parse().unwrap_or(0.0);
-                    }
-                }
-                b"fc" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.fc = val.parse().unwrap_or(0.0);
-                    }
-                }
-                _ => {}
             }
+            b"endCriteria" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.end_criteria_db = val.parse().ok();
+                }
+            }
+            b"f0" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.f0 = val.parse().unwrap_or(0.0);
+                }
+            }
+            b"fc" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.fc = val.parse().unwrap_or(0.0);
+                }
+            }
+            _ => {}
         }
     }
 
@@ -137,41 +144,39 @@ fn parse_fdtd_settings(
 }
 
 fn parse_boundary_cond(start: &BytesStart, config: &mut SimulationConfig) -> Result<()> {
-    for attr in start.attributes() {
-        if let Ok(attr) = attr {
-            match attr.key.as_ref() {
-                b"xmin" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.boundaries[0] = val.parse().unwrap_or(0);
-                    }
+    for attr in start.attributes().flatten() {
+        match attr.key.as_ref() {
+            b"xmin" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.boundaries[0] = val.parse().unwrap_or(0);
                 }
-                b"xmax" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.boundaries[1] = val.parse().unwrap_or(0);
-                    }
-                }
-                b"ymin" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.boundaries[2] = val.parse().unwrap_or(0);
-                    }
-                }
-                b"ymax" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.boundaries[3] = val.parse().unwrap_or(0);
-                    }
-                }
-                b"zmin" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.boundaries[4] = val.parse().unwrap_or(0);
-                    }
-                }
-                b"zmax" => {
-                    if let Ok(val) = std::str::from_utf8(&attr.value) {
-                        config.boundaries[5] = val.parse().unwrap_or(0);
-                    }
-                }
-                _ => {}
             }
+            b"xmax" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.boundaries[1] = val.parse().unwrap_or(0);
+                }
+            }
+            b"ymin" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.boundaries[2] = val.parse().unwrap_or(0);
+                }
+            }
+            b"ymax" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.boundaries[3] = val.parse().unwrap_or(0);
+                }
+            }
+            b"zmin" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.boundaries[4] = val.parse().unwrap_or(0);
+                }
+            }
+            b"zmax" => {
+                if let Ok(val) = std::str::from_utf8(&attr.value) {
+                    config.boundaries[5] = val.parse().unwrap_or(0);
+                }
+            }
+            _ => {}
         }
     }
     Ok(())
