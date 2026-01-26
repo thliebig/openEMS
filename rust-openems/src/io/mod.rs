@@ -7,9 +7,13 @@
 
 pub mod vtk;
 pub mod xml;
+pub mod hdf5;
 
 use crate::Result;
 use std::path::Path;
+
+// Re-export HDF5 types for convenience
+pub use hdf5::{Hdf5Reader, Hdf5Writer, MeshType};
 
 /// Trait for types that can be written to files.
 pub trait Writable {

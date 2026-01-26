@@ -28,6 +28,9 @@ mod operator;
 mod simulation;
 mod timestep;
 mod cylindrical;
+mod engine_interface;
+mod compressed;
+mod cylindrical_multigrid;
 
 pub use engine::Engine;
 pub use excitation::{Excitation, ExcitationType};
@@ -35,6 +38,9 @@ pub use operator::Operator;
 pub use simulation::{EndCondition, Simulation, SimulationStats};
 pub use timestep::TimestepInfo;
 pub use cylindrical::{CylindricalEngine, CylindricalGrid, CylindricalOperator};
+pub use engine_interface::{EngineInterface, EngineInterfaceMut, InterpolationType};
+pub use compressed::{CompressedCoefficients, CoefficientSet, CompressionStats};
+pub use cylindrical_multigrid::{CylindricalMultigrid, MultigridConfig, MultigridLevel};
 
 /// Engine type selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

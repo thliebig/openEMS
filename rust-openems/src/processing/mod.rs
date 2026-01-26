@@ -6,10 +6,13 @@
 //! - Field dumps (time and frequency domain)
 //! - SAR calculation
 //! - Mode matching
+//! - Processing array container
 
 mod probes;
 mod sar;
 mod mode_match;
+mod array;
+mod fields_fd;
 
 pub use probes::{CurrentProbe, FieldProbe, Processing, VoltageProbe};
 pub use sar::{
@@ -19,6 +22,8 @@ pub use mode_match::{
     CircularTeMode, CustomModeFunction, FieldType, ModeFunction, ModeMatch,
     ModeMatchConfig, ModeMatchResult, RectangularTeMode, RectangularTmMode,
 };
+pub use array::{Processor, ProcessingArray, FieldRecorder};
+pub use fields_fd::{FrequencyDomainFieldDump, TimeDomainFieldDump, FdDumpType};
 
 /// Probe types for extracting data from simulations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

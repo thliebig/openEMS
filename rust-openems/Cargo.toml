@@ -64,6 +64,8 @@ memmap2 = "0.9"
 crossbeam = "0.8"
 # Bytemuck for safe transmutes
 bytemuck = { version = "1.21", features = ["derive"] }
+# Libc for low-level system calls (signal handling)
+libc = "0.2"
 
 [features]
 default = []

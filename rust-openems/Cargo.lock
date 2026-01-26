@@ -788,6 +788,7 @@ dependencies = [
  "hdf5-metno",
  "indicatif",
  "instant",
+ "libc",
  "log",
  "memmap2",
  "ndarray",

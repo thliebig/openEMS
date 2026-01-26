@@ -276,6 +276,93 @@ impl Grid {
         }
         None
     }
+
+    /// Get delta (cell size) in X direction at index.
+    #[inline]
+    pub fn delta_x(&self, i: usize) -> f64 {
+        if i + 1 < self.x_lines.len() {
+            (self.x_lines[i + 1] - self.x_lines[i]) * self.unit
+        } else if i > 0 {
+            (self.x_lines[i] - self.x_lines[i - 1]) * self.unit
+        } else {
+            self.unit
+        }
+    }
+
+    /// Get delta (cell size) in Y direction at index.
+    #[inline]
+    pub fn delta_y(&self, j: usize) -> f64 {
+        if j + 1 < self.y_lines.len() {
+            (self.y_lines[j + 1] - self.y_lines[j]) * self.unit
+        } else if j > 0 {
+            (self.y_lines[j] - self.y_lines[j - 1]) * self.unit
+        } else {
+            self.unit
+        }
+    }
+
+    /// Get delta (cell size) in Z direction at index.
+    #[inline]
+    pub fn delta_z(&self, k: usize) -> f64 {
+        if k + 1 < self.z_lines.len() {
+            (self.z_lines[k + 1] - self.z_lines[k]) * self.unit
+        } else if k > 0 {
+            (self.z_lines[k] - self.z_lines[k - 1]) * self.unit
+        } else {
+            self.unit
+        }
+    }
+
+    /// Get X coordinate at index.
+    #[inline]
+    pub fn x_line(&self, i: usize) -> f64 {
+        self.x_lines.get(i).copied().unwrap_or(0.0) * self.unit
+    }
+
+    /// Get Y coordinate at index.
+    #[inline]
+    pub fn y_line(&self, j: usize) -> f64 {
+        self.y_lines.get(j).copied().unwrap_or(0.0) * self.unit
+    }
+
+    /// Get Z coordinate at index.
+    #[inline]
+    pub fn z_line(&self, k: usize) -> f64 {
+        self.z_lines.get(k).copied().unwrap_or(0.0) * self.unit
+    }
+
+    /// Find cell index in X direction for a coordinate.
+    pub fn find_cell_x(&self, x: f64) -> usize {
+        let x_scaled = x / self.unit;
+        for i in 0..self.x_lines.len().saturating_sub(1) {
+            if x_scaled >= self.x_lines[i] && x_scaled <= self.x_lines[i + 1] {
+                return i;
+            }
+        }
+        self.x_lines.len().saturating_sub(2)
+    }
+
+    /// Find cell index in Y direction for a coordinate.
+    pub fn find_cell_y(&self, y: f64) -> usize {
+        let y_scaled = y / self.unit;
+        for j in 0..self.y_lines.len().saturating_sub(1) {
+            if y_scaled >= self.y_lines[j] && y_scaled <= self.y_lines[j + 1] {
+                return j;
+            }
+        }
+        self.y_lines.len().saturating_sub(2)
+    }
+
+    /// Find cell index in Z direction for a coordinate.
+    pub fn find_cell_z(&self, z: f64) -> usize {
+        let z_scaled = z / self.unit;
+        for k in 0..self.z_lines.len().saturating_sub(1) {
+            if z_scaled >= self.z_lines[k] && z_scaled <= self.z_lines[k + 1] {
+                return k;
+            }
+        }
+        self.z_lines.len().saturating_sub(2)
+    }
 }
 
 #[cfg(test)]

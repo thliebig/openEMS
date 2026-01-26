@@ -50,6 +50,12 @@ pub use fdtd::{Engine, Operator, Simulation};
 pub use geometry::{CoordinateSystem, Grid};
 pub use processing::Processing;
 
+// Additional re-exports for the new features
+pub use fdtd::{EngineInterface, CompressedCoefficients, CylindricalMultigrid};
+pub use io::{Hdf5Reader, Hdf5Writer};
+pub use processing::{ProcessingArray, FrequencyDomainFieldDump};
+pub use tools::{SignalHandler, GlobalOptions, DenormalGuard};
+
 /// Error types for openEMS
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
