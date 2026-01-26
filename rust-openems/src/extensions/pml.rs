@@ -721,9 +721,9 @@ mod tests {
         assert_eq!(kv, 0.0);
         assert_eq!(ki, 0.0);
 
-        // Kappa should be non-zero inside PML
-        let (kv, ki) = upml.calculate_kappa(0, 0, [4, 25, 25], true, 8, 0.008, 1000.0, 3.0);
-        assert!(kv > 0.0);
+        // Check grading
+        let (kv, _ki) = upml.calculate_kappa(0, 0, [4, 25, 25], true, 8, 0.008, 1000.0, 3.0);
+        assert!((kv - 1.0).abs() < 1e-6); // First layer should be 1.0 (start of grading)
     }
 
     #[test]

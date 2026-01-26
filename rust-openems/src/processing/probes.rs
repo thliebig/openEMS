@@ -40,7 +40,7 @@ impl Processing {
     }
 
     /// Process all probes for current timestep.
-    pub fn process(&mut self, engine: &Engine, time: f64) {
+    pub fn process(&mut self, engine: &mut Engine, time: f64) {
         for probe in &mut self.voltage_probes {
             probe.sample(engine.e_field(), time);
         }
@@ -48,7 +48,8 @@ impl Processing {
             probe.sample(engine.h_field(), time);
         }
         for probe in &mut self.field_probes {
-            probe.sample(engine.e_field(), engine.h_field(), time);
+            let (e, h) = engine.fields();
+            probe.sample(e, h, time);
         }
     }
 }

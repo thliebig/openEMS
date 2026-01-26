@@ -9,6 +9,7 @@ use rayon::prelude::*;
 
 use super::operator::Operator;
 use super::EngineType;
+use super::gpu_engine::GpuEngine;
 
 /// Wrapper for raw pointer to make it Send + Sync for parallel iteration.
 ///
@@ -68,6 +69,12 @@ pub struct Engine {
     num_threads: usize,
     /// Temporary storage for curl computations
     curl_buffer: VectorField3D,
+    
+    /// GPU Backend
+    gpu_engine: Option<GpuEngine>,
+    /// Flags for memory synchronization
+    gpu_dirty: bool,
+    cpu_dirty: bool,
 }
 
 impl Engine {
@@ -75,6 +82,12 @@ impl Engine {
     pub fn new(operator: &Operator, engine_type: EngineType) -> Self {
         let dims = operator.dimensions();
         let num_threads = rayon::current_num_threads();
+        
+        let gpu_engine = if engine_type == EngineType::Gpu {
+            Some(GpuEngine::new(operator))
+        } else {
+            None
+        };
 
         Self {
             e_field: VectorField3D::new(dims),
@@ -83,6 +96,9 @@ impl Engine {
             engine_type,
             num_threads,
             curl_buffer: VectorField3D::new(dims),
+            gpu_engine,
+            gpu_dirty: false,
+            cpu_dirty: true, // Start with CPU as authoritative (zeros)
         }
     }
 
@@ -92,32 +108,86 @@ impl Engine {
         self.timestep
     }
 
+    /// Synchronize CPU fields from GPU if needed.
+    fn sync_from_gpu(&mut self) {
+        if self.gpu_dirty {
+            if let Some(gpu) = &self.gpu_engine {
+                gpu.read_e_field(&mut self.e_field);
+                gpu.read_h_field(&mut self.h_field);
+            }
+            self.gpu_dirty = false;
+        }
+    }
+    
+    /// Synchronize GPU fields from CPU if needed.
+    fn sync_to_gpu(&mut self) {
+        if self.cpu_dirty {
+             if let Some(gpu) = &self.gpu_engine {
+                gpu.write_e_field(&self.e_field);
+                gpu.write_h_field(&self.h_field);
+            }
+            self.cpu_dirty = false;
+        }
+    }
+
     /// Get reference to E-field.
     #[inline]
-    pub fn e_field(&self) -> &VectorField3D {
+    pub fn e_field(&mut self) -> &VectorField3D {
+        self.sync_from_gpu();
         &self.e_field
     }
 
     /// Get mutable reference to E-field.
     #[inline]
     pub fn e_field_mut(&mut self) -> &mut VectorField3D {
+        self.sync_from_gpu();
+        self.cpu_dirty = true;
         &mut self.e_field
     }
 
     /// Get reference to H-field.
     #[inline]
-    pub fn h_field(&self) -> &VectorField3D {
+    pub fn h_field(&mut self) -> &VectorField3D {
+        self.sync_from_gpu();
         &self.h_field
     }
 
     /// Get mutable reference to H-field.
     #[inline]
     pub fn h_field_mut(&mut self) -> &mut VectorField3D {
+        self.sync_from_gpu();
+        self.cpu_dirty = true;
         &mut self.h_field
     }
 
+    /// Get references to both E and H fields (syncing if needed).
+    pub fn fields(&mut self) -> (&VectorField3D, &VectorField3D) {
+        self.sync_from_gpu();
+        (&self.e_field, &self.h_field)
+    }
+
+    /// Inject a source value into the E-field.
+    /// Updates both CPU and GPU buffers to avoid full synchronization.
+    pub fn inject_e_field(&mut self, i: usize, j: usize, k: usize, dir: usize, value: f32, soft: bool) {
+        self.sync_from_gpu();
+        
+        let field = self.e_field.component_mut(dir);
+        if soft {
+            field.add(i, j, k, value);
+        } else {
+            field.set(i, j, k, value);
+        }
+        
+        let new_val = field.get(i, j, k);
+        
+        if let Some(gpu) = &self.gpu_engine {
+            gpu.update_e_field_element(i, j, k, dir, new_val);
+        }
+    }
+
     /// Compute total electromagnetic energy in the simulation domain.
-    pub fn total_energy(&self, _operator: &Operator) -> f64 {
+    pub fn total_energy(&mut self, _operator: &Operator) -> f64 {
+        self.sync_from_gpu();
         // E_total = 0.5 * eps * |E|^2 + 0.5 * mu * |H|^2
         // For vacuum: E_total ∝ |E|^2 + (Z0)^2 * |H|^2
         let e_energy = self.e_field.energy();
@@ -135,9 +205,18 @@ impl Engine {
             EngineType::Basic => self.step_basic(operator),
             EngineType::Simd => self.step_simd(operator),
             EngineType::Parallel => self.step_parallel(operator),
+            EngineType::Gpu => self.step_gpu(operator),
         }
         self.timestep += 1;
         Ok(())
+    }
+    
+    fn step_gpu(&mut self, _operator: &Operator) {
+        self.sync_to_gpu();
+        if let Some(gpu) = &self.gpu_engine {
+            gpu.step();
+            self.gpu_dirty = true;
+        }
     }
 
     /// Basic (reference) implementation without SIMD.
@@ -620,6 +699,20 @@ impl Engine {
         self.e_field.clear();
         self.h_field.clear();
         self.timestep = 0;
+        
+        if let Some(gpu) = &self.gpu_engine {
+            gpu.reset();
+        }
+        self.gpu_dirty = false;
+        self.cpu_dirty = true;
+    }
+
+    /// Wait for any pending GPU operations to complete.
+    /// This is a no-op for CPU engines.
+    pub fn wait_idle(&self) {
+        if let Some(gpu) = &self.gpu_engine {
+            gpu.wait_idle();
+        }
     }
 }
 
@@ -700,5 +793,12 @@ mod tests {
     #[test]
     fn test_energy_conservation_parallel() {
         run_energy_test(EngineType::Parallel);
+    }
+
+    #[test]
+    fn test_energy_conservation_gpu() {
+        // This test requires a GPU or software rasterizer (like Lavapipe).
+        // It might panic if no suitable adapter is found, which is expected behavior for GpuEngine::new().
+        run_energy_test(EngineType::Gpu);
     }
 }

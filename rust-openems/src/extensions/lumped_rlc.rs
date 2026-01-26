@@ -367,7 +367,7 @@ mod tests {
         rlc.post_update_e(&mut e_field, &h_field);
 
         // Resistor should modify the field
-        let e = e_field.x.get(5, 5, 5);
+        let _e = e_field.x.get(5, 5, 5);
         // Value depends on coefficients
     }
 

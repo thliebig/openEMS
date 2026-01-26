@@ -7,7 +7,13 @@ use openems::fdtd::{BoundaryConditions, Engine, EngineType, Operator};
 use openems::geometry::Grid;
 
 fn bench_fdtd_step(c: &mut Criterion) {
-    let sizes = [(32, 32, 32), (64, 64, 64), (128, 128, 128)];
+    // Sizes: Small, Medium, Large
+    let sizes = [
+        (50, 50, 50),
+        (100, 100, 100),
+        (200, 200, 200),
+        (400, 400, 400),
+    ];
 
     for (nx, ny, nz) in sizes {
         let grid = Grid::uniform(nx, ny, nz, 1e-3);
@@ -16,13 +22,15 @@ fn bench_fdtd_step(c: &mut Criterion) {
 
         let mut group = c.benchmark_group(format!("fdtd_{}x{}x{}", nx, ny, nz));
         group.throughput(Throughput::Elements(total_cells as u64));
+        group.sample_size(20); // Reduce sample size for slower/large benchmarks
 
         // Benchmark basic engine
         group.bench_function("basic", |b| {
             let mut engine = Engine::new(&op, EngineType::Basic);
             b.iter(|| {
                 engine.step(&op).unwrap();
-                black_box(&engine)
+                // Use black_box to prevent optimization, but don't return the reference
+                black_box(&engine);
             });
         });
 
@@ -31,7 +39,7 @@ fn bench_fdtd_step(c: &mut Criterion) {
             let mut engine = Engine::new(&op, EngineType::Simd);
             b.iter(|| {
                 engine.step(&op).unwrap();
-                black_box(&engine)
+                black_box(&engine);
             });
         });
 
@@ -40,9 +48,32 @@ fn bench_fdtd_step(c: &mut Criterion) {
             let mut engine = Engine::new(&op, EngineType::Parallel);
             b.iter(|| {
                 engine.step(&op).unwrap();
-                black_box(&engine)
+                black_box(&engine);
             });
         });
+
+        // Benchmark GPU engine (if available)
+        // We wrap this in a closure that might panic if no GPU is found,
+        // but typically Engine::new will succeed if there's a fallback or actual GPU.
+        // If it panics, the benchmark harness catches it.
+        // Note: Engine::new for GPU might take time, so we do it outside iter.
+        // If the machine has no GPU support, this might fail, but that's expected.
+        let has_gpu = std::panic::catch_unwind(|| {
+            let _ = Engine::new(&op, EngineType::Gpu);
+        })
+        .is_ok();
+
+        if has_gpu {
+            group.bench_function("gpu", |b| {
+                let mut engine = Engine::new(&op, EngineType::Gpu);
+                b.iter(|| {
+                    engine.step(&op).unwrap();
+                    // Crucial: Wait for GPU to finish!
+                    engine.wait_idle();
+                    black_box(&engine);
+                });
+            });
+        }
 
         group.finish();
     }
@@ -61,7 +92,7 @@ fn bench_array_operations(c: &mut Criterion) {
         let mut field = Field3D::new(dims);
         b.iter(|| {
             field.fill(1.0);
-            black_box(&field)
+            black_box(&field);
         });
     });
 
@@ -72,7 +103,7 @@ fn bench_array_operations(c: &mut Criterion) {
 
         b.iter(|| {
             a.simd_fmadd(2.0, &b_field);
-            black_box(&a)
+            black_box(&a);
         });
     });
 

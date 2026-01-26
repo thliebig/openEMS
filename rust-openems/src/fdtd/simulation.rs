@@ -237,13 +237,7 @@ impl Simulation {
                 if exc.is_active(t) {
                     let value = exc.evaluate(t) as f32;
                     let (i, j, k) = exc.position;
-                    let field = engine.e_field_mut().component_mut(exc.direction);
-
-                    if exc.soft_source {
-                        field.add(i, j, k, value);
-                    } else {
-                        field.set(i, j, k, value);
-                    }
+                    engine.inject_e_field(i, j, k, exc.direction, value, exc.soft_source);
                 }
             }
 

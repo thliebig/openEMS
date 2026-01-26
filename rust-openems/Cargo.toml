@@ -66,6 +66,9 @@ crossbeam = "0.8"
 bytemuck = { version = "1.21", features = ["derive"] }
 # Libc for low-level system calls (signal handling)
 libc = "0.2"
+wgpu = "28.0.0"
+pollster = "0.4.0"
+futures = "0.3.31"
 
 [features]
 default = []
@@ -85,7 +88,6 @@ harness = false
 lto = true
 codegen-units = 1
 opt-level = 3
-panic = "abort"
 strip = true
 
 [profile.release-with-debug]

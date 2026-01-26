@@ -31,6 +31,8 @@ mod cylindrical;
 mod engine_interface;
 mod compressed;
 mod cylindrical_multigrid;
+/// GPU-accelerated FDTD engine implementation.
+pub mod gpu_engine;
 
 pub use engine::Engine;
 pub use excitation::{Excitation, ExcitationType};
@@ -52,6 +54,8 @@ pub enum EngineType {
     /// Multi-threaded SIMD (default)
     #[default]
     Parallel,
+    /// GPU-accelerated (WebGPU)
+    Gpu,
 }
 
 /// Boundary condition types
