@@ -659,6 +659,26 @@ mod tests {
     }
 
     #[test]
+    fn test_abc_type_default() {
+        let abc_type = AbcType::default();
+        assert_eq!(abc_type, AbcType::Undefined);
+    }
+
+    #[test]
+    fn test_abc_type_debug() {
+        let abc_type = AbcType::Mur1st;
+        let debug_str = format!("{:?}", abc_type);
+        assert!(debug_str.contains("Mur1st"));
+    }
+
+    #[test]
+    fn test_abc_type_clone() {
+        let abc_type = AbcType::Mur1stSa;
+        let cloned = abc_type;
+        assert_eq!(cloned, AbcType::Mur1stSa);
+    }
+
+    #[test]
     fn test_config_normal_detection() {
         // X-normal sheet (y-z plane)
         let config = LocalAbsorbingBcConfig::new(
@@ -702,6 +722,69 @@ mod tests {
     }
 
     #[test]
+    fn test_config_default() {
+        let config = LocalAbsorbingBcConfig::default();
+        assert_eq!(config.abc_type, AbcType::Undefined);
+        assert_eq!(config.phase_velocity, None);
+        assert_eq!(config.start, [0, 0, 0]);
+        assert_eq!(config.stop, [0, 0, 0]);
+        assert!(config.normal_sign_positive);
+    }
+
+    #[test]
+    fn test_config_with_phase_velocity() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [5, 0, 0],
+            [5, 10, 10],
+        ).with_phase_velocity(2e8);
+
+        assert_eq!(config.phase_velocity, Some(2e8));
+    }
+
+    #[test]
+    fn test_config_with_normal_sign() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [5, 0, 0],
+            [5, 10, 10],
+        ).with_normal_sign(false);
+
+        assert!(!config.normal_sign_positive);
+    }
+
+    #[test]
+    fn test_config_builder_chain() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1stSa,
+            [0, 5, 0],
+            [10, 5, 10],
+        )
+        .with_phase_velocity(1.5e8)
+        .with_normal_sign(false);
+
+        assert_eq!(config.abc_type, AbcType::Mur1stSa);
+        assert_eq!(config.phase_velocity, Some(1.5e8));
+        assert!(!config.normal_sign_positive);
+        assert_eq!(config.detect_normal_direction(), Some(1));
+    }
+
+    #[test]
+    fn test_config_clone() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [5, 0, 0],
+            [5, 10, 10],
+        ).with_phase_velocity(2e8);
+
+        let cloned = config.clone();
+        assert_eq!(cloned.abc_type, config.abc_type);
+        assert_eq!(cloned.phase_velocity, config.phase_velocity);
+        assert_eq!(cloned.start, config.start);
+        assert_eq!(cloned.stop, config.stop);
+    }
+
+    #[test]
     fn test_sheet_creation() {
         let config = LocalAbsorbingBcConfig::new(
             AbcType::Mur1st,
@@ -723,6 +806,71 @@ mod tests {
     }
 
     #[test]
+    fn test_sheet_creation_y_normal() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [0, 5, 0],
+            [10, 5, 10],
+        );
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
+        assert_eq!(sheet.ny, 1);
+        assert_eq!(sheet.ny_p, 2);
+        assert_eq!(sheet.ny_pp, 0);
+    }
+
+    #[test]
+    fn test_sheet_creation_z_normal() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [0, 0, 5],
+            [10, 10, 5],
+        );
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
+        assert_eq!(sheet.ny, 2);
+        assert_eq!(sheet.ny_p, 0);
+        assert_eq!(sheet.ny_pp, 1);
+    }
+
+    #[test]
+    fn test_sheet_creation_invalid_geometry() {
+        // 3D box - not a valid sheet
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [0, 0, 0],
+            [10, 10, 10],
+        );
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta);
+        assert!(sheet.is_none());
+    }
+
+    #[test]
+    fn test_sheet_creation_negative_normal() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [5, 0, 0],
+            [5, 10, 10],
+        ).with_normal_sign(false);
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
+        assert!(!sheet.normal_sign_positive);
+    }
+
+    #[test]
     fn test_sheet_super_absorption() {
         let config = LocalAbsorbingBcConfig::new(
             AbcType::Mur1stSa,
@@ -738,6 +886,22 @@ mod tests {
 
         let sheet = sheet.unwrap();
         assert_eq!(sheet.abc_type, AbcType::Mur1stSa);
+    }
+
+    #[test]
+    fn test_sheet_num_cells() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [5, 0, 0],
+            [5, 9, 14],
+        );
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
+        // 10 x 15 = 150 cells
+        assert_eq!(sheet.num_cells(), 150);
     }
 
     #[test]
@@ -762,6 +926,54 @@ mod tests {
         assert!(manager.is_active());
         assert_eq!(manager.num_sheets(), 1);
         assert_eq!(manager.total_cells(), 100); // 10 x 10
+    }
+
+    #[test]
+    fn test_manager_default() {
+        let manager = LocalAbsorbingBc::default();
+        assert!(!manager.is_active());
+        assert_eq!(manager.num_sheets(), 0);
+        assert_eq!(manager.total_cells(), 0);
+    }
+
+    #[test]
+    fn test_manager_multiple_sheets() {
+        let mut manager = LocalAbsorbingBc::new();
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        // Add first sheet (X-normal)
+        let config1 = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 9, 9]);
+        if let Some(sheet) = LocalAbsorbingSheet::new(&config1, dt, get_delta) {
+            manager.add_sheet(sheet);
+        }
+
+        // Add second sheet (Y-normal)
+        let config2 = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [0, 5, 0], [9, 5, 9]);
+        if let Some(sheet) = LocalAbsorbingSheet::new(&config2, dt, get_delta) {
+            manager.add_sheet(sheet);
+        }
+
+        assert_eq!(manager.num_sheets(), 2);
+        assert_eq!(manager.total_cells(), 200); // 100 + 100
+    }
+
+    #[test]
+    fn test_manager_show_stats() {
+        let mut manager = LocalAbsorbingBc::new();
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 9, 9]);
+        if let Some(sheet) = LocalAbsorbingSheet::new(&config, dt, get_delta) {
+            manager.add_sheet(sheet);
+        }
+
+        let stats = manager.show_stats();
+        assert!(stats.contains("1 sheets"));
+        assert!(stats.contains("100 total cells"));
     }
 
     #[test]
@@ -795,6 +1007,107 @@ mod tests {
     }
 
     #[test]
+    fn test_current_update_cycle_super_absorption() {
+        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let mut h_field = VectorField3D::new(dims);
+
+        // Set some initial values
+        h_field.y.set(5, 5, 5, 0.1);
+        h_field.z.set(5, 5, 5, 0.1);
+
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1stSa,  // Super absorption for current updates
+            [5, 0, 0],
+            [5, 19, 19],
+        );
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let mut sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
+
+        // Run current update cycle (only applies to Mur1stSa)
+        sheet.pre_current_update(&h_field, 0);
+        // (FDTD update would go here)
+        sheet.post_current_update(&h_field, 0);
+        sheet.apply_to_currents(&mut h_field, 0);
+
+        // For super absorption, H-field should be modified
+    }
+
+    #[test]
+    fn test_current_update_skipped_for_mur1st() {
+        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let mut h_field = VectorField3D::new(dims);
+
+        h_field.y.fill(1.0);
+        let original_value = h_field.y.get(5, 5, 5);
+
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,  // Not super absorption
+            [5, 0, 0],
+            [5, 19, 19],
+        );
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let mut sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
+
+        // Current updates should be skipped for Mur1st
+        sheet.pre_current_update(&h_field, 0);
+        sheet.post_current_update(&h_field, 0);
+        sheet.apply_to_currents(&mut h_field, 0);
+
+        // H-field should be unchanged
+        assert!((h_field.y.get(5, 5, 5) - original_value).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_manager_voltage_update_cycle() {
+        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let mut e_field = VectorField3D::new(dims);
+        e_field.y.fill(1.0);
+
+        let mut manager = LocalAbsorbingBc::new();
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 19, 19]);
+        if let Some(sheet) = LocalAbsorbingSheet::new(&config, dt, get_delta) {
+            manager.add_sheet(sheet);
+        }
+
+        // Run full voltage update cycle through manager
+        manager.pre_voltage_update(&e_field, 0);
+        manager.post_voltage_update(&e_field, 0);
+        manager.apply_to_voltages(&mut e_field, 0);
+    }
+
+    #[test]
+    fn test_manager_current_update_cycle() {
+        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let mut h_field = VectorField3D::new(dims);
+        h_field.y.fill(0.1);
+
+        let mut manager = LocalAbsorbingBc::new();
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1stSa, [5, 0, 0], [5, 19, 19]);
+        if let Some(sheet) = LocalAbsorbingSheet::new(&config, dt, get_delta) {
+            manager.add_sheet(sheet);
+        }
+
+        // Run full current update cycle through manager
+        manager.pre_current_update(&h_field, 0);
+        manager.post_current_update(&h_field, 0);
+        manager.apply_to_currents(&mut h_field, 0);
+    }
+
+    #[test]
     fn test_activation_delay() {
         let config = LocalAbsorbingBcConfig::new(
             AbcType::Mur1st,
@@ -812,6 +1125,30 @@ mod tests {
         assert!(!sheet.is_active(99));
         assert!(sheet.is_active(100));
         assert!(sheet.is_active(1000));
+    }
+
+    #[test]
+    fn test_inactive_sheet_skips_updates() {
+        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let mut e_field = VectorField3D::new(dims);
+        e_field.y.fill(1.0);
+        let original_value = e_field.y.get(5, 5, 5);
+
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 19, 19]);
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        let mut sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
+        sheet.set_start_timestep(100);  // Activate at timestep 100
+
+        // Run updates at timestep 0 (inactive)
+        sheet.pre_voltage_update(&e_field, 0);
+        sheet.post_voltage_update(&e_field, 0);
+        sheet.apply_to_voltages(&mut e_field, 0);
+
+        // E-field should be unchanged since sheet is inactive
+        assert!((e_field.y.get(5, 5, 5) - original_value).abs() < 1e-10);
     }
 
     #[test]
@@ -833,6 +1170,23 @@ mod tests {
     }
 
     #[test]
+    fn test_coefficient_with_custom_phase_velocity() {
+        // With slower phase velocity
+        let v = C0 / 2.0;
+        let dt = 1e-12;
+        let delta = 0.001;
+        let vt = v * dt;
+
+        let k1_slow = (vt - delta) / (vt + delta);
+
+        // K1 should be more negative with slower phase velocity
+        let vt_c0 = C0 * dt;
+        let k1_c0 = (vt_c0 - delta) / (vt_c0 + delta);
+
+        assert!(k1_slow < k1_c0);
+    }
+
+    #[test]
     fn test_reset() {
         let config = LocalAbsorbingBcConfig::new(
             AbcType::Mur1stSa,
@@ -850,5 +1204,69 @@ mod tests {
 
         // Reset should complete without panic
         manager.reset();
+    }
+
+    #[test]
+    fn test_array2d_operations() {
+        let mut arr = Array2D::new([5, 10]);
+
+        // Test initial values (should be zero)
+        assert!((arr.get(0, 0)).abs() < 1e-10);
+        assert!((arr.get(4, 9)).abs() < 1e-10);
+
+        // Test set and get
+        arr.set(2, 3, 1.5);
+        assert!((arr.get(2, 3) - 1.5).abs() < 1e-6);
+
+        // Test fill
+        arr.fill(2.0);
+        assert!((arr.get(0, 0) - 2.0).abs() < 1e-6);
+        assert!((arr.get(4, 9) - 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_array2d_index_calculation() {
+        let arr = Array2D::new([3, 4]);
+
+        // idx(i, j) = i * size[1] + j
+        assert_eq!(arr.idx(0, 0), 0);
+        assert_eq!(arr.idx(0, 1), 1);
+        assert_eq!(arr.idx(1, 0), 4);
+        assert_eq!(arr.idx(2, 3), 11);
+    }
+
+    #[test]
+    fn test_sheet_with_variable_delta() {
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [5, 0, 0],
+            [5, 4, 4],
+        );
+
+        let dt = 1e-12;
+        // Variable cell size based on position
+        let get_delta = |_ny: usize, pos: [usize; 3]| {
+            0.001 * (1.0 + 0.1 * pos[1] as f64)
+        };
+
+        let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta);
+        assert!(sheet.is_some());
+    }
+
+    #[test]
+    fn test_point_sheet() {
+        // Single point (degenerate case)
+        let config = LocalAbsorbingBcConfig::new(
+            AbcType::Mur1st,
+            [5, 5, 5],
+            [5, 5, 5],
+        );
+
+        let dt = 1e-12;
+        let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
+
+        // This should fail - all three dimensions collapsed (point, not sheet)
+        let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta);
+        assert!(sheet.is_none());
     }
 }

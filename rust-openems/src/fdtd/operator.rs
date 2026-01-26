@@ -290,6 +290,15 @@ mod tests {
     use super::*;
     use crate::geometry::CoordinateSystem;
 
+    fn create_test_grid() -> Grid {
+        Grid::new(
+            CoordinateSystem::Cartesian,
+            vec![0.0, 0.001, 0.002, 0.003, 0.004, 0.005], // 1mm cells, 5 cells in x
+            vec![0.0, 0.001, 0.002, 0.003, 0.004, 0.005], // 5 cells in y
+            vec![0.0, 0.001, 0.002, 0.003, 0.004, 0.005], // 5 cells in z
+        )
+    }
+
     #[test]
     fn test_timestep_calculation() {
         let grid = Grid::new(
@@ -305,5 +314,227 @@ mod tests {
         let dt_cfl = 1.0 / (C0 * (3.0f64).sqrt() / 0.001);
         assert!(dt < dt_cfl);
         assert!(dt > 0.0);
+    }
+
+    #[test]
+    fn test_operator_creation() {
+        let grid = create_test_grid();
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        // Verify basic properties
+        assert!(op.timestep() > 0.0);
+        let dims = op.dimensions();
+        assert_eq!(dims.nx, 5);
+        assert_eq!(dims.ny, 5);
+        assert_eq!(dims.nz, 5);
+    }
+
+    #[test]
+    fn test_e_field_coefficients_initialization() {
+        let grid = create_test_grid();
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+        let e_coeff = op.e_coefficients();
+
+        // For vacuum, Ca should be 1.0
+        assert!((e_coeff.ca[0].get(2, 2, 2) - 1.0).abs() < 1e-6);
+        assert!((e_coeff.ca[1].get(2, 2, 2) - 1.0).abs() < 1e-6);
+        assert!((e_coeff.ca[2].get(2, 2, 2) - 1.0).abs() < 1e-6);
+
+        // Cb should be positive (dt / (eps0 * delta))
+        assert!(e_coeff.cb[0].get(2, 2, 2) > 0.0);
+        assert!(e_coeff.cb[1].get(2, 2, 2) > 0.0);
+        assert!(e_coeff.cb[2].get(2, 2, 2) > 0.0);
+    }
+
+    #[test]
+    fn test_h_field_coefficients_initialization() {
+        let grid = create_test_grid();
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+        let h_coeff = op.h_coefficients();
+
+        // For vacuum, Da should be 1.0
+        assert!((h_coeff.da[0].get(2, 2, 2) - 1.0).abs() < 1e-6);
+        assert!((h_coeff.da[1].get(2, 2, 2) - 1.0).abs() < 1e-6);
+        assert!((h_coeff.da[2].get(2, 2, 2) - 1.0).abs() < 1e-6);
+
+        // Db should be negative (due to curl sign convention)
+        assert!(h_coeff.db[0].get(2, 2, 2) < 0.0);
+        assert!(h_coeff.db[1].get(2, 2, 2) < 0.0);
+        assert!(h_coeff.db[2].get(2, 2, 2) < 0.0);
+    }
+
+    #[test]
+    fn test_set_material() {
+        let grid = create_test_grid();
+        let mut op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        // Set a dielectric region (eps_r = 4, lossless)
+        op.set_material(4.0, 1.0, 0.0, 0.0, (1, 3, 1, 3, 1, 3));
+
+        let e_coeff = op.e_coefficients();
+        let h_coeff = op.h_coefficients();
+
+        // Inside the region: Ca should still be 1.0 for lossless
+        assert!((e_coeff.ca[0].get(2, 2, 2) - 1.0).abs() < 1e-6);
+
+        // Cb should be reduced (1/eps_r factor)
+        // Outside region (vacuum)
+        let cb_vacuum = e_coeff.cb[0].get(0, 0, 0);
+        // Inside region (dielectric)
+        let cb_dielectric = e_coeff.cb[0].get(2, 2, 2);
+        assert!(cb_dielectric < cb_vacuum);
+        assert!((cb_dielectric / cb_vacuum - 0.25).abs() < 1e-5); // 1/4 for eps_r=4
+
+        // H-coefficients should remain same for mu_r=1
+        assert!((h_coeff.da[0].get(2, 2, 2) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_set_material_with_losses() {
+        let grid = create_test_grid();
+        let mut op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        // Set a lossy dielectric region
+        op.set_material(2.0, 1.0, 0.01, 0.0, (1, 3, 1, 3, 1, 3));
+
+        let e_coeff = op.e_coefficients();
+
+        // With electric conductivity, Ca should be < 1.0
+        let ca_lossy = e_coeff.ca[0].get(2, 2, 2);
+        assert!(ca_lossy < 1.0);
+        assert!(ca_lossy > 0.0);
+    }
+
+    #[test]
+    fn test_set_material_magnetic() {
+        let grid = create_test_grid();
+        let mut op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        // Set a magnetic material region with high magnetic conductivity
+        // Need higher sigma_m for Da < 1.0 to be observable
+        op.set_material(1.0, 4.0, 0.0, 1e6, (1, 3, 1, 3, 1, 3));
+
+        let h_coeff = op.h_coefficients();
+
+        // With high magnetic losses, Da should be < 1.0
+        let da_lossy = h_coeff.da[0].get(2, 2, 2);
+        assert!(da_lossy < 1.0);
+        assert!(da_lossy > 0.0);
+
+        // Db should be reduced due to mu_r = 4
+        let db_outside = h_coeff.db[0].get(0, 0, 0);
+        let db_inside = h_coeff.db[0].get(2, 2, 2);
+        // Both negative, but inside should have smaller magnitude
+        assert!(db_inside.abs() < db_outside.abs());
+    }
+
+    #[test]
+    fn test_set_pec() {
+        let grid = create_test_grid();
+        let mut op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        // Set a PEC region
+        op.set_pec((1, 3, 1, 3, 1, 3));
+
+        let e_coeff = op.e_coefficients();
+
+        // Inside PEC: Ca and Cb should be 0 (E-field forced to zero)
+        assert!((e_coeff.ca[0].get(2, 2, 2)).abs() < 1e-10);
+        assert!((e_coeff.cb[0].get(2, 2, 2)).abs() < 1e-10);
+        assert!((e_coeff.ca[1].get(2, 2, 2)).abs() < 1e-10);
+        assert!((e_coeff.cb[1].get(2, 2, 2)).abs() < 1e-10);
+        assert!((e_coeff.ca[2].get(2, 2, 2)).abs() < 1e-10);
+        assert!((e_coeff.cb[2].get(2, 2, 2)).abs() < 1e-10);
+
+        // Outside PEC: should still be vacuum
+        assert!((e_coeff.ca[0].get(0, 0, 0) - 1.0).abs() < 1e-6);
+        assert!(e_coeff.cb[0].get(0, 0, 0) > 0.0);
+    }
+
+    #[test]
+    fn test_nyquist_timesteps() {
+        let grid = create_test_grid();
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        // Test at 1 GHz
+        let freq = 1e9;
+        let steps = op.nyquist_timesteps(freq);
+
+        // Period = 1ns, timestep is ~ps range, so should need many steps
+        assert!(steps > 100);
+
+        // Higher frequency should require fewer steps per period
+        let steps_high = op.nyquist_timesteps(10e9);
+        assert!(steps_high < steps);
+    }
+
+    #[test]
+    fn test_grid_accessor() {
+        let grid = create_test_grid();
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        let grid_ref = op.grid();
+        let (dx, dy, dz) = grid_ref.cell_size();
+
+        // All cell sizes should be 1mm
+        assert!((dx - 0.001).abs() < 1e-10);
+        assert!((dy - 0.001).abs() < 1e-10);
+        assert!((dz - 0.001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_boundaries_accessor() {
+        let grid = create_test_grid();
+        let boundaries = BoundaryConditions::default();
+        let op = Operator::new(grid, boundaries).unwrap();
+
+        // Just verify we can access boundaries
+        let _bc = op.boundaries();
+    }
+
+    #[test]
+    fn test_timestep_cfl_condition() {
+        // Test with anisotropic grid
+        let grid = Grid::new(
+            CoordinateSystem::Cartesian,
+            vec![0.0, 0.001, 0.002, 0.003], // 1mm cells
+            vec![0.0, 0.002, 0.004, 0.006], // 2mm cells
+            vec![0.0, 0.0005, 0.001],       // 0.5mm cells
+        );
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        // Timestep should be limited by smallest cell (0.5mm)
+        let dt = op.timestep();
+        let dt_max_smallest = 1.0 / (C0 * (1.0 / 0.001f64.powi(2) + 1.0 / 0.002f64.powi(2) + 1.0 / 0.0005f64.powi(2)).sqrt());
+
+        // dt should be less than dt_max (with safety margin)
+        assert!(dt < dt_max_smallest);
+        assert!(dt > 0.9 * dt_max_smallest); // But not too small (we use 0.99 factor)
+    }
+
+    #[test]
+    fn test_e_coefficient_clone() {
+        let grid = create_test_grid();
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        let e_coeff = op.e_coefficients();
+        let e_coeff_clone = e_coeff.clone();
+
+        // Verify clone has same values
+        assert!((e_coeff_clone.ca[0].get(2, 2, 2) - e_coeff.ca[0].get(2, 2, 2)).abs() < 1e-10);
+        assert!((e_coeff_clone.cb[0].get(2, 2, 2) - e_coeff.cb[0].get(2, 2, 2)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_h_coefficient_clone() {
+        let grid = create_test_grid();
+        let op = Operator::new(grid, BoundaryConditions::default()).unwrap();
+
+        let h_coeff = op.h_coefficients();
+        let h_coeff_clone = h_coeff.clone();
+
+        // Verify clone has same values
+        assert!((h_coeff_clone.da[0].get(2, 2, 2) - h_coeff.da[0].get(2, 2, 2)).abs() < 1e-10);
+        assert!((h_coeff_clone.db[0].get(2, 2, 2) - h_coeff.db[0].get(2, 2, 2)).abs() < 1e-10);
     }
 }
