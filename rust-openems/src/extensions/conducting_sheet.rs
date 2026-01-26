@@ -38,7 +38,7 @@ impl SheetLorentzParams {
         // Full implementation would have 30+ frequency ranges
         if omega_max < 1e9 {
             Self {
-                g: 5.8e7,  // Copper conductivity
+                g: 5.8e7, // Copper conductivity
                 r1: 0.0,
                 l1: 1e-12,
                 r2: 0.0,
@@ -458,8 +458,8 @@ mod tests {
     #[test]
     fn test_sheet_creation() {
         let dims = Dimensions::new(20, 20, 20);
-        let config = ConductingSheetConfig::copper(35e-6, 10e9, 2, 10)
-            .with_extent([0, 0, 0], [20, 20, 0]);
+        let config =
+            ConductingSheetConfig::copper(35e-6, 10e9, 2, 10).with_extent([0, 0, 0], [20, 20, 0]);
 
         let sheet = ConductingSheet::new(config, dims, 1e-12);
 

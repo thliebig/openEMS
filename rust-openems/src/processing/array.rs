@@ -163,9 +163,7 @@ impl ProcessingArray {
 
     /// Get a mutable reference to a boxed processor by name.
     pub fn get_by_name_mut(&mut self, name: &str) -> Option<&mut Box<dyn Processor>> {
-        self.processors
-            .iter_mut()
-            .find(|p| p.name() == name)
+        self.processors.iter_mut().find(|p| p.name() == name)
     }
 
     /// Remove a processor by index.

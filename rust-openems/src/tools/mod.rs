@@ -6,15 +6,15 @@
 //! - Denormal number handling for performance
 //! - Address operations for array indexing
 
-pub mod signal;
-pub mod signal_handler;
 pub mod cli;
 pub mod denormal;
+pub mod signal;
+pub mod signal_handler;
 
 // Re-exports for convenience
-pub use signal_handler::{SignalHandler, SignalGuard, InterruptGuard};
-pub use cli::{GlobalOptions, CliParser, EnvConfig};
+pub use cli::{CliParser, EnvConfig, GlobalOptions};
 pub use denormal::{DenormalGuard, DenormalMode, DenormalMonitor, DenormalStats};
+pub use signal_handler::{InterruptGuard, SignalGuard, SignalHandler};
 
 /// Address operation helpers (replacement for C++ AdrOp)
 pub mod address {

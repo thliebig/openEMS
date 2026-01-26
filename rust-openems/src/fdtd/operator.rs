@@ -90,16 +90,8 @@ impl Operator {
 
     /// Initialize E-field update coefficients.
     fn init_e_coefficients(dims: Dimensions, grid: &Grid, dt: f64) -> EFieldCoefficients {
-        let mut ca = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
-        let mut cb = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
+        let mut ca = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut cb = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
 
         let (dx, dy, dz) = grid.cell_size();
         let _dt_f32 = dt as f32;
@@ -125,16 +117,8 @@ impl Operator {
 
     /// Initialize H-field update coefficients.
     fn init_h_coefficients(dims: Dimensions, grid: &Grid, dt: f64) -> HFieldCoefficients {
-        let mut da = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
-        let mut db = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
+        let mut da = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut db = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
 
         let (dx, dy, dz) = grid.cell_size();
 

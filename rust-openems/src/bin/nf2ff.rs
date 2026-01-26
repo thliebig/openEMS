@@ -82,16 +82,22 @@ fn main() -> ExitCode {
         .map(|i| 2.0 * std::f64::consts::PI * i as f64 / (args.n_phi - 1) as f64)
         .collect();
 
-    info!("Computing far-field at {} x {} angles...", args.n_theta, args.n_phi);
+    info!(
+        "Computing far-field at {} x {} angles...",
+        args.n_theta, args.n_phi
+    );
 
     let result = nf2ff.calculate(&theta, &phi);
 
-    info!("Maximum directivity: {:.2} dB", 10.0 * result.max_directivity().log10());
+    info!(
+        "Maximum directivity: {:.2} dB",
+        10.0 * result.max_directivity().log10()
+    );
 
     // Write output
-    let output_path = args.output.unwrap_or_else(|| {
-        args.input.with_extension("ff.json")
-    });
+    let output_path = args
+        .output
+        .unwrap_or_else(|| args.input.with_extension("ff.json"));
 
     info!("Writing results to: {:?}", output_path);
 

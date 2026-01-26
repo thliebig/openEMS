@@ -134,7 +134,8 @@ impl SteadyStateDetector {
     pub fn add_probe(&mut self, position: [usize; 3], component: usize) {
         // Keep enough history for period detection
         let max_history = self.config.num_periods * 1000; // Assume max 1000 samples per period
-        self.probes.push(ProbePoint::new(position, component, max_history));
+        self.probes
+            .push(ProbePoint::new(position, component, max_history));
     }
 
     /// Add default probes at strategic locations.
@@ -283,7 +284,10 @@ impl SteadyStateDetector {
 
     /// Check if steady state has been achieved.
     pub fn is_converged(&self) -> bool {
-        self.last_result.as_ref().map(|r| r.converged).unwrap_or(false)
+        self.last_result
+            .as_ref()
+            .map(|r| r.converged)
+            .unwrap_or(false)
     }
 
     /// Reset the detector.
@@ -312,7 +316,11 @@ mod tests {
 
     #[test]
     fn test_detector_creation() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let config = SteadyStateConfig::default();
         let detector = SteadyStateDetector::new(dims, config);
 
@@ -321,19 +329,27 @@ mod tests {
 
     #[test]
     fn test_add_probes() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let config = SteadyStateConfig::default();
         let mut detector = SteadyStateDetector::new(dims, config);
 
         detector.add_probe([10, 10, 10], 2); // Ez
-        detector.add_probe([5, 5, 5], 3);    // Hx
+        detector.add_probe([5, 5, 5], 3); // Hx
 
         assert_eq!(detector.probes.len(), 2);
     }
 
     #[test]
     fn test_default_probes() {
-        let dims = Dimensions { nx: 40, ny: 40, nz: 40 };
+        let dims = Dimensions {
+            nx: 40,
+            ny: 40,
+            nz: 40,
+        };
         let config = SteadyStateConfig::default();
         let mut detector = SteadyStateDetector::new(dims, config);
 
@@ -344,7 +360,11 @@ mod tests {
 
     #[test]
     fn test_record() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let config = SteadyStateConfig::default();
         let mut detector = SteadyStateDetector::new(dims, config);
 
@@ -362,7 +382,11 @@ mod tests {
 
     #[test]
     fn test_not_converged_early() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let config = SteadyStateConfig::default().with_min_timesteps(100);
         let mut detector = SteadyStateDetector::new(dims, config);
 
@@ -382,7 +406,11 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let config = SteadyStateConfig::default();
         let mut detector = SteadyStateDetector::new(dims, config);
 

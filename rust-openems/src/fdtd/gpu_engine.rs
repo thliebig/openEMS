@@ -1,7 +1,7 @@
 use crate::arrays::{Dimensions, VectorField3D};
 use crate::fdtd::operator::Operator;
-use wgpu::util::DeviceExt;
 use std::borrow::Cow;
+use wgpu::util::DeviceExt;
 
 /// GPU-accelerated FDTD engine using WebGPU.
 pub struct GpuEngine {
@@ -11,14 +11,14 @@ pub struct GpuEngine {
     update_h_pipeline: wgpu::ComputePipeline,
     update_e_pipeline: wgpu::ComputePipeline,
     bind_group: wgpu::BindGroup,
-    
+
     // Buffers
     e_field_buffer: wgpu::Buffer,
     h_field_buffer: wgpu::Buffer,
-    
+
     // Dimensions
     dims: Dimensions,
-    
+
     // Workgroup dispatch size
     dispatch_x: u32,
     dispatch_y: u32,
@@ -30,24 +30,24 @@ impl GpuEngine {
     pub fn new(operator: &Operator) -> Self {
         let dims = operator.dimensions();
         let total = dims.total();
-        
+
         let instance = wgpu::Instance::default();
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: None,
             force_fallback_adapter: false,
-        })).expect("Failed to find an appropriate adapter");
+        }))
+        .expect("Failed to find an appropriate adapter");
 
         let limits = adapter.limits();
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: None,
-                required_features: wgpu::Features::empty(),
-                required_limits: limits,
-                memory_hints: wgpu::MemoryHints::Performance,
-                ..Default::default()
-            },
-        )).expect("Failed to create device");
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: None,
+            required_features: wgpu::Features::empty(),
+            required_limits: limits,
+            memory_hints: wgpu::MemoryHints::Performance,
+            ..Default::default()
+        }))
+        .expect("Failed to create device");
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("FDTD Shader"),
@@ -55,18 +55,22 @@ impl GpuEngine {
         });
 
         let field_size = (total * 3 * std::mem::size_of::<f32>()) as u64;
-        
+
         let e_field_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("E Field Buffer"),
             size: field_size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
 
         let h_field_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("H Field Buffer"),
             size: field_size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
 
@@ -74,12 +78,20 @@ impl GpuEngine {
         let h_coeff = operator.h_coefficients();
 
         let mut e_coeff_data: Vec<f32> = Vec::with_capacity(total * 6);
-        for i in 0..3 { e_coeff_data.extend_from_slice(e_coeff.ca[i].as_slice()); }
-        for i in 0..3 { e_coeff_data.extend_from_slice(e_coeff.cb[i].as_slice()); }
+        for i in 0..3 {
+            e_coeff_data.extend_from_slice(e_coeff.ca[i].as_slice());
+        }
+        for i in 0..3 {
+            e_coeff_data.extend_from_slice(e_coeff.cb[i].as_slice());
+        }
 
         let mut h_coeff_data: Vec<f32> = Vec::with_capacity(total * 6);
-        for i in 0..3 { h_coeff_data.extend_from_slice(h_coeff.da[i].as_slice()); }
-        for i in 0..3 { h_coeff_data.extend_from_slice(h_coeff.db[i].as_slice()); }
+        for i in 0..3 {
+            h_coeff_data.extend_from_slice(h_coeff.da[i].as_slice());
+        }
+        for i in 0..3 {
+            h_coeff_data.extend_from_slice(h_coeff.db[i].as_slice());
+        }
 
         let e_coeff_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("E Coeff Buffer"),
@@ -145,10 +157,22 @@ impl GpuEngine {
             label: Some("FDTD Bind Group"),
             layout: &bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: e_field_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: h_field_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: e_coeff_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: h_coeff_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: e_field_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: h_field_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: e_coeff_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: h_coeff_buffer.as_entire_binding(),
+                },
             ],
         });
 
@@ -163,7 +187,7 @@ impl GpuEngine {
             ("ny", dims.ny as f64),
             ("nz", dims.nz as f64),
         ];
-        
+
         let update_h_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("Update H Pipeline"),
             layout: Some(&pipeline_layout),
@@ -193,8 +217,8 @@ impl GpuEngine {
         // GlobalID.y -> j -> dispatch_y covers ny
         // GlobalID.z -> i -> dispatch_z covers nx
         let dispatch_x = (dims.nz as u32 + 63) / 64; // Workgroup size 64 along X
-        let dispatch_y = (dims.ny as u32 + 1) / 2;   // Workgroup size 2 along Y
-        let dispatch_z = (dims.nx as u32 + 1) / 2;   // Workgroup size 2 along Z
+        let dispatch_y = (dims.ny as u32 + 1) / 2; // Workgroup size 2 along Y
+        let dispatch_z = (dims.nx as u32 + 1) / 2; // Workgroup size 2 along Z
 
         Self {
             instance,
@@ -214,9 +238,11 @@ impl GpuEngine {
 
     /// Perform one FDTD timestep on the GPU.
     pub fn step(&self) {
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Step Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Step Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -247,8 +273,9 @@ impl GpuEngine {
         data.extend_from_slice(field.x.as_slice());
         data.extend_from_slice(field.y.as_slice());
         data.extend_from_slice(field.z.as_slice());
-        
-        self.queue.write_buffer(&self.e_field_buffer, 0, bytemuck::cast_slice(&data));
+
+        self.queue
+            .write_buffer(&self.e_field_buffer, 0, bytemuck::cast_slice(&data));
     }
 
     /// Upload H-field data to the GPU.
@@ -257,8 +284,9 @@ impl GpuEngine {
         data.extend_from_slice(field.x.as_slice());
         data.extend_from_slice(field.y.as_slice());
         data.extend_from_slice(field.z.as_slice());
-        
-        self.queue.write_buffer(&self.h_field_buffer, 0, bytemuck::cast_slice(&data));
+
+        self.queue
+            .write_buffer(&self.h_field_buffer, 0, bytemuck::cast_slice(&data));
     }
 
     /// Download E-field data from the GPU.
@@ -275,15 +303,19 @@ impl GpuEngine {
     pub fn update_e_field_element(&self, i: usize, j: usize, k: usize, dir: usize, value: f32) {
         let total = self.dims.total();
         let offset_elems = match dir {
-             0 => 0,
-             1 => total,
-             2 => 2 * total,
-             _ => return,
+            0 => 0,
+            1 => total,
+            2 => 2 * total,
+            _ => return,
         };
         let idx = self.dims.to_linear(i, j, k);
         let final_offset = (offset_elems + idx) * 4;
-        
-        self.queue.write_buffer(&self.e_field_buffer, final_offset as u64, bytemuck::bytes_of(&value));
+
+        self.queue.write_buffer(
+            &self.e_field_buffer,
+            final_offset as u64,
+            bytemuck::bytes_of(&value),
+        );
     }
 
     fn read_buffer_to_field(&self, buffer: &wgpu::Buffer, field: &mut VectorField3D) {
@@ -295,36 +327,46 @@ impl GpuEngine {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Read Encoder"),
-        });
-        
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Read Encoder"),
+            });
+
         encoder.copy_buffer_to_buffer(buffer, 0, &staging_buffer, 0, size);
         self.queue.submit(Some(encoder.finish()));
 
         let slice = staging_buffer.slice(..);
         let (sender, receiver) = futures::channel::oneshot::channel();
         slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-        
+
         self.instance.poll_all(true);
         pollster::block_on(receiver).unwrap().unwrap();
 
         let data = slice.get_mapped_range();
         let floats: &[f32] = bytemuck::cast_slice(&data);
-        
+
         let total = self.dims.total();
         field.x.as_mut_slice().copy_from_slice(&floats[0..total]);
-        field.y.as_mut_slice().copy_from_slice(&floats[total..2*total]);
-        field.z.as_mut_slice().copy_from_slice(&floats[2*total..3*total]);
+        field
+            .y
+            .as_mut_slice()
+            .copy_from_slice(&floats[total..2 * total]);
+        field
+            .z
+            .as_mut_slice()
+            .copy_from_slice(&floats[2 * total..3 * total]);
 
         drop(data);
         staging_buffer.unmap();
     }
-    
+
     /// Reset all fields to zero.
     pub fn reset(&self) {
         let size = self.e_field_buffer.size();
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.clear_buffer(&self.e_field_buffer, 0, Some(size));
         encoder.clear_buffer(&self.h_field_buffer, 0, Some(size));
         self.queue.submit(Some(encoder.finish()));

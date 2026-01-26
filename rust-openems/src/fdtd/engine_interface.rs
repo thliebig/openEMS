@@ -134,12 +134,8 @@ impl<'a> EngineInterface<'a> {
                 let (i, j, k) = self.snap_to_grid(pos);
                 self.get_e_field_raw(i, j, k)
             }
-            InterpolationType::NodeInterpolate => {
-                self.interpolate_e_field_to_node(pos)
-            }
-            InterpolationType::CellInterpolate => {
-                self.interpolate_e_field_to_cell(pos)
-            }
+            InterpolationType::NodeInterpolate => self.interpolate_e_field_to_node(pos),
+            InterpolationType::CellInterpolate => self.interpolate_e_field_to_cell(pos),
         }
     }
 
@@ -150,12 +146,8 @@ impl<'a> EngineInterface<'a> {
                 let (i, j, k) = self.snap_to_grid(pos);
                 self.get_h_field_raw(i, j, k)
             }
-            InterpolationType::NodeInterpolate => {
-                self.interpolate_h_field_to_node(pos)
-            }
-            InterpolationType::CellInterpolate => {
-                self.interpolate_h_field_to_cell(pos)
-            }
+            InterpolationType::NodeInterpolate => self.interpolate_h_field_to_node(pos),
+            InterpolationType::CellInterpolate => self.interpolate_h_field_to_cell(pos),
         }
     }
 
@@ -256,12 +248,7 @@ impl<'a> EngineInterface<'a> {
 
     /// Calculate current integral through a surface.
     /// I = integral(H . dl) around the surface
-    pub fn calc_current_integral(
-        &self,
-        start: [f64; 3],
-        stop: [f64; 3],
-        normal_dir: usize,
-    ) -> f64 {
+    pub fn calc_current_integral(&self, start: [f64; 3], stop: [f64; 3], normal_dir: usize) -> f64 {
         let dims = self.dims();
         let mut current = 0.0;
 

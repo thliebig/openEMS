@@ -3,7 +3,7 @@
 //! Provides functions for signal generation and analysis.
 
 use num_complex::Complex64;
-use rustfft::{FftPlanner, num_complex::Complex};
+use rustfft::{num_complex::Complex, FftPlanner};
 use std::f64::consts::PI;
 
 /// Generate a Gaussian pulse.
@@ -40,10 +40,7 @@ pub fn fft(signal: &[f64]) -> Vec<Complex64> {
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(n);
 
-    let mut buffer: Vec<Complex<f64>> = signal
-        .iter()
-        .map(|&x| Complex::new(x, 0.0))
-        .collect();
+    let mut buffer: Vec<Complex<f64>> = signal.iter().map(|&x| Complex::new(x, 0.0)).collect();
 
     fft.process(&mut buffer);
 
@@ -59,10 +56,7 @@ pub fn ifft(spectrum: &[Complex64]) -> Vec<f64> {
     let mut planner = FftPlanner::new();
     let ifft = planner.plan_fft_inverse(n);
 
-    let mut buffer: Vec<Complex<f64>> = spectrum
-        .iter()
-        .map(|c| Complex::new(c.re, c.im))
-        .collect();
+    let mut buffer: Vec<Complex<f64>> = spectrum.iter().map(|c| Complex::new(c.re, c.im)).collect();
 
     ifft.process(&mut buffer);
 
@@ -119,10 +113,7 @@ pub fn hilbert(signal: &[f64]) -> Vec<Complex64> {
     let mut planner = FftPlanner::new();
     let ifft = planner.plan_fft_inverse(n);
 
-    let mut buffer: Vec<Complex<f64>> = spectrum
-        .iter()
-        .map(|c| Complex::new(c.re, c.im))
-        .collect();
+    let mut buffer: Vec<Complex<f64>> = spectrum.iter().map(|c| Complex::new(c.re, c.im)).collect();
 
     ifft.process(&mut buffer);
 

@@ -81,7 +81,10 @@ impl Hdf5Reader {
         let mut magic = [0u8; 4];
         reader.read_exact(&mut magic)?;
         if &magic != b"OEMS" {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid file format"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid file format",
+            ));
         }
 
         // Read version
@@ -144,9 +147,8 @@ impl Hdf5Reader {
     fn read_hdf5_format(path: &str) -> io::Result<Self> {
         use hdf5_metno::File as H5File;
 
-        let file = H5File::open(path).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-        })?;
+        let file = H5File::open(path)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
 
         // Read mesh
         let mut mesh_lines = [Vec::new(), Vec::new(), Vec::new()];
@@ -174,7 +176,10 @@ impl Hdf5Reader {
         // Read timesteps
         let timesteps = if let Ok(td_group) = file.group("FieldData/TD") {
             if let Ok(dataset) = td_group.dataset("time") {
-                dataset.read_1d::<f64>().map(|d| d.to_vec()).unwrap_or_default()
+                dataset
+                    .read_1d::<f64>()
+                    .map(|d| d.to_vec())
+                    .unwrap_or_default()
             } else {
                 Vec::new()
             }
@@ -185,7 +190,10 @@ impl Hdf5Reader {
         // Read frequencies
         let frequencies = if let Ok(fd_group) = file.group("FieldData/FD") {
             if let Ok(dataset) = fd_group.dataset("frequency") {
-                dataset.read_1d::<f64>().map(|d| d.to_vec()).unwrap_or_default()
+                dataset
+                    .read_1d::<f64>()
+                    .map(|d| d.to_vec())
+                    .unwrap_or_default()
             } else {
                 Vec::new()
             }
@@ -313,7 +321,8 @@ impl Hdf5Writer {
         let x_data = field.x.as_slice().to_vec();
         let y_data = field.y.as_slice().to_vec();
         let z_data = field.z.as_slice().to_vec();
-        self.vector_fields.push((name.to_string(), [x_data, y_data, z_data]));
+        self.vector_fields
+            .push((name.to_string(), [x_data, y_data, z_data]));
     }
 
     /// Write a complex scalar field.
@@ -420,18 +429,18 @@ impl Hdf5Writer {
     fn write_hdf5(self) -> io::Result<()> {
         use hdf5_metno::File as H5File;
 
-        let file = H5File::create(&self.path).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-        })?;
+        let file = H5File::create(&self.path)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
 
         // Write mesh
         if let Some(ref mesh_lines) = self.mesh_lines {
-            let mesh_group = file.create_group("Mesh").map_err(|e| {
-                io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-            })?;
+            let mesh_group = file
+                .create_group("Mesh")
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
 
             for (i, name) in ["x", "y", "z"].iter().enumerate() {
-                let dataset = mesh_group.new_dataset::<f64>()
+                let dataset = mesh_group
+                    .new_dataset::<f64>()
                     .shape([mesh_lines[i].len()])
                     .create(name)
                     .map_err(|e| {
@@ -444,34 +453,34 @@ impl Hdf5Writer {
         }
 
         // Write mesh type attribute
-        let attr = file.new_attr::<i32>().create("MeshType").map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-        })?;
-        attr.write_scalar(&(self.mesh_type as i32)).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-        })?;
+        let attr = file
+            .new_attr::<i32>()
+            .create("MeshType")
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
+        attr.write_scalar(&(self.mesh_type as i32))
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
 
         // Write scalar fields
         for (name, data) in &self.scalar_fields {
-            let dataset = file.new_dataset::<f32>()
+            let dataset = file
+                .new_dataset::<f32>()
                 .shape([data.len()])
                 .create(&name)
-                .map_err(|e| {
-                    io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-                })?;
-            dataset.write(data).map_err(|e| {
-                io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-            })?;
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
+            dataset
+                .write(data)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
         }
 
         // Write vector fields
         for (name, components) in &self.vector_fields {
-            let group = file.create_group(&name).map_err(|e| {
-                io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e))
-            })?;
+            let group = file
+                .create_group(&name)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("HDF5 error: {}", e)))?;
 
             for (i, comp_name) in ["x", "y", "z"].iter().enumerate() {
-                let dataset = group.new_dataset::<f32>()
+                let dataset = group
+                    .new_dataset::<f32>()
                     .shape([components[i].len()])
                     .create(comp_name)
                     .map_err(|e| {

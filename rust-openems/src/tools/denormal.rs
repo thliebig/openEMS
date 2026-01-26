@@ -255,7 +255,8 @@ impl DenormalMonitor {
     /// Check if monitoring is due at this timestep.
     pub fn should_check(&self, timestep: u64) -> bool {
         // Check at timestep 0 always, then periodically based on interval
-        self.check_interval > 0 && (timestep == 0 || timestep - self.last_check >= self.check_interval)
+        self.check_interval > 0
+            && (timestep == 0 || timestep - self.last_check >= self.check_interval)
     }
 
     /// Perform denormal check on a field.

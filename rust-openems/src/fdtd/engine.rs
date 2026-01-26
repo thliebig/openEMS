@@ -7,9 +7,9 @@ use crate::arrays::{Dimensions, VectorField3D};
 use crate::Result;
 use rayon::prelude::*;
 
+use super::gpu_engine::GpuEngine;
 use super::operator::Operator;
 use super::EngineType;
-use super::gpu_engine::GpuEngine;
 
 /// Wrapper for raw pointer to make it Send + Sync for parallel iteration.
 ///
@@ -69,7 +69,7 @@ pub struct Engine {
     num_threads: usize,
     /// Temporary storage for curl computations
     curl_buffer: VectorField3D,
-    
+
     /// GPU Backend
     gpu_engine: Option<GpuEngine>,
     /// Flags for memory synchronization
@@ -82,7 +82,7 @@ impl Engine {
     pub fn new(operator: &Operator, engine_type: EngineType) -> Self {
         let dims = operator.dimensions();
         let num_threads = rayon::current_num_threads();
-        
+
         let gpu_engine = if engine_type == EngineType::Gpu {
             Some(GpuEngine::new(operator))
         } else {
@@ -118,11 +118,11 @@ impl Engine {
             self.gpu_dirty = false;
         }
     }
-    
+
     /// Synchronize GPU fields from CPU if needed.
     fn sync_to_gpu(&mut self) {
         if self.cpu_dirty {
-             if let Some(gpu) = &self.gpu_engine {
+            if let Some(gpu) = &self.gpu_engine {
                 gpu.write_e_field(&self.e_field);
                 gpu.write_h_field(&self.h_field);
             }
@@ -168,18 +168,26 @@ impl Engine {
 
     /// Inject a source value into the E-field.
     /// Updates both CPU and GPU buffers to avoid full synchronization.
-    pub fn inject_e_field(&mut self, i: usize, j: usize, k: usize, dir: usize, value: f32, soft: bool) {
+    pub fn inject_e_field(
+        &mut self,
+        i: usize,
+        j: usize,
+        k: usize,
+        dir: usize,
+        value: f32,
+        soft: bool,
+    ) {
         self.sync_from_gpu();
-        
+
         let field = self.e_field.component_mut(dir);
         if soft {
             field.add(i, j, k, value);
         } else {
             field.set(i, j, k, value);
         }
-        
+
         let new_val = field.get(i, j, k);
-        
+
         if let Some(gpu) = &self.gpu_engine {
             gpu.update_e_field_element(i, j, k, dir, new_val);
         }
@@ -210,7 +218,7 @@ impl Engine {
         self.timestep += 1;
         Ok(())
     }
-    
+
     fn step_gpu(&mut self, _operator: &Operator) {
         self.sync_to_gpu();
         if let Some(gpu) = &self.gpu_engine {
@@ -233,11 +241,7 @@ impl Engine {
     }
 
     /// Update H-field using basic implementation.
-    fn update_h_basic(
-        &mut self,
-        dims: Dimensions,
-        h_coeff: &super::operator::HFieldCoefficients,
-    ) {
+    fn update_h_basic(&mut self, dims: Dimensions, h_coeff: &super::operator::HFieldCoefficients) {
         // Hx = Da_x*Hx + Db_x * (dEz/dy - dEy/dz)
         // Hy = Da_y*Hy + Db_y * (dEx/dz - dEz/dx)
         // Hz = Da_z*Hz + Db_z * (dEy/dx - dEx/dy)
@@ -305,11 +309,7 @@ impl Engine {
     }
 
     /// Update E-field using basic implementation.
-    fn update_e_basic(
-        &mut self,
-        dims: Dimensions,
-        e_coeff: &super::operator::EFieldCoefficients,
-    ) {
+    fn update_e_basic(&mut self, dims: Dimensions, e_coeff: &super::operator::EFieldCoefficients) {
         // Ex = Ca_x*Ex + Cb_x * (dHz/dy - dHy/dz)
         // Ey = Ca_y*Ey + Cb_y * (dHx/dz - dHz/dx)
         // Ez = Ca_z*Ez + Cb_z * (dHy/dx - dHx/dy)
@@ -371,11 +371,7 @@ impl Engine {
     }
 
     /// SIMD-optimized H-field update operating on z-lines.
-    fn update_h_simd(
-        &mut self,
-        dims: Dimensions,
-        h_coeff: &super::operator::HFieldCoefficients,
-    ) {
+    fn update_h_simd(&mut self, dims: Dimensions, h_coeff: &super::operator::HFieldCoefficients) {
         let nz = dims.nz;
 
         for i in 0..dims.nx {
@@ -455,11 +451,7 @@ impl Engine {
     }
 
     /// SIMD-optimized E-field update operating on z-lines.
-    fn update_e_simd(
-        &mut self,
-        dims: Dimensions,
-        e_coeff: &super::operator::EFieldCoefficients,
-    ) {
+    fn update_e_simd(&mut self, dims: Dimensions, e_coeff: &super::operator::EFieldCoefficients) {
         let nz = dims.nz;
 
         for i in 1..dims.nx {
@@ -699,7 +691,7 @@ impl Engine {
         self.e_field.clear();
         self.h_field.clear();
         self.timestep = 0;
-        
+
         if let Some(gpu) = &self.gpu_engine {
             gpu.reset();
         }

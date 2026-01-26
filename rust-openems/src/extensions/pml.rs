@@ -206,12 +206,7 @@ pub struct Upml {
 
 impl Upml {
     /// Create a new UPML with the given configuration.
-    pub fn new(
-        dims: Dimensions,
-        delta: [f64; 3],
-        dt: f64,
-        boundaries: PmlBoundaries,
-    ) -> Self {
+    pub fn new(dims: Dimensions, delta: [f64; 3], dt: f64, boundaries: PmlBoundaries) -> Self {
         let mut upml = Self {
             dims,
             delta,
@@ -250,7 +245,11 @@ impl Upml {
 
         // Y-min boundary (excluding X-PML corners)
         let x_start = if layers[0] > 0 { layers[0] + 1 } else { 0 };
-        let x_end = if layers[1] > 0 { nx - layers[1] - 1 } else { nx };
+        let x_end = if layers[1] > 0 {
+            nx - layers[1] - 1
+        } else {
+            nx
+        };
 
         if layers[2] > 0 && layers[2] < ny && x_start < x_end {
             let start = [x_start, 0, 0];
@@ -271,7 +270,11 @@ impl Upml {
 
         // Y range for Z-PML (excluding Y-PML edges)
         let y_start = if layers[2] > 0 { layers[2] + 1 } else { 0 };
-        let y_end = if layers[3] > 0 { ny - layers[3] - 1 } else { ny };
+        let y_end = if layers[3] > 0 {
+            ny - layers[3] - 1
+        } else {
+            ny
+        };
 
         // Z-min boundary (excluding X and Y PML corners/edges)
         if layers[4] > 0 && layers[4] < nz && x_start < x_end && y_start < y_end {
@@ -322,14 +325,7 @@ impl Upml {
                     for n in 0..3 {
                         // Calculate kappa (conductivity) for voltage and current
                         let (_kappa_v, _kappa_i) = self.calculate_kappa(
-                            n,
-                            direction,
-                            pos,
-                            is_min,
-                            layers,
-                            width,
-                            sigma_max,
-                            m,
+                            n, direction, pos, is_min, layers, width, sigma_max, m,
                         );
 
                         let _np = (n + 1) % 3;
@@ -350,12 +346,24 @@ impl Upml {
                             // vvfn: (2*eps0 + kappa_n*dt) / (2*eps0 + kappa_npp*dt) / eps_r
                             // vvfo: (2*eps0 - kappa_n*dt) / (2*eps0 + kappa_npp*dt) / eps_r
                             let denom = 2.0 * EPS0 + kappa_v_arr[npp] * dt;
-                            region.vv[n].set(li, lj, lk,
-                                ((2.0 * EPS0 - kappa_v_arr[npp] * dt) / denom) as f32);
-                            region.vvfn[n].set(li, lj, lk,
-                                ((2.0 * EPS0 + kappa_v_arr[n] * dt) / denom) as f32);
-                            region.vvfo[n].set(li, lj, lk,
-                                ((2.0 * EPS0 - kappa_v_arr[n] * dt) / denom) as f32);
+                            region.vv[n].set(
+                                li,
+                                lj,
+                                lk,
+                                ((2.0 * EPS0 - kappa_v_arr[npp] * dt) / denom) as f32,
+                            );
+                            region.vvfn[n].set(
+                                li,
+                                lj,
+                                lk,
+                                ((2.0 * EPS0 + kappa_v_arr[n] * dt) / denom) as f32,
+                            );
+                            region.vvfo[n].set(
+                                li,
+                                lj,
+                                lk,
+                                ((2.0 * EPS0 - kappa_v_arr[n] * dt) / denom) as f32,
+                            );
                         } else {
                             // No PML absorption, passthrough
                             region.vv[n].set(li, lj, lk, 1.0);
@@ -366,12 +374,24 @@ impl Upml {
                         if kappa_sum_i > 0.0 {
                             // Current coefficients (eq. 7.90 from Taflove)
                             let denom = 2.0 * EPS0 + kappa_i_arr[npp] * dt;
-                            region.ii[n].set(li, lj, lk,
-                                ((2.0 * EPS0 - kappa_i_arr[npp] * dt) / denom) as f32);
-                            region.iifn[n].set(li, lj, lk,
-                                ((2.0 * EPS0 + kappa_i_arr[n] * dt) / denom) as f32);
-                            region.iifo[n].set(li, lj, lk,
-                                ((2.0 * EPS0 - kappa_i_arr[n] * dt) / denom) as f32);
+                            region.ii[n].set(
+                                li,
+                                lj,
+                                lk,
+                                ((2.0 * EPS0 - kappa_i_arr[npp] * dt) / denom) as f32,
+                            );
+                            region.iifn[n].set(
+                                li,
+                                lj,
+                                lk,
+                                ((2.0 * EPS0 + kappa_i_arr[n] * dt) / denom) as f32,
+                            );
+                            region.iifo[n].set(
+                                li,
+                                lj,
+                                lk,
+                                ((2.0 * EPS0 - kappa_i_arr[n] * dt) / denom) as f32,
+                            );
                         } else {
                             region.ii[n].set(li, lj, lk, 1.0);
                             region.iifn[n].set(li, lj, lk, 1.0);
@@ -455,9 +475,8 @@ impl Upml {
         let mut kappa_i = [0.0; 3];
 
         for n in 0..3 {
-            let (kv, ki) = self.calculate_kappa(
-                n, pml_direction, pos, is_min, layers, width, sigma_max, m,
-            );
+            let (kv, ki) =
+                self.calculate_kappa(n, pml_direction, pos, is_min, layers, width, sigma_max, m);
             kappa_v[n] = kv;
             kappa_i[n] = ki;
         }
@@ -678,7 +697,11 @@ mod tests {
 
     #[test]
     fn test_upml_creation() {
-        let dims = Dimensions { nx: 50, ny: 50, nz: 50 };
+        let dims = Dimensions {
+            nx: 50,
+            ny: 50,
+            nz: 50,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
         let boundaries = PmlBoundaries::uniform(8);
@@ -692,7 +715,11 @@ mod tests {
 
     #[test]
     fn test_upml_disabled_boundary() {
-        let dims = Dimensions { nx: 50, ny: 50, nz: 50 };
+        let dims = Dimensions {
+            nx: 50,
+            ny: 50,
+            nz: 50,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 
@@ -709,7 +736,11 @@ mod tests {
 
     #[test]
     fn test_kappa_grading() {
-        let dims = Dimensions { nx: 50, ny: 50, nz: 50 };
+        let dims = Dimensions {
+            nx: 50,
+            ny: 50,
+            nz: 50,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
         let boundaries = PmlBoundaries::uniform(8);
@@ -728,7 +759,11 @@ mod tests {
 
     #[test]
     fn test_upml_field_update() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
         let boundaries = PmlBoundaries::uniform(4);

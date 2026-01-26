@@ -169,12 +169,8 @@ impl LumpedRlc {
 
         // Calculate update coefficients based on RLC type
         let (v_vv, v_vi, v_il, i_ii, i_iv) = match elem.rlc_type {
-            RlcType::Parallel => {
-                self.calc_parallel_coeffs(&elem, dt, dl, da)
-            }
-            RlcType::Series => {
-                self.calc_series_coeffs(&elem, dt, dl, da)
-            }
+            RlcType::Parallel => self.calc_parallel_coeffs(&elem, dt, dl, da),
+            RlcType::Series => self.calc_series_coeffs(&elem, dt, dl, da),
         };
 
         self.elements.push(RlcCoeffs {
@@ -335,7 +331,11 @@ mod tests {
 
     #[test]
     fn test_lumped_rlc_creation() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 
@@ -352,7 +352,11 @@ mod tests {
 
     #[test]
     fn test_rlc_update() {
-        let dims = Dimensions { nx: 10, ny: 10, nz: 10 };
+        let dims = Dimensions {
+            nx: 10,
+            ny: 10,
+            nz: 10,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 
@@ -386,20 +390,18 @@ mod tests {
 
     #[test]
     fn test_series_rlc() {
-        let elem = RlcElement::series_rlc(
-            [5, 5, 5],
-            2,
-            Some(50.0),
-            Some(1e-9),
-            Some(1e-12),
-        );
+        let elem = RlcElement::series_rlc([5, 5, 5], 2, Some(50.0), Some(1e-9), Some(1e-12));
 
         assert_eq!(elem.rlc_type, RlcType::Series);
     }
 
     #[test]
     fn test_rlc_reset() {
-        let dims = Dimensions { nx: 10, ny: 10, nz: 10 };
+        let dims = Dimensions {
+            nx: 10,
+            ny: 10,
+            nz: 10,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 

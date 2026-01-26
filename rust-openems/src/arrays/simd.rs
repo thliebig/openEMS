@@ -77,12 +77,7 @@ impl SimdOps for Field3D {
 ///
 /// Computes: E_new = ca * E_old + cb * curl_H
 #[inline]
-pub fn update_e_line(
-    e_line: &mut [f32],
-    curl_h_line: &[f32],
-    ca: &[f32],
-    cb: &[f32],
-) {
+pub fn update_e_line(e_line: &mut [f32], curl_h_line: &[f32], ca: &[f32], cb: &[f32]) {
     debug_assert_eq!(e_line.len(), curl_h_line.len());
     debug_assert_eq!(e_line.len(), ca.len());
     debug_assert_eq!(e_line.len(), cb.len());
@@ -110,12 +105,7 @@ pub fn update_e_line(
 
 /// Vectorized H-field update for a z-line.
 #[inline]
-pub fn update_h_line(
-    h_line: &mut [f32],
-    curl_e_line: &[f32],
-    da: &[f32],
-    db: &[f32],
-) {
+pub fn update_h_line(h_line: &mut [f32], curl_e_line: &[f32], da: &[f32], db: &[f32]) {
     debug_assert_eq!(h_line.len(), curl_e_line.len());
 
     let n = h_line.len();

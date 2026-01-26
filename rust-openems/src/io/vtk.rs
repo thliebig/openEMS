@@ -8,12 +8,7 @@ use std::io::Write;
 use std::path::Path;
 
 /// Write a 3D field to VTK format (legacy ASCII).
-pub fn write_field_vtk(
-    path: &Path,
-    field: &Field3D,
-    grid: &Grid,
-    field_name: &str,
-) -> Result<()> {
+pub fn write_field_vtk(path: &Path, field: &Field3D, grid: &Grid, field_name: &str) -> Result<()> {
     let dims = field.dims();
     let mut file = File::create(path)?;
 

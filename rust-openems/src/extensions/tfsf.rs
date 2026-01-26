@@ -145,12 +145,8 @@ impl TfsfBoundary {
 
         // Determine E and H field axes based on polarization
         let (e_axis, h_axis) = match config.polarization {
-            Polarization::Transverse1 => {
-                ((prop_axis + 1) % 3, (prop_axis + 2) % 3)
-            }
-            Polarization::Transverse2 => {
-                ((prop_axis + 2) % 3, (prop_axis + 1) % 3)
-            }
+            Polarization::Transverse1 => ((prop_axis + 1) % 3, (prop_axis + 2) % 3),
+            Polarization::Transverse2 => ((prop_axis + 2) % 3, (prop_axis + 1) % 3),
         };
 
         // Boundary position
@@ -390,7 +386,11 @@ mod tests {
 
     #[test]
     fn test_tfsf_creation() {
-        let dims = Dimensions { nx: 50, ny: 50, nz: 50 };
+        let dims = Dimensions {
+            nx: 50,
+            ny: 50,
+            nz: 50,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 
@@ -402,7 +402,11 @@ mod tests {
 
     #[test]
     fn test_incident_field() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 
@@ -419,12 +423,15 @@ mod tests {
 
     #[test]
     fn test_tfsf_update() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 
-        let config = TfsfConfig::new(PropagationDirection::ZPlus, 1e9, 1.0)
-            .with_boundary_layer(5);
+        let config = TfsfConfig::new(PropagationDirection::ZPlus, 1e9, 1.0).with_boundary_layer(5);
         let mut tfsf = TfsfBoundary::new(dims, delta, dt, config);
 
         let mut e_field = VectorField3D::new(dims);
@@ -441,7 +448,11 @@ mod tests {
 
     #[test]
     fn test_tfsf_reset() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 

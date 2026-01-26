@@ -327,8 +327,8 @@ impl SarCalculation {
             let jz = j_field[2][idx];
 
             // P = 0.5 * Re(E · J*)
-            let power = 0.5
-                * ((ex * jx.conj()).re + (ey * jy.conj()).re + (ez * jz.conj()).re) as f64;
+            let power =
+                0.5 * ((ex * jx.conj()).re + (ey * jy.conj()).re + (ez * jz.conj()).re) as f64;
             power.max(0.0)
         } else {
             0.0
@@ -419,12 +419,7 @@ impl SarCalculation {
     ) -> (f64, f64) {
         // Iteratively expand cubic region until target mass is reached
         let mut half_size = 1usize;
-        let max_half_size = self
-            .dims
-            .nx
-            .min(self.dims.ny)
-            .min(self.dims.nz)
-            .min(20);
+        let max_half_size = self.dims.nx.min(self.dims.ny).min(self.dims.nz).min(20);
 
         let mut best_sar = local_sar.get(center[0], center[1], center[2]) as f64;
         let mut best_mass = self.cell_mass(center);
@@ -558,11 +553,7 @@ mod tests {
     #[test]
     fn test_sar_calculation_creation() {
         let dims = Dimensions::new(10, 10, 10);
-        let cell_width = [
-            vec![0.001; 10],
-            vec![0.001; 10],
-            vec![0.001; 10],
-        ];
+        let cell_width = [vec![0.001; 10], vec![0.001; 10], vec![0.001; 10]];
 
         let mut density = Field3D::new(dims);
         density.fill(1000.0); // 1000 kg/m³ (water-like)
@@ -574,11 +565,7 @@ mod tests {
     #[test]
     fn test_local_sar_calculation() {
         let dims = Dimensions::new(5, 5, 5);
-        let cell_width = [
-            vec![0.001; 5],
-            vec![0.001; 5],
-            vec![0.001; 5],
-        ];
+        let cell_width = [vec![0.001; 5], vec![0.001; 5], vec![0.001; 5]];
 
         let mut density = Field3D::new(dims);
         density.fill(1000.0);
@@ -616,11 +603,7 @@ mod tests {
     #[test]
     fn test_averaged_sar() {
         let dims = Dimensions::new(10, 10, 10);
-        let cell_width = [
-            vec![0.001; 10],
-            vec![0.001; 10],
-            vec![0.001; 10],
-        ];
+        let cell_width = [vec![0.001; 10], vec![0.001; 10], vec![0.001; 10]];
 
         let mut density = Field3D::new(dims);
         density.fill(1000.0);
@@ -701,11 +684,7 @@ mod tests {
     #[test]
     fn test_sar_stats() {
         let dims = Dimensions::new(5, 5, 5);
-        let cell_width = [
-            vec![0.001; 5],
-            vec![0.001; 5],
-            vec![0.001; 5],
-        ];
+        let cell_width = [vec![0.001; 5], vec![0.001; 5], vec![0.001; 5]];
 
         let mut density = Field3D::new(dims);
         // Half filled with tissue, half air

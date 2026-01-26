@@ -49,7 +49,14 @@ impl MultigridConfig {
     }
 
     /// Add a refinement level.
-    pub fn add_level(&mut self, r_range: [f64; 2], n_rho: usize, n_alpha: usize, n_z: usize, refinement: usize) {
+    pub fn add_level(
+        &mut self,
+        r_range: [f64; 2],
+        n_rho: usize,
+        n_alpha: usize,
+        n_z: usize,
+        refinement: usize,
+    ) {
         let level = self.levels.len();
         self.levels.push(MultigridLevel {
             level,
@@ -127,9 +134,7 @@ impl LevelOperator {
         let rho: Vec<f64> = (0..=config.n_rho)
             .map(|i| config.r_range[0] + i as f64 * dr)
             .collect();
-        let alpha: Vec<f64> = (0..=config.n_alpha)
-            .map(|i| i as f64 * da)
-            .collect();
+        let alpha: Vec<f64> = (0..=config.n_alpha).map(|i| i as f64 * da).collect();
         let z: Vec<f64> = (0..=config.n_z)
             .map(|i| z_range[0] + i as f64 * dz)
             .collect();
@@ -274,7 +279,8 @@ impl CylindricalMultigrid {
             let d_alpha = r_min * da;
 
             // CFL condition
-            let dt_level = 1.0 / (C0 * (1.0 / (dr * dr) + 1.0 / (d_alpha * d_alpha) + 1.0 / (dz * dz)).sqrt());
+            let dt_level =
+                1.0 / (C0 * (1.0 / (dr * dr) + 1.0 / (d_alpha * d_alpha) + 1.0 / (dz * dz)).sqrt());
             dt_min = dt_min.min(dt_level);
         }
 
@@ -420,7 +426,10 @@ impl CylindricalMultigrid {
                 for k in 0..fine_dims.nz.min(coarse_dims.nz) {
                     // Simple copy (injection)
                     let e_coarse = self.engines[coarse_level].e_field.x.get(i_coarse, j, k);
-                    self.engines[fine_level].e_field.x.set(i_boundary, j, k, e_coarse);
+                    self.engines[fine_level]
+                        .e_field
+                        .x
+                        .set(i_boundary, j, k, e_coarse);
                 }
             }
         }
@@ -449,7 +458,10 @@ impl CylindricalMultigrid {
                         }
                     }
                     if count > 0 {
-                        self.engines[coarse_level].e_field.x.set(i, j, k, sum / count as f32);
+                        self.engines[coarse_level]
+                            .e_field
+                            .x
+                            .set(i, j, k, sum / count as f32);
                     }
                 }
             }
@@ -521,13 +533,8 @@ mod tests {
 
     #[test]
     fn test_multigrid_config() {
-        let config = MultigridConfig::two_level(
-            0.01,
-            [0.0, 0.02],
-            [10, 16, 20],
-            0.005,
-            [10, 16, 20],
-        );
+        let config =
+            MultigridConfig::two_level(0.01, [0.0, 0.02], [10, 16, 20], 0.005, [10, 16, 20]);
 
         assert_eq!(config.levels.len(), 2);
         assert_eq!(config.levels[0].level, 0);
@@ -536,13 +543,7 @@ mod tests {
 
     #[test]
     fn test_multigrid_creation() {
-        let config = MultigridConfig::two_level(
-            0.01,
-            [0.0, 0.02],
-            [5, 8, 10],
-            0.005,
-            [5, 8, 10],
-        );
+        let config = MultigridConfig::two_level(0.01, [0.0, 0.02], [5, 8, 10], 0.005, [5, 8, 10]);
 
         let multigrid = CylindricalMultigrid::new(config);
 
@@ -552,13 +553,7 @@ mod tests {
 
     #[test]
     fn test_multigrid_step() {
-        let config = MultigridConfig::two_level(
-            0.01,
-            [0.0, 0.02],
-            [5, 8, 10],
-            0.005,
-            [5, 8, 10],
-        );
+        let config = MultigridConfig::two_level(0.01, [0.0, 0.02], [5, 8, 10], 0.005, [5, 8, 10]);
 
         let mut multigrid = CylindricalMultigrid::new(config);
 
@@ -578,13 +573,7 @@ mod tests {
 
     #[test]
     fn test_multigrid_reset() {
-        let config = MultigridConfig::two_level(
-            0.01,
-            [0.0, 0.02],
-            [5, 8, 10],
-            0.005,
-            [5, 8, 10],
-        );
+        let config = MultigridConfig::two_level(0.01, [0.0, 0.02], [5, 8, 10], 0.005, [5, 8, 10]);
 
         let mut multigrid = CylindricalMultigrid::new(config);
 

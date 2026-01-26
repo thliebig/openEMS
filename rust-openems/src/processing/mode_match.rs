@@ -297,11 +297,7 @@ impl ModeMatch {
         }
 
         // Normalize
-        self.norm = if norm_sq > 0.0 {
-            norm_sq.sqrt()
-        } else {
-            1.0
-        };
+        self.norm = if norm_sq > 0.0 { norm_sq.sqrt() } else { 1.0 };
 
         for dist in &mut self.mode_dist {
             for val in dist.iter_mut() {

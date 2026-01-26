@@ -135,9 +135,18 @@ impl Grid {
 
     /// Get the total simulation volume.
     pub fn volume(&self) -> f64 {
-        let (x_min, x_max) = (*self.x_lines.first().unwrap(), *self.x_lines.last().unwrap());
-        let (y_min, y_max) = (*self.y_lines.first().unwrap(), *self.y_lines.last().unwrap());
-        let (z_min, z_max) = (*self.z_lines.first().unwrap(), *self.z_lines.last().unwrap());
+        let (x_min, x_max) = (
+            *self.x_lines.first().unwrap(),
+            *self.x_lines.last().unwrap(),
+        );
+        let (y_min, y_max) = (
+            *self.y_lines.first().unwrap(),
+            *self.y_lines.last().unwrap(),
+        );
+        let (z_min, z_max) = (
+            *self.z_lines.first().unwrap(),
+            *self.z_lines.last().unwrap(),
+        );
 
         let unit3 = self.unit * self.unit * self.unit;
         (x_max - x_min) * (y_max - y_min) * (z_max - z_min) * unit3

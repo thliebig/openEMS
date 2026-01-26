@@ -51,10 +51,10 @@ pub use geometry::{CoordinateSystem, Grid};
 pub use processing::Processing;
 
 // Additional re-exports for the new features
-pub use fdtd::{EngineInterface, CompressedCoefficients, CylindricalMultigrid};
+pub use fdtd::{CompressedCoefficients, CylindricalMultigrid, EngineInterface};
 pub use io::{Hdf5Reader, Hdf5Writer};
-pub use processing::{ProcessingArray, FrequencyDomainFieldDump};
-pub use tools::{SignalHandler, GlobalOptions, DenormalGuard};
+pub use processing::{FrequencyDomainFieldDump, ProcessingArray};
+pub use tools::{DenormalGuard, GlobalOptions, SignalHandler};
 
 /// Error types for openEMS
 #[derive(Debug, thiserror::Error)]

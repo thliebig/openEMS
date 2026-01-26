@@ -134,26 +134,10 @@ impl CompressedCoefficients {
         let mut coefficient_table = Vec::new();
         let mut dedup_map = HashMap::new();
 
-        let mut vv_indices = [
-            vec![0u32; size],
-            vec![0u32; size],
-            vec![0u32; size],
-        ];
-        let mut vi_indices = [
-            vec![0u32; size],
-            vec![0u32; size],
-            vec![0u32; size],
-        ];
-        let mut ii_indices = [
-            vec![0u32; size],
-            vec![0u32; size],
-            vec![0u32; size],
-        ];
-        let mut iv_indices = [
-            vec![0u32; size],
-            vec![0u32; size],
-            vec![0u32; size],
-        ];
+        let mut vv_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
+        let mut vi_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
+        let mut ii_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
+        let mut iv_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
 
         // Process each direction
         for dir in 0..3 {
