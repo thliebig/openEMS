@@ -1,0 +1,33 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "openems-rust"
+version = "1.0.0"
+description = "High-performance FDTD electromagnetic field solver"
+readme = "README.md"
+license = {text = "GPL-3.0"}
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+keywords = ["fdtd", "electromagnetic", "simulation", "physics", "simd"]
+
+[project.optional-dependencies]
+dev = ["pytest", "numpy"]
+
+[tool.maturin]
+features = ["python"]
+python-source = "python"
+module-name = "openems._rust"

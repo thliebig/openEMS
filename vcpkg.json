@@ -1,8 +1,0 @@
-{
-  "dependencies": [
-    "boost",
-    "hdf5",
-    "tinyxml",
-    "vtk"
-  ]
-}
