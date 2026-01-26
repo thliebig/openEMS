@@ -1,33 +1,31 @@
-build/
-release/
-debug/
-doc/
-obj/
-nf2ff/nf2ff
-tmp*
-Makefile*
-*~
-*.so*
-*.a
-*.pro.user*
-*.user
-*.orig
-localPaths.pri
-.directory
+# Rust
+/target/
+**/*.rs.bk
 
-#cmake
-**CMakeFiles
-CMakeCache.txt
-cmake_install.cmake
-install_manifest.txt
-localConfig.cmake
-
-#python
+# Python
 *.pyc
 *.pyo
-python/**/*.cpp
-python/openEMS.egg-info/*
-python/dist
-!python/doc
-python/doc/_build
-python/doc/Tutorials/__*
+__pycache__/
+*.egg-info/
+dist/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+*.orig
+
+# Build artifacts
+*.so
+*.so.*
+*.a
+*.o
+
+# Temporary files
+tmp*
+.directory
+
+# Documentation builds
+doc/_build/
