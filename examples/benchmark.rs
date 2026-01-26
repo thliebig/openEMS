@@ -6,9 +6,7 @@
 //! - Parallel: Multi-threaded SIMD
 //! - Compressed: Memory-bandwidth optimized with coefficient compression
 
-use openems::fdtd::{
-    BoundaryConditions, EndCondition, EngineCompressed, EngineType, Operator, Simulation,
-};
+use openems::fdtd::{EndCondition, EngineType, Simulation};
 use openems::geometry::Grid;
 use std::time::Instant;
 
@@ -21,7 +19,7 @@ fn benchmark_engine(size: usize, timesteps: u64, engine_type: EngineType) -> f64
         .set_verbose(0)
         .set_show_progress(false);
 
-    // Warm up
+    // Setup and warm up
     sim.setup().unwrap();
 
     let start = Instant::now();
@@ -31,51 +29,25 @@ fn benchmark_engine(size: usize, timesteps: u64, engine_type: EngineType) -> f64
     let cells_per_step = (size * size * size) as f64;
     let speed = (timesteps as f64 * cells_per_step) / elapsed / 1e6;
 
+    // Print compression info for compressed engine
+    let compression_info = if engine_type == EngineType::Compressed {
+        if let Some(stats) = sim.engine_wrapper().and_then(|e| e.compression_stats()) {
+            format!(" (E ratio: {:.2}, H ratio: {:.2})", stats.0, stats.1)
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+
     println!(
-        "  {:?}: {} cells, {} steps in {:.3}s = {:.2} MC/s",
+        "  {:?}: {} cells, {} steps in {:.3}s = {:.2} MC/s{}",
         engine_type,
         size * size * size,
         timesteps,
         elapsed,
-        speed
-    );
-
-    speed
-}
-
-/// Benchmark the compressed engine directly (bypasses Simulation)
-fn benchmark_compressed_engine(size: usize, timesteps: u64) -> f64 {
-    let grid = Grid::uniform(size, size, size, 1e-3);
-    let operator = Operator::new(grid, BoundaryConditions::all_pec()).unwrap();
-
-    // Create compressed engine
-    let mut engine = EngineCompressed::new(&operator);
-
-    // Warm up
-    for _ in 0..10 {
-        engine.step().unwrap();
-    }
-    engine.reset();
-
-    let start = Instant::now();
-    for _ in 0..timesteps {
-        engine.step().unwrap();
-    }
-    let elapsed = start.elapsed().as_secs_f64();
-
-    let cells_per_step = (size * size * size) as f64;
-    let speed = (timesteps as f64 * cells_per_step) / elapsed / 1e6;
-
-    let (e_ratio, h_ratio) = engine.compression_stats();
-
-    println!(
-        "  Compressed: {} cells, {} steps in {:.3}s = {:.2} MC/s (E ratio: {:.2}, H ratio: {:.2})",
-        size * size * size,
-        timesteps,
-        elapsed,
         speed,
-        e_ratio,
-        h_ratio
+        compression_info
     );
 
     speed
@@ -104,7 +76,7 @@ fn main() {
         let basic_speed = benchmark_engine(size, timesteps, EngineType::Basic);
         let simd_speed = benchmark_engine(size, timesteps, EngineType::Simd);
         let parallel_speed = benchmark_engine(size, timesteps, EngineType::Parallel);
-        let compressed_speed = benchmark_compressed_engine(size, timesteps);
+        let compressed_speed = benchmark_engine(size, timesteps, EngineType::Compressed);
 
         println!();
         println!(
@@ -144,7 +116,7 @@ fn main() {
     println!("-----------------------------------------");
 
     let parallel_speed = benchmark_engine(size, timesteps, EngineType::Parallel);
-    let compressed_speed = benchmark_compressed_engine(size, timesteps);
+    let compressed_speed = benchmark_engine(size, timesteps, EngineType::Compressed);
 
     println!();
     println!(

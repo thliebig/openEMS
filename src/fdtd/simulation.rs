@@ -4,10 +4,12 @@
 //! and running FDTD simulations.
 
 use super::engine::Engine;
+use super::engine_compressed::EngineCompressed;
 use super::excitation::Excitation;
 use super::operator::Operator;
 use super::timestep::TimestepInfo;
 use super::{BoundaryConditions, EngineType};
+use crate::arrays::VectorField3D;
 use crate::geometry::Grid;
 use crate::{Error, Result};
 
@@ -64,6 +66,93 @@ pub struct SimulationStats {
     pub speed_mcells_per_sec: f64,
 }
 
+/// Unified engine wrapper supporting both standard and compressed engines.
+pub enum EngineWrapper {
+    /// Standard engine (Basic, SIMD, or Parallel)
+    Standard(Engine),
+    /// Compressed coefficient engine
+    Compressed(EngineCompressed),
+}
+
+impl EngineWrapper {
+    /// Get reference to E-field.
+    pub fn e_field(&self) -> &VectorField3D {
+        match self {
+            EngineWrapper::Standard(e) => e.e_field(),
+            EngineWrapper::Compressed(e) => e.e_field(),
+        }
+    }
+
+    /// Get mutable reference to E-field.
+    pub fn e_field_mut(&mut self) -> &mut VectorField3D {
+        match self {
+            EngineWrapper::Standard(e) => e.e_field_mut(),
+            EngineWrapper::Compressed(e) => e.e_field_mut(),
+        }
+    }
+
+    /// Get reference to H-field.
+    pub fn h_field(&self) -> &VectorField3D {
+        match self {
+            EngineWrapper::Standard(e) => e.h_field(),
+            EngineWrapper::Compressed(e) => e.h_field(),
+        }
+    }
+
+    /// Get mutable reference to H-field.
+    pub fn h_field_mut(&mut self) -> &mut VectorField3D {
+        match self {
+            EngineWrapper::Standard(e) => e.h_field_mut(),
+            EngineWrapper::Compressed(e) => e.h_field_mut(),
+        }
+    }
+
+    /// Perform one timestep.
+    pub fn step(&mut self, operator: &Operator) -> Result<()> {
+        match self {
+            EngineWrapper::Standard(e) => e.step(operator),
+            EngineWrapper::Compressed(e) => e.step(operator),
+        }
+    }
+
+    /// Get current timestep number.
+    pub fn timestep(&self) -> u64 {
+        match self {
+            EngineWrapper::Standard(e) => e.timestep(),
+            EngineWrapper::Compressed(e) => e.timestep(),
+        }
+    }
+
+    /// Compute total energy.
+    pub fn total_energy(&self, operator: &Operator) -> f64 {
+        match self {
+            EngineWrapper::Standard(e) => e.total_energy(operator),
+            EngineWrapper::Compressed(e) => e.total_energy(),
+        }
+    }
+
+    /// Reset fields to zero.
+    pub fn reset(&mut self) {
+        match self {
+            EngineWrapper::Standard(e) => e.reset(),
+            EngineWrapper::Compressed(e) => e.reset(),
+        }
+    }
+
+    /// Check if this is a compressed engine.
+    pub fn is_compressed(&self) -> bool {
+        matches!(self, EngineWrapper::Compressed(_))
+    }
+
+    /// Get compression statistics (returns None for standard engine).
+    pub fn compression_stats(&self) -> Option<(f64, f64)> {
+        match self {
+            EngineWrapper::Standard(_) => None,
+            EngineWrapper::Compressed(e) => Some(e.compression_stats()),
+        }
+    }
+}
+
 /// Main simulation controller.
 pub struct Simulation {
     /// Grid definition
@@ -81,7 +170,7 @@ pub struct Simulation {
     /// Operator (created during setup)
     operator: Option<Operator>,
     /// Engine (created during setup)
-    engine: Option<Engine>,
+    engine: Option<EngineWrapper>,
     /// Verbosity level
     verbose: u8,
     /// Show progress bar
@@ -172,8 +261,30 @@ impl Simulation {
         // Create operator
         let operator = Operator::new(self.grid.clone(), self.boundaries.clone())?;
 
-        // Create engine
-        let engine = Engine::new(&operator, self.engine_type);
+        // Create engine based on type
+        let engine = match self.engine_type {
+            EngineType::Compressed => {
+                if self.verbose >= 1 {
+                    info!("Using compressed coefficient engine");
+                }
+                let compressed_engine = EngineCompressed::new(&operator);
+                if self.verbose >= 2 {
+                    let (e_unique, h_unique) = compressed_engine.num_unique_coefficients();
+                    let (e_ratio, h_ratio) = compressed_engine.compression_stats();
+                    info!(
+                        "Compression: E unique {:?} (ratio {:.2}), H unique {:?} (ratio {:.2})",
+                        e_unique, e_ratio, h_unique, h_ratio
+                    );
+                }
+                EngineWrapper::Compressed(compressed_engine)
+            }
+            _ => {
+                if self.verbose >= 1 {
+                    info!("Using {:?} engine", self.engine_type);
+                }
+                EngineWrapper::Standard(Engine::new(&operator, self.engine_type))
+            }
+        };
 
         self.operator = Some(operator);
         self.engine = Some(engine);
@@ -311,14 +422,47 @@ impl Simulation {
         Ok(stats)
     }
 
-    /// Get reference to the engine (if set up).
-    pub fn engine(&self) -> Option<&Engine> {
+    /// Get reference to the engine wrapper (if set up).
+    pub fn engine_wrapper(&self) -> Option<&EngineWrapper> {
         self.engine.as_ref()
     }
 
-    /// Get mutable reference to the engine (if set up).
-    pub fn engine_mut(&mut self) -> Option<&mut Engine> {
+    /// Get mutable reference to the engine wrapper (if set up).
+    pub fn engine_wrapper_mut(&mut self) -> Option<&mut EngineWrapper> {
         self.engine.as_mut()
+    }
+
+    /// Get reference to the standard engine (if using standard engine).
+    /// Returns None if using compressed engine or not set up.
+    pub fn engine(&self) -> Option<&Engine> {
+        match &self.engine {
+            Some(EngineWrapper::Standard(e)) => Some(e),
+            _ => None,
+        }
+    }
+
+    /// Get mutable reference to the standard engine (if using standard engine).
+    pub fn engine_mut(&mut self) -> Option<&mut Engine> {
+        match &mut self.engine {
+            Some(EngineWrapper::Standard(e)) => Some(e),
+            _ => None,
+        }
+    }
+
+    /// Get reference to the compressed engine (if using compressed engine).
+    pub fn compressed_engine(&self) -> Option<&EngineCompressed> {
+        match &self.engine {
+            Some(EngineWrapper::Compressed(e)) => Some(e),
+            _ => None,
+        }
+    }
+
+    /// Get mutable reference to the compressed engine (if using compressed engine).
+    pub fn compressed_engine_mut(&mut self) -> Option<&mut EngineCompressed> {
+        match &mut self.engine {
+            Some(EngineWrapper::Compressed(e)) => Some(e),
+            _ => None,
+        }
     }
 
     /// Get reference to the operator (if set up).
@@ -329,6 +473,11 @@ impl Simulation {
     /// Get the current state.
     pub fn state(&self) -> SimulationState {
         self.state
+    }
+
+    /// Check if the simulation is using compressed coefficients.
+    pub fn is_using_compressed_engine(&self) -> bool {
+        matches!(&self.engine, Some(EngineWrapper::Compressed(_)))
     }
 }
 
@@ -352,5 +501,51 @@ mod tests {
         let stats = sim.run().unwrap();
         assert_eq!(stats.timesteps, 100);
         assert!(stats.speed_mcells_per_sec > 0.0);
+    }
+
+    #[test]
+    fn test_simulation_compressed() {
+        let grid = Grid::uniform(20, 20, 20, 1e-3);
+        let mut sim = Simulation::new(grid);
+
+        sim.set_engine_type(EngineType::Compressed)
+            .set_end_condition(EndCondition::Timesteps(100))
+            .set_verbose(0)
+            .set_show_progress(false);
+
+        // Add a simple excitation
+        let exc = Excitation::gaussian(1e9, 0.5, 2, (10, 10, 10));
+        sim.add_excitation(exc);
+
+        let stats = sim.run().unwrap();
+        assert_eq!(stats.timesteps, 100);
+        assert!(stats.speed_mcells_per_sec > 0.0);
+        assert!(sim.is_using_compressed_engine());
+    }
+
+    #[test]
+    fn test_simulation_all_engine_types() {
+        for engine_type in [
+            EngineType::Basic,
+            EngineType::Simd,
+            EngineType::Parallel,
+            EngineType::Compressed,
+        ] {
+            let grid = Grid::uniform(15, 15, 15, 1e-3);
+            let mut sim = Simulation::new(grid);
+
+            sim.set_engine_type(engine_type)
+                .set_end_condition(EndCondition::Timesteps(50))
+                .set_verbose(0)
+                .set_show_progress(false);
+
+            let stats = sim.run().unwrap();
+            assert_eq!(stats.timesteps, 50);
+            assert!(
+                stats.speed_mcells_per_sec > 0.0,
+                "Engine {:?} failed",
+                engine_type
+            );
+        }
     }
 }

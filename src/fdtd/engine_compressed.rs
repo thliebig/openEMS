@@ -9,6 +9,7 @@
 use crate::arrays::{Dimensions, VectorField3D};
 use crate::Result;
 use rayon::prelude::*;
+use wide::f32x8;
 
 use super::compressed::{CompressedECoefficients, CompressedHCoefficients};
 use super::operator::Operator;
@@ -51,6 +52,19 @@ impl<T> SendPtrMut<T> {
     }
 }
 
+/// Load 8 f32 values from a slice into a SIMD vector.
+#[inline]
+fn load_f32x8(slice: &[f32]) -> f32x8 {
+    let arr: [f32; 8] = slice[..8].try_into().unwrap();
+    f32x8::from(arr)
+}
+
+/// Store a SIMD vector to a slice.
+#[inline]
+fn store_f32x8(slice: &mut [f32], v: f32x8) {
+    slice[..8].copy_from_slice(v.as_array_ref());
+}
+
 /// Compressed FDTD Engine using index-based coefficient lookup.
 ///
 /// This engine stores compressed coefficient tables and index arrays,
@@ -91,15 +105,6 @@ impl EngineCompressed {
         let h_coeffs = CompressedHCoefficients::from_fields(
             &[&h_coeff.da[0], &h_coeff.da[1], &h_coeff.da[2]],
             &[&h_coeff.db[0], &h_coeff.db[1], &h_coeff.db[2]],
-        );
-
-        // Print compression stats
-        let e_unique = e_coeffs.num_unique();
-        let h_unique = h_coeffs.num_unique();
-        let total_cells = dims.total();
-        eprintln!(
-            "Compressed engine: {} cells, E-coeffs unique: {:?}, H-coeffs unique: {:?}",
-            total_cells, e_unique, h_unique
         );
 
         Self {
@@ -170,133 +175,59 @@ impl EngineCompressed {
         (self.e_coeffs.compression_ratio(), self.h_coeffs.compression_ratio())
     }
 
+    /// Get number of unique coefficient sets.
+    pub fn num_unique_coefficients(&self) -> ([usize; 3], [usize; 3]) {
+        (self.e_coeffs.num_unique(), self.h_coeffs.num_unique())
+    }
+
     /// Perform one complete FDTD timestep using compressed coefficients.
-    pub fn step(&mut self) -> Result<()> {
-        // Use the parallel implementation for best performance
-        self.step_parallel();
+    pub fn step(&mut self, _operator: &Operator) -> Result<()> {
+        // Use the parallel SIMD implementation for best performance
+        self.step_parallel_simd();
         self.timestep += 1;
         Ok(())
     }
 
-    /// Single-threaded implementation for reference/debugging.
-    #[allow(dead_code)]
-    fn step_basic(&mut self) {
-        self.update_h_basic();
-        self.update_e_basic();
+    /// Parallel SIMD implementation with z-line processing.
+    fn step_parallel_simd(&mut self) {
+        // H-field update
+        self.update_h_parallel_simd();
+        // E-field update
+        self.update_e_parallel_simd();
     }
 
-    /// Update H-field using compressed coefficients (basic implementation).
-    fn update_h_basic(&mut self) {
-        let dims = self.dims;
+    /// SIMD-accelerated z-line field update.
+    #[inline]
+    fn update_line_simd(field: &mut [f32], curl: &[f32], coeff_a: &[f32], coeff_b: &[f32]) {
+        let n = field.len();
+        let chunks = n / 8;
 
-        for i in 0..dims.nx {
-            for j in 0..dims.ny {
-                for k in 0..dims.nz {
-                    // Get compressed coefficients via index lookup
-                    let coeff_x = self.h_coeffs.get(0, i, j, k);
-                    let coeff_y = self.h_coeffs.get(1, i, j, k);
-                    let coeff_z = self.h_coeffs.get(2, i, j, k);
+        // SIMD processing (8 elements at a time)
+        for c in 0..chunks {
+            let k = c * 8;
+            let f = load_f32x8(&field[k..]);
+            let curl_v = load_f32x8(&curl[k..]);
+            let a = load_f32x8(&coeff_a[k..]);
+            let b = load_f32x8(&coeff_b[k..]);
 
-                    // Curl of E for Hx: dEz/dy - dEy/dz
-                    let dez_dy = if j + 1 < dims.ny {
-                        self.e_field.z.get(i, j + 1, k) - self.e_field.z.get(i, j, k)
-                    } else {
-                        0.0
-                    };
-                    let dey_dz = if k + 1 < dims.nz {
-                        self.e_field.y.get(i, j, k + 1) - self.e_field.y.get(i, j, k)
-                    } else {
-                        0.0
-                    };
-                    let curl_x = dez_dy - dey_dz;
-                    let hx_old = self.h_field.x.get(i, j, k);
-                    self.h_field.x.set(i, j, k, coeff_x.da * hx_old + coeff_x.db * curl_x);
+            let result = a * f + b * curl_v;
+            store_f32x8(&mut field[k..], result);
+        }
 
-                    // Curl of E for Hy: dEx/dz - dEz/dx
-                    let dex_dz = if k + 1 < dims.nz {
-                        self.e_field.x.get(i, j, k + 1) - self.e_field.x.get(i, j, k)
-                    } else {
-                        0.0
-                    };
-                    let dez_dx = if i + 1 < dims.nx {
-                        self.e_field.z.get(i + 1, j, k) - self.e_field.z.get(i, j, k)
-                    } else {
-                        0.0
-                    };
-                    let curl_y = dex_dz - dez_dx;
-                    let hy_old = self.h_field.y.get(i, j, k);
-                    self.h_field.y.set(i, j, k, coeff_y.da * hy_old + coeff_y.db * curl_y);
-
-                    // Curl of E for Hz: dEy/dx - dEx/dy
-                    let dey_dx = if i + 1 < dims.nx {
-                        self.e_field.y.get(i + 1, j, k) - self.e_field.y.get(i, j, k)
-                    } else {
-                        0.0
-                    };
-                    let dex_dy = if j + 1 < dims.ny {
-                        self.e_field.x.get(i, j + 1, k) - self.e_field.x.get(i, j, k)
-                    } else {
-                        0.0
-                    };
-                    let curl_z = dey_dx - dex_dy;
-                    let hz_old = self.h_field.z.get(i, j, k);
-                    self.h_field.z.set(i, j, k, coeff_z.da * hz_old + coeff_z.db * curl_z);
-                }
-            }
+        // Scalar tail
+        for k in (chunks * 8)..n {
+            field[k] = coeff_a[k] * field[k] + coeff_b[k] * curl[k];
         }
     }
 
-    /// Update E-field using compressed coefficients (basic implementation).
-    fn update_e_basic(&mut self) {
-        let dims = self.dims;
-
-        for i in 1..dims.nx {
-            for j in 1..dims.ny {
-                for k in 1..dims.nz {
-                    // Get compressed coefficients via index lookup
-                    let coeff_x = self.e_coeffs.get(0, i, j, k);
-                    let coeff_y = self.e_coeffs.get(1, i, j, k);
-                    let coeff_z = self.e_coeffs.get(2, i, j, k);
-
-                    // Curl of H for Ex: dHz/dy - dHy/dz
-                    let dhz_dy = self.h_field.z.get(i, j, k) - self.h_field.z.get(i, j - 1, k);
-                    let dhy_dz = self.h_field.y.get(i, j, k) - self.h_field.y.get(i, j, k - 1);
-                    let curl_x = dhz_dy - dhy_dz;
-                    let ex_old = self.e_field.x.get(i, j, k);
-                    self.e_field.x.set(i, j, k, coeff_x.ca * ex_old + coeff_x.cb * curl_x);
-
-                    // Curl of H for Ey: dHx/dz - dHz/dx
-                    let dhx_dz = self.h_field.x.get(i, j, k) - self.h_field.x.get(i, j, k - 1);
-                    let dhz_dx = self.h_field.z.get(i, j, k) - self.h_field.z.get(i - 1, j, k);
-                    let curl_y = dhx_dz - dhz_dx;
-                    let ey_old = self.e_field.y.get(i, j, k);
-                    self.e_field.y.set(i, j, k, coeff_y.ca * ey_old + coeff_y.cb * curl_y);
-
-                    // Curl of H for Ez: dHy/dx - dHx/dy
-                    let dhy_dx = self.h_field.y.get(i, j, k) - self.h_field.y.get(i - 1, j, k);
-                    let dhx_dy = self.h_field.x.get(i, j, k) - self.h_field.x.get(i, j - 1, k);
-                    let curl_z = dhy_dx - dhx_dy;
-                    let ez_old = self.e_field.z.get(i, j, k);
-                    self.e_field.z.set(i, j, k, coeff_z.ca * ez_old + coeff_z.cb * curl_z);
-                }
-            }
-        }
-    }
-
-    /// Parallel implementation using Rayon and compressed coefficients.
-    fn step_parallel(&mut self) {
-        self.update_h_parallel();
-        self.update_e_parallel();
-    }
-
-    /// Parallel H-field update using compressed coefficients.
-    fn update_h_parallel(&mut self) {
+    /// Parallel H-field update with SIMD z-line processing.
+    fn update_h_parallel_simd(&mut self) {
         let dims = self.dims;
         let nx = dims.nx;
         let ny = dims.ny;
         let nz = dims.nz;
 
-        // Get raw pointers for parallel access
+        // Get raw pointers wrapped for thread safety
         let hx_ptr = SendPtrMut::new(self.h_field.x.as_mut_ptr());
         let hy_ptr = SendPtrMut::new(self.h_field.y.as_mut_ptr());
         let hz_ptr = SendPtrMut::new(self.h_field.z.as_mut_ptr());
@@ -305,97 +236,118 @@ impl EngineCompressed {
         let ey_ptr = SendPtr::new(self.e_field.y.as_ptr());
         let ez_ptr = SendPtr::new(self.e_field.z.as_ptr());
 
-        // Get coefficient table and index pointers
-        let h_table_x = self.h_coeffs.table(0);
-        let h_table_y = self.h_coeffs.table(1);
-        let h_table_z = self.h_coeffs.table(2);
+        // Coefficient table pointers
+        let h_table_x_ptr = SendPtr::new(self.h_coeffs.table(0).as_ptr());
+        let h_table_y_ptr = SendPtr::new(self.h_coeffs.table(1).as_ptr());
+        let h_table_z_ptr = SendPtr::new(self.h_coeffs.table(2).as_ptr());
 
-        let h_indices_x = SendPtr::new(self.h_coeffs.indices(0).as_ptr());
-        let h_indices_y = SendPtr::new(self.h_coeffs.indices(1).as_ptr());
-        let h_indices_z = SendPtr::new(self.h_coeffs.indices(2).as_ptr());
-
-        let h_table_x_ptr = SendPtr::new(h_table_x.as_ptr());
-        let h_table_y_ptr = SendPtr::new(h_table_y.as_ptr());
-        let h_table_z_ptr = SendPtr::new(h_table_z.as_ptr());
+        let h_indices_x_ptr = SendPtr::new(self.h_coeffs.indices(0).as_ptr());
+        let h_indices_y_ptr = SendPtr::new(self.h_coeffs.indices(1).as_ptr());
+        let h_indices_z_ptr = SendPtr::new(self.h_coeffs.indices(2).as_ptr());
 
         // Parallel iteration over i-slices
         (0..nx).into_par_iter().for_each(|i| {
+            // Each thread gets its own temporary buffers
+            let mut da_buf = vec![0.0f32; nz];
+            let mut db_buf = vec![0.0f32; nz];
+            let mut curl_buf = vec![0.0f32; nz];
+
             for j in 0..ny {
+                // Process Hx: curl_x = dEz/dy - dEy/dz
+                // Expand coefficients for this z-line
                 for k in 0..nz {
                     let idx = dims.to_linear(i, j, k);
+                    let table_idx = unsafe { *h_indices_x_ptr.add(idx) } as usize;
+                    let coeff = unsafe { *h_table_x_ptr.add(table_idx) };
+                    da_buf[k] = coeff.da;
+                    db_buf[k] = coeff.db;
 
-                    unsafe {
-                        // Load coefficient indices and look up coefficients
-                        let coeff_idx_x = *h_indices_x.add(idx) as usize;
-                        let coeff_idx_y = *h_indices_y.add(idx) as usize;
-                        let coeff_idx_z = *h_indices_z.add(idx) as usize;
-
-                        let coeff_x = *h_table_x_ptr.add(coeff_idx_x);
-                        let coeff_y = *h_table_y_ptr.add(coeff_idx_y);
-                        let coeff_z = *h_table_z_ptr.add(coeff_idx_z);
-
-                        // Get E-field values
-                        let ez_curr = *ez_ptr.add(idx);
-                        let ez_jp1 = if j + 1 < ny {
-                            *ez_ptr.add(dims.to_linear(i, j + 1, k))
-                        } else {
-                            ez_curr
-                        };
-                        let ey_curr = *ey_ptr.add(idx);
-                        let ey_kp1 = if k + 1 < nz {
-                            *ey_ptr.add(dims.to_linear(i, j, k + 1))
-                        } else {
-                            ey_curr
-                        };
-                        let ex_curr = *ex_ptr.add(idx);
-                        let ex_kp1 = if k + 1 < nz {
-                            *ex_ptr.add(dims.to_linear(i, j, k + 1))
-                        } else {
-                            ex_curr
-                        };
-                        let ex_jp1 = if j + 1 < ny {
-                            *ex_ptr.add(dims.to_linear(i, j + 1, k))
-                        } else {
-                            ex_curr
-                        };
-                        let ez_ip1 = if i + 1 < nx {
-                            *ez_ptr.add(dims.to_linear(i + 1, j, k))
-                        } else {
-                            ez_curr
-                        };
-                        let ey_ip1 = if i + 1 < nx {
-                            *ey_ptr.add(dims.to_linear(i + 1, j, k))
-                        } else {
-                            ey_curr
-                        };
-
-                        // Hx update: curl_x = dEz/dy - dEy/dz
-                        let curl_x = (ez_jp1 - ez_curr) - (ey_kp1 - ey_curr);
-                        let hx_old = *hx_ptr.add(idx);
-                        *hx_ptr.add(idx) = coeff_x.da * hx_old + coeff_x.db * curl_x;
-
-                        // Hy update: curl_y = dEx/dz - dEz/dx
-                        let curl_y = (ex_kp1 - ex_curr) - (ez_ip1 - ez_curr);
-                        let hy_old = *hy_ptr.add(idx);
-                        *hy_ptr.add(idx) = coeff_y.da * hy_old + coeff_y.db * curl_y;
-
-                        // Hz update: curl_z = dEy/dx - dEx/dy
-                        let curl_z = (ey_ip1 - ey_curr) - (ex_jp1 - ex_curr);
-                        let hz_old = *hz_ptr.add(idx);
-                        *hz_ptr.add(idx) = coeff_z.da * hz_old + coeff_z.db * curl_z;
-                    }
+                    // Compute curl
+                    let ez_curr = unsafe { *ez_ptr.add(idx) };
+                    let ez_jp1 = if j + 1 < ny {
+                        unsafe { *ez_ptr.add(dims.to_linear(i, j + 1, k)) }
+                    } else {
+                        ez_curr
+                    };
+                    let ey_curr = unsafe { *ey_ptr.add(idx) };
+                    let ey_kp1 = if k + 1 < nz {
+                        unsafe { *ey_ptr.add(dims.to_linear(i, j, k + 1)) }
+                    } else {
+                        ey_curr
+                    };
+                    curl_buf[k] = (ez_jp1 - ez_curr) - (ey_kp1 - ey_curr);
                 }
+
+                // Apply SIMD update for Hx
+                let hx_start = dims.to_linear(i, j, 0);
+                let hx_line = unsafe { std::slice::from_raw_parts_mut(hx_ptr.add(hx_start), nz) };
+                Self::update_line_simd(hx_line, &curl_buf, &da_buf, &db_buf);
+
+                // Process Hy: curl_y = dEx/dz - dEz/dx
+                for k in 0..nz {
+                    let idx = dims.to_linear(i, j, k);
+                    let table_idx = unsafe { *h_indices_y_ptr.add(idx) } as usize;
+                    let coeff = unsafe { *h_table_y_ptr.add(table_idx) };
+                    da_buf[k] = coeff.da;
+                    db_buf[k] = coeff.db;
+
+                    let ex_curr = unsafe { *ex_ptr.add(idx) };
+                    let ex_kp1 = if k + 1 < nz {
+                        unsafe { *ex_ptr.add(dims.to_linear(i, j, k + 1)) }
+                    } else {
+                        ex_curr
+                    };
+                    let ez_curr = unsafe { *ez_ptr.add(idx) };
+                    let ez_ip1 = if i + 1 < nx {
+                        unsafe { *ez_ptr.add(dims.to_linear(i + 1, j, k)) }
+                    } else {
+                        ez_curr
+                    };
+                    curl_buf[k] = (ex_kp1 - ex_curr) - (ez_ip1 - ez_curr);
+                }
+
+                let hy_start = dims.to_linear(i, j, 0);
+                let hy_line = unsafe { std::slice::from_raw_parts_mut(hy_ptr.add(hy_start), nz) };
+                Self::update_line_simd(hy_line, &curl_buf, &da_buf, &db_buf);
+
+                // Process Hz: curl_z = dEy/dx - dEx/dy
+                for k in 0..nz {
+                    let idx = dims.to_linear(i, j, k);
+                    let table_idx = unsafe { *h_indices_z_ptr.add(idx) } as usize;
+                    let coeff = unsafe { *h_table_z_ptr.add(table_idx) };
+                    da_buf[k] = coeff.da;
+                    db_buf[k] = coeff.db;
+
+                    let ey_curr = unsafe { *ey_ptr.add(idx) };
+                    let ey_ip1 = if i + 1 < nx {
+                        unsafe { *ey_ptr.add(dims.to_linear(i + 1, j, k)) }
+                    } else {
+                        ey_curr
+                    };
+                    let ex_curr = unsafe { *ex_ptr.add(idx) };
+                    let ex_jp1 = if j + 1 < ny {
+                        unsafe { *ex_ptr.add(dims.to_linear(i, j + 1, k)) }
+                    } else {
+                        ex_curr
+                    };
+                    curl_buf[k] = (ey_ip1 - ey_curr) - (ex_jp1 - ex_curr);
+                }
+
+                let hz_start = dims.to_linear(i, j, 0);
+                let hz_line = unsafe { std::slice::from_raw_parts_mut(hz_ptr.add(hz_start), nz) };
+                Self::update_line_simd(hz_line, &curl_buf, &da_buf, &db_buf);
             }
         });
     }
 
-    /// Parallel E-field update using compressed coefficients.
-    fn update_e_parallel(&mut self) {
+    /// Parallel E-field update with SIMD z-line processing.
+    fn update_e_parallel_simd(&mut self) {
         let dims = self.dims;
         let nx = dims.nx;
         let ny = dims.ny;
         let nz = dims.nz;
 
+        // Get raw pointers wrapped for thread safety
         let ex_ptr = SendPtrMut::new(self.e_field.x.as_mut_ptr());
         let ey_ptr = SendPtrMut::new(self.e_field.y.as_mut_ptr());
         let ez_ptr = SendPtrMut::new(self.e_field.z.as_mut_ptr());
@@ -404,61 +356,87 @@ impl EngineCompressed {
         let hy_ptr = SendPtr::new(self.h_field.y.as_ptr());
         let hz_ptr = SendPtr::new(self.h_field.z.as_ptr());
 
-        // Get coefficient table and index pointers
-        let e_table_x = self.e_coeffs.table(0);
-        let e_table_y = self.e_coeffs.table(1);
-        let e_table_z = self.e_coeffs.table(2);
+        // Coefficient table pointers
+        let e_table_x_ptr = SendPtr::new(self.e_coeffs.table(0).as_ptr());
+        let e_table_y_ptr = SendPtr::new(self.e_coeffs.table(1).as_ptr());
+        let e_table_z_ptr = SendPtr::new(self.e_coeffs.table(2).as_ptr());
 
-        let e_indices_x = SendPtr::new(self.e_coeffs.indices(0).as_ptr());
-        let e_indices_y = SendPtr::new(self.e_coeffs.indices(1).as_ptr());
-        let e_indices_z = SendPtr::new(self.e_coeffs.indices(2).as_ptr());
+        let e_indices_x_ptr = SendPtr::new(self.e_coeffs.indices(0).as_ptr());
+        let e_indices_y_ptr = SendPtr::new(self.e_coeffs.indices(1).as_ptr());
+        let e_indices_z_ptr = SendPtr::new(self.e_coeffs.indices(2).as_ptr());
 
-        let e_table_x_ptr = SendPtr::new(e_table_x.as_ptr());
-        let e_table_y_ptr = SendPtr::new(e_table_y.as_ptr());
-        let e_table_z_ptr = SendPtr::new(e_table_z.as_ptr());
-
+        // Parallel iteration starting from i=1
         (1..nx).into_par_iter().for_each(|i| {
+            let mut ca_buf = vec![0.0f32; nz];
+            let mut cb_buf = vec![0.0f32; nz];
+            let mut curl_buf = vec![0.0f32; nz];
+
             for j in 1..ny {
+                // Process Ex: curl = dHz/dy - dHy/dz
                 for k in 1..nz {
                     let idx = dims.to_linear(i, j, k);
+                    let table_idx = unsafe { *e_indices_x_ptr.add(idx) } as usize;
+                    let coeff = unsafe { *e_table_x_ptr.add(table_idx) };
+                    ca_buf[k] = coeff.ca;
+                    cb_buf[k] = coeff.cb;
 
-                    unsafe {
-                        // Load coefficient indices and look up coefficients
-                        let coeff_idx_x = *e_indices_x.add(idx) as usize;
-                        let coeff_idx_y = *e_indices_y.add(idx) as usize;
-                        let coeff_idx_z = *e_indices_z.add(idx) as usize;
-
-                        let coeff_x = *e_table_x_ptr.add(coeff_idx_x);
-                        let coeff_y = *e_table_y_ptr.add(coeff_idx_y);
-                        let coeff_z = *e_table_z_ptr.add(coeff_idx_z);
-
-                        // Get H-field values
-                        let hz_curr = *hz_ptr.add(idx);
-                        let hz_jm1 = *hz_ptr.add(dims.to_linear(i, j - 1, k));
-                        let hz_im1 = *hz_ptr.add(dims.to_linear(i - 1, j, k));
-                        let hy_curr = *hy_ptr.add(idx);
-                        let hy_km1 = *hy_ptr.add(dims.to_linear(i, j, k - 1));
-                        let hy_im1 = *hy_ptr.add(dims.to_linear(i - 1, j, k));
-                        let hx_curr = *hx_ptr.add(idx);
-                        let hx_km1 = *hx_ptr.add(dims.to_linear(i, j, k - 1));
-                        let hx_jm1 = *hx_ptr.add(dims.to_linear(i, j - 1, k));
-
-                        // Ex update: curl = dHz/dy - dHy/dz
-                        let curl_x = (hz_curr - hz_jm1) - (hy_curr - hy_km1);
-                        let ex_old = *ex_ptr.add(idx);
-                        *ex_ptr.add(idx) = coeff_x.ca * ex_old + coeff_x.cb * curl_x;
-
-                        // Ey update: curl = dHx/dz - dHz/dx
-                        let curl_y = (hx_curr - hx_km1) - (hz_curr - hz_im1);
-                        let ey_old = *ey_ptr.add(idx);
-                        *ey_ptr.add(idx) = coeff_y.ca * ey_old + coeff_y.cb * curl_y;
-
-                        // Ez update: curl = dHy/dx - dHx/dy
-                        let curl_z = (hy_curr - hy_im1) - (hx_curr - hx_jm1);
-                        let ez_old = *ez_ptr.add(idx);
-                        *ez_ptr.add(idx) = coeff_z.ca * ez_old + coeff_z.cb * curl_z;
-                    }
+                    let hz_curr = unsafe { *hz_ptr.add(idx) };
+                    let hz_jm1 = unsafe { *hz_ptr.add(dims.to_linear(i, j - 1, k)) };
+                    let hy_curr = unsafe { *hy_ptr.add(idx) };
+                    let hy_km1 = unsafe { *hy_ptr.add(dims.to_linear(i, j, k - 1)) };
+                    curl_buf[k] = (hz_curr - hz_jm1) - (hy_curr - hy_km1);
                 }
+                ca_buf[0] = 0.0;
+                cb_buf[0] = 0.0;
+                curl_buf[0] = 0.0;
+
+                let ex_start = dims.to_linear(i, j, 0);
+                let ex_line = unsafe { std::slice::from_raw_parts_mut(ex_ptr.add(ex_start), nz) };
+                Self::update_line_simd(ex_line, &curl_buf, &ca_buf, &cb_buf);
+
+                // Process Ey: curl = dHx/dz - dHz/dx
+                for k in 1..nz {
+                    let idx = dims.to_linear(i, j, k);
+                    let table_idx = unsafe { *e_indices_y_ptr.add(idx) } as usize;
+                    let coeff = unsafe { *e_table_y_ptr.add(table_idx) };
+                    ca_buf[k] = coeff.ca;
+                    cb_buf[k] = coeff.cb;
+
+                    let hx_curr = unsafe { *hx_ptr.add(idx) };
+                    let hx_km1 = unsafe { *hx_ptr.add(dims.to_linear(i, j, k - 1)) };
+                    let hz_curr = unsafe { *hz_ptr.add(idx) };
+                    let hz_im1 = unsafe { *hz_ptr.add(dims.to_linear(i - 1, j, k)) };
+                    curl_buf[k] = (hx_curr - hx_km1) - (hz_curr - hz_im1);
+                }
+                ca_buf[0] = 0.0;
+                cb_buf[0] = 0.0;
+                curl_buf[0] = 0.0;
+
+                let ey_start = dims.to_linear(i, j, 0);
+                let ey_line = unsafe { std::slice::from_raw_parts_mut(ey_ptr.add(ey_start), nz) };
+                Self::update_line_simd(ey_line, &curl_buf, &ca_buf, &cb_buf);
+
+                // Process Ez: curl = dHy/dx - dHx/dy
+                for k in 1..nz {
+                    let idx = dims.to_linear(i, j, k);
+                    let table_idx = unsafe { *e_indices_z_ptr.add(idx) } as usize;
+                    let coeff = unsafe { *e_table_z_ptr.add(table_idx) };
+                    ca_buf[k] = coeff.ca;
+                    cb_buf[k] = coeff.cb;
+
+                    let hy_curr = unsafe { *hy_ptr.add(idx) };
+                    let hy_im1 = unsafe { *hy_ptr.add(dims.to_linear(i - 1, j, k)) };
+                    let hx_curr = unsafe { *hx_ptr.add(idx) };
+                    let hx_jm1 = unsafe { *hx_ptr.add(dims.to_linear(i, j - 1, k)) };
+                    curl_buf[k] = (hy_curr - hy_im1) - (hx_curr - hx_jm1);
+                }
+                ca_buf[0] = 0.0;
+                cb_buf[0] = 0.0;
+                curl_buf[0] = 0.0;
+
+                let ez_start = dims.to_linear(i, j, 0);
+                let ez_line = unsafe { std::slice::from_raw_parts_mut(ez_ptr.add(ez_start), nz) };
+                Self::update_line_simd(ez_line, &curl_buf, &ca_buf, &cb_buf);
             }
         });
     }
@@ -510,7 +488,7 @@ mod tests {
 
         // Run some steps
         for _ in 0..100 {
-            engine.step().unwrap();
+            engine.step(&op).unwrap();
         }
 
         let final_energy = engine.total_energy();
@@ -534,13 +512,11 @@ mod tests {
         let engine = EngineCompressed::new(&op);
 
         let (e_ratio, h_ratio) = engine.compression_stats();
+        let (e_unique, h_unique) = engine.num_unique_coefficients();
 
-        // For a uniform vacuum grid, we should have very few unique coefficients
-        // The compression ratio might be < 1 due to index overhead, but
-        // the memory bandwidth benefit comes from cache utilization
-        println!("E compression ratio: {:.2}, H compression ratio: {:.2}", e_ratio, h_ratio);
+        println!("E compression ratio: {:.2}, unique: {:?}", e_ratio, e_unique);
+        println!("H compression ratio: {:.2}, unique: {:?}", h_ratio, h_unique);
 
-        // Just verify it runs without panic
         assert!(e_ratio > 0.0);
         assert!(h_ratio > 0.0);
     }

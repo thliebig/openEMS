@@ -44,7 +44,7 @@ pub use engine::Engine;
 pub use engine_interface::{EngineInterface, EngineInterfaceMut, InterpolationType};
 pub use excitation::{Excitation, ExcitationType};
 pub use operator::Operator;
-pub use simulation::{EndCondition, Simulation, SimulationStats};
+pub use simulation::{EndCondition, EngineWrapper, Simulation, SimulationStats};
 pub use timestep::TimestepInfo;
 
 /// Engine type selection
