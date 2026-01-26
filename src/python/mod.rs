@@ -4,9 +4,9 @@
 //! functionality to Python users.
 
 #[cfg(feature = "python")]
-use pyo3::prelude::*;
-#[cfg(feature = "python")]
 use pyo3::exceptions::PyRuntimeError;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
 use crate::fdtd::{BoundaryConditions, EndCondition, EngineType, Simulation as RustSimulation};
@@ -108,9 +108,10 @@ impl PyOpenEMS {
 
     /// Run the simulation
     fn run(&self, sim_path: &str, cleanup: bool) -> PyResult<()> {
-        let grid = self.grid.as_ref().ok_or_else(|| {
-            PyRuntimeError::new_err("Grid not set. Call set_grid() first.")
-        })?;
+        let grid = self
+            .grid
+            .as_ref()
+            .ok_or_else(|| PyRuntimeError::new_err("Grid not set. Call set_grid() first."))?;
 
         let mut sim = RustSimulation::new(grid.clone());
         sim.set_engine_type(self.engine_type);
@@ -121,8 +122,10 @@ impl PyOpenEMS {
             sim.set_end_condition(EndCondition::Timesteps(self.num_timesteps));
         }
 
-        sim.setup().map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-        sim.run().map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        sim.setup()
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        sim.run()
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
         Ok(())
     }

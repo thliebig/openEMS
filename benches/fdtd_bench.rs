@@ -22,7 +22,7 @@ fn bench_fdtd_step(c: &mut Criterion) {
             let mut engine = Engine::new(&op, EngineType::Basic);
             b.iter(|| {
                 engine.step(&op).unwrap();
-                black_box(&engine)
+                black_box(())
             });
         });
 
@@ -31,7 +31,7 @@ fn bench_fdtd_step(c: &mut Criterion) {
             let mut engine = Engine::new(&op, EngineType::Simd);
             b.iter(|| {
                 engine.step(&op).unwrap();
-                black_box(&engine)
+                black_box(())
             });
         });
 
@@ -40,7 +40,7 @@ fn bench_fdtd_step(c: &mut Criterion) {
             let mut engine = Engine::new(&op, EngineType::Parallel);
             b.iter(|| {
                 engine.step(&op).unwrap();
-                black_box(&engine)
+                black_box(())
             });
         });
 
@@ -61,7 +61,7 @@ fn bench_array_operations(c: &mut Criterion) {
         let mut field = Field3D::new(dims);
         b.iter(|| {
             field.fill(1.0);
-            black_box(&field)
+            black_box(())
         });
     });
 
@@ -72,7 +72,7 @@ fn bench_array_operations(c: &mut Criterion) {
 
         b.iter(|| {
             a.simd_fmadd(2.0, &b_field);
-            black_box(&a)
+            black_box(())
         });
     });
 

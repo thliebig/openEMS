@@ -7,7 +7,7 @@ use log::{error, info, warn, LevelFilter};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use openems::fdtd::{EngineType, EndCondition, Simulation};
+use openems::fdtd::{EndCondition, EngineType, Simulation};
 use openems::geometry::Grid;
 use openems::io::xml;
 
@@ -69,17 +69,13 @@ fn main() -> ExitCode {
         .init();
 
     // Print banner
-    println!(
-        " ---------------------------------------------------------------------- "
-    );
+    println!(" ---------------------------------------------------------------------- ");
     println!(
         " | openEMS-Rust {} -- High-Performance FDTD Solver",
         openems::VERSION
     );
     println!(" | (c) 2024 openEMS contributors  GPL license");
-    println!(
-        " ---------------------------------------------------------------------- "
-    );
+    println!(" ---------------------------------------------------------------------- ");
 
     // Set number of threads if specified
     if args.num_threads > 0 {

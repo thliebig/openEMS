@@ -217,10 +217,7 @@ impl Field3D {
 
     /// Compute the energy (sum of squares).
     pub fn energy(&self) -> f64 {
-        self.data
-            .par_iter()
-            .map(|&v| (v as f64) * (v as f64))
-            .sum()
+        self.data.par_iter().map(|&v| (v as f64) * (v as f64)).sum()
     }
 }
 

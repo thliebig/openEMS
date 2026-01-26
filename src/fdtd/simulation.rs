@@ -335,7 +335,6 @@ impl Simulation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geometry::CoordinateSystem;
 
     #[test]
     fn test_simulation_basic() {

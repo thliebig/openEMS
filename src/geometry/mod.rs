@@ -135,9 +135,18 @@ impl Grid {
 
     /// Get the total simulation volume.
     pub fn volume(&self) -> f64 {
-        let (x_min, x_max) = (*self.x_lines.first().unwrap(), *self.x_lines.last().unwrap());
-        let (y_min, y_max) = (*self.y_lines.first().unwrap(), *self.y_lines.last().unwrap());
-        let (z_min, z_max) = (*self.z_lines.first().unwrap(), *self.z_lines.last().unwrap());
+        let (x_min, x_max) = (
+            *self.x_lines.first().unwrap(),
+            *self.x_lines.last().unwrap(),
+        );
+        let (y_min, y_max) = (
+            *self.y_lines.first().unwrap(),
+            *self.y_lines.last().unwrap(),
+        );
+        let (z_min, z_max) = (
+            *self.z_lines.first().unwrap(),
+            *self.z_lines.last().unwrap(),
+        );
 
         let unit3 = self.unit * self.unit * self.unit;
         (x_max - x_min) * (y_max - y_min) * (z_max - z_min) * unit3
@@ -423,10 +432,13 @@ mod tests {
         let grid_cylindrical = Grid::new(
             CoordinateSystem::Cylindrical,
             vec![0.0, 0.001, 0.002],
-            vec![0.0, 1.57, 3.14],
+            vec![0.0, std::f64::consts::FRAC_PI_2, std::f64::consts::PI],
             vec![0.0, 0.001, 0.002],
         );
-        assert_eq!(grid_cylindrical.coord_system(), CoordinateSystem::Cylindrical);
+        assert_eq!(
+            grid_cylindrical.coord_system(),
+            CoordinateSystem::Cylindrical
+        );
     }
 
     #[test]
@@ -446,8 +458,8 @@ mod tests {
     fn test_cell_size_at_position() {
         // Non-uniform grid
         let x_lines = vec![0.0, 0.001, 0.003, 0.007]; // dx = [0.001, 0.002, 0.004]
-        let y_lines = vec![0.0, 0.002, 0.005];         // dy = [0.002, 0.003]
-        let z_lines = vec![0.0, 0.001, 0.002, 0.004];  // dz = [0.001, 0.001, 0.002]
+        let y_lines = vec![0.0, 0.002, 0.005]; // dy = [0.002, 0.003]
+        let z_lines = vec![0.0, 0.001, 0.002, 0.004]; // dz = [0.001, 0.001, 0.002]
 
         let grid = Grid::cartesian(x_lines, y_lines, z_lines);
 
@@ -611,12 +623,7 @@ mod tests {
             if delta_prev > 0.0 && delta_curr > 0.0 {
                 let ratio = delta_curr / delta_prev;
                 // Allow small tolerance
-                assert!(
-                    ratio <= 2.1,
-                    "Ratio {} exceeds max at index {}",
-                    ratio,
-                    i
-                );
+                assert!(ratio <= 2.1, "Ratio {} exceeds max at index {}", ratio, i);
             }
         }
     }
@@ -800,11 +807,7 @@ mod tests {
     #[test]
     fn test_dimensions_with_single_lines() {
         // Edge case: minimal grid
-        let grid = Grid::cartesian(
-            vec![0.0, 1.0],
-            vec![0.0, 1.0],
-            vec![0.0, 1.0],
-        );
+        let grid = Grid::cartesian(vec![0.0, 1.0], vec![0.0, 1.0], vec![0.0, 1.0]);
 
         let dims = grid.dimensions();
         assert_eq!(dims.nx, 1);
@@ -831,8 +834,8 @@ mod tests {
     fn test_min_delta_function() {
         // Via cell_size which uses min_delta
         let x_lines = vec![0.0, 0.001, 0.003, 0.01]; // min delta = 0.001
-        let y_lines = vec![0.0, 0.002, 0.003];        // min delta = 0.001
-        let z_lines = vec![0.0, 0.005, 0.006];        // min delta = 0.001
+        let y_lines = vec![0.0, 0.002, 0.003]; // min delta = 0.001
+        let z_lines = vec![0.0, 0.005, 0.006]; // min delta = 0.001
 
         let grid = Grid::cartesian(x_lines, y_lines, z_lines);
         let (dx, dy, dz) = grid.cell_size();

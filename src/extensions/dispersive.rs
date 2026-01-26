@@ -386,7 +386,11 @@ mod tests {
 
     #[test]
     fn test_lorentz_material() {
-        let dims = Dimensions { nx: 10, ny: 10, nz: 10 };
+        let dims = Dimensions {
+            nx: 10,
+            ny: 10,
+            nz: 10,
+        };
         let dt = 1e-15;
         let params = LorentzParams::from_hz(1e14, 1e13, 1.0);
 
@@ -403,12 +407,19 @@ mod tests {
         }
 
         // After multiple updates with excitation, auxiliary currents should be non-zero
-        assert!(material.ade.j_ade[0][0] != 0.0, "Auxiliary current should build up");
+        assert!(
+            material.ade.j_ade[0][0] != 0.0,
+            "Auxiliary current should build up"
+        );
     }
 
     #[test]
     fn test_drude_material() {
-        let dims = Dimensions { nx: 10, ny: 10, nz: 10 };
+        let dims = Dimensions {
+            nx: 10,
+            ny: 10,
+            nz: 10,
+        };
         let dt = 1e-16;
         let params = DrudeParams::metal(2e15, 1e13);
 
@@ -427,7 +438,11 @@ mod tests {
 
     #[test]
     fn test_debye_material() {
-        let dims = Dimensions { nx: 10, ny: 10, nz: 10 };
+        let dims = Dimensions {
+            nx: 10,
+            ny: 10,
+            nz: 10,
+        };
         let dt = 1e-12;
         let params = DebyeParams::new(1e-11, 10.0); // Water-like
 

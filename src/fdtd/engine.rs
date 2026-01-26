@@ -154,11 +154,7 @@ impl Engine {
     }
 
     /// Update H-field using basic implementation.
-    fn update_h_basic(
-        &mut self,
-        dims: Dimensions,
-        h_coeff: &super::operator::HFieldCoefficients,
-    ) {
+    fn update_h_basic(&mut self, dims: Dimensions, h_coeff: &super::operator::HFieldCoefficients) {
         // Hx = Da_x*Hx + Db_x * (dEz/dy - dEy/dz)
         // Hy = Da_y*Hy + Db_y * (dEx/dz - dEz/dx)
         // Hz = Da_z*Hz + Db_z * (dEy/dx - dEx/dy)
@@ -226,11 +222,7 @@ impl Engine {
     }
 
     /// Update E-field using basic implementation.
-    fn update_e_basic(
-        &mut self,
-        dims: Dimensions,
-        e_coeff: &super::operator::EFieldCoefficients,
-    ) {
+    fn update_e_basic(&mut self, dims: Dimensions, e_coeff: &super::operator::EFieldCoefficients) {
         // Ex = Ca_x*Ex + Cb_x * (dHz/dy - dHy/dz)
         // Ey = Ca_y*Ey + Cb_y * (dHx/dz - dHz/dx)
         // Ez = Ca_z*Ez + Cb_z * (dHy/dx - dHx/dy)
@@ -292,11 +284,7 @@ impl Engine {
     }
 
     /// SIMD-optimized H-field update operating on z-lines.
-    fn update_h_simd(
-        &mut self,
-        dims: Dimensions,
-        h_coeff: &super::operator::HFieldCoefficients,
-    ) {
+    fn update_h_simd(&mut self, dims: Dimensions, h_coeff: &super::operator::HFieldCoefficients) {
         let nz = dims.nz;
 
         for i in 0..dims.nx {
@@ -376,11 +364,7 @@ impl Engine {
     }
 
     /// SIMD-optimized E-field update operating on z-lines.
-    fn update_e_simd(
-        &mut self,
-        dims: Dimensions,
-        e_coeff: &super::operator::EFieldCoefficients,
-    ) {
+    fn update_e_simd(&mut self, dims: Dimensions, e_coeff: &super::operator::EFieldCoefficients) {
         let nz = dims.nz;
 
         for i in 1..dims.nx {

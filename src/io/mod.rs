@@ -5,9 +5,9 @@
 //! - VTK for visualization
 //! - XML for configuration files
 
+pub mod hdf5;
 pub mod vtk;
 pub mod xml;
-pub mod hdf5;
 
 use crate::Result;
 use std::path::Path;

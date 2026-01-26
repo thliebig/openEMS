@@ -347,7 +347,11 @@ mod tests {
 
     #[test]
     fn test_mur_creation() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
         let config = MurAbcConfig::all();
@@ -375,7 +379,11 @@ mod tests {
 
     #[test]
     fn test_mur_partial_boundaries() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
 
@@ -391,7 +399,11 @@ mod tests {
 
     #[test]
     fn test_mur_update_cycle() {
-        let dims = Dimensions { nx: 10, ny: 10, nz: 10 };
+        let dims = Dimensions {
+            nx: 10,
+            ny: 10,
+            nz: 10,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
         let config = MurAbcConfig::all();
@@ -414,7 +426,11 @@ mod tests {
 
     #[test]
     fn test_mur_with_custom_phase_velocity() {
-        let dims = Dimensions { nx: 10, ny: 10, nz: 10 };
+        let dims = Dimensions {
+            nx: 10,
+            ny: 10,
+            nz: 10,
+        };
         let delta = [0.001, 0.001, 0.001];
         let dt = 1e-12;
         let config = MurAbcConfig::all().with_phase_velocity(C0 * 0.5);

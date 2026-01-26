@@ -10,17 +10,17 @@
 //! - Steady-state detection
 //! - Conducting sheet model
 
-mod pml;
-mod mur_abc;
-mod local_absorbing_bc;
-mod dispersive;
-mod lumped_rlc;
-mod tfsf;
-mod steady_state;
 mod conducting_sheet;
+mod dispersive;
+mod local_absorbing_bc;
+mod lumped_rlc;
+mod mur_abc;
+mod pml;
+mod steady_state;
+mod tfsf;
 
 // PML exports
-pub use pml::{Pml, PmlConfig, PmlBoundaries, PmlBoundary, Upml};
+pub use pml::{Pml, PmlBoundaries, PmlBoundary, PmlConfig, Upml};
 
 // Mur ABC exports (domain boundaries)
 pub use mur_abc::{MurAbc, MurAbcConfig};
@@ -32,20 +32,18 @@ pub use local_absorbing_bc::{
 
 // Dispersive material exports
 pub use dispersive::{
-    DispersiveMaterial,
-    LorentzMaterial, LorentzParams,
-    DrudeMaterial, DrudeParams,
-    DebyeMaterial, DebyeParams,
+    DebyeMaterial, DebyeParams, DispersiveMaterial, DrudeMaterial, DrudeParams, LorentzMaterial,
+    LorentzParams,
 };
 
 // Lumped RLC exports
 pub use lumped_rlc::{LumpedRlc, RlcElement, RlcType};
 
 // TF/SF exports
-pub use tfsf::{TfsfBoundary, TfsfConfig, PropagationDirection, Polarization};
+pub use tfsf::{Polarization, PropagationDirection, TfsfBoundary, TfsfConfig};
 
 // Steady-state exports
-pub use steady_state::{SteadyStateDetector, SteadyStateConfig, SteadyStateResult};
+pub use steady_state::{SteadyStateConfig, SteadyStateDetector, SteadyStateResult};
 
 // Conducting sheet exports
 pub use conducting_sheet::{

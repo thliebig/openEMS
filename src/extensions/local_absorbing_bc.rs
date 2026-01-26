@@ -194,7 +194,11 @@ pub struct LocalAbsorbingSheet {
 
 impl LocalAbsorbingSheet {
     /// Create a new local absorbing sheet.
-    pub fn new(config: &LocalAbsorbingBcConfig, dt: f64, get_delta: impl Fn(usize, [usize; 3]) -> f64) -> Option<Self> {
+    pub fn new(
+        config: &LocalAbsorbingBcConfig,
+        dt: f64,
+        get_delta: impl Fn(usize, [usize; 3]) -> f64,
+    ) -> Option<Self> {
         let ny = config.detect_normal_direction()?;
         let ny_p = (ny + 1) % 3;
         let ny_pp = (ny + 2) % 3;
@@ -321,7 +325,11 @@ impl LocalAbsorbingSheet {
 
     /// Get mutable field component accessor.
     #[inline]
-    fn get_field_component_mut<'a>(&self, field: &'a mut VectorField3D, direction: usize) -> &'a mut Field3D {
+    fn get_field_component_mut<'a>(
+        &self,
+        field: &'a mut VectorField3D,
+        direction: usize,
+    ) -> &'a mut Field3D {
         match direction {
             0 => &mut field.x,
             1 => &mut field.y,
@@ -359,8 +367,16 @@ impl LocalAbsorbingSheet {
                 let e_boundary_ny_pp = field_ny_pp.get(pos[0], pos[1], pos[2]);
 
                 // E(i+s,n) - K1*E(i,n)
-                self.v_ny_p.set(i, j, e_shift_ny_p - self.k1_ny_p.get(i, j) * e_boundary_ny_p);
-                self.v_ny_pp.set(i, j, e_shift_ny_pp - self.k1_ny_pp.get(i, j) * e_boundary_ny_pp);
+                self.v_ny_p.set(
+                    i,
+                    j,
+                    e_shift_ny_p - self.k1_ny_p.get(i, j) * e_boundary_ny_p,
+                );
+                self.v_ny_pp.set(
+                    i,
+                    j,
+                    e_shift_ny_pp - self.k1_ny_pp.get(i, j) * e_boundary_ny_pp,
+                );
             }
         }
     }
@@ -390,8 +406,10 @@ impl LocalAbsorbingSheet {
                 // E(i+s,n) - K1*E(i,n) + K1*E(i+s,n+1)
                 let prev_ny_p = self.v_ny_p.get(i, j);
                 let prev_ny_pp = self.v_ny_pp.get(i, j);
-                self.v_ny_p.set(i, j, prev_ny_p + self.k1_ny_p.get(i, j) * e_shift_ny_p);
-                self.v_ny_pp.set(i, j, prev_ny_pp + self.k1_ny_pp.get(i, j) * e_shift_ny_pp);
+                self.v_ny_p
+                    .set(i, j, prev_ny_p + self.k1_ny_p.get(i, j) * e_shift_ny_p);
+                self.v_ny_pp
+                    .set(i, j, prev_ny_pp + self.k1_ny_pp.get(i, j) * e_shift_ny_pp);
             }
         }
     }
@@ -455,8 +473,16 @@ impl LocalAbsorbingSheet {
                 let h_boundary_ny_pp = field_ny_pp.get(pos[0], pos[1], pos[2]);
 
                 // H(i+s,n) - K1*H(i,n)
-                self.i_ny_p.set(i, j, h_shift_ny_p - self.k1_ny_p.get(i, j) * h_boundary_ny_p);
-                self.i_ny_pp.set(i, j, h_shift_ny_pp - self.k1_ny_pp.get(i, j) * h_boundary_ny_pp);
+                self.i_ny_p.set(
+                    i,
+                    j,
+                    h_shift_ny_p - self.k1_ny_p.get(i, j) * h_boundary_ny_p,
+                );
+                self.i_ny_pp.set(
+                    i,
+                    j,
+                    h_shift_ny_pp - self.k1_ny_pp.get(i, j) * h_boundary_ny_pp,
+                );
             }
         }
     }
@@ -489,8 +515,10 @@ impl LocalAbsorbingSheet {
                 // H(i+s,n) - K1*H(i,n) + K1*H(i+s,n+1)
                 let prev_ny_p = self.i_ny_p.get(i, j);
                 let prev_ny_pp = self.i_ny_pp.get(i, j);
-                self.i_ny_p.set(i, j, prev_ny_p + self.k1_ny_p.get(i, j) * h_shift_ny_p);
-                self.i_ny_pp.set(i, j, prev_ny_pp + self.k1_ny_pp.get(i, j) * h_shift_ny_pp);
+                self.i_ny_p
+                    .set(i, j, prev_ny_p + self.k1_ny_p.get(i, j) * h_shift_ny_p);
+                self.i_ny_pp
+                    .set(i, j, prev_ny_pp + self.k1_ny_pp.get(i, j) * h_shift_ny_pp);
             }
         }
     }
@@ -681,43 +709,23 @@ mod tests {
     #[test]
     fn test_config_normal_detection() {
         // X-normal sheet (y-z plane)
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 10, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 10, 10]);
         assert_eq!(config.detect_normal_direction(), Some(0));
 
         // Y-normal sheet (x-z plane)
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [0, 5, 0],
-            [10, 5, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [0, 5, 0], [10, 5, 10]);
         assert_eq!(config.detect_normal_direction(), Some(1));
 
         // Z-normal sheet (x-y plane)
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [0, 0, 5],
-            [10, 10, 5],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [0, 0, 5], [10, 10, 5]);
         assert_eq!(config.detect_normal_direction(), Some(2));
 
         // Not a sheet (3D box)
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [0, 0, 0],
-            [10, 10, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [0, 0, 0], [10, 10, 10]);
         assert_eq!(config.detect_normal_direction(), None);
 
         // Line (two collapsed dimensions)
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 5, 0],
-            [5, 5, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 5, 0], [5, 5, 10]);
         assert_eq!(config.detect_normal_direction(), None);
     }
 
@@ -733,35 +741,25 @@ mod tests {
 
     #[test]
     fn test_config_with_phase_velocity() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 10, 10],
-        ).with_phase_velocity(2e8);
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 10, 10])
+            .with_phase_velocity(2e8);
 
         assert_eq!(config.phase_velocity, Some(2e8));
     }
 
     #[test]
     fn test_config_with_normal_sign() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 10, 10],
-        ).with_normal_sign(false);
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 10, 10])
+            .with_normal_sign(false);
 
         assert!(!config.normal_sign_positive);
     }
 
     #[test]
     fn test_config_builder_chain() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1stSa,
-            [0, 5, 0],
-            [10, 5, 10],
-        )
-        .with_phase_velocity(1.5e8)
-        .with_normal_sign(false);
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1stSa, [0, 5, 0], [10, 5, 10])
+            .with_phase_velocity(1.5e8)
+            .with_normal_sign(false);
 
         assert_eq!(config.abc_type, AbcType::Mur1stSa);
         assert_eq!(config.phase_velocity, Some(1.5e8));
@@ -771,11 +769,8 @@ mod tests {
 
     #[test]
     fn test_config_clone() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 10, 10],
-        ).with_phase_velocity(2e8);
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 10, 10])
+            .with_phase_velocity(2e8);
 
         let cloned = config.clone();
         assert_eq!(cloned.abc_type, config.abc_type);
@@ -786,11 +781,7 @@ mod tests {
 
     #[test]
     fn test_sheet_creation() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 10, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 10, 10]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -807,11 +798,7 @@ mod tests {
 
     #[test]
     fn test_sheet_creation_y_normal() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [0, 5, 0],
-            [10, 5, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [0, 5, 0], [10, 5, 10]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -824,11 +811,7 @@ mod tests {
 
     #[test]
     fn test_sheet_creation_z_normal() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [0, 0, 5],
-            [10, 10, 5],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [0, 0, 5], [10, 10, 5]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -842,11 +825,7 @@ mod tests {
     #[test]
     fn test_sheet_creation_invalid_geometry() {
         // 3D box - not a valid sheet
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [0, 0, 0],
-            [10, 10, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [0, 0, 0], [10, 10, 10]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -857,11 +836,8 @@ mod tests {
 
     #[test]
     fn test_sheet_creation_negative_normal() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 10, 10],
-        ).with_normal_sign(false);
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 10, 10])
+            .with_normal_sign(false);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -872,11 +848,7 @@ mod tests {
 
     #[test]
     fn test_sheet_super_absorption() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1stSa,
-            [5, 0, 0],
-            [5, 10, 10],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1stSa, [5, 0, 0], [5, 10, 10]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -890,11 +862,7 @@ mod tests {
 
     #[test]
     fn test_sheet_num_cells() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 9, 14],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 9, 14]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -910,11 +878,7 @@ mod tests {
         assert!(!manager.is_active());
         assert_eq!(manager.num_sheets(), 0);
 
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 9, 9],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 9, 9]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -978,18 +942,18 @@ mod tests {
 
     #[test]
     fn test_voltage_update_cycle() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let mut e_field = VectorField3D::new(dims);
 
         // Set some initial values
         e_field.y.set(5, 5, 5, 1.0);
         e_field.z.set(5, 5, 5, 1.0);
 
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 19, 19],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 19, 19]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -1008,7 +972,11 @@ mod tests {
 
     #[test]
     fn test_current_update_cycle_super_absorption() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let mut h_field = VectorField3D::new(dims);
 
         // Set some initial values
@@ -1016,7 +984,7 @@ mod tests {
         h_field.z.set(5, 5, 5, 0.1);
 
         let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1stSa,  // Super absorption for current updates
+            AbcType::Mur1stSa, // Super absorption for current updates
             [5, 0, 0],
             [5, 19, 19],
         );
@@ -1037,14 +1005,18 @@ mod tests {
 
     #[test]
     fn test_current_update_skipped_for_mur1st() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let mut h_field = VectorField3D::new(dims);
 
         h_field.y.fill(1.0);
         let original_value = h_field.y.get(5, 5, 5);
 
         let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,  // Not super absorption
+            AbcType::Mur1st, // Not super absorption
             [5, 0, 0],
             [5, 19, 19],
         );
@@ -1065,7 +1037,11 @@ mod tests {
 
     #[test]
     fn test_manager_voltage_update_cycle() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let mut e_field = VectorField3D::new(dims);
         e_field.y.fill(1.0);
 
@@ -1087,7 +1063,11 @@ mod tests {
 
     #[test]
     fn test_manager_current_update_cycle() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let mut h_field = VectorField3D::new(dims);
         h_field.y.fill(0.1);
 
@@ -1109,11 +1089,7 @@ mod tests {
 
     #[test]
     fn test_activation_delay() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 9, 9],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 9, 9]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -1129,7 +1105,11 @@ mod tests {
 
     #[test]
     fn test_inactive_sheet_skips_updates() {
-        let dims = Dimensions { nx: 20, ny: 20, nz: 20 };
+        let dims = Dimensions {
+            nx: 20,
+            ny: 20,
+            nz: 20,
+        };
         let mut e_field = VectorField3D::new(dims);
         e_field.y.fill(1.0);
         let original_value = e_field.y.get(5, 5, 5);
@@ -1140,7 +1120,7 @@ mod tests {
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
 
         let mut sheet = LocalAbsorbingSheet::new(&config, dt, get_delta).unwrap();
-        sheet.set_start_timestep(100);  // Activate at timestep 100
+        sheet.set_start_timestep(100); // Activate at timestep 100
 
         // Run updates at timestep 0 (inactive)
         sheet.pre_voltage_update(&e_field, 0);
@@ -1188,11 +1168,7 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1stSa,
-            [5, 0, 0],
-            [5, 9, 9],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1stSa, [5, 0, 0], [5, 9, 9]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;
@@ -1237,17 +1213,11 @@ mod tests {
 
     #[test]
     fn test_sheet_with_variable_delta() {
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 0, 0],
-            [5, 4, 4],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 0, 0], [5, 4, 4]);
 
         let dt = 1e-12;
         // Variable cell size based on position
-        let get_delta = |_ny: usize, pos: [usize; 3]| {
-            0.001 * (1.0 + 0.1 * pos[1] as f64)
-        };
+        let get_delta = |_ny: usize, pos: [usize; 3]| 0.001 * (1.0 + 0.1 * pos[1] as f64);
 
         let sheet = LocalAbsorbingSheet::new(&config, dt, get_delta);
         assert!(sheet.is_some());
@@ -1256,11 +1226,7 @@ mod tests {
     #[test]
     fn test_point_sheet() {
         // Single point (degenerate case)
-        let config = LocalAbsorbingBcConfig::new(
-            AbcType::Mur1st,
-            [5, 5, 5],
-            [5, 5, 5],
-        );
+        let config = LocalAbsorbingBcConfig::new(AbcType::Mur1st, [5, 5, 5], [5, 5, 5]);
 
         let dt = 1e-12;
         let get_delta = |_ny: usize, _pos: [usize; 3]| 0.001;

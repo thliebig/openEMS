@@ -17,7 +17,7 @@ fn benchmark_engine(size: usize, timesteps: u64, engine_type: EngineType) -> f64
     sim.setup().unwrap();
 
     let start = Instant::now();
-    let stats = sim.run().unwrap();
+    let _stats = sim.run().unwrap();
     let elapsed = start.elapsed().as_secs_f64();
 
     let cells_per_step = (size * size * size) as f64;
@@ -25,7 +25,11 @@ fn benchmark_engine(size: usize, timesteps: u64, engine_type: EngineType) -> f64
 
     println!(
         "  {:?}: {} cells, {} steps in {:.3}s = {:.2} MC/s",
-        engine_type, size * size * size, timesteps, elapsed, speed
+        engine_type,
+        size * size * size,
+        timesteps,
+        elapsed,
+        speed
     );
 
     speed
@@ -40,7 +44,13 @@ fn main() {
 
     // Run benchmarks for different grid sizes
     for &size in &[50, 100, 150] {
-        println!("\nGrid size: {}x{}x{} = {} cells", size, size, size, size*size*size);
+        println!(
+            "\nGrid size: {}x{}x{} = {} cells",
+            size,
+            size,
+            size,
+            size * size * size
+        );
         println!("-----------------------------------------");
 
         let timesteps = 100u64;
@@ -49,8 +59,14 @@ fn main() {
         let simd_speed = benchmark_engine(size, timesteps, EngineType::Simd);
         let parallel_speed = benchmark_engine(size, timesteps, EngineType::Parallel);
 
-        println!("  SIMD speedup over Basic: {:.2}x", simd_speed / basic_speed);
-        println!("  Parallel speedup over Basic: {:.2}x", parallel_speed / basic_speed);
+        println!(
+            "  SIMD speedup over Basic: {:.2}x",
+            simd_speed / basic_speed
+        );
+        println!(
+            "  Parallel speedup over Basic: {:.2}x",
+            parallel_speed / basic_speed
+        );
     }
 
     println!("\nDone!");

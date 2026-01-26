@@ -90,16 +90,8 @@ impl Operator {
 
     /// Initialize E-field update coefficients.
     fn init_e_coefficients(dims: Dimensions, grid: &Grid, dt: f64) -> EFieldCoefficients {
-        let mut ca = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
-        let mut cb = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
+        let mut ca = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut cb = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
 
         let (dx, dy, dz) = grid.cell_size();
         let _dt_f32 = dt as f32;
@@ -125,16 +117,8 @@ impl Operator {
 
     /// Initialize H-field update coefficients.
     fn init_h_coefficients(dims: Dimensions, grid: &Grid, dt: f64) -> HFieldCoefficients {
-        let mut da = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
-        let mut db = [
-            Field3D::new(dims),
-            Field3D::new(dims),
-            Field3D::new(dims),
-        ];
+        let mut da = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut db = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
 
         let (dx, dy, dz) = grid.cell_size();
 
@@ -505,7 +489,10 @@ mod tests {
 
         // Timestep should be limited by smallest cell (0.5mm)
         let dt = op.timestep();
-        let dt_max_smallest = 1.0 / (C0 * (1.0 / 0.001f64.powi(2) + 1.0 / 0.002f64.powi(2) + 1.0 / 0.0005f64.powi(2)).sqrt());
+        let dt_max_smallest = 1.0
+            / (C0
+                * (1.0 / 0.001f64.powi(2) + 1.0 / 0.002f64.powi(2) + 1.0 / 0.0005f64.powi(2))
+                    .sqrt());
 
         // dt should be less than dt_max (with safety margin)
         assert!(dt < dt_max_smallest);

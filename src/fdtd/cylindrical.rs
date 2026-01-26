@@ -33,11 +33,7 @@ pub struct CylindricalGrid {
 
 impl CylindricalGrid {
     /// Create a new cylindrical grid.
-    pub fn new(
-        rho: Vec<f64>,
-        alpha: Vec<f64>,
-        z: Vec<f64>,
-    ) -> Self {
+    pub fn new(rho: Vec<f64>, alpha: Vec<f64>, z: Vec<f64>) -> Self {
         let n_rho = rho.len().saturating_sub(1);
         let n_alpha = alpha.len().saturating_sub(1);
         let n_z = z.len().saturating_sub(1);
@@ -361,7 +357,8 @@ impl CylindricalOperator {
                     let dz = cell_size[2];
 
                     // CFL condition
-                    let dt_cell = 1.0 / (C0 * (1.0 / (dx * dx) + 1.0 / (dy * dy) + 1.0 / (dz * dz)).sqrt());
+                    let dt_cell =
+                        1.0 / (C0 * (1.0 / (dx * dx) + 1.0 / (dy * dy) + 1.0 / (dz * dz)).sqrt());
 
                     dt_min = dt_min.min(dt_cell);
                 }
@@ -445,8 +442,10 @@ impl CylindricalEngine {
 
                     // E_rho update: dE_rho/dt = (1/eps) * (dHz/r*d_alpha - dH_alpha/dz)
                     let curl_h_rho = if i > 0 || !grid.r0_included {
-                        let hz_diff = self.h_field.z.get(i, j, k) - self.h_field.z.get(i, j_prev, k);
-                        let ha_diff = self.h_field.y.get(i, j, k) - self.h_field.y.get(i, j, k_prev);
+                        let hz_diff =
+                            self.h_field.z.get(i, j, k) - self.h_field.z.get(i, j_prev, k);
+                        let ha_diff =
+                            self.h_field.y.get(i, j, k) - self.h_field.y.get(i, j, k_prev);
                         hz_diff - ha_diff
                     } else {
                         0.0
@@ -459,8 +458,10 @@ impl CylindricalEngine {
 
                     // E_alpha update: dE_alpha/dt = (1/eps) * (dH_rho/dz - dHz/d_rho)
                     let curl_h_alpha = {
-                        let hr_diff = self.h_field.x.get(i, j, k) - self.h_field.x.get(i, j, k_prev);
-                        let hz_diff = self.h_field.z.get(i, j, k) - self.h_field.z.get(i_prev, j, k);
+                        let hr_diff =
+                            self.h_field.x.get(i, j, k) - self.h_field.x.get(i, j, k_prev);
+                        let hz_diff =
+                            self.h_field.z.get(i, j, k) - self.h_field.z.get(i_prev, j, k);
                         hr_diff - hz_diff
                     };
 
@@ -471,8 +472,10 @@ impl CylindricalEngine {
 
                     // E_z update: dE_z/dt = (1/eps) * ((r*H_alpha)'/r*d_rho - dH_rho/r*d_alpha)
                     let curl_h_z = if i > 0 || !grid.r0_included {
-                        let ha_diff = self.h_field.y.get(i, j, k) - self.h_field.y.get(i_prev, j, k);
-                        let hr_diff = self.h_field.x.get(i, j, k) - self.h_field.x.get(i, j_prev, k);
+                        let ha_diff =
+                            self.h_field.y.get(i, j, k) - self.h_field.y.get(i_prev, j, k);
+                        let hr_diff =
+                            self.h_field.x.get(i, j, k) - self.h_field.x.get(i, j_prev, k);
                         ha_diff - hr_diff
                     } else {
                         0.0
@@ -539,8 +542,10 @@ impl CylindricalEngine {
 
                     // H_rho update
                     let curl_e_rho = {
-                        let ez_diff = self.e_field.z.get(i, j_next, k) - self.e_field.z.get(i, j, k);
-                        let ea_diff = self.e_field.y.get(i, j, k_next) - self.e_field.y.get(i, j, k);
+                        let ez_diff =
+                            self.e_field.z.get(i, j_next, k) - self.e_field.z.get(i, j, k);
+                        let ea_diff =
+                            self.e_field.y.get(i, j, k_next) - self.e_field.y.get(i, j, k);
                         ea_diff - ez_diff
                     };
 
@@ -551,8 +556,10 @@ impl CylindricalEngine {
 
                     // H_alpha update
                     let curl_e_alpha = {
-                        let er_diff = self.e_field.x.get(i, j, k_next) - self.e_field.x.get(i, j, k);
-                        let ez_diff = self.e_field.z.get(i_next, j, k) - self.e_field.z.get(i, j, k);
+                        let er_diff =
+                            self.e_field.x.get(i, j, k_next) - self.e_field.x.get(i, j, k);
+                        let ez_diff =
+                            self.e_field.z.get(i_next, j, k) - self.e_field.z.get(i, j, k);
                         ez_diff - er_diff
                     };
 
@@ -563,8 +570,10 @@ impl CylindricalEngine {
 
                     // H_z update
                     let curl_e_z = {
-                        let ea_diff = self.e_field.y.get(i_next, j, k) - self.e_field.y.get(i, j, k);
-                        let er_diff = self.e_field.x.get(i, j_next, k) - self.e_field.x.get(i, j, k);
+                        let ea_diff =
+                            self.e_field.y.get(i_next, j, k) - self.e_field.y.get(i, j, k);
+                        let er_diff =
+                            self.e_field.x.get(i, j_next, k) - self.e_field.x.get(i, j, k);
                         er_diff - ea_diff
                     };
 
@@ -677,9 +686,9 @@ mod tests {
     #[test]
     fn test_cylindrical_operator() {
         let grid = CylindricalGrid::uniform(0.005, 0.015, 10, 16, 0.0, 0.02, 10);
-        let dt = grid.calculate_timestep(&grid);
-        // Calculate timestep separately
-        let dt = 1e-12; // Use fixed dt for test
+        let _dt_calc = grid.calculate_timestep(&grid);
+        // Use fixed dt for test
+        let dt = 1e-12;
 
         let operator = CylindricalOperator::new(grid, dt);
 

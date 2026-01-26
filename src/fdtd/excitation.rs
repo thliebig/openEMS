@@ -108,11 +108,7 @@ impl Excitation {
     }
 
     /// Create a sinusoidal (CW) excitation.
-    pub fn sinusoidal(
-        frequency: f64,
-        direction: usize,
-        position: (usize, usize, usize),
-    ) -> Self {
+    pub fn sinusoidal(frequency: f64, direction: usize, position: (usize, usize, usize)) -> Self {
         Self {
             excitation_type: ExcitationType::Sinusoidal { frequency },
             direction,
@@ -190,7 +186,8 @@ impl Excitation {
     /// Get the signal duration (time until signal is effectively zero).
     pub fn duration(&self) -> f64 {
         match &self.excitation_type {
-            ExcitationType::Gaussian { t0, tau } | ExcitationType::GaussianModulated { t0, tau, .. } => {
+            ExcitationType::Gaussian { t0, tau }
+            | ExcitationType::GaussianModulated { t0, tau, .. } => {
                 t0 + 6.0 * tau // 6 sigma covers >99.9% of energy
             }
             ExcitationType::Sinusoidal { .. } => f64::INFINITY,
@@ -202,9 +199,8 @@ impl Excitation {
     /// Check if the excitation is still active at time t.
     pub fn is_active(&self, t: f64) -> bool {
         match &self.excitation_type {
-            ExcitationType::Gaussian { t0, tau } | ExcitationType::GaussianModulated { t0, tau, .. } => {
-                t <= t0 + 6.0 * tau
-            }
+            ExcitationType::Gaussian { t0, tau }
+            | ExcitationType::GaussianModulated { t0, tau, .. } => t <= t0 + 6.0 * tau,
             ExcitationType::Sinusoidal { .. } => true,
             ExcitationType::Dirac => t.abs() < 1e-15,
             ExcitationType::Step => true,
@@ -216,10 +212,10 @@ impl Excitation {
 /// Create excitation for a rectangular waveguide TE10 mode.
 #[allow(dead_code)]
 pub fn waveguide_te10(
-    _a: f64,           // waveguide width
-    freq: f64,        // frequency
-    position: usize,  // z-position
-    ny: usize,        // grid size in y
+    _a: f64,         // waveguide width
+    freq: f64,       // frequency
+    position: usize, // z-position
+    ny: usize,       // grid size in y
 ) -> Vec<Excitation> {
     // TE10 mode: Ey varies as sin(pi*x/a), Ex = 0
     // For simplicity, create multiple point sources that approximate this
@@ -297,7 +293,7 @@ mod tests {
             // Check that the signal has oscillations
             let v1 = exc.evaluate(t0);
             let v2 = exc.evaluate(t0 + 0.5 / frequency); // Half period later
-            // Signal should change sign due to carrier
+                                                         // Signal should change sign due to carrier
             assert!(v1 * v2 <= 0.0 || v1.abs() < 0.1 || v2.abs() < 0.1);
         }
     }

@@ -137,8 +137,7 @@ impl Nf2ff {
                 let (n_th, n_ph) = self.integrate_surfaces(r_hat, th_hat, ph_hat);
 
                 // Far-field: E = -j*k*eta/(4*pi) * N
-                let factor =
-                    Complex64::new(0.0, -self.k * Z0 / (4.0 * PI));
+                let factor = Complex64::new(0.0, -self.k * Z0 / (4.0 * PI));
 
                 e_theta[it][ip] = factor * n_th;
                 e_phi[it][ip] = factor * n_ph;

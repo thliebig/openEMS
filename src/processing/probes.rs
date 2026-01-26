@@ -434,9 +434,9 @@ mod tests {
 
         assert_eq!(probe.times.len(), 3);
         assert_eq!(probe.values.len(), 3);
-        assert!((probe.values[0] - 5.0).abs() < 1e-6);  // 5 cells * 1.0
+        assert!((probe.values[0] - 5.0).abs() < 1e-6); // 5 cells * 1.0
         assert!((probe.values[1] - 10.0).abs() < 1e-6); // 5 cells * 2.0
-        assert!((probe.values[2] - 2.5).abs() < 1e-6);  // 5 cells * 0.5
+        assert!((probe.values[2] - 2.5).abs() < 1e-6); // 5 cells * 0.5
     }
 
     #[test]
@@ -446,13 +446,13 @@ mod tests {
 
         let dims = Dimensions::new(10, 10, 10);
         let mut e_field = VectorField3D::new(dims);
-        e_field.z.set(5, 5, 5, 3.14);
+        e_field.z.set(5, 5, 5, 2.5);
 
         probe.sample(&e_field, 0.0);
 
         assert_eq!(probe.times.len(), 1);
         // Single point should return that point's value
-        assert!((probe.values[0] - 3.14).abs() < 1e-5);
+        assert!((probe.values[0] - 2.5).abs() < 1e-5);
     }
 
     #[test]

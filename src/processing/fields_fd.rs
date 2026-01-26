@@ -164,16 +164,52 @@ impl FrequencyDomainFieldDump {
 
             // Accumulate E-field
             if self.dump_e {
-                accumulate_field_component(&e_field.x, &mut self.e_field_fd[freq_idx][0], exp_factor, dims, sub_sample);
-                accumulate_field_component(&e_field.y, &mut self.e_field_fd[freq_idx][1], exp_factor, dims, sub_sample);
-                accumulate_field_component(&e_field.z, &mut self.e_field_fd[freq_idx][2], exp_factor, dims, sub_sample);
+                accumulate_field_component(
+                    &e_field.x,
+                    &mut self.e_field_fd[freq_idx][0],
+                    exp_factor,
+                    dims,
+                    sub_sample,
+                );
+                accumulate_field_component(
+                    &e_field.y,
+                    &mut self.e_field_fd[freq_idx][1],
+                    exp_factor,
+                    dims,
+                    sub_sample,
+                );
+                accumulate_field_component(
+                    &e_field.z,
+                    &mut self.e_field_fd[freq_idx][2],
+                    exp_factor,
+                    dims,
+                    sub_sample,
+                );
             }
 
             // Accumulate H-field
             if self.dump_h {
-                accumulate_field_component(&h_field.x, &mut self.h_field_fd[freq_idx][0], exp_factor, dims, sub_sample);
-                accumulate_field_component(&h_field.y, &mut self.h_field_fd[freq_idx][1], exp_factor, dims, sub_sample);
-                accumulate_field_component(&h_field.z, &mut self.h_field_fd[freq_idx][2], exp_factor, dims, sub_sample);
+                accumulate_field_component(
+                    &h_field.x,
+                    &mut self.h_field_fd[freq_idx][0],
+                    exp_factor,
+                    dims,
+                    sub_sample,
+                );
+                accumulate_field_component(
+                    &h_field.y,
+                    &mut self.h_field_fd[freq_idx][1],
+                    exp_factor,
+                    dims,
+                    sub_sample,
+                );
+                accumulate_field_component(
+                    &h_field.z,
+                    &mut self.h_field_fd[freq_idx][2],
+                    exp_factor,
+                    dims,
+                    sub_sample,
+                );
             }
         }
 
@@ -227,10 +263,9 @@ impl FrequencyDomainFieldDump {
                 for j in 0..self.dims.ny {
                     for k in 0..self.dims.nz {
                         let idx = self.dims.to_linear(i, j, k);
-                        let m = (e[0][idx].norm_sqr()
-                            + e[1][idx].norm_sqr()
-                            + e[2][idx].norm_sqr())
-                        .sqrt();
+                        let m =
+                            (e[0][idx].norm_sqr() + e[1][idx].norm_sqr() + e[2][idx].norm_sqr())
+                                .sqrt();
                         mag.set(i, j, k, m as f32);
                     }
                 }

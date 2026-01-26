@@ -134,12 +134,8 @@ impl<'a> EngineInterface<'a> {
                 let (i, j, k) = self.snap_to_grid(pos);
                 self.get_e_field_raw(i, j, k)
             }
-            InterpolationType::NodeInterpolate => {
-                self.interpolate_e_field_to_node(pos)
-            }
-            InterpolationType::CellInterpolate => {
-                self.interpolate_e_field_to_cell(pos)
-            }
+            InterpolationType::NodeInterpolate => self.interpolate_e_field_to_node(pos),
+            InterpolationType::CellInterpolate => self.interpolate_e_field_to_cell(pos),
         }
     }
 
@@ -150,12 +146,8 @@ impl<'a> EngineInterface<'a> {
                 let (i, j, k) = self.snap_to_grid(pos);
                 self.get_h_field_raw(i, j, k)
             }
-            InterpolationType::NodeInterpolate => {
-                self.interpolate_h_field_to_node(pos)
-            }
-            InterpolationType::CellInterpolate => {
-                self.interpolate_h_field_to_cell(pos)
-            }
+            InterpolationType::NodeInterpolate => self.interpolate_h_field_to_node(pos),
+            InterpolationType::CellInterpolate => self.interpolate_h_field_to_cell(pos),
         }
     }
 
@@ -256,12 +248,7 @@ impl<'a> EngineInterface<'a> {
 
     /// Calculate current integral through a surface.
     /// I = integral(H . dl) around the surface
-    pub fn calc_current_integral(
-        &self,
-        start: [f64; 3],
-        stop: [f64; 3],
-        normal_dir: usize,
-    ) -> f64 {
+    pub fn calc_current_integral(&self, start: [f64; 3], stop: [f64; 3], normal_dir: usize) -> f64 {
         let dims = self.dims();
         let mut current = 0.0;
 
@@ -725,8 +712,8 @@ mod tests {
         eps_field.y.fill(2.0);
         eps_field.z.fill(2.0);
 
-        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
-            .with_epsilon(&eps_field);
+        let interface =
+            EngineInterface::new(&e_field, &h_field, &grid, 1e-12).with_epsilon(&eps_field);
 
         // Verify epsilon is set
         assert!(interface.op_eps.is_some());
@@ -745,8 +732,7 @@ mod tests {
         mu_field.y.fill(1.5);
         mu_field.z.fill(1.5);
 
-        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
-            .with_mu(&mu_field);
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12).with_mu(&mu_field);
 
         // Verify mu is set
         assert!(interface.op_mu.is_some());
@@ -844,8 +830,8 @@ mod tests {
         eps_field.y.fill(2.0);
         eps_field.z.fill(2.0);
 
-        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
-            .with_epsilon(&eps_field);
+        let interface =
+            EngineInterface::new(&e_field, &h_field, &grid, 1e-12).with_epsilon(&eps_field);
 
         let d = interface.get_d_field([0.005, 0.005, 0.005]);
 
@@ -889,8 +875,7 @@ mod tests {
         mu_field.y.fill(1.5);
         mu_field.z.fill(1.5);
 
-        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
-            .with_mu(&mu_field);
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12).with_mu(&mu_field);
 
         let b = interface.get_b_field([0.005, 0.005, 0.005]);
 
