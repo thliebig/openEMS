@@ -1,7 +1,21 @@
 //! Compressed coefficient storage for memory-efficient FDTD.
 //!
-//! Implements coefficient deduplication to reduce memory usage
-//! for large simulations where many cells have identical material properties.
+//! This module implements coefficient compression similar to the C++ openEMS
+//! `operator_sse_compressed` implementation. Instead of storing coefficients
+//! for every grid point, unique coefficient sets are stored in a lookup table,
+//! and each grid point stores only an index into this table.
+//!
+//! ## Memory Bandwidth Optimization
+//!
+//! The key insight is that many grid cells share identical material properties:
+//! - Vacuum regions all have the same coefficients
+//! - PML layers have repeated coefficient patterns
+//! - Homogeneous material regions share coefficients
+//!
+//! By deduplicating coefficients and using index-based lookup:
+//! 1. The coefficient table is small enough to fit in L1/L2 cache
+//! 2. Memory bandwidth is reduced (loading indices instead of full coefficients)
+//! 3. Better cache utilization during FDTD updates
 
 use crate::arrays::{Dimensions, Field3D};
 use std::collections::HashMap;
@@ -30,7 +44,311 @@ impl PartialEq for HashableF32 {
 
 impl Eq for HashableF32 {}
 
-/// A set of FDTD coefficients at a single grid point.
+/// E-field update coefficients for a single cell.
+/// E_new = ca * E_old + cb * curl_H
+#[derive(Clone, Copy, Debug, Default)]
+#[repr(C)]
+pub struct ECoefficients {
+    /// Ca coefficient (amplitude decay)
+    pub ca: f32,
+    /// Cb coefficient (curl coupling)
+    pub cb: f32,
+}
+
+/// H-field update coefficients for a single cell.
+/// H_new = da * H_old + db * curl_E
+#[derive(Clone, Copy, Debug, Default)]
+#[repr(C)]
+pub struct HCoefficients {
+    /// Da coefficient (amplitude decay)
+    pub da: f32,
+    /// Db coefficient (curl coupling)
+    pub db: f32,
+}
+
+/// Hashable wrapper for E coefficients.
+#[derive(Clone, Copy, Debug)]
+struct HashableECoeff {
+    ca: HashableF32,
+    cb: HashableF32,
+}
+
+impl Hash for HashableECoeff {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.ca.hash(state);
+        self.cb.hash(state);
+    }
+}
+
+impl PartialEq for HashableECoeff {
+    fn eq(&self, other: &Self) -> bool {
+        self.ca == other.ca && self.cb == other.cb
+    }
+}
+
+impl Eq for HashableECoeff {}
+
+impl From<ECoefficients> for HashableECoeff {
+    fn from(c: ECoefficients) -> Self {
+        Self {
+            ca: HashableF32(c.ca),
+            cb: HashableF32(c.cb),
+        }
+    }
+}
+
+/// Hashable wrapper for H coefficients.
+#[derive(Clone, Copy, Debug)]
+struct HashableHCoeff {
+    da: HashableF32,
+    db: HashableF32,
+}
+
+impl Hash for HashableHCoeff {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.da.hash(state);
+        self.db.hash(state);
+    }
+}
+
+impl PartialEq for HashableHCoeff {
+    fn eq(&self, other: &Self) -> bool {
+        self.da == other.da && self.db == other.db
+    }
+}
+
+impl Eq for HashableHCoeff {}
+
+impl From<HCoefficients> for HashableHCoeff {
+    fn from(c: HCoefficients) -> Self {
+        Self {
+            da: HashableF32(c.da),
+            db: HashableF32(c.db),
+        }
+    }
+}
+
+/// Compressed E-field coefficient storage.
+///
+/// Instead of storing 2 coefficients (ca, cb) per cell per direction,
+/// unique coefficient pairs are stored in a lookup table, and each
+/// cell stores only a u32 index.
+#[derive(Debug)]
+pub struct CompressedECoefficients {
+    /// Grid dimensions
+    dims: Dimensions,
+    /// Unique coefficient sets per direction [x, y, z]
+    tables: [Vec<ECoefficients>; 3],
+    /// Index arrays per direction [x, y, z]
+    /// Each index maps a linear grid position to a coefficient table entry
+    indices: [Vec<u32>; 3],
+}
+
+impl CompressedECoefficients {
+    /// Create compressed E coefficients from full coefficient arrays.
+    pub fn from_fields(ca: &[&Field3D; 3], cb: &[&Field3D; 3]) -> Self {
+        let dims = ca[0].dims();
+        let size = dims.total();
+
+        let mut tables: [Vec<ECoefficients>; 3] = [Vec::new(), Vec::new(), Vec::new()];
+        let mut indices: [Vec<u32>; 3] = [
+            vec![0u32; size],
+            vec![0u32; size],
+            vec![0u32; size],
+        ];
+
+        // Process each direction independently
+        for dir in 0..3 {
+            let mut dedup_map: HashMap<HashableECoeff, u32> = HashMap::new();
+
+            for i in 0..dims.nx {
+                for j in 0..dims.ny {
+                    for k in 0..dims.nz {
+                        let idx = dims.to_linear(i, j, k);
+
+                        let coeff = ECoefficients {
+                            ca: ca[dir].get(i, j, k),
+                            cb: cb[dir].get(i, j, k),
+                        };
+
+                        let hashable: HashableECoeff = coeff.into();
+
+                        let table_idx = if let Some(&existing_idx) = dedup_map.get(&hashable) {
+                            existing_idx
+                        } else {
+                            let new_idx = tables[dir].len() as u32;
+                            tables[dir].push(coeff);
+                            dedup_map.insert(hashable, new_idx);
+                            new_idx
+                        };
+
+                        indices[dir][idx] = table_idx;
+                    }
+                }
+            }
+        }
+
+        Self {
+            dims,
+            tables,
+            indices,
+        }
+    }
+
+    /// Get dimensions.
+    #[inline]
+    pub fn dims(&self) -> Dimensions {
+        self.dims
+    }
+
+    /// Get the coefficient table for a direction.
+    #[inline]
+    pub fn table(&self, dir: usize) -> &[ECoefficients] {
+        &self.tables[dir]
+    }
+
+    /// Get the index array for a direction.
+    #[inline]
+    pub fn indices(&self, dir: usize) -> &[u32] {
+        &self.indices[dir]
+    }
+
+    /// Get coefficients for a specific position and direction.
+    #[inline]
+    pub fn get(&self, dir: usize, i: usize, j: usize, k: usize) -> ECoefficients {
+        let idx = self.dims.to_linear(i, j, k);
+        let table_idx = self.indices[dir][idx] as usize;
+        self.tables[dir][table_idx]
+    }
+
+    /// Get number of unique coefficient sets per direction.
+    pub fn num_unique(&self) -> [usize; 3] {
+        [
+            self.tables[0].len(),
+            self.tables[1].len(),
+            self.tables[2].len(),
+        ]
+    }
+
+    /// Calculate compression ratio.
+    pub fn compression_ratio(&self) -> f64 {
+        let size = self.dims.total();
+        // Original: 2 f32 per cell per direction = 6 * size * 4 bytes
+        let original = 6 * size * std::mem::size_of::<f32>();
+        // Compressed: tables + indices
+        let compressed: usize = self.tables.iter().map(|t| t.len() * std::mem::size_of::<ECoefficients>()).sum::<usize>()
+            + 3 * size * std::mem::size_of::<u32>();
+        original as f64 / compressed as f64
+    }
+}
+
+/// Compressed H-field coefficient storage.
+#[derive(Debug)]
+pub struct CompressedHCoefficients {
+    /// Grid dimensions
+    dims: Dimensions,
+    /// Unique coefficient sets per direction [x, y, z]
+    tables: [Vec<HCoefficients>; 3],
+    /// Index arrays per direction [x, y, z]
+    indices: [Vec<u32>; 3],
+}
+
+impl CompressedHCoefficients {
+    /// Create compressed H coefficients from full coefficient arrays.
+    pub fn from_fields(da: &[&Field3D; 3], db: &[&Field3D; 3]) -> Self {
+        let dims = da[0].dims();
+        let size = dims.total();
+
+        let mut tables: [Vec<HCoefficients>; 3] = [Vec::new(), Vec::new(), Vec::new()];
+        let mut indices: [Vec<u32>; 3] = [
+            vec![0u32; size],
+            vec![0u32; size],
+            vec![0u32; size],
+        ];
+
+        for dir in 0..3 {
+            let mut dedup_map: HashMap<HashableHCoeff, u32> = HashMap::new();
+
+            for i in 0..dims.nx {
+                for j in 0..dims.ny {
+                    for k in 0..dims.nz {
+                        let idx = dims.to_linear(i, j, k);
+
+                        let coeff = HCoefficients {
+                            da: da[dir].get(i, j, k),
+                            db: db[dir].get(i, j, k),
+                        };
+
+                        let hashable: HashableHCoeff = coeff.into();
+
+                        let table_idx = if let Some(&existing_idx) = dedup_map.get(&hashable) {
+                            existing_idx
+                        } else {
+                            let new_idx = tables[dir].len() as u32;
+                            tables[dir].push(coeff);
+                            dedup_map.insert(hashable, new_idx);
+                            new_idx
+                        };
+
+                        indices[dir][idx] = table_idx;
+                    }
+                }
+            }
+        }
+
+        Self {
+            dims,
+            tables,
+            indices,
+        }
+    }
+
+    /// Get dimensions.
+    #[inline]
+    pub fn dims(&self) -> Dimensions {
+        self.dims
+    }
+
+    /// Get the coefficient table for a direction.
+    #[inline]
+    pub fn table(&self, dir: usize) -> &[HCoefficients] {
+        &self.tables[dir]
+    }
+
+    /// Get the index array for a direction.
+    #[inline]
+    pub fn indices(&self, dir: usize) -> &[u32] {
+        &self.indices[dir]
+    }
+
+    /// Get coefficients for a specific position and direction.
+    #[inline]
+    pub fn get(&self, dir: usize, i: usize, j: usize, k: usize) -> HCoefficients {
+        let idx = self.dims.to_linear(i, j, k);
+        let table_idx = self.indices[dir][idx] as usize;
+        self.tables[dir][table_idx]
+    }
+
+    /// Get number of unique coefficient sets per direction.
+    pub fn num_unique(&self) -> [usize; 3] {
+        [
+            self.tables[0].len(),
+            self.tables[1].len(),
+            self.tables[2].len(),
+        ]
+    }
+
+    /// Calculate compression ratio.
+    pub fn compression_ratio(&self) -> f64 {
+        let size = self.dims.total();
+        let original = 6 * size * std::mem::size_of::<f32>();
+        let compressed: usize = self.tables.iter().map(|t| t.len() * std::mem::size_of::<HCoefficients>()).sum::<usize>()
+            + 3 * size * std::mem::size_of::<u32>();
+        original as f64 / compressed as f64
+    }
+}
+
+/// Legacy coefficient set (for backwards compatibility).
 #[derive(Clone, Copy, Debug)]
 pub struct CoefficientSet {
     /// Voltage-to-voltage coefficient
@@ -60,211 +378,63 @@ impl CoefficientSet {
     }
 }
 
-/// Hashable wrapper for coefficient set.
-#[derive(Clone, Copy, Debug)]
-struct HashableCoefficientSet {
-    vv: HashableF32,
-    vi: HashableF32,
-    ii: HashableF32,
-    iv: HashableF32,
-}
-
-impl From<CoefficientSet> for HashableCoefficientSet {
-    fn from(c: CoefficientSet) -> Self {
-        Self {
-            vv: HashableF32(c.vv),
-            vi: HashableF32(c.vi),
-            ii: HashableF32(c.ii),
-            iv: HashableF32(c.iv),
-        }
-    }
-}
-
-impl Hash for HashableCoefficientSet {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.vv.hash(state);
-        self.vi.hash(state);
-        self.ii.hash(state);
-        self.iv.hash(state);
-    }
-}
-
-impl PartialEq for HashableCoefficientSet {
-    fn eq(&self, other: &Self) -> bool {
-        self.vv == other.vv && self.vi == other.vi && self.ii == other.ii && self.iv == other.iv
-    }
-}
-
-impl Eq for HashableCoefficientSet {}
-
-/// Compressed coefficient storage.
-///
-/// Instead of storing coefficients for every grid point,
-/// unique coefficient sets are stored in a lookup table,
-/// and each grid point stores only an index into this table.
+/// Legacy compressed coefficients wrapper.
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct CompressedCoefficients {
-    /// Dimensions
-    dims: Dimensions,
-    /// Unique coefficient sets
-    coefficient_table: Vec<CoefficientSet>,
-    /// Index for each grid point (per direction)
-    vv_indices: [Vec<u32>; 3],
-    vi_indices: [Vec<u32>; 3],
-    ii_indices: [Vec<u32>; 3],
-    iv_indices: [Vec<u32>; 3],
-    /// Hash map for deduplication
-    dedup_map: HashMap<HashableCoefficientSet, u32>,
-    /// Compression ratio
-    compression_ratio: f64,
+    e_coeffs: CompressedECoefficients,
+    h_coeffs: CompressedHCoefficients,
 }
 
 impl CompressedCoefficients {
-    /// Create new compressed coefficients from full coefficient arrays.
-    pub fn from_fields(
-        vv: [&Field3D; 3],
-        vi: [&Field3D; 3],
-        ii: [&Field3D; 3],
-        iv: [&Field3D; 3],
-    ) -> Self {
-        let dims = vv[0].dims();
+    /// Create from separate E and H compressed coefficients.
+    pub fn new(e_coeffs: CompressedECoefficients, h_coeffs: CompressedHCoefficients) -> Self {
+        Self { e_coeffs, h_coeffs }
+    }
+
+    /// Get E coefficients.
+    pub fn e_coefficients(&self) -> &CompressedECoefficients {
+        &self.e_coeffs
+    }
+
+    /// Get H coefficients.
+    pub fn h_coefficients(&self) -> &CompressedHCoefficients {
+        &self.h_coeffs
+    }
+
+    /// Get compression statistics.
+    pub fn stats(&self) -> CompressionStats {
+        let dims = self.e_coeffs.dims();
         let size = dims.total();
 
-        let mut coefficient_table = Vec::new();
-        let mut dedup_map = HashMap::new();
+        let e_unique = self.e_coeffs.num_unique();
+        let h_unique = self.h_coeffs.num_unique();
 
-        let mut vv_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
-        let mut vi_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
-        let mut ii_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
-        let mut iv_indices = [vec![0u32; size], vec![0u32; size], vec![0u32; size]];
+        let original_memory = 12 * size * std::mem::size_of::<f32>(); // 6 E + 6 H coefficients
 
-        // Process each direction
-        for dir in 0..3 {
-            for i in 0..dims.nx {
-                for j in 0..dims.ny {
-                    for k in 0..dims.nz {
-                        let idx = dims.to_linear(i, j, k);
+        let e_table_mem: usize = e_unique.iter().map(|&n| n * std::mem::size_of::<ECoefficients>()).sum();
+        let h_table_mem: usize = h_unique.iter().map(|&n| n * std::mem::size_of::<HCoefficients>()).sum();
+        let index_mem = 6 * size * std::mem::size_of::<u32>(); // 3 E + 3 H index arrays
+        let compressed_memory = e_table_mem + h_table_mem + index_mem;
 
-                        let coeff = CoefficientSet {
-                            vv: vv[dir].get(i, j, k),
-                            vi: vi[dir].get(i, j, k),
-                            ii: ii[dir].get(i, j, k),
-                            iv: iv[dir].get(i, j, k),
-                        };
-
-                        let hashable: HashableCoefficientSet = coeff.into();
-
-                        let table_idx = if let Some(&existing_idx) = dedup_map.get(&hashable) {
-                            existing_idx
-                        } else {
-                            let new_idx = coefficient_table.len() as u32;
-                            coefficient_table.push(coeff);
-                            dedup_map.insert(hashable, new_idx);
-                            new_idx
-                        };
-
-                        vv_indices[dir][idx] = table_idx;
-                        vi_indices[dir][idx] = table_idx;
-                        ii_indices[dir][idx] = table_idx;
-                        iv_indices[dir][idx] = table_idx;
-                    }
-                }
-            }
+        CompressionStats {
+            total_points: size * 3,
+            unique_sets: e_unique.iter().sum::<usize>() + h_unique.iter().sum::<usize>(),
+            compression_ratio: original_memory as f64 / compressed_memory as f64,
+            memory_saved: original_memory.saturating_sub(compressed_memory),
+            original_memory,
+            compressed_memory,
         }
-
-        // Calculate compression ratio
-        let original_size = 3 * 4 * size * std::mem::size_of::<f32>(); // 3 directions, 4 coeffs
-        let compressed_size = coefficient_table.len() * std::mem::size_of::<CoefficientSet>()
-            + 3 * 4 * size * std::mem::size_of::<u32>();
-        let compression_ratio = original_size as f64 / compressed_size as f64;
-
-        Self {
-            dims,
-            coefficient_table,
-            vv_indices,
-            vi_indices,
-            ii_indices,
-            iv_indices,
-            dedup_map,
-            compression_ratio,
-        }
-    }
-
-    /// Get dimensions.
-    pub fn dims(&self) -> Dimensions {
-        self.dims
-    }
-
-    /// Get number of unique coefficient sets.
-    pub fn num_unique(&self) -> usize {
-        self.coefficient_table.len()
-    }
-
-    /// Get compression ratio.
-    pub fn compression_ratio(&self) -> f64 {
-        self.compression_ratio
-    }
-
-    /// Get memory savings in bytes.
-    pub fn memory_savings(&self) -> usize {
-        let size = self.dims.total();
-        let original = 3 * 4 * size * std::mem::size_of::<f32>();
-        let compressed = self.coefficient_table.len() * std::mem::size_of::<CoefficientSet>()
-            + 3 * 4 * size * std::mem::size_of::<u32>();
-
-        original.saturating_sub(compressed)
-    }
-
-    /// Get VV coefficient for direction and position.
-    #[inline]
-    pub fn get_vv(&self, dir: usize, i: usize, j: usize, k: usize) -> f32 {
-        let idx = self.dims.to_linear(i, j, k);
-        let table_idx = self.vv_indices[dir][idx] as usize;
-        self.coefficient_table[table_idx].vv
-    }
-
-    /// Get VI coefficient for direction and position.
-    #[inline]
-    pub fn get_vi(&self, dir: usize, i: usize, j: usize, k: usize) -> f32 {
-        let idx = self.dims.to_linear(i, j, k);
-        let table_idx = self.vi_indices[dir][idx] as usize;
-        self.coefficient_table[table_idx].vi
-    }
-
-    /// Get II coefficient for direction and position.
-    #[inline]
-    pub fn get_ii(&self, dir: usize, i: usize, j: usize, k: usize) -> f32 {
-        let idx = self.dims.to_linear(i, j, k);
-        let table_idx = self.ii_indices[dir][idx] as usize;
-        self.coefficient_table[table_idx].ii
-    }
-
-    /// Get IV coefficient for direction and position.
-    #[inline]
-    pub fn get_iv(&self, dir: usize, i: usize, j: usize, k: usize) -> f32 {
-        let idx = self.dims.to_linear(i, j, k);
-        let table_idx = self.iv_indices[dir][idx] as usize;
-        self.coefficient_table[table_idx].iv
-    }
-
-    /// Get all coefficients for a position.
-    #[inline]
-    pub fn get_coefficients(&self, dir: usize, i: usize, j: usize, k: usize) -> CoefficientSet {
-        let idx = self.dims.to_linear(i, j, k);
-        let table_idx = self.vv_indices[dir][idx] as usize;
-        self.coefficient_table[table_idx]
     }
 }
 
 /// Statistics about coefficient compression.
 #[derive(Debug, Clone)]
 pub struct CompressionStats {
-    /// Total number of grid points
+    /// Total number of grid points (×3 directions)
     pub total_points: usize,
     /// Number of unique coefficient sets
     pub unique_sets: usize,
-    /// Compression ratio
+    /// Compression ratio (original / compressed)
     pub compression_ratio: f64,
     /// Memory saved (bytes)
     pub memory_saved: usize,
@@ -274,163 +444,137 @@ pub struct CompressionStats {
     pub compressed_memory: usize,
 }
 
-impl CompressedCoefficients {
-    /// Get compression statistics.
-    pub fn stats(&self) -> CompressionStats {
-        let size = self.dims.total();
-        let original = 3 * 4 * size * std::mem::size_of::<f32>();
-        let compressed = self.coefficient_table.len() * std::mem::size_of::<CoefficientSet>()
-            + 3 * 4 * size * std::mem::size_of::<u32>();
-
-        CompressionStats {
-            total_points: size * 3,
-            unique_sets: self.coefficient_table.len(),
-            compression_ratio: self.compression_ratio,
-            memory_saved: original.saturating_sub(compressed),
-            original_memory: original,
-            compressed_memory: compressed,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_coefficient_set() {
-        let coeff = CoefficientSet::new(1.0, 0.5, 1.0, 0.5);
-        assert!((coeff.vv - 1.0).abs() < 1e-6);
-        assert!((coeff.vi - 0.5).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_compression_uniform() {
+    fn test_e_coefficients_compression() {
         let dims = Dimensions::new(10, 10, 10);
 
         // Create uniform coefficient fields
-        let mut vv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut vi = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut ii = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut iv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut ca = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut cb = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
 
         for dir in 0..3 {
-            vv[dir].fill(1.0);
-            vi[dir].fill(0.5);
-            ii[dir].fill(1.0);
-            iv[dir].fill(0.5);
+            ca[dir].fill(1.0);
+            cb[dir].fill(0.5);
         }
 
-        let compressed = CompressedCoefficients::from_fields(
-            [&vv[0], &vv[1], &vv[2]],
-            [&vi[0], &vi[1], &vi[2]],
-            [&ii[0], &ii[1], &ii[2]],
-            [&iv[0], &iv[1], &iv[2]],
+        let compressed = CompressedECoefficients::from_fields(
+            &[&ca[0], &ca[1], &ca[2]],
+            &[&cb[0], &cb[1], &cb[2]],
         );
 
-        // Uniform field should compress to just one unique set
-        assert_eq!(compressed.num_unique(), 1);
-        // Note: For small grids, index overhead may exceed savings
-        // Just verify that the compression ratio is computed correctly
-        assert!(compressed.compression_ratio() > 0.0);
+        // Uniform field should compress to just one unique set per direction
+        let unique = compressed.num_unique();
+        assert_eq!(unique[0], 1);
+        assert_eq!(unique[1], 1);
+        assert_eq!(unique[2], 1);
+
+        // Verify we can retrieve the correct values
+        let coeff = compressed.get(0, 5, 5, 5);
+        assert!((coeff.ca - 1.0).abs() < 1e-6);
+        assert!((coeff.cb - 0.5).abs() < 1e-6);
     }
 
     #[test]
-    fn test_compression_varied() {
+    fn test_h_coefficients_compression() {
         let dims = Dimensions::new(10, 10, 10);
 
-        let mut vv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut vi = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut ii = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut iv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut da = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut db = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
 
-        // Create varied coefficients (e.g., material boundaries)
+        for dir in 0..3 {
+            da[dir].fill(1.0);
+            db[dir].fill(-0.5);
+        }
+
+        let compressed = CompressedHCoefficients::from_fields(
+            &[&da[0], &da[1], &da[2]],
+            &[&db[0], &db[1], &db[2]],
+        );
+
+        let unique = compressed.num_unique();
+        assert_eq!(unique[0], 1);
+        assert_eq!(unique[1], 1);
+        assert_eq!(unique[2], 1);
+
+        let coeff = compressed.get(0, 5, 5, 5);
+        assert!((coeff.da - 1.0).abs() < 1e-6);
+        assert!((coeff.db - (-0.5)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_compression_with_material_boundary() {
+        let dims = Dimensions::new(10, 10, 10);
+
+        let mut ca = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut cb = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+
+        // Create a material boundary at i=5
         for dir in 0..3 {
             for i in 0..10 {
                 for j in 0..10 {
                     for k in 0..10 {
-                        let value = if i < 5 { 1.0 } else { 0.5 };
-                        vv[dir].set(i, j, k, value);
-                        vi[dir].set(i, j, k, value * 0.5);
-                        ii[dir].set(i, j, k, value);
-                        iv[dir].set(i, j, k, value * 0.5);
+                        if i < 5 {
+                            ca[dir].set(i, j, k, 1.0);
+                            cb[dir].set(i, j, k, 0.5);
+                        } else {
+                            ca[dir].set(i, j, k, 0.8);
+                            cb[dir].set(i, j, k, 0.3);
+                        }
                     }
                 }
             }
         }
 
-        let compressed = CompressedCoefficients::from_fields(
-            [&vv[0], &vv[1], &vv[2]],
-            [&vi[0], &vi[1], &vi[2]],
-            [&ii[0], &ii[1], &ii[2]],
-            [&iv[0], &iv[1], &iv[2]],
+        let compressed = CompressedECoefficients::from_fields(
+            &[&ca[0], &ca[1], &ca[2]],
+            &[&cb[0], &cb[1], &cb[2]],
         );
 
-        // Should have 2 unique sets
-        assert_eq!(compressed.num_unique(), 2);
+        // Should have 2 unique sets per direction
+        let unique = compressed.num_unique();
+        assert_eq!(unique[0], 2);
+        assert_eq!(unique[1], 2);
+        assert_eq!(unique[2], 2);
+
+        // Verify boundary values
+        let coeff_low = compressed.get(0, 2, 5, 5);
+        assert!((coeff_low.ca - 1.0).abs() < 1e-6);
+
+        let coeff_high = compressed.get(0, 7, 5, 5);
+        assert!((coeff_high.ca - 0.8).abs() < 1e-6);
     }
 
     #[test]
-    fn test_coefficient_access() {
-        let dims = Dimensions::new(5, 5, 5);
+    fn test_compression_ratio() {
+        let dims = Dimensions::new(50, 50, 50);
 
-        let mut vv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut vi = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut ii = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut iv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-
-        vv[0].set(2, 2, 2, 1.5);
-        vi[0].set(2, 2, 2, 0.75);
+        // Uniform field - should have excellent compression
+        let mut ca = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
+        let mut cb = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
 
         for dir in 0..3 {
-            vv[dir].fill(1.0);
-            vi[dir].fill(0.5);
-            ii[dir].fill(1.0);
-            iv[dir].fill(0.5);
-        }
-        vv[0].set(2, 2, 2, 1.5);
-        vi[0].set(2, 2, 2, 0.75);
-
-        let compressed = CompressedCoefficients::from_fields(
-            [&vv[0], &vv[1], &vv[2]],
-            [&vi[0], &vi[1], &vi[2]],
-            [&ii[0], &ii[1], &ii[2]],
-            [&iv[0], &iv[1], &iv[2]],
-        );
-
-        assert!((compressed.get_vv(0, 2, 2, 2) - 1.5).abs() < 1e-6);
-        assert!((compressed.get_vi(0, 2, 2, 2) - 0.75).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_stats() {
-        let dims = Dimensions::new(10, 10, 10);
-
-        let mut vv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut vi = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut ii = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-        let mut iv = [Field3D::new(dims), Field3D::new(dims), Field3D::new(dims)];
-
-        for dir in 0..3 {
-            vv[dir].fill(1.0);
-            vi[dir].fill(0.5);
-            ii[dir].fill(1.0);
-            iv[dir].fill(0.5);
+            ca[dir].fill(1.0);
+            cb[dir].fill(0.5);
         }
 
-        let compressed = CompressedCoefficients::from_fields(
-            [&vv[0], &vv[1], &vv[2]],
-            [&vi[0], &vi[1], &vi[2]],
-            [&ii[0], &ii[1], &ii[2]],
-            [&iv[0], &iv[1], &iv[2]],
+        let compressed = CompressedECoefficients::from_fields(
+            &[&ca[0], &ca[1], &ca[2]],
+            &[&cb[0], &cb[1], &cb[2]],
         );
 
-        let stats = compressed.stats();
-        assert_eq!(stats.total_points, 3000);
-        assert_eq!(stats.unique_sets, 1);
-        // For small grids, index overhead may exceed savings
-        // Just verify stats are computed correctly
-        assert!(stats.original_memory > 0);
-        assert!(stats.compressed_memory > 0);
+        // For large uniform grids, compression ratio should be > 1
+        // (coefficient tables are small, but index arrays still take space)
+        let ratio = compressed.compression_ratio();
+        println!("Compression ratio for 50³ uniform grid: {:.2}", ratio);
+
+        // The ratio depends on whether we save more in coefficient storage
+        // than we spend on index storage. For very uniform grids:
+        // Original: 6 * 125000 * 4 = 3MB
+        // Compressed: 3 * 8 (tables) + 3 * 125000 * 4 (indices) = ~1.5MB
+        assert!(ratio > 0.5); // At minimum, not too much worse
     }
 }

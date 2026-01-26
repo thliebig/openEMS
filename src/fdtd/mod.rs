@@ -26,13 +26,18 @@ mod compressed;
 mod cylindrical;
 mod cylindrical_multigrid;
 mod engine;
+mod engine_compressed;
 mod engine_interface;
 mod excitation;
 mod operator;
 mod simulation;
 mod timestep;
 
-pub use compressed::{CoefficientSet, CompressedCoefficients, CompressionStats};
+pub use compressed::{
+    CoefficientSet, CompressedCoefficients, CompressedECoefficients, CompressedHCoefficients,
+    CompressionStats, ECoefficients, HCoefficients,
+};
+pub use engine_compressed::EngineCompressed;
 pub use cylindrical::{CylindricalEngine, CylindricalGrid, CylindricalOperator};
 pub use cylindrical_multigrid::{CylindricalMultigrid, MultigridConfig, MultigridLevel};
 pub use engine::Engine;
@@ -52,6 +57,9 @@ pub enum EngineType {
     /// Multi-threaded SIMD (default)
     #[default]
     Parallel,
+    /// Compressed coefficients with memory bandwidth optimization
+    /// Uses index-based lookup into small coefficient tables
+    Compressed,
 }
 
 /// Boundary condition types

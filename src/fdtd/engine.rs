@@ -135,6 +135,11 @@ impl Engine {
             EngineType::Basic => self.step_basic(operator),
             EngineType::Simd => self.step_simd(operator),
             EngineType::Parallel => self.step_parallel(operator),
+            EngineType::Compressed => {
+                // For compressed engine, use EngineCompressed directly
+                // Fall back to parallel here to avoid breaking existing code
+                self.step_parallel(operator)
+            }
         }
         self.timestep += 1;
         Ok(())
