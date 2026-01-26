@@ -2,7 +2,8 @@
 //!
 //! This module provides extensions to the base FDTD engine for:
 //! - Perfectly Matched Layer (PML) absorbing boundaries
-//! - Mur's absorbing boundary condition
+//! - Mur's absorbing boundary condition (domain boundaries)
+//! - Local absorbing boundary condition (arbitrary sheet primitives)
 //! - Dispersive materials (Lorentz, Debye, Drude)
 //! - Lumped RLC elements
 //! - Total-Field/Scattered-Field (TF/SF) boundaries
@@ -11,6 +12,7 @@
 
 mod pml;
 mod mur_abc;
+mod local_absorbing_bc;
 mod dispersive;
 mod lumped_rlc;
 mod tfsf;
@@ -20,8 +22,13 @@ mod conducting_sheet;
 // PML exports
 pub use pml::{Pml, PmlConfig, PmlBoundaries, PmlBoundary, Upml};
 
-// Mur ABC exports
+// Mur ABC exports (domain boundaries)
 pub use mur_abc::{MurAbc, MurAbcConfig};
+
+// Local absorbing BC exports (arbitrary sheet primitives)
+pub use local_absorbing_bc::{
+    AbcType, LocalAbsorbingBc, LocalAbsorbingBcConfig, LocalAbsorbingSheet,
+};
 
 // Dispersive material exports
 pub use dispersive::{
