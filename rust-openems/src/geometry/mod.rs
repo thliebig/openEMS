@@ -384,4 +384,498 @@ mod tests {
         let outside = grid.find_cell(0.02, 0.0, 0.0);
         assert_eq!(outside, None);
     }
+
+    #[test]
+    fn test_cartesian_constructor() {
+        let x_lines = vec![0.0, 0.001, 0.003, 0.006];
+        let y_lines = vec![0.0, 0.002, 0.004];
+        let z_lines = vec![0.0, 0.001, 0.002, 0.003, 0.004];
+
+        let grid = Grid::cartesian(x_lines.clone(), y_lines.clone(), z_lines.clone());
+
+        assert_eq!(grid.coord_system(), CoordinateSystem::Cartesian);
+
+        let dims = grid.dimensions();
+        assert_eq!(dims.nx, 3); // 4 lines = 3 cells
+        assert_eq!(dims.ny, 2); // 3 lines = 2 cells
+        assert_eq!(dims.nz, 4); // 5 lines = 4 cells
+    }
+
+    #[test]
+    fn test_set_unit_scaling() {
+        let mut grid = Grid::uniform(10, 10, 10, 1.0); // 1 meter cells
+
+        // Set unit to millimeters (1mm = 0.001m)
+        grid.set_unit(0.001);
+
+        // Cell size should now be in millimeters
+        let (dx, dy, dz) = grid.cell_size();
+        assert!((dx - 0.001).abs() < 1e-10);
+        assert!((dy - 0.001).abs() < 1e-10);
+        assert!((dz - 0.001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_coord_system_getter() {
+        let grid_cartesian = Grid::uniform(10, 10, 10, 0.001);
+        assert_eq!(grid_cartesian.coord_system(), CoordinateSystem::Cartesian);
+
+        let grid_cylindrical = Grid::new(
+            CoordinateSystem::Cylindrical,
+            vec![0.0, 0.001, 0.002],
+            vec![0.0, 1.57, 3.14],
+            vec![0.0, 0.001, 0.002],
+        );
+        assert_eq!(grid_cylindrical.coord_system(), CoordinateSystem::Cylindrical);
+    }
+
+    #[test]
+    fn test_line_getters() {
+        let x_lines = vec![0.0, 0.001, 0.003, 0.006];
+        let y_lines = vec![0.0, 0.002, 0.004];
+        let z_lines = vec![0.0, 0.001, 0.002, 0.003, 0.004];
+
+        let grid = Grid::cartesian(x_lines.clone(), y_lines.clone(), z_lines.clone());
+
+        assert_eq!(grid.x_lines(), &x_lines[..]);
+        assert_eq!(grid.y_lines(), &y_lines[..]);
+        assert_eq!(grid.z_lines(), &z_lines[..]);
+    }
+
+    #[test]
+    fn test_cell_size_at_position() {
+        // Non-uniform grid
+        let x_lines = vec![0.0, 0.001, 0.003, 0.007]; // dx = [0.001, 0.002, 0.004]
+        let y_lines = vec![0.0, 0.002, 0.005];         // dy = [0.002, 0.003]
+        let z_lines = vec![0.0, 0.001, 0.002, 0.004];  // dz = [0.001, 0.001, 0.002]
+
+        let grid = Grid::cartesian(x_lines, y_lines, z_lines);
+
+        // Cell at (0, 0, 0)
+        let (dx, dy, dz) = grid.cell_size_at(0, 0, 0);
+        assert!((dx - 0.001).abs() < 1e-10);
+        assert!((dy - 0.002).abs() < 1e-10);
+        assert!((dz - 0.001).abs() < 1e-10);
+
+        // Cell at (1, 1, 2)
+        let (dx, dy, dz) = grid.cell_size_at(1, 1, 2);
+        assert!((dx - 0.002).abs() < 1e-10);
+        assert!((dy - 0.003).abs() < 1e-10);
+        assert!((dz - 0.002).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_cell_center() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Cell (0, 0, 0) center should be at (0.0005, 0.0005, 0.0005)
+        let (cx, cy, cz) = grid.cell_center(0, 0, 0);
+        assert!((cx - 0.0005).abs() < 1e-10);
+        assert!((cy - 0.0005).abs() < 1e-10);
+        assert!((cz - 0.0005).abs() < 1e-10);
+
+        // Cell (5, 5, 5) center should be at (0.0055, 0.0055, 0.0055)
+        let (cx, cy, cz) = grid.cell_center(5, 5, 5);
+        assert!((cx - 0.0055).abs() < 1e-10);
+        assert!((cy - 0.0055).abs() < 1e-10);
+        assert!((cz - 0.0055).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_grid_volume() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Volume = 0.01 * 0.01 * 0.01 = 1e-6 m^3
+        let volume = grid.volume();
+        assert!((volume - 1e-6).abs() < 1e-15);
+    }
+
+    #[test]
+    fn test_grid_volume_with_unit() {
+        let mut grid = Grid::uniform(10, 10, 10, 10.0); // 10mm cells (in mm)
+
+        // Without scaling: 100mm x 100mm x 100mm = 1e6 mm^3
+        let volume_mm = grid.volume();
+        assert!((volume_mm - 1e6).abs() < 1e-6);
+
+        // Set unit to meters (1mm = 0.001m)
+        grid.set_unit(0.001);
+
+        // With scaling: 0.1m x 0.1m x 0.1m = 0.001 m^3
+        let volume_m = grid.volume();
+        assert!((volume_m - 0.001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_grid_bounds() {
+        let grid = Grid::uniform(10, 20, 30, 0.001);
+
+        let ((x_min, x_max), (y_min, y_max), (z_min, z_max)) = grid.bounds();
+
+        assert!((x_min - 0.0).abs() < 1e-10);
+        assert!((x_max - 0.01).abs() < 1e-10);
+
+        assert!((y_min - 0.0).abs() < 1e-10);
+        assert!((y_max - 0.02).abs() < 1e-10);
+
+        assert!((z_min - 0.0).abs() < 1e-10);
+        assert!((z_max - 0.03).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_add_x_lines() {
+        let mut grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Add some new X lines
+        grid.add_x_lines(&[0.0005, 0.0015, 0.0025]);
+
+        // Check that lines were added and sorted
+        let x_lines = grid.x_lines();
+        assert!(x_lines.contains(&0.0005));
+        assert!(x_lines.contains(&0.0015));
+        assert!(x_lines.contains(&0.0025));
+
+        // Check sorting
+        for i in 0..x_lines.len() - 1 {
+            assert!(x_lines[i] < x_lines[i + 1]);
+        }
+    }
+
+    #[test]
+    fn test_add_y_lines() {
+        let mut grid = Grid::uniform(10, 10, 10, 0.001);
+
+        grid.add_y_lines(&[0.0005, 0.0035]);
+
+        let y_lines = grid.y_lines();
+        assert!(y_lines.contains(&0.0005));
+        assert!(y_lines.contains(&0.0035));
+
+        // Verify sorted
+        for i in 0..y_lines.len() - 1 {
+            assert!(y_lines[i] < y_lines[i + 1]);
+        }
+    }
+
+    #[test]
+    fn test_add_z_lines() {
+        let mut grid = Grid::uniform(10, 10, 10, 0.001);
+
+        grid.add_z_lines(&[0.0005, 0.0045, 0.0085]);
+
+        let z_lines = grid.z_lines();
+        assert!(z_lines.contains(&0.0005));
+        assert!(z_lines.contains(&0.0045));
+        assert!(z_lines.contains(&0.0085));
+
+        // Verify sorted
+        for i in 0..z_lines.len() - 1 {
+            assert!(z_lines[i] < z_lines[i + 1]);
+        }
+    }
+
+    #[test]
+    fn test_add_lines_dedup() {
+        let mut grid = Grid::uniform(10, 10, 10, 0.001);
+
+        let original_count = grid.x_lines().len();
+
+        // Add duplicate lines (0.001 already exists)
+        grid.add_x_lines(&[0.001, 0.002, 0.002]);
+
+        // Should not add duplicates
+        assert_eq!(grid.x_lines().len(), original_count);
+    }
+
+    #[test]
+    fn test_smooth_mesh() {
+        // Create a grid with large ratio between adjacent cells
+        let x_lines = vec![0.0, 0.001, 0.01, 0.02]; // Large jump from 0.001 to 0.01
+        let y_lines = vec![0.0, 0.001, 0.002];
+        let z_lines = vec![0.0, 0.001, 0.002];
+
+        let mut grid = Grid::cartesian(x_lines, y_lines, z_lines);
+
+        // Smooth with max ratio of 2.0
+        grid.smooth_mesh(2.0);
+
+        // Check that new lines were added to reduce ratio
+        let x_lines = grid.x_lines();
+        assert!(x_lines.len() > 4); // More lines than original
+
+        // Verify max ratio constraint
+        for i in 1..x_lines.len() - 1 {
+            let delta_prev = x_lines[i] - x_lines[i - 1];
+            let delta_curr = x_lines[i + 1] - x_lines[i];
+
+            if delta_prev > 0.0 && delta_curr > 0.0 {
+                let ratio = delta_curr / delta_prev;
+                // Allow small tolerance
+                assert!(
+                    ratio <= 2.1,
+                    "Ratio {} exceeds max at index {}",
+                    ratio,
+                    i
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_smooth_mesh_small_grid() {
+        // Grid with less than 3 lines should not change
+        let x_lines = vec![0.0, 1.0];
+        let y_lines = vec![0.0, 1.0];
+        let z_lines = vec![0.0, 1.0];
+
+        let mut grid = Grid::cartesian(x_lines.clone(), y_lines.clone(), z_lines.clone());
+        grid.smooth_mesh(2.0);
+
+        assert_eq!(grid.x_lines().len(), 2);
+        assert_eq!(grid.y_lines().len(), 2);
+        assert_eq!(grid.z_lines().len(), 2);
+    }
+
+    #[test]
+    fn test_delta_x_edge_cases() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Normal case
+        let dx = grid.delta_x(5);
+        assert!((dx - 0.001).abs() < 1e-10);
+
+        // Last index - should use previous delta
+        let dx_last = grid.delta_x(10);
+        assert!((dx_last - 0.001).abs() < 1e-10);
+
+        // Index 0
+        let dx_first = grid.delta_x(0);
+        assert!((dx_first - 0.001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_delta_y_edge_cases() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Normal case
+        let dy = grid.delta_y(5);
+        assert!((dy - 0.001).abs() < 1e-10);
+
+        // Last index
+        let dy_last = grid.delta_y(10);
+        assert!((dy_last - 0.001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_delta_z_edge_cases() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Normal case
+        let dz = grid.delta_z(5);
+        assert!((dz - 0.001).abs() < 1e-10);
+
+        // Last index
+        let dz_last = grid.delta_z(10);
+        assert!((dz_last - 0.001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_delta_single_line_grid() {
+        // Edge case: grid with only one line
+        let grid = Grid::cartesian(vec![0.0], vec![0.0], vec![0.0]);
+
+        // Should return unit (default 1.0)
+        let dx = grid.delta_x(0);
+        assert!((dx - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_x_line_out_of_bounds() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Valid index
+        let x = grid.x_line(5);
+        assert!((x - 0.005).abs() < 1e-10);
+
+        // Out of bounds - should return 0.0
+        let x_oob = grid.x_line(100);
+        assert!((x_oob - 0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_y_line_out_of_bounds() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Valid index
+        let y = grid.y_line(5);
+        assert!((y - 0.005).abs() < 1e-10);
+
+        // Out of bounds
+        let y_oob = grid.y_line(100);
+        assert!((y_oob - 0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_z_line_out_of_bounds() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Valid index
+        let z = grid.z_line(5);
+        assert!((z - 0.005).abs() < 1e-10);
+
+        // Out of bounds
+        let z_oob = grid.z_line(100);
+        assert!((z_oob - 0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_find_cell_out_of_range() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // Before grid start
+        let before = grid.find_cell(-0.001, 0.005, 0.005);
+        assert_eq!(before, None);
+
+        // After grid end
+        let after_x = grid.find_cell(0.015, 0.005, 0.005);
+        assert_eq!(after_x, None);
+
+        let after_y = grid.find_cell(0.005, 0.015, 0.005);
+        assert_eq!(after_y, None);
+
+        let after_z = grid.find_cell(0.005, 0.005, 0.015);
+        assert_eq!(after_z, None);
+    }
+
+    #[test]
+    fn test_find_cell_at_boundary() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        // At grid origin
+        let origin = grid.find_cell(0.0, 0.0, 0.0);
+        assert_eq!(origin, Some((0, 0, 0)));
+
+        // At grid end (exactly)
+        let end = grid.find_cell(0.01, 0.01, 0.01);
+        assert_eq!(end, Some((9, 9, 9)));
+    }
+
+    #[test]
+    fn test_find_cell_x() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        assert_eq!(grid.find_cell_x(0.0), 0);
+        assert_eq!(grid.find_cell_x(0.0055), 5);
+        assert_eq!(grid.find_cell_x(0.0095), 9);
+
+        // Beyond grid should clamp to last cell
+        let clamped = grid.find_cell_x(0.02);
+        assert_eq!(clamped, 9);
+    }
+
+    #[test]
+    fn test_find_cell_y() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        assert_eq!(grid.find_cell_y(0.0), 0);
+        assert_eq!(grid.find_cell_y(0.0055), 5);
+
+        // Beyond grid
+        let clamped = grid.find_cell_y(0.02);
+        assert_eq!(clamped, 9);
+    }
+
+    #[test]
+    fn test_find_cell_z() {
+        let grid = Grid::uniform(10, 10, 10, 0.001);
+
+        assert_eq!(grid.find_cell_z(0.0), 0);
+        assert_eq!(grid.find_cell_z(0.0055), 5);
+
+        // Beyond grid
+        let clamped = grid.find_cell_z(0.02);
+        assert_eq!(clamped, 9);
+    }
+
+    #[test]
+    fn test_dimensions_with_single_lines() {
+        // Edge case: minimal grid
+        let grid = Grid::cartesian(
+            vec![0.0, 1.0],
+            vec![0.0, 1.0],
+            vec![0.0, 1.0],
+        );
+
+        let dims = grid.dimensions();
+        assert_eq!(dims.nx, 1);
+        assert_eq!(dims.ny, 1);
+        assert_eq!(dims.nz, 1);
+    }
+
+    #[test]
+    fn test_new_constructor() {
+        let grid = Grid::new(
+            CoordinateSystem::Cartesian,
+            vec![0.0, 0.1, 0.2],
+            vec![0.0, 0.1, 0.2, 0.3],
+            vec![0.0, 0.1],
+        );
+
+        assert_eq!(grid.coord_system(), CoordinateSystem::Cartesian);
+        assert_eq!(grid.dimensions().nx, 2);
+        assert_eq!(grid.dimensions().ny, 3);
+        assert_eq!(grid.dimensions().nz, 1);
+    }
+
+    #[test]
+    fn test_min_delta_function() {
+        // Via cell_size which uses min_delta
+        let x_lines = vec![0.0, 0.001, 0.003, 0.01]; // min delta = 0.001
+        let y_lines = vec![0.0, 0.002, 0.003];        // min delta = 0.001
+        let z_lines = vec![0.0, 0.005, 0.006];        // min delta = 0.001
+
+        let grid = Grid::cartesian(x_lines, y_lines, z_lines);
+        let (dx, dy, dz) = grid.cell_size();
+
+        assert!((dx - 0.001).abs() < 1e-10);
+        assert!((dy - 0.001).abs() < 1e-10);
+        assert!((dz - 0.001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_coordinate_system_default() {
+        let cs = CoordinateSystem::default();
+        assert_eq!(cs, CoordinateSystem::Cartesian);
+    }
+
+    #[test]
+    fn test_bounds_with_unit() {
+        let mut grid = Grid::uniform(10, 10, 10, 10.0); // 10 unit cells
+
+        // Set unit scaling
+        grid.set_unit(0.001); // Convert to mm
+
+        let ((x_min, x_max), (y_min, y_max), (z_min, z_max)) = grid.bounds();
+
+        // Bounds should be scaled
+        assert!((x_min - 0.0).abs() < 1e-10);
+        assert!((x_max - 0.1).abs() < 1e-10); // 100 * 0.001 = 0.1
+        assert!((y_min - 0.0).abs() < 1e-10);
+        assert!((y_max - 0.1).abs() < 1e-10);
+        assert!((z_min - 0.0).abs() < 1e-10);
+        assert!((z_max - 0.1).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_cell_center_with_unit() {
+        let mut grid = Grid::uniform(10, 10, 10, 10.0); // 10 unit cells
+        grid.set_unit(0.001); // mm to m
+
+        let (cx, cy, cz) = grid.cell_center(0, 0, 0);
+
+        // Center of first cell: 0.5 * 10 * 0.001 = 0.005
+        assert!((cx - 0.005).abs() < 1e-10);
+        assert!((cy - 0.005).abs() < 1e-10);
+        assert!((cz - 0.005).abs() < 1e-10);
+    }
 }

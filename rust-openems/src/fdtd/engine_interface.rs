@@ -711,4 +711,518 @@ mod tests {
         assert!((e_field.y.get(5, 5, 5) - 2.0).abs() < 1e-6);
         assert!((e_field.z.get(5, 5, 5) - 3.0).abs() < 1e-6);
     }
+
+    #[test]
+    fn test_with_epsilon_coefficient() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let mut eps_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Set epsilon values
+        eps_field.x.fill(2.0);
+        eps_field.y.fill(2.0);
+        eps_field.z.fill(2.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_epsilon(&eps_field);
+
+        // Verify epsilon is set
+        assert!(interface.op_eps.is_some());
+    }
+
+    #[test]
+    fn test_with_mu_coefficient() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let mut mu_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Set mu values
+        mu_field.x.fill(1.5);
+        mu_field.y.fill(1.5);
+        mu_field.z.fill(1.5);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_mu(&mu_field);
+
+        // Verify mu is set
+        assert!(interface.op_mu.is_some());
+    }
+
+    #[test]
+    fn test_set_time() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        let mut interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+
+        interface.set_time(100, 1e-9);
+
+        assert_eq!(interface.timestep(), 100);
+        assert!((interface.time() - 1e-9).abs() < 1e-20);
+    }
+
+    #[test]
+    fn test_h_field_raw_access() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        h_field.x.set(5, 5, 5, 0.1);
+        h_field.y.set(5, 5, 5, 0.2);
+        h_field.z.set(5, 5, 5, 0.3);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+        let h = interface.get_h_field_raw(5, 5, 5);
+
+        assert!((h[0] - 0.1).abs() < 1e-6);
+        assert!((h[1] - 0.2).abs() < 1e-6);
+        assert!((h[2] - 0.3).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_h_field_with_interpolation() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        h_field.x.fill(1.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_interpolation(InterpolationType::NodeInterpolate);
+
+        let h = interface.get_h_field([0.005, 0.005, 0.005]);
+        assert!(h[0] > 0.0);
+    }
+
+    #[test]
+    fn test_get_j_field() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Set non-uniform H-field to create non-zero curl
+        for i in 0..dims.nx {
+            for j in 0..dims.ny {
+                for k in 0..dims.nz {
+                    // Hz increasing with y gives dHz/dy > 0
+                    h_field.z.set(i, j, k, j as f32 * 0.1);
+                }
+            }
+        }
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+        let j = interface.get_j_field([0.005, 0.005, 0.005]);
+
+        // J_x = dHz/dy - dHy/dz, should be non-zero due to dHz/dy
+        // The specific value depends on the grid spacing
+        assert!(j[0].abs() > 0.0 || j[1].abs() > 0.0 || j[2].abs() > 0.0);
+    }
+
+    #[test]
+    fn test_get_d_field_with_epsilon() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let mut eps_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        e_field.x.fill(1.0);
+        e_field.y.fill(2.0);
+        e_field.z.fill(3.0);
+
+        // Set relative epsilon = 2.0
+        eps_field.x.fill(2.0);
+        eps_field.y.fill(2.0);
+        eps_field.z.fill(2.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_epsilon(&eps_field);
+
+        let d = interface.get_d_field([0.005, 0.005, 0.005]);
+
+        // D = epsilon * E
+        assert!((d[0] - 2.0).abs() < 1e-6); // 2.0 * 1.0
+        assert!((d[1] - 4.0).abs() < 1e-6); // 2.0 * 2.0
+        assert!((d[2] - 6.0).abs() < 1e-6); // 2.0 * 3.0
+    }
+
+    #[test]
+    fn test_get_d_field_free_space() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        e_field.x.fill(1.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+
+        let d = interface.get_d_field([0.005, 0.005, 0.005]);
+
+        // D = EPS0 * E in free space
+        assert!((d[0] - EPS0).abs() < 1e-20);
+    }
+
+    #[test]
+    fn test_get_b_field_with_mu() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let mut mu_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        h_field.x.fill(1.0);
+        h_field.y.fill(2.0);
+        h_field.z.fill(3.0);
+
+        // Set relative mu = 1.5
+        mu_field.x.fill(1.5);
+        mu_field.y.fill(1.5);
+        mu_field.z.fill(1.5);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_mu(&mu_field);
+
+        let b = interface.get_b_field([0.005, 0.005, 0.005]);
+
+        // B = mu * H
+        assert!((b[0] - 1.5).abs() < 1e-6); // 1.5 * 1.0
+        assert!((b[1] - 3.0).abs() < 1e-6); // 1.5 * 2.0
+        assert!((b[2] - 4.5).abs() < 1e-6); // 1.5 * 3.0
+    }
+
+    #[test]
+    fn test_get_b_field_free_space() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        h_field.x.fill(1.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+
+        let b = interface.get_b_field([0.005, 0.005, 0.005]);
+
+        // B = MU0 * H in free space
+        assert!((b[0] - MU0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn test_get_rot_h_field() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Set H-field with spatial variation
+        for i in 0..dims.nx {
+            for j in 0..dims.ny {
+                for k in 0..dims.nz {
+                    h_field.y.set(i, j, k, k as f32 * 0.1);
+                }
+            }
+        }
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+        let rot_h = interface.get_rot_h_field([0.005, 0.005, 0.005]);
+
+        // rot_h_x = dHz/dy - dHy/dz
+        // dHy/dz is non-zero
+        assert!(rot_h[0].abs() > 0.0 || rot_h[1].abs() > 0.0 || rot_h[2].abs() > 0.0);
+    }
+
+    #[test]
+    fn test_current_integral_y_normal() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Set uniform H-field for predictable current
+        h_field.x.fill(1.0);
+        h_field.z.fill(0.5);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+
+        // Y-normal surface
+        let current = interface.calc_current_integral([0.0, 0.005, 0.0], [0.005, 0.005, 0.005], 1);
+
+        // Current should be non-zero
+        assert!(current.abs() > 0.0);
+    }
+
+    #[test]
+    fn test_current_integral_z_normal() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Set uniform H-field
+        h_field.x.fill(1.0);
+        h_field.y.fill(0.5);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+
+        // Z-normal surface
+        let current = interface.calc_current_integral([0.0, 0.0, 0.005], [0.005, 0.005, 0.005], 2);
+
+        // Current should be non-zero
+        assert!(current.abs() > 0.0);
+    }
+
+    #[test]
+    fn test_calc_e_energy() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        e_field.x.fill(1.0);
+        e_field.y.fill(1.0);
+        e_field.z.fill(1.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+        let e_energy = interface.calc_e_energy();
+
+        // E-field energy should be positive
+        assert!(e_energy > 0.0);
+
+        // W_e = 0.5 * EPS0 * E^2
+        // With E = [1,1,1], |E|^2 = 3 per cell, 1000 cells total
+        let expected = 0.5 * EPS0 * 3.0 * 1000.0;
+        assert!((e_energy - expected).abs() / expected < 0.01);
+    }
+
+    #[test]
+    fn test_calc_h_energy() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        h_field.x.fill(1.0);
+        h_field.y.fill(1.0);
+        h_field.z.fill(1.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+        let h_energy = interface.calc_h_energy();
+
+        // H-field energy should be positive
+        assert!(h_energy > 0.0);
+
+        // W_h = 0.5 * MU0 * H^2
+        let expected = 0.5 * MU0 * 3.0 * 1000.0;
+        assert!((h_energy - expected).abs() / expected < 0.01);
+    }
+
+    #[test]
+    fn test_cell_interpolation_mode() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Create a gradient in E-field
+        for i in 0..dims.nx {
+            for j in 0..dims.ny {
+                for k in 0..dims.nz {
+                    e_field.x.set(i, j, k, i as f32);
+                }
+            }
+        }
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_interpolation(InterpolationType::CellInterpolate);
+
+        let e_cell = interface.get_e_field([0.005, 0.005, 0.005]);
+
+        // Cell interpolation should give a value (not necessarily the exact position value)
+        assert!(e_cell[0] > 0.0);
+
+        // Compare with node interpolation
+        let interface_node = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_interpolation(InterpolationType::NodeInterpolate);
+        let e_node = interface_node.get_e_field([0.005, 0.005, 0.005]);
+
+        // Values might differ due to different interpolation schemes
+        // Just verify both return valid results
+        assert!(e_node[0] > 0.0);
+    }
+
+    #[test]
+    fn test_h_field_cell_interpolation() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        h_field.x.fill(1.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_interpolation(InterpolationType::CellInterpolate);
+
+        let h = interface.get_h_field([0.005, 0.005, 0.005]);
+
+        // Should return valid interpolated value
+        assert!(h[0] > 0.0);
+    }
+
+    #[test]
+    fn test_mutable_add_e_field() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        // Set initial values
+        e_field.x.set(5, 5, 5, 1.0);
+        e_field.y.set(5, 5, 5, 2.0);
+        e_field.z.set(5, 5, 5, 3.0);
+
+        {
+            let mut interface = EngineInterfaceMut::new(&mut e_field, &mut h_field, &grid, 1e-12);
+            interface.add_e_field(5, 5, 5, [0.5, 1.0, 1.5]);
+        }
+
+        // Values should be added to existing
+        assert!((e_field.x.get(5, 5, 5) - 1.5).abs() < 1e-6);
+        assert!((e_field.y.get(5, 5, 5) - 3.0).abs() < 1e-6);
+        assert!((e_field.z.get(5, 5, 5) - 4.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_mutable_interface_accessors() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        e_field.x.fill(1.0);
+        h_field.y.fill(2.0);
+
+        let interface = EngineInterfaceMut::new(&mut e_field, &mut h_field, &grid, 1e-12);
+
+        // Test e_field() accessor
+        assert!((interface.e_field().x.get(5, 5, 5) - 1.0).abs() < 1e-6);
+
+        // Test h_field() accessor
+        assert!((interface.h_field().y.get(5, 5, 5) - 2.0).abs() < 1e-6);
+
+        // Test grid() accessor
+        let grid_dims = interface.grid().dimensions();
+        assert_eq!(grid_dims.nx, 10);
+        assert_eq!(grid_dims.ny, 10);
+        assert_eq!(grid_dims.nz, 10);
+    }
+
+    #[test]
+    fn test_mutable_interface_set_time() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        let mut interface = EngineInterfaceMut::new(&mut e_field, &mut h_field, &grid, 1e-12);
+
+        interface.set_time(50, 5e-10);
+
+        // Verify internal state was set
+        assert_eq!(interface.timestep, 50);
+        assert!((interface.time - 5e-10).abs() < 1e-20);
+    }
+
+    #[test]
+    fn test_mutable_set_h_field() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        {
+            let mut interface = EngineInterfaceMut::new(&mut e_field, &mut h_field, &grid, 1e-12);
+            interface.set_h_field(3, 3, 3, [0.1, 0.2, 0.3]);
+        }
+
+        assert!((h_field.x.get(3, 3, 3) - 0.1).abs() < 1e-6);
+        assert!((h_field.y.get(3, 3, 3) - 0.2).abs() < 1e-6);
+        assert!((h_field.z.get(3, 3, 3) - 0.3).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_mutable_field_mut_accessors() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let mut h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        {
+            let mut interface = EngineInterfaceMut::new(&mut e_field, &mut h_field, &grid, 1e-12);
+
+            // Use e_field_mut to modify directly
+            interface.e_field_mut().x.set(1, 1, 1, 5.0);
+
+            // Use h_field_mut to modify directly
+            interface.h_field_mut().y.set(2, 2, 2, 7.0);
+        }
+
+        assert!((e_field.x.get(1, 1, 1) - 5.0).abs() < 1e-6);
+        assert!((h_field.y.get(2, 2, 2) - 7.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_dt_accessor() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        let dt = 1.5e-12;
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, dt);
+
+        assert!((interface.dt() - dt).abs() < 1e-20);
+    }
+
+    #[test]
+    fn test_dims_accessor() {
+        let dims = Dimensions::new(10, 10, 10);
+        let e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12);
+
+        let interface_dims = interface.dims();
+        assert_eq!(interface_dims.nx, 10);
+        assert_eq!(interface_dims.ny, 10);
+        assert_eq!(interface_dims.nz, 10);
+    }
+
+    #[test]
+    fn test_no_interpolation_mode() {
+        let dims = Dimensions::new(10, 10, 10);
+        let mut e_field = VectorField3D::new(dims);
+        let h_field = VectorField3D::new(dims);
+        let grid = create_test_grid();
+
+        e_field.x.set(5, 5, 5, 10.0);
+
+        let interface = EngineInterface::new(&e_field, &h_field, &grid, 1e-12)
+            .with_interpolation(InterpolationType::NoInterpolation);
+
+        // Position that snaps to cell (5,5,5)
+        let e = interface.get_e_field([0.0055, 0.0055, 0.0055]);
+
+        assert!((e[0] - 10.0).abs() < 1e-6);
+    }
 }
