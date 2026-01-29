@@ -19,7 +19,7 @@
 #define PROCESSMODEMATCH_H
 
 #include "processintegral.h"
-#include "ModeFileParser.h"
+#include "CSModeFileParser.h"
 
 class CSFunctionParser;
 

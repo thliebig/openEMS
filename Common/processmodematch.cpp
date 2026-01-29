@@ -164,9 +164,9 @@ void ProcessModeMatch::InitProcess()
 	}
 
 	// If necessary, parse the file now
-	ModeFileParser modeFile;
+	CSModeFileParser modeFile;
 	if (m_FieldSourceIsFile)
-		modeFile.parseFile(m_ModeFileName);
+		modeFile.ParseFile(m_ModeFileName);
 
 	for (unsigned int posP = 0; posP < m_numLines[0]; ++posP)
 	{
@@ -203,7 +203,7 @@ void ProcessModeMatch::InitProcess()
 						discLine[1] - Op->GetDiscLine(1,start[1],dualMesh),
 						discLine[2] - Op->GetDiscLine(2,start[2],dualMesh)};
 
-				modeFile.linInterp2(locCoord[nP],locCoord[nPP],m_ModeDist[0][posP][posPP],m_ModeDist[1][posP][posPP]);
+				modeFile.LinInterp2(locCoord[nP],locCoord[nPP],m_ModeDist[0][posP][posPP],m_ModeDist[1][posP][posPP]);
 			}
 			else
 				for (int n = 0; n < 2; ++n)
