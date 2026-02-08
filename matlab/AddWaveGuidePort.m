@@ -70,26 +70,30 @@ port.dir = dir;
 port.drawingunit = CSX.RectilinearGrid.ATTRIBUTE.DeltaUnit;
 
 PortNamePrefix = '';
-WG_E_file = '';
-WG_H_file = '';
+E_WG_file = '';
+H_WG_file = '';
 
-varargin_tmp  = varargin;
+varargin_tmp = varargin;
+idxsToDelete = [];
 for n=1:2:numel(varargin_tmp)
     if strcmpi('PortNamePrefix',varargin_tmp{n})
         PortNamePrefix = varargin_tmp{n+1};
-        varargin([n n+1]) = [];
+        idxsToDelete = [idxsToDelete n n+1];
     end
 
     if strcmpi('E_WG_file',varargin_tmp{n})
-        WG_E_file = varargin_tmp{n+1};
-        varargin([n n+1]) = [];
+        E_WG_file = varargin_tmp{n+1};
+        idxsToDelete = [idxsToDelete n n+1];
     end
 
     if strcmpi('H_WG_file',varargin_tmp{n})
-        WG_H_file = varargin_tmp{n+1};
-        varargin([n n+1]) = [];
+        H_WG_file = varargin_tmp{n+1};
+        idxsToDelete = [idxsToDelete n n+1];
     end
 end
+
+% Delete all used entries
+varargin(idxsToDelete) = [];
 
 % matlab addressing
 dir = dir + 1;
@@ -101,8 +105,8 @@ end
 port.direction = dir_sign;
 
 % Verify there is contents in the waveguide mode functions
-modeFuncIsString = (~isempty(E_WG_func) & ~isempty(H_WG_func))
-modeFuncIsFile = isstring(WG_E_file) & isstring(WG_H_file);
+modeFuncIsString = (~isempty(E_WG_func) & ~isempty(H_WG_func));
+modeFuncIsFile = ischar(E_WG_file) & ischar(H_WG_file);
 % Sanity check - Both are invalid
 if ~modeFuncIsString && ~modeFuncIsFile
     error('No mode function source was defined');
@@ -123,12 +127,14 @@ if (exc_amp~=0)
     port.excitepos = e_start(dir);
     e_vec = [1 1 1]*exc_amp;
     e_vec(dir) = 0;
+    e_propDir = [0 0 0];
+    e_propDir(dir) = 1;
     exc_name = [PortNamePrefix 'port_excite_' num2str(portnr)];
     CSX = AddExcitation( CSX, exc_name, 0, e_vec, varargin{:});
     if modeFuncIsString
         CSX = SetExcitationWeight(CSX, exc_name, E_WG_func );
     else
-
+        CSX = SetExcitationFile(CSX, exc_name, E_WG_file, e_propDir);
     end
 	CSX = AddBox( CSX, exc_name, prio, e_start, e_stop);
 end
@@ -151,7 +157,6 @@ port.I_filename = [PortNamePrefix 'port_it' int2str(portnr)];
 if modeFuncIsString
     CSX = AddProbe(CSX, port.I_filename, 11, 'ModeFunction', H_WG_func, 'weight', dir_sign);
 else
-    CSX = AddProbe(CSX, port.U_filename, 11, 'ModeFileName', H_WG_file, 'weight', dir_sign);
+    CSX = AddProbe(CSX, port.I_filename, 11, 'ModeFileName', H_WG_file, 'weight', dir_sign);
 end
 CSX = AddBox(CSX, port.I_filename, 0 ,m_start, m_stop);
-

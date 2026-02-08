@@ -41,8 +41,11 @@ coax_L = 25;
 
 Airbox_Add = 0;
 
+Mode_File_Path = '../../../python/Tests';
+E_Mode_File = 'Coax_Er.csv';
+H_Mode_File = 'Coax_Hr.csv';
 
-teflon_epsR = 2.5
+teflon_epsR = 2.5;
 
 % -------------------------------------------------------------------------
 % Initial simulation definitions
@@ -52,6 +55,8 @@ warning off;
 addpath('~/opt/openEMS/share/CSXCAD/matlab');
 addpath('~/opt/openEMS/share/openEMS/matlab');
 
+physical_constants;
+
 FDTD = InitFDTD('NrTS', 30000, 'EndCriteria', 1e-4);
 f0 = 0.5*(f_start + f_stop);
 FDTD = SetGaussExcite(FDTD, f0, 0.5*(f_stop - f_start));
@@ -60,15 +65,11 @@ FDTD = SetGaussExcite(FDTD, f0, 0.5*(f_stop - f_start));
 BC = {'PEC','PEC','PEC','PEC','MUR','MUR'};
 FDTD = SetBoundaryCond(FDTD, BC);
 
-C0 = 3e8;
-mesh_res = ((C0/f_stop)/unit)/100;
+mesh_res = ((c0/f_stop)/unit)/100;
 
 % -------------------------------------------------------------------------
 % Initial mesh bounding box
 
-mesh.x = [-1 1]*(coax_D*0.5 + coax_shield_thick + Airbox_Add);
-mesh.y = [-1 1]*(coax_D*0.5 + coax_shield_thick + Airbox_Add);
-mesh.z = [0 coax_L] + [-1 1]*Airbox_Add;
 
 CSX = InitCSX();
 
@@ -91,7 +92,11 @@ CSX = SetMaterialProperty( CSX, 'PTFE', 'Epsilon', teflon_epsR );
 % Coax Inner conductor
 CSX = AddCylinder(CSX, 'PTFE', 10, [0 0 0], [0 0 coax_L], coax_D*0.5);
 
+
 % Add all relevant points to mesh
+mesh.x = [];
+mesh.y = [];
+mesh.z = [];
 mesh.x = [mesh.x linspace(-coax_D*0.5,-coax_wire_D*0.5,7)];
 mesh.x = [mesh.x linspace(-(coax_D*0.5 + coax_shield_thick),-coax_D*0.5,4)];
 mesh.x = [mesh.x linspace(-coax_wire_D*0.5,coax_wire_D*0.5,6)];
@@ -100,63 +105,76 @@ mesh.x = [mesh.x linspace(coax_wire_D*0.5,coax_D*0.5,7)];
 
 mesh.x = unique(mesh.x);
 mesh.y = mesh.x;
-mesh.z = [0 coax_L];
+mesh.z = unique([0:mesh_res*0.25:mesh_res (coax_L - fliplr(0:mesh_res*0.25:mesh_res)) coax_L]);
+
+
 
 % Smooth all meshes
 mesh.x = SmoothMeshLines(mesh.x, mesh_res, 1.25);
 mesh.y = SmoothMeshLines(mesh.y, mesh_res, 1.25);
 mesh.z = SmoothMeshLines(mesh.z, mesh_res, 1.25);
 
-% -------------------------------------------------------------------------
-% Ports Setup
-%
-%% --- Coaxial Port ---
-%% Coax start and stop for lumped port
-%start_coax = [0 0 0];
-%stop_coax  = [0 0 coax_length];
-%
-%% Add coaxial lumped port
-%[CSX, port{1}] = AddLumpedPort(CSX, 5, 1, 50, start_coax, stop_coax, [0 0 1], true);
-%
-%% --- Rectangular Waveguide Port ---
-%% Note: If AddWaveguidePort isn't fully implemented, leave placeholder
-%start_wg = [-wg_a/2 -wg_b/2 coax_length];
-%stop_wg  = [ wg_a/2  wg_b/2 coax_length+1e-6]; % small extension
-%
-%% Placeholder for your AddWaveguidePort version
-%% [CSX, port{2}] = AddWaveguidePort(CSX, 5, 2, start_wg, stop_wg, ...
-%%                                   dir, E_func, H_func, kc, excite);
-%% For now, you can use rectangular port if available:
-%mode_name = 'TE10'; % example rectangular waveguide mode
-%[CSX, port{2}] = AddRectWaveGuidePort(CSX, 5, 2, start_wg, stop_wg, 'z', ...
-%                                      wg_a, wg_b, mode_name, 1);
-
-% -------------------------------------------------------------------------
-% Write XML and Run Simulation
 
 % Define the grid inside CSX
 CSX = DefineRectGrid(CSX, unit, mesh);
+
+% -------------------------------------------------------------------------
+% Ports Setup
+
+% --- Coaxial Port ---
+
+% Wave number
+kz = 82.84554871;
+% Wave impedance
+Zw = 238.26517157;
+% Line impedance
+Zl = 52.43928218;
+
+% Calculate cutoff wave number 
+kc = sqrt((2*pi*f0/c0)^2 - kz^2);
+
+% Add coaxial lumped port
+% Coax start and stop for lumped port
+start_coax = [(coax_D*0.5 + coax_shield_thick)*[-1 -1] mesh.z(2)];
+stop_coax  = [(coax_D*0.5 + coax_shield_thick)*[ 1  1] mesh.z(3)];
+
+[CSX, port{1}] = AddWaveGuidePort(CSX, 15, 1, start_coax, stop_coax, 'z', '', '', kc , 1, 'E_WG_file', E_Mode_File, 'H_WG_file', H_Mode_File);
+
+% Add coaxial lumped port
+% Coax start and stop for lumped port
+start_coax = [(coax_D*0.5 + coax_shield_thick)*[-1 -1] mesh.z(end - 1)];
+stop_coax  = [(coax_D*0.5 + coax_shield_thick)*[ 1  1] mesh.z(end - 2)];
+
+[CSX, port{2}] = AddWaveGuidePort(CSX, 15, 2, start_coax, stop_coax, 'z', '', '', kc , 1, 'E_WG_file', E_Mode_File, 'H_WG_file', H_Mode_File);
+% -------------------------------------------------------------------------
+% Write XML and Run Simulation
+
 
 Sim_Path = 'tmp';
 Sim_CSX  = 'coax_wg.xml';
 
 WriteOpenEMS([Sim_Path '/' Sim_CSX], FDTD, CSX);
 
+copyfile([Mode_File_Path '/' E_Mode_File], [Sim_Path '/']);
+copyfile([Mode_File_Path '/' H_Mode_File], [Sim_Path '/']);
+
 % show the structure
 CSXGeomPlot( [Sim_Path '/' Sim_CSX] );
 
-%!openEMS [Sim_Path '/' Sim_CSX];
+% run openEMS
+RunOpenEMS( Sim_Path, Sim_CSX );
 
 % -------------------------------------------------------------------------
 % Post-processing
 
 freq = linspace(f_start, f_stop, 201);
 
-port = calcPort(port, Sim_Path, freq);
+port = calcPort(port, Sim_Path, freq, 'RefImpedance', 50);
 
 % Calculate and plot S-parameters
 S11 = port{1}.uf.ref ./ port{1}.uf.inc;
 S21 = port{2}.uf.ref ./ port{1}.uf.inc;
+
 
 figure;
 plot(freq/1e9, 20*log10(abs(S11)), 'b-', 'LineWidth', 2);
