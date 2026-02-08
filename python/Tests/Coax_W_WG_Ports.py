@@ -39,8 +39,6 @@ mesh_res = 0.5
 
 Airbox_Add = 0;
 
-unit_res = 1e-3
-
 # size of the simulation box
 SimBox = np.array([
             -(coax_D*0.5 + coax_shield_thick + Airbox_Add),
@@ -67,7 +65,7 @@ FDTD.SetCSX(CSX)
 
 mesh = CSX.GetGrid()
 mesh.SetDeltaUnit(unit_res)
-mesh_res = ((C0/(f0+fc))/1e-3)/100
+mesh_res = ((C0/(f0+fc))/unit)/100
 ### Generate propertiesprimitives and mesh-grid
 #initialize the mesh with the "air-box" dimensions
 mesh.AddLine('x', SimBox[0:2])
