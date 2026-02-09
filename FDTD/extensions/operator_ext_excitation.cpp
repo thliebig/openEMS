@@ -22,6 +22,7 @@
 
 #include "CSPrimCurve.h"
 #include "CSPropExcitation.h"
+#include "CSPrimBox.h"
 
 using std::cout;
 using std::cerr;
@@ -102,6 +103,25 @@ Operator_Ext_Excitation::Operator_Ext_Excitation(Operator* op, Operator_Ext_Exci
 	Init();
 }
 
+bool Operator_Ext_Excitation::shiftCoordsForModeFile(double * const coord0, CSPrimitives * cPrim)
+{
+	CSPrimBox* primBox = cPrim->ToBox();
+	if (primBox == NULL)
+	{
+		cerr << "Operator_Ext_Excitation::BuildExtension: Error obtaining box primitive" << endl;
+		return false;
+	}
+
+	for (int dirIdx = 0 ; dirIdx < 3 ; dirIdx++)
+	{
+		double OS = primBox->GetCoord(int(dirIdx*2));
+		coord0[dirIdx] -= OS;
+	}
+
+	return true;
+
+}
+
 bool Operator_Ext_Excitation::BuildExtension()
 {
 	m_Exc = m_Op->GetExcitationSignal();
@@ -137,8 +157,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 		return false;
 	}
 
-	CSPropExcitation* elec=NULL;
-	CSProperties* prop=NULL;
+	CSPropExcitation* 	elec=NULL;
+	CSProperties* 		prop=NULL;
 
 	unsigned int numLines[] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 	for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
@@ -157,13 +177,17 @@ bool Operator_Ext_Excitation::BuildExtension()
 				{
 					if (m_Op->GetYeeCoords(n,pos,volt_coord,false)==false)
 						continue;
+
 					if (m_CC_R0_included && (n==2) && (pos[0]==0))
 						volt_coord[1] = m_Op->GetDiscLine(1,0);
 
 					if (m_CC_R0_included && (n==1) && (pos[0]==0))
 						continue;
 
-					CSProperties* prop = CSX->GetPropertyByCoordPriority(volt_coord, vPrims, true);
+					// Also choose the highest priority primitive;
+					CSPrimitives* 	highestPriorityPrim;
+					CSProperties* 	prop = CSX->GetPropertyByCoordPriority(volt_coord, vPrims, true, &highestPriorityPrim);
+
 					if (prop)
 					{
 						elec = prop->ToExcitation();
@@ -171,9 +195,17 @@ bool Operator_Ext_Excitation::BuildExtension()
 							continue;
 						if (!elec->GetEnabled())
 							continue;
+
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==0) || (elec->GetExcitType()==1) ))//&& (pos[n]<numLines[n]-1))
 						{
-							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos);// delta[n]*gridDelta;
+							// If this is read from a file, the voltage coordinates need to be shifted
+							// to the start point
+							if (elec->GetFieldSourceIsFile()) // @suppress("Method cannot be resolved")
+								if (!shiftCoordsForModeFile(volt_coord, highestPriorityPrim))
+									return false;
+
+							amp = elec->GetWeightedExcitation(n,volt_coord)*m_Op->GetEdgeLength(n,pos); // delta[n]*gridDelta;
+
 							if (amp!=0)
 							{
 								volt_vExcit.push_back(amp);
@@ -182,6 +214,9 @@ bool Operator_Ext_Excitation::BuildExtension()
 								volt_vIndex[0].push_back(pos[0]);
 								volt_vIndex[1].push_back(pos[1]);
 								volt_vIndex[2].push_back(pos[2]);
+
+								// IFF it got this far, set this primitive as used
+								if(!highestPriorityPrim->GetPrimitiveUsed()) highestPriorityPrim->SetPrimitiveUsed(true);
 							}
 							if (elec->GetExcitType()==1) //hard excite
 							{
@@ -199,7 +234,9 @@ bool Operator_Ext_Excitation::BuildExtension()
 						continue;  //skip the last H-Line which is outside the FDTD-domain
 					if (m_Op->GetYeeCoords(n,pos,curr_coord,true)==false)
 						continue;
-					CSProperties* prop = CSX->GetPropertyByCoordPriority(curr_coord, vPrims, true);
+
+					CSPrimitives*	highestPriorityPrim;
+					CSProperties*	prop = CSX->GetPropertyByCoordPriority(curr_coord, vPrims, true, &highestPriorityPrim);
 					if (prop)
 					{
 						elec = prop->ToExcitation();
@@ -207,9 +244,18 @@ bool Operator_Ext_Excitation::BuildExtension()
 							continue;
 						if (!elec->GetEnabled())
 							continue;
+
 						if ((elec->GetActiveDir(n)) && ( (elec->GetExcitType()==2) || (elec->GetExcitType()==3) ))
 						{
+
+							// If this is read from a file, the voltage coordinates need to be shifted
+							// to the start point
+							if (elec->GetFieldSourceIsFile())
+								if (!shiftCoordsForModeFile(curr_coord, highestPriorityPrim))
+									return false;
+
 							amp = elec->GetWeightedExcitation(n,curr_coord)*m_Op->GetEdgeLength(n,pos,true);// delta[n]*gridDelta;
+
 							if (amp!=0)
 							{
 								curr_vExcit.push_back(amp);
@@ -218,6 +264,9 @@ bool Operator_Ext_Excitation::BuildExtension()
 								curr_vIndex[0].push_back(pos[0]);
 								curr_vIndex[1].push_back(pos[1]);
 								curr_vIndex[2].push_back(pos[2]);
+
+								// IFF it got this far, set this primitive as used
+								if(!highestPriorityPrim->GetPrimitiveUsed()) highestPriorityPrim->SetPrimitiveUsed(true);
 							}
 							if (elec->GetExcitType()==3) //hard excite
 							{

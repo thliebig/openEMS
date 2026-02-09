@@ -553,9 +553,17 @@ bool openEMS::SetupProcessing()
 				{
 					ProcessModeMatch* pmm = new ProcessModeMatch(NewEngineInterface());
 					pmm->SetFieldType(pb->GetProbeType()-10);
-					pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
-					pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
-					pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+
+					// If the data is taken from a file, store the file name
+					// in the processmodematch object
+					if (pb->GetFieldSourceIsFile())
+						pmm->SetModeFileName(pb->GetModeFileName());
+					else
+					{
+						pmm->SetModeFunction(0,pb->GetAttributeValue("ModeFunctionX"));
+						pmm->SetModeFunction(1,pb->GetAttributeValue("ModeFunctionY"));
+						pmm->SetModeFunction(2,pb->GetAttributeValue("ModeFunctionZ"));
+					}
 					proc = pmm;
 				}
 				else
