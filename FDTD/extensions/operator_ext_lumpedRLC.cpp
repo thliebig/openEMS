@@ -186,41 +186,43 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 		// Extract R, L and C from property class
 		C = cs_RLC_props->GetCapacity();
+		R = cs_RLC_props->GetResistance();
+		L = cs_RLC_props->GetInductance();
+		
+		// Verify that all are larger than zero
 		if (C < 0.0)
 		{
-			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning:";
-			if (C < 0.0)
-				cerr << " Value of C is smaller than zero, automatically set to 0.";
-			if (lumpedType == CSPropLumpedElement::SERIES)
-				cerr << " In a series RLC, C = 0 will be considered as Short-Circuit.";
-
-			cerr << " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+			cerr 	<< "Operator_Ext_LumpedRLC::BuildExtension(): Warning: Value of C is smaller than zero, automatically set to 0. ID:"
+					<< cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
 			C = 0.0;
 		}
-		R = cs_RLC_props->GetResistance();
+		
 		if (R < 0.0)
 		{
-			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning:";
-			if (R < 0.0)
-				cerr << "Value of R is smaller than zero, automatically set to 0.";
-			if (lumpedType == CSPropLumpedElement::PARALLEL)
-				cerr << " In a parallel RLC, R = 0 will be considered as Open-Circuit.";
-			cerr << " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+			cerr 	<< "Operator_Ext_LumpedRLC::BuildExtension(): Warning: Value of R is smaller than zero, automatically set to 0. ID:"
+					<< cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
 			R = 0;
-
 		}
-		L = cs_RLC_props->GetInductance();
+		
 		if (L < 0.0)
 		{
-			cerr << "Operator_Ext_LumpedRLC::BuildExtension(): Warning:";
-			if (L < 0.0)
-				cerr << " Value of L is smaller than zero, automatically set to zero.";
-			if (lumpedType == CSPropLumpedElement::PARALLEL)
-				cerr << " In a parallel RLC, L = 0 will be considered as Open-Circuit.";
-			cerr << " ID: " << cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+			cerr 	<< "Operator_Ext_LumpedRLC::BuildExtension(): Warning: Value of L is smaller than zero, automatically set to zero. ID: " 
+					<< cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
 			L = 0;
 		}
-
+		
+		// Verify that they are not causing any O.C. or S.C. issues
+		if ((lumpedType == CSPropLumpedElement::SERIES) && (C == 0))
+			cerr 	<< " In a series RLC, C = 0 will be considered as Short-Circuit. ID: " 
+					<< cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+		if ((lumpedType == CSPropLumpedElement::PARALLEL) && (R == 0))
+			cerr 	<< " In a parallel RLC, R = 0 will be considered as Open-Circuit. ID: " 
+					<< cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+		if ((lumpedType == CSPropLumpedElement::PARALLEL) && (L == 0))
+			cerr 	<< " In a parallel RLC, L = 0 will be considered as Open-Circuit. ID:"
+					<< cs_RLC_props->GetID() << " @ Property: " << cs_RLC_props->GetName() << endl;
+					
+					
 		// Validate they are non NaNs
 		if (std::isnan(C)) C = 0.0;
 		if (std::isnan(L)) L = 0.0;
