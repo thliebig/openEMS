@@ -443,6 +443,9 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 	bool face_valid;
 	bool mass_valid;
 	bool voxel_valid;
+	double tol_mass = m_massTolerance*m_avg_mass;
+	float min_size = 0;
+	float max_size = 1e99;
 
 	//iterate over cubical sizes to find fitting volume to mass
 	while (mass_iterations<m_maxMassIterations)
@@ -451,7 +454,7 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 		face_valid = GetCubicalMass(pos, box_size/2, start, stop, partial_start, partial_stop, mass, volume, bg_ratio, disabledFace);
 
 		// check if found mass is valid
-		mass_valid = abs(mass-m_avg_mass)<=m_massTolerance*m_avg_mass;
+		mass_valid = abs(mass-m_avg_mass)<=tol_mass;
 		voxel_valid = mass_valid && (face_valid==true) && (bg_ratio<m_maxBGRatio);
 
 		if ((face_valid==false) && (mass<m_avg_mass*(1.0-m_massTolerance)) && (ignoreFaceValid==false))
@@ -479,6 +482,13 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 			return 2;
 		}
 
+		// record the lowest and largest box size as limits
+		if (mass<m_avg_mass)
+			min_size = max(min_size, box_size);
+		else if (mass>m_avg_mass)
+			max_size = min(max_size, box_size);
+
+
 		// if no valid or finally invalid cube is found, calculate an alternative cube size
 		if (mass_iterations==0)
 		{
@@ -486,10 +496,23 @@ int SAR_Calculation::FindFittingCubicalMass(unsigned int pos[3], float box_size,
 			old_box_size=box_size;
 			box_size*=pow(m_avg_mass/mass,1.0/3.0);
 		}
+		else if (mass == old_mass)
+		{
+			// if the mass happens to not have changed, try a value in the middle of known limits
+			old_box_size=box_size;
+			if (mass > m_avg_mass)
+				box_size = 0.5*(min_size + box_size);
+			else
+				box_size = min(0.5*(max_size + box_size), 2.0*box_size); // plus make sure max_size is not still inf
+		}
 		else
 		{
 			// on later iterations, try a newton approach
 			float new_box_size = box_size - (mass-m_avg_mass)/(mass-old_mass)*(box_size-old_box_size);
+			if (new_box_size<min_size) // new box size below lower limit
+				new_box_size = 0.5*(min_size + box_size);
+			else if (new_box_size>max_size) // new box size above upper limit
+				new_box_size = 0.5*(max_size + box_size);
 			old_box_size = box_size;
 			box_size = new_box_size;
 		}
