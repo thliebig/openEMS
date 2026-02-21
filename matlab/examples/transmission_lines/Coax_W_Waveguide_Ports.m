@@ -16,16 +16,19 @@ unit = 1e-3; % drawing unit in mm (adjust if necessary)
 f_start = 2e9;
 f_stop  = 3e9;
 
-coax_D = 2;                  
+coax_D = 2;
 coax_shield_thick = 0.15;
 coax_wire_D = 0.5;
-coax_L = 25
+coax_L = 25;
 
-Mode_File_Path = '../../../python/Tests';
+Mode_File_Path = './';
 E_Mode_File = 'Coax_Er.csv';
 H_Mode_File = 'Coax_Hr.csv';
 
 teflon_epsR = 2.5;
+
+Sim_Path = 'tmp_sim_data_coax_wg';
+Sim_CSX  = 'coax_wg.xml';
 
 % -------------------------------------------------------------------------
 % Initial simulation definitions
@@ -70,15 +73,16 @@ CSX = SetMaterialProperty( CSX, 'PTFE', 'Epsilon', teflon_epsR );
 % Coax Inner conductor
 CSX = AddCylinder(CSX, 'PTFE', 10, [0 0 0], [0 0 coax_L], coax_D*0.5);
 
+% Transversal mesh step
+dl_trans = 0.5*coax_wire_D/5;
+
 % Add all relevant points to mesh
 mesh.x = [];
 mesh.y = [];
 mesh.z = [];
-mesh.x = [mesh.x linspace(-coax_D*0.5,-coax_wire_D*0.5,7)];
-mesh.x = [mesh.x linspace(-(coax_D*0.5 + coax_shield_thick),-coax_D*0.5,4)];
-mesh.x = [mesh.x linspace(-coax_wire_D*0.5,coax_wire_D*0.5,6)];
-mesh.x = [mesh.x linspace(coax_D*0.5,(coax_D*0.5 + coax_shield_thick),4)];
-mesh.x = [mesh.x linspace(coax_wire_D*0.5,coax_D*0.5,7)];
+mesh.x = [mesh.x (coax_D*0.5):dl_trans:(coax_D*0.5 + coax_shield_thick)];
+mesh.x = [mesh.x (-coax_D*0.5):dl_trans:(coax_D*0.5)];
+mesh.x = [mesh.x -fliplr((coax_D*0.5):dl_trans:(coax_D*0.5 + coax_shield_thick))];
 
 mesh.x = unique(mesh.x);
 mesh.y = mesh.x;
@@ -97,14 +101,19 @@ CSX = DefineRectGrid(CSX, unit, mesh);
 
 % --- Coaxial Port ---
 
-% Wave number
-kz = 82.84554871;
-% Wave impedance
-Zw = 238.26517157;
-% Line impedance
-Zl = 52.43928218;
+% The mode solver calculated:
+% * Propagation wavenumber  - wz = 82.846 [1/m]
+% * Wave impedance          - Zw = 238.265 [Ohm]
+% * Line impedance          - Zl = 52.44 [Ohm]
 
-% Calculate cutoff wave number 
+% Here are the analytical solutions
+Zw = sqrt(MUE0/(EPS0*teflon_epsR));
+Zl = (1/(2*pi))*Zw*log(coax_D/coax_wire_D);
+kz = 2*pi*f0*(sqrt(EPS0*MUE0*teflon_epsR));
+
+% Analytical calculations
+
+% Calculate cutoff wave number
 kc = sqrt((2*pi*f0/c0)^2 - kz^2);
 
 % Add coaxial lumped port
@@ -124,9 +133,8 @@ stop_coax  = [(coax_D*0.5 + coax_shield_thick)*[ 1  1] mesh.z(end - 2)];
 % -------------------------------------------------------------------------
 % Write XML and Run Simulation
 
-
-Sim_Path = 'tmp';
-Sim_CSX  = 'coax_wg.xml';
+[status, message, messageid] = rmdir( Sim_Path, 's' ); % clear previous directory
+[status, message, messageid] = mkdir( Sim_Path ); % create empty simulation folder
 
 WriteOpenEMS([Sim_Path '/' Sim_CSX], FDTD, CSX);
 
@@ -155,7 +163,7 @@ set(gca,'fontsize',16);
 grid on;
 title('Coax With Waveguide Ports');
 set(gcf,'position',[330    316   1028    553]);
-% Pause for plot to stabilize
+ Pause for plot to stabilize
 pause(0.1);
 
 xlabel('Frequency (GHz)','fontsize',20);
