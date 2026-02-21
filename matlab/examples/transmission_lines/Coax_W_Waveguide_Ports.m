@@ -35,9 +35,6 @@ Sim_CSX  = 'coax_wg.xml';
 
 warning off;
 
-addpath('~/opt/openEMS/share/CSXCAD/matlab');
-addpath('~/opt/openEMS/share/openEMS/matlab');
-
 physical_constants;
 
 FDTD = InitFDTD('NrTS', 300000, 'EndCriteria', 1e-4);
