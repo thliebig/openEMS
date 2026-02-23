@@ -37,6 +37,9 @@ cdef class SAR_Calculation:
     def SetDebugLevel(self, level):
         self.thisptr.SetDebugLevel(level)
 
+    def EnableProgress(self, enable):
+        self.thisptr.EnableProgress(enable)
+
     def SetAveragingMass(self, mass):
         ### Set the averaging mass in g
         # convert from g to kg

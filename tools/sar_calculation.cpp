@@ -800,6 +800,9 @@ bool SAR_Calculation::CalcAveragedSAR(ArrayLib::ArrayIJK<float> & SAR)
 	float* cube_vol = m_cube_volume.data();
 	float* cell_density = m_cell_density->data();
 	loc = 0;
+	unsigned int prog_N = SAR.size()/100;
+	if (m_progress)
+		std::cout << "Step-1: ";
 	for (pos[0]=0; pos[0]<m_numLines[0]; ++pos[0])
 	{
 		for (pos[1]=0; pos[1]<m_numLines[1]; ++pos[1])
@@ -811,6 +814,11 @@ bool SAR_Calculation::CalcAveragedSAR(ArrayLib::ArrayIJK<float> & SAR)
 					SAR(pos[0], pos[1], pos[2]) = 0;
 					++m_AirVoxel;
 					++loc;
+					if (m_progress && (loc%prog_N == 0))
+					{
+						std::cout << ".";
+						std::cout.flush();
+					}
 					continue;
 				}
 
@@ -840,9 +848,17 @@ bool SAR_Calculation::CalcAveragedSAR(ArrayLib::ArrayIJK<float> & SAR)
 				else
 					cerr << "other EC" << EC << endl;
 				++loc;
+				if (m_progress && (loc%prog_N == 0))
+				{
+					std::cout << ".";
+					std::cout.flush();
+				}
 			}
 		}
 	}
+	if (m_progress)
+		std::cout << " Done" << std::endl;
+
 	if (cnt_NoConvergence>0)
 	{
 		cerr << "SAR_Calculation::CalcAveragedSAR: Warning, for some voxel a valid averaging cube could not be found (no convergence)... " << endl;
@@ -859,6 +875,9 @@ bool SAR_Calculation::CalcAveragedSAR(ArrayLib::ArrayIJK<float> & SAR)
 	m_Used=0;
 	m_Unused=0;
 	loc = 0;
+	if (m_progress)
+		std::cout << "Step-2: ";
+
 	for (pos[0]=0;pos[0]<m_numLines[0];++pos[0])
 	{
 		for (pos[1]=0;pos[1]<m_numLines[1];++pos[1])
@@ -921,9 +940,16 @@ bool SAR_Calculation::CalcAveragedSAR(ArrayLib::ArrayIJK<float> & SAR)
 					}
 				}
 				++loc;
+				if (m_progress && (loc%prog_N == 0))
+				{
+					std::cout << ".";
+					std::cout.flush();
+				}
 			}
 		}
 	}
+	if (m_progress)
+		std::cout << " Done" << std::endl;
 
 	if (m_Valid+m_Used+m_Unused+m_AirVoxel!=m_numLines[0]*m_numLines[1]*m_numLines[2])
 	{

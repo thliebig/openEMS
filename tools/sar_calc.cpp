@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
 		bool debug = false;
 		bool export_cube_stats = false;
 		bool legacyHDF5 = false;
+		bool progress = false;
 
 		desc.add_options()
 		("help,h"  , "print usage message")
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
 		("method",   value(&method)->default_value("SIMPLE"), "set SAR method: IEEE_C95_3, IEEE_62704, SIMPLE")
 		("mass,m"  , value(&m_avg), "averaging mass in g")
 		("verbose,v", bool_switch(&debug), "verbose")
+		("progress,p", bool_switch(&progress), "show progress")
 		("export_cube_stats,e", bool_switch(&export_cube_stats), "Export Cube Statistics")
 		("legacyHDF5Dumps", bool_switch(&legacyHDF5), "Dumping using the legacy HDF5 file format as required for Octave/Matlab import");
 
@@ -60,6 +62,7 @@ int main(int argc, char *argv[])
 
 		SAR_Calculation sar_calc;
 		sar_calc.SetDebugLevel(int(debug));
+		sar_calc.EnableProgress(progress);
 		sar_calc.SetAveragingMass(m_avg/1000);
 		//sar_calc.SetAveragingMethod(SAR_Calculation::IEEE_62704);
 		if (!sar_calc.SetAveragingMethod(method, !debug))

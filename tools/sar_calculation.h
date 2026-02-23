@@ -45,6 +45,9 @@ public:
 	//! Set the debug level
 	void SetDebugLevel(int level) {m_DebugLevel=level;}
 
+	//! Enable progress output
+	void EnableProgress(bool enable=true) {m_progress=enable;}
+
 	//! Set the used averaging method
 	bool SetAveragingMethod(SARAveragingMethod method, bool silent=false);
 
@@ -106,6 +109,8 @@ protected:
 	ArrayLib::ArrayIJK<float> m_cube_volume;
 
 	int m_DebugLevel;
+
+	bool m_progress = false;
 
 	/*********** SAR calculation parameter and settings ***********/
 	float m_massTolerance;

@@ -24,6 +24,7 @@ cdef extern from "openEMS/sar_calculation.h":
         _SAR_Calculation() nogil except +
 
         void SetDebugLevel(int level)
+        void EnableProgress(bool enable)
         void SetAveragingMass(float mass)
         bool SetAveragingMethod(string method, bool silent)
         bool CalcFromHDF5(string h5_fn, string out_name, bool export_cube_stats) nogil
