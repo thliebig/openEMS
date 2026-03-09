@@ -7,12 +7,14 @@
   - openEMS v0.0.34+
 
  (c) 2015-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
+     04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
 
 """
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -30,7 +32,7 @@ patch_length = 40
 
 #substrate setup
 substrate_epsR   = 3.38
-substrate_kappa  = 1e-3 * 2*pi*2.45e9 * EPS0*substrate_epsR
+substrate_kappa  = 1e-3 * 2*np.pi*2.45e9 * EPS0*substrate_epsR
 substrate_width  = 60
 substrate_length = 60
 substrate_thickness = 1.524
@@ -81,7 +83,7 @@ stop  = [ substrate_width/2,  substrate_length/2, substrate_thickness]
 substrate.AddBox( priority=0, start=start, stop=stop )
 
 # add extra cells to discretize the substrate thickness
-mesh.AddLine('z', linspace(0,substrate_thickness,substrate_cells+1))
+mesh.AddLine('z', np.linspace(0,substrate_thickness,substrate_cells+1))
 
 # create ground (same size as substrate)
 gnd = CSX.AddMetal( 'gnd' ) # create a perfect electric conductor (PEC)
@@ -119,12 +121,18 @@ f = np.linspace(max(1e9,f0-fc),f0+fc,401)
 port.CalcPort(Sim_Path, f)
 s11 = port.uf_ref/port.uf_inc
 s11_dB = 20.0*np.log10(np.abs(s11))
-figure()
-plot(f/1e9, s11_dB, 'k-', linewidth=2, label=r'$S_{11}$')
-grid()
-legend()
-ylabel('S-Parameter (dB)')
-xlabel('Frequency (GHz)')
+
+
+fig, axis = plt.subplots(num="S11", tight_layout=True)
+axis.plot(f/1e9, s11_dB, 'k-',  linewidth=2, label='S11')
+axis.grid()
+axis.set_xmargin(0)
+axis.set_xlabel('Frequency (GHz)')
+# axis.set_ylim([-30, 10])
+axis.set_ylabel('S-Parameter (dB)')
+axis.set_title("Input matching")
+axis.legend()
+
 
 idx = np.where((s11_dB<-10) & (s11_dB==np.min(s11_dB)))[0]
 if not len(idx)==1:
@@ -135,23 +143,29 @@ else:
     phi   = [0., 90.]
     nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, phi, center=[0,0,1e-3])
 
-    figure()
     E_norm = 20.0*np.log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10.0*np.log10(nf2ff_res.Dmax[0])
-    plot(theta, np.squeeze(E_norm[:,0]), 'k-', linewidth=2, label='xz-plane')
-    plot(theta, np.squeeze(E_norm[:,1]), 'r--', linewidth=2, label='yz-plane')
-    grid()
-    ylabel('Directivity (dBi)')
-    xlabel('Theta (deg)')
-    title('Frequency: {} GHz'.format(f_res/1e9))
-    legend()
+    fig, axis = plt.subplots(num="Pattern", tight_layout=True)
+    axis.plot(theta, np.squeeze(E_norm[:,0]), 'k-', linewidth=2, label='xz-plane')
+    axis.plot(theta, np.squeeze(E_norm[:,1]), 'r--', linewidth=2, label='yz-plane')
+    axis.grid()
+    axis.set_xmargin(0)
+    axis.set_xlabel('Theta (deg))')
+    axis.set_ylabel('Directivity (dBi))')
+    axis.set_title('Frequency: {} GHz'.format(f_res/1e9))
+    axis.legend()
+
 
 Zin = port.uf_tot/port.if_tot
-figure()
-plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label=r'$\Re\{Z_{in}\}$')
-plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label=r'$\Im\{Z_{in}\}$')
-grid()
-legend()
-ylabel('Zin (Ohm)')
-xlabel('Frequency (GHz)')
 
-show()
+fig, axis = plt.subplots(num="Zin", tight_layout=True)
+axis.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='$\\Re\\{Z_{in}\\}$')
+axis.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='$\\Im\\{Z_{in}\\}$')
+axis.grid()
+axis.set_xmargin(0)
+axis.set_xlabel('Frequency (GHz)')
+axis.set_ylabel('Zin (Ohm)')
+axis.set_title("Input Impedance")
+axis.legend()
+
+# show all plots
+plt.show()
