@@ -19,6 +19,8 @@
 #define SAR_CALCULATION_H
 
 #include <complex>
+#include <vector>
+#include "hdf5_file_writer.h"
 #include "arraylib/array_ijk.h"
 #include "arraylib/array_nijk.h"
 
@@ -36,6 +38,7 @@ class SAR_EXPORT SAR_Calculation
 {
 public:
 	SAR_Calculation();
+	~SAR_Calculation();
 
 	enum SARAveragingMethod { IEEE_C95_3, IEEE_62704, SIMPLE};
 
@@ -56,6 +59,10 @@ public:
 
 	//! Set number of lines in all direcitions. (mandatory information)
 	void SetNumLines(unsigned int numLines[3]);
+
+	//! Define a sub range for SAR calculation for the given direction. Number of lines must already be set!
+	void SetSubRange(int ny, unsigned int start, unsigned int stop);
+
 	//! Set cell width in all direcitions. (mandatory information for averaging)
 	void SetCellWidth(double* cellWidth[3]);
 
@@ -68,35 +75,55 @@ public:
 	//! Set the cell densities (mandatory information)
 	void SetCellDensities(ArrayLib::ArrayIJK<float>* cell_density) {m_cell_density=cell_density;}
 
-	//! Set the cell conductivities (mandatory if no current density field is given)
-	void SetCellCondictivity(ArrayLib::ArrayIJK<float>* cell_conductivity) {m_cell_conductivity=cell_conductivity;}
+	//! Add an electric field
+	void AddEFieldAndCondictivity(float freq, ArrayLib::ArrayNIJK<std::complex<float>>* e_field, ArrayLib::ArrayIJK<float>* cell_conductivity);
 
-	//! Set the electric field (mandatory information)
-	void SetEField(ArrayLib::ArrayNIJK<std::complex<float>>* field) {m_E_field=field;}
-	//! Set the current density field (mandatory if no conductivity distribution is given)
-	void SetJField(ArrayLib::ArrayNIJK<std::complex<float>>* field) {m_J_field=field;}
+	//! Add an electric field and current density field
+	void AddEFieldAndJField(float freq, ArrayLib::ArrayNIJK<std::complex<float>>* e_field, ArrayLib::ArrayNIJK<std::complex<float>>* j_field);
+
+	//! Enable the recording of special averaging cube stats
+	void EnableCubeStats() {m_record_cube_stats=true;}
+
+	//! Limit the SAR calculation area to a box with the highest local power densities
+	void EnableAutoRange(double dBmax) {m_autoRange=dBmax;}
 
 	//! Calculate the SAR, requires a preallocated 3D array
-	bool CalcSAR(ArrayLib::ArrayIJK<float> &SAR);
+	bool CalcSAR();
 
-	//! Calculate the total power dumped
-	double CalcSARPower();
+	//! Get the total power dumped for frequency index n
+	double GetSARPower(size_t freq_n) {return m_power.at(freq_n);}
+
+	//! Get the SAR results for frequency index n
+	ArrayLib::ArrayIJK<float>* GetSAR(size_t freq_n) {return m_SAR.at(freq_n);}
 
 	//! Calculate the total mass
 	double CalcTotalMass();
 
-	bool CalcFromHDF5(std::string h5_fn, std::string out_name, bool export_cube_stats=false, bool legacyHDF5=false);
+	//! Read all raw data from an hdf5 file
+	bool ReadFromHDF5(std::string h5_fn);
+
+	//! Create and write an hdf5 output file (incl. mesh etc.)
+	bool WriteToHDF5(std::string out_name, bool legacyHDF5=false);
+
+	//! Write the results to an hdf5 output file (mesh information and some other details are not included here)
+	bool WriteToHDF5(HDF5_File_Writer &out_file, bool legacyHDF5=false);
+
+	//! Read and write from an hdf5 file
+	bool CalcFromHDF5(std::string h5_fn, std::string out_name, bool legacyHDF5=false);
 
 protected:
+	// raw input data
 	unsigned int m_numLines[3];
-	double* m_cellWidth[3];
+	double* m_lines[3]; // may not be set in all cases
 
-	float m_avg_mass;
+	bool m_cleanup_cell_data = false;
+	double* m_cellWidth[3];
 	ArrayLib::ArrayIJK<float>* m_cell_volume;
 	ArrayLib::ArrayIJK<float>* m_cell_density;
-	ArrayLib::ArrayIJK<float>* m_cell_conductivity;
-	ArrayLib::ArrayNIJK<std::complex<float>>* m_E_field;
-	ArrayLib::ArrayNIJK<std::complex<float>>* m_J_field;
+
+	std::vector<float> m_freq;
+	std::vector<ArrayLib::ArrayIJK<float>*> m_local_cell_power_density; // precalculated local cell power density
+	std::vector<float> m_local_cell_max_power_density; // precalculated max local cell power density (e.g. needed for auto range)
 
 	// save some statistical data
 	unsigned int m_Valid;
@@ -104,15 +131,26 @@ protected:
 	unsigned int m_Unused;
 	unsigned int m_AirVoxel;
 
+	// output data
+	ArrayLib::ArrayIJK<unsigned int> m_posInOuput;
+	std::vector<unsigned int> m_cellIndicies[3];  // list of output indecies into the raw data mesh
 	ArrayLib::ArrayIJK<unsigned char> m_cube_type;
 	ArrayLib::ArrayIJK<float> m_cube_mass;
 	ArrayLib::ArrayIJK<float> m_cube_volume;
 
-	int m_DebugLevel;
+	std::vector<double> m_power;
+	std::vector<float> m_maxSAR;
+	std::vector<std::array<unsigned int, 3>> m_maxSAR_Idx;
+	std::vector<ArrayLib::ArrayIJK<float>*> m_SAR;
 
+	int m_DebugLevel;
+	double m_duration;
+	double m_autoRange = 0;
+	bool m_record_cube_stats = false;
 	bool m_progress = false;
 
 	/*********** SAR calculation parameter and settings ***********/
+	float m_avg_mass;
 	float m_massTolerance;
 	unsigned int m_maxMassIterations;
 	float m_maxBGRatio;
@@ -121,22 +159,23 @@ protected:
 	bool m_IgnoreFaceValid;
 
 	/*********** SAR calculations methods ********/
-	double CalcLocalPowerDensity(unsigned int pos[3]);
+	void DoAutoRange();
+	void InitSAR();
 
 	//! Calculate the local SAR
-	bool CalcLocalSAR(ArrayLib::ArrayIJK<float> &SAR);
+	bool CalcLocalSAR();
 
 	/****** start SAR averaging and all necessary methods ********/
 	//! Calculate the averaged SAR
-	bool CalcAveragedSAR(ArrayLib::ArrayIJK<float> &SAR);
+	bool CalcAveragedSAR();
 
 	int FindFittingCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
 						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1, bool ignoreFaceValid=false);
 	bool GetCubicalMass(unsigned int pos[3], double box_size, unsigned int start[3], unsigned int stop[3],
 						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1);
 
-	float CalcCubicalSAR(ArrayLib::ArrayIJK<float> &SAR, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
-						 float partial_start[3], float partial_stop[3], ArrayLib::ArrayIJK<float> &local_pwr,
+	void CalcCubicalSAR(double* vx_sar, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
+						 float partial_start[3], float partial_stop[3],
 						 ArrayLib::ArrayIJK<bool> &Vx_Used, ArrayLib::ArrayIJK<bool> &Vx_Valid,
 						 bool assignUsed=false);
 	/****** end SAR averaging and all necessary methods ********/

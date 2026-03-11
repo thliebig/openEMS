@@ -173,8 +173,6 @@ void ProcessFieldsSAR::DumpFDData()
 	CSProperties* prop = NULL;
 	CSPropMaterial* matProp = NULL;
 
-	double power;
-
 	ArrayLib::ArrayIJK<float> cell_volume("cell_volume", numLines);
 	ArrayLib::ArrayIJK<float> cell_density("cell_density", numLines);
 	ArrayLib::ArrayIJK<float> cell_kappa;
@@ -272,46 +270,36 @@ void ProcessFieldsSAR::DumpFDData()
 		SAR_Calc.SetCellDensities(&cell_density);
 		SAR_Calc.SetCellWidth(cellWidth);
 		SAR_Calc.SetCellVolumes(&cell_volume);
-		SAR_Calc.SetCellCondictivity(&cell_kappa); // cell_kappa will be NULL if m_UseCellKappa is false
-		double mass = SAR_Calc.CalcTotalMass();
 
 		for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 		{
-			SAR_Calc.SetEField(m_E_FD_Fields.at(n));
 			if (!m_UseCellKappa)
-				SAR_Calc.SetJField(m_J_FD_Fields.at(n));
-			power = SAR_Calc.CalcSARPower();
-			SAR_Calc.SetCellVolumes(&cell_volume);
-			power = SAR_Calc.CalcSARPower();
-			SAR_Calc.CalcSAR(SAR);
+				SAR_Calc.AddEFieldAndJField(m_FD_Samples.at(n), m_E_FD_Fields.at(n), m_J_FD_Fields.at(n));
+			else
+				SAR_Calc.AddEFieldAndCondictivity(m_FD_Samples.at(n), m_E_FD_Fields.at(n), &cell_kappa);
+		}
+		SAR_Calc.CalcSAR();
 
-			if (m_fileType==VTK_FILETYPE)
+		if (m_fileType==VTK_FILETYPE)
+		{
+			for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 			{
 				stringstream ss;
 				ss << m_filename << fixed << "_f=" << m_FD_Samples.at(n);
-
 				m_Vtk_Dump_File->SetFilename(ss.str());
 				m_Vtk_Dump_File->ClearAllFields();
-				m_Vtk_Dump_File->AddScalarField(GetFieldNameByType(m_DumpType),SAR);
+				m_Vtk_Dump_File->AddScalarField(GetFieldNameByType(m_DumpType), *SAR_Calc.GetSAR(n));
 				if (m_Vtk_Dump_File->Write()==false)
 					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
 			}
-			else if (m_fileType==HDF5_FILETYPE)
-			{
-				stringstream ss;
-				ss << "f" << n;
-				if (m_HDF5_Dump_File->WriteScalarField<float>(ss.str(), SAR, g_settings.GetLegacyHFD5Dumps())==false)
-					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
-				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",(float)m_FD_Samples.at(n))==false)
-					cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
-				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"mass",mass)==false)
-					cerr << "ProcessFieldsSAR::DumpFDData: can't dump mass to file...! " << endl;
-				if (m_HDF5_Dump_File->WriteAtrribute("/FieldData/FD/"+ss.str(),"power",power)==false)
-					cerr << "ProcessFieldsSAR::DumpFDData: can't dump power to file...! " << endl;
-			}
-			else
-				cerr << "ProcessFieldsSAR::DumpFDData: unknown File-Type" << endl;
 		}
+		else if (m_fileType==HDF5_FILETYPE)
+		{
+			if (SAR_Calc.WriteToHDF5(*m_HDF5_Dump_File, g_settings.GetLegacyHFD5Dumps())==false)
+				cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
+		}
+		else
+			cerr << "ProcessFieldsSAR::DumpFDData: unknown File-Type" << endl;
 	}
 	for (int n=0;n<3;++n)
 		delete[] cellWidth[n];

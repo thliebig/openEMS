@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 {
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << " | SAR calculation for openEMS "                                          << endl;
-	cout << " | (C) 2012-2025 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
+	cout << " | (C) 2012-2026 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
 	cout << " ---------------------------------------------------------------------- " << endl;
 
 	options_description desc("Options");
@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 	try {
 		string ifile, ofile, method;
 		double m_avg = 0;
+		double auto_range=0;
 		bool debug = false;
 		bool export_cube_stats = false;
 		bool legacyHDF5 = false;
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
 		("output,o", value(&ofile)->required(), "pathname for output hdf5 file")
 		("method",   value(&method)->default_value("SIMPLE"), "set SAR method: IEEE_C95_3, IEEE_62704, SIMPLE")
 		("mass,m"  , value(&m_avg), "averaging mass in g")
+		("autorange,a"  , value(&auto_range), "autorange, value limit in dB from max. (>0)")
 		("verbose,v", bool_switch(&debug), "verbose")
 		("progress,p", bool_switch(&progress), "show progress")
 		("export_cube_stats,e", bool_switch(&export_cube_stats), "Export Cube Statistics")
@@ -64,11 +66,13 @@ int main(int argc, char *argv[])
 		sar_calc.SetDebugLevel(int(debug));
 		sar_calc.EnableProgress(progress);
 		sar_calc.SetAveragingMass(m_avg/1000);
+		sar_calc.EnableAutoRange(auto_range);
+		if (export_cube_stats)
+			sar_calc.EnableCubeStats();
 		//sar_calc.SetAveragingMethod(SAR_Calculation::IEEE_62704);
 		if (!sar_calc.SetAveragingMethod(method, !debug))
 			return -1;
-		sar_calc.CalcFromHDF5(ifile, ofile, export_cube_stats, legacyHDF5);
-		return 0;
+		return sar_calc.CalcFromHDF5(ifile, ofile, legacyHDF5);
 	}
 	catch(exception& e) {
 		cerr << e.what() << "\n";

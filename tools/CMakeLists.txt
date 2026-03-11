@@ -35,7 +35,7 @@ ADD_EXECUTABLE( sar_bin sar_calc.cpp)
 SET_TARGET_PROPERTIES(sar_bin PROPERTIES OUTPUT_NAME sar_calc)
 TARGET_LINK_LIBRARIES(sar_bin openEMS)
 
-INSTALL(FILES sar_calculation.h DESTINATION include/openEMS)
+INSTALL(FILES sar_calculation.h hdf5_file_reader.h hdf5_file_writer.h vtk_file_writer.h DESTINATION include/openEMS)
 
 # not ideal, but no way around it?
 INSTALL(FILES arraylib/array_ij.h arraylib/array_ijk.h arraylib/array_nijk.h DESTINATION include/openEMS/arraylib)

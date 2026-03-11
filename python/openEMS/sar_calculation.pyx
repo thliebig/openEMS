@@ -31,6 +31,11 @@ cdef class SAR_Calculation:
                 self.SetDebugLevel(int(v))
             elif k=='debug':
                 self.SetDebugLevel(int(v))
+            elif k=='autoRange':
+                self.EnableAutoRange(float(v))
+            elif k=='EnableCubeStats':
+                if v:
+                    self.EnableCubeStats()
             else:
                 raise Exception('Unknown keyword argument: "{}"'.format(k))
 
@@ -49,13 +54,20 @@ cdef class SAR_Calculation:
          #cdef string c_method = method.encode('UTF-8')
          return self.thisptr.SetAveragingMethod(method.encode('UTF-8'), silent)
 
+    def EnableAutoRange(self, dBmax):
+        self.thisptr.EnableAutoRange(float(dBmax))
+
+    def EnableCubeStats(self):
+        self.thisptr.EnableCubeStats()
+
     def CalcFromHDF5(self, h5_fn, out_name, export_cube_stats=False):
         if not os.path.exists(h5_fn):
             raise Exception('File "{}" does not exist'.format(h5_fn))
         cdef string in_fn = h5_fn.encode('UTF-8')
         cdef string out_fn = out_name.encode('UTF-8')
-        cdef bool ecs = export_cube_stats
+        if export_cube_stats:
+            self.EnableCubeStats()
         with nogil:
-            ok = self.thisptr.CalcFromHDF5(in_fn, out_fn, ecs)
+            ok = self.thisptr.CalcFromHDF5(in_fn, out_fn)
         return ok
 

@@ -420,7 +420,7 @@ bool HDF5_File_Writer::WriteAtrribute(hid_t loc, std::string attr_name, void con
 	hid_t attribute_id = H5Acreate(loc, attr_name.c_str(), mem_type, dataspace_id, H5P_DEFAULT, H5P_DEFAULT);
 	if (attribute_id<0)
 	{
-		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to create the attribute" << endl;
+		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to create the attribute: " << attr_name << endl;
 		H5Sclose(dataspace_id);
 		return false;
 	}
@@ -428,7 +428,7 @@ bool HDF5_File_Writer::WriteAtrribute(hid_t loc, std::string attr_name, void con
 	/* Write the attribute data. */
 	if (H5Awrite(attribute_id, mem_type, value)<0)
 	{
-		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to write the attribute" << endl;
+		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to write the attribute" << attr_name << endl;
 		H5Aclose(attribute_id);
 		H5Sclose(dataspace_id);
 		return false;
@@ -464,6 +464,26 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	for (size_t n=0;n<values.size();++n)
 		val[n]=values.at(n);
 	bool ok =  HDF5_File_Writer::WriteAtrribute(locName, attr_name, val, values.size(), H5T_NATIVE_DOUBLE);
+	delete[] val; val=NULL;
+	return ok;
+}
+
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, vector<int> values)
+{
+	int* val = new int[values.size()];
+	for (size_t n=0;n<values.size();++n)
+		val[n]=values.at(n);
+	bool ok =  HDF5_File_Writer::WriteAtrribute(locName, attr_name, val, values.size(), H5T_NATIVE_INT);
+	delete[] val; val=NULL;
+	return ok;
+}
+
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, vector<unsigned int> values)
+{
+	unsigned int* val = new unsigned int[values.size()];
+	for (size_t n=0;n<values.size();++n)
+		val[n]=values.at(n);
+	bool ok =  HDF5_File_Writer::WriteAtrribute(locName, attr_name, val, values.size(), H5T_NATIVE_UINT);
 	delete[] val; val=NULL;
 	return ok;
 }
