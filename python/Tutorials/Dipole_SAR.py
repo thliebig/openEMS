@@ -12,7 +12,8 @@
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+from matplotlib import pylab as plt
+import numpy as np
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -148,12 +149,13 @@ f = np.linspace(500e6, 1500e6, 501)
 port.CalcPort(Sim_Path, f)
 s11 = port.uf_ref/port.uf_inc
 s11_dB = 20.0*np.log10(np.abs(s11))
-figure()
-plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
-grid()
-legend()
-ylabel('S-Parameter (dB)')
-xlabel('Frequency (GHz)')
+plt.figure()
+plt.plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
+plt.grid()
+plt.legend()
+plt.ylabel('S-Parameter (dB)')
+plt.xlabel('Frequency (GHz)')
+plt.title('S-Parameter')
 
 Zin = port.uf_tot/port.if_tot
 
@@ -161,13 +163,15 @@ Pin_f0 = np.interp(f0, f, port.P_acc)
 
 # plot feed point impedance
 Zin = port.uf_tot/port.if_tot
-figure()
-plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label=r'$\Re\{Z_{in}\}$')
-plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label=r'$\Im\{Z_{in}\}$')
-grid()
-legend()
-ylabel('Zin (Ohm)')
-xlabel('Frequency (GHz)')
+plt.figure()
+plt.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label=r'$\Re\{Z_{in}\}$')
+plt.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label=r'$\Im\{Z_{in}\}$')
+plt.grid()
+plt.legend()
+plt.ylabel('Zin (Ohm)')
+plt.xlabel('Frequency (GHz)')
+plt.title('Input Impedance')
+
 
 SAR_src = os.path.join(Sim_Path, 'SAR.h5') # calculated SAR output
 SAR_fn = os.path.join(Sim_Path, 'SAR_10g.h5') # calculated SAR output
@@ -191,21 +195,22 @@ phi   = np.arange(0.0, 360.0, 5.0)
 # The nf2ff far-field is calculated to determine the radiated power (that was not absorbed)
 nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, theta, phi, center=[0,0,0], read_cached=post_proc_only, verbose=1)
 
-print(f'max SAR: {max_sar/Pin_f0} W/kg normalized to 1 W accepted power')
-print(f'whole body SAR: {ptotal/Pin_f0/mass} W/kg normalized to 1 W accepted power')
-print(f'accepted power: {Pin_f0} W (100 %)')
-print(f'radiated power: {nf2ff_res.Prad[0]} W ({100*(nf2ff_res.Prad[0]) / Pin_f0:.1f}%)')
-print(f'absorbed power: {ptotal} W ({100*(ptotal) / Pin_f0:.1f}%)')
+print(f'max SAR: {max_sar/Pin_f0:.4g} W/kg normalized to 1 W accepted power')
+print(f'whole body SAR: {ptotal/Pin_f0/mass:.4g} W/kg normalized to 1 W accepted power')
+print(f'accepted power: {Pin_f0:.4g} W (100 %)')
+print(f'radiated power: {nf2ff_res.Prad[0]:.4g} W ({100*(nf2ff_res.Prad[0]) / Pin_f0:.1f}%)')
+print(f'absorbed power: {ptotal:.4g} W ({100*(ptotal) / Pin_f0:.1f}%)')
 print(f'power budget:   {100*(nf2ff_res.Prad[0] + ptotal) / Pin_f0:.1f} %')  # this ideally should be within 95 to 100%
 
 #  plot SAR on a x/y and x/z-plane
-fig, axs = subplots(1,2, figsize=(12, 5))
+fig, axs = plt.subplots(1,2, figsize=(12, 5))
 
 X,Y = np.meshgrid(mesh[0], mesh[1], indexing='ij')
 Nz = len(mesh[2])
 sar_xy = sar[:,:,Nz//2]
 im = axs[0].pcolormesh(X,Y,sar_xy/Pin_f0, vmax=max_sar/Pin_f0)
 axs[0].axis('equal')
+axs[0].set_title('xy-plane')
 plt.colorbar(im)
 m_idx = np.unravel_index(np.argmax(sar_xy), sar_xy.shape)
 
@@ -214,6 +219,8 @@ Ny = len(mesh[1])
 sar_xz = sar[:,Ny//2,:]
 im = axs[1].pcolormesh(X,Z,sar_xz/Pin_f0, vmax=max_sar/Pin_f0)
 axs[1].axis('equal')
+axs[1].set_title('xz-plane')
 plt.colorbar(im)
+fig.suptitle('Specific Absorbtion Rate (SAR)')
 
-show()
+plt.show()

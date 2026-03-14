@@ -8,6 +8,7 @@ def readSAR(fn, f_idx=0):
     with h5py.File(fn, 'r') as h5:
         if 'openEMS_HDF5_version' in h5.attrs:
             sar = h5[f'/FieldData/FD/f{f_idx}']
+            sar_data['mass'] = h5.attrs['mass']
             sar_data.update(sar.attrs)
             sar = np.array(sar)
             if h5.attrs['openEMS_HDF5_version'] <= 0.2:
