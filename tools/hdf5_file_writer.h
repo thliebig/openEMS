@@ -59,6 +59,7 @@ public:
 	bool WriteAtrribute(std::string locName, std::string attr_name, double value);
 	bool WriteAtrribute(std::string locName, std::string attr_name, int value);
 	bool WriteAtrribute(std::string locName, std::string attr_name, unsigned int value);
+	bool WriteAtrribute(std::string locName, std::string attr_name, size_t value);
 	bool WriteAtrribute(std::string locName, std::string attr_name, std::string value);
 	bool WriteAtrribute(std::string locName, std::string attr_name, bool value);
 

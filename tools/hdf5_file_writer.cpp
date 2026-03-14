@@ -508,6 +508,11 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	return HDF5_File_Writer::WriteAtrribute(locName, attr_name, &value, 0, H5T_NATIVE_UINT);
 }
 
+bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, size_t value)
+{
+	return HDF5_File_Writer::WriteAtrribute(locName, attr_name, &value, 0, H5T_NATIVE_HSIZE);
+}
+
 bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name, std::string value)
 {
 	hid_t tid = H5Tcopy(H5T_C_S1);

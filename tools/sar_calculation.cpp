@@ -24,7 +24,10 @@
 #include "array_ops.h"
 #include "global.h"
 #include "hdf5_file_reader.h"
+#include "hdf5_file_writer.h"
 
+#include <future>
+#include <vector>
 #include "arraylib/array_nijk.h"
 
 using namespace std;
@@ -50,7 +53,7 @@ void SAR_Calculation::Reset()
 	for (int n=0;n<3;++n)
 	{
 		m_cellIndicies[n].clear();
-		m_numLines[n]==0;
+		m_numLines[n]=0;
 		if (m_cleanup_cell_data)
 		{
 			delete[] m_cellWidth[n];
@@ -215,7 +218,7 @@ void SAR_Calculation::AddEFieldAndJField(float freq, ArrayLib::ArrayNIJK<std::co
 	float* cell_vol = m_cell_volume->data();
 	float* cell_dens = m_cell_density->data();
 	double max_lp=0;
-	unsigned int loc;
+	unsigned int loc=0;
 	unsigned int pos[3];
 	double l_pow;
 	double power=0;
@@ -242,7 +245,7 @@ void SAR_Calculation::AddEFieldAndJField(float freq, ArrayLib::ArrayNIJK<std::co
 	m_local_cell_max_power_density.push_back(max_lp);
 }
 
-bool SAR_Calculation::CalcSAR()
+bool SAR_Calculation::CalcSAR(unsigned int numThreads)
 {
 	if (CheckValid()==false)
 	{
@@ -258,7 +261,7 @@ bool SAR_Calculation::CalcSAR()
 	if (m_avg_mass<=0)
 		rc = CalcLocalSAR();
 	else
-		rc = CalcAveragedSAR();
+		rc = CalcAveragedSAR(numThreads);
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> duration = end - start;
@@ -489,11 +492,11 @@ bool SAR_Calculation::WriteToHDF5(HDF5_File_Writer &out_file, bool legacyHDF5)
 	return true;
 }
 
-bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool legacyHDF5)
+bool SAR_Calculation::CalcFromHDF5(std::string h5_fn, std::string out_name, bool legacyHDF5, unsigned int numThreads)
 {
 	if (!ReadFromHDF5(h5_fn))
 		return false;
-	if (!CalcSAR())
+	if (!CalcSAR(numThreads))
 		return false;
 	return WriteToHDF5(out_name, legacyHDF5);
 }
@@ -596,8 +599,6 @@ bool SAR_Calculation::CalcLocalSAR()
 	m_Unused=0;
 	m_AirVoxel=0;
 
-	unsigned int N = m_cellIndicies[0].size() * m_cellIndicies[1].size() * m_cellIndicies[2].size();
-	unsigned int loc;
 	float dens;
 	float lSAR;
 	unsigned int pos[3];
@@ -866,12 +867,9 @@ bool SAR_Calculation::GetCubicalMass(unsigned int pos[3], double box_size, unsig
 	return face_valid;
 }
 
-void SAR_Calculation::CalcCubicalSAR(double* vx_sar, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
-									  float partial_start[3], float partial_stop[3],
-									  ArrayLib::ArrayIJK<bool> &Vx_Used, ArrayLib::ArrayIJK<bool> &Vx_Valid,
-									  bool assignUsed)
+void SAR_Calculation::CalcCubicalSAR(double* vx_sar, unsigned int start[3], unsigned int stop[3],
+									  float partial_start[3], float partial_stop[3])
 {
-	double power_mass=0;
 	double mass=0;
 	double weight[3];
 	unsigned int f_pos[3];
@@ -915,21 +913,18 @@ void SAR_Calculation::CalcCubicalSAR(double* vx_sar, unsigned int pos[3], unsign
 	}
 	for (size_t n=0;n<N;++n)
 		vx_sar[n] /= mass;
-	// float vx_SAR = power_mass/mass;
-	if (assignUsed==false)
-		return;
+}
 
-
-	unsigned int out_loc = m_posInOuput(pos[0], pos[1], pos[2]);
-	if (out_loc==0)
-		// this should not happen!
-		throw;
-
-	for (size_t n=0;n<N;++n)
-		m_SAR.at(n)->data(out_loc-1)=vx_sar[n];
-
-	// assign SAR to all used voxel
+void SAR_Calculation::AssignUsedSAR(double* vx_sar, unsigned int start[3], unsigned int stop[3],
+									  float partial_start[3], float partial_stop[3],
+									  ArrayLib::ArrayIJK<bool> &Vx_Used, ArrayLib::ArrayIJK<bool> &Vx_Valid)
+{
+	// assign SAR to all used voxel within start/stop
+	unsigned int f_pos[3];
+	float val;
+	size_t loc, out_loc;
 	bool is_partial[3];
+	size_t N=m_SAR.size();
 	for (f_pos[0]=start[0];f_pos[0]<=stop[0];++f_pos[0])
 	{
 		if ( ((f_pos[0]==start[0]) && (partial_start[0]!=1)) || ((f_pos[0]==stop[0]) && (partial_stop[0]!=1)) )
@@ -962,7 +957,15 @@ void SAR_Calculation::CalcCubicalSAR(double* vx_sar, unsigned int pos[3], unsign
 					{
 						Vx_Used.data(out_loc)=true;
 						for (size_t n=0;n<N;++n)
-							m_SAR.at(n)->data(out_loc)=max(m_SAR.at(n)->data(out_loc), (float)vx_sar[n]);
+						{
+							val = (float)vx_sar[n];
+							if (val>m_SAR.at(n)->data(out_loc))
+							{
+								std::lock_guard<std::mutex> lock(m_planeLocks[out_loc % 128]);
+								m_SAR.at(n)->data(out_loc)=val;
+							}
+
+						}
 					}
 				}
 			}
@@ -971,8 +974,7 @@ void SAR_Calculation::CalcCubicalSAR(double* vx_sar, unsigned int pos[3], unsign
 	return;
 }
 
-
-bool SAR_Calculation::CalcAveragedSAR()
+bool SAR_Calculation::CalcAvgStep1SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used)
 {
 	unsigned int pos[3];
 
@@ -986,52 +988,56 @@ bool SAR_Calculation::CalcAveragedSAR()
 	int EC=0;
 
 	// debug counter
+	size_t air_voxel=0;
+	size_t valid=0;
 	unsigned int cnt_case1=0;
 	unsigned int cnt_case2=0;
 	unsigned int cnt_NoConvergence=0;
 
-	m_Valid=0;
-	m_Used=0;
-	m_Unused=0;
-	m_AirVoxel=0;
-
-	unsigned int out_num_lines[3] = {(unsigned int)m_cellIndicies[0].size(),(unsigned int)m_cellIndicies[1].size(),(unsigned int)m_cellIndicies[2].size()};
-	ArrayLib::ArrayIJK<bool> Vx_Used("vx_used", out_num_lines);
-	bool* vx_used_data = Vx_Used.data();
-	ArrayLib::ArrayIJK<bool> Vx_Valid("vx_used", out_num_lines);
+	bool* vx_used_data  = Vx_Used.data();
 	bool* vx_valid_data = Vx_Valid.data();
 	unsigned char* vx_cube_type = m_cube_type.data();
 	float* cube_mass =  m_cube_mass.data();
 	float* cube_vol = m_cube_volume.data();
 	float* cell_density = m_cell_density->data();
-	unsigned int loc = 0;
-	unsigned int out_loc = 0;
-	unsigned int prog_N = max(1,(int)(Vx_Valid.size()/100));
+	size_t loc = 0;
+	size_t out_loc = 0;
+	size_t todo = Vx_Valid.size();
+	size_t prog_N = max(1,(int)(todo/100));
 	double* vx_sar = new double[m_SAR.size()];
-	if (m_progress)
-		std::cout << "Step-1: ";
-
-	for (unsigned int i=0; i<m_cellIndicies[0].size();++i)
+	if ((m_progress) && (t_id==0))
 	{
+		std::lock_guard<std::mutex> lock(m_resultMutex);
+		std::cout << "Step-1: ";
+	}
+
+	unsigned int i=0;
+	size_t prog_cnt;
+	//for (unsigned int i=i_start; i<i_stop;++i)
+	while (true)
+	{
+		i = m_nextStepChunk.fetch_add(1);
+		if (i>=m_cellIndicies[0].size())
+			break;
 		pos[0] = m_cellIndicies[0].at(i);
 		for (unsigned int j=0; j<m_cellIndicies[1].size();++j)
 		{
 			pos[1] = m_cellIndicies[1].at(j);
 			for (unsigned int k=0; k<m_cellIndicies[2].size();++k)
 			{
+				prog_cnt = m_progressCounter.fetch_add(1);
+				if (m_progress && (prog_cnt%prog_N==0))
+				{
+					std::lock_guard<std::mutex> lock(m_resultMutex);
+					std::cout << "\rStep-1: " << (int)((float)prog_cnt/todo*100) << "%  ";
+					std::cout.flush();
+				}
 				pos[2] = m_cellIndicies[2].at(k);
 				loc = m_cell_density->linearIndex({pos[0],pos[1],pos[2]});
 				out_loc = Vx_Valid.linearIndex({i,j,k});
 				if (cell_density[loc]==0)
 				{
-					// SAR(i,j,k) = 0;
-					++m_AirVoxel;
-					// ++loc;
-					if (m_progress && (loc%prog_N == 0))
-					{
-						std::cout << ".";
-						std::cout.flush();
-					}
+					++air_voxel;
 					continue;
 				}
 
@@ -1049,14 +1055,19 @@ bool SAR_Calculation::CalcAveragedSAR()
 						cube_mass[out_loc]=total_mass;
 					if (cube_vol!=NULL)
 						cube_vol[out_loc]=voxel_volume;
-					++m_Valid;
-					CalcCubicalSAR(vx_sar, pos, start, stop, partial_start, partial_stop, Vx_Used, Vx_Valid, true);
-					for (int n=0;n<m_maxSAR.size();++n)
+					++valid;
+					CalcCubicalSAR(vx_sar, start, stop, partial_start, partial_stop);
+
+					for (size_t n=0;n<m_SAR.size();++n)
+					{
+						m_SAR.at(n)->data(out_loc)=vx_sar[n];
 						if (vx_sar[n]>m_maxSAR.at(n))
 						{
 							m_maxSAR.at(n) = vx_sar[n];
 							m_maxSAR_Idx.at(n) = {i,j,k};
 						}
+					}
+					AssignUsedSAR(vx_sar, start, stop, partial_start, partial_stop, Vx_Used, Vx_Valid);
 				}
 				else if (EC==1)
 					++cnt_case1;
@@ -1066,122 +1077,149 @@ bool SAR_Calculation::CalcAveragedSAR()
 					++cnt_NoConvergence;
 				else
 					cerr << "other EC" << EC << endl;
-				// ++loc;
-				if (m_progress && (out_loc%prog_N == 0))
-				{
-					std::cout << ".";
-					std::cout.flush();
-				}
 			}
 		}
 	}
 	delete[] vx_sar;
-	if (m_progress)
-		std::cout << " Done" << std::endl;
 
-	if (cnt_NoConvergence>0)
 	{
-		cerr << "SAR_Calculation::CalcAveragedSAR: Warning, for some voxel a valid averaging cube could not be found (no convergence)... " << endl;
+		std::lock_guard<std::mutex> lock(m_resultMutex);
+		m_AirVoxel += air_voxel;
+		m_Valid += valid;
+		m_step1_case1 += cnt_case1;
+		m_step1_case2 += cnt_case2;
+		m_step1_no_conv += cnt_NoConvergence;
 	}
-	if (m_DebugLevel>0)
-	{
-		cerr << "Number of invalid cubes (case 1): " << cnt_case1 << endl;
-		cerr << "Number of invalid cubes (case 2): " << cnt_case2 << endl;
-		cerr << "Number of invalid cubes (failed to converge): " << cnt_NoConvergence << endl;
-	}
+
+	return true;
+}
+
+bool SAR_Calculation::CalcAvgStep2SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used)
+{
+	unsigned int pos[3];
+
+	unsigned int start[3];
+	unsigned int stop[3];
+	float partial_start[3];
+	float partial_stop[3];
+	double bg_ratio;
+	int EC=0;
+
+	unsigned char* vx_cube_type = m_cube_type.data();
+	bool* vx_used_data  = Vx_Used.data();
+	bool* vx_valid_data = Vx_Valid.data();
+	float* cube_mass =  m_cube_mass.data();
+	float* cube_vol = m_cube_volume.data();
+	float* cell_density = m_cell_density->data();
+	size_t loc = 0;
+	size_t out_loc = 0;
+	size_t todo = Vx_Valid.size() - m_Valid - m_Used - m_AirVoxel;
+	if ((t_id==0) && (m_DebugLevel>0))
+		cout << todo << " voxel todo in step 2." << endl;
+	size_t prog_N = max(1,(int)(todo/100));
 
 	ArrayLib::ArrayIJK<float> dummy_SAR;
 	// count all used and unused etc. + special handling of unused voxels!!
-	m_Used=0;
-	m_Unused=0;
 	loc = 0;
-	if (m_progress)
+	if ((m_progress) && (t_id==0))
+	{
+		std::lock_guard<std::mutex> lock(m_resultMutex);
 		std::cout << "Step-2: ";
+	}
+
+	size_t unused=0;
+	size_t prog_cnt = 0;
 
 	unsigned int N = m_SAR.size();
 	double* vx_sar_unused[6];
 	for (int n=0;n<6;++n)
 		vx_sar_unused[n] = new double[N];
 
-	for (unsigned int i=0; i<m_cellIndicies[0].size();++i)
+	size_t next_id = 0;
+	size_t xy_size = m_cellIndicies[0].size() * m_cellIndicies[1].size();
+	unsigned int i,j;
+	while (true)
 	{
+		next_id = m_nextStepChunk.fetch_add(1);
+		if (next_id>=xy_size)
+			break;
+		i = next_id/m_cellIndicies[1].size();
+		j = next_id % m_cellIndicies[1].size();
 		pos[0] = m_cellIndicies[0].at(i);
-		for (unsigned int j=0; j<m_cellIndicies[1].size();++j)
+		pos[1] = m_cellIndicies[1].at(j);
+		for (unsigned int k=0; k<m_cellIndicies[2].size();++k)
 		{
-			pos[1] = m_cellIndicies[1].at(j);
-			for (unsigned int k=0; k<m_cellIndicies[2].size();++k)
+			pos[2] = m_cellIndicies[2].at(k);
+			loc = m_cell_density->linearIndex({pos[0],pos[1],pos[2]});
+			out_loc = Vx_Valid.linearIndex({i,j,k});
+			if (!vx_valid_data[out_loc] && vx_used_data[out_loc])
 			{
-				pos[2] = m_cellIndicies[2].at(k);
-				loc = m_cell_density->linearIndex({pos[0],pos[1],pos[2]});
-				out_loc = Vx_Valid.linearIndex({i,j,k});
-				if (!vx_valid_data[out_loc] && vx_used_data[out_loc])
+				if (vx_cube_type!=NULL)
+					vx_cube_type[out_loc] = 8;
+			}
+			if ((cell_density[loc]>0) && !vx_valid_data[out_loc] && !vx_used_data[out_loc])
+			{
+				++unused;
+
+				for (unsigned int n=0;n<N;++n)
+					m_SAR.at(n)->data(out_loc) = 0;
+				double unused_volumes[6];
+				double unused_mass[6];
+
+				double min_Vol=FLT_MAX;
+
+				// special handling of unused voxels:
+				for (int n=0;n<6;++n)
 				{
-					++m_Used;
-					if (vx_cube_type!=NULL)
-						vx_cube_type[out_loc] = 8;
-				}
-				if ((cell_density[loc]>0) && !vx_valid_data[out_loc] && !vx_used_data[out_loc])
-				{
-					++m_Unused;
-
-					for (int n=0;n<N;++n)
-						m_SAR.at(n)->data(out_loc) = 0;
-					double unused_volumes[6];
-					double unused_mass[6];
-
-					double min_Vol=FLT_MAX;
-
-					// special handling of unused voxels:
-					for (int n=0;n<6;++n)
+					EC = FindFittingCubicalMass(pos, pow(m_avg_mass/cell_density[loc],1.0/3.0)/2, start, stop,
+												partial_start, partial_stop, unused_mass[n], unused_volumes[n], bg_ratio, n, true);
+					if (EC==0)
 					{
-						EC = FindFittingCubicalMass(pos, pow(m_avg_mass/cell_density[loc],1.0/3.0)/2, start, stop,
-													partial_start, partial_stop, unused_mass[n], unused_volumes[n], bg_ratio, n, true);
-						if (EC==0)
-						{
-							// cerr << "calc unused SAR " << n << ": " << pos[n/2] << " " << start[n/2] << "; " << partial_start[n/2] << " " << stop[n/2] << " " << partial_stop[n/2] << endl;
-							CalcCubicalSAR(vx_sar_unused[n], pos, start, stop, partial_start, partial_stop, Vx_Used, Vx_Valid, false);
-							min_Vol = min(min_Vol,unused_volumes[n]);
-						}
-						else if (EC==2)
-						{
-							// target mass was not reached!
-							for (int m=0;m<N;++m)
-								vx_sar_unused[n][m] = 0;
-						}
-						else
-						{
-							// this should not happen
-							cerr << EC << " SAR_Calculation::CalcAveragedSAR: Error handling unused voxels, can't find fitting cubical averaging volume' " << endl;
-							for (int m=0;m<N;++m)
-								vx_sar_unused[n][m] = 0;
-						}
+						// cerr << "calc unused SAR " << n << ": " << pos[n/2] << " " << start[n/2] << "; " << partial_start[n/2] << " " << stop[n/2] << " " << partial_stop[n/2] << endl;
+						CalcCubicalSAR(vx_sar_unused[n], start, stop, partial_start, partial_stop);
+						min_Vol = min(min_Vol,unused_volumes[n]);
 					}
-					for (int n=0;n<6;++n)
+					else if (EC==2)
 					{
-						if (unused_volumes[n]<=m_UnusedRelativeVolLimit*min_Vol)
-							for (int m=0;m<N;++m)
+						// target mass was not reached!
+						for (unsigned int m=0;m<N;++m)
+							vx_sar_unused[n][m] = 0;
+					}
+					else
+					{
+						// this should not happen
+						cerr << EC << " SAR_Calculation::CalcAveragedSAR: Error handling unused voxels, can't find fitting cubical averaging volume' " << endl;
+						for (unsigned int m=0;m<N;++m)
+							vx_sar_unused[n][m] = 0;
+					}
+				}
+				for (int n=0;n<6;++n)
+				{
+					if (unused_volumes[n]<=m_UnusedRelativeVolLimit*min_Vol)
+						for (unsigned int m=0;m<N;++m)
+						{
+							if (vx_sar_unused[n][m]>m_SAR.at(m)->data(out_loc))
 							{
-								if (vx_sar_unused[n][m]>m_SAR.at(m)->data(out_loc))
+								if (vx_sar_unused[n][m]>m_maxSAR.at(m))
 								{
-									if (vx_sar_unused[n][m]>m_maxSAR.at(m))
-									{
-										m_maxSAR.at(m) = vx_sar_unused[n][m];
-										m_maxSAR_Idx.at(m) = {i,j,k};
-									}
-									m_SAR.at(m)->data(out_loc) = vx_sar_unused[n][m];
-									if (vx_cube_type!=NULL)
-										vx_cube_type[out_loc] = n+1;
-									if (cube_mass!=NULL)
-										cube_mass[out_loc]=unused_mass[n];
-									if (cube_vol!=NULL)
-										cube_vol[out_loc]=unused_volumes[n];
+									m_maxSAR.at(m) = vx_sar_unused[n][m];
+									m_maxSAR_Idx.at(m) = {i,j,k};
 								}
+								m_SAR.at(m)->data(out_loc) = vx_sar_unused[n][m];
+								if (vx_cube_type!=NULL)
+									vx_cube_type[out_loc] = n+1;
+								if (cube_mass!=NULL)
+									cube_mass[out_loc]=unused_mass[n];
+								if (cube_vol!=NULL)
+									cube_vol[out_loc]=unused_volumes[n];
 							}
-					}
+						}
 				}
-				if (m_progress && (out_loc%prog_N == 0))
+				prog_cnt = m_progressCounter.fetch_add(1);
+				if (m_progress && (prog_cnt%prog_N==0))
 				{
-					std::cout << ".";
+					std::lock_guard<std::mutex> lock(m_resultMutex);
+					std::cout << "\rStep-2: " << (int)((float)prog_cnt/todo*100) << "%  ";
 					std::cout.flush();
 				}
 			}
@@ -1190,13 +1228,103 @@ bool SAR_Calculation::CalcAveragedSAR()
 	for (int n=0;n<6;++n)
 		delete[] vx_sar_unused[n];
 
+
+	{
+		std::lock_guard<std::mutex> lock(m_resultMutex);
+		m_Unused += unused;
+	}
+
+	return true;
+}
+
+
+bool SAR_Calculation::CalcAveragedSAR(unsigned int numThreads)
+{
+	m_Valid=0;
+	m_Used=0;
+	m_Unused=0;
+	m_AirVoxel=0;
+	m_step1_case1=m_step1_case2=m_step1_no_conv=0;
+
+	unsigned int out_num_lines[3] = {(unsigned int)m_cellIndicies[0].size(),(unsigned int)m_cellIndicies[1].size(),(unsigned int)m_cellIndicies[2].size()};
+	ArrayLib::ArrayIJK<bool> Vx_Used("vx_used", out_num_lines);
+	ArrayLib::ArrayIJK<bool> Vx_Valid("vx_used", out_num_lines);
+
+	if (numThreads==0)
+		numThreads = std::thread::hardware_concurrency();
+
+	numThreads = min((size_t)numThreads, m_cellIndicies[0].size());
+
+	if (m_DebugLevel>0)
+		cout << "Using " << numThreads << " number of threads" << endl;
+
+	auto t_start = std::chrono::high_resolution_clock::now();
+
+	m_progressCounter = 0;
+	m_nextStepChunk = 0;
+	std::vector<std::future<bool>> futures;
+	for (unsigned int t = 0; t < numThreads; ++t) {
+		futures.push_back(std::async(std::launch::async, [this, t, &Vx_Valid, &Vx_Used]() {return this->CalcAvgStep1SAR(t, Vx_Valid, Vx_Used);}));
+	}
+
+	bool successStep=true;
+	for (auto& f : futures)
+	{
+		if (!f.get())
+			successStep = false;
+	}
+	futures.clear();
+
+	if (!successStep)
+		return false;
+
+	auto t_end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> duration = t_end - t_start;
+	m_duration = duration.count()/1000;
+
 	if (m_progress)
-		std::cout << " Done" << std::endl;
+		cout << "\rStep-1: 100% in " << duration.count()/1000 << "s" << endl;
+
+	bool* vx_used_data = Vx_Used.data();
+	m_Used = std::count(vx_used_data, vx_used_data+Vx_Used.size(), true) - m_Valid;
+
+	if (m_step1_no_conv>0)
+	{
+		cerr << "SAR_Calculation::CalcAveragedSAR: Warning, for some voxel a valid averaging cube could not be found (no convergence)... " << endl;
+	}
+	if (m_DebugLevel>0)
+	{
+		cerr << "Number of invalid cubes (case 1): " << m_step1_case1 << endl;
+		cerr << "Number of invalid cubes (case 2): " << m_step1_case2 << endl;
+		cerr << "Number of invalid cubes (failed to converge): " << m_step1_no_conv << endl;
+	}
+
+	m_nextStepChunk = 0;
+	t_start = std::chrono::high_resolution_clock::now();
+	m_progressCounter = 0;
+	for (unsigned int t = 0; t < numThreads; ++t) {
+		futures.push_back(std::async(std::launch::async, [this, t, &Vx_Valid, &Vx_Used]() {return this->CalcAvgStep2SAR(t, Vx_Valid, Vx_Used);}));
+	}
+
+	for (auto& f : futures)
+	{
+		if (!f.get())
+			successStep = false;
+	}
+	futures.clear();
+	if (!successStep)
+		return false;
+
+	t_end = std::chrono::high_resolution_clock::now();
+	duration = t_end - t_start;
+
+	if (m_progress)
+		cout << "\rStep-2: 100% in " << duration.count()/1000 << "s" << endl;
 
 	if (m_Valid+m_Used+m_Unused+m_AirVoxel!=Vx_Valid.size())
 	{
 		cerr << "SAR_Calculation::CalcAveragedSAR: critical error, mismatch in voxel status count... EXIT" << endl;
-		exit(1);
+	// 	exit(1);
 	}
 
 	if (m_DebugLevel>0)

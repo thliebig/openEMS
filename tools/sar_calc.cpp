@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
 		bool export_cube_stats = false;
 		bool legacyHDF5 = false;
 		bool progress = false;
+		unsigned int numThreads = 0;
 
 		desc.add_options()
 		("help,h"  , "print usage message")
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
 		("method",   value(&method)->default_value("SIMPLE"), "set SAR method: IEEE_C95_3, IEEE_62704, SIMPLE")
 		("mass,m"  , value(&m_avg), "averaging mass in g")
 		("autorange,a"  , value(&auto_range), "autorange, value limit in dB from max. (>0)")
+		("numThreads,n"  , value(&numThreads), "number of threads")
 		("verbose,v", bool_switch(&debug), "verbose")
 		("progress,p", bool_switch(&progress), "show progress")
 		("export_cube_stats,e", bool_switch(&export_cube_stats), "Export Cube Statistics")
@@ -72,7 +74,7 @@ int main(int argc, char *argv[])
 		//sar_calc.SetAveragingMethod(SAR_Calculation::IEEE_62704);
 		if (!sar_calc.SetAveragingMethod(method, !debug))
 			return -1;
-		return sar_calc.CalcFromHDF5(ifile, ofile, legacyHDF5);
+		return sar_calc.CalcFromHDF5(ifile, ofile, legacyHDF5, numThreads);
 	}
 	catch(exception& e) {
 		cerr << e.what() << "\n";

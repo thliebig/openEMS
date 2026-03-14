@@ -20,7 +20,8 @@
 
 #include <complex>
 #include <vector>
-#include "hdf5_file_writer.h"
+#include <mutex>
+#include <atomic>
 #include "arraylib/array_ijk.h"
 #include "arraylib/array_nijk.h"
 
@@ -33,6 +34,8 @@
 #else
 #define SAR_EXPORT
 #endif
+
+class HDF5_File_Writer;
 
 class SAR_EXPORT SAR_Calculation
 {
@@ -88,7 +91,7 @@ public:
 	void EnableAutoRange(double dBmax) {m_autoRange=dBmax;}
 
 	//! Calculate the SAR, requires a preallocated 3D array
-	bool CalcSAR();
+	bool CalcSAR(unsigned int numThreads=0);
 
 	//! Get the total power dumped for frequency index n
 	double GetSARPower(size_t freq_n) {return m_power.at(freq_n);}
@@ -109,7 +112,7 @@ public:
 	bool WriteToHDF5(HDF5_File_Writer &out_file, bool legacyHDF5=false);
 
 	//! Read and write from an hdf5 file
-	bool CalcFromHDF5(std::string h5_fn, std::string out_name, bool legacyHDF5=false);
+	bool CalcFromHDF5(std::string h5_fn, std::string out_name, bool legacyHDF5=false, unsigned int numThreads=0);
 
 protected:
 	// raw input data
@@ -126,10 +129,10 @@ protected:
 	std::vector<float> m_local_cell_max_power_density; // precalculated max local cell power density (e.g. needed for auto range)
 
 	// save some statistical data
-	unsigned int m_Valid;
-	unsigned int m_Used;
-	unsigned int m_Unused;
-	unsigned int m_AirVoxel;
+	size_t m_Valid;
+	size_t m_Used;
+	size_t m_Unused;
+	size_t m_AirVoxel;
 
 	// output data
 	ArrayLib::ArrayIJK<unsigned int> m_posInOuput;
@@ -167,17 +170,26 @@ protected:
 
 	/****** start SAR averaging and all necessary methods ********/
 	//! Calculate the averaged SAR
-	bool CalcAveragedSAR();
+	unsigned int m_numThreads=0;
+	std::atomic<size_t> m_progressCounter{0};
+	std::mutex m_resultMutex;
+	std::mutex m_planeLocks[128];
+	std::atomic<size_t> m_nextStepChunk{0};
+	size_t m_step1_case1, m_step1_case2, m_step1_no_conv;
+	bool CalcAvgStep1SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used);
+	bool CalcAvgStep2SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used);
+	bool CalcAveragedSAR(unsigned int numThreads=0);
 
 	int FindFittingCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],
 						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1, bool ignoreFaceValid=false);
 	bool GetCubicalMass(unsigned int pos[3], double box_size, unsigned int start[3], unsigned int stop[3],
 						float partial_start[3], float partial_stop[3], double &mass, double &volume, double &bg_ratio, int disabledFace=-1);
 
-	void CalcCubicalSAR(double* vx_sar, unsigned int pos[3], unsigned int start[3], unsigned int stop[3],
+	void CalcCubicalSAR(double* vx_sar, unsigned int start[3], unsigned int stop[3],
+						 float partial_start[3], float partial_stop[3]);
+	void AssignUsedSAR(double* vx_sar, unsigned int start[3], unsigned int stop[3],
 						 float partial_start[3], float partial_stop[3],
-						 ArrayLib::ArrayIJK<bool> &Vx_Used, ArrayLib::ArrayIJK<bool> &Vx_Valid,
-						 bool assignUsed=false);
+						 ArrayLib::ArrayIJK<bool> &Vx_Used, ArrayLib::ArrayIJK<bool> &Vx_Valid);
 	/****** end SAR averaging and all necessary methods ********/
 
 	bool CheckValid();
