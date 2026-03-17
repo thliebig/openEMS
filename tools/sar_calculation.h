@@ -176,8 +176,8 @@ protected:
 	std::mutex m_planeLocks[128];
 	std::atomic<size_t> m_nextStepChunk{0};
 	size_t m_step1_case1, m_step1_case2, m_step1_no_conv;
-	bool CalcAvgStep1SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used);
-	bool CalcAvgStep2SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used);
+	bool CalcAvgStep1SAR(ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used);
+	bool CalcAvgStep2SAR(ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used);
 	bool CalcAveragedSAR(unsigned int numThreads=0);
 
 	int FindFittingCubicalMass(unsigned int pos[3], float box_size, unsigned int start[3], unsigned int stop[3],

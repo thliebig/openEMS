@@ -713,9 +713,8 @@ bool HDF5_File_Reader::GetDataSetNameByIndex(hid_t &group, unsigned int idx, std
 	if (len<=0)
 		return false;
 
-	char c_name[len+1];
-	len = H5Gget_objname_by_idx(group, idx, c_name, len+1);
-	name = c_name;
+	name.resize(len);
+	len = H5Gget_objname_by_idx(group, idx, &name[0], len+1);
 	return true;
 }
 

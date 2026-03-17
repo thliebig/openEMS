@@ -974,7 +974,7 @@ void SAR_Calculation::AssignUsedSAR(double* vx_sar, unsigned int start[3], unsig
 	return;
 }
 
-bool SAR_Calculation::CalcAvgStep1SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used)
+bool SAR_Calculation::CalcAvgStep1SAR(ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used)
 {
 	unsigned int pos[3];
 
@@ -1005,11 +1005,6 @@ bool SAR_Calculation::CalcAvgStep1SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool
 	size_t todo = Vx_Valid.size();
 	size_t prog_N = max(1,(int)(todo/100));
 	double* vx_sar = new double[m_SAR.size()];
-	if ((m_progress) && (t_id==0))
-	{
-		std::lock_guard<std::mutex> lock(m_resultMutex);
-		std::cout << "Step-1: ";
-	}
 
 	unsigned int i=0;
 	size_t prog_cnt;
@@ -1094,7 +1089,7 @@ bool SAR_Calculation::CalcAvgStep1SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool
 	return true;
 }
 
-bool SAR_Calculation::CalcAvgStep2SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used)
+bool SAR_Calculation::CalcAvgStep2SAR(ArrayLib::ArrayIJK<bool> &Vx_Valid, ArrayLib::ArrayIJK<bool> &Vx_Used)
 {
 	unsigned int pos[3];
 
@@ -1114,19 +1109,11 @@ bool SAR_Calculation::CalcAvgStep2SAR(unsigned int t_id, ArrayLib::ArrayIJK<bool
 	size_t loc = 0;
 	size_t out_loc = 0;
 	size_t todo = Vx_Valid.size() - m_Valid - m_Used - m_AirVoxel;
-	if ((t_id==0) && (m_DebugLevel>0))
-		cout << todo << " voxel todo in step 2." << endl;
 	size_t prog_N = max(1,(int)(todo/100));
 
 	ArrayLib::ArrayIJK<float> dummy_SAR;
 	// count all used and unused etc. + special handling of unused voxels!!
 	loc = 0;
-	if ((m_progress) && (t_id==0))
-	{
-		std::lock_guard<std::mutex> lock(m_resultMutex);
-		std::cout << "Step-2: ";
-	}
-
 	size_t unused=0;
 	size_t prog_cnt = 0;
 
@@ -1264,7 +1251,7 @@ bool SAR_Calculation::CalcAveragedSAR(unsigned int numThreads)
 	m_nextStepChunk = 0;
 	std::vector<std::future<bool>> futures;
 	for (unsigned int t = 0; t < numThreads; ++t) {
-		futures.push_back(std::async(std::launch::async, [this, t, &Vx_Valid, &Vx_Used]() {return this->CalcAvgStep1SAR(t, Vx_Valid, Vx_Used);}));
+		futures.push_back(std::async(std::launch::async, [this, &Vx_Valid, &Vx_Used]() {return this->CalcAvgStep1SAR(Vx_Valid, Vx_Used);}));
 	}
 
 	bool successStep=true;
@@ -1297,13 +1284,15 @@ bool SAR_Calculation::CalcAveragedSAR(unsigned int numThreads)
 		cerr << "Number of invalid cubes (case 1): " << m_step1_case1 << endl;
 		cerr << "Number of invalid cubes (case 2): " << m_step1_case2 << endl;
 		cerr << "Number of invalid cubes (failed to converge): " << m_step1_no_conv << endl;
+		size_t todo = Vx_Valid.size() - m_Valid - m_Used - m_AirVoxel;
+		cout << "Step-2: " << todo << " voxel todo." << endl;
 	}
 
 	m_nextStepChunk = 0;
 	t_start = std::chrono::high_resolution_clock::now();
 	m_progressCounter = 0;
 	for (unsigned int t = 0; t < numThreads; ++t) {
-		futures.push_back(std::async(std::launch::async, [this, t, &Vx_Valid, &Vx_Used]() {return this->CalcAvgStep2SAR(t, Vx_Valid, Vx_Used);}));
+		futures.push_back(std::async(std::launch::async, [this, &Vx_Valid, &Vx_Used]() {return this->CalcAvgStep2SAR(Vx_Valid, Vx_Used);}));
 	}
 
 	for (auto& f : futures)
