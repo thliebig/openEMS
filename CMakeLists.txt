@@ -33,7 +33,7 @@ IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
   FIND_PACKAGE(Git)
   # Get the latest abbreviated commit hash of the working branch
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --tags
+    COMMAND ${GIT_EXECUTABLE} describe --tags --always
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     OUTPUT_VARIABLE GITREV
   )
