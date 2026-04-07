@@ -398,7 +398,7 @@ bool HDF5_File_Writer::WriteAtrribute(std::string locName, std::string attr_name
 	hid_t loc = H5Oopen(hdf5_file, locName.c_str(), H5P_DEFAULT);
 	if (loc<0)
 	{
-		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to open location: """ << locName << """" << endl;
+		cerr << "HDF5_File_Writer::WriteAtrribute: Error, failed to open location: """ << locName << """: " << attr_name << endl;
 		H5Fclose(hdf5_file);
 		return false;
 	}

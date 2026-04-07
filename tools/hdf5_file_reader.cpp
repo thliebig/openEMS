@@ -795,9 +795,9 @@ bool HDF5_File_Reader::ReadScalarDataSet(std::string ds_name, ArrayLib::ArrayIJK
 	data.Init(ds_name, ui_dim);
 	bool ok = ReadDataSet(ds_name, type, (void*)data.data());
 	delete[] dims;
+	if (m_legacy_fmt)
+		data.swapAxis(0,2);
 	return ok;
-
-	return false;
 }
 
 // Explicit template instantiation
@@ -829,6 +829,7 @@ bool HDF5_File_Reader::GetFDVectorData(size_t idx, ArrayLib::ArrayNIJK<std::comp
 
 	if (!ReadVectorDataSet<float>(ds_name.str() + "_imag", tmp))
 		return false;
+	tmp_buffer = tmp.data();
 	for (size_t n=0;n<tmp.size();++n)
 		buffer[n].imag(tmp_buffer[n]); // assign imag part
 

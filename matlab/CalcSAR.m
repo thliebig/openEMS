@@ -21,7 +21,7 @@ function CalcSAR(sar_fn, sar_out, varargin)
 % -----------------------
 % author: Thorsten Liebig, 2025
 
-bin_args = ' ';
+bin_args = ' --legacyHDF5Dumps';
 
 for n=1:2:numel(varargin)
     if (strcmp(varargin{n},'verbose'))

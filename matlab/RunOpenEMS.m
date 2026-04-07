@@ -75,6 +75,8 @@ if nargin < 3
     opts = '';
 end
 
+opts = [opts ' --legacyHDF5Dumps'];
+
 if (nargin<4)
     Settings = [];
 end

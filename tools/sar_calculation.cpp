@@ -176,6 +176,7 @@ void SAR_Calculation::AddEFieldAndCondictivity(float freq, ArrayLib::ArrayNIJK<s
 	float* loc_cpd_data = loc_cpd->data();
 	float* cell_vol = m_cell_volume->data();
 	float* cell_dens = m_cell_density->data();
+	float cond=0;
 	double max_lp=0;
 	unsigned int loc=0;
 	unsigned int pos[3];
@@ -193,9 +194,10 @@ void SAR_Calculation::AddEFieldAndCondictivity(float freq, ArrayLib::ArrayNIJK<s
 		{
 			for (pos[2]=0; pos[2]<m_numLines[2]; ++pos[2])
 			{
-				l_pow  = (*cell_conductivity)(pos[0], pos[1], pos[2])*abs((*e_field)(0, pos[0], pos[1], pos[2])) * abs((*e_field)(0, pos[0], pos[1], pos[2]));
-				l_pow += (*cell_conductivity)(pos[0], pos[1], pos[2])*abs((*e_field)(1, pos[0], pos[1], pos[2])) * abs((*e_field)(1, pos[0], pos[1], pos[2]));
-				l_pow += (*cell_conductivity)(pos[0], pos[1], pos[2])*abs((*e_field)(2, pos[0], pos[1], pos[2])) * abs((*e_field)(2, pos[0], pos[1], pos[2]));
+				cond = (*cell_conductivity)(pos[0], pos[1], pos[2]);
+				l_pow  = cond*abs((*e_field)(0, pos[0], pos[1], pos[2])) * abs((*e_field)(0, pos[0], pos[1], pos[2]));
+				l_pow += cond*abs((*e_field)(1, pos[0], pos[1], pos[2])) * abs((*e_field)(1, pos[0], pos[1], pos[2]));
+				l_pow += cond*abs((*e_field)(2, pos[0], pos[1], pos[2])) * abs((*e_field)(2, pos[0], pos[1], pos[2]));
 				l_pow *= 0.5*(cell_dens[loc]>0);
 				max_lp = max(max_lp, l_pow);
 				power += l_pow*cell_vol[loc];
@@ -285,6 +287,12 @@ bool SAR_Calculation::CheckValid()
 	if ((m_cell_volume==NULL) || (!m_cell_volume->valid()))
 		return false;
 	if (m_avg_mass<0)
+		return false;
+
+	// check that read in data was not swapped
+	if (m_cell_density->wasSwapped())
+		return false;
+	if (m_cell_volume->wasSwapped())
 		return false;
 
 	// vaildate sizes
@@ -429,6 +437,8 @@ bool SAR_Calculation::WriteToHDF5(std::string out_name, bool legacyHDF5)
 	out_file.WriteAtrribute("/","openEMS_HDF5_version", OPENEMS_HDF5_VERSION);
 	out_file.SetCurrentGroup("/FieldData/FD");
 	out_file.WriteAtrribute("/FieldData/FD","frequency",m_freq);
+	if (legacyHDF5)
+		out_file.WriteAtrribute("/", "legacy_fmt", true);
 
 	return WriteToHDF5(out_file, legacyHDF5);
 }
@@ -462,25 +472,25 @@ bool SAR_Calculation::WriteToHDF5(HDF5_File_Writer &out_file, bool legacyHDF5)
 		stringstream ss;
 		ss << "f" << n;
 		if (out_file.WriteScalarField<float>(ss.str(), *m_SAR.at(n), legacyHDF5)==false)
-			cerr << "SAR_Calculation::CalcFromHDF5: can't dump to file...! " << endl;
+			cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 		if (m_cube_type.data()!=NULL)
 			if (out_file.WriteData(ss.str() + "_CubeType", H5T_NATIVE_UCHAR, m_cube_type.data(), 3, dims)==false)
-				cerr << "SAR_Calculation::CalcFromHDF5: can't dump to file...! " << endl;
+				cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 		if (m_cube_mass.data()!=NULL)
 			if (out_file.WriteData(ss.str() + "_CubeMass", H5T_NATIVE_FLOAT, m_cube_mass.data(), 3, dims)==false)
-				cerr << "SAR_Calculation::CalcFromHDF5: can't dump to file...! " << endl;
+				cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 		if (m_cube_volume.data()!=NULL)
 			if (out_file.WriteData(ss.str() + "_CubeVol", H5T_NATIVE_FLOAT, m_cube_volume.data(), 3, dims)==false)
-				cerr << "SAR_Calculation::CalcFromHDF5: can't dump to file...! " << endl;
+				cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 		if (out_file.WriteAtrribute("/FieldData/FD/"+ss.str(),"frequency",m_freq.at(n))==false)
-			cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
+			cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 		if (out_file.WriteAtrribute("/FieldData/FD/"+ss.str(),"power",pwr)==false)
-			cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
+			cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 		if (out_file.WriteAtrribute("/FieldData/FD/"+ss.str(),"maxSAR", m_maxSAR.at(n))==false)
-			cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
+			cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 		std::vector<unsigned int> idx = {m_maxSAR_Idx.at(n)[0],m_maxSAR_Idx.at(n)[1],m_maxSAR_Idx.at(n)[2]};
 		if (out_file.WriteAtrribute("/FieldData/FD/"+ss.str(),"maxSAR_idx", idx)==false)
-			cerr << "ProcessFieldsSAR::DumpFDData: can't dump to file...! " << endl;
+			cerr << "SAR_Calculation::WriteToHDF5: can't dump to file...! " << endl;
 	}
 
 	out_file.WriteAtrribute("/FieldData/FD","valid_cubes",m_Used);
@@ -1313,7 +1323,7 @@ bool SAR_Calculation::CalcAveragedSAR(unsigned int numThreads)
 	if (m_Valid+m_Used+m_Unused+m_AirVoxel!=Vx_Valid.size())
 	{
 		cerr << "SAR_Calculation::CalcAveragedSAR: critical error, mismatch in voxel status count... EXIT" << endl;
-	// 	exit(1);
+		exit(1);
 	}
 
 	if (m_DebugLevel>0)

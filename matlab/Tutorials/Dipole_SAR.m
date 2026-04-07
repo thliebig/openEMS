@@ -181,7 +181,7 @@ SAR_field = ReadHDF5Dump(SAR_fn);
 
 SAR = SAR_field.FD.values{1};
 ptotal = ReadHDF5Attribute(SAR_fn,'/FieldData/FD/f0','power');
-mass = ReadHDF5Attribute(SAR_fn,'/FieldData/FD/f0','mass');
+mass = ReadHDF5Attribute(SAR_fn,'/','mass');
 
 %% calculate 3D pattern
 phi = 0:3:360;
