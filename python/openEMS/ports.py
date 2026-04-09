@@ -103,6 +103,7 @@ class Port(object):
         for n in range(len(self.u_data.fns)):
             self.uf_tot += self.u_data.ui_f_val[n]
             self.ut_tot += self.u_data.ui_val[n]
+        self.u_time = self.u_data.ui_time[0]
 
         self.i_data = UI_data(self.I_filenames, sim_path, freq, signal_type )
         self.if_tot = 0
@@ -110,6 +111,7 @@ class Port(object):
         for n in range(len(self.i_data.fns)):
             self.if_tot += self.i_data.ui_f_val[n]
             self.it_tot += self.i_data.ui_val[n]
+        self.i_time = self.i_data.ui_time[0]
 
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
@@ -320,10 +322,12 @@ class MSLPort(Port):
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type )
         self.uf_tot = self.u_data.ui_f_val[1]
         self.ut_tot = self.u_data.ui_val[1]
+        self.u_time = self.u_data.ui_time[0]
 
         self.i_data = UI_data(self.I_filenames, sim_path, freq, signal_type )
         self.if_tot = 0.5*(self.i_data.ui_f_val[0]+self.i_data.ui_f_val[1])
         self.it_tot = 0.5*(self.i_data.ui_val[0]+self.i_data.ui_val[1])
+        self.i_time = self.i_data.ui_time[0]
 
         unit = self.CSX.GetGrid().GetDeltaUnit()
         Et = self.u_data.ui_f_val[1]
