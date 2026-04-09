@@ -56,13 +56,13 @@ public:
 	void DumpCurrentExcite(std::string filename);
 
 	//! Get the used timestep
-	double GetTimestep() const {return dT;}
+	double GetTimestep() const {return m_dT;}
 
 	//! Get the type of excitation
 	int GetExciteType() const {return m_Excit_Type;}
 
 	//! Get the length of the excitation signal
-	unsigned int GetLength() const {return Length;}
+	unsigned int GetLength() const {return m_length;}
 
 	//! Get the max frequency excited by this signal
 	double GetMaxFrequency() const {return m_f_max;}
@@ -75,19 +75,19 @@ public:
 
 	std::string GetCustomFunction() const {return m_CustomExc_Str;}
 
-	FDTD_FLOAT* GetVoltageSignal() const {return Signal_volt;}
-	FDTD_FLOAT* GetCurrentSignal() const {return Signal_curr;}
+	FDTD_FLOAT* GetVoltageSignal() const {return m_signal_volt;}
+	FDTD_FLOAT* GetCurrentSignal() const {return m_signal_curr;}
 
 protected:
-	double dT;
+	double m_dT;
 	unsigned int m_nyquistTS;
 	double m_SignalPeriod;
 	ExciteTypes m_Excit_Type;
 
 	//Excitation time-signal
-	unsigned int Length;
-	FDTD_FLOAT* Signal_volt;
-	FDTD_FLOAT* Signal_curr;
+	unsigned int m_length;
+	FDTD_FLOAT* m_signal_volt;
+	FDTD_FLOAT* m_signal_curr;
 
 	// center frequency
 	double m_f0;
