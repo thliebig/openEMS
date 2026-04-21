@@ -115,6 +115,7 @@ public:
 	Excitation* InitExcitation();
 
 	void SetCSX(ContinuousStructure* csx);
+	ContinuousStructure* GetCSX() const;
 
 	Engine_Interface_FDTD* NewEngineInterface(int multigridlevel = 0);
 

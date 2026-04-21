@@ -428,6 +428,17 @@ cdef class openEMS:
         self.thisptr.SetCSX(CSX.thisptr)
 
     def GetCSX(self):
+        cdef _ContinuousStructure* ptr = self.thisptr.GetCSX()
+        cdef ContinuousStructure csx  # declare here
+
+        if ptr == NULL:
+            self.__CSX = None
+            return None
+
+        if self.__CSX is None or self.__CSX.thisptr != ptr:
+            csx = ContinuousStructure.__new__(ContinuousStructure)
+            csx.thisptr = ptr
+            self.__CSX = csx
         return self.__CSX
 
     def AddEdges2Grid(self, dirs, primitives=None, properties=None, **kw):
