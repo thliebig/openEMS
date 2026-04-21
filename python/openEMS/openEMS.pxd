@@ -29,6 +29,7 @@ cdef extern from "openEMS/openems.h":
 
         void SetNumberOfTimeSteps(unsigned int val)
         void SetCSX(_ContinuousStructure* csx)
+        _ContinuousStructure* GetCSX()
 
         void SetEndCriteria(double val)
         void SetOverSampling(int val)

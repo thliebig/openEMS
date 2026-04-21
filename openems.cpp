@@ -1125,6 +1125,11 @@ void openEMS::SetCSX(ContinuousStructure* csx)
 	m_CSX = csx;
 }
 
+ContinuousStructure* openEMS::GetCSX() const
+{
+	return m_CSX;
+}
+
 int openEMS::SetupFDTD()
 {
 	timeval startTime;
