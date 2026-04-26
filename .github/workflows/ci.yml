@@ -917,13 +917,16 @@ jobs:
           version: ${{ matrix.machine.version }}
           run: |
             echo "Install dependencies..."
-            sudo pkg install -y cmake git boost-libs tinyxml vtk9 hdf5 cgal octave python3 \
-                                py311-pip \
-                                py311-setuptools py311-wheel py311-setuptools-scm \
-                                py311-cython3 py311-numpy py311-h5py py311-matplotlib
-                                # prefix must match FreeBSD's default python
-                                # version. FreeBSD 14.2 uses Python 3.11 so
-                                # use "py311-"
+            sudo pkg install -y cmake git boost-libs tinyxml vtk9 hdf5 cgal octave python3
+            # Derive the version prefix from whatever Python FreeBSD ships
+            # (e.g. "py311" for 3.11, "py313" for 3.13) so the CI doesn't
+            # break when FreeBSD bumps its default Python version.
+            PYVER=$(python3 -c "import sys; print('py{}{}'.format(*sys.version_info[:2]))")
+            sudo pkg install -y ${PYVER}-pip \
+                                ${PYVER}-setuptools ${PYVER}-wheel ${PYVER}-setuptools-scm \
+                                ${PYVER}-numpy ${PYVER}-h5py ${PYVER}-matplotlib
+            # cython3 package name varies across FreeBSD quarterly snapshots; use pip
+            pip install --user --break-system-packages cython
 
             export CXXFLAGS="-Wall -Wextra -Wno-error"
             export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')
@@ -982,10 +985,10 @@ jobs:
 
             echo "Create Python venv and install dependencies..."
             # remove Python dependencies to see if venv really works
-            pip uninstall -y CSXCAD openEMS --break-system-packages
-            sudo pkg remove -y py311-pip \
-                               py311-setuptools py311-wheel py311-setuptools-scm \
-                               py311-cython3 py311-numpy py311-h5py py311-matplotlib
+            pip uninstall -y CSXCAD openEMS cython --break-system-packages
+            sudo pkg remove -y ${PYVER}-pip \
+                               ${PYVER}-setuptools ${PYVER}-wheel ${PYVER}-setuptools-scm \
+                               ${PYVER}-numpy ${PYVER}-h5py ${PYVER}-matplotlib
             python3 -m venv ~/venv
             . ~/venv/bin/activate
             pip install --upgrade pip
