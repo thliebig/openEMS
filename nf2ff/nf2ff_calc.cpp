@@ -272,7 +272,7 @@ bool nf2ff_calc::AddMirrorPlane(int n, float **lines, unsigned int* numLines, co
 
 	int nP  = (n+1)%3;
 	int nPP = (n+2)%3;
-	
+
 	// mirror in ny direction
 	for (unsigned int i=0;i<numLines[n];++i)
 		lines[n][i] = 2.0*m_MirrorPos[n] - lines[n][i];
@@ -319,16 +319,16 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, complex<float>*
 
 			break;
 		}
-		//check if two planes are on 
+		//check if two planes are on
 		else if ((m_MirrorType[n]==MIRROR_OFF) && (m_MirrorType[nP]!=MIRROR_OFF) && (m_MirrorType[nPP]!=MIRROR_OFF))
 		{
 			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
 			this->AddMirrorPlane(nPP, lines, numLines, E_field, H_field, MeshType);
 			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
-      
+
 			for (unsigned int i=0;i<numLines[nPP];++i)
 				lines[nPP][i] = 2.0*m_MirrorPos[nPP] - lines[nPP][i];
-			
+
 			break;
 		}
 	}

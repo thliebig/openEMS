@@ -35,7 +35,7 @@ Operator_SSE_Compressed* Operator_SSE_Compressed::New()
 
 Operator_SSE_Compressed::Operator_SSE_Compressed() : Operator_sse()
 {
-	m_Use_Compression = false;	
+	m_Use_Compression = false;
 }
 
 Operator_SSE_Compressed::~Operator_SSE_Compressed()

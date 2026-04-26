@@ -278,7 +278,7 @@ bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 			l_nf2ff->SetMirror(MIRROR_PMC, dir, pos);
 		ti_Mirros = ti_Mirros->NextSiblingElement("Mirror");
 	}
-	
+
 	TiXmlElement* ti_Planes = ti_nf2ff->FirstChildElement("Planes");
 	string E_name;
 	string H_name;

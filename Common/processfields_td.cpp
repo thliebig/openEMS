@@ -37,7 +37,7 @@ ProcessFieldsTD::~ProcessFieldsTD()
 void ProcessFieldsTD::InitProcess()
 {
 	if (Enabled==false) return;
-	
+
 	ProcessFields::InitProcess();
 
 	if (m_Vtk_Dump_File)

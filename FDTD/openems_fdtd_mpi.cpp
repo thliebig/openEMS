@@ -517,7 +517,7 @@ void openEMS_FDTD_MPI::RunFDTD()
 			}
 
 			MPI_Bcast(&step, 1, MPI_INT, 0, MPI_COMM_WORLD);
-			
+
 			prevTime=currTime;
 			prevTS=currTS;
 

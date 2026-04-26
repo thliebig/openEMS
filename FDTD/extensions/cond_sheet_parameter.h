@@ -1,7 +1,7 @@
 // This is a list of conducting sheet model parameter for different ranges of omega = w/w0
-// This file was created automatically using Matlab: OptimizeCondSheetParameter.m 
-// Do not change this file! 
-// Creation: 08-May-2012 09:49:53 
+// This file was created automatically using Matlab: OptimizeCondSheetParameter.m
+// Do not change this file!
+// Creation: 08-May-2012 09:49:53
 
 unsigned int numOptPara=30;
 double omega_stop[30]={20,30,45,67.5,101.25,151.875,227.8125,341.71875,512.578125,768.8671875,1153.300781,1729.951172,2594.926758,3892.390137,5838.585205,8757.877808,13136.81671,19705.22507,29557.8376,44336.7564,66505.1346,99757.7019,149636.5529,224454.8293,336682.2439,505023.3659,757535.0488,1136302.573,1704453.86,2556680.79};

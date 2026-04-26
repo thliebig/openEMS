@@ -1,2 +1,5 @@
 .gitattributes    export-ignore
 .gitignore        export-ignore
+
+*.cpp             text eol=lf
+*.h               text eol=lf

@@ -1804,7 +1804,7 @@ bool Operator::Calc_EC()
 		cerr << "CartOperator::Calc_EC: CSX not given or invalid!!!" << endl;
 		return false;
 	}
-	
+
 	MainOp->SetPos(0,0,0);
 	Calc_EC_Range(0,numLines[0]-1);
 	return true;

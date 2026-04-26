@@ -9,6 +9,22 @@ on:
       - "**"
 
 jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    name: "Lint"
+
+    steps:
+      - name: Checkout openEMS.git
+        uses: actions/checkout@v4
+
+      - name: Check for trailing whitespace
+        run: |
+          if grep -rPn "[ \t]\r?$" --include="*.cpp" --include="*.h" .; then
+            echo "Error: trailing whitespace found (see above)"
+            exit 1
+          fi
+
+
   Dependencies:
     runs-on: ubuntu-latest
     name: "Resolve repo dependencies"

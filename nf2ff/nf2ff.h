@@ -51,7 +51,7 @@ public:
 	void SetRadius(float radius);
 	void SetPermittivity(vector<float> permittivity);
 	void SetPermeability(vector<float> permeability);
-	
+
 	void SetMirror(int type, int dir, float pos);
 
 	double GetTotalRadPower(size_t f_idx) const;
