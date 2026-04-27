@@ -115,6 +115,9 @@ cdef class openEMS:
             self.__CSX.thisptr = NULL
 
     def Reset(self):
+        if self.__CSX is not None:
+            self.__CSX.thisptr = NULL
+            self.__CSX = None
         self.thisptr.Reset()
 
     def SetNumberOfTimeSteps(self, val):
@@ -436,6 +439,8 @@ cdef class openEMS:
             return None
 
         if self.__CSX is None or self.__CSX.thisptr != ptr:
+            if self.__CSX is not None:
+                self.__CSX.thisptr = NULL  # prevent dangling pointer on the old wrapper
             csx = ContinuousStructure.__new__(ContinuousStructure)
             csx.thisptr = ptr
             self.__CSX = csx
@@ -579,4 +584,7 @@ cdef class openEMS:
 
         :param file: xml file name
         """
+        if self.__CSX is not None:
+            self.__CSX.thisptr = NULL
+            self.__CSX = None
         return self.thisptr.ReadFromXML(file.encode('UTF-8'))

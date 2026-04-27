@@ -161,6 +161,39 @@ class Test_ReadFromXML(unittest.TestCase):
         fdtd = openEMS(NrTS=9999)
         self.assertTrue(fdtd.ReadFromXML(self.fn))
 
+    def test_getcsx_not_none_after_read(self):
+        fdtd = openEMS()
+        fdtd.ReadFromXML(self.fn)
+        self.assertIsNotNone(fdtd.GetCSX())
+
+    def test_getcsx_replaced_after_read(self):
+        csx_before = _make_csx()
+        csx_before.AddMetal('pre_existing_metal')
+        mat = csx_before.AddMaterial('pre_existing_dielectric')
+        mat.SetMaterialProperty(epsilon=99)
+        csx_before.GetGrid().SetDeltaUnit(1.0)  # intentionally wrong unit
+        fdtd = openEMS()
+        fdtd.SetCSX(csx_before)
+
+        fdtd.ReadFromXML(self.fn)  # self.fn has no metals/dielectrics, DeltaUnit=1e-3
+
+        csx_after = fdtd.GetCSX()
+        self.assertIsNotNone(csx_after)
+
+        # Grid delta unit must reflect the XML, not csx_before
+        self.assertAlmostEqual(csx_after.GetGrid().GetDeltaUnit(), 1e-3)
+
+        fn_out = os.path.join(tempfile.gettempdir(), 'test_getcsx_replaced.xml')
+        try:
+            fdtd.Write2XML(fn_out)
+            with open(fn_out) as f:
+                xml_str = f.read()
+            self.assertNotIn('pre_existing_metal', xml_str)
+            self.assertNotIn('pre_existing_dielectric', xml_str)
+        finally:
+            if os.path.exists(fn_out):
+                os.remove(fn_out)
+
 
 class Test_XML_RoundTrip(unittest.TestCase):
     """Write → Read → Write cycle: second file should be identical to first."""
