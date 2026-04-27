@@ -274,7 +274,7 @@ cdef class openEMS:
         :param f0: -- Base frequency.
         :param fmax: -- Maximum frequency.
         """
-        self.thisptr.SetCustomExcite(_str, f0, fmax)
+        self.thisptr.SetCustomExcite(_str.encode('UTF-8'), f0, fmax)
 
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)
