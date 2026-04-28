@@ -133,17 +133,6 @@ void openEMS::Reset()
 
 void openEMS::collectCommandLineArguments()
 {
-	// see commands in tools/global.h
-	g_settings.clearOptionDesc();
-
-	// register our supported options to g_settings
-	g_settings.appendOptionDesc(optionDesc());
-	g_settings.appendOptionDesc(g_settings.optionDesc());
-}
-
-po::options_description
-openEMS::optionDesc()
-{
 	po::options_description optdesc("Options");
 	optdesc.add_options()
 		(
@@ -316,7 +305,11 @@ openEMS::optionDesc()
 			"' and '" __OPENEMS_STAT_FILE__ "'"
 		);
 
-	return optdesc;
+	// register our supported options to g_settings
+	// see commands in tools/global.h
+	g_settings.clearOptionDesc();
+	g_settings.appendOptionDesc(optdesc);
+	g_settings.appendOptionDesc(g_settings.optionDesc());
 }
 
 void openEMS::showUsage()

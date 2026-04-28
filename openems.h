@@ -27,7 +27,6 @@
 #include <time.h>
 #include <vector>
 
-#include <boost/program_options.hpp>
 #include "openems_global.h"
 
 #define __OPENEMS_STAT_FILE__ "openEMS_stats.txt"
@@ -53,7 +52,6 @@ public:
 	openEMS();
 	virtual ~openEMS();
 
-	boost::program_options::options_description optionDesc();
 	virtual void showUsage();
 
 	bool ParseFDTDSetup(std::string file);
