@@ -19,6 +19,7 @@
 #define PROCESSMODEMATCH_H
 
 #include "processintegral.h"
+#include "CSModeFileParser.h"
 
 class CSFunctionParser;
 
@@ -45,6 +46,11 @@ public:
 	//! Set the mode function in the given direction ny. For example: SetModeFunction(0,"cos(pi/1000*x)*sin(pi/500*y)");
 	void SetModeFunction(int ny, std::string function);
 
+	void		SetModeFileName(std::string fileName);
+	std::string GetModeFileName() {return m_ModeFileName;};
+	bool		GetFieldSourceIsFile() {return m_FieldSourceIsFile;};
+	void		SetFieldSourceIsFile(bool isFile) {m_FieldSourceIsFile = isFile;};
+
 	virtual int GetNumberOfIntegrals() const {return 2;}
 	virtual double* CalcMultipleIntegrals();
 
@@ -60,6 +66,10 @@ protected:
 
 	std::string m_ModeFunction[3];
 	CSFunctionParser* m_ModeParser[2];
+
+
+	std::string m_ModeFileName;
+	bool		m_FieldSourceIsFile;
 
 	unsigned int m_numLines[2];
 	double** m_ModeDist[2];
