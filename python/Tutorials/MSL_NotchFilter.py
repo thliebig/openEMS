@@ -4,7 +4,7 @@
 
  Tested with
   - python 3.10
-  - openEMS v0.0.35+
+  - openEMS v0.37+
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
  15-Dec-2025: modified to use matplotlib.pyplot instead of pylab
@@ -61,8 +61,8 @@ mesh.AddLine('y',  MSL_width/2+third_mesh)
 mesh.AddLine('y', -MSL_width/2-third_mesh)
 mesh.SmoothMeshLines('y', resolution/4)
 
-mesh.AddLine('y', [-15*MSL_width, 15*MSL_width+stub_length])
 mesh.AddLine('y', (MSL_width/2+stub_length)+third_mesh)
+mesh.AddLine('y', [-15*MSL_width, 15*MSL_width+stub_length])
 mesh.SmoothMeshLines('y', resolution)
 
 mesh.AddLine('z', np.linspace(0,substrate_thickness,5))
@@ -71,9 +71,9 @@ mesh.SmoothMeshLines('z', resolution)
 
 ## Add the substrate
 substrate = CSX.AddMaterial( 'RO4350B', epsilon=substrate_epr)
-start = [-MSL_length, -15*MSL_width, 0]
-stop  = [+MSL_length, +15*MSL_width+stub_length, substrate_thickness]
-substrate.AddBox(start, stop )
+start = [mesh.GetLine('x', 0) , mesh.GetLine('y', 0) , 0]
+stop  = [mesh.GetLine('x', -1), mesh.GetLine('y', -1), substrate_thickness]
+substrate.AddBox(start, stop)
 
 ## MSL port setup
 port = [None, None]
