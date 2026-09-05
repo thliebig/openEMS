@@ -3,8 +3,8 @@
 Tutorials / 7T MRI Loop Coil
 
 Tested with
- - python 3.14
- - openEMS v0.37+
+  - python 3.14
+  - openEMS v0.37
 
 (c) 2013-2026 Thorsten Liebig <thorsten.liebig@gmx.de>
 

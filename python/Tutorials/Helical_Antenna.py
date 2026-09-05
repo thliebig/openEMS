@@ -3,8 +3,8 @@
  Helical Antenna Tutorial
 
  Tested with
-  - python 3.13
-  - openEMS v0.0.36+
+  - python 3.14
+  - openEMS v0.37
 
  (c) 2015-2025 Thorsten Liebig <thorsten.liebig@gmx.de>
       04-Jan-2026: modified to use matplotlib.pyplot instead of pylab

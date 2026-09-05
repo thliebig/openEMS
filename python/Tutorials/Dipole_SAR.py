@@ -4,7 +4,7 @@
 
  Tested with
   - python 3.14
-  - openEMS v0.0.36+
+  - openEMS v0.37
 
  (c) 2025 Thorsten Liebig <thorsten.liebig@gmx.de>
 

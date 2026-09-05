@@ -15,8 +15,8 @@
    * Pin is centred at x=0 where the TE10 E-field is maximum
 
  Tested with
-  - python 3.10
-  - openEMS v0.0.36+
+  - python 3.14
+  - openEMS v0.37
 
  (c) 2025 Thorsten Liebig <thorsten.liebig@gmx.de>
 

@@ -3,8 +3,8 @@
  Microstrip Notch Filter Tutorial
 
  Tested with
-  - python 3.10
-  - openEMS v0.37+
+  - python 3.14
+  - openEMS v0.37
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
  15-Dec-2025: modified to use matplotlib.pyplot instead of pylab

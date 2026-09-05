@@ -6,8 +6,8 @@
  line (port 2) connected by a conducting via through the shared substrate.
 
  Tested with
-  - python 3.10
-  - openEMS v0.0.35+
+  - python 3.14
+  - openEMS v0.37
 
  (c) 2017-2026 Thorsten Liebig <thorsten.liebig@gmx.de>
 

@@ -3,8 +3,8 @@
  Tutorials / radar cross section of a metal sphere
 
  Tested with
-  - python 3.10
-  - openEMS v0.0.35+
+  - python 3.14
+  - openEMS v0.37
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
 """

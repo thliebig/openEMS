@@ -3,8 +3,8 @@
  Tutorials / CRLH_Extraction
 
  Tested with
-  - python 3.10
-  - openEMS v0.0.35+
+  - python 3.14
+  - openEMS v0.37
 
  (c) 2016-2023 Thorsten Liebig <thorsten.liebig@gmx.de>
      04-Jan-2026: modified to use matplotlib.pyplot instead of pylab
