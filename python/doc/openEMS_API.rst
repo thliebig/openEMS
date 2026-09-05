@@ -8,4 +8,7 @@ openEMS Python Interface
     openEMS
     ports
     nf2ff
+    sar
+    automesh
+    utilities
 
