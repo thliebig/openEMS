@@ -59,7 +59,7 @@ class Test_readSAR_MissingFile(unittest.TestCase):
             readSAR('/nonexistent/path/sar_result.h5')
 
 
-class Test_readSAR_MissingVersionAttr(unittest.TestCase):
+class Test_readSAR_NotADump(unittest.TestCase):
     def setUp(self):
         fd, self.path = tempfile.mkstemp(suffix='.h5')
         os.close(fd)
@@ -69,11 +69,10 @@ class Test_readSAR_MissingVersionAttr(unittest.TestCase):
     def tearDown(self):
         os.unlink(self.path)
 
-    def test_returns_none_triple(self):
-        sar, mesh, data = readSAR(self.path)
-        self.assertIsNone(sar)
-        self.assertIsNone(mesh)
-        self.assertIsNone(data)
+    def test_raises(self):
+        """A file that is not an openEMS dump raises, rather than returning None."""
+        with self.assertRaises(KeyError):
+            readSAR(self.path)
 
 
 class Test_readSAR_ValidFile(unittest.TestCase):
@@ -146,7 +145,7 @@ class Test_readSAR_LegacyVersion(unittest.TestCase):
 
 
 class Test_readSAR_OutOfRangeFIdx(unittest.TestCase):
-    """Requesting an f_idx that does not exist in the file raises KeyError."""
+    """Requesting an f_idx that does not exist in the file raises IndexError."""
 
     def setUp(self):
         fd, self.path = tempfile.mkstemp(suffix='.h5')
@@ -156,13 +155,13 @@ class Test_readSAR_OutOfRangeFIdx(unittest.TestCase):
     def tearDown(self):
         os.unlink(self.path)
 
-    def test_f_idx_1_raises_key_error(self):
-        """f_idx=1 on a file that only has f0 raises KeyError (HDF5 group lookup)."""
-        with self.assertRaises(KeyError):
+    def test_f_idx_1_raises_index_error(self):
+        """f_idx=1 on a file that only has f0 is out of range."""
+        with self.assertRaises(IndexError):
             readSAR(self.path, f_idx=1)
 
-    def test_f_idx_999_raises_key_error(self):
-        with self.assertRaises(KeyError):
+    def test_f_idx_999_raises_index_error(self):
+        with self.assertRaises(IndexError):
             readSAR(self.path, f_idx=999)
 
 
