@@ -30,7 +30,7 @@ loop.strip_N_cells = 3; % number of cells over the strip length
 loop.air_gap = loop.strip_width/3;       % air gap width for lumped capacitors
 loop.pos_x = -130;       % position of loop
 loop.C_gap = 5.4e-12;   % lumped cap value
-loop.port_R = 10;       % feeding port resistance
+loop.port_R = 2.5;      % feeding port resistance
 
 %% Human Body Model Setup
 %% ----------------------
@@ -97,11 +97,13 @@ Air_Box = 150;      % size of the surrounding air box (150mm)
 %% A Gaussian pulse centred at 298 MHz with a 300 MHz corner frequency
 %% excites all resonances in a single time-domain run, from which
 %% frequency-domain results are extracted by DFT. ``CellConstantMaterial``
-%% improves accuracy for Yee cells that span material boundaries, which is
-%% important in the heterogeneous tissue region. MUR first-order absorbing
-%% boundaries terminate the domain on all six faces.
+%% disables the default sub-cell material averaging so that every Yee cell
+%% holds a single homogeneous material. That models the tissue boundaries
+%% more coarsely, but it is what the SAR calculation assumes and what
+%% IEC/IEEE 62704-1 requires. MUR first-order absorbing boundaries
+%% terminate the domain on all six faces.
 % init FDTD structure
-FDTD = InitFDTD( 'EndCriteria', 1e-4, 'CellConstantMaterial', 0);
+FDTD = InitFDTD( 'EndCriteria', 1e-4, 'CellConstantMaterial', 1); % constant material per voxel, required for SAR
 
 % define gaussian pulse excitation signal
 f0 = 298e6; % center frequency
@@ -232,7 +234,7 @@ mesh.x = [-Air_Box+mesh.x(1) mesh.x mesh.x(end)+Air_Box];
 mesh.y = [-Air_Box+mesh.y(1) mesh.y mesh.y(end)+Air_Box];
 mesh.z = [-Air_Box+mesh.z(1) mesh.z mesh.z(end)+Air_Box];
 
-mesh = SmoothMesh(mesh, c0 / (f0+fc) / unit / 10, 1.5, 'algorithm', 1);
+mesh = SmoothMesh(mesh, c0 / (f0+fc) / unit / 40, 1.5, 'algorithm', 1);
 
 %% Field and SAR Dump Boxes
 %% ------------------------
