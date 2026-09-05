@@ -62,7 +62,7 @@ cdef class openEMS:
     :param TimeStep:       force to use a given timestep (dangerous!)
     :param TimeStepFactor: reduce the timestep by a given factor (>0 to <=1)
     :param TimeStepMethod: 1 or 3 chose timestep method (1=CFL, 3=Rennigs (default))
-    :param CellConstantMaterial: set to 1 to assume a material is constant inside a cell (material probing in cell center)
+    :param CellConstantMaterial: set to 1 to assume a material is constant inside a cell (material probing in cell center). Required for SAR, see :meth:`SetCellConstantMaterial`.
     """
     @staticmethod
     def WelcomeScreen():
@@ -144,6 +144,18 @@ cdef class openEMS:
         """ SetCellConstantMaterial(val)
 
         Set cell material averaging to assume constant material inside each primary cell. (Advanced option)
+
+        By default the material of a Yee cell is probed at four quarter-cell
+        positions per field component, so a cell crossing a material boundary
+        gets a blended effective permittivity and conductivity. Enabling this
+        option probes at the cell center instead, making every cell materially
+        homogeneous.
+
+        This must be enabled for SAR simulations. The SAR calculation uses a
+        single cell-center conductivity and density per cell, which only
+        matches what the FDTD run actually stepped with when the cells are
+        homogeneous. IEC/IEEE 62704-1 additionally requires a voxel model with
+        one material per voxel.
 
         :param val: bool -- Enable or Disable (default disabled)
         """

@@ -15,7 +15,12 @@ function FDTD = InitFDTD(varargin)
 % - TimeStepFactor: reduce the timestep by a given factor (>0 to <=1)
 % - TimeStepMethod: 1 or 3 chose timestep method (1=CFL, 3=Rennigs (default))
 % - CellConstantMaterial: set to 1 to assume a material is constant inside
-%                         a cell (material probing in cell center)
+%                         a cell (material probing in cell center).
+%                         Must be set for SAR: the SAR calculation uses one
+%                         cell-center conductivity and density per cell, which
+%                         only matches the material the FDTD run stepped with
+%                         if the cells are homogeneous. IEC/IEEE 62704-1 also
+%                         requires one material per voxel.
 %
 % examples:
 %
