@@ -20,9 +20,10 @@ function CalcSAR(sar_fn, sar_out, varargin)
 %                 those cells in from a neighbour. Has no effect if 'mass'
 %                 is 0, i.e. local SAR without any averaging.
 % - 'autoRange':  limit the calculation to the cells within N dB of the peak
-%                 local SAR. The result is returned on this reduced mesh.
-%                 This is a speedup and not a guarantee to find the global
-%                 peak, do not use it for standard compliance work.
+%                 local SAR, plus a padding of about one averaging cube. The
+%                 result is returned on this reduced mesh. This is a speedup
+%                 and not a guarantee to find the global peak, do not use it
+%                 for standard compliance work.
 % - 'numThreads': number of worker threads (default: all available)
 % - 'progress':   show progress output
 % - 'verbose':    verbose output

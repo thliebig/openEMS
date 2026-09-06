@@ -144,11 +144,12 @@ cdef class SAR_Calculation:
         The averaged SAR of a cube is the mass weighted mean of the local SAR
         of its cells and can never exceed the largest local SAR inside that
         cube. Everything that is dropped here is therefore below the threshold
-        after averaging as well. A cube centred just outside the retained
-        region can still reach into it though, so this remains a speedup and
-        not a guarantee to find the global peak. A warning is printed if the
-        peak that was found is itself below the threshold. Do not use the auto
-        range for standard compliance work.
+        after averaging as well, and the region is padded by roughly one
+        averaging cube so that cubes centred just outside it are covered too.
+        That padding is an estimate, so this remains a speedup and not a
+        guarantee to find the global peak. A warning is printed if the peak
+        that was found is itself below the threshold. Do not use the auto range
+        for standard compliance work.
 
         Parameters
         ----------

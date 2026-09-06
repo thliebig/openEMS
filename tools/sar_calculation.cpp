@@ -79,6 +79,7 @@ void SAR_Calculation::Reset()
 	m_power.clear();
 
 	m_autoRange_lim_SAR.clear();
+	m_autoRange_pad = 0;
 
 	m_maxSAR.clear();
 	m_maxSAR_Idx.clear();
@@ -528,6 +529,7 @@ bool SAR_Calculation::WriteToHDF5(HDF5_File_Writer &out_file, bool legacyHDF5)
 		// the applied auto range, so that a result can be checked afterwards
 		// (the retained region itself is already given by the output mesh)
 		out_file.WriteAttribute("/FieldData/FD","autorange",m_autoRange);
+		out_file.WriteAttribute("/FieldData/FD","autorange_padding",m_autoRange_pad);
 	}
 
 	out_file.WriteAttribute("/","proc_time", m_duration);
@@ -600,6 +602,7 @@ void SAR_Calculation::InitSAR()
 void SAR_Calculation::DoAutoRange()
 {
 	m_autoRange_lim_SAR.clear();
+	m_autoRange_pad = 0;
 	if (m_autoRange<=0)
 		return;
 	if (m_DebugLevel>0)
@@ -646,6 +649,32 @@ void SAR_Calculation::DoAutoRange()
 			m_autoRange_lim_SAR.clear();
 			return;
 		}
+
+	// An averaging cube centered outside of the range found above may still reach
+	// into it and thus average a local SAR above the threshold. Pad the range by the
+	// half width of an air free averaging cube built from the lightest tissue that is
+	// present. Cubes containing air grow larger than that, so this is an estimate and
+	// not a hard bound.
+	if (m_avg_mass>0)
+	{
+		double dens_min = 0;
+		for (unsigned int n=0;n<m_cell_density->size();++n)
+			if ((cell_dens[n]>0) && ((dens_min==0) || (cell_dens[n]<dens_min)))
+				dens_min = cell_dens[n];
+		if (dens_min>0)
+			m_autoRange_pad = 0.5*pow(m_avg_mass/dens_min, 1.0/3.0);
+		for (int n=0;n<3;++n)
+		{
+			double dist=0;
+			while ((min_idx[n]>0) && (dist<m_autoRange_pad))
+				dist += m_cellWidth[n][--min_idx[n]];
+			dist=0;
+			while ((max_idx[n]<m_numLines[n]) && (dist<m_autoRange_pad))
+				dist += m_cellWidth[n][max_idx[n]++];
+		}
+		if (m_DebugLevel>0)
+			cout << "Auto range: padded by " << m_autoRange_pad << "m (min. density: " << dens_min << "kg/m^3)" << endl;
+	}
 
 	for (int n=0;n<3;++n)
 		SetSubRange(n, min_idx[n], max_idx[n]);

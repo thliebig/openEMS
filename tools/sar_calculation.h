@@ -88,6 +88,7 @@ public:
 	void EnableCubeStats() {m_record_cube_stats=true;}
 
 	/*! Limit the SAR calculation to cells within dBmax dB of the peak local SAR.
+	  The resulting bounding box is padded by an estimate of the averaging cube size.
 	  This is not a hard guarantee to find the global peak, see CheckAutoRange().
 	  */
 	void EnableAutoRange(double dBmax) {m_autoRange=dBmax;}
@@ -152,6 +153,7 @@ protected:
 	double m_duration;
 	double m_autoRange = 0;
 	std::vector<float> m_autoRange_lim_SAR; // local SAR threshold used by the auto range (one per frequency)
+	double m_autoRange_pad = 0;             // padding applied to the auto range bounding box in m
 	bool m_record_cube_stats = false;
 	bool m_progress = false;
 
