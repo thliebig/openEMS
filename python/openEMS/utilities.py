@@ -275,7 +275,9 @@ class HDF5Dump:
         else:
             legacy = bool(self._root_attrs.get('legacy_fmt', False))
 
-        is_vector = ds.ndim == 4
+        # len(shape) instead of Dataset.ndim: the latter is missing in the
+        # ancient h5py of the oldest supported distributions
+        is_vector = len(ds.shape) == 4
         shape = tuple(ds.shape[1:] if is_vector else ds.shape)
         if legacy:                    # stored (Nz,Ny,Nx) --> logical (Nx,Ny,Nz)
             shape = shape[::-1]
