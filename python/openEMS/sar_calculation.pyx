@@ -33,8 +33,8 @@ cdef class SAR_Calculation:
     verbose : int
         Debug verbosity level.
     autoRange : float
-        Restrict calculation to cells within this many dB of the peak
-        local power density.
+        Restrict the calculation to the cells within this many dB of the
+        peak local SAR.
     EnableCubeStats : bool
         Record per-cube averaging statistics in the output file.
     """
@@ -136,16 +136,25 @@ cdef class SAR_Calculation:
     def EnableAutoRange(self, dBmax):
         """Restrict the calculation to the region around the peak.
 
-        Only cells whose local power density is within `dBmax` dB of the peak
-        are averaged, which speeds up large meshes with a localised hot spot.
-        The result is written on the reduced mesh, so the output covers a
+        Only the cells whose local SAR is within `dBmax` dB of the peak local
+        SAR are averaged, which speeds up large meshes with a localised hot
+        spot. The result is written on the reduced mesh, so the output covers a
         smaller region than the input.
+
+        The averaged SAR of a cube is the mass weighted mean of the local SAR
+        of its cells and can never exceed the largest local SAR inside that
+        cube. Everything that is dropped here is therefore below the threshold
+        after averaging as well. A cube centred just outside the retained
+        region can still reach into it though, so this remains a speedup and
+        not a guarantee to find the global peak. A warning is printed if the
+        peak that was found is itself below the threshold. Do not use the auto
+        range for standard compliance work.
 
         Parameters
         ----------
         dBmax : float
-            Range below the peak local power density, in dB.  Values <= 0
-            disable the auto range.
+            Range below the peak local SAR, in dB. Values <= 0 disable the
+            auto range.
         """
         self.thisptr.EnableAutoRange(float(dBmax))
 

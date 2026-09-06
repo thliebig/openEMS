@@ -87,7 +87,9 @@ public:
 	//! Enable the recording of special averaging cube stats
 	void EnableCubeStats() {m_record_cube_stats=true;}
 
-	//! Limit the SAR calculation to cells within dBmax dB of the peak local power density
+	/*! Limit the SAR calculation to cells within dBmax dB of the peak local SAR.
+	  This is not a hard guarantee to find the global peak, see CheckAutoRange().
+	  */
 	void EnableAutoRange(double dBmax) {m_autoRange=dBmax;}
 
 	//! Run the SAR calculation. Retrieve results with GetSAR() and GetSARPower().
@@ -126,7 +128,7 @@ protected:
 
 	std::vector<float> m_freq;
 	std::vector<ArrayLib::ArrayIJK<float>*> m_local_cell_power_density; // precalculated local cell power density
-	std::vector<float> m_local_cell_max_power_density; // precalculated max local cell power density (e.g. needed for auto range)
+	std::vector<float> m_local_cell_max_SAR; // precalculated max local SAR (needed for the auto range)
 
 	// save some statistical data
 	size_t m_Valid;
@@ -149,6 +151,7 @@ protected:
 	int m_DebugLevel;
 	double m_duration;
 	double m_autoRange = 0;
+	std::vector<float> m_autoRange_lim_SAR; // local SAR threshold used by the auto range (one per frequency)
 	bool m_record_cube_stats = false;
 	bool m_progress = false;
 
@@ -163,6 +166,10 @@ protected:
 
 	/*********** SAR calculations methods ********/
 	void DoAutoRange();
+
+	//! Warn if the auto range result cannot be trusted to hold the global peak
+	void CheckAutoRange();
+
 	void InitSAR();
 
 	//! Calculate the local SAR
