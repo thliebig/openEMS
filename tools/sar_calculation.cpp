@@ -68,11 +68,25 @@ void SAR_Calculation::Reset()
 		delete m_cell_volume;
 		delete m_cell_density;
 	}
+	m_cleanup_cell_data = false;
 	m_cell_volume = NULL;
 	m_cell_density = NULL;
 	for (size_t i=0;i<m_local_cell_power_density.size();++i)
 		delete m_local_cell_power_density.at(i);
 	m_local_cell_power_density.clear();
+	m_freq.clear();
+	m_power.clear();
+
+	m_maxSAR.clear();
+	m_maxSAR_Idx.clear();
+	m_cube_type.Reset();
+	m_cube_mass.Reset();
+	m_cube_volume.Reset();
+
+	m_Valid = 0;
+	m_Used = 0;
+	m_Unused = 0;
+	m_AirVoxel = 0;
 
 	for (size_t i=0;i<m_SAR.size();++i)
 		delete m_SAR.at(i);
@@ -542,6 +556,10 @@ void SAR_Calculation::InitSAR()
 	}
 
 	unsigned int out_num_lines[3] = {(unsigned int)m_cellIndices[0].size(),(unsigned int)m_cellIndices[1].size(),(unsigned int)m_cellIndices[2].size()};
+	// drop any cube stats of a previous calculation, they do not match this mesh
+	m_cube_type.Reset();
+	m_cube_mass.Reset();
+	m_cube_volume.Reset();
 	if ((m_record_cube_stats) && (m_freq.size()==1))
 	{
 		cout << "Enable Cube Statistics" << endl;
@@ -557,8 +575,8 @@ void SAR_Calculation::InitSAR()
 		ArrayLib::ArrayIJK<float>* sar = new ArrayLib::ArrayIJK<float>("sar", out_num_lines);
 		m_SAR.push_back(sar);
 	}
-	m_maxSAR.resize(m_freq.size(), 0);
-	m_maxSAR_Idx.resize(m_freq.size());
+	m_maxSAR.assign(m_freq.size(), 0);
+	m_maxSAR_Idx.assign(m_freq.size(), {0u,0u,0u});
 }
 
 void SAR_Calculation::DoAutoRange()
