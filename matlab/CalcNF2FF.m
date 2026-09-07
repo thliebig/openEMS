@@ -47,6 +47,10 @@ nf2ff_xml.Planes = {};
 
 nf2ff_xml.ATTRIBUTE.Outfile = [filename '.h5'];
 
+% request the legacy hdf5 format, the only one Octave is able to read,
+% see ReadNF2FF
+nf2ff_xml.ATTRIBUTE.LegacyHDF5 = 1;
+
 if (isfield(nf2ff,'Eps_r'))
     nf2ff_xml.ATTRIBUTE.Eps_r = nf2ff.Eps_r;
 end

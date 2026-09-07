@@ -60,6 +60,7 @@ nf2ff::nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, vector<
 	}
 	m_radius = 1;
 	m_Verbose = 0;
+	m_legacy_fmt = false;
 }
 
 nf2ff::~nf2ff()
@@ -244,6 +245,10 @@ bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 	float radius = 1;
 	if (ti_nf2ff->QueryFloatAttribute("Radius",&radius) ==  TIXML_SUCCESS)
 		l_nf2ff->SetRadius(radius);
+
+	int legacy_fmt = 0;
+	if (ti_nf2ff->QueryIntAttribute("LegacyHDF5",&legacy_fmt) == TIXML_SUCCESS)
+		l_nf2ff->SetLegacyFormat(legacy_fmt!=0);
 
 	// read mirrors
 	TiXmlElement* ti_Mirror = ti_nf2ff->FirstChildElement("Mirror");
@@ -569,12 +574,20 @@ bool nf2ff::Write2HDF5(string filename)
 	float attr_value = 2;
 	hdf_file.WriteAttribute("/Mesh", "MeshType", &attr_value, 1);
 
-	//write field data
+	hdf_file.WriteAttribute("/", "openEMS_HDF5_version", OPENEMS_HDF5_VERSION);
+	if (m_legacy_fmt)
+		hdf_file.WriteAttribute("/", "legacy_fmt", true);
+
+	//write field data, as one complex dataset per frequency, stored (theta,phi).
+	//the legacy format splits the complex data into a real and an imaginary
+	//dataset and stores them (phi,theta), the only layout Octave can read.
 	size_t dim = 2;
-	size_t pos = 0;
-	size_t datasize[2]={m_numPhi,m_numTheta};
-	size_t size = datasize[0]*datasize[1];
-	double* buffer = new double[size];
+	size_t datasize[2]={m_numTheta,m_numPhi};
+	size_t legacy_datasize[2]={m_numPhi,m_numTheta};
+	//buffer to transpose into, needed for the legacy format only
+	double* buffer = NULL;
+	if (m_legacy_fmt)
+		buffer = new double[m_numTheta*m_numPhi];
 	ArrayLib::ArrayIJ<std::complex<double> >* field_data;
 	string field_names[2]={"E_theta", "E_phi"};
 	for (int n=0;n<2;++n)
@@ -584,30 +597,34 @@ bool nf2ff::Write2HDF5(string filename)
 		{
 			stringstream ss;
 			ss << "f" << fn;
-			pos = 0;
 			if (n==0)
 				field_data = m_nf2ff.at(fn)->GetETheta();
 			else
 				field_data = m_nf2ff.at(fn)->GetEPhi();
-			for (size_t j=0;j<m_numPhi;++j)
-				for (size_t i=0;i<m_numTheta;++i)
-				{
-					buffer[pos++]=real((*field_data)(i, j));
-				}
-			if (hdf_file.WriteData(ss.str() + "_real",buffer,dim,datasize)==false)
-			{
-				delete[] buffer;
-				cerr << "nf2ff::Write2HDF5: Error writing field data" << endl;
-				return false;
-			}
 
-			pos = 0;
-			for (size_t j=0;j<m_numPhi;++j)
-				for (size_t i=0;i<m_numTheta;++i)
-				{
-					buffer[pos++]=imag((*field_data)(i, j));
-				}
-			if (hdf_file.WriteData(ss.str() + "_imag",buffer,dim,datasize)==false)
+			bool success = true;
+			if (m_legacy_fmt)
+			{
+				size_t pos = 0;
+				for (size_t j=0;j<m_numPhi;++j)
+					for (size_t i=0;i<m_numTheta;++i)
+					{
+						buffer[pos++]=real((*field_data)(i, j));
+					}
+				success = hdf_file.WriteData(ss.str() + "_real",buffer,dim,legacy_datasize);
+
+				pos = 0;
+				for (size_t j=0;j<m_numPhi;++j)
+					for (size_t i=0;i<m_numTheta;++i)
+					{
+						buffer[pos++]=imag((*field_data)(i, j));
+					}
+				success &= hdf_file.WriteData(ss.str() + "_imag",buffer,dim,legacy_datasize);
+			}
+			else
+				success = hdf_file.WriteData(ss.str(),field_data->data(),dim,datasize);
+
+			if (success==false)
 			{
 				delete[] buffer;
 				cerr << "nf2ff::Write2HDF5: Error writing field data" << endl;
@@ -622,14 +639,23 @@ bool nf2ff::Write2HDF5(string filename)
 	{
 		stringstream ss;
 		ss << "f" << fn;
-		pos = 0;
-		ArrayLib::ArrayIJ<double>* field_data = m_nf2ff.at(fn)->GetRadPower();
-		for (size_t j=0;j<m_numPhi;++j)
-			for (size_t i=0;i<m_numTheta;++i)
-			{
-				buffer[pos++]=(*field_data)(i, j);
-			}
-		if (hdf_file.WriteData(ss.str(),buffer,dim,datasize)==false)
+		ArrayLib::ArrayIJ<double>* rad_power = m_nf2ff.at(fn)->GetRadPower();
+
+		bool success = true;
+		if (m_legacy_fmt)
+		{
+			size_t pos = 0;
+			for (size_t j=0;j<m_numPhi;++j)
+				for (size_t i=0;i<m_numTheta;++i)
+				{
+					buffer[pos++]=(*rad_power)(i, j);
+				}
+			success = hdf_file.WriteData(ss.str(),buffer,dim,legacy_datasize);
+		}
+		else
+			success = hdf_file.WriteData(ss.str(),rad_power->data(),dim,datasize);
+
+		if (success==false)
 		{
 			delete[] buffer;
 			cerr << "nf2ff::Write2HDF5: Error writing field data" << endl;

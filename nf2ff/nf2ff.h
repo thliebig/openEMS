@@ -57,6 +57,9 @@ public:
 	//! Write results to a hdf5 file
 	bool Write2HDF5(std::string filename);
 
+	//! Write the far-field in the legacy format, needed by the Octave/Matlab interface
+	void SetLegacyFormat(bool val) {m_legacy_fmt=val;}
+
 	void SetVerboseLevel(int level) {m_Verbose=level;}
 
 	static bool AnalyseXMLNode(TiXmlElement* ti_nf2ff);
@@ -72,6 +75,7 @@ protected:
 	float* m_phi;
 	float m_radius;
 	int m_Verbose;
+	bool m_legacy_fmt;
 	std::vector<nf2ff_calc*> m_nf2ff;
 };
 

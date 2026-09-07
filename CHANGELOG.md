@@ -70,6 +70,15 @@ number moved up and patch releases now have somewhere to go.
 
 ### Changed
 
+- **nf2ff result format.** The far field is written as one compound complex
+  dataset per frequency, `/nf2ff/E_theta/FD/f{n}`, stored in (theta, phi)
+  order — the format every other frequency-domain dump has used since HDF5
+  version 0.3 — instead of a split `f{n}_real`/`f{n}_imag` pair in
+  (phi, theta) order. `h5py` reads it as a native complex array, so no axis
+  has to be swapped after reading. The Octave/Matlab interface keeps the old
+  layout, which `CalcNF2FF` requests through the new `LegacyHDF5` attribute of
+  the nf2ff XML file: Octave reads a compound complex dataset as zeros without
+  any error. See *Upgrade notes*.
 - **Simulation directory cleanup no longer deletes the directory.**
   `CleanupSimPath()` (Octave/Matlab) and `cleanup=True` in Python's `FDTD.Run()`
   now remove only known openEMS output files. Pointing `Sim_Path` at `$HOME`, or
@@ -142,6 +151,10 @@ number moved up and patch releases now have somewhere to go.
   keep any file that is not recognised openEMS output. This is deliberate.
 - The bundled phantoms moved from `matlab/Tutorials/phantoms/` to
   `resources/phantoms/`, installed under `share/openEMS/`.
+- A tool that reads nf2ff result files directly has to handle the compound
+  complex datasets described above; `nf2ff_results` (Python) and `ReadNF2FF`
+  (Matlab) read both formats, `ReadNF2FF` under Octave only the legacy one.
+  Files written by the Octave/Matlab interface are unchanged.
 
 ## Older releases
 
