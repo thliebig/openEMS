@@ -21,11 +21,14 @@ number moved up and patch releases now have somewhere to go.
 
 - **SAR calculation reworked.** Averaging is done once for all frequencies
   instead of per frequency, and the calculation is multi-threaded, together
-  giving a large speedup. Averaging follows IEEE/IEC 62704-1. A range limit with
-  an `--autorange` option restricts the calculation to the region around the
-  peak, and there is simple progress feedback. Available from Python
-  (`sar_calculation`) and from Octave, where `CalcSAR.m` exposes `autoRange`,
-  `numThreads` and `progress`. A tutorial demonstrating SAR averaging was added.
+  giving a large speedup. Averaging follows IEEE/IEC 62704-1. The `--autorange`
+  option restricts the calculation to the cells whose local SAR is within a
+  given range of the peak, plus a padding of about one averaging cube; it is a
+  speedup and not a guarantee to find the global peak, and a warning is printed
+  when the averaged peak falls below the threshold. There is simple progress
+  feedback. Available from Python (`sar_calculation`) and from Octave, where
+  `CalcSAR.m` exposes `autoRange`, `numThreads` and `progress`. A tutorial
+  demonstrating SAR averaging was added.
 - **Waveguide mode excitation and probe from an HDF5 mode file**, complementing
   the analytic mode functions. `WaveguidePort`/`RectWGPort` accept a
   `mode_file` argument, the `Add*WaveGuidePort` methods accept a `local_origin`,
