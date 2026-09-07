@@ -180,44 +180,44 @@ class nf2ff_results:
     """
     def __init__(self, fn):
         self.fn  = fn
-        h5_file  = h5py.File(fn, 'r')
-        mesh_grp = h5_file['Mesh']
-        self.phi   = np.array(mesh_grp['phi'])
-        self.theta = np.array(mesh_grp['theta'])
-        self.r     = np.array(mesh_grp['r'])
+        with h5py.File(fn, 'r') as h5_file:
+            mesh_grp = h5_file['Mesh']
+            self.phi   = np.array(mesh_grp['phi'])
+            self.theta = np.array(mesh_grp['theta'])
+            self.r     = np.array(mesh_grp['r'])
 
-        data  = h5_file['nf2ff']
-        self.freq = np.array(data.attrs['Frequency'])
+            data  = h5_file['nf2ff']
+            self.freq = np.array(data.attrs['Frequency'])
 
-        self.Dmax = np.array(data.attrs['Dmax'])
-        self.Prad = np.array(data.attrs['Prad'])
+            self.Dmax = np.array(data.attrs['Dmax'])
+            self.Prad = np.array(data.attrs['Prad'])
 
-        THETA, PHI = np.meshgrid(self.theta, self.phi, indexing='ij')
-        cos_phi = np.cos(PHI)
-        sin_phi = np.sin(PHI)
+            THETA, PHI = np.meshgrid(self.theta, self.phi, indexing='ij')
+            cos_phi = np.cos(PHI)
+            sin_phi = np.sin(PHI)
 
-        # the current format holds one compound complex dataset per frequency,
-        # stored (theta, phi). The legacy format, requested by the Octave and
-        # Matlab interface, splits the complex data into a real and an
-        # imaginary dataset and stores them (phi, theta).
-        self._legacy = 'f0_real' in h5_file['/nf2ff/E_theta/FD']
+            # the current format holds one compound complex dataset per frequency,
+            # stored (theta, phi). The legacy format, requested by the Octave and
+            # Matlab interface, splits the complex data into a real and an
+            # imaginary dataset and stores them (phi, theta).
+            self._legacy = 'f0_real' in h5_file['/nf2ff/E_theta/FD']
 
-        self.E_theta = []
-        self.E_phi   = []
-        self.P_rad   = []
-        self.E_norm  = []
-        self.E_cprh  = []
-        self.E_cplh  = []
-        for n in range(len(self.freq)):
-            E_theta = self._ReadFD(h5_file, 'E_theta', n)
-            E_phi   = self._ReadFD(h5_file, 'E_phi'  , n)
-            self.P_rad  .append(self._ReadFD(h5_file, 'P_rad', n))
+            self.E_theta = []
+            self.E_phi   = []
+            self.P_rad   = []
+            self.E_norm  = []
+            self.E_cprh  = []
+            self.E_cplh  = []
+            for n in range(len(self.freq)):
+                E_theta = self._ReadFD(h5_file, 'E_theta', n)
+                E_phi   = self._ReadFD(h5_file, 'E_phi'  , n)
+                self.P_rad  .append(self._ReadFD(h5_file, 'P_rad', n))
 
-            self.E_theta.append(E_theta)
-            self.E_phi  .append(E_phi)
-            self.E_norm .append(np.sqrt(np.abs(E_theta)**2 + np.abs(E_phi)**2))
-            self.E_cprh .append((cos_phi+1j*sin_phi) * (E_theta+1j*E_phi)/np.sqrt(2.0))
-            self.E_cplh .append((cos_phi-1j*sin_phi) * (E_theta-1j*E_phi)/np.sqrt(2.0))
+                self.E_theta.append(E_theta)
+                self.E_phi  .append(E_phi)
+                self.E_norm .append(np.sqrt(np.abs(E_theta)**2 + np.abs(E_phi)**2))
+                self.E_cprh .append((cos_phi+1j*sin_phi) * (E_theta+1j*E_phi)/np.sqrt(2.0))
+                self.E_cplh .append((cos_phi-1j*sin_phi) * (E_theta-1j*E_phi)/np.sqrt(2.0))
 
     def _ReadFD(self, h5_file, name, n):
         """Read frequency index *n* of ``/nf2ff/<name>/FD`` as a (theta, phi) array."""

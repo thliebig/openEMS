@@ -85,8 +85,8 @@ class TestNF2FFResults(unittest.TestCase):
         self.path = os.path.join(self.tmp, 'nf2ff.h5')
 
     def tearDown(self):
-        if os.path.exists(self.path):
-            os.remove(self.path)
+        for fn in os.listdir(self.tmp):
+            os.remove(os.path.join(self.tmp, fn))
         os.rmdir(self.tmp)
 
     def test_mesh_and_attributes(self):
@@ -99,8 +99,11 @@ class TestNF2FFResults(unittest.TestCase):
     def test_both_formats_read_identically(self):
         """The legacy and the current format must decode to the same arrays."""
         for legacy in (False, True):
-            _write_result(self.path, legacy=legacy)
-            res = nf2ff_results(self.path)
+            # a file of its own per format, so that neither run depends on
+            # the other one being closed again
+            path = os.path.join(self.tmp, 'nf2ff_legacy_{}.h5'.format(legacy))
+            _write_result(path, legacy=legacy)
+            res = nf2ff_results(path)
             for n in range(N_FREQ):
                 msg = 'legacy={}, f{}'.format(legacy, n)
                 self.assertEqual(res.E_theta[n].shape, (N_THETA, N_PHI), msg)
@@ -110,6 +113,17 @@ class TestNF2FFResults(unittest.TestCase):
                                            err_msg=msg)
                 np.testing.assert_allclose(res.P_rad[n], _ref_p_rad(n),
                                            err_msg=msg)
+
+    def test_reading_does_not_keep_the_file_open(self):
+        """A result file must be writable again right after it was read.
+
+        Older HDF5 refuses to create a file that the same process still holds
+        open, which is what a leaked reader handle would cause.
+        """
+        _write_result(self.path)
+        res = nf2ff_results(self.path)
+        _write_result(self.path, legacy=True)
+        self.assertEqual(res.E_theta[0].shape, (N_THETA, N_PHI))
 
     def test_derived_quantities(self):
         _write_result(self.path)
