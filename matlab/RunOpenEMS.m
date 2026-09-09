@@ -23,6 +23,7 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 %          --engine=basic           basic FDTD engine
 %          --engine=sse             engine using sse vector extensions
 %          --engine=sse-compressed  engine using compressed operator + sse vector extensions
+%          --engine=metal           experimental Metal FDTD field updates (macOS)
 %          --engine=multithreaded   engine using compressed operator + sse vector extensions + multithreading
 %      --numThreads=<n>     Force use n threads for multithreaded engine
 %      --no-simulation      only run preprocessing; do not simulate

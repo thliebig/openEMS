@@ -104,6 +104,8 @@ number moved up and patch releases now have somewhere to go.
   code verification. The steady-state detection extension is unaffected: its
   diff estimate is cheap and is now always kept current every timestep
   rather than only at the wall-clock report interval.
+- **Apple Metal GPU engine** (experimental, macOS): `--engine=metal` runs the
+  FDTD field updates on the GPU. Build with `-DWITH_METAL=ON`.
 
 ### Changed
 

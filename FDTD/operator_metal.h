@@ -1,0 +1,25 @@
+/*
+* Copyright (C) 2026 openEMS contributors
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*/
+
+#ifndef OPERATOR_METAL_H
+#define OPERATOR_METAL_H
+
+#include "operator_sse.h"
+
+class Operator_Metal : public Operator_sse
+{
+public:
+	static Operator_Metal* New();
+	virtual Engine* CreateEngine();
+
+protected:
+	Operator_Metal();
+};
+
+#endif // OPERATOR_METAL_H

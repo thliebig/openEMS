@@ -25,6 +25,9 @@
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
+#ifdef OPENEMS_WITH_METAL
+#include "FDTD/operator_metal.h"
+#endif
 #include "FDTD/extensions/operator_ext_excitation.h"
 #include "FDTD/extensions/operator_ext_tfsf.h"
 #include "FDTD/extensions/operator_ext_mur_abc.h"
@@ -248,6 +251,13 @@ void openEMS::collectCommandLineArguments()
 						cout << "openEMS - enabled multithreading" << endl;
 						m_engine = EngineType_Multithreaded;
 					}
+#ifdef OPENEMS_WITH_METAL
+					else if (val == "metal")
+					{
+						cout << "openEMS - enabled Metal field updates" << endl;
+						m_engine = EngineType_Metal;
+					}
+#endif
 				}
 			),
 		    "Choose engine type \n\n"
@@ -256,6 +266,9 @@ void openEMS::collectCommandLineArguments()
 			"  sse: \tengine using SSE vector extensions\n"
 			"  sse-compressed: \tengine using compressed "
 			"operator + sse vector extensions\n"
+#ifdef OPENEMS_WITH_METAL
+			"  metal: \texperimental Metal FDTD field updates\n"
+#endif
 			"  multithreaded: \tengine using compressed "
 			"operator + sse vector extensions + multithreading\n"
 		)
@@ -799,6 +812,12 @@ bool openEMS::SetupOperator()
 	{
 		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
 	}
+#ifdef OPENEMS_WITH_METAL
+	else if (m_engine == EngineType_Metal)
+	{
+		FDTD_Op = Operator_Metal::New();
+	}
+#endif
 	else
 	{
 		FDTD_Op = Operator::New();

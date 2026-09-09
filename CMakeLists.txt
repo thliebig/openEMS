@@ -29,6 +29,21 @@ IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|IntelLLVM")
   SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ffp-contract=off")
 ENDIF()
 
+option(WITH_METAL "Use Metal for FDTD field updates on macOS" OFF)
+option(METAL_FAST_MATH "Enable fast math in Metal FDTD kernels" OFF)
+if(WITH_METAL AND NOT APPLE)
+  message(FATAL_ERROR "WITH_METAL is only supported on Apple platforms")
+endif()
+if(WITH_METAL)
+  enable_language(OBJCXX)
+  add_definitions(-DOPENEMS_WITH_METAL)
+  if(METAL_FAST_MATH)
+    add_definitions(-DOPENEMS_METAL_FAST_MATH)
+  endif()
+  find_library(METAL_FRAMEWORK Metal REQUIRED)
+  find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
+endif()
+
 # default
 set(LIB_VERSION_MAJOR 0)
 set(LIB_VERSION_MINOR 37)
@@ -196,6 +211,8 @@ TARGET_LINK_LIBRARIES( openEMS
   ${HDF5_HL_LIBRARIES}
   ${Boost_LIBRARIES}
   ${vtk_LIBS}
+  ${METAL_FRAMEWORK}
+  ${FOUNDATION_FRAMEWORK}
 )
 
 if (WIN32)
