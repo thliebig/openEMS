@@ -13,6 +13,9 @@
 #import <Metal/Metal.h>
 
 #include <algorithm>
+#include <array>
+#include <cstring>
+#include <unordered_map>
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
@@ -28,6 +31,7 @@ namespace
 const char* voltageKernelSource = R"METAL(
 #include <metal_stdlib>
 using namespace metal;
+constant bool compressedCoefficients [[function_constant(0)]];
 
 struct GridParams
 {
@@ -44,6 +48,7 @@ kernel void update_voltages(
 	const device float4* vv [[buffer(2)]],
 	const device float4* vi [[buffer(3)]],
 	constant GridParams& p [[buffer(4)]],
+	const device uint* coeffIndex [[buffer(5), function_constant(compressedCoefficients)]],
 	uint3 gid [[thread_position_in_grid]])
 {
 	// Packed Z is the contiguous dimension and maps to adjacent GPU lanes.
@@ -86,9 +91,10 @@ kernel void update_voltages(
 	const float4 ex = volt[base];
 	const float4 ey = volt[base + 1];
 	const float4 ez = volt[base + 2];
-	volt[base] = ex * vv[base] + vi[base] * (cz - hz_y - cy + hy_z);
-	volt[base + 1] = ey * vv[base + 1] + vi[base + 1] * (cx - hx_z - cz + hz_x);
-	volt[base + 2] = ez * vv[base + 2] + vi[base + 2] * (cy - hy_x - cx + hx_y);
+	const uint c = compressedCoefficients ? coeffIndex[base / 3] * 3 : base;
+	volt[base] = ex * vv[c] + vi[c] * (cz - hz_y - cy + hy_z);
+	volt[base + 1] = ey * vv[c + 1] + vi[c + 1] * (cx - hx_z - cz + hz_x);
+	volt[base + 2] = ez * vv[c + 2] + vi[c + 2] * (cy - hy_x - cx + hx_y);
 }
 
 kernel void update_currents(
@@ -97,6 +103,7 @@ kernel void update_currents(
 	const device float4* ii [[buffer(2)]],
 	const device float4* iv [[buffer(3)]],
 	constant GridParams& p [[buffer(4)]],
+	const device uint* coeffIndex [[buffer(5), function_constant(compressedCoefficients)]],
 	uint3 gid [[thread_position_in_grid]])
 {
 	if (gid.x >= p.nzv || gid.y >= p.ny - 1 || gid.z >= p.num_x)
@@ -136,9 +143,10 @@ kernel void update_currents(
 	const float4 hx = curr[base];
 	const float4 hy = curr[base + 1];
 	const float4 hz = curr[base + 2];
-	curr[base] = hx * ii[base] + iv[base] * (ez - ez_y - ey + ey_z);
-	curr[base + 1] = hy * ii[base + 1] + iv[base + 1] * (ex - ex_z - ez + ez_x);
-	curr[base + 2] = hz * ii[base + 2] + iv[base + 2] * (ey - ey_x - ex + ex_y);
+	const uint c = compressedCoefficients ? coeffIndex[base / 3] * 3 : base;
+	curr[base] = hx * ii[c] + iv[c] * (ez - ez_y - ey + ey_z);
+	curr[base + 1] = hy * ii[c + 1] + iv[c + 1] * (ex - ex_z - ez + ez_x);
+	curr[base + 2] = hz * ii[c + 2] + iv[c + 2] * (ey - ey_x - ex + ex_y);
 }
 )METAL";
 
@@ -175,6 +183,84 @@ struct Engine_Metal::MetalState
 	id<MTLBuffer> vi;
 	id<MTLBuffer> ii;
 	id<MTLBuffer> iv;
+	id<MTLBuffer> coeffIndex;
+
+	// Coefficients are immutable during stepping. Keep the operator's dense
+	// arrays for CPU access and the FP64 reference; only GPU reads use this copy.
+	void CompressCoefficients(size_t count)
+	{
+		const char* setting = std::getenv("OPENEMS_METAL_COMPRESS");
+		if (setting && setting[0] == '0')
+			return;
+		using Record = std::array<uint32_t, 48>; // 4 arrays * 3 components * 4 lanes
+		struct Hash
+		{
+			size_t operator()(const Record& record) const
+			{
+				size_t hash = 14695981039346656037ULL;
+				for (uint32_t word : record)
+					hash = (hash ^ word) * 1099511628211ULL;
+				return hash;
+			}
+		};
+		// Bound setup memory and dictionary cache footprint; require substantial
+		// reuse. Highly nonuniform meshes quickly fall back to dense reads.
+		const size_t maxRecords = std::min<size_t>(4096, count / 4);
+		if (!maxRecords)
+			return;
+		std::unordered_map<Record, uint32_t, Hash> lookup;
+		lookup.reserve(maxRecords);
+		std::vector<uint32_t> indices(count);
+		std::vector<uint32_t> dictionaries[4];
+		const void* dense[] = {vv.contents, vi.contents, ii.contents, iv.contents};
+		Record previous{};
+		for (size_t pos = 0; pos < count; ++pos)
+		{
+			Record record;
+			for (size_t a = 0; a < 4; ++a)
+				std::memcpy(record.data() + a * 12,
+				    static_cast<const char*>(dense[a]) + pos * 48, 48);
+			// Uniform runs need neither hashing nor a dictionary search.
+			if (pos && record == previous)
+			{
+				indices[pos] = indices[pos - 1];
+				continue;
+			}
+			previous = record;
+			auto found = lookup.find(record);
+			if (found == lookup.end())
+			{
+				if (lookup.size() == maxRecords)
+				{
+					cout << "Metal: coefficient dictionary limit reached; using dense coefficients" << endl;
+					return;
+				}
+				const uint32_t index = static_cast<uint32_t>(lookup.size());
+				found = lookup.emplace(record, index).first;
+				for (size_t a = 0; a < 4; ++a)
+					dictionaries[a].insert(dictionaries[a].end(),
+					    record.begin() + a * 12, record.begin() + (a + 1) * 12);
+			}
+			indices[pos] = found->second;
+		}
+		id<MTLBuffer> packed[4];
+		for (size_t a = 0; a < 4; ++a)
+		{
+			packed[a] = [device newBufferWithBytes:dictionaries[a].data()
+			    length:dictionaries[a].size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
+			if (!packed[a])
+				return;
+		}
+		id<MTLBuffer> indexBuffer = [device newBufferWithBytes:indices.data()
+		    length:indices.size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
+		if (!indexBuffer)
+			return;
+		vv = packed[0]; vi = packed[1]; ii = packed[2]; iv = packed[3];
+		coeffIndex = indexBuffer;
+		cout << "Metal: lossless coefficients: " << lookup.size() << " / " << count
+		     << " unique packed records, " << lookup.size() * 192 + count * 4
+		     << " GPU bytes (dense " << count * 192 << ")" << endl;
+	}
 
 	bool referenceEnabled = false;
 	std::vector<double> refVolt;
@@ -278,21 +364,6 @@ void Engine_Metal::Init()
 		if (!library)
 			throw MetalError("Metal: failed to compile voltage kernel", error);
 
-		id<MTLFunction> function = [library newFunctionWithName:@"update_voltages"];
-		if (!function)
-			throw std::runtime_error("Metal: update_voltages kernel not found");
-
-		m_Metal->voltagePipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
-		if (!m_Metal->voltagePipeline)
-			throw MetalError("Metal: failed to create voltage pipeline", error);
-
-		function = [library newFunctionWithName:@"update_currents"];
-		if (!function)
-			throw std::runtime_error("Metal: update_currents kernel not found");
-		m_Metal->currentPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
-		if (!m_Metal->currentPipeline)
-			throw MetalError("Metal: failed to create current pipeline", error);
-
 		const NSUInteger pageSize = (NSUInteger)getpagesize();
 		auto paddedLength = [pageSize](NSUInteger bytes) {
 			return (bytes + pageSize - 1) / pageSize * pageSize;
@@ -315,6 +386,24 @@ void Engine_Metal::Init()
 		if (!m_Metal->volt || !m_Metal->curr || !m_Metal->vv || !m_Metal->vi ||
 			!m_Metal->ii || !m_Metal->iv)
 			throw std::runtime_error("Metal: failed to wrap shared buffers");
+
+		m_Metal->CompressCoefficients(f4_volt_ptr->size() / 3);
+		MTLFunctionConstantValues* constants = [MTLFunctionConstantValues new];
+		bool compressed = m_Metal->coeffIndex != nil;
+		[constants setConstantValue:&compressed type:MTLDataTypeBool atIndex:0];
+		id<MTLFunction> function = [library newFunctionWithName:@"update_voltages"
+		    constantValues:constants error:&error];
+		if (!function)
+			throw MetalError("Metal: update_voltages kernel not found", error);
+		m_Metal->voltagePipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+		if (!m_Metal->voltagePipeline)
+			throw MetalError("Metal: failed to create voltage pipeline", error);
+		function = [library newFunctionWithName:@"update_currents" constantValues:constants error:&error];
+		if (!function)
+			throw MetalError("Metal: update_currents kernel not found", error);
+		m_Metal->currentPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+		if (!m_Metal->currentPipeline)
+			throw MetalError("Metal: failed to create current pipeline", error);
 
 		const char* reference = std::getenv("OPENEMS_METAL_FP64_REFERENCE");
 		m_Metal->referenceEnabled = reference && reference[0] != '\0' && reference[0] != '0';
@@ -393,6 +482,8 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 		[encoder setBuffer:m_Metal->curr offset:0 atIndex:1];
 		[encoder setBuffer:m_Metal->vv offset:0 atIndex:2];
 		[encoder setBuffer:m_Metal->vi offset:0 atIndex:3];
+		if (m_Metal->coeffIndex)
+			[encoder setBuffer:m_Metal->coeffIndex offset:0 atIndex:5];
 
 		GridParams params = {numLines[0], numLines[1], numVectors, startX, numX};
 		[encoder setBytes:&params length:sizeof(params) atIndex:4];
@@ -459,6 +550,8 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 		[encoder setBuffer:m_Metal->volt offset:0 atIndex:1];
 		[encoder setBuffer:m_Metal->ii offset:0 atIndex:2];
 		[encoder setBuffer:m_Metal->iv offset:0 atIndex:3];
+		if (m_Metal->coeffIndex)
+			[encoder setBuffer:m_Metal->coeffIndex offset:0 atIndex:5];
 
 		GridParams params = {numLines[0], numLines[1], numVectors, startX, numX};
 		[encoder setBytes:&params length:sizeof(params) atIndex:4];

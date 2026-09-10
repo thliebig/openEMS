@@ -20,6 +20,7 @@ public:
 
 protected:
 	Operator_Metal();
+	virtual bool CalcPEC();
 };
 
 #endif // OPERATOR_METAL_H
