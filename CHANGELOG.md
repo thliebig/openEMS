@@ -61,8 +61,12 @@ number moved up and patch releases now have somewhere to go.
 - The FDTD object can be reset from Python, and an excitation can be enabled and
   disabled.
 - Bundled head and body phantoms in `resources/phantoms/`, reachable from every
-  language interface and installed to `share/openEMS/`. The MRI tutorials fall
-  back to them when the IT'IS Virtual Family dataset is not installed.
+  language interface, installed to `share/openEMS/` and shipped inside the
+  python wheel. `openEMS_resource_path()` (Octave) and
+  `openEMS.utilities.get_resource_path()` (Python) return the path of such a
+  file, so a tutorial keeps working from wherever it was copied to. The MRI
+  tutorials fall back to the phantoms when the IT'IS Virtual Family dataset is
+  not installed.
 - New tutorials and examples: Python `Horn_Antenna` (coaxial pin feed with
   backshort), `StripLine2MSL`, `Dipole_SAR`, `MRI_Loop_Coil`, a rectangular
   resonant cavity example, and a SAR averaging tutorial.

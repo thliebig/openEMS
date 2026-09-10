@@ -256,7 +256,7 @@ if use_body_model
     stop =  [mesh.r(end) mesh.a(end) mesh.z(end)];
     CSX = AddBox(CSX, 'body_model', 0, start, stop);
 else
-    phantom_file = fullfile(fileparts(mfilename('fullpath')), '..', '..', 'resources', 'phantoms', 'phantom_body_128MHz.h5');
+    phantom_file = openEMS_resource_path('phantoms', 'phantom_body_128MHz.h5');
     CSX = AddDiscMaterial(CSX, 'body_model', 'File', phantom_file, 'Scale', 1/unit);
     start = [mesh.r(1)   mesh.a(1)   mesh.z(1)];
     stop =  [mesh.r(end) mesh.a(end) mesh.z(end)];

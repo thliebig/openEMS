@@ -14,6 +14,7 @@ import math
 import os
 import platform
 import subprocess
+import shutil
 import pathlib
 import glob
 
@@ -59,6 +60,24 @@ def get_fallback_version(pyproject_toml, fallback_file):
             raise ValueError("setuptools_scm version too low.")
     except (ImportError, ValueError):
         return fallback_version
+
+
+def copy_resources(src_dir, dst_dir):
+    # Data files shared by the octave and the python interface (currently the
+    # MRI phantoms) live in openEMS/resources/, outside of python/ where
+    # package_data cannot reach them.  Copy them into the package so that they
+    # end up in the wheel and openEMS.utilities.get_resource_path() finds them
+    # regardless of where a script is run from.  When building from an sdist
+    # the source directory is absent and the copy is already in place.
+    if not os.path.isdir(src_dir):
+        return
+
+    for root, _dirs, files in os.walk(src_dir):
+        target = os.path.join(dst_dir, os.path.relpath(root, src_dir))
+        if not os.path.isdir(target):
+            os.makedirs(target)
+        for name in files:
+            shutil.copyfile(os.path.join(root, name), os.path.join(target, name))
 
 
 def normalize_path_subdir(path_str, subdir):
@@ -223,6 +242,11 @@ build_opt = determine_build_options()
 build_opt["language"] = "c++"
 build_opt["libraries"] = ["CSXCAD", "openEMS", "nf2ff"]
 
+copy_resources(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources"),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "openEMS", "resources"),
+)
+
 extensions = get_modules_list(
     module_prefix="openEMS.",
     path_glob_pattern="openEMS/*.pyx",
@@ -265,7 +289,7 @@ setup(
     "pyproject.toml", "openEMS/__fallback_version__.py"
   ),
   packages=["openEMS", ],
-  package_data={'openEMS': ['*.pxd']},
+  package_data={'openEMS': ['*.pxd', 'resources/*', 'resources/*/*']},
   # DO NOT add any new build-time dependency in setup_requires.
   # We should use pyproject.toml exclusively. The only item
   # "cython" is meant to activate auto-Cython feature in

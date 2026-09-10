@@ -16,6 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
+
 import numpy as np
 import h5py
 
@@ -841,6 +843,36 @@ class HDF5Dump:
         attrs.update(grp.attrs)
         attrs.update(grp[name].attrs)
         return attrs
+
+
+def get_resource_path(*parts):
+    """
+    Absolute path of a data file shipped with openEMS, e.g.
+
+    >>> get_resource_path('phantoms', 'phantom_head_298MHz.h5')
+
+    The data files are bundled with this python package, so scripts using them
+    work from any directory.  A source tree next to this package and an openEMS
+    installation (``OPENEMS_INSTALL_PATH``) are searched as a fallback.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    roots = [os.path.join(here, 'resources'),               # bundled in the wheel
+             os.path.join(here, '..', '..', 'resources')]   # openEMS source tree
+    for env in ('OPENEMS_INSTALL_PATH', 'CSXCAD_INSTALL_PATH'):
+        prefix = os.environ.get(env, None)
+        if prefix:
+            roots.append(os.path.join(prefix, 'share', 'openEMS', 'resources'))
+            roots.append(os.path.join(prefix, 'resources'))  # windows package
+
+    tried = []
+    for root in roots:
+        path = os.path.normpath(os.path.join(root, *parts))
+        if os.path.exists(path):
+            return path
+        tried.append(path)
+
+    raise FileNotFoundError('openEMS resource "{}" not found, tried:\n  {}'.format(
+                            os.path.join(*parts), '\n  '.join(tried)))
 
 
 if __name__=="__main__":

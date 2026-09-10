@@ -27,6 +27,7 @@ localConfig.cmake
 *.pyc
 *.pyo
 python/openEMS/__fallback_version__.py
+python/openEMS/resources/
 python/**/*.cpp
 python/openEMS.egg-info/*
 python/dist

@@ -29,7 +29,7 @@ from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
 from openEMS.physical_constants import *
 from openEMS.sar_utils import readSAR
-from openEMS.utilities import HDF5Dump
+from openEMS.utilities import HDF5Dump, get_resource_path
 
 
 ### General Setup
@@ -80,12 +80,8 @@ if not use_body_model:
         'VF body model not found — using homogeneous ellipsoidal phantom fallback.\n'
         '  Expected: {}'.format(body_model_file)
     )
-
-# Bundled phantom: two levels up from this file → openEMS/resources/phantoms/
-_here = os.path.dirname(os.path.abspath(__file__))
-phantom_file = os.path.normpath(
-    os.path.join(_here, '..', '..', 'resources', 'phantoms', 'phantom_head_298MHz.h5')
-)
+    # Ellipsoidal head phantom shipped with openEMS
+    phantom_file = get_resource_path('phantoms', 'phantom_head_298MHz.h5')
 
 ### FDTD Setup
 ## * Disabled advanced material cell interpolation and make sure to use an unaveraged constant cell material

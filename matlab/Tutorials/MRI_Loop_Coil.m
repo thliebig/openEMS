@@ -202,7 +202,7 @@ if use_body_model
     CSX = AddDiscMaterial(CSX, 'body_model', 'File', body_model_file, 'Scale', 1/unit, 'Transform', body_model_transform);
     CSX = AddBox(CSX, 'body_model', 0, body_box.start, body_box.stop);
 else
-    phantom_file = fullfile(fileparts(mfilename('fullpath')), '..', '..', 'resources', 'phantoms', 'phantom_head_298MHz.h5');
+    phantom_file = openEMS_resource_path('phantoms', 'phantom_head_298MHz.h5');
     CSX = AddDiscMaterial(CSX, 'body_model', 'File', phantom_file, 'Scale', 1/unit);
     CSX = AddBox(CSX, 'body_model', 0, body_box.start, body_box.stop);
 end
