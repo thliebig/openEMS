@@ -40,13 +40,25 @@ def run_case(args, label, cells, steps, boundaries, nonuniform=False):
                                 args.fp64_reference, compress=True, pml=True)
         _, dense_log = run(args.openems, model, 'metal', root / 'dense',
                            args.fp64_reference, compress=False, pml=True)
+        old_layout = os.environ.get('OPENEMS_METAL_PML_LAYOUT')
+        try:
+            os.environ['OPENEMS_METAL_PML_LAYOUT'] = 'scalar'
+            _, scalar_log = run(args.openems, model, 'metal', root / 'scalar',
+                                args.fp64_reference, compress=True, pml=True)
+        finally:
+            if old_layout is None:
+                os.environ.pop('OPENEMS_METAL_PML_LAYOUT', None)
+            else:
+                os.environ['OPENEMS_METAL_PML_LAYOUT'] = old_layout
         expected = sum(b.startswith('PML') for b in boundaries)
         marker = 'Metal: GPU UPML conditioning: {} regions'.format(expected)
         for log in (gpu_log, dense_log):
-            if expected and marker not in log:
-                raise AssertionError('GPU UPML not exercised: ' + log)
+            if expected and (marker not in log or 'Metal: UPML layout: indexed' not in log):
+                raise AssertionError('Indexed GPU UPML not exercised: ' + log)
             if not expected and 'Metal: GPU UPML conditioning:' in log:
                 raise AssertionError('Unexpected UPML regions')
+        if expected and 'Metal: UPML layout: scalar' not in scalar_log:
+            raise AssertionError('Scalar GPU UPML fallback not exercised')
         if 'Metal: CPU UPML conditioning selected' not in cpu_log:
             raise AssertionError('CPU UPML fallback not exercised')
         print('{}: {}, {} steps; SSE/CPU-PML/GPU-PML wall {:.3f}/{:.3f}/{:.3f}s'.format(
@@ -62,6 +74,13 @@ def run_case(args, label, cells, steps, boundaries, nonuniform=False):
         for field in ('Et.h5', 'Ht.h5'):
             dense = h5_arrays(root / 'dense' / field)
             packed = h5_arrays(root / 'gpu' / field)
+            scalar = h5_arrays(root / 'scalar' / field)
+            if scalar.keys() != packed.keys():
+                raise AssertionError('Scalar/indexed datasets differ')
+            for name, a in scalar.items():
+                b = packed[name]
+                if a.shape != b.shape or a.dtype != b.dtype or a.tobytes() != b.tobytes():
+                    raise AssertionError('Scalar/indexed bits differ: ' + field + '/' + name)
             if dense.keys() != packed.keys():
                 raise AssertionError('Dense/compressed datasets differ')
             for name, a in dense.items():
@@ -76,7 +95,7 @@ def run_case(args, label, cells, steps, boundaries, nonuniform=False):
             if re.search(r'\b(?:nan|inf)\b', diagnostic[-1], re.IGNORECASE):
                 raise AssertionError('Non-finite FP64 diagnostic')
             print('  ' + diagnostic[-1])
-        print('  Dense/compressed GPU UPML: bit-identical')
+        print('  Dense/compressed and scalar/indexed GPU UPML: bit-identical')
     finally:
         if args.keep:
             print('  kept ' + str(root))
@@ -93,6 +112,8 @@ def main():
     parser.add_argument('--fp64-reference', action='store_true')
     parser.add_argument('--keep', action='store_true')
     args = parser.parse_args()
+    if os.environ.get('OPENEMS_METAL_PML_LAYOUT', 'indexed') != 'indexed':
+        parser.error('Unset OPENEMS_METAL_PML_LAYOUT to test the default indexed path')
     cases = [
         ('no-pml', (17, 19, 21), 100, ['PEC'] * 6, False),
         ('six-faces-corners', (24, 23, 22), 400, ['PML_4'] * 6, False),
@@ -103,6 +124,7 @@ def main():
         ('mixed-mur-pec-pml', (25, 24, 23), 400,
          ['PML_4', 'MUR', 'PEC', 'PML_3', 'PML_4', 'PEC'], False),
         ('long-run', (32, 31, 30), 1200, ['PML_8'] * 6, False),
+        ('thin-board', (65, 66, 32), 600, ['PML_8'] * 6, True),
     ]
     # Each physical face alone: includes all four z-line-count remainders.
     for face in range(6):

@@ -21,6 +21,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
+#include <limits>
 #include <stdexcept>
 #include <unistd.h>
 #include <vector>
@@ -198,6 +199,38 @@ kernel void upml_post(
 	flux[gid] = field[f];
 	field[f] = saved + newFlux[gid] * flux[gid];
 }
+
+// Auxiliary arrays are reordered once into increasing packed-field addresses.
+// Each lane performs only an indexed field access and contiguous auxiliary I/O;
+// no coordinate division or component-major passes through the field buffer.
+// dispatchThreads supplies exactly the physical component count, including a
+// nonuniform final threadgroup; these kernels never address padding elements.
+kernel void upml_indexed_pre(
+	device float* field [[buffer(0)]],
+	device float* flux [[buffer(1)]],
+	const device float* self [[buffer(2)]],
+	const device float* oldFlux [[buffer(3)]],
+	const device uint* indices [[buffer(5)]],
+	uint gid [[thread_position_in_grid]])
+{
+	const uint f = indices[gid];
+	const float saved = self[gid] * field[f] - oldFlux[gid] * flux[gid];
+	field[f] = flux[gid];
+	flux[gid] = saved;
+}
+
+kernel void upml_indexed_post(
+	device float* field [[buffer(0)]],
+	device float* flux [[buffer(1)]],
+	const device float* newFlux [[buffer(2)]],
+	const device uint* indices [[buffer(5)]],
+	uint gid [[thread_position_in_grid]])
+{
+	const uint f = indices[gid];
+	const float saved = flux[gid];
+	flux[gid] = field[f];
+	field[f] = saved + newFlux[gid] * flux[gid];
+}
 )METAL";
 
 struct PMLParams
@@ -243,12 +276,14 @@ struct Engine_Metal::MetalState
 	id<MTLBuffer> coeffIndex;
 	id<MTLComputePipelineState> pmlPrePipeline;
 	id<MTLComputePipelineState> pmlPostPipeline;
+	bool indexedPML = true;
 	id<MTLCommandBuffer> pending;
 
 	struct PMLRegion
 	{
 		Engine_Ext_UPML* extension;
 		PMLParams params;
+		id<MTLBuffer> indices;
 		id<MTLBuffer> flux[2];
 		id<MTLBuffer> self[2];
 		id<MTLBuffer> oldFlux[2];
@@ -492,11 +527,13 @@ void Engine_Metal::Init()
 		if (!m_Metal->currentPipeline)
 			throw MetalError("Metal: failed to create current pipeline", error);
 
-		function = [library newFunctionWithName:@"upml_pre"];
+		const char* layout = std::getenv("OPENEMS_METAL_PML_LAYOUT");
+		m_Metal->indexedPML = !(layout && std::strcmp(layout, "scalar") == 0);
+		function = [library newFunctionWithName:m_Metal->indexedPML ? @"upml_indexed_pre" : @"upml_pre"];
 		m_Metal->pmlPrePipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 		if (!m_Metal->pmlPrePipeline)
 			throw MetalError("Metal: failed to create UPML pre-update pipeline", error);
-		function = [library newFunctionWithName:@"upml_post"];
+		function = [library newFunctionWithName:m_Metal->indexedPML ? @"upml_indexed_post" : @"upml_post"];
 		m_Metal->pmlPostPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 		if (!m_Metal->pmlPostPipeline)
 			throw MetalError("Metal: failed to create UPML post-update pipeline", error);
@@ -553,18 +590,76 @@ void Engine_Metal::InitUPML()
 		region.extension = pml;
 		region.params = {op->m_StartPos[0], op->m_StartPos[1], op->m_StartPos[2],
 			op->m_numLines[0], op->m_numLines[1], op->m_numLines[2], numLines[1], numVectors};
-		region.flux[0] = wrap(pml->volt_flux);
-		region.flux[1] = wrap(pml->curr_flux);
-		region.self[0] = wrap(op->vv);
-		region.self[1] = wrap(op->ii);
-		region.oldFlux[0] = wrap(op->vvfo);
-		region.oldFlux[1] = wrap(op->iifo);
-		region.newFlux[0] = wrap(op->vvfn);
-		region.newFlux[1] = wrap(op->iifn);
+		if (m_Metal->indexedPML)
+		{
+			const PMLParams& p = region.params;
+			const size_t cells = (size_t)p.nx * p.ny * p.nz;
+			if (cells > std::numeric_limits<uint32_t>::max() / 3)
+				throw std::runtime_error("Metal: UPML region exceeds uint32 indexing");
+			// Keep CPU arrays for the scalar fallback. The GPU owns these reordered
+			// coefficients/fluxes for the run; CPU UPML hooks must not use them.
+			// Precompute both permutations on CPU; no mapping/copy during stepping.
+			std::vector<uint32_t> source;
+			source.reserve(cells * 3);
+			region.indices = [m_Metal->device newBufferWithLength:cells * 3 * sizeof(uint32_t)
+				options:MTLResourceStorageModeShared];
+			if (!region.indices)
+				throw std::runtime_error("Metal: failed to allocate UPML indices");
+			uint32_t* indices = static_cast<uint32_t*>(region.indices.contents);
+			for (uint32_t x = 0; x < p.nx; ++x)
+				for (uint32_t y = 0; y < p.ny; ++y)
+					for (uint32_t zv = 0; zv < p.grid_nzv; ++zv)
+						for (uint32_t n = 0; n < 3; ++n)
+							for (uint32_t lane = 0; lane < 4; ++lane)
+							{
+								const uint32_t z = zv + lane * p.grid_nzv;
+								if (z < p.sz || z >= p.sz + p.nz) continue;
+								const size_t f = ((((size_t)(x + p.sx) * p.grid_ny + y + p.sy)
+									* p.grid_nzv + zv) * 3 + n) * 4 + lane;
+								if (f > std::numeric_limits<uint32_t>::max())
+									throw std::runtime_error("Metal: UPML field index exceeds uint32");
+								indices[source.size()] = static_cast<uint32_t>(f);
+								source.push_back(static_cast<uint32_t>(n * cells + ((size_t)x * p.ny + y) * p.nz + z - p.sz));
+							}
+			if (source.size() != cells * 3)
+				throw std::runtime_error("Metal: incomplete UPML index mapping");
+			auto pack = [&](const ArrayLib::ArrayNIJK<FDTD_FLOAT>& array) {
+				id<MTLBuffer> buffer = [m_Metal->device newBufferWithLength:source.size() * sizeof(float)
+					options:MTLResourceStorageModeShared];
+				if (!buffer)
+					throw std::runtime_error("Metal: failed to allocate packed UPML array");
+				float* out = static_cast<float*>(buffer.contents);
+				for (size_t i = 0; i < source.size(); ++i)
+					out[i] = array.data()[source[i]];
+				return buffer;
+			};
+			region.flux[0] = pack(pml->volt_flux);
+			region.flux[1] = pack(pml->curr_flux);
+			region.self[0] = pack(op->vv);
+			region.self[1] = pack(op->ii);
+			region.oldFlux[0] = pack(op->vvfo);
+			region.oldFlux[1] = pack(op->iifo);
+			region.newFlux[0] = pack(op->vvfn);
+			region.newFlux[1] = pack(op->iifn);
+		}
+		else
+		{
+			region.flux[0] = wrap(pml->volt_flux);
+			region.flux[1] = wrap(pml->curr_flux);
+			region.self[0] = wrap(op->vv);
+			region.self[1] = wrap(op->ii);
+			region.oldFlux[0] = wrap(op->vvfo);
+			region.oldFlux[1] = wrap(op->iifo);
+			region.newFlux[0] = wrap(op->vvfn);
+			region.newFlux[1] = wrap(op->iifn);
+		}
 		m_Metal->pml.push_back(region);
 	}
 	if (!m_Metal->pml.empty())
+	{
 		cout << "Metal: GPU UPML conditioning: " << m_Metal->pml.size() << " regions" << endl;
+		cout << "Metal: UPML layout: " << (m_Metal->indexedPML ? "indexed" : "scalar") << endl;
+	}
 }
 
 void Engine_Metal::FinishMetalCommands()
@@ -615,7 +710,10 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 			[encoder setBuffer:pre ? region->self[f] : region->newFlux[f] offset:0 atIndex:2];
 			if (pre)
 				[encoder setBuffer:region->oldFlux[f] offset:0 atIndex:3];
-			[encoder setBytes:&region->params length:sizeof(PMLParams) atIndex:4];
+			if (m_Metal->indexedPML)
+				[encoder setBuffer:region->indices offset:0 atIndex:5];
+			else
+				[encoder setBytes:&region->params length:sizeof(PMLParams) atIndex:4];
 			const PMLParams& p = region->params;
 			[encoder dispatchThreads:MTLSizeMake((NSUInteger)p.nx * p.ny * p.nz * 3, 1, 1)
 				threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
