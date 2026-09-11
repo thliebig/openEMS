@@ -34,6 +34,7 @@ class FunctionParser;
 class Operator_Ext_UPML : public Operator_Extension
 {
 	friend class Engine_Ext_UPML;
+	friend class Engine_Metal;
 public:
 	virtual ~Operator_Ext_UPML();
 

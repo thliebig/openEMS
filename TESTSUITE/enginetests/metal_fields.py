@@ -35,12 +35,12 @@ from CSXCAD import ContinuousStructure
 from openEMS import openEMS
 
 
-def make_model(path, cells, timesteps, nonuniform=False):
+def make_model(path, cells, timesteps, nonuniform=False, boundaries=None, frequency=1e9):
     csx = ContinuousStructure()
     fdtd = openEMS(NrTS=timesteps, EndCriteria=0)
     fdtd.SetCSX(csx)
-    fdtd.SetBoundaryCond(['PEC'] * 6)
-    fdtd.SetGaussExcite(0, 1e9)
+    fdtd.SetBoundaryCond(boundaries if boundaries is not None else ['PEC'] * 6)
+    fdtd.SetGaussExcite(0, frequency)
 
     grid = csx.GetGrid()
     grid.SetDeltaUnit(1e-3)
@@ -65,13 +65,15 @@ def make_model(path, cells, timesteps, nonuniform=False):
     fdtd.Write2XML(str(path))
 
 
-def run(binary, model, engine, output, fp64_reference=False, compress=None):
+def run(binary, model, engine, output, fp64_reference=False, compress=None, pml=None):
     output.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     if fp64_reference:
         env['OPENEMS_METAL_FP64_REFERENCE'] = '1'
     if compress is not None:
         env['OPENEMS_METAL_COMPRESS'] = '1' if compress else '0'
+    if pml is not None:
+        env['OPENEMS_METAL_PML'] = '1' if pml else '0'
     start = time.perf_counter()
     proc = subprocess.run(
         [binary, str(model), '--engine=' + engine], cwd=output, env=env,

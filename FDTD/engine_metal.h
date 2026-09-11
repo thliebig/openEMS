@@ -21,12 +21,21 @@ public:
 	virtual void Init();
 	virtual void Reset();
 
+	virtual void DoPreVoltageUpdates();
+	virtual void DoPostVoltageUpdates();
+	virtual void DoPreCurrentUpdates();
+	virtual void DoPostCurrentUpdates();
+
 protected:
 	Engine_Metal(const Operator_sse* op);
 	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
 	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
 
 private:
+	void InitUPML();
+	void RunUPMLExtensions(bool voltage, bool pre);
+	void FinishMetalCommands();
+
 	struct MetalState;
 	MetalState* m_Metal;
 };

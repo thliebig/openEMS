@@ -4,7 +4,6 @@ if (APPLE AND WITH_METAL)
     ${CMAKE_CURRENT_SOURCE_DIR}/operator_metal.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/operator_metal_pec.mm
   )
-  set_source_files_properties(operator_metal_pec.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
 
 set(SOURCES

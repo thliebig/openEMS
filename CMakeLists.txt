@@ -201,6 +201,11 @@ INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )    #find tools
 message(STATUS "Sources:"  ${SOURCES})
 
 add_library( openEMS SHARED ${SOURCES})
+if (WITH_METAL)
+    # Source properties must be set in the directory that creates the target.
+    set_source_files_properties(FDTD/engine_metal.mm FDTD/operator_metal_pec.mm
+        PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+endif()
 #ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})
 set_target_properties(openEMS PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR} )
 TARGET_LINK_LIBRARIES( openEMS

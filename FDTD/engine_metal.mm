@@ -8,6 +8,8 @@
 */
 
 #include "engine_metal.h"
+#include "extensions/engine_ext_upml.h"
+#include "extensions/operator_ext_upml.h"
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
@@ -148,7 +150,62 @@ kernel void update_currents(
 	curr[base + 1] = hy * ii[c + 1] + iv[c + 1] * (ex - ex_z - ez + ez_x);
 	curr[base + 2] = hz * ii[c + 2] + iv[c + 2] * (ey - ey_x - ex + ex_y);
 }
+
+// UPML arrays are scalar NIJK, while fields use the SSE z-lane layout.
+// Scalar stores touch only physical cells, never SIMD padding lanes.
+struct PMLParams
+{
+	uint sx, sy, sz;
+	uint nx, ny, nz;
+	uint grid_ny, grid_nzv;
+};
+
+kernel void upml_pre(
+	device float* field [[buffer(0)]],
+	device float* flux [[buffer(1)]],
+	const device float* self [[buffer(2)]],
+	const device float* oldFlux [[buffer(3)]],
+	constant PMLParams& p [[buffer(4)]],
+	uint gid [[thread_position_in_grid]])
+{
+	const uint cells = p.nx * p.ny * p.nz;
+	if (gid >= 3 * cells) return;
+	const uint n = gid / cells;
+	const uint z = gid % p.nz + p.sz;
+	const uint y = (gid / p.nz) % p.ny + p.sy;
+	const uint x = (gid % cells) / (p.ny * p.nz) + p.sx;
+	const uint f = (((x * p.grid_ny + y) * p.grid_nzv + z % p.grid_nzv) * 3 + n) * 4 + z / p.grid_nzv;
+	const float saved = self[gid] * field[f] - oldFlux[gid] * flux[gid];
+	field[f] = flux[gid];
+	flux[gid] = saved;
+}
+
+kernel void upml_post(
+	device float* field [[buffer(0)]],
+	device float* flux [[buffer(1)]],
+	const device float* newFlux [[buffer(2)]],
+	constant PMLParams& p [[buffer(4)]],
+	uint gid [[thread_position_in_grid]])
+{
+	const uint cells = p.nx * p.ny * p.nz;
+	if (gid >= 3 * cells) return;
+	const uint n = gid / cells;
+	const uint z = gid % p.nz + p.sz;
+	const uint y = (gid / p.nz) % p.ny + p.sy;
+	const uint x = (gid % cells) / (p.ny * p.nz) + p.sx;
+	const uint f = (((x * p.grid_ny + y) * p.grid_nzv + z % p.grid_nzv) * 3 + n) * 4 + z / p.grid_nzv;
+	const float saved = flux[gid];
+	flux[gid] = field[f];
+	field[f] = saved + newFlux[gid] * flux[gid];
+}
 )METAL";
+
+struct PMLParams
+{
+	uint32_t sx, sy, sz;
+	uint32_t nx, ny, nz;
+	uint32_t grid_ny, grid_nzv;
+};
 
 struct GridParams
 {
@@ -184,6 +241,29 @@ struct Engine_Metal::MetalState
 	id<MTLBuffer> ii;
 	id<MTLBuffer> iv;
 	id<MTLBuffer> coeffIndex;
+	id<MTLComputePipelineState> pmlPrePipeline;
+	id<MTLComputePipelineState> pmlPostPipeline;
+	id<MTLCommandBuffer> pending;
+
+	struct PMLRegion
+	{
+		Engine_Ext_UPML* extension;
+		PMLParams params;
+		id<MTLBuffer> flux[2];
+		id<MTLBuffer> self[2];
+		id<MTLBuffer> oldFlux[2];
+		id<MTLBuffer> newFlux[2];
+	};
+	std::vector<PMLRegion> pml;
+
+	id<MTLCommandBuffer> Commands()
+	{
+		if (!pending)
+			pending = [queue commandBuffer];
+		if (!pending)
+			throw std::runtime_error("Metal: failed to create command buffer");
+		return pending;
+	}
 
 	// Coefficients are immutable during stepping. Keep the operator's dense
 	// arrays for CPU access and the FP64 reference; only GPU reads use this copy.
@@ -262,6 +342,7 @@ struct Engine_Metal::MetalState
 		     << " GPU bytes (dense " << count * 192 << ")" << endl;
 	}
 
+	bool hasUPML = false;
 	bool referenceEnabled = false;
 	std::vector<double> refVolt;
 	std::vector<double> refCurr;
@@ -282,7 +363,13 @@ struct Engine_Metal::MetalState
 		const float* values = reinterpret_cast<const float*>(actual);
 		for (size_t n=0; n<count; ++n)
 		{
-			ref[n] += (double)values[n] - (double)last[n];
+			// Flux swaps are not additive field corrections. With UPML, check
+			// each stencil from the actual conditioned input instead of evolving
+			// an unstable reference that has no matching FP64 flux state.
+			if (hasUPML)
+				ref[n] = values[n];
+			else
+				ref[n] += (double)values[n] - (double)last[n];
 			last[n] = values[n];
 		}
 	}
@@ -405,6 +492,16 @@ void Engine_Metal::Init()
 		if (!m_Metal->currentPipeline)
 			throw MetalError("Metal: failed to create current pipeline", error);
 
+		function = [library newFunctionWithName:@"upml_pre"];
+		m_Metal->pmlPrePipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+		if (!m_Metal->pmlPrePipeline)
+			throw MetalError("Metal: failed to create UPML pre-update pipeline", error);
+		function = [library newFunctionWithName:@"upml_post"];
+		m_Metal->pmlPostPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+		if (!m_Metal->pmlPostPipeline)
+			throw MetalError("Metal: failed to create UPML post-update pipeline", error);
+		InitUPML();
+
 		const char* reference = std::getenv("OPENEMS_METAL_FP64_REFERENCE");
 		m_Metal->referenceEnabled = reference && reference[0] != '\0' && reference[0] != '0';
 		if (m_Metal->referenceEnabled)
@@ -415,9 +512,124 @@ void Engine_Metal::Init()
 			m_Metal->lastVolt.assign(scalarCount, 0.0f);
 			m_Metal->lastCurr.assign(scalarCount, 0.0f);
 			cout << "Metal: enabled diagnostic FP64 update reference" << endl;
+			if (m_Metal->hasUPML)
+				cout << "Metal: UPML FP64 reference checks local stencils, not flux evolution" << endl;
 		}
 	}
 }
+
+void Engine_Metal::InitUPML()
+{
+	for (Engine_Extension* extension : m_Eng_exts)
+		if (dynamic_cast<Engine_Ext_UPML*>(extension))
+			m_Metal->hasUPML = true;
+	const char* setting = std::getenv("OPENEMS_METAL_PML");
+	if (setting && setting[0] == '0')
+	{
+		cout << "Metal: CPU UPML conditioning selected" << endl;
+		return;
+	}
+
+	const NSUInteger pageSize = (NSUInteger)getpagesize();
+	auto wrap = [&](const ArrayLib::ArrayNIJK<FDTD_FLOAT>& array) {
+		const NSUInteger bytes = (array.bytes() + pageSize - 1) / pageSize * pageSize;
+		id<MTLBuffer> buffer = [m_Metal->device newBufferWithBytesNoCopy:array.data()
+			length:bytes options:MTLResourceStorageModeShared deallocator:^(void*, NSUInteger) {}];
+		if (!buffer)
+			throw std::runtime_error("Metal: failed to wrap UPML buffer");
+		return buffer;
+	};
+	for (Engine_Extension* extension : m_Eng_exts)
+	{
+		Engine_Ext_UPML* pml = dynamic_cast<Engine_Ext_UPML*>(extension);
+		if (!pml)
+			continue;
+		Operator_Ext_UPML* op = pml->m_Op_UPML;
+		// Opposing slabs can leave an empty interior for another face.
+		// Keep its no-op CPU hook rather than creating zero-length buffers.
+		if (!op->m_numLines[0] || !op->m_numLines[1] || !op->m_numLines[2])
+			continue;
+		MetalState::PMLRegion region;
+		region.extension = pml;
+		region.params = {op->m_StartPos[0], op->m_StartPos[1], op->m_StartPos[2],
+			op->m_numLines[0], op->m_numLines[1], op->m_numLines[2], numLines[1], numVectors};
+		region.flux[0] = wrap(pml->volt_flux);
+		region.flux[1] = wrap(pml->curr_flux);
+		region.self[0] = wrap(op->vv);
+		region.self[1] = wrap(op->ii);
+		region.oldFlux[0] = wrap(op->vvfo);
+		region.oldFlux[1] = wrap(op->iifo);
+		region.newFlux[0] = wrap(op->vvfn);
+		region.newFlux[1] = wrap(op->iifn);
+		m_Metal->pml.push_back(region);
+	}
+	if (!m_Metal->pml.empty())
+		cout << "Metal: GPU UPML conditioning: " << m_Metal->pml.size() << " regions" << endl;
+}
+
+void Engine_Metal::FinishMetalCommands()
+{
+	if (!m_Metal || !m_Metal->pending)
+		return;
+	id<MTLCommandBuffer> commands = m_Metal->pending;
+	[commands commit];
+	[commands waitUntilCompleted];
+	m_Metal->pending = nil;
+	if (commands.status == MTLCommandBufferStatusError)
+		throw MetalError("Metal: field/UPML update failed", commands.error);
+}
+
+void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
+{
+	@autoreleasepool
+	{
+		// Keep the CPU extension order exactly: pre in reverse, post forward.
+		// Separate encoders order even overlapping regions; CPU hooks see only
+		// completed GPU writes. Typically pre/field/post share one submission.
+		for (size_t i = 0; i < m_Eng_exts.size(); ++i)
+		{
+			Engine_Extension* extension = m_Eng_exts[pre ? m_Eng_exts.size() - 1 - i : i];
+			auto region = std::find_if(m_Metal->pml.begin(), m_Metal->pml.end(),
+				[extension](const MetalState::PMLRegion& r) { return r.extension == extension; });
+			if (region == m_Metal->pml.end())
+			{
+				FinishMetalCommands();
+				if (voltage)
+				{
+					if (pre) extension->DoPreVoltageUpdates();
+					else extension->DoPostVoltageUpdates();
+				}
+				else
+				{
+					if (pre) extension->DoPreCurrentUpdates();
+					else extension->DoPostCurrentUpdates();
+				}
+				continue;
+			}
+			const unsigned int f = voltage ? 0 : 1;
+			id<MTLComputePipelineState> pipeline = pre ? m_Metal->pmlPrePipeline : m_Metal->pmlPostPipeline;
+			id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
+			[encoder setComputePipelineState:pipeline];
+			[encoder setBuffer:voltage ? m_Metal->volt : m_Metal->curr offset:0 atIndex:0];
+			[encoder setBuffer:region->flux[f] offset:0 atIndex:1];
+			[encoder setBuffer:pre ? region->self[f] : region->newFlux[f] offset:0 atIndex:2];
+			if (pre)
+				[encoder setBuffer:region->oldFlux[f] offset:0 atIndex:3];
+			[encoder setBytes:&region->params length:sizeof(PMLParams) atIndex:4];
+			const PMLParams& p = region->params;
+			[encoder dispatchThreads:MTLSizeMake((NSUInteger)p.nx * p.ny * p.nz * 3, 1, 1)
+				threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
+			[encoder endEncoding];
+		}
+		if (!pre)
+			FinishMetalCommands(); // Apply hooks, sources, probes and dumps run on CPU.
+	}
+}
+
+void Engine_Metal::DoPreVoltageUpdates() { RunUPMLExtensions(true, true); }
+void Engine_Metal::DoPostVoltageUpdates() { RunUPMLExtensions(true, false); }
+void Engine_Metal::DoPreCurrentUpdates() { RunUPMLExtensions(false, true); }
+void Engine_Metal::DoPostCurrentUpdates() { RunUPMLExtensions(false, false); }
 
 void Engine_Metal::Reset()
 {
@@ -445,6 +657,7 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 
 	if (m_Metal->referenceEnabled)
 	{
+		FinishMetalCommands(); // The FP64 diagnostic needs the conditioned fields.
 		const size_t count = f4_volt_ptr->size() * 4;
 		m_Metal->Reconcile(m_Metal->refVolt, m_Metal->lastVolt, f4_volt_ptr->data(), count);
 		m_Metal->Reconcile(m_Metal->refCurr, m_Metal->lastCurr, f4_curr_ptr->data(), count);
@@ -475,8 +688,7 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 
 	@autoreleasepool
 	{
-		id<MTLCommandBuffer> commandBuffer = [m_Metal->queue commandBuffer];
-		id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
 		[encoder setComputePipelineState:m_Metal->voltagePipeline];
 		[encoder setBuffer:m_Metal->volt offset:0 atIndex:0];
 		[encoder setBuffer:m_Metal->curr offset:0 atIndex:1];
@@ -493,11 +705,8 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1], numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		[commandBuffer commit];
-		[commandBuffer waitUntilCompleted];
-
-		if (commandBuffer.status == MTLCommandBufferStatusError)
-			throw MetalError("Metal: voltage update failed", commandBuffer.error);
+		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
+			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)
 	{
@@ -513,9 +722,12 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 
 	if (m_Metal->referenceEnabled)
 	{
-		// Reproduce CPU extension changes made after the voltage kernel.
+		FinishMetalCommands();
+		// Reproduce voltage post-conditioning and current pre-conditioning.
 		m_Metal->Reconcile(m_Metal->refVolt, m_Metal->lastVolt,
 		                   f4_volt_ptr->data(), f4_volt_ptr->size()*4);
+		m_Metal->Reconcile(m_Metal->refCurr, m_Metal->lastCurr,
+		                   f4_curr_ptr->data(), f4_curr_ptr->size()*4);
 		const float* ii = reinterpret_cast<const float*>(Op->f4_ii_ptr->data());
 		const float* iv = reinterpret_cast<const float*>(Op->f4_iv_ptr->data());
 		const uint32_t ny = numLines[1], nzv = numVectors;
@@ -543,8 +755,7 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 
 	@autoreleasepool
 	{
-		id<MTLCommandBuffer> commandBuffer = [m_Metal->queue commandBuffer];
-		id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
 		[encoder setComputePipelineState:m_Metal->currentPipeline];
 		[encoder setBuffer:m_Metal->curr offset:0 atIndex:0];
 		[encoder setBuffer:m_Metal->volt offset:0 atIndex:1];
@@ -561,11 +772,8 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1] - 1, numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		[commandBuffer commit];
-		[commandBuffer waitUntilCompleted];
-
-		if (commandBuffer.status == MTLCommandBufferStatusError)
-			throw MetalError("Metal: current update failed", commandBuffer.error);
+		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
+			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)
 	{
