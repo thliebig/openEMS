@@ -815,7 +815,7 @@ bool openEMS::SetupOperator()
 #ifdef OPENEMS_WITH_METAL
 	else if (m_engine == EngineType_Metal)
 	{
-		FDTD_Op = Operator_Metal::New();
+		FDTD_Op = Operator_Metal::New(m_engine_numThreads);
 	}
 #endif
 	else

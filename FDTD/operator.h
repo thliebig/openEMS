@@ -323,6 +323,10 @@ protected:
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
+	void Calc_ECOperatorIndex(int n, unsigned int* pos, unsigned int index);
+	virtual void CalcOperatorCoefficients();
+	// Opt-in only: legacy/material extensions may still consume EC arrays.
+	virtual bool CanReleaseECBeforeExtensions() const { return false; }
 
 	//! Calculate and setup lumped elements
 	virtual bool Calc_LumpedElements();

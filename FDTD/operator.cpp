@@ -956,7 +956,11 @@ void Operator::SetExcitationSignal(Excitation* exc)
 
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 {
-	unsigned int i = MainOp->SetPos(pos[0],pos[1],pos[2]);
+	Calc_ECOperatorIndex(n, pos, MainOp->SetPos(pos[0],pos[1],pos[2]));
+}
+
+void Operator::Calc_ECOperatorIndex(int n, unsigned int* pos, unsigned int i)
+{
 	double C = EC_C[n][i];
 	double G = EC_G[n][i];
 	if (C>0)
@@ -982,6 +986,16 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 		SetII(n,pos[0],pos[1],pos[2], 0 );
 		SetIV(n,pos[0],pos[1],pos[2], 0 );
 	}
+}
+
+void Operator::CalcOperatorCoefficients()
+{
+	unsigned int pos[3];
+	for (int n=0; n<3; ++n)
+		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+					Calc_ECOperatorPos(n,pos);
 }
 
 int Operator::CalcECOperator( DebugFlags debugFlags )
@@ -1023,22 +1037,7 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	m_Exc->Reset(dT);
 
 	InitOperator();
-
-	unsigned int pos[3];
-
-	for (int n=0; n<3; ++n)
-	{
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-		{
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-			{
-				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-				{
-					Calc_ECOperatorPos(n,pos);
-				}
-			}
-		}
-	}
+	CalcOperatorCoefficients();
 
 	//Apply PEC to all boundary's
 	bool PEC[6]={1,1,1,1,1,1};
@@ -1051,6 +1050,20 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	CalcPEC();
 
 	Calc_LumpedElements();
+
+	// Parallel RC lumped elements above consume EC storage. Only explicitly
+	// audited operators/extensions may release it before extension construction.
+	if (CanReleaseECBeforeExtensions())
+	{
+		for (int n=0; n<3; ++n)
+		{
+			delete[] EC_C[n]; EC_C[n]=NULL;
+			delete[] EC_G[n]; EC_G[n]=NULL;
+			delete[] EC_L[n]; EC_L[n]=NULL;
+			delete[] EC_R[n]; EC_R[n]=NULL;
+		}
+		cout << "Operator: released temporary EC arrays before extensions" << endl;
+	}
 
 	bool PMC[6];
 	for (int n=0; n<6; ++n)

@@ -50,6 +50,21 @@ def run_case(args, label, cells, steps, boundaries, nonuniform=False):
                 os.environ.pop('OPENEMS_METAL_PML_LAYOUT', None)
             else:
                 os.environ['OPENEMS_METAL_PML_LAYOUT'] = old_layout
+        # Isolate each new optimization against the identical arithmetic path.
+        variants = [('duplicate-storage', 'OPENEMS_METAL_PML_REUSE'),
+                    ('dense-pml', 'OPENEMS_METAL_PML_COMPRESS'),
+                    ('late-ec-free', 'OPENEMS_METAL_EARLY_EC_FREE'),
+                    ('serial-coefficients', 'OPENEMS_METAL_SERIAL_COEFFICIENTS')]
+        variant_logs = {}
+        for label_variant, setting in variants:
+            previous = os.environ.get(setting)
+            try:
+                os.environ[setting] = '1' if setting == 'OPENEMS_METAL_SERIAL_COEFFICIENTS' else '0'
+                _, variant_logs[label_variant] = run(args.openems, model, 'metal', root / label_variant,
+                                                     args.fp64_reference, compress=True, pml=True)
+            finally:
+                if previous is None: os.environ.pop(setting, None)
+                else: os.environ[setting] = previous
         expected = sum(b.startswith('PML') for b in boundaries)
         marker = 'Metal: GPU UPML conditioning: {} regions'.format(expected)
         for log in (gpu_log, dense_log):
@@ -72,6 +87,15 @@ def run_case(args, label, cells, steps, boundaries, nonuniform=False):
         check_fields(root / 'sse', root / 'gpu', args.rtol, args.atol, args.l2,
                      pointwise=False)
         for field in ('Et.h5', 'Ht.h5'):
+            reference = h5_arrays(root / 'gpu' / field)
+            for label_variant, _ in variants:
+                result = h5_arrays(root / label_variant / field)
+                if result.keys() != reference.keys():
+                    raise AssertionError('Optimization datasets differ: ' + label_variant)
+                for key, a in reference.items():
+                    b = result[key]
+                    if a.shape != b.shape or a.dtype != b.dtype or a.tobytes() != b.tobytes():
+                        raise AssertionError('Optimization bits differ: ' + label_variant + '/' + field + '/' + key)
             dense = h5_arrays(root / 'dense' / field)
             packed = h5_arrays(root / 'gpu' / field)
             scalar = h5_arrays(root / 'scalar' / field)
@@ -95,7 +119,15 @@ def run_case(args, label, cells, steps, boundaries, nonuniform=False):
             if re.search(r'\b(?:nan|inf)\b', diagnostic[-1], re.IGNORECASE):
                 raise AssertionError('Non-finite FP64 diagnostic')
             print('  ' + diagnostic[-1])
-        print('  Dense/compressed and scalar/indexed GPU UPML: bit-identical')
+        if expected:
+            match = re.search(r'Metal: UPML duplicate bytes avoided: (\d+)', gpu_log)
+            if not match or int(match[1]) <= 0:
+                raise AssertionError('UPML storage reuse not exercised')
+            if 'Metal: UPML duplicate bytes avoided: 0' not in variant_logs['duplicate-storage']:
+                raise AssertionError('Duplicate-storage control not exercised')
+            if not any(s in gpu_log for s in ('Metal: lossless UPML coefficients:', 'Metal: UPML coefficient dictionary fallback')):
+                raise AssertionError('UPML compression/fallback not exercised')
+        print('  Dense/compressed, scalar/indexed and reuse/copy: bit-identical')
     finally:
         if args.keep:
             print('  kept ' + str(root))
@@ -112,6 +144,7 @@ def main():
     parser.add_argument('--fp64-reference', action='store_true')
     parser.add_argument('--keep', action='store_true')
     args = parser.parse_args()
+    # Metal optimizations are defaults; per-case controls explicitly turn them off.
     if os.environ.get('OPENEMS_METAL_PML_LAYOUT', 'indexed') != 'indexed':
         parser.error('Unset OPENEMS_METAL_PML_LAYOUT to test the default indexed path')
     cases = [

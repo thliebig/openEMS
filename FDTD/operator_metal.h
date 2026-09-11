@@ -15,12 +15,15 @@
 class Operator_Metal : public Operator_sse
 {
 public:
-	static Operator_Metal* New();
+	static Operator_Metal* New(unsigned int threads = 0);
 	virtual Engine* CreateEngine();
 
 protected:
 	Operator_Metal();
 	virtual bool CalcPEC();
+	virtual bool CanReleaseECBeforeExtensions() const;
+	virtual void CalcOperatorCoefficients();
+	unsigned int m_setupThreads;
 };
 
 #endif // OPERATOR_METAL_H

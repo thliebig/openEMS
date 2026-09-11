@@ -15,14 +15,18 @@ Compression is enabled by default. `OPENEMS_METAL_COMPRESS=0` selects dense
 coefficients for A/B comparisons. A Metal function constant removes the index
 lookup entirely from the dense shader specialization.
 
-Construction aborts if there are more than `min(4096, packed_positions / 4)`
-unique records. This bounds dictionary size to 768 KiB and requires at least
-fourfold record reuse. These are conservative heuristics, not a cache-size
-query or a guarantee of speedup. Nonuniform meshes can reach the limit quickly;
-they automatically retain dense reads. Initialization reports compression counts
-or dictionary-limit fallback. Coefficients must remain immutable during stepping,
-as in the current solver; future time-varying coefficient support would need to
-refresh the dictionary or disable it.
+Construction aborts if there are more than `min(65535, packed_positions / 4)`
+unique records; `65535` is the packed `uint16` index limit and can be lowered
+with `OPENEMS_METAL_COEFF_RECORDS` for A/B comparison. This bounds the dictionary
+to 12 MiB and requires at least fourfold record reuse. The original 4096 cap was
+too small for graded UPML coefficients, so any model with PML fell back to dense
+reads for the whole operator; the full index range keeps those models
+compressed. These are still heuristics, not a cache-size query or a guarantee of
+speedup. Very nonuniform meshes can reach the limit and automatically retain
+dense reads. Initialization reports compression counts or dictionary-limit
+fallback. Coefficients must remain immutable during stepping, as in the current
+solver; future time-varying coefficient support would need to refresh the
+dictionary or disable it.
 
 ## Validation
 
@@ -47,7 +51,10 @@ On M4 Pro, fast math OFF:
 - Tiny boundaries, odd dimensions, dielectric/conductive material, 1000-step
   long run, and the ~2-million-cell case: dense/compressed dumps bit-identical.
 - FP64 diagnostic summaries: identical for all four suite cases.
-- Nonuniform 48 x 47 x 46 case: dictionary-limit fallback, bit-identical dumps.
+- Nonuniform 48 x 47 x 46 case: bit-identical dumps; whether it compresses or
+  keeps dense reads depends on the `OPENEMS_METAL_COEFF_RECORDS` cap.
+- PML models: graded UPML coefficients stay compressed with the full index range
+  instead of falling back to dense reads for the whole operator.
 - Existing SSE versus Metal long-run discrepancies remain: 3895 E values exceed
   default tolerances, maximum absolute error 7.05719e-5. The dense Metal path has
   the same discrepancies; compression does not fix or worsen them. Other tested

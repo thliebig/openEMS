@@ -9,20 +9,76 @@
 
 #include "operator_metal.h"
 #include "engine_metal.h"
+#include "extensions/operator_ext_upml.h"
+#include "extensions/operator_ext_excitation.h"
+#include "extensions/operator_ext_mur_abc.h"
+#include <cstdlib>
+#include <typeinfo>
+#include <thread>
+#include <exception>
+#include <algorithm>
 
 using std::cout;
 using std::endl;
 
-Operator_Metal* Operator_Metal::New()
+Operator_Metal* Operator_Metal::New(unsigned int threads)
 {
 	cout << "Create FDTD operator (Metal field updates)" << endl;
 	Operator_Metal* op = new Operator_Metal();
 	op->Init();
+	op->m_setupThreads = threads;
 	return op;
 }
 
-Operator_Metal::Operator_Metal() : Operator_sse()
+Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0)
 {
+}
+
+void Operator_Metal::CalcOperatorCoefficients()
+{
+	const char* serial = std::getenv("OPENEMS_METAL_SERIAL_COEFFICIENTS");
+	if (serial && serial[0]=='1') { Operator::CalcOperatorCoefficients(); return; }
+	unsigned int workers = m_setupThreads ? m_setupThreads : std::max(1U,std::thread::hardware_concurrency());
+	workers = std::min(workers,numLines[0]);
+	// This arithmetic pass only reads EC arrays and writes disjoint X slabs.
+	// Material/geometry construction stays serial: CSXCAD used flags and weighted
+	// material parsers are shared, so parallelizing queries needs a separate audit.
+	std::vector<std::thread> threads;
+	std::vector<std::exception_ptr> errors(workers);
+	auto run = [&](unsigned int worker) {
+		try {
+			AdrOp address(MainOp);
+			unsigned int pos[3];
+			for (pos[0]=numLines[0]*worker/workers; pos[0]<numLines[0]*(worker+1)/workers; ++pos[0])
+				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2]) {
+						unsigned int index=address.SetPos(pos[0],pos[1],pos[2]);
+						for (int n=0; n<3; ++n) Calc_ECOperatorIndex(n,pos,index);
+					}
+		} catch (...) { errors[worker]=std::current_exception(); }
+	};
+	try {
+		for (unsigned int i=0;i<workers;++i) threads.emplace_back(run,i);
+	} catch (...) {
+		for (auto& thread:threads) thread.join();
+		throw;
+	}
+	for (auto& thread:threads) thread.join();
+	for (auto error:errors) if (error) std::rethrow_exception(error);
+	cout << "Metal: operator coefficient threads: " << workers << endl;
+}
+
+bool Operator_Metal::CanReleaseECBeforeExtensions() const
+{
+	const char* setting = std::getenv("OPENEMS_METAL_EARLY_EC_FREE");
+	if (setting && setting[0] == '0') return false;
+	// Exact types, not derived types: future extensions must opt into this audit.
+	// In particular series RLC, dispersive and conducting-sheet extensions need EC.
+	for (const auto* extension : m_Op_exts)
+		if (typeid(*extension) != typeid(Operator_Ext_UPML) &&
+		    typeid(*extension) != typeid(Operator_Ext_Excitation) &&
+		    typeid(*extension) != typeid(Operator_Ext_Mur_ABC)) return false;
+	return true;
 }
 
 Engine* Operator_Metal::CreateEngine()
