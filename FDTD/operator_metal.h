@@ -20,6 +20,7 @@ public:
 
 protected:
 	Operator_Metal();
+	virtual bool Calc_EC();
 	virtual bool CalcPEC();
 	virtual bool CanReleaseECBeforeExtensions() const;
 	virtual void CalcOperatorCoefficients();

@@ -34,6 +34,45 @@ Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0)
 {
 }
 
+bool Operator_Metal::Calc_EC()
+{
+	if (CSX==NULL)
+	{
+		std::cerr << "CartOperator::Calc_EC: CSX not given or invalid!!!" << endl;
+		return false;
+	}
+
+	MainOp->SetPos(0,0,0);
+
+	// The CPU engine parallelizes the material/geometry sampling by X range in
+	// Operator_Multithread. Operator_Metal derives from Operator_sse, so without
+	// this override the same CSXCAD-bound sampling runs on a single thread and
+	// dominates Metal operator setup. Writes are disjoint per X slice and the
+	// CSXCAD queries are read-only, matching the audited multithreaded path.
+	unsigned int workers = m_setupThreads ? m_setupThreads : std::max(1U,std::thread::hardware_concurrency());
+	workers = std::min(workers,numLines[0]);
+	std::vector<std::thread> threads;
+	std::vector<std::exception_ptr> errors(workers);
+	auto run = [&](unsigned int worker) {
+		try {
+			const unsigned int start = numLines[0]*worker/workers;
+			const unsigned int stop = numLines[0]*(worker+1)/workers;
+			if (start < stop) Calc_EC_Range(start, stop-1);
+		} catch (...) { errors[worker]=std::current_exception(); }
+	};
+	try {
+		for (unsigned int i=0;i<workers;++i) threads.emplace_back(run,i);
+	} catch (...) {
+		for (auto& thread:threads) thread.join();
+		throw;
+	}
+	for (auto& thread:threads) thread.join();
+	for (auto error:errors) if (error) std::rethrow_exception(error);
+
+	cout << "Metal: material EC threads: " << workers << endl;
+	return true;
+}
+
 void Operator_Metal::CalcOperatorCoefficients()
 {
 	const char* serial = std::getenv("OPENEMS_METAL_SERIAL_COEFFICIENTS");

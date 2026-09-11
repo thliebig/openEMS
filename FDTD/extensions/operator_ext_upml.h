@@ -21,6 +21,8 @@
 #include "FDTD/operator.h"
 #include "operator_extension.h"
 
+#include <mutex>
+
 #include "tools/arraylib/array_nijk.h"
 
 class FunctionParser;
@@ -92,6 +94,13 @@ protected:
 
 	std::string m_GradFunc;
 	FunctionParser* m_GradingFunction;
+	// FunctionParser::Eval is only reentrant when fparser is built with
+	// FP_USE_THREAD_SAFE_EVAL, which is off by default. BuildExtensionRange may
+	// run on several threads, so serialize access to the shared parser.
+	std::mutex m_GradingMutex;
+
+	//! Sample materials and build the UPML coefficients for one X slice.
+	void BuildExtensionRange(unsigned int xStart, unsigned int xStop);
 
 	void CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3]);
 

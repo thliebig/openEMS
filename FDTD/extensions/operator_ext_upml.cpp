@@ -20,6 +20,11 @@
 #include "engine_ext_upml.h"
 #include "fparser.hh"
 
+#include <algorithm>
+#include <exception>
+#include <thread>
+#include <vector>
+
 using namespace std;
 
 Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
@@ -268,6 +273,9 @@ bool Operator_Ext_UPML::SetGradingFunction(string func)
 
 void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3])
 {
+	// fparser's Eval() is only reentrant with FP_USE_THREAD_SAFE_EVAL (off by
+	// default); BuildExtensionRange calls this from several threads.
+	std::lock_guard<std::mutex> grading_lock(m_GradingMutex);
 	double depth=0;
 	double width=0;
 	for (int n=0; n<3; ++n)
@@ -359,6 +367,40 @@ bool Operator_Ext_UPML::BuildExtension()
 	iifo.Init("iifo", m_numLines);
 	iifn.Init("iifn", m_numLines);
 
+	// Material sampling below is bound by CSXCAD point-in-polygon queries and is
+	// otherwise single-threaded, so it dominates operator setup for large models.
+	// Each X slice writes disjoint operator/extension entries; this mirrors the
+	// audited parallel material sampling already used by Operator_Multithread.
+	unsigned int workers = std::max(1U,std::thread::hardware_concurrency());
+	workers = std::min(workers, m_numLines[0]);
+	if (workers <= 1)
+	{
+		BuildExtensionRange(0, m_numLines[0]-1);
+		return true;
+	}
+
+	std::vector<std::thread> threads;
+	std::vector<std::exception_ptr> errors(workers);
+	auto run = [&](unsigned int worker) {
+		try {
+			const unsigned int start = m_numLines[0]*worker/workers;
+			const unsigned int stop = m_numLines[0]*(worker+1)/workers;
+			if (start < stop) BuildExtensionRange(start, stop-1);
+		} catch (...) { errors[worker]=std::current_exception(); }
+	};
+	try {
+		for (unsigned int i=0;i<workers;++i) threads.emplace_back(run,i);
+	} catch (...) {
+		for (auto& thread:threads) thread.join();
+		throw;
+	}
+	for (auto& thread:threads) thread.join();
+	for (auto error:errors) if (error) std::rethrow_exception(error);
+	return true;
+}
+
+void Operator_Ext_UPML::BuildExtensionRange(unsigned int xStart, unsigned int xStop)
+{
 	unsigned int pos[3];
 	unsigned int loc_pos[3];
 	int nP,nPP;
@@ -367,7 +409,7 @@ bool Operator_Ext_UPML::BuildExtension()
 	double eff_Mat[4];
 	double dT = m_Op->GetTimestep();
 
-	for (loc_pos[0]=0; loc_pos[0]<m_numLines[0]; ++loc_pos[0])
+	for (loc_pos[0]=xStart; loc_pos[0]<=xStop; ++loc_pos[0])
 	{
 		pos[0] = loc_pos[0] + m_StartPos[0];
 		for (loc_pos[1]=0; loc_pos[1]<m_numLines[1]; ++loc_pos[1])
@@ -441,7 +483,6 @@ bool Operator_Ext_UPML::BuildExtension()
 			}
 		}
 	}
-	return true;
 }
 
 Engine_Extension* Operator_Ext_UPML::CreateEngineExtention()
