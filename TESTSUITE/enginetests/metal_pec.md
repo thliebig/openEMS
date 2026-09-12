@@ -20,7 +20,8 @@ geometries are slower on GPU.
 
 ## Scope and semantics
 
-- Supports Cartesian boxes, polygons, and linearly extruded polygons.
+- Supports Cartesian boxes, polygons, linearly extruded polygons, and
+  cylinders / cylindrical shells (via-like annuli).
 - Computes primal/dual Yee coordinates and inclusive bounding-box index ranges
   in CPU FP64. Nonuniform grids and zero-thickness sheets retain exact normal
   coordinate inclusion; no float tolerance thickens the copper.
@@ -31,9 +32,14 @@ geometries are slower on GPU.
   coordinate/edge comparisons close to equality are sent to CSXCAD FP64, using
   conservative scale-dependent error margins. Large/nonfinite coordinates are
   rejected from the GPU path. No approximate decision is used at a near edge.
-- Transforms, cylinders/vias, curves, and other unsupported primitives cause
-  affected queries to use the original CPU candidate list. They are never
-  silently ignored. This can remove most of the speedup for some geometries.
+- Cylinders and cylindrical shells are tested on the GPU against the axis
+  segment and radius (`dist <= radius`; for a shell `|dist - radius| <=
+  ShellWidth/2`). Queries within a conservative FP32 margin of a wall, an end
+  cap, or a degenerate axis fall back to the CPU, preserving CSXCAD's exact
+  double-precision decision.
+- Transforms, curves, spheres, and other unsupported primitives cause affected
+  queries to use the original CPU candidate list. They are never silently
+  ignored. This can remove most of the speedup for some geometries.
 - Returns winning primitive IDs (a richer PEC mask), preserving primitive-used
   flags for both material and metal. The CPU sets VV/VI to zero for metal and
   maintains PEC counts. `CalcPEC_Curves()` still runs afterwards.
@@ -56,7 +62,8 @@ Metal stepping engine. Checks include every winning primitive in verify mode,
 complete numeric HDF5 datasets, probe numeric output, and unused-primitive
 warnings. Fixtures cover nonuniform sheets/boxes, diagonal traces/narrow gaps,
 extrusion, exact and nearly coincident edges, equal-priority material overlap,
-cylinders, and transforms. Metal API validation also passed these fixtures.
+cylinders and cylindrical shells (exact and off-grid walls), and transforms.
+Metal API validation also passed these fixtures.
 
 For the local CoSwitch pilot XML (585 polygons, 33 boxes; 926,970 solver cells,
 1000 steps), all 2,780,910 winning-primitive queries matched CPU. Only 671 queries

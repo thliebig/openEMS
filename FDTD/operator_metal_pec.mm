@@ -6,6 +6,8 @@
 #include "ContinuousStructure.h"
 #include "CSPrimPolygon.h"
 #include "CSPrimLinPoly.h"
+#include "CSPrimCylinder.h"
+#include "CSPrimCylindricalShell.h"
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
@@ -28,11 +30,13 @@ struct PecPrimitive
 	uint32_t kind, normal, first, count;
 };
 struct PecPoint { float x, y; };
+struct PecCylinder { float p0[3], radius, p1[3], shell; };
 const uint32_t cpuQuery = UINT32_MAX - 1;
 const char* pecSource = R"METAL(
 #include <metal_stdlib>
 using namespace metal;
 struct Primitive { uint bounds[12]; uint kind, normal, first, count; };
+struct Cylinder { float p0[3], radius, p1[3], shell; };
 kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
                      const device float2* vertices [[buffer(1)]],
                      const device uint* offsets [[buffer(2)]],
@@ -40,6 +44,7 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
                      const device float* grid [[buffer(4)]],
                      device uint* winners [[buffer(5)]],
                      constant uint4& p [[buffer(6)]],
+                     const device Cylinder* cyls [[buffer(7)]],
                      uint3 gid [[thread_position_in_grid]])
 {
 	if (gid.x >= p.z * 3 || gid.y >= p.y) return;
@@ -64,6 +69,55 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 		}
 		if (outside) continue;
 		if (q.kind == 1) { result = id; break; }
+		if (q.kind == 3 || q.kind == 4)
+		{
+			Cylinder cy = cyls[q.first];
+			float3 a = float3(cy.p0[0], cy.p0[1], cy.p0[2]);
+			float3 b = float3(cy.p1[0], cy.p1[1], cy.p1[2]);
+			float3 pp = float3(c[0], c[1], c[2]);
+			float3 ab = b - a;
+			float ab2 = dot(ab, ab);
+			float scale = max(1.0f, max(abs(cy.radius), abs(cy.shell)));
+			scale = max(scale, max(max(abs(pp.x), abs(pp.y)), abs(pp.z)));
+			scale = max(scale, max(max(abs(a.x), abs(a.y)), max(abs(b.x), max(abs(b.y), abs(b.z)))));
+			float e = 256.0f * FLT_EPSILON * scale;
+			float te = 256.0f * FLT_EPSILON;
+			if (ab2 <= e*e)
+			{
+				uncertain = true;
+			}
+			else
+			{
+				float t = dot(pp - a, ab) / ab2;
+				if (t < -te || t > 1.0f + te)
+				{
+					// outside the axis segment, not this primitive
+				}
+				else if (t < te || t > 1.0f - te)
+				{
+					uncertain = true;
+				}
+				else
+				{
+					float d = length(pp - (a + t*ab));
+					if (q.kind == 3)
+					{
+						if (d <= cy.radius - e) { result = id; break; }
+						if (d <= cy.radius + e) uncertain = true;
+					}
+					else
+					{
+						float lower = cy.radius - 0.5f*cy.shell;
+						float upper = cy.radius + 0.5f*cy.shell;
+						if (d < lower - e || d > upper + e) { }
+						else if (d <= lower + e || d >= upper - e) uncertain = true;
+						else { result = id; break; }
+					}
+				}
+			}
+			if (uncertain) { result = 0xfffffffeu; break; }
+			continue;
+		}
 		float px = c[(q.normal+1)%3], py = c[(q.normal+2)%3];
 		float2 prev = vertices[q.first+q.count-1];
 		int winding = 0;
@@ -148,18 +202,27 @@ bool Operator_Metal::CalcPEC()
 				if (!std::is_sorted(axes[a][dual].begin(), axes[a][dual].end())) return Operator::CalcPEC();
 		std::vector<PecPrimitive> flattened;
 		std::vector<PecPoint> vertices;
+		std::vector<PecCylinder> cylinders;
 		size_t unsupported = 0;
 		for (auto* prim : primitives)
 		{
 			PecPrimitive q{};
 			const int type = prim->GetType();
-			if (!prim->HasTransform() && prim->GetCoordInputType() == CARTESIAN &&
-			    (prim->GetCoordinateSystem() == CARTESIAN || prim->GetCoordinateSystem() == UNDEFINED_CS) &&
-			    (type == CSPrimitives::BOX || type == CSPrimitives::POLYGON || type == CSPrimitives::LINPOLY))
+			const bool cartesian_prim =
+			    !prim->HasTransform() && prim->GetCoordInputType() == CARTESIAN &&
+			    (prim->GetCoordinateSystem() == CARTESIAN || prim->GetCoordinateSystem() == UNDEFINED_CS);
+			const bool flat_supported = cartesian_prim &&
+			    (type == CSPrimitives::BOX || type == CSPrimitives::POLYGON || type == CSPrimitives::LINPOLY);
+			const bool cylinder_supported = cartesian_prim &&
+			    (type == CSPrimitives::CYLINDER || type == CSPrimitives::CYLINDRICALSHELL);
+			if (flat_supported || cylinder_supported)
 			{
 				double bounds[6];
 				prim->GetBoundBox(bounds);
-				q.kind = type == CSPrimitives::BOX ? 1 : 2;
+				if (flat_supported)
+					q.kind = type == CSPrimitives::BOX ? 1 : 2;
+				else
+					q.kind = type == CSPrimitives::CYLINDER ? 3 : 4;
 				for (int a = 0; a < 3; ++a)
 				{
 					if (!std::isfinite(bounds[2*a]) || !std::isfinite(bounds[2*a+1])) q.kind = 0;
@@ -186,6 +249,39 @@ bool Operator_Metal::CalcPEC()
 						vertices.push_back({static_cast<float>(vx), static_cast<float>(vy)});
 					}
 				}
+				else if (q.kind == 3 || q.kind == 4)
+				{
+					// Cylinders and cylindrical shells share the axis/radius test; a
+					// shell additionally bounds the distance to its radius. Vias are
+					// commonly cylinders, so both are mapped on the GPU.
+					auto* cylinder = static_cast<CSPrimCylinder*>(prim);
+					const double* start = cylinder->GetAxisStartCoord()->GetCartesianCoords();
+					const double* stop = cylinder->GetAxisStopCoord()->GetCartesianCoords();
+					const double radius = cylinder->GetRadius();
+					const double shell = q.kind == 4
+					    ? static_cast<CSPrimCylindricalShell*>(prim)->GetShellWidth() : 0.0;
+					bool valid = std::isfinite(radius) && std::isfinite(shell) && radius >= 0 && shell >= 0;
+					for (int i = 0; i < 3; ++i)
+						valid = valid && std::isfinite(start[i]) && std::isfinite(stop[i]) &&
+						        std::abs(start[i]) <= 1e10 && std::abs(stop[i]) <= 1e10;
+					const double dx = stop[0]-start[0], dy = stop[1]-start[1], dz = stop[2]-start[2];
+					valid = valid && (dx*dx + dy*dy + dz*dz) > 0.0;
+					if (!valid) q.kind = 0;
+					else
+					{
+						PecCylinder c{};
+						c.p0[0] = static_cast<float>(start[0]);
+						c.p0[1] = static_cast<float>(start[1]);
+						c.p0[2] = static_cast<float>(start[2]);
+						c.radius = static_cast<float>(radius);
+						c.p1[0] = static_cast<float>(stop[0]);
+						c.p1[1] = static_cast<float>(stop[1]);
+						c.p1[2] = static_cast<float>(stop[2]);
+						c.shell = static_cast<float>(shell);
+						q.first = static_cast<uint32_t>(cylinders.size());
+						cylinders.push_back(c);
+					}
+				}
 			}
 			if (!q.kind) ++unsupported;
 			flattened.push_back(q);
@@ -194,6 +290,7 @@ bool Operator_Metal::CalcPEC()
 			std::cout << "Metal PEC: " << unsupported << " unsupported primitives; affected queries use CPU" << std::endl;
 		id<MTLBuffer> geometry = buffer(flattened.data(), flattened.size()*sizeof(PecPrimitive));
 		id<MTLBuffer> points = buffer(vertices.data(), vertices.size()*sizeof(PecPoint));
+		id<MTLBuffer> cylinderGeometry = buffer(cylinders.data(), cylinders.size()*sizeof(PecCylinder));
 		id<MTLBuffer> coordinates = buffer(grid.data(), grid.size()*sizeof(float));
 		size_t resolved = 0, queries = 0;
 		std::fill(m_Nr_PEC, m_Nr_PEC+3, 0);
@@ -242,8 +339,8 @@ bool Operator_Metal::CalcPEC()
 			id<MTLCommandBuffer> command = [queue commandBuffer];
 			id<MTLComputeCommandEncoder> encoder = [command computeCommandEncoder];
 			[encoder setComputePipelineState:pipeline];
-			id<MTLBuffer> buffers[] = {geometry, points, rowOffsets, rowCandidates, coordinates, output};
-			for (unsigned i = 0; i < 6; ++i) [encoder setBuffer:buffers[i] offset:0 atIndex:i];
+			id<MTLBuffer> buffers[] = {geometry, points, rowOffsets, rowCandidates, coordinates, output, cylinderGeometry};
+			for (unsigned i = 0; i < 7; ++i) [encoder setBuffer:buffers[i] offset:0 atIndex:i];
 			uint32_t params[] = {numLines[0], numLines[1], numLines[2], x};
 			[encoder setBytes:params length:sizeof(params) atIndex:6];
 			// Offset the X coordinate without materializing all Yee coordinates.

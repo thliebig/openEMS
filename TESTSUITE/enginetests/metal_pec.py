@@ -42,6 +42,20 @@ def fixture(path, kind):
             box = ET.SubElement(prims, 'Box', Priority='3')
             ET.SubElement(box, 'P1', X='2', Y='2', Z=z)
             ET.SubElement(box, 'P2', X='20', Y='20', Z=z)
+    elif kind == 'cylinders':
+        # Via-like z cylinders with exact and off-grid walls, plus a shell.
+        for x, y, r in ((6, 6, 1), (12, 12, 2), (18, 6, 0.5), (6.5, 18.5, 1.5)):
+            cyl = ET.SubElement(prims, 'Cylinder', Priority='5', Radius=str(r))
+            ET.SubElement(cyl, 'P1', X=str(x), Y=str(y), Z='0')
+            ET.SubElement(cyl, 'P2', X=str(x), Y=str(y), Z='22')
+        # Shell keeps only points with |dist - radius| <= ShellWidth/2.
+        shell = ET.SubElement(prims, 'CylindricalShell', Priority='5',
+                              Radius='3', ShellWidth='1')
+        ET.SubElement(shell, 'P1', X='18', Y='18', Z='0')
+        ET.SubElement(shell, 'P2', X='18', Y='18', Z='22')
+        mesh = tree.find('.//RectilinearGrid')
+        for axis, count in zip('XYZ', (24, 23, 22)):
+            mesh.find(axis+'Lines').text = ','.join(str(i) for i in range(count+1))
     else:
         for offset in (0, 5.000001):
             poly = ET.SubElement(prims, 'Polygon' if kind == 'sheets' else 'LinPoly',
@@ -141,7 +155,8 @@ def main():
     args = p.parse_args()
     root = Path(tempfile.mkdtemp(prefix='openems-metal-pec-'))
     try:
-        cases = ['external'] if args.model else ['boxes', 'sheets', 'extruded', 'edge-cases', 'fallback']
+        cases = ['external'] if args.model else ['boxes', 'sheets', 'extruded',
+                                                 'edge-cases', 'fallback', 'cylinders']
         for kind in cases:
             model = args.model.resolve() if args.model else root/(kind+'.xml')
             if not args.model:
@@ -152,6 +167,13 @@ def main():
                 warnings.append(run(str(Path(args.openems).resolve()), model, mode, root/(kind+'-'+mode)))
             if warnings[0] != warnings[1] or warnings[0] != warnings[2]:
                 raise AssertionError('Primitive-used warnings differ')
+            if kind == 'cylinders':
+                # Cylinders and shells must be flattened for the GPU, not left
+                # as unsupported primitives that force CPU refinement.
+                for mode in ('verify', 'default'):
+                    log = (root/(kind+'-'+mode)/'solver.log').read_text()
+                    if 'unsupported primitives' in log:
+                        raise AssertionError('Cylinders/shells not mapped on the GPU')
             compare(root/(kind+'-0'), root/(kind+'-verify'))
             compare(root/(kind+'-0'), root/(kind+'-default'))
     finally:
