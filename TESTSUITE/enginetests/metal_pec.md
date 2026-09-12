@@ -28,10 +28,13 @@ geometries are slower on GPU.
 - Flattens polygons and builds X-slab / XY-column candidates from exact ranges.
   Preserves CSXCAD's sorted primitive order (including equal-priority ordering)
   and `IsInsideBox` domain culling. A thread handles one electric component.
-- Polygon interiors use the CSXCAD winding rule with fast math disabled. FP32
-  coordinate/edge comparisons close to equality are sent to CSXCAD FP64, using
-  conservative scale-dependent error margins. Large/nonfinite coordinates are
-  rejected from the GPU path. No approximate decision is used at a near edge.
+- Polygon interiors use the CSXCAD winding rule with fast math disabled. Mesh
+  and polygon coordinates are carried as double-float (hi + lo) pairs and the
+  orient2d determinant sign is evaluated exactly (`FDTD/metal_predicates.h`),
+  including exact axis-aligned on-edge tests. Only results within a conservative
+  bound of the decision boundary fall back to CSXCAD FP64, so ordinary near-edge
+  cases are decided on the GPU. Large/nonfinite coordinates are rejected from
+  the GPU path. No approximate decision is used at a near edge.
 - Cylinders and cylindrical shells are tested on the GPU against the axis
   segment and radius (`dist <= radius`; for a shell `|dist - radius| <=
   ShellWidth/2`). Queries within a conservative FP32 margin of a wall, an end
@@ -65,6 +68,16 @@ extrusion, exact and nearly coincident edges, equal-priority material overlap,
 cylinders and cylindrical shells (exact and off-grid walls), and transforms.
 Metal API validation also passed these fixtures.
 
+The polygon predicate is host-testable without Metal:
+```sh
+clang++ -std=c++17 -O2 -I<repo-root> -I/opt/homebrew/include \
+  TESTSUITE/enginetests/metal_predicates_test.cpp -o /tmp/metal_predicates_test
+/tmp/metal_predicates_test
+```
+It fuzzes `mp_orient2d_sign` against 100-bit reference arithmetic and fails if a
+certified sign ever disagrees. The shader source embeds the same header at
+configure time, so the two cannot drift.
+
 For the local CoSwitch pilot XML (585 polygons, 33 boxes; 926,970 solver cells,
 1000 steps), all 2,780,910 winning-primitive queries matched CPU. Only 671 queries
 needed CPU refinement. All port waveforms and unused warnings matched. A fixed
@@ -83,6 +96,13 @@ Representative same-machine M4 Pro runs (not medians):
 The speedup includes spatial candidate pruning as well as GPU execution; it
 should not be attributed to shaders alone. Setup excluding stepping dropped
 from approximately 10.91 s to 2.27 s.
+
+The exact polygon predicate also cuts CPU refinement sharply. On the CoSwitch
+slice above (3151 copper polygons, 1606 z-axis vias), moving near-edge polygon
+decisions onto the GPU took CPU refinements from 447,495 to 5,370 of 8,555,586
+queries and the PEC pass from 12.7 s to 1.48 s on the same M5 Max. All winners
+were CPU-verified. Only genuine boundary ties (or the conservative cylinder
+epsilon) still fall back.
 
 The separate 17.3M-cell XML (30,845 polygons, 469 boxes, 280 extrusions) did not
 complete within the bounded test attempts (300 s CPU / 180 s GPU mode), and did

@@ -8,8 +8,11 @@
 #include "CSPrimLinPoly.h"
 #include "CSPrimCylinder.h"
 #include "CSPrimCylindricalShell.h"
+#include "metal_predicates_src.h"
 
 #import <Foundation/Foundation.h>
+
+#include <string>
 #import <Metal/Metal.h>
 
 #include <algorithm>
@@ -29,22 +32,29 @@ struct PecPrimitive
 	uint32_t bounds[12]; // [axis][primal/dual][begin/end), computed in FP64
 	uint32_t kind, normal, first, count;
 };
-struct PecPoint { float x, y; };
+struct PecVertex { float xh, xl, yh, yl; };
+struct PecCoord { float hi, lo; };
 struct PecCylinder { float p0[3], radius, p1[3], shell; };
 const uint32_t cpuQuery = UINT32_MAX - 1;
-const char* pecSource = R"METAL(
+// The predicate header is embedded between these two blocks so the shader and
+// the host unit test share one implementation.
+const char* pecSourceHead = R"METAL(
 #include <metal_stdlib>
 using namespace metal;
 struct Primitive { uint bounds[12]; uint kind, normal, first, count; };
+struct Vertex { float xh, xl, yh, yl; };
 struct Cylinder { float p0[3], radius, p1[3], shell; };
+)METAL";
+const char* pecSourceTail = R"METAL(
 kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
-                     const device float2* vertices [[buffer(1)]],
+                     const device Vertex* vertices [[buffer(1)]],
                      const device uint* offsets [[buffer(2)]],
                      const device uint* candidates [[buffer(3)]],
                      const device float* grid [[buffer(4)]],
                      device uint* winners [[buffer(5)]],
                      constant uint4& p [[buffer(6)]],
                      const device Cylinder* cyls [[buffer(7)]],
+                     const device float2* gridD [[buffer(8)]],
                      uint3 gid [[thread_position_in_grid]])
 {
 	if (gid.x >= p.z * 3 || gid.y >= p.y) return;
@@ -54,6 +64,12 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 	float c[3] = {grid[2*x + (n == 0)],
 	              grid[2*p.x + 2*y + (n == 1)],
 	              grid[2*(p.x+p.y) + 2*z + (n == 2)]};
+	uint gidx[3] = {2*x + (n == 0),
+	                2*p.x + 2*y + (n == 1),
+	                2*(p.x+p.y) + 2*z + (n == 2)};
+	mp_df cd[3] = {{gridD[gidx[0]].x, gridD[gidx[0]].y},
+	               {gridD[gidx[1]].x, gridD[gidx[1]].y},
+	               {gridD[gidx[2]].x, gridD[gidx[2]].y}};
 	uint result = 0xffffffffu;
 	for (uint k = offsets[line]; k < offsets[line+1]; ++k)
 	{
@@ -118,29 +134,44 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 			if (uncertain) { result = 0xfffffffeu; break; }
 			continue;
 		}
-		float px = c[(q.normal+1)%3], py = c[(q.normal+2)%3];
-		float2 prev = vertices[q.first+q.count-1];
+		// Mirror CSPrimPolygon::IsInside with exact (double-float) predicates.
+		mp_df px = cd[(q.normal+1)%3];
+		mp_df py = cd[(q.normal+2)%3];
+		uint vlast = q.first + q.count - 1;
+		mp_df x1 = {vertices[vlast].xh, vertices[vlast].xl};
+		mp_df y1 = {vertices[vlast].yh, vertices[vlast].yl};
 		int winding = 0;
-		bool over = prev.y >= py;
+		bool onedge = false;
+		int startover = mp_df_ge(y1, py);
 		for (uint j = 0; j < q.count; ++j)
 		{
-			float2 v = vertices[q.first+j];
-			float scale = max(1.0f, max(max(abs(px),abs(py)), max(max(abs(v.x),abs(v.y)), max(abs(prev.x),abs(prev.y)))));
-			float e = 32.0f * FLT_EPSILON * scale;
-			if (abs(v.y-py) <= e || abs(prev.y-py) <= e) { uncertain = true; break; }
-			bool nextOver = v.y >= py;
-			if (over != nextOver)
+			uint vj = q.first + j;
+			mp_df x2 = {vertices[vj].xh, vertices[vj].xl};
+			mp_df y2 = {vertices[vj].yh, vertices[vj].yl};
+			// Exact axis-aligned on-edge tests.
+			if (mp_df_eq(x2, x1) && mp_df_eq(x1, px) &&
+			    ((!mp_df_ge(py, y1) && !mp_df_ge(y2, py)) ||
+			     (!mp_df_ge(y1, py) && !mp_df_ge(py, y2))))
+			{ onedge = true; break; }
+			if (mp_df_eq(y2, y1) && mp_df_eq(y1, py) &&
+			    ((!mp_df_ge(px, x1) && !mp_df_ge(x2, px)) ||
+			     (!mp_df_ge(x1, px) && !mp_df_ge(px, x2))))
+			{ onedge = true; break; }
+			int endover = mp_df_ge(y2, py);
+			if (startover != endover)
 			{
-				float left = (v.y-py)*(v.x-prev.x);
-				float right = (v.y-prev.y)*(v.x-px);
-				if (abs(left-right) <= 128.0f*FLT_EPSILON*scale*scale) { uncertain = true; break; }
-				if (left <= right) { if (nextOver) ++winding; }
-				else if (!nextOver) --winding;
+				int s = mp_orient2d_sign(x1, y1, x2, y2, px, py);
+				if (s == 0) { uncertain = true; break; }
+				// CSXCAD: (y2-py)*(x2-x1) <= (y2-y1)*(x2-px), i.e. orient2d >= 0.
+				if (s > 0) { if (endover) ++winding; }
+				else { if (!endover) --winding; }
 			}
-			over = nextOver; prev = v;
+			startover = endover;
+			x1 = x2; y1 = y2;
 		}
 		if (uncertain) { result = 0xfffffffeu; break; }
-		if (winding != 0) { result = id; break; }
+		if (onedge || winding != 0) { result = id; break; }
+		continue;
 	}
 	winners[output] = result;
 }
@@ -167,7 +198,8 @@ bool Operator_Metal::CalcPEC()
 		NSError* error = nil;
 		MTLCompileOptions* options = [MTLCompileOptions new];
 		options.fastMathEnabled = NO; // Geometry decisions must not use field fast math.
-		id<MTLLibrary> library = [device newLibraryWithSource:@(pecSource) options:options error:&error];
+		std::string pecSource = std::string(pecSourceHead) + metalPredicatesSource + pecSourceTail;
+		id<MTLLibrary> library = [device newLibraryWithSource:@(pecSource.c_str()) options:options error:&error];
 		id<MTLFunction> function = [library newFunctionWithName:@"pec_mask"];
 		id<MTLComputePipelineState> pipeline = function ? [device newComputePipelineStateWithFunction:function error:&error] : nil;
 		if (!queue || !pipeline)
@@ -188,6 +220,7 @@ bool Operator_Metal::CalcPEC()
 		// zero-thickness sheets must not become a tolerance-thickened volume.
 		std::vector<double> axes[3][2];
 		std::vector<float> grid;
+		std::vector<PecCoord> gridD;
 		for (int a = 0; a < 3; ++a)
 			for (unsigned i = 0; i < numLines[a]; ++i)
 				for (int dual = 0; dual < 2; ++dual)
@@ -196,12 +229,16 @@ bool Operator_Metal::CalcPEC()
 					if (!std::isfinite(coord) || std::abs(coord) > 1e10) return Operator::CalcPEC();
 					axes[a][dual].push_back(coord);
 					grid.push_back(static_cast<float>(coord));
+					PecCoord gc;
+					gc.hi = static_cast<float>(coord);
+					gc.lo = static_cast<float>(coord - static_cast<double>(gc.hi));
+					gridD.push_back(gc);
 				}
 		for (int a = 0; a < 3; ++a)
 			for (int dual = 0; dual < 2; ++dual)
 				if (!std::is_sorted(axes[a][dual].begin(), axes[a][dual].end())) return Operator::CalcPEC();
 		std::vector<PecPrimitive> flattened;
-		std::vector<PecPoint> vertices;
+		std::vector<PecVertex> vertices;
 		std::vector<PecCylinder> cylinders;
 		size_t unsupported = 0;
 		for (auto* prim : primitives)
@@ -246,7 +283,12 @@ bool Operator_Metal::CalcPEC()
 					{
 						double vx = polygon->GetCoord(2*j), vy = polygon->GetCoord(2*j+1);
 						if (!std::isfinite(vx) || !std::isfinite(vy) || std::abs(vx) > 1e10 || std::abs(vy) > 1e10) q.kind = 0;
-						vertices.push_back({static_cast<float>(vx), static_cast<float>(vy)});
+						PecVertex vert;
+						vert.xh = static_cast<float>(vx);
+						vert.xl = static_cast<float>(vx - static_cast<double>(vert.xh));
+						vert.yh = static_cast<float>(vy);
+						vert.yl = static_cast<float>(vy - static_cast<double>(vert.yh));
+						vertices.push_back(vert);
 					}
 				}
 				else if (q.kind == 3 || q.kind == 4)
@@ -289,9 +331,10 @@ bool Operator_Metal::CalcPEC()
 		if (unsupported)
 			std::cout << "Metal PEC: " << unsupported << " unsupported primitives; affected queries use CPU" << std::endl;
 		id<MTLBuffer> geometry = buffer(flattened.data(), flattened.size()*sizeof(PecPrimitive));
-		id<MTLBuffer> points = buffer(vertices.data(), vertices.size()*sizeof(PecPoint));
+		id<MTLBuffer> points = buffer(vertices.data(), vertices.size()*sizeof(PecVertex));
 		id<MTLBuffer> cylinderGeometry = buffer(cylinders.data(), cylinders.size()*sizeof(PecCylinder));
 		id<MTLBuffer> coordinates = buffer(grid.data(), grid.size()*sizeof(float));
+		id<MTLBuffer> coordinatesD = buffer(gridD.data(), gridD.size()*sizeof(PecCoord));
 		size_t resolved = 0, queries = 0;
 		std::fill(m_Nr_PEC, m_Nr_PEC+3, 0);
 		// One X slab bounds mask/index memory. Keep CSXCAD's exact candidate order,
@@ -339,8 +382,12 @@ bool Operator_Metal::CalcPEC()
 			id<MTLCommandBuffer> command = [queue commandBuffer];
 			id<MTLComputeCommandEncoder> encoder = [command computeCommandEncoder];
 			[encoder setComputePipelineState:pipeline];
-			id<MTLBuffer> buffers[] = {geometry, points, rowOffsets, rowCandidates, coordinates, output, cylinderGeometry};
-			for (unsigned i = 0; i < 7; ++i) [encoder setBuffer:buffers[i] offset:0 atIndex:i];
+			// Buffer 6 is the inline params struct set below, so the cylinder and
+			// high-precision grid buffers start at index 7.
+			id<MTLBuffer> buffers[] = {geometry, points, rowOffsets, rowCandidates, coordinates, output};
+			for (unsigned i = 0; i < 6; ++i) [encoder setBuffer:buffers[i] offset:0 atIndex:i];
+			[encoder setBuffer:cylinderGeometry offset:0 atIndex:7];
+			[encoder setBuffer:coordinatesD offset:0 atIndex:8];
 			uint32_t params[] = {numLines[0], numLines[1], numLines[2], x};
 			[encoder setBytes:params length:sizeof(params) atIndex:6];
 			// Offset the X coordinate without materializing all Yee coordinates.
@@ -365,7 +412,8 @@ bool Operator_Metal::CalcPEC()
 								haveLine[y] = true;
 							}
 							CSX->GetPropertyByCoordPriority(coord, lines[y], false, &reference);
-							if (winner != cpuQuery && prim != reference) throw std::runtime_error("Metal PEC: CPU/GPU winner mismatch");
+							if (winner != cpuQuery && prim != reference)
+								throw std::runtime_error("Metal PEC: CPU/GPU winner mismatch");
 							prim = reference;
 							if (winner == cpuQuery) ++resolved;
 						}

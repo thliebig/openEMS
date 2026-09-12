@@ -42,6 +42,14 @@ if(WITH_METAL)
   endif()
   find_library(METAL_FRAMEWORK Metal REQUIRED)
   find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
+
+  # Embed the shared predicate header as a Metal source string. A single header
+  # keeps the host unit test and the shader from drifting apart.
+  file(READ "${PROJECT_SOURCE_DIR}/FDTD/metal_predicates.h" METAL_PREDICATES_TEXT)
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/metal_predicates_src.h"
+    "#pragma once\nstatic const char* const metalPredicatesSource = R\"METALPRED(\n${METAL_PREDICATES_TEXT}\n)METALPRED\";\n")
+  INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/FDTD/metal_predicates.h")
 endif()
 
 # default
