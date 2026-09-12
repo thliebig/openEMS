@@ -27,7 +27,9 @@ geometries are slower on GPU.
   coordinate inclusion; no float tolerance thickens the copper.
 - Flattens polygons and builds X-slab / XY-column candidates from exact ranges.
   Preserves CSXCAD's sorted primitive order (including equal-priority ordering)
-  and `IsInsideBox` domain culling. A thread handles one electric component.
+  and `IsInsideBox` domain culling. The same per-row candidate list is reused to
+  resolve `cpuQuery` points, so CPU refinement does not re-collect and re-sort
+  every primitive per row. A thread handles one electric component.
 - Polygon interiors use the CSXCAD winding rule with fast math disabled. Mesh
   and polygon coordinates are carried as double-float (hi + lo) pairs and the
   orient2d determinant sign is evaluated exactly (`FDTD/metal_predicates.h`),

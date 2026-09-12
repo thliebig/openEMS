@@ -351,6 +351,8 @@ bool Operator_Metal::CalcPEC()
 			}
 			std::vector<std::vector<CSPrimitives*>> lines(numLines[1]);
 			std::vector<bool> haveLine(numLines[1], false);
+			std::vector<std::vector<CSPrimitives*>> refLines(numLines[1]);
+			std::vector<bool> haveRef(numLines[1], false);
 			std::vector<uint32_t> offsets(1, 0), candidates;
 			for (unsigned y = 0; y < numLines[1]; ++y)
 			{
@@ -408,12 +410,35 @@ bool Operator_Metal::CalcPEC()
 							CSPrimitives* reference = nullptr;
 							if (!haveLine[y])
 							{
-								lines[y] = GetPrimitivesBoundBox(x, y, -1, types);
+								// The per-row candidate list already is the bounding-box filtered,
+								// CSXCAD priority-ordered primitive list, so reuse it instead of
+								// re-fetching and re-sorting every primitive for this row.
+								lines[y].clear();
+								lines[y].reserve(offsets[y+1]-offsets[y]);
+								for (uint32_t k = offsets[y]; k < offsets[y+1]; ++k)
+									lines[y].push_back(primitives[candidates[k]]);
 								haveLine[y] = true;
 							}
 							CSX->GetPropertyByCoordPriority(coord, lines[y], false, &reference);
-							if (winner != cpuQuery && prim != reference)
-								throw std::runtime_error("Metal PEC: CPU/GPU winner mismatch");
+							if (verify)
+							{
+								// Cross-check against the full bounding-box list. The row
+								// prefilter may only drop primitives that cannot contain this
+								// coordinate, so the resolved winner must be identical.
+								if (!haveRef[y])
+								{
+									double box[] = {GetDiscLine(0, x ? x-1 : 0), GetDiscLine(0, std::min(x+1,numLines[0]-1)),
+									                GetDiscLine(1, y ? y-1 : 0), GetDiscLine(1, std::min(y+1,numLines[1]-1)),
+									                GetDiscLine(2, 0), GetDiscLine(2, numLines[2]-1)};
+									for (auto* candidate : primitives)
+										if (candidate->IsInsideBox(box) >= 0) refLines[y].push_back(candidate);
+									haveRef[y] = true;
+								}
+								CSPrimitives* authority = nullptr;
+								CSX->GetPropertyByCoordPriority(coord, refLines[y], false, &authority);
+								if (reference != authority || (winner != cpuQuery && prim != authority))
+									throw std::runtime_error("Metal PEC: CPU/GPU winner mismatch");
+							}
 							prim = reference;
 							if (winner == cpuQuery) ++resolved;
 						}
