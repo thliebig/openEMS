@@ -8,7 +8,7 @@ electromagnetic field solver.
 This file may be outdated. For the latest documentation, check
 the online web page.
 
-* [CSXCAD/openEMS Python Interface Installation](https://openems.readthedocs.io/en/latest/python/install.html)
+* [CSXCAD/openEMS Python Interface Installation](https://docs.openems.de/en/latest/python/install.html)
 
 ### Dependencies
 
@@ -32,7 +32,7 @@ the C++ CSXCAD library and openEMS field solver into the system,
 and installing the CSXCAD Python extension). If not, follow the
 online manual.
 
-* [Requirements of Building CSXCAD/openEMS](https://openems.readthedocs.io/en/latest/install/index.html)
+* [Requirements of Building CSXCAD/openEMS](https://docs.openems.de/en/latest/install/index.html)
 
 The manual includes instructions for multiple systems (Alpine, AlmaLinux,
 CentOS, Debian, Fedora, Ubuntu, FreeBSD, macOS), they're not repeated here
@@ -334,7 +334,7 @@ risk of creating dependency conflicts between the same package
 from the system and from `pip`. Using `--break-system-packages` is
 only considered safe if all Python dependencies are installed via
 your system's package manager (e.g. `apt`, `dnf`), as recommended in
-the [documentation](https://openems.readthedocs.io/en/latest/install/requirements.html),
+the [documentation](https://docs.openems.de/en/latest/install/requirements.html),
 prior to running `pip3 install .`. Otherwise, `pip` may attempt to
 install dependent packages on its own, risking dependency conflicts
 with system packages.
@@ -357,7 +357,7 @@ To manage packages manually, ensure that all dependencies have
 been installed via your system's package manager. In theory,
 one can use a DVD as the software repository. A full list
 of package manager dependencies on various systems can be
-found in the [documentation](https://openems.readthedocs.io/en/latest/install/requirements.html):
+found in the [documentation](https://docs.openems.de/en/latest/install/requirements.html):
 
 #### Expose System Packages to `venv`
 
