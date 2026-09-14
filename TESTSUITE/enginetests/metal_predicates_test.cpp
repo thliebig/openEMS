@@ -1,7 +1,7 @@
 // Host unit test for FDTD/metal_predicates.h.
 //
 // Compile (Boost is a build dependency of openEMS):
-//   clang++ -std=c++11 -O2 -I<repo-root> \
+//   clang++ -std=c++17 -O2 -I<repo-root> \
 //     TESTSUITE/enginetests/metal_predicates_test.cpp -o /tmp/metal_predicates_test \
 //     -I/opt/homebrew/include
 //   /tmp/metal_predicates_test

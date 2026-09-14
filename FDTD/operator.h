@@ -229,6 +229,14 @@ public:
 
 	Operator_Ext_Excitation* GetExcitationExtension() const;
 
+	//! Number of threads operator/extension setup may use. 0 means auto.
+	/*!
+	  Setup passes that split disjoint X ranges (material sampling, EC coefficient
+	  construction, UPML construction) honor this. 0 lets a pass pick its own
+	  default, which for the parallel setup passes is std::thread::hardware_concurrency().
+	*/
+	virtual unsigned int GetSetupThreads() const { return 0; }
+
 	virtual double CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const;
 
 	virtual std::vector<CSPrimitives*> GetPrimitivesBoundBox(

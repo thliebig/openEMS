@@ -49,7 +49,9 @@ bool Operator_Metal::Calc_EC()
 	// this override the same CSXCAD-bound sampling runs on a single thread and
 	// dominates Metal operator setup. Writes are disjoint per X slice and the
 	// CSXCAD queries are read-only, matching the audited multithreaded path.
-	unsigned int workers = m_setupThreads ? m_setupThreads : std::max(1U,std::thread::hardware_concurrency());
+	// (CSXCAD still writes its idempotent used-flag on the winning primitive,
+	// exactly as the existing Operator_Multithread path does.)
+	unsigned int workers = GetSetupThreads() ? GetSetupThreads() : std::max(1U,std::thread::hardware_concurrency());
 	workers = std::min(workers,numLines[0]);
 	std::vector<std::thread> threads;
 	std::vector<std::exception_ptr> errors(workers);
@@ -77,11 +79,12 @@ void Operator_Metal::CalcOperatorCoefficients()
 {
 	const char* serial = std::getenv("OPENEMS_METAL_SERIAL_COEFFICIENTS");
 	if (serial && serial[0]=='1') { Operator::CalcOperatorCoefficients(); return; }
-	unsigned int workers = m_setupThreads ? m_setupThreads : std::max(1U,std::thread::hardware_concurrency());
+	unsigned int workers = GetSetupThreads() ? GetSetupThreads() : std::max(1U,std::thread::hardware_concurrency());
 	workers = std::min(workers,numLines[0]);
-	// This arithmetic pass only reads EC arrays and writes disjoint X slabs.
-	// Material/geometry construction stays serial: CSXCAD used flags and weighted
-	// material parsers are shared, so parallelizing queries needs a separate audit.
+	// This arithmetic pass touches no CSXCAD geometry: it only reads EC arrays
+	// and writes disjoint X slabs of the operator coefficients. A thread-local
+	// AdrOp computes the linear index, so the shared MainOp position is never
+	// mutated concurrently.
 	std::vector<std::thread> threads;
 	std::vector<std::exception_ptr> errors(workers);
 	auto run = [&](unsigned int worker) {
@@ -92,6 +95,8 @@ void Operator_Metal::CalcOperatorCoefficients()
 				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2]) {
 						unsigned int index=address.SetPos(pos[0],pos[1],pos[2]);
+						// Call the index form directly: Calc_ECOperatorPos would use the
+						// shared MainOp position and is therefore not thread-safe.
 						for (int n=0; n<3; ++n) Calc_ECOperatorIndex(n,pos,index);
 					}
 		} catch (...) { errors[worker]=std::current_exception(); }

@@ -208,8 +208,10 @@ bool Operator_Metal::CalcPEC()
 			return Operator::CalcPEC();
 		}
 		auto buffer = [device](const void* data, size_t bytes) {
+			// Metal rejects zero-length buffers; all geometry element types are at
+			// least one float wide, so a float-sized dummy is a safe minimum.
 			id<MTLBuffer> b = data && bytes ? [device newBufferWithBytes:data length:bytes options:MTLResourceStorageModeShared]
-			    : [device newBufferWithLength:std::max<size_t>(bytes, sizeof(PecPrimitive)) options:MTLResourceStorageModeShared];
+			    : [device newBufferWithLength:std::max<size_t>(bytes, sizeof(float)) options:MTLResourceStorageModeShared];
 			if (!b) throw std::runtime_error("Metal PEC: buffer allocation failed");
 			return b;
 		};

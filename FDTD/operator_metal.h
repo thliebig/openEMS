@@ -17,6 +17,7 @@ class Operator_Metal : public Operator_sse
 public:
 	static Operator_Metal* New(unsigned int threads = 0);
 	virtual Engine* CreateEngine();
+	virtual unsigned int GetSetupThreads() const { return m_setupThreads; }
 
 protected:
 	Operator_Metal();

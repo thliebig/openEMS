@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <iostream>
 #include <unordered_map>
 #include <cmath>
 #include <cstdlib>
@@ -916,7 +917,14 @@ void Engine_Metal::DoPostCurrentUpdates() { RunUPMLExtensions(false, false); }
 
 void Engine_Metal::Reset()
 {
-	if (m_Metal) m_Metal->RestorePML();
+	// RestorePML rebuilds operator-owned coefficient arrays and therefore
+	// allocates. Reset runs from the destructor, so a failure must not escape.
+	if (m_Metal)
+	{
+		try { m_Metal->RestorePML(); }
+		catch (const std::exception& e) { std::cerr << "Metal: failed to restore UPML coefficients on reset: " << e.what() << std::endl; }
+		catch (...) { std::cerr << "Metal: failed to restore UPML coefficients on reset" << std::endl; }
+	}
 	if (m_Metal && m_Metal->referenceEnabled)
 	{
 		double voltL2 = m_Metal->voltageSquaredReference > 0 ?

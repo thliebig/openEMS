@@ -200,6 +200,8 @@ number moved up and patch releases now have somewhere to go.
 - Six of the nine steady-state detection probes sat on the first mesh line of
   their direction (usually a field-free boundary) instead of a quarter/three
   quarters across, due to an integer-division bug.
+- UPML: opposing PML slabs that left no interior between them made the
+  extension setup loop out of bounds and crash.
 
 ### Build
 
