@@ -17,7 +17,7 @@ A simple patch antenna for 2.4 GHz.
 
 Python Script
 -------------
-Get the latest version `from git <http://www.openems.de/gitweb/?p=openEMS.git;a=blob_plain;f=matlab/Tutorials/Simple_Patch_Antenna.m;hb=refs/heads/master>`_.
+Get the latest version `from git <https://raw.githubusercontent.com/thliebig/openEMS/master/python/Tutorials/Simple_Patch_Antenna.py>`_.
 
 .. include:: ./__Simple_Patch_Antenna.txt
 

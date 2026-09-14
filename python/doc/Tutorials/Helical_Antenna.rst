@@ -13,7 +13,7 @@ Introduction
 
 Python Script
 -------------
-Get the latest version `from git <http://www.openems.de/gitweb/?p=openEMS.git;a=blob_plain;f=matlab/Tutorials/Helical_Antenna.m;hb=refs/heads/master>`_.
+Get the latest version `from git <https://raw.githubusercontent.com/thliebig/openEMS/master/python/Tutorials/Helical_Antenna.py>`_.
 
 .. include:: ./__Helical_Antenna.txt
 

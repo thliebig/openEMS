@@ -16,7 +16,7 @@ Introduction
 
 Python Script
 -------------
-Get the latest version `from git <http://openems.de/gitweb/?p=openEMS.git;a=blob_plain;f=matlab/Tutorials/MSL_NotchFilter.m;hb=HEAD>`_.
+Get the latest version `from git <https://raw.githubusercontent.com/thliebig/openEMS/master/python/Tutorials/MSL_NotchFilter.py>`_.
 
 .. include:: ./__MSL_NotchFilter.txt
 

@@ -114,8 +114,8 @@ python3 -c "import openEMS; print(openEMS.__version__)"
 
 After installation, follow the official tutorials to run your first simulation:
 
-- **Octave/Matlab tutorials:** https://docs.openems.de — also available locally in `matlab/Tutorials/`
-- **Python tutorials:** https://docs.openems.de/python/openEMS/Tutorials/ — also available locally in `python/Tutorials/`
+- **Octave/Matlab tutorials:** https://docs.openems.de/en/latest/octave/Tutorials/index.html — also available locally in `matlab/Tutorials/`
+- **Python tutorials:** https://docs.openems.de/en/latest/python/openEMS/Tutorials/index.html — also available locally in `python/Tutorials/`
 
 ---
 

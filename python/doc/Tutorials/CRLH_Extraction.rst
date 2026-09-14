@@ -20,7 +20,7 @@ Introduction
 
 Python Script
 -------------
-Get the latest version `from git <http://www.openems.de/gitweb/?p=openEMS.git;a=blob_plain;f=matlab/Tutorials/Bent_Patch_Antenna.m;hb=refs/heads/master>`_.
+Get the latest version `from git <https://raw.githubusercontent.com/thliebig/openEMS/master/python/Tutorials/CRLH_Extraction.py>`_.
 
 .. include:: ./__CRLH_Extraction.txt
 

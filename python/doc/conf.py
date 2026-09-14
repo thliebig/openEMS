@@ -294,4 +294,4 @@ texinfo_documents = [
 numpydoc_show_class_members = False
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'CSXCAD': ('http://openems.de/doc/CSXCAD/', None)}
+intersphinx_mapping = {'CSXCAD': ('https://docs.openems.de/en/latest/', None)}
