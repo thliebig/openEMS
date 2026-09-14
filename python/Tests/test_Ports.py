@@ -699,5 +699,60 @@ class Test_WaveguidePort_LocalOrigin(unittest.TestCase):
             np.testing.assert_allclose(origin, [0, 0, 200])
 
 
+class Test_ExciteAmplitude(unittest.TestCase):
+    """excite is an amplitude for every port type, not just an on/off switch."""
+
+    @staticmethod
+    def _excitations(port):
+        return [prop.GetExcitation() for prop in port.port_props
+                if isinstance(prop, CSPropExcitation)]
+
+    def _check(self, make_port):
+        unit   = self._excitations(make_port(1))
+        scaled = self._excitations(make_port(-2))
+        self.assertGreater(len(unit), 0)
+        self.assertEqual(len(unit), len(scaled))
+        for u, s in zip(unit, scaled):
+            self.assertTrue(np.any(u != 0))
+            np.testing.assert_allclose(s, -2*u)
+
+    def test_lumped_port(self):
+        self._check(lambda excite: LumpedPort(_make_csx(), port_nr=1, R=50,
+                    start=[0, 0, -1], stop=[0, 0, 1], exc_dir='z', excite=excite))
+
+    def test_curve_port(self):
+        self._check(lambda excite: CurvePort(_make_csx(), port_nr=1, R=50,
+                    start=[0, 0, -5], stop=[0, 0, 5], excite=excite))
+
+    def test_waveguide_port(self):
+        self._check(lambda excite: CircWGPort(_make_csx_circ(), port_nr=1,
+                    start=[0, 0, 0], stop=[0, 0, 200], exc_dir='z',
+                    radius=320e-3, mode_name='TE11', excite=excite))
+
+    def test_coaxial_port(self):
+        def make_port(excite):
+            csx = _make_csx_coax()
+            return CoaxialPort(csx, port_nr=1, pec_prop=csx.AddMetal('pec'), mat_prop=None,
+                               start=[0, 0, 0], stop=[0, 0, 100], prop_dir='z',
+                               r_i=2, r_o=6, r_os=7, excite=excite)
+        self._check(make_port)
+
+    def test_stripline_port(self):
+        def make_port(excite):
+            csx = _make_csx_tl()
+            return StripLinePort(csx, port_nr=1, metal_prop=csx.AddMetal('strip'),
+                                 start=[0, -3, 0], stop=[100, 3, 0],
+                                 prop_dir='x', exc_dir='z', height=8, excite=excite)
+        self._check(make_port)
+
+    def test_cpw_port(self):
+        def make_port(excite):
+            csx = _make_csx_tl()
+            return CPWPort(csx, port_nr=1, metal_prop=csx.AddMetal('cpw'),
+                           start=[0, -3, 0], stop=[100, 3, 0],
+                           prop_dir='x', exc_dir='z', gap_width=1, excite=excite)
+        self._check(make_port)
+
+
 if __name__ == '__main__':
     unittest.main()

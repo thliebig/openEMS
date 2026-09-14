@@ -467,7 +467,7 @@ class WaveguidePort(Port):
             e_start = np.array(start)
             e_stop  = np.array(stop)
             e_stop[self.exc_ny] = e_start[self.exc_ny]
-            e_vec = np.ones(3)
+            e_vec = excite*np.ones(3)
             e_vec[self.exc_ny] = 0
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=excite_type, exc_val=e_vec, delay=self.delay)
 
@@ -867,7 +867,7 @@ class CoaxialPort(Port):
             func_E[self.ny_P]  = '{}/{}{}' .format(dX, r2, mask)
             func_E[self.ny_PP] = '{}/{}{}' .format(dY, r2, mask)
 
-            exc_val = np.ones(3)
+            exc_val = excite*np.ones(3)
             exc_val[self.prop_ny] = 0
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0,
                                     exc_val=exc_val, delay=self.delay)
@@ -1060,7 +1060,7 @@ class StripLinePort(Port):
             ex_stop[self.height_ny]  = nstop[self.height_ny]
 
             exc_val = np.zeros(3)
-            exc_val[self.height_ny] = 1
+            exc_val[self.height_ny] = excite
             for lbl_s, sign in [('excite_1', +1), ('excite_2', -1)]:
                 exc = CSX.AddExcitation(self.lbl_temp.format(lbl_s), exc_type=0,
                                         exc_val=sign * exc_val, delay=self.delay)
@@ -1260,7 +1260,7 @@ class CPWPort(Port):
 
             for lbl_s, sign in [('excite_1', -1), ('excite_2', +1)]:
                 exc_val = np.zeros(3)
-                exc_val[self.width_ny] = sign
+                exc_val[self.width_ny] = sign*excite
                 exc = CSX.AddExcitation(self.lbl_temp.format(lbl_s), exc_type=0,
                                         exc_val=exc_val, delay=self.delay)
                 exc.AddBox(ex_pt + sign*w_add_start, ex_pt + sign*w_add_stop,
@@ -1434,7 +1434,7 @@ class CurvePort(Port):
 
         # Excitation
         if excite:
-            exc_dir_vec = (np.array(port_stop_idx) != np.array(port_start_idx)).astype(float)
+            exc_dir_vec = excite*(np.array(port_stop_idx) != np.array(port_start_idx)).astype(float)
             exc = CSX.AddExcitation(self.lbl_temp.format('excite'), exc_type=0,
                                     exc_val=exc_dir_vec, delay=self.delay)
             exc.AddBox(edge_start, edge_stop, priority=self.priority)

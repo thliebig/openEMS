@@ -213,7 +213,7 @@ if (excite_amp~=0)
     func_E{idx_prop_nPP} = func_Ey;
 
     port.excite = 1;
-    evec = [1 1 1];
+    evec = [1 1 1]*excite_amp;
     evec(idx_prop_n) = 0;
 
     CSX = AddExcitation( CSX, [PortNamePrefix 'port_excite_' num2str(portnr)], 0, evec, excite_args{:} );

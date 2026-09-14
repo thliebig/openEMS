@@ -132,6 +132,9 @@ number moved up and patch releases now have somewhere to go.
   file, and HDF5 detection in `setup.m` was improved and is now tested in CI.
 - Python: `SetCustomExcite` encoding, and argument parsing with several
   `openEMS()` instances in one process.
+- The excitation amplitude was ignored by `AddCoaxialPort` (`'ExciteAmp'`) in
+  Octave/Matlab and by the waveguide ports (`excite`) in Python: any non-zero
+  value excited with amplitude 1.
 
 ### Build
 
