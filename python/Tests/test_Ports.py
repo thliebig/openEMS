@@ -312,26 +312,26 @@ class Test_CoaxialPort(unittest.TestCase):
         self.mat  = self.csx.AddMaterial('fill', epsilon=2.1)
         self.kw   = dict(r_i=2, r_o=6, r_os=7)
 
-    def _make_port(self, excite_amp=0, feed_R=np.inf, extra_kw=None):
+    def _make_port(self, excite=0, feed_R=np.inf, extra_kw=None):
         kw = dict(**self.kw)
         kw['Feed_R'] = feed_R
         if extra_kw:
             kw.update(extra_kw)
         return CoaxialPort(self.csx, port_nr=1, pec_prop=self.pec, mat_prop=self.mat,
                            start=[0, 0, 0], stop=[0, 0, 100],
-                           prop_dir='z', excite_amp=excite_amp, **kw)
+                           prop_dir='z', excite=excite, **kw)
 
     def test_passive_port(self):
         port = self._make_port()
         self.assertEqual(port.excite, 0)
 
     def test_active_port_has_more_props(self):
-        passive = self._make_port(excite_amp=0)
+        passive = self._make_port(excite=0)
         active  = CoaxialPort(_make_csx_coax(), port_nr=1,
                                pec_prop=_make_csx_coax().AddMetal('p'),
                                mat_prop=None,
                                start=[0, 0, 0], stop=[0, 0, 100],
-                               prop_dir='z', excite_amp=1, **self.kw)
+                               prop_dir='z', excite=1, **self.kw)
         self.assertGreater(len(active.port_props), len(passive.port_props))
 
     def test_three_voltage_probes(self):

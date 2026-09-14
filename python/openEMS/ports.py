@@ -750,7 +750,7 @@ class CoaxialPort(Port):
         Outer conductor inner radius in drawing units.
     r_os : float
         Outer conductor outer radius in drawing units.
-    excite_amp : float, optional
+    excite : float, optional
         Excitation amplitude of the transverse E-field profile.  Set to 0
         (default) for a passive port.
     FeedShift : float, optional
@@ -768,8 +768,8 @@ class CoaxialPort(Port):
     """
 
     def __init__(self, CSX, port_nr, pec_prop, mat_prop, start, stop,
-                 prop_dir, r_i, r_o, r_os, excite_amp=0, **kw):
-        super(CoaxialPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite_amp, **kw)
+                 prop_dir, r_i, r_o, r_os, excite=0, **kw):
+        super(CoaxialPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, excite=excite, **kw)
 
         self.prop_ny = CheckNyDir(prop_dir)
         self.ny_P    = (self.prop_ny + 1) % 3
@@ -783,7 +783,6 @@ class CoaxialPort(Port):
 
         feed_shift = kw.get('FeedShift', 0)
         feed_R     = kw.get('Feed_R', np.inf)
-        excite_amp = self.excite
 
         # Default measurement plane at midpoint
         measplane_pos = 0.5 * (start[self.prop_ny] + stop[self.prop_ny])
@@ -847,7 +846,7 @@ class CoaxialPort(Port):
             self.port_props.append(i_probe)
 
         # Excitation: thin cylindrical shell with radial E-field weighting
-        if excite_amp != 0:
+        if excite != 0:
             prop_feed_idx = np.argmin(np.abs(prop_lines - (start[self.prop_ny] + feed_shift*self.direction)))
             min_cell = np.min(np.diff(prop_lines))
             ex_start = np.array(start, dtype=float)

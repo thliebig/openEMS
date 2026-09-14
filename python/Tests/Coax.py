@@ -62,7 +62,7 @@ start = [0, 0, 0]
 stop  = [0, 0, length/2]
 ports.append(CoaxialPort(CSX, 1, copper, None, start, stop, 'z',
                          coax_rad_i, coax_rad_ai, coax_rad_aa,
-                         excite_amp=1, FeedShift=10*mesh_res[2], priority=10))
+                         excite=1, FeedShift=10*mesh_res[2], priority=10))
 
 start = [0, 0, length]
 stop  = [0, 0, length/2]

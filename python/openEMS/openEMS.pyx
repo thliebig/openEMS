@@ -392,8 +392,8 @@ cdef class openEMS:
             raise Exception('AddCircWaveGuidePort: CSX is not set!')
         return ports.CircWGPort(self.__CSX, port_nr, start, stop, exc_dir, radius, mode_name, pol_ang, excite, **kw)
 
-    def AddCoaxialPort(self, port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite_amp=0, **kw):
-        """ AddCoaxialPort(port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite_amp=0, **kw)
+    def AddCoaxialPort(self, port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite=0, **kw):
+        """ AddCoaxialPort(port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite=0, **kw)
 
         Add a coaxial port.
 
@@ -403,7 +403,7 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddCoaxialPort: CSX is not set!')
-        return ports.CoaxialPort(self.__CSX, port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite_amp, **kw)
+        return ports.CoaxialPort(self.__CSX, port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite, **kw)
 
     def AddMSLPort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw):
         """ AddMSLPort(port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw)
