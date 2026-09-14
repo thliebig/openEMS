@@ -1,8 +1,11 @@
 # Experimental Metal PEC mapping
 
 `--engine=metal` enables GPU-assisted PEC mapping as well as Metal field updates.
-This accelerates only PEC mapping, not the earlier EC coefficient construction.
-The field-update and coefficient-compression paths are unchanged.
+It accelerates the MATERIAL|METAL winner resolution used by PEC mapping, and the
+resolved winners are reused by the EC-consuming extensions (lossy conducting
+sheets and dispersive materials) that would otherwise re-query CSXCAD per cell.
+EC coefficient sampling itself is unchanged. The field-update and
+coefficient-compression paths are unchanged.
 
 ```sh
 # Enable Metal field updates and GPU-assisted PEC mapping together
@@ -48,6 +51,18 @@ geometries are slower on GPU.
 - Returns winning primitive IDs (a richer PEC mask), preserving primitive-used
   flags for both material and metal. The CPU sets VV/VI to zero for metal and
   maintains PEC counts. `CalcPEC_Curves()` still runs afterwards.
+- The resolved winners are recorded per Yee component and exposed via
+  `Operator::GetGeometryWinners()`. `Operator_Ext_ConductingSheet` and
+  `Operator_Ext_LorentzMaterial` consume them instead of re-collecting and
+  re-sorting all primitives per (x,y) row and re-running the point-in-polygon
+  test per component. The dispersive magnetic (current) terms use a second
+  dual-grid dispatch over the same candidates. Cells whose winner needed CPU
+  refinement (or that the extension disables, e.g. inside a PML) still take the
+  original decision. Operators/engines without this pass return NULL, so the
+  extensions keep the CSXCAD path unchanged. The conducting-sheet extension
+  also keeps its per-cell build state (sigma, thickness, tangent direction)
+  only for resolved sheet cells instead of three full-grid lookup tables
+  (about 19 GB on a 696M-cell model).
 - One X slab at a time bounds output/candidate memory. Geometry copies occur
   during setup only. New Objective-C++ source uses ARC to release GPU resources.
 - GPU runtime errors and verification mismatches stop the run. Missing device /
@@ -69,6 +84,18 @@ warnings. Fixtures cover nonuniform sheets/boxes, diagonal traces/narrow gaps,
 extrusion, exact and nearly coincident edges, equal-priority material overlap,
 cylinders and cylindrical shells (exact and off-grid walls), and transforms.
 Metal API validation also passed these fixtures.
+
+The conducting-sheet and dispersive-material extension reuse has its own
+bit-identity fixtures (CPU-PEC fallback vs GPU-PEC recorded winners):
+```sh
+python TESTSUITE/enginetests/metal_conductingsheet.py --openems /absolute/path/to/openEMS
+python TESTSUITE/enginetests/metal_dispersive.py --openems /absolute/path/to/openEMS
+```
+The conducting-sheet fixture covers 2D polygons, an extruded line polygon, a 3D
+primitive that must fall back to PEC, and PML cells that must be disabled. The
+dispersive fixture covers Lorentz (electric and magnetic poles) and Debye
+materials. Both require complete numeric HDF5 datasets to be bit-identical and
+assert that nonzero winners were actually reused.
 
 The polygon predicate is host-testable without Metal:
 ```sh
@@ -110,3 +137,9 @@ The separate 17.3M-cell XML (30,845 polygons, 469 boxes, 280 extrusions) did not
 complete within the bounded test attempts (300 s CPU / 180 s GPU mode), and did
 not emit a PEC completion result. No setup speedup, complete mask equivalence,
 or S-parameter validation is claimed for that model yet.
+
+On the 2.85M-cell CoSwitch `model_excdiff.xml` (6 conducting sheets, 3151
+polygons, 1606 vias), `--no-simulation` preprocessing now completes in about
+16 s, including 671,562 reused conducting-sheet winners and a 1.4 s PEC pass;
+previously that setup did not finish. `OPENEMS_METAL_PEC=verify` completes in
+about 148 s with all 8,555,586 winners CPU-verified and the same winner count.

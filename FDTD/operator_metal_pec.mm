@@ -8,6 +8,9 @@
 #include "CSPrimLinPoly.h"
 #include "CSPrimCylinder.h"
 #include "CSPrimCylindricalShell.h"
+#include "CSPropConductingSheet.h"
+#include "extensions/operator_ext_conductingsheet.h"
+#include "extensions/operator_ext_lorentzmaterial.h"
 #include "metal_predicates_src.h"
 
 #import <Foundation/Foundation.h>
@@ -21,6 +24,7 @@
 #include <cstdlib>
 #include <limits>
 #include <stdexcept>
+#include <typeinfo>
 #include <vector>
 
 namespace
@@ -55,18 +59,23 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
                      constant uint4& p [[buffer(6)]],
                      const device Cylinder* cyls [[buffer(7)]],
                      const device float2* gridD [[buffer(8)]],
+                     constant uint& dualMesh [[buffer(9)]],
                      uint3 gid [[thread_position_in_grid]])
 {
 	if (gid.x >= p.z * 3 || gid.y >= p.y) return;
 	uint n = gid.x % 3, z = gid.x / 3, y = gid.y, x = p.w;
 	uint line = y;
 	uint output = line * p.z * 3 + gid.x;
-	float c[3] = {grid[2*x + (n == 0)],
-	              grid[2*p.x + 2*y + (n == 1)],
-	              grid[2*(p.x+p.y) + 2*z + (n == 2)]};
-	uint gidx[3] = {2*x + (n == 0),
-	                2*p.x + 2*y + (n == 1),
-	                2*(p.x+p.y) + 2*z + (n == 2)};
+	// dualMesh mirrors Operator::GetYeeCoords(n,pos,coord,dualMesh): the component
+	// axis takes the dual offset for the primal/voltage query and the primal
+	// offset for the dual/current query, the two transverse axes the opposite.
+	uint dn = dualMesh ? 0u : 1u;
+	uint dt = dualMesh ? 1u : 0u;
+	uint g0 = 2*x + (n == 0 ? dn : dt);
+	uint g1 = 2*p.x + 2*y + (n == 1 ? dn : dt);
+	uint g2 = 2*(p.x+p.y) + 2*z + (n == 2 ? dn : dt);
+	float c[3] = {grid[g0], grid[g1], grid[g2]};
+	uint gidx[3] = {g0, g1, g2};
 	mp_df cd[3] = {{gridD[gidx[0]].x, gridD[gidx[0]].y},
 	               {gridD[gidx[1]].x, gridD[gidx[1]].y},
 	               {gridD[gidx[2]].x, gridD[gidx[2]].y}};
@@ -80,7 +89,7 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 		uint pos[3] = {x,y,z};
 		for (uint a = 0; a < 3; ++a)
 		{
-			uint b = a*4 + 2*(a == n);
+			uint b = a*4 + 2*((a == n) ? dn : dt);
 			outside |= pos[a] < q.bounds[b] || pos[a] >= q.bounds[b+1];
 		}
 		if (outside) continue;
@@ -182,6 +191,10 @@ bool Operator_Metal::CalcPEC()
 {
 	const auto started = std::chrono::steady_clock::now();
 	const char* setting = std::getenv("OPENEMS_METAL_PEC");
+	m_geoConductingSheet.clear();
+	m_geoDispersivePrimal.clear();
+	m_geoDispersiveDual.clear();
+	m_geoWinnersValid = false;
 	// --engine=metal enables PEC mapping too; retain a diagnostic CPU override.
 	if ((setting && setting[0] == '0') || m_MeshType != CARTESIAN)
 	{
@@ -332,6 +345,25 @@ bool Operator_Metal::CalcPEC()
 		}
 		if (unsupported)
 			std::cout << "Metal PEC: " << unsupported << " unsupported primitives; affected queries use CPU" << std::endl;
+		// EC-consuming extensions (lossy conductor / dispersive dielectric) need the
+		// same MATERIAL|METAL winner at each Yee component. Record theirs during this
+		// pass so they do not re-collect and re-sort every primitive per (x,y) row.
+		bool needConductingSheet = false, needDispersive = false;
+		for (auto* ext : m_Op_exts)
+		{
+			if (typeid(*ext) == typeid(Operator_Ext_ConductingSheet)) needConductingSheet = true;
+			if (typeid(*ext) == typeid(Operator_Ext_LorentzMaterial)) needDispersive = true;
+		}
+		const bool recordWinners = needConductingSheet || needDispersive;
+		// Classify primitives once so the per-winner test is an array read, not RTTI.
+		std::vector<uint8_t> primClass(primitives.size(), 0);
+		for (size_t id = 0; id < primitives.size(); ++id)
+		{
+			CSProperties* prop = primitives[id]->GetProperty();
+			if (!prop) continue;
+			if (dynamic_cast<CSPropConductingSheet*>(prop)) primClass[id] = 1;
+			else if (prop->ToLorentzMaterial() || prop->ToDebyeMaterial()) primClass[id] = 2;
+		}
 		id<MTLBuffer> geometry = buffer(flattened.data(), flattened.size()*sizeof(PecPrimitive));
 		id<MTLBuffer> points = buffer(vertices.data(), vertices.size()*sizeof(PecVertex));
 		id<MTLBuffer> cylinderGeometry = buffer(cylinders.data(), cylinders.size()*sizeof(PecCylinder));
@@ -446,6 +478,25 @@ bool Operator_Metal::CalcPEC()
 						}
 						if (prim)
 						{
+							if (recordWinners)
+							{
+								uint8_t cls = 0;
+								if (!verify && winner < primitives.size())
+									cls = primClass[winner];
+								else
+								{
+									CSProperties* prop = prim->GetProperty();
+									if (prop)
+									{
+										if (dynamic_cast<CSPropConductingSheet*>(prop)) cls = 1;
+										else if (prop->ToLorentzMaterial() || prop->ToDebyeMaterial()) cls = 2;
+									}
+								}
+								if (cls == 1 && needConductingSheet)
+									m_geoConductingSheet.push_back({x,y,z,static_cast<unsigned char>(n),prim});
+								else if (cls == 2 && needDispersive)
+									m_geoDispersivePrimal.push_back({x,y,z,static_cast<unsigned char>(n),prim});
+							}
 							prim->SetPrimitiveUsed(true);
 							if (prim->GetProperty()->GetType() == CSProperties::METAL)
 							{
@@ -454,7 +505,59 @@ bool Operator_Metal::CalcPEC()
 						}
 						++queries;
 					}
+			// Dispersive current (magnetic) terms query the dual grid. Resolve a second
+			// winner set for the same slab, sharing candidates, only when needed.
+			if (needDispersive)
+			{
+				id<MTLBuffer> outputD = buffer(nullptr, count*4);
+				id<MTLCommandBuffer> commandD = [queue commandBuffer];
+				id<MTLComputeCommandEncoder> encoderD = [commandD computeCommandEncoder];
+				[encoderD setComputePipelineState:pipeline];
+				id<MTLBuffer> buffersD[] = {geometry, points, rowOffsets, rowCandidates, coordinates, outputD};
+				for (unsigned i = 0; i < 6; ++i) [encoderD setBuffer:buffersD[i] offset:0 atIndex:i];
+				[encoderD setBuffer:cylinderGeometry offset:0 atIndex:7];
+				[encoderD setBuffer:coordinatesD offset:0 atIndex:8];
+				[encoderD setBytes:params length:sizeof(params) atIndex:6];
+				uint32_t dualFlag = 1;
+				[encoderD setBytes:&dualFlag length:sizeof(dualFlag) atIndex:9];
+				[encoderD dispatchThreads:MTLSizeMake(numLines[2]*3, numLines[1], 1)
+				    threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
+				[encoderD endEncoding]; [commandD commit]; [commandD waitUntilCompleted];
+				if (commandD.status == MTLCommandBufferStatusError) throw std::runtime_error("Metal PEC: GPU dual query failed");
+				const uint32_t* winnersD = static_cast<const uint32_t*>(outputD.contents);
+				for (unsigned y = 0; y < numLines[1]; ++y)
+					for (unsigned z = 0; z < numLines[2]; ++z)
+						for (unsigned n = 0; n < 3; ++n)
+						{
+							uint32_t winner = winnersD[(size_t(y)*numLines[2]+z)*3+n];
+							CSPrimitives* prim = winner < primitives.size() ? primitives[winner] : nullptr;
+							uint8_t cls = winner < primitives.size() ? primClass[winner] : 0;
+							if (winner == cpuQuery)
+							{
+								unsigned pos[] = {x,y,z}; double coord[3];
+								if (GetYeeCoords(n,pos,coord,true)==false) continue;
+								if (!haveLine[y])
+								{
+									lines[y].clear();
+									lines[y].reserve(offsets[y+1]-offsets[y]);
+									for (uint32_t k = offsets[y]; k < offsets[y+1]; ++k)
+										lines[y].push_back(primitives[candidates[k]]);
+									haveLine[y] = true;
+								}
+								CSX->GetPropertyByCoordPriority(coord, lines[y], false, &prim);
+								cls = 0;
+								if (prim)
+								{
+									CSProperties* prop = prim->GetProperty();
+									if (prop && (prop->ToLorentzMaterial() || prop->ToDebyeMaterial())) cls = 2;
+								}
+							}
+							if (cls == 2 && prim)
+								m_geoDispersiveDual.push_back({x,y,z,static_cast<unsigned char>(n),prim});
+						}
+			}
 		}
+		m_geoWinnersValid = true;
 		CalcPEC_Curves();
 		const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now()-started).count();
 		std::cout << "Metal PEC: " << queries << " queries, " << resolved << " CPU refinements, "

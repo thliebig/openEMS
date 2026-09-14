@@ -30,8 +30,22 @@ Operator_Metal* Operator_Metal::New(unsigned int threads)
 	return op;
 }
 
-Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0)
+Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0), m_geoWinnersValid(false)
 {
+}
+
+const std::vector<Operator::GeometryWinner>* Operator_Metal::GetGeometryWinners(GeometryWinnerType type, bool dualMesh) const
+{
+	if (!m_geoWinnersValid)
+		return nullptr;
+	switch (type)
+	{
+	case GEO_CONDUCTING_SHEET:
+		return dualMesh ? nullptr : &m_geoConductingSheet;
+	case GEO_DISPERSIVE:
+		return dualMesh ? &m_geoDispersiveDual : &m_geoDispersivePrimal;
+	}
+	return nullptr;
 }
 
 bool Operator_Metal::Calc_EC()

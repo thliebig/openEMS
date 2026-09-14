@@ -237,6 +237,30 @@ public:
 	*/
 	virtual unsigned int GetSetupThreads() const { return 0; }
 
+	//! One Yee component whose winning MATERIAL|METAL primitive was resolved by
+	//! an accelerated operator during setup. \a primitive is owned by CSXCAD and
+	//! stays valid for the extension build phase.
+	struct GeometryWinner
+	{
+		unsigned int x, y, z;
+		unsigned char n;
+		CSPrimitives* primitive;
+	};
+
+	//! Class of EC-consuming extension a resolved winner belongs to.
+	enum GeometryWinnerType { GEO_CONDUCTING_SHEET, GEO_DISPERSIVE };
+
+	//! Resolved geometry winners for an EC-consuming extension.
+	/*!
+	  An accelerated operator (e.g. Metal) may resolve the winning MATERIAL|METAL
+	  primitive at every Yee component while mapping PEC. Extensions that would
+	  otherwise re-query CSXCAD per cell can consume these instead, avoiding the
+	  per-row GetAllPrimitives re-sort and the per-component point-in-polygon test.
+	  Returns NULL when no such pass ran; callers must then fall back to CSXCAD.
+	  Only valid during extension construction.
+	*/
+	virtual const std::vector<GeometryWinner>* GetGeometryWinners(GeometryWinnerType type, bool dualMesh) const { return nullptr; }
+
 	virtual double CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const;
 
 	virtual std::vector<CSPrimitives*> GetPrimitivesBoundBox(

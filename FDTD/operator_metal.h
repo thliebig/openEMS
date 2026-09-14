@@ -12,12 +12,15 @@
 
 #include "operator_sse.h"
 
+#include <vector>
+
 class Operator_Metal : public Operator_sse
 {
 public:
 	static Operator_Metal* New(unsigned int threads = 0);
 	virtual Engine* CreateEngine();
 	virtual unsigned int GetSetupThreads() const { return m_setupThreads; }
+	virtual const std::vector<GeometryWinner>* GetGeometryWinners(GeometryWinnerType type, bool dualMesh) const;
 
 protected:
 	Operator_Metal();
@@ -26,6 +29,12 @@ protected:
 	virtual bool CanReleaseECBeforeExtensions() const;
 	virtual void CalcOperatorCoefficients();
 	unsigned int m_setupThreads;
+
+	//! Filled by the Metal geometry pass, consumed by EC-consuming extensions.
+	std::vector<GeometryWinner> m_geoConductingSheet;
+	std::vector<GeometryWinner> m_geoDispersivePrimal;
+	std::vector<GeometryWinner> m_geoDispersiveDual;
+	bool m_geoWinnersValid;
 };
 
 #endif // OPERATOR_METAL_H
