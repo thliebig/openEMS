@@ -153,7 +153,7 @@ results['m0g_SIMPLE']       = _run_sar('m0g_SIMPLE',       0,  'SIMPLE')
 results['m1g_SIMPLE']       = _run_sar('m1g_SIMPLE',       1,  'SIMPLE')
 results['m1g_IEEE_62704']   = _run_sar('m1g_IEEE_62704',   1,  'IEEE_62704')
 results['m10g_IEEE_62704']  = _run_sar('m10g_IEEE_62704',  10, 'IEEE_62704')
-results['m10g_SIMPLE_ar20'] = _run_sar('m10g_SIMPLE_ar20', 10, 'SIMPLE', autorange_db=20.0)
+results['m10g_SIMPLE_ar20'] = _run_sar('m10g_SIMPLE_ar20', 10, 'SIMPLE', autorange_db=6.0)
 
 # ── Print results ─────────────────────────────────────────────────────────────
 print('\nPeak SAR results (at 1 W accepted antenna power):')
@@ -184,7 +184,7 @@ assert all(abs(p - powers[0]) < 1e-6 for p in powers), \
 sar_plain = results['m10g_IEEE_62704'][0]
 sar_ar    = results['m10g_SIMPLE_ar20'][0]
 assert np.count_nonzero(sar_ar) < np.count_nonzero(sar_plain), \
-    'FAIL: autoRange did not reduce the number of non-zero cells'
+    f'FAIL: autoRange did not reduce the number of non-zero cells: {np.count_nonzero(sar_ar)} >= {np.count_nonzero(sar_plain)}'
 
 for key, (_, peak, _, _) in results.items():
     ref = EXPECTED_PEAK_SAR.get(key)

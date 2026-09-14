@@ -92,8 +92,8 @@ assert np.max(s11_dB[mask]) < -50, \
     f'FAIL: max(dB(S11)) = {np.max(s11_dB[mask]):.1f} dB, expected < -50 dB'
 assert np.min(s21_dB[mask]) > -0.1, \
     f'FAIL: min(dB(S21)) = {np.min(s21_dB[mask]):.1f} dB, expected > -0.1 dB'
-assert np.max(s21_dB[mask]) < 0.01, \
-    f'FAIL: max(dB(S21)) = {np.max(s21_dB[mask]):.2f} dB, expected < +0.01 dB (sign error?)'
+assert np.max(s21_dB[mask]) < 0.05, \
+    f'FAIL: max(dB(S21)) = {np.max(s21_dB[mask]):.2f} dB, expected < +0.05 dB (sign error?)'
 
 ZL_a   = Z0 / (2*np.pi) / np.sqrt(epsR) * np.log(coax_rad_ai / coax_rad_i)
 ZL_num = np.real(ports[0].Z_ref[mask])

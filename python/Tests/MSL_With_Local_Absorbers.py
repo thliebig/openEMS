@@ -9,7 +9,6 @@
 ### Import Libraries
 import os, tempfile
 from pylab import *
-import scipy.io
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -19,8 +18,6 @@ from CSXCAD.CSProperties import ABCtype
 
 ### General parameter setup
 Sim_Path = os.path.join(tempfile.gettempdir(), 'Test_MSL_W_SA')
-
-print(Sim_Path)
 
 post_proc_only = False
 
@@ -58,7 +55,7 @@ fc = 1e9 # 20 dB corner frequency
 SimBox = np.array([
             -substrate_width*0.5 - Airbox_Add,
             substrate_width*0.5 + Airbox_Add,
-            -cu_thick - Airbox_Add, 
+            -cu_thick - Airbox_Add,
             substrate_thickness*(1 + port_h_fact) + Airbox_Add,
             -Airbox_Add,
             substrate_length + Airbox_Add])
@@ -134,7 +131,7 @@ Zz = mesh.GetLines('z')
 idxTerm = (np.where(Zz == (substrate_length - port_shift_mm))[0]).item(0)
 
 # apply the excitation & resist as a current source
-# Define port mode 
+# Define port mode
 start = [-microstrip_W*0.5, 0.0, 0.0]
 stop  = [ microstrip_W*0.5, substrate_thickness, 0.0]
 port1 = FDTD.AddLumpedPort(1, 50.0, start, stop, 'y', 1.0, priority=15, edges2grid='xy')
@@ -147,7 +144,7 @@ v_phase = np.sqrt(1/(0.5*(1 + substrate_epsR)))*C0
 # Use this option to place directly on PEC. Absorption is ~ 3dB worse, this way, but less leakage.
 start = [-microstrip_W*(1.0 + port_w_fact)*0.5, -cu_thick, Zz.item(idxTerm)]
 stop  = [ microstrip_W*(1.0 + port_w_fact)*0.5, substrate_thickness*(1.0 + port_h_fact), Zz.item(idxTerm)]
-# This places the absorber one mesh cell farther. 
+# This places the absorber one mesh cell farther.
 # start = [-microstrip_W*(1.0 + port_w_fact)*0.5, -cu_thick, Zz.item(idxTerm - 1)]
 # stop  = [ microstrip_W*(1.0 + port_w_fact)*0.5, substrate_thickness*(1.0 + port_h_fact), Zz.item(idxTerm - 1)]
 
@@ -172,7 +169,7 @@ if 1:  # debugging only
     CSX.Write2XML(CSX_file)
     from CSXCAD import AppCSXCAD_BIN
     os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
-    
+
 
 if not post_proc_only:
     FDTD.Run(Sim_Path, verbose=0, cleanup=False)

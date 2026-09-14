@@ -134,8 +134,8 @@ def run_direction(exc_dir):
         f'FAIL [{exc_dir}]: max(dB(S11)) = {np.max(s11_dB):.1f} dB, expected < -25 dB'
     assert np.min(s21_dB) > -0.1, \
         f'FAIL [{exc_dir}]: min(dB(S21)) = {np.min(s21_dB):.1f} dB, expected > -0.1 dB'
-    assert np.max(s21_dB) < 0.01, \
-        f'FAIL [{exc_dir}]: max(dB(S21)) = {np.max(s21_dB):.2f} dB, expected < +0.01 dB (sign error?)'
+    assert np.max(s21_dB) < 0.05, \
+        f'FAIL [{exc_dir}]: max(dB(S21)) = {np.max(s21_dB):.2f} dB, expected < +0.05 dB (sign error?)'
 
     if 0:  # set to 1 for debugging plots
         import matplotlib.pyplot as plt

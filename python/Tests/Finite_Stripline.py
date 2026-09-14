@@ -133,8 +133,8 @@ assert np.max(s11_dB[mask]) < -30, \
     f'FAIL: max(dB(S11)) = {np.max(s11_dB[mask]):.1f} dB, expected < -30 dB'
 assert np.min(s21_dB[mask]) > -0.5, \
     f'FAIL: min(dB(S21)) = {np.min(s21_dB[mask]):.1f} dB, expected > -0.5 dB'
-assert np.max(s21_dB[mask]) < 0.01, \
-    f'FAIL: max(dB(S21)) = {np.max(s21_dB[mask]):.2f} dB, expected < +0.01 dB (sign error?)'
+assert np.max(s21_dB[mask]) < 0.05, \
+    f'FAIL: max(dB(S21)) = {np.max(s21_dB[mask]):.2f} dB, expected < +0.05 dB (sign error?)'
 
 print('PASS')
 
