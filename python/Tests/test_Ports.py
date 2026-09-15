@@ -474,7 +474,7 @@ class Test_CPWPort(unittest.TestCase):
             kw.update(extra_kw)
         return CPWPort(self.csx, port_nr=1, metal_prop=self.metal,
                        start=[0, -3, 0], stop=[100, 3, 0],
-                       prop_dir='x', exc_dir='z', gap_width=1,
+                       prop_dir='x', exc_dir='y', gap_width=1,
                        excite=excite, **kw)
 
     def test_passive_port(self):
@@ -499,15 +499,31 @@ class Test_CPWPort(unittest.TestCase):
         active  = CPWPort(_make_csx_tl(), port_nr=1,
                           metal_prop=_make_csx_tl().AddMetal('c2'),
                           start=[0, -3, 0], stop=[100, 3, 0],
-                          prop_dir='x', exc_dir='z', gap_width=1,
+                          prop_dir='x', exc_dir='y', gap_width=1,
                           excite=True)
         self.assertGreater(len(active.port_props), len(passive.port_props))
+
+    def test_exc_dir_is_the_field_across_the_gaps(self):
+        port = self._make_port(excite=1)
+        excitations = [prop.GetExcitation() for prop in port.port_props
+                       if isinstance(prop, CSPropExcitation)]
+        self.assertEqual(len(excitations), 2)
+        for val in excitations:
+            self.assertNotEqual(val[1], 0)
+            self.assertEqual(val[0], 0)
+            self.assertEqual(val[2], 0)
+
+    def test_exc_dir_along_prop_dir_raises(self):
+        with self.assertRaises(Exception):
+            CPWPort(self.csx, port_nr=1, metal_prop=self.metal,
+                    start=[0, -3, 0], stop=[100, 3, 0],
+                    prop_dir='x', exc_dir='x', gap_width=1)
 
     def test_height_direction_mismatch_raises(self):
         with self.assertRaises(Exception):
             CPWPort(self.csx, port_nr=1, metal_prop=self.metal,
                     start=[0, -3, 0], stop=[100, 3, 5],
-                    prop_dir='x', exc_dir='z', gap_width=1, excite=False)
+                    prop_dir='x', exc_dir='y', gap_width=1, excite=False)
 
     def test_measplane_shift_set(self):
         port = self._make_port()
@@ -528,7 +544,7 @@ class Test_CPWPort(unittest.TestCase):
     def test_port_number_in_probe_names(self):
         port = CPWPort(self.csx, port_nr=4, metal_prop=self.metal,
                        start=[0, -3, 0], stop=[100, 3, 0],
-                       prop_dir='x', exc_dir='z', gap_width=1)
+                       prop_dir='x', exc_dir='y', gap_width=1)
         self.assertIn('4', port.U_filenames[0])
 
 
@@ -750,7 +766,7 @@ class Test_ExciteAmplitude(unittest.TestCase):
             csx = _make_csx_tl()
             return CPWPort(csx, port_nr=1, metal_prop=csx.AddMetal('cpw'),
                            start=[0, -3, 0], stop=[100, 3, 0],
-                           prop_dir='x', exc_dir='z', gap_width=1, excite=excite)
+                           prop_dir='x', exc_dir='y', gap_width=1, excite=excite)
         self._check(make_port)
 
 

@@ -92,13 +92,13 @@ cpw_port_metal = CSX.AddMetal('CPW_PORT')
 
 portstart = [-CPW_length/2,                  -CPW_width/2, substrate_thickness]
 portstop  = [-CPW_length/2 + CPW_port_length,  CPW_width/2, substrate_thickness]
-port1 = CPWPort(CSX, 1, cpw_port_metal, portstart, portstop, 'x', 'z', CPW_gap,
+port1 = CPWPort(CSX, 1, cpw_port_metal, portstart, portstop, 'x', 'y', CPW_gap,
                 excite=1, priority=999,
                 MeasPlaneShift=CPW_port_length, Feed_R=feed_R)
 
 portstart = [ CPW_length/2,                  -CPW_width/2, substrate_thickness]
 portstop  = [ CPW_length/2 - CPW_port_length,  CPW_width/2, substrate_thickness]
-port2 = CPWPort(CSX, 2, cpw_port_metal, portstart, portstop, 'x', 'z', CPW_gap,
+port2 = CPWPort(CSX, 2, cpw_port_metal, portstart, portstop, 'x', 'y', CPW_gap,
                 priority=999, MeasPlaneShift=CPW_port_length, Feed_R=feed_R)
 
 ports = [port1, port2]

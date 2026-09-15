@@ -1125,8 +1125,10 @@ class CPWPort(Port):
         Metal property for the CPW conductor.
     prop_dir : int or str
         Direction of wave propagation (0/1/2 or 'x'/'y'/'z').
-    exc_dir : int or str or (3,) array
-        E-field direction across the gaps (one non-zero component).
+    exc_dir : int or str
+        E-field direction across the gaps (0/1/2 or 'x'/'y'/'z'), i.e. the
+        width direction of the CPW. The CPW plane is normal to the cross
+        product of ``prop_dir`` and ``exc_dir``.
     gap_width : float
         Width of each CPW gap in drawing units.
     excite : bool or float, optional
@@ -1149,14 +1151,12 @@ class CPWPort(Port):
 
         self.prop_ny = CheckNyDir(prop_dir)
 
-        # Height direction = E-field direction; width direction = cross product
-        exc_vec = np.zeros(3)
-        exc_vec[CheckNyDir(exc_dir)] = 1.0
-        self.height_ny = int(np.argmax(np.abs(exc_vec)))
-
-        prop_vec = np.zeros(3)
-        prop_vec[self.prop_ny] = 1.0
-        self.width_ny = int(np.argmax(np.abs(np.cross(prop_vec, exc_vec))))
+        # Width direction = E-field direction across the gaps; height direction
+        # (normal of the CPW plane) = cross product, as in AddCPWPort.m
+        self.width_ny = CheckNyDir(exc_dir)
+        if self.width_ny == self.prop_ny:
+            raise Exception('CPWPort: exc_dir must differ from prop_dir')
+        self.height_ny = 3 - self.prop_ny - self.width_ny
 
         if start[self.height_ny] != stop[self.height_ny]:
             raise Exception('CPWPort: start/stop in height direction must be equal')
