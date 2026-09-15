@@ -65,7 +65,8 @@ def make_model(path, cells, timesteps, nonuniform=False, boundaries=None, freque
     fdtd.Write2XML(str(path))
 
 
-def run(binary, model, engine, output, fp64_reference=False, compress=None, pml=None):
+def run(binary, model, engine, output, fp64_reference=False, compress=None, pml=None,
+        fused=None):
     output.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     if fp64_reference:
@@ -74,6 +75,8 @@ def run(binary, model, engine, output, fp64_reference=False, compress=None, pml=
         env['OPENEMS_METAL_COMPRESS'] = '1' if compress else '0'
     if pml is not None:
         env['OPENEMS_METAL_PML'] = '1' if pml else '0'
+    if fused is not None:
+        env['OPENEMS_METAL_FUSED_PIPELINE'] = '1' if fused else '0'
     start = time.perf_counter()
     proc = subprocess.run(
         [binary, str(model), '--engine=' + engine], cwd=output, env=env,
@@ -139,6 +142,24 @@ def run_case(args, cells, timesteps, label):
         metal_time, metal_log = run(args.openems, model, 'metal', root / 'metal',
                                     args.fp64_reference,
                                     True if args.compare_dense else None)
+        if args.compare_fused:
+            _, unfused_log = run(args.openems, model, 'metal', root / 'unfused',
+                                  args.fp64_reference,
+                                  True if args.compare_dense else None,
+                                  fused=False)
+            if 'Metal: fused E/H pipeline: enabled' not in metal_log:
+                raise AssertionError('Fused Metal pipeline was not enabled')
+            if 'Metal: fused E/H pipeline: disabled' not in unfused_log:
+                raise AssertionError('Unfused Metal comparison was not selected')
+            for field in ('Et.h5', 'Ht.h5'):
+                fused_arrays = h5_arrays(root / 'metal' / field)
+                unfused_arrays = h5_arrays(root / 'unfused' / field)
+                if fused_arrays.keys() != unfused_arrays.keys():
+                    raise AssertionError('Fused/unfused datasets differ')
+                for name in fused_arrays:
+                    a, b = fused_arrays[name], unfused_arrays[name]
+                    if a.shape != b.shape or a.dtype != b.dtype or a.tobytes() != b.tobytes():
+                        raise AssertionError('Fused/unfused bits differ: ' + field + '/' + name)
         if args.compare_dense:
             if not any(message in metal_log for message in (
                     'Metal: lossless coefficients:',
@@ -168,6 +189,8 @@ def run_case(args, cells, timesteps, label):
                     args.rtol, args.atol)
 
         print('{}: {} x {} x {}, {} timesteps'.format(label, *cells, timesteps))
+        if args.compare_fused:
+            print('  Fused/unfused Metal: bit-identical complete E/H dumps')
         if args.compare_dense:
             print('  Dense/compressed Metal: bit-identical complete E/H dumps')
             for line in metal_log.splitlines():
@@ -213,6 +236,8 @@ def main():
     parser.add_argument('--keep', action='store_true')
     parser.add_argument('--compare-dense', action='store_true',
                         help='require bit-identical dumps from dense and compressed Metal')
+    parser.add_argument('--compare-fused', action='store_true',
+                        help='require bit-identical dumps from fused and unfused Metal')
     parser.add_argument('--nonuniform', action='store_true',
                         help='use varying mesh spacings to exercise dictionary fallback')
     args = parser.parse_args()

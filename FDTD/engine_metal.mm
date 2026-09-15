@@ -10,6 +10,9 @@
 #include "engine_metal.h"
 #include "extensions/engine_ext_upml.h"
 #include "extensions/operator_ext_upml.h"
+#include "extensions/engine_ext_excitation.h"
+#include "extensions/operator_ext_excitation.h"
+#include "excitation.h"
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
@@ -53,7 +56,7 @@ kernel void update_voltages(
 	const device float4* vv [[buffer(2)]],
 	const device float4* vi [[buffer(3)]],
 	constant GridParams& p [[buffer(4)]],
-	const device uint* coeffIndex [[buffer(5), function_constant(compressedCoefficients)]],
+	const device ushort* coeffIndex [[buffer(5), function_constant(compressedCoefficients)]],
 	uint3 gid [[thread_position_in_grid]])
 {
 	// Packed Z is the contiguous dimension and maps to adjacent GPU lanes.
@@ -102,13 +105,45 @@ kernel void update_voltages(
 	volt[base + 2] = ez * vv[c + 2] + vi[c + 2] * (cy - hy_x - cx + hx_y);
 }
 
+struct ExcitationSource
+{
+	uint fieldIndex;
+	float amplitude;
+	uint delay;
+};
+
+struct ExcitationParams
+{
+	uint count;
+	uint timestep;
+	uint signalLength;
+	uint period;
+};
+
+// Excitations are intentionally applied by one thread. Source lists are sparse,
+// and serial application preserves CPU ordering when source entries overlap.
+kernel void apply_excitation(
+	device float* field [[buffer(0)]],
+	const device ExcitationSource* sources [[buffer(1)]],
+	const device float* signal [[buffer(2)]],
+	constant ExcitationParams& p [[buffer(3)]])
+{
+	for (uint n = 0; n < p.count; ++n)
+	{
+		uint sample = p.timestep > sources[n].delay ? p.timestep - sources[n].delay : 0;
+		sample %= p.period;
+		if (sample >= p.signalLength) sample = 0;
+		field[sources[n].fieldIndex] += sources[n].amplitude * signal[sample];
+	}
+}
+
 kernel void update_currents(
 	device float4* curr [[buffer(0)]],
 	const device float4* volt [[buffer(1)]],
 	const device float4* ii [[buffer(2)]],
 	const device float4* iv [[buffer(3)]],
 	constant GridParams& p [[buffer(4)]],
-	const device uint* coeffIndex [[buffer(5), function_constant(compressedCoefficients)]],
+	const device ushort* coeffIndex [[buffer(5), function_constant(compressedCoefficients)]],
 	uint3 gid [[thread_position_in_grid]])
 {
 	if (gid.x >= p.nzv || gid.y >= p.ny - 1 || gid.z >= p.num_x)
@@ -255,6 +290,21 @@ struct GridParams
 	uint32_t num_x;
 };
 
+struct ExcitationSource
+{
+	uint32_t fieldIndex;
+	float amplitude;
+	uint32_t delay;
+};
+
+struct ExcitationParams
+{
+	uint32_t count;
+	uint32_t timestep;
+	uint32_t signalLength;
+	uint32_t period;
+};
+
 static std::runtime_error MetalError(const char* what, NSError* error)
 {
 	std::string message(what);
@@ -273,6 +323,7 @@ struct Engine_Metal::MetalState
 	id<MTLCommandQueue> queue;
 	id<MTLComputePipelineState> voltagePipeline;
 	id<MTLComputePipelineState> currentPipeline;
+	id<MTLComputePipelineState> excitationPipeline;
 	id<MTLBuffer> volt;
 	id<MTLBuffer> curr;
 	id<MTLBuffer> vv;
@@ -286,6 +337,18 @@ struct Engine_Metal::MetalState
 	bool reusePML = true;
 	size_t reusedPMLBytes = 0;
 	id<MTLCommandBuffer> pending;
+	bool fusedPipeline = true;
+
+	struct ExcitationRegion
+	{
+		Engine_Ext_Excitation* extension;
+		id<MTLBuffer> sources[2];
+		id<MTLBuffer> signals[2];
+		uint32_t counts[2];
+		uint32_t signalLength;
+		uint32_t period;
+	};
+	std::vector<ExcitationRegion> excitations;
 
 	struct PMLRegion
 	{
@@ -469,9 +532,9 @@ struct Engine_Metal::MetalState
 		}
 		if (!maxRecords)
 			return;
-		std::unordered_map<Record, uint32_t, Hash> lookup;
+		std::unordered_map<Record, uint16_t, Hash> lookup;
 		lookup.reserve(maxRecords);
-		std::vector<uint32_t> indices(count);
+		std::vector<uint16_t> indices(count);
 		std::vector<uint32_t> dictionaries[4];
 		const void* dense[] = {vv.contents, vi.contents, ii.contents, iv.contents};
 		Record previous{};
@@ -496,7 +559,7 @@ struct Engine_Metal::MetalState
 					cout << "Metal: coefficient dictionary limit reached; using dense coefficients" << endl;
 					return;
 				}
-				const uint32_t index = static_cast<uint32_t>(lookup.size());
+				const uint16_t index = static_cast<uint16_t>(lookup.size());
 				found = lookup.emplace(record, index).first;
 				for (size_t a = 0; a < 4; ++a)
 					dictionaries[a].insert(dictionaries[a].end(),
@@ -513,13 +576,13 @@ struct Engine_Metal::MetalState
 				return;
 		}
 		id<MTLBuffer> indexBuffer = [device newBufferWithBytes:indices.data()
-		    length:indices.size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
+		    length:indices.size() * sizeof(uint16_t) options:MTLResourceStorageModeShared];
 		if (!indexBuffer)
 			return;
 		vv = packed[0]; vi = packed[1]; ii = packed[2]; iv = packed[3];
 		coeffIndex = indexBuffer;
 		cout << "Metal: lossless coefficients: " << lookup.size() << " / " << count
-		     << " unique packed records, " << lookup.size() * 192 + count * 4
+		     << " unique packed records, " << lookup.size() * 192 + count * 2
 		     << " GPU bytes (dense " << count * 192 << ")" << endl;
 	}
 
@@ -624,11 +687,10 @@ void Engine_Metal::Init()
 		NSError* error = nil;
 		NSString* source = [NSString stringWithUTF8String:voltageKernelSource];
 		MTLCompileOptions* options = [MTLCompileOptions new];
-#ifdef OPENEMS_METAL_FAST_MATH
-		options.fastMathEnabled = YES;
-#else
+		// Fast math is always off: it does not make the memory-bound field
+		// updates faster and it would perturb the reproducible bit patterns the
+		// Metal tests rely on.
 		options.fastMathEnabled = NO;
-#endif
 		id<MTLLibrary> library = [m_Metal->device newLibraryWithSource:source options:options error:&error];
 		if (!library)
 			throw MetalError("Metal: failed to compile voltage kernel", error);
@@ -673,6 +735,12 @@ void Engine_Metal::Init()
 		m_Metal->currentPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 		if (!m_Metal->currentPipeline)
 			throw MetalError("Metal: failed to create current pipeline", error);
+		function = [library newFunctionWithName:@"apply_excitation"];
+		if (!function)
+			throw std::runtime_error("Metal: apply_excitation kernel not found");
+		m_Metal->excitationPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+		if (!m_Metal->excitationPipeline)
+			throw MetalError("Metal: failed to create excitation pipeline", error);
 
 		const char* layout = std::getenv("OPENEMS_METAL_PML_LAYOUT");
 		m_Metal->indexedPML = !(layout && std::strcmp(layout, "scalar") == 0);
@@ -691,9 +759,16 @@ void Engine_Metal::Init()
 			if (!m_Metal->pmlPostPipeline[compressed]) throw MetalError("Metal: UPML post pipeline failed", error);
 		}
 		InitUPML();
+		InitExcitations();
 
 		const char* reference = std::getenv("OPENEMS_METAL_FP64_REFERENCE");
 		m_Metal->referenceEnabled = reference && reference[0] != '\0' && reference[0] != '0';
+		const char* fused = std::getenv("OPENEMS_METAL_FUSED_PIPELINE");
+		if (fused && fused[0] == '0')
+			m_Metal->fusedPipeline = false;
+		if (m_Metal->referenceEnabled)
+			m_Metal->fusedPipeline = false;
+		cout << "Metal: fused E/H pipeline: " << (m_Metal->fusedPipeline ? "enabled" : "disabled") << endl;
 		if (m_Metal->referenceEnabled)
 		{
 			size_t scalarCount = f4_volt_ptr->size() * 4;
@@ -716,6 +791,7 @@ void Engine_Metal::InitUPML()
 	const char* setting = std::getenv("OPENEMS_METAL_PML");
 	if (setting && setting[0] == '0')
 	{
+		m_Metal->fusedPipeline = false;
 		cout << "Metal: CPU UPML conditioning selected" << endl;
 		return;
 	}
@@ -846,6 +922,79 @@ void Engine_Metal::InitUPML()
 	}
 }
 
+void Engine_Metal::InitExcitations()
+{
+	for (Engine_Extension* extension : m_Eng_exts)
+	{
+		Engine_Ext_Excitation* excitation = dynamic_cast<Engine_Ext_Excitation*>(extension);
+		if (!excitation)
+		{
+			if (!dynamic_cast<Engine_Ext_UPML*>(extension))
+				m_Metal->fusedPipeline = false;
+			continue;
+		}
+		Operator_Ext_Excitation* op = excitation->m_Op_Exc;
+		if (!op || !op->m_Exc || op->m_Exc->GetLength() == 0)
+		{
+			m_Metal->fusedPipeline = false;
+			continue;
+		}
+		MetalState::ExcitationRegion region;
+		region.extension = excitation;
+		region.counts[0] = op->Volt_Count;
+		region.counts[1] = op->Curr_Count;
+		region.signalLength = op->m_Exc->GetLength();
+		double signalPeriod = op->m_Exc->GetSignalPeriod();
+		region.period = signalPeriod > 0 ? static_cast<uint32_t>(signalPeriod / op->m_Exc->GetTimestep()) : 0;
+		for (unsigned int field = 0; field < 2; ++field)
+		{
+			const uint32_t count = region.counts[field];
+			if (!count) continue;
+			std::vector<ExcitationSource> sources(count);
+			for (uint32_t n = 0; n < count; ++n)
+			{
+				const uint32_t x = field ? op->Curr_index[0][n] : op->Volt_index[0][n];
+				const uint32_t y = field ? op->Curr_index[1][n] : op->Volt_index[1][n];
+				const uint32_t z = field ? op->Curr_index[2][n] : op->Volt_index[2][n];
+				const uint32_t dir = field ? op->Curr_dir[n] : op->Volt_dir[n];
+				const size_t index = ((((size_t)x * numLines[1] + y) * numVectors + z % numVectors) * 3 + dir) * 4 + z / numVectors;
+				if (index > std::numeric_limits<uint32_t>::max())
+					throw std::runtime_error("Metal: excitation field index exceeds uint32");
+				sources[n] = {static_cast<uint32_t>(index),
+					field ? op->Curr_amp[n] : op->Volt_amp[n],
+					field ? op->Curr_delay[n] : op->Volt_delay[n]};
+			}
+			region.sources[field] = [m_Metal->device newBufferWithBytes:sources.data()
+				length:sources.size() * sizeof(ExcitationSource) options:MTLResourceStorageModeShared];
+			FDTD_FLOAT* signal = field ? op->m_Exc->GetCurrentSignal() : op->m_Exc->GetVoltageSignal();
+			region.signals[field] = [m_Metal->device newBufferWithBytes:signal
+				length:region.signalLength * sizeof(FDTD_FLOAT) options:MTLResourceStorageModeShared];
+			if (!region.sources[field] || !region.signals[field])
+				throw std::runtime_error("Metal: failed to allocate excitation buffers");
+		}
+		m_Metal->excitations.push_back(region);
+	}
+}
+
+void Engine_Metal::ApplyMetalExcitations(bool voltage)
+{
+	const unsigned int field = voltage ? 0 : 1;
+	for (const auto& region : m_Metal->excitations)
+	{
+		if (!region.counts[field]) continue;
+		ExcitationParams params = {region.counts[field], numTS, region.signalLength,
+			region.period ? region.period : numTS + 1};
+		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
+		[encoder setComputePipelineState:m_Metal->excitationPipeline];
+		[encoder setBuffer:voltage ? m_Metal->volt : m_Metal->curr offset:0 atIndex:0];
+		[encoder setBuffer:region.sources[field] offset:0 atIndex:1];
+		[encoder setBuffer:region.signals[field] offset:0 atIndex:2];
+		[encoder setBytes:&params length:sizeof(params) atIndex:3];
+		[encoder dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+		[encoder endEncoding];
+	}
+}
+
 void Engine_Metal::FinishMetalCommands()
 {
 	if (!m_Metal || !m_Metal->pending)
@@ -872,6 +1021,8 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 				[extension](const MetalState::PMLRegion& r) { return r.extension == extension; });
 			if (region == m_Metal->pml.end())
 			{
+				if (m_Metal->fusedPipeline && dynamic_cast<Engine_Ext_Excitation*>(extension))
+					continue;
 				FinishMetalCommands();
 				if (voltage)
 				{
@@ -905,8 +1056,8 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 				threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
 			[encoder endEncoding];
 		}
-		if (!pre)
-			FinishMetalCommands(); // Apply hooks, sources, probes and dumps run on CPU.
+		if (!pre && !m_Metal->fusedPipeline)
+			FinishMetalCommands(); // CPU Apply hooks need completed fields.
 	}
 }
 
@@ -915,12 +1066,52 @@ void Engine_Metal::DoPostVoltageUpdates() { RunUPMLExtensions(true, false); }
 void Engine_Metal::DoPreCurrentUpdates() { RunUPMLExtensions(false, true); }
 void Engine_Metal::DoPostCurrentUpdates() { RunUPMLExtensions(false, false); }
 
+bool Engine_Metal::IterateTS(unsigned int iterTS)
+{
+	if (!m_Metal->fusedPipeline)
+		return Engine::IterateTS(iterTS);
+
+	for (unsigned int iter = 0; iter < iterTS; ++iter)
+	{
+		DoPreVoltageUpdates();
+		UpdateVoltages(0, numLines[0]);
+		DoPostVoltageUpdates();
+		if (m_Metal->referenceEnabled)
+		{
+			FinishMetalCommands();
+			Engine::Apply2Voltages();
+		}
+		else
+			ApplyMetalExcitations(true);
+
+		DoPreCurrentUpdates();
+		UpdateCurrents(0, numLines[0] - 1);
+		DoPostCurrentUpdates();
+		if (m_Metal->referenceEnabled)
+		{
+			FinishMetalCommands();
+			Engine::Apply2Current();
+		}
+		else
+			ApplyMetalExcitations(false);
+
+		// Submit one ordered GPU pipeline per timestep. This is also the
+		// synchronization point for CPU probes, dumps, and convergence checks.
+		FinishMetalCommands();
+		++numTS;
+	}
+	return true;
+}
+
 void Engine_Metal::Reset()
 {
 	// RestorePML rebuilds operator-owned coefficient arrays and therefore
 	// allocates. Reset runs from the destructor, so a failure must not escape.
 	if (m_Metal)
 	{
+		try { FinishMetalCommands(); }
+		catch (const std::exception& e) { std::cerr << "Metal: failed to finish commands on reset: " << e.what() << std::endl; }
+		catch (...) { std::cerr << "Metal: failed to finish commands on reset" << std::endl; }
 		try { m_Metal->RestorePML(); }
 		catch (const std::exception& e) { std::cerr << "Metal: failed to restore UPML coefficients on reset: " << e.what() << std::endl; }
 		catch (...) { std::cerr << "Metal: failed to restore UPML coefficients on reset" << std::endl; }
@@ -997,7 +1188,7 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1], numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
+		if (m_Metal->referenceEnabled || (!m_Metal->fusedPipeline && m_Metal->pml.empty()))
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)
@@ -1064,7 +1255,7 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1] - 1, numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
+		if (m_Metal->referenceEnabled || (!m_Metal->fusedPipeline && m_Metal->pml.empty()))
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)

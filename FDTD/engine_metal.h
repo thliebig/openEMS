@@ -20,6 +20,7 @@ public:
 
 	virtual void Init();
 	virtual void Reset();
+	virtual bool IterateTS(unsigned int iterTS);
 
 	virtual void DoPreVoltageUpdates();
 	virtual void DoPostVoltageUpdates();
@@ -33,7 +34,9 @@ protected:
 
 private:
 	void InitUPML();
+	void InitExcitations();
 	void RunUPMLExtensions(bool voltage, bool pre);
+	void ApplyMetalExcitations(bool voltage);
 	void FinishMetalCommands();
 
 	struct MetalState;
