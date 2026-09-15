@@ -185,6 +185,22 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 	winners[output] = result;
 }
 )METAL";
+
+// Class of EC-consuming extension that owns a resolved winner: 0 = none,
+// 1 = conducting sheet, 2 = dispersive (Lorentz/Debye).
+uint8_t ClassifyGeometryWinner(CSPrimitives* prim)
+{
+	if (!prim)
+		return 0;
+	CSProperties* prop = prim->GetProperty();
+	if (!prop)
+		return 0;
+	if (dynamic_cast<CSPropConductingSheet*>(prop))
+		return 1;
+	if (prop->ToLorentzMaterial() || prop->ToDebyeMaterial())
+		return 2;
+	return 0;
+}
 }
 
 bool Operator_Metal::CalcPEC()
@@ -358,12 +374,7 @@ bool Operator_Metal::CalcPEC()
 		// Classify primitives once so the per-winner test is an array read, not RTTI.
 		std::vector<uint8_t> primClass(primitives.size(), 0);
 		for (size_t id = 0; id < primitives.size(); ++id)
-		{
-			CSProperties* prop = primitives[id]->GetProperty();
-			if (!prop) continue;
-			if (dynamic_cast<CSPropConductingSheet*>(prop)) primClass[id] = 1;
-			else if (prop->ToLorentzMaterial() || prop->ToDebyeMaterial()) primClass[id] = 2;
-		}
+			primClass[id] = ClassifyGeometryWinner(primitives[id]);
 		id<MTLBuffer> geometry = buffer(flattened.data(), flattened.size()*sizeof(PecPrimitive));
 		id<MTLBuffer> points = buffer(vertices.data(), vertices.size()*sizeof(PecVertex));
 		id<MTLBuffer> cylinderGeometry = buffer(cylinders.data(), cylinders.size()*sizeof(PecCylinder));
@@ -397,14 +408,18 @@ bool Operator_Metal::CalcPEC()
 				{
 					const auto& q = flattened[id];
 					bool possible = q.kind == 0;
-					// CSXCAD intentionally treats polygon bounds as non-accurate.
-					// Bin supported primitives by exact Yee ranges instead, without
-					// changing the order or the CPU refinement candidate list.
-					for (unsigned n = 0; n < 3 && !possible; ++n)
+					if (!possible)
 					{
-						unsigned bx = 2*(n == 0), by = 4+2*(n == 1), bz = 8+2*(n == 2);
-						possible = x >= q.bounds[bx] && x < q.bounds[bx+1] &&
-						           y >= q.bounds[by] && y < q.bounds[by+1] && q.bounds[bz] < q.bounds[bz+1];
+						// A component query may use the primal or the dual line set on
+						// each axis (primal and dual dispatches share this list), so
+						// include a primitive that could contain the cell on either.
+						// The shader still decides against the exact bounds.
+						const bool in_x = (x >= q.bounds[0] && x < q.bounds[1]) ||
+						                  (x >= q.bounds[2] && x < q.bounds[3]);
+						const bool in_y = (y >= q.bounds[4] && y < q.bounds[5]) ||
+						                  (y >= q.bounds[6] && y < q.bounds[7]);
+						const bool z_any = q.bounds[8] < q.bounds[9] || q.bounds[10] < q.bounds[11];
+						possible = in_x && in_y && z_any;
 					}
 					if (possible && primitives[id]->IsInsideBox(box) >= 0) candidates.push_back(id);
 				}
@@ -484,14 +499,7 @@ bool Operator_Metal::CalcPEC()
 								if (!verify && winner < primitives.size())
 									cls = primClass[winner];
 								else
-								{
-									CSProperties* prop = prim->GetProperty();
-									if (prop)
-									{
-										if (dynamic_cast<CSPropConductingSheet*>(prop)) cls = 1;
-										else if (prop->ToLorentzMaterial() || prop->ToDebyeMaterial()) cls = 2;
-									}
-								}
+									cls = ClassifyGeometryWinner(prim);
 								if (cls == 1 && needConductingSheet)
 									m_geoConductingSheet.push_back({x,y,z,static_cast<unsigned char>(n),prim});
 								else if (cls == 2 && needDispersive)
@@ -545,12 +553,7 @@ bool Operator_Metal::CalcPEC()
 									haveLine[y] = true;
 								}
 								CSX->GetPropertyByCoordPriority(coord, lines[y], false, &prim);
-								cls = 0;
-								if (prim)
-								{
-									CSProperties* prop = prim->GetProperty();
-									if (prop && (prop->ToLorentzMaterial() || prop->ToDebyeMaterial())) cls = 2;
-								}
+								cls = ClassifyGeometryWinner(prim);
 							}
 							if (cls == 2 && prim)
 								m_geoDispersiveDual.push_back({x,y,z,static_cast<unsigned char>(n),prim});

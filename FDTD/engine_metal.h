@@ -37,7 +37,9 @@ private:
 	void InitUPML();
 	void InitExcitations();
 	void InitADE();
-	bool RunADEOffload(Engine_Extension* extension, int mode);
+	bool HasADEOffload(const Engine_Extension* extension) const;
+	void AdvanceADEOffload(Engine_Extension* extension);
+	void ApplyADEOffload(Engine_Extension* extension);
 	void RunUPMLExtensions(bool voltage, bool pre);
 	void ApplyMetalExcitations(bool voltage);
 	void FinishMetalCommands();

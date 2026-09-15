@@ -373,12 +373,11 @@ bool Operator_Ext_UPML::BuildExtension()
 	// otherwise single-threaded, so it dominates operator setup for large models.
 	// Each X slice writes disjoint operator/extension entries; this mirrors the
 	// audited parallel material sampling already used by Operator_Multithread.
+	// Operators that do not opt in (GetSetupThreads() == 0) stay single-threaded.
 	// An empty X range (opposing slabs) is a valid no-op, not a huge range.
 	if (!m_numLines[0])
 		return true;
-	const unsigned int configured = m_Op->GetSetupThreads();
-	unsigned int workers = configured ? configured : std::max(1U,std::thread::hardware_concurrency());
-	workers = std::min(workers, m_numLines[0]);
+	unsigned int workers = std::min(m_Op->GetSetupThreads(), m_numLines[0]);
 	if (workers <= 1)
 	{
 		BuildExtensionRange(0, m_numLines[0]-1);

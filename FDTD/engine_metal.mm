@@ -435,7 +435,7 @@ struct Engine_Metal::MetalState
 		std::unordered_map<Record, uint16_t, Hash> lookup;
 		std::vector<uint16_t> indices(count);
 		std::vector<uint32_t> records[3];
-		const size_t limit = std::min<size_t>(4096, count/4);
+		const size_t limit = 65536;
 		for (size_t i=0; i<count; ++i)
 		{
 			Record record = {{arrays[0][i], arrays[1][i], arrays[2][i]}};
@@ -573,16 +573,15 @@ struct Engine_Metal::MetalState
 			}
 		};
 		// Bound setup memory and dictionary cache footprint; require at least
-		// fourfold reuse. The packed index is a uint16, so 65535 is the format
-		// limit. The old 4096 cap made graded UPML coefficients overflow and fall
-		// back to fully dense reads for the whole operator.
-		size_t maxRecords = std::min<size_t>(65535, count / 4);
+		// fourfold reuse. The packed index is a uint16, so 65536 records
+		// (indices 0..65535) is the format limit.
+		size_t maxRecords = std::min<size_t>(65536, count / 4);
 		if (const char* recordSetting = std::getenv("OPENEMS_METAL_COEFF_RECORDS"))
 		{
 			char* end = nullptr;
 			const unsigned long requested = std::strtoul(recordSetting, &end, 10);
 			if (end != recordSetting && requested)
-				maxRecords = std::min<size_t>(std::min<unsigned long>(requested, 65535), count / 4);
+				maxRecords = std::min<size_t>(std::min<unsigned long>(requested, 65536), count / 4);
 		}
 		if (!maxRecords)
 			return;
@@ -958,8 +957,6 @@ void Engine_Metal::InitUPML()
 			region.oldFlux[1] = pack(op->iifo, true);
 			region.newFlux[0] = pack(op->vvfn, true);
 			region.newFlux[1] = pack(op->iifn, true);
-			m_Metal->CompressPML(region, 0);
-			m_Metal->CompressPML(region, 1);
 		}
 		else
 		{
@@ -972,7 +969,14 @@ void Engine_Metal::InitUPML()
 			region.newFlux[0] = wrap(op->vvfn);
 			region.newFlux[1] = wrap(op->iifn);
 		}
+		// Register before compressing: CompressPML may release the operator-owned
+		// dense arrays, and RestorePML can only rebuild them from pml.
 		m_Metal->pml.push_back(region);
+		if (m_Metal->indexedPML)
+		{
+			m_Metal->CompressPML(m_Metal->pml.back(), 0);
+			m_Metal->CompressPML(m_Metal->pml.back(), 1);
+		}
 	}
 	// When every reordered operator coefficient was replaced by a compact
 	// dictionary, no scalar restoration needs the setup scratch. Flux storage is
@@ -1047,20 +1051,23 @@ void Engine_Metal::InitExcitations()
 
 void Engine_Metal::ApplyMetalExcitations(bool voltage)
 {
-	const unsigned int field = voltage ? 0 : 1;
-	for (const auto& region : m_Metal->excitations)
+	@autoreleasepool
 	{
-		if (!region.counts[field]) continue;
-		ExcitationParams params = {region.counts[field], numTS, region.signalLength,
-			region.period ? region.period : numTS + 1};
-		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
-		[encoder setComputePipelineState:m_Metal->excitationPipeline];
-		[encoder setBuffer:voltage ? m_Metal->volt : m_Metal->curr offset:0 atIndex:0];
-		[encoder setBuffer:region.sources[field] offset:0 atIndex:1];
-		[encoder setBuffer:region.signals[field] offset:0 atIndex:2];
-		[encoder setBytes:&params length:sizeof(params) atIndex:3];
-		[encoder dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-		[encoder endEncoding];
+		const unsigned int field = voltage ? 0 : 1;
+		for (const auto& region : m_Metal->excitations)
+		{
+			if (!region.counts[field]) continue;
+			ExcitationParams params = {region.counts[field], numTS, region.signalLength,
+				region.period ? region.period : numTS + 1};
+			id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
+			[encoder setComputePipelineState:m_Metal->excitationPipeline];
+			[encoder setBuffer:voltage ? m_Metal->volt : m_Metal->curr offset:0 atIndex:0];
+			[encoder setBuffer:region.sources[field] offset:0 atIndex:1];
+			[encoder setBuffer:region.signals[field] offset:0 atIndex:2];
+			[encoder setBytes:&params length:sizeof(params) atIndex:3];
+			[encoder dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+			[encoder endEncoding];
+		}
 	}
 }
 
@@ -1089,8 +1096,12 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 			// Offloaded ADE extensions advance before the voltage update, never
 			// drain the GPU, and never run the CPU hook. Their apply pass runs from
 			// Apply2Voltages after all post updates.
-			if (RunADEOffload(extension, (voltage && pre) ? 1 : 0))
+			if (HasADEOffload(extension))
+			{
+				if (voltage && pre)
+					AdvanceADEOffload(extension);
 				continue;
+			}
 			auto region = std::find_if(m_Metal->pml.begin(), m_Metal->pml.end(),
 				[extension](const MetalState::PMLRegion& r) { return r.extension == extension; });
 			if (region == m_Metal->pml.end())
@@ -1140,38 +1151,51 @@ void Engine_Metal::DoPostVoltageUpdates() { RunUPMLExtensions(true, false); }
 void Engine_Metal::DoPreCurrentUpdates() { RunUPMLExtensions(false, true); }
 void Engine_Metal::DoPostCurrentUpdates() { RunUPMLExtensions(false, false); }
 
-bool Engine_Metal::RunADEOffload(Engine_Extension* extension, int mode)
+bool Engine_Metal::HasADEOffload(const Engine_Extension* extension) const
+{
+	for (const auto& region : m_Metal->ade)
+		if (region.extension == extension)
+			return true;
+	return false;
+}
+
+void Engine_Metal::AdvanceADEOffload(Engine_Extension* extension)
 {
 	for (auto& region : m_Metal->ade)
 	{
 		if (region.extension != extension)
 			continue;
-		if (mode == 0)
-			return true;
-		id<MTLComputePipelineState> pipeline =
-			mode == 1 ? m_Metal->adeAdvancePipeline : m_Metal->adeApplyPipeline;
 		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
-		[encoder setComputePipelineState:pipeline];
+		[encoder setComputePipelineState:m_Metal->adeAdvancePipeline];
 		[encoder setBuffer:m_Metal->volt offset:0 atIndex:0];
-		if (mode == 1)
-		{
-			[encoder setBuffer:region.state offset:0 atIndex:1];
-			[encoder setBuffer:region.coeff offset:0 atIndex:2];
-			[encoder setBuffer:region.indices offset:0 atIndex:3];
-			[encoder setBytes:&region.count length:sizeof(region.count) atIndex:4];
-		}
-		else
-		{
-			[encoder setBuffer:region.state offset:0 atIndex:1];
-			[encoder setBuffer:region.indices offset:0 atIndex:2];
-			[encoder setBytes:&region.count length:sizeof(region.count) atIndex:3];
-		}
+		[encoder setBuffer:region.state offset:0 atIndex:1];
+		[encoder setBuffer:region.coeff offset:0 atIndex:2];
+		[encoder setBuffer:region.indices offset:0 atIndex:3];
+		[encoder setBytes:&region.count length:sizeof(region.count) atIndex:4];
 		[encoder dispatchThreads:MTLSizeMake((NSUInteger)region.count, 1, 1)
-			threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
+			threadsPerThreadgroup:MTLSizeMake(m_Metal->adeAdvancePipeline.threadExecutionWidth, 1, 1)];
 		[encoder endEncoding];
-		return true;
+		return;
 	}
-	return false;
+}
+
+void Engine_Metal::ApplyADEOffload(Engine_Extension* extension)
+{
+	for (auto& region : m_Metal->ade)
+	{
+		if (region.extension != extension)
+			continue;
+		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
+		[encoder setComputePipelineState:m_Metal->adeApplyPipeline];
+		[encoder setBuffer:m_Metal->volt offset:0 atIndex:0];
+		[encoder setBuffer:region.state offset:0 atIndex:1];
+		[encoder setBuffer:region.indices offset:0 atIndex:2];
+		[encoder setBytes:&region.count length:sizeof(region.count) atIndex:3];
+		[encoder dispatchThreads:MTLSizeMake((NSUInteger)region.count, 1, 1)
+			threadsPerThreadgroup:MTLSizeMake(m_Metal->adeApplyPipeline.threadExecutionWidth, 1, 1)];
+		[encoder endEncoding];
+		return;
+	}
 }
 
 void Engine_Metal::Apply2Voltages()
@@ -1182,10 +1206,10 @@ void Engine_Metal::Apply2Voltages()
 		// ADE edges live outside every PML region, so their relative order to the
 		// other extensions cannot alias the same field entries.
 		for (Engine_Extension* extension : m_Eng_exts)
-			if (!RunADEOffload(extension, 0))
+			if (!HasADEOffload(extension))
 				extension->Apply2Voltages();
 		for (Engine_Extension* extension : m_Eng_exts)
-			RunADEOffload(extension, 2);
+			ApplyADEOffload(extension);
 	}
 }
 

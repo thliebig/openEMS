@@ -229,11 +229,11 @@ public:
 
 	Operator_Ext_Excitation* GetExcitationExtension() const;
 
-	//! Number of threads operator/extension setup may use. 0 means auto.
+	//! Number of threads to use for parallel, disjoint setup passes.
 	/*!
-	  Setup passes that split disjoint X ranges (material sampling, EC coefficient
-	  construction, UPML construction) honor this. 0 lets a pass pick its own
-	  default, which for the parallel setup passes is std::thread::hardware_concurrency().
+	  Returns 0 when the operator does not support parallel setup, in which case
+	  setup passes stay single-threaded. Operator_Metal returns its configured
+	  thread count, or the hardware concurrency for the auto setting.
 	*/
 	virtual unsigned int GetSetupThreads() const { return 0; }
 

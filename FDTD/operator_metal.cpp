@@ -34,6 +34,11 @@ Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0), m_geoWinne
 {
 }
 
+unsigned int Operator_Metal::GetSetupThreads() const
+{
+	return m_setupThreads ? m_setupThreads : std::max(1U,std::thread::hardware_concurrency());
+}
+
 const std::vector<Operator::GeometryWinner>* Operator_Metal::GetGeometryWinners(GeometryWinnerType type, bool dualMesh) const
 {
 	if (!m_geoWinnersValid)
@@ -65,7 +70,7 @@ bool Operator_Metal::Calc_EC()
 	// CSXCAD queries are read-only, matching the audited multithreaded path.
 	// (CSXCAD still writes its idempotent used-flag on the winning primitive,
 	// exactly as the existing Operator_Multithread path does.)
-	unsigned int workers = GetSetupThreads() ? GetSetupThreads() : std::max(1U,std::thread::hardware_concurrency());
+	unsigned int workers = GetSetupThreads();
 	workers = std::min(workers,numLines[0]);
 	std::vector<std::thread> threads;
 	std::vector<std::exception_ptr> errors(workers);
@@ -93,7 +98,7 @@ void Operator_Metal::CalcOperatorCoefficients()
 {
 	const char* serial = std::getenv("OPENEMS_METAL_SERIAL_COEFFICIENTS");
 	if (serial && serial[0]=='1') { Operator::CalcOperatorCoefficients(); return; }
-	unsigned int workers = GetSetupThreads() ? GetSetupThreads() : std::max(1U,std::thread::hardware_concurrency());
+	unsigned int workers = GetSetupThreads();
 	workers = std::min(workers,numLines[0]);
 	// This arithmetic pass touches no CSXCAD geometry: it only reads EC arrays
 	// and writes disjoint X slabs of the operator coefficients. A thread-local
