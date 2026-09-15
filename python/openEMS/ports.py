@@ -21,6 +21,7 @@ import os
 import numpy as np
 from CSXCAD.Utilities import CheckNyDir
 from CSXCAD.CSRectGrid import CoordinateSystem
+from CSXCAD.CSProperties import CSPropProbeBox, CSPropDumpBox
 from openEMS import utilities
 
 from openEMS.physical_constants import *
@@ -81,7 +82,9 @@ class Port(object):
     The port base class.
 
     :param CSX: Continuous Structure
-    :param port_nr: int -- port number
+    :param port_nr: int -- port number, must be unique among all ports with the
+        same PortNamePrefix, as openEMS writes each port probe to a file named
+        after the port number
     :param R: float -- port reference impedance, e.g. 50 (Ohms)
     :param start, stop: (3,) array -- Start/Stop box coordinates
     :param p_dir: int -- port direction
@@ -114,6 +117,15 @@ class Port(object):
             self.delay = kw['delay']
 
         self.lbl_temp = self.prefix + 'port_{}' +  '_{}'.format(self.number)
+
+    def _AddProbe(self, CSX, name, **kw):
+        # openEMS writes each probe to a file of its name, two probes with the
+        # same name would corrupt each other's file
+        for prop in CSX.GetPropertiesByName(name):
+            if isinstance(prop, CSPropProbeBox) and not isinstance(prop, CSPropDumpBox):
+                raise ValueError('port {}: a probe named "{}" already exists, port numbers '
+                                 'must be unique (or use a different PortNamePrefix)'.format(self.number, name))
+        return CSX.AddProbe(name, **kw)
 
     def SetEnabled(self, val):
         from CSXCAD.CSProperties import CSPropExcitation
@@ -224,7 +236,7 @@ class LumpedPort(Port):
         u_start[self.exc_ny] = self.start[self.exc_ny]
         u_stop  = 0.5*(self.start+self.stop)
         u_stop[self.exc_ny]  = self.stop[self.exc_ny]
-        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=0, weight=-1)
+        u_probe = self._AddProbe(CSX, self.U_filenames[0], p_type=0, weight=-1)
         u_probe.AddBox(u_start, u_stop)
         self.port_props.append(u_probe)
 
@@ -233,7 +245,7 @@ class LumpedPort(Port):
         i_start[self.exc_ny] = 0.5*(self.start[self.exc_ny]+self.stop[self.exc_ny])
         i_stop  = np.array(self.stop)
         i_stop[self.exc_ny]  = 0.5*(self.start[self.exc_ny]+self.stop[self.exc_ny])
-        i_probe = CSX.AddProbe(self.I_filenames[0], p_type=1, weight=self.direction, norm_dir=self.exc_ny)
+        i_probe = self._AddProbe(CSX, self.I_filenames[0], p_type=1, weight=self.direction, norm_dir=self.exc_ny)
         i_probe.AddBox(i_start, i_stop)
         self.port_props.append(i_probe)
 
@@ -310,7 +322,7 @@ class MSLPort(Port):
             u_stop[self.exc_ny]   = self.stop [self.exc_ny]
             u_name = self.lbl_temp.format('ut') + suffix[n]
             self.U_filenames.append(u_name)
-            u_probe = CSX.AddProbe(u_name, p_type=0)
+            u_probe = self._AddProbe(CSX, u_name, p_type=0)
             u_probe.AddBox(u_start, u_stop)
             self.port_props.append(u_probe)
 
@@ -325,7 +337,7 @@ class MSLPort(Port):
             i_stop[self.prop_ny]  = i_prope_pos[n]
             i_name = self.lbl_temp.format('it') + suffix[n]
             self.I_filenames.append(i_name)
-            i_probe = CSX.AddProbe(i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
+            i_probe = self._AddProbe(CSX, i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
             i_probe.AddBox(i_start, i_stop)
             self.port_props.append(i_probe)
 
@@ -518,7 +530,7 @@ class WaveguidePort(Port):
 
         self.U_filenames = [self.lbl_temp.format('ut'), ]
         u_probe_kw = {'mode_function': self.E_func} if use_function_expr else {}
-        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=10, **u_probe_kw)
+        u_probe = self._AddProbe(CSX, self.U_filenames[0], p_type=10, **u_probe_kw)
         if not use_function_expr:
             u_probe.SetModeFile(self.E_file)
         if local_origin is not None:
@@ -528,7 +540,7 @@ class WaveguidePort(Port):
 
         self.I_filenames = [self.lbl_temp.format('it'), ]
         i_probe_kw = {'mode_function': self.H_func} if use_function_expr else {}
-        i_probe = CSX.AddProbe(self.I_filenames[0], p_type=11, weight=self.direction, **i_probe_kw)
+        i_probe = self._AddProbe(CSX, self.I_filenames[0], p_type=11, weight=self.direction, **i_probe_kw)
         if not use_function_expr:
             i_probe.SetModeFile(self.H_file)
         if local_origin is not None:
@@ -820,7 +832,7 @@ class CoaxialPort(Port):
 
             u_name = self.lbl_temp.format('ut') + suffix[n]
             self.U_filenames.append(u_name)
-            u_probe = CSX.AddProbe(u_name, p_type=0, weight=1)
+            u_probe = self._AddProbe(CSX, u_name, p_type=0, weight=1)
             u_probe.AddBox(v_start, v_stop)
             self.port_props.append(u_probe)
 
@@ -838,7 +850,7 @@ class CoaxialPort(Port):
 
             i_name = self.lbl_temp.format('it') + suffix[n]
             self.I_filenames.append(i_name)
-            i_probe = CSX.AddProbe(i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
+            i_probe = self._AddProbe(CSX, i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
             i_probe.AddBox(i_start, i_stop)
             self.port_props.append(i_probe)
 
@@ -1010,7 +1022,7 @@ class StripLinePort(Port):
             for s, sign in [(s1, +1), (s2, -1)]:
                 u_name = self.lbl_temp.format('ut') + s
                 self.U_filenames.append(u_name)
-                u_probe = CSX.AddProbe(u_name, p_type=0, weight=0.5)
+                u_probe = self._AddProbe(CSX, u_name, p_type=0, weight=0.5)
                 u_probe.AddBox(v_pt, v_pt + sign * height_vec, priority=self.priority)
                 self.port_props.append(u_probe)
 
@@ -1040,7 +1052,7 @@ class StripLinePort(Port):
 
             i_name = self.lbl_temp.format('it') + s
             self.I_filenames.append(i_name)
-            i_probe = CSX.AddProbe(i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
+            i_probe = self._AddProbe(CSX, i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
             i_probe.AddBox(i_start, i_stop)
             self.port_props.append(i_probe)
 
@@ -1211,7 +1223,7 @@ class CPWPort(Port):
             for s, sign in [(s1, -1), (s2, +1)]:
                 u_name = self.lbl_temp.format('ut') + s
                 self.U_filenames.append(u_name)
-                u_probe = CSX.AddProbe(u_name, p_type=0, weight=0.5)
+                u_probe = self._AddProbe(CSX, u_name, p_type=0, weight=0.5)
                 u_probe.AddBox(v_pt + sign*w_add_start, v_pt + sign*w_add_stop,
                                priority=self.priority)
                 self.port_props.append(u_probe)
@@ -1243,7 +1255,7 @@ class CPWPort(Port):
 
             i_name = self.lbl_temp.format('it') + s
             self.I_filenames.append(i_name)
-            i_probe = CSX.AddProbe(i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
+            i_probe = self._AddProbe(CSX, i_name, p_type=1, weight=self.direction, norm_dir=self.prop_ny)
             i_probe.AddBox(i_start, i_stop)
             self.port_props.append(i_probe)
 
@@ -1408,12 +1420,12 @@ class CurvePort(Port):
 
         # Voltage probe (with weight=-1 to get correct sign) and current probe
         self.U_filenames = [self.lbl_temp.format('ut')]
-        u_probe = CSX.AddProbe(self.U_filenames[0], p_type=0, weight=-1)
+        u_probe = self._AddProbe(CSX, self.U_filenames[0], p_type=0, weight=-1)
         u_probe.AddBox(edge_start, edge_stop)
         self.port_props.append(u_probe)
 
         self.I_filenames = [self.lbl_temp.format('it')]
-        i_probe = CSX.AddProbe(self.I_filenames[0], p_type=1, weight=1)
+        i_probe = self._AddProbe(CSX, self.I_filenames[0], p_type=1, weight=1)
         i_probe.AddBox(i_start, i_stop)
         self.port_props.append(i_probe)
 

@@ -135,6 +135,9 @@ number moved up and patch releases now have somewhere to go.
 - The excitation amplitude was ignored by `AddCoaxialPort` (`'ExciteAmp'`) in
   Octave/Matlab and by the waveguide ports (`excite`) in Python: any non-zero
   value excited with amplitude 1.
+- Python: a port with the number of an existing port now raises `ValueError`.
+  Both ports wrote their probes to the same files and corrupted them.
+  Octave/Matlab already rejected this.
 
 ### Build
 

@@ -270,7 +270,7 @@ class Test_CircWGPort(unittest.TestCase):
     def test_all_pnm_modes_accepted(self):
         for (n, m) in CircWGPort._pnm:
             mode = 'TE{}{}'.format(n, m)
-            port = CircWGPort(self.csx, port_nr=1,
+            port = CircWGPort(_make_csx_circ(), port_nr=1,
                               start=[0, 0, 0], stop=[0, 0, 200],
                               exc_dir='z', radius=self.radius, mode_name=mode)
             self.assertAlmostEqual(port.kc, CircWGPort._pnm[(n, m)] / self.radius, places=6)
@@ -713,6 +713,34 @@ class Test_WaveguidePort_LocalOrigin(unittest.TestCase):
         weight, mode = self._origins(port)
         for origin in weight + mode:
             np.testing.assert_allclose(origin, [0, 0, 200])
+
+
+class Test_UniquePortNumber(unittest.TestCase):
+    """openEMS writes each port probe to a file named after the port number, so
+    two ports with the same number would corrupt each other's files."""
+
+    def _lumped(self, csx, port_nr, x, **kw):
+        return LumpedPort(csx, port_nr=port_nr, R=50, start=[x, 0, -1], stop=[x, 0, 1],
+                          exc_dir='z', **kw)
+
+    def test_duplicate_lumped_port_raises(self):
+        csx = _make_csx()
+        self._lumped(csx, 1, -20, excite=1)
+        with self.assertRaises(ValueError):
+            self._lumped(csx, 1, 20)
+
+    def test_duplicate_transmission_line_port_raises(self):
+        csx = _make_csx_tl()
+        metal = csx.AddMetal('strip')
+        StripLinePort(csx, 1, metal, [0, -3, 0], [100, 3, 0], 'x', 'z', height=8, excite=1)
+        with self.assertRaises(ValueError):
+            StripLinePort(csx, 1, metal, [100, -3, 0], [0, 3, 0], 'x', 'z', height=8)
+
+    def test_different_number_or_prefix_allowed(self):
+        csx = _make_csx()
+        self._lumped(csx, 1, -20, excite=1)
+        self._lumped(csx, 2, 20)
+        self._lumped(csx, 1, 0, PortNamePrefix='other_')
 
 
 class Test_ExciteAmplitude(unittest.TestCase):
