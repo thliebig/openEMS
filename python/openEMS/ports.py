@@ -628,10 +628,7 @@ class CircWGPort(WaveguidePort):
 
     Generates Bessel-function mode functions (Pozar 3rd ed.) and forwards
     them to :class:`WaveguidePort`.  Only TE modes with the listed (n, m)
-    indices are supported.  The fparser variables ``rho`` and ``a`` describe
-    cylindrical coordinates in the xy-plane, so **the propagation axis must
-    be z** (``exc_dir=2``) for the mode functions to be evaluated correctly
-    in Cartesian meshes.
+    indices are supported.
 
     Parameters
     ----------
