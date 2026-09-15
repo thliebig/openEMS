@@ -12,6 +12,7 @@
 #include "extensions/operator_ext_upml.h"
 #include "extensions/engine_ext_excitation.h"
 #include "extensions/operator_ext_excitation.h"
+#include "extensions/engine_ext_lorentzmaterial.h"
 #include "excitation.h"
 
 #import <Foundation/Foundation.h>
@@ -189,6 +190,45 @@ kernel void update_currents(
 	curr[base + 2] = hz * ii[c + 2] + iv[c + 2] * (ey - ey_x - ex + ex_y);
 }
 
+// Plain volt-ADE update for the conducting-sheet model. Each thread owns one
+// active Yee edge; the two ADE poles are packed into one float4/float2 record so
+// the field is read once for both poles (advance) and the two subtractions run
+// in the same order as the CPU reference (apply).
+kernel void ade_advance(
+	device float* field [[buffer(0)]],
+	device float2* state [[buffer(1)]],
+	const device float4* coeff [[buffer(2)]],
+	const device uint* indices [[buffer(3)]],
+	constant uint& count [[buffer(4)]],
+	uint gid [[thread_position_in_grid]])
+{
+	if (gid >= count)
+		return;
+	const float e = field[indices[gid]];
+	float2 s = state[gid];
+	const float4 c = coeff[gid];
+	s.x = c.x * s.x + c.y * e;
+	s.y = c.z * s.y + c.w * e;
+	state[gid] = s;
+}
+
+kernel void ade_apply(
+	device float* field [[buffer(0)]],
+	const device float2* state [[buffer(1)]],
+	const device uint* indices [[buffer(2)]],
+	constant uint& count [[buffer(3)]],
+	uint gid [[thread_position_in_grid]])
+{
+	if (gid >= count)
+		return;
+	const uint f = indices[gid];
+	const float2 s = state[gid];
+	float v = field[f];
+	v -= s.x;
+	v -= s.y;
+	field[f] = v;
+}
+
 // UPML arrays are scalar NIJK, while fields use the SSE z-lane layout.
 // Scalar stores touch only physical cells, never SIMD padding lanes.
 struct PMLParams
@@ -324,6 +364,8 @@ struct Engine_Metal::MetalState
 	id<MTLComputePipelineState> voltagePipeline;
 	id<MTLComputePipelineState> currentPipeline;
 	id<MTLComputePipelineState> excitationPipeline;
+	id<MTLComputePipelineState> adeAdvancePipeline;
+	id<MTLComputePipelineState> adeApplyPipeline;
 	id<MTLBuffer> volt;
 	id<MTLBuffer> curr;
 	id<MTLBuffer> vv;
@@ -363,6 +405,18 @@ struct Engine_Metal::MetalState
 		bool coefficientsReleased[2] = {false, false};
 	};
 	std::vector<PMLRegion> pml;
+
+	// Plain volt-ADE (conducting-sheet) regions offloaded to the GPU. One entry
+	// per active packed-field edge, with two poles packed into coeff/state.
+	struct ADERegion
+	{
+		Engine_Ext_LorentzMaterial* extension;
+		uint32_t count;
+		id<MTLBuffer> indices;
+		id<MTLBuffer> coeff;
+		id<MTLBuffer> state;
+	};
+	std::vector<ADERegion> ade;
 
 	void CompressPML(PMLRegion& region, unsigned int field)
 	{
@@ -741,6 +795,18 @@ void Engine_Metal::Init()
 		m_Metal->excitationPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 		if (!m_Metal->excitationPipeline)
 			throw MetalError("Metal: failed to create excitation pipeline", error);
+		function = [library newFunctionWithName:@"ade_advance"];
+		if (!function)
+			throw std::runtime_error("Metal: ade_advance kernel not found");
+		m_Metal->adeAdvancePipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+		if (!m_Metal->adeAdvancePipeline)
+			throw MetalError("Metal: failed to create ADE advance pipeline", error);
+		function = [library newFunctionWithName:@"ade_apply"];
+		if (!function)
+			throw std::runtime_error("Metal: ade_apply kernel not found");
+		m_Metal->adeApplyPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+		if (!m_Metal->adeApplyPipeline)
+			throw MetalError("Metal: failed to create ADE apply pipeline", error);
 
 		const char* layout = std::getenv("OPENEMS_METAL_PML_LAYOUT");
 		m_Metal->indexedPML = !(layout && std::strcmp(layout, "scalar") == 0);
@@ -767,6 +833,9 @@ void Engine_Metal::Init()
 		if (fused && fused[0] == '0')
 			m_Metal->fusedPipeline = false;
 		if (m_Metal->referenceEnabled)
+			m_Metal->fusedPipeline = false;
+		InitADE();
+		if (!m_Metal->ade.empty())
 			m_Metal->fusedPipeline = false;
 		cout << "Metal: fused E/H pipeline: " << (m_Metal->fusedPipeline ? "enabled" : "disabled") << endl;
 		if (m_Metal->referenceEnabled)
@@ -1017,6 +1086,11 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 		for (size_t i = 0; i < m_Eng_exts.size(); ++i)
 		{
 			Engine_Extension* extension = m_Eng_exts[pre ? m_Eng_exts.size() - 1 - i : i];
+			// Offloaded ADE extensions advance before the voltage update, never
+			// drain the GPU, and never run the CPU hook. Their apply pass runs from
+			// Apply2Voltages after all post updates.
+			if (RunADEOffload(extension, (voltage && pre) ? 1 : 0))
+				continue;
 			auto region = std::find_if(m_Metal->pml.begin(), m_Metal->pml.end(),
 				[extension](const MetalState::PMLRegion& r) { return r.extension == extension; });
 			if (region == m_Metal->pml.end())
@@ -1065,6 +1139,139 @@ void Engine_Metal::DoPreVoltageUpdates() { RunUPMLExtensions(true, true); }
 void Engine_Metal::DoPostVoltageUpdates() { RunUPMLExtensions(true, false); }
 void Engine_Metal::DoPreCurrentUpdates() { RunUPMLExtensions(false, true); }
 void Engine_Metal::DoPostCurrentUpdates() { RunUPMLExtensions(false, false); }
+
+bool Engine_Metal::RunADEOffload(Engine_Extension* extension, int mode)
+{
+	for (auto& region : m_Metal->ade)
+	{
+		if (region.extension != extension)
+			continue;
+		if (mode == 0)
+			return true;
+		id<MTLComputePipelineState> pipeline =
+			mode == 1 ? m_Metal->adeAdvancePipeline : m_Metal->adeApplyPipeline;
+		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
+		[encoder setComputePipelineState:pipeline];
+		[encoder setBuffer:m_Metal->volt offset:0 atIndex:0];
+		if (mode == 1)
+		{
+			[encoder setBuffer:region.state offset:0 atIndex:1];
+			[encoder setBuffer:region.coeff offset:0 atIndex:2];
+			[encoder setBuffer:region.indices offset:0 atIndex:3];
+			[encoder setBytes:&region.count length:sizeof(region.count) atIndex:4];
+		}
+		else
+		{
+			[encoder setBuffer:region.state offset:0 atIndex:1];
+			[encoder setBuffer:region.indices offset:0 atIndex:2];
+			[encoder setBytes:&region.count length:sizeof(region.count) atIndex:3];
+		}
+		[encoder dispatchThreads:MTLSizeMake((NSUInteger)region.count, 1, 1)
+			threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
+		[encoder endEncoding];
+		return true;
+	}
+	return false;
+}
+
+void Engine_Metal::Apply2Voltages()
+{
+	@autoreleasepool
+	{
+		// CPU apply hooks first (the base class order), then the GPU ADE apply.
+		// ADE edges live outside every PML region, so their relative order to the
+		// other extensions cannot alias the same field entries.
+		for (Engine_Extension* extension : m_Eng_exts)
+			if (!RunADEOffload(extension, 0))
+				extension->Apply2Voltages();
+		for (Engine_Extension* extension : m_Eng_exts)
+			RunADEOffload(extension, 2);
+	}
+}
+
+void Engine_Metal::InitADE()
+{
+	// The FP64 reference reproduces every extension on the CPU, and the fused
+	// pipeline never calls Apply2Voltages, so both keep the ADE on the CPU.
+	if (m_Metal->referenceEnabled || m_Metal->fusedPipeline)
+		return;
+
+	const uint32_t ny = numLines[1];
+	const uint32_t nzv = numVectors;
+	size_t total = 0;
+	for (Engine_Extension* extension : m_Eng_exts)
+	{
+		Engine_Ext_LorentzMaterial* lor = dynamic_cast<Engine_Ext_LorentzMaterial*>(extension);
+		if (!lor || !lor->MetalADEOffloadSupported())
+			continue;
+
+		// In the conducting-sheet model both ADE poles share one field position,
+		// so merge by packed field index. One thread then owns every pole of one
+		// edge, which keeps the apply subtraction race-free and bit-identical to
+		// the CPU sequence (pole 0 then pole 1).
+		std::unordered_map<uint32_t, uint32_t> first;
+		std::vector<uint32_t> indices;
+		std::vector<float> coeff;
+		const int order = lor->MetalADEOrder();
+		for (int o = 0; o < order; ++o)
+		{
+			if (!lor->MetalADEVoltOn(o))
+				continue;
+			const unsigned int count = lor->MetalADECount(o);
+			const unsigned int* px = lor->MetalADEPos(o, 0);
+			const unsigned int* py = lor->MetalADEPos(o, 1);
+			const unsigned int* pz = lor->MetalADEPos(o, 2);
+			for (unsigned int i = 0; i < count; ++i)
+			{
+				const uint32_t x = px[i], y = py[i], z = pz[i];
+				const uint32_t slot = z % nzv;
+				const uint32_t lane = z / nzv;
+				for (int n = 0; n < 3; ++n)
+				{
+					const float vi = lor->MetalADEVoltInt(o, n)[i];
+					const float ve = lor->MetalADEVoltExt(o, n)[i];
+					if (vi == 0.0f && ve == 0.0f)
+						continue;
+					const uint32_t f = (3 * ((x * ny + y) * nzv + slot) + n) * 4 + lane;
+					auto found = first.find(f);
+					uint32_t entry;
+					if (found == first.end())
+					{
+						entry = static_cast<uint32_t>(indices.size());
+						first.emplace(f, entry);
+						indices.push_back(f);
+						// Identity poles so an absent order stays a no-op.
+						coeff.insert(coeff.end(), {1.0f, 0.0f, 1.0f, 0.0f});
+					}
+					else
+						entry = found->second;
+					coeff[entry * 4 + 2 * o] = vi;
+					coeff[entry * 4 + 2 * o + 1] = ve;
+				}
+			}
+		}
+		if (indices.empty())
+			continue;
+
+		const NSUInteger stateBytes = indices.size() * 2 * sizeof(float);
+		MetalState::ADERegion region;
+		region.extension = lor;
+		region.count = static_cast<uint32_t>(indices.size());
+		region.indices = [m_Metal->device newBufferWithBytes:indices.data()
+			length:indices.size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
+		region.coeff = [m_Metal->device newBufferWithBytes:coeff.data()
+			length:coeff.size() * sizeof(float) options:MTLResourceStorageModeShared];
+		region.state = [m_Metal->device newBufferWithLength:stateBytes options:MTLResourceStorageModeShared];
+		if (!region.indices || !region.coeff || !region.state)
+			throw std::runtime_error("Metal: failed to allocate ADE buffers");
+		std::memset(region.state.contents, 0, stateBytes);
+		total += indices.size();
+		m_Metal->ade.push_back(region);
+	}
+	if (!m_Metal->ade.empty())
+		cout << "Metal: ADE offload: " << m_Metal->ade.size() << " region(s), "
+		     << total << " active edges" << endl;
+}
 
 bool Engine_Metal::IterateTS(unsigned int iterTS)
 {

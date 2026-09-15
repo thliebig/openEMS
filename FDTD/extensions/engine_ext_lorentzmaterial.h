@@ -32,6 +32,18 @@ public:
 
 	virtual void DoPreCurrentUpdates();
 
+	//! The Metal engine can run the plain volt-ADE scheme (e.g. the conducting-sheet
+	//! model) on the GPU. Models that need extra Lorentz flux states or ADE
+	//! currents keep the CPU path.
+	bool MetalADEOffloadSupported() const;
+
+	int MetalADEOrder() const { return m_Order; }
+	bool MetalADEVoltOn(int order) const;
+	unsigned int MetalADECount(int order) const;
+	const unsigned int* MetalADEPos(int order, int dir) const;
+	const FDTD_FLOAT* MetalADEVoltInt(int order, int dir) const;
+	const FDTD_FLOAT* MetalADEVoltExt(int order, int dir) const;
+
 protected:
 	template <typename EngType>
 	void DoPreVoltageUpdatesImpl(EngType* eng);

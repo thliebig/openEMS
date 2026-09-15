@@ -26,6 +26,7 @@ public:
 	virtual void DoPostVoltageUpdates();
 	virtual void DoPreCurrentUpdates();
 	virtual void DoPostCurrentUpdates();
+	virtual void Apply2Voltages();
 
 protected:
 	Engine_Metal(const Operator_sse* op);
@@ -35,6 +36,8 @@ protected:
 private:
 	void InitUPML();
 	void InitExcitations();
+	void InitADE();
+	bool RunADEOffload(Engine_Extension* extension, int mode);
 	void RunUPMLExtensions(bool voltage, bool pre);
 	void ApplyMetalExcitations(bool voltage);
 	void FinishMetalCommands();

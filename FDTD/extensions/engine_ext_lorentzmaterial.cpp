@@ -171,3 +171,48 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates()
 {
 	ENG_DISPATCH(DoPreCurrentUpdatesImpl);
 }
+
+bool Engine_Ext_LorentzMaterial::MetalADEOffloadSupported() const
+{
+	// Only the plain volt-ADE recurrence used by the conducting-sheet model is
+	// represented by the two Metal kernels. Lorentz flux (v_Lor_ADE) and any ADE
+	// current recurrence would need extra state and are left on the CPU.
+	if (m_Order < 1 || m_Order > 2)
+		return false;
+	if (static_cast<int>(m_Op_Ext_Lor->m_LM_Count.size()) < m_Order)
+		return false;
+	bool any = false;
+	for (int o=0; o<m_Order; ++o)
+	{
+		if (m_Op_Ext_Lor->m_volt_Lor_ADE_On[o]) return false;
+		if (m_Op_Ext_Lor->m_curr_ADE_On[o]) return false;
+		if (m_Op_Ext_Lor->m_curr_Lor_ADE_On[o]) return false;
+		if (m_Op_Ext_Lor->m_volt_ADE_On[o]) any = true;
+	}
+	return any;
+}
+
+bool Engine_Ext_LorentzMaterial::MetalADEVoltOn(int order) const
+{
+	return m_Op_Ext_Lor->m_volt_ADE_On[order];
+}
+
+unsigned int Engine_Ext_LorentzMaterial::MetalADECount(int order) const
+{
+	return m_Op_Ext_Lor->m_LM_Count[order];
+}
+
+const unsigned int* Engine_Ext_LorentzMaterial::MetalADEPos(int order, int dir) const
+{
+	return m_Op_Ext_Lor->m_LM_pos[order][dir];
+}
+
+const FDTD_FLOAT* Engine_Ext_LorentzMaterial::MetalADEVoltInt(int order, int dir) const
+{
+	return m_Op_Ext_Lor->v_int_ADE[order][dir];
+}
+
+const FDTD_FLOAT* Engine_Ext_LorentzMaterial::MetalADEVoltExt(int order, int dir) const
+{
+	return m_Op_Ext_Lor->v_ext_ADE[order][dir];
+}
