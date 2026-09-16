@@ -35,6 +35,8 @@
 
 using std::cout;
 using std::endl;
+using std::fixed;
+using std::setprecision;
 
 //! \brief construct an Engine_Multithread instance
 //! it's the responsibility of the caller to free the returned pointer
