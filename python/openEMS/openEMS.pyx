@@ -654,6 +654,8 @@ cdef class openEMS:
         * nativeFieldDumps (bool) - dump all fields using the native field
           components
         """
+        # a relative sim_path would be resolved against itself after the chdir below
+        sim_path = os.path.abspath(sim_path)
         if cleanup and os.path.exists(sim_path):
             self._cleanup_sim_path(sim_path, verbose=kw.get('verbose'))
         if not os.path.exists(sim_path):

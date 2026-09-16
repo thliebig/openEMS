@@ -133,8 +133,8 @@ number moved up and patch releases now have somewhere to go.
   conversion in the patch-antenna tutorials.
 - Lumped RLC: the auxiliary-differential-equation update had several bugs, and
   `C = 0` was not handled.
-- `Run()` no longer asserts when the simulation path contains symlinks, and
-  reports a clearer error.
+- Python: `Run()` failed on a relative `sim_path`, and on one containing
+  symlinks, with an assertion; both work now.
 - Octave: an oct-file left over from an older Octave version is rebuilt
   instead of failing the run. It was still found by `exist()`, so `setup` was
   never re-run and the call died with "failed to load" or, on Windows, "the
