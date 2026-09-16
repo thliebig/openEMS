@@ -106,7 +106,7 @@ number moved up and patch releases now have somewhere to go.
   rather than only at the wall-clock report interval.
 - **Apple Metal GPU engine** (experimental, macOS): `--engine=metal` runs the
   FDTD field updates, UPML, the conducting-sheet ADE and the PEC geometry pass
-  on the GPU. Build with `-DWITH_METAL=ON`; see `macos/doc/metal-engine.rst`.
+  on the GPU; see `macos/doc/metal-engine.rst`.
 
 ### Changed
 
@@ -221,6 +221,8 @@ number moved up and patch releases now have somewhere to go.
   `update_openEMS.sh` were removed.
 - CI covers Linux, macOS, FreeBSD and Windows, and compiles with warnings
   enabled.
+- `WITH_METAL` is on by default on macOS; `-DWITH_METAL=OFF` gives a CPU-only
+  build.
 
 ### Upgrade notes
 

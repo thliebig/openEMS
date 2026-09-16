@@ -29,14 +29,22 @@ IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|IntelLLVM")
   SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ffp-contract=off")
 ENDIF()
 
-option(WITH_METAL "Use Metal for FDTD field updates on macOS" OFF)
+# This fork exists to run the FDTD field updates on Metal, so the engine is on by
+# default where it can run (macOS) and off where it cannot. A caller that wants a
+# plain CPU build can still pass -DWITH_METAL=OFF; the openEMS-Project harness
+# does not forward this option, which is why relying on the default matters.
+if(APPLE)
+  option(WITH_METAL "Use Metal for FDTD field updates on macOS" ON)
+else()
+  option(WITH_METAL "Use Metal for FDTD field updates on macOS" OFF)
+endif()
+if(WITH_METAL AND NOT APPLE)
+  message(FATAL_ERROR "WITH_METAL is only supported on Apple platforms")
+endif()
 # Fast math for the Metal kernels is deliberately not offered. It does not make
 # the field updates faster (they are memory-bandwidth bound) and it perturbs the
 # reproducible bit patterns the Metal tests rely on, so the shaders always
 # compile with fast math off.
-if(WITH_METAL AND NOT APPLE)
-  message(FATAL_ERROR "WITH_METAL is only supported on Apple platforms")
-endif()
 if(WITH_METAL)
   enable_language(OBJCXX)
   add_definitions(-DOPENEMS_WITH_METAL)
