@@ -15,7 +15,7 @@ and is used together with [CSXCAD](https://github.com/thliebig/CSXCAD) for geome
 
 - 3-D FDTD solver for electromagnetic wave propagation
 - Cartesian and cylindrical (including multi-grid) coordinate systems
-- SIMD-accelerated engines (SSE2, multi-threaded, optional MPI)
+- SIMD-accelerated engines (SSE2, multi-threaded)
 - Uniaxial PML and Mur ABC absorbing boundary conditions
 - Total-field / scattered-field (TFSF) excitation
 - Lumped RLC elements

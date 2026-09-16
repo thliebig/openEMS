@@ -34,14 +34,6 @@
 #endif
 
 
-#ifdef MPI_SUPPORT
-	#define ENGINE_MULTITHREAD_BASE Engine_MPI
-	#include "engine_mpi.h"
-#else
-	#define ENGINE_MULTITHREAD_BASE Engine_SSE_Compressed
-#endif
-
-
 class Engine_Multithread;
 
 namespace NS_Engine_Multithread
@@ -79,7 +71,7 @@ protected:
 } // namespace
 
 
-class Engine_Multithread : public ENGINE_MULTITHREAD_BASE
+class Engine_Multithread : public Engine_SSE_Compressed
 {
 	friend class NS_Engine_Multithread::thread;
 	friend class Engine_CylinderMultiGrid;
@@ -122,15 +114,6 @@ protected:
 	volatile bool m_stopThreads;
 	bool m_opt_speed;
 	float m_last_speed;
-
-#ifdef MPI_SUPPORT
-	/*! Workaround needed for subgridding scheme... (see Engine_CylinderMultiGrid)
-	 Some engines may need an additional barrier for synchronizing MPI communication.
-	 This engine will not initialize or cleanup this barrier, but check for it and wait before executing any MPI sync.
-	 Make sure to cleanup (delete) this barriere before Engine_Multithread::Reset() is called.
-	 */
-	boost::barrier *m_MPI_Barrier;
-#endif
 
 #ifdef ENABLE_DEBUG_TIME
 	std::map<boost::thread::id, std::vector<double> > m_timer_list;

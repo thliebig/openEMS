@@ -23,8 +23,7 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 %          --engine=basic           basic FDTD engine
 %          --engine=sse             engine using sse vector extensions
 %          --engine=sse-compressed  engine using compressed operator + sse vector extensions
-%          --engine=MPI             engine using compressed operator + sse vector extensions + MPI parallel processing
-%          --engine=multithreaded   engine using compressed operator + sse vector extensions + MPI + multithreading
+%          --engine=multithreaded   engine using compressed operator + sse vector extensions + multithreading
 %      --numThreads=<n>     Force use n threads for multithreaded engine
 %      --no-simulation      only run preprocessing; do not simulate
 %      --dump-statistics    dump simulation statistics to 'openEMS_run_stats.txt' and 'openEMS_stats.txt'
@@ -52,16 +51,13 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 %     Settings.SSH.Putty.Path = '<path_to>\putty';
 %     Settings.SSH.Putty.Key = '<path_to>\putty_private_key.ppk';
 %
-% - MPI settings:
-%   - Settings.MPI.xxx --> help RunOpenEMS_MPI
-%
 % example:
 %
 %     %create CSX and FDTD
 %     WriteOpenEMS('/tmp/path_to_run_in/myfile.xml', FDTD, CSX)
 %     RunOpenEMS('/tmp/path_to_run_in','myfile.xml','-v')
 %
-% See also WriteOpenEMS FindFreeSSH InitCSX InitFDTD RunOpenEMS_MPI
+% See also WriteOpenEMS FindFreeSSH InitCSX InitFDTD
 %
 % openEMS matlab interface
 % -----------------------
@@ -81,11 +77,8 @@ if (nargin<4)
     Settings = [];
 end
 
-if (isfield(Settings,'MPI') && isunix)
-    if (Settings.MPI.NrProc>1)
-        RunOpenEMS_MPI(Sim_Path, Sim_File, opts, Settings);
-        return;
-    end
+if isfield(Settings,'MPI')
+    warning('openEMS:RunOpenEMS','MPI support was removed, Settings.MPI is ignored and the multithreaded engine is used');
 end
 
 ssh_command = 'ssh';

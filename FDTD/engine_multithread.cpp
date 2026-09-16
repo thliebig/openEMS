@@ -47,7 +47,7 @@ Engine_Multithread* Engine_Multithread::New(const Operator_Multithread* op, unsi
 	return e;
 }
 
-Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : ENGINE_MULTITHREAD_BASE(op)
+Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : Engine_SSE_Compressed(op)
 {
 	m_Op_MT = op;
 	m_type = SSE;
@@ -60,10 +60,6 @@ Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : ENGINE_
 	m_last_speed = 0;
 	m_opt_speed = false;
 	m_stopThreads = true;
-
-#ifdef ENABLE_DEBUG_TIME
-	m_MPI_Barrier = 0;
-#endif
 }
 
 Engine_Multithread::~Engine_Multithread()
@@ -98,7 +94,7 @@ void Engine_Multithread::Init()
 {
 	m_stopThreads = true;
 	m_opt_speed = false;
-	ENGINE_MULTITHREAD_BASE::Init();
+	Engine_SSE_Compressed::Init();
 
 	// initialize threads
 	m_stopThreads = false;
@@ -110,9 +106,6 @@ void Engine_Multithread::Init()
 	else if (m_numThreads > m_max_numThreads)
 		m_numThreads = m_max_numThreads;
 
-#ifdef MPI_SUPPORT
-	m_MPI_Barrier = 0;
-#endif
 	this->changeNumThreads(m_numThreads);
 }
 
@@ -136,7 +129,7 @@ void Engine_Multithread::Reset()
 		m_thread_group = 0;
 	}
 
-	ENGINE_MULTITHREAD_BASE::Reset();
+	Engine_SSE_Compressed::Reset();
 }
 
 void Engine_Multithread::changeNumThreads(unsigned int numThreads)
@@ -171,9 +164,6 @@ void Engine_Multithread::changeNumThreads(unsigned int numThreads)
 	if (m_stopBarrier!=0)
 		delete m_stopBarrier;
 	m_stopBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
-#ifdef MPI_SUPPORT
-	m_MPI_Barrier = 0;
-#endif
 
 	m_thread_group = new boost::thread_group();
 	for (unsigned int n=0; n<m_numThreads; n++)
@@ -215,7 +205,7 @@ bool Engine_Multithread::IterateTS(unsigned int iterTS)
 
 void Engine_Multithread::NextInterval(float curr_speed)
 {
-	ENGINE_MULTITHREAD_BASE::NextInterval(curr_speed);
+	Engine_SSE_Compressed::NextInterval(curr_speed);
 	if (!m_opt_speed) return;
 	if (curr_speed<m_last_speed)
 	{
@@ -350,16 +340,6 @@ void thread::operator()()
 			m_enginePtr->DoPostVoltageUpdates(m_threadID);
 			m_enginePtr->Apply2Voltages(m_threadID);
 
-#ifdef MPI_SUPPORT
-			if (m_threadID==0)
-			{
-				if (m_enginePtr->m_MPI_Barrier)
-					m_enginePtr->m_MPI_Barrier->wait();
-				m_enginePtr->SendReceiveVoltages();
-			}
-			m_enginePtr->m_IterateBarrier->wait();
-#endif
-
 			// record time
 			DEBUG_TIME( m_enginePtr->m_timer_list[boost::this_thread::get_id()].push_back( timer1.elapsed() ); )
 
@@ -379,16 +359,6 @@ void thread::operator()()
 			//post current stuff
 			m_enginePtr->DoPostCurrentUpdates(m_threadID);
 			m_enginePtr->Apply2Current(m_threadID);
-
-#ifdef MPI_SUPPORT
-			if (m_threadID==0)
-			{
-				if (m_enginePtr->m_MPI_Barrier)
-					m_enginePtr->m_MPI_Barrier->wait();
-				m_enginePtr->SendReceiveCurrents();
-			}
-			m_enginePtr->m_IterateBarrier->wait();
-#endif
 
 			if (m_threadID == 0)
 				++m_enginePtr->numTS; // only the first thread increments numTS

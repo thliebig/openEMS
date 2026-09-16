@@ -256,11 +256,7 @@ void openEMS::collectCommandLineArguments()
 			"  sse-compressed: \tengine using compressed "
 			"operator + sse vector extensions\n"
 			"  multithreaded: \tengine using compressed "
-#ifdef MPI_SUPPORT
-			"operator + sse vector extensions + MPI + multithreading\n"
-#else
 			"operator + sse vector extensions + multithreading\n"
-#endif
 		)
 		(
 			"numThreads",

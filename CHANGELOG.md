@@ -74,6 +74,11 @@ number moved up and patch releases now have somewhere to go.
 
 ### Changed
 
+- **The MPI engine was removed.** It had not compiled for years, as it used
+  the C++ MPI bindings that MPI-3 dropped, it had no tests, and several
+  extensions never supported it (#260). The multithreaded engine is
+  unaffected. `WITH_MPI`, `--engine=MPI`, `openEMS_MPI.sh`, `RunOpenEMS_MPI`
+  and `SetupMPI` are gone. See *Upgrade notes*.
 - **nf2ff result format.** The far field is written as one compound complex
   dataset per frequency, `/nf2ff/E_theta/FD/f{n}`, stored in (theta, phi)
   order — the format every other frequency-domain dump has used since HDF5
@@ -153,6 +158,8 @@ number moved up and patch releases now have somewhere to go.
   Studio 2022; the `openEMS` and `nf2ff` import libraries are installed to
   `lib/`.
 - Builds on ppc64le.
+- The `WITH_MPI` CMake option and the `--with-MPI` option of
+  `update_openEMS.sh` were removed.
 - CI covers Linux, macOS, FreeBSD and Windows, and compiles with warnings
   enabled.
 
@@ -171,6 +178,9 @@ number moved up and patch releases now have somewhere to go.
   complex datasets described above; `nf2ff_results` (Python) and `ReadNF2FF`
   (Matlab) read both formats, `ReadNF2FF` under Octave only the legacy one.
   Files written by the Octave/Matlab interface are unchanged.
+- Octave/Matlab scripts calling `SetupMPI` fail, as the function is gone; drop
+  the call. `RunOpenEMS` warns about a `Settings.MPI` field and runs the
+  multithreaded engine instead.
 
 ## Older releases
 

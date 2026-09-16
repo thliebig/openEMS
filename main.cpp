@@ -19,12 +19,7 @@
 #include <fstream>
 #include <sstream>
 
-#ifdef MPI_SUPPORT
-#include "mpi.h"
-#include "FDTD/openems_fdtd_mpi.h"
-#else
 #include "openems.h"
-#endif
 
 #include "tools/global.h"
 
@@ -36,19 +31,9 @@ using namespace std;
 
 int main(int argc, const char* argv[])
 {
-#ifdef MPI_SUPPORT
-	//init MPI
-	MPI::Init(argc,argv);
-	openEMS_FDTD_MPI FDTD(false);
-#else
 	openEMS FDTD;
-#endif
 
-#ifdef MPI_SUPPORT
-	openEMS_FDTD_MPI::WelcomeScreen();
-#else
 	openEMS::WelcomeScreen();
-#endif
 
 	if (argc<=1)
 	{
@@ -66,11 +51,6 @@ int main(int argc, const char* argv[])
 	EC = FDTD.SetupFDTD();
 	if (EC) return EC;
 	FDTD.RunFDTD();
-
-#ifdef MPI_SUPPORT
-	FDTD.Reset(); //make sure everything is cleaned-up before calling MPI::Finalize()
-	MPI::Finalize();
-#endif
 
 	return 0;
 }

@@ -22,14 +22,7 @@
 
 #include <boost/thread.hpp>
 
-#ifdef MPI_SUPPORT
-	#define OPERATOR_MULTITHREAD_BASE Operator_MPI
-	#include "operator_mpi.h"
-#else
-	#define OPERATOR_MULTITHREAD_BASE Operator_SSE_Compressed
-#endif
-
-class Operator_Multithread : public OPERATOR_MULTITHREAD_BASE
+class Operator_Multithread : public Operator_SSE_Compressed
 {
 	friend class Engine_Multithread;
 	friend class Operator_Thread;

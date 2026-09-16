@@ -164,38 +164,6 @@ bool Operator_CylinderMultiGrid::GetYeeCoords(int ny, unsigned int pos[3], doubl
 	return ret;
 }
 
-#ifdef MPI_SUPPORT
-void Operator_CylinderMultiGrid::SetTag(int tag)
-{
-	m_MyTag = tag;
-	m_InnerOp->SetTag(tag+1);
-}
-
-void Operator_CylinderMultiGrid::SetNeighborUp(int ny, int id)
-{
-	if (ny==0)
-	{
-		cerr << "Operator_CylinderMultiGrid::SetNeighborUp: Error: MPI segregation in radial direction not supported for a cylindrical multigrid. Exit!";
-		MPI_Barrier(MPI_COMM_WORLD);
-		exit(-1);
-	}
-	Operator_Cylinder::SetNeighborUp(ny,id);
-	m_InnerOp->SetNeighborUp(ny,id);
-}
-
-void Operator_CylinderMultiGrid::SetNeighborDown(int ny, int id)
-{
-	if (ny==0)
-	{
-		cerr << "Operator_CylinderMultiGrid::SetNeighborDown: Error: MPI segregation in radial direction not supported for a cylindrical multigrid. Exit!";
-		MPI_Barrier(MPI_COMM_WORLD);
-		exit(-1);
-	}
-	Operator_Cylinder::SetNeighborDown(ny,id);
-	m_InnerOp->SetNeighborDown(ny,id);
-}
-#endif
-
 void Operator_CylinderMultiGrid::CalcStartStopLines(
 	unsigned int &numThreads,
 	std::vector<unsigned int> &start,

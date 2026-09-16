@@ -67,12 +67,6 @@ public:
 	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
 	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const;
 
-#ifdef MPI_SUPPORT
-	virtual void SetTag(int tag);
-	virtual void SetNeighborUp(int ny, int id);
-	virtual void SetNeighborDown(int ny, int id);
-#endif
-
 protected:
 	Operator_CylinderMultiGrid(std::vector<double> Split_Radii, unsigned int level);
 	virtual void Init();

@@ -514,39 +514,6 @@ bool Operator_Cylinder::SetupCSXGrid(CSRectGrid* grid)
 		CC_R0_included = CC_closedAlpha;  //needed for correct ec-calculation, deactivate if closed cylinder is false... --> E_r = 0 anyways
 	}
 
-#ifdef MPI_SUPPORT
-		// Setup an MPI split in alpha direction for a closed cylinder
-		CC_MPI_Alpha = false;
-	if ((m_NeighborUp[1]>=0) || (m_NeighborDown[1]>=0)) //check for MPI split in alpha direction
-	{
-		double minmaxA = 2*PI;// fabs(m_OrigDiscLines[1][m_OrigNumLines[1]-1]-m_OrigDiscLines[1][0]);
-		if (fabs(minmaxA-2*PI) < OPERATOR_CYLINDER_CLOSED_ALPHA_THRESHOLD) //check for closed alpha MPI split
-		{
-			CC_MPI_Alpha = true;
-			if (m_OrigDiscLines[0][0]==0)
-			{
-				cerr << "Operator_Cylinder::SetupCSXGrid: Error: MPI split in alpha direction for closed cylinder including r==0 is currently not supported! Exit!" << endl;
-				exit(-2);
-			}
-
-			if (m_NeighborUp[1]<0) //check if this process is at the alpha-end
-			{
-				grid->SetLine(1,alphaNum-1,2*PI+m_OrigDiscLines[1][0]);
-				grid->AddDiscLine(1,2*PI+m_OrigDiscLines[1][1]);
-
-				SetNeighborUp(1,m_ProcTable[m_ProcTablePos[0]][0][m_ProcTablePos[2]]);
-			}
-
-			if (m_NeighborDown[1]<0) //check if this process is at the alpha-start
-			{
-				SetNeighborDown(1,m_ProcTable[m_ProcTablePos[0]][m_SplitNumber[1]-1][m_ProcTablePos[2]]);
-			}
-
-			//Note: the process table will not reflect this up/down neighbors necessary for a closed cylinder
-		}
-	}
-#endif
-
 	if (Operator_Multithread::SetupCSXGrid(grid)==false)
 		return false;
 

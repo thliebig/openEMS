@@ -36,7 +36,6 @@ public:
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
-	virtual bool IsMPISave() const {return true;}
 
 	virtual std::string GetExtensionName() const
 	{

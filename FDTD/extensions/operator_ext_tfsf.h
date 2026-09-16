@@ -40,9 +40,6 @@ public:
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return false;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return false;}
 
-	// FIXME, this extension is not save to use with MPI
-	virtual bool IsMPISave() const {return false;}
-
 	virtual std::string GetExtensionName() const
 	{
 		return std::string("Total-Field/Scattered-Field Extension");

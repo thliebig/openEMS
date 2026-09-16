@@ -60,11 +60,6 @@ protected:
 	boost::barrier *m_WaitOnSync;
 
 	Engine_Ext_CylinderMultiGrid* m_Eng_Ext_MG;
-
-#ifdef MPI_SUPPORT
-	virtual void SendReceiveVoltages();
-	virtual void SendReceiveCurrents();
-#endif
 };
 
 
