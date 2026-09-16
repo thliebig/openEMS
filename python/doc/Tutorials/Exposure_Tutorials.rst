@@ -7,3 +7,4 @@ Exposure
     :maxdepth: 1
 
     Dipole_SAR
+    MRI_Loop_Coil
