@@ -11,14 +11,7 @@ function attr = ReadHDF5Attribute(file, groupname, attr_name)
 
 
 if isOctave
-    if (exist('h5readatt_octave')==0)
-        warning('openEMS:ReadHDF5Attribute','function "h5readatt_octave" not found, trying to run "setup"');
-        try
-            setup
-        catch
-            error('openEMS:ReadHDF5Attribute','running "setup" failed...');
-        end
-    end
+    ensure_oct_file('h5readatt_octave');
     attr = double(h5readatt_octave(file,groupname,attr_name));
 else
     %check for different matlab versions

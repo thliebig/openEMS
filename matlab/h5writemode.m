@@ -24,14 +24,7 @@ function h5writemode(filename, x, y, Vx, Vy)
 % See also AddWaveGuidePort, setup
 
 if isOctave()
-    if (exist('h5writemode_octave') == 0)
-        warning('openEMS:h5writemode', 'function "h5writemode_octave" not found, trying to run "setup"');
-        try
-            setup
-        catch
-            error('openEMS:h5writemode', 'running "setup" failed...');
-        end
-    end
+    ensure_oct_file('h5writemode_octave');
     % Delegate to the oct-file compiled by setup.m.
     % Ensure x and y are row vectors so matrix_value() gives (1 x n).
     h5writemode_octave(filename, x(:)', y(:)', Vx, Vy);

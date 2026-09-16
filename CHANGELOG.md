@@ -130,6 +130,10 @@ number moved up and patch releases now have somewhere to go.
   `C = 0` was not handled.
 - `Run()` no longer asserts when the simulation path contains symlinks, and
   reports a clearer error.
+- Octave: an oct-file left over from an older Octave version is rebuilt
+  instead of failing the run. It was still found by `exist()`, so `setup` was
+  never re-run and the call died with "failed to load" or, on Windows, "the
+  specified module could not be found" (#318).
 - Octave/Matlab: paths containing spaces are quoted for the binary and the log
   file, and HDF5 detection in `setup.m` was improved and is now tested in CI.
 - Python: `SetCustomExcite` encoding, and argument parsing with several
