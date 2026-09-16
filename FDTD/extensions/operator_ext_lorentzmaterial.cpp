@@ -37,7 +37,7 @@ Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Opera
 	i_Lor_ADE = NULL;
 
 	m_curr_Lor_ADE_On = NULL;
-	m_curr_Lor_ADE_On = NULL;
+	m_volt_Lor_ADE_On = NULL;
 }
 
 Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op, Operator_Ext_LorentzMaterial* op_ext) : Operator_Ext_Dispersive(op,op_ext)
@@ -51,7 +51,7 @@ Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op, Operato
 	i_Lor_ADE = NULL;
 
 	m_curr_Lor_ADE_On = NULL;
-	m_curr_Lor_ADE_On = NULL;
+	m_volt_Lor_ADE_On = NULL;
 }
 
 Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
@@ -109,7 +109,7 @@ Operator_Ext_LorentzMaterial::~Operator_Ext_LorentzMaterial()
 	delete[] m_curr_Lor_ADE_On;
 	delete[] m_volt_Lor_ADE_On;
 	m_curr_Lor_ADE_On = NULL;
-	m_curr_Lor_ADE_On = NULL;
+	m_volt_Lor_ADE_On = NULL;
 }
 
 Operator_Extension* Operator_Ext_LorentzMaterial::Clone(Operator* op)

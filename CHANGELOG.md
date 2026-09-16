@@ -121,7 +121,9 @@ number moved up and patch releases now have somewhere to go.
 - The mode-match probe coordinates now match the excitation coordinates.
 - nf2ff: `m_maxDir` was wrong for a radius other than 1.
 - A steady-state engine extension could be freed twice on shutdown, and an
-  operator extension that was never initialised could be freed invalidly.
+  operator extension that was never initialised could be freed invalidly. An
+  extension that finds nothing to do — a conducting sheet without a primitive,
+  for example — is now dropped instead of being kept and run empty.
 - `Dmax` is a linear power quantity and was added to a dB value without
   conversion in the patch-antenna tutorials.
 - Lumped RLC: the auxiliary-differential-equation update had several bugs, and

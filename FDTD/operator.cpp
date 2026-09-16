@@ -1059,7 +1059,8 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 
 	//all information available for extension... create now...
 	for (size_t n=0; n<m_Op_exts.size(); ++n)
-		m_Op_exts.at(n)->BuildExtension();
+		if (m_Op_exts.at(n)->BuildExtension()==false)
+			m_Op_exts.at(n)->SetActive(false); //extension has nothing to do or failed to build, drop it below
 
 	//remove inactive extensions
 	std::vector<Operator_Extension*>::iterator it = m_Op_exts.begin();
@@ -2120,6 +2121,7 @@ void Operator::DeleteExtension(Operator_Extension* op_ext)
 		if (m_Op_exts.at(n)==op_ext)
 		{
 			m_Op_exts.erase(m_Op_exts.begin()+n);
+			delete op_ext; //the operator owns its extensions
 			return;
 		}
 	}
