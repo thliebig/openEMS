@@ -45,11 +45,14 @@ if(WITH_METAL)
 
   # Embed the shared predicate header as a Metal source string. A single header
   # keeps the host unit test and the shader from drifting apart.
-  file(READ "${PROJECT_SOURCE_DIR}/FDTD/metal_predicates.h" METAL_PREDICATES_TEXT)
+  file(READ "${PROJECT_SOURCE_DIR}/macos/src/metal_predicates.h" METAL_PREDICATES_TEXT)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/metal_predicates_src.h"
     "#pragma once\nstatic const char* const metalPredicatesSource = R\"METALPRED(\n${METAL_PREDICATES_TEXT}\n)METALPRED\";\n")
   INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}")
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/FDTD/metal_predicates.h")
+  # The Metal sources live under macos/ but include engine/operator headers that
+  # remain in FDTD/.
+  INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/macos/src" "${PROJECT_SOURCE_DIR}/FDTD")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/macos/src/metal_predicates.h")
 endif()
 
 # default
@@ -211,7 +214,7 @@ message(STATUS "Sources:"  ${SOURCES})
 add_library( openEMS SHARED ${SOURCES})
 if (WITH_METAL)
     # Source properties must be set in the directory that creates the target.
-    set_source_files_properties(FDTD/engine_metal.mm FDTD/operator_metal_pec.mm
+    set_source_files_properties(macos/src/engine_metal.mm macos/src/operator_metal_pec.mm
         PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
 #ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})

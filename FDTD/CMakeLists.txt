@@ -1,8 +1,8 @@
 if (WITH_METAL)
   set(METAL_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/engine_metal.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/operator_metal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/operator_metal_pec.mm
+    ${PROJECT_SOURCE_DIR}/macos/src/engine_metal.mm
+    ${PROJECT_SOURCE_DIR}/macos/src/operator_metal.cpp
+    ${PROJECT_SOURCE_DIR}/macos/src/operator_metal_pec.mm
   )
 endif()
 

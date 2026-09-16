@@ -26,7 +26,7 @@
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
 #ifdef OPENEMS_WITH_METAL
-#include "FDTD/operator_metal.h"
+#include "macos/src/operator_metal.h"
 #endif
 #include "FDTD/extensions/operator_ext_excitation.h"
 #include "FDTD/extensions/operator_ext_tfsf.h"
@@ -791,6 +791,11 @@ bool openEMS::SetupOperator()
 {
 	if (CylinderCoords)
 	{
+#ifdef OPENEMS_WITH_METAL
+		if (m_engine == EngineType_Metal)
+			cerr << "openEMS: Metal engine does not support cylindrical coordinates; "
+			        "falling back to the cylindrical operator" << endl;
+#endif
 		if (m_CC_MultiGrid.size()>0)
 		{
 			FDTD_Op = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
@@ -821,6 +826,11 @@ bool openEMS::SetupOperator()
 	else
 	{
 		FDTD_Op = Operator::New();
+	}
+	if (FDTD_Op == NULL)
+	{
+		cerr << "openEMS: failed to create the FDTD operator" << endl;
+		return false;
 	}
 	return true;
 }

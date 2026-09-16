@@ -423,7 +423,11 @@ struct Engine_Metal::MetalState
 		const char* setting = std::getenv("OPENEMS_METAL_PML_COMPRESS");
 		// Lossless dictionaries substantially reduce resident PML memory. Keep a
 		// dense A/B path for unusual coefficient sets and performance diagnosis.
-		if (setting && setting[0] == '0') return;
+		if (setting && setting[0] == '0')
+		{
+			cout << "Metal: dense UPML coefficients selected by OPENEMS_METAL_PML_COMPRESS=0" << endl;
+			return;
+		}
 		using Record = std::array<uint32_t, 3>;
 		struct Hash { size_t operator()(const Record& r) const {
 			return ((size_t)r[0]*16777619U ^ r[1])*16777619U ^ r[2];
@@ -443,7 +447,7 @@ struct Engine_Metal::MetalState
 			if (found == lookup.end())
 			{
 				if (lookup.size() >= limit) {
-					cout << "Metal: UPML coefficient dictionary fallback" << endl;
+					cout << "Metal: UPML coefficient dictionary limit reached; using dense UPML coefficients" << endl;
 					return;
 				}
 				uint16_t id = static_cast<uint16_t>(lookup.size());
@@ -455,10 +459,16 @@ struct Engine_Metal::MetalState
 		id<MTLBuffer> packed[3];
 		for (size_t a=0; a<3; ++a) {
 			packed[a] = [device newBufferWithBytes:records[a].data() length:records[a].size()*4 options:MTLResourceStorageModeShared];
-			if (!packed[a]) return;
+			if (!packed[a]) {
+				cout << "Metal: UPML dictionary buffer allocation failed; using dense UPML coefficients" << endl;
+				return;
+			}
 		}
 		id<MTLBuffer> index = [device newBufferWithBytes:indices.data() length:indices.size()*2 options:MTLResourceStorageModeShared];
-		if (!index) return;
+		if (!index) {
+			cout << "Metal: UPML index buffer allocation failed; using dense UPML coefficients" << endl;
+			return;
+		}
 		region.self[field]=packed[0]; region.oldFlux[field]=packed[1]; region.newFlux[field]=packed[2];
 		region.coeffIndex[field]=index;
 		region.coefficientsReleased[field]=true;
@@ -560,7 +570,10 @@ struct Engine_Metal::MetalState
 	{
 		const char* setting = std::getenv("OPENEMS_METAL_COMPRESS");
 		if (setting && setting[0] == '0')
+		{
+			cout << "Metal: dense operator coefficients selected by OPENEMS_METAL_COMPRESS=0" << endl;
 			return;
+		}
 		using Record = std::array<uint32_t, 48>; // 4 arrays * 3 components * 4 lanes
 		struct Hash
 		{
@@ -584,7 +597,10 @@ struct Engine_Metal::MetalState
 				maxRecords = std::min<size_t>(std::min<unsigned long>(requested, 65536), count / 4);
 		}
 		if (!maxRecords)
+		{
+			cout << "Metal: too few positions to compress; using dense operator coefficients" << endl;
 			return;
+		}
 		std::unordered_map<Record, uint16_t, Hash> lookup;
 		lookup.reserve(maxRecords);
 		std::vector<uint16_t> indices(count);
@@ -626,12 +642,18 @@ struct Engine_Metal::MetalState
 			packed[a] = [device newBufferWithBytes:dictionaries[a].data()
 			    length:dictionaries[a].size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
 			if (!packed[a])
+			{
+				cout << "Metal: coefficient dictionary buffer allocation failed; using dense coefficients" << endl;
 				return;
+			}
 		}
 		id<MTLBuffer> indexBuffer = [device newBufferWithBytes:indices.data()
 		    length:indices.size() * sizeof(uint16_t) options:MTLResourceStorageModeShared];
 		if (!indexBuffer)
+		{
+			cout << "Metal: coefficient index buffer allocation failed; using dense coefficients" << endl;
 			return;
+		}
 		vv = packed[0]; vi = packed[1]; ii = packed[2]; iv = packed[3];
 		coeffIndex = indexBuffer;
 		cout << "Metal: lossless coefficients: " << lookup.size() << " / " << count
@@ -830,7 +852,10 @@ void Engine_Metal::Init()
 		m_Metal->referenceEnabled = reference && reference[0] != '\0' && reference[0] != '0';
 		const char* fused = std::getenv("OPENEMS_METAL_FUSED_PIPELINE");
 		if (fused && fused[0] == '0')
+		{
 			m_Metal->fusedPipeline = false;
+			std::cerr << "Metal: unfused pipeline selected by OPENEMS_METAL_FUSED_PIPELINE=0" << std::endl;
+		}
 		if (m_Metal->referenceEnabled)
 			m_Metal->fusedPipeline = false;
 		InitADE();
@@ -866,6 +891,8 @@ void Engine_Metal::InitUPML()
 
 	const char* reuseSetting = std::getenv("OPENEMS_METAL_PML_REUSE");
 	m_Metal->reusePML = !(reuseSetting && reuseSetting[0] == '0');
+	if (!m_Metal->reusePML)
+		cout << "Metal: storing separate packed UPML copies (OPENEMS_METAL_PML_REUSE=0, higher memory)" << endl;
 	const NSUInteger pageSize = (NSUInteger)getpagesize();
 	auto wrap = [&](const ArrayLib::ArrayNIJK<FDTD_FLOAT>& array) {
 		const NSUInteger bytes = (array.bytes() + pageSize - 1) / pageSize * pageSize;
@@ -1002,14 +1029,22 @@ void Engine_Metal::InitExcitations()
 		Engine_Ext_Excitation* excitation = dynamic_cast<Engine_Ext_Excitation*>(extension);
 		if (!excitation)
 		{
-			if (!dynamic_cast<Engine_Ext_UPML*>(extension))
+			if (!dynamic_cast<Engine_Ext_UPML*>(extension) && m_Metal->fusedPipeline)
+			{
 				m_Metal->fusedPipeline = false;
+				std::cerr << "Metal: extension '" << extension->GetExtensionName()
+				          << "' requires the unfused pipeline; the GPU is drained at each CPU hook" << std::endl;
+			}
 			continue;
 		}
 		Operator_Ext_Excitation* op = excitation->m_Op_Exc;
 		if (!op || !op->m_Exc || op->m_Exc->GetLength() == 0)
 		{
-			m_Metal->fusedPipeline = false;
+			if (m_Metal->fusedPipeline)
+			{
+				m_Metal->fusedPipeline = false;
+				std::cerr << "Metal: excitation has no signal; using the unfused pipeline" << std::endl;
+			}
 			continue;
 		}
 		MetalState::ExcitationRegion region;
@@ -1218,7 +1253,20 @@ void Engine_Metal::InitADE()
 	// The FP64 reference reproduces every extension on the CPU, and the fused
 	// pipeline never calls Apply2Voltages, so both keep the ADE on the CPU.
 	if (m_Metal->referenceEnabled || m_Metal->fusedPipeline)
+	{
+		for (Engine_Extension* extension : m_Eng_exts)
+		{
+			Engine_Ext_LorentzMaterial* lor = dynamic_cast<Engine_Ext_LorentzMaterial*>(extension);
+			if (lor && lor->MetalADEOffloadSupported())
+			{
+				std::cerr << "Metal: conducting-sheet ADE stays on the CPU ("
+				          << (m_Metal->referenceEnabled ? "FP64 reference mode" : "fused pipeline")
+				          << ")" << std::endl;
+				break;
+			}
+		}
 		return;
+	}
 
 	const uint32_t ny = numLines[1];
 	const uint32_t nzv = numVectors;
@@ -1226,8 +1274,15 @@ void Engine_Metal::InitADE()
 	for (Engine_Extension* extension : m_Eng_exts)
 	{
 		Engine_Ext_LorentzMaterial* lor = dynamic_cast<Engine_Ext_LorentzMaterial*>(extension);
-		if (!lor || !lor->MetalADEOffloadSupported())
+		if (!lor)
 			continue;
+		if (!lor->MetalADEOffloadSupported())
+		{
+			// Lorentz flux states and ADE-current schemes need extra GPU state.
+			std::cerr << "Metal: dispersive/ADE extension '" << extension->GetExtensionName()
+			          << "' stays on the CPU (only the conducting-sheet volt-ADE is offloaded)" << std::endl;
+			continue;
+		}
 
 		// In the conducting-sheet model both ADE poles share one field position,
 		// so merge by packed field index. One thread then owns every pole of one

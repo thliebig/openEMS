@@ -105,7 +105,8 @@ number moved up and patch releases now have somewhere to go.
   diff estimate is cheap and is now always kept current every timestep
   rather than only at the wall-clock report interval.
 - **Apple Metal GPU engine** (experimental, macOS): `--engine=metal` runs the
-  FDTD field updates on the GPU. Build with `-DWITH_METAL=ON`.
+  FDTD field updates, UPML, the conducting-sheet ADE and the PEC geometry pass
+  on the GPU. Build with `-DWITH_METAL=ON`; see `macos/doc/metal-engine.rst`.
 
 ### Changed
 

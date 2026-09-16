@@ -1,8 +1,8 @@
-// Host unit test for FDTD/metal_predicates.h.
+// Host unit test for macos/src/metal_predicates.h.
 //
 // Compile (Boost is a build dependency of openEMS):
 //   clang++ -std=c++17 -O2 -I<repo-root> \
-//     TESTSUITE/enginetests/metal_predicates_test.cpp -o /tmp/metal_predicates_test \
+//     macos/tests/metal_predicates_test.cpp -o /tmp/metal_predicates_test \
 //     -I/opt/homebrew/include
 //   /tmp/metal_predicates_test
 //
@@ -10,7 +10,7 @@
 // the exact double-precision determinant sign computed with 100-bit arithmetic,
 // and reports how often the predicate correctly declines (returns 0).
 
-#include "FDTD/metal_predicates.h"
+#include "macos/src/metal_predicates.h"
 
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <cstdint>

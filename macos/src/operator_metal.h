@@ -12,7 +12,13 @@
 
 #include "operator_sse.h"
 
+#include <string>
 #include <vector>
+
+//! True when a Metal GPU device can be created; otherwise fills \a reason.
+//! Checked before the (expensive) CPU operator setup so a missing GPU aborts
+//! early instead of after material/PEC sampling.
+bool MetalDeviceAvailable(std::string& reason);
 
 class Operator_Metal : public Operator_sse
 {
@@ -35,6 +41,8 @@ protected:
 	std::vector<GeometryWinner> m_geoDispersivePrimal;
 	std::vector<GeometryWinner> m_geoDispersiveDual;
 	bool m_geoWinnersValid;
+	//! Set once, so a geometry-winner fallback is reported only once.
+	mutable bool m_geoWinnersWarned;
 };
 
 #endif // OPERATOR_METAL_H

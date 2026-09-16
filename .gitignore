@@ -40,6 +40,9 @@ python/doc/Tutorials/__*
 !matlab/doc
 matlab/doc/Tutorials/__*
 
+#macos
+!macos/doc
+
 # AI assistant configuration files (each contributor may maintain their own)
 CLAUDE.md
 .claude*

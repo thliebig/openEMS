@@ -13,6 +13,7 @@
 #include "extensions/operator_ext_excitation.h"
 #include "extensions/operator_ext_mur_abc.h"
 #include <cstdlib>
+#include <string>
 #include <typeinfo>
 #include <thread>
 #include <exception>
@@ -23,6 +24,14 @@ using std::endl;
 
 Operator_Metal* Operator_Metal::New(unsigned int threads)
 {
+	// Fail before the costly material/geometry sampling if no GPU is present.
+	// Engine_Metal also checks again at engine construction as a backstop.
+	std::string reason;
+	if (!MetalDeviceAvailable(reason))
+	{
+		std::cerr << "Metal: " << reason << "; cannot run the Metal engine" << std::endl;
+		return nullptr;
+	}
 	cout << "Create FDTD operator (Metal field updates)" << endl;
 	Operator_Metal* op = new Operator_Metal();
 	op->Init();
@@ -30,7 +39,8 @@ Operator_Metal* Operator_Metal::New(unsigned int threads)
 	return op;
 }
 
-Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0), m_geoWinnersValid(false)
+Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0),
+	m_geoWinnersValid(false), m_geoWinnersWarned(false)
 {
 }
 
@@ -42,7 +52,15 @@ unsigned int Operator_Metal::GetSetupThreads() const
 const std::vector<Operator::GeometryWinner>* Operator_Metal::GetGeometryWinners(GeometryWinnerType type, bool dualMesh) const
 {
 	if (!m_geoWinnersValid)
+	{
+		if (!m_geoWinnersWarned)
+		{
+			std::cerr << "Metal: geometry winners unavailable (PEC pass was skipped or fell back to the CPU); "
+			             "EC-consuming extensions fall back to full-grid CSXCAD lookups" << std::endl;
+			m_geoWinnersWarned = true;
+		}
 		return nullptr;
+	}
 	switch (type)
 	{
 	case GEO_CONDUCTING_SHEET:
@@ -97,7 +115,10 @@ bool Operator_Metal::Calc_EC()
 void Operator_Metal::CalcOperatorCoefficients()
 {
 	const char* serial = std::getenv("OPENEMS_METAL_SERIAL_COEFFICIENTS");
-	if (serial && serial[0]=='1') { Operator::CalcOperatorCoefficients(); return; }
+	if (serial && serial[0]=='1') {
+		cout << "Metal: single-threaded coefficient build selected by OPENEMS_METAL_SERIAL_COEFFICIENTS=1" << endl;
+		Operator::CalcOperatorCoefficients(); return;
+	}
 	unsigned int workers = GetSetupThreads();
 	workers = std::min(workers,numLines[0]);
 	// This arithmetic pass touches no CSXCAD geometry: it only reads EC arrays
@@ -134,13 +155,21 @@ void Operator_Metal::CalcOperatorCoefficients()
 bool Operator_Metal::CanReleaseECBeforeExtensions() const
 {
 	const char* setting = std::getenv("OPENEMS_METAL_EARLY_EC_FREE");
-	if (setting && setting[0] == '0') return false;
+	if (setting && setting[0] == '0')
+	{
+		cout << "Metal: keeping EC arrays resident (OPENEMS_METAL_EARLY_EC_FREE=0)" << endl;
+		return false;
+	}
 	// Exact types, not derived types: future extensions must opt into this audit.
 	// In particular series RLC, dispersive and conducting-sheet extensions need EC.
 	for (const auto* extension : m_Op_exts)
 		if (typeid(*extension) != typeid(Operator_Ext_UPML) &&
 		    typeid(*extension) != typeid(Operator_Ext_Excitation) &&
-		    typeid(*extension) != typeid(Operator_Ext_Mur_ABC)) return false;
+		    typeid(*extension) != typeid(Operator_Ext_Mur_ABC))
+		{
+			cout << "Metal: keeping EC arrays resident for extension '" << extension->GetExtensionName() << "'" << endl;
+			return false;
+		}
 	return true;
 }
 

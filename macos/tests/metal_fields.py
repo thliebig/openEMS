@@ -20,7 +20,7 @@ import time
 # documented `python .../metal_fields.py` invocation use that interpreter when
 # the caller's Python cannot import CSXCAD.
 if importlib.util.find_spec('CSXCAD') is None:
-    project_root = Path(__file__).resolve().parents[3]
+    project_root = Path(__file__).resolve().parents[2]
     project_python = project_root / 'install' / 'venv' / 'bin' / 'python'
     if project_python.exists() and Path(sys.executable).resolve() != project_python.resolve():
         os.execv(str(project_python), [str(project_python), *sys.argv])

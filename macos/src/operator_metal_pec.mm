@@ -203,6 +203,18 @@ uint8_t ClassifyGeometryWinner(CSPrimitives* prim)
 }
 }
 
+bool MetalDeviceAvailable(std::string& reason)
+{
+	@autoreleasepool
+	{
+		id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+		if (device)
+			return true;
+	}
+	reason = "no Metal GPU device available";
+	return false;
+}
+
 bool Operator_Metal::CalcPEC()
 {
 	const auto started = std::chrono::steady_clock::now();
@@ -211,14 +223,19 @@ bool Operator_Metal::CalcPEC()
 	m_geoDispersivePrimal.clear();
 	m_geoDispersiveDual.clear();
 	m_geoWinnersValid = false;
+	auto cpuFallback = [&](const char* why) {
+		std::cerr << "Metal PEC: " << why << "; using CPU PEC mapping" << std::endl;
+		return Operator::CalcPEC();
+	};
 	// --engine=metal enables PEC mapping too; retain a diagnostic CPU override.
-	if ((setting && setting[0] == '0') || m_MeshType != CARTESIAN)
+	if (setting && setting[0] == '0')
 	{
-		const bool result = Operator::CalcPEC();
-		if (setting)
-			std::cout << "CPU PEC: " << std::chrono::duration<double>(std::chrono::steady_clock::now()-started).count() << " s" << std::endl;
+		const bool result = cpuFallback("selected by OPENEMS_METAL_PEC=0");
+		std::cout << "CPU PEC: " << std::chrono::duration<double>(std::chrono::steady_clock::now()-started).count() << " s" << std::endl;
 		return result;
 	}
+	if (m_MeshType != CARTESIAN)
+		return cpuFallback("non-Cartesian mesh is not supported");
 	const bool verify = setting && std::string(setting) == "verify";
 	@autoreleasepool
 	{
@@ -246,7 +263,7 @@ bool Operator_Metal::CalcPEC()
 		};
 		const auto types = static_cast<CSProperties::PropertyType>(CSProperties::MATERIAL | CSProperties::METAL);
 		const auto primitives = CSX->GetAllPrimitives(true, types);
-		if (primitives.size() >= cpuQuery) return Operator::CalcPEC();
+		if (primitives.size() >= cpuQuery) return cpuFallback("primitive count exceeds the GPU index range");
 		// Convert bounds to exact Yee-index ranges on the CPU. In particular,
 		// zero-thickness sheets must not become a tolerance-thickened volume.
 		std::vector<double> axes[3][2];
@@ -257,7 +274,7 @@ bool Operator_Metal::CalcPEC()
 				for (int dual = 0; dual < 2; ++dual)
 				{
 					double coord = GetDiscLine(a, i, dual);
-					if (!std::isfinite(coord) || std::abs(coord) > 1e10) return Operator::CalcPEC();
+					if (!std::isfinite(coord) || std::abs(coord) > 1e10) return cpuFallback("non-finite or out-of-range grid coordinates");
 					axes[a][dual].push_back(coord);
 					grid.push_back(static_cast<float>(coord));
 					PecCoord gc;
@@ -267,7 +284,7 @@ bool Operator_Metal::CalcPEC()
 				}
 		for (int a = 0; a < 3; ++a)
 			for (int dual = 0; dual < 2; ++dual)
-				if (!std::is_sorted(axes[a][dual].begin(), axes[a][dual].end())) return Operator::CalcPEC();
+				if (!std::is_sorted(axes[a][dual].begin(), axes[a][dual].end())) return cpuFallback("grid lines are not sorted");
 		std::vector<PecPrimitive> flattened;
 		std::vector<PecVertex> vertices;
 		std::vector<PecCylinder> cylinders;
@@ -305,7 +322,7 @@ bool Operator_Metal::CalcPEC()
 				{
 					auto* polygon = static_cast<CSPrimPolygon*>(prim);
 					if (polygon->GetQtyCoords() > UINT32_MAX - vertices.size())
-						return Operator::CalcPEC();
+						return cpuFallback("polygon has too many vertices");
 					q.normal = polygon->GetNormDir();
 					q.first = static_cast<uint32_t>(vertices.size());
 					q.count = static_cast<uint32_t>(polygon->GetQtyCoords());
