@@ -30,16 +30,21 @@ Engine_Ext_LumpedRLC::Engine_Ext_LumpedRLC(Operator_Ext_LumpedRLC* op_ext_RLC) :
 	v_Vdn		= new FDTD_FLOAT*[3];
 	v_Jn		= new FDTD_FLOAT*[3];
 	v_Il		= NULL;
+	v_q			= NULL;
 
 	// No additional allocations are required if there are no actual lumped elements.
 	if (!(m_Op_Ext_RLC->RLC_count))
 		return;
 
-	// Initialize ADE containers for currents and voltages
+	// Initialize ADE containers for currents, voltages and series charge
 	v_Il		= new FDTD_FLOAT[m_Op_Ext_RLC->RLC_count];
+	v_q			= new FDTD_FLOAT[m_Op_Ext_RLC->RLC_count];
 
 	for (unsigned int posIdx = 0 ; posIdx < m_Op_Ext_RLC->RLC_count ; ++posIdx)
+	{
 		v_Il[posIdx] 	= 0.0;
+		v_q[posIdx] 	= 0.0;
+	}
 
 	for (unsigned int k = 0 ; k < 3 ; k++)
 	{
@@ -61,6 +66,7 @@ Engine_Ext_LumpedRLC::~Engine_Ext_LumpedRLC()
 	if (m_Op_Ext_RLC->RLC_count)
 	{
 		delete[] v_Il;
+		delete[] v_q;
 
 		for (unsigned int k = 0 ; k < 3 ; k++)
 		{
@@ -73,6 +79,7 @@ Engine_Ext_LumpedRLC::~Engine_Ext_LumpedRLC()
 	delete[] v_Jn;
 
 	v_Il	= NULL;
+	v_q		= NULL;
 
 	v_Vdn	= NULL;
 	v_Jn	= NULL;
@@ -122,25 +129,27 @@ void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngType* eng)
 	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
 		v_Vdn[0][pIdx] = eng->EngType::GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);
 
-	// Post process: Calculate node voltage with respect to the lumped RLC auxilliary quantity, J
+	// Post process: trapezoidal state-space series RLC/RL/RC update.
+	// Vd[n-1] = v_Vdn[1], J[n-1] = v_Jn[1], q[n-1] = v_q.
 	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
 	{
-		// Calculate updated node voltage, with series and parallel additions
-		v_Vdn[0][pIdx] = 	(m_Op_Ext_RLC->v_RLC_vvd[pIdx])*(
-							v_Vdn[0][pIdx] - v_Il[pIdx]						// Addition for Parallel inductor
-							+
-							(m_Op_Ext_RLC->v_RLC_vv2[pIdx])*v_Vdn[2][pIdx]	// Vd[n-2] addition
-							+
-							(m_Op_Ext_RLC->v_RLC_vj1[pIdx])*v_Jn[1][pIdx]	// J[n-1] addition
-							+
-							(m_Op_Ext_RLC->v_RLC_vj2[pIdx])*v_Jn[2][pIdx]);	// J[n-2] addition
+		FDTD_FLOAT A = m_Op_Ext_RLC->v_RLC_dJdV[pIdx];
+		FDTD_FLOAT B = m_Op_Ext_RLC->v_RLC_aV[pIdx]*v_Vdn[1][pIdx]
+		             + m_Op_Ext_RLC->v_RLC_aQ[pIdx]*v_q[pIdx]
+		             + m_Op_Ext_RLC->v_RLC_aJ[pIdx]*v_Jn[1][pIdx];
+		FDTD_FLOAT vcd = m_Op_Ext_RLC->v_RLC_vcd[pIdx];
 
-		// Update J[0]
-		v_Jn[0][pIdx] =	(m_Op_Ext_RLC->v_RLC_ib0[pIdx])*(v_Vdn[0][pIdx] - v_Vdn[2][pIdx])
-						-
-						((m_Op_Ext_RLC->v_RLC_b1[pIdx])*(m_Op_Ext_RLC->v_RLC_ib0[pIdx]))*v_Jn[1][pIdx]
-						-
-						((m_Op_Ext_RLC->v_RLC_b2[pIdx])*(m_Op_Ext_RLC->v_RLC_ib0[pIdx]))*v_Jn[2][pIdx];
+		// Solve the implicit node coupling
+		//   Vd[n] = Vraw - (dT/2Cd)*(J[n] + J[n-1]),  J[n] = A*Vd[n] + B
+		v_Vdn[0][pIdx] = m_Op_Ext_RLC->v_RLC_vvd[pIdx]
+		               * (v_Vdn[0][pIdx] - v_Il[pIdx] - vcd*(B + v_Jn[1][pIdx]));
+
+		// Updated element current
+		v_Jn[0][pIdx] = A*v_Vdn[0][pIdx] + B;
+
+		// Trapezoidal charge integration
+		v_q[pIdx] = v_q[pIdx]
+		          + m_Op_Ext_RLC->m_dT_half*(v_Jn[0][pIdx] + v_Jn[1][pIdx]);
 	}
 
 

@@ -204,6 +204,8 @@ number moved up and patch releases now have somewhere to go.
   quarters across, due to an integer-division bug.
 - UPML: opposing PML slabs that left no interior between them made the
   extension setup loop out of bounds and crash.
+- Lumped RLC: a series element could grow without bound in long runs, as the
+  single-precision update had a pole just outside the unit circle.
 
 ### Build
 

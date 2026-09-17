@@ -65,14 +65,16 @@ protected:
 	FDTD_FLOAT		*v_RLC_ilv;
 	FDTD_FLOAT		*v_RLC_i2v;
 
-	// Series circuit coefficients
-	FDTD_FLOAT		*v_RLC_vv2;		// Coefficient for [n-2] time of Vd update in Vd equation
-	FDTD_FLOAT		*v_RLC_vj1;		// Coefficient for [n-1] time of J update in Vd equation
-	FDTD_FLOAT		*v_RLC_vj2;		// Coefficient for [n-2] time of J update in Vd equation
-	FDTD_FLOAT		*v_RLC_vvd;		// Coefficient to multiply all Vd in the Vd update equation
-	FDTD_FLOAT		*v_RLC_ib0;		// Inverse of beta_0
-	FDTD_FLOAT		*v_RLC_b1;		// beta_1
-	FDTD_FLOAT		*v_RLC_b2;		// beta_2
+	// Series circuit coefficients (trapezoidal state-space form)
+	FDTD_FLOAT		*v_RLC_dJdV;		// dJ/dV, the implicit self term
+	FDTD_FLOAT		*v_RLC_aV;		// Coefficient of Vd[n-1] in the explicit J update
+	FDTD_FLOAT		*v_RLC_aQ;		// Coefficient of q[n-1]
+	FDTD_FLOAT		*v_RLC_aJ;		// Coefficient of J[n-1]
+	FDTD_FLOAT		*v_RLC_vcd;		// dT/(2*Cd), the node coupling factor
+	FDTD_FLOAT		*v_RLC_vvd;		// 1/(1 + vcd*dJdV)
+
+	//! Half the timestep, used for the charge integration
+	FDTD_FLOAT		m_dT_half;
 
 	// Additional containers
 	int				*v_RLC_dir;

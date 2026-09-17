@@ -50,6 +50,7 @@ protected:
 
 	// Array setup: volt_C_ADE[mesh_pos]
 	FDTD_FLOAT *v_Il;		// Container for current on inductor- Parallel RLC
+	FDTD_FLOAT *v_q;		// Container for the series charge q
 
 	FDTD_FLOAT **v_Vdn;		// Container for nodal vd at [n],[n-1],[n-2]
 	FDTD_FLOAT **v_Jn;		// Container for nodal J at [n],[n-1],[n-2]
