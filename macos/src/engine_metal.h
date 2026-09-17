@@ -37,6 +37,7 @@ private:
 	void InitUPML();
 	void InitExcitations();
 	void InitADE();
+	void InitRLC();
 	void InitDiamondUpdate();
 	void UpdateDiamond(unsigned int depth);
 	bool HasADEOffload(const Engine_Extension* extension) const;

@@ -89,6 +89,66 @@ Engine_Ext_LumpedRLC::~Engine_Ext_LumpedRLC()
 
 }
 
+bool Engine_Ext_LumpedRLC::MetalRLCOffloadSupported() const
+{
+	return m_Op_Ext_RLC && m_Op_Ext_RLC->RLC_count && m_Op_Ext_RLC->v_RLC_dJdV;
+}
+
+unsigned int Engine_Ext_LumpedRLC::MetalRLCCount() const
+{
+	return m_Op_Ext_RLC->RLC_count;
+}
+
+int Engine_Ext_LumpedRLC::MetalRLCDir(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_dir[index];
+}
+
+unsigned int Engine_Ext_LumpedRLC::MetalRLCPos(unsigned int axis, unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_pos[axis][index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCDJdV(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_dJdV[index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCAV(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_aV[index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCAQ(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_aQ[index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCAJ(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_aJ[index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCVcd(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_vcd[index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCVvd(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_vvd[index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCIlCoeff(unsigned int index) const
+{
+	return m_Op_Ext_RLC->v_RLC_i2v[index] * m_Op_Ext_RLC->v_RLC_ilv[index];
+}
+
+FDTD_FLOAT Engine_Ext_LumpedRLC::MetalRLCDtHalf() const
+{
+	return m_Op_Ext_RLC->m_dT_half;
+}
+
 void Engine_Ext_LumpedRLC::DoPreVoltageUpdates()
 {
 	if (!m_Op_Ext_RLC->RLC_count)

@@ -7,6 +7,7 @@ using namespace metal;
 constant bool compressedCoefficients [[function_constant(0)]];
 constant bool compressedPML [[function_constant(1)]];
 constant bool diamondExcitations [[function_constant(2)]];
+constant bool lumpedRLC [[function_constant(3)]];
 
 struct GridParams
 {
@@ -169,6 +170,11 @@ struct DiamondStep
 	uint voltage_source_count;
 	uint current_source_offset;
 	uint current_source_count;
+	uint rlc_offset;
+	uint rlc_count;
+	// int4 forces 16-byte alignment, so the record is padded to 64 bytes.
+	uint pad0;
+	uint pad1;
 };
 
 struct DiamondTile
@@ -183,6 +189,7 @@ struct DiamondParams
 	uint nzv;
 	uint timestep;
 	uint depth;
+	float dT_half;
 };
 
 struct DiamondSource
@@ -193,6 +200,29 @@ struct DiamondSource
 	uint signal_offset;
 	uint signal_length;
 	uint period;
+};
+
+// One lumped RLC element. The engine packs the trapezoidal state-space
+// coefficients so the GPU update is a single read-modify-write of the node
+// voltage plus four scalar state words per element.
+struct RLCEntry
+{
+	uint field_index; // scalar float index into the packed voltage buffer
+	float dJdV;       // dJ/dV, the implicit self term
+	float aV;         // coefficient of Vd[n-1] in the explicit J update
+	float aQ;         // coefficient of q[n-1]
+	float aJ;         // coefficient of J[n-1]
+	float vcd;        // dT/(2*Cd), the node coupling factor
+	float vvd;        // 1/(1 + vcd*dJdV)
+	float aIl;        // parallel-inductor current coefficient i2v*ilv
+};
+
+struct RLCState
+{
+	float Vd;
+	float J;
+	float q;
+	float Il;
 };
 
 kernel void update_diamond(
@@ -208,6 +238,9 @@ kernel void update_diamond(
 	const device DiamondSource* sources [[buffer(9), function_constant(diamondExcitations)]],
 	const device uint* source_indices [[buffer(10), function_constant(diamondExcitations)]],
 	const device float* signal [[buffer(11), function_constant(diamondExcitations)]],
+	const device RLCEntry* rlc [[buffer(12), function_constant(lumpedRLC)]],
+	device RLCState* rlc_state [[buffer(13), function_constant(lumpedRLC)]],
+	const device uint* rlc_indices [[buffer(14), function_constant(lumpedRLC)]],
 	uint tileId [[threadgroup_position_in_grid]],
 	uint tid [[thread_index_in_threadgroup]],
 	uint threads [[threads_per_threadgroup]])
@@ -284,18 +317,41 @@ kernel void update_diamond(
 			}
 		}
 		threadgroup_barrier(mem_flags::mem_device);
-		if (diamondExcitations && tid == 0)
-			for (uint n = step.voltage_source_offset;
-			     n < step.voltage_source_offset + step.voltage_source_count; ++n)
+		if ((diamondExcitations || lumpedRLC) && tid == 0)
+		{
+			if (diamondExcitations)
+				for (uint n = step.voltage_source_offset;
+				     n < step.voltage_source_offset + step.voltage_source_count; ++n)
+				{
+					const DiamondSource source = sources[source_indices[n]];
+					uint sample = p.timestep + timestep > source.delay ?
+						p.timestep + timestep - source.delay : 0;
+					sample %= source.period ? source.period : p.timestep + timestep + 1;
+					if (sample >= source.signal_length) sample = 0;
+					((device float*)volt)[source.field_index] +=
+						source.amplitude * signal[source.signal_offset + sample];
+				}
+			if (lumpedRLC)
 			{
-				const DiamondSource source = sources[source_indices[n]];
-				uint sample = p.timestep + timestep > source.delay ?
-					p.timestep + timestep - source.delay : 0;
-				sample %= source.period ? source.period : p.timestep + timestep + 1;
-				if (sample >= source.signal_length) sample = 0;
-				((device float*)volt)[source.field_index] +=
-					source.amplitude * signal[source.signal_offset + sample];
+				device float* field = (device float*)volt;
+				for (uint n = step.rlc_offset; n < step.rlc_offset + step.rlc_count; ++n)
+				{
+					const uint e = rlc_indices[n];
+					const RLCEntry entry = rlc[e];
+					RLCState s = rlc_state[e];
+					const float Vraw = field[entry.field_index];
+					s.Il += entry.aIl * s.Vd;
+					const float B = entry.aV * s.Vd + entry.aQ * s.q + entry.aJ * s.J;
+					const float Vd = entry.vvd * (Vraw - s.Il - entry.vcd * (B + s.J));
+					const float J = entry.dJdV * Vd + B;
+					s.q += p.dT_half * (J + s.J);
+					field[entry.field_index] = Vd;
+					s.Vd = Vd;
+					s.J = J;
+					rlc_state[e] = s;
+				}
 			}
+		}
 		threadgroup_barrier(mem_flags::mem_device);
 		if (step.current_range.x >= 0)
 		{

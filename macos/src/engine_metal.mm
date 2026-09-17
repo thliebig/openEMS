@@ -13,6 +13,7 @@
 #include "extensions/engine_ext_excitation.h"
 #include "extensions/operator_ext_excitation.h"
 #include "extensions/engine_ext_lorentzmaterial.h"
+#include "extensions/engine_ext_lumpedRLC.h"
 #include "excitation.h"
 #include "metal_library.h"
 
@@ -78,10 +79,14 @@ struct DiamondStep
 	int32_t currentRange[4];
 	uint32_t voltageSourceOffset, voltageSourceCount;
 	uint32_t currentSourceOffset, currentSourceCount;
+	uint32_t rlcOffset, rlcCount;
+	// The shader struct is 16-byte aligned because of its int4 members; keep
+	// the same explicit pad so host and device agree on the 64-byte record.
+	uint32_t pad0, pad1;
 };
 
 struct DiamondTile { DiamondStep steps[DIAMOND_DEPTH]; };
-struct DiamondParams { uint32_t nx, ny, nzv, timestep, depth; };
+struct DiamondParams { uint32_t nx, ny, nzv, timestep, depth; float dT_half; };
 
 struct DiamondSource
 {
@@ -89,6 +94,16 @@ struct DiamondSource
 	float amplitude;
 	uint32_t delay, signalOffset, signalLength, period;
 };
+
+// Host mirror of the Metal RLCEntry/RLCState records. One entry per active
+// lumped edge, with the trapezoidal state-space coefficients already packed.
+struct RLCEntry
+{
+	uint32_t fieldIndex;
+	float dJdV, aV, aQ, aJ, vcd, vvd, aIl;
+};
+
+struct RLCState { float Vd, J, q, Il; };
 
 using DiamondRange = std::pair<int32_t, int32_t>;
 using DiamondBlock = std::vector<DiamondRange>;
@@ -145,10 +160,12 @@ static DiamondAxis MakeDiamondAxis(uint32_t width, uint32_t blockWidth, uint32_t
 	return phases;
 }
 
-static_assert(sizeof(DiamondStep) == 48, "Metal DiamondStep ABI");
-static_assert(sizeof(DiamondTile) == 192, "Metal DiamondTile ABI");
-static_assert(sizeof(DiamondParams) == 20, "Metal DiamondParams ABI");
+static_assert(sizeof(DiamondStep) == 64, "Metal DiamondStep ABI");
+static_assert(sizeof(DiamondTile) == 256, "Metal DiamondTile ABI");
+static_assert(sizeof(DiamondParams) == 24, "Metal DiamondParams ABI");
 static_assert(sizeof(DiamondSource) == 24, "Metal DiamondSource ABI");
+static_assert(sizeof(RLCEntry) == 32, "Metal RLCEntry ABI");
+static_assert(sizeof(RLCState) == 16, "Metal RLCState ABI");
 
 static std::runtime_error MetalError(const char* what, NSError* error)
 {
@@ -188,10 +205,13 @@ struct Engine_Metal::MetalState
 	bool legacyRequested = false;
 	id<MTLBuffer> diamondTiles[DIAMOND_DEPTH + 1][4];
 	id<MTLBuffer> diamondSourceIndices[DIAMOND_DEPTH + 1][4];
+	id<MTLBuffer> diamondRLCIndices[DIAMOND_DEPTH + 1][4];
 	id<MTLBuffer> diamondSourceTable;
 	uint32_t diamondTileCount[DIAMOND_DEPTH + 1][4] = {};
 	bool diamondUpdate = false;
 	bool diamondHasSources = false;
+	bool diamondHasRLC = false;
+	float rlcDtHalf = 0.0f;
 	id<MTLBuffer> diamondSignal;
 
 	struct ExcitationRegion
@@ -230,6 +250,18 @@ struct Engine_Metal::MetalState
 		id<MTLBuffer> state;
 	};
 	std::vector<ADERegion> ade;
+
+	// Lumped RLC elements folded into the diamond wavefront. One merged region
+	// keeps the kernel signature to a single entries/state/index triple; the
+	// host copy of each element's (x, y) drives the per-step schedule.
+	struct RLCRegion
+	{
+		uint32_t count;
+		id<MTLBuffer> entries;
+		id<MTLBuffer> state;
+		std::vector<std::array<uint32_t, 2>> xy;
+	};
+	std::vector<RLCRegion> rlc;
 
 	void CompressPML(PMLRegion& region, unsigned int field)
 	{
@@ -651,6 +683,7 @@ void Engine_Metal::Init()
 		InitADE();
 		if (!m_Metal->ade.empty())
 			m_Metal->diamondRequested = false;
+		InitRLC();
 		InitDiamondUpdate();
 		cout << "Metal: in-place diamond E/H pipeline: " << (m_Metal->diamondUpdate ? "enabled" : "disabled") << endl;
 		if (m_Metal->referenceEnabled)
@@ -785,7 +818,8 @@ void Engine_Metal::InitExcitations()
 		Engine_Ext_Excitation* excitation = dynamic_cast<Engine_Ext_Excitation*>(extension);
 		if (!excitation)
 		{
-			if (!dynamic_cast<Engine_Ext_UPML*>(extension) && m_Metal->diamondRequested)
+			if (!dynamic_cast<Engine_Ext_UPML*>(extension) &&
+			    !dynamic_cast<Engine_Ext_LumpedRLC*>(extension) && m_Metal->diamondRequested)
 			{
 				m_Metal->diamondRequested = false;
 				std::cerr << "Metal: extension '" << extension->GetExtensionName()
@@ -882,8 +916,10 @@ void Engine_Metal::InitDiamondUpdate()
 	MTLFunctionConstantValues* constants = [MTLFunctionConstantValues new];
 	bool compressed = m_Metal->coeffIndex != nil;
 	bool hasSources = !sourceTemplates.empty();
+	bool hasRLC = m_Metal->diamondHasRLC && !m_Metal->rlc.empty();
 	[constants setConstantValue:&compressed type:MTLDataTypeBool atIndex:0];
 	[constants setConstantValue:&hasSources type:MTLDataTypeBool atIndex:2];
+	[constants setConstantValue:&hasRLC type:MTLDataTypeBool atIndex:3];
 	id<MTLFunction> function = [m_Metal->library newFunctionWithName:@"update_diamond"
 		constantValues:constants error:&error];
 	if (!function)
@@ -909,9 +945,23 @@ void Engine_Metal::InitDiamondUpdate()
 		sourcesByXY[source.voltage ? 0 : 1][(size_t)source.x * numLines[1] + source.y]
 			.push_back(source.sourceIndex);
 
+	// Lumped RLC elements are owned by the tile whose voltage range covers their
+	// (x, y); every cell is covered exactly once per local timestep, so each
+	// element is visited once per step in increasing time order.
+	std::vector<std::vector<uint32_t>> rlcByXY;
+	if (hasRLC)
+	{
+		rlcByXY.resize((size_t)numLines[0] * numLines[1]);
+		uint32_t element = 0;
+		for (const auto& region : m_Metal->rlc)
+			for (const auto& position : region.xy)
+				rlcByXY[(size_t)position[0] * numLines[1] + position[1]].push_back(element++);
+	}
+
 	const uint32_t blockWidth = 2;
 	uint64_t auxiliaryBytes = signal.size() * sizeof(float) +
-		sourceTable.size() * sizeof(DiamondSource);
+		sourceTable.size() * sizeof(DiamondSource) +
+		(hasRLC ? m_Metal->rlc.front().count * (sizeof(RLCEntry) + sizeof(RLCState)) : 0);
 	for (uint32_t depth = 1; depth <= DIAMOND_DEPTH; ++depth)
 	{
 		const DiamondAxis xAxis = MakeDiamondAxis(numLines[0], blockWidth, depth * 2);
@@ -962,6 +1012,15 @@ void Engine_Metal::InitDiamondUpdate()
 						for (uint32_t source : sourcesByXY[field][(size_t)x * numLines[1] + y])
 							appendSource(source);
 			};
+			std::vector<uint32_t> rlcIndices;
+			auto appendRLC = [&](const int32_t range[4]) {
+				if (!hasRLC || range[0] < 0)
+					return;
+				for (int32_t x = range[0]; x <= range[1]; ++x)
+					for (int32_t y = range[2]; y <= range[3]; ++y)
+						for (uint32_t element : rlcByXY[(size_t)x * numLines[1] + y])
+							rlcIndices.push_back(element);
+			};
 			for (DiamondTile& tile : tiles)
 				for (uint32_t t = 0; t < depth; ++t)
 				{
@@ -972,6 +1031,9 @@ void Engine_Metal::InitDiamondUpdate()
 					step.currentSourceOffset = static_cast<uint32_t>(sourceIndices.size());
 					appendRange(step.currentRange, 1);
 					step.currentSourceCount = static_cast<uint32_t>(sourceIndices.size()) - step.currentSourceOffset;
+					step.rlcOffset = static_cast<uint32_t>(rlcIndices.size());
+					appendRLC(step.voltageRange);
+					step.rlcCount = static_cast<uint32_t>(rlcIndices.size()) - step.rlcOffset;
 				}
 			if (tiles.empty())
 				continue;
@@ -985,8 +1047,14 @@ void Engine_Metal::InitDiamondUpdate()
 					[m_Metal->device newBufferWithLength:sizeof(uint32_t) options:MTLResourceStorageModeShared] :
 					[m_Metal->device newBufferWithBytes:sourceIndices.data()
 					 length:sourceIndices.size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
+			if (hasRLC)
+				m_Metal->diamondRLCIndices[depth][phase] = rlcIndices.empty() ?
+					[m_Metal->device newBufferWithLength:sizeof(uint32_t) options:MTLResourceStorageModeShared] :
+					[m_Metal->device newBufferWithBytes:rlcIndices.data()
+					 length:rlcIndices.size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
 			if (!m_Metal->diamondTiles[depth][phase] ||
-				(hasSources && !m_Metal->diamondSourceIndices[depth][phase]))
+				(hasSources && !m_Metal->diamondSourceIndices[depth][phase]) ||
+				(hasRLC && !m_Metal->diamondRLCIndices[depth][phase]))
 				throw std::runtime_error("Metal: failed to allocate diamond schedule");
 		}
 	}
@@ -1261,9 +1329,72 @@ void Engine_Metal::InitADE()
 		     << total << " active edges" << endl;
 }
 
+void Engine_Metal::InitRLC()
+{
+	// The legacy diagnostic path keeps the lumped RLC on the CPU, so only build
+	// the GPU region when the diamond wavefront will run.
+	if (!m_Metal->diamondRequested)
+		return;
+
+	std::vector<RLCEntry> entries;
+	std::vector<std::array<uint32_t, 2>> xy;
+	FDTD_FLOAT dTHalf = 0.0;
+	for (Engine_Extension* extension : m_Eng_exts)
+	{
+		Engine_Ext_LumpedRLC* rlc = dynamic_cast<Engine_Ext_LumpedRLC*>(extension);
+		if (!rlc || !rlc->MetalRLCOffloadSupported())
+			continue;
+		dTHalf = rlc->MetalRLCDtHalf();
+		const uint32_t count = rlc->MetalRLCCount();
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			const int dir = rlc->MetalRLCDir(i);
+			if (dir < 0 || dir > 2)
+				throw std::runtime_error("Metal: lumped RLC direction out of range");
+			const uint32_t x = rlc->MetalRLCPos(0, i);
+			const uint32_t y = rlc->MetalRLCPos(1, i);
+			const uint32_t z = rlc->MetalRLCPos(2, i);
+			if (x >= numLines[0] || y >= numLines[1] || z >= numLines[2])
+				throw std::runtime_error("Metal: lumped RLC position outside the grid");
+			const uint32_t slot = z % numVectors;
+			const uint32_t lane = z / numVectors;
+			const uint32_t fieldIndex = static_cast<uint32_t>(
+				((((size_t)x * numLines[1] + y) * numVectors + slot) * 3 + dir) * 4 + lane);
+			RLCEntry entry;
+			entry.fieldIndex = fieldIndex;
+			entry.dJdV = rlc->MetalRLCDJdV(i);
+			entry.aV = rlc->MetalRLCAV(i);
+			entry.aQ = rlc->MetalRLCAQ(i);
+			entry.aJ = rlc->MetalRLCAJ(i);
+			entry.vcd = rlc->MetalRLCVcd(i);
+			entry.vvd = rlc->MetalRLCVvd(i);
+			entry.aIl = rlc->MetalRLCIlCoeff(i);
+			entries.push_back(entry);
+			xy.push_back({x, y});
+		}
+	}
+	if (entries.empty())
+		return;
+
+	MetalState::RLCRegion region;
+	region.count = static_cast<uint32_t>(entries.size());
+	region.entries = [m_Metal->device newBufferWithBytes:entries.data()
+		length:entries.size() * sizeof(RLCEntry) options:MTLResourceStorageModeShared];
+	region.state = [m_Metal->device newBufferWithLength:entries.size() * sizeof(RLCState)
+		options:MTLResourceStorageModeShared];
+	if (!region.entries || !region.state)
+		throw std::runtime_error("Metal: failed to allocate lumped RLC buffers");
+	std::memset(region.state.contents, 0, entries.size() * sizeof(RLCState));
+	region.xy = std::move(xy);
+	m_Metal->rlcDtHalf = static_cast<float>(dTHalf);
+	m_Metal->diamondHasRLC = true;
+	m_Metal->rlc.push_back(std::move(region));
+	cout << "Metal: lumped RLC offload: " << entries.size() << " active edges" << endl;
+}
+
 void Engine_Metal::UpdateDiamond(unsigned int depth)
 {
-	DiamondParams params = {numLines[0], numLines[1], numVectors, numTS, depth};
+	DiamondParams params = {numLines[0], numLines[1], numVectors, numTS, depth, m_Metal->rlcDtHalf};
 	// The kernel maps whole packed-Z slot groups to threads, so the threadgroup
 	// must be an exact multiple of the slot count it can cover.
 	const NSUInteger maxThreads = std::min<NSUInteger>({
@@ -1294,6 +1425,12 @@ void Engine_Metal::UpdateDiamond(unsigned int depth)
 			[encoder setBuffer:m_Metal->diamondSourceTable offset:0 atIndex:9];
 			[encoder setBuffer:m_Metal->diamondSourceIndices[depth][phase] offset:0 atIndex:10];
 			[encoder setBuffer:m_Metal->diamondSignal offset:0 atIndex:11];
+		}
+		if (m_Metal->diamondHasRLC && !m_Metal->rlc.empty())
+		{
+			[encoder setBuffer:m_Metal->rlc.front().entries offset:0 atIndex:12];
+			[encoder setBuffer:m_Metal->rlc.front().state offset:0 atIndex:13];
+			[encoder setBuffer:m_Metal->diamondRLCIndices[depth][phase] offset:0 atIndex:14];
 		}
 		[encoder dispatchThreadgroups:MTLSizeMake(count, 1, 1)
 			threadsPerThreadgroup:MTLSizeMake(threads, 1, 1)];

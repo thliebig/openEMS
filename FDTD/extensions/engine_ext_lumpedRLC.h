@@ -40,6 +40,23 @@ public:
 	virtual void DoPreVoltageUpdates();
 	virtual void Apply2Voltages();
 
+	//! Metal diamond offload descriptors. The operator owns the coefficients and
+	//! positions; these accessors give Engine_Metal a compact, read-only view
+	//! without exposing the internal arrays.
+	bool MetalRLCOffloadSupported() const;
+	unsigned int MetalRLCCount() const;
+	int MetalRLCDir(unsigned int index) const;
+	unsigned int MetalRLCPos(unsigned int axis, unsigned int index) const;
+	FDTD_FLOAT MetalRLCDJdV(unsigned int index) const;
+	FDTD_FLOAT MetalRLCAV(unsigned int index) const;
+	FDTD_FLOAT MetalRLCAQ(unsigned int index) const;
+	FDTD_FLOAT MetalRLCAJ(unsigned int index) const;
+	FDTD_FLOAT MetalRLCVcd(unsigned int index) const;
+	FDTD_FLOAT MetalRLCVvd(unsigned int index) const;
+	//! Product i2v*ilv, the explicit parallel-inductor current coefficient.
+	FDTD_FLOAT MetalRLCIlCoeff(unsigned int index) const;
+	FDTD_FLOAT MetalRLCDtHalf() const;
+
 protected:
 	template <typename EngType>
 	void Apply2VoltagesImpl(EngType* eng);

@@ -43,9 +43,10 @@ Sources are assigned to their owning tile for each local timestep. Ordering,
 overlapping sources, packed-Z lanes, partial edge tiles and boundary values are
 bit-identical to the explicit two-dispatch Metal path.
 
-UPML, ADE and arbitrary CPU extension hooks have not migrated inside the
-wavefront; a normal Metal run needing them aborts before timestep 0. Fast math
-is always off.
+Excitation sources and the lumped RLC recurrence are folded into the
+wavefront. UPML, ADE and the remaining CPU extension hooks have not migrated;
+a normal Metal run needing them aborts before timestep 0. Fast math is always
+off.
 
 PEC and geometry mapping
 ------------------------
@@ -108,6 +109,25 @@ falls back to dense reads when unique records exceed ``min(65536, positions/4)``
 retain dense reads automatically; initialization reports which path was taken.
 Coefficients must remain immutable during stepping.
 
+Lumped RLC
+----------
+
+The series and parallel lumped RLC loads run inside the diamond wavefront. The
+operator builds a trapezoidal state-space recurrence per active edge; the engine
+packs its coefficients (``dJdV``, ``aV``, ``aQ``, ``aJ``, ``vcd``, ``vvd`` and
+the parallel-inductor term) plus four state words (``Vd``, ``J``, ``q``,
+``Il``) into one GPU record. Each element is attached to the tile whose voltage
+range covers its ``(x, y)``, so it is visited exactly once per local timestep, in
+increasing time order, between the voltage source and the current update. One
+thread per tile applies the recurrence in the CPU element order, which keeps the
+result in the same floating-point neighbourhood as the CPU extension. The FP32
+trapezoidal form is the same well-conditioned update used on the CPU; the older
+second-order ADE formed ``b1*ib0 ~ -2`` by cancellation and lost its damping.
+
+A lumped element on its own stays on the primary path. Combined with a PML it
+still requires the explicit legacy diagnostic path, because UPML has not
+migrated.
+
 Conducting-sheet ADE
 --------------------
 
@@ -151,6 +171,7 @@ Validation
 
    python macos/tests/metal_fields.py --openems /absolute/path/to/openEMS --suite
    python macos/tests/metal_pec.py --openems /absolute/path/to/openEMS
+   python macos/tests/metal_lumpedrlc.py --openems /absolute/path/to/openEMS
    python macos/tests/metal_conductingsheet.py --openems /absolute/path/to/openEMS
    python macos/tests/metal_dispersive.py --openems /absolute/path/to/openEMS
    OPENEMS_METAL_FUSED_PIPELINE=0 python macos/tests/metal_ade.py --openems /absolute/path/to/openEMS
@@ -160,8 +181,10 @@ Validation
 requires dense/compressed and diamond/explicit-legacy variants to be
 bit-identical. ``--stress-sources`` adds overlapping sources spanning tile
 boundaries. The PEC, conducting-sheet and dispersive suites compare CPU vs GPU
-winner resolution and require bit-identical dumps. ``metal_ade.py`` compares the
-GPU conducting-sheet ADE against the SSE CPU recurrence.
+winner resolution and require bit-identical dumps. ``metal_lumpedrlc.py``
+compares the in-kernel RLC recurrence against the SSE CPU extension.
+``metal_ade.py`` compares the GPU conducting-sheet ADE against the SSE CPU
+recurrence.
 
 A separate performance harness lives in ``macos/bench/`` and is documented in
 ``macos/doc/metal-benchmark.rst``.
@@ -174,6 +197,52 @@ approximate: those affected PEC queries run through CSXCAD FP64 and are never
 silently dropped. A normal Metal run either constructs the in-place diamond
 kernel or aborts before timestep 0; it never substitutes the legacy E/H update
 or a CPU extension path automatically.
+
+Extension coverage
+~~~~~~~~~~~~~~~~~~
+
+The diamond wavefront runs the field update, excitation sources and lumped RLC
+in one kernel. Every other engine extension is a CPU hook that has not migrated;
+a normal Metal run that needs one aborts before timestep 0. The explicit legacy
+path (``OPENEMS_METAL_FUSED_PIPELINE=0``) runs them on the CPU.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 44 12 44
+
+   * - Extension
+     - Diamond
+     - Notes
+   * - ``Engine_Ext_Excitation``
+     - yes
+     - folded in as a per-tile source table
+   * - ``Engine_Ext_LumpedRLC``
+     - yes
+     - trapezoidal state-space recurrence in the E/H kernel
+   * - ``Engine_Ext_UPML``
+     - no
+     - GPU conditioning kernels, legacy path only
+   * - ``Engine_Ext_LorentzMaterial`` (conducting sheet)
+     - no
+     - volt-ADE kernels, legacy path only
+   * - ``Engine_Ext_LorentzMaterial`` (Lorentz/Drude/Debye)
+     - no
+     - CPU; needs flux and ADE-current state the conducting sheet does not
+   * - ``Engine_Ext_Mur_ABC``
+     - no
+     - CPU boundary hook with one-step history
+   * - ``Engine_Ext_Absorbing_BC``
+     - no
+     - CPU boundary-sheet hook with one-step history
+   * - ``Engine_Ext_TFSF``
+     - no
+     - CPU plane-wave source hook
+   * - ``Engine_Ext_SteadyState``
+     - no
+     - CPU read-only probe and energy reduction
+   * - ``Engine_Ext_Cylinder`` / ``Engine_Ext_CylinderMultiGrid``
+     - n/a
+     - cylindrical operator; Metal is Cartesian only
 
 Platform and coordinate systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -237,7 +306,8 @@ aborts unless the user explicitly requested the legacy diagnostic.
      - dense UPML coefficients for that region
    * - more than ``min(65536, positions/4)`` unique operator records
      - dense operator coefficients
-   * - UPML, ADE, or an arbitrary CPU extension hook in a normal Metal run
+   * - UPML, ADE, or any other CPU extension hook (see Extension coverage) in a
+       normal Metal run
      - aborts before timestep 0; these operations have not migrated inside the
        diamond wavefront
    * - ``OPENEMS_METAL_FUSED_PIPELINE=0``
