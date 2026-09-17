@@ -198,10 +198,8 @@ only so the abort is not a surprise.
 Kernel compilation
 ~~~~~~~~~~~~~~~~~~
 
-The kernels are compiled once at build time into ``openEMS.metallib``, embedded
-in ``libopenEMS`` and loaded with ``newLibraryWithData:``; the runtime never
-compiles. Building with ``-DWITH_METAL=ON`` therefore needs the optional Metal
-toolchain component, installed once with:
+The kernels are compiled once at build time into ``openEMS.metallib``, needs Metal
+toolchain component, installed it in XCode or:
 
 .. code-block:: sh
 
@@ -268,5 +266,33 @@ Performance
 
 Small or simple geometries are submission-bound and can be slower on the GPU
 than on SSE. Regular grids compress exceptionally well; no speedup is claimed
-for real PCB models that hit the dense-coefficient fallback. Measured figures
-and methodology live in ``macos/doc/metal-benchmark.rst``.
+for real PCB models that hit the dense-coefficient fallback.
+
+Measured on an Apple M5 Max (18 cores, macOS 26.6, Release build, fast math
+off): median of three interleaved repetitions of a uniform grid with one
+dielectric box and all dumps stripped, PEC boundaries.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 14 14 18 24
+
+   * - Workload
+     - Diamond step [s]
+     - Legacy step [s]
+     - Fastest CPU step [s]
+     - Diamond vs CPU (step / wall)
+   * - 3.0M cells, 600 steps
+     - 0.123
+     - 0.511
+     - 0.774 (mt-14)
+     - **6.29x / 1.67x**
+   * - 17.0M cells, 1000 steps
+     - 1.472
+     - 2.734
+     - 6.510 (mt-10)
+     - **4.42x / 2.06x**
+
+The in-place diamond kernel is **4.15x** (3.0M cells) and **1.86x** (17.0M
+cells) faster in stepping than the legacy two-dispatch Metal path. Full tables,
+per-engine wall time, throughput, peak memory and methodology live in
+``macos/doc/metal-benchmark.rst``.

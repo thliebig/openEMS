@@ -38,7 +38,7 @@ must have CSXCAD (the same interpreter used for the other ``metal_*.py`` tests).
 
 .. code-block:: sh
 
-   # small, quick smoke run (~1 min on an M4 Pro)
+   # small, quick smoke run (~1 min on an M5 Max)
    python macos/bench/bench_metal.py --openems /path/to/openEMS --reps 3
 
    # representative diamond-wavefront throughput run (PEC is the default)
@@ -77,12 +77,81 @@ engines equally.
 ``--json`` additionally writes every per-repetition sample plus the median
 summary.
 
-Results (Apple M4 Pro, 14 cores, macOS, Release, fast math off)
----------------------------------------------------------------
+Results
+-------
 
-Measured after the in-place diamond integration with interleaved medians: 3
-repetitions for both grids. ``metal-legacy``
-is the explicit ``OPENEMS_METAL_FUSED_PIPELINE=0`` comparison.
+Medians of three interleaved repetitions with PEC boundaries, measured after the
+in-place diamond integration. ``metal-legacy`` is the explicit
+``OPENEMS_METAL_FUSED_PIPELINE=0`` comparison. ``wall`` is full process time
+(startup, operator/coefficient build, stepping); ``step`` is the solver's own
+iteration line.
+
+Apple M5 Max (18 cores, macOS 26.6, Release, fast math off)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The thread sweep (6, 10, 14, 18) selected **mt-14** as the fastest CPU
+configuration at 3.0M cells and **mt-10** at 17.0M cells.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 9 9 10 10 18
+
+   * - Workload
+     - Engine
+     - wall [s]
+     - step [s]
+     - MCells/s
+     - RSS [MB]
+     - Diamond advantage (step / wall)
+   * - PEC, 3.0M cells, 600 steps
+     - **metal diamond** (depth 4)
+     - 1.063
+     - 0.123
+     - 14734
+     - 462
+     - —
+   * - PEC, 3.0M cells, 600 steps
+     - metal legacy
+     - 1.452
+     - 0.511
+     - 3536
+     - 460
+     - **4.15x / 1.37x**
+   * - PEC, 3.0M cells, 600 steps
+     - **mt-14** (fastest CPU)
+     - 1.775
+     - 0.774
+     - 2336
+     - 320
+     - **6.29x / 1.67x**
+   * - PEC, 17.0M cells, 1000 steps
+     - **metal diamond** (depth 4)
+     - 6.342
+     - 1.472
+     - 11532
+     - 2406
+     - —
+   * - PEC, 17.0M cells, 1000 steps
+     - metal legacy
+     - 7.594
+     - 2.734
+     - 6208
+     - 2398
+     - **1.86x / 1.20x**
+   * - PEC, 17.0M cells, 1000 steps
+     - **mt-10** (fastest CPU)
+     - 13.067
+     - 6.510
+     - 2608
+     - 1656
+     - **4.42x / 2.06x**
+
+Apple M4 Pro (14 cores, macOS, Release, fast math off)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The thread sweep (8, 10, 14) selected **mt-8** as the fastest CPU configuration
+for both grids. These figures predate the M5 Max run and are kept for
+generation-over-generation comparison.
 
 .. list-table::
    :header-rows: 1
@@ -141,16 +210,19 @@ is the explicit ``OPENEMS_METAL_FUSED_PIPELINE=0`` comparison.
 Analysis
 --------
 
-* The in-place diamond kernel improves stepping over the old two-dispatch Metal
-  update by **2.90x at 3.0M cells** and **1.32x at 17.0M cells**. Four timesteps
-  share each tile's cache working set, and four mountain/valley dispatches
-  replace eight whole-grid dispatches per temporal block.
+* On the M5 Max the in-place diamond kernel improves stepping over the old
+  two-dispatch Metal update by **4.15x at 3.0M cells** and **1.86x at 17.0M
+  cells** (M4 Pro: 2.90x / 1.32x). Four timesteps share each tile's cache
+  working set, and four mountain/valley dispatches replace eight whole-grid
+  dispatches per temporal block.
 * The cell loop carries no runtime integer division: threads cover whole
   packed-Z slot groups and walk the tile's (x, y) pairs by a stride whose delta
   is computed once. Measured against the previous diamond kernel this is
   **1.08-1.16x** further stepping speedup (larger on ALU-bound small grids).
-* Against the previously measured fastest CPU configuration, diamond Metal is
-  **1.88-2.32x faster in stepping** and **1.39-1.66x faster wall-to-wall**.
+* Against the fastest CPU configuration, diamond Metal is **4.42-6.29x faster in
+  stepping** and **1.67-2.06x faster wall-to-wall** on the M5 Max (M4 Pro:
+  1.88-2.32x / 1.39-1.66x). The CPU optimum sits at mt-10/mt-14; the
+  10-18 thread spread is small.
 * A two-cell shortest diamond span provides enough independent threadgroups on
   the larger grid. Wider tiles reduced occupancy and lost the large-grid gain.
 * The kernel remains in place and allocates no second E/H field pair. Schedule
