@@ -6,6 +6,7 @@
 using namespace metal;
 constant bool compressedCoefficients [[function_constant(0)]];
 constant bool compressedPML [[function_constant(1)]];
+constant bool diamondExcitations [[function_constant(2)]];
 
 struct GridParams
 {
@@ -155,6 +156,225 @@ kernel void update_currents(
 	curr[base + 2] = hz * ii[c + 2] + iv[c + 2] * (ey - ey_x - ex + ex_y);
 }
 
+// One threadgroup owns a space-time diamond for every phase dispatch. The
+// host-issued phase boundaries satisfy inter-tile dependencies; barriers here
+// order in-place E/source/H/source updates within the tile.
+constant uint diamondMaxSteps = 4;
+
+struct DiamondStep
+{
+	int4 voltage_range; // x begin/end, y begin/end (inclusive)
+	int4 current_range;
+	uint voltage_source_offset;
+	uint voltage_source_count;
+	uint current_source_offset;
+	uint current_source_count;
+};
+
+struct DiamondTile
+{
+	DiamondStep steps[diamondMaxSteps];
+};
+
+struct DiamondParams
+{
+	uint nx;
+	uint ny;
+	uint nzv;
+	uint timestep;
+	uint depth;
+};
+
+struct DiamondSource
+{
+	uint field_index;
+	float amplitude;
+	uint delay;
+	uint signal_offset;
+	uint signal_length;
+	uint period;
+};
+
+kernel void update_diamond(
+	device float4* volt [[buffer(0)]],
+	device float4* curr [[buffer(1)]],
+	const device float4* vv [[buffer(2)]],
+	const device float4* vi [[buffer(3)]],
+	const device float4* ii [[buffer(4)]],
+	const device float4* iv [[buffer(5)]],
+	constant DiamondParams& p [[buffer(6)]],
+	const device DiamondTile* tiles [[buffer(7)]],
+	const device ushort* coeffIndex [[buffer(8), function_constant(compressedCoefficients)]],
+	const device DiamondSource* sources [[buffer(9), function_constant(diamondExcitations)]],
+	const device uint* source_indices [[buffer(10), function_constant(diamondExcitations)]],
+	const device float* signal [[buffer(11), function_constant(diamondExcitations)]],
+	uint tileId [[threadgroup_position_in_grid]],
+	uint tid [[thread_index_in_threadgroup]],
+	uint threads [[threads_per_threadgroup]])
+{
+	const uint nzv = p.nzv;
+	const uint y_stride = nzv * 3;
+	const uint x_stride = p.ny * y_stride;
+	// Threads cover whole packed-Z slot groups. Each thread then walks the tile's
+	// (x, y) pairs by a fixed stride; the per-step delta is precomputed once, so
+	// no runtime integer division appears in the cell loop.
+	const uint slots = min(nzv, threads);
+	const uint slot0 = tid % slots;
+	const uint pair0 = tid / slots;
+	const uint groups = threads / slots;
+	for (uint timestep = 0; timestep < p.depth; ++timestep)
+	{
+		const DiamondStep step = tiles[tileId].steps[timestep];
+		if (step.voltage_range.x >= 0)
+		{
+			const uint vx0 = step.voltage_range.x, vy0 = step.voltage_range.z;
+			const uint vnx = step.voltage_range.y - vx0 + 1;
+			const uint vny = step.voltage_range.w - vy0 + 1;
+			const uint pairs = vnx * vny;
+			const uint dx = groups / vny, dy = groups % vny;
+			for (uint zbase = 0; zbase < nzv; zbase += slots)
+			{
+				const uint slot = zbase + slot0;
+				if (slot >= nzv)
+					break;
+				uint x = vx0 + pair0 / vny;
+				uint y = vy0 + pair0 % vny;
+				for (uint pair = pair0; pair < pairs; pair += groups)
+				{
+					const uint base = x * x_stride + y * y_stride + slot * 3;
+					const uint base_xm = x == 0 ? base : base - x_stride;
+					const uint base_ym = y == 0 ? base : base - y_stride;
+					const float4 cx = curr[base];
+					const float4 cy = curr[base + 1];
+					const float4 cz = curr[base + 2];
+					const float4 hz_y = curr[base_ym + 2];
+					const float4 hx_y = curr[base_ym];
+					const float4 hz_x = curr[base_xm + 2];
+					const float4 hy_x = curr[base_xm + 1];
+					float4 hy_z;
+					float4 hx_z;
+					if (slot == 0)
+					{
+						const uint end = base + (nzv - 1) * 3;
+						const float4 hy_end = curr[end + 1];
+						const float4 hx_end = curr[end];
+						hy_z = float4(0.0f, hy_end.x, hy_end.y, hy_end.z);
+						hx_z = float4(0.0f, hx_end.x, hx_end.y, hx_end.z);
+					}
+					else
+					{
+						hy_z = curr[base - 2];
+						hx_z = curr[base - 3];
+					}
+					const float4 ex = volt[base];
+					const float4 ey = volt[base + 1];
+					const float4 ez = volt[base + 2];
+					const uint cc = compressedCoefficients ? coeffIndex[base / 3] * 3 : base;
+					volt[base] = ex * vv[cc] + vi[cc] * (cz - hz_y - cy + hy_z);
+					volt[base + 1] = ey * vv[cc + 1] + vi[cc + 1] * (cx - hx_z - cz + hz_x);
+					volt[base + 2] = ez * vv[cc + 2] + vi[cc + 2] * (cy - hy_x - cx + hx_y);
+					y += dy;
+					x += dx;
+					if (y >= vy0 + vny)
+					{
+						y -= vny;
+						++x;
+					}
+				}
+			}
+		}
+		threadgroup_barrier(mem_flags::mem_device);
+		if (diamondExcitations && tid == 0)
+			for (uint n = step.voltage_source_offset;
+			     n < step.voltage_source_offset + step.voltage_source_count; ++n)
+			{
+				const DiamondSource source = sources[source_indices[n]];
+				uint sample = p.timestep + timestep > source.delay ?
+					p.timestep + timestep - source.delay : 0;
+				sample %= source.period ? source.period : p.timestep + timestep + 1;
+				if (sample >= source.signal_length) sample = 0;
+				((device float*)volt)[source.field_index] +=
+					source.amplitude * signal[source.signal_offset + sample];
+			}
+		threadgroup_barrier(mem_flags::mem_device);
+		if (step.current_range.x >= 0)
+		{
+			const int stop_x = min(step.current_range.y, (int)p.nx - 2);
+			const int stop_y = min(step.current_range.w, (int)p.ny - 2);
+			if (stop_x >= step.current_range.x && stop_y >= step.current_range.z)
+			{
+				const uint cx0 = step.current_range.x, cy0 = step.current_range.z;
+				const uint cnx = stop_x - cx0 + 1;
+				const uint cny = stop_y - cy0 + 1;
+				const uint pairs = cnx * cny;
+				const uint dx = groups / cny, dy = groups % cny;
+				for (uint zbase = 0; zbase < nzv; zbase += slots)
+				{
+					const uint slot = zbase + slot0;
+					if (slot >= nzv)
+						break;
+					uint x = cx0 + pair0 / cny;
+					uint y = cy0 + pair0 % cny;
+					for (uint pair = pair0; pair < pairs; pair += groups)
+					{
+						const uint base = x * x_stride + y * y_stride + slot * 3;
+						const float4 ex = volt[base];
+						const float4 ey = volt[base + 1];
+						const float4 ez = volt[base + 2];
+						const float4 ez_y = volt[base + y_stride + 2];
+						const float4 ex_y = volt[base + y_stride];
+						const float4 ez_x = volt[base + x_stride + 2];
+						const float4 ey_x = volt[base + x_stride + 1];
+						float4 ey_z;
+						float4 ex_z;
+						if (slot + 1 < nzv)
+						{
+							ey_z = volt[base + 4];
+							ex_z = volt[base + 3];
+						}
+						else
+						{
+							const uint start = base - slot * 3;
+							const float4 ey_start = volt[start + 1];
+							const float4 ex_start = volt[start];
+							ey_z = float4(ey_start.y, ey_start.z, ey_start.w, 0.0f);
+							ex_z = float4(ex_start.y, ex_start.z, ex_start.w, 0.0f);
+						}
+						const float4 hx = curr[base];
+						const float4 hy = curr[base + 1];
+						const float4 hz = curr[base + 2];
+						const uint cc = compressedCoefficients ? coeffIndex[base / 3] * 3 : base;
+						curr[base] = hx * ii[cc] + iv[cc] * (ez - ez_y - ey + ey_z);
+						curr[base + 1] = hy * ii[cc + 1] + iv[cc + 1] * (ex - ex_z - ez + ez_x);
+						curr[base + 2] = hz * ii[cc + 2] + iv[cc + 2] * (ey - ey_x - ex + ex_y);
+						y += dy;
+						x += dx;
+						if (y >= cy0 + cny)
+						{
+							y -= cny;
+							++x;
+						}
+					}
+				}
+			}
+		}
+		threadgroup_barrier(mem_flags::mem_device);
+		if (diamondExcitations && tid == 0)
+			for (uint n = step.current_source_offset;
+			     n < step.current_source_offset + step.current_source_count; ++n)
+			{
+				const DiamondSource source = sources[source_indices[n]];
+				uint sample = p.timestep + timestep > source.delay ?
+					p.timestep + timestep - source.delay : 0;
+				sample %= source.period ? source.period : p.timestep + timestep + 1;
+				if (sample >= source.signal_length) sample = 0;
+				((device float*)curr)[source.field_index] +=
+					source.amplitude * signal[source.signal_offset + sample];
+			}
+		threadgroup_barrier(mem_flags::mem_device);
+	}
+}
+
 // Plain volt-ADE update for the conducting-sheet model. Each thread owns one
 // active Yee edge; the two ADE poles are packed into one float4/float2 record so
 // the field is read once for both poles (advance) and the two subtractions run
@@ -192,54 +412,6 @@ kernel void ade_apply(
 	v -= s.x;
 	v -= s.y;
 	field[f] = v;
-}
-
-// UPML arrays are scalar NIJK, while fields use the SSE z-lane layout.
-// Scalar stores touch only physical cells, never SIMD padding lanes.
-struct PMLParams
-{
-	uint sx, sy, sz;
-	uint nx, ny, nz;
-	uint grid_ny, grid_nzv;
-};
-
-kernel void upml_pre(
-	device float* field [[buffer(0)]],
-	device float* flux [[buffer(1)]],
-	const device float* self [[buffer(2)]],
-	const device float* oldFlux [[buffer(3)]],
-	constant PMLParams& p [[buffer(4)]],
-	uint gid [[thread_position_in_grid]])
-{
-	const uint cells = p.nx * p.ny * p.nz;
-	if (gid >= 3 * cells) return;
-	const uint n = gid / cells;
-	const uint z = gid % p.nz + p.sz;
-	const uint y = (gid / p.nz) % p.ny + p.sy;
-	const uint x = (gid % cells) / (p.ny * p.nz) + p.sx;
-	const uint f = (((x * p.grid_ny + y) * p.grid_nzv + z % p.grid_nzv) * 3 + n) * 4 + z / p.grid_nzv;
-	const float saved = self[gid] * field[f] - oldFlux[gid] * flux[gid];
-	field[f] = flux[gid];
-	flux[gid] = saved;
-}
-
-kernel void upml_post(
-	device float* field [[buffer(0)]],
-	device float* flux [[buffer(1)]],
-	const device float* newFlux [[buffer(2)]],
-	constant PMLParams& p [[buffer(4)]],
-	uint gid [[thread_position_in_grid]])
-{
-	const uint cells = p.nx * p.ny * p.nz;
-	if (gid >= 3 * cells) return;
-	const uint n = gid / cells;
-	const uint z = gid % p.nz + p.sz;
-	const uint y = (gid / p.nz) % p.ny + p.sy;
-	const uint x = (gid % cells) / (p.ny * p.nz) + p.sx;
-	const uint f = (((x * p.grid_ny + y) * p.grid_nzv + z % p.grid_nzv) * 3 + n) * 4 + z / p.grid_nzv;
-	const float saved = flux[gid];
-	flux[gid] = field[f];
-	field[f] = saved + newFlux[gid] * flux[gid];
 }
 
 // Auxiliary arrays are reordered once into increasing packed-field addresses.

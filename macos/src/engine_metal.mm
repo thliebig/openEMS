@@ -23,12 +23,14 @@
 #include <array>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <unordered_map>
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <stdexcept>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 using std::cout;
@@ -68,6 +70,86 @@ struct ExcitationParams
 	uint32_t period;
 };
 
+static const unsigned int DIAMOND_DEPTH = 4;
+
+struct DiamondStep
+{
+	int32_t voltageRange[4];
+	int32_t currentRange[4];
+	uint32_t voltageSourceOffset, voltageSourceCount;
+	uint32_t currentSourceOffset, currentSourceCount;
+};
+
+struct DiamondTile { DiamondStep steps[DIAMOND_DEPTH]; };
+struct DiamondParams { uint32_t nx, ny, nzv, timestep, depth; };
+
+struct DiamondSource
+{
+	uint32_t fieldIndex;
+	float amplitude;
+	uint32_t delay, signalOffset, signalLength, period;
+};
+
+using DiamondRange = std::pair<int32_t, int32_t>;
+using DiamondBlock = std::vector<DiamondRange>;
+using DiamondAxis = std::array<std::vector<DiamondBlock>, 2>;
+
+// Mountain/valley construction adapted for Metal from the experimental
+// project-diamond-rework1 CPU tiler. At every half-step, both phases together
+// partition the axis while each phase remains internally independent.
+static DiamondAxis MakeDiamondAxis(uint32_t width, uint32_t blockWidth, uint32_t halfSteps)
+{
+	const int shortest = blockWidth;
+	const int longest = blockWidth + halfSteps - 1;
+	int blocks = width / (shortest + longest) * 2;
+	int remainder = width % (shortest + longest);
+	for (int n = 0; remainder > 0; ++n)
+	{
+		++blocks;
+		remainder -= n % 2 == 0 ? shortest : longest;
+	}
+	std::vector<DiamondBlock> all(blocks + 1, DiamondBlock(halfSteps));
+	int last = -1;
+	for (size_t n = 0; n < all.size(); ++n)
+	{
+		const int span = n % 2 == 0 ? shortest : longest;
+		all[n][halfSteps - 1] = {last + 1, last + span};
+		last += span;
+	}
+	for (int t = halfSteps - 2; t >= 0; --t)
+		for (size_t n = 0; n < all.size(); ++n)
+		{
+			const DiamondRange next = all[n][t + 1];
+			DiamondRange range;
+			if (n % 2 == 0)
+				range = t % 2 ? DiamondRange(next.first - 1, next.second)
+				              : DiamondRange(next.first, next.second + 1);
+			else
+				range = t % 2 ? DiamondRange(next.first, next.second - 1)
+				              : DiamondRange(next.first + 1, next.second);
+			range.first = std::max<int32_t>(range.first, 0);
+			all[n][t] = range;
+		}
+	DiamondAxis phases;
+	for (size_t n = 0; n < all.size(); ++n)
+	{
+		for (DiamondRange& range : all[n])
+		{
+			if (range.first >= (int32_t)width)
+				range = {-1, -1};
+			else
+				range.second = std::min<int32_t>(range.second, width - 1);
+		}
+		phases[n % 2].push_back(all[n]);
+	}
+	return phases;
+}
+
+static_assert(sizeof(DiamondStep) == 48, "Metal DiamondStep ABI");
+static_assert(sizeof(DiamondTile) == 192, "Metal DiamondTile ABI");
+static_assert(sizeof(DiamondParams) == 20, "Metal DiamondParams ABI");
+static_assert(sizeof(DiamondSource) == 24, "Metal DiamondSource ABI");
+
 static std::runtime_error MetalError(const char* what, NSError* error)
 {
 	std::string message(what);
@@ -84,8 +166,10 @@ struct Engine_Metal::MetalState
 {
 	id<MTLDevice> device;
 	id<MTLCommandQueue> queue;
+	id<MTLLibrary> library;
 	id<MTLComputePipelineState> voltagePipeline;
 	id<MTLComputePipelineState> currentPipeline;
+	id<MTLComputePipelineState> diamondPipeline;
 	id<MTLComputePipelineState> excitationPipeline;
 	id<MTLComputePipelineState> adeAdvancePipeline;
 	id<MTLComputePipelineState> adeApplyPipeline;
@@ -98,11 +182,17 @@ struct Engine_Metal::MetalState
 	id<MTLBuffer> coeffIndex;
 	id<MTLComputePipelineState> pmlPrePipeline[2];
 	id<MTLComputePipelineState> pmlPostPipeline[2];
-	bool indexedPML = true;
-	bool reusePML = true;
 	size_t reusedPMLBytes = 0;
 	id<MTLCommandBuffer> pending;
-	bool fusedPipeline = true;
+	bool diamondRequested = true;
+	bool legacyRequested = false;
+	id<MTLBuffer> diamondTiles[DIAMOND_DEPTH + 1][4];
+	id<MTLBuffer> diamondSourceIndices[DIAMOND_DEPTH + 1][4];
+	id<MTLBuffer> diamondSourceTable;
+	uint32_t diamondTileCount[DIAMOND_DEPTH + 1][4] = {};
+	bool diamondUpdate = false;
+	bool diamondHasSources = false;
+	id<MTLBuffer> diamondSignal;
 
 	struct ExcitationRegion
 	{
@@ -143,14 +233,7 @@ struct Engine_Metal::MetalState
 
 	void CompressPML(PMLRegion& region, unsigned int field)
 	{
-		const char* setting = std::getenv("OPENEMS_METAL_PML_COMPRESS");
-		// Lossless dictionaries substantially reduce resident PML memory. Keep a
-		// dense A/B path for unusual coefficient sets and performance diagnosis.
-		if (setting && setting[0] == '0')
-		{
-			cout << "Metal: dense UPML coefficients selected by OPENEMS_METAL_PML_COMPRESS=0" << endl;
-			return;
-		}
+		// Lossless dictionaries substantially reduce resident PML memory.
 		using Record = std::array<uint32_t, 3>;
 		struct Hash { size_t operator()(const Record& r) const {
 			return ((size_t)r[0]*16777619U ^ r[1])*16777619U ^ r[2];
@@ -291,12 +374,6 @@ struct Engine_Metal::MetalState
 	// arrays for CPU access and the FP64 reference; only GPU reads use this copy.
 	void CompressCoefficients(size_t count)
 	{
-		const char* setting = std::getenv("OPENEMS_METAL_COMPRESS");
-		if (setting && setting[0] == '0')
-		{
-			cout << "Metal: dense operator coefficients selected by OPENEMS_METAL_COMPRESS=0" << endl;
-			return;
-		}
 		using Record = std::array<uint32_t, 48>; // 4 arrays * 3 components * 4 lanes
 		struct Hash
 		{
@@ -312,13 +389,6 @@ struct Engine_Metal::MetalState
 		// fourfold reuse. The packed index is a uint16, so 65536 records
 		// (indices 0..65535) is the format limit.
 		size_t maxRecords = std::min<size_t>(65536, count / 4);
-		if (const char* recordSetting = std::getenv("OPENEMS_METAL_COEFF_RECORDS"))
-		{
-			char* end = nullptr;
-			const unsigned long requested = std::strtoul(recordSetting, &end, 10);
-			if (end != recordSetting && requested)
-				maxRecords = std::min<size_t>(std::min<unsigned long>(requested, 65536), count / 4);
-		}
 		if (!maxRecords)
 		{
 			cout << "Metal: too few positions to compress; using dense operator coefficients" << endl;
@@ -483,9 +553,10 @@ void Engine_Metal::Init()
 			throw std::runtime_error("Metal: failed to create command queue");
 
 		NSError* error = nil;
-		id<MTLLibrary> library = OpenEMSMetalLibrary(m_Metal->device, &error);
-		if (!library)
+		m_Metal->library = OpenEMSMetalLibrary(m_Metal->device, &error);
+		if (!m_Metal->library)
 			throw MetalError("Metal: failed to load precompiled kernel library", error);
+		id<MTLLibrary> library = m_Metal->library;
 
 		const NSUInteger pageSize = (NSUInteger)getpagesize();
 		auto paddedLength = [pageSize](NSUInteger bytes) {
@@ -546,18 +617,16 @@ void Engine_Metal::Init()
 		if (!m_Metal->adeApplyPipeline)
 			throw MetalError("Metal: failed to create ADE apply pipeline", error);
 
-		const char* layout = std::getenv("OPENEMS_METAL_PML_LAYOUT");
-		m_Metal->indexedPML = !(layout && std::strcmp(layout, "scalar") == 0);
 		for (unsigned int compressed=0; compressed<2; ++compressed)
 		{
 			MTLFunctionConstantValues* values = [MTLFunctionConstantValues new];
 			bool enabled = compressed != 0;
 			[values setConstantValue:&enabled type:MTLDataTypeBool atIndex:1];
-			function = [library newFunctionWithName:m_Metal->indexedPML ? @"upml_indexed_pre" : @"upml_pre" constantValues:values error:&error];
+			function = [library newFunctionWithName:@"upml_indexed_pre" constantValues:values error:&error];
 			if (!function) throw MetalError("Metal: UPML pre kernel specialization failed", error);
 			m_Metal->pmlPrePipeline[compressed] = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 			if (!m_Metal->pmlPrePipeline[compressed]) throw MetalError("Metal: UPML pre pipeline failed", error);
-			function = [library newFunctionWithName:m_Metal->indexedPML ? @"upml_indexed_post" : @"upml_post" constantValues:values error:&error];
+			function = [library newFunctionWithName:@"upml_indexed_post" constantValues:values error:&error];
 			if (!function) throw MetalError("Metal: UPML post kernel specialization failed", error);
 			m_Metal->pmlPostPipeline[compressed] = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 			if (!m_Metal->pmlPostPipeline[compressed]) throw MetalError("Metal: UPML post pipeline failed", error);
@@ -567,18 +636,23 @@ void Engine_Metal::Init()
 
 		const char* reference = std::getenv("OPENEMS_METAL_FP64_REFERENCE");
 		m_Metal->referenceEnabled = reference && reference[0] != '\0' && reference[0] != '0';
-		const char* fused = std::getenv("OPENEMS_METAL_FUSED_PIPELINE");
-		if (fused && fused[0] == '0')
+		const char* wavefront = std::getenv("OPENEMS_METAL_FUSED_PIPELINE");
+		if (wavefront && wavefront[0] == '0')
 		{
-			m_Metal->fusedPipeline = false;
-			std::cerr << "Metal: unfused pipeline selected by OPENEMS_METAL_FUSED_PIPELINE=0" << std::endl;
+			m_Metal->diamondRequested = false;
+			m_Metal->legacyRequested = true;
+			std::cerr << "Metal: legacy two-dispatch pipeline selected by OPENEMS_METAL_FUSED_PIPELINE=0" << std::endl;
 		}
 		if (m_Metal->referenceEnabled)
-			m_Metal->fusedPipeline = false;
+		{
+			m_Metal->diamondRequested = false;
+			m_Metal->legacyRequested = true;
+		}
 		InitADE();
 		if (!m_Metal->ade.empty())
-			m_Metal->fusedPipeline = false;
-		cout << "Metal: fused E/H pipeline: " << (m_Metal->fusedPipeline ? "enabled" : "disabled") << endl;
+			m_Metal->diamondRequested = false;
+		InitDiamondUpdate();
+		cout << "Metal: in-place diamond E/H pipeline: " << (m_Metal->diamondUpdate ? "enabled" : "disabled") << endl;
 		if (m_Metal->referenceEnabled)
 		{
 			size_t scalarCount = f4_volt_ptr->size() * 4;
@@ -601,15 +675,12 @@ void Engine_Metal::InitUPML()
 	const char* setting = std::getenv("OPENEMS_METAL_PML");
 	if (setting && setting[0] == '0')
 	{
-		m_Metal->fusedPipeline = false;
+		m_Metal->diamondRequested = false;
+		m_Metal->legacyRequested = true;
 		cout << "Metal: CPU UPML conditioning selected" << endl;
 		return;
 	}
 
-	const char* reuseSetting = std::getenv("OPENEMS_METAL_PML_REUSE");
-	m_Metal->reusePML = !(reuseSetting && reuseSetting[0] == '0');
-	if (!m_Metal->reusePML)
-		cout << "Metal: storing separate packed UPML copies (OPENEMS_METAL_PML_REUSE=0, higher memory)" << endl;
 	const NSUInteger pageSize = (NSUInteger)getpagesize();
 	auto wrap = [&](const ArrayLib::ArrayNIJK<FDTD_FLOAT>& array) {
 		const NSUInteger bytes = (array.bytes() + pageSize - 1) / pageSize * pageSize;
@@ -633,7 +704,6 @@ void Engine_Metal::InitUPML()
 		region.extension = pml;
 		region.params = {op->m_StartPos[0], op->m_StartPos[1], op->m_StartPos[2],
 			op->m_numLines[0], op->m_numLines[1], op->m_numLines[2], numLines[1], numVectors};
-		if (m_Metal->indexedPML)
 		{
 			const PMLParams& p = region.params;
 			// The grid index range was validated in Operator_Metal::SetupCSXGrid.
@@ -661,33 +731,20 @@ void Engine_Metal::InitUPML()
 							}
 			if ((size_t)(indices-indicesBegin) != componentCount)
 				throw std::runtime_error("Metal: incomplete UPML index mapping");
-			if (m_Metal->reusePML && m_Metal->reorderScratch.size() < componentCount)
+			if (m_Metal->reorderScratch.size() < componentCount)
 				m_Metal->reorderScratch.resize(componentCount);
 			auto pack = [&](ArrayLib::ArrayNIJK<FDTD_FLOAT>& array, bool restore) {
-				id<MTLBuffer> buffer;
-				float* out;
-				if (m_Metal->reusePML)
-				{
-					buffer = wrap(array);
-					out = m_Metal->reorderScratch.data();
-					// Register before mutation so exception cleanup can restore the operator.
-					if (restore) m_Metal->reordered.push_back({&array, p, region.indices});
-				}
-				else
-				{
-					buffer = [m_Metal->device newBufferWithLength:componentCount * sizeof(float)
-						options:MTLResourceStorageModeShared];
-					if (!buffer) throw std::runtime_error("Metal: failed to allocate packed UPML array");
-					out = static_cast<float*>(buffer.contents);
-				}
+				// Reuse the operator-owned CPU storage in indexed order; CPU UPML
+				// hooks never execute on it during Metal stepping.
+				id<MTLBuffer> buffer = wrap(array);
+				float* out = m_Metal->reorderScratch.data();
+				// Register before mutation so exception cleanup can restore the operator.
+				if (restore) m_Metal->reordered.push_back({&array, p, region.indices});
 				const uint32_t* fieldIndices=static_cast<const uint32_t*>(region.indices.contents);
 				for (size_t i = 0; i < componentCount; ++i)
 					out[i] = array.data()[MetalState::ScalarIndex(p,fieldIndices[i])];
-				if (m_Metal->reusePML)
-				{
-					std::memcpy(array.data(), out, array.bytes());
-					m_Metal->reusedPMLBytes += array.bytes();
-				}
+				std::memcpy(array.data(), out, array.bytes());
+				m_Metal->reusedPMLBytes += array.bytes();
 				return buffer;
 			};
 			region.flux[0] = pack(pml->volt_flux, false);
@@ -699,25 +756,11 @@ void Engine_Metal::InitUPML()
 			region.newFlux[0] = pack(op->vvfn, true);
 			region.newFlux[1] = pack(op->iifn, true);
 		}
-		else
-		{
-			region.flux[0] = wrap(pml->volt_flux);
-			region.flux[1] = wrap(pml->curr_flux);
-			region.self[0] = wrap(op->vv);
-			region.self[1] = wrap(op->ii);
-			region.oldFlux[0] = wrap(op->vvfo);
-			region.oldFlux[1] = wrap(op->iifo);
-			region.newFlux[0] = wrap(op->vvfn);
-			region.newFlux[1] = wrap(op->iifn);
-		}
 		// Register before compressing: CompressPML may release the operator-owned
 		// dense arrays, and RestorePML can only rebuild them from pml.
 		m_Metal->pml.push_back(region);
-		if (m_Metal->indexedPML)
-		{
-			m_Metal->CompressPML(m_Metal->pml.back(), 0);
-			m_Metal->CompressPML(m_Metal->pml.back(), 1);
-		}
+		m_Metal->CompressPML(m_Metal->pml.back(), 0);
+		m_Metal->CompressPML(m_Metal->pml.back(), 1);
 	}
 	// When every reordered operator coefficient was replaced by a compact
 	// dictionary, no scalar restoration needs the setup scratch. Flux storage is
@@ -730,7 +773,6 @@ void Engine_Metal::InitUPML()
 	if (!m_Metal->pml.empty())
 	{
 		cout << "Metal: GPU UPML conditioning: " << m_Metal->pml.size() << " regions" << endl;
-		cout << "Metal: UPML layout: " << (m_Metal->indexedPML ? "indexed" : "scalar") << endl;
 		cout << "Metal: UPML duplicate bytes avoided: " << m_Metal->reusedPMLBytes << endl;
 		cout << "Metal: UPML reorder scratch bytes retained: " << m_Metal->reorderScratch.size()*sizeof(float) << endl;
 	}
@@ -743,21 +785,21 @@ void Engine_Metal::InitExcitations()
 		Engine_Ext_Excitation* excitation = dynamic_cast<Engine_Ext_Excitation*>(extension);
 		if (!excitation)
 		{
-			if (!dynamic_cast<Engine_Ext_UPML*>(extension) && m_Metal->fusedPipeline)
+			if (!dynamic_cast<Engine_Ext_UPML*>(extension) && m_Metal->diamondRequested)
 			{
-				m_Metal->fusedPipeline = false;
+				m_Metal->diamondRequested = false;
 				std::cerr << "Metal: extension '" << extension->GetExtensionName()
-				          << "' requires the unfused pipeline; the GPU is drained at each CPU hook" << std::endl;
+				          << "' has not migrated to the diamond wavefront" << std::endl;
 			}
 			continue;
 		}
 		Operator_Ext_Excitation* op = excitation->m_Op_Exc;
 		if (!op || !op->m_Exc || op->m_Exc->GetLength() == 0)
 		{
-			if (m_Metal->fusedPipeline)
+			if (m_Metal->diamondRequested)
 			{
-				m_Metal->fusedPipeline = false;
-				std::cerr << "Metal: excitation has no signal; using the unfused pipeline" << std::endl;
+				m_Metal->diamondRequested = false;
+				std::cerr << "Metal: excitation has no signal and cannot use the diamond wavefront" << std::endl;
 			}
 			continue;
 		}
@@ -794,6 +836,164 @@ void Engine_Metal::InitExcitations()
 		}
 		m_Metal->excitations.push_back(region);
 	}
+}
+
+void Engine_Metal::InitDiamondUpdate()
+{
+	if (!m_Metal->diamondRequested || !m_Metal->pml.empty() || !m_Metal->ade.empty())
+	{
+		if (m_Metal->legacyRequested)
+			return;
+		const std::string reason = !m_Metal->pml.empty() ? "UPML" :
+			!m_Metal->ade.empty() ? "ADE" : "a CPU extension hook";
+		throw std::runtime_error("Metal: " + reason +
+			" has not migrated to the diamond E/H kernel; refusing to start a legacy simulation. "
+			"Use OPENEMS_METAL_FUSED_PIPELINE=0 only for an explicit diagnostic run.");
+	}
+	struct SourceTemplate { uint32_t sourceIndex, x, y; bool voltage; };
+	std::vector<SourceTemplate> sourceTemplates;
+	std::vector<DiamondSource> sourceTable;
+	std::vector<float> signal;
+	for (const auto& region : m_Metal->excitations)
+		for (unsigned int field = 0; field < 2; ++field)
+		{
+			if (!region.counts[field])
+				continue;
+			if (signal.size() + region.signalLength > std::numeric_limits<uint32_t>::max())
+				throw std::runtime_error("Metal: diamond signal buffer exceeds uint32");
+			const uint32_t signalOffset = static_cast<uint32_t>(signal.size());
+			const float* samples = static_cast<const float*>(region.signals[field].contents);
+			signal.insert(signal.end(), samples, samples + region.signalLength);
+			const ExcitationSource* sources = static_cast<const ExcitationSource*>(region.sources[field].contents);
+			for (uint32_t n = 0; n < region.counts[field]; ++n)
+			{
+				if (sourceTable.size() == std::numeric_limits<uint32_t>::max())
+					throw std::runtime_error("Metal: diamond source table exceeds uint32");
+				uint32_t q = sources[n].fieldIndex / 4 / 3 / numVectors;
+				const uint32_t y = q % numLines[1];
+				const uint32_t x = q / numLines[1];
+				sourceTemplates.push_back({static_cast<uint32_t>(sourceTable.size()),
+					x, y, field == 0});
+				sourceTable.push_back({sources[n].fieldIndex, sources[n].amplitude,
+					sources[n].delay, signalOffset, region.signalLength, region.period});
+			}
+		}
+	NSError* error = nil;
+	MTLFunctionConstantValues* constants = [MTLFunctionConstantValues new];
+	bool compressed = m_Metal->coeffIndex != nil;
+	bool hasSources = !sourceTemplates.empty();
+	[constants setConstantValue:&compressed type:MTLDataTypeBool atIndex:0];
+	[constants setConstantValue:&hasSources type:MTLDataTypeBool atIndex:2];
+	id<MTLFunction> function = [m_Metal->library newFunctionWithName:@"update_diamond"
+		constantValues:constants error:&error];
+	if (!function)
+		throw MetalError("Metal: update_diamond kernel not found", error);
+	m_Metal->diamondPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
+	if (!m_Metal->diamondPipeline)
+		throw MetalError("Metal: failed to create diamond pipeline", error);
+	m_Metal->diamondHasSources = hasSources;
+	if (hasSources)
+	{
+		m_Metal->diamondSourceTable = [m_Metal->device newBufferWithBytes:sourceTable.data()
+			length:sourceTable.size() * sizeof(DiamondSource) options:MTLResourceStorageModeShared];
+		m_Metal->diamondSignal = [m_Metal->device newBufferWithBytes:signal.data()
+			length:signal.size() * sizeof(float) options:MTLResourceStorageModeShared];
+		if (!m_Metal->diamondSourceTable || !m_Metal->diamondSignal)
+			throw std::runtime_error("Metal: failed to allocate diamond source buffers");
+	}
+
+	std::array<std::vector<std::vector<uint32_t>>, 2> sourcesByXY = {
+		std::vector<std::vector<uint32_t>>((size_t)numLines[0] * numLines[1]),
+		std::vector<std::vector<uint32_t>>((size_t)numLines[0] * numLines[1])};
+	for (const SourceTemplate& source : sourceTemplates)
+		sourcesByXY[source.voltage ? 0 : 1][(size_t)source.x * numLines[1] + source.y]
+			.push_back(source.sourceIndex);
+
+	const uint32_t blockWidth = 2;
+	uint64_t auxiliaryBytes = signal.size() * sizeof(float) +
+		sourceTable.size() * sizeof(DiamondSource);
+	for (uint32_t depth = 1; depth <= DIAMOND_DEPTH; ++depth)
+	{
+		const DiamondAxis xAxis = MakeDiamondAxis(numLines[0], blockWidth, depth * 2);
+		const DiamondAxis yAxis = MakeDiamondAxis(numLines[1], blockWidth, depth * 2);
+		for (uint32_t phase = 0; phase < 4; ++phase)
+		{
+			const uint32_t phaseX = phase / 2, phaseY = phase % 2;
+			std::vector<DiamondTile> tiles;
+			for (const DiamondBlock& xb : xAxis[phaseX])
+				for (const DiamondBlock& yb : yAxis[phaseY])
+				{
+					DiamondTile tile{};
+					bool any = false;
+					for (uint32_t t = 0; t < depth; ++t)
+					{
+						const DiamondRange ex = xb[2 * t], hx = xb[2 * t + 1];
+						const DiamondRange ey = yb[2 * t], hy = yb[2 * t + 1];
+						DiamondStep& step = tile.steps[t];
+						for (int n = 0; n < 4; ++n)
+							step.voltageRange[n] = step.currentRange[n] = -1;
+						if (ex.first >= 0 && ey.first >= 0)
+						{
+							step.voltageRange[0] = ex.first; step.voltageRange[1] = ex.second;
+							step.voltageRange[2] = ey.first; step.voltageRange[3] = ey.second;
+							any = true;
+						}
+						if (hx.first >= 0 && hy.first >= 0)
+						{
+							step.currentRange[0] = hx.first; step.currentRange[1] = hx.second;
+							step.currentRange[2] = hy.first; step.currentRange[3] = hy.second;
+							any = true;
+						}
+					}
+					if (any)
+						tiles.push_back(tile);
+				}
+			std::vector<uint32_t> sourceIndices;
+			auto appendSource = [&sourceIndices](uint32_t source) {
+				if (sourceIndices.size() == std::numeric_limits<uint32_t>::max())
+					throw std::runtime_error("Metal: diamond source schedule exceeds uint32");
+				sourceIndices.push_back(source);
+			};
+			auto appendRange = [&](const int32_t range[4], unsigned int field) {
+				if (range[0] < 0)
+					return;
+				for (int32_t x = range[0]; x <= range[1]; ++x)
+					for (int32_t y = range[2]; y <= range[3]; ++y)
+						for (uint32_t source : sourcesByXY[field][(size_t)x * numLines[1] + y])
+							appendSource(source);
+			};
+			for (DiamondTile& tile : tiles)
+				for (uint32_t t = 0; t < depth; ++t)
+				{
+					DiamondStep& step = tile.steps[t];
+					step.voltageSourceOffset = static_cast<uint32_t>(sourceIndices.size());
+					appendRange(step.voltageRange, 0);
+					step.voltageSourceCount = static_cast<uint32_t>(sourceIndices.size()) - step.voltageSourceOffset;
+					step.currentSourceOffset = static_cast<uint32_t>(sourceIndices.size());
+					appendRange(step.currentRange, 1);
+					step.currentSourceCount = static_cast<uint32_t>(sourceIndices.size()) - step.currentSourceOffset;
+				}
+			if (tiles.empty())
+				continue;
+			auxiliaryBytes += tiles.size() * sizeof(DiamondTile) +
+				sourceIndices.size() * sizeof(uint32_t);
+			m_Metal->diamondTileCount[depth][phase] = static_cast<uint32_t>(tiles.size());
+			m_Metal->diamondTiles[depth][phase] = [m_Metal->device newBufferWithBytes:tiles.data()
+				length:tiles.size() * sizeof(DiamondTile) options:MTLResourceStorageModeShared];
+			if (hasSources)
+				m_Metal->diamondSourceIndices[depth][phase] = sourceIndices.empty() ?
+					[m_Metal->device newBufferWithLength:sizeof(uint32_t) options:MTLResourceStorageModeShared] :
+					[m_Metal->device newBufferWithBytes:sourceIndices.data()
+					 length:sourceIndices.size() * sizeof(uint32_t) options:MTLResourceStorageModeShared];
+			if (!m_Metal->diamondTiles[depth][phase] ||
+				(hasSources && !m_Metal->diamondSourceIndices[depth][phase]))
+				throw std::runtime_error("Metal: failed to allocate diamond schedule");
+		}
+	}
+	m_Metal->diamondUpdate = true;
+	cout << "Metal: in-place diamond update: " << DIAMOND_DEPTH
+	     << " timesteps/block, width " << blockWidth
+	     << ", " << auxiliaryBytes << " auxiliary bytes" << endl;
 }
 
 void Engine_Metal::ApplyMetalExcitations(bool voltage)
@@ -853,7 +1053,7 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 				[extension](const MetalState::PMLRegion& r) { return r.extension == extension; });
 			if (region == m_Metal->pml.end())
 			{
-				if (m_Metal->fusedPipeline && dynamic_cast<Engine_Ext_Excitation*>(extension))
+				if (m_Metal->diamondRequested && dynamic_cast<Engine_Ext_Excitation*>(extension))
 					continue;
 				FinishMetalCommands();
 				if (voltage)
@@ -879,16 +1079,13 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 			[encoder setBuffer:pre ? region->self[f] : region->newFlux[f] offset:0 atIndex:2];
 			if (pre)
 				[encoder setBuffer:region->oldFlux[f] offset:0 atIndex:3];
-			if (m_Metal->indexedPML)
-				[encoder setBuffer:region->indices offset:0 atIndex:5];
-			else
-				[encoder setBytes:&region->params length:sizeof(PMLParams) atIndex:4];
+			[encoder setBuffer:region->indices offset:0 atIndex:5];
 			const PMLParams& p = region->params;
 			[encoder dispatchThreads:MTLSizeMake((NSUInteger)p.nx * p.ny * p.nz * 3, 1, 1)
 				threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
 			[encoder endEncoding];
 		}
-		if (!pre && !m_Metal->fusedPipeline)
+		if (!pre && !m_Metal->diamondRequested)
 			FinishMetalCommands(); // CPU Apply hooks need completed fields.
 	}
 }
@@ -962,9 +1159,9 @@ void Engine_Metal::Apply2Voltages()
 
 void Engine_Metal::InitADE()
 {
-	// The FP64 reference reproduces every extension on the CPU, and the fused
+	// The FP64 reference reproduces every extension on the CPU, and the diamond
 	// pipeline never calls Apply2Voltages, so both keep the ADE on the CPU.
-	if (m_Metal->referenceEnabled || m_Metal->fusedPipeline)
+	if (m_Metal->referenceEnabled || m_Metal->diamondRequested)
 	{
 		for (Engine_Extension* extension : m_Eng_exts)
 		{
@@ -972,7 +1169,7 @@ void Engine_Metal::InitADE()
 			if (lor && lor->MetalADEOffloadSupported())
 			{
 				std::cerr << "Metal: conducting-sheet ADE stays on the CPU ("
-				          << (m_Metal->referenceEnabled ? "FP64 reference mode" : "fused pipeline")
+				          << (m_Metal->referenceEnabled ? "FP64 reference mode" : "diamond pipeline")
 				          << ")" << std::endl;
 				break;
 			}
@@ -1064,9 +1261,62 @@ void Engine_Metal::InitADE()
 		     << total << " active edges" << endl;
 }
 
+void Engine_Metal::UpdateDiamond(unsigned int depth)
+{
+	DiamondParams params = {numLines[0], numLines[1], numVectors, numTS, depth};
+	// The kernel maps whole packed-Z slot groups to threads, so the threadgroup
+	// must be an exact multiple of the slot count it can cover.
+	const NSUInteger maxThreads = std::min<NSUInteger>({
+		m_Metal->diamondPipeline.maxTotalThreadsPerThreadgroup,
+		m_Metal->device.maxThreadsPerThreadgroup.width});
+	const NSUInteger slots = std::min<NSUInteger>(numVectors, maxThreads);
+	const NSUInteger groups = std::max<NSUInteger>(1, 256 / slots);
+	const NSUInteger threads = slots * groups;
+	for (unsigned int phase = 0; phase < 4; ++phase)
+	{
+		const uint32_t count = m_Metal->diamondTileCount[depth][phase];
+		if (!count)
+			continue;
+		id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
+		[encoder setComputePipelineState:m_Metal->diamondPipeline];
+		[encoder setBuffer:m_Metal->volt offset:0 atIndex:0];
+		[encoder setBuffer:m_Metal->curr offset:0 atIndex:1];
+		[encoder setBuffer:m_Metal->vv offset:0 atIndex:2];
+		[encoder setBuffer:m_Metal->vi offset:0 atIndex:3];
+		[encoder setBuffer:m_Metal->ii offset:0 atIndex:4];
+		[encoder setBuffer:m_Metal->iv offset:0 atIndex:5];
+		[encoder setBytes:&params length:sizeof(params) atIndex:6];
+		[encoder setBuffer:m_Metal->diamondTiles[depth][phase] offset:0 atIndex:7];
+		if (m_Metal->coeffIndex)
+			[encoder setBuffer:m_Metal->coeffIndex offset:0 atIndex:8];
+		if (m_Metal->diamondHasSources)
+		{
+			[encoder setBuffer:m_Metal->diamondSourceTable offset:0 atIndex:9];
+			[encoder setBuffer:m_Metal->diamondSourceIndices[depth][phase] offset:0 atIndex:10];
+			[encoder setBuffer:m_Metal->diamondSignal offset:0 atIndex:11];
+		}
+		[encoder dispatchThreadgroups:MTLSizeMake(count, 1, 1)
+			threadsPerThreadgroup:MTLSizeMake(threads, 1, 1)];
+		[encoder endEncoding];
+	}
+}
+
 bool Engine_Metal::IterateTS(unsigned int iterTS)
 {
-	if (!m_Metal->fusedPipeline)
+	if (m_Metal->diamondUpdate)
+	{
+		unsigned int remaining = iterTS;
+		while (remaining)
+		{
+			const unsigned int depth = std::min<unsigned int>(DIAMOND_DEPTH, remaining);
+			UpdateDiamond(depth);
+			numTS += depth;
+			remaining -= depth;
+		}
+		FinishMetalCommands();
+		return true;
+	}
+	if (!m_Metal->diamondRequested)
 		return Engine::IterateTS(iterTS);
 
 	for (unsigned int iter = 0; iter < iterTS; ++iter)
@@ -1186,7 +1436,7 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1], numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || (!m_Metal->fusedPipeline && m_Metal->pml.empty()))
+		if (m_Metal->referenceEnabled || (!m_Metal->diamondRequested && m_Metal->pml.empty()))
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)
@@ -1253,7 +1503,7 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1] - 1, numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || (!m_Metal->fusedPipeline && m_Metal->pml.empty()))
+		if (m_Metal->referenceEnabled || (!m_Metal->diamondRequested && m_Metal->pml.empty()))
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)

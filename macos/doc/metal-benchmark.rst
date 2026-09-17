@@ -9,8 +9,12 @@ is performance only.
 What is benchmarked exactly
 ---------------------------
 
-* **Metal engine** (``--engine=metal``): fused E/H field update, UPML
-  conditioning, PEC/geometry pass and conducting-sheet ADE on the Apple GPU.
+* **Metal engine** (``--engine=metal``): an in-place four-phase XY diamond
+  wavefront, tile-local voltage/current excitation, and the PEC/geometry pass
+  on the Apple GPU. Four timesteps are advanced per temporal block.
+* **Legacy Metal diagnostic** (``OPENEMS_METAL_FUSED_PIPELINE=0``): the old
+  separate E/H dispatches, retained for A/B validation and extensions that have
+  not migrated into the diamond kernel.
 * **Baseline** (``--engine=multithreaded --numThreads=N``): the compressed-SSE
   operator with ``N`` worker threads (``Engine_Multithread`` derives from
   ``Engine_SSE_Compressed``). The thread count is swept to find the fastest CPU
@@ -37,14 +41,14 @@ must have CSXCAD (the same interpreter used for the other ``metal_*.py`` tests).
    # small, quick smoke run (~1 min on an M4 Pro)
    python macos/bench/bench_metal.py --openems /path/to/openEMS --reps 3
 
-   # representative throughput run
+   # representative diamond-wavefront throughput run (PEC is the default)
    python macos/bench/bench_metal.py --openems /path/to/openEMS \
        --cells 256 256 256 --steps 1000 --reps 3 --mt-threads 8,10,14 \
-       --tag pml17m --json out/pml17m.json
+       --compare-metal-legacy --tag pec17m --json out/pec17m.json
 
-   # PEC instead of PML (isolates the core field update, no UPML extension)
+   # Explicit legacy UPML diagnostic; normal Metal runs never select it silently
    python macos/bench/bench_metal.py --openems /path/to/openEMS \
-       --cells 256 256 256 --steps 1000 --reps 3 --boundaries PEC
+       --metal-legacy --boundaries PML_8
 
 For this checkout the binary can be found automatically, so ``--openems`` may be
 omitted if ``OPENEMS_BIN`` is set or ``build/openEMS`` exists. Run
@@ -76,11 +80,13 @@ summary.
 Results (Apple M4 Pro, 14 cores, macOS, Release, fast math off)
 ---------------------------------------------------------------
 
-Measured from HEAD ``70f14c2`` with interleaved medians, 3 repetitions.
+Measured after the in-place diamond integration with interleaved medians: 3
+repetitions for both grids. ``metal-legacy``
+is the explicit ``OPENEMS_METAL_FUSED_PIPELINE=0`` comparison.
 
 .. list-table::
    :header-rows: 1
-   :widths: 25 15 9 9 10 10 16
+   :widths: 25 15 9 9 10 10 18
 
    * - Workload
      - Engine
@@ -88,84 +94,71 @@ Measured from HEAD ``70f14c2`` with interleaved medians, 3 repetitions.
      - step [s]
      - MCells/s
      - RSS [MB]
-     - Speedup (step / wall)
-   * - PML, 3.0M cells, 600 steps
-     - metal
-     - 4.050
-     - 1.804
-     - 1002
-     - 617
-     - —
-   * - PML, 3.0M cells, 600 steps
-     - **mt-10** (fastest)
-     - 5.400
-     - 3.522
-     - 514
-     - 419
-     - **1.95x / 1.33x**
-   * - PML, 17.0M cells, 1000 steps
-     - metal
-     - 19.654
-     - 10.560
-     - 1607
-     - 2794
-     - —
-   * - PML, 17.0M cells, 1000 steps
-     - **mt-10** (fastest)
-     - 36.663
-     - 26.600
-     - 638
-     - 1965
-     - **2.52x / 1.86x**
+     - Diamond advantage (step / wall)
    * - PEC, 3.0M cells, 600 steps
-     - metal
-     - 1.729
-     - 0.694
-     - 2608
+     - **metal diamond** (depth 4)
+     - 1.388
+     - 0.322
+     - 5618
+     - 462
+     - —
+   * - PEC, 3.0M cells, 600 steps
+     - metal legacy
+     - 2.008
+     - 0.933
+     - 1939
      - 460
-     - —
+     - **2.90x / 1.45x**
    * - PEC, 3.0M cells, 600 steps
-     - **mt-10** (fastest)
-     - 1.871
-     - 0.733
-     - 2468
+     - **mt-8** (fastest CPU)
+     - 1.935
+     - 0.748
+     - 2419
      - 320
-     - **1.06x / 1.08x**
+     - **2.32x / 1.39x**
    * - PEC, 17.0M cells, 1000 steps
-     - metal
-     - 10.741
-     - 5.380
-     - 3155
-     - 2399
+     - **metal diamond** (depth 4)
+     - 9.599
+     - 4.210
+     - 4032
+     - 2406
      - —
    * - PEC, 17.0M cells, 1000 steps
-     - **mt-8** (fastest)
-     - 15.947
-     - 7.890
-     - 2151
+     - metal legacy
+     - 10.969
+     - 5.540
+     - 3064
+     - 2398
+     - **1.32x / 1.14x**
+   * - PEC, 17.0M cells, 1000 steps
+     - **mt-8** (fastest CPU)
+     - 15.965
+     - 7.930
+     - 2141
      - 1656
-     - **1.47x / 1.49x**
+     - **1.88x / 1.66x**
 
 Analysis
 --------
 
-* **PML workloads win big: 1.95-2.52x stepping, 1.33-1.86x wall.** The GPU
-  offloads the UPML pre/post conditioning in addition to the fused E/H update,
-  and those extensions are a large share of a PML run.
-* **PEC isolates the core update**: near parity on the small grid (the run is
-  submission-bound) and **1.47x** at 17M cells, where GPU memory bandwidth
-  starts to pay off.
-* **Throughput grows with grid size** (PML 1002 -> 1607 MCells/s), confirming
-  that small models are dominated by per-step submission overhead.
-* **Wall speedup trails stepping speedup** because operator/coefficient setup
-  stays on the CPU and is unchanged by the engine.
-* **More threads do not keep helping**: `mt-10` (the 10 performance cores) beats
-  `mt-14`, which contends with the efficiency cores. Both engines are ultimately
-  limited by the same unified-memory bandwidth, which is why the Metal gain is
-  bounded rather than an order of magnitude.
-* **Metal costs more memory**: peak RSS is 140-829 MB higher than the CPU
-  baseline (see below), the price of the GPU buffers and coefficient
-  dictionaries.
+* The in-place diamond kernel improves stepping over the old two-dispatch Metal
+  update by **2.90x at 3.0M cells** and **1.32x at 17.0M cells**. Four timesteps
+  share each tile's cache working set, and four mountain/valley dispatches
+  replace eight whole-grid dispatches per temporal block.
+* The cell loop carries no runtime integer division: threads cover whole
+  packed-Z slot groups and walk the tile's (x, y) pairs by a stride whose delta
+  is computed once. Measured against the previous diamond kernel this is
+  **1.08-1.16x** further stepping speedup (larger on ALU-bound small grids).
+* Against the previously measured fastest CPU configuration, diamond Metal is
+  **1.88-2.32x faster in stepping** and **1.39-1.66x faster wall-to-wall**.
+* A two-cell shortest diamond span provides enough independent threadgroups on
+  the larger grid. Wider tiles reduced occupancy and lost the large-grid gain.
+* The kernel remains in place and allocates no second E/H field pair. Schedule
+  and duplicated tile-source records account for only a few MB. Counter
+  measurements, not nominal load counts, are required before calling the
+  result DRAM-bandwidth limited.
+* Wall speedup trails stepping speedup because operator/coefficient setup stays
+  on the CPU and is unchanged by the engine.
 
 Peak process memory
 -------------------
@@ -177,31 +170,28 @@ engines build, plus the Metal buffers in the Metal case.
 
 .. list-table::
    :header-rows: 1
-   :widths: 25 15 15 15
+   :widths: 25 15 15 15 15
 
    * - Workload
-     - Metal RSS [MB]
-     - CPU RSS [MB]
-     - Metal overhead
-   * - PML, 3.0M cells, 600 steps
-     - 617
-     - 419
-     - +198
+     - Diamond [MB]
+     - Legacy [MB]
+     - CPU [MB]
+     - Diamond / legacy delta
    * - PEC, 3.0M cells, 600 steps
+     - 462
      - 460
      - 320
-     - +140
-   * - PML, 17.0M cells, 1000 steps
-     - 2794
-     - 1965
-     - +829
+     - +2
    * - PEC, 17.0M cells, 1000 steps
-     - 2399
+     - 2406
+     - 2398
      - 1656
-     - +742
+     - +8
 
-The coefficient dictionaries shrink the *GPU* working set but not the host
-process, so Metal trades a modest amount of extra memory for the speedup above.
+The diamond path keeps one E/H pair. Its small RSS delta comes from precomputed
+range schedules and tile-local source records, rather than a grid-sized field
+copy. Coefficient dictionaries shrink the *GPU* coefficient working set but not
+the host process.
 
 Caveats
 -------
@@ -212,9 +202,11 @@ Caveats
   ``m_numThreads = 1`` (``FDTD/engine_multithread.cpp:103``). Always pass
   ``--numThreads`` for a real SSE + multithread baseline; use ``--include-auto``
   to reproduce this.
-* **This is Metal's best case.** A regular grid compresses exceptionally well
-  (coefficient dictionaries plus indexed UPML). Real PCB geometry that falls
-  back to dense coefficients can lose most of the speedup; see
-  ``macos/doc/metal-engine.rst``.
+* **This is Metal's best case.** A regular grid compresses exceptionally well.
+  Real PCB geometry that uses dense coefficients can lose much of the speedup;
+  see ``macos/doc/metal-engine.rst``.
+* **UPML and ADE are not in the diamond wavefront yet.** Normal Metal runs requiring either abort
+  before stepping. ``--metal-legacy --boundaries PML_8`` benchmarks the old path
+  explicitly; it is not selected automatically.
 * **Performance only, not convergence.** These are finite-run timings, not an
   accuracy or stability check.

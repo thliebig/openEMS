@@ -30,8 +30,11 @@ TOLERANCE_ATOL = 1e-6
 def run(binary, model, engine, output, expect_offload):
     output.mkdir()
     start = time.perf_counter()
+    env = os.environ.copy()
+    if engine == 'metal':
+        env['OPENEMS_METAL_FUSED_PIPELINE'] = '0'  # ADE migration is pending; legacy is explicit.
     p = subprocess.run([binary, str(model), '--engine=' + engine], cwd=output,
-                       env=os.environ.copy(), text=True,
+                       env=env, text=True,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     wall = time.perf_counter() - start
     (output / 'solver.log').write_text(p.stdout)

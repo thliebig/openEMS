@@ -1,9 +1,8 @@
 // Regression: an indexed Metal engine must restore operator UPML coefficient
-// order before a fresh scalar engine is constructed from the same operator.
+// order before a fresh engine is constructed from the same operator.
 #include "openems.h"
 #include "FDTD/operator.h"
 #include "FDTD/engine.h"
-#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -35,19 +34,13 @@ public:
 int main(int argc, char** argv)
 {
 	if (argc!=2) return 2;
-	setenv("OPENEMS_METAL_PML_REUSE", "1", 1);
-	setenv("OPENEMS_METAL_PML_COMPRESS", "1", 1);
-	setenv("OPENEMS_METAL_PML_LAYOUT", "indexed", 1);
 	Fixture sim;
 	sim.SetLibraryArguments({"engine=metal"});
 	if (!sim.ReadFromXML(argv[1]) || sim.SetupFDTD()!=0) return 3;
 	auto first=sim.Fields(400);
-	for (const char* layout : {"scalar", "indexed", "scalar"}) {
-		setenv("OPENEMS_METAL_PML_LAYOUT", layout, 1);
-		sim.Recreate();
-		auto got=sim.Fields(400);
-		if (got.size()!=first.size() || std::memcmp(first.data(),got.data(),got.size()*sizeof(float)))
-			throw std::runtime_error("Recreated engine fields differ");
-	}
-	std::cout << "Recreated indexed/scalar engines: bit-identical fields" << std::endl;
+	sim.Recreate();
+	auto got=sim.Fields(400);
+	if (got.size()!=first.size() || std::memcmp(first.data(),got.data(),got.size()*sizeof(float)))
+		throw std::runtime_error("Recreated engine fields differ");
+	std::cout << "Recreated Metal engine: bit-identical fields" << std::endl;
 }

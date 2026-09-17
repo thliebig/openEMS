@@ -62,6 +62,7 @@ def fixture(path, kind):
 def run(binary, model, mode, output):
     output.mkdir()
     env = os.environ.copy()
+    env['OPENEMS_METAL_FUSED_PIPELINE'] = '0'  # Extension migration is pending; legacy is explicit.
     if mode == 'default':
         env.pop('OPENEMS_METAL_PEC', None)
     else:

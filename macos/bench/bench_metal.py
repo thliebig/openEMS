@@ -102,15 +102,17 @@ def parse_output(stdout):
             info['speed'] = float(line.split()[1])
         if 'Metal: UPML layout:' in line:
             info['notes'].append(line.split(':', 1)[1].strip())
-        if 'Metal: fused E/H pipeline:' in line:
-            info['notes'].append('fused')
+        if 'Metal: in-place diamond E/H pipeline:' in line:
+            info['notes'].append('diamond' if line.rstrip().endswith('enabled') else 'legacy')
+        if line.startswith('Metal: in-place diamond update:'):
+            info['notes'].append(line.split(':', 2)[2].strip())
         if 'coefficient dictionary limit' in line:
             info['notes'].append('dense-fallback')
     info['note'] = '+'.join(dict.fromkeys(info['notes']))
     return info
 
 
-def run_once(binary, model, engine, threads, outdir):
+def run_once(binary, model, engine, threads, outdir, env_overrides=None):
     outdir.mkdir(parents=True, exist_ok=True)
     cmd = [str(binary), str(model), '--engine=' + engine]
     if threads is not None:
@@ -118,7 +120,10 @@ def run_once(binary, model, engine, threads, outdir):
     if _TIME_BIN.exists():
         cmd = [str(_TIME_BIN)] + _TIME_ARGS + cmd
     start = time.perf_counter()
-    proc = subprocess.run(cmd, cwd=outdir, env=os.environ.copy(), text=True,
+    env = os.environ.copy()
+    if env_overrides:
+        env.update(env_overrides)
+    proc = subprocess.run(cmd, cwd=outdir, env=env, text=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     wall = time.perf_counter() - start
     if proc.returncode:
@@ -166,9 +171,9 @@ def main():
     ap.add_argument('--steps', type=int, default=600, help='number of timesteps')
     ap.add_argument('--reps', type=int, default=5,
                     help='repetitions per configuration (default: 5)')
-    ap.add_argument('--boundaries', default='PML_8',
-                    help="boundary list or single value, e.g. 'PML_8' or "
-                         "'PML_8,PML_8,PEC,PEC,PML_8,PML_8' (default: PML_8)")
+    ap.add_argument('--boundaries', default='PEC',
+                    help="boundary list or single value, e.g. 'PEC' or "
+                         "'PML_8,PML_8,PEC,PEC,PML_8,PML_8' (default: PEC)")
     ap.add_argument('--mt-threads', default='8,10,14',
                     help='comma-separated thread counts for the multithreaded engine '
                          '(default: 8,10,14)')
@@ -178,6 +183,10 @@ def main():
     ap.add_argument('--include-auto', action='store_true',
                     help='also run multithreaded without --numThreads '
                          '(note: the auto path runs single-threaded, see README)')
+    ap.add_argument('--metal-legacy', action='store_true',
+                    help='explicitly benchmark the legacy two-kernel Metal path')
+    ap.add_argument('--compare-metal-legacy', action='store_true',
+                    help='benchmark both in-place diamond and legacy Metal paths')
     ap.add_argument('--outdir', default=str(HERE / 'out'),
                     help='output directory (default: ./out)')
     ap.add_argument('--json', help='write the summary as JSON to this path')
@@ -202,35 +211,40 @@ def main():
     threads = [int(t) for t in args.mt_threads.split(',') if t.strip()]
     configs = []
     if args.engines in ('both', 'metal'):
-        configs.append(('metal', None))
+        if not args.metal_legacy:
+            configs.append(('metal', None, {}))
+        if args.metal_legacy or args.compare_metal_legacy:
+            configs.append(('metal-legacy', None,
+                            {'OPENEMS_METAL_FUSED_PIPELINE': '0'}))
     if args.engines in ('both', 'mt'):
-        configs += [('mt-%d' % t, t) for t in threads]
+        configs += [('mt-%d' % t, t, {}) for t in threads]
         if args.include_auto:
-            configs.append(('mt-auto', 'auto'))
+            configs.append(('mt-auto', 'auto', {}))
     if not configs:
         raise SystemExit('no engines selected')
 
     print('openEMS : %s' % binary)
     print('model   : %s cells, %s boundaries, %d steps'
           % ('x'.join(map(str, args.cells)), ','.join(boundaries), args.steps))
-    print('configs : %s' % ', '.join(name for name, _ in configs))
+    print('configs : %s' % ', '.join(name for name, _, _ in configs))
     print('reps    : %d (interleaved, medians reported)' % args.reps)
 
-    samples = {name: [] for name, _ in configs}
+    samples = {name: [] for name, _, _ in configs}
     for rep in range(args.reps):
         order = configs if rep % 2 == 0 else list(reversed(configs))
-        for name, thr in order:
+        for name, thr, extra_env in order:
             samples[name].append(
                 run_once(binary, model, 'metal' if thr is None else 'multithreaded',
-                         None if thr == 'auto' else thr, out / ('%s-%s-r%d' % (args.tag, name, rep))))
+                         None if thr == 'auto' else thr, out / ('%s-%s-r%d' % (args.tag, name, rep)),
+                         extra_env))
 
     results = []
-    for name, thr in configs:
+    for name, thr, _ in configs:
         r = median_config(samples[name], None if thr is None else thr)
         r['name'] = name
         results.append(r)
 
-    metal = next((r for r in results if r['name'] == 'metal'), None)
+    metal = next((r for r in results if r['name'] in ('metal', 'metal-legacy')), None)
     mt = [r for r in results if r['name'].startswith('mt-') and r['threads']]
     best = min(mt, key=lambda r: r['step_s']) if mt else None
 
