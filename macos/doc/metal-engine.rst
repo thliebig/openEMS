@@ -43,10 +43,9 @@ Sources are assigned to their owning tile for each local timestep. Ordering,
 overlapping sources, packed-Z lanes, partial edge tiles and boundary values are
 bit-identical to the explicit two-dispatch Metal path.
 
-Excitation sources and the lumped RLC recurrence are folded into the
-wavefront. UPML, ADE and the remaining CPU extension hooks have not migrated;
-a normal Metal run needing them aborts before timestep 0. Fast math is always
-off.
+Excitation sources, the lumped RLC recurrence and UPML are folded into the
+wavefront. ADE and the remaining CPU extension hooks have not migrated; a normal
+Metal run needing them aborts before timestep 0. Fast math is always off.
 
 PEC and geometry mapping
 ------------------------
@@ -91,11 +90,25 @@ Further behaviour:
 UPML
 ----
 
-UPML has not migrated into the diamond wavefront and runs only under the
-explicit legacy diagnostic path, never selected automatically. Its indexed
-layout permutes coefficients and fluxes into packed-field order. Operator
-coefficient arrays are permuted in place and restored on teardown, and lossless
-32-bit dictionaries rebuild the dense CPU arrays for later CPU engines.
+The uniaxial PML runs inside the diamond wavefront. Each slab's six operator
+coefficient arrays and its two flux arrays are wrapped in place with
+``newBufferWithBytesNoCopy``; nothing is copied and the operator keeps ownership.
+The arrays are the same dense local ``[component][x][y][z]`` layout the CPU hooks
+use, so the kernel reads them via an argument buffer of per-slab array pointers
+plus a small region record (start, size). That keeps it to one coefficient
+binding and one flux binding instead of one per array. The kernel applies the
+flux recurrence around the Yee E and H updates, component by component. A packed
+``float4`` spans four z positions, so each of its lanes is filtered by the
+slab's z range; lanes outside the slab keep the identity and are left untouched.
+Regions never overlap in ``(x, y)``, so a cell belongs to at most one slab.
+
+The diamond path reproduces the legacy GPU conditioners bit for bit: the same
+local update, in the same CPU order (pre in reverse extension order, post
+forward), with the same FP32 operations. The explicit legacy path
+(``OPENEMS_METAL_FUSED_PIPELINE=0``) keeps the indexed conditioning kernels,
+which permute the operator coefficient arrays in place, restore them on
+teardown and rebuild them from lossless 32-bit dictionaries. Setting
+``OPENEMS_METAL_PML=0`` selects the CPU extension hooks.
 
 Coefficient dictionaries
 ------------------------
@@ -124,9 +137,8 @@ result in the same floating-point neighbourhood as the CPU extension. The FP32
 trapezoidal form is the same well-conditioned update used on the CPU; the older
 second-order ADE formed ``b1*ib0 ~ -2`` by cancellation and lost its damping.
 
-A lumped element on its own stays on the primary path. Combined with a PML it
-still requires the explicit legacy diagnostic path, because UPML has not
-migrated.
+A lumped element on its own, or combined with UPML, stays on the primary
+diamond path.
 
 Conducting-sheet ADE
 --------------------
@@ -172,10 +184,10 @@ Validation
    python macos/tests/metal_fields.py --openems /absolute/path/to/openEMS --suite
    python macos/tests/metal_pec.py --openems /absolute/path/to/openEMS
    python macos/tests/metal_lumpedrlc.py --openems /absolute/path/to/openEMS
+   python macos/tests/metal_pml.py --openems /absolute/path/to/openEMS
    python macos/tests/metal_conductingsheet.py --openems /absolute/path/to/openEMS
    python macos/tests/metal_dispersive.py --openems /absolute/path/to/openEMS
    OPENEMS_METAL_FUSED_PIPELINE=0 python macos/tests/metal_ade.py --openems /absolute/path/to/openEMS
-   OPENEMS_METAL_FUSED_PIPELINE=0 python macos/tests/metal_pml.py --openems /absolute/path/to/openEMS
 
 ``metal_fields.py`` compares SSE against Metal with relative-L2 limits and
 requires dense/compressed and diamond/explicit-legacy variants to be
@@ -183,6 +195,8 @@ bit-identical. ``--stress-sources`` adds overlapping sources spanning tile
 boundaries. The PEC, conducting-sheet and dispersive suites compare CPU vs GPU
 winner resolution and require bit-identical dumps. ``metal_lumpedrlc.py``
 compares the in-kernel RLC recurrence against the SSE CPU extension.
+``metal_pml.py`` requires the diamond UPML pass to reproduce the legacy GPU
+conditioners bit for bit, alongside the CPU/legacy and SSE checks.
 ``metal_ade.py`` compares the GPU conducting-sheet ADE against the SSE CPU
 recurrence.
 
@@ -201,10 +215,10 @@ or a CPU extension path automatically.
 Extension coverage
 ~~~~~~~~~~~~~~~~~~
 
-The diamond wavefront runs the field update, excitation sources and lumped RLC
-in one kernel. Every other engine extension is a CPU hook that has not migrated;
-a normal Metal run that needs one aborts before timestep 0. The explicit legacy
-path (``OPENEMS_METAL_FUSED_PIPELINE=0``) runs them on the CPU.
+The diamond wavefront runs the field update, excitation sources, lumped RLC and
+UPML in one kernel. Every other engine extension is a CPU hook that has not
+migrated; a normal Metal run that needs one aborts before timestep 0. The
+explicit legacy path (``OPENEMS_METAL_FUSED_PIPELINE=0``) runs them on the CPU.
 
 .. list-table::
    :header-rows: 1
@@ -220,8 +234,8 @@ path (``OPENEMS_METAL_FUSED_PIPELINE=0``) runs them on the CPU.
      - yes
      - trapezoidal state-space recurrence in the E/H kernel
    * - ``Engine_Ext_UPML``
-     - no
-     - GPU conditioning kernels, legacy path only
+     - yes
+     - per-lane flux recurrence in the E/H kernel; legacy kernels otherwise
    * - ``Engine_Ext_LorentzMaterial`` (conducting sheet)
      - no
      - volt-ADE kernels, legacy path only
@@ -306,7 +320,7 @@ aborts unless the user explicitly requested the legacy diagnostic.
      - dense UPML coefficients for that region
    * - more than ``min(65536, positions/4)`` unique operator records
      - dense operator coefficients
-   * - UPML, ADE, or any other CPU extension hook (see Extension coverage) in a
+   * - ADE, or any other CPU extension hook (see Extension coverage) in a
        normal Metal run
      - aborts before timestep 0; these operations have not migrated inside the
        diamond wavefront

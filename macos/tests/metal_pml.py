@@ -46,10 +46,28 @@ def run_case(args, label, cells, steps, boundaries, nonuniform=False):
             raise AssertionError('Unexpected UPML regions')
         if 'Metal: CPU UPML conditioning selected' not in cpu_log:
             raise AssertionError('CPU UPML fallback not exercised')
+        # Mur/ABC hooks have not migrated, so the diamond path cannot run them.
+        # Every PML/PEC case must reproduce the legacy GPU conditioners exactly:
+        # the same local flux recurrence, now fused into the diamond kernel.
+        unsupported = any(not b.startswith('PML') and b != 'PEC' for b in boundaries)
+        diamond_time = None
+        if not unsupported and not args.fp64_reference:
+            diamond_time, diamond_log = run(args.openems, model, 'metal',
+                root / 'diamond', args.fp64_reference, pml=True, wavefront=True)
+            if 'Metal: in-place diamond E/H pipeline: enabled' not in diamond_log:
+                raise AssertionError('UPML did not use the diamond wavefront: ' + diamond_log)
+            if expected:
+                if 'Metal: diamond UPML: {} regions'.format(expected) not in diamond_log:
+                    raise AssertionError('Diamond UPML regions mismatch: ' + diamond_log)
+            elif 'Metal: diamond UPML:' in diamond_log:
+                raise AssertionError('Unexpected diamond UPML regions')
         print('{}: {}, {} steps; SSE/CPU-PML/GPU-PML wall {:.3f}/{:.3f}/{:.3f}s'.format(
             label, cells, steps, sse_time, cpu_time, gpu_time))
         print('  CPU/GPU UPML:')
         check_fields(root / 'cpu', root / 'gpu', args.rtol, args.atol, args.l2)
+        if diamond_time is not None:
+            print('  legacy GPU/diamond UPML (bit-identical):')
+            check_fields(root / 'gpu', root / 'diamond', 0, 0, 0)
         print('  SSE/GPU UPML:')
         # SSE/Metal already differ near cancellation zeros in long runs.
         # Gate that comparison on global relative L2; CPU/GPU PML above

@@ -35,6 +35,7 @@ protected:
 
 private:
 	void InitUPML();
+	void InitUPMLDiamond();
 	void InitExcitations();
 	void InitADE();
 	void InitRLC();

@@ -277,8 +277,8 @@ Caveats
 * **This is Metal's best case.** A regular grid compresses exceptionally well.
   Real PCB geometry that uses dense coefficients can lose much of the speedup;
   see ``macos/doc/metal-engine.rst``.
-* **UPML and ADE are not in the diamond wavefront yet.** Normal Metal runs requiring either abort
-  before stepping. ``--metal-legacy --boundaries PML_8`` benchmarks the old path
-  explicitly; it is not selected automatically.
+* **ADE is not in the diamond wavefront yet.** Normal Metal runs requiring it
+  abort before stepping. UPML is in the diamond; ``--metal-legacy
+  --boundaries PML_8`` benchmarks the old indexed conditioners explicitly.
 * **Performance only, not convergence.** These are finite-run timings, not an
   accuracy or stability check.

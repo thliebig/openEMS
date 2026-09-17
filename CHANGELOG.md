@@ -105,9 +105,9 @@ number moved up and patch releases now have somewhere to go.
   diff estimate is cheap and is now always kept current every timestep
   rather than only at the wall-clock report interval.
 - **Apple Metal GPU engine** (experimental, macOS): `--engine=metal` runs the
-  FDTD field updates, the excitation, lumped RLC and the PEC geometry pass on
-  the GPU; see `macos/doc/metal-engine.rst`. A model that needs an extension
-  the GPU does not run stops before timestep 0.
+  FDTD field updates, the excitation, UPML, lumped RLC and the PEC geometry
+  pass on the GPU; see `macos/doc/metal-engine.rst`. A model that needs an
+  extension the GPU does not run stops before timestep 0.
 
 ### Changed
 
