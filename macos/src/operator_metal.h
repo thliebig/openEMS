@@ -32,6 +32,7 @@ protected:
 	Operator_Metal();
 	virtual bool Calc_EC();
 	virtual bool CalcPEC();
+	virtual bool SetupCSXGrid(CSRectGrid* grid);
 	virtual bool CanReleaseECBeforeExtensions() const;
 	virtual void CalcOperatorCoefficients();
 	unsigned int m_setupThreads;

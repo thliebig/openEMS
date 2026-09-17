@@ -184,8 +184,11 @@ Limitations and fallbacks
 
 The CPU stays the authority wherever the GPU path is unavailable, unsupported
 or would be approximate: the affected queries run through CSXCAD FP64 on the
-CPU and are never silently dropped. Hardware, kernel-compilation and buffer
-failures of the *field update* itself are fatal, not silent.
+CPU and are never silently dropped. Only failures that prevent the field-update
+engine from being built at all -- no device, an unusable shader/pipeline, a
+field buffer that cannot be wrapped, or a grid the kernel index format cannot
+address -- abort, and they abort loudly. Everything else degrades to the CPU as
+described below.
 
 Platform and coordinate systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -199,16 +202,32 @@ Platform and coordinate systems
   ignored with a warning.
 * MPI is not supported (``Operator_Metal`` is not an MPI operator).
 
-Hard limits (fatal, not a fallback)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The index format has a very high ceiling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* 32-bit GPU indexing: a UPML region larger than ``UINT32_MAX/3`` components, or
-  a packed field/excitation index above ``UINT32_MAX``, aborts with an error.
-* The field-update kernels are compiled at startup; a compile or
-  pipeline-creation failure aborts. The PEC pass alone catches its own failure
-  and runs on the CPU.
-* The ``uint16`` dictionary index caps lossless compression at 65536 unique
-  records; exceeding it is not fatal (see the fallback table).
+The GPU kernels use 32-bit indices. The fused field update addresses ``float4``
+words, and the indexed UPML, excitation and ADE kernels address scalar
+components. The scalar limit is around ``UINT32_MAX / 3`` -- roughly
+1.4 billion cells, about 100 GB of field plus coefficient state -- and the
+packed field update is good for roughly four times that. A model beyond the
+scalar limit is rejected in ``SetupCSXGrid``, before any material or coefficient
+work. This guard is not reachable by any measured workload and is documented
+only so the abort is not a surprise.
+
+Kernel compilation
+~~~~~~~~~~~~~~~~~~
+
+The kernels are compiled once at build time into ``openEMS.metallib``, embedded
+in ``libopenEMS`` and loaded with ``newLibraryWithData:``; the runtime never
+compiles. Building with ``-DWITH_METAL=ON`` therefore needs the optional Metal
+toolchain component, installed once with:
+
+.. code-block:: sh
+
+   xcodebuild -downloadComponent MetalToolchain
+
+A load or pipeline-creation failure aborts. The PEC pass alone catches its own
+failure and runs on the CPU. Fast math is off at compile time.
 
 When the engine falls back to the CPU
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

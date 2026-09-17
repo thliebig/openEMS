@@ -13,6 +13,8 @@
 #include "extensions/operator_ext_excitation.h"
 #include "extensions/operator_ext_mur_abc.h"
 #include <cstdlib>
+#include <cstdint>
+#include <limits>
 #include <string>
 #include <typeinfo>
 #include <thread>
@@ -69,6 +71,27 @@ const std::vector<Operator::GeometryWinner>* Operator_Metal::GetGeometryWinners(
 		return dualMesh ? &m_geoDispersiveDual : &m_geoDispersivePrimal;
 	}
 	return nullptr;
+}
+
+bool Operator_Metal::SetupCSXGrid(CSRectGrid* grid)
+{
+	if (!Operator_sse::SetupCSXGrid(grid))
+		return false;
+	// The kernels address the field as packed float4 words (fused update) and as
+	// scalar components (excitation, ADE, indexed UPML). Reject a grid the 32-bit
+	// index format cannot cover before the material and coefficient build.
+	const uint64_t zSlots  = ((uint64_t)numLines[2] + 3) / 4;
+	const uint64_t scalars = 12 * (uint64_t)numLines[0] * numLines[1] * zSlots;
+	if (scalars > std::numeric_limits<uint32_t>::max())
+	{
+		std::cerr << "Metal: grid has "
+		          << (uint64_t)numLines[0] * numLines[1] * numLines[2]
+		          << " cells; the packed field index (" << scalars
+		          << ") exceeds the 32-bit kernel format. Aborting before setup."
+		          << std::endl;
+		return false;
+	}
+	return true;
 }
 
 bool Operator_Metal::Calc_EC()

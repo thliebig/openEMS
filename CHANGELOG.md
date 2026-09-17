@@ -223,6 +223,9 @@ number moved up and patch releases now have somewhere to go.
   enabled.
 - `WITH_METAL` is on by default on macOS; `-DWITH_METAL=OFF` gives a CPU-only
   build.
+- The Metal engine needs the Xcode Metal toolchain (`xcodebuild
+  -downloadComponent MetalToolchain`); CMake stops with that hint when it is
+  missing. Pass `-DWITH_METAL=OFF` to build without it.
 
 ### Upgrade notes
 

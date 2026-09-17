@@ -57,6 +57,13 @@ recommended full-stack build.
 Required dependencies: CSXCAD, fparser, TinyXML, HDF5, VTK, Boost (≥ 1.46,
 components: thread, date\_time, serialization, chrono, program\_options).
 
+Building the Apple Metal engine (`-DWITH_METAL=ON`, the macOS default) also
+needs the optional Xcode Metal toolchain component, installed once with:
+
+```bash
+xcodebuild -downloadComponent MetalToolchain
+```
+
 ```bash
 mkdir build && cd build
 cmake .. \

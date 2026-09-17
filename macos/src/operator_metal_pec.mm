@@ -11,7 +11,7 @@
 #include "CSPropConductingSheet.h"
 #include "extensions/operator_ext_conductingsheet.h"
 #include "extensions/operator_ext_lorentzmaterial.h"
-#include "metal_predicates_src.h"
+#include "metal_library.h"
 
 #import <Foundation/Foundation.h>
 
@@ -40,151 +40,6 @@ struct PecVertex { float xh, xl, yh, yl; };
 struct PecCoord { float hi, lo; };
 struct PecCylinder { float p0[3], radius, p1[3], shell; };
 const uint32_t cpuQuery = UINT32_MAX - 1;
-// The predicate header is embedded between these two blocks so the shader and
-// the host unit test share one implementation.
-const char* pecSourceHead = R"METAL(
-#include <metal_stdlib>
-using namespace metal;
-struct Primitive { uint bounds[12]; uint kind, normal, first, count; };
-struct Vertex { float xh, xl, yh, yl; };
-struct Cylinder { float p0[3], radius, p1[3], shell; };
-)METAL";
-const char* pecSourceTail = R"METAL(
-kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
-                     const device Vertex* vertices [[buffer(1)]],
-                     const device uint* offsets [[buffer(2)]],
-                     const device uint* candidates [[buffer(3)]],
-                     const device float* grid [[buffer(4)]],
-                     device uint* winners [[buffer(5)]],
-                     constant uint4& p [[buffer(6)]],
-                     const device Cylinder* cyls [[buffer(7)]],
-                     const device float2* gridD [[buffer(8)]],
-                     constant uint& dualMesh [[buffer(9)]],
-                     uint3 gid [[thread_position_in_grid]])
-{
-	if (gid.x >= p.z * 3 || gid.y >= p.y) return;
-	uint n = gid.x % 3, z = gid.x / 3, y = gid.y, x = p.w;
-	uint line = y;
-	uint output = line * p.z * 3 + gid.x;
-	// dualMesh mirrors Operator::GetYeeCoords(n,pos,coord,dualMesh): the component
-	// axis takes the dual offset for the primal/voltage query and the primal
-	// offset for the dual/current query, the two transverse axes the opposite.
-	uint dn = dualMesh ? 0u : 1u;
-	uint dt = dualMesh ? 1u : 0u;
-	uint g0 = 2*x + (n == 0 ? dn : dt);
-	uint g1 = 2*p.x + 2*y + (n == 1 ? dn : dt);
-	uint g2 = 2*(p.x+p.y) + 2*z + (n == 2 ? dn : dt);
-	float c[3] = {grid[g0], grid[g1], grid[g2]};
-	uint gidx[3] = {g0, g1, g2};
-	mp_df cd[3] = {{gridD[gidx[0]].x, gridD[gidx[0]].y},
-	               {gridD[gidx[1]].x, gridD[gidx[1]].y},
-	               {gridD[gidx[2]].x, gridD[gidx[2]].y}};
-	uint result = 0xffffffffu;
-	for (uint k = offsets[line]; k < offsets[line+1]; ++k)
-	{
-		uint id = candidates[k];
-		Primitive q = prims[id];
-		if (q.kind == 0) { result = 0xfffffffeu; break; }
-		bool outside = false, uncertain = false;
-		uint pos[3] = {x,y,z};
-		for (uint a = 0; a < 3; ++a)
-		{
-			uint b = a*4 + 2*((a == n) ? dn : dt);
-			outside |= pos[a] < q.bounds[b] || pos[a] >= q.bounds[b+1];
-		}
-		if (outside) continue;
-		if (q.kind == 1) { result = id; break; }
-		if (q.kind == 3 || q.kind == 4)
-		{
-			Cylinder cy = cyls[q.first];
-			float3 a = float3(cy.p0[0], cy.p0[1], cy.p0[2]);
-			float3 b = float3(cy.p1[0], cy.p1[1], cy.p1[2]);
-			float3 pp = float3(c[0], c[1], c[2]);
-			float3 ab = b - a;
-			float ab2 = dot(ab, ab);
-			float scale = max(1.0f, max(abs(cy.radius), abs(cy.shell)));
-			scale = max(scale, max(max(abs(pp.x), abs(pp.y)), abs(pp.z)));
-			scale = max(scale, max(max(abs(a.x), abs(a.y)), max(abs(b.x), max(abs(b.y), abs(b.z)))));
-			float e = 256.0f * FLT_EPSILON * scale;
-			float te = 256.0f * FLT_EPSILON;
-			if (ab2 <= e*e)
-			{
-				uncertain = true;
-			}
-			else
-			{
-				float t = dot(pp - a, ab) / ab2;
-				if (t < -te || t > 1.0f + te)
-				{
-					// outside the axis segment, not this primitive
-				}
-				else if (t < te || t > 1.0f - te)
-				{
-					uncertain = true;
-				}
-				else
-				{
-					float d = length(pp - (a + t*ab));
-					if (q.kind == 3)
-					{
-						if (d <= cy.radius - e) { result = id; break; }
-						if (d <= cy.radius + e) uncertain = true;
-					}
-					else
-					{
-						float lower = cy.radius - 0.5f*cy.shell;
-						float upper = cy.radius + 0.5f*cy.shell;
-						if (d < lower - e || d > upper + e) { }
-						else if (d <= lower + e || d >= upper - e) uncertain = true;
-						else { result = id; break; }
-					}
-				}
-			}
-			if (uncertain) { result = 0xfffffffeu; break; }
-			continue;
-		}
-		// Mirror CSPrimPolygon::IsInside with exact (double-float) predicates.
-		mp_df px = cd[(q.normal+1)%3];
-		mp_df py = cd[(q.normal+2)%3];
-		uint vlast = q.first + q.count - 1;
-		mp_df x1 = {vertices[vlast].xh, vertices[vlast].xl};
-		mp_df y1 = {vertices[vlast].yh, vertices[vlast].yl};
-		int winding = 0;
-		bool onedge = false;
-		int startover = mp_df_ge(y1, py);
-		for (uint j = 0; j < q.count; ++j)
-		{
-			uint vj = q.first + j;
-			mp_df x2 = {vertices[vj].xh, vertices[vj].xl};
-			mp_df y2 = {vertices[vj].yh, vertices[vj].yl};
-			// Exact axis-aligned on-edge tests.
-			if (mp_df_eq(x2, x1) && mp_df_eq(x1, px) &&
-			    ((!mp_df_ge(py, y1) && !mp_df_ge(y2, py)) ||
-			     (!mp_df_ge(y1, py) && !mp_df_ge(py, y2))))
-			{ onedge = true; break; }
-			if (mp_df_eq(y2, y1) && mp_df_eq(y1, py) &&
-			    ((!mp_df_ge(px, x1) && !mp_df_ge(x2, px)) ||
-			     (!mp_df_ge(x1, px) && !mp_df_ge(px, x2))))
-			{ onedge = true; break; }
-			int endover = mp_df_ge(y2, py);
-			if (startover != endover)
-			{
-				int s = mp_orient2d_sign(x1, y1, x2, y2, px, py);
-				if (s == 0) { uncertain = true; break; }
-				// CSXCAD: (y2-py)*(x2-x1) <= (y2-y1)*(x2-px), i.e. orient2d >= 0.
-				if (s > 0) { if (endover) ++winding; }
-				else { if (!endover) --winding; }
-			}
-			startover = endover;
-			x1 = x2; y1 = y2;
-		}
-		if (uncertain) { result = 0xfffffffeu; break; }
-		if (onedge || winding != 0) { result = id; break; }
-		continue;
-	}
-	winners[output] = result;
-}
-)METAL";
 
 // Class of EC-consuming extension that owns a resolved winner: 0 = none,
 // 1 = conducting sheet, 2 = dispersive (Lorentz/Debye).
@@ -242,11 +97,8 @@ bool Operator_Metal::CalcPEC()
 		id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 		id<MTLCommandQueue> queue = [device newCommandQueue];
 		NSError* error = nil;
-		MTLCompileOptions* options = [MTLCompileOptions new];
-		options.fastMathEnabled = NO; // Geometry decisions must not use field fast math.
-		std::string pecSource = std::string(pecSourceHead) + metalPredicatesSource + pecSourceTail;
-		id<MTLLibrary> library = [device newLibraryWithSource:@(pecSource.c_str()) options:options error:&error];
-		id<MTLFunction> function = [library newFunctionWithName:@"pec_mask"];
+		id<MTLLibrary> library = OpenEMSMetalLibrary(device, &error);
+		id<MTLFunction> function = library ? [library newFunctionWithName:@"pec_mask"] : nil;
 		id<MTLComputePipelineState> pipeline = function ? [device newComputePipelineStateWithFunction:function error:&error] : nil;
 		if (!queue || !pipeline)
 		{

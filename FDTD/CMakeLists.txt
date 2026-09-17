@@ -3,6 +3,7 @@ if (WITH_METAL)
     ${PROJECT_SOURCE_DIR}/macos/src/engine_metal.mm
     ${PROJECT_SOURCE_DIR}/macos/src/operator_metal.cpp
     ${PROJECT_SOURCE_DIR}/macos/src/operator_metal_pec.mm
+    ${PROJECT_SOURCE_DIR}/macos/src/metal_library.mm
   )
 endif()
 
