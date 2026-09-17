@@ -11,6 +11,12 @@
 // small numbers may create a substantial overhead depending on the CPU
 // (microcode assists are required os x86).
 //
+// Flushing to zero also discards the lowest bits of a decaying field, so two
+// builds can only be compared bit by bit with it turned off. Configure with
+// -DENABLE_FLUSH_TO_ZERO=OFF to do that; it is slow and meant for debugging
+// only. Note the macro is the negative, so that a build system which does not
+// know about it at all still gets the fast default.
+//
 // TODO: Only implemented on x86. Do other CPUs like POWER, ARM have
 // denormal overheads? If so, implement them too.
 
@@ -21,7 +27,7 @@ namespace Denormal
 
 inline void Denormal::Disable()
 {
-#if BOOST_ARCH_X86
+#if BOOST_ARCH_X86 && !defined(OPENEMS_NO_FLUSH_TO_ZERO)
 	// read the old MXCSR setting
 	unsigned int oldMXCSR = _mm_getcsr();
 

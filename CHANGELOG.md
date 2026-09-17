@@ -158,6 +158,11 @@ number moved up and patch releases now have somewhere to go.
   Studio 2022; the `openEMS` and `nf2ff` import libraries are installed to
   `lib/`.
 - Builds on ppc64le.
+- Two new knobs for comparing the output of two builds bit by bit, both off the
+  default path: debug builds compile with `-ffp-contract=off` on GCC and Clang,
+  so multiply-add pairs are no longer contracted into FMA instructions, and the
+  new `ENABLE_FLUSH_TO_ZERO` CMake option can be set to `OFF` to keep denormal
+  values in the engines instead of flushing them to zero.
 - The `WITH_MPI` CMake option and the `--with-MPI` option of
   `update_openEMS.sh` were removed.
 - CI covers Linux, macOS, FreeBSD and Windows, and compiles with warnings

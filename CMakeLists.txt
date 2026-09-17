@@ -14,6 +14,21 @@ cmake_minimum_required(VERSION 3.1...3.10)
 
 PROJECT(openEMS CXX C)
 
+# Comparing the engine output of two builds bit by bit is a way to check that a
+# change which should not alter the result really does not. Two things get in
+# the way of that, both enabled by default because both are wanted in a normal
+# build. Turn them off in localConfig.cmake or on the cmake command line.
+
+# Flushing denormals to zero drops the lowest bits of a decaying field.
+OPTION(ENABLE_FLUSH_TO_ZERO "Flush denormal floating point values to zero in the engines" ON)
+
+# Floating-point contraction fuses a multiply and an add into an FMA, which
+# rounds once instead of twice, so the result depends on where the compiler
+# chose to contract. Debug builds turn it off, they are not built for speed.
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|IntelLLVM")
+  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ffp-contract=off")
+ENDIF()
+
 # default
 set(LIB_VERSION_MAJOR 0)
 set(LIB_VERSION_MINOR 37)
@@ -27,6 +42,11 @@ IF(EXISTS ${PROJECT_SOURCE_DIR}/localConfig.cmake)
 ENDIF()
 
 #ADD_DEFINITIONS( -D__SSE2__ )
+
+IF(NOT ENABLE_FLUSH_TO_ZERO)
+  message(STATUS "Flush-to-zero disabled, the engines keep denormal values")
+  ADD_DEFINITIONS( -DOPENEMS_NO_FLUSH_TO_ZERO )
+ENDIF()
 
 # add git revision
 IF(EXISTS ${PROJECT_SOURCE_DIR}/.git )
