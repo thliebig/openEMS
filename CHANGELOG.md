@@ -149,6 +149,9 @@ number moved up and patch releases now have somewhere to go.
 - Python: a port with the number of an existing port now raises `ValueError`.
   Both ports wrote their probes to the same files and corrupted them.
   Octave/Matlab already rejected this.
+- Octave: `plotRefl` died with "vertical dimensions mismatch" instead of
+  drawing the Smith chart, because it added the trace after the legend and
+  Octave's legend autoupdate could not append it (#172).
 
 ### Build
 

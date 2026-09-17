@@ -145,11 +145,15 @@ if nnz(upperind) > 1
   end
 end
 
+% draw the trace before the legend, not after: Octave's legend autoupdate
+% callback runs for every line added to the axes afterwards, and it appends
+% that line to the legend as an unnamed entry
+h = plot(s11);
+
 legend([handle1, handle2, handle3], {[llegend, " MHz"], ...
                                      [ulegend, " MHz"], ...
                                      [num2str(20*log10(abs(s11(minind))), "%4.0f"), ...
                                     "dB @ ", num2str(port.f(minind)/1e6, ffmt), " MHz"]});
-h = plot(s11);
 
 if (nargout == 0)
   clear h;
