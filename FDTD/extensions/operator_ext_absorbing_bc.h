@@ -43,6 +43,7 @@ class Operator_Ext_Absorbing_BC : public Operator_Extension
 {
 	friend class Engine_Ext_Absorbing_BC;
 	friend class Metal_Ext_Absorbing_BC;
+	friend class HIP_Ext_Absorbing_BC;
 public:
 
 	// This should be a replica of the CSXCAD property, but can also be something
