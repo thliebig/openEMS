@@ -1220,12 +1220,12 @@ int openEMS::SetupFDTD()
 			for (int p=0;p<3;++p)
 				pos[p] = FDTD_Op->GetNumberOfLines(p)/2;
 
-			pos[n] *= 1/4;
+			pos[n] = FDTD_Op->GetNumberOfLines(n)/4;
 			Op_Ext_SSD->Add_E_Probe(pos, 0);
 			Op_Ext_SSD->Add_E_Probe(pos, 1);
 			Op_Ext_SSD->Add_E_Probe(pos, 2);
 
-			pos[n] *= 3/4;
+			pos[n] = FDTD_Op->GetNumberOfLines(n)*3/4;
 			Op_Ext_SSD->Add_E_Probe(pos, 0);
 			Op_Ext_SSD->Add_E_Probe(pos, 1);
 			Op_Ext_SSD->Add_E_Probe(pos, 2);
