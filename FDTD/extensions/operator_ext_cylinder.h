@@ -26,6 +26,7 @@ class Operator_Cylinder;
 class Operator_Ext_Cylinder : public Operator_Extension
 {
 	friend class Engine_Ext_Cylinder;
+	friend class Metal_Ext_Cylinder;
 	friend class Operator_Ext_LorentzMaterial;
 public:
 	Operator_Ext_Cylinder(Operator_Cylinder* op);
@@ -37,6 +38,7 @@ public:
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
+	virtual bool IsGPUSave() const {return true;}
 
 	virtual std::string GetExtensionName() const
 	{

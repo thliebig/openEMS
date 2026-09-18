@@ -10,6 +10,7 @@ if(APPLE AND ENABLE_METAL)
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_tfsf.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_absorbing_bc.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_steadystate.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_cylinder.mm
   )
 endif()
 
