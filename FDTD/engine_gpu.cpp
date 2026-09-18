@@ -87,6 +87,7 @@ void Engine_GPU::Init()
 	if (m_FieldsOnHost)
 	{
 		ClearGPUExtensions();
+		cout << "Engine_GPU: extensions run on the host copy of the fields (host fallback)" << endl;
 		cerr << "Engine_GPU::Init: Warning: extensions without a GPU implementation run on the host, the fields are copied every timestep:" << endl;
 		for (size_t n=0; n<host_exts.size(); ++n)
 			cerr << "\t" << host_exts.at(n) << endl;

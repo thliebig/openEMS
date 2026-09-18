@@ -78,8 +78,11 @@ void Engine_GPU_CylinderMultiGrid::Init()
 	if (m_Link==NULL)
 	{
 		if (!m_FieldsOnHost || !m_InnerEngine->FieldsOnHost())
+		{
+			cout << "Engine_GPU: multi-grid level " << Op_CMG->GetMultiGridLevel() << " runs in the host fallback" << endl;
 			cerr << "Engine_GPU_CylinderMultiGrid::Init: Warning: multi-grid level " << Op_CMG->GetMultiGridLevel()
 			     << " and its sub-grid run in the host fallback" << endl;
+		}
 		ForceHostFallback();
 	}
 }

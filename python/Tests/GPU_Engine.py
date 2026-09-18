@@ -263,15 +263,16 @@ def case_absorbers():
     return FDTD, CSX
 
 
-def cylinder_mesh(FDTD, alpha, r0, r1):
-    """ cylindrical mesh, the CPU reference is the cylindrical engine (engine='basic' has no effect) """
+def cylinder_mesh(FDTD, alpha, r0, r1, z_pad=0):
+    """ cylindrical mesh, the CPU reference is the cylindrical engine (engine='basic' has no effect);
+        z_pad extends z beyond 0..30 on both sides, e.g. to make room for a PML """
     CSX = ContinuousStructure(CoordSystem=1)
     FDTD.SetCSX(CSX)
     mesh = CSX.GetGrid()
     mesh.SetDeltaUnit(unit)
     mesh.AddLine('r', np.arange(r0, r1 + 1, 2))
     mesh.AddLine('a', alpha)
-    mesh.AddLine('z', np.arange(0, 30.5, 2))
+    mesh.AddLine('z', np.arange(-z_pad, 30 + z_pad + 0.5, 2))
     return CSX
 
 
@@ -295,7 +296,7 @@ def case_cylinder_wedge():
     FDTD = openEMS(CoordSystem=1, NrTS=1000, EndCriteria=0)
     FDTD.SetGaussExcite(3e9, 2e9)
     FDTD.SetBoundaryCond(['PEC', 'PEC', 'PEC', 'PEC', 'PML_8', 'PML_8'])
-    CSX = cylinder_mesh(FDTD, np.linspace(-np.pi/4, np.pi/4, 13), 10, 40)
+    CSX = cylinder_mesh(FDTD, np.linspace(-np.pi/4, np.pi/4, 13), 10, 40, z_pad=16)
     CSX.AddExcitation('coax', exc_type=0, exc_val=[1, 0, 0]).AddBox([10, -np.pi/4, 12], [40, np.pi/4, 12])
     CSX.AddProbe('et', p_type=2).AddPoint([20, 0, 20])
     CSX.AddProbe('ht', p_type=3).AddPoint([30, np.pi/8, 6])
@@ -307,7 +308,7 @@ def multigrid(radii, alpha, r1=40, z_bc='PEC'):
     FDTD = openEMS(CoordSystem=1, NrTS=1200, EndCriteria=0, MultiGrid=radii)
     FDTD.SetGaussExcite(3e9, 2e9)
     FDTD.SetBoundaryCond(['PEC', 'PEC', 'PEC', 'PEC', z_bc, z_bc])
-    CSX = cylinder_mesh(FDTD, alpha, 0, r1)
+    CSX = cylinder_mesh(FDTD, alpha, 0, r1, z_pad=16 if z_bc.startswith('PML') else 0)
     CSX.AddExcitation('inner', exc_type=0, exc_val=[0, 0, 1]).AddBox([4, 0, 0], [4, 0, 30])
     CSX.AddExcitation('outer', exc_type=0, exc_val=[1, 0, 0]).AddBox([26, alpha[3], 12], [32, alpha[3], 12])
     CSX.AddProbe('et_axis', p_type=2).AddPoint([0, 0, 16])
@@ -442,7 +443,7 @@ for name, case, on_device in cases:
     backend = backend.group(1) if backend else None
     if backend and backend!='reference':
         if on_device and backend in FULL_DEVICE_BACKENDS:
-            assert 'Engine_GPU: all extensions run on the device' in logs['gpu'], \
+            assert ('Engine_GPU: all extensions run on the device' in logs['gpu']) and ('host fallback' not in logs['gpu']), \
                 f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
         diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
         print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
