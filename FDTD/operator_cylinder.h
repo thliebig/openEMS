@@ -22,6 +22,8 @@
 
 #include "operator_multithread.h"
 
+class GPU_Backend;
+
 class Operator_Ext_Cylinder;
 
 //! This class creates an operator for a cylindrical FDTD.
@@ -88,8 +90,9 @@ public:
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
-	//! Create a GPU engine on backend \a backend (see GPU_Backend::New) instead of the multithreaded engine; empty: multithreaded engine
-	void SetGPUBackend(const std::string& backend) {m_GPU_Backend = backend;}
+	//! Create a GPU engine on backend \a backend (see GPU_Backend::New) instead of the multithreaded engine; empty: multithreaded engine.
+	//! A multi-grid sub-grid passes the backend of its parent grid as \a parent (see GPU_Backend::NewSubGridBackend()).
+	void SetGPUBackend(const std::string& backend, GPU_Backend* parent=NULL) {m_GPU_Backend = backend; m_GPU_Parent = parent;}
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
@@ -119,6 +122,7 @@ protected:
 	bool CC_R0_included;
 
 	std::string m_GPU_Backend;
+	GPU_Backend* m_GPU_Parent;
 	Operator_Ext_Cylinder* m_Cyl_Ext;
 };
 

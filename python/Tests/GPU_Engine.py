@@ -13,8 +13,9 @@
 
  Together the cases use the excitation, UPML, Mur ABC, Lorentz material,
  lumped RLC, conducting sheet, TF/SF, local absorber, steady-state and
- cylinder extensions. For cylindrical meshes the engine choice 'basic' has no
- effect, the CPU reference is the cylindrical (multithreaded) engine.
+ cylinder extensions, and cylindrical meshes with one and two multi-grid
+ levels. For cylindrical meshes the engine choice 'basic' has no effect, the
+ CPU reference is the cylindrical (multithreaded) engine.
 
  Pass criteria (per case)
    the requested backend was created (not a silent fallback)
@@ -301,6 +302,37 @@ def case_cylinder_wedge():
     return FDTD, CSX
 
 
+def multigrid(radii, alpha, r1=40, z_bc='PEC'):
+    """ cylindrical multi-grid with sources and probes inside and outside the sub-grids """
+    FDTD = openEMS(CoordSystem=1, NrTS=1200, EndCriteria=0, MultiGrid=radii)
+    FDTD.SetGaussExcite(3e9, 2e9)
+    FDTD.SetBoundaryCond(['PEC', 'PEC', 'PEC', 'PEC', z_bc, z_bc])
+    CSX = cylinder_mesh(FDTD, alpha, 0, r1)
+    CSX.AddExcitation('inner', exc_type=0, exc_val=[0, 0, 1]).AddBox([4, 0, 0], [4, 0, 30])
+    CSX.AddExcitation('outer', exc_type=0, exc_val=[1, 0, 0]).AddBox([26, alpha[3], 12], [32, alpha[3], 12])
+    CSX.AddProbe('et_axis', p_type=2).AddPoint([0, 0, 16])
+    CSX.AddProbe('et_inner', p_type=2).AddPoint([6, alpha[len(alpha)//3], 14])
+    CSX.AddProbe('ht_inner', p_type=3).AddPoint([8, alpha[len(alpha)//4], 8])
+    CSX.AddProbe('et_outer', p_type=2).AddPoint([30, alpha[2*len(alpha)//3], 14])
+    CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([0, alpha[0], 14], [r1, alpha[-1], 14])
+    return FDTD, CSX
+
+
+def case_multigrid():
+    """ closed cylindrical mesh with one multi-grid level """
+    return multigrid([14], (np.arange(49) - 24) * 2*np.pi/48)
+
+
+def case_multigrid2():
+    """ closed cylindrical mesh with two nested multi-grid levels """
+    return multigrid([10, 20], (np.arange(49) - 24) * 2*np.pi/48)
+
+
+def case_multigrid_wedge():
+    """ open alpha wedge with one multi-grid level and PML in z """
+    return multigrid([14], np.linspace(-np.pi/2, np.pi/2, 25), z_bc='PML_8')
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -380,6 +412,9 @@ cases = [('excitation',     case_excitation,     True),
          ('absorbers',      case_absorbers,      True),
          ('cylinder_closed', case_cylinder_closed, True),
          ('cylinder_wedge', case_cylinder_wedge,  True),
+         ('multigrid',      case_multigrid,       True),
+         ('multigrid2',     case_multigrid2,      True),
+         ('multigrid_wedge', case_multigrid_wedge, True),
          ('dispersive_pml', case_dispersive_pml, True),
          ('3d_mixed',       case_3d_mixed,       True),
          ('steady_state',   case_steady_state,   True)]

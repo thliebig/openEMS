@@ -792,21 +792,14 @@ bool openEMS::SetupOperator()
 	if (CylinderCoords)
 	{
 		bool gpu = (m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference);
+		Operator_Cylinder* op_cyl = NULL;
 		if (m_CC_MultiGrid.size()>0)
-		{
-			if (gpu)
-				cerr << "openEMS::SetupOperator: Warning: the GPU engine does not support a cylindrical multi-grid, using the multithreaded engine" << endl;
-			FDTD_Op = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
-			if (FDTD_Op==NULL)
-				FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
-		}
-		else
-		{
-			Operator_Cylinder* op_cyl = Operator_Cylinder::New(m_engine_numThreads);
-			if (gpu)
-				op_cyl->SetGPUBackend(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
-			FDTD_Op = op_cyl;
-		}
+			op_cyl = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
+		if (op_cyl==NULL)
+			op_cyl = Operator_Cylinder::New(m_engine_numThreads);
+		if (gpu)
+			op_cyl->SetGPUBackend(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
+		FDTD_Op = op_cyl;
 	}
 	else if (m_engine == EngineType_SSE)
 	{

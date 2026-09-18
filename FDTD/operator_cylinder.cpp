@@ -41,6 +41,7 @@ Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 {
 	m_MeshType = CYLINDRICAL;
 	m_Cyl_Ext = NULL;
+	m_GPU_Parent = NULL;
 }
 
 Operator_Cylinder::~Operator_Cylinder()
@@ -52,7 +53,7 @@ Engine* Operator_Cylinder::CreateEngine()
 {
 	if (!m_GPU_Backend.empty())
 	{
-		m_Engine = Engine_GPU::New(this, m_GPU_Backend);
+		m_Engine = Engine_GPU::New(this, m_GPU_Backend, m_GPU_Parent);
 		return m_Engine;
 	}
 	//! create a special cylindrical-engine

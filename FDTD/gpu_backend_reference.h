@@ -46,6 +46,8 @@ public:
 	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
 	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
 
+	virtual GPU_Backend* NewSubGridBackend() {return new GPU_Backend_Reference();}
+
 protected:
 	unsigned int numLines[3];
 

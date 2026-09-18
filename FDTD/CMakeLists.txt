@@ -11,6 +11,7 @@ if(APPLE AND ENABLE_METAL)
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_absorbing_bc.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_steadystate.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_cylinder.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_multigrid.mm
   )
 endif()
 
@@ -34,6 +35,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_cylindrical_fdtd.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator_gpu.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_gpu.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_gpu_cylindermultigrid.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend_reference.cpp
   ${METAL_SOURCES}

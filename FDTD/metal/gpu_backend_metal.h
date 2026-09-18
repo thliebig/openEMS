@@ -52,6 +52,9 @@ public:
 	virtual FDTD_FLOAT* GetSharedCurrents() const;
 	virtual void Synchronize();
 
+	virtual GPU_Backend* NewSubGridBackend();
+	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const GPU_MultiGridInterpolation& interpol);
+
 	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng);
 
 	struct Impl;

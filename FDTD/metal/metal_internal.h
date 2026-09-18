@@ -23,6 +23,7 @@
 #import <Metal/Metal.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -51,18 +52,13 @@ inline uint nijk(constant GridDim& N, uint n, uint x, uint y, uint z)
 }
 )MSL"
 
-struct GPU_Backend_Metal::Impl
+//! Device, work stream and kernels, shared by the backends of all grids of a simulation (see NewSubGridBackend())
+struct Metal_Context
 {
 	id<MTLDevice> device;
 	id<MTLCommandQueue> queue;
 	id<MTLCommandBuffer> cmd;
 	id<MTLComputeCommandEncoder> enc;
-
-	Metal_GridDim dim;
-	size_t numCells;    //!< nx*ny*nz, the field buffers hold 3*numCells values
-
-	id<MTLBuffer> volt, curr;
-	id<MTLBuffer> vv, vi, ii, iv;
 
 	std::map<std::string, id<MTLComputePipelineState>> pipelines;
 
@@ -74,6 +70,23 @@ struct GPU_Backend_Metal::Impl
 
 	//! Commit the current batch and wait for it to finish
 	void Flush();
+};
+
+//! State of one grid
+struct GPU_Backend_Metal::Impl
+{
+	std::shared_ptr<Metal_Context> ctx;
+	id<MTLDevice> device;
+
+	Metal_GridDim dim;
+	size_t numCells;    //!< nx*ny*nz, the field buffers hold 3*numCells values
+
+	id<MTLBuffer> volt, curr;
+	id<MTLBuffer> vv, vi, ii, iv;
+
+	id<MTLComputePipelineState> Pipeline(const char* source, const char* function) {return ctx->Pipeline(source, function);}
+	id<MTLComputeCommandEncoder> Encoder() {return ctx->Encoder();}
+	void Flush() {ctx->Flush();}
 
 	//! Shared buffer of \a bytes, initialized with \a data or zero
 	id<MTLBuffer> NewBuffer(size_t bytes, const void* data=NULL);

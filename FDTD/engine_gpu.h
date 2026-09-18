@@ -48,8 +48,8 @@ class GPU_Extension;
 class Engine_GPU : public Engine
 {
 public:
-	//! Create the engine for \a op on the GPU backend \a backend (see GPU_Backend::New)
-	static Engine_GPU* New(const Operator* op, const std::string& backend);
+	//! Create the engine for \a op on the GPU backend \a backend (see GPU_Backend::New), or for a sub-grid on a backend sharing the work stream of \a parent
+	static Engine_GPU* New(const Operator* op, const std::string& backend, GPU_Backend* parent=NULL);
 	virtual ~Engine_GPU();
 
 	virtual void Init();
@@ -57,19 +57,27 @@ public:
 
 	virtual bool IterateTS(unsigned int iterTS);
 
+	//! One voltage half-step: extensions and main update (with sub-grids, see Engine_GPU_CylinderMultiGrid)
+	virtual void VoltageHalfStep();
+	//! One current half-step: extensions and main update
+	virtual void CurrentHalfStep();
+	//! Count the completed timestep
+	virtual void NextTimestep();
+	//! After a batch of timesteps: update the host mirror for the field processing
+	virtual void FinishBatch();
+
+	//! Run all extensions on the host mirror, even if they have a device implementation
+	virtual void ForceHostFallback();
+
 	//! The device backend holding the fields
 	GPU_Backend* GetBackend() const {return m_Backend;}
 
 	//! True if the extensions run on the host mirror, which is then kept in sync during IterateTS()
 	bool FieldsOnHost() const {return m_FieldsOnHost;}
 
-protected:
-	Engine_GPU(const Operator* op, const std::string& backend);
-
-	std::string m_BackendName;
-	GPU_Backend* m_Backend;
-	bool m_FieldsOnHost;
-	bool m_SharedMemory; //!< the host mirror is the device memory
+	//! Host mirror of the fields (basic engine layout)
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& HostVoltages() const {return *volt_ptr;}
+	ArrayLib::ArrayNIJK<FDTD_FLOAT>& HostCurrents() const {return *curr_ptr;}
 
 	//! Make the device results visible in the host mirror
 	void VoltagesToHost();
@@ -77,6 +85,15 @@ protected:
 	//! Make the host mirror changes visible to the device
 	void VoltagesToDevice();
 	void CurrentsToDevice();
+
+protected:
+	Engine_GPU(const Operator* op, const std::string& backend, GPU_Backend* parent);
+
+	std::string m_BackendName;
+	GPU_Backend* m_ParentBackend;
+	GPU_Backend* m_Backend;
+	bool m_FieldsOnHost;
+	bool m_SharedMemory; //!< the host mirror is the device memory
 
 	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
 	std::vector<GPU_Extension*> m_GPU_exts;

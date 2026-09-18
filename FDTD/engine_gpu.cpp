@@ -28,16 +28,17 @@ using std::endl;
 
 //! \brief construct an Engine_GPU instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine_GPU* Engine_GPU::New(const Operator* op, const std::string& backend)
+Engine_GPU* Engine_GPU::New(const Operator* op, const std::string& backend, GPU_Backend* parent)
 {
-	Engine_GPU* e = new Engine_GPU(op, backend);
+	Engine_GPU* e = new Engine_GPU(op, backend, parent);
 	e->Init();
 	return e;
 }
 
-Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend) : Engine(op)
+Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend, GPU_Backend* parent) : Engine(op)
 {
 	m_BackendName = backend;
+	m_ParentBackend = parent;
 	m_type = GPU;
 	m_Backend = NULL;
 	m_FieldsOnHost = true;
@@ -54,7 +55,8 @@ void Engine_GPU::Init()
 	// allocates the host mirror and creates the extensions
 	Engine::Init();
 
-	m_Backend = GPU_Backend::New(m_BackendName);
+	// a sub-grid shares the device work stream of its parent grid
+	m_Backend = m_ParentBackend ? m_ParentBackend->NewSubGridBackend() : GPU_Backend::New(m_BackendName);
 	cout << "Create FDTD engine (GPU, backend: " << m_Backend->GetName() << ")" << endl;
 	if (!m_Backend->Init(Op))
 		throw std::runtime_error("Engine_GPU::Init: GPU backend initialization failed");
@@ -91,6 +93,14 @@ void Engine_GPU::Init()
 	}
 	else
 		cout << "Engine_GPU: all extensions run on the device" << endl;
+}
+
+void Engine_GPU::ForceHostFallback()
+{
+	if (m_FieldsOnHost)
+		return;
+	ClearGPUExtensions();
+	m_FieldsOnHost = true;
 }
 
 void Engine_GPU::ClearGPUExtensions()
@@ -141,63 +151,80 @@ void Engine_GPU::CurrentsToDevice()
 
 bool Engine_GPU::IterateTS(unsigned int iterTS)
 {
-
-	if (!m_FieldsOnHost)
-	{
-		// all extensions run on the device, in the same order as the host extensions (see Engine)
-		for (unsigned int iter=0; iter<iterTS; ++iter)
-		{
-			for (int n=m_GPU_exts.size()-1; n>=0; --n)
-				m_GPU_exts.at(n)->DoPreVoltageUpdates();
-			m_Backend->UpdateVoltages();
-			for (size_t n=0; n<m_GPU_exts.size(); ++n)
-				m_GPU_exts.at(n)->DoPostVoltageUpdates();
-			for (size_t n=0; n<m_GPU_exts.size(); ++n)
-				m_GPU_exts.at(n)->Apply2Voltages();
-
-			for (int n=m_GPU_exts.size()-1; n>=0; --n)
-				m_GPU_exts.at(n)->DoPreCurrentUpdates();
-			m_Backend->UpdateCurrents();
-			for (size_t n=0; n<m_GPU_exts.size(); ++n)
-				m_GPU_exts.at(n)->DoPostCurrentUpdates();
-			for (size_t n=0; n<m_GPU_exts.size(); ++n)
-				m_GPU_exts.at(n)->Apply2Current();
-
-			++numTS;
-		}
-
-		// update the host mirror for the field processing
-		VoltagesToHost();
-		CurrentsToHost();
-		for (size_t n=0; n<m_GPU_exts.size(); ++n)
-			m_GPU_exts.at(n)->Synchronize();
-		return true;
-	}
-
-	// Host fallback: any hook may write either field, including the pre-update hooks
-	// (the UPML swaps its flux into the fields before the main update), so both
-	// fields are uploaded before and the updated one downloaded after each main update.
 	for (unsigned int iter=0; iter<iterTS; ++iter)
 	{
-		//voltage updates with extensions
-		DoPreVoltageUpdates();
-		VoltagesToDevice();
-		CurrentsToDevice();
-		m_Backend->UpdateVoltages();
-		VoltagesToHost();
-		DoPostVoltageUpdates();
-		Apply2Voltages();
-
-		//current updates with extensions
-		DoPreCurrentUpdates();
-		VoltagesToDevice();
-		CurrentsToDevice();
-		m_Backend->UpdateCurrents();
-		CurrentsToHost();
-		DoPostCurrentUpdates();
-		Apply2Current();
-
-		++numTS;
+		VoltageHalfStep();
+		CurrentHalfStep();
+		NextTimestep();
 	}
+	FinishBatch();
 	return true;
+}
+
+// The fast path runs all extensions on the device, in the same order as the host
+// extensions (see Engine).
+// Host fallback: any hook may write either field, including the pre-update hooks
+// (the UPML swaps its flux into the fields before the main update), so both
+// fields are uploaded before and the updated one downloaded after each main update.
+
+void Engine_GPU::VoltageHalfStep()
+{
+	if (!m_FieldsOnHost)
+	{
+		for (int n=m_GPU_exts.size()-1; n>=0; --n)
+			m_GPU_exts.at(n)->DoPreVoltageUpdates();
+		m_Backend->UpdateVoltages();
+		for (size_t n=0; n<m_GPU_exts.size(); ++n)
+			m_GPU_exts.at(n)->DoPostVoltageUpdates();
+		for (size_t n=0; n<m_GPU_exts.size(); ++n)
+			m_GPU_exts.at(n)->Apply2Voltages();
+		return;
+	}
+
+	DoPreVoltageUpdates();
+	VoltagesToDevice();
+	CurrentsToDevice();
+	m_Backend->UpdateVoltages();
+	VoltagesToHost();
+	DoPostVoltageUpdates();
+	Apply2Voltages();
+}
+
+void Engine_GPU::CurrentHalfStep()
+{
+	if (!m_FieldsOnHost)
+	{
+		for (int n=m_GPU_exts.size()-1; n>=0; --n)
+			m_GPU_exts.at(n)->DoPreCurrentUpdates();
+		m_Backend->UpdateCurrents();
+		for (size_t n=0; n<m_GPU_exts.size(); ++n)
+			m_GPU_exts.at(n)->DoPostCurrentUpdates();
+		for (size_t n=0; n<m_GPU_exts.size(); ++n)
+			m_GPU_exts.at(n)->Apply2Current();
+		return;
+	}
+
+	DoPreCurrentUpdates();
+	VoltagesToDevice();
+	CurrentsToDevice();
+	m_Backend->UpdateCurrents();
+	CurrentsToHost();
+	DoPostCurrentUpdates();
+	Apply2Current();
+}
+
+void Engine_GPU::NextTimestep()
+{
+	++numTS;
+}
+
+void Engine_GPU::FinishBatch()
+{
+	if (m_FieldsOnHost)
+		return;   // the host mirror is up to date after every half-step
+	// update the host mirror for the field processing
+	VoltagesToHost();
+	CurrentsToHost();
+	for (size_t n=0; n<m_GPU_exts.size(); ++n)
+		m_GPU_exts.at(n)->Synchronize();
 }

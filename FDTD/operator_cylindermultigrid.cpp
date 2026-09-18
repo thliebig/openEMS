@@ -16,6 +16,7 @@
 */
 
 #include "operator_cylindermultigrid.h"
+#include "engine_gpu_cylindermultigrid.h"
 #include "engine_cylindermultigrid.h"
 #include "extensions/operator_ext_cylinder.h"
 #include "tools/useful.h"
@@ -63,7 +64,10 @@ Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(
 
 Engine* Operator_CylinderMultiGrid::CreateEngine()
 {
-	m_Engine = Engine_CylinderMultiGrid::New(this, m_orig_numThreads);
+	if (!m_GPU_Backend.empty())
+		m_Engine = Engine_GPU_CylinderMultiGrid::New(this, m_GPU_Backend, m_GPU_Parent);
+	else
+		m_Engine = Engine_CylinderMultiGrid::New(this, m_orig_numThreads);
 	return m_Engine;
 }
 

@@ -91,7 +91,7 @@ kernel void update_currents(device float* curr       [[buffer(0)]],
 
 /***************************** Impl *****************************/
 
-id<MTLComputePipelineState> GPU_Backend_Metal::Impl::Pipeline(const char* source, const char* function)
+id<MTLComputePipelineState> Metal_Context::Pipeline(const char* source, const char* function)
 {
 	std::map<std::string, id<MTLComputePipelineState>>::iterator it = pipelines.find(function);
 	if (it!=pipelines.end())
@@ -129,7 +129,7 @@ id<MTLComputePipelineState> GPU_Backend_Metal::Impl::Pipeline(const char* source
 	}
 }
 
-id<MTLComputeCommandEncoder> GPU_Backend_Metal::Impl::Encoder()
+id<MTLComputeCommandEncoder> Metal_Context::Encoder()
 {
 	if (enc)
 		return enc;
@@ -142,7 +142,7 @@ id<MTLComputeCommandEncoder> GPU_Backend_Metal::Impl::Encoder()
 	return enc;
 }
 
-void GPU_Backend_Metal::Impl::Flush()
+void Metal_Context::Flush()
 {
 	if (!cmd)
 		return;
@@ -192,8 +192,19 @@ GPU_Backend_Metal* GPU_Backend_Metal::New()
 	if (!device)
 		return NULL;
 	Impl* impl = new Impl();
+	impl->ctx = std::make_shared<Metal_Context>();
+	impl->ctx->device = device;
+	impl->ctx->queue = [device newCommandQueue];
 	impl->device = device;
-	impl->queue = [device newCommandQueue];
+	impl->numCells = 0;
+	return new GPU_Backend_Metal(impl);
+}
+
+GPU_Backend* GPU_Backend_Metal::NewSubGridBackend()
+{
+	Impl* impl = new Impl();
+	impl->ctx = d->ctx;
+	impl->device = d->device;
 	impl->numCells = 0;
 	return new GPU_Backend_Metal(impl);
 }
