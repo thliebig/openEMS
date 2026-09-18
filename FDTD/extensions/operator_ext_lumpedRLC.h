@@ -33,6 +33,7 @@ class Operator_Ext_LumpedRLC : public Operator_Extension
 {
 	friend class Engine_Ext_LumpedRLC;
 	friend class Metal_Ext_LumpedRLC;
+	friend class HIP_Ext_LumpedRLC;
 public:
 	Operator_Ext_LumpedRLC(Operator* op);
 
