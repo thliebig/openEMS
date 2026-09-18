@@ -77,8 +77,11 @@ IF(ENABLE_HIP)
   ENDIF()
   enable_language(CUDA)
   set(CMAKE_HIP_STANDARD 14)
-  # no fused multiply-add, so the kernels round like the CPU engines
+  # no fused multiply-add and the same denormal handling, so the kernels round like the CPU engines
   set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --fmad=false")
+  IF(ENABLE_FLUSH_TO_ZERO)
+    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --ftz=true")
+  ENDIF()
   message(STATUS "HIP GPU backend enabled, architectures: ${CMAKE_HIP_ARCHITECTURES}")
   ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
 ENDIF()
