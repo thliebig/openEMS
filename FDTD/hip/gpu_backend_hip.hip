@@ -311,6 +311,7 @@ static const HIP_ExtensionFactory HIP_EXTENSIONS[] = {
 	HIP_CreateExt_TFSF,
 	HIP_CreateExt_Absorbing_BC,
 	HIP_CreateExt_SteadyState,
+	HIP_CreateExt_Cylinder,
 };
 
 GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engine* eng)
