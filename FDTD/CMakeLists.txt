@@ -16,5 +16,9 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_fdtd.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_sse_fdtd.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_interface_cylindrical_fdtd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator_gpu.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/engine_gpu.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend_reference.cpp
   PARENT_SCOPE
 )

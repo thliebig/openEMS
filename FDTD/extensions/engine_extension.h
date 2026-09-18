@@ -64,6 +64,9 @@ public:
 	//! Set the Engine to this extension. This will usually done automatically by Engine::AddExtension
 	virtual void SetEngine(Engine* eng) {m_Eng=eng;}
 
+	//! Get the operator extension this engine extension was created by
+	Operator_Extension* GetOperatorExtension() const {return m_Op_ext;}
+
 	//! Get the priority for this extension
 	virtual int GetPriority() const {return m_Priority;}
 
