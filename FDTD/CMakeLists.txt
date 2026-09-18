@@ -20,6 +20,7 @@ if(ENABLE_HIP)
   set(HIP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/gpu_backend_hip.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_excitation.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_upml.cu
   )
 endif()
 

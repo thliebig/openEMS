@@ -119,5 +119,6 @@ void HIP_Launch(GPU_Backend_HIP::Impl* d, const char* name, Kernel kernel, size_
 //! Factory of a HIP extension: the device implementation of \a eng_ext, or NULL if \a eng_ext is not of its type
 typedef GPU_Extension* (*HIP_ExtensionFactory)(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
 GPU_Extension* HIP_CreateExt_Excitation(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
+GPU_Extension* HIP_CreateExt_UPML(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
 
 #endif // HIP_INTERNAL_H
