@@ -337,9 +337,9 @@ cases = [('excitation',     case_excitation,     True),
          ('lumped',         case_lumped,         True),
          ('tfsf',           case_tfsf,           True),
          ('absorbers',      case_absorbers,      True),
-         ('dispersive_pml', case_dispersive_pml, False),
-         ('3d_mixed',       case_3d_mixed,       False),
-         ('steady_state',   case_steady_state,   False)]
+         ('dispersive_pml', case_dispersive_pml, True),
+         ('3d_mixed',       case_3d_mixed,       True),
+         ('steady_state',   case_steady_state,   True)]
 
 METAL_RTOL = 1e-4
 engines = ('basic', 'gpu-reference', 'gpu')
