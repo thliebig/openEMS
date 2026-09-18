@@ -12,7 +12,9 @@
  is compared with a tolerance.
 
  Together the cases use the excitation, UPML, Mur ABC, Lorentz material,
- lumped RLC, conducting sheet, TF/SF and steady-state extensions.
+ lumped RLC, conducting sheet, TF/SF, local absorber, steady-state and
+ cylinder extensions. For cylindrical meshes the engine choice 'basic' has no
+ effect, the CPU reference is the cylindrical (multithreaded) engine.
 
  Pass criteria (per case)
    the requested backend was created (not a silent fallback)
@@ -260,6 +262,45 @@ def case_absorbers():
     return FDTD, CSX
 
 
+def cylinder_mesh(FDTD, alpha, r0, r1):
+    """ cylindrical mesh, the CPU reference is the cylindrical engine (engine='basic' has no effect) """
+    CSX = ContinuousStructure(CoordSystem=1)
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('r', np.arange(r0, r1 + 1, 2))
+    mesh.AddLine('a', alpha)
+    mesh.AddLine('z', np.arange(0, 30.5, 2))
+    return CSX
+
+
+def case_cylinder_closed():
+    """ closed cylindrical mesh including r=0: excitation and cylinder extensions """
+    FDTD = openEMS(CoordSystem=1, NrTS=1500, EndCriteria=0)
+    FDTD.SetGaussExcite(3e9, 2e9)
+    FDTD.SetBoundaryCond(['PEC'] * 6)
+    CSX = cylinder_mesh(FDTD, (np.arange(25) - 12) * 2*np.pi/24, 0, 40)
+    CSX.AddExcitation('line', exc_type=0, exc_val=[0, 0, 1]).AddBox([14, 0, 0], [14, 0, 30])
+    CSX.AddExcitation('radial', exc_type=0, exc_val=[1, 0, 0]).AddBox([6, np.pi/2, 10], [10, np.pi/2, 10])
+    CSX.AddProbe('et_axis', p_type=2).AddPoint([0, 0, 16])
+    CSX.AddProbe('et', p_type=2).AddPoint([20, np.pi/4, 14])
+    CSX.AddProbe('ht', p_type=3).AddPoint([10, -np.pi/3, 8])
+    CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([0, -np.pi, 14], [40, np.pi, 14])
+    return FDTD, CSX
+
+
+def case_cylinder_wedge():
+    """ open alpha wedge with r>0 and PML in z: excitation, UPML and (inactive) cylinder extensions """
+    FDTD = openEMS(CoordSystem=1, NrTS=1000, EndCriteria=0)
+    FDTD.SetGaussExcite(3e9, 2e9)
+    FDTD.SetBoundaryCond(['PEC', 'PEC', 'PEC', 'PEC', 'PML_8', 'PML_8'])
+    CSX = cylinder_mesh(FDTD, np.linspace(-np.pi/4, np.pi/4, 13), 10, 40)
+    CSX.AddExcitation('coax', exc_type=0, exc_val=[1, 0, 0]).AddBox([10, -np.pi/4, 12], [40, np.pi/4, 12])
+    CSX.AddProbe('et', p_type=2).AddPoint([20, 0, 20])
+    CSX.AddProbe('ht', p_type=3).AddPoint([30, np.pi/8, 6])
+    return FDTD, CSX
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -337,6 +378,8 @@ cases = [('excitation',     case_excitation,     True),
          ('lumped',         case_lumped,         True),
          ('tfsf',           case_tfsf,           True),
          ('absorbers',      case_absorbers,      True),
+         ('cylinder_closed', case_cylinder_closed, False),
+         ('cylinder_wedge', case_cylinder_wedge,  False),
          ('dispersive_pml', case_dispersive_pml, True),
          ('3d_mixed',       case_3d_mixed,       True),
          ('steady_state',   case_steady_state,   True)]

@@ -17,6 +17,7 @@
 
 #include "engine.h"
 #include "engine_cylinder.h"
+#include "engine_gpu.h"
 #include "Common/processfields.h"
 #include "operator_cylinder.h"
 #include "extensions/operator_extension.h"
@@ -49,6 +50,11 @@ Operator_Cylinder::~Operator_Cylinder()
 
 Engine* Operator_Cylinder::CreateEngine()
 {
+	if (!m_GPU_Backend.empty())
+	{
+		m_Engine = Engine_GPU::New(this, m_GPU_Backend);
+		return m_Engine;
+	}
 	//! create a special cylindrical-engine
 	m_Engine = Engine_Cylinder::New(this, m_orig_numThreads);
 	return m_Engine;

@@ -28,15 +28,16 @@ using std::endl;
 
 //! \brief construct an Engine_GPU instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine_GPU* Engine_GPU::New(const Operator_GPU* op)
+Engine_GPU* Engine_GPU::New(const Operator* op, const std::string& backend)
 {
-	Engine_GPU* e = new Engine_GPU(op);
+	Engine_GPU* e = new Engine_GPU(op, backend);
 	e->Init();
 	return e;
 }
 
-Engine_GPU::Engine_GPU(const Operator_GPU* op) : Engine(op)
+Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend) : Engine(op)
 {
+	m_BackendName = backend;
 	m_type = GPU;
 	m_Backend = NULL;
 	m_FieldsOnHost = true;
@@ -53,8 +54,7 @@ void Engine_GPU::Init()
 	// allocates the host mirror and creates the extensions
 	Engine::Init();
 
-	const Operator_GPU* op_gpu = dynamic_cast<const Operator_GPU*>(Op);
-	m_Backend = GPU_Backend::New(op_gpu ? op_gpu->GetBackendName() : "auto");
+	m_Backend = GPU_Backend::New(m_BackendName);
 	cout << "Create FDTD engine (GPU, backend: " << m_Backend->GetName() << ")" << endl;
 	if (!m_Backend->Init(Op))
 		throw std::runtime_error("Engine_GPU::Init: GPU backend initialization failed");

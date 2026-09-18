@@ -40,6 +40,6 @@ Operator_GPU::~Operator_GPU()
 
 Engine* Operator_GPU::CreateEngine()
 {
-	m_Engine = Engine_GPU::New(this);
+	m_Engine = Engine_GPU::New(this, m_Backend);
 	return m_Engine;
 }

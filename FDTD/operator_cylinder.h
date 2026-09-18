@@ -88,6 +88,9 @@ public:
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
+	//! Create a GPU engine on backend \a backend (see GPU_Backend::New) instead of the multithreaded engine; empty: multithreaded engine
+	void SetGPUBackend(const std::string& backend) {m_GPU_Backend = backend;}
+
 	virtual void AddExtension(Operator_Extension* op_ext);
 
 	virtual Engine* CreateEngine();
@@ -114,6 +117,8 @@ protected:
 	virtual double CalcTimestep();
 	bool CC_closedAlpha;
 	bool CC_R0_included;
+
+	std::string m_GPU_Backend;
 	Operator_Ext_Cylinder* m_Cyl_Ext;
 };
 
