@@ -67,6 +67,7 @@ protected:
 	size_t m_bytes=0;
 
 	T* __restrict m_ptr = NULL;
+	bool m_owner = true; // false: m_ptr is external memory, not freed by Reset()
 
 	// 2-phase initialization
 	ArrayBase() {}
@@ -85,7 +86,9 @@ public:
 	void Reset()
 	{
 		if (this->m_ptr==NULL) return;
-		AllocatorType::free(this->m_ptr, this->m_size);
+		if (this->m_owner)
+			AllocatorType::free(this->m_ptr, this->m_size);
+		this->m_owner   = true;
 		this->m_name    = "";
 		this->m_ptr     = NULL;
 		this->m_size    = 0;
@@ -112,6 +115,7 @@ public:
 	IndexType                   extent(IndexType n) const { return m_extent[n];}
 	IndexType                   stride(IndexType n) const { return m_stride[n];}
 	bool                        valid()             const { return m_ptr!=NULL;}
+	bool                        owner()             const { return m_owner;    }
 
 	// allow to swap axis
 	void swapAxis(size_t a, size_t b)

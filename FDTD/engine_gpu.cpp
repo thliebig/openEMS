@@ -40,6 +40,7 @@ Engine_GPU::Engine_GPU(const Operator_GPU* op) : Engine(op)
 	m_type = GPU;
 	m_Backend = NULL;
 	m_FieldsOnHost = true;
+	m_SharedMemory = false;
 }
 
 Engine_GPU::~Engine_GPU()
@@ -57,6 +58,14 @@ void Engine_GPU::Init()
 	cout << "Create FDTD engine (GPU, backend: " << m_Backend->GetName() << ")" << endl;
 	if (!m_Backend->Init(Op))
 		throw std::runtime_error("Engine_GPU::Init: GPU backend initialization failed");
+
+	// with unified memory the host mirror is a view of the device fields
+	m_SharedMemory = m_Backend->GetSharedVoltages() && m_Backend->GetSharedCurrents();
+	if (m_SharedMemory)
+	{
+		volt_ptr->InitView("volt", {numLines[0], numLines[1], numLines[2]}, m_Backend->GetSharedVoltages());
+		curr_ptr->InitView("curr", {numLines[0], numLines[1], numLines[2]}, m_Backend->GetSharedCurrents());
+	}
 
 	// the fields stay on the device only if every extension has a device implementation
 	std::vector<std::string> host_exts;
@@ -100,10 +109,38 @@ void Engine_GPU::Reset()
 	Engine::Reset();
 }
 
+void Engine_GPU::VoltagesToHost()
+{
+	if (m_SharedMemory)
+		m_Backend->Synchronize();
+	else
+		m_Backend->DownloadVoltages(*volt_ptr);
+}
+
+void Engine_GPU::CurrentsToHost()
+{
+	if (m_SharedMemory)
+		m_Backend->Synchronize();
+	else
+		m_Backend->DownloadCurrents(*curr_ptr);
+}
+
+// with shared memory the host only writes while the device is idle (after a
+// Synchronize()), and the writes are visible to all work committed later
+void Engine_GPU::VoltagesToDevice()
+{
+	if (!m_SharedMemory)
+		m_Backend->UploadVoltages(*volt_ptr);
+}
+
+void Engine_GPU::CurrentsToDevice()
+{
+	if (!m_SharedMemory)
+		m_Backend->UploadCurrents(*curr_ptr);
+}
+
 bool Engine_GPU::IterateTS(unsigned int iterTS)
 {
-	ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
-	ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
 
 	if (!m_FieldsOnHost)
 	{
@@ -130,8 +167,8 @@ bool Engine_GPU::IterateTS(unsigned int iterTS)
 		}
 
 		// update the host mirror for the field processing
-		m_Backend->DownloadVoltages(volt);
-		m_Backend->DownloadCurrents(curr);
+		VoltagesToHost();
+		CurrentsToHost();
 		for (size_t n=0; n<m_GPU_exts.size(); ++n)
 			m_GPU_exts.at(n)->Synchronize();
 		return true;
@@ -144,19 +181,19 @@ bool Engine_GPU::IterateTS(unsigned int iterTS)
 	{
 		//voltage updates with extensions
 		DoPreVoltageUpdates();
-		m_Backend->UploadVoltages(volt);
-		m_Backend->UploadCurrents(curr);
+		VoltagesToDevice();
+		CurrentsToDevice();
 		m_Backend->UpdateVoltages();
-		m_Backend->DownloadVoltages(volt);
+		VoltagesToHost();
 		DoPostVoltageUpdates();
 		Apply2Voltages();
 
 		//current updates with extensions
 		DoPreCurrentUpdates();
-		m_Backend->UploadVoltages(volt);
-		m_Backend->UploadCurrents(curr);
+		VoltagesToDevice();
+		CurrentsToDevice();
 		m_Backend->UpdateCurrents();
-		m_Backend->DownloadCurrents(curr);
+		CurrentsToHost();
 		DoPostCurrentUpdates();
 		Apply2Current();
 

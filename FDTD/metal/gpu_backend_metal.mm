@@ -291,7 +291,23 @@ static void CopyField(const void* src, void* dst, size_t src_bytes, size_t dst_b
 {
 	if (src_bytes!=dst_bytes)
 		throw std::runtime_error("GPU_Backend_Metal: host and device field size mismatch");
-	std::memcpy(dst, src, src_bytes);
+	if (src!=dst)   // nothing to do if the host mirror is the shared buffer
+		std::memcpy(dst, src, src_bytes);
+}
+
+FDTD_FLOAT* GPU_Backend_Metal::GetSharedVoltages() const
+{
+	return static_cast<FDTD_FLOAT*>([d->volt contents]);
+}
+
+FDTD_FLOAT* GPU_Backend_Metal::GetSharedCurrents() const
+{
+	return static_cast<FDTD_FLOAT*>([d->curr contents]);
+}
+
+void GPU_Backend_Metal::Synchronize()
+{
+	d->Flush();
 }
 
 void GPU_Backend_Metal::DownloadVoltages(ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt)

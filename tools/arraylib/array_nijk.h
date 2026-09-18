@@ -45,13 +45,21 @@ public:
 
 	virtual void Init(std::string name, std::array<IndexType, 3> extent)
 	{
-		if (this->m_ptr != NULL)
-			Base::AllocatorType::free(this->m_ptr, this->m_size);
+		InitView(name, extent, NULL);
+	}
+
+	// Use the external memory at ptr (at least extentN*i*j*k elements) instead
+	// of allocating, e.g. memory shared with a GPU. The array does not free it.
+	// With ptr==NULL, allocate and own the memory like Init().
+	void InitView(std::string name, std::array<IndexType, 3> extent, T* ptr)
+	{
+		this->Reset();
 
 		this->m_name = name;
 		this->m_size = extent[0] * extent[1] * extent[2] * extentN;
 		this->m_bytes = sizeof(T) * this->m_size;
-		this->m_ptr = Base::AllocatorType::alloc(this->m_size);
+		this->m_owner = (ptr==NULL);
+		this->m_ptr = ptr ? ptr : Base::AllocatorType::alloc(this->m_size);
 
 		this->m_extent = {extentN, extent[0], extent[1], extent[2]};
 

@@ -58,7 +58,9 @@ public:
 
   Engine_GPU keeps a host mirror of the fields in the basic Engine layout (ArrayNIJK),
   used by the field processing and by extensions without a device implementation,
-  and synchronizes it with the Download/Upload methods.
+  and synchronizes it with the Download/Upload methods. If the device shares its
+  memory with the host (unified memory), the host mirror is the device memory
+  itself (see GetSharedVoltages()) and synchronizing means waiting for the device.
   */
 class GPU_Backend
 {
@@ -86,6 +88,13 @@ public:
 	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt) = 0;
 	//! Copy the host mirror currents to the device
 	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr) = 0;
+
+	//! Host pointer to the device voltages in the ArrayNIJK layout, if the device shares memory with the host, else NULL. Valid after Init().
+	virtual FDTD_FLOAT* GetSharedVoltages() const {return NULL;}
+	//! Host pointer to the device currents in the ArrayNIJK layout, if the device shares memory with the host, else NULL. Valid after Init().
+	virtual FDTD_FLOAT* GetSharedCurrents() const {return NULL;}
+	//! Wait until the device finished all work, required before the host accesses shared memory
+	virtual void Synchronize() {}
 
 	//! Create the device implementation of the engine extension \a eng_ext of engine \a eng, or NULL if this backend has none
 	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng) {UNUSED(eng_ext); UNUSED(eng); return NULL;}

@@ -31,6 +31,8 @@ class GPU_Extension;
   The fields live on the device (see GPU_Backend). The base class arrays
   (volt_ptr, curr_ptr) serve as host mirror in the basic engine layout, read by
   the field processing through GetVolt/GetCurr and by the engine extensions.
+  If the device shares its memory with the host, the host mirror is a view of
+  the device memory and no copies are needed.
 
   An extension runs on the device if its operator extension IsGPUSave() and the
   backend provides a device implementation (GPU_Backend::CreateExtension()).
@@ -65,6 +67,14 @@ protected:
 
 	GPU_Backend* m_Backend;
 	bool m_FieldsOnHost;
+	bool m_SharedMemory; //!< the host mirror is the device memory
+
+	//! Make the device results visible in the host mirror
+	void VoltagesToHost();
+	void CurrentsToHost();
+	//! Make the host mirror changes visible to the device
+	void VoltagesToDevice();
+	void CurrentsToDevice();
 
 	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
 	std::vector<GPU_Extension*> m_GPU_exts;

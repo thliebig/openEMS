@@ -23,7 +23,7 @@
 //! GPU backend using Apple Metal
 /*!
   The fields and coefficients live in shared-storage Metal buffers (unified
-  memory), so synchronizing the host mirror is a plain copy. All kernels of a
+  memory), which Engine_GPU uses directly as its host mirror. All kernels of a
   batch of timesteps are encoded into one serial compute encoder, which is only
   committed when the host needs the fields.
 
@@ -47,6 +47,10 @@ public:
 	virtual void DownloadCurrents(ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
 	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
 	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
+
+	virtual FDTD_FLOAT* GetSharedVoltages() const;
+	virtual FDTD_FLOAT* GetSharedCurrents() const;
+	virtual void Synchronize();
 
 	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng);
 
