@@ -61,7 +61,7 @@ w       = 2*np.pi*freq
 
 def run(Sim_Path, material_fn=None):
     """ Run the channel with an optional slab and return the probe spectrum Ex(freq). """
-    FDTD = openEMS(NrTS=20000, EndCriteria=1e-5)
+    FDTD = openEMS(NrTS=20000, EndCriteria=1e-6)
     FDTD.SetGaussExcite(0.5*(f_start + f_stop), 0.5*(f_stop - f_start))
     FDTD.SetBoundaryCond(['PEC', 'PEC', 'PMC', 'PMC', 'PML_8', 'PML_8'])
 
