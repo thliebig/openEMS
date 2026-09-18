@@ -18,7 +18,7 @@
    the requested backend was created (not a silent fallback)
    Metal backend: all extensions run on the device, where implemented
    reference backend: all probe data and field dumps bit-identical
-   Metal backend: max. deviation < 1e-4 of the peak value, per probe/dump
+   Metal backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a Metal device)
 
  Tested with
@@ -213,6 +213,29 @@ def case_lumped():
     return FDTD, CSX
 
 
+def case_tfsf():
+    """ oblique plane wave on a PEC sphere in a PML box: excitation, TF/SF and UPML extensions """
+    FDTD = openEMS(NrTS=700, EndCriteria=0)
+    FDTD.SetGaussExcite(5.5e9, 4.5e9)
+    FDTD.SetBoundaryCond(['PML_8'] * 6)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    for ax in 'xyz':
+        mesh.AddLine(ax, np.arange(-15, 15.5, 1))
+    k_dir = np.array([1, 2, 3]) / np.sqrt(14)
+    pw = CSX.AddExcitation('plane_wave', exc_type=10, exc_val=[2, -1, 0])
+    pw.SetPropagationDir(k_dir)
+    pw.SetFrequency(5e9)
+    pw.AddBox([-6, -6, -6], [6, 6, 6])
+    CSX.AddMetal('sphere').AddSphere(priority=10, center=[0, 0, 0], radius=3)
+    CSX.AddProbe('et_in', p_type=2).AddPoint([4, -3, 2])
+    CSX.AddProbe('et_out', p_type=2).AddPoint([-10, 1, 3])
+    CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([-15, -15, 0], [15, 15, 0])
+    return FDTD, CSX
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -243,14 +266,15 @@ def run_captured(case, Sim_Path, engine):
         return log.read()
 
 
-def deviation(a, b):
-    """ max. deviation of b from a, relative to the peak of a (0 if identical) """
+def deviation(a, b, peak=None):
+    """ max. deviation of b from a, relative to peak (default: the peak of a), 0 if identical """
     a = np.asarray(a); b = np.asarray(b)
     if a.shape != b.shape:
         return np.inf
     if np.array_equal(a, b):
         return 0.0
-    peak = np.max(np.abs(a))
+    if peak is None:
+        peak = np.max(np.abs(a))
     return np.max(np.abs(a - b)) / (peak if peak > 0 else 1.0)
 
 
@@ -267,10 +291,16 @@ def compare_outputs(path_a, path_b, rtol=0):
         diff.append((f, deviation(a, b)))
     for f in dumps:
         with h5py.File(os.path.join(path_a, f), 'r') as a, h5py.File(os.path.join(path_b, f), 'r') as b:
-            def visit(name, obj):
-                if isinstance(obj, h5py.Dataset):
-                    diff.append((f'{f}:{name}', deviation(obj[()], b[name][()]) if name in b else np.inf))
-            a.visititems(visit)
+            names = []
+            a.visititems(lambda name, obj: names.append(name) if isinstance(obj, h5py.Dataset) else None)
+            # field data relative to the peak of the whole dump, not of each (possibly decayed) timestep
+            fields = [n for n in names if n.startswith('FieldData')]
+            peak = max([np.max(np.abs(a[n][()])) for n in fields] or [0])
+            for n in names:
+                if n not in b:
+                    diff.append((f'{f}:{n}', np.inf))
+                else:
+                    diff.append((f'{f}:{n}', deviation(a[n][()], b[n][()], peak if n in fields else None)))
     worst = max(d for _, d in diff)
     return [(n, d) for n, d in diff if d > rtol], len(probes), len(dumps), worst
 
@@ -281,6 +311,7 @@ cases = [('excitation',     case_excitation,     True),
          ('mur',            case_mur,            True),
          ('materials',      case_materials,      True),
          ('lumped',         case_lumped,         True),
+         ('tfsf',           case_tfsf,           True),
          ('dispersive_pml', case_dispersive_pml, False),
          ('3d_mixed',       case_3d_mixed,       False),
          ('steady_state',   case_steady_state,   False)]

@@ -7,6 +7,7 @@ if(APPLE AND ENABLE_METAL)
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_mur_abc.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_lorentzmaterial.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_lumpedRLC.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_tfsf.mm
   )
 endif()
 
