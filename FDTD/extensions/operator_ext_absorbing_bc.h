@@ -42,6 +42,7 @@
 class Operator_Ext_Absorbing_BC : public Operator_Extension
 {
 	friend class Engine_Ext_Absorbing_BC;
+	friend class Metal_Ext_Absorbing_BC;
 public:
 
 	// This should be a replica of the CSXCAD property, but can also be something
@@ -57,6 +58,8 @@ public:
 	~Operator_Ext_Absorbing_BC();
 
 	virtual Operator_Extension* Clone(Operator* op);
+
+	virtual bool IsGPUSave() const {return true;}
 
 	virtual bool BuildExtension();
 

@@ -35,6 +35,8 @@ import h5py
 
 from CSXCAD  import ContinuousStructure
 from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
+from CSXCAD.CSProperties import ABCtype
+from openEMS.physical_constants import C0
 from openEMS import openEMS
 from openEMS.ports import LumpedPort
 
@@ -236,6 +238,28 @@ def case_tfsf():
     return FDTD, CSX
 
 
+def case_absorbers():
+    """ PEC-terminated channel with local absorbing sheets (Mur and Mur with super-absorption) """
+    FDTD = openEMS(NrTS=3000, EndCriteria=0)
+    FDTD.SetGaussExcite(5.5e9, 4.5e9)
+    FDTD.SetBoundaryCond(['PEC', 'PEC', 'PMC', 'PMC', 'PEC', 'PEC'])
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('x', [0, 0.5, 1])
+    mesh.AddLine('y', [0, 0.5, 1])
+    mesh.AddLine('z', np.arange(0, 100.5, 0.5))
+    CSX.AddExcitation('plane', exc_type=0, exc_val=[1, 0, 0]).AddBox([0, 0, 40], [1, 1, 40])
+    CSX.AddAbsorbingBC('abs_low', NormalSignPositive=False, AbsorbingBoundaryType=ABCtype.MUR_1ST,
+                       PhaseVelocity=C0).AddBox([0, 0, 5], [1, 1, 5], priority=6)
+    CSX.AddAbsorbingBC('abs_high', NormalSignPositive=True, AbsorbingBoundaryType=ABCtype.MUR_1ST_SA,
+                       PhaseVelocity=C0).AddBox([0, 0, 95], [1, 1, 95], priority=6)
+    CSX.AddProbe('et', p_type=2).AddPoint([0.5, 0.5, 70])
+    CSX.AddProbe('ht', p_type=3).AddPoint([0.5, 0.5, 20])
+    return FDTD, CSX
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -312,6 +336,7 @@ cases = [('excitation',     case_excitation,     True),
          ('materials',      case_materials,      True),
          ('lumped',         case_lumped,         True),
          ('tfsf',           case_tfsf,           True),
+         ('absorbers',      case_absorbers,      True),
          ('dispersive_pml', case_dispersive_pml, False),
          ('3d_mixed',       case_3d_mixed,       False),
          ('steady_state',   case_steady_state,   False)]

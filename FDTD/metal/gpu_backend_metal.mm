@@ -342,6 +342,7 @@ static const Metal_ExtensionFactory METAL_EXTENSIONS[] = {
 	Metal_CreateExt_LorentzMaterial,
 	Metal_CreateExt_LumpedRLC,
 	Metal_CreateExt_TFSF,
+	Metal_CreateExt_Absorbing_BC,
 };
 
 GPU_Extension* GPU_Backend_Metal::CreateExtension(Engine_Extension* eng_ext, Engine* eng)
