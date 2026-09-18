@@ -10,13 +10,9 @@
  normalised to a reference run without the slab, is compared to the analytic
  slab transmission at the excitation frequency.
 
- Note: openEMS evaluates the end criterion at its progress report interval
- (every few seconds of wall-clock time), so the exact end time depends on the
- machine speed.  The test therefore only requires that the run ends well
- before the (very large) max. number of timesteps.
-
  Pass criteria
-   both runs end by steady-state detection: end time < 50 % of NrTS * dt_CFL
+   both runs end by steady-state detection, long before the max. number
+     of timesteps (end time < 50 excitation periods)
    the probe signal is periodic at the end: the last two periods differ < 0.1 %
    |T| within 0.1 dB and arg(T) within 2 deg of the analytic slab transmission
 
@@ -49,11 +45,8 @@ z_probe  = 110     # transmitted-field probe
 f0      = 3e9
 eps_r   = 4.0
 kappa   = 0.05     # S/m
-NrTS    = 10000000 # far more than needed, the steady-state detection must end the run
+NrTS    = 1000000  # far more than needed, the steady-state detection must end the run
 T0      = 1 / f0
-
-# upper bound of the FDTD timestep (Courant limit of the uniform mesh)
-dt_cfl  = 1 / (C0 * np.sqrt(2/(width/2*unit)**2 + 1/(dz*unit)**2))
 
 
 def run(Sim_Path, slab=False):
@@ -98,8 +91,8 @@ def phasor(t, val, t_start, t_stop):
 def steady_state(label, t, val):
     t_end = t[-1]
     print(f'  {label}: simulation ended at {t_end*1e9:.2f} ns = {t_end/T0:.0f} periods')
-    assert t_end < 0.5*NrTS*dt_cfl, \
-        f'FAIL [{label}]: simulation ran for {t_end*1e9:.0f} ns, the steady-state detection did not end it'
+    assert t_end < 50*T0, \
+        f'FAIL [{label}]: simulation ran for {t_end/T0:.0f} periods, expected the steady-state detection to end it within 50'
 
     last = phasor(t, val, t_end - T0,   t_end)
     prev = phasor(t, val, t_end - 2*T0, t_end - T0)
