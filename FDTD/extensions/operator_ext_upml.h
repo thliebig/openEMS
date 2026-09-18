@@ -34,11 +34,13 @@ class FunctionParser;
 class Operator_Ext_UPML : public Operator_Extension
 {
 	friend class Engine_Ext_UPML;
+	friend class Metal_Ext_UPML;
 public:
 	virtual ~Operator_Ext_UPML();
 
 	//! Returns always true, Create_UPML method will take care of creating a valid pml for the cylindrical fdtd
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const { UNUSED(closedAlpha); UNUSED(R0_included); return true;}
+	virtual bool IsGPUSave() const {return true;}
 
 	//! Returns always true if base grid, Create_UPML will create proper child pml extensions.
 	virtual bool IsCylindricalMultiGridSave(bool child) const {if (child) return false; return true;}

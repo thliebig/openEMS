@@ -337,6 +337,7 @@ void GPU_Backend_Metal::UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& cu
 // all Metal extensions, see metal_internal.h
 static const Metal_ExtensionFactory METAL_EXTENSIONS[] = {
 	Metal_CreateExt_Excitation,
+	Metal_CreateExt_UPML,
 };
 
 GPU_Extension* GPU_Backend_Metal::CreateExtension(Engine_Extension* eng_ext, Engine* eng)

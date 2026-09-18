@@ -127,6 +127,24 @@ def case_excitation():
     return FDTD, CSX
 
 
+def case_pml():
+    """ free space with PML on all sides: excitation and UPML extensions """
+    FDTD = openEMS(NrTS=700, EndCriteria=0)
+    FDTD.SetGaussExcite(5.5e9, 4.5e9)
+    FDTD.SetBoundaryCond(['PML_8'] * 6)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    for ax in 'xyz':
+        mesh.AddLine(ax, np.arange(-15, 15.5, 1))
+    CSX.AddExcitation('dipole', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -1], [0, 0, 1])
+    CSX.AddProbe('et', p_type=2).AddPoint([4, 3, 2])
+    CSX.AddProbe('ht', p_type=3).AddPoint([-3, 5, 0])
+    CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([-15, -15, 0], [15, 15, 0])
+    return FDTD, CSX
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -191,6 +209,7 @@ def compare_outputs(path_a, path_b, rtol=0):
 
 # (name, case, all extensions have a Metal implementation)
 cases = [('excitation',     case_excitation,     True),
+         ('pml',            case_pml,            True),
          ('dispersive_pml', case_dispersive_pml, False),
          ('3d_mixed',       case_3d_mixed,       False),
          ('steady_state',   case_steady_state,   False)]
