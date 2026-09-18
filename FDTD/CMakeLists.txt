@@ -1,3 +1,10 @@
+# Metal GPU backend (Objective-C++)
+if(APPLE AND ENABLE_METAL)
+  set(METAL_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/metal/gpu_backend_metal.mm
+  )
+endif()
+
 set(SOURCES
   ${SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/engine.cpp
@@ -20,5 +27,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_gpu.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend_reference.cpp
+  ${METAL_SOURCES}
   PARENT_SCOPE
 )
+

@@ -43,6 +43,18 @@ ENDIF()
 
 #ADD_DEFINITIONS( -D__SSE2__ )
 
+# Metal GPU backend for the GPU engine (--engine=gpu), macOS only
+IF(APPLE)
+  OPTION(ENABLE_METAL "Build the Metal GPU backend" ON)
+ENDIF()
+IF(APPLE AND ENABLE_METAL)
+  message(STATUS "Metal GPU backend enabled")
+  enable_language(OBJCXX)
+  set(CMAKE_OBJCXX_STANDARD ${CMAKE_CXX_STANDARD})
+  set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -fobjc-arc")
+  ADD_DEFINITIONS( -DOPENEMS_WITH_METAL )
+ENDIF()
+
 IF(NOT ENABLE_FLUSH_TO_ZERO)
   message(STATUS "Flush-to-zero disabled, the engines keep denormal values")
   ADD_DEFINITIONS( -DOPENEMS_NO_FLUSH_TO_ZERO )
@@ -197,6 +209,9 @@ TARGET_LINK_LIBRARIES( openEMS
   ${Boost_LIBRARIES}
   ${vtk_LIBS}
 )
+IF(APPLE AND ENABLE_METAL)
+  TARGET_LINK_LIBRARIES( openEMS "-framework Metal" "-framework Foundation" )
+ENDIF()
 
 if (WIN32)
     # make sure "BUILD_OPENEMS_LIB" is only set for openEMS (dll) not openEMS_bin (exe)

@@ -21,7 +21,10 @@
 #include "engine.h"
 #include "operator_gpu.h"
 
+#include <vector>
+
 class GPU_Backend;
+class GPU_Extension;
 
 //! FDTD engine running the main updates on a GPU backend
 /*!
@@ -29,18 +32,16 @@ class GPU_Backend;
   (volt_ptr, curr_ptr) serve as host mirror in the basic engine layout, read by
   the field processing through GetVolt/GetCurr and by the engine extensions.
 
-  Extensions whose operator extension is not IsGPUSave() run on the host mirror.
-  The engine then uploads both fields before and downloads the updated field
+  An extension runs on the device if its operator extension IsGPUSave() and the
+  backend provides a device implementation (GPU_Backend::CreateExtension()).
+  If all extensions do, the fields stay on the device for a whole IterateTS()
+  call and the host mirror is updated at its end.
+
+  Otherwise all extensions run on the host mirror, and the engine uploads both fields before and downloads the updated field
   after each main update (host fallback, correct but slow). Note that the pre-
   and post-update hooks may write the fields too, despite the Engine_Extension
   documentation: the UPML in all four, the TF/SF and the cylinder extension in
-  the post-update hooks. If all extensions are GPU-save, the fields
-  stay on the device for a whole IterateTS() call and the host mirror is
-  updated at its end.
-
-  A GPU-save extension is called through the same hooks and must work on the
-  device data (see GetBackend()) unless FieldsOnHost() is true, in which case it
-  runs on the host mirror like any other extension.
+  the post-update hooks.
   */
 class Engine_GPU : public Engine
 {
@@ -64,6 +65,11 @@ protected:
 
 	GPU_Backend* m_Backend;
 	bool m_FieldsOnHost;
+
+	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
+	std::vector<GPU_Extension*> m_GPU_exts;
+
+	void ClearGPUExtensions();
 };
 
 #endif // ENGINE_GPU_H

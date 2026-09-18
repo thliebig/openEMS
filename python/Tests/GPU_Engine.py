@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
 """
- GPU engine test — bit-exact comparison with the basic engine
+ GPU engine test — comparison with the basic engine
 
- The GPU engine (engine='gpu') currently runs the reference backend, which
- performs the main FDTD updates on the CPU on its own copy of the fields,
- exactly like the basic engine. Extensions without a device implementation run
- on the host copy of the fields, which the GPU engine synchronizes around every
- half-step. The results must therefore be bit-identical to the basic engine.
+ Each case runs with engine='basic', engine='gpu-reference' and engine='gpu'
+ and compares all probe files and all HDF5 field dumps.
 
- Each case runs with engine='basic' and engine='gpu' and compares all probe
- files and all HDF5 field dumps. Together the cases use the excitation, UPML,
- Mur ABC, Lorentz material, lumped RLC, conducting sheet, TF/SF and
- steady-state extensions.
+ The reference backend performs the main FDTD updates on the CPU on its own
+ copy of the fields, exactly like the basic engine, so its results must be
+ bit-identical. The Metal backend (engine='gpu' on macOS) runs on the GPU,
+ whose float arithmetic differs in rounding (e.g. fused multiply-add), so it
+ is compared with a tolerance.
+
+ Together the cases use the excitation, UPML, Mur ABC, Lorentz material,
+ lumped RLC, conducting sheet, TF/SF and steady-state extensions.
 
  Pass criteria (per case)
-   the GPU engine was created for engine='gpu' (not a silent fallback)
-   all probe data and field dumps are bit-identical to the basic engine
+   the requested backend was created (not a silent fallback)
+   reference backend: all probe data and field dumps bit-identical
+   Metal backend: max. deviation < 1e-4 of the peak value, per probe/dump
+     (skipped without a Metal device)
 
  Tested with
   - python 3.13
@@ -133,20 +136,19 @@ def run_captured(case, Sim_Path, engine):
         return log.read()
 
 
-def compare_h5(fn_a, fn_b):
-    """ return the names of all datasets that differ between two HDF5 files """
-    diff = []
-    with h5py.File(fn_a, 'r') as a, h5py.File(fn_b, 'r') as b:
-        def visit(name, obj):
-            if isinstance(obj, h5py.Dataset):
-                if name not in b or not np.array_equal(obj[()], b[name][()]):
-                    diff.append(name)
-        a.visititems(visit)
-    return diff
+def deviation(a, b):
+    """ max. deviation of b from a, relative to the peak of a (0 if identical) """
+    a = np.asarray(a); b = np.asarray(b)
+    if a.shape != b.shape:
+        return np.inf
+    if np.array_equal(a, b):
+        return 0.0
+    peak = np.max(np.abs(a))
+    return np.max(np.abs(a - b)) / (peak if peak > 0 else 1.0)
 
 
-def compare_outputs(path_a, path_b):
-    """ compare all probe files and HDF5 dumps, return a list of differences """
+def compare_outputs(path_a, path_b, rtol=0):
+    """ compare all probe files and HDF5 dumps, return a list of (name, deviation) above rtol """
     diff = []
     files = [f for f in os.listdir(path_a) if os.path.isfile(os.path.join(path_a, f))]
     probes = [f for f in files if '.' not in f]   # probe and port files have no extension
@@ -155,30 +157,45 @@ def compare_outputs(path_a, path_b):
     for f in probes:
         a = np.loadtxt(os.path.join(path_a, f), comments='%')
         b = np.loadtxt(os.path.join(path_b, f), comments='%')
-        if not np.array_equal(a, b):
-            diff.append(f)
+        diff.append((f, deviation(a, b)))
     for f in dumps:
-        diff += [f'{f}:{d}' for d in compare_h5(os.path.join(path_a, f), os.path.join(path_b, f))]
-    return diff, len(probes), len(dumps)
+        with h5py.File(os.path.join(path_a, f), 'r') as a, h5py.File(os.path.join(path_b, f), 'r') as b:
+            def visit(name, obj):
+                if isinstance(obj, h5py.Dataset):
+                    diff.append((f'{f}:{name}', deviation(obj[()], b[name][()]) if name in b else np.inf))
+            a.visititems(visit)
+    worst = max(d for _, d in diff)
+    return [(n, d) for n, d in diff if d > rtol], len(probes), len(dumps), worst
 
 
 cases = [('dispersive_pml', case_dispersive_pml),
          ('3d_mixed',       case_3d_mixed),
          ('steady_state',   case_steady_state)]
 
+METAL_RTOL = 1e-4
+engines = ('basic', 'gpu-reference', 'gpu')
+
 for name, case in cases:
     print(f'Testing case: {name}')
-    paths = {engine: os.path.join(tempfile.gettempdir(), f'GPU_Engine_{name}_{engine}') for engine in ('basic', 'gpu')}
-    logs  = {engine: run_captured(case, paths[engine], engine) for engine in ('basic', 'gpu')}
+    paths = {engine: os.path.join(tempfile.gettempdir(), f'GPU_Engine_{name}_{engine}') for engine in engines}
+    logs  = {engine: run_captured(case, paths[engine], engine) for engine in engines}
 
-    assert 'Create FDTD engine (GPU' in logs['gpu'], \
-        f'FAIL [{name}]: engine=gpu did not create the GPU engine'
     assert 'Create FDTD engine (GPU' not in logs['basic'], \
         f'FAIL [{name}]: engine=basic created the GPU engine'
+    assert 'Create FDTD engine (GPU, backend: reference' in logs['gpu-reference'], \
+        f'FAIL [{name}]: engine=gpu-reference did not create the GPU engine with the reference backend'
 
-    diff, n_probes, n_dumps = compare_outputs(paths['basic'], paths['gpu'])
-    print(f'  compared {n_probes} probe files and {n_dumps} field dumps')
-    assert not diff, f'FAIL [{name}]: GPU engine differs from the basic engine in: {", ".join(diff)}'
+    diff, n_probes, n_dumps, _ = compare_outputs(paths['basic'], paths['gpu-reference'])
+    print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
+    assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
+
+    if 'Create FDTD engine (GPU, backend: Metal' in logs['gpu']:
+        diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=METAL_RTOL)
+        print(f'  Metal backend: max. deviation {worst:.1e} of the peak value')
+        assert not diff, f'FAIL [{name}]: Metal backend deviates from the basic engine: ' + \
+            ', '.join(f'{n} ({d:.1e})' for n, d in diff)
+    else:
+        print('  no Metal device, Metal backend not tested')
     print('PASS [{}]'.format(name))
 
 print('PASS')
