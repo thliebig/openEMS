@@ -24,6 +24,7 @@ if(ENABLE_HIP)
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_mur_abc.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_lorentzmaterial.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_lumpedRLC.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_tfsf.cu
   )
 endif()
 

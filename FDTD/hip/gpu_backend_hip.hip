@@ -308,6 +308,7 @@ static const HIP_ExtensionFactory HIP_EXTENSIONS[] = {
 	HIP_CreateExt_Mur_ABC,
 	HIP_CreateExt_LorentzMaterial,
 	HIP_CreateExt_LumpedRLC,
+	HIP_CreateExt_TFSF,
 };
 
 GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engine* eng)
