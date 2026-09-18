@@ -34,7 +34,7 @@ import numpy as np
 import h5py
 
 from CSXCAD  import ContinuousStructure
-from CSXCAD.CSProperties import CSPropLorentzMaterial
+from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from openEMS import openEMS
 from openEMS.ports import LumpedPort
 
@@ -165,6 +165,31 @@ def case_mur():
     return FDTD, CSX
 
 
+def case_materials():
+    """ Drude, Lorentz and Debye materials, a magnetic Drude material and a conducting sheet in a PML channel """
+    FDTD = openEMS(NrTS=3000, EndCriteria=0)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    CSX.GetGrid().SetDeltaUnit(unit)
+    channel_1d(FDTD, CSX)
+    def lorentz(name, z0, z1, **kw):
+        m = CSPropLorentzMaterial(CSX.GetParameterSet(), order=1)
+        m.SetName(name)
+        m.SetDispersiveMaterialProperty(0, **kw)
+        CSX.AddProperty(m)
+        m.AddBox([0, 0, z0], [1, 1, z1], priority=10)
+    lorentz('drude', 25, 30, eps_plasma=5e9, eps_relax=1e-9)
+    lorentz('lorentz', 32, 37, eps_plasma=4e9, eps_pole_freq=3e9, eps_relax=1e-9)
+    lorentz('double_drude', 39, 44, eps_plasma=5e9, eps_relax=1e-8, mue_plasma=5e9, mue_relax=1e-8)
+    debye = CSPropDebyeMaterial(CSX.GetParameterSet(), order=1, epsilon=4)
+    debye.SetName('debye')
+    debye.SetDispersiveMaterialProperty(0, eps_delta=1, eps_relax=4e-11)
+    CSX.AddProperty(debye)
+    debye.AddBox([0, 0, 46], [1, 1, 51], priority=10)
+    CSX.AddConductingSheet('sheet', conductivity=1e5, thickness=10e-6).AddBox([0, 0, 55], [1, 1, 55], priority=10)
+    return FDTD, CSX
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -231,6 +256,7 @@ def compare_outputs(path_a, path_b, rtol=0):
 cases = [('excitation',     case_excitation,     True),
          ('pml',            case_pml,            True),
          ('mur',            case_mur,            True),
+         ('materials',      case_materials,      True),
          ('dispersive_pml', case_dispersive_pml, False),
          ('3d_mixed',       case_3d_mixed,       False),
          ('steady_state',   case_steady_state,   False)]
