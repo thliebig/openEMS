@@ -305,6 +305,7 @@ void GPU_Backend_HIP::Synchronize()
 static const HIP_ExtensionFactory HIP_EXTENSIONS[] = {
 	HIP_CreateExt_Excitation,
 	HIP_CreateExt_UPML,
+	HIP_CreateExt_Mur_ABC,
 };
 
 GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engine* eng)

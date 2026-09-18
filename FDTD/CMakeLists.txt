@@ -21,6 +21,7 @@ if(ENABLE_HIP)
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/gpu_backend_hip.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_excitation.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_upml.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_mur_abc.cu
   )
 endif()
 
