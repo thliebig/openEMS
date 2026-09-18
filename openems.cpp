@@ -269,7 +269,7 @@ void openEMS::collectCommandLineArguments()
 			"operator + sse vector extensions\n"
 			"  multithreaded: \tengine using compressed "
 			"operator + sse vector extensions + multithreading\n"
-			"  gpu: \tGPU engine on the best available backend (Metal on macOS)\n"
+			"  gpu: \tGPU engine on the best available backend (Metal on macOS, CUDA)\n"
 			"  gpu-reference: \tGPU engine with the reference backend on the CPU\n"
 		)
 		(

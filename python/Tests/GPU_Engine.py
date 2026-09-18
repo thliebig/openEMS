@@ -7,9 +7,9 @@
 
  The reference backend performs the main FDTD updates on the CPU on its own
  copy of the fields, exactly like the basic engine, so its results must be
- bit-identical. The Metal backend (engine='gpu' on macOS) runs on the GPU,
- whose float arithmetic differs in rounding (e.g. fused multiply-add), so it
- is compared with a tolerance.
+ bit-identical. A device backend (engine='gpu': Metal on macOS, CUDA) runs on
+ the GPU, whose float arithmetic may differ in rounding (e.g. fused
+ multiply-add), so it is compared with a tolerance.
 
  Together the cases use the excitation, UPML, Mur ABC, Lorentz material,
  lumped RLC, conducting sheet, TF/SF, local absorber, steady-state and
@@ -19,10 +19,10 @@
 
  Pass criteria (per case)
    the requested backend was created (not a silent fallback)
-   Metal backend: all extensions run on the device, where implemented
+   device backend: all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
    reference backend: all probe data and field dumps bit-identical
-   Metal backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
-     (skipped without a Metal device)
+   device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
+     (skipped without a GPU device)
 
  Tested with
   - python 3.13
@@ -32,7 +32,7 @@
 
 """
 
-import os, sys, glob, tempfile, ctypes, ctypes.util
+import os, re, sys, glob, tempfile, ctypes, ctypes.util
 import numpy as np
 import h5py
 
@@ -419,7 +419,9 @@ cases = [('excitation',     case_excitation,     True),
          ('3d_mixed',       case_3d_mixed,       True),
          ('steady_state',   case_steady_state,   True)]
 
-METAL_RTOL = 1e-4
+DEVICE_RTOL = 1e-4
+# device backends with a device implementation of every extension
+FULL_DEVICE_BACKENDS = ('Metal',)
 engines = ('basic', 'gpu-reference', 'gpu')
 
 for name, case, on_device in cases:
@@ -436,16 +438,18 @@ for name, case, on_device in cases:
     print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
     assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
 
-    if 'Create FDTD engine (GPU, backend: Metal' in logs['gpu']:
-        if on_device:
+    backend = re.search(r'Create FDTD engine \(GPU, backend: (\w+)', logs['gpu'])
+    backend = backend.group(1) if backend else None
+    if backend and backend!='reference':
+        if on_device and backend in FULL_DEVICE_BACKENDS:
             assert 'Engine_GPU: all extensions run on the device' in logs['gpu'], \
-                f'FAIL [{name}]: the Metal backend did not run all extensions on the device'
-        diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=METAL_RTOL)
-        print(f'  Metal backend: max. deviation {worst:.1e} of the peak value')
-        assert not diff, f'FAIL [{name}]: Metal backend deviates from the basic engine: ' + \
+                f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
+        diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
+        print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
+        assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
             ', '.join(f'{n} ({d:.1e})' for n, d in diff)
     else:
-        print('  no Metal device, Metal backend not tested')
+        print('  no GPU device, device backend not tested')
     print('PASS [{}]'.format(name))
 
 print('PASS')

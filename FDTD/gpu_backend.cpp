@@ -22,6 +22,9 @@
 #ifdef OPENEMS_WITH_METAL
 #include "metal/gpu_backend_metal.h"
 #endif
+#ifdef OPENEMS_WITH_HIP
+#include "cuda/gpu_backend_hip.h"
+#endif
 
 GPU_Backend* GPU_Backend::New(const std::string& name)
 {
@@ -35,6 +38,13 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 	if (metal)
 		return metal;
 	std::cerr << "GPU_Backend::New: Warning: no Metal device found" << std::endl;
+#endif
+
+#ifdef OPENEMS_WITH_HIP
+	GPU_Backend* cuda = GPU_Backend_HIP::New();
+	if (cuda)
+		return cuda;
+	std::cerr << "GPU_Backend::New: Warning: no HIP device found" << std::endl;
 #endif
 
 	std::cerr << "GPU_Backend::New: Warning: no GPU backend available, using the reference backend on the CPU" << std::endl;

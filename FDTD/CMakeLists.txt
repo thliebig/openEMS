@@ -15,6 +15,13 @@ if(APPLE AND ENABLE_METAL)
   )
 endif()
 
+# HIP GPU backend
+if(ENABLE_HIP)
+  set(HIP_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/gpu_backend_hip.cu
+  )
+endif()
+
 set(SOURCES
   ${SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/engine.cpp
@@ -39,6 +46,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend_reference.cpp
   ${METAL_SOURCES}
+  ${HIP_SOURCES}
   PARENT_SCOPE
 )
 
