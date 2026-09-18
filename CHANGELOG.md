@@ -166,6 +166,9 @@ number moved up and patch releases now have somewhere to go.
 - B-field dumps (`DumpType` 5/15) were not placed on the dual time/mesh like
   H-field dumps, despite reading the same dual-grid values: values were
   labelled half a cell and half a timestep off.
+- Six of the nine steady-state detection probes sat on the first mesh line of
+  their direction (usually a field-free boundary) instead of a quarter/three
+  quarters across, due to an integer-division bug.
 
 ### Build
 
