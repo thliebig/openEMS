@@ -12,6 +12,8 @@
    TD probe vs. TD dump (E, H):  same time axis, max rel. difference < 1e-6
    D-dump = eps0 * E-dump,  B-dump = mue0 * H-dump  (free space, node interpolated),
                                   rel. difference < 1e-5
+   B-dump vs. H-dump without interpolation: same (dual) mesh and time axis,
+                                  B = mue0 * H, rel. difference < 1e-5
    FD probe vs. DFT of TD probe:  rel. difference < 1 %
    FD dump  vs. FD probe:         rel. difference < 1e-5
    Symmetry: Ez at (+-r,0,0) and (0,+-r,0) equal,  rel. difference < 1e-5
@@ -71,7 +73,7 @@ dipole.AddBox([0, 0, -dip_len/2], [0, 0, dip_len/2])
 plane_start = [-12*res, -12*res, 0]
 plane_stop  = [ 12*res,  12*res, 0]
 # no interpolation: raw Yee values, compared against the field probes
-for name, dump_type in {'Et': 0, 'Ht': 1}.items():
+for name, dump_type in {'Et': 0, 'Ht': 1, 'Bt': 5}.items():
     dump = CSX.AddDump(name, dump_type=dump_type, dump_mode=0, file_type=1)
     dump.AddBox(plane_start, plane_stop)
 # node interpolation: E/D and H/B on a common mesh
@@ -153,6 +155,17 @@ print(f'max rel. diff. D - eps0 E = {err_D:.2e},  B - mue0 H = {err_B:.2e}')
 assert np.max(np.abs(E)) > 0 and np.max(np.abs(H)) > 0, 'FAIL: E/H dump is empty at the chosen timestep'
 assert err_D < 1e-5, f'FAIL: D-dump differs from eps0*E by {err_D:.2e} (rel.), expected < 1e-5'
 assert err_B < 1e-5, f'FAIL: B-dump differs from mue0*H by {err_B:.2e} (rel.), expected < 1e-5'
+
+# without interpolation B lives on the dual mesh and dual time, like H
+with HDF5Dump(os.path.join(Sim_Path, 'Ht.h5')) as dH, HDF5Dump(os.path.join(Sim_Path, 'Bt.h5')) as dB:
+    for n in range(3):
+        assert np.array_equal(dB.GetMesh()['lines'][n], dH.GetMesh()['lines'][n]), \
+            f'FAIL: B-dump mesh differs from the H-dump (dual) mesh in direction {n}'
+    assert np.array_equal(dB.Times, dH.Times), 'FAIL: B-dump time axis differs from the H-dump (dual time)'
+    t_idx = dH.NumTimesteps // 4
+    err_B0 = rel_diff(dB.GetFieldAtIndex(t_idx=t_idx), MUE0*dH.GetFieldAtIndex(t_idx=t_idx))
+print(f'max rel. diff. B - mue0 H (no interpolation) = {err_B0:.2e}')
+assert err_B0 < 1e-5, f'FAIL: non-interpolated B-dump differs from mue0*H by {err_B0:.2e} (rel.), expected < 1e-5'
 
 ### 3. FD probes vs. DFT of TD probes, and FD dump vs. FD probe
 with HDF5Dump(os.path.join(Sim_Path, 'Ef.h5')) as dEf:
