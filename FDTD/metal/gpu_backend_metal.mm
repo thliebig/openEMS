@@ -163,10 +163,9 @@ id<MTLBuffer> GPU_Backend_Metal::Impl::NewBuffer(size_t bytes, const void* data)
 	id<MTLBuffer> buf = [device newBufferWithLength:std::max(bytes, (size_t)4) options:MTLResourceStorageModeShared];
 	if (!buf)
 		throw std::runtime_error("GPU_Backend_Metal: buffer allocation failed");
-	if (data)
+	std::memset([buf contents], 0, [buf length]);
+	if (data && bytes)
 		std::memcpy([buf contents], data, bytes);
-	else
-		std::memset([buf contents], 0, [buf length]);
 	return buf;
 }
 
@@ -319,9 +318,18 @@ void GPU_Backend_Metal::UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& cu
 	CopyField(curr.data(), [d->curr contents], curr.size()*sizeof(FDTD_FLOAT), 3*d->numCells*sizeof(float));
 }
 
+// all Metal extensions, see metal_internal.h
+static const Metal_ExtensionFactory METAL_EXTENSIONS[] = {
+	Metal_CreateExt_Excitation,
+};
+
 GPU_Extension* GPU_Backend_Metal::CreateExtension(Engine_Extension* eng_ext, Engine* eng)
 {
-	UNUSED(eng_ext);
-	UNUSED(eng);
+	for (size_t n=0; n<sizeof(METAL_EXTENSIONS)/sizeof(METAL_EXTENSIONS[0]); ++n)
+	{
+		GPU_Extension* gpu_ext = METAL_EXTENSIONS[n](d, eng_ext, eng);
+		if (gpu_ext)
+			return gpu_ext;
+	}
 	return NULL;
 }

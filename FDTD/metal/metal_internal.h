@@ -85,4 +85,9 @@ struct GPU_Backend_Metal::Impl
 	void SetGridDim(unsigned int index);
 };
 
+//! Factory of a Metal extension: the device implementation of \a eng_ext, or NULL if \a eng_ext is not of its type
+typedef GPU_Extension* (*Metal_ExtensionFactory)(GPU_Backend_Metal::Impl* d, Engine_Extension* eng_ext, Engine* eng);
+
+GPU_Extension* Metal_CreateExt_Excitation(GPU_Backend_Metal::Impl* d, Engine_Extension* eng_ext, Engine* eng);
+
 #endif // METAL_INTERNAL_H

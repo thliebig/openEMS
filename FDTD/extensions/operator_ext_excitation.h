@@ -28,6 +28,7 @@ class Operator_Ext_Excitation : public Operator_Extension
 	friend class Engine_Ext_Excitation;
 	friend class Engine_Ext_Mur_ABC;
 	friend class Operator;
+	friend class Metal_Ext_Excitation;
 public:
 	Operator_Ext_Excitation(Operator* op);
 	~Operator_Ext_Excitation();
@@ -40,6 +41,7 @@ public:
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return true;}
+	virtual bool IsGPUSave() const {return true;}
 
 	virtual std::string GetExtensionName() const
 	{

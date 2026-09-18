@@ -2,6 +2,7 @@
 if(APPLE AND ENABLE_METAL)
   set(METAL_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/gpu_backend_metal.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_excitation.mm
   )
 endif()
 
