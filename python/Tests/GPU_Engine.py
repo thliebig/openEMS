@@ -145,6 +145,26 @@ def case_pml():
     return FDTD, CSX
 
 
+def case_mur():
+    """ free space with Mur ABC on all sides and a source on a boundary plane: excitation and Mur extensions """
+    FDTD = openEMS(NrTS=700, EndCriteria=0)
+    FDTD.SetGaussExcite(5.5e9, 4.5e9)
+    FDTD.SetBoundaryCond(['MUR'] * 6)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    for ax in 'xyz':
+        mesh.AddLine(ax, np.arange(-10, 10.5, 1))
+    CSX.AddExcitation('dipole', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -1], [0, 0, 1])
+    # a source on the x-max plane delays that Mur ABC until the excitation is done
+    CSX.AddExcitation('wall', exc_type=0, exc_val=[0, 1, 0]).AddBox([10, -2, 0], [10, 2, 0])
+    CSX.AddProbe('et', p_type=2).AddPoint([4, 3, 2])
+    CSX.AddProbe('ht', p_type=3).AddPoint([-3, 5, 0])
+    CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([-10, -10, 0], [10, 10, 0])
+    return FDTD, CSX
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -210,6 +230,7 @@ def compare_outputs(path_a, path_b, rtol=0):
 # (name, case, all extensions have a Metal implementation)
 cases = [('excitation',     case_excitation,     True),
          ('pml',            case_pml,            True),
+         ('mur',            case_mur,            True),
          ('dispersive_pml', case_dispersive_pml, False),
          ('3d_mixed',       case_3d_mixed,       False),
          ('steady_state',   case_steady_state,   False)]

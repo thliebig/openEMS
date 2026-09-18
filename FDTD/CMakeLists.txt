@@ -4,6 +4,7 @@ if(APPLE AND ENABLE_METAL)
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/gpu_backend_metal.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_excitation.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_upml.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_mur_abc.mm
   )
 endif()
 

@@ -35,6 +35,7 @@
 class Operator_Ext_Mur_ABC : public Operator_Extension
 {
 	friend class Engine_Ext_Mur_ABC;
+	friend class Metal_Ext_Mur_ABC;
 public:
 	Operator_Ext_Mur_ABC(Operator* op);
 	~Operator_Ext_Mur_ABC();
@@ -52,6 +53,7 @@ public:
 	virtual Engine_Extension* CreateEngineExtention();
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const;
+	virtual bool IsGPUSave() const {return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const;
 
 	virtual std::string GetExtensionName() const
