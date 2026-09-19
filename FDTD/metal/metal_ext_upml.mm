@@ -26,13 +26,6 @@
 // Uniaxial PML, see Engine_Ext_UPML. One thread per cell of the PML region,
 // gid = local (z, y, x). The flux and coefficient arrays use the local region size.
 static const char* UPML_SOURCE = R"MSL(
-struct UPMLParam { uint sx, sy, sz; uint lx, ly, lz; };
-
-inline uint upml_local(constant UPMLParam& P, uint n, uint3 gid)
-{
-	return ((n*P.lx + gid.z)*P.ly + gid.y)*P.lz + gid.x;
-}
-
 inline uint upml_global(constant GridDim& N, constant UPMLParam& P, uint n, uint3 gid)
 {
 	return nijk(N, n, P.sx + gid.z, P.sy + gid.y, P.sz + gid.x);
@@ -75,30 +68,7 @@ kernel void upml_post(device float* field       [[buffer(0)]],
 	}
 }
 
-// UPML coefficients of the region cell l0 (see Metal_Ext_UPML::m_CoeffMode): old[n*s],
-// fo[n*s] and fn[n*s] are vv/vvfo/vvfn (set_offset 0) or ii/iifo/iifn (set_offset 9) of
-// direction n. Mode 0: the full arrays, else a 16/32 bit set index and the sets of 18.
-struct UPMLCoeff { const device float* old; const device float* fo; const device float* fn; uint s; };
-
-inline UPMLCoeff upml_coeff(uint mode, const device void* index, const device float* sets,
-                            const device float* c_old, const device float* c_fo, const device float* c_fn,
-                            uint l0, uint cells, uint set_offset)
-{
-	UPMLCoeff c;
-	if (mode==0)
-	{
-		c.old = c_old + l0; c.fo = c_fo + l0; c.fn = c_fn + l0; c.s = cells;
-		return c;
-	}
-	const uint set = (mode==1) ? uint(((const device ushort*)index)[l0]) : ((const device uint*)index)[l0];
-	c.old = sets + 18*set + set_offset; c.fo = c.old + 3; c.fn = c.old + 6; c.s = 1;
-	return c;
-}
-
-// Fused: upml_pre, the main update (update_voltages) and upml_post of the nodes of
-// the region, operation by operation the same. Valid because the UPML hooks run
-// directly before and after the main update (see Metal_Ext_UPML::CanFuse()), and the
-// voltage update only reads the voltage of its own node.
+// the fused kernels of a whole region, see upml_fused_volt_node()
 kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
                             const device float* curr   [[buffer(1)]],
                             device float* flux         [[buffer(2)]],
@@ -116,33 +86,9 @@ kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
                             constant UPMLParam& P      [[buffer(9)]],
                             uint3 gid [[thread_position_in_grid]])
 {
-	const uint x = P.sx + gid.z, y = P.sy + gid.y, z = P.sz + gid.x;
-	const uint sn = N.nx*N.ny*N.nz;
-	const uint i  = nijk(N, 0, x, y, z);
-	const uint xm = (x>0) ? N.ny*N.nz : 0;
-	const uint ym = (y>0) ? N.nz : 0;
-	const uint zm = (z>0) ? 1 : 0;
-	const MainCoeff C = main_coeff(index, ca, cb, mode, sn, i, 0);
-	const uint cells = P.lx*P.ly*P.lz;
-	const UPMLCoeff U = upml_coeff(u_mode, u_index, u_sets, c_old, c_fo, c_fn, (gid.z*P.ly + gid.y)*P.lz + gid.x, cells, 0);
-	float curl[3];
-	curl[0] = (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
-	curl[1] = (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
-	curl[2] = (curr[sn+i] - curr[sn+i-xm] - curr[i] + curr[i-ym]);
-	for (uint n=0; n<3; ++n)
-	{
-		const uint l = upml_local(P, n, gid);
-		const uint g = n*sn + i;
-		const float f_help = U.old[n*U.s]*volt[g] - U.fo[n*U.s]*flux[l];
-		float v;
-		v  = flux[l] * C.a[n*C.s];
-		v += C.b[n*C.s] * curl[n];
-		flux[l] = v;
-		volt[g] = f_help + U.fn[n*U.s]*v;
-	}
+	upml_fused_volt_node(volt, curr, flux, c_old, c_fo, c_fn, index, ca, cb, mode, u_index, u_sets, u_mode, N, P, gid);
 }
 
-// same for the currents (update_currents), which are not updated on the last mesh lines
 kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
                             const device float* volt   [[buffer(1)]],
                             device float* flux         [[buffer(2)]],
@@ -160,37 +106,7 @@ kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
                             constant UPMLParam& P      [[buffer(9)]],
                             uint3 gid [[thread_position_in_grid]])
 {
-	const uint x = P.sx + gid.z, y = P.sy + gid.y, z = P.sz + gid.x;
-	const uint sn = N.nx*N.ny*N.nz;
-	const uint i  = nijk(N, 0, x, y, z);
-	const bool update = (x+1<N.nx) && (y+1<N.ny) && (z+1<N.nz);
-	const uint cells = P.lx*P.ly*P.lz;
-	const UPMLCoeff U = upml_coeff(u_mode, u_index, u_sets, c_old, c_fo, c_fn, (gid.z*P.ly + gid.y)*P.lz + gid.x, cells, 9);
-	float curl[3] = {0, 0, 0};
-	MainCoeff C = {ca, cb, 0};
-	if (update)
-	{
-		const uint xp = N.ny*N.nz;
-		const uint yp = N.nz;
-		C = main_coeff(index, ca, cb, mode, sn, i, 6);
-		curl[0] = (volt[2*sn+i] - volt[2*sn+i+yp] - volt[sn+i] + volt[sn+i+1]);
-		curl[1] = (volt[i] - volt[i+1] - volt[2*sn+i] + volt[2*sn+i+xp]);
-		curl[2] = (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
-	}
-	for (uint n=0; n<3; ++n)
-	{
-		const uint l = upml_local(P, n, gid);
-		const uint g = n*sn + i;
-		const float f_help = U.old[n*U.s]*curr[g] - U.fo[n*U.s]*flux[l];
-		float c = flux[l];
-		if (update)
-		{
-			c  = c * C.a[n*C.s];
-			c += C.b[n*C.s] * curl[n];
-		}
-		flux[l] = c;
-		curr[g] = f_help + U.fn[n*U.s]*c;
-	}
+	upml_fused_curr_node(curr, volt, flux, c_old, c_fo, c_fn, index, ca, cb, mode, u_index, u_sets, u_mode, N, P, gid);
 }
 )MSL";
 
@@ -207,9 +123,9 @@ public:
 
 	// fused: nothing before the main update, the region update after it
 	virtual void DoPreVoltageUpdates()  {if (!Fused()) Pre(d->volt, m_VoltFlux, m_VV, m_VVFO, &UPML_GROUP[0]);}
-	virtual void DoPostVoltageUpdates() {if (Fused()) Fuse("upml_fused_volt", d->volt, d->curr, m_VoltFlux, m_VV, m_VVFO, m_VVFN, d->vv, d->vi, &UPML_GROUP[1]); else Post(d->volt, m_VoltFlux, m_VVFN, &UPML_GROUP[1]);}
+	virtual void DoPostVoltageUpdates() {if (Fused()) {if (!m_InMain) Fuse("upml_fused_volt", d->volt, d->curr, m_VoltFlux, m_VV, m_VVFO, m_VVFN, d->vv, d->vi, &UPML_GROUP[1]);} else Post(d->volt, m_VoltFlux, m_VVFN, &UPML_GROUP[1]);}
 	virtual void DoPreCurrentUpdates()  {if (!Fused()) Pre(d->curr, m_CurrFlux, m_II, m_IIFO, &UPML_GROUP[2]);}
-	virtual void DoPostCurrentUpdates() {if (Fused()) Fuse("upml_fused_curr", d->curr, d->volt, m_CurrFlux, m_II, m_IIFO, m_IIFN, d->ii, d->iv, &UPML_GROUP[3]); else Post(d->curr, m_CurrFlux, m_IIFN, &UPML_GROUP[3]);}
+	virtual void DoPostCurrentUpdates() {if (Fused()) {if (!m_InMain) Fuse("upml_fused_curr", d->curr, d->volt, m_CurrFlux, m_II, m_IIFO, m_IIFN, d->ii, d->iv, &UPML_GROUP[3]);} else Post(d->curr, m_CurrFlux, m_IIFN, &UPML_GROUP[3]);}
 
 protected:
 	void Pre(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_old, id<MTLBuffer> c_fo, const void* group);
@@ -225,6 +141,7 @@ protected:
 
 	GPU_Backend_Metal::Impl* d;
 	Engine* m_Eng;
+	bool m_InMain;   //!< fused: updated by the main kernels (see Metal_ZSlab)
 	struct {uint32_t sx, sy, sz, lx, ly, lz;} m_Region;
 
 	id<MTLBuffer> m_VoltFlux, m_CurrFlux;
@@ -245,6 +162,7 @@ Metal_Ext_UPML::Metal_Ext_UPML(GPU_Backend_Metal::Impl* impl, Operator_Ext_UPML*
 {
 	d = impl;
 	m_Eng = eng;
+	m_InMain = false;
 	d->upml.push_back(this);
 	m_Region.sx = op_ext->m_StartPos[0];
 	m_Region.sy = op_ext->m_StartPos[1];
@@ -294,6 +212,9 @@ Metal_Ext_UPML::~Metal_Ext_UPML()
 	d->upml_fused = -1;
 	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
 	d->main_stop = d->dim;
+	d->ResetZSlabs();
+	for (size_t r=0; r<d->upml.size(); ++r)
+		static_cast<Metal_Ext_UPML*>(d->upml[r])->m_InMain = false;
 }
 
 bool Metal_Ext_UPML::Fused()
@@ -302,7 +223,8 @@ bool Metal_Ext_UPML::Fused()
 	{
 		d->upml_fused = CanFuse();
 		if (d->upml_fused)
-			std::cout << "GPU_Backend_Metal: " << d->upml.size() << " UPML regions fused with the main updates" << std::endl;
+			std::cout << "GPU_Backend_Metal: " << d->upml.size() << " UPML regions fused with the main updates ("
+			          << d->zslab[0].active+d->zslab[1].active << " along z in the main kernels)" << std::endl;
 	}
 	return d->upml_fused>0;
 }
@@ -324,6 +246,35 @@ bool Metal_Ext_UPML::CanFuse()
 		return false;
 	d->main_start.nx = start[0]; d->main_start.ny = start[1]; d->main_start.nz = start[2];
 	d->main_stop.nx = stop[0]; d->main_stop.ny = stop[1]; d->main_stop.nz = stop[2];
+	d->ResetZSlabs();
+
+	// The regions along z (which cover the x/y range of the main updates) are updated by the
+	// main kernels, along full z lines: a region of their own would only have short rows
+	// (e.g. 9 nodes), which use the memory transactions poorly.
+	for (size_t r=0; r<d->upml.size(); ++r)
+	{
+		Metal_Ext_UPML* u = static_cast<Metal_Ext_UPML*>(d->upml[r]);
+		const auto& R = u->m_Region;
+		if ((R.sx!=start[0]) || (R.lx!=stop[0]-start[0]) || (R.sy!=start[1]) || (R.ly!=stop[1]-start[1]))
+			continue;
+		int s = -1;
+		if (!d->zslab[0].active && (R.sz+R.lz==start[2]))
+			s = 0;
+		else if (!d->zslab[1].active && (R.sz==stop[2]))
+			s = 1;
+		if (s<0)
+			continue;
+		Metal_ZSlab& z = d->zslab[s];
+		z.active = true;
+		z.region.sx = R.sx; z.region.sy = R.sy; z.region.sz = R.sz;
+		z.region.lx = R.lx; z.region.ly = R.ly; z.region.lz = R.lz;
+		z.flux[0] = u->m_VoltFlux; z.c_old[0] = u->m_VV; z.c_fo[0] = u->m_VVFO; z.c_fn[0] = u->m_VVFN;
+		z.flux[1] = u->m_CurrFlux; z.c_old[1] = u->m_II; z.c_fo[1] = u->m_IIFO; z.c_fn[1] = u->m_IIFN;
+		z.u_mode = u->m_CoeffMode;
+		z.u_index = u->m_SetIndex;
+		z.u_sets = u->m_Sets;
+		u->m_InMain = true;
+	}
 	return true;
 }
 

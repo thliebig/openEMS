@@ -30,6 +30,10 @@
 // Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents.
 // One thread per mesh node, gid = (z, y, x) relative to the start node O of the update range.
 static const char* BASE_SOURCE = R"MSL(
+// the main updates also update the UPML regions along z (nodes below z_lo / from z_hi on),
+// along full z lines: a region of their own only has short rows (e.g. 9 nodes)
+struct ZSlabParam { uint z_lo, z_hi; uint u_mode_lo, u_mode_hi; };
+
 kernel void update_voltages(device float* volt       [[buffer(0)]],
                             const device float* curr [[buffer(1)]],
                             const device void* index [[buffer(2)]],
@@ -38,9 +42,35 @@ kernel void update_voltages(device float* volt       [[buffer(0)]],
                             constant GridDim& O      [[buffer(5)]],
                             const device float* cb   [[buffer(6)]],
                             constant uint& mode      [[buffer(7)]],
+                            constant ZSlabParam& Z   [[buffer(8)]],
+                            device float* flux_lo    [[buffer(9)]],
+                            const device float* o_lo [[buffer(10)]],
+                            const device float* f_lo [[buffer(11)]],
+                            const device float* n_lo [[buffer(12)]],
+                            const device void* ui_lo [[buffer(13)]],
+                            const device float* us_lo[[buffer(14)]],
+                            constant UPMLParam& P_lo [[buffer(15)]],
+                            device float* flux_hi    [[buffer(16)]],
+                            const device float* o_hi [[buffer(17)]],
+                            const device float* f_hi [[buffer(18)]],
+                            const device float* n_hi [[buffer(19)]],
+                            const device void* ui_hi [[buffer(20)]],
+                            const device float* us_hi[[buffer(21)]],
+                            constant UPMLParam& P_hi [[buffer(22)]],
                             uint3 gid [[thread_position_in_grid]])
 {
 	const uint z = O.nz + gid.x, y = O.ny + gid.y, x = O.nx + gid.z;
+	// UPML regions along z (see ZSlabParam)
+	if (z<Z.z_lo)
+	{
+		upml_fused_volt_node(volt, curr, flux_lo, o_lo, f_lo, n_lo, index, ca, cb, mode, ui_lo, us_lo, Z.u_mode_lo, N, P_lo, uint3(z-P_lo.sz, y-P_lo.sy, x-P_lo.sx));
+		return;
+	}
+	if (z>=Z.z_hi)
+	{
+		upml_fused_volt_node(volt, curr, flux_hi, o_hi, f_hi, n_hi, index, ca, cb, mode, ui_hi, us_hi, Z.u_mode_hi, N, P_hi, uint3(z-P_hi.sz, y-P_hi.sy, x-P_hi.sx));
+		return;
+	}
 	const uint sn = N.nx*N.ny*N.nz;
 	const uint i  = nijk(N, 0, x, y, z);
 	const uint xm = (x>0) ? N.ny*N.nz : 0;   // shift to the previous line, none on the first
@@ -76,9 +106,38 @@ kernel void update_currents(device float* curr       [[buffer(0)]],
                             constant GridDim& O      [[buffer(5)]],
                             const device float* cb   [[buffer(6)]],
                             constant uint& mode      [[buffer(7)]],
+                            constant ZSlabParam& Z   [[buffer(8)]],
+                            device float* flux_lo    [[buffer(9)]],
+                            const device float* o_lo [[buffer(10)]],
+                            const device float* f_lo [[buffer(11)]],
+                            const device float* n_lo [[buffer(12)]],
+                            const device void* ui_lo [[buffer(13)]],
+                            const device float* us_lo[[buffer(14)]],
+                            constant UPMLParam& P_lo [[buffer(15)]],
+                            device float* flux_hi    [[buffer(16)]],
+                            const device float* o_hi [[buffer(17)]],
+                            const device float* f_hi [[buffer(18)]],
+                            const device float* n_hi [[buffer(19)]],
+                            const device void* ui_hi [[buffer(20)]],
+                            const device float* us_hi[[buffer(21)]],
+                            constant UPMLParam& P_hi [[buffer(22)]],
                             uint3 gid [[thread_position_in_grid]])
 {
 	const uint z = O.nz + gid.x, y = O.ny + gid.y, x = O.nx + gid.z;
+	// UPML regions along z (see ZSlabParam)
+	if (z<Z.z_lo)
+	{
+		upml_fused_curr_node(curr, volt, flux_lo, o_lo, f_lo, n_lo, index, ca, cb, mode, ui_lo, us_lo, Z.u_mode_lo, N, P_lo, uint3(z-P_lo.sz, y-P_lo.sy, x-P_lo.sx));
+		return;
+	}
+	if (z>=Z.z_hi)
+	{
+		upml_fused_curr_node(curr, volt, flux_hi, o_hi, f_hi, n_hi, index, ca, cb, mode, ui_hi, us_hi, Z.u_mode_hi, N, P_hi, uint3(z-P_hi.sz, y-P_hi.sy, x-P_hi.sx));
+		return;
+	}
+	// the currents on the last mesh line are not updated
+	if ((x+1>=N.nx) || (y+1>=N.ny) || (z+1>=N.nz))
+		return;
 	const uint sn = N.nx*N.ny*N.nz;
 	const uint i  = nijk(N, 0, x, y, z);
 	const uint xp = N.ny*N.nz;
@@ -237,6 +296,41 @@ void GPU_Backend_Metal::Impl::SetCoefficients(unsigned int index_idx, unsigned i
 	[enc setBytes:&coeff_mode length:sizeof(coeff_mode) atIndex:mode_idx];
 }
 
+void GPU_Backend_Metal::Impl::ResetZSlabs()
+{
+	zslab[0].active = zslab[1].active = false;
+}
+
+void GPU_Backend_Metal::Impl::MainRange(Metal_GridDim& b, Metal_GridDim& e) const
+{
+	b = main_start;
+	e = main_stop;
+	if (zslab[0].active)
+		b.nz = zslab[0].region.sz;
+	if (zslab[1].active)
+		e.nz = zslab[1].region.sz + zslab[1].region.lz;
+}
+
+void GPU_Backend_Metal::Impl::SetZSlabs(int field)
+{
+	id<MTLComputeCommandEncoder> enc = Encoder();
+	struct {uint32_t z_lo, z_hi, u_mode_lo, u_mode_hi;} param = {main_start.nz, main_stop.nz, zslab[0].u_mode, zslab[1].u_mode};
+	[enc setBytes:&param length:sizeof(param) atIndex:8];
+	for (int s=0; s<2; ++s)
+	{
+		const Metal_ZSlab& z = zslab[s];
+		const unsigned int base = 9 + 7*s;
+		// unused arguments get a valid buffer
+		[enc setBuffer:(z.active ? z.flux[field] : volt) offset:0 atIndex:base];
+		[enc setBuffer:(z.active ? z.c_old[field] : volt) offset:0 atIndex:base+1];
+		[enc setBuffer:(z.active ? z.c_fo[field] : volt) offset:0 atIndex:base+2];
+		[enc setBuffer:(z.active ? z.c_fn[field] : volt) offset:0 atIndex:base+3];
+		[enc setBuffer:((z.active && z.u_mode) ? z.u_index : volt) offset:0 atIndex:base+4];
+		[enc setBuffer:((z.active && z.u_mode) ? z.u_sets : volt) offset:0 atIndex:base+5];
+		[enc setBytes:&z.region length:sizeof(z.region) atIndex:base+6];
+	}
+}
+
 void GPU_Backend_Metal::Impl::SetGridDim(unsigned int index)
 {
 	[Encoder() setBytes:&dim length:sizeof(dim) atIndex:index];
@@ -295,6 +389,7 @@ bool GPU_Backend_Metal::Init(const Operator* op)
 	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
 	d->main_stop = d->dim;
 	d->upml_fused = -1;
+	d->ResetZSlabs();
 
 	// the kernels index with 32 bit
 	if (3*d->numCells > std::numeric_limits<uint32_t>::max())
@@ -383,9 +478,10 @@ void GPU_Backend_Metal::UpdateVoltages()
 	[enc setBuffer:d->curr offset:0 atIndex:1];
 	d->SetCoefficients(2, 3, 6, 7, d->vv, d->vi);
 	d->SetGridDim(4);
-	[enc setBytes:&d->main_start length:sizeof(d->main_start) atIndex:5];
-	const Metal_GridDim& b = d->main_start;
-	const Metal_GridDim& e = d->main_stop;
+	Metal_GridDim b, e;
+	d->MainRange(b, e);
+	[enc setBytes:&b length:sizeof(b) atIndex:5];
+	d->SetZSlabs(0);
 	d->Dispatch(pso, e.nz-b.nz, e.ny-b.ny, e.nx-b.nx);
 }
 
@@ -398,14 +494,12 @@ void GPU_Backend_Metal::UpdateCurrents()
 	[enc setBuffer:d->volt offset:0 atIndex:1];
 	d->SetCoefficients(2, 3, 6, 7, d->ii, d->iv);
 	d->SetGridDim(4);
-	[enc setBytes:&d->main_start length:sizeof(d->main_start) atIndex:5];
-	// the currents on the last mesh line are not updated
-	const Metal_GridDim& b = d->main_start;
-	const unsigned int ex = std::min(d->main_stop.nx, d->dim.nx-1);
-	const unsigned int ey = std::min(d->main_stop.ny, d->dim.ny-1);
-	const unsigned int ez = std::min(d->main_stop.nz, d->dim.nz-1);
-	if ((ex>b.nx) && (ey>b.ny) && (ez>b.nz))
-		d->Dispatch(pso, ez-b.nz, ey-b.ny, ex-b.nx);
+	// the kernel skips the last mesh lines, but updates the UPML regions along z there
+	Metal_GridDim b, e;
+	d->MainRange(b, e);
+	[enc setBytes:&b length:sizeof(b) atIndex:5];
+	d->SetZSlabs(1);
+	d->Dispatch(pso, e.nz-b.nz, e.ny-b.ny, e.nx-b.nx);
 }
 
 static void CopyField(const void* src, void* dst, size_t src_bytes, size_t dst_bytes)
