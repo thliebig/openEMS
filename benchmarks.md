@@ -35,42 +35,42 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | Machine | Host CPU | Total run | Timestepping | MCells/s | Host memory | GPU memory |
 |---|---|---|---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 123.2 s | 118.7 s | 303 | 716 MiB | - |
-| Apple M5 Max, GPU (Metal) | Apple M5 Max | 15.4 s | 10.9 s | 3315 | 1218 MiB (1) | 343 MiB (1) |
-| RTX 2080 Ti | Xeon E5-2673 v4 | 21.9 s | 8.5 s | 4244 | 815 MiB | 457 MiB |
-| RTX 3090 Ti | Threadripper PRO 5955WX | 11.9 s | 5.2 s | 6930 | 808 MiB | 568 MiB |
-| RTX 4090 | EPYC 7K62 | 20.4 s | 8.5 s | 4234 | 804 MiB | 693 MiB |
-| RTX 5070 Ti | Ryzen 7 5700X | **11.8 s** | **4.9 s** | **7360** | 816 MiB | 530 MiB |
-| RTX 5090 | EPYC 7742 | 20.0 s | 8.9 s | 4049 | 821 MiB | 806 MiB |
-| A100 SXM4 40 GB | EPYC 7K62 | 19.0 s | 8.1 s | 4444 | 802 MiB | 723 MiB |
-| H200 | Xeon Platinum 8488C | 22.0 s | 13.6 s | 2657 | 903 MiB | 827 MiB |
+| Apple M5 Max, GPU (Metal) | Apple M5 Max | 15.4 s | 10.9 s | 3307 | 1216 MiB (1) | 343 MiB (1) |
+| RTX 2080 Ti | Xeon E5-2673 v4 | 22.1 s | 8.4 s | 4277 | 813 MiB | 457 MiB |
+| RTX 3090 Ti | Threadripper PRO 5955WX | 11.9 s | 5.2 s | 6939 | 808 MiB | 568 MiB |
+| RTX 4090 | EPYC 7K62 | 20.9 s | 8.8 s | 4116 | 795 MiB | 693 MiB |
+| RTX 5070 Ti | Ryzen 7 5700X | **11.7 s** | **4.9 s** | **7361** | 818 MiB | 530 MiB |
+| RTX 5090 | EPYC 7742 | 20.3 s | 9.3 s | 3894 | 821 MiB | 806 MiB |
+| A100 SXM4 40 GB | EPYC 7K62 | 18.9 s | 8.0 s | 4530 | 801 MiB | 723 MiB |
+| H200 | Xeon Platinum 8488C | 20.3 s | 13.0 s | 2775 | 904 MiB | 827 MiB |
 
 ### Horn antenna, frequency-domain NF2FF
 
 | Machine | Host CPU | Total run | Timestepping | MCells/s | Host memory | GPU memory |
 |---|---|---|---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 121.8 s | 120.1 s | 300 | 496 MiB | - |
-| Apple M5 Max, GPU (Metal) | Apple M5 Max | 15.2 s | 13.2 s | 2725 | 832 MiB (1) | 232 MiB (1) |
-| RTX 2080 Ti | Xeon E5-2673 v4 | 15.2 s | 8.3 s | 4356 | 636 MiB | 463 MiB |
-| RTX 3090 Ti | Threadripper PRO 5955WX | 9.1 s | 5.2 s | 6884 | 629 MiB | 574 MiB |
-| RTX 4090 | EPYC 7K62 | 11.3 s | 4.1 s | 8900 | 622 MiB | 699 MiB |
-| RTX 5070 Ti | Ryzen 7 5700X | 9.1 s | 4.9 s | 7342 | 638 MiB | 536 MiB |
-| RTX 5090 | EPYC 7742 | 8.5 s | 2.8 s | 13075 | 640 MiB | 812 MiB |
-| A100 SXM4 40 GB | EPYC 7K62 | 11.1 s | 4.9 s | 7397 | 632 MiB | 729 MiB |
-| H200 | Xeon Platinum 8488C | **7.2 s** | **2.4 s** | **15224** | 734 MiB | 833 MiB |
+| Apple M5 Max, GPU (Metal) | Apple M5 Max | 12.4 s | 10.7 s | 3377 | 943 MiB (1) | 343 MiB (1) |
+| RTX 2080 Ti | Xeon E5-2673 v4 | 15.6 s | 8.3 s | 4342 | 636 MiB | 463 MiB |
+| RTX 3090 Ti | Threadripper PRO 5955WX | 9.0 s | 5.2 s | 6911 | 630 MiB | 574 MiB |
+| RTX 4090 | EPYC 7K62 | 11.0 s | 4.0 s | 8925 | 623 MiB | 699 MiB |
+| RTX 5070 Ti | Ryzen 7 5700X | 8.9 s | 4.9 s | 7369 | 638 MiB | 536 MiB |
+| RTX 5090 | EPYC 7742 | 8.9 s | 2.7 s | 13168 | 640 MiB | 812 MiB |
+| A100 SXM4 40 GB | EPYC 7K62 | 11.3 s | 4.8 s | 7448 | 631 MiB | 729 MiB |
+| H200 | Xeon Platinum 8488C | **7.1 s** | **2.3 s** | **15362** | 729 MiB | 833 MiB |
 
 ### Free space
 
 | Machine | Host CPU | PML_8: MCells/s | PEC: MCells/s |
 |---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 485 | 1106 |
-| Apple M5 Max, GPU (Metal) | Apple M5 Max | 4193 | 4712 |
-| RTX 2080 Ti | Xeon E5-2673 v4 | 5844 | 8410 |
-| RTX 3090 Ti | Threadripper PRO 5955WX | 9931 | 14130 |
-| RTX 4090 | EPYC 7K62 | 12744 | 18421 |
-| RTX 5070 Ti | Ryzen 7 5700X | 10321 | 14174 |
-| RTX 5090 | EPYC 7742 | 20072 | 27641 |
-| A100 SXM4 40 GB | EPYC 7K62 | 11536 | 18929 |
-| H200 | Xeon Platinum 8488C | **25197** | **41030** |
+| Apple M5 Max, GPU (Metal) | Apple M5 Max | 4192 | 4687 |
+| RTX 2080 Ti | Xeon E5-2673 v4 | 5803 | 8429 |
+| RTX 3090 Ti | Threadripper PRO 5955WX | 9939 | 14109 |
+| RTX 4090 | EPYC 7K62 | 12695 | 18416 |
+| RTX 5070 Ti | Ryzen 7 5700X | 10346 | 14179 |
+| RTX 5090 | EPYC 7742 | 19774 | 27644 |
+| A100 SXM4 40 GB | EPYC 7K62 | 11473 | 18938 |
+| H200 | Xeon Platinum 8488C | **25178** | **41076** |
 
 (1) Unified memory: the Metal buffers are part of the host memory figure.
 
@@ -97,6 +97,5 @@ release mode for the architecture of each GPU.
   closest to their GPU time.
 
 - **Frequency-domain NF2FF** writes 12 MB instead of 4.7 GB and gives the same
-  far field. On CUDA the frequencies are summed on the GPU. Metal sums them on
-  the host at every sample, with the GPU waiting, so its timestepping is
-  slower than with the time-domain dumps (13.2 s against 10.9 s).
+  far field. On CUDA the frequencies are summed on the GPU. On Metal a
+  background thread sums them from field snapshots while the GPU continues.
