@@ -204,6 +204,12 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 	// only where a copy on the device is cheaper than reading the fields (shared memory)
 	if (m_FieldsOnHost || !m_SharedMemory)
 		return false;
+	// A snapshot has a fixed cost (a separate command buffer, the background thread), which
+	// small grids with short batches between dumps do not recover (e.g. 69k cells dumped
+	// every few timesteps: twice the engine time). The copy itself scales with the grid,
+	// like the timesteps between the dumps.
+	if ((size_t)numLines[0]*numLines[1]*numLines[2] < 512*1024)
+		return false;
 	return m_Backend->SnapshotFields(slot, volt, curr);
 }
 
