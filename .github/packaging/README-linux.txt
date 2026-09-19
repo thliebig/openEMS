@@ -51,7 +51,7 @@ programs.
 GPU engine
 ----------
 
-The HIP GPU engine runs on NVIDIA GPUs from Turing (GeForce RTX 20xx) to
+The HIP GPU engine runs on NVIDIA GPUs from Pascal (GeForce GTX 10xx) to
 Blackwell (RTX 50xx), and later GPUs through PTX. It needs an NVIDIA driver
 570 or newer, no CUDA toolkit. Select it with --engine=gpu, or in Python:
 

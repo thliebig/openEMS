@@ -148,7 +148,8 @@ jobs:
           cmake ../ -GNinja `
                     -DCMAKE_BUILD_TYPE=Release `
                     -DCMAKE_HIP_COMPILER="$env:HIP_PATH/bin/hipcc.exe" `
-                    -DCMAKE_HIP_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;100-real;120" `
+                    -DCMAKE_HIP_ARCHITECTURES="60-real;61-real;70-real;75-real;80-real;86-real;89-real;90-real;100-real;120" `
+                    -DCMAKE_HIP_FLAGS="-Wno-deprecated-gpu-targets" `
                     -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
                     -DFPARSER_ROOT_DIR="$HOME/opt" `
                     -DCSXCAD_ROOT_DIR="$HOME/opt" `
@@ -601,7 +602,7 @@ jobs:
           $elf = & "$env:HIP_PATH\bin\cuobjdump.exe" --list-elf "$pkg\openEMS.dll"
           $ptx = & "$env:HIP_PATH\bin\cuobjdump.exe" --list-ptx "$pkg\openEMS.dll"
           $elf; $ptx
-          foreach ($a in @('75', '80', '86', '89', '90', '100', '120')) {
+          foreach ($a in @('60', '61', '70', '75', '80', '86', '89', '90', '100', '120')) {
             if (-not ($elf -match "\.sm_$a\.cubin")) { throw "no machine code for sm_$a" }
           }
           if (-not ($ptx -match "\.sm_120\.ptx")) { throw "no PTX for later GPUs" }
@@ -653,8 +654,8 @@ jobs:
     runs-on: ubuntu-24.04
 
     env:
-      # machine code for Turing to Blackwell, and PTX of the newest for later GPUs
-      HIP_ARCHITECTURES: "75-real;80-real;86-real;89-real;90-real;100-real;120"
+      # machine code for Pascal to Blackwell, and PTX of the newest for later GPUs
+      HIP_ARCHITECTURES: "60-real;61-real;70-real;75-real;80-real;86-real;89-real;90-real;100-real;120"
 
     steps:
       - name: Checkout openEMS-Project.git
@@ -702,7 +703,8 @@ jobs:
           configure fparser && build_install fparser
           configure CSXCAD -DFPARSER_ROOT_DIR="$OPT" && build_install CSXCAD
           configure openEMS -DFPARSER_ROOT_DIR="$OPT" -DCSXCAD_ROOT_DIR="$OPT" \
-              -DCMAKE_HIP_COMPILER=/usr/local/cuda-12.8/bin/hipcc -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES"
+              -DCMAKE_HIP_COMPILER=/usr/local/cuda-12.8/bin/hipcc -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES" \
+              -DCMAKE_HIP_FLAGS="-Wno-deprecated-gpu-targets"
           grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || { echo "the HIP backend is not enabled"; exit 1; }
           build_install openEMS
 
@@ -756,7 +758,7 @@ jobs:
           elf=$(/usr/local/cuda-12.8/bin/cuobjdump --list-elf "$lib")
           ptx=$(/usr/local/cuda-12.8/bin/cuobjdump --list-ptx "$lib")
           echo "$elf"; echo "$ptx"
-          for a in 75 80 86 89 90 100 120; do
+          for a in 60 61 70 75 80 86 89 90 100 120; do
             echo "$elf" | grep -q "\.sm_$a\.cubin" || { echo "no machine code for sm_$a"; exit 1; }
           done
           echo "$ptx" | grep -q "\.sm_120\.ptx" || { echo "no PTX for later GPUs"; exit 1; }
@@ -994,7 +996,7 @@ jobs:
           body: |
             openEMS with the GPU engine (`--engine=gpu`, `engine='gpu'` in Python):
 
-            - **Windows x64** (`*_msvc_cuda.zip`): CUDA for NVIDIA GPUs from Turing to Blackwell (driver 570 or newer). The package of upstream openEMS with the GPU engine: openEMS, AppCSXCAD, the Octave/Matlab interface, Python wheels (cp313/cp314), headers and import libraries.
+            - **Windows x64** (`*_msvc_cuda.zip`): CUDA for NVIDIA GPUs from Pascal (GeForce GTX 10xx) to Blackwell (driver 570 or newer). The package of upstream openEMS with the GPU engine: openEMS, AppCSXCAD, the Octave/Matlab interface, Python wheels (cp313/cp314), headers and import libraries.
             - **Linux x86_64** (`*_linux_x86_64_*_cuda.tar.gz`): CUDA as on Windows; needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13, Fedora 40 or newer).
             - **macOS arm64** (`*_macos_arm64_*_metal.tar.gz`): Metal on Apple silicon, macOS 15 or newer.
 
