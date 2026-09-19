@@ -36,14 +36,14 @@ The runs were made twice:
 
 Memory figures are from the "after" runs. The "before" runs were within 60 MiB.
 
-| Machine | Engine | Total run (before -> after) | Timestepping (before -> after) | Speed after | Peak host memory | GPU memory |
-|---|---|---|---|---|---|---|
-| Apple M5 Max (CPU) | multithreaded | 169.3 -> 149.3 s | 142.7 -> 122.4 s | 294 MCells/s | 553 MiB | - |
-| Apple M5 Max (GPU) | Metal | 77.4 -> **55.6 s** | 51.1 -> **28.9 s** | **1248 MCells/s** | 852 MiB (1) | 232 MiB (1) |
-| RTX 2080 Ti | CUDA | 157.1 -> 91.4 s | 138.0 -> 72.9 s | 494 MCells/s | 636 MiB | 351 MiB |
-| RTX 3090 Ti | CUDA | 95.7 -> **48.2 s** | 87.1 -> **39.4 s** | 914 MCells/s | 623 MiB | 462 MiB |
-| RTX 4090 | CUDA | 136.5 -> 78.5 s | 122.4 -> 63.7 s | 565 MCells/s | 624 MiB | 587 MiB |
-| RTX 5070 Ti | CUDA | 175.9 -> 111.0 s | 143.6 -> 81.4 s | 442 MCells/s | 632 MiB | 422 MiB |
+| Machine | Host CPU | Engine | Total run (before -> after) | Timestepping (before -> after) | Speed after | Peak host memory | GPU memory |
+|---|---|---|---|---|---|---|---|
+| Apple M5 Max (CPU) | Apple M5 Max | multithreaded | 169.3 -> 149.3 s | 142.7 -> 122.4 s | 294 MCells/s | 553 MiB | - |
+| Apple M5 Max (GPU) | Apple M5 Max | Metal | 77.4 -> **55.6 s** | 51.1 -> **28.9 s** | **1248 MCells/s** | 852 MiB (1) | 232 MiB (1) |
+| RTX 2080 Ti | Xeon E5-2673 v4 | CUDA | 157.1 -> 91.4 s | 138.0 -> 72.9 s | 494 MCells/s | 636 MiB | 351 MiB |
+| RTX 3090 Ti | Threadripper PRO 5955WX | CUDA | 95.7 -> **48.2 s** | 87.1 -> **39.4 s** | 914 MCells/s | 623 MiB | 462 MiB |
+| RTX 4090 | EPYC 7542 | CUDA | 136.5 -> 78.5 s | 122.4 -> 63.7 s | 565 MCells/s | 624 MiB | 587 MiB |
+| RTX 5070 Ti | Ryzen 9 7945HX | CUDA | 175.9 -> 111.0 s | 143.6 -> 81.4 s | 442 MCells/s | 632 MiB | 422 MiB |
 
 (1) Unified memory: the Metal buffers (232 MiB) are part of the host memory
 figure. The peak physical footprint was about 880 MiB.
