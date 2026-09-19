@@ -104,7 +104,10 @@ protected:
 	double* discLines[3];		//mesh disc lines to dump
 
 	//! Calculate and return the defined field. Caller has to cleanup the array.
-	bool CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field);
+	//! Calculate the dumped field, from the fields \a src (a snapshot, see Engine_Field_Gather::Evaluate()) or the current fields (NULL)
+	bool CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const float* src=NULL);
+	//! The precomputed evaluation of the dumped nodes, NULL if there is none
+	const Engine_Field_Gather* GetGather();
 };
 
 #endif // PROCESSFIELDS_H

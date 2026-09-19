@@ -54,6 +54,7 @@ public:
 	virtual FDTD_FLOAT* GetSharedCurrents() const;
 	virtual void Synchronize();
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
+	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 
 	virtual GPU_Backend* NewSubGridBackend();
 	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const GPU_MultiGridInterpolation& interpol);

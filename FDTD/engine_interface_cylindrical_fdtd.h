@@ -32,6 +32,7 @@ public:
 	//! none: the field evaluation differs from Engine_Interface_FDTD
 	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
 	{UNUSED(h_field); UNUSED(numLines); UNUSED(posLines); return NULL;}
+	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
 
 protected:
 	Operator_Cylinder* m_Op_Cyl;

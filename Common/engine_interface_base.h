@@ -33,7 +33,10 @@ class Engine_Field_Gather
 public:
 	virtual ~Engine_Field_Gather() {}
 	//! Evaluate the (x,y) lines [line_start, line_stop) of the dump (line i*numLines[1]+j) into \a field, thread-safe
-	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field) const = 0;
+	/*!
+	  \param src The voltages (E) or currents (H) to read in the engine layout, e.g. a snapshot (see Engine_Interface_Base::TakeFieldSnapshot()), NULL: the current fields
+	  */
+	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const = 0;
 };
 
 //! This is the abstract base for all Engine Interface classes.
@@ -64,6 +67,11 @@ public:
 
 	//! Called before several threads read the fields concurrently (Get*Field()), e.g. to copy device fields to the host
 	virtual void PrepareFieldAccess() {}
+
+	//! Copy the current fields into snapshot \a slot (0 or 1) for a later Engine_Field_Gather::Evaluate(), returns the voltages and currents (engine layout), or false if the engine has no snapshots
+	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
+	//! The engine the fields belong to, identifies the snapshots
+	virtual const void* GetEngineID() const {return NULL;}
 
 	//! Fast repeated evaluation of GetEField() (\a h_field false) or GetHField() at fixed nodes, see Engine_Field_Gather
 	/*!

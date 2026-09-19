@@ -164,6 +164,20 @@ kernel void update_currents(device float* curr       [[buffer(0)]],
 	curr[2*sn+i] = c;
 }
 
+// copy of the fields for a snapshot (see GPU_Backend_Metal::SnapshotFields())
+kernel void copy_fields(const device float* volt [[buffer(0)]],
+                        const device float* curr [[buffer(1)]],
+                        device float* snap_volt  [[buffer(2)]],
+                        device float* snap_curr  [[buffer(3)]],
+                        constant uint& count     [[buffer(4)]],
+                        uint i [[thread_position_in_grid]])
+{
+	if (i>=count)
+		return;
+	snap_volt[i] = volt[i];
+	snap_curr[i] = curr[i];
+}
+
 // Field energy: the squared voltages and currents of the nodes below L, summed along x
 // in float, one thread per (y,z) line; gid = (z, y). The host sums the lines in double.
 kernel void energy_lines(const device float* volt [[buffer(0)]],
@@ -523,6 +537,32 @@ FDTD_FLOAT* GPU_Backend_Metal::GetSharedCurrents() const
 void GPU_Backend_Metal::Synchronize()
 {
 	d->Flush();
+}
+
+bool GPU_Backend_Metal::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
+{
+	if (slot>1)
+		return false;
+	const size_t bytes = 3*d->numCells*sizeof(float);
+	if (!d->snap_volt[slot])
+	{
+		d->snap_volt[slot] = d->NewBuffer(bytes);
+		d->snap_curr[slot] = d->NewBuffer(bytes);
+	}
+	const uint32_t count = 3*d->numCells;
+	id<MTLComputePipelineState> pso = d->Pipeline(BASE_SOURCE, "copy_fields");
+	id<MTLComputeCommandEncoder> enc = d->Encoder();
+	[enc setComputePipelineState:pso];
+	[enc setBuffer:d->volt offset:0 atIndex:0];
+	[enc setBuffer:d->curr offset:0 atIndex:1];
+	[enc setBuffer:d->snap_volt[slot] offset:0 atIndex:2];
+	[enc setBuffer:d->snap_curr[slot] offset:0 atIndex:3];
+	[enc setBytes:&count length:sizeof(count) atIndex:4];
+	d->Dispatch(pso, count);
+	d->Flush();
+	volt = static_cast<const FDTD_FLOAT*>([d->snap_volt[slot] contents]);
+	curr = static_cast<const FDTD_FLOAT*>([d->snap_curr[slot] contents]);
+	return true;
 }
 
 bool GPU_Backend_Metal::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)

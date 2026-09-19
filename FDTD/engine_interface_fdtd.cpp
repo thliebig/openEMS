@@ -289,9 +289,9 @@ public:
 
 	std::vector<Entry> entries;   //!< [line][k][n]
 
-	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field) const
+	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const
 	{
-		const float* f = m_H ? m_Eng->HostCurrents().data() : m_Eng->HostVoltages().data();
+		const float* f = src ? src : (m_H ? m_Eng->HostCurrents().data() : m_Eng->HostVoltages().data());
 		for (size_t l=line_start; l<line_stop; ++l)
 		{
 			const unsigned int i = l/m_nj;
@@ -453,6 +453,12 @@ Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, cons
 				}
 			}
 	return gather;
+}
+
+bool Engine_Interface_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	return eng_gpu && eng_gpu->SnapshotFields(slot, volt, curr);
 }
 
 void Engine_Interface_FDTD::PrepareFieldAccess()

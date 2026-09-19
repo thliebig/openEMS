@@ -314,6 +314,8 @@ public:
 	//! Call fn(t) for t in [0, n), on n threads (t=0 on the calling thread), and wait for all
 	void Run(size_t n, const std::function<void(size_t)>& fn)
 	{
+		// one caller at a time (the main thread and the background dump writer, see processfields_td.cpp)
+		std::lock_guard<std::mutex> run(m_RunMutex);
 		std::unique_lock<std::mutex> lock(m_Mutex);
 		while (m_Workers.size()+1 < n)
 		{
@@ -355,6 +357,7 @@ protected:
 		}
 	}
 
+	std::mutex m_RunMutex;
 	std::mutex m_Mutex;
 	std::condition_variable m_Start, m_Done;
 	std::vector<std::thread> m_Workers;
@@ -365,7 +368,19 @@ protected:
 };
 }
 
-bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
+const Engine_Field_Gather* ProcessFields::GetGather()
+{
+	if ((m_DumpType!=E_FIELD_DUMP) && (m_DumpType!=H_FIELD_DUMP))
+		return NULL;
+	if (!m_GatherTried)
+	{
+		m_GatherTried = true;
+		m_Gather = m_Eng_Interface->CreateFieldGather(m_DumpType==H_FIELD_DUMP, numLines, posLines);
+	}
+	return m_Gather;
+}
+
+bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const float* src)
 {
 	//init the array
 	field.Init("Field", numLines);
@@ -397,19 +412,16 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 	}
 
 	// E and H dumps with the precomputed node evaluation, if the engine interface has one
-	if (!m_GatherTried && ((m_DumpType==E_FIELD_DUMP) || (m_DumpType==H_FIELD_DUMP)))
-	{
-		m_GatherTried = true;
-		m_Gather = m_Eng_Interface->CreateFieldGather(m_DumpType==H_FIELD_DUMP, numLines, posLines);
-	}
-	const Engine_Field_Gather* gather = ((m_DumpType==E_FIELD_DUMP) || (m_DumpType==H_FIELD_DUMP)) ? m_Gather : NULL;
+	const Engine_Field_Gather* gather = GetGather();
+	if (src && !gather)
+		return false;   // a snapshot needs the precomputed evaluation
 
 	// the (x,y) lines [l_start, l_stop), line l = i*numLines[1] + j
 	auto calc = [&](size_t l_start, size_t l_stop)
 	{
 		if (gather)
 		{
-			gather->Evaluate(l_start, l_stop, field);
+			gather->Evaluate(l_start, l_stop, field, src);
 			return;
 		}
 		unsigned int pos[3];
@@ -438,14 +450,15 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 	const size_t lines = (size_t)numLines[0]*numLines[1];
 	const size_t nodes = lines*numLines[2];
 	const size_t num_threads = std::min<size_t>(std::min<size_t>(std::max(1u, std::thread::hardware_concurrency()), nodes/1024), lines);
-	if (gather)
+	if (gather && !src)
 		m_Eng_Interface->PrepareFieldAccess();   // reads the host mirror directly
 	if (num_threads<=1)
 	{
 		calc(0, lines);
 		return true;
 	}
-	m_Eng_Interface->PrepareFieldAccess();
+	if (!src)
+		m_Eng_Interface->PrepareFieldAccess();
 	DumpThreads::Get().Run(num_threads, [&](size_t t) {calc(lines*t/num_threads, lines*(t+1)/num_threads);});
 	return true;
 }

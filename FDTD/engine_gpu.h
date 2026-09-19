@@ -91,6 +91,9 @@ public:
 	//! Update the host mirror if it is out of date (see GetVolt())
 	void UpdateHostMirror();
 
+	//! Copy of the current fields in snapshot \a slot (0 or 1), see GPU_Backend::SnapshotFields(); false if not available
+	bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
+
 	//! Field values, read from the device if the host mirror is out of date (see class description)
 	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
 	virtual FDTD_FLOAT GetVolt(unsigned int n, const unsigned int pos[3]) const {return GetVolt(n, pos[0], pos[1], pos[2]);}

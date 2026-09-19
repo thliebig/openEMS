@@ -226,6 +226,7 @@ struct GPU_Backend_Metal::Impl
 	id<MTLBuffer> vv, vi, ii, iv;
 	id<MTLBuffer> index, coeff;
 	id<MTLBuffer> energy;           //!< per-line energy sums, see GPU_Backend_Metal::CalcFastEnergy()
+	id<MTLBuffer> snap_volt[2], snap_curr[2];   //!< field snapshots, see GPU_Backend_Metal::SnapshotFields()
 
 	//! The main updates cover the nodes in [main_start, main_stop), the fused UPML kernels the others (see metal_ext_upml.mm)
 	Metal_GridDim main_start, main_stop;

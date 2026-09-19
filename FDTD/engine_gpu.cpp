@@ -199,6 +199,14 @@ void Engine_GPU::MarkStale(StaleField& field)
 	field.lines.clear();
 }
 
+bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
+{
+	// only where a copy on the device is cheaper than reading the fields (shared memory)
+	if (m_FieldsOnHost || !m_SharedMemory)
+		return false;
+	return m_Backend->SnapshotFields(slot, volt, curr);
+}
+
 void Engine_GPU::UpdateHostMirror()
 {
 	if (m_StaleVolt.stale)
