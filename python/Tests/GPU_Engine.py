@@ -112,6 +112,29 @@ def case_3d_mixed():
     return FDTD, CSX
 
 
+def case_dumps():
+    """ E and H dumps in all interpolation modes, time and frequency domain, on a non-uniform mesh """
+    FDTD = openEMS(NrTS=300, EndCriteria=0)
+    FDTD.SetGaussExcite(5e9, 4e9)
+    FDTD.SetBoundaryCond(['PML_8', 'PML_8', 'PEC', 'PMC', 'MUR', 'PML_8'])
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('x', np.concatenate([np.linspace(-30, -5, 12), np.linspace(-4, 4, 17), np.linspace(5, 30, 9)]))
+    mesh.AddLine('y', np.linspace(-25, 25, 31)**3/625.0 + np.linspace(-25, 25, 31)*0.5)
+    mesh.AddLine('z', np.linspace(-20, 20, 27))
+    CSX.AddMaterial('diel', epsilon=4, kappa=0.01).AddBox([-10, -8, -5], [6, 9, 7])
+    CSX.AddMetal('pec').AddBox([8, -5, -3], [9, 5, 3])
+    CSX.AddExcitation('d', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -2], [0, 0, 2])
+    CSX.AddProbe('et', p_type=2).AddPoint([5, 5, 5])
+    for mode in (0, 1, 2):
+        for t in (0, 1):
+            CSX.AddDump(f'td_{t}_{mode}', dump_type=t, dump_mode=mode, file_type=1).AddBox([-30, -25, -20], [30, 25, 20])
+            CSX.AddDump(f'fd_{t}_{mode}', dump_type=10+t, dump_mode=mode, file_type=1, frequency=[3e9, 6e9]).AddBox([-12, -25, -20], [12, 25, 20])
+    return FDTD, CSX
+
+
 def case_excitation():
     """ PEC cavity: only the excitation extension, with overlapping sources """
     FDTD = openEMS(NrTS=600, EndCriteria=0)
@@ -418,7 +441,8 @@ cases = [('excitation',     case_excitation,     True),
          ('multigrid_wedge', case_multigrid_wedge, True),
          ('dispersive_pml', case_dispersive_pml, True),
          ('3d_mixed',       case_3d_mixed,       True),
-         ('steady_state',   case_steady_state,   True)]
+         ('steady_state',   case_steady_state,   True),
+         ('dumps',          case_dumps,          True)]
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
