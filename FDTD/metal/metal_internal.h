@@ -50,6 +50,25 @@ inline uint nijk(constant GridDim& N, uint n, uint x, uint y, uint z)
 {
 	return ((n*N.nx + x)*N.ny + y)*N.nz + z;
 }
+
+// Main update coefficients of node i, see GPU_Backend_Metal::Impl::coeff_mode:
+// a[n*s] and b[n*s] are vv/vi (voltages, set_offset 0) or ii/iv (currents, set_offset 6)
+// of direction n. Mode 0: ca/cb are the full arrays, else ca is the table of sets.
+struct MainCoeff { const device float* a; const device float* b; uint s; };
+
+inline MainCoeff main_coeff(const device void* index, const device float* ca, const device float* cb,
+                            uint mode, uint sn, uint i, uint set_offset)
+{
+	MainCoeff c;
+	if (mode==0)
+	{
+		c.a = ca + i; c.b = cb + i; c.s = sn;
+		return c;
+	}
+	const uint set = (mode==1) ? uint(((const device ushort*)index)[i]) : ((const device uint*)index)[i];
+	c.a = ca + 12*set + set_offset; c.b = c.a + 3; c.s = 1;
+	return c;
+}
 )MSL"
 
 //! Device, work stream and kernels, shared by the backends of all grids of a simulation (see NewSubGridBackend())
@@ -85,8 +104,10 @@ struct GPU_Backend_Metal::Impl
 	size_t numCells;    //!< nx*ny*nz, the field buffers hold 3*numCells values
 
 	id<MTLBuffer> volt, curr;
-	id<MTLBuffer> vv, vi, ii, iv;   //!< full coefficients, if not compressed
-	id<MTLBuffer> index, coeff;     //!< compressed coefficients: set index per node, sets (see update_voltages_c)
+	//! Main update coefficients: 0: full arrays vv, vi, ii, iv; 1/2: a 16/32 bit set index per node and the sets (see main_coeff())
+	uint32_t coeff_mode;
+	id<MTLBuffer> vv, vi, ii, iv;
+	id<MTLBuffer> index, coeff;
 	id<MTLBuffer> energy;           //!< per-line energy sums, see GPU_Backend_Metal::CalcFastEnergy()
 
 	//! The main updates cover the nodes in [main_start, main_stop), the fused UPML kernels the others (see metal_ext_upml.mm)
@@ -112,6 +133,10 @@ struct GPU_Backend_Metal::Impl
 
 	//! Bind the grid dimension to \a index
 	void SetGridDim(unsigned int index);
+
+	//! Bind the main update coefficients for main_coeff(): the full arrays \a full_a and \a full_b (vv/vi or ii/iv) or the compressed ones
+	void SetCoefficients(unsigned int index_idx, unsigned int a_idx, unsigned int b_idx, unsigned int mode_idx,
+	                     id<MTLBuffer> full_a, id<MTLBuffer> full_b);
 };
 
 //! Factory of a Metal extension: the device implementation of \a eng_ext, or NULL if \a eng_ext is not of its type

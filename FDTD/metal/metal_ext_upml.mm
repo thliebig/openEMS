@@ -76,7 +76,7 @@ kernel void upml_post(device float* field       [[buffer(0)]],
 	}
 }
 
-// Fused: upml_pre, the main update (update_voltages_c) and upml_post of the nodes of
+// Fused: upml_pre, the main update (update_voltages) and upml_post of the nodes of
 // the region, operation by operation the same. Valid because the UPML hooks run
 // directly before and after the main update (see Metal_Ext_UPML::CanFuse()), and the
 // voltage update only reads the voltage of its own node.
@@ -86,8 +86,10 @@ kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
                             const device float* c_old  [[buffer(3)]],
                             const device float* c_fo   [[buffer(4)]],
                             const device float* c_fn   [[buffer(5)]],
-                            const device ushort* index [[buffer(6)]],
-                            const device float* coeff  [[buffer(7)]],
+                            const device void* index   [[buffer(6)]],
+                            const device float* ca     [[buffer(7)]],
+                            const device float* cb     [[buffer(10)]],
+                            constant uint& mode        [[buffer(11)]],
                             constant GridDim& N        [[buffer(8)]],
                             constant UPMLParam& P      [[buffer(9)]],
                             uint3 gid [[thread_position_in_grid]])
@@ -98,8 +100,7 @@ kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
 	const uint xm = (x>0) ? N.ny*N.nz : 0;
 	const uint ym = (y>0) ? N.nz : 0;
 	const uint zm = (z>0) ? 1 : 0;
-	const device float* vv = coeff + 12*uint(index[i]);
-	const device float* vi = vv + 3;
+	const MainCoeff C = main_coeff(index, ca, cb, mode, sn, i, 0);
 	float curl[3];
 	curl[0] = (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
 	curl[1] = (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
@@ -110,22 +111,24 @@ kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
 		const uint g = n*sn + i;
 		const float f_help = c_old[l]*volt[g] - c_fo[l]*flux[l];
 		float v;
-		v  = flux[l] * vv[n];
-		v += vi[n] * curl[n];
+		v  = flux[l] * C.a[n*C.s];
+		v += C.b[n*C.s] * curl[n];
 		flux[l] = v;
 		volt[g] = f_help + c_fn[l]*v;
 	}
 }
 
-// same for the currents (update_currents_c), which are not updated on the last mesh lines
+// same for the currents (update_currents), which are not updated on the last mesh lines
 kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
                             const device float* volt   [[buffer(1)]],
                             device float* flux         [[buffer(2)]],
                             const device float* c_old  [[buffer(3)]],
                             const device float* c_fo   [[buffer(4)]],
                             const device float* c_fn   [[buffer(5)]],
-                            const device ushort* index [[buffer(6)]],
-                            const device float* coeff  [[buffer(7)]],
+                            const device void* index   [[buffer(6)]],
+                            const device float* ca     [[buffer(7)]],
+                            const device float* cb     [[buffer(10)]],
+                            constant uint& mode        [[buffer(11)]],
                             constant GridDim& N        [[buffer(8)]],
                             constant UPMLParam& P      [[buffer(9)]],
                             uint3 gid [[thread_position_in_grid]])
@@ -135,14 +138,12 @@ kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
 	const uint i  = nijk(N, 0, x, y, z);
 	const bool update = (x+1<N.nx) && (y+1<N.ny) && (z+1<N.nz);
 	float curl[3] = {0, 0, 0};
-	const device float* ii = coeff;
-	const device float* iv = coeff;
+	MainCoeff C = {ca, cb, 0};
 	if (update)
 	{
 		const uint xp = N.ny*N.nz;
 		const uint yp = N.nz;
-		ii = coeff + 12*uint(index[i]) + 6;
-		iv = ii + 3;
+		C = main_coeff(index, ca, cb, mode, sn, i, 6);
 		curl[0] = (volt[2*sn+i] - volt[2*sn+i+yp] - volt[sn+i] + volt[sn+i+1]);
 		curl[1] = (volt[i] - volt[i+1] - volt[2*sn+i] + volt[2*sn+i+xp]);
 		curl[2] = (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
@@ -155,8 +156,8 @@ kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
 		float c = flux[l];
 		if (update)
 		{
-			c  = c * ii[n];
-			c += iv[n] * curl[n];
+			c  = c * C.a[n*C.s];
+			c += C.b[n*C.s] * curl[n];
 		}
 		flux[l] = c;
 		curr[g] = f_help + c_fn[l]*c;
@@ -177,15 +178,16 @@ public:
 
 	// fused: nothing before the main update, the region update after it
 	virtual void DoPreVoltageUpdates()  {if (!Fused()) Pre(d->volt, m_VoltFlux, m_VV, m_VVFO, &UPML_GROUP[0]);}
-	virtual void DoPostVoltageUpdates() {if (Fused()) Fuse("upml_fused_volt", d->volt, d->curr, m_VoltFlux, m_VV, m_VVFO, m_VVFN, &UPML_GROUP[1]); else Post(d->volt, m_VoltFlux, m_VVFN, &UPML_GROUP[1]);}
+	virtual void DoPostVoltageUpdates() {if (Fused()) Fuse("upml_fused_volt", d->volt, d->curr, m_VoltFlux, m_VV, m_VVFO, m_VVFN, d->vv, d->vi, &UPML_GROUP[1]); else Post(d->volt, m_VoltFlux, m_VVFN, &UPML_GROUP[1]);}
 	virtual void DoPreCurrentUpdates()  {if (!Fused()) Pre(d->curr, m_CurrFlux, m_II, m_IIFO, &UPML_GROUP[2]);}
-	virtual void DoPostCurrentUpdates() {if (Fused()) Fuse("upml_fused_curr", d->curr, d->volt, m_CurrFlux, m_II, m_IIFO, m_IIFN, &UPML_GROUP[3]); else Post(d->curr, m_CurrFlux, m_IIFN, &UPML_GROUP[3]);}
+	virtual void DoPostCurrentUpdates() {if (Fused()) Fuse("upml_fused_curr", d->curr, d->volt, m_CurrFlux, m_II, m_IIFO, m_IIFN, d->ii, d->iv, &UPML_GROUP[3]); else Post(d->curr, m_CurrFlux, m_IIFN, &UPML_GROUP[3]);}
 
 protected:
 	void Pre(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_old, id<MTLBuffer> c_fo, const void* group);
 	void Post(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_fn, const void* group);
 	void Fuse(const char* kernel, id<MTLBuffer> field, id<MTLBuffer> other, id<MTLBuffer> flux,
-	          id<MTLBuffer> c_old, id<MTLBuffer> c_fo, id<MTLBuffer> c_fn, const void* group);
+	          id<MTLBuffer> c_old, id<MTLBuffer> c_fo, id<MTLBuffer> c_fn,
+	          id<MTLBuffer> full_a, id<MTLBuffer> full_b, const void* group);
 	void SetRegion(id<MTLComputeCommandEncoder> enc);
 
 	//! Whether the UPML of this grid runs fused with the main updates, decided at the first call
@@ -259,13 +261,9 @@ bool Metal_Ext_UPML::Fused()
 // - the UPML hooks run directly before and after the main update: only extensions
 //   without device pre/post hooks (steady-state) come before the UPML extensions,
 // - all UPML extensions of the grid run on the device,
-// - compressed coefficients (the fused kernels read them),
 // - the regions cover exactly the nodes outside a box, which the main updates then cover.
 bool Metal_Ext_UPML::CanFuse()
 {
-	if (!d->coeff)
-		return false;
-
 	size_t num_upml = 0;
 	size_t last_upml = 0;
 	for (size_t n=0; n<m_Eng->GetExtensionCount(); ++n)
@@ -324,8 +322,10 @@ bool Metal_Ext_UPML::CanFuse()
 	return true;
 }
 
+// full_a/full_b: the full main coefficient arrays, used if the coefficients are not compressed
 void Metal_Ext_UPML::Fuse(const char* kernel, id<MTLBuffer> field, id<MTLBuffer> other, id<MTLBuffer> flux,
-                          id<MTLBuffer> c_old, id<MTLBuffer> c_fo, id<MTLBuffer> c_fn, const void* group)
+                          id<MTLBuffer> c_old, id<MTLBuffer> c_fo, id<MTLBuffer> c_fn,
+                          id<MTLBuffer> full_a, id<MTLBuffer> full_b, const void* group)
 {
 	id<MTLComputePipelineState> pso = d->Pipeline(UPML_SOURCE, kernel);
 	id<MTLComputeCommandEncoder> enc = d->Encoder();
@@ -336,8 +336,7 @@ void Metal_Ext_UPML::Fuse(const char* kernel, id<MTLBuffer> field, id<MTLBuffer>
 	[enc setBuffer:c_old offset:0 atIndex:3];
 	[enc setBuffer:c_fo offset:0 atIndex:4];
 	[enc setBuffer:c_fn offset:0 atIndex:5];
-	[enc setBuffer:d->index offset:0 atIndex:6];
-	[enc setBuffer:d->coeff offset:0 atIndex:7];
+	d->SetCoefficients(6, 7, 10, 11, full_a, full_b);
 	d->SetGridDim(8);
 	[enc setBytes:&m_Region length:sizeof(m_Region) atIndex:9];
 	d->Dispatch(pso, m_Region.lz, m_Region.ly, m_Region.lx, group);
