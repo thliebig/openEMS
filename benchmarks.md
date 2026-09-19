@@ -27,20 +27,21 @@ backend.
 
 ### Results
 
-Commit 9bdf4b1: the fused CUDA step and the background HDF5 dumps (see the
-notes below).
+Commit b8ee1b7: the fused CUDA step, and the CUDA field dumps evaluated on the
+device (see the notes below). The CPU row is from commit 9bdf4b1; the changes
+since do not affect the CPU engine.
 
 | Machine | Host CPU | Engine | Total run | Timestepping | Speed (MCells/s) | Peak host memory | GPU memory |
 |---|---|---|---|---|---|---|---|
 | Apple M5 Max (CPU) | Apple M5 Max | multithreaded | 123.2 s | 118.7 s | 303 | 716 MiB | - |
-| Apple M5 Max (GPU) | Apple M5 Max | Metal | **16.1 s** | **10.9 s** | **3302** | 1218 MiB (1) | 343 MiB (1) |
-| RTX 2080 Ti | Xeon E5-2673 v4 | CUDA | 41.1 s | 28.4 s | 1270 | 805 MiB | 367 MiB |
-| RTX 3090 Ti | Threadripper PRO 5955WX | CUDA | 21.6 s | 14.9 s | 2414 | 802 MiB | 478 MiB |
-| RTX 4090 | EPYC 7K62 | CUDA | 33.1 s | 20.9 s | 1721 | 775 MiB | 603 MiB |
-| RTX 5070 Ti | Ryzen 7 5700X | CUDA | 27.5 s | 20.6 s | 1746 | 810 MiB | 438 MiB |
-| RTX 5090 | EPYC 7742 | CUDA | 22.3 s | 11.8 s | 3057 | 814 MiB | 714 MiB |
-| A100 SXM4 40 GB | EPYC 7K62 | CUDA | 28.6 s | 17.5 s | 2058 | 776 MiB | 633 MiB |
-| H200 | Xeon Platinum 8488C | CUDA | 24.5 s | 16.9 s | 2127 | 900 MiB | 735 MiB |
+| Apple M5 Max (GPU) | Apple M5 Max | Metal | 15.4 s | 10.9 s | 3315 | 1218 MiB (1) | 343 MiB (1) |
+| RTX 2080 Ti | Xeon E5-2673 v4 | CUDA | 21.9 s | 8.5 s | 4244 | 815 MiB | 457 MiB |
+| RTX 3090 Ti | Threadripper PRO 5955WX | CUDA | 11.9 s | 5.2 s | 6930 | 808 MiB | 568 MiB |
+| RTX 4090 | EPYC 7K62 | CUDA | 20.4 s | 8.5 s | 4234 | 804 MiB | 693 MiB |
+| RTX 5070 Ti | Ryzen 7 5700X | CUDA | **11.8 s** | **4.9 s** | **7360** | 816 MiB | 530 MiB |
+| RTX 5090 | EPYC 7742 | CUDA | 20.0 s | 8.9 s | 4049 | 821 MiB | 806 MiB |
+| A100 SXM4 40 GB | EPYC 7K62 | CUDA | 19.0 s | 8.1 s | 4444 | 802 MiB | 723 MiB |
+| H200 | Xeon Platinum 8488C | CUDA | 22.0 s | 13.6 s | 2657 | 903 MiB | 827 MiB |
 
 (1) Unified memory: the Metal buffers (343 MiB) are part of the host memory
 figure. The peak physical footprint was 1259 MiB.
@@ -69,18 +70,23 @@ Timestepping time by commit:
 - e64e076: the CUDA and Metal optimizations of `Optimizations-HIP.md` and
   `Optimizations-Metal.md`,
 - 119949d: the field dumps of the NF2FF box computed on several threads,
-- 9bdf4b1: the table above.
+- 9bdf4b1: the background HDF5 dumps, the Metal field snapshots and the
+  fused CUDA step,
+- b8ee1b7: the table above.
 
-| Machine | e64e076 | 119949d | 9bdf4b1 |
-|---|---|---|---|
-| Apple M5 Max (CPU) | 142.7 s | 122.4 s | 118.7 s |
-| Apple M5 Max (Metal) | 51.1 s | 28.9 s | 10.9 s |
-| RTX 2080 Ti | 138.0 s | 72.9 s | 28.4 s |
-| RTX 3090 Ti | 87.1 s | 39.4 s | 14.9 s |
-| RTX 4090 (1) | 122.4 s | 63.7 s | 20.9 s |
-| RTX 5070 Ti (1) | 143.6 s | 81.4 s | 20.6 s |
+| Machine | e64e076 | 119949d | 9bdf4b1 | b8ee1b7 |
+|---|---|---|---|---|
+| Apple M5 Max (CPU) | 142.7 s | 122.4 s | 118.7 s | - |
+| Apple M5 Max (Metal) | 51.1 s | 28.9 s | 10.9 s | 10.9 s |
+| RTX 2080 Ti | 138.0 s | 72.9 s | 28.4 s | 8.5 s |
+| RTX 3090 Ti | 87.1 s | 39.4 s | 14.9 s | 5.2 s |
+| RTX 4090 (1) | 122.4 s | 63.7 s | 20.9 s | 8.5 s |
+| RTX 5070 Ti (1) | 143.6 s | 81.4 s | 20.6 s | 4.9 s |
+| RTX 5090 | - | - | 11.8 s | 8.9 s |
+| A100 SXM4 40 GB | - | - | 17.5 s | 8.1 s |
+| H200 | - | - | 16.9 s | 13.6 s |
 
-(1) Different hosts: the earlier runs were on an EPYC 7542 (RTX 4090) and a
+(1) Different hosts: the first two runs were on an EPYC 7542 (RTX 4090) and a
 Ryzen 9 7945HX (RTX 5070 Ti).
 
 ## Free space, 300^3 cells
@@ -143,38 +149,46 @@ Build and run details:
 
 ## Notes
 
-- **The horn example is limited by the host, not by the GPU.**
-  - The CUDA runs reach 8-24 % of each GPU's 300^3 speed. At its PML_8
-    speed, the RTX 5090 would need ~1.8 s for the 14900 timesteps of 2.42
-    million cells, against 11.8 s measured.
-  - The rest is the field processing between batches (NF2FF dumps every 25
-    timesteps, probes) and the launch and synchronization overhead of a small
-    grid.
-  - The M5 Max GPU is the fastest machine here although its kernels are the
-    slowest: with unified memory, the dumps are computed from a field
-    snapshot on a background thread while the GPU continues (commits 7c335b7
-    to 4641181).
-
 - **NF2FF time-domain dumps.**
   - `CreateNF2FFBox()` without a frequency dumps E and H on the six box
-    surfaces every Nyquist interval (25 timesteps here).
+    surfaces every 6 timesteps here (a quarter of the Nyquist interval of 25
+    timesteps): 2484 times, 29808 datasets and 4.7 GB of HDF5 files in the
+    run.
   - Before commit 119949d, the interpolation of the dumped nodes
     (`ProcessFields::CalcField()`) ran on one thread while the GPU idled. That
-    was most of the GPU runs' time.
-  - The dumps are now split over up to one thread per thousand nodes. They are
-    bit-identical to the single-threaded dumps (all 29850 datasets of the
-    horn example).
-  - Since 958205f and 7c335b7, the dump file stays open and all HDF5 writes of
+    was most of the GPU runs' time. It is now split over up to one thread per
+    thousand nodes, bit-identical to the single-threaded dumps.
+  - Since 958205f and 7c335b7, the dump files stay open and all HDF5 writes of
     the time-domain dumps run on a background thread, on every engine.
+  - Metal (unified memory): at a dump timestep the fields are copied on the
+    device into a snapshot, and the background thread computes the dumps from
+    it while the GPU continues (commits 7c335b7 to 4641181).
+  - CUDA (commit 115b334): the dumps register their node interpolation before
+    the run, and a snapshot is one kernel that evaluates all dumped values on
+    the device into a packed buffer (~2 MB here). It is downloaded on a second
+    stream while the next timesteps run. Copying the fields instead (58 MB per
+    snapshot) was limited by PCIe: 11.0 s on the RTX 5070 Ti (PCIe 4.0 x8),
+    against 6.6 s. The dumps are bit-identical.
 
-- **Next step for CUDA: field snapshots on the device.** On CUDA, the dumps
-  still copy the fields to the host and compute the dumped values while the
-  GPU waits. A copy into a second device buffer, downloaded on a separate
-  stream and processed on the background thread, would overlap that work with
-  the next batch, as on Metal.
+- **The fused CUDA step** needs all extensions of the simulation to support
+  it. The lumped port of this example creates a lumped RLC extension (without
+  elements), which blocked it until commit b8ee1b7: 6.6 s -> 4.9 s on the RTX
+  5070 Ti.
 
-- **Outside the timestepping** (total run minus timestepping: 5.2 s on the
-  M5 Max GPU, 6.7 s on the RTX 3090 Ti, up to 12.7 s on the RTX 2080 Ti) is
+- **What limits the CUDA runs now.**
+  - The RTX 5070 Ti and 3090 Ti runs are within ~1.5 s of their GPU time: at
+    their 300^3 speed the kernels take ~3.5 s.
+  - The others are limited by writing the dumps on their host: the HDF5
+    writes are serial (the library is not thread-safe) and write 4.7 GB into
+    the container's overlay file system. On the RTX 5090 host (EPYC 7742) the
+    dump thread was busy 9.0 s of the 9.1 s run, 6.2 s of it in the HDF5
+    writes, while the GPU needed 2.7 s. On the RTX 5070 Ti host (Ryzen 7
+    5700X) the same writes took 2.4 s.
+  - A NF2FF box with a frequency (`CreateNF2FFBox(frequency=...)`) writes no
+    time-domain dumps; this example only evaluates the far field at 15 GHz.
+
+- **Outside the timestepping** (total run minus timestepping: 4.5 s on the
+  M5 Max GPU, 6.7 s on the RTX 3090 Ti, up to 13.4 s on the RTX 2080 Ti) is
   the setup and the post-processing. The setup runs on the host and depends
   on its single-thread speed. Since 79a89e0, the far-field calculation lists
   the time-domain datasets once instead of looking each one up by index.
