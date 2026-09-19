@@ -567,9 +567,15 @@ bool openEMS::SetupProcessing()
 				}
 				if (pb->GetProbeType()==11)
 					proc->SetDualTime(true);
-				proc->SetProcessInterval(Nyquist/m_OverSampling);
+				// an explicit per-box override applies to both TD and FD; absent that, TD keeps the
+				// global OverSampling default while FD defaults to 1 (plain Nyquist rate) so existing
+				// simulations keep their FD/SAR results and performance unless they opt in
+				unsigned int probeOverSampling = (pb->GetOverSampling()>=0) ? (unsigned int)pb->GetOverSampling() : m_OverSampling;
+				unsigned int probeFDOverSampling = (pb->GetOverSampling()>=0) ? (unsigned int)pb->GetOverSampling() : 1;
+				proc->SetProcessInterval(Nyquist/probeOverSampling);
 				if (pb->GetStartTime()>0 || pb->GetStopTime()>0)
 					proc->SetProcessStartStopTime(pb->GetStartTime(), pb->GetStopTime());
+				proc->SetFDOverSampling(probeFDOverSampling);
 				proc->AddFrequency(pb->GetFDSamples());
 				proc->GetNormalDir(pb->GetNormalDir());
 				if (l_MultiBox==false)
@@ -580,6 +586,15 @@ bool openEMS::SetupProcessing()
 				if (g_settings.showProbeDiscretization())
 					proc->ShowSnappedCoords();
 				proc->SetWeight(pb->GetWeighting());
+				if (g_settings.GetVerboseLevel()>1)
+				{
+					cout << "openEMS::SetupProcessing: probe '" << proc->GetName() << "': time-domain sampling every "
+						 << proc->GetProcessInterval() << " timestep(s) (Nyquist/" << Nyquist/proc->GetProcessInterval() << ")";
+					if ((pb->CountFDSamples()>0) && (proc->GetFDInterval()!=proc->GetProcessInterval()))
+						cout << ", frequency-domain accumulation every " << proc->GetFDInterval() << " timestep(s) (Nyquist/"
+							 << Nyquist/proc->GetFDInterval() << ")";
+					cout << endl;
+				}
 				PA->AddProcessing(proc);
 				prim->SetPrimitiveUsed(true);
 			}
@@ -630,7 +645,12 @@ bool openEMS::SetupProcessing()
 					if (ProcField)
 					{
 						ProcField->SetEnable(Enable_Dumps);
-						ProcField->SetProcessInterval(Nyquist/m_OverSampling);
+						// an explicit per-box override applies to both TD and FD; absent that, TD keeps the
+						// global OverSampling default while FD defaults to 1 (plain Nyquist rate) so existing
+						// simulations keep their FD/SAR results and performance unless they opt in
+						unsigned int dumpOverSampling = (db->GetOverSampling()>=0) ? (unsigned int)db->GetOverSampling() : m_OverSampling;
+						unsigned int dumpFDOverSampling = (db->GetOverSampling()>=0) ? (unsigned int)db->GetOverSampling() : 1;
+						ProcField->SetProcessInterval(Nyquist/dumpOverSampling);
 						if (db->GetStopTime()>0 || db->GetStartTime()>0)
 							ProcField->SetProcessStartStopTime(db->GetStartTime(), db->GetStopTime());
 						if ((db->GetDumpType()==1) || (db->GetDumpType()==11))
@@ -641,6 +661,7 @@ bool openEMS::SetupProcessing()
 						}
 						if (db->GetDumpType()>=10)
 						{
+							ProcField->SetFDOverSampling(dumpFDOverSampling);
 							ProcField->AddFrequency(db->GetFDSamples());
 							ProcField->SetDumpType((ProcessFields::DumpType)(db->GetDumpType()-10));
 						}
@@ -684,6 +705,18 @@ bool openEMS::SetupProcessing()
 						ProcField->DefineStartStopCoord(start,stop);
 						if (g_settings.showProbeDiscretization())
 							ProcField->ShowSnappedCoords();
+						if (g_settings.GetVerboseLevel()>1)
+						{
+							cout << "openEMS::SetupProcessing: dump '" << ProcField->GetName() << "': ";
+							// FD/SAR dumps only ever accumulate on the FD interval; ProcessInterval is not used for those
+							if (db->CountFDSamples()>0)
+								cout << "frequency-domain accumulation every " << ProcField->GetFDInterval() << " timestep(s) (Nyquist/"
+									 << Nyquist/ProcField->GetFDInterval() << ")";
+							else
+								cout << "time-domain sampling every " << ProcField->GetProcessInterval() << " timestep(s) (Nyquist/"
+									 << Nyquist/ProcField->GetProcessInterval() << ")";
+							cout << endl;
+						}
 						PA->AddProcessing(ProcField);
 						prim->SetPrimitiveUsed(true);
 					}

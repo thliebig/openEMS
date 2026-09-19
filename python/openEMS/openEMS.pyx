@@ -56,7 +56,9 @@ cdef class openEMS:
     :param NrTS:           max. number of timesteps to simulate (e.g. default=1e9)
     :param EndCriteria:    end criteria, e.g. 1e-5, simulations stops if energy has decayed by this value (<1e-4 is recommended, default=1e-5)
     :param MaxTime:        max. real time in seconds to simulate
-    :param OverSampling:   nyquist oversampling of time domain dumps
+    :param OverSampling:   nyquist oversampling of the time domain dumps and probes (default 4).
+                            Frequency-domain dumps/probes accumulate at the plain Nyquist rate
+                            unless a box sets its own ``over_sampling`` (CSXCAD AddDump/AddProbe).
     :param CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
     :param MultiGrid:      define a cylindrical sub-grid radius
     :param TimeStep:       force to use a given timestep (dangerous!)
@@ -136,7 +138,10 @@ cdef class openEMS:
     def SetOverSampling(self, val):
         """ SetOverSampling(val)
 
-        Set the time domain signal oversampling as multiple of the Nyquist-rate.
+        Set the sampling of the time domain dumps and probes as a multiple of
+        the Nyquist rate (default 4). Frequency-domain dumps/probes accumulate
+        at the plain Nyquist rate unless a box sets its own ``over_sampling``
+        via CSXCAD's AddDump/AddProbe.
         """
         self.thisptr.SetOverSampling(val)
 

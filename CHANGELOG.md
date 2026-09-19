@@ -71,6 +71,17 @@ number moved up and patch releases now have somewhere to go.
   backshort), `StripLine2MSL`, `Dipole_SAR`, `MRI_Loop_Coil`, a rectangular
   resonant cavity example, and a SAR averaging tutorial.
 - Python unit and integration tests, run in CI after each smoke test.
+- **Optional oversampling for frequency-domain dumps and probes.** The running
+  DFT accumulation for FD/SAR dumps and probes is sampled at exactly the
+  Nyquist rate, which aliases the spectrum just above the highest excited
+  frequency onto the upper band edge. A probe/dump can now oversample its own
+  FD accumulation (e.g. by the same factor `OverSampling` gives the
+  time-domain recording, default 4) via CSXCAD's new `OverSampling` property
+  on that box — see the CSXCAD changelog. It defaults to the plain Nyquist
+  rate, matching prior behavior, so existing simulations and their
+  performance are unaffected unless a box opts in.
+- **`--verbose`/`-vv` now reports the actual TD/FD sampling interval** for
+  each probe and dump box during `SetupProcessing`.
 
 ### Changed
 

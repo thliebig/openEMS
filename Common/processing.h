@@ -67,8 +67,15 @@ public:
 	void AddStep(unsigned int step);
 	void AddSteps(std::vector<unsigned int> steps);
 
+	//! Sample the frequency domain data \a factor times per Nyquist interval (call before AddFrequency())
+	void SetFDOverSampling(unsigned int factor);
 	void AddFrequency(double freq);
 	void AddFrequency(std::vector<double> *freqs);
+
+	//! Get the time-domain sampling interval in timesteps \sa SetProcessInterval
+	unsigned int GetProcessInterval() const {return ProcessInterval;}
+	//! Get the frequency-domain accumulation interval in timesteps \sa SetFDOverSampling
+	unsigned int GetFDInterval() const {return m_FD_Interval;}
 
 	bool CheckTimestep();
 
@@ -133,8 +140,12 @@ protected:
 	std::vector<double> m_FD_Samples;
 	//! Number of samples already processed
 	unsigned int m_FD_SampleCount;
-	//! Sampling interval needed for the FD_Samples
+	//! Sampling interval of the FD_Samples: the Nyquist interval of the highest frequency / m_FD_OverSampling
 	unsigned int m_FD_Interval;
+	//! Nyquist interval of the FD_Samples
+	unsigned int m_FD_Nyquist;
+	//! Samples per Nyquist interval, see SetFDOverSampling()
+	unsigned int m_FD_OverSampling;
 
 	//! define if given coords are on main or dualMesh (default is false)
 	bool m_dualMesh;

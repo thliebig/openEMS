@@ -45,6 +45,9 @@ from openEMS.sar_utils import readSAR
 # ── Reference values ─────────────────────────────────────────────────────────
 # Peak SAR in W/kg at 1 W accepted antenna input power.
 # Set to None until calibrated; None entries skip that value check.
+# Calibrated with the SAR recording sampled at the Nyquist rate (the default; the
+# CSPropDumpBox 'over_sampling' argument can raise this per dump box, which converges
+# these values to about 2 % lower at OverSampling 4, and further at 8/16).
 EXPECTED_PEAK_SAR = {
     'm0g_SIMPLE':       5.39541,
     'm1g_SIMPLE':       4.75962,
