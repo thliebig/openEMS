@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -337,81 +338,102 @@ bool GPU_Backend_Metal::Init(const Operator* op)
 
 namespace
 {
-//! bit pattern of the 12 coefficients of a node, see main_coeff()
-struct CoeffSet
+//! bit pattern of the values of a set, see Metal_FindSets()
+struct SetKey
 {
-	uint32_t v[12];
-	bool operator==(const CoeffSet& o) const {return std::memcmp(v, o.v, sizeof(v))==0;}
+	uint32_t v[METAL_MAX_SET_WIDTH];
+	unsigned int width;
+	bool operator==(const SetKey& o) const {return std::memcmp(v, o.v, width*sizeof(uint32_t))==0;}
 };
 
-struct CoeffSetHash
+struct SetKeyHash
 {
-	size_t operator()(const CoeffSet& s) const
+	size_t operator()(const SetKey& s) const
 	{
 		uint64_t h = 1469598103934665603ULL;   // FNV-1a
-		for (int k=0; k<12; ++k)
+		for (unsigned int k=0; k<s.width; ++k)
 			h = (h ^ s.v[k]) * 1099511628211ULL;
 		return h;
 	}
 };
 }
 
+bool Metal_FindSets(size_t count, unsigned int width, const std::function<void(size_t, float*)>& get, Metal_CoeffSets& sets)
+{
+	if ((width==0) || (width>METAL_MAX_SET_WIDTH))
+		return false;
+	// at most half the size of the full arrays (width floats per item)
+	const size_t max_sets16 = (size_t)std::numeric_limits<uint16_t>::max()+1;
+	const size_t max_sets = std::max(max_sets16, (2*width*count - 4*count)/(4*width));
+	sets.index.resize(count);
+	sets.table.clear();
+	std::unordered_map<SetKey, uint32_t, SetKeyHash> found;
+
+	SetKey prev;
+	bool have_prev = false;
+	float values[METAL_MAX_SET_WIDTH];
+	for (size_t i=0; i<count; ++i)
+	{
+		SetKey key;
+		key.width = width;
+		get(i, values);
+		std::memcpy(key.v, values, width*sizeof(float));
+		// neighbours mostly share the set
+		if (have_prev && (key==prev))
+		{
+			sets.index[i] = sets.index[i-1];
+			continue;
+		}
+		std::unordered_map<SetKey, uint32_t, SetKeyHash>::const_iterator it = found.find(key);
+		if (it==found.end())
+		{
+			if (found.size()>=max_sets)
+				return false;
+			it = found.insert(std::make_pair(key, (uint32_t)found.size())).first;
+			sets.table.insert(sets.table.end(), values, values+width);
+		}
+		sets.index[i] = it->second;
+		prev = key;
+		have_prev = true;
+	}
+	sets.count = found.size();
+	sets.mode = (sets.count<=max_sets16) ? 1 : 2;
+	return true;
+}
+
+id<MTLBuffer> GPU_Backend_Metal::Impl::NewIndexBuffer(const Metal_CoeffSets& sets)
+{
+	if (sets.mode==1)
+	{
+		std::vector<uint16_t> index16(sets.index.begin(), sets.index.end());
+		return NewBuffer(index16.size()*sizeof(uint16_t), index16.data());
+	}
+	return NewBuffer(sets.index.size()*sizeof(uint32_t), sets.index.data());
+}
+
 // Most nodes share one of a few coefficient sets (same material and mesh spacing).
 // Store every distinct set once and a set index per node, which removes most of the
 // coefficient memory traffic of the main updates. Bit-exact, since the sets hold the
-// original values. 16 bit indices for up to 65536 sets, else 32 bit indices as long as
-// the index and the sets are at most half the size of the full arrays (48 bytes/node).
+// original values. See Metal_FindSets() for the index size and the limits.
 bool GPU_Backend_Metal::CompressCoefficients(const std::vector<float>& vv, const std::vector<float>& vi,
                                              const std::vector<float>& ii, const std::vector<float>& iv)
 {
 	const size_t sn = d->numCells;
-	const size_t max_sets16 = (size_t)std::numeric_limits<uint16_t>::max()+1;
-	const size_t max_sets = std::max(max_sets16, (24*sn - 4*sn)/48);
-	std::vector<uint32_t> index(sn);
-	std::vector<float> table;
-	std::unordered_map<CoeffSet, uint32_t, CoeffSetHash> sets;
-
 	const std::vector<float>* src[4] = {&vv, &vi, &ii, &iv};
-	CoeffSet prev;
-	bool have_prev = false;
-	for (size_t i=0; i<sn; ++i)
-	{
-		CoeffSet s;
-		for (int c=0; c<4; ++c)
-			for (int n=0; n<3; ++n)
-				std::memcpy(&s.v[3*c+n], &(*src[c])[n*sn+i], sizeof(float));
-		// neighbours along z mostly share the set
-		if (have_prev && (s==prev))
-		{
-			index[i] = index[i-1];
-			continue;
-		}
-		std::unordered_map<CoeffSet, uint32_t, CoeffSetHash>::const_iterator it = sets.find(s);
-		if (it==sets.end())
-		{
-			if (sets.size()>=max_sets)
-				return false;
-			it = sets.insert(std::make_pair(s, (uint32_t)sets.size())).first;
-			table.insert(table.end(), (const float*)s.v, (const float*)s.v+12);
-		}
-		index[i] = it->second;
-		prev = s;
-		have_prev = true;
-	}
+	Metal_CoeffSets sets;
+	// the 12 coefficients of a node, in the order vv[3], vi[3], ii[3], iv[3] (see main_coeff())
+	if (!Metal_FindSets(sn, 12, [&](size_t i, float* values)
+	    {
+		    for (int c=0; c<4; ++c)
+			    for (int n=0; n<3; ++n)
+				    values[3*c+n] = (*src[c])[n*sn+i];
+	    }, sets))
+		return false;
 
-	if (sets.size()<=max_sets16)
-	{
-		std::vector<uint16_t> index16(index.begin(), index.end());
-		d->coeff_mode = 1;
-		d->index = d->NewBuffer(sn*sizeof(uint16_t), index16.data());
-	}
-	else
-	{
-		d->coeff_mode = 2;
-		d->index = d->NewBuffer(sn*sizeof(uint32_t), index.data());
-	}
-	d->coeff = d->NewBuffer(table.size()*sizeof(float), table.data());
-	std::cout << "GPU_Backend_Metal: " << sets.size() << " distinct coefficient sets, compressed update coefficients ("
+	d->coeff_mode = sets.mode;
+	d->index = d->NewIndexBuffer(sets);
+	d->coeff = d->NewBuffer(sets.table.size()*sizeof(float), sets.table.data());
+	std::cout << "GPU_Backend_Metal: " << sets.count << " distinct coefficient sets, compressed update coefficients ("
 	          << (d->coeff_mode==1 ? 16 : 32) << " bit index)" << std::endl;
 	return true;
 }

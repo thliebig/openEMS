@@ -76,6 +76,26 @@ kernel void upml_post(device float* field       [[buffer(0)]],
 	}
 }
 
+// UPML coefficients of the region cell l0 (see Metal_Ext_UPML::m_CoeffMode): old[n*s],
+// fo[n*s] and fn[n*s] are vv/vvfo/vvfn (set_offset 0) or ii/iifo/iifn (set_offset 9) of
+// direction n. Mode 0: the full arrays, else a 16/32 bit set index and the sets of 18.
+struct UPMLCoeff { const device float* old; const device float* fo; const device float* fn; uint s; };
+
+inline UPMLCoeff upml_coeff(uint mode, const device void* index, const device float* sets,
+                            const device float* c_old, const device float* c_fo, const device float* c_fn,
+                            uint l0, uint cells, uint set_offset)
+{
+	UPMLCoeff c;
+	if (mode==0)
+	{
+		c.old = c_old + l0; c.fo = c_fo + l0; c.fn = c_fn + l0; c.s = cells;
+		return c;
+	}
+	const uint set = (mode==1) ? uint(((const device ushort*)index)[l0]) : ((const device uint*)index)[l0];
+	c.old = sets + 18*set + set_offset; c.fo = c.old + 3; c.fn = c.old + 6; c.s = 1;
+	return c;
+}
+
 // Fused: upml_pre, the main update (update_voltages) and upml_post of the nodes of
 // the region, operation by operation the same. Valid because the UPML hooks run
 // directly before and after the main update (see Metal_Ext_UPML::CanFuse()), and the
@@ -90,6 +110,9 @@ kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
                             const device float* ca     [[buffer(7)]],
                             const device float* cb     [[buffer(10)]],
                             constant uint& mode        [[buffer(11)]],
+                            const device void* u_index [[buffer(12)]],
+                            const device float* u_sets [[buffer(13)]],
+                            constant uint& u_mode      [[buffer(14)]],
                             constant GridDim& N        [[buffer(8)]],
                             constant UPMLParam& P      [[buffer(9)]],
                             uint3 gid [[thread_position_in_grid]])
@@ -101,6 +124,8 @@ kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
 	const uint ym = (y>0) ? N.nz : 0;
 	const uint zm = (z>0) ? 1 : 0;
 	const MainCoeff C = main_coeff(index, ca, cb, mode, sn, i, 0);
+	const uint cells = P.lx*P.ly*P.lz;
+	const UPMLCoeff U = upml_coeff(u_mode, u_index, u_sets, c_old, c_fo, c_fn, (gid.z*P.ly + gid.y)*P.lz + gid.x, cells, 0);
 	float curl[3];
 	curl[0] = (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
 	curl[1] = (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
@@ -109,12 +134,12 @@ kernel void upml_fused_volt(device float* volt         [[buffer(0)]],
 	{
 		const uint l = upml_local(P, n, gid);
 		const uint g = n*sn + i;
-		const float f_help = c_old[l]*volt[g] - c_fo[l]*flux[l];
+		const float f_help = U.old[n*U.s]*volt[g] - U.fo[n*U.s]*flux[l];
 		float v;
 		v  = flux[l] * C.a[n*C.s];
 		v += C.b[n*C.s] * curl[n];
 		flux[l] = v;
-		volt[g] = f_help + c_fn[l]*v;
+		volt[g] = f_help + U.fn[n*U.s]*v;
 	}
 }
 
@@ -129,6 +154,9 @@ kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
                             const device float* ca     [[buffer(7)]],
                             const device float* cb     [[buffer(10)]],
                             constant uint& mode        [[buffer(11)]],
+                            const device void* u_index [[buffer(12)]],
+                            const device float* u_sets [[buffer(13)]],
+                            constant uint& u_mode      [[buffer(14)]],
                             constant GridDim& N        [[buffer(8)]],
                             constant UPMLParam& P      [[buffer(9)]],
                             uint3 gid [[thread_position_in_grid]])
@@ -137,6 +165,8 @@ kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
 	const uint sn = N.nx*N.ny*N.nz;
 	const uint i  = nijk(N, 0, x, y, z);
 	const bool update = (x+1<N.nx) && (y+1<N.ny) && (z+1<N.nz);
+	const uint cells = P.lx*P.ly*P.lz;
+	const UPMLCoeff U = upml_coeff(u_mode, u_index, u_sets, c_old, c_fo, c_fn, (gid.z*P.ly + gid.y)*P.lz + gid.x, cells, 9);
 	float curl[3] = {0, 0, 0};
 	MainCoeff C = {ca, cb, 0};
 	if (update)
@@ -152,7 +182,7 @@ kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
 	{
 		const uint l = upml_local(P, n, gid);
 		const uint g = n*sn + i;
-		const float f_help = c_old[l]*curr[g] - c_fo[l]*flux[l];
+		const float f_help = U.old[n*U.s]*curr[g] - U.fo[n*U.s]*flux[l];
 		float c = flux[l];
 		if (update)
 		{
@@ -160,7 +190,7 @@ kernel void upml_fused_curr(device float* curr         [[buffer(0)]],
 			c += C.b[n*C.s] * curl[n];
 		}
 		flux[l] = c;
-		curr[g] = f_help + c_fn[l]*c;
+		curr[g] = f_help + U.fn[n*U.s]*c;
 	}
 }
 )MSL";
@@ -201,6 +231,10 @@ protected:
 	id<MTLBuffer> m_VoltFlux, m_CurrFlux;
 	id<MTLBuffer> m_VV, m_VVFO, m_VVFN;
 	id<MTLBuffer> m_II, m_IIFO, m_IIFN;
+
+	//! Coefficients for the fused kernels: 0: the full arrays, 1/2: a 16/32 bit set index per cell and the sets (see upml_coeff())
+	uint32_t m_CoeffMode;
+	id<MTLBuffer> m_SetIndex, m_Sets;
 };
 
 static id<MTLBuffer> UploadArray(GPU_Backend_Metal::Impl* d, const ArrayLib::ArrayNIJK<FDTD_FLOAT>& arr)
@@ -229,6 +263,24 @@ Metal_Ext_UPML::Metal_Ext_UPML(GPU_Backend_Metal::Impl* impl, Operator_Ext_UPML*
 	m_II   = UploadArray(d, op_ext->ii);
 	m_IIFO = UploadArray(d, op_ext->iifo);
 	m_IIFN = UploadArray(d, op_ext->iifn);
+
+	// the 18 coefficients of a cell for the fused kernels: vv[3], vvfo[3], vvfn[3], ii[3], iifo[3], iifn[3]
+	const size_t cells = (size_t)m_Region.lx*m_Region.ly*m_Region.lz;
+	const FDTD_FLOAT* src[6] = {op_ext->vv.data(), op_ext->vvfo.data(), op_ext->vvfn.data(),
+	                            op_ext->ii.data(), op_ext->iifo.data(), op_ext->iifn.data()};
+	Metal_CoeffSets sets;
+	m_CoeffMode = 0;
+	if (Metal_FindSets(cells, 18, [&](size_t l0, float* values)
+	    {
+		    for (int c=0; c<6; ++c)
+			    for (int n=0; n<3; ++n)
+				    values[3*c+n] = src[c][n*cells + l0];
+	    }, sets))
+	{
+		m_CoeffMode = sets.mode;
+		m_SetIndex = d->NewIndexBuffer(sets);
+		m_Sets = d->NewBuffer(sets.table.size()*sizeof(float), sets.table.data());
+	}
 
 	d->Pipeline(UPML_SOURCE, "upml_pre");
 	d->Pipeline(UPML_SOURCE, "upml_post");
@@ -337,6 +389,10 @@ void Metal_Ext_UPML::Fuse(const char* kernel, id<MTLBuffer> field, id<MTLBuffer>
 	[enc setBuffer:c_fo offset:0 atIndex:4];
 	[enc setBuffer:c_fn offset:0 atIndex:5];
 	d->SetCoefficients(6, 7, 10, 11, full_a, full_b);
+	// unused arguments get a valid buffer
+	[enc setBuffer:(m_CoeffMode ? m_SetIndex : c_old) offset:0 atIndex:12];
+	[enc setBuffer:(m_CoeffMode ? m_Sets : c_old) offset:0 atIndex:13];
+	[enc setBytes:&m_CoeffMode length:sizeof(m_CoeffMode) atIndex:14];
 	d->SetGridDim(8);
 	[enc setBytes:&m_Region length:sizeof(m_Region) atIndex:9];
 	d->Dispatch(pso, m_Region.lz, m_Region.ly, m_Region.lx, group);
