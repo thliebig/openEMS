@@ -89,6 +89,27 @@ Timestepping time by commit:
 (1) Different hosts: the first two runs were on an EPYC 7542 (RTX 4090) and a
 Ryzen 9 7945HX (RTX 5070 Ti).
 
+### NF2FF box with frequencies
+
+The example only evaluates the far field at 15 GHz. With
+`CreateNF2FFBox(frequency=[10e9, 15e9, 20e9])`, the box records those
+frequencies during the run instead of dumping the time domain fields. On CUDA
+the sums are kept on the device (commit 3ba4b92) and downloaded once at the
+end. Since commit d2e0162 the recording is sampled with the `OverSampling`
+factor, like the time domain dumps; at the Nyquist rate, as before, the
+pattern at the 20 GHz band edge was up to 18 dB off.
+
+RTX 5090 (EPYC 7742), commit d2e0162:
+
+| NF2FF box | Total run | Timestepping | Speed (MCells/s) | Dump files |
+|---|---|---|---|---|
+| time domain dumps (the example) | 25.6 s | 9.1 s | 3956 | 4.7 GB |
+| frequencies 10, 15, 20 GHz | **9.5 s** | **2.8 s** | **12783** | 12 MB |
+
+The far-field patterns of both agree within 0.001 dB at 10, 15 and 20 GHz,
+and the directivity to 4 digits (14.014, 16.874, 16.908 dBi). The total run
+also drops because the far-field calculation no longer reads 4.7 GB of dumps.
+
 ## Free space, 300^3 cells
 
 The GPU kernels alone, without the host work of the horn example:
@@ -184,8 +205,8 @@ Build and run details:
     dump thread was busy 9.0 s of the 9.1 s run, 6.2 s of it in the HDF5
     writes, while the GPU needed 2.7 s. On the RTX 5070 Ti host (Ryzen 7
     5700X) the same writes took 2.4 s.
-  - A NF2FF box with a frequency (`CreateNF2FFBox(frequency=...)`) writes no
-    time-domain dumps; this example only evaluates the far field at 15 GHz.
+  - A NF2FF box with frequencies writes no time-domain dumps, see "NF2FF box
+    with frequencies" above.
 
 - **Outside the timestepping** (total run minus timestepping: 4.5 s on the
   M5 Max GPU, 6.7 s on the RTX 3090 Ti, up to 13.4 s on the RTX 2080 Ti) is
