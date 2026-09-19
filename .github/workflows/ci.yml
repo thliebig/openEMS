@@ -1,12 +1,11 @@
 name: "CI"
 
+# this fork: only for tags (v*) or by hand, like the packages
 on:
   push:
-    branches:
-      - '**'
-  pull_request:
-    branches:
-      - "**"
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   Lint:
