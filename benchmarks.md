@@ -36,6 +36,8 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 |---|---|---|---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 123.2 s | 118.7 s | 303 | 716 MiB | - |
 | Apple M5 Max, GPU (Metal) | Apple M5 Max | 15.4 s | 10.9 s | 3307 | 1216 MiB (1) | 343 MiB (1) |
+| GTX 1080 Ti | EPYC 7551 | 32.4 s | 19.0 s | 1900 | 838 MiB | 436 MiB |
+| GTX 1660 Ti | Ryzen 9 3900X | 27.1 s | 19.5 s | 1846 | 817 MiB | 373 MiB |
 | RTX 2080 Ti | Xeon E5-2673 v4 | 22.1 s | 8.4 s | 4277 | 813 MiB | 457 MiB |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 11.9 s | 5.2 s | 6939 | 808 MiB | 568 MiB |
 | RTX 4090 | EPYC 7K62 | 20.9 s | 8.8 s | 4116 | 795 MiB | 693 MiB |
@@ -50,6 +52,8 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 |---|---|---|---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 121.8 s | 120.1 s | 300 | 496 MiB | - |
 | Apple M5 Max, GPU (Metal) | Apple M5 Max | 12.4 s | 10.7 s | 3377 | 943 MiB (1) | 343 MiB (1) |
+| GTX 1080 Ti | EPYC 7551 | 37.1 s | 19.2 s | 1879 | 659 MiB | 442 MiB |
+| GTX 1660 Ti | Ryzen 9 3900X | 24.1 s | 19.6 s | 1838 | 637 MiB | 379 MiB |
 | RTX 2080 Ti | Xeon E5-2673 v4 | 15.6 s | 8.3 s | 4342 | 636 MiB | 463 MiB |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 9.0 s | 5.2 s | 6911 | 630 MiB | 574 MiB |
 | RTX 4090 | EPYC 7K62 | 11.0 s | 4.0 s | 8925 | 623 MiB | 699 MiB |
@@ -64,6 +68,8 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 |---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 485 | 1106 |
 | Apple M5 Max, GPU (Metal) | Apple M5 Max | 4192 | 4687 |
+| GTX 1080 Ti | EPYC 7551 | 2619 | 4029 |
+| GTX 1660 Ti | Ryzen 9 3900X | 2268 | 3399 |
 | RTX 2080 Ti | Xeon E5-2673 v4 | 5803 | 8429 |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 9939 | 14109 |
 | RTX 4090 | EPYC 7K62 | 12695 | 18416 |
@@ -85,7 +91,9 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
   Metal: peak of the "graphics" categories of `footprint`.
 
 The CUDA machines are Vast.ai containers (Ubuntu 24.04, CUDA 12.8), built in
-release mode for the architecture of each GPU.
+release mode for the architecture of each GPU. The GTX 1080 Ti (Pascal) and the
+GTX 1660 Ti (Turing) ran a build for all architectures from Pascal on, the one
+of the packages, on drivers 550 and 595.
 
 ## Notes
 

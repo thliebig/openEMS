@@ -516,7 +516,8 @@ jobs:
 
           This build contains the HIP GPU engine for NVIDIA GPUs from Turing (GeForce
           RTX 20xx) to Blackwell (RTX 50xx), and later GPUs through PTX. It needs an
-          NVIDIA driver 570 or newer, no CUDA toolkit. Select it on the command line:
+          NVIDIA driver of the CUDA 12 series (525 or newer, tested with 550 and
+          595), no CUDA toolkit. Select it on the command line:
 
               openEMS.exe <simulation.xml> --engine=gpu
 
@@ -996,7 +997,7 @@ jobs:
           body: |
             openEMS with the GPU engine (`--engine=gpu`, `engine='gpu'` in Python):
 
-            - **Windows x64** (`*_msvc_cuda.zip`): CUDA for NVIDIA GPUs from Pascal (GeForce GTX 10xx) to Blackwell (driver 570 or newer). The package of upstream openEMS with the GPU engine: openEMS, AppCSXCAD, the Octave/Matlab interface, Python wheels (cp313/cp314), headers and import libraries.
+            - **Windows x64** (`*_msvc_cuda.zip`): CUDA for NVIDIA GPUs from Pascal (GeForce GTX 10xx) to Blackwell (NVIDIA driver 525 or newer). The package of upstream openEMS with the GPU engine: openEMS, AppCSXCAD, the Octave/Matlab interface, Python wheels (cp313/cp314), headers and import libraries.
             - **Linux x86_64** (`*_linux_x86_64_*_cuda.tar.gz`): CUDA as on Windows; needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13, Fedora 40 or newer).
             - **macOS arm64** (`*_macos_arm64_*_metal.tar.gz`): Metal on Apple silicon, macOS 15 or newer.
 

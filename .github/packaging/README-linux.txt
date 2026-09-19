@@ -52,8 +52,8 @@ GPU engine
 ----------
 
 The HIP GPU engine runs on NVIDIA GPUs from Pascal (GeForce GTX 10xx) to
-Blackwell (RTX 50xx), and later GPUs through PTX. It needs an NVIDIA driver
-570 or newer, no CUDA toolkit. Select it with --engine=gpu, or in Python:
+Blackwell (RTX 50xx), and later GPUs through PTX. It needs an NVIDIA driver of
+the CUDA 12 series (525 or newer, tested with 550 and 595), no CUDA toolkit. Select it with --engine=gpu, or in Python:
 
     FDTD.Run(sim_path, engine='gpu')
 
