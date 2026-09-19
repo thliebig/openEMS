@@ -82,7 +82,8 @@ struct GPU_Backend_Metal::Impl
 	size_t numCells;    //!< nx*ny*nz, the field buffers hold 3*numCells values
 
 	id<MTLBuffer> volt, curr;
-	id<MTLBuffer> vv, vi, ii, iv;
+	id<MTLBuffer> vv, vi, ii, iv;   //!< full coefficients, if not compressed
+	id<MTLBuffer> index, coeff;     //!< compressed coefficients: set index per node, sets (see update_voltages_c)
 
 	id<MTLComputePipelineState> Pipeline(const char* source, const char* function) {return ctx->Pipeline(source, function);}
 	id<MTLComputeCommandEncoder> Encoder() {return ctx->Encoder();}

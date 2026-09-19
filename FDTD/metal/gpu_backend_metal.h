@@ -18,6 +18,8 @@
 #ifndef GPU_BACKEND_METAL_H
 #define GPU_BACKEND_METAL_H
 
+#include <vector>
+
 #include "FDTD/gpu_backend.h"
 
 //! GPU backend using Apple Metal
@@ -62,6 +64,10 @@ public:
 
 protected:
 	GPU_Backend_Metal(Impl* impl);
+
+	//! Store the coefficients as distinct sets and a set index per node, returns false if there are too many sets
+	bool CompressCoefficients(const std::vector<float>& vv, const std::vector<float>& vi,
+	                          const std::vector<float>& ii, const std::vector<float>& iv);
 
 	Impl* d;
 };

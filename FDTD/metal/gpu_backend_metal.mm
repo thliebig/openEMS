@@ -20,6 +20,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <unordered_map>
 
 #include "metal_internal.h"
 #include "FDTD/operator.h"
@@ -85,6 +86,73 @@ kernel void update_currents(device float* curr       [[buffer(0)]],
 	//for z
 	c  = curr[2*sn+i] * ii[2*sn+i];
 	c += iv[2*sn+i] * (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
+	curr[2*sn+i] = c;
+}
+
+// Same with compressed coefficients: the 12 coefficients of a node are the set
+// coeff[12*index[node]], in the order vv[3], vi[3], ii[3], iv[3].
+kernel void update_voltages_c(device float* volt        [[buffer(0)]],
+                              const device float* curr  [[buffer(1)]],
+                              const device ushort* index[[buffer(2)]],
+                              const device float* coeff [[buffer(3)]],
+                              constant GridDim& N       [[buffer(4)]],
+                              uint3 gid [[thread_position_in_grid]])
+{
+	const uint z = gid.x, y = gid.y, x = gid.z;
+	const uint sn = N.nx*N.ny*N.nz;
+	const uint i  = nijk(N, 0, x, y, z);
+	const uint xm = (x>0) ? N.ny*N.nz : 0;
+	const uint ym = (y>0) ? N.nz : 0;
+	const uint zm = (z>0) ? 1 : 0;
+	const device float* vv = coeff + 12*uint(index[i]);
+	const device float* vi = vv + 3;
+	float v;
+
+	//for x
+	v  = volt[i] * vv[0];
+	v += vi[0] * (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
+	volt[i] = v;
+
+	//for y
+	v  = volt[sn+i] * vv[1];
+	v += vi[1] * (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
+	volt[sn+i] = v;
+
+	//for z
+	v  = volt[2*sn+i] * vv[2];
+	v += vi[2] * (curr[sn+i] - curr[sn+i-xm] - curr[i] + curr[i-ym]);
+	volt[2*sn+i] = v;
+}
+
+kernel void update_currents_c(device float* curr        [[buffer(0)]],
+                              const device float* volt  [[buffer(1)]],
+                              const device ushort* index[[buffer(2)]],
+                              const device float* coeff [[buffer(3)]],
+                              constant GridDim& N       [[buffer(4)]],
+                              uint3 gid [[thread_position_in_grid]])
+{
+	const uint z = gid.x, y = gid.y, x = gid.z;
+	const uint sn = N.nx*N.ny*N.nz;
+	const uint i  = nijk(N, 0, x, y, z);
+	const uint xp = N.ny*N.nz;
+	const uint yp = N.nz;
+	const device float* ii = coeff + 12*uint(index[i]) + 6;
+	const device float* iv = ii + 3;
+	float c;
+
+	//for x
+	c  = curr[i] * ii[0];
+	c += iv[0] * (volt[2*sn+i] - volt[2*sn+i+yp] - volt[sn+i] + volt[sn+i+1]);
+	curr[i] = c;
+
+	//for y
+	c  = curr[sn+i] * ii[1];
+	c += iv[1] * (volt[i] - volt[i+1] - volt[2*sn+i] + volt[2*sn+i+xp]);
+	curr[sn+i] = c;
+
+	//for z
+	c  = curr[2*sn+i] * ii[2];
+	c += iv[2] * (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
 	curr[2*sn+i] = c;
 }
 )MSL";
@@ -260,6 +328,14 @@ bool GPU_Backend_Metal::Init(const Operator* op)
 					ii[idx] = op->GetII(n, pos[0], pos[1], pos[2]);
 					iv[idx] = op->GetIV(n, pos[0], pos[1], pos[2]);
 				}
+
+	if (CompressCoefficients(vv, vi, ii, iv))
+	{
+		d->Pipeline(BASE_SOURCE, "update_voltages_c");
+		d->Pipeline(BASE_SOURCE, "update_currents_c");
+		return true;
+	}
+
 	d->vv = d->NewBuffer(bytes, vv.data());
 	d->vi = d->NewBuffer(bytes, vi.data());
 	d->ii = d->NewBuffer(bytes, ii.data());
@@ -271,28 +347,96 @@ bool GPU_Backend_Metal::Init(const Operator* op)
 	return true;
 }
 
+namespace
+{
+//! bit pattern of the 12 coefficients of a node, see update_voltages_c
+struct CoeffSet
+{
+	uint32_t v[12];
+	bool operator==(const CoeffSet& o) const {return std::memcmp(v, o.v, sizeof(v))==0;}
+};
+
+struct CoeffSetHash
+{
+	size_t operator()(const CoeffSet& s) const
+	{
+		uint64_t h = 1469598103934665603ULL;   // FNV-1a
+		for (int k=0; k<12; ++k)
+			h = (h ^ s.v[k]) * 1099511628211ULL;
+		return h;
+	}
+};
+}
+
+// Most nodes share one of a few coefficient sets (same material and mesh spacing).
+// Store every distinct set once and a 16 bit set index per node, which removes most
+// of the coefficient memory traffic of the main updates. Bit-exact, since the sets
+// hold the original values. Not used if there are more sets than a 16 bit index holds.
+bool GPU_Backend_Metal::CompressCoefficients(const std::vector<float>& vv, const std::vector<float>& vi,
+                                             const std::vector<float>& ii, const std::vector<float>& iv)
+{
+	const size_t sn = d->numCells;
+	const size_t max_sets = (size_t)std::numeric_limits<uint16_t>::max()+1;
+	std::vector<uint16_t> index(sn);
+	std::vector<float> table;
+	std::unordered_map<CoeffSet, uint16_t, CoeffSetHash> sets;
+
+	const std::vector<float>* src[4] = {&vv, &vi, &ii, &iv};
+	CoeffSet prev;
+	bool have_prev = false;
+	for (size_t i=0; i<sn; ++i)
+	{
+		CoeffSet s;
+		for (int c=0; c<4; ++c)
+			for (int n=0; n<3; ++n)
+				std::memcpy(&s.v[3*c+n], &(*src[c])[n*sn+i], sizeof(float));
+		// neighbours along z mostly share the set
+		if (have_prev && (s==prev))
+		{
+			index[i] = index[i-1];
+			continue;
+		}
+		std::unordered_map<CoeffSet, uint16_t, CoeffSetHash>::const_iterator it = sets.find(s);
+		if (it==sets.end())
+		{
+			if (sets.size()>=max_sets)
+				return false;
+			it = sets.insert(std::make_pair(s, (uint16_t)sets.size())).first;
+			table.insert(table.end(), (const float*)s.v, (const float*)s.v+12);
+		}
+		index[i] = it->second;
+		prev = s;
+		have_prev = true;
+	}
+
+	d->index = d->NewBuffer(sn*sizeof(uint16_t), index.data());
+	d->coeff = d->NewBuffer(table.size()*sizeof(float), table.data());
+	std::cout << "GPU_Backend_Metal: " << sets.size() << " distinct coefficient sets, compressed update coefficients" << std::endl;
+	return true;
+}
+
 void GPU_Backend_Metal::UpdateVoltages()
 {
-	id<MTLComputePipelineState> pso = d->Pipeline(BASE_SOURCE, "update_voltages");
+	id<MTLComputePipelineState> pso = d->Pipeline(BASE_SOURCE, d->coeff ? "update_voltages_c" : "update_voltages");
 	id<MTLComputeCommandEncoder> enc = d->Encoder();
 	[enc setComputePipelineState:pso];
 	[enc setBuffer:d->volt offset:0 atIndex:0];
 	[enc setBuffer:d->curr offset:0 atIndex:1];
-	[enc setBuffer:d->vv offset:0 atIndex:2];
-	[enc setBuffer:d->vi offset:0 atIndex:3];
+	[enc setBuffer:(d->coeff ? d->index : d->vv) offset:0 atIndex:2];
+	[enc setBuffer:(d->coeff ? d->coeff : d->vi) offset:0 atIndex:3];
 	d->SetGridDim(4);
 	d->Dispatch(pso, d->dim.nz, d->dim.ny, d->dim.nx);
 }
 
 void GPU_Backend_Metal::UpdateCurrents()
 {
-	id<MTLComputePipelineState> pso = d->Pipeline(BASE_SOURCE, "update_currents");
+	id<MTLComputePipelineState> pso = d->Pipeline(BASE_SOURCE, d->coeff ? "update_currents_c" : "update_currents");
 	id<MTLComputeCommandEncoder> enc = d->Encoder();
 	[enc setComputePipelineState:pso];
 	[enc setBuffer:d->curr offset:0 atIndex:0];
 	[enc setBuffer:d->volt offset:0 atIndex:1];
-	[enc setBuffer:d->ii offset:0 atIndex:2];
-	[enc setBuffer:d->iv offset:0 atIndex:3];
+	[enc setBuffer:(d->coeff ? d->index : d->ii) offset:0 atIndex:2];
+	[enc setBuffer:(d->coeff ? d->coeff : d->iv) offset:0 atIndex:3];
 	d->SetGridDim(4);
 	// the currents on the last mesh line are not updated
 	d->Dispatch(pso, d->dim.nz-1, d->dim.ny-1, d->dim.nx-1);
