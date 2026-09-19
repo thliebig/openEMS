@@ -131,6 +131,7 @@ __device__ __forceinline__ void upml_fused_curr_node(float* curr, const float* v
 struct HIP_ZSlabs
 {
 	unsigned int z_lo, z_hi;       //!< main update nodes: z_lo <= z < z_hi, below: slab lo, above: slab hi
+	unsigned int t_lo, t_int;      //!< threads along z of slab lo and of the main update nodes, whole warps (0: no padding)
 	UPMLRegion R_lo, R_hi;
 	UPMLFusedArgs volt_lo, volt_hi, curr_lo, curr_hi;
 };

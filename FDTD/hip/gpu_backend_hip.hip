@@ -16,6 +16,9 @@
 */
 
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <map>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -31,7 +34,25 @@ __global__ void update_voltages(float* __restrict__ volt, const float* __restric
                                 const void* index, const float* ca, const float* cb, unsigned int mode,
                                 HIP_GridDim N, HIP_GridDim B, HIP_GridDim E, HIP_ZSlabs Z)
 {
-	const unsigned int z = B.nz + blockIdx.x*blockDim.x + threadIdx.x;
+	// with UPML regions along z: slab lo, main nodes and slab hi in whole warps each (no divergence)
+	const unsigned int tz = blockIdx.x*blockDim.x + threadIdx.x;
+	unsigned int z = B.nz + tz;
+	if (Z.t_int)
+	{
+		if (tz<Z.t_lo)
+		{
+			if (B.nz+tz>=Z.z_lo)
+				return;
+		}
+		else if (tz<Z.t_lo+Z.t_int)
+		{
+			z = Z.z_lo + (tz-Z.t_lo);
+			if (z>=Z.z_hi)
+				return;
+		}
+		else
+			z = Z.z_hi + (tz-Z.t_lo-Z.t_int);
+	}
 	const unsigned int y = B.ny + blockIdx.y*blockDim.y + threadIdx.y;
 	const unsigned int x = B.nx + blockIdx.z;
 	if (z>=E.nz || y>=E.ny || x>=E.nx)
@@ -78,7 +99,25 @@ __global__ void update_currents(float* __restrict__ curr, const float* __restric
                                 const void* index, const float* ca, const float* cb, unsigned int mode,
                                 HIP_GridDim N, HIP_GridDim B, HIP_GridDim E, HIP_ZSlabs Z)
 {
-	const unsigned int z = B.nz + blockIdx.x*blockDim.x + threadIdx.x;
+	// with UPML regions along z: slab lo, main nodes and slab hi in whole warps each (no divergence)
+	const unsigned int tz = blockIdx.x*blockDim.x + threadIdx.x;
+	unsigned int z = B.nz + tz;
+	if (Z.t_int)
+	{
+		if (tz<Z.t_lo)
+		{
+			if (B.nz+tz>=Z.z_lo)
+				return;
+		}
+		else if (tz<Z.t_lo+Z.t_int)
+		{
+			z = Z.z_lo + (tz-Z.t_lo);
+			if (z>=Z.z_hi)
+				return;
+		}
+		else
+			z = Z.z_hi + (tz-Z.t_lo-Z.t_int);
+	}
 	const unsigned int y = B.ny + blockIdx.y*blockDim.y + threadIdx.y;
 	const unsigned int x = B.nx + blockIdx.z;
 	if (z>=E.nz || y>=E.ny || x>=E.nx)
@@ -147,6 +186,63 @@ __global__ void energy_lines(const float* __restrict__ volt, const float* __rest
 
 /***************************** helpers *****************************/
 
+namespace
+{
+struct KernelTimeTable
+{
+	hipEvent_t start = NULL, stop = NULL;
+	std::map<std::string, std::pair<double, size_t>> times;   // total ms, launches
+	~KernelTimeTable()
+	{
+		if (times.empty())
+			return;
+		double total = 0;
+		for (const auto& t : times)
+			total += t.second.first;
+		std::vector<std::pair<double, std::string>> sorted;
+		for (const auto& t : times)
+			sorted.push_back(std::make_pair(t.second.first, t.first));
+		std::sort(sorted.rbegin(), sorted.rend());
+		fprintf(stderr, "HIP kernel times (%.1f ms total):\n", total);
+		for (const auto& t : sorted)
+		{
+			const size_t n = times[t.second].second;
+			fprintf(stderr, "  %6.1f %%  %10.1f ms  %8zu x %8.1f us  %s\n", 100*t.first/total, t.first, n, 1000*t.first/n, t.second.c_str());
+		}
+	}
+};
+KernelTimeTable& KernelTimes() {static KernelTimeTable table; return table;}
+}
+
+bool HIP_KernelTimes::Enabled()
+{
+	static const bool enabled = getenv("OPENEMS_HIP_KERNEL_TIMES") && (atoi(getenv("OPENEMS_HIP_KERNEL_TIMES"))!=0);
+	return enabled;
+}
+
+void HIP_KernelTimes::Begin(hipStream_t stream)
+{
+	KernelTimeTable& t = KernelTimes();
+	if (!t.start)
+	{
+		hipEventCreate(&t.start);
+		hipEventCreate(&t.stop);
+	}
+	hipEventRecord(t.start, stream);
+}
+
+void HIP_KernelTimes::End(hipStream_t stream, const char* name)
+{
+	KernelTimeTable& t = KernelTimes();
+	hipEventRecord(t.stop, stream);
+	hipEventSynchronize(t.stop);
+	float ms = 0;
+	hipEventElapsedTime(&ms, t.start, t.stop);
+	std::pair<double, size_t>& entry = t.times[name];
+	entry.first += ms;
+	++entry.second;
+}
+
 void HIP_Check(hipError_t err, const char* what)
 {
 	if (err!=hipSuccess)
@@ -197,7 +293,7 @@ void GPU_Backend_HIP::Impl::ResetZSlabs()
 	zslabs.z_hi = main_stop.nz;
 }
 
-void GPU_Backend_HIP::Impl::MainRange(HIP_GridDim& B, HIP_GridDim& E) const
+void GPU_Backend_HIP::Impl::MainRange(HIP_GridDim& B, HIP_GridDim& E, unsigned int& threads_z)
 {
 	B = main_start;
 	E = main_stop;
@@ -205,6 +301,17 @@ void GPU_Backend_HIP::Impl::MainRange(HIP_GridDim& B, HIP_GridDim& E) const
 		B.nz = zslabs.R_lo.sz;
 	if (zslab_hi)
 		E.nz = zslabs.R_hi.sz + zslabs.R_hi.lz;
+	threads_z = E.nz - B.nz;
+	zslabs.t_lo = zslabs.t_int = 0;
+	// Slab lo, main nodes and slab hi in whole warps each: a warp shared by UPML and main
+	// nodes runs both code paths (on a RTX 5070 Ti 3 % slower for 300^3 cells)
+	if (zslab_lo || zslab_hi)
+	{
+		auto warps = [](unsigned int n) {return (n+31)/32*32;};
+		zslabs.t_lo = warps(zslabs.z_lo - B.nz);
+		zslabs.t_int = warps(zslabs.z_hi - zslabs.z_lo);
+		threads_z = zslabs.t_lo + zslabs.t_int + warps(E.nz - zslabs.z_hi);
+	}
 }
 
 void GPU_Backend_HIP::Impl::Flush()
@@ -356,8 +463,9 @@ void GPU_Backend_HIP::UpdateVoltages()
 {
 	const bool c = d->coeff_mode>0;
 	HIP_GridDim B, E;
-	d->MainRange(B, E);
-	HIP_Launch(d, "update_voltages", update_voltages, E.nz-B.nz, E.ny-B.ny, E.nx-B.nx,
+	unsigned int threads_z;
+	d->MainRange(B, E, threads_z);
+	HIP_Launch(d, "update_voltages", update_voltages, threads_z, E.ny-B.ny, E.nx-B.nx,
 	            d->volt, (const float*)d->curr, (const void*)d->index, (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi), d->coeff_mode, d->dim, B, E, d->zslabs);
 }
 
@@ -365,8 +473,9 @@ void GPU_Backend_HIP::UpdateCurrents()
 {
 	const bool c = d->coeff_mode>0;
 	HIP_GridDim B, E;
-	d->MainRange(B, E);
-	HIP_Launch(d, "update_currents", update_currents, E.nz-B.nz, E.ny-B.ny, E.nx-B.nx,
+	unsigned int threads_z;
+	d->MainRange(B, E, threads_z);
+	HIP_Launch(d, "update_currents", update_currents, threads_z, E.ny-B.ny, E.nx-B.nx,
 	            d->curr, (const float*)d->volt, (const void*)d->index, (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim, B, E, d->zslabs);
 }
 

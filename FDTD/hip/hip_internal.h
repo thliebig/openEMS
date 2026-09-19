@@ -141,7 +141,7 @@ struct GPU_Backend_HIP::Impl
 	//! No UPML regions updated by the main kernels (call after changing main_start/main_stop)
 	void ResetZSlabs();
 	//! Nodes [B, E) of the main kernels: main_start/main_stop and the UPML regions along z they update
-	void MainRange(HIP_GridDim& B, HIP_GridDim& E) const;
+	void MainRange(HIP_GridDim& B, HIP_GridDim& E, unsigned int& threads_z);
 
 	//! Wait until all work on the stream is done
 	void Flush();
@@ -162,14 +162,28 @@ protected:
 };
 
 //! Launch \a kernel with one thread per (i,j,k) on the stream of \a d; the kernel checks its bounds
+//! Kernel timing for development (environment variable OPENEMS_HIP_KERNEL_TIMES=1): the
+//! time of every launch, per kernel name, printed at exit. Waits for each kernel.
+struct HIP_KernelTimes
+{
+	static bool Enabled();
+	static void Begin(hipStream_t stream);
+	static void End(hipStream_t stream, const char* name);
+};
+
 template <typename Kernel, typename... Args>
 void HIP_Launch(GPU_Backend_HIP::Impl* d, const char* name, Kernel kernel, size_t ni, size_t nj, size_t nk, Args... args)
 {
 	if (ni==0 || nj==0 || nk==0)
 		return;
 	dim3 block = GPU_Backend_HIP::Impl::Block(ni, nj);
+	const bool timed = HIP_KernelTimes::Enabled();
+	if (timed)
+		HIP_KernelTimes::Begin(d->Stream());
 	kernel<<<GPU_Backend_HIP::Impl::Grid(block, ni, nj, nk), block, 0, d->Stream()>>>(args...);
 	d->CheckLaunch(name);
+	if (timed)
+		HIP_KernelTimes::End(d->Stream(), name);
 }
 
 //! Factory of a HIP extension: the device implementation of \a eng_ext, or NULL if \a eng_ext is not of its type
