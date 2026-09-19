@@ -198,6 +198,9 @@ struct Metal_Context
 
 	//! Commit the current batch and wait for it to finish
 	void Flush();
+
+	//! Commit the current batch without waiting, returns its command buffer (nil if empty)
+	id<MTLCommandBuffer> Commit();
 };
 
 
@@ -227,6 +230,7 @@ struct GPU_Backend_Metal::Impl
 	id<MTLBuffer> index, coeff;
 	id<MTLBuffer> energy;           //!< per-line energy sums, see GPU_Backend_Metal::CalcFastEnergy()
 	id<MTLBuffer> snap_volt[2], snap_curr[2];   //!< field snapshots, see GPU_Backend_Metal::SnapshotFields()
+	id<MTLCommandBuffer> snap_cmd[2];           //!< the command buffers copying them
 
 	//! The main updates cover the nodes in [main_start, main_stop), the fused UPML kernels the others (see metal_ext_upml.mm)
 	Metal_GridDim main_start, main_stop;

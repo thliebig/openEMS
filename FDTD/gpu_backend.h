@@ -151,7 +151,12 @@ public:
 	virtual void Synchronize() {}
 
 	//! Copy the current fields into snapshot \a slot (0 or 1) and return host pointers to them (ArrayNIJK layout), valid until the next snapshot into the same slot. Returns false if the backend cannot.
+	/*!
+	  The copy may still run on the device: WaitSnapshot() before reading it.
+	  */
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
+	//! Wait until the copy of snapshot \a slot is done, may be called from another thread
+	virtual void WaitSnapshot(unsigned int slot) {UNUSED(slot);}
 
 	//! Sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, see Engine_Interface_FDTD::CalcFastEnergy(). Returns false if the backend cannot compute them.
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) {UNUSED(numNodes); UNUSED(E_energy); UNUSED(H_energy); return false;}

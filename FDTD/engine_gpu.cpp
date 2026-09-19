@@ -207,6 +207,11 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 	return m_Backend->SnapshotFields(slot, volt, curr);
 }
 
+void Engine_GPU::WaitSnapshot(unsigned int slot) const
+{
+	m_Backend->WaitSnapshot(slot);
+}
+
 void Engine_GPU::UpdateHostMirror()
 {
 	if (m_StaleVolt.stale)

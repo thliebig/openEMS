@@ -461,6 +461,13 @@ bool Engine_Interface_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &v
 	return eng_gpu && eng_gpu->SnapshotFields(slot, volt, curr);
 }
 
+void Engine_Interface_FDTD::WaitFieldSnapshot(unsigned int slot) const
+{
+	const Engine_GPU* eng_gpu = dynamic_cast<const Engine_GPU*>(m_Eng);
+	if (eng_gpu)
+		eng_gpu->WaitSnapshot(slot);
+}
+
 void Engine_Interface_FDTD::PrepareFieldAccess()
 {
 	// the GPU engine reads out-of-date values from the device, which is not thread-safe

@@ -93,6 +93,8 @@ public:
 
 	//! Copy of the current fields in snapshot \a slot (0 or 1), see GPU_Backend::SnapshotFields(); false if not available
 	bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
+	//! Wait until snapshot \a slot can be read, may be called from another thread
+	void WaitSnapshot(unsigned int slot) const;
 
 	//! Field values, read from the device if the host mirror is out of date (see class description)
 	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;

@@ -261,8 +261,10 @@ int ProcessFieldsTD::Process()
 			}
 		}
 		m_AsyncUsed = true;
-		AsyncDumps::Get().Push(this, slot, [this, ts, time, field, src]()
+		AsyncDumps::Get().Push(this, slot, [this, ts, time, field, src, slot]()
 		{
+			if (src)
+				m_Eng_Interface->WaitFieldSnapshot(slot);   // the copy may still run on the device
 			if (!WriteHDF5(ts, time, field, src))
 				m_AsyncFailed = true;
 			delete field;

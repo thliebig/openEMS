@@ -258,6 +258,21 @@ id<MTLComputeCommandEncoder> Metal_Context::Encoder()
 	return enc;
 }
 
+id<MTLCommandBuffer> Metal_Context::Commit()
+{
+	if (!cmd)
+		return nil;
+	id<MTLCommandBuffer> committed = cmd;
+	@autoreleasepool
+	{
+		[enc endEncoding];
+		[cmd commit];
+		enc = nil;
+		cmd = nil;
+	}
+	return committed;
+}
+
 void Metal_Context::Flush()
 {
 	if (!cmd)
@@ -559,10 +574,19 @@ bool GPU_Backend_Metal::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &vol
 	[enc setBuffer:d->snap_curr[slot] offset:0 atIndex:3];
 	[enc setBytes:&count length:sizeof(count) atIndex:4];
 	d->Dispatch(pso, count);
-	d->Flush();
+	// commit without waiting: the next timesteps are encoded into a new command buffer,
+	// which the device executes after this one
+	d->snap_cmd[slot] = d->ctx->Commit();
 	volt = static_cast<const FDTD_FLOAT*>([d->snap_volt[slot] contents]);
 	curr = static_cast<const FDTD_FLOAT*>([d->snap_curr[slot] contents]);
 	return true;
+}
+
+void GPU_Backend_Metal::WaitSnapshot(unsigned int slot)
+{
+	id<MTLCommandBuffer> cmd = (slot<2) ? d->snap_cmd[slot] : nil;
+	if (cmd)
+		[cmd waitUntilCompleted];
 }
 
 bool GPU_Backend_Metal::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)

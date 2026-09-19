@@ -69,7 +69,12 @@ public:
 	virtual void PrepareFieldAccess() {}
 
 	//! Copy the current fields into snapshot \a slot (0 or 1) for a later Engine_Field_Gather::Evaluate(), returns the voltages and currents (engine layout), or false if the engine has no snapshots
+	/*!
+	  The copy may still be running: WaitFieldSnapshot() before reading it.
+	  */
 	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
+	//! Wait until snapshot \a slot can be read, may be called from another thread
+	virtual void WaitFieldSnapshot(unsigned int slot) const {UNUSED(slot);}
 	//! The engine the fields belong to, identifies the snapshots
 	virtual const void* GetEngineID() const {return NULL;}
 
