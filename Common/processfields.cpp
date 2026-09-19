@@ -16,6 +16,9 @@
 */
 
 #include <iomanip>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
 #include <thread>
 #include <vector>
 #include "tools/global.h"
@@ -286,6 +289,73 @@ void ProcessFields::CalcMeshPos()
 	}
 }
 
+namespace
+{
+//! Worker threads for the field dumps, kept for the whole process: starting threads
+//! for every dump is expensive (a NF2FF box has twelve dumps every few timesteps)
+class DumpThreads
+{
+public:
+	static DumpThreads& Get()
+	{
+		static DumpThreads* pool = new DumpThreads();   // never deleted: no joining at exit
+		return *pool;
+	}
+
+	//! Call fn(t) for t in [0, n), on n threads (t=0 on the calling thread), and wait for all
+	void Run(size_t n, const std::function<void(size_t)>& fn)
+	{
+		std::unique_lock<std::mutex> lock(m_Mutex);
+		while (m_Workers.size()+1 < n)
+		{
+			const size_t id = m_Workers.size()+1;
+			m_Workers.push_back(std::thread(&DumpThreads::Work, this, id));
+			m_Workers.back().detach();
+		}
+		m_Fn = &fn;
+		m_Count = n;
+		m_Pending = n-1;
+		++m_Generation;
+		m_Start.notify_all();
+		lock.unlock();
+
+		fn(0);
+
+		lock.lock();
+		m_Done.wait(lock, [this] {return m_Pending==0;});
+		m_Fn = NULL;
+	}
+
+protected:
+	void Work(size_t id)
+	{
+		size_t generation = 0;
+		std::unique_lock<std::mutex> lock(m_Mutex);
+		while (true)
+		{
+			m_Start.wait(lock, [&] {return m_Generation!=generation;});
+			generation = m_Generation;
+			if (id>=m_Count)
+				continue;
+			const std::function<void(size_t)>* fn = m_Fn;
+			lock.unlock();
+			(*fn)(id);
+			lock.lock();
+			if (--m_Pending==0)
+				m_Done.notify_one();
+		}
+	}
+
+	std::mutex m_Mutex;
+	std::condition_variable m_Start, m_Done;
+	std::vector<std::thread> m_Workers;
+	const std::function<void(size_t)>* m_Fn = NULL;
+	size_t m_Count = 0;
+	size_t m_Pending = 0;
+	size_t m_Generation = 0;
+};
+}
+
 bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 {
 	//init the array
@@ -342,7 +412,7 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 
 	// The nodes are independent: split large dumps (e.g. the surfaces of a NF2FF box
 	// every few timesteps) over threads, the engine waits for the processing anyway.
-	// A thread per thousand nodes or more, starting threads is not free.
+	// A thread per thousand nodes or more.
 	const size_t lines = (size_t)numLines[0]*numLines[1];
 	const size_t nodes = lines*numLines[2];
 	const size_t num_threads = std::min<size_t>(std::min<size_t>(std::max(1u, std::thread::hardware_concurrency()), nodes/1024), lines);
@@ -352,12 +422,7 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 		return true;
 	}
 	m_Eng_Interface->PrepareFieldAccess();
-	std::vector<std::thread> threads;
-	for (size_t t=1; t<num_threads; ++t)
-		threads.push_back(std::thread(calc, lines*t/num_threads, lines*(t+1)/num_threads));
-	calc(0, lines/num_threads);   // the first part on this thread
-	for (size_t t=0; t<threads.size(); ++t)
-		threads[t].join();
+	DumpThreads::Get().Run(num_threads, [&](size_t t) {calc(lines*t/num_threads, lines*(t+1)/num_threads);});
 	return true;
 }
 
