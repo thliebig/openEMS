@@ -57,8 +57,9 @@ __device__ __forceinline__ UPMLCoeff upml_coeff(const UPMLFusedArgs& A, unsigned
 }
 
 // Fused: upml_pre, the main update (update_voltages) and upml_post of the region node
-// (x, y, z), operation by operation the same (see GPU_UPMLFusionBox() for the conditions)
-__device__ __forceinline__ void upml_fused_volt_node(float* volt, const float* curr, const UPMLFusedArgs& A,
+// (x, y, z), operation by operation the same (see GPU_UPMLFusionBox() for the conditions).
+// Reads volt_in, writes volt_out: the same field, or the two buffers of the fused step.
+__device__ __forceinline__ void upml_fused_volt_node(float* volt_out, const float* volt_in, const float* curr, const UPMLFusedArgs& A,
                                                      const HIP_GridDim& N, const UPMLRegion& R,
                                                      unsigned int x, unsigned int y, unsigned int z)
 {
@@ -79,17 +80,17 @@ __device__ __forceinline__ void upml_fused_volt_node(float* volt, const float* c
 	{
 		const unsigned int l = upml_local(R, n, x, y, z);
 		const unsigned int g = n*sn + i;
-		const float f_help = U.old[n*U.s]*volt[g] - U.fo[n*U.s]*A.flux[l];
+		const float f_help = U.old[n*U.s]*volt_in[g] - U.fo[n*U.s]*A.flux[l];
 		float v;
 		v  = A.flux[l] * C.a[n*C.s];
 		v += C.b[n*C.s] * curl[n];
 		A.flux[l] = v;
-		volt[g] = f_help + U.fn[n*U.s]*v;
+		volt_out[g] = f_help + U.fn[n*U.s]*v;
 	}
 }
 
 // same for the currents (update_currents), which are not updated on the last mesh lines
-__device__ __forceinline__ void upml_fused_curr_node(float* curr, const float* volt, const UPMLFusedArgs& A,
+__device__ __forceinline__ void upml_fused_curr_node(float* curr_out, const float* curr_in, const float* volt, const UPMLFusedArgs& A,
                                                      const HIP_GridDim& N, const UPMLRegion& R,
                                                      unsigned int x, unsigned int y, unsigned int z)
 {
@@ -114,7 +115,7 @@ __device__ __forceinline__ void upml_fused_curr_node(float* curr, const float* v
 	{
 		const unsigned int l = upml_local(R, n, x, y, z);
 		const unsigned int g = n*sn + i;
-		const float f_help = U.old[n*U.s]*curr[g] - U.fo[n*U.s]*A.flux[l];
+		const float f_help = U.old[n*U.s]*curr_in[g] - U.fo[n*U.s]*A.flux[l];
 		float c = A.flux[l];
 		if (update)
 		{
@@ -122,7 +123,7 @@ __device__ __forceinline__ void upml_fused_curr_node(float* curr, const float* v
 			c += C.b[n*C.s] * curl[n];
 		}
 		A.flux[l] = c;
-		curr[g] = f_help + U.fn[n*U.s]*c;
+		curr_out[g] = f_help + U.fn[n*U.s]*c;
 	}
 }
 

@@ -19,12 +19,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <map>
+#include <set>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
 
 #include "hip_internal.h"
 #include "FDTD/operator.h"
+#include "FDTD/extensions/engine_ext_upml.h"
+#include "FDTD/extensions/engine_ext_excitation.h"
+#include "FDTD/extensions/engine_ext_steadystate.h"
 
 // Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents,
 // over the nodes in [B, E). One thread per mesh node: z along x-threads (contiguous), y along
@@ -59,12 +63,12 @@ __global__ void update_voltages(float* __restrict__ volt, const float* __restric
 		return;
 	if (z<Z.z_lo)
 	{
-		upml_fused_volt_node(volt, curr, Z.volt_lo, N, Z.R_lo, x-Z.R_lo.sx, y-Z.R_lo.sy, z-Z.R_lo.sz);
+		upml_fused_volt_node(volt, volt, curr, Z.volt_lo, N, Z.R_lo, x-Z.R_lo.sx, y-Z.R_lo.sy, z-Z.R_lo.sz);
 		return;
 	}
 	if (z>=Z.z_hi)
 	{
-		upml_fused_volt_node(volt, curr, Z.volt_hi, N, Z.R_hi, x-Z.R_hi.sx, y-Z.R_hi.sy, z-Z.R_hi.sz);
+		upml_fused_volt_node(volt, volt, curr, Z.volt_hi, N, Z.R_hi, x-Z.R_hi.sx, y-Z.R_hi.sy, z-Z.R_hi.sz);
 		return;
 	}
 	const unsigned int sn = N.nx*N.ny*N.nz;
@@ -124,12 +128,12 @@ __global__ void update_currents(float* __restrict__ curr, const float* __restric
 		return;
 	if (z<Z.z_lo)
 	{
-		upml_fused_curr_node(curr, volt, Z.curr_lo, N, Z.R_lo, x-Z.R_lo.sx, y-Z.R_lo.sy, z-Z.R_lo.sz);
+		upml_fused_curr_node(curr, curr, volt, Z.curr_lo, N, Z.R_lo, x-Z.R_lo.sx, y-Z.R_lo.sy, z-Z.R_lo.sz);
 		return;
 	}
 	if (z>=Z.z_hi)
 	{
-		upml_fused_curr_node(curr, volt, Z.curr_hi, N, Z.R_hi, x-Z.R_hi.sx, y-Z.R_hi.sy, z-Z.R_hi.sz);
+		upml_fused_curr_node(curr, curr, volt, Z.curr_hi, N, Z.R_hi, x-Z.R_hi.sx, y-Z.R_hi.sy, z-Z.R_hi.sz);
 		return;
 	}
 	if (z+1>=N.nz || y+1>=N.ny || x+1>=N.nx)
@@ -158,6 +162,139 @@ __global__ void update_currents(float* __restrict__ curr, const float* __restric
 	c  = curr[2*sn+i] * ii[2*s];
 	c += iv[2*s] * (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
 	curr[2*sn+i] = c;
+}
+
+// ---- fused step
+
+// the voltages of node (x,y,z), the same operations as update_voltages
+__device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const float* __restrict__ curr,
+                                           const void* index, const float* va, const float* vb, unsigned int mode,
+                                           const HIP_GridDim& N, unsigned int x, unsigned int y, unsigned int z, float v[3])
+{
+	const unsigned int sn = N.nx*N.ny*N.nz;
+	const unsigned int i  = nijk(N, 0, x, y, z);
+	const unsigned int xm = (x>0) ? N.ny*N.nz : 0;
+	const unsigned int ym = (y>0) ? N.nz : 0;
+	const unsigned int zm = (z>0) ? 1 : 0;
+	const HIP_MainCoeff C = main_coeff(index, va, vb, mode, sn, i, 0);
+	float t;
+	t  = volt[i] * C.a[0];
+	t += C.b[0] * (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
+	v[0] = t;
+	t  = volt[sn+i] * C.a[C.s];
+	t += C.b[C.s] * (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
+	v[1] = t;
+	t  = volt[2*sn+i] * C.a[2*C.s];
+	t += C.b[2*C.s] * (curr[sn+i] - curr[sn+i-xm] - curr[i] + curr[i-ym]);
+	v[2] = t;
+}
+
+#define FUSED_TZ 32   // threads along z, the last one computes the border voltages only
+#define FUSED_TY 8    // threads along y, the last row computes the border voltages only
+#define FUSED_XC 16   // x lines per block
+
+// Fused step: the voltages and currents of the main nodes [B, E) in one pass, from the current
+// fields (volt_in, curr_in) into the next buffers (volt_out, curr_out); every value is computed
+// with the same operations as update_voltages/update_currents.
+// A block marches along FUSED_XC x lines of a (FUSED_TZ-1)x(FUSED_TY-1) tile in (z,y). At each
+// x it computes the new voltages of the tile and its border (+z, +y) into shared memory and of
+// the next x line (registers), then the new currents of the tile. The border voltages of other
+// tiles are computed again (they only read the current fields), those outside the main nodes
+// (UPML regions) come from volt_out, where the UPML regions stored them before.
+__global__ void __launch_bounds__(FUSED_TZ*FUSED_TY) update_fused(
+	const float* __restrict__ volt_in, const float* __restrict__ curr_in, float* volt_out, float* __restrict__ curr_out,
+	const void* index, const float* va, const float* vb, const float* ia, const float* ib, unsigned int mode,
+	HIP_GridDim N, HIP_GridDim B, HIP_GridDim E)
+{
+	__shared__ float sV[3][FUSED_TY][FUSED_TZ];
+	const unsigned int tz = threadIdx.x, ty = threadIdx.y;
+	const unsigned int z = B.nz + blockIdx.x*(FUSED_TZ-1) + tz;
+	const unsigned int y = B.ny + blockIdx.y*(FUSED_TY-1) + ty;
+	const unsigned int xs = B.nx + blockIdx.z*FUSED_XC;
+	const unsigned int xe = min(xs+FUSED_XC, E.nx);
+	const bool main_yz = (z<E.nz) && (y<E.ny);                          // a main node line
+	const bool owner = main_yz && (tz<FUSED_TZ-1) && (ty<FUSED_TY-1);  // written by this block
+	const bool in_grid = (z<N.nz) && (y<N.ny);
+	const unsigned int sn = N.nx*N.ny*N.nz;
+
+	// the new voltages at x: computed on main nodes, else from the UPML regions (or unused)
+	auto volt_at = [&](unsigned int x, float v[3])
+	{
+		if (main_yz && (x<E.nx))
+		{
+			fused_volt(volt_in, curr_in, index, va, vb, mode, N, x, y, z, v);
+			if (owner && (x<xe))
+			{
+				const unsigned int i = nijk(N, 0, x, y, z);
+				volt_out[i] = v[0]; volt_out[sn+i] = v[1]; volt_out[2*sn+i] = v[2];
+			}
+		}
+		else if (in_grid && (x<N.nx))
+		{
+			const unsigned int i = nijk(N, 0, x, y, z);
+			v[0] = volt_out[i]; v[1] = volt_out[sn+i]; v[2] = volt_out[2*sn+i];
+		}
+		else
+			v[0] = v[1] = v[2] = 0;
+	};
+
+	float v[3];
+	volt_at(xs, v);
+	sV[0][ty][tz] = v[0]; sV[1][ty][tz] = v[1]; sV[2][ty][tz] = v[2];
+	__syncthreads();
+	for (unsigned int x=xs; x<xe; ++x)
+	{
+		float v1[3];   // the new voltages at x+1
+		volt_at(x+1, v1);
+		// the currents at x, not updated on the last mesh lines (see update_currents)
+		if (owner && (x+1<N.nx) && (y+1<N.ny) && (z+1<N.nz))
+		{
+			const unsigned int i = nijk(N, 0, x, y, z);
+			const HIP_MainCoeff C = main_coeff(index, ia, ib, mode, sn, i, 6);
+			float c;
+			//for x
+			c  = curr_in[i] * C.a[0];
+			c += C.b[0] * (sV[2][ty][tz] - sV[2][ty+1][tz] - sV[1][ty][tz] + sV[1][ty][tz+1]);
+			curr_out[i] = c;
+			//for y
+			c  = curr_in[sn+i] * C.a[C.s];
+			c += C.b[C.s] * (sV[0][ty][tz] - sV[0][ty][tz+1] - sV[2][ty][tz] + v1[2]);
+			curr_out[sn+i] = c;
+			//for z
+			c  = curr_in[2*sn+i] * C.a[2*C.s];
+			c += C.b[2*C.s] * (sV[1][ty][tz] - v1[1] - sV[0][ty][tz] + sV[0][ty+1][tz]);
+			curr_out[2*sn+i] = c;
+		}
+		__syncthreads();
+		sV[0][ty][tz] = v1[0]; sV[1][ty][tz] = v1[1]; sV[2][ty][tz] = v1[2];
+		__syncthreads();
+	}
+}
+
+// the currents of the given main nodes again (update_currents), after the voltage extensions
+// changed voltages they read (see GPU_Backend_HIP::Impl::fixup)
+__global__ void update_currents_nodes(const float* __restrict__ curr_in, float* __restrict__ curr_out, const float* __restrict__ volt,
+                                      const unsigned int* nodes, unsigned int count,
+                                      const void* index, const float* ia, const float* ib, unsigned int mode, HIP_GridDim N)
+{
+	const unsigned int k = blockIdx.x*blockDim.x + threadIdx.x;
+	if (k>=count)
+		return;
+	const unsigned int sn = N.nx*N.ny*N.nz;
+	const unsigned int i  = nodes[k];
+	const unsigned int xp = N.ny*N.nz;
+	const unsigned int yp = N.nz;
+	const HIP_MainCoeff C = main_coeff(index, ia, ib, mode, sn, i, 6);
+	float c;
+	c  = curr_in[i] * C.a[0];
+	c += C.b[0] * (volt[2*sn+i] - volt[2*sn+i+yp] - volt[sn+i] + volt[sn+i+1]);
+	curr_out[i] = c;
+	c  = curr_in[sn+i] * C.a[C.s];
+	c += C.b[C.s] * (volt[i] - volt[i+1] - volt[2*sn+i] + volt[2*sn+i+xp]);
+	curr_out[sn+i] = c;
+	c  = curr_in[2*sn+i] * C.a[2*C.s];
+	c += C.b[2*C.s] * (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
+	curr_out[2*sn+i] = c;
 }
 
 // Field energy: the squared voltages and currents of the nodes below L, summed along x
@@ -274,6 +411,11 @@ GPU_Backend_HIP::Impl::Impl()
 	coeff = NULL;
 	energy = NULL;
 	energy_count = 0;
+	fused_step = -1;
+	fused_blockers = 0;
+	volt_next = curr_next = NULL;
+	fixup = NULL;
+	fixup_count = 0;
 }
 
 GPU_Backend_HIP::Impl::~Impl()
@@ -284,6 +426,55 @@ GPU_Backend_HIP::Impl::~Impl()
 		hipFree(m_Allocations.at(n));
 	for (std::set<void*>::iterator it=m_Pinned.begin(); it!=m_Pinned.end(); ++it)
 		hipHostUnregister(*it);
+}
+
+bool GPU_Backend_HIP::Impl::DecideFusedStep()
+{
+	if (fused_step>=0)
+		return fused_step>0;
+	fused_step = 0;
+	const char* env = getenv("OPENEMS_HIP_FUSED_STEP");
+	if ((fused_blockers>0) || (env && (atoi(env)==0)))
+		return false;
+
+	// the currents of the main nodes that read a voltage changed between the half-steps
+	std::set<unsigned int> nodes;
+	for (size_t k=0; k<volt_modified.size(); ++k)
+	{
+		const unsigned int node = volt_modified[k] % numCells;
+		const unsigned int p[3] = {node/(dim.ny*dim.nz), (node/dim.nz)%dim.ny, node%dim.nz};
+		const unsigned int start[3] = {main_start.nx, main_start.ny, main_start.nz};
+		const unsigned int stop[3] = {main_stop.nx, main_stop.ny, main_stop.nz};
+		const unsigned int n_lines[3] = {dim.nx, dim.ny, dim.nz};
+		for (int m=-1; m<3; ++m)   // the node itself and its lower neighbours
+		{
+			unsigned int c[3] = {p[0], p[1], p[2]};
+			if (m>=0)
+			{
+				if (c[m]==0)
+					continue;
+				--c[m];
+			}
+			bool ok = true;
+			for (int n=0; n<3; ++n)
+				ok &= (c[n]>=start[n]) && (c[n]<stop[n]) && (c[n]+1<n_lines[n]);
+			if (ok)
+				nodes.insert((c[0]*dim.ny + c[1])*dim.nz + c[2]);
+		}
+	}
+	std::vector<unsigned int> list(nodes.begin(), nodes.end());
+	fixup_count = list.size();
+	fixup = Alloc<unsigned int>(fixup_count, list.data());
+
+	// both buffers start with the current fields
+	volt_next = Alloc<float>(3*numCells);
+	curr_next = Alloc<float>(3*numCells);
+	HIP_Check(hipMemcpyAsync(volt_next, volt, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
+	HIP_Check(hipMemcpyAsync(curr_next, curr, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
+	Flush();
+	fused_step = 1;
+	std::cout << "GPU_Backend_HIP: fused voltage and current updates" << std::endl;
+	return true;
 }
 
 void GPU_Backend_HIP::Impl::ResetZSlabs()
@@ -371,7 +562,10 @@ GPU_Backend_HIP* GPU_Backend_HIP::New()
 
 GPU_Backend* GPU_Backend_HIP::NewSubGridBackend()
 {
+	// no fused step with sub-grids (cylindrical multi-grid)
+	d->fused_blockers++;
 	Impl* impl = new Impl();
+	impl->fused_blockers++;
 	impl->ctx = d->ctx;
 	return new GPU_Backend_HIP(impl);
 }
@@ -462,6 +656,26 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 void GPU_Backend_HIP::UpdateVoltages()
 {
 	const bool c = d->coeff_mode>0;
+	if (d->DecideFusedStep())
+	{
+		// the voltages and currents of the main nodes, see update_fused
+		const HIP_GridDim& B = d->main_start;
+		const HIP_GridDim& E = d->main_stop;
+		const dim3 block(FUSED_TZ, FUSED_TY, 1);
+		const dim3 grid((E.nz-B.nz+FUSED_TZ-2)/(FUSED_TZ-1), (E.ny-B.ny+FUSED_TY-2)/(FUSED_TY-1), (E.nx-B.nx+FUSED_XC-1)/FUSED_XC);
+		const bool timed = HIP_KernelTimes::Enabled();
+		if (timed)
+			HIP_KernelTimes::Begin(d->Stream());
+		update_fused<<<grid, block, 0, d->Stream()>>>((const float*)d->volt, (const float*)d->curr, d->volt_next, d->curr_next, (const void*)d->index,
+		                                              (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi),
+		                                              (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv),
+		                                              d->coeff_mode, d->dim, B, E);
+		d->CheckLaunch("update_fused");
+		if (timed)
+			HIP_KernelTimes::End(d->Stream(), "update_fused");
+		std::swap(d->volt, d->volt_next);
+		return;
+	}
 	HIP_GridDim B, E;
 	unsigned int threads_z;
 	d->MainRange(B, E, threads_z);
@@ -472,6 +686,16 @@ void GPU_Backend_HIP::UpdateVoltages()
 void GPU_Backend_HIP::UpdateCurrents()
 {
 	const bool c = d->coeff_mode>0;
+	if (d->fused_step>0)
+	{
+		// done by update_fused, but for the currents next to voltages changed by extensions since
+		if (d->fixup_count)
+			HIP_Launch(d, "update_currents_nodes", update_currents_nodes, d->fixup_count, 1, 1, (const float*)d->curr, d->curr_next, (const float*)d->volt,
+			            (const unsigned int*)d->fixup, d->fixup_count, (const void*)d->index,
+			            (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim);
+		std::swap(d->curr, d->curr_next);
+		return;
+	}
 	HIP_GridDim B, E;
 	unsigned int threads_z;
 	d->MainRange(B, E, threads_z);
@@ -573,6 +797,9 @@ static const HIP_ExtensionFactory HIP_EXTENSIONS[] = {
 
 GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engine* eng)
 {
+	// the fused step (see update_fused) knows the UPML, the excitation and the steady-state detection
+	if (!dynamic_cast<Engine_Ext_UPML*>(eng_ext) && !dynamic_cast<Engine_Ext_Excitation*>(eng_ext) && !dynamic_cast<Engine_Ext_SteadyState*>(eng_ext))
+		d->fused_blockers++;
 	for (size_t n=0; n<sizeof(HIP_EXTENSIONS)/sizeof(HIP_EXTENSIONS[0]); ++n)
 	{
 		if (HIP_EXTENSIONS[n]==NULL)
@@ -581,5 +808,6 @@ GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engin
 		if (gpu_ext)
 			return gpu_ext;
 	}
+	d->fused_blockers++;   // host fallback
 	return NULL;
 }

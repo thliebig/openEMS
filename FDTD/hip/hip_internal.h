@@ -106,6 +106,17 @@ struct GPU_Backend_HIP::Impl
 	HIP_ZSlabs zslabs;
 	bool zslab_lo, zslab_hi;
 
+	//! Fused step (see update_fused): voltages and currents of the main nodes in one pass, from the
+	//! current fields (volt, curr) into the next buffers (volt_next, curr_next), swapped afterwards.
+	int fused_step;                          //!< -1: not decided yet, 0: off, 1: on
+	int fused_blockers;                      //!< extensions or grids that do not allow it
+	float *volt_next, *curr_next;
+	std::vector<unsigned int> volt_modified; //!< flat indices of voltages changed between the half-steps (e.g. excitation)
+	unsigned int* fixup;                     //!< main nodes whose currents are recomputed after the voltage extensions
+	unsigned int fixup_count;
+	//! Decide once whether the fused step is used, and prepare it
+	bool DecideFusedStep();
+
 	Impl();
 	~Impl();
 

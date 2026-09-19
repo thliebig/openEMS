@@ -61,17 +61,17 @@ __global__ void upml_post(float* field, float* flux, const float* c_fn, HIP_Grid
 	}
 }
 
-// the fused kernels of a whole region
-__global__ void upml_fused_volt(float* volt, const float* curr, UPMLFusedArgs A, HIP_GridDim N, UPMLRegion R)
+// the fused kernels of a whole region, in place or from one buffer of the fused step into the other
+__global__ void upml_fused_volt(float* volt_out, const float* volt_in, const float* curr, UPMLFusedArgs A, HIP_GridDim N, UPMLRegion R)
 {
 	UPML_THREAD
-	upml_fused_volt_node(volt, curr, A, N, R, x, y, z);
+	upml_fused_volt_node(volt_out, volt_in, curr, A, N, R, x, y, z);
 }
 
-__global__ void upml_fused_curr(float* curr, const float* volt, UPMLFusedArgs A, HIP_GridDim N, UPMLRegion R)
+__global__ void upml_fused_curr(float* curr_out, const float* curr_in, const float* volt, UPMLFusedArgs A, HIP_GridDim N, UPMLRegion R)
 {
 	UPML_THREAD
-	upml_fused_curr_node(curr, volt, A, N, R, x, y, z);
+	upml_fused_curr_node(curr_out, curr_in, volt, A, N, R, x, y, z);
 }
 
 class HIP_Ext_UPML : public GPU_Extension
@@ -80,11 +80,37 @@ public:
 	HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ext, Engine* eng);
 	virtual ~HIP_Ext_UPML();
 
-	// fused: nothing before the main update, the region update after it
-	virtual void DoPreVoltageUpdates()  {if (!Fused()) Pre(d->volt, m_VoltFlux, m_VV, m_VVFO);}
-	virtual void DoPostVoltageUpdates() {if (Fused()) {if (!m_InMain) FuseVolt();} else Post(d->volt, m_VoltFlux, m_VVFN);}
-	virtual void DoPreCurrentUpdates()  {if (!Fused()) Pre(d->curr, m_CurrFlux, m_II, m_IIFO);}
-	virtual void DoPostCurrentUpdates() {if (Fused()) {if (!m_InMain) FuseCurr();} else Post(d->curr, m_CurrFlux, m_IIFN);}
+	// fused: nothing before the main update, the region update after it (unless done by the main kernels);
+	// fused step (see update_fused): the voltages of the region before it (the main nodes next to the
+	// region need them), the currents after the voltage extensions, into the next buffers
+	virtual void DoPreVoltageUpdates()
+	{
+		if (!Fused())
+			Pre(d->volt, m_VoltFlux, m_VV, m_VVFO);
+		else if (d->fused_step>0)
+			FuseVolt(d->volt_next);
+	}
+	virtual void DoPostVoltageUpdates()
+	{
+		if (Fused() && (d->fused_step<=0) && !m_InMain)
+			FuseVolt(d->volt);
+		else if (!Fused())
+			Post(d->volt, m_VoltFlux, m_VVFN);
+	}
+	virtual void DoPreCurrentUpdates()
+	{
+		if (!Fused())
+			Pre(d->curr, m_CurrFlux, m_II, m_IIFO);
+		else if (d->fused_step>0)
+			FuseCurr(d->curr_next);
+	}
+	virtual void DoPostCurrentUpdates()
+	{
+		if (Fused() && (d->fused_step<=0) && !m_InMain)
+			FuseCurr(d->curr);
+		else if (!Fused())
+			Post(d->curr, m_CurrFlux, m_IIFN);
+	}
 
 protected:
 	void Pre(float* field, float* flux, const float* c_old, const float* c_fo)
@@ -97,13 +123,14 @@ protected:
 	}
 	UPMLFusedArgs VoltArgs() {return Args(m_VoltFlux, m_VV, m_VVFO, m_VVFN, d->vv, d->vi);}
 	UPMLFusedArgs CurrArgs() {return Args(m_CurrFlux, m_II, m_IIFO, m_IIFN, d->ii, d->iv);}
-	void FuseVolt()
+	// in place, or in the fused step from the current buffers into the next ones (see update_fused)
+	void FuseVolt(float* volt_out)
 	{
-		HIP_Launch(d, "upml_fused_volt", upml_fused_volt, m_Region.lz*m_Region.ly, 1, m_Region.lx, d->volt, (const float*)d->curr, VoltArgs(), d->dim, m_Region);
+		HIP_Launch(d, "upml_fused_volt", upml_fused_volt, m_Region.lz*m_Region.ly, 1, m_Region.lx, volt_out, (const float*)d->volt, (const float*)d->curr, VoltArgs(), d->dim, m_Region);
 	}
-	void FuseCurr()
+	void FuseCurr(float* curr_out)
 	{
-		HIP_Launch(d, "upml_fused_curr", upml_fused_curr, m_Region.lz*m_Region.ly, 1, m_Region.lx, d->curr, (const float*)d->volt, CurrArgs(), d->dim, m_Region);
+		HIP_Launch(d, "upml_fused_curr", upml_fused_curr, m_Region.lz*m_Region.ly, 1, m_Region.lx, curr_out, (const float*)d->curr, (const float*)d->volt, CurrArgs(), d->dim, m_Region);
 	}
 	UPMLFusedArgs Args(float* flux, const float* c_old, const float* c_fo, const float* c_fn, const float* full_a, const float* full_b)
 	{
@@ -200,6 +227,8 @@ bool HIP_Ext_UPML::Fused()
 		if (d->upml_fused)
 			std::cout << "GPU_Backend_HIP: " << d->upml.size() << " UPML regions fused with the main updates ("
 			          << d->zslab_lo+d->zslab_hi << " along z in the main kernels)" << std::endl;
+		else
+			d->fused_blockers++;   // the fused step needs the fused UPML
 	}
 	return d->upml_fused>0;
 }
@@ -222,6 +251,10 @@ bool HIP_Ext_UPML::CanFuse()
 	d->main_start.nx = start[0]; d->main_start.ny = start[1]; d->main_start.nz = start[2];
 	d->main_stop.nx = stop[0]; d->main_stop.ny = stop[1]; d->main_stop.nz = stop[2];
 	d->ResetZSlabs();
+
+	// the fused step (see update_fused) runs all regions separately
+	if (d->DecideFusedStep())
+		return true;
 
 	// The regions along z (which cover the x/y range of the main updates) are updated by the
 	// main kernels, along full z lines: a region of their own would only have short rows
