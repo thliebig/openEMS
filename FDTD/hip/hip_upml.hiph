@@ -34,6 +34,7 @@ __device__ __forceinline__ unsigned int upml_local(const UPMLRegion& R, unsigned
 struct UPMLFusedArgs
 {
 	float* flux;
+	float* flux_out;   //!< the new voltage flux: flux (in place) or the second buffer of the fused step (see update_fused)
 	const float* c_old; const float* c_fo; const float* c_fn;   //!< full UPML coefficient arrays (mode 0)
 	const void* u_index; const float* u_sets; unsigned int u_mode;
 	const void* index; const float* ca; const float* cb; unsigned int mode;   //!< main coefficients, see main_coeff()
@@ -125,6 +126,93 @@ __device__ __forceinline__ void upml_fused_curr_node(float* curr_out, const floa
 		A.flux[l] = c;
 		curr_out[g] = f_help + U.fn[n*U.s]*c;
 	}
+}
+
+// The fused step (update_fused) with the UPML regions in the kernel: the voltages of a region
+// node from the current fields and flux (A.flux), the new flux into A.flux_out if write (the
+// node's own block; other blocks compute it again), the same operations as upml_fused_volt_node
+__device__ __forceinline__ void upml_volt_value(const float* volt, const float* curr, const UPMLFusedArgs& A,
+                                                const HIP_GridDim& N, const UPMLRegion& R,
+                                                unsigned int gx, unsigned int gy, unsigned int gz, bool write, float out[3])
+{
+	const unsigned int x = gx-R.sx, y = gy-R.sy, z = gz-R.sz;
+	const unsigned int sn = N.nx*N.ny*N.nz;
+	const unsigned int i  = nijk(N, 0, gx, gy, gz);
+	const unsigned int xm = (gx>0) ? N.ny*N.nz : 0;
+	const unsigned int ym = (gy>0) ? N.nz : 0;
+	const unsigned int zm = (gz>0) ? 1 : 0;
+	const HIP_MainCoeff C = main_coeff(A.index, A.ca, A.cb, A.mode, sn, i, 0);
+	const unsigned int cells = R.lx*R.ly*R.lz;
+	const UPMLCoeff U = upml_coeff(A, (x*R.ly + y)*R.lz + z, cells, 0);
+	float curl[3];
+	curl[0] = (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
+	curl[1] = (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
+	curl[2] = (curr[sn+i] - curr[sn+i-xm] - curr[i] + curr[i-ym]);
+	for (unsigned int n=0; n<3; ++n)
+	{
+		const unsigned int l = upml_local(R, n, x, y, z);
+		const unsigned int g = n*sn + i;
+		const float f_help = U.old[n*U.s]*volt[g] - U.fo[n*U.s]*A.flux[l];
+		float v;
+		v  = A.flux[l] * C.a[n*C.s];
+		v += C.b[n*C.s] * curl[n];
+		if (write)
+			A.flux_out[l] = v;
+		out[n] = f_help + U.fn[n*U.s]*v;
+	}
+}
+
+// ... and the currents of a region node (the node's own block only, the flux in place), with the
+// curl of the new voltages (the expressions of upml_fused_curr_node); update: not on the last mesh lines
+__device__ __forceinline__ void upml_curr_value(const float* curr_in, float* curr_out, const UPMLFusedArgs& A,
+                                                const HIP_GridDim& N, const UPMLRegion& R,
+                                                unsigned int gx, unsigned int gy, unsigned int gz, bool update, const float curl[3])
+{
+	const unsigned int x = gx-R.sx, y = gy-R.sy, z = gz-R.sz;
+	const unsigned int sn = N.nx*N.ny*N.nz;
+	const unsigned int i  = nijk(N, 0, gx, gy, gz);
+	const unsigned int cells = R.lx*R.ly*R.lz;
+	const UPMLCoeff U = upml_coeff(A, (x*R.ly + y)*R.lz + z, cells, 9);
+	HIP_MainCoeff C = {A.ca, A.cb, 0};
+	if (update)
+		C = main_coeff(A.index, A.ca, A.cb, A.mode, sn, i, 6);
+	for (unsigned int n=0; n<3; ++n)
+	{
+		const unsigned int l = upml_local(R, n, x, y, z);
+		const unsigned int g = n*sn + i;
+		const float f_help = U.old[n*U.s]*curr_in[g] - U.fo[n*U.s]*A.flux[l];
+		float c = A.flux[l];
+		if (update)
+		{
+			c  = c * C.a[n*C.s];
+			c += C.b[n*C.s] * curl[n];
+		}
+		A.flux[l] = c;
+		curr_out[g] = f_help + U.fn[n*U.s]*c;
+	}
+}
+
+//! The UPML regions updated by the fused step kernel (update_fused): a node outside the main
+//! nodes [lo, hi) belongs to the region of the side it is on, in the order x, y, z (see
+//! Operator_Ext_UPML::Create_UPML(), checked in HIP_Ext_UPML::CanFuse())
+struct HIP_FusedRegions
+{
+	unsigned int count;       //!< 0: none, the region kernels update the UPML regions
+	HIP_GridDim lo, hi;
+	int side[6];              //!< region of the side x<lo, x>=hi, y<lo, y>=hi, z<lo, z>=hi (-1: none)
+	UPMLRegion R[6];
+	UPMLFusedArgs volt[6], curr[6];
+};
+
+__host__ __device__ __forceinline__ int fused_region_of(const HIP_FusedRegions& F, unsigned int x, unsigned int y, unsigned int z)
+{
+	if (x<F.lo.nx) return F.side[0];
+	if (x>=F.hi.nx) return F.side[1];
+	if (y<F.lo.ny) return F.side[2];
+	if (y>=F.hi.ny) return F.side[3];
+	if (z<F.lo.nz) return F.side[4];
+	if (z>=F.hi.nz) return F.side[5];
+	return -1;
 }
 
 //! UPML regions at the lower/upper z end covering the x/y range of the main updates: the

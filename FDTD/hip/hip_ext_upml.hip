@@ -87,6 +87,13 @@ public:
 	{
 		if (!Fused())
 			Pre(d->volt, m_VoltFlux, m_VV, m_VVFO);
+		else if ((d->fused_step>0) && d->fregions.count)
+		{
+			// in the kernel: the current voltage flux in, the new one into the second buffer
+			d->fregions.volt[m_Side].flux = m_VoltFlux;
+			d->fregions.volt[m_Side].flux_out = m_VoltFlux2;
+			std::swap(m_VoltFlux, m_VoltFlux2);
+		}
 		else if (d->fused_step>0)
 			FuseVolt(d->volt_next);
 	}
@@ -101,7 +108,7 @@ public:
 	{
 		if (!Fused())
 			Pre(d->curr, m_CurrFlux, m_II, m_IIFO);
-		else if (d->fused_step>0)
+		else if ((d->fused_step>0) && !d->fregions.count)
 			FuseCurr(d->curr_next);
 	}
 	virtual void DoPostCurrentUpdates()
@@ -136,6 +143,7 @@ protected:
 	{
 		UPMLFusedArgs A;
 		A.flux = flux;
+		A.flux_out = flux;
 		A.c_old = c_old; A.c_fo = c_fo; A.c_fn = c_fn;
 		A.u_index = m_SetIndex; A.u_sets = m_Sets; A.u_mode = m_CoeffMode;
 		A.index = d->index; A.mode = d->coeff_mode;
@@ -153,6 +161,8 @@ protected:
 	Engine* m_Eng;
 	UPMLRegion m_Region;
 	bool m_InMain;   //!< fused: updated by the main kernels (see HIP_ZSlabs)
+	int m_Side;      //!< fused step with the regions in the kernel: the side of the region (see HIP_FusedRegions)
+	float* m_VoltFlux2;   //!< ... and the second buffer of the voltage flux
 
 	float *m_VoltFlux, *m_CurrFlux;
 	float *m_VV, *m_VVFO, *m_VVFN;
@@ -169,6 +179,8 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 	d = impl;
 	m_Eng = eng;
 	m_InMain = false;
+	m_Side = -1;
+	m_VoltFlux2 = NULL;
 	d->upml.push_back(this);
 	m_Region.sx = op_ext->m_StartPos[0];
 	m_Region.sy = op_ext->m_StartPos[1];
@@ -252,9 +264,64 @@ bool HIP_Ext_UPML::CanFuse()
 	d->main_stop.nx = stop[0]; d->main_stop.ny = stop[1]; d->main_stop.nz = stop[2];
 	d->ResetZSlabs();
 
-	// the fused step (see update_fused) runs all regions separately
+	// The fused step (see update_fused) can update the regions in its kernel, if they are on the
+	// sides of the main nodes in the order x, y, z (as Operator_Ext_UPML::Create_UPML() makes them),
+	// else the region kernels update them.
+	HIP_FusedRegions& F = d->fregions;
+	F.count = 0;
+	F.lo = d->main_start;
+	F.hi = d->main_stop;
+	bool sides_ok = true;
+	for (int s=0; s<6; ++s)
+		F.side[s] = -1;
+	for (size_t r=0; r<d->upml.size(); ++r)
+	{
+		HIP_Ext_UPML* u = static_cast<HIP_Ext_UPML*>(d->upml[r]);
+		const UPMLRegion& R = u->m_Region;
+		const unsigned int sR[3] = {R.sx, R.sy, R.sz};
+		const unsigned int lR[3] = {R.lx, R.ly, R.lz};
+		const unsigned int lo[3] = {F.lo.nx, F.lo.ny, F.lo.nz};
+		const unsigned int hi[3] = {F.hi.nx, F.hi.ny, F.hi.nz};
+		const unsigned int N[3] = {d->dim.nx, d->dim.ny, d->dim.nz};
+		int side = -1;
+		for (int n=0; n<3 && side<0; ++n)
+			for (int h=0; h<2 && side<0; ++h)
+			{
+				// along n below lo or from hi on; along the directions before n the main nodes, after it all
+				bool match = h ? ((sR[n]==hi[n]) && (sR[n]+lR[n]==N[n])) : ((sR[n]==0) && (lR[n]==lo[n]));
+				for (int m=0; m<3; ++m)
+					if (m<n)
+						match &= (sR[m]==lo[m]) && (lR[m]==hi[m]-lo[m]);
+					else if (m>n)
+						match &= (sR[m]==0) && (lR[m]==N[m]);
+				if (match && (F.side[2*n+h]<0))
+					side = 2*n+h;
+			}
+		if (side<0)
+		{
+			sides_ok = false;
+			break;
+		}
+		F.side[side] = F.count;
+		F.R[F.count] = R;
+		F.volt[F.count] = u->VoltArgs();
+		F.curr[F.count] = u->CurrArgs();
+		u->m_Side = F.count;
+		++F.count;
+	}
+	if (!sides_ok)
+		F.count = 0;
+	if (F.count)
+		for (size_t r=0; r<d->upml.size(); ++r)
+		{
+			HIP_Ext_UPML* u = static_cast<HIP_Ext_UPML*>(d->upml[r]);
+			const size_t n = 3*(size_t)u->m_Region.lx*u->m_Region.ly*u->m_Region.lz;
+			u->m_VoltFlux2 = d->Alloc<float>(n);
+			HIP_Check(hipMemcpyAsync(u->m_VoltFlux2, u->m_VoltFlux, n*sizeof(float), hipMemcpyDeviceToDevice, d->Stream()), "UPML flux");
+		}
 	if (d->DecideFusedStep())
 		return true;
+	F.count = 0;
 
 	// The regions along z (which cover the x/y range of the main updates) are updated by the
 	// main kernels, along full z lines: a region of their own would only have short rows
