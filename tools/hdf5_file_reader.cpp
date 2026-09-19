@@ -722,7 +722,13 @@ bool HDF5_File_Reader::GetDataSetNames(hid_t &group, std::vector<std::string> &n
 	names.clear();
 	// increasing name order, the same as H5Gget_objname_by_idx()
 	hsize_t idx = 0;
+#if H5_VERSION_GE(1,12,0)
+	// explicitly version 2: H5Literate follows the default API version of the HDF5 build
+	// (e.g. version 1 with H5L_info1_t on Alpine)
+	return H5Literate2(group, H5_INDEX_NAME, H5_ITER_INC, &idx, CollectLinkName, &names)>=0;
+#else
 	return H5Literate(group, H5_INDEX_NAME, H5_ITER_INC, &idx, CollectLinkName, &names)>=0;
+#endif
 }
 
 bool HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, ArrayLib::ArrayNIJK<float> &data)
