@@ -26,6 +26,7 @@
 #include "tools/hdf5_file_writer.h"
 #include "processfields.h"
 #include "FDTD/engine_interface_fdtd.h"
+#include "tools/useful.h"
 
 using std::cerr;
 using std::endl;
@@ -449,7 +450,7 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const floa
 	// A thread per thousand nodes or more.
 	const size_t lines = (size_t)numLines[0]*numLines[1];
 	const size_t nodes = lines*numLines[2];
-	const size_t num_threads = std::min<size_t>(std::min<size_t>(std::max(1u, std::thread::hardware_concurrency()), nodes/1024), lines);
+	const size_t num_threads = std::min<size_t>(std::min<size_t>(AvailableCPUs(), nodes/1024), lines);
 	if (gather && !src)
 		m_Eng_Interface->PrepareFieldAccess();   // reads the host mirror directly
 	if (num_threads<=1)

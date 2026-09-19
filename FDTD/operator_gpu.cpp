@@ -50,7 +50,7 @@ Engine* Operator_GPU::CreateEngine()
 
 void Operator_GPU::ThreadRanges(std::vector<unsigned int>& start, std::vector<unsigned int>& stop) const
 {
-	std::vector<unsigned int> jobs = AssignJobs2Threads(numLines[0], std::max(1u, std::thread::hardware_concurrency()), true);
+	std::vector<unsigned int> jobs = AssignJobs2Threads(numLines[0], AvailableCPUs(), true);
 	unsigned int line = 0;
 	for (size_t n=0; n<jobs.size(); ++n)
 	{
