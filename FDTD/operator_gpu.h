@@ -22,8 +22,9 @@
 
 //! Operator for the GPU engine
 /*!
-  The operator is built on the host like the basic operator. Engine_GPU uploads
-  the final coefficients to the device.
+  The operator is built on the host like the basic operator, with the material
+  and PEC evaluation split over threads like Operator_Multithread. Engine_GPU
+  uploads the final coefficients to the device.
   */
 class Operator_GPU : public Operator
 {
@@ -39,6 +40,13 @@ public:
 protected:
 	//! use New() for creating a new Operator
 	Operator_GPU(const std::string& backend);
+
+	//! Calc_EC_Range() and CalcPEC_Range() over x line ranges in parallel
+	virtual bool Calc_EC();
+	virtual bool CalcPEC();
+
+	//! x line ranges of the threads
+	void ThreadRanges(std::vector<unsigned int>& start, std::vector<unsigned int>& stop) const;
 
 	std::string m_Backend;
 };
