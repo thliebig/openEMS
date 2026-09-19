@@ -43,6 +43,9 @@ Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend, GPU_Backe
 	m_Backend = NULL;
 	m_FieldsOnHost = true;
 	m_SharedMemory = false;
+	m_StaleVolt.stale = m_StaleCurr.stale = false;
+	m_StaleVolt.full_this_batch = m_StaleCurr.full_this_batch = false;
+	m_StaleVolt.full_last_batch = m_StaleCurr.full_last_batch = false;
 }
 
 Engine_GPU::~Engine_GPU()
@@ -126,6 +129,8 @@ void Engine_GPU::VoltagesToHost()
 		m_Backend->Synchronize();
 	else
 		m_Backend->DownloadVoltages(*volt_ptr);
+	m_StaleVolt.stale = false;
+	m_StaleVolt.lines.clear();
 }
 
 void Engine_GPU::CurrentsToHost()
@@ -134,6 +139,72 @@ void Engine_GPU::CurrentsToHost()
 		m_Backend->Synchronize();
 	else
 		m_Backend->DownloadCurrents(*curr_ptr);
+	m_StaleCurr.stale = false;
+	m_StaleCurr.lines.clear();
+}
+
+FDTD_FLOAT Engine_GPU::GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+{
+	if (m_StaleVolt.stale)
+		return ReadStale(false, n, x, y, z);
+	return Engine::GetVolt(n, x, y, z);
+}
+
+FDTD_FLOAT Engine_GPU::GetCurr(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+{
+	if (m_StaleCurr.stale)
+		return ReadStale(true, n, x, y, z);
+	return Engine::GetCurr(n, x, y, z);
+}
+
+// Reading a z-line takes about the latency of a transfer, the whole field (24 bytes
+// per node) a lot longer. Probes read a few lines per batch, dumps all of them.
+static const size_t MAX_STALE_LINES = 256;
+
+FDTD_FLOAT Engine_GPU::ReadStale(bool currents, unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
+{
+	Engine_GPU* self = const_cast<Engine_GPU*>(this);   // the host mirror is a cache of the device fields
+	StaleField& field = currents ? m_StaleCurr : m_StaleVolt;
+	const unsigned int key = (n*numLines[0] + x)*numLines[1] + y;
+	std::unordered_map<unsigned int, std::vector<FDTD_FLOAT>>::const_iterator it = field.lines.find(key);
+	if (it!=field.lines.end())
+		return it->second.at(z);
+
+	if (!field.full_last_batch && (field.lines.size()<MAX_STALE_LINES))
+	{
+		std::vector<FDTD_FLOAT> line(numLines[2]);
+		if (m_Backend->DownloadRange(currents, (size_t)key*numLines[2], numLines[2], line.data()))
+		{
+			const FDTD_FLOAT value = line.at(z);
+			field.lines[key].swap(line);
+			return value;
+		}
+	}
+
+	// many lines (or no range download): the whole field
+	if (currents)
+		self->CurrentsToHost();
+	else
+		self->VoltagesToHost();
+	field.full_this_batch = true;
+	return currents ? Engine::GetCurr(n, x, y, z) : Engine::GetVolt(n, x, y, z);
+}
+
+void Engine_GPU::MarkStale(StaleField& field)
+{
+	// a batch that read the whole field is likely followed by another one (e.g. dumps)
+	field.full_last_batch = field.full_this_batch;
+	field.full_this_batch = false;
+	field.stale = true;
+	field.lines.clear();
+}
+
+void Engine_GPU::UpdateHostMirror()
+{
+	if (m_StaleVolt.stale)
+		VoltagesToHost();
+	if (m_StaleCurr.stale)
+		CurrentsToHost();
 }
 
 // with shared memory the host only writes while the device is idle (after a
@@ -231,9 +302,18 @@ void Engine_GPU::FinishBatch()
 {
 	if (m_FieldsOnHost)
 		return;   // the host mirror is up to date after every half-step
-	// update the host mirror for the field processing
-	VoltagesToHost();
-	CurrentsToHost();
+	if (m_SharedMemory)
+	{
+		// the host mirror is the device memory
+		VoltagesToHost();
+		CurrentsToHost();
+	}
+	else
+	{
+		// read on demand, see GetVolt()
+		MarkStale(m_StaleVolt);
+		MarkStale(m_StaleCurr);
+	}
 	for (size_t n=0; n<m_GPU_exts.size(); ++n)
 		m_GPU_exts.at(n)->Synchronize();
 }

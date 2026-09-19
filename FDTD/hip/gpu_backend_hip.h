@@ -49,6 +49,7 @@ public:
 	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
 	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
 
+	virtual bool DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst);
 	virtual void Synchronize();
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
 

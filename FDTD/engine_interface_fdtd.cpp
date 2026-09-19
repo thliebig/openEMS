@@ -275,12 +275,15 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 	if (m_Eng->GetType()==Engine::GPU)
 	{
 		// on the device, if the backend can
-		const Engine_GPU* eng_gpu = dynamic_cast<const Engine_GPU*>(m_Eng);
+		Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
 		unsigned int numNodes[3];
 		for (int n=0; n<3; ++n)
 			numNodes[n] = m_Op->GetNumberOfLines(n)-1;
 		if (eng_gpu && eng_gpu->CalcFastEnergy(numNodes, E_energy, H_energy))
 			return EPS0*E_energy + MUE0*H_energy;
+		// else on the host mirror below
+		if (eng_gpu)
+			eng_gpu->UpdateHostMirror();
 	}
 	// the GPU engine keeps a host mirror in the basic engine layout
 	if ((m_Eng->GetType()==Engine::BASIC) || (m_Eng->GetType()==Engine::GPU))

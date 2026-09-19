@@ -322,6 +322,16 @@ void GPU_Backend_HIP::UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr
 	d->Flush();
 }
 
+bool GPU_Backend_HIP::DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst)
+{
+	if (offset+count > 3*d->numCells)
+		return false;
+	const float* src = (currents ? d->curr : d->volt) + offset;
+	HIP_Check(hipMemcpyAsync(dst, src, count*sizeof(float), hipMemcpyDeviceToHost, d->Stream()), "range download");
+	d->Flush();
+	return true;
+}
+
 void GPU_Backend_HIP::Synchronize()
 {
 	d->Flush();

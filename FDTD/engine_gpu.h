@@ -21,6 +21,7 @@
 #include "engine.h"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class GPU_Backend;
@@ -37,7 +38,9 @@ class GPU_Extension;
   An extension runs on the device if its operator extension IsGPUSave() and the
   backend provides a device implementation (GPU_Backend::CreateExtension()).
   If all extensions do, the fields stay on the device for a whole IterateTS()
-  call and the host mirror is updated at its end.
+  call. Without shared memory, the host mirror is then not updated at the end of
+  a batch: GetVolt/GetCurr read the z-line of a value from the device (e.g. for
+  a probe), or the whole field if a batch reads many lines (e.g. for a dump).
 
   Otherwise all extensions run on the host mirror, and the engine uploads both fields before and downloads the updated field
   after each main update (host fallback, correct but slow). Note that the pre-
@@ -85,6 +88,14 @@ public:
 	//! Make the device results visible in the host mirror
 	void VoltagesToHost();
 	void CurrentsToHost();
+	//! Update the host mirror if it is out of date (see GetVolt())
+	void UpdateHostMirror();
+
+	//! Field values, read from the device if the host mirror is out of date (see class description)
+	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
+	virtual FDTD_FLOAT GetVolt(unsigned int n, const unsigned int pos[3]) const {return GetVolt(n, pos[0], pos[1], pos[2]);}
+	virtual FDTD_FLOAT GetCurr(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
+	virtual FDTD_FLOAT GetCurr(unsigned int n, const unsigned int pos[3]) const {return GetCurr(n, pos[0], pos[1], pos[2]);}
 	//! Make the host mirror changes visible to the device
 	void VoltagesToDevice();
 	void CurrentsToDevice();
@@ -100,6 +111,18 @@ protected:
 
 	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
 	std::vector<GPU_Extension*> m_GPU_exts;
+
+	//! Out-of-date host mirror of one field (see GetVolt()): the z-lines read from the device in this batch
+	struct StaleField
+	{
+		bool stale;
+		bool full_this_batch;   //!< this batch read the whole field
+		bool full_last_batch;   //!< the last batch read the whole field, so will this one
+		std::unordered_map<unsigned int, std::vector<FDTD_FLOAT>> lines;
+	};
+	mutable StaleField m_StaleVolt, m_StaleCurr;
+	FDTD_FLOAT ReadStale(bool currents, unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
+	void MarkStale(StaleField& field);
 
 	void ClearGPUExtensions();
 };

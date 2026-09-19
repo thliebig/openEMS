@@ -119,6 +119,8 @@ public:
 	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt) = 0;
 	//! Copy the host mirror currents to the device
 	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr) = 0;
+	//! Copy \a count values of the device voltages or \a currents from the flat ArrayNIJK index \a offset to \a dst, returns false if the backend cannot
+	virtual bool DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst) {UNUSED(currents); UNUSED(offset); UNUSED(count); UNUSED(dst); return false;}
 
 	//! Host pointer to the device voltages in the ArrayNIJK layout, if the device shares memory with the host, else NULL. Valid after Init().
 	virtual FDTD_FLOAT* GetSharedVoltages() const {return NULL;}
