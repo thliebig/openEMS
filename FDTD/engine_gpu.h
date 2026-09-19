@@ -75,6 +75,9 @@ public:
 	//! True if the extensions run on the host mirror, which is then kept in sync during IterateTS()
 	bool FieldsOnHost() const {return m_FieldsOnHost;}
 
+	//! Field energy sums on the device (see GPU_Backend::CalcFastEnergy()), false if the host has to compute them
+	bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
+
 	//! Host mirror of the fields (basic engine layout)
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>& HostVoltages() const {return *volt_ptr;}
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>& HostCurrents() const {return *curr_ptr;}

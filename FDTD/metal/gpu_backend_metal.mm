@@ -155,6 +155,31 @@ kernel void update_currents_c(device float* curr        [[buffer(0)]],
 	c += iv[2] * (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
 	curr[2*sn+i] = c;
 }
+
+// Field energy: the squared voltages and currents of the nodes below L, summed along x
+// in float, one thread per (y,z) line; gid = (z, y). The host sums the lines in double.
+kernel void energy_lines(const device float* volt [[buffer(0)]],
+                         const device float* curr [[buffer(1)]],
+                         device float2* partial   [[buffer(2)]],
+                         constant GridDim& N      [[buffer(3)]],
+                         constant GridDim& L      [[buffer(4)]],
+                         uint2 gid [[thread_position_in_grid]])
+{
+	const uint z = gid.x, y = gid.y;
+	const uint sn = N.nx*N.ny*N.nz;
+	float E = 0, H = 0;
+	for (uint x=0; x<L.nx; ++x)
+	{
+		const uint i = nijk(N, 0, x, y, z);
+		E += volt[i]*volt[i];
+		E += volt[sn+i]*volt[sn+i];
+		E += volt[2*sn+i]*volt[2*sn+i];
+		H += curr[i]*curr[i];
+		H += curr[sn+i]*curr[sn+i];
+		H += curr[2*sn+i]*curr[2*sn+i];
+	}
+	partial[y*L.nz + z] = float2(E, H);
+}
 )MSL";
 
 /***************************** Impl *****************************/
@@ -463,6 +488,38 @@ FDTD_FLOAT* GPU_Backend_Metal::GetSharedCurrents() const
 void GPU_Backend_Metal::Synchronize()
 {
 	d->Flush();
+}
+
+bool GPU_Backend_Metal::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)
+{
+	E_energy = H_energy = 0;
+	Metal_GridDim L = {numNodes[0], numNodes[1], numNodes[2]};
+	if ((L.nx>d->dim.nx) || (L.ny>d->dim.ny) || (L.nz>d->dim.nz))
+		return false;
+	const size_t count = (size_t)L.ny*L.nz;
+	if (L.nx==0 || count==0)
+		return true;
+	if (!d->energy || ([d->energy length] < count*2*sizeof(float)))
+		d->energy = d->NewBuffer(count*2*sizeof(float));
+
+	id<MTLComputePipelineState> pso = d->Pipeline(BASE_SOURCE, "energy_lines");
+	id<MTLComputeCommandEncoder> enc = d->Encoder();
+	[enc setComputePipelineState:pso];
+	[enc setBuffer:d->volt offset:0 atIndex:0];
+	[enc setBuffer:d->curr offset:0 atIndex:1];
+	[enc setBuffer:d->energy offset:0 atIndex:2];
+	d->SetGridDim(3);
+	[enc setBytes:&L length:sizeof(L) atIndex:4];
+	d->Dispatch(pso, L.nz, L.ny);
+	d->Flush();
+
+	const float* partial = static_cast<const float*>([d->energy contents]);
+	for (size_t k=0; k<count; ++k)
+	{
+		E_energy += partial[2*k];
+		H_energy += partial[2*k+1];
+	}
+	return true;
 }
 
 void GPU_Backend_Metal::DownloadVoltages(ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt)

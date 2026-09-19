@@ -214,6 +214,14 @@ void Engine_GPU::CurrentHalfStep()
 	Apply2Current();
 }
 
+bool Engine_GPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const
+{
+	// in the host fallback the host mirror holds the latest fields
+	if (m_FieldsOnHost)
+		return false;
+	return m_Backend->CalcFastEnergy(numNodes, E_energy, H_energy);
+}
+
 void Engine_GPU::NextTimestep()
 {
 	++numTS;

@@ -84,6 +84,7 @@ struct GPU_Backend_Metal::Impl
 	id<MTLBuffer> volt, curr;
 	id<MTLBuffer> vv, vi, ii, iv;   //!< full coefficients, if not compressed
 	id<MTLBuffer> index, coeff;     //!< compressed coefficients: set index per node, sets (see update_voltages_c)
+	id<MTLBuffer> energy;           //!< per-line energy sums, see GPU_Backend_Metal::CalcFastEnergy()
 
 	id<MTLComputePipelineState> Pipeline(const char* source, const char* function) {return ctx->Pipeline(source, function);}
 	id<MTLComputeCommandEncoder> Encoder() {return ctx->Encoder();}

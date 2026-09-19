@@ -127,6 +127,9 @@ public:
 	//! Wait until the device finished all work, required before the host accesses shared memory
 	virtual void Synchronize() {}
 
+	//! Sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, see Engine_Interface_FDTD::CalcFastEnergy(). Returns false if the backend cannot compute them.
+	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) {UNUSED(numNodes); UNUSED(E_energy); UNUSED(H_energy); return false;}
+
 	//! Create a backend for a sub-grid (e.g. a cylindrical multi-grid level) whose work is ordered with the work of this backend. It's the responsibility of the caller to free it.
 	virtual GPU_Backend* NewSubGridBackend() = 0;
 	//! Create the device coupling of this (base grid) backend and \a sub_grid (created by NewSubGridBackend()), or NULL if this backend has none

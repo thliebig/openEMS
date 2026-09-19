@@ -16,6 +16,7 @@
 */
 
 #include "engine_interface_fdtd.h"
+#include "engine_gpu.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -271,6 +272,16 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 	double H_energy=0.0;
 
 	unsigned int pos[3];
+	if (m_Eng->GetType()==Engine::GPU)
+	{
+		// on the device, if the backend can
+		const Engine_GPU* eng_gpu = dynamic_cast<const Engine_GPU*>(m_Eng);
+		unsigned int numNodes[3];
+		for (int n=0; n<3; ++n)
+			numNodes[n] = m_Op->GetNumberOfLines(n)-1;
+		if (eng_gpu && eng_gpu->CalcFastEnergy(numNodes, E_energy, H_energy))
+			return EPS0*E_energy + MUE0*H_energy;
+	}
 	// the GPU engine keeps a host mirror in the basic engine layout
 	if ((m_Eng->GetType()==Engine::BASIC) || (m_Eng->GetType()==Engine::GPU))
 	{
