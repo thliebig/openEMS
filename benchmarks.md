@@ -27,26 +27,23 @@ backend.
 
 ### Results
 
-The runs were made twice:
+Commit 9bdf4b1: the fused CUDA step and the background HDF5 dumps (see the
+notes below).
 
-- **before**: commit e64e076, the CUDA and Metal optimizations of
-  `Optimizations-HIP.md` and `Optimizations-Metal.md`,
-- **after**: commit 119949d, the field dumps of the NF2FF box computed on
-  several threads (see the notes below).
-
-Memory figures are from the "after" runs. The "before" runs were within 60 MiB.
-
-| Machine | Host CPU | Engine | Total run (before -> after) | Timestepping (before -> after) | Speed after | Peak host memory | GPU memory |
+| Machine | Host CPU | Engine | Total run | Timestepping | Speed (MCells/s) | Peak host memory | GPU memory |
 |---|---|---|---|---|---|---|---|
-| Apple M5 Max (CPU) | Apple M5 Max | multithreaded | 169.3 -> 149.3 s | 142.7 -> 122.4 s | 294 MCells/s | 553 MiB | - |
-| Apple M5 Max (GPU) | Apple M5 Max | Metal | 77.4 -> **55.6 s** | 51.1 -> **28.9 s** | **1248 MCells/s** | 852 MiB (1) | 232 MiB (1) |
-| RTX 2080 Ti | Xeon E5-2673 v4 | CUDA | 157.1 -> 91.4 s | 138.0 -> 72.9 s | 494 MCells/s | 636 MiB | 351 MiB |
-| RTX 3090 Ti | Threadripper PRO 5955WX | CUDA | 95.7 -> **48.2 s** | 87.1 -> **39.4 s** | 914 MCells/s | 623 MiB | 462 MiB |
-| RTX 4090 | EPYC 7542 | CUDA | 136.5 -> 78.5 s | 122.4 -> 63.7 s | 565 MCells/s | 624 MiB | 587 MiB |
-| RTX 5070 Ti | Ryzen 9 7945HX | CUDA | 175.9 -> 111.0 s | 143.6 -> 81.4 s | 442 MCells/s | 632 MiB | 422 MiB |
+| Apple M5 Max (CPU) | Apple M5 Max | multithreaded | 123.2 s | 118.7 s | 303 | 716 MiB | - |
+| Apple M5 Max (GPU) | Apple M5 Max | Metal | **16.1 s** | **10.9 s** | **3302** | 1218 MiB (1) | 343 MiB (1) |
+| RTX 2080 Ti | Xeon E5-2673 v4 | CUDA | 41.1 s | 28.4 s | 1270 | 805 MiB | 367 MiB |
+| RTX 3090 Ti | Threadripper PRO 5955WX | CUDA | 21.6 s | 14.9 s | 2414 | 802 MiB | 478 MiB |
+| RTX 4090 | EPYC 7K62 | CUDA | 33.1 s | 20.9 s | 1721 | 775 MiB | 603 MiB |
+| RTX 5070 Ti | Ryzen 7 5700X | CUDA | 27.5 s | 20.6 s | 1746 | 810 MiB | 438 MiB |
+| RTX 5090 | EPYC 7742 | CUDA | 22.3 s | 11.8 s | 3057 | 814 MiB | 714 MiB |
+| A100 SXM4 40 GB | EPYC 7K62 | CUDA | 28.6 s | 17.5 s | 2058 | 776 MiB | 633 MiB |
+| H200 | Xeon Platinum 8488C | CUDA | 24.5 s | 16.9 s | 2127 | 900 MiB | 735 MiB |
 
-(1) Unified memory: the Metal buffers (232 MiB) are part of the host memory
-figure. The peak physical footprint was about 880 MiB.
+(1) Unified memory: the Metal buffers (343 MiB) are part of the host memory
+figure. The peak physical footprint was 1259 MiB.
 
 Column definitions:
 
@@ -54,6 +51,9 @@ Column definitions:
   post-processing.
 - **Timestepping**: openEMS's "Time for N iterations" figure, which includes
   the field processing during the run (probes, dumps).
+- **Speed**: cells times timesteps per second of timestepping, in millions
+  (openEMS's "Speed" figure): 2.42 million cells x 14900 timesteps divided by
+  the timestepping time.
 - **Peak host memory**: the peak resident set size of the process
   (`/usr/bin/time -l` on macOS, `/usr/bin/time -v` on Linux).
 - **GPU memory**:
@@ -62,32 +62,93 @@ Column definitions:
     varies by GPU and driver. The simulation's own buffers are ~100 MiB.
   - Metal: the peak of the "graphics" categories of `footprint`.
 
+### Earlier runs
+
+Timestepping time by commit:
+
+- e64e076: the CUDA and Metal optimizations of `Optimizations-HIP.md` and
+  `Optimizations-Metal.md`,
+- 119949d: the field dumps of the NF2FF box computed on several threads,
+- 9bdf4b1: the table above.
+
+| Machine | e64e076 | 119949d | 9bdf4b1 |
+|---|---|---|---|
+| Apple M5 Max (CPU) | 142.7 s | 122.4 s | 118.7 s |
+| Apple M5 Max (Metal) | 51.1 s | 28.9 s | 10.9 s |
+| RTX 2080 Ti | 138.0 s | 72.9 s | 28.4 s |
+| RTX 3090 Ti | 87.1 s | 39.4 s | 14.9 s |
+| RTX 4090 (1) | 122.4 s | 63.7 s | 20.9 s |
+| RTX 5070 Ti (1) | 143.6 s | 81.4 s | 20.6 s |
+
+(1) Different hosts: the earlier runs were on an EPYC 7542 (RTX 4090) and a
+Ryzen 9 7945HX (RTX 5070 Ti).
+
+## Free space, 300^3 cells
+
+The GPU kernels alone, without the host work of the horn example:
+
+- 300 x 300 x 300 = 27 million cells, uniform mesh,
+- a soft dipole source in the center, one field probe,
+- 800 timesteps, no end criterion, no dumps,
+- PML_8 on all sides, or PEC walls instead.
+
+| Machine | Engine | PML_8 (MCells/s) | PEC (MCells/s) | PML_8 before the fused step (53f1954) |
+|---|---|---|---|---|
+| Apple M5 Max (CPU) | multithreaded | 485 | 1106 | - |
+| Apple M5 Max (GPU) | Metal | 4193 | 4712 | - |
+| RTX 2080 Ti | CUDA | 5844 | 8410 | 5574 |
+| RTX 3090 Ti | CUDA | 9931 | 14130 | 8134 |
+| RTX 4090 | CUDA | 12744 | 18421 | 8385 |
+| RTX 5070 Ti | CUDA | 10321 | 14174 | 7014 |
+| RTX 5090 | CUDA | 20072 | 27641 | 12933 |
+| A100 SXM4 40 GB | CUDA | 11536 | 18929 | ~7480 (1) |
+| H200 | CUDA | **25197** | **41030** | 19813 |
+
+(1) Measured at 250^3.
+
+The fused step (commits d2867d7 to 9bdf4b1) computes the voltage and the
+current update of a timestep in one pass over the fields. Each block works on
+a tile of 31 x 7 (z, y) lines and marches along 4 x lines. The UPML regions
+are updated in the same kernel. The results are bit-identical to the separate
+kernels.
+
 ### Machines
 
 | Machine | GPU | Host CPU | RAM | OS, driver |
 |---|---|---|---|---|
 | MacBook Pro | Apple M5 Max (Metal) | Apple M5 Max | unified | macOS 26 |
-| Vast.ai container | RTX 2080 Ti (22 GB) | Xeon E5-2673 v4, 80 threads, 2.3 GHz | 251 GB | Ubuntu 24.04, driver 580.126, CUDA 12.8 |
-| Vast.ai container | RTX 3090 Ti (24 GB) | Threadripper PRO 5955WX, 32 threads | 125 GB | Ubuntu 22.04, driver 595.71, CUDA 12.8 |
-| Vast.ai container | RTX 4090 (24 GB) | EPYC 7542, 128 threads, 2.9 GHz | 251 GB | Ubuntu 22.04, driver 580.159, CUDA 12.8 |
-| Vast.ai container | RTX 5070 Ti (16 GB) | Ryzen 9 7945HX, 32 threads | 15 GB | Ubuntu 22.04, driver 580.178, CUDA 12.8 |
+| Vast.ai container | RTX 2080 Ti (22 GB) | Xeon E5-2673 v4, 80 threads, 2.3 GHz | 251 GiB | Ubuntu 24.04, driver 580.126, CUDA 12.8 |
+| Vast.ai container | RTX 3090 Ti (24 GB) | Threadripper PRO 5955WX, 32 threads | 125 GiB | Ubuntu 24.04, driver 595.71, CUDA 12.8 |
+| Vast.ai container | RTX 4090 (24 GB) | EPYC 7K62, 192 threads | 503 GiB | Ubuntu 24.04, driver 580.126, CUDA 12.8 |
+| Vast.ai container | RTX 5070 Ti (16 GB) | Ryzen 7 5700X, 16 threads | 62 GiB | Ubuntu 24.04, driver 595.91, CUDA 12.8 |
+| Vast.ai container | RTX 5090 (32 GB) | EPYC 7742, 256 threads | 503 GiB | Ubuntu 24.04, driver 580.142, CUDA 12.8 |
+| Vast.ai container | A100 SXM4 (40 GB) | EPYC 7K62, 192 threads | 503 GiB | Ubuntu 24.04, driver 595.84, CUDA 12.8 |
+| Vast.ai container | H200 (141 GB) | Xeon Platinum 8488C, 192 threads | 1999 GiB | Ubuntu 24.04, driver 615.71, CUDA 12.8 |
+
+The thread counts are the threads visible in the container. openEMS uses the
+CPUs the container's quota allows (commit 2d51fe3), which can be fewer.
 
 Build and run details:
 
 - Everything was built from this branch in release mode, with the CUDA
-  architecture of each GPU (75, 86, 89, 120).
+  architecture of each GPU (75, 86, 89, 120, 80, 90).
 - The Python bindings were built against each build.
 - The engine was selected with `engine='gpu'` or `'multithreaded'` in
   `openEMS.Run()`.
 
 ## Notes
 
-- **This simulation is limited by the host, not by the GPU.** The ranking of
-  the CUDA machines follows the single-thread speed of their host CPUs: the
-  RTX 4090 host (EPYC 7542) is slower than the RTX 3090 Ti host (Threadripper
-  PRO 5955WX). For comparison, the Metal engine runs a 200^3 free-space
-  benchmark without dumps at 3810 MCells/s, and the RTX 2080 Ti at 5210
-  MCells/s.
+- **The horn example is limited by the host, not by the GPU.**
+  - The CUDA runs reach 8-24 % of each GPU's 300^3 speed. At its PML_8
+    speed, the RTX 5090 would need ~1.8 s for the 14900 timesteps of 2.42
+    million cells, against 11.8 s measured.
+  - The rest is the field processing between batches (NF2FF dumps every 25
+    timesteps, probes) and the launch and synchronization overhead of a small
+    grid.
+  - The M5 Max GPU is the fastest machine here although its kernels are the
+    slowest: with unified memory, the dumps are computed from a field
+    snapshot on a background thread while the GPU continues (commits 7c335b7
+    to 4641181).
 
 - **NF2FF time-domain dumps.**
   - `CreateNF2FFBox()` without a frequency dumps E and H on the six box
@@ -98,22 +159,20 @@ Build and run details:
   - The dumps are now split over up to one thread per thousand nodes. They are
     bit-identical to the single-threaded dumps (all 29850 datasets of the
     horn example).
+  - Since 958205f and 7c335b7, the dump file stays open and all HDF5 writes of
+    the time-domain dumps run on a background thread, on every engine.
 
-- **Remaining host bottleneck.** On the M5 Max GPU run, about two thirds of the
-  timestepping time is still host processing and one third is waiting for the
-  GPU. Two ideas are left:
-  - Overlap the processing with the GPU: snapshot the fields on the device at
-    the end of a batch and process the snapshot while the next batch runs. The
-    time would then approach the larger of processing and GPU instead of their
-    sum. This needs a change of the main loop (`openEMS::RunFDTD()`).
-  - Keep the HDF5 dump files open. `HDF5_File_Writer` opens and closes the file
-    for every dataset, which is about 20 % of the processing time.
+- **Next step for CUDA: field snapshots on the device.** On CUDA, the dumps
+  still copy the fields to the host and compute the dumped values while the
+  GPU waits. A copy into a second device buffer, downloaded on a separate
+  stream and processed on the background thread, would overlap that work with
+  the next batch, as on Metal.
 
-- **Outside the timestepping** (total run minus timestepping: 8.8 s on the
-  RTX 3090 Ti up to 29.6 s on the RTX 5070 Ti) is the setup and the
-  post-processing. In a profile of the M5 Max run, the far-field calculation
-  (`CalcNF2FF`, reading the time-domain dumps) spent most of its time looking
-  up the HDF5 datasets by index (`HDF5_File_Reader::GetDataSetNameByIndex`).
+- **Outside the timestepping** (total run minus timestepping: 5.2 s on the
+  M5 Max GPU, 6.7 s on the RTX 3090 Ti, up to 12.7 s on the RTX 2080 Ti) is
+  the setup and the post-processing. The setup runs on the host and depends
+  on its single-thread speed. Since 79a89e0, the far-field calculation lists
+  the time-domain datasets once instead of looking each one up by index.
 
 - **Run-to-run variation.** The end criterion is checked at wall-clock
   intervals, so the stop timestep can differ between engines and machines.
