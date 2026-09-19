@@ -422,7 +422,7 @@ cases = [('excitation',     case_excitation,     True),
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
-FULL_DEVICE_BACKENDS = ('Metal',)
+FULL_DEVICE_BACKENDS = ('Metal', 'CUDA')
 engines = ('basic', 'gpu-reference', 'gpu')
 
 for name, case, on_device in cases:
