@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "gpu_backend_hip.h"
+#include "FDTD/gpu_coeff_sets.h"
 
 //! Grid size (number of mesh lines) as passed to the kernels
 struct HIP_GridDim
@@ -41,6 +42,25 @@ struct HIP_GridDim
 __device__ __forceinline__ unsigned int nijk(const HIP_GridDim& N, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
 {
 	return ((n*N.nx + x)*N.ny + y)*N.nz + z;
+}
+
+//! Main update coefficients of node i, see GPU_Backend_HIP::Impl::coeff_mode:
+//! a[n*s] and b[n*s] are vv/vi (voltages, set_offset 0) or ii/iv (currents, set_offset 6)
+//! of direction n. Mode 0: ca/cb are the full arrays, else ca is the table of sets.
+struct HIP_MainCoeff { const float* a; const float* b; unsigned int s; };
+
+__device__ __forceinline__ HIP_MainCoeff main_coeff(const void* index, const float* ca, const float* cb,
+                                                     unsigned int mode, unsigned int sn, unsigned int i, unsigned int set_offset)
+{
+	HIP_MainCoeff c;
+	if (mode==0)
+	{
+		c.a = ca + i; c.b = cb + i; c.s = sn;
+		return c;
+	}
+	const unsigned int set = (mode==1) ? (unsigned int)((const unsigned short*)index)[i] : ((const unsigned int*)index)[i];
+	c.a = ca + 12*set + set_offset; c.b = c.a + 3; c.s = 1;
+	return c;
 }
 
 //! Throw a std::runtime_error if \a err is an error
@@ -69,7 +89,11 @@ struct GPU_Backend_HIP::Impl
 	float2* energy;                      //!< per-line energy sums, see GPU_Backend_HIP::CalcFastEnergy()
 	size_t energy_count;
 	std::vector<float2> energy_host;
+	//! Main update coefficients: 0: full arrays vv, vi, ii, iv; 1/2: a 16/32 bit set index per node and the sets (see main_coeff())
+	unsigned int coeff_mode;
 	float *vv, *vi, *ii, *iv;
+	void* index;
+	float* coeff;
 
 	Impl();
 	~Impl();
@@ -90,6 +114,17 @@ struct GPU_Backend_HIP::Impl
 			HIP_Check(hipMemsetAsync(ptr, 0, std::max(count, (size_t)1)*sizeof(T), Stream()), "hipMemset");
 		Flush();
 		return ptr;
+	}
+
+	//! Device buffer of the set indices of \a sets (16 or 32 bit)
+	void* AllocIndex(const GPU_CoeffSets& sets)
+	{
+		if (sets.mode==1)
+		{
+			std::vector<unsigned short> index16(sets.index.begin(), sets.index.end());
+			return Alloc<unsigned short>(index16.size(), index16.data());
+		}
+		return Alloc<unsigned int>(sets.index.size(), sets.index.data());
 	}
 
 	//! Wait until all work on the stream is done

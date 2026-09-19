@@ -25,8 +25,9 @@
 
 // Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents.
 // One thread per mesh node: z along x-threads (contiguous), y along y-threads, x along the grid z-dimension.
+// The coefficients are read with main_coeff().
 __global__ void update_voltages(float* __restrict__ volt, const float* __restrict__ curr,
-                                const float* __restrict__ vv, const float* __restrict__ vi, HIP_GridDim N)
+                                const void* index, const float* ca, const float* cb, unsigned int mode, HIP_GridDim N)
 {
 	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
 	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -38,27 +39,31 @@ __global__ void update_voltages(float* __restrict__ volt, const float* __restric
 	const unsigned int xm = (x>0) ? N.ny*N.nz : 0;   // shift to the previous line, none on the first
 	const unsigned int ym = (y>0) ? N.nz : 0;
 	const unsigned int zm = (z>0) ? 1 : 0;
+	const HIP_MainCoeff C = main_coeff(index, ca, cb, mode, sn, i, 0);
+	const float* vv = C.a;
+	const float* vi = C.b;
+	const unsigned int s = C.s;
 	float v;
 
 	//for x
-	v  = volt[i] * vv[i];
-	v += vi[i] * (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
+	v  = volt[i] * vv[0];
+	v += vi[0] * (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
 	volt[i] = v;
 
 	//for y
-	v  = volt[sn+i] * vv[sn+i];
-	v += vi[sn+i] * (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
+	v  = volt[sn+i] * vv[s];
+	v += vi[s] * (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
 	volt[sn+i] = v;
 
 	//for z
-	v  = volt[2*sn+i] * vv[2*sn+i];
-	v += vi[2*sn+i] * (curr[sn+i] - curr[sn+i-xm] - curr[i] + curr[i-ym]);
+	v  = volt[2*sn+i] * vv[2*s];
+	v += vi[2*s] * (curr[sn+i] - curr[sn+i-xm] - curr[i] + curr[i-ym]);
 	volt[2*sn+i] = v;
 }
 
 // the currents on the last mesh line of each direction are not updated
 __global__ void update_currents(float* __restrict__ curr, const float* __restrict__ volt,
-                                const float* __restrict__ ii, const float* __restrict__ iv, HIP_GridDim N)
+                                const void* index, const float* ca, const float* cb, unsigned int mode, HIP_GridDim N)
 {
 	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
 	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -69,21 +74,25 @@ __global__ void update_currents(float* __restrict__ curr, const float* __restric
 	const unsigned int i  = nijk(N, 0, x, y, z);
 	const unsigned int xp = N.ny*N.nz;
 	const unsigned int yp = N.nz;
+	const HIP_MainCoeff C = main_coeff(index, ca, cb, mode, sn, i, 6);
+	const float* ii = C.a;
+	const float* iv = C.b;
+	const unsigned int s = C.s;
 	float c;
 
 	//for x
-	c  = curr[i] * ii[i];
-	c += iv[i] * (volt[2*sn+i] - volt[2*sn+i+yp] - volt[sn+i] + volt[sn+i+1]);
+	c  = curr[i] * ii[0];
+	c += iv[0] * (volt[2*sn+i] - volt[2*sn+i+yp] - volt[sn+i] + volt[sn+i+1]);
 	curr[i] = c;
 
 	//for y
-	c  = curr[sn+i] * ii[sn+i];
-	c += iv[sn+i] * (volt[i] - volt[i+1] - volt[2*sn+i] + volt[2*sn+i+xp]);
+	c  = curr[sn+i] * ii[s];
+	c += iv[s] * (volt[i] - volt[i+1] - volt[2*sn+i] + volt[2*sn+i+xp]);
 	curr[sn+i] = c;
 
 	//for z
-	c  = curr[2*sn+i] * ii[2*sn+i];
-	c += iv[2*sn+i] * (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
+	c  = curr[2*sn+i] * ii[2*s];
+	c += iv[2*s] * (volt[sn+i] - volt[sn+i+xp] - volt[i] + volt[i+yp]);
 	curr[2*sn+i] = c;
 }
 
@@ -139,6 +148,9 @@ GPU_Backend_HIP::Impl::Impl()
 	dim.nx = dim.ny = dim.nz = 0;
 	numCells = 0;
 	volt = curr = vv = vi = ii = iv = NULL;
+	coeff_mode = 0;
+	index = NULL;
+	coeff = NULL;
 	energy = NULL;
 	energy_count = 0;
 }
@@ -265,6 +277,28 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 					ii[idx] = op->GetII(n, pos[0], pos[1], pos[2]);
 					iv[idx] = op->GetIV(n, pos[0], pos[1], pos[2]);
 				}
+
+	// Most nodes share one of a few coefficient sets (same material and mesh spacing): store
+	// every distinct set of the 12 coefficients of a node once and a set index per node
+	const size_t sn = d->numCells;
+	const std::vector<float>* src[4] = {&vv, &vi, &ii, &iv};
+	GPU_CoeffSets sets;
+	if (GPU_FindSets(sn, 12, [&](size_t i, float* values)
+	    {
+		    for (int c=0; c<4; ++c)
+			    for (int n=0; n<3; ++n)
+				    values[3*c+n] = (*src[c])[n*sn+i];
+	    }, sets))
+	{
+		d->coeff_mode = sets.mode;
+		d->index = d->AllocIndex(sets);
+		d->coeff = d->Alloc<float>(sets.table.size(), sets.table.data());
+		std::cout << "GPU_Backend_HIP: " << sets.count << " distinct coefficient sets, compressed update coefficients ("
+		          << (sets.mode==1 ? 16 : 32) << " bit index)" << std::endl;
+		return true;
+	}
+
+	d->coeff_mode = 0;
 	d->vv = d->Alloc<float>(count, vv.data());
 	d->vi = d->Alloc<float>(count, vi.data());
 	d->ii = d->Alloc<float>(count, ii.data());
@@ -274,14 +308,16 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 
 void GPU_Backend_HIP::UpdateVoltages()
 {
+	const bool c = d->coeff_mode>0;
 	HIP_Launch(d, "update_voltages", update_voltages, d->dim.nz, d->dim.ny, d->dim.nx,
-	            d->volt, (const float*)d->curr, (const float*)d->vv, (const float*)d->vi, d->dim);
+	            d->volt, (const float*)d->curr, (const void*)d->index, (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi), d->coeff_mode, d->dim);
 }
 
 void GPU_Backend_HIP::UpdateCurrents()
 {
+	const bool c = d->coeff_mode>0;
 	HIP_Launch(d, "update_currents", update_currents, d->dim.nz, d->dim.ny, d->dim.nx,
-	            d->curr, (const float*)d->volt, (const float*)d->ii, (const float*)d->iv, d->dim);
+	            d->curr, (const float*)d->volt, (const void*)d->index, (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim);
 }
 
 static void CheckSize(size_t host_count, size_t device_count)

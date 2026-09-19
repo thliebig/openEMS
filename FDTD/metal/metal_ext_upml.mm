@@ -268,9 +268,9 @@ Metal_Ext_UPML::Metal_Ext_UPML(GPU_Backend_Metal::Impl* impl, Operator_Ext_UPML*
 	const size_t cells = (size_t)m_Region.lx*m_Region.ly*m_Region.lz;
 	const FDTD_FLOAT* src[6] = {op_ext->vv.data(), op_ext->vvfo.data(), op_ext->vvfn.data(),
 	                            op_ext->ii.data(), op_ext->iifo.data(), op_ext->iifn.data()};
-	Metal_CoeffSets sets;
+	GPU_CoeffSets sets;
 	m_CoeffMode = 0;
-	if (Metal_FindSets(cells, 18, [&](size_t l0, float* values)
+	if (GPU_FindSets(cells, 18, [&](size_t l0, float* values)
 	    {
 		    for (int c=0; c<6; ++c)
 			    for (int n=0; n<3; ++n)

@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "gpu_backend_metal.h"
+#include "FDTD/gpu_coeff_sets.h"
 
 //! Grid size as passed to the kernels (number of mesh lines), see METAL_COMMON_SOURCE
 struct Metal_GridDim
@@ -95,22 +96,6 @@ struct Metal_Context
 	void Flush();
 };
 
-//! Coefficients stored as distinct sets and a set index per item, see Metal_FindSets()
-#define METAL_MAX_SET_WIDTH 18
-struct Metal_CoeffSets
-{
-	uint32_t mode;                //!< 1: 16 bit index, 2: 32 bit index
-	size_t count;                 //!< number of sets
-	std::vector<uint32_t> index;  //!< set of each item
-	std::vector<float> table;     //!< the sets, \a width values each
-};
-
-//! Find the distinct sets of \a width values of \a count items, \a get(i, values) returns the values of item i
-/*!
-  Returns false if a set index plus the sets would be larger than half the full
-  arrays (\a width floats per item). 16 bit indices for up to 65536 sets, else 32 bit.
-  */
-bool Metal_FindSets(size_t count, unsigned int width, const std::function<void(size_t, float*)>& get, Metal_CoeffSets& sets);
 
 //! State of one grid
 struct GPU_Backend_Metal::Impl
@@ -150,7 +135,7 @@ struct GPU_Backend_Metal::Impl
 	void Dispatch(id<MTLComputePipelineState> pso, size_t ni, size_t nj=1, size_t nk=1, const void* group=NULL);
 
 	//! Buffer of the set indices of \a sets (16 or 32 bit)
-	id<MTLBuffer> NewIndexBuffer(const Metal_CoeffSets& sets);
+	id<MTLBuffer> NewIndexBuffer(const GPU_CoeffSets& sets);
 
 	//! Bind the grid dimension to \a index
 	void SetGridDim(unsigned int index);
