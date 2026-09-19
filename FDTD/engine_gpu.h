@@ -105,6 +105,11 @@ public:
 	  */
 	bool AddSnapshotGather(bool h_field, const std::vector<GPU_GatherEntry>& entries, size_t& offset);
 
+	//! Sums of weighted dump entries on the device, see GPU_Backend::AddFieldDFT(); -1 if not available
+	int AddFieldDFT(bool h_field, const std::vector<GPU_GatherEntry>& entries, unsigned int count);
+	void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {m_Backend->AccumulateFieldDFT(id, weights);}
+	bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, sums);}
+
 	//! Field values, read from the device if the host mirror is out of date (see class description)
 	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
 	virtual FDTD_FLOAT GetVolt(unsigned int n, const unsigned int pos[3]) const {return GetVolt(n, pos[0], pos[1], pos[2]);}
@@ -125,6 +130,7 @@ protected:
 	bool m_SnapshotsUsed; //!< SnapshotFields() succeeded once
 	std::vector<GPU_GatherEntry> m_SnapshotGather[2];   //!< dump entries of the snapshots: E, H (see AddSnapshotGather())
 	bool m_SnapshotGatherSet;                           //!< m_SnapshotGather was passed to the backend
+	bool m_FieldDFTUsed;                                //!< AddFieldDFT() succeeded once
 
 	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
 	std::vector<GPU_Extension*> m_GPU_exts;

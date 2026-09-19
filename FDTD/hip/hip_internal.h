@@ -131,6 +131,17 @@ struct GPU_Backend_HIP::Impl
 	int snap_last;                    //!< slot of the last download from snap_dev, -1: none
 	void FreeSnapshots();
 
+	//! Sums of weighted dump entries (frequency domain dumps, see GPU_Backend_HIP::AddFieldDFT())
+	struct FieldDFT
+	{
+		GPU_GatherEntry* entries;
+		unsigned int n;       //!< number of entries
+		unsigned int count;   //!< number of sums per entry
+		bool currents;        //!< entries from the currents, else from the voltages
+		float2* sums;         //!< sum k of entry i at [k*n + i]
+	};
+	std::vector<FieldDFT> field_dfts;
+
 	Impl();
 	~Impl();
 

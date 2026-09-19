@@ -286,6 +286,8 @@ public:
 	std::vector<Entry> entries;   //!< [line][k][n]
 
 	bool HField() const {return m_H;}
+	unsigned int NumLinesJ() const {return m_nj;}
+	unsigned int NumLinesK() const {return m_nk;}
 	//! Snapshots hold the evaluated entries from \a offset on
 	void SetSnapshotEvaluated(size_t offset) {m_Evaluated = true; m_Offset = offset;}
 
@@ -486,6 +488,53 @@ bool Engine_Interface_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gather)
 	if (!g || !eng_gpu->AddSnapshotGather(g->HField(), g->entries, offset))
 		return false;
 	g->SetSnapshotEvaluated(offset);
+	return true;
+}
+
+int Engine_Interface_FDTD::CreateFieldDFT(const Engine_Field_Gather* gather, unsigned int count)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	const Field_Gather_FDTD* g = dynamic_cast<const Field_Gather_FDTD*>(gather);
+	if (!eng_gpu || !g || g->entries.empty())
+		return -1;
+	const int id = eng_gpu->AddFieldDFT(g->HField(), g->entries, count);
+	if (id>=0)
+	{
+		const unsigned int nj = g->NumLinesJ(), nk = g->NumLinesK();
+		m_FieldDFT[id] = {(unsigned int)(g->entries.size()/(3*(size_t)nj*nk)), nj, nk};
+	}
+	return id;
+}
+
+void Engine_Interface_FDTD::AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	if (eng_gpu)
+		eng_gpu->AccumulateFieldDFT(id, weights);
+}
+
+bool Engine_Interface_FDTD::ReadFieldDFT(int id, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*>& fields)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	std::map<int, std::array<unsigned int, 3>>::const_iterator it = m_FieldDFT.find(id);
+	std::vector<std::complex<float>> sums;
+	if (!eng_gpu || (it==m_FieldDFT.end()) || !eng_gpu->ReadFieldDFT(id, sums))
+		return false;
+	// the entries in the order of Field_Gather_FDTD: [line][k][n]
+	const unsigned int ni = it->second[0], nj = it->second[1], nk = it->second[2];
+	const size_t count = (size_t)ni*nj*nk*3;
+	if (sums.size()!=count*fields.size())
+		return false;
+	for (size_t f=0; f<fields.size(); ++f)
+	{
+		const std::complex<float>* s = sums.data() + f*count;
+		ArrayLib::ArrayNIJK<std::complex<float>>& field = *fields[f];
+		for (unsigned int i=0; i<ni; ++i)
+			for (unsigned int j=0; j<nj; ++j)
+				for (unsigned int k=0; k<nk; ++k)
+					for (int n=0; n<3; ++n)
+						field(n, i, j, k) = *s++;
+	}
 	return true;
 }
 

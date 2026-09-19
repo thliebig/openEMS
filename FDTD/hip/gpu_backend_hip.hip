@@ -303,14 +303,8 @@ __device__ inline double gather_raw(const float* f, const GPU_GatherEntry& e, in
 	return 0.0;
 }
 
-__global__ void gather_dumps(const float* __restrict__ volt, const float* __restrict__ curr, const GPU_GatherEntry* __restrict__ entries,
-                             unsigned int nv, unsigned int n, float* __restrict__ out)
+__device__ inline float gather_value(const float* f, const GPU_GatherEntry& e)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
-	if (i>=n)
-		return;
-	const GPU_GatherEntry& e = entries[i];
-	const float* f = (i<nv) ? volt : curr;
 	double v = 0;
 	switch (e.form)
 	{
@@ -330,7 +324,37 @@ __global__ void gather_dumps(const float* __restrict__ volt, const float* __rest
 	default:
 		break;
 	}
-	out[i] = v;
+	return v;
+}
+
+__global__ void gather_dumps(const float* __restrict__ volt, const float* __restrict__ curr, const GPU_GatherEntry* __restrict__ entries,
+                             unsigned int nv, unsigned int n, float* __restrict__ out)
+{
+	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	if (i>=n)
+		return;
+	out[i] = gather_value((i<nv) ? volt : curr, entries[i]);
+}
+
+// frequency domain dumps: sums[k*n + i] += value(i) * w[k] for the weights of one timestep,
+// as ProcessFieldsFD::Process() (a float times a complex float, then a complex sum)
+#define DFT_WEIGHTS 32
+struct HIP_DFTWeights { float2 w[DFT_WEIGHTS]; };
+
+__global__ void field_dft(const float* __restrict__ f, const GPU_GatherEntry* __restrict__ entries, unsigned int n,
+                          HIP_DFTWeights W, unsigned int nw, float2* __restrict__ sums)
+{
+	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	if (i>=n)
+		return;
+	const float v = gather_value(f, entries[i]);
+	for (unsigned int k=0; k<nw; ++k)
+	{
+		float2 s = sums[(size_t)k*n + i];
+		s.x += v*W.w[k].x;
+		s.y += v*W.w[k].y;
+		sums[(size_t)k*n + i] = s;
+	}
 }
 
 // the currents of the given main nodes again (update_currents), after the voltage extensions
@@ -918,6 +942,59 @@ bool GPU_Backend_HIP::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt,
 	d->snap_last = slot;
 	volt = d->snap_host[slot];
 	curr = d->snap_host[slot] + d->snap_nv;
+	return true;
+}
+
+int GPU_Backend_HIP::AddFieldDFT(const std::vector<GPU_GatherEntry>& entries, bool currents, unsigned int count)
+{
+	const size_t n = entries.size();
+	if ((n==0) || (count==0) || (n>UINT_MAX))
+		return -1;
+	Impl::FieldDFT dft;
+	dft.n = n;
+	dft.count = count;
+	dft.currents = currents;
+	try
+	{
+		dft.entries = d->Alloc<GPU_GatherEntry>(n, entries.data());
+		dft.sums = d->Alloc<float2>(n*count);
+	}
+	catch (std::runtime_error&)
+	{
+		// not fatal: without device sums the dump accumulates the fields on the host
+		hipGetLastError();
+		std::cerr << "GPU_Backend_HIP: not enough memory for a frequency domain dump on the device" << std::endl;
+		return -1;
+	}
+	d->field_dfts.push_back(dft);
+	return d->field_dfts.size()-1;
+}
+
+void GPU_Backend_HIP::AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights)
+{
+	if ((id<0) || ((size_t)id>=d->field_dfts.size()))
+		return;
+	const Impl::FieldDFT& dft = d->field_dfts[id];
+	const unsigned int count = std::min((size_t)dft.count, weights.size());
+	for (unsigned int k0=0; k0<count; k0+=DFT_WEIGHTS)
+	{
+		HIP_DFTWeights W;
+		const unsigned int nw = std::min(count-k0, (unsigned int)DFT_WEIGHTS);
+		for (unsigned int k=0; k<nw; ++k)
+			W.w[k] = make_float2(weights[k0+k].real(), weights[k0+k].imag());
+		HIP_Launch(d, "field_dft", field_dft, dft.n, 1, 1, (const float*)(dft.currents ? d->curr : d->volt),
+		            (const GPU_GatherEntry*)dft.entries, dft.n, W, nw, dft.sums + (size_t)k0*dft.n);
+	}
+}
+
+bool GPU_Backend_HIP::ReadFieldDFT(int id, std::vector<std::complex<float>>& sums)
+{
+	if ((id<0) || ((size_t)id>=d->field_dfts.size()))
+		return false;
+	const Impl::FieldDFT& dft = d->field_dfts[id];
+	sums.resize((size_t)dft.n*dft.count);
+	HIP_Check(hipMemcpyAsync(sums.data(), dft.sums, sums.size()*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "download");
+	d->Flush();
 	return true;
 }
 

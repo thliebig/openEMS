@@ -45,6 +45,7 @@ Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend, GPU_Backe
 	m_SharedMemory = false;
 	m_SnapshotsUsed = false;
 	m_SnapshotGatherSet = false;
+	m_FieldDFTUsed = false;
 	m_StaleVolt.stale = m_StaleCurr.stale = false;
 	m_StaleVolt.full_this_batch = m_StaleCurr.full_this_batch = false;
 	m_StaleVolt.full_last_batch = m_StaleCurr.full_last_batch = false;
@@ -246,6 +247,20 @@ bool Engine_GPU::AddSnapshotGather(bool h_field, const std::vector<GPU_GatherEnt
 	offset = all.size();
 	all.insert(all.end(), entries.begin(), entries.end());
 	return true;
+}
+
+int Engine_GPU::AddFieldDFT(bool h_field, const std::vector<GPU_GatherEntry>& entries, unsigned int count)
+{
+	// not with the fields on the host (host fallback of extensions): the dumps read them there
+	if (m_FieldsOnHost)
+		return -1;
+	const int id = m_Backend->AddFieldDFT(entries, h_field, count);
+	if ((id>=0) && !m_FieldDFTUsed)
+	{
+		cout << "Engine_GPU: frequency domain dumps accumulated on the device" << endl;
+		m_FieldDFTUsed = true;
+	}
+	return id;
 }
 
 void Engine_GPU::UpdateHostMirror()

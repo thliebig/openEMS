@@ -21,6 +21,7 @@
    the requested backend was created (not a silent fallback)
    device backend: all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
    device backend, case dumps_snapshot: the dumps read field snapshots (FULL_DEVICE_BACKENDS)
+   device backend, case dumps: the FD dumps are accumulated on the device (DEVICE_DFT_BACKENDS)
    reference backend: all probe data and field dumps bit-identical
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
@@ -475,6 +476,8 @@ cases = [('excitation',     case_excitation,     True),
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
 FULL_DEVICE_BACKENDS = ('Metal', 'CUDA')
+# device backends that accumulate the frequency domain dumps
+DEVICE_DFT_BACKENDS = ('CUDA',)
 engines = ('basic', 'gpu-reference', 'gpu')
 
 for name, case, on_device in cases:
@@ -500,6 +503,9 @@ for name, case, on_device in cases:
         if name=='dumps_snapshot' and backend in FULL_DEVICE_BACKENDS:
             assert 'Engine_GPU: field dumps from snapshots' in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not take field snapshots for the dumps'
+        if name=='dumps' and backend in DEVICE_DFT_BACKENDS:
+            assert 'Engine_GPU: frequency domain dumps accumulated on the device' in logs['gpu'], \
+                f'FAIL [{name}]: the {backend} backend did not accumulate the frequency domain dumps'
         diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
         print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
         assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \

@@ -28,7 +28,8 @@
   the grids of a simulation run in order on one HIP stream (see
   NewSubGridBackend()), which is only synchronized when the host needs the fields.
   The field dumps are evaluated on the device at a snapshot and downloaded on a
-  second stream, overlapping the work (see SnapshotFields()).
+  second stream, overlapping the work (see SnapshotFields()). Frequency domain
+  dumps are summed on the device (see AddFieldDFT()).
 
   This header is plain C++, the HIP state is kept in Impl (see hip_internal.h).
   */
@@ -57,6 +58,9 @@ public:
 	virtual void WaitSnapshot(unsigned int slot);
 	virtual bool CanSnapshotGather() const {return true;}
 	virtual bool SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries);
+	virtual int AddFieldDFT(const std::vector<GPU_GatherEntry>& entries, bool currents, unsigned int count);
+	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights);
+	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums);
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
 
 	virtual GPU_Backend* NewSubGridBackend();

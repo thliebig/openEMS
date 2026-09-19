@@ -18,6 +18,7 @@
 #ifndef GPU_BACKEND_H
 #define GPU_BACKEND_H
 
+#include <complex>
 #include <string>
 #include <vector>
 
@@ -184,6 +185,18 @@ public:
 	  Called before the first snapshot. Returns false if the backend cannot (no snapshots then).
 	  */
 	virtual bool SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries) {UNUSED(volt_entries); UNUSED(curr_entries); return false;}
+
+	//! Sums over timesteps of weighted dump entries on the device (frequency domain dumps), see Engine_Interface_Base::CreateFieldDFT()
+	/*!
+	  \param entries evaluated from the currents if \a currents, else from the voltages
+	  \param count number of sums (weights per AccumulateFieldDFT())
+	  Returns an id, or -1 if the backend cannot.
+	  */
+	virtual int AddFieldDFT(const std::vector<GPU_GatherEntry>& entries, bool currents, unsigned int count) {UNUSED(entries); UNUSED(currents); UNUSED(count); return -1;}
+	//! Add \a weights[n] times the current values of the entries to sum n of \a id (in order with the updates)
+	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {UNUSED(id); UNUSED(weights);}
+	//! The sums of \a id: sum n of entry e at [n*entries + e]
+	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {UNUSED(id); UNUSED(sums); return false;}
 
 	//! Sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, see Engine_Interface_FDTD::CalcFastEnergy(). Returns false if the backend cannot compute them.
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) {UNUSED(numNodes); UNUSED(E_energy); UNUSED(H_energy); return false;}

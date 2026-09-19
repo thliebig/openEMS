@@ -18,6 +18,9 @@
 #ifndef ENGINE_INTERFACE_BASE_H
 #define ENGINE_INTERFACE_BASE_H
 
+#include <complex>
+#include <vector>
+
 #include "tools/global.h"
 #include "tools/arraylib/array_nijk.h"
 
@@ -79,6 +82,17 @@ public:
 	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather) {UNUSED(gather); return true;}
 	//! The engine the fields belong to, identifies the snapshots
 	virtual const void* GetEngineID() const {return NULL;}
+
+	//! Sums over timesteps of weighted fields at the nodes of \a gather, kept by the engine (e.g. on the device), for frequency domain dumps
+	/*!
+	  Each AccumulateFieldDFT() adds weights[n] times the current field to sum n (\a count sums).
+	  Returns an id, or -1 if the engine has none (the caller then accumulates the fields itself).
+	  */
+	virtual int CreateFieldDFT(const Engine_Field_Gather* gather, unsigned int count) {UNUSED(gather); UNUSED(count); return -1;}
+	//! Add \a weights[n] times the current field to the sums of \a id
+	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {UNUSED(id); UNUSED(weights);}
+	//! Copy the sums of \a id into \a fields (one per weight, the dump's numLines)
+	virtual bool ReadFieldDFT(int id, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*>& fields) {UNUSED(id); UNUSED(fields); return false;}
 
 	//! Fast repeated evaluation of GetEField() (\a h_field false) or GetHField() at fixed nodes, see Engine_Field_Gather
 	/*!
