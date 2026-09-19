@@ -119,6 +119,9 @@ HIP_Ext_LumpedRLC::HIP_Ext_LumpedRLC(GPU_Backend_HIP::Impl* impl, Operator_Ext_L
 		if (!edges.insert(index[p]).second)
 			m_Serial = true;
 	}
+	// fused step (see update_fused): Apply2Voltages() changes these voltages after the voltage
+	// update, the currents next to them are recomputed
+	d->volt_modified.insert(d->volt_modified.end(), index.begin(), index.end());
 	m_Data.index = d->Alloc<unsigned int>(count, index.data());
 	m_Data.il = d->Alloc<float>(count);
 	m_Data.vd = d->Alloc<float>(3*(size_t)count);

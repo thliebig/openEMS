@@ -239,17 +239,17 @@ def case_materials():
     return FDTD, CSX
 
 
-def case_lumped():
+def case_lumped(bc='MUR', size=10):
     """ lumped port with series and parallel RLC elements in a Mur box: excitation, lumped RLC and Mur extensions """
     FDTD = openEMS(NrTS=1500, EndCriteria=0)
     FDTD.SetGaussExcite(5.5e9, 4.5e9)
-    FDTD.SetBoundaryCond(['MUR'] * 6)
+    FDTD.SetBoundaryCond([bc] * 6)
     CSX = ContinuousStructure()
     FDTD.SetCSX(CSX)
     mesh = CSX.GetGrid()
     mesh.SetDeltaUnit(unit)
     for ax in 'xyz':
-        mesh.AddLine(ax, np.arange(-10, 10.5, 1))
+        mesh.AddLine(ax, np.arange(-size, size + 0.5, 1))
     LumpedPort(CSX, 1, 50, [-4, 0, 0], [-4, 0, 2], 'z', excite=1)
     ser = CSX.AddLumpedElement('ser_rlc', ny='z', caps=False, R=10, L=1e-9, C=1e-12, LEtype=1)
     ser.AddBox([0, 0, 0], [0, 0, 2], priority=10)
@@ -260,6 +260,11 @@ def case_lumped():
     wire.AddCurve([[-4, 4], [0, 0], [2, 2]])
     CSX.AddProbe('et', p_type=2).AddPoint([0, 5, 0])
     return FDTD, CSX
+
+
+def case_lumped_pml():
+    """ the lumped RLC elements with PML: the voltages they change in the fused CUDA step """
+    return case_lumped('PML_8', 20)
 
 
 def case_tfsf():
@@ -453,6 +458,7 @@ cases = [('excitation',     case_excitation,     True),
          ('mur',            case_mur,            True),
          ('materials',      case_materials,      True),
          ('lumped',         case_lumped,         True),
+         ('lumped_pml',     case_lumped_pml,     True),
          ('tfsf',           case_tfsf,           True),
          ('absorbers',      case_absorbers,      True),
          ('cylinder_closed', case_cylinder_closed, True),

@@ -29,6 +29,7 @@
 #include "FDTD/operator.h"
 #include "FDTD/extensions/engine_ext_upml.h"
 #include "FDTD/extensions/engine_ext_excitation.h"
+#include "FDTD/extensions/engine_ext_lumpedRLC.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
 
 // Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents,
@@ -972,8 +973,9 @@ static const HIP_ExtensionFactory HIP_EXTENSIONS[] = {
 
 GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engine* eng)
 {
-	// the fused step (see update_fused) knows the UPML, the excitation and the steady-state detection
-	if (!dynamic_cast<Engine_Ext_UPML*>(eng_ext) && !dynamic_cast<Engine_Ext_Excitation*>(eng_ext) && !dynamic_cast<Engine_Ext_SteadyState*>(eng_ext))
+	// the fused step (see update_fused) knows the UPML, the excitation, lumped RLC elements and the steady-state detection
+	if (!dynamic_cast<Engine_Ext_UPML*>(eng_ext) && !dynamic_cast<Engine_Ext_Excitation*>(eng_ext) && !dynamic_cast<Engine_Ext_LumpedRLC*>(eng_ext)
+	    && !dynamic_cast<Engine_Ext_SteadyState*>(eng_ext))
 		d->fused_blockers++;
 	for (size_t n=0; n<sizeof(HIP_EXTENSIONS)/sizeof(HIP_EXTENSIONS[0]); ++n)
 	{
