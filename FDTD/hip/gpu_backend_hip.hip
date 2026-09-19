@@ -191,7 +191,7 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
 
 #define FUSED_TZ 32   // threads along z, the last one computes the border voltages only
 #define FUSED_TY 8    // threads along y, the last row computes the border voltages only
-#define FUSED_XC 16   // x lines per block
+#define FUSED_XC 4    // x lines per block (default): short blocks are faster, despite the voltages of one more x line
 
 // Fused step: the voltages and currents of the main nodes [B, E) in one pass, from the current
 // fields (volt_in, curr_in) into the next buffers (volt_out, curr_out); every value is computed
@@ -207,14 +207,14 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
 __global__ void __launch_bounds__(FUSED_TZ*FUSED_TY) update_fused(
 	const float* __restrict__ volt_in, const float* __restrict__ curr_in, float* volt_out, float* __restrict__ curr_out,
 	const void* index, const float* va, const float* vb, const float* ia, const float* ib, unsigned int mode,
-	HIP_GridDim N, HIP_GridDim B, HIP_GridDim E, HIP_FusedRegions F)
+	HIP_GridDim N, HIP_GridDim B, HIP_GridDim E, HIP_FusedRegions F, unsigned int xc)
 {
 	__shared__ float sV[3][FUSED_TY][FUSED_TZ];
 	const unsigned int tz = threadIdx.x, ty = threadIdx.y;
 	const unsigned int z = B.nz + blockIdx.x*(FUSED_TZ-1) + tz;
 	const unsigned int y = B.ny + blockIdx.y*(FUSED_TY-1) + ty;
-	const unsigned int xs = B.nx + blockIdx.z*FUSED_XC;
-	const unsigned int xe = min(xs+FUSED_XC, E.nx);
+	const unsigned int xs = B.nx + blockIdx.z*xc;
+	const unsigned int xe = min(xs+xc, E.nx);
 	const bool main_yz = (z<E.nz) && (y<E.ny);                          // a main node line
 	const bool owner = main_yz && (tz<FUSED_TZ-1) && (ty<FUSED_TY-1);  // written by this block
 	const bool in_grid = (z<N.nz) && (y<N.ny);
@@ -706,15 +706,16 @@ void GPU_Backend_HIP::UpdateVoltages()
 			B.nx = B.ny = B.nz = 0;
 			E = d->dim;
 		}
+		static const unsigned int xc = getenv("OPENEMS_HIP_FUSED_XC") ? std::max(1, atoi(getenv("OPENEMS_HIP_FUSED_XC"))) : FUSED_XC;
 		const dim3 block(FUSED_TZ, FUSED_TY, 1);
-		const dim3 grid((E.nz-B.nz+FUSED_TZ-2)/(FUSED_TZ-1), (E.ny-B.ny+FUSED_TY-2)/(FUSED_TY-1), (E.nx-B.nx+FUSED_XC-1)/FUSED_XC);
+		const dim3 grid((E.nz-B.nz+FUSED_TZ-2)/(FUSED_TZ-1), (E.ny-B.ny+FUSED_TY-2)/(FUSED_TY-1), (E.nx-B.nx+xc-1)/xc);
 		const bool timed = HIP_KernelTimes::Enabled();
 		if (timed)
 			HIP_KernelTimes::Begin(d->Stream());
 		update_fused<<<grid, block, 0, d->Stream()>>>((const float*)d->volt, (const float*)d->curr, d->volt_next, d->curr_next, (const void*)d->index,
 		                                              (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi),
 		                                              (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv),
-		                                              d->coeff_mode, d->dim, B, E, d->fregions);
+		                                              d->coeff_mode, d->dim, B, E, d->fregions, xc);
 		d->CheckLaunch("update_fused");
 		if (timed)
 			HIP_KernelTimes::End(d->Stream(), "update_fused");
