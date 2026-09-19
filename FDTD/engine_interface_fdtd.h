@@ -54,6 +54,8 @@ public:
 
 	virtual double CalcFastEnergy() const;
 
+	virtual void PrepareFieldAccess();
+
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;

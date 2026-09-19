@@ -48,6 +48,9 @@ public:
 	//! Get the current interpolation type \sa SetInterpolationType
 	InterpolationType GetInterpolationType() {return m_InterpolType;}
 
+	//! Called before several threads read the fields concurrently (Get*Field()), e.g. to copy device fields to the host
+	virtual void PrepareFieldAccess() {}
+
 	//! Get the (interpolated) electric field at \p pos. \sa SetInterpolationType
 	virtual double* GetEField(const unsigned int* pos, double* out) const =0;
 	//! Get the (interpolated) magnetic field at \p pos. \sa SetInterpolationType

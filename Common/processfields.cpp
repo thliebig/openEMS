@@ -16,6 +16,8 @@
 */
 
 #include <iomanip>
+#include <thread>
+#include <vector>
 #include "tools/global.h"
 #include "tools/vtk_file_writer.h"
 #include "tools/hdf5_file_writer.h"
@@ -286,129 +288,76 @@ void ProcessFields::CalcMeshPos()
 
 bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 {
-	unsigned int pos[3];
-	double out[3];
 	//init the array
 	field.Init("Field", numLines);
+
+	double* (Engine_Interface_Base::*getField)(const unsigned int*, double*) const = NULL;
 	switch (m_DumpType)
 	{
 	case E_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetEField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetEField;
+		break;
 	case H_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetHField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetHField;
+		break;
 	case J_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetJField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetJField;
+		break;
 	case ROTH_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetRotHField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetRotHField;
+		break;
 	case D_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetDField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetDField;
+		break;
 	case B_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetBField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetBField;
+		break;
 	default:
 		cerr << "ProcessFields::CalcField(): Error, unknown dump type..." << endl;
 		return false;
 	}
+
+	// the (x,y) lines [l_start, l_stop), line l = i*numLines[1] + j
+	auto calc = [&](size_t l_start, size_t l_stop)
+	{
+		unsigned int pos[3];
+		double out[3];
+		for (size_t l=l_start; l<l_stop; ++l)
+		{
+			const unsigned int i = l/numLines[1];
+			const unsigned int j = l%numLines[1];
+			pos[0]=posLines[0][i];
+			pos[1]=posLines[1][j];
+			for (unsigned int k=0; k<numLines[2]; ++k)
+			{
+				pos[2]=posLines[2][k];
+
+				(m_Eng_Interface->*getField)(pos,out);
+				field(0, i, j, k) = out[0];
+				field(1, i, j, k) = out[1];
+				field(2, i, j, k) = out[2];
+			}
+		}
+	};
+
+	// The nodes are independent: split large dumps (e.g. the surfaces of a NF2FF box
+	// every few timesteps) over threads, the engine waits for the processing anyway.
+	// A thread per thousand nodes or more, starting threads is not free.
+	const size_t lines = (size_t)numLines[0]*numLines[1];
+	const size_t nodes = lines*numLines[2];
+	const size_t num_threads = std::min<size_t>(std::min<size_t>(std::max(1u, std::thread::hardware_concurrency()), nodes/1024), lines);
+	if (num_threads<=1)
+	{
+		calc(0, lines);
+		return true;
+	}
+	m_Eng_Interface->PrepareFieldAccess();
+	std::vector<std::thread> threads;
+	for (size_t t=1; t<num_threads; ++t)
+		threads.push_back(std::thread(calc, lines*t/num_threads, lines*(t+1)/num_threads));
+	calc(0, lines/num_threads);   // the first part on this thread
+	for (size_t t=0; t<threads.size(); ++t)
+		threads[t].join();
+	return true;
 }
 

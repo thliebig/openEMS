@@ -266,6 +266,14 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 	return 0.0;
 }
 
+void Engine_Interface_FDTD::PrepareFieldAccess()
+{
+	// the GPU engine reads out-of-date values from the device, which is not thread-safe
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	if (eng_gpu)
+		eng_gpu->UpdateHostMirror();
+}
+
 double Engine_Interface_FDTD::CalcFastEnergy() const
 {
 	double E_energy=0.0;
