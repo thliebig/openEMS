@@ -26,15 +26,26 @@
 // Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents,
 // over the nodes in [B, E). One thread per mesh node: z along x-threads (contiguous), y along
 // y-threads, x along the grid z-dimension. The coefficients are read with main_coeff().
+// Nodes below Z.z_lo or from Z.z_hi on belong to UPML regions along z (see HIP_ZSlabs).
 __global__ void update_voltages(float* __restrict__ volt, const float* __restrict__ curr,
                                 const void* index, const float* ca, const float* cb, unsigned int mode,
-                                HIP_GridDim N, HIP_GridDim B, HIP_GridDim E)
+                                HIP_GridDim N, HIP_GridDim B, HIP_GridDim E, HIP_ZSlabs Z)
 {
 	const unsigned int z = B.nz + blockIdx.x*blockDim.x + threadIdx.x;
 	const unsigned int y = B.ny + blockIdx.y*blockDim.y + threadIdx.y;
 	const unsigned int x = B.nx + blockIdx.z;
 	if (z>=E.nz || y>=E.ny || x>=E.nx)
 		return;
+	if (z<Z.z_lo)
+	{
+		upml_fused_volt_node(volt, curr, Z.volt_lo, N, Z.R_lo, x-Z.R_lo.sx, y-Z.R_lo.sy, z-Z.R_lo.sz);
+		return;
+	}
+	if (z>=Z.z_hi)
+	{
+		upml_fused_volt_node(volt, curr, Z.volt_hi, N, Z.R_hi, x-Z.R_hi.sx, y-Z.R_hi.sy, z-Z.R_hi.sz);
+		return;
+	}
 	const unsigned int sn = N.nx*N.ny*N.nz;
 	const unsigned int i  = nijk(N, 0, x, y, z);
 	const unsigned int xm = (x>0) ? N.ny*N.nz : 0;   // shift to the previous line, none on the first
@@ -65,12 +76,24 @@ __global__ void update_voltages(float* __restrict__ volt, const float* __restric
 // the currents on the last mesh line of each direction are not updated
 __global__ void update_currents(float* __restrict__ curr, const float* __restrict__ volt,
                                 const void* index, const float* ca, const float* cb, unsigned int mode,
-                                HIP_GridDim N, HIP_GridDim B, HIP_GridDim E)
+                                HIP_GridDim N, HIP_GridDim B, HIP_GridDim E, HIP_ZSlabs Z)
 {
 	const unsigned int z = B.nz + blockIdx.x*blockDim.x + threadIdx.x;
 	const unsigned int y = B.ny + blockIdx.y*blockDim.y + threadIdx.y;
 	const unsigned int x = B.nx + blockIdx.z;
-	if (z>=E.nz || y>=E.ny || x>=E.nx || z+1>=N.nz || y+1>=N.ny || x+1>=N.nx)
+	if (z>=E.nz || y>=E.ny || x>=E.nx)
+		return;
+	if (z<Z.z_lo)
+	{
+		upml_fused_curr_node(curr, volt, Z.curr_lo, N, Z.R_lo, x-Z.R_lo.sx, y-Z.R_lo.sy, z-Z.R_lo.sz);
+		return;
+	}
+	if (z>=Z.z_hi)
+	{
+		upml_fused_curr_node(curr, volt, Z.curr_hi, N, Z.R_hi, x-Z.R_hi.sx, y-Z.R_hi.sy, z-Z.R_hi.sz);
+		return;
+	}
+	if (z+1>=N.nz || y+1>=N.ny || x+1>=N.nx)
 		return;
 	const unsigned int sn = N.nx*N.ny*N.nz;
 	const unsigned int i  = nijk(N, 0, x, y, z);
@@ -167,6 +190,23 @@ GPU_Backend_HIP::Impl::~Impl()
 		hipHostUnregister(*it);
 }
 
+void GPU_Backend_HIP::Impl::ResetZSlabs()
+{
+	zslab_lo = zslab_hi = false;
+	zslabs.z_lo = main_start.nz;
+	zslabs.z_hi = main_stop.nz;
+}
+
+void GPU_Backend_HIP::Impl::MainRange(HIP_GridDim& B, HIP_GridDim& E) const
+{
+	B = main_start;
+	E = main_stop;
+	if (zslab_lo)
+		B.nz = zslabs.R_lo.sz;
+	if (zslab_hi)
+		E.nz = zslabs.R_hi.sz + zslabs.R_hi.lz;
+}
+
 void GPU_Backend_HIP::Impl::Flush()
 {
 	HIP_Check(hipStreamSynchronize(Stream()), "stream synchronization");
@@ -256,6 +296,7 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
 	d->main_stop = d->dim;
 	d->upml_fused = -1;
+	d->ResetZSlabs();
 
 	// the kernels index with 32 bit
 	if (3*d->numCells > std::numeric_limits<unsigned int>::max())
@@ -314,19 +355,19 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 void GPU_Backend_HIP::UpdateVoltages()
 {
 	const bool c = d->coeff_mode>0;
-	const HIP_GridDim& B = d->main_start;
-	const HIP_GridDim& E = d->main_stop;
+	HIP_GridDim B, E;
+	d->MainRange(B, E);
 	HIP_Launch(d, "update_voltages", update_voltages, E.nz-B.nz, E.ny-B.ny, E.nx-B.nx,
-	            d->volt, (const float*)d->curr, (const void*)d->index, (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi), d->coeff_mode, d->dim, B, E);
+	            d->volt, (const float*)d->curr, (const void*)d->index, (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi), d->coeff_mode, d->dim, B, E, d->zslabs);
 }
 
 void GPU_Backend_HIP::UpdateCurrents()
 {
 	const bool c = d->coeff_mode>0;
-	const HIP_GridDim& B = d->main_start;
-	const HIP_GridDim& E = d->main_stop;
+	HIP_GridDim B, E;
+	d->MainRange(B, E);
 	HIP_Launch(d, "update_currents", update_currents, E.nz-B.nz, E.ny-B.ny, E.nx-B.nx,
-	            d->curr, (const float*)d->volt, (const void*)d->index, (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim, B, E);
+	            d->curr, (const float*)d->volt, (const void*)d->index, (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim, B, E, d->zslabs);
 }
 
 static void CheckSize(size_t host_count, size_t device_count)
