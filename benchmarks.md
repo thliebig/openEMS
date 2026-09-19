@@ -92,6 +92,11 @@ The GPU kernels alone, without the host work of the horn example:
 - 800 timesteps, no end criterion, no dumps,
 - PML_8 on all sides, or PEC walls instead.
 
+The script is `python/Tests/FreeSpace_Benchmark.py` (`python
+FreeSpace_Benchmark.py [engine] [N] [timesteps]`, default `gpu 300 800`). It
+also checks that the PML and PEC runs agree at the probe until the first wall
+reflection can reach it.
+
 | Machine | Engine | PML_8 (MCells/s) | PEC (MCells/s) | PML_8 before the fused step (53f1954) |
 |---|---|---|---|---|
 | Apple M5 Max (CPU) | multithreaded | 485 | 1106 | - |
