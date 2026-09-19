@@ -39,6 +39,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | GTX 1080 Ti | EPYC 7551 | 32.4 s | 19.0 s | 1900 | 838 MiB | 436 MiB |
 | GTX 1660 Ti | Ryzen 9 3900X | 27.1 s | 19.5 s | 1846 | 817 MiB | 373 MiB |
 | RTX 2080 Ti | Xeon E5-2673 v4 | 22.1 s | 8.4 s | 4277 | 813 MiB | 457 MiB |
+| RTX 4060 Ti 16 GB | i7-12700 | 17.8 s | 11.8 s | 3042 | 809 MiB | 426 MiB |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 11.9 s | 5.2 s | 6939 | 808 MiB | 568 MiB |
 | RTX 4090 | EPYC 7K62 | 20.9 s | 8.8 s | 4116 | 795 MiB | 693 MiB |
 | RTX 5070 Ti | Ryzen 7 5700X | **11.7 s** | **4.9 s** | **7361** | 818 MiB | 530 MiB |
@@ -55,6 +56,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | GTX 1080 Ti | EPYC 7551 | 37.1 s | 19.2 s | 1879 | 659 MiB | 442 MiB |
 | GTX 1660 Ti | Ryzen 9 3900X | 24.1 s | 19.6 s | 1838 | 637 MiB | 379 MiB |
 | RTX 2080 Ti | Xeon E5-2673 v4 | 15.6 s | 8.3 s | 4342 | 636 MiB | 463 MiB |
+| RTX 4060 Ti 16 GB | i7-12700 | 15.5 s | 12.0 s | 3006 | 629 MiB | 432 MiB |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 9.0 s | 5.2 s | 6911 | 630 MiB | 574 MiB |
 | RTX 4090 | EPYC 7K62 | 11.0 s | 4.0 s | 8925 | 623 MiB | 699 MiB |
 | RTX 5070 Ti | Ryzen 7 5700X | 8.9 s | 4.9 s | 7369 | 638 MiB | 536 MiB |
@@ -71,6 +73,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | GTX 1080 Ti | EPYC 7551 | 2619 | 4029 |
 | GTX 1660 Ti | Ryzen 9 3900X | 2268 | 3399 |
 | RTX 2080 Ti | Xeon E5-2673 v4 | 5803 | 8429 |
+| RTX 4060 Ti 16 GB | i7-12700 | 4067 | 5021 |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 9939 | 14109 |
 | RTX 4090 | EPYC 7K62 | 12695 | 18416 |
 | RTX 5070 Ti | Ryzen 7 5700X | 10346 | 14179 |
