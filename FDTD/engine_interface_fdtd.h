@@ -55,6 +55,7 @@ public:
 	virtual double CalcFastEnergy() const;
 
 	virtual void PrepareFieldAccess();
+	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const;
 
 protected:
 	Operator* m_Op;

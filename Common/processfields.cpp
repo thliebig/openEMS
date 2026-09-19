@@ -38,6 +38,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	m_SampleType = NONE;
 	m_Vtk_Dump_File = NULL;
 	m_HDF5_Dump_File = NULL;
+	m_Gather = NULL;
+	m_GatherTried = false;
 	SetPrecision(6);
 	m_dualTime = false;
 
@@ -56,6 +58,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 
 ProcessFields::~ProcessFields()
 {
+	delete m_Gather;
+	m_Gather = NULL;
 	delete m_Vtk_Dump_File;
 	m_Vtk_Dump_File = NULL;
 	for (int n=0; n<3; ++n)
@@ -133,6 +137,11 @@ bool ProcessFields::NeedPermeability() const
 
 void ProcessFields::InitProcess()
 {
+	// the dumped nodes may have changed
+	delete m_Gather;
+	m_Gather = NULL;
+	m_GatherTried = false;
+
 	if (Enabled==false) return;
 
 	CalcMeshPos();
@@ -387,9 +396,22 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 		return false;
 	}
 
+	// E and H dumps with the precomputed node evaluation, if the engine interface has one
+	if (!m_GatherTried && ((m_DumpType==E_FIELD_DUMP) || (m_DumpType==H_FIELD_DUMP)))
+	{
+		m_GatherTried = true;
+		m_Gather = m_Eng_Interface->CreateFieldGather(m_DumpType==H_FIELD_DUMP, numLines, posLines);
+	}
+	const Engine_Field_Gather* gather = ((m_DumpType==E_FIELD_DUMP) || (m_DumpType==H_FIELD_DUMP)) ? m_Gather : NULL;
+
 	// the (x,y) lines [l_start, l_stop), line l = i*numLines[1] + j
 	auto calc = [&](size_t l_start, size_t l_stop)
 	{
+		if (gather)
+		{
+			gather->Evaluate(l_start, l_stop, field);
+			return;
+		}
 		unsigned int pos[3];
 		double out[3];
 		for (size_t l=l_start; l<l_stop; ++l)
@@ -416,6 +438,8 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
 	const size_t lines = (size_t)numLines[0]*numLines[1];
 	const size_t nodes = lines*numLines[2];
 	const size_t num_threads = std::min<size_t>(std::min<size_t>(std::max(1u, std::thread::hardware_concurrency()), nodes/1024), lines);
+	if (gather)
+		m_Eng_Interface->PrepareFieldAccess();   // reads the host mirror directly
 	if (num_threads<=1)
 	{
 		calc(0, lines);

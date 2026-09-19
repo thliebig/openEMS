@@ -97,6 +97,10 @@ protected:
 	//! dump mesh information
 	unsigned int numLines[3];	//number of lines to dump
 	unsigned int* posLines[3];	//grid positions to dump
+
+	//! precomputed E/H evaluation at the dumped nodes (if the engine interface has one), created at the first CalcField()
+	Engine_Field_Gather* m_Gather;
+	bool m_GatherTried;
 	double* discLines[3];		//mesh disc lines to dump
 
 	//! Calculate and return the defined field. Caller has to cleanup the array.

@@ -19,8 +19,22 @@
 #define ENGINE_INTERFACE_BASE_H
 
 #include "tools/global.h"
+#include "tools/arraylib/array_nijk.h"
 
 class Operator_Base;
+
+//! Evaluates the (interpolated) E or H field at the nodes of a dump, see Engine_Interface_Base::CreateFieldGather()
+/*!
+  The same values as Get?Field() for every node, with the node positions,
+  edge lengths and interpolation weights computed once.
+  */
+class Engine_Field_Gather
+{
+public:
+	virtual ~Engine_Field_Gather() {}
+	//! Evaluate the (x,y) lines [line_start, line_stop) of the dump (line i*numLines[1]+j) into \a field, thread-safe
+	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field) const = 0;
+};
 
 //! This is the abstract base for all Engine Interface classes.
 /*!
@@ -50,6 +64,13 @@ public:
 
 	//! Called before several threads read the fields concurrently (Get*Field()), e.g. to copy device fields to the host
 	virtual void PrepareFieldAccess() {}
+
+	//! Fast repeated evaluation of GetEField() (\a h_field false) or GetHField() at fixed nodes, see Engine_Field_Gather
+	/*!
+	  Returns NULL if the interface has none for its engine. It's the responsibility of the caller to free it.
+	  */
+	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
+	{UNUSED(h_field); UNUSED(numLines); UNUSED(posLines); return NULL;}
 
 	//! Get the (interpolated) electric field at \p pos. \sa SetInterpolationType
 	virtual double* GetEField(const unsigned int* pos, double* out) const =0;
