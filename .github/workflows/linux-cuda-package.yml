@@ -1,0 +1,164 @@
+# Linux package of openEMS with the HIP GPU engine: the programs and libraries with
+# the shared libraries they need (see .github/packaging/bundle_linux.py), Python
+# wheels for 3.13 and 3.14, the Octave/Matlab interface and the Python tutorials.
+name: Linux Package (CUDA)
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Create/update the linux-cuda-nightly pre-release on GitHub'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - GPU_experiments
+
+jobs:
+  package:
+    name: Build and package (Linux x86_64, CUDA)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    env:
+      # machine code for Turing to Blackwell, and PTX of the newest for later GPUs
+      HIP_ARCHITECTURES: "75-real;80-real;86-real;89-real;90-real;100-real;120"
+
+    steps:
+      - name: Checkout openEMS-Project.git
+        uses: actions/checkout@v4
+        with:
+          repository: thliebig/openEMS-Project
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Replace the openEMS submodule with this repository
+        run: rm -rf "$GITHUB_WORKSPACE/openEMS"
+
+      - name: Checkout openEMS (this repository)
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          fetch-depth: 0
+
+      - name: Install dependencies and the CUDA toolkit
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build patchelf \
+              libhdf5-dev libvtk9-dev libcgal-dev libtinyxml-dev libgmp-dev libmpfr-dev \
+              libboost-program-options-dev libboost-thread-dev libboost-date-time-dev \
+              libboost-serialization-dev libboost-chrono-dev libboost-system-dev
+          # the CUDA compiler and runtime from NVIDIA's repository
+          curl -fsSL -o "$RUNNER_TEMP/cuda-keyring.deb" \
+              https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i "$RUNNER_TEMP/cuda-keyring.deb"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cuda-hipcc-12-8 cuda-cudart-dev-12-8
+          echo "OPT=$RUNNER_TEMP/opt" >> $GITHUB_ENV
+
+      - name: Build and install fparser, CSXCAD and openEMS
+        run: |
+          configure() {  # configure <dir> <cmake options...>
+            local dir=$1; shift
+            cmake -S "$GITHUB_WORKSPACE/$dir" -B "$RUNNER_TEMP/build/$dir" -GNinja \
+                  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$OPT" "$@"
+          }
+          build_install() {
+            cmake --build "$RUNNER_TEMP/build/$1" --parallel
+            cmake --install "$RUNNER_TEMP/build/$1"
+          }
+          configure fparser && build_install fparser
+          configure CSXCAD -DFPARSER_ROOT_DIR="$OPT" && build_install CSXCAD
+          configure openEMS -DFPARSER_ROOT_DIR="$OPT" -DCSXCAD_ROOT_DIR="$OPT" \
+              -DCMAKE_HIP_COMPILER=/usr/local/cuda-12.8/bin/hipcc -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES"
+          grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || { echo "the HIP backend is not enabled"; exit 1; }
+          build_install openEMS
+
+      - name: Set up Python 3.13 and 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.13
+            3.14
+          allow-prereleases: true
+
+      - name: Build the Python wheels
+        run: |
+          export CSXCAD_INSTALL_PATH="$OPT" OPENEMS_INSTALL_PATH="$OPT"
+          mkdir -p "$RUNNER_TEMP/wheels"
+          for v in 3.13 3.14; do
+            python$v -m venv "$RUNNER_TEMP/venv$v"
+            py="$RUNNER_TEMP/venv$v/bin/python"
+            $py -m pip install --upgrade pip cython setuptools setuptools-scm wheel numpy
+            # CSXCAD first, installed: openEMS needs its Cython declarations
+            (cd "$GITHUB_WORKSPACE/CSXCAD/python" && rm -rf build &&
+             $py -m pip wheel . --no-deps --no-build-isolation -w "$RUNNER_TEMP/wheels")
+            $py -m pip install "$RUNNER_TEMP"/wheels/csxcad-*-cp${v/./}-*.whl
+            (cd "$GITHUB_WORKSPACE/openEMS/python" && rm -rf build &&
+             $py -m pip wheel . --no-deps --no-build-isolation -w "$RUNNER_TEMP/wheels")
+          done
+          ls -l "$RUNNER_TEMP/wheels"
+
+      - name: Assemble the package
+        id: pkg
+        run: |
+          gitdesc=$(git -C "$GITHUB_WORKSPACE/openEMS" describe --tags --always)
+          stem="openEMS_linux_x86_64_${gitdesc}_cuda"
+          pkg="$RUNNER_TEMP/pkgstage/openEMS"
+          mkdir -p "$pkg/lib" "$pkg/python"
+          cp -a "$OPT/bin" "$OPT/share" "$pkg/"
+          cp -a "$OPT"/lib/*.so* "$pkg/lib/"
+          # the libraries they need, relative run paths
+          python3 "$GITHUB_WORKSPACE/openEMS/.github/packaging/bundle_linux.py" "$pkg"
+          cp "$RUNNER_TEMP"/wheels/*.whl "$pkg/python/"
+          cp -r "$GITHUB_WORKSPACE/openEMS/python/Tutorials" "$pkg/python/"
+          sed "s/@PACKAGE_NAME@/$stem/" "$GITHUB_WORKSPACE/openEMS/.github/packaging/README-linux.txt" > "$pkg/README.txt"
+          tar -C "$RUNNER_TEMP/pkgstage" -czf "$RUNNER_TEMP/$stem.tar.gz" openEMS
+          du -sh "$pkg" "$RUNNER_TEMP/$stem.tar.gz"
+          echo "name=$stem" >> $GITHUB_OUTPUT
+
+      - name: Test the programs in a clean system
+        run: |
+          # every library resolves without the build dependencies, and openEMS starts
+          docker run --rm -v "$RUNNER_TEMP/pkgstage:/pkg:ro" ubuntu:24.04 bash -ec '
+            missing=$(for f in /pkg/openEMS/bin/* /pkg/openEMS/lib/*.so* /pkg/openEMS/lib/deps/*; do
+                        ldd "$f" 2>/dev/null | grep "not found" | sed "s#^#$f: #" || true; done)
+            if [ -n "$missing" ]; then echo "$missing"; exit 1; fi
+            /pkg/openEMS/bin/openEMS | grep "openEMS 64bit"'
+
+      - name: Test the Python modules in a clean system
+        run: |
+          # as README.txt describes it; no GPU here: GPU_Engine.py tests the reference backend
+          docker run --rm -v "$RUNNER_TEMP/pkgstage:/pkg:ro" -v "$GITHUB_WORKSPACE/openEMS/python/Tests:/tests:ro" \
+                     python:3.13-slim bash -ec '
+            python -m pip install -q numpy h5py matplotlib
+            python -m pip install -q --no-index --find-links /pkg/openEMS/python openEMS
+            export LD_LIBRARY_PATH=/pkg/openEMS/lib MPLBACKEND=Agg
+            cd /tmp
+            python -c "import openEMS, h5py; print(\"openEMS\", openEMS.__version__, \"- h5py with HDF5\", h5py.version.hdf5_version)"
+            python -m unittest discover -s /tests -p "test_*.py"
+            python /tests/Coax.py
+            python /tests/GPU_Engine.py'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ runner.temp }}/${{ steps.pkg.outputs.name }}.tar.gz
+          retention-days: 30
+
+      - name: Create or update GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: linux-cuda-nightly
+          name: openEMS nightly (Linux x86_64, CUDA)
+          prerelease: true
+          files: ${{ runner.temp }}/${{ steps.pkg.outputs.name }}.tar.gz
+          body: |
+            Linux x86_64 package of openEMS with the HIP GPU engine for NVIDIA GPUs (Turing to Blackwell, driver 570 or newer). Needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13, Fedora 40 or newer); all other libraries are included.
+
+            The archive contains the openEMS programs and libraries, the Octave/Matlab interface, Python wheels (cp313/cp314) and the Python tutorials. See `README.txt` inside the archive.
+
+            **Change history:** https://github.com/SeanMollet/openEMS/commits/GPU_experiments

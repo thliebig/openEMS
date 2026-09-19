@@ -1,0 +1,175 @@
+# macOS package of openEMS with the Metal GPU engine (Apple silicon): the programs and
+# libraries with the Homebrew libraries they need (see .github/packaging/bundle_macos.py),
+# Python wheels for 3.13 and 3.14, the Octave/Matlab interface and the Python tutorials.
+name: macOS Package (Metal)
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Create/update the macos-metal-nightly pre-release on GitHub'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - GPU_experiments
+
+jobs:
+  package:
+    name: Build and package (macOS arm64, Metal)
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout openEMS-Project.git
+        uses: actions/checkout@v4
+        with:
+          repository: thliebig/openEMS-Project
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Replace the openEMS submodule with this repository
+        run: rm -rf "$GITHUB_WORKSPACE/openEMS"
+
+      - name: Checkout openEMS (this repository)
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          echo "OPT=$RUNNER_TEMP/opt" >> $GITHUB_ENV
+          export OPT="$RUNNER_TEMP/opt"
+          brew install boost hdf5 cgal vtk ninja
+          # TinyXML is disabled in Homebrew: from source, as in upstream openEMS's CI
+          cd "$RUNNER_TEMP"
+          curl -L https://sourceforge.net/projects/tinyxml/files/tinyxml/2.6.2/tinyxml_2_6_2.tar.gz -o tinyxml-2.6.2.tar.gz
+          tar -xf tinyxml-2.6.2.tar.gz
+          cd tinyxml
+          for p in community/tinyxml/tinyxml-2.6.2-defineSTL.patch community/tinyxml/tinyxml-2.6.1-entity.patch \
+                   community/tinyxml/CVE-2021-42260.patch community/tinyxml/CVE-2023-34194.patch; do
+            curl -L -O "https://raw.githubusercontent.com/alpinelinux/aports/b1ff376e83eb49c0127b039b3684eccdf9a60694/$p"
+            patch -p1 < "$(basename $p)"
+          done
+          curl -L -O "https://gist.githubusercontent.com/scpeters/6325123/raw/cfb079be67997cb19a1aee60449714a1dedefed5/tinyxml_CMakeLists.patch"
+          sed -i -e "s/cmake_minimum_required(VERSION 2.4.6)/cmake_minimum_required(VERSION 3.0...3.10)/" tinyxml_CMakeLists.patch
+          patch -p1 < tinyxml_CMakeLists.patch
+          cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$OPT" \
+                -DCMAKE_SHARED_LINKER_FLAGS=-headerpad_max_install_names
+          cmake --build build && cmake --install build
+
+      - name: Build and install fparser, CSXCAD and openEMS
+        run: |
+          configure() {  # configure <dir> <cmake options...>; room in the headers for the relative paths
+            local dir=$1; shift
+            cmake -S "$GITHUB_WORKSPACE/$dir" -B "$RUNNER_TEMP/build/$dir" -GNinja \
+                  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$OPT" -DCMAKE_PREFIX_PATH="$OPT" \
+                  -DCMAKE_SHARED_LINKER_FLAGS=-headerpad_max_install_names \
+                  -DCMAKE_EXE_LINKER_FLAGS=-headerpad_max_install_names "$@"
+          }
+          build_install() {
+            cmake --build "$RUNNER_TEMP/build/$1" --parallel
+            cmake --install "$RUNNER_TEMP/build/$1"
+          }
+          configure fparser && build_install fparser
+          configure CSXCAD -DFPARSER_ROOT_DIR="$OPT" && build_install CSXCAD
+          configure openEMS -DFPARSER_ROOT_DIR="$OPT" -DCSXCAD_ROOT_DIR="$OPT"
+          grep -q '^ENABLE_METAL:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || { echo "the Metal backend is not enabled"; exit 1; }
+          build_install openEMS
+
+      - name: Set up Python 3.13 and 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.13
+            3.14
+          allow-prereleases: true
+
+      - name: Build the Python wheels
+        run: |
+          export CSXCAD_INSTALL_PATH="$OPT" OPENEMS_INSTALL_PATH="$OPT"
+          mkdir -p "$RUNNER_TEMP/wheels"
+          for v in 3.13 3.14; do
+            python$v -m venv "$RUNNER_TEMP/venv$v"
+            py="$RUNNER_TEMP/venv$v/bin/python"
+            $py -m pip install --upgrade pip cython setuptools setuptools-scm wheel numpy
+            # CSXCAD first, installed: openEMS needs its Cython declarations
+            (cd "$GITHUB_WORKSPACE/CSXCAD/python" && rm -rf build &&
+             $py -m pip wheel . --no-deps --no-build-isolation -w "$RUNNER_TEMP/wheels")
+            $py -m pip install "$RUNNER_TEMP"/wheels/csxcad-*-cp${v/./}-*.whl
+            (cd "$GITHUB_WORKSPACE/openEMS/python" && rm -rf build &&
+             $py -m pip wheel . --no-deps --no-build-isolation -w "$RUNNER_TEMP/wheels")
+          done
+          ls -l "$RUNNER_TEMP/wheels"
+
+      - name: Assemble the package
+        id: pkg
+        run: |
+          gitdesc=$(git -C "$GITHUB_WORKSPACE/openEMS" describe --tags --always)
+          stem="openEMS_macos_arm64_${gitdesc}_metal"
+          pkg="$RUNNER_TEMP/pkgstage/openEMS"
+          mkdir -p "$pkg/lib" "$pkg/python"
+          cp -a "$OPT/bin" "$OPT/share" "$pkg/"
+          cp -a "$OPT"/lib/*.dylib "$pkg/lib/"
+          # the Homebrew libraries they need, relative references, signed again
+          python3 "$GITHUB_WORKSPACE/openEMS/.github/packaging/bundle_macos.py" "$pkg"
+          cp "$RUNNER_TEMP"/wheels/*.whl "$pkg/python/"
+          cp -r "$GITHUB_WORKSPACE/openEMS/python/Tutorials" "$pkg/python/"
+          sed "s/@PACKAGE_NAME@/$stem/" "$GITHUB_WORKSPACE/openEMS/.github/packaging/README-macos.txt" > "$pkg/README.txt"
+          tar -C "$RUNNER_TEMP/pkgstage" -czf "$RUNNER_TEMP/$stem.tar.gz" openEMS
+          du -sh "$pkg" "$RUNNER_TEMP/$stem.tar.gz"
+          echo "name=$stem" >> $GITHUB_OUTPUT
+
+      - name: Install the Python modules for the tests
+        run: |
+          # as README.txt describes it, in a new virtual environment
+          python3.13 -m venv "$RUNNER_TEMP/venv-test"
+          "$RUNNER_TEMP/venv-test/bin/python" -m pip install numpy h5py matplotlib
+          "$RUNNER_TEMP/venv-test/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/pkgstage/openEMS/python" openEMS
+
+      - name: Test the package without Homebrew
+        run: |
+          # hide Homebrew and the installation the package was made from, so that nothing
+          # can load their libraries
+          sudo mv /opt/homebrew /opt/homebrew.hidden
+          mv "$OPT" "$OPT.hidden"
+          pkg="$RUNNER_TEMP/pkgstage/openEMS"
+          "$pkg/bin/openEMS" | grep "openEMS 64bit"
+          export DYLD_LIBRARY_PATH="$pkg/lib" MPLBACKEND=Agg
+          py="$RUNNER_TEMP/venv-test/bin/python"
+          cd "$RUNNER_TEMP"
+          $py -c "import openEMS, h5py; print('openEMS', openEMS.__version__, '- h5py with HDF5', h5py.version.hdf5_version)"
+          $py -m unittest discover -s "$GITHUB_WORKSPACE/openEMS/python/Tests" -p "test_*.py"
+          $py "$GITHUB_WORKSPACE/openEMS/python/Tests/Coax.py"
+          # the Metal backend if the runner has a Metal device, else the reference backend
+          $py "$GITHUB_WORKSPACE/openEMS/python/Tests/GPU_Engine.py"
+
+      - name: Restore Homebrew and the installation
+        if: always()
+        run: |
+          if [ -d /opt/homebrew.hidden ]; then sudo mv /opt/homebrew.hidden /opt/homebrew; fi
+          if [ -d "$OPT.hidden" ]; then mv "$OPT.hidden" "$OPT"; fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ runner.temp }}/${{ steps.pkg.outputs.name }}.tar.gz
+          retention-days: 30
+
+      - name: Create or update GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: macos-metal-nightly
+          name: openEMS nightly (macOS arm64, Metal)
+          prerelease: true
+          files: ${{ runner.temp }}/${{ steps.pkg.outputs.name }}.tar.gz
+          body: |
+            macOS package of openEMS with the Metal GPU engine, for Apple silicon Macs with macOS 15 or newer. All libraries are included.
+
+            The archive contains the openEMS programs and libraries, the Octave/Matlab interface, Python wheels (cp313/cp314) and the Python tutorials. See `README.txt` inside the archive.
+
+            **Change history:** https://github.com/SeanMollet/openEMS/commits/GPU_experiments
