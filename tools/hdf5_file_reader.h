@@ -123,6 +123,12 @@ protected:
 	bool OpenGroup(hid_t &file, hid_t &group, std::string groupName);
 
 	bool GetDataSetNameByIndex(hid_t &group, unsigned int idx, std::string &name);
+
+	//! The names of all objects in \a group, in the order of GetDataSetNameByIndex() (a lookup by index is linear in the group size)
+	bool GetDataSetNames(hid_t &group, std::vector<std::string> &names);
+
+	//! Read the TD dataset \a ds_name of /FieldData/TD and its time attribute
+	bool GetTDVectorData(const std::string &ds_name, float &time, ArrayLib::ArrayNIJK<float> &data);
 };
 
 #endif // HDF5_FILE_READER_H

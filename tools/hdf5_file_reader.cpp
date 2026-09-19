@@ -633,19 +633,21 @@ bool HDF5_File_Reader::ReadTimeSteps(std::vector<unsigned int> &timestep, std::v
 		return false;
 	}
 
-	std::string name;
+	std::vector<std::string> all_names;
+	if (!GetDataSetNames(TD_grp, all_names) || (all_names.size()!=numObj))
+	{
+		cerr << "HDF5_File_Reader::ReadTimeSteps: invalid timestep found!" << endl;
+		H5Gclose(TD_grp);
+		return false;
+	}
+
 	timestep.clear();
 	timestep.resize(numObj,0);
 	names.clear();
 	names.resize(numObj);
 	for (hsize_t n=0;n<numObj;++n)
 	{
-		if (!GetDataSetNameByIndex(TD_grp, n, name))
-		{
-			cerr << "HDF5_File_Reader::ReadTimeSteps: invalid timestep found!" << endl;
-			H5Gclose(TD_grp);
-			return false;
-		}
+		const std::string& name = all_names.at(n);
 
 		std::istringstream is(name);
 		unsigned int num;
@@ -701,6 +703,28 @@ bool HDF5_File_Reader::GetDataSetNameByIndex(hid_t &group, unsigned int idx, std
 }
 
 
+static herr_t CollectLinkName(hid_t group, const char* name,
+#if H5_VERSION_GE(1,12,0)
+                               const H5L_info2_t* info,
+#else
+                               const H5L_info_t* info,
+#endif
+                               void* op_data)
+{
+	(void)group;
+	(void)info;
+	static_cast<std::vector<std::string>*>(op_data)->push_back(name);
+	return 0;
+}
+
+bool HDF5_File_Reader::GetDataSetNames(hid_t &group, std::vector<std::string> &names)
+{
+	names.clear();
+	// increasing name order, the same as H5Gget_objname_by_idx()
+	hsize_t idx = 0;
+	return H5Literate(group, H5_INDEX_NAME, H5_ITER_INC, &idx, CollectLinkName, &names)>=0;
+}
+
 bool HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, ArrayLib::ArrayNIJK<float> &data)
 {
 	if (IsValid()==false)
@@ -709,8 +733,12 @@ bool HDF5_File_Reader::GetTDVectorData(size_t idx, float &time, ArrayLib::ArrayN
 	std::string ds_name;
 	if (!GetDataSetNameByIndex("/FieldData/TD", idx, ds_name))
 		return false;
+	return GetTDVectorData(ds_name, time, data);
+}
 
-	ds_name = "/FieldData/TD/" + ds_name;
+bool HDF5_File_Reader::GetTDVectorData(const std::string &name, float &time, ArrayLib::ArrayNIJK<float> &data)
+{
+	const std::string ds_name = "/FieldData/TD/" + name;
 	if (!ReadAttribute<float>(ds_name, "time", time, true))
 	{
 		cerr << "HDF5_File_Reader::GetTDVectorData: can't read time attribute!" << endl;
@@ -873,8 +901,19 @@ bool HDF5_File_Reader::CalcFDVectorData(std::vector<float> &frequencies, std::ve
 		delete FD_data.at(n);
 	FD_data.clear();
 
-	unsigned int numTS = GetNumTimeSteps();
-	if (numTS<=0)
+	// all timestep names at once, a lookup by index is linear in the number of timesteps
+	std::vector<std::string> ts_names;
+	{
+		hid_t hdf5_file;
+		hid_t TD_grp;
+		if (IsValid()==false || OpenGroup(hdf5_file, TD_grp, "/FieldData/TD")==false)
+			return false;
+		bool ok = GetDataSetNames(TD_grp, ts_names);
+		H5Gclose(TD_grp);
+		if (!ok)
+			return false;
+	}
+	if (ts_names.empty())
 	{
 		cerr << "HDF5_File_Reader::CalcFDVectorData: error, no TD data found..." << endl;
 		return false;
@@ -883,7 +922,7 @@ bool HDF5_File_Reader::CalcFDVectorData(std::vector<float> &frequencies, std::ve
 	float time;
 	//read first TD data
 	ArrayLib::ArrayNIJK<float> field;
-	if (!GetTDVectorData(0,time,field))
+	if (!GetTDVectorData(ts_names.at(0),time,field))
 	{
 		cerr << "HDF5_File_Reader::CalcFDVectorData: error, no TD data found..." << endl;
 		return false;
@@ -933,7 +972,8 @@ bool HDF5_File_Reader::CalcFDVectorData(std::vector<float> &frequencies, std::ve
 		++ts;
 		field.Reset();
 		time_old = time;
-		GetTDVectorData(ts,time,field);
+		if (ts<ts_names.size())
+			GetTDVectorData(ts_names.at(ts),time,field);
 	}
 
 	// finalize data
