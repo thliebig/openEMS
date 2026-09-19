@@ -594,6 +594,24 @@ jobs:
           python -m pip install $csxcad.FullName $openems.FullName
           python -c "import openEMS, h5py; print('openEMS', openEMS.__version__, '- h5py', h5py.__version__, 'with HDF5', h5py.version.hdf5_version)"
 
+      - name: Check the GPU engine in the package
+        run: |
+          $pkg = "$env:GITHUB_WORKSPACE\pkgstage\openEMS"
+          # machine code for every architecture, and PTX for later GPUs
+          $elf = & "$env:HIP_PATH\bin\cuobjdump.exe" --list-elf "$pkg\openEMS.dll"
+          $ptx = & "$env:HIP_PATH\bin\cuobjdump.exe" --list-ptx "$pkg\openEMS.dll"
+          $elf; $ptx
+          foreach ($a in @('75', '80', '86', '89', '90', '100', '120')) {
+            if (-not ($elf -match "\.sm_$a\.cubin")) { throw "no machine code for sm_$a" }
+          }
+          if (-not ($ptx -match "\.sm_120\.ptx")) { throw "no PTX for later GPUs" }
+          # the Python modules of the package use the HIP backend (no GPU on the runner: it reports no device)
+          $env:CSXCAD_INSTALL_PATH = $pkg
+          $env:OPENEMS_INSTALL_PATH = $pkg
+          Set-Location $env:TEMP
+          python "$env:GITHUB_WORKSPACE\openEMS\.github\packaging\check_gpu_engine.py" cuda
+          if ($LASTEXITCODE -ne 0) { throw "check_gpu_engine.py failed" }
+
       - name: Check the bundled tutorial resources
         run: |
           # The MRI phantoms have to be inside the wheel and inside the
@@ -667,7 +685,7 @@ jobs:
               https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i "$RUNNER_TEMP/cuda-keyring.deb"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cuda-hipcc-12-8 cuda-cudart-dev-12-8
+          sudo apt-get install -y --no-install-recommends cuda-hipcc-12-8 cuda-cudart-dev-12-8 cuda-cuobjdump-12-8
           echo "OPT=$RUNNER_TEMP/opt" >> $GITHUB_ENV
 
       - name: Build and install fparser, CSXCAD and openEMS
@@ -731,6 +749,18 @@ jobs:
           du -sh "$pkg" "$RUNNER_TEMP/$stem.tar.gz"
           echo "name=$stem" >> $GITHUB_OUTPUT
 
+      - name: Check the GPU code in the package
+        run: |
+          # machine code for every architecture, and PTX for later GPUs
+          lib=$(ls "$RUNNER_TEMP"/pkgstage/openEMS/lib/libopenEMS.so.*.* | head -1)
+          elf=$(/usr/local/cuda-12.8/bin/cuobjdump --list-elf "$lib")
+          ptx=$(/usr/local/cuda-12.8/bin/cuobjdump --list-ptx "$lib")
+          echo "$elf"; echo "$ptx"
+          for a in 75 80 86 89 90 100 120; do
+            echo "$elf" | grep -q "\.sm_$a\.cubin" || { echo "no machine code for sm_$a"; exit 1; }
+          done
+          echo "$ptx" | grep -q "\.sm_120\.ptx" || { echo "no PTX for later GPUs"; exit 1; }
+
       - name: Test the programs in a clean system
         run: |
           # every library resolves without the build dependencies, and openEMS starts
@@ -744,7 +774,7 @@ jobs:
         run: |
           # as README.txt describes it; no GPU here: GPU_Engine.py tests the reference backend
           docker run --rm -v "$RUNNER_TEMP/pkgstage:/pkg:ro" -v "$GITHUB_WORKSPACE/openEMS/python/Tests:/tests:ro" \
-                     python:3.13-slim bash -ec '
+                     -v "$GITHUB_WORKSPACE/openEMS/.github/packaging:/packaging:ro" python:3.13-slim bash -ec '
             python -m pip install -q numpy h5py matplotlib
             python -m pip install -q --no-index --find-links /pkg/openEMS/python openEMS
             export LD_LIBRARY_PATH=/pkg/openEMS/lib MPLBACKEND=Agg
@@ -752,7 +782,9 @@ jobs:
             python -c "import openEMS, h5py; print(\"openEMS\", openEMS.__version__, \"- h5py with HDF5\", h5py.version.hdf5_version)"
             python -m unittest discover -s /tests -p "test_*.py"
             python /tests/Coax.py
-            python /tests/GPU_Engine.py'
+            python /tests/GPU_Engine.py
+            # the package contains the HIP backend (no GPU on the runner: it reports no device)
+            python /packaging/check_gpu_engine.py cuda'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -896,6 +928,8 @@ jobs:
           $py "$GITHUB_WORKSPACE/openEMS/python/Tests/Coax.py"
           # the Metal backend if the runner has a Metal device, else the reference backend
           $py "$GITHUB_WORKSPACE/openEMS/python/Tests/GPU_Engine.py"
+          # the package contains the Metal backend
+          $py "$GITHUB_WORKSPACE/openEMS/.github/packaging/check_gpu_engine.py" metal
 
       - name: Restore Homebrew and the installation
         if: always()
