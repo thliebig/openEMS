@@ -3,7 +3,13 @@
 #            sources and run build-openems
 #   runtime: openEMS and its Python bindings, built in dev for all supported GPU
 #            architectures, with only the libraries they load; no build tools
-# Build context: the openEMS-Project directory (fparser, CSXCAD, openEMS, .git/modules).
+# Build context: this directory (the scripts). The openEMS sources of the runtime target:
+# - OPENEMS_SOURCE=github (default): openEMS from the GPU branch on GitHub, CSXCAD and fparser
+#   from upstream at the commits it is tested with,
+# - OPENEMS_SOURCE=local: a local openEMS-Project directory (fparser, CSXCAD, openEMS and
+#   .git/modules) as the named context openems-src,
+#   e.g. --build-context openems-src=../openEMS-Project
+# build.sh picks local if it finds an openEMS-Project tree next to this directory.
 #
 # No NVIDIA driver in the images: the NVIDIA Container Toolkit of the host mounts its driver
 # libraries and nvidia-smi (NVIDIA_DRIVER_CAPABILITIES), matching the host's kernel module.
@@ -13,6 +19,7 @@ ARG HIP_VERSION=12-8
 ARG BTOP_VERSION=v1.4.7
 # machine code for Turing to Blackwell, and PTX of the newest for later GPUs
 ARG HIP_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;100-real;120"
+ARG OPENEMS_SOURCE=github
 
 FROM ${UBUNTU} AS base
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -40,7 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && dpkg -i /tmp/cuda-keyring.deb && rm /tmp/cuda-keyring.deb \
     && apt-get update && apt-get install -y --no-install-recommends \
         cuda-hipcc-${HIP_VERSION} cuda-cudart-dev-${HIP_VERSION} \
-        build-essential cmake git rsync time \
+        build-essential cmake git rsync time bsdextrautils \
         libhdf5-dev libvtk9-dev libcgal-dev libtinyxml-dev libgmp-dev libmpfr-dev \
         libboost-program-options-dev libboost-thread-dev libboost-date-time-dev \
         libboost-serialization-dev libboost-chrono-dev libboost-system-dev \
@@ -56,29 +63,47 @@ RUN python3 -m venv /opt/openEMS/venv \
 RUN git config --system --add safe.directory '*'
 
 COPY --from=btop /out/usr/local/ /usr/local/
-COPY openEMS/docker/openems/build-openems openEMS/docker/openems/run-test openEMS/docker/openems/run-bench \
-     openEMS/docker/openems/collect-runtime-libs /opt/openEMS/tools/
-COPY openEMS/docker/openems/sitecustomize.py /opt/openEMS/tools/inject/
+COPY build-openems run-test run-bench collect-runtime-libs /opt/openEMS/tools/
+COPY sitecustomize.py /opt/openEMS/tools/inject/
 
 ENV PATH=/opt/openEMS/tools:/opt/openEMS/bin:/usr/local/cuda/bin:${PATH}
 WORKDIR /workspace
 
-# what the runtime image gets from apt: its libraries are not copied (see collect-runtime-libs)
+# what the runtime image gets from apt: its libraries are not copied (see collect-runtime-libs);
+# bsdextrautils: column
 FROM base AS runtime-base
-RUN apt-get update && apt-get install -y --no-install-recommends python3 \
+RUN apt-get update && apt-get install -y --no-install-recommends python3 bsdextrautils \
     && rm -rf /var/lib/apt/lists/*
 
 FROM runtime-base AS runtime-packages
 RUN dpkg-query -W -f='${Package}\n' > /runtime.packages
 
+# the openEMS sources in /src, see OPENEMS_SOURCE
+FROM base AS src-local
+COPY --from=openems-src fparser /src/fparser
+COPY --from=openems-src CSXCAD /src/CSXCAD
+COPY --from=openems-src openEMS /src/openEMS
+COPY --from=openems-src .git/modules /src/.git/modules
+
+FROM dev AS src-github
+ARG OPENEMS_REPO=SeanMollet/openEMS
+ARG OPENEMS_BRANCH=GPU_experiments
+ARG CSXCAD_COMMIT=a3af8b0e05acf9364408accfc3de109b3be87aa0
+ARG FPARSER_COMMIT=4b9c845b449b520c4b8c5f23c74cd04820084f81
+# the current commit of the branch: a new one invalidates the clone below
+ADD https://api.github.com/repos/${OPENEMS_REPO}/git/refs/heads/${OPENEMS_BRANCH} /tmp/openems-ref.json
+# full clones: the version numbers come from git describe
+RUN git clone --branch ${OPENEMS_BRANCH} https://github.com/${OPENEMS_REPO}.git /src/openEMS \
+    && git clone https://github.com/thliebig/CSXCAD.git /src/CSXCAD && git -C /src/CSXCAD checkout -q ${CSXCAD_COMMIT} \
+    && git clone https://github.com/thliebig/fparser.git /src/fparser && git -C /src/fparser checkout -q ${FPARSER_COMMIT}
+
+FROM src-${OPENEMS_SOURCE} AS src
+
 # openEMS for the runtime image: the libraries and programs, a venv with the bindings and
 # their runtime packages only, and the shared libraries they load that apt does not provide there
 FROM dev AS openems-build
 ARG HIP_ARCHITECTURES
-COPY fparser /src/fparser
-COPY CSXCAD /src/CSXCAD
-COPY openEMS /src/openEMS
-COPY .git/modules /src/.git/modules
+COPY --from=src /src /src
 RUN HIP_ARCH="${HIP_ARCHITECTURES}" BUILD_PYTHON=0 build-openems /src
 RUN set -e; P=/opt/openEMS; \
     for py in CSXCAD openEMS; do \

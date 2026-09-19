@@ -8,7 +8,7 @@ Two images from plain Ubuntu 24.04 (x86_64), one Dockerfile:
 - **runtime** (`seanmollet/openems`, ~380 MB): openEMS, nf2ff and the Python bindings,
   built in dev, with a venv of numpy, h5py and matplotlib. No compilers or headers: it
   has only the shared libraries openEMS loads (copied from the build, see
-  `collect-runtime-libs`) and Python from apt.
+  `collect-runtime-libs`) and Python and `column` from apt.
 
 The HIP engine is built for Turing to Blackwell (`75-real;80-real;86-real;89-real;
 90-real;100-real;120`, the build argument `HIP_ARCHITECTURES`), with PTX of the newest
@@ -23,14 +23,23 @@ it; older CUDA 12 drivers (525+) should through CUDA's minor version compatibili
 
 ## Build
 
-The build context is the openEMS-Project directory with the fparser, CSXCAD and openEMS
-submodules and their git data (`.git/modules`), which the version numbers come from:
+```
+./build.sh [dev|runtime|all] [openEMS-Project dir]
+```
 
-```
-cd openEMS-Project
-docker build -f openEMS/docker/openems/Dockerfile --target dev     -t seanmollet/openems-dev .
-docker build -f openEMS/docker/openems/Dockerfile --target runtime -t seanmollet/openems .
-```
+The runtime image builds openEMS from:
+
+1. the given openEMS-Project directory (fparser, CSXCAD and openEMS with their git data
+   in `.git/modules`, which the version numbers come from),
+2. else an openEMS-Project tree next to this directory (`../openEMS-Project`, or the tree
+   this directory is in),
+3. else GitHub: openEMS from the `GPU_experiments` branch of SeanMollet/openEMS, CSXCAD
+   and fparser from upstream at the tested commits (build arguments `OPENEMS_REPO`,
+   `OPENEMS_BRANCH`, `CSXCAD_COMMIT`, `FPARSER_COMMIT`). A new commit on the branch is
+   picked up at the next build.
+
+Without build.sh, `docker build --target runtime .` builds from GitHub, and
+`--build-arg OPENEMS_SOURCE=local --build-context openems-src=<dir>` from a local tree.
 
 ## Use
 
