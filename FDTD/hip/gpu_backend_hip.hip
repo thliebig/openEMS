@@ -87,6 +87,30 @@ __global__ void update_currents(float* __restrict__ curr, const float* __restric
 	curr[2*sn+i] = c;
 }
 
+// Field energy: the squared voltages and currents of the nodes below L, summed along x
+// in float, one thread per (y,z) line. The host sums the lines in double.
+__global__ void energy_lines(const float* __restrict__ volt, const float* __restrict__ curr, float2* partial,
+                             HIP_GridDim N, HIP_GridDim L)
+{
+	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
+	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
+	if (z>=L.nz || y>=L.ny)
+		return;
+	const unsigned int sn = N.nx*N.ny*N.nz;
+	float E = 0, H = 0;
+	for (unsigned int x=0; x<L.nx; ++x)
+	{
+		const unsigned int i = nijk(N, 0, x, y, z);
+		E += volt[i]*volt[i];
+		E += volt[sn+i]*volt[sn+i];
+		E += volt[2*sn+i]*volt[2*sn+i];
+		H += curr[i]*curr[i];
+		H += curr[sn+i]*curr[sn+i];
+		H += curr[2*sn+i]*curr[2*sn+i];
+	}
+	partial[y*L.nz + z] = make_float2(E, H);
+}
+
 /***************************** helpers *****************************/
 
 void HIP_Check(hipError_t err, const char* what)
@@ -115,6 +139,8 @@ GPU_Backend_HIP::Impl::Impl()
 	dim.nx = dim.ny = dim.nz = 0;
 	numCells = 0;
 	volt = curr = vv = vi = ii = iv = NULL;
+	energy = NULL;
+	energy_count = 0;
 }
 
 GPU_Backend_HIP::Impl::~Impl()
@@ -299,6 +325,32 @@ void GPU_Backend_HIP::UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr
 void GPU_Backend_HIP::Synchronize()
 {
 	d->Flush();
+}
+
+bool GPU_Backend_HIP::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)
+{
+	E_energy = H_energy = 0;
+	HIP_GridDim L = {numNodes[0], numNodes[1], numNodes[2]};
+	if ((L.nx>d->dim.nx) || (L.ny>d->dim.ny) || (L.nz>d->dim.nz))
+		return false;
+	const size_t count = (size_t)L.ny*L.nz;
+	if (L.nx==0 || count==0)
+		return true;
+	if (d->energy_count<count)
+	{
+		d->energy = d->Alloc<float2>(count);
+		d->energy_count = count;
+		d->energy_host.resize(count);   // small, not pinned
+	}
+	HIP_Launch(d, "energy_lines", energy_lines, L.nz, L.ny, 1, (const float*)d->volt, (const float*)d->curr, d->energy, d->dim, L);
+	HIP_Check(hipMemcpyAsync(d->energy_host.data(), d->energy, count*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "energy download");
+	d->Flush();
+	for (size_t k=0; k<count; ++k)
+	{
+		E_energy += d->energy_host[k].x;
+		H_energy += d->energy_host[k].y;
+	}
+	return true;
 }
 
 // all HIP extensions, see hip_internal.h
