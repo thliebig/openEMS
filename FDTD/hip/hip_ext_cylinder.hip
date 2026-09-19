@@ -18,7 +18,9 @@
 #include "hip_internal.h"
 #include "FDTD/engine.h"
 #include "FDTD/extensions/operator_ext_cylinder.h"
-#include "FDTD/extensions/engine_ext_cylinder.h"
+#include "FDTD/extensions/engine_extension.h"
+// not engine_ext_cylinder.h: it includes Boost.Thread (through operator_cylinder.h), whose
+// headers hipcc cannot compile with MSVC and Boost 1.91 (boost/exception/detail/type_info.hpp)
 
 // Closed alpha direction and r=0 axis of cylindrical meshes, see Engine_Ext_Cylinder.
 // The mesh directions are (r, alpha, z) = (x, y, z) of the grid.
@@ -121,8 +123,7 @@ void HIP_Ext_Cylinder::DoPostCurrentUpdates()
 GPU_Extension* HIP_CreateExt_Cylinder(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng)
 {
 	UNUSED(eng);
-	if (!dynamic_cast<Engine_Ext_Cylinder*>(eng_ext))
-		return NULL;
+	// the engine extension of Operator_Ext_Cylinder is always an Engine_Ext_Cylinder
 	Operator_Ext_Cylinder* op_ext = dynamic_cast<Operator_Ext_Cylinder*>(eng_ext->GetOperatorExtension());
 	if (!op_ext)
 		return NULL;
