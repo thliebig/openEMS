@@ -73,19 +73,24 @@ kernel void upml_post(device float* field       [[buffer(0)]],
 }
 )MSL";
 
+// The regions of all UPML extensions of a grid are disjoint: the dispatches of one
+// hook form a group, which can run concurrently (see GPU_Backend_Metal::Impl::Dispatch()).
+// The UPML extensions have the same priority, so they are called one after the other.
+static const char UPML_GROUP[4] = {0, 0, 0, 0};
+
 class Metal_Ext_UPML : public GPU_Extension
 {
 public:
 	Metal_Ext_UPML(GPU_Backend_Metal::Impl* impl, Operator_Ext_UPML* op_ext);
 
-	virtual void DoPreVoltageUpdates()  {Pre(d->volt, m_VoltFlux, m_VV, m_VVFO);}
-	virtual void DoPostVoltageUpdates() {Post(d->volt, m_VoltFlux, m_VVFN);}
-	virtual void DoPreCurrentUpdates()  {Pre(d->curr, m_CurrFlux, m_II, m_IIFO);}
-	virtual void DoPostCurrentUpdates() {Post(d->curr, m_CurrFlux, m_IIFN);}
+	virtual void DoPreVoltageUpdates()  {Pre(d->volt, m_VoltFlux, m_VV, m_VVFO, &UPML_GROUP[0]);}
+	virtual void DoPostVoltageUpdates() {Post(d->volt, m_VoltFlux, m_VVFN, &UPML_GROUP[1]);}
+	virtual void DoPreCurrentUpdates()  {Pre(d->curr, m_CurrFlux, m_II, m_IIFO, &UPML_GROUP[2]);}
+	virtual void DoPostCurrentUpdates() {Post(d->curr, m_CurrFlux, m_IIFN, &UPML_GROUP[3]);}
 
 protected:
-	void Pre(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_old, id<MTLBuffer> c_fo);
-	void Post(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_fn);
+	void Pre(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_old, id<MTLBuffer> c_fo, const void* group);
+	void Post(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_fn, const void* group);
 	void SetRegion(id<MTLComputeCommandEncoder> enc);
 
 	GPU_Backend_Metal::Impl* d;
@@ -131,7 +136,7 @@ void Metal_Ext_UPML::SetRegion(id<MTLComputeCommandEncoder> enc)
 	[enc setBytes:&m_Region length:sizeof(m_Region) atIndex:5];
 }
 
-void Metal_Ext_UPML::Pre(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_old, id<MTLBuffer> c_fo)
+void Metal_Ext_UPML::Pre(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_old, id<MTLBuffer> c_fo, const void* group)
 {
 	id<MTLComputePipelineState> pso = d->Pipeline(UPML_SOURCE, "upml_pre");
 	id<MTLComputeCommandEncoder> enc = d->Encoder();
@@ -141,10 +146,10 @@ void Metal_Ext_UPML::Pre(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> 
 	[enc setBuffer:c_old offset:0 atIndex:2];
 	[enc setBuffer:c_fo offset:0 atIndex:3];
 	SetRegion(enc);
-	d->Dispatch(pso, m_Region.lz, m_Region.ly, m_Region.lx);
+	d->Dispatch(pso, m_Region.lz, m_Region.ly, m_Region.lx, group);
 }
 
-void Metal_Ext_UPML::Post(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_fn)
+void Metal_Ext_UPML::Post(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer> c_fn, const void* group)
 {
 	id<MTLComputePipelineState> pso = d->Pipeline(UPML_SOURCE, "upml_post");
 	id<MTLComputeCommandEncoder> enc = d->Encoder();
@@ -153,7 +158,7 @@ void Metal_Ext_UPML::Post(id<MTLBuffer> field, id<MTLBuffer> flux, id<MTLBuffer>
 	[enc setBuffer:flux offset:0 atIndex:1];
 	[enc setBuffer:c_fn offset:0 atIndex:2];
 	SetRegion(enc);
-	d->Dispatch(pso, m_Region.lz, m_Region.ly, m_Region.lx);
+	d->Dispatch(pso, m_Region.lz, m_Region.ly, m_Region.lx, group);
 }
 
 GPU_Extension* Metal_CreateExt_UPML(GPU_Backend_Metal::Impl* d, Engine_Extension* eng_ext, Engine* eng)

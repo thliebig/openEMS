@@ -62,6 +62,9 @@ struct Metal_Context
 
 	std::map<std::string, id<MTLComputePipelineState>> pipelines;
 
+	//! group of the last dispatch, see GPU_Backend_Metal::Impl::Dispatch()
+	const void* group;
+
 	//! Compile (once) and return the pipeline of kernel \a function in \a source (without METAL_COMMON_SOURCE)
 	id<MTLComputePipelineState> Pipeline(const char* source, const char* function);
 
@@ -94,7 +97,12 @@ struct GPU_Backend_Metal::Impl
 	id<MTLBuffer> NewBuffer(size_t bytes, const void* data=NULL);
 
 	//! Dispatch \a pso with one thread per (i,j,k), i fastest; the pipeline and its arguments must be set on Encoder()
-	void Dispatch(id<MTLComputePipelineState> pso, size_t ni, size_t nj=1, size_t nk=1);
+	/*!
+	  A dispatch sees the results of all previous dispatches, unless it and the
+	  previous dispatch belong to the same \a group: dispatches of one group may run
+	  concurrently, they must not access the same memory (e.g. the disjoint UPML regions).
+	  */
+	void Dispatch(id<MTLComputePipelineState> pso, size_t ni, size_t nj=1, size_t nk=1, const void* group=NULL);
 
 	//! Bind the grid dimension to \a index
 	void SetGridDim(unsigned int index);

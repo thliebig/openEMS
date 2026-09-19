@@ -229,8 +229,9 @@ id<MTLComputeCommandEncoder> Metal_Context::Encoder()
 	@autoreleasepool
 	{
 		cmd = [queue commandBuffer];
-		// serial dispatch: every kernel sees the results of the previous one
-		enc = [cmd computeCommandEncoder];
+		// concurrent dispatch with explicit barriers, see GPU_Backend_Metal::Impl::Dispatch()
+		enc = [cmd computeCommandEncoderWithDispatchType:MTLDispatchTypeConcurrent];
+		group = NULL;
 	}
 	return enc;
 }
@@ -262,14 +263,18 @@ id<MTLBuffer> GPU_Backend_Metal::Impl::NewBuffer(size_t bytes, const void* data)
 	return buf;
 }
 
-void GPU_Backend_Metal::Impl::Dispatch(id<MTLComputePipelineState> pso, size_t ni, size_t nj, size_t nk)
+void GPU_Backend_Metal::Impl::Dispatch(id<MTLComputePipelineState> pso, size_t ni, size_t nj, size_t nk, const void* group)
 {
 	if (ni==0 || nj==0 || nk==0)
 		return;
+	id<MTLComputeCommandEncoder> enc = Encoder();
+	if ((group==NULL) || (group!=ctx->group))
+		[enc memoryBarrierWithScope:MTLBarrierScopeBuffers];
+	ctx->group = group;
 	NSUInteger w = pso.threadExecutionWidth;
 	NSUInteger h = std::max<NSUInteger>(1, std::min<NSUInteger>(4, pso.maxTotalThreadsPerThreadgroup / w));
-	MTLSize group = (nj>1) ? MTLSizeMake(w, h, 1) : MTLSizeMake(std::min<NSUInteger>(pso.maxTotalThreadsPerThreadgroup, 256), 1, 1);
-	[Encoder() dispatchThreads:MTLSizeMake(ni, nj, nk) threadsPerThreadgroup:group];
+	MTLSize size = (nj>1) ? MTLSizeMake(w, h, 1) : MTLSizeMake(std::min<NSUInteger>(pso.maxTotalThreadsPerThreadgroup, 256), 1, 1);
+	[enc dispatchThreads:MTLSizeMake(ni, nj, nk) threadsPerThreadgroup:size];
 }
 
 void GPU_Backend_Metal::Impl::SetGridDim(unsigned int index)
