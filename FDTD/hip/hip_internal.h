@@ -80,10 +80,12 @@ struct GPU_Backend_HIP::Impl
 		T* ptr = NULL;
 		HIP_Check(hipMalloc(&ptr, std::max(count, (size_t)1)*sizeof(T)), "hipMalloc");
 		m_Allocations.push_back(ptr);
+		// on the work stream: it does not synchronize with the legacy default stream
 		if (host && count)
-			HIP_Check(hipMemcpy(ptr, host, count*sizeof(T), hipMemcpyHostToDevice), "hipMemcpy");
+			HIP_Check(hipMemcpyAsync(ptr, host, count*sizeof(T), hipMemcpyHostToDevice, Stream()), "hipMemcpy");
 		else
-			HIP_Check(hipMemset(ptr, 0, std::max(count, (size_t)1)*sizeof(T)), "hipMemset");
+			HIP_Check(hipMemsetAsync(ptr, 0, std::max(count, (size_t)1)*sizeof(T), Stream()), "hipMemset");
+		Flush();
 		return ptr;
 	}
 

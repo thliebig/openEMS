@@ -28,6 +28,7 @@ if(ENABLE_HIP)
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_absorbing_bc.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_steadystate.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_cylinder.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_multigrid.cu
   )
 endif()
 

@@ -326,10 +326,3 @@ GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engin
 	}
 	return NULL;
 }
-
-GPU_MultiGridLink* GPU_Backend_HIP::CreateMultiGridLink(GPU_Backend* sub_grid, const GPU_MultiGridInterpolation& interpol)
-{
-	UNUSED(sub_grid);
-	UNUSED(interpol);
-	return NULL;
-}
