@@ -32,6 +32,9 @@ public:
 
 	virtual int Process();
 
+	//! Close the dump file, so other readers see all data
+	virtual void PostProcess();
+
 	//! Set the length of the filename timestep pad filled with zeros (default is 8)
 	void SetPadLength(int val) {pad_length=val;};
 

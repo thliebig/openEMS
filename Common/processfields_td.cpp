@@ -44,7 +44,18 @@ void ProcessFieldsTD::InitProcess()
 		m_Vtk_Dump_File->SetHeader(string("openEMS TD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
 
 	if (m_HDF5_Dump_File)
+	{
 		m_HDF5_Dump_File->SetCurrentGroup("/FieldData/TD");
+		// a dataset every few timesteps: keep the file open, see PostProcess()
+		m_HDF5_Dump_File->SetKeepOpen(true);
+	}
+}
+
+void ProcessFieldsTD::PostProcess()
+{
+	ProcessFields::PostProcess();
+	if (m_HDF5_Dump_File)
+		m_HDF5_Dump_File->Close();
 }
 
 int ProcessFieldsTD::Process()
