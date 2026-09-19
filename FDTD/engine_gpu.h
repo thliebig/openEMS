@@ -19,6 +19,7 @@
 #define ENGINE_GPU_H
 
 #include "engine.h"
+#include "gpu_backend.h"
 
 #include <string>
 #include <unordered_map>
@@ -95,6 +96,14 @@ public:
 	bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	//! Wait until snapshot \a slot can be read, may be called from another thread
 	void WaitSnapshot(unsigned int slot) const;
+	//! Whether the snapshots evaluate the dumped nodes on the device (see AddSnapshotGather()), instead of copying the fields
+	bool CanSnapshotGather() const;
+	//! Evaluate the dump entries \a entries of the E (\a h_field false) or H field at every snapshot
+	/*!
+	  The snapshot then holds their values from \a offset on, in the voltages (E) or currents (H)
+	  returned by SnapshotFields(). Only before the first snapshot, returns false otherwise.
+	  */
+	bool AddSnapshotGather(bool h_field, const std::vector<GPU_GatherEntry>& entries, size_t& offset);
 
 	//! Field values, read from the device if the host mirror is out of date (see class description)
 	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
@@ -113,6 +122,9 @@ protected:
 	GPU_Backend* m_Backend;
 	bool m_FieldsOnHost;
 	bool m_SharedMemory; //!< the host mirror is the device memory
+	bool m_SnapshotsUsed; //!< SnapshotFields() succeeded once
+	std::vector<GPU_GatherEntry> m_SnapshotGather[2];   //!< dump entries of the snapshots: E, H (see AddSnapshotGather())
+	bool m_SnapshotGatherSet;                           //!< m_SnapshotGather was passed to the backend
 
 	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
 	std::vector<GPU_Extension*> m_GPU_exts;

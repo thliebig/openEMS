@@ -271,26 +271,39 @@ namespace
 //! Precomputed GetRawInterpolatedField()/GetRawInterpolatedDualField() (type 0) of the
 //! nodes of a dump, for engines with the fields in the basic engine layout (GPU host mirror).
 //! Every node component is one of a few forms, evaluated with the same operations as there.
+//! The entries can also be evaluated on the device at every snapshot (see
+//! Engine_GPU::AddSnapshotGather()), a snapshot then holds the dumped values.
 class Field_Gather_FDTD : public Engine_Field_Gather
 {
 public:
-	enum Form { ZERO, RAW, LERP, AVG4 };
 	//! one component of a node: raw(k) = value(idx[k])/delta[k] (0 if delta is 0), see GetRawField()
-	struct Entry
-	{
-		Form form;
-		unsigned int idx[4];
-		double delta[4];
-		double rel;      //!< LERP: raw(0)*(1-rel) + raw(1)*rel
-	};
+	typedef GPU_GatherEntry Entry;
+	typedef GPU_GatherEntry G;
 
 	Field_Gather_FDTD(const Engine_GPU* eng, bool h_field, unsigned int nj, unsigned int nk)
-		: m_Eng(eng), m_H(h_field), m_nj(nj), m_nk(nk) {}
+		: m_Eng(eng), m_H(h_field), m_nj(nj), m_nk(nk), m_Evaluated(false), m_Offset(0) {}
 
 	std::vector<Entry> entries;   //!< [line][k][n]
 
+	bool HField() const {return m_H;}
+	//! Snapshots hold the evaluated entries from \a offset on
+	void SetSnapshotEvaluated(size_t offset) {m_Evaluated = true; m_Offset = offset;}
+
 	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const
 	{
+		if (src && m_Evaluated)
+		{
+			for (size_t l=line_start; l<line_stop; ++l)
+			{
+				const float* v = src + m_Offset + l*m_nk*3;
+				const unsigned int i = l/m_nj;
+				const unsigned int j = l%m_nj;
+				for (unsigned int k=0; k<m_nk; ++k)
+					for (int n=0; n<3; ++n)
+						field(n, i, j, k) = v[k*3 + n];
+			}
+			return;
+		}
 		const float* f = src ? src : (m_H ? m_Eng->HostCurrents().data() : m_Eng->HostVoltages().data());
 		for (size_t l=line_start; l<line_stop; ++l)
 		{
@@ -303,15 +316,15 @@ public:
 					double out = 0;
 					switch (e.form)
 					{
-					case ZERO:
+					case G::ZERO:
 						break;
-					case RAW:
+					case G::RAW:
 						out = Raw(f, e, 0);
 						break;
-					case LERP:
+					case G::LERP:
 						out = Raw(f, e, 0)*(1.0-e.rel) + Raw(f, e, 1)*e.rel;
 						break;
-					case AVG4:
+					case G::AVG4:
 						out = Raw(f, e, 0);
 						out+= Raw(f, e, 1);
 						out+= Raw(f, e, 2);
@@ -336,6 +349,8 @@ protected:
 	const Engine_GPU* m_Eng;
 	bool m_H;
 	unsigned int m_nj, m_nk;
+	bool m_Evaluated;   //!< a snapshot holds the evaluated entries, see SetSnapshotEvaluated()
+	size_t m_Offset;
 };
 }
 
@@ -354,8 +369,8 @@ Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, cons
 	auto index = [&](int n, const unsigned int* p) -> unsigned int {return ((n*N[0] + p[0])*N[1] + p[1])*N[2] + p[2];};
 	auto delta = [&](int n, const unsigned int* p) -> double {return m_Op->GetEdgeLength(n, p, h_field);};
 
-	typedef Field_Gather_FDTD G;
-	G* gather = new G(eng_gpu, h_field, numLines[1], numLines[2]);
+	typedef GPU_GatherEntry G;
+	Field_Gather_FDTD* gather = new Field_Gather_FDTD(eng_gpu, h_field, numLines[1], numLines[2]);
 	gather->entries.resize((size_t)numLines[0]*numLines[1]*numLines[2]*3);
 	size_t e_idx = 0;
 	for (unsigned int i=0; i<numLines[0]; ++i)
@@ -365,7 +380,7 @@ Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, cons
 				const unsigned int pos[3] = {posLines[0][i], posLines[1][j], posLines[2][k]};
 				for (int n=0; n<3; ++n)
 				{
-					G::Entry& e = gather->entries[e_idx++];
+					G& e = gather->entries[e_idx++];
 					e.form = G::ZERO;
 					e.rel = 0;
 					for (int m=0; m<4; ++m) {e.idx[m] = 0; e.delta[m] = 0;}
@@ -459,6 +474,19 @@ bool Engine_Interface_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &v
 {
 	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
 	return eng_gpu && eng_gpu->SnapshotFields(slot, volt, curr);
+}
+
+bool Engine_Interface_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gather)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	if (!eng_gpu || !eng_gpu->CanSnapshotGather())
+		return true;   // snapshots of the fields, if any
+	Field_Gather_FDTD* g = dynamic_cast<Field_Gather_FDTD*>(gather);
+	size_t offset = 0;
+	if (!g || !eng_gpu->AddSnapshotGather(g->HField(), g->entries, offset))
+		return false;
+	g->SetSnapshotEvaluated(offset);
+	return true;
 }
 
 void Engine_Interface_FDTD::WaitFieldSnapshot(unsigned int slot) const

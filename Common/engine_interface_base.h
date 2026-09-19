@@ -34,7 +34,7 @@ public:
 	virtual ~Engine_Field_Gather() {}
 	//! Evaluate the (x,y) lines [line_start, line_stop) of the dump (line i*numLines[1]+j) into \a field, thread-safe
 	/*!
-	  \param src The voltages (E) or currents (H) to read in the engine layout, e.g. a snapshot (see Engine_Interface_Base::TakeFieldSnapshot()), NULL: the current fields
+	  \param src The voltages (E) or currents (H) of a snapshot (see Engine_Interface_Base::TakeFieldSnapshot()), NULL: the current fields
 	  */
 	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const = 0;
 };
@@ -75,6 +75,8 @@ public:
 	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
 	//! Wait until snapshot \a slot can be read, may be called from another thread
 	virtual void WaitFieldSnapshot(unsigned int slot) const {UNUSED(slot);}
+	//! Prepare \a gather to read snapshots (before the first one), e.g. to evaluate it on the device at every snapshot. Returns false if it cannot read them.
+	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather) {UNUSED(gather); return true;}
 	//! The engine the fields belong to, identifies the snapshots
 	virtual const void* GetEngineID() const {return NULL;}
 

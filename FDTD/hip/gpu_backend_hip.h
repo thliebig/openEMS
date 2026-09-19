@@ -27,6 +27,8 @@
   arrays are page-locked on first use for full transfer speed). All kernels of
   the grids of a simulation run in order on one HIP stream (see
   NewSubGridBackend()), which is only synchronized when the host needs the fields.
+  The field dumps are evaluated on the device at a snapshot and downloaded on a
+  second stream, overlapping the work (see SnapshotFields()).
 
   This header is plain C++, the HIP state is kept in Impl (see hip_internal.h).
   */
@@ -51,6 +53,10 @@ public:
 
 	virtual bool DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst);
 	virtual void Synchronize();
+	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
+	virtual void WaitSnapshot(unsigned int slot);
+	virtual bool CanSnapshotGather() const {return true;}
+	virtual bool SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries);
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
 
 	virtual GPU_Backend* NewSubGridBackend();

@@ -16,6 +16,7 @@
 */
 
 #include <algorithm>
+#include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -292,6 +293,45 @@ __global__ void __launch_bounds__(FUSED_TZ*FUSED_TY) update_fused(
 	}
 }
 
+// the dumped values of a snapshot: entries [0, nv) from the voltages, [nv, n) from the currents
+// (see GPU_GatherEntry). Double precision without FMA contraction (--fmad=false), as on the host.
+__device__ inline double gather_raw(const float* f, const GPU_GatherEntry& e, int k)
+{
+	if (e.delta[k])
+		return (double)f[e.idx[k]] / e.delta[k];
+	return 0.0;
+}
+
+__global__ void gather_dumps(const float* __restrict__ volt, const float* __restrict__ curr, const GPU_GatherEntry* __restrict__ entries,
+                             unsigned int nv, unsigned int n, float* __restrict__ out)
+{
+	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	if (i>=n)
+		return;
+	const GPU_GatherEntry& e = entries[i];
+	const float* f = (i<nv) ? volt : curr;
+	double v = 0;
+	switch (e.form)
+	{
+	case GPU_GatherEntry::RAW:
+		v = gather_raw(f, e, 0);
+		break;
+	case GPU_GatherEntry::LERP:
+		v = gather_raw(f, e, 0)*(1.0-e.rel) + gather_raw(f, e, 1)*e.rel;
+		break;
+	case GPU_GatherEntry::AVG4:
+		v = gather_raw(f, e, 0);
+		v+= gather_raw(f, e, 1);
+		v+= gather_raw(f, e, 2);
+		v+= gather_raw(f, e, 3);
+		v/= 4;
+		break;
+	default:
+		break;
+	}
+	out[i] = v;
+}
+
 // the currents of the given main nodes again (update_currents), after the voltage extensions
 // changed voltages they read (see GPU_Backend_HIP::Impl::fixup)
 __global__ void update_currents_nodes(const float* __restrict__ curr_in, float* __restrict__ curr_out, const float* __restrict__ volt,
@@ -411,6 +451,7 @@ HIP_Context::HIP_Context()
 {
 	device = 0;
 	stream = 0;
+	copy_stream = 0;
 }
 
 HIP_Context::~HIP_Context()
@@ -419,6 +460,11 @@ HIP_Context::~HIP_Context()
 	{
 		hipStreamSynchronize(stream);
 		hipStreamDestroy(stream);
+	}
+	if (copy_stream)
+	{
+		hipStreamSynchronize(copy_stream);
+		hipStreamDestroy(copy_stream);
 	}
 }
 
@@ -438,12 +484,27 @@ GPU_Backend_HIP::Impl::Impl()
 	volt_next = curr_next = NULL;
 	fixup = NULL;
 	fixup_count = 0;
+	snap_entries = NULL;
+	snap_nv = snap_n = 0;
+	snap_dev = NULL;
+	snap_host[0] = snap_host[1] = NULL;
+	snap_last = -1;
+	HIP_Check(hipEventCreateWithFlags(&snap_evaluated, hipEventDisableTiming), "hipEventCreate");
+	HIP_Check(hipEventCreateWithFlags(&snap_done[0], hipEventDisableTiming), "hipEventCreate");
+	HIP_Check(hipEventCreateWithFlags(&snap_done[1], hipEventDisableTiming), "hipEventCreate");
 }
 
 GPU_Backend_HIP::Impl::~Impl()
 {
 	if (ctx)
+	{
 		hipStreamSynchronize(ctx->stream);
+		hipStreamSynchronize(ctx->copy_stream);
+	}
+	FreeSnapshots();
+	hipEventDestroy(snap_evaluated);
+	hipEventDestroy(snap_done[0]);
+	hipEventDestroy(snap_done[1]);
 	for (size_t n=0; n<m_Allocations.size(); ++n)
 		hipFree(m_Allocations.at(n));
 	for (std::set<void*>::iterator it=m_Pinned.begin(); it!=m_Pinned.end(); ++it)
@@ -544,6 +605,18 @@ void GPU_Backend_HIP::Impl::MainRange(HIP_GridDim& B, HIP_GridDim& E, unsigned i
 	}
 }
 
+void GPU_Backend_HIP::Impl::FreeSnapshots()
+{
+	hipFree(snap_entries);
+	hipFree(snap_dev);
+	hipFreeHost(snap_host[0]);
+	hipFreeHost(snap_host[1]);
+	snap_entries = NULL;
+	snap_dev = snap_host[0] = snap_host[1] = NULL;
+	snap_nv = snap_n = 0;
+	snap_last = -1;
+}
+
 void GPU_Backend_HIP::Impl::Flush()
 {
 	HIP_Check(hipStreamSynchronize(Stream()), "stream synchronization");
@@ -596,6 +669,7 @@ GPU_Backend_HIP* GPU_Backend_HIP::New()
 	HIP_Check(hipGetDeviceProperties(&prop, impl->ctx->device), "hipGetDeviceProperties");
 	impl->ctx->name = prop.name;
 	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->stream, hipStreamNonBlocking), "hipStreamCreate");
+	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->copy_stream, hipStreamNonBlocking), "hipStreamCreate");
 	return new GPU_Backend_HIP(impl);
 }
 
@@ -800,6 +874,61 @@ bool GPU_Backend_HIP::DownloadRange(bool currents, size_t offset, size_t count, 
 void GPU_Backend_HIP::Synchronize()
 {
 	d->Flush();
+}
+
+bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries)
+{
+	HIP_Check(hipStreamSynchronize(d->ctx->copy_stream), "stream synchronization");
+	d->FreeSnapshots();
+	const size_t n = volt_entries.size() + curr_entries.size();
+	if ((n==0) || (n>UINT_MAX))
+		return false;
+	// not fatal: without snapshots the dumps read the fields from the host mirror
+	if ((hipMalloc(&d->snap_entries, n*sizeof(GPU_GatherEntry))!=hipSuccess) || (hipMalloc(&d->snap_dev, n*sizeof(float))!=hipSuccess)
+	    || (hipMallocHost(&d->snap_host[0], n*sizeof(float))!=hipSuccess) || (hipMallocHost(&d->snap_host[1], n*sizeof(float))!=hipSuccess))
+	{
+		hipGetLastError();
+		d->FreeSnapshots();
+		std::cerr << "GPU_Backend_HIP: not enough memory for field snapshots, the field dumps wait for the device" << std::endl;
+		return false;
+	}
+	d->snap_nv = volt_entries.size();
+	d->snap_n = n;
+	HIP_Check(hipMemcpy(d->snap_entries, volt_entries.data(), volt_entries.size()*sizeof(GPU_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
+	HIP_Check(hipMemcpy(d->snap_entries + d->snap_nv, curr_entries.data(), curr_entries.size()*sizeof(GPU_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
+	return true;
+}
+
+bool GPU_Backend_HIP::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
+{
+	if ((slot>1) || !d->snap_n)
+		return false;
+	// the dumped values on the work stream, once the last snapshot was downloaded from snap_dev
+	if (d->snap_last>=0)
+		HIP_Check(hipStreamWaitEvent(d->Stream(), d->snap_done[d->snap_last], 0), "hipStreamWaitEvent");
+	HIP_Launch(d, "gather_dumps", gather_dumps, d->snap_n, 1, 1, (const float*)d->volt, (const float*)d->curr,
+	            (const GPU_GatherEntry*)d->snap_entries, d->snap_nv, d->snap_n, d->snap_dev);
+	HIP_Check(hipEventRecord(d->snap_evaluated, d->Stream()), "hipEventRecord");
+	// the download on the copy stream, while the work stream continues with the next timesteps
+	hipStream_t copy = d->ctx->copy_stream;
+	HIP_Check(hipStreamWaitEvent(copy, d->snap_evaluated, 0), "hipStreamWaitEvent");
+	HIP_Check(hipMemcpyAsync(d->snap_host[slot], d->snap_dev, d->snap_n*sizeof(float), hipMemcpyDeviceToHost, copy), "snapshot download");
+	HIP_Check(hipEventRecord(d->snap_done[slot], copy), "hipEventRecord");
+	d->snap_last = slot;
+	volt = d->snap_host[slot];
+	curr = d->snap_host[slot] + d->snap_nv;
+	return true;
+}
+
+void GPU_Backend_HIP::WaitSnapshot(unsigned int slot)
+{
+	// called on the dump thread: report errors instead of throwing
+	if (slot<2)
+	{
+		const hipError_t err = hipEventSynchronize(d->snap_done[slot]);
+		if (err!=hipSuccess)
+			std::cerr << "GPU_Backend_HIP: field snapshot failed: " << hipGetErrorString(err) << std::endl;
+	}
 }
 
 bool GPU_Backend_HIP::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)

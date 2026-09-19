@@ -161,6 +161,7 @@ ProcessFieldsTD::ProcessFieldsTD(Engine_Interface_Base* eng_if) : ProcessFields(
 	pad_length = 8;
 	m_AsyncFailed = false;
 	m_AsyncUsed = false;
+	m_Snapshots = false;
 }
 
 ProcessFieldsTD::~ProcessFieldsTD()
@@ -203,9 +204,17 @@ bool ProcessFieldsTD::WriteHDF5(unsigned int ts, float time, ArrayLib::ArrayNIJK
 
 void ProcessFieldsTD::InitProcess()
 {
+	m_Snapshots = false;
 	if (Enabled==false) return;
 
 	ProcessFields::InitProcess();
+
+	// before the first snapshot, e.g. to evaluate the dumped nodes on the device
+	if (m_fileType==HDF5_FILETYPE)
+	{
+		GetGather();
+		m_Snapshots = m_Gather && m_Eng_Interface->PrepareSnapshotGather(m_Gather);
+	}
 
 	if (m_Vtk_Dump_File)
 		m_Vtk_Dump_File->SetHeader(string("openEMS TD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
@@ -246,7 +255,7 @@ int ProcessFieldsTD::Process()
 		int slot = -1;
 		const float *volt = NULL, *curr = NULL;
 		const float* src = NULL;
-		if (GetGather() && AsyncDumps::Get().Snapshot(m_Eng_Interface, ts, slot, volt, curr))
+		if (m_Snapshots && AsyncDumps::Get().Snapshot(m_Eng_Interface, ts, slot, volt, curr))
 			src = (m_DumpType==H_FIELD_DUMP) ? curr : volt;
 		ArrayLib::ArrayNIJK<float>* field = NULL;
 		if (!src)

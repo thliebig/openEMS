@@ -43,6 +43,8 @@ Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend, GPU_Backe
 	m_Backend = NULL;
 	m_FieldsOnHost = true;
 	m_SharedMemory = false;
+	m_SnapshotsUsed = false;
+	m_SnapshotGatherSet = false;
 	m_StaleVolt.stale = m_StaleCurr.stale = false;
 	m_StaleVolt.full_this_batch = m_StaleCurr.full_this_batch = false;
 	m_StaleVolt.full_last_batch = m_StaleCurr.full_last_batch = false;
@@ -201,21 +203,49 @@ void Engine_GPU::MarkStale(StaleField& field)
 
 bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
 {
-	// only where a copy on the device is cheaper than reading the fields (shared memory)
-	if (m_FieldsOnHost || !m_SharedMemory)
+	// not with the fields on the host (host fallback of extensions): the dumps read them there
+	if (m_FieldsOnHost)
 		return false;
-	// A snapshot has a fixed cost (a separate command buffer, the background thread), which
+	// A snapshot has a fixed cost (a separate command buffer or stream, the background thread), which
 	// small grids with short batches between dumps do not recover (e.g. 69k cells dumped
 	// every few timesteps: twice the engine time). The copy itself scales with the grid,
 	// like the timesteps between the dumps.
 	if ((size_t)numLines[0]*numLines[1]*numLines[2] < 512*1024)
 		return false;
-	return m_Backend->SnapshotFields(slot, volt, curr);
+	if (CanSnapshotGather() && !m_SnapshotGatherSet)
+	{
+		// once: without enough device memory the backend has no snapshots
+		m_Backend->SetSnapshotGather(m_SnapshotGather[0], m_SnapshotGather[1]);
+		m_SnapshotGatherSet = true;
+		std::vector<GPU_GatherEntry>().swap(m_SnapshotGather[0]);
+		std::vector<GPU_GatherEntry>().swap(m_SnapshotGather[1]);
+	}
+	if (!m_Backend->SnapshotFields(slot, volt, curr))
+		return false;
+	if (!m_SnapshotsUsed)
+		cout << "Engine_GPU: field dumps from snapshots of the fields" << endl;
+	m_SnapshotsUsed = true;
+	return true;
 }
 
 void Engine_GPU::WaitSnapshot(unsigned int slot) const
 {
 	m_Backend->WaitSnapshot(slot);
+}
+
+bool Engine_GPU::CanSnapshotGather() const
+{
+	return m_Backend->CanSnapshotGather();
+}
+
+bool Engine_GPU::AddSnapshotGather(bool h_field, const std::vector<GPU_GatherEntry>& entries, size_t& offset)
+{
+	if (m_SnapshotGatherSet || !CanSnapshotGather())
+		return false;
+	std::vector<GPU_GatherEntry>& all = m_SnapshotGather[h_field ? 1 : 0];
+	offset = all.size();
+	all.insert(all.end(), entries.begin(), entries.end());
+	return true;
 }
 
 void Engine_GPU::UpdateHostMirror()

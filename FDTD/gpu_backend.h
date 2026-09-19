@@ -103,6 +103,24 @@ struct GPU_UPMLRegion
 bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
                        unsigned int start[3], unsigned int stop[3]);
 
+//! One component of a dumped node: the (interpolated) E or H field from up to four voltages or currents
+/*!
+  raw(k) = field[idx[k]] / delta[k] (0 if delta[k] is 0), and the value is
+  - ZERO: 0
+  - RAW: raw(0)
+  - LERP: raw(0)*(1-rel) + raw(1)*rel
+  - AVG4: (raw(0) + raw(1) + raw(2) + raw(3)) / 4
+  in double precision, rounded to float. See Engine_Interface_FDTD::CreateFieldGather().
+  */
+struct GPU_GatherEntry
+{
+	enum Form { ZERO, RAW, LERP, AVG4 };
+	unsigned int form;
+	unsigned int idx[4];
+	double delta[4];
+	double rel;
+};
+
 //! Abstract interface to the device used by Engine_GPU
 /*!
   A backend owns the device memory: the voltage and current fields and the update
@@ -157,6 +175,15 @@ public:
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
 	//! Wait until the copy of snapshot \a slot is done, may be called from another thread
 	virtual void WaitSnapshot(unsigned int slot) {UNUSED(slot);}
+	//! Whether the snapshots can evaluate the dumped nodes on the device, see SetSnapshotGather()
+	virtual bool CanSnapshotGather() const {return false;}
+	//! Snapshots evaluate these dump entries instead of copying the fields
+	/*!
+	  SnapshotFields() then returns the values of \a volt_entries (from the voltages) in \a volt
+	  and of \a curr_entries (from the currents) in \a curr, in the order of the entries.
+	  Called before the first snapshot. Returns false if the backend cannot (no snapshots then).
+	  */
+	virtual bool SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries) {UNUSED(volt_entries); UNUSED(curr_entries); return false;}
 
 	//! Sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, see Engine_Interface_FDTD::CalcFastEnergy(). Returns false if the backend cannot compute them.
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) {UNUSED(numNodes); UNUSED(E_energy); UNUSED(H_energy); return false;}

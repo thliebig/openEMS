@@ -20,6 +20,7 @@
  Pass criteria (per case)
    the requested backend was created (not a silent fallback)
    device backend: all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
+   device backend, case dumps_snapshot: the dumps read field snapshots (FULL_DEVICE_BACKENDS)
    reference backend: all probe data and field dumps bit-identical
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
@@ -132,6 +133,26 @@ def case_dumps():
         for t in (0, 1):
             CSX.AddDump(f'td_{t}_{mode}', dump_type=t, dump_mode=mode, file_type=1).AddBox([-30, -25, -20], [30, 25, 20])
             CSX.AddDump(f'fd_{t}_{mode}', dump_type=10+t, dump_mode=mode, file_type=1, frequency=[3e9, 6e9]).AddBox([-12, -25, -20], [12, 25, 20])
+    return FDTD, CSX
+
+
+def case_dumps_snapshot():
+    """ NF2FF box (TD dumps of E and H) on a grid large enough for field snapshots (>= 512k nodes) """
+    FDTD = openEMS(NrTS=400, EndCriteria=0)
+    FDTD.SetGaussExcite(5e9, 4e9)
+    FDTD.SetBoundaryCond(['PML_8']*6)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('x', np.linspace(-50, 50, 100))
+    mesh.AddLine('y', np.linspace(-40, 40, 80))
+    mesh.AddLine('z', np.linspace(-36, 36, 72))
+    CSX.AddMaterial('diel', epsilon=4, kappa=0.01).AddBox([-10, -8, -5], [6, 9, 7])
+    CSX.AddExcitation('d', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -2], [0, 0, 2])
+    CSX.AddProbe('et', p_type=2).AddPoint([5, 5, 5])
+    FDTD.CreateNF2FFBox()
+    CSX.AddDump('td_cell', dump_type=0, dump_mode=2, file_type=1).AddBox([-20, -20, -10], [20, 20, 10])
     return FDTD, CSX
 
 
@@ -442,7 +463,8 @@ cases = [('excitation',     case_excitation,     True),
          ('dispersive_pml', case_dispersive_pml, True),
          ('3d_mixed',       case_3d_mixed,       True),
          ('steady_state',   case_steady_state,   True),
-         ('dumps',          case_dumps,          True)]
+         ('dumps',          case_dumps,          True),
+         ('dumps_snapshot', case_dumps_snapshot, True)]
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
@@ -469,6 +491,9 @@ for name, case, on_device in cases:
         if on_device and backend in FULL_DEVICE_BACKENDS:
             assert ('Engine_GPU: all extensions run on the device' in logs['gpu']) and ('host fallback' not in logs['gpu']), \
                 f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
+        if name=='dumps_snapshot' and backend in FULL_DEVICE_BACKENDS:
+            assert 'Engine_GPU: field dumps from snapshots' in logs['gpu'], \
+                f'FAIL [{name}]: the {backend} backend did not take field snapshots for the dumps'
         diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
         print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
         assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
