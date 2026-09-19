@@ -1,0 +1,641 @@
+# Windows package of openEMS with the HIP GPU engine: upstream's Windows package
+# workflow (thliebig/openEMS-Project, .github/workflows/windows-package.yml) with
+# openEMS from this repository, the CUDA toolkit and the HIP backend enabled.
+name: Windows Package (CUDA)
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Create/update the windows-cuda-nightly pre-release on GitHub'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - GPU_experiments
+
+jobs:
+  package:
+    name: Build and package (Windows MSVC, CUDA)
+    # Visual Studio 2022: CUDA 12.8 does not support later compilers
+    runs-on: windows-2022
+    permissions:
+      contents: write
+
+    env:
+      CC: "cl"
+      CXX: "cl"
+      CFLAGS: "/D_WIN32_WINNT=0x0601"
+      CXXFLAGS: "/D_WIN32_WINNT=0x0601"
+
+      VCPKG_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/"
+      VCPKG_BINARY_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/binary"
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg-cache/binary,readwrite"
+      VCPKG_ASSET_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/asset"
+      X_VCPKG_ASSET_SOURCES: "x-azurl,file://${{ github.workspace }}/vcpkg-cache/asset,readwrite"
+
+    steps:
+      - name: Locate Visual Studio installation
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if (-not $vsPath) { throw "Visual Studio with VC tools not found via vswhere" }
+          echo "VS_ROOT_DIR=$vsPath" >> $env:GITHUB_ENV
+
+      - name: Checkout openEMS-Project.git
+        uses: actions/checkout@v4
+        with:
+          repository: thliebig/openEMS-Project
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Replace the openEMS submodule with this repository
+        shell: pwsh
+        run: Remove-Item -Recurse -Force "$env:GITHUB_WORKSPACE/openEMS"
+
+      - name: Checkout openEMS (this repository)
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          fetch-depth: 0
+
+      - name: Enable long paths
+        run: |
+          New-ItemProperty -Path "HKLM:/SYSTEM/CurrentControlSet/Control/FileSystem" `
+                           -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+
+      - name: Install the CUDA toolkit
+        run: |
+          # compiler, runtime and Visual Studio integration only (no display driver);
+          # in 12.8 crt and nvvm are part of hipcc
+          $v = '12.8.1'; $m = '12.8'
+          Invoke-WebRequest -Uri "https://developer.download.nvidia.com/compute/cuda/$v/network_installers/cuda_${v}_windows_network.exe" `
+                            -OutFile "$env:RUNNER_TEMP\cuda.exe" -UseBasicParsing
+          $p = Start-Process -FilePath "$env:RUNNER_TEMP\cuda.exe" -Wait -PassThru `
+                             -ArgumentList '-s', "nvcc_$m", "cudart_$m", "cuobjdump_$m", "nvml_dev_$m", "visual_studio_integration_$m"
+          if ($p.ExitCode -ne 0) { throw "CUDA installer failed with exit code $($p.ExitCode)" }
+          $cuda = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$m"
+          & "$cuda\bin\hipcc.exe" --version
+          # the installer does not add hipcc to the PATH
+          echo "HIP_PATH=$cuda" >> $env:GITHUB_ENV
+          echo "$cuda\bin" >> $env:GITHUB_PATH
+
+      - name: Create vcpkg cache directories
+        run: |
+          mkdir -p "$env:VCPKG_CACHE_PATH"
+          mkdir -p "$env:VCPKG_BINARY_CACHE_PATH"
+          mkdir -p "$env:VCPKG_ASSET_CACHE_PATH"
+
+      - name: Restore vcpkg cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.VCPKG_CACHE_PATH }}
+          key: "Windows-cuda-package-MSVC-${{ github.sha }}"
+          restore-keys: |
+            Windows-cuda-package-MSVC
+
+      # ── C++ builds ────────────────────────────────────────────────────────────
+
+      - name: Build and install fparser
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          cd "$env:GITHUB_WORKSPACE/fparser"
+          mkdir build && cd build
+          cmake ../ -GNinja -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt"
+          cmake --build ./ --parallel
+          cmake --install ./
+
+      - name: Build and install CSXCAD
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          cd "$env:GITHUB_WORKSPACE/CSXCAD"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DFPARSER_ROOT_DIR="$HOME/opt" `
+                    -DVCPKG_INSTALLED_DIR="D:/vi" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/.github/vcpkg-triplets" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-openems" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-openems"
+          cmake --build ./ --parallel
+          cmake --install ./
+
+      - name: Check that HDF5 was linked statically
+        run: |
+          # The overlay triplet builds HDF5 as a static library so that the
+          # package ships no hdf5.dll -- h5py brings its own under that name and
+          # only one of them can be loaded per process. Fail here rather than
+          # four hours later in the smoke test.
+          if (Test-Path "D:\vi\x64-windows-openems\bin\hdf5.dll") {
+            Write-Error "hdf5.dll built as a DLL — the overlay triplet did not apply"
+            exit 1
+          }
+          Write-Host "OK: vcpkg built HDF5 as a static library"
+
+      - name: Build and install openEMS
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          cd "$env:GITHUB_WORKSPACE/openEMS"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_HIP_COMPILER="$env:HIP_PATH/bin/hipcc.exe" `
+                    -DCMAKE_HIP_ARCHITECTURES="75-real;80-real;86-real;89-real;90-real;100-real;120" `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DFPARSER_ROOT_DIR="$HOME/opt" `
+                    -DCSXCAD_ROOT_DIR="$HOME/opt" `
+                    -DVCPKG_INSTALLED_DIR="D:/vi" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/.github/vcpkg-triplets" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-openems" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-openems"
+          if (-not (Select-String -Path CMakeCache.txt -Pattern '^ENABLE_HIP:BOOL=ON' -Quiet)) { throw "the HIP backend is not enabled" }
+          cmake --build ./ --parallel
+          cmake --install ./
+
+      - name: Preserve vcpkg DLLs
+        run: |
+          # QCSXCAD/AppCSXCAD vcpkg.json does not list boost or HDF5, so vcpkg
+          # removes them from D:/vi when those projects configure. Copy all vcpkg
+          # DLLs to $HOME/opt/bin now, before that happens.
+          if (Test-Path "D:\vi\x64-windows-openems\bin") {
+            Copy-Item "D:\vi\x64-windows-openems\bin\*.dll" "$HOME\opt\bin\" -ErrorAction SilentlyContinue
+            Write-Host "Preserved $(( Get-ChildItem 'D:\vi\x64-windows-openems\bin\*.dll' ).Count) vcpkg DLLs"
+          }
+
+      - name: Build and install QCSXCAD
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          cd "$env:GITHUB_WORKSPACE/QCSXCAD"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DCSXCAD_ROOT_DIR="$HOME/opt" `
+                    -DVCPKG_INSTALLED_DIR="D:/vi" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/.github/vcpkg-triplets" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-openems" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-openems"
+          cmake --build ./ --parallel
+          cmake --install ./
+
+      - name: Preserve vcpkg DLLs (post-QCSXCAD)
+        run: |
+          # QCSXCAD installs Qt6Core5Compat and other Qt DLLs into D:/vi that
+          # AppCSXCAD's vcpkg.json may not list, causing them to be orphan-removed.
+          if (Test-Path "D:\vi\x64-windows-openems\bin") {
+            Copy-Item "D:\vi\x64-windows-openems\bin\*.dll" "$HOME\opt\bin\" -ErrorAction SilentlyContinue
+          }
+          # Preserve Qt6 plugins — windeployqt6 reads them from this tree at package
+          # time, but AppCSXCAD's vcpkg.json may trigger orphan removal of Qt packages.
+          if (Test-Path "D:\vi\x64-windows-openems\Qt6\plugins") {
+            Copy-Item "D:\vi\x64-windows-openems\Qt6\plugins" `
+                      "$HOME\opt\Qt6-plugins" -Recurse -Force
+            Write-Host "Preserved Qt6 plugins"
+          }
+
+      - name: Build and install AppCSXCAD
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          cd "$env:GITHUB_WORKSPACE/AppCSXCAD"
+          mkdir build && cd build
+          cmake ../ -GNinja `
+                    -DCMAKE_BUILD_TYPE=Release `
+                    -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
+                    -DCSXCAD_ROOT_DIR="$HOME/opt" `
+                    -DQCSXCAD_ROOT_DIR="$HOME/opt" `
+                    -DVCPKG_INSTALLED_DIR="D:/vi" `
+                    -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                    -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/.github/vcpkg-triplets" `
+                    -DVCPKG_HOST_TRIPLET="x64-windows-openems" `
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-openems"
+          cmake --build ./ --parallel
+          cmake --install ./
+
+      # ── Python wheels ─────────────────────────────────────────────────────────
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Build Python 3.13 wheels
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          python -m pip install --upgrade pip cython setuptools setuptools-scm wheel numpy
+          New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE/wheels"
+
+          $env:CSXCAD_INSTALL_PATH = "$HOME/opt"
+          Set-Location "$env:GITHUB_WORKSPACE/CSXCAD/python"
+          python -m pip wheel . --no-deps --no-build-isolation -w "$env:GITHUB_WORKSPACE/wheels/"
+          # Install the CSXCAD wheel so Cython can find its .pxd files via site-packages
+          # when building the openEMS wheel (mirrors the Linux build order).
+          $csxcad_whl = Get-ChildItem "$env:GITHUB_WORKSPACE/wheels/CSXCAD-*.whl" |
+            Sort-Object LastWriteTime | Select-Object -Last 1
+          python -m pip install $csxcad_whl.FullName
+
+          $env:CSXCAD_INSTALL_PATH = "$HOME/opt"
+          $env:OPENEMS_INSTALL_PATH = "$HOME/opt"
+          Set-Location "$env:GITHUB_WORKSPACE/openEMS/python"
+          python -m pip wheel . --no-deps --no-build-isolation -w "$env:GITHUB_WORKSPACE/wheels/"
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          allow-prereleases: true
+
+      - name: Build Python 3.14 wheels
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          python -m pip install --upgrade pip cython setuptools setuptools-scm wheel numpy
+
+          $env:CSXCAD_INSTALL_PATH = "$HOME/opt"
+          Set-Location "$env:GITHUB_WORKSPACE/CSXCAD/python"
+          python -m pip wheel . --no-deps --no-build-isolation -w "$env:GITHUB_WORKSPACE/wheels/"
+          # Install the CSXCAD wheel so Cython can find its .pxd files via site-packages
+          # when building the openEMS wheel (mirrors the Linux build order).
+          $csxcad_whl = Get-ChildItem "$env:GITHUB_WORKSPACE/wheels/CSXCAD-*.whl" |
+            Sort-Object LastWriteTime | Select-Object -Last 1
+          python -m pip install $csxcad_whl.FullName
+
+          $env:CSXCAD_INSTALL_PATH = "$HOME/opt"
+          $env:OPENEMS_INSTALL_PATH = "$HOME/opt"
+          Set-Location "$env:GITHUB_WORKSPACE/openEMS/python"
+          python -m pip wheel . --no-deps --no-build-isolation -w "$env:GITHUB_WORKSPACE/wheels/"
+
+      # ── Package assembly ──────────────────────────────────────────────────────
+
+      - name: Determine package name
+        id: pkg
+        run: |
+          $gitdesc = git -C "$env:GITHUB_WORKSPACE/openEMS" describe --tags --always
+          $stem = "openEMS_x64_${gitdesc}_msvc_cuda"
+          echo "name=$stem" >> $env:GITHUB_OUTPUT
+          if ("${{ github.ref }}" -match "^refs/tags/(.+)$") {
+            $tag = $Matches[1]
+            echo "tag=$tag"                              >> $env:GITHUB_OUTPUT
+            echo "title=openEMS $tag"                   >> $env:GITHUB_OUTPUT
+            # Tags containing '-rc' are pre-releases
+            if ($tag -match '-rc') {
+              echo "prerelease=true"  >> $env:GITHUB_OUTPUT
+            } else {
+              echo "prerelease=false" >> $env:GITHUB_OUTPUT
+            }
+          } else {
+            echo "tag=windows-cuda-nightly"                     >> $env:GITHUB_OUTPUT
+            echo "title=openEMS nightly (Windows MSVC, CUDA)" >> $env:GITHUB_OUTPUT
+            echo "prerelease=true"                       >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Assemble package
+        run: |
+          $stem = "${{ steps.pkg.outputs.name }}"
+          # Stage under "openEMS" so that name becomes the zip root folder.
+          # Use a separate pkgstage/ dir to avoid shadowing the openEMS submodule.
+          $pkgstage = "$env:GITHUB_WORKSPACE\pkgstage"
+          $pkg = "$pkgstage\openEMS"
+          New-Item -ItemType Directory -Force $pkg
+
+          # ── root: executables + DLLs (flat, traditional layout) ──────────────
+          # Installed openEMS/CSXCAD/QCSXCAD/AppCSXCAD binaries
+          if (Test-Path "$HOME/opt/bin") {
+            Copy-Item "$HOME/opt/bin/*" $pkg -Recurse
+          }
+
+          # Qt plugins — deploy into a plugins/ subdirectory and write qt.conf so
+          # Qt finds them.  Plugins live under plugins/ rather than flat next to the
+          # executable to keep the package root tidy.
+          $qtPluginsDir = "$pkg\plugins"
+          New-Item -ItemType Directory -Force $qtPluginsDir | Out-Null
+
+          # Locate windeployqt6 — check vcpkg install dir first, then fallback paths.
+          $wdq = $null
+          foreach ($candidate in @(
+            "D:\vi\x64-windows-openems\tools\Qt6\bin\windeployqt6.exe",
+            "C:\vcpkg\installed\x64-windows-openems\tools\Qt6\bin\windeployqt6.exe",
+            "$env:VCPKG_ROOT\installed\x64-windows-openems\tools\Qt6\bin\windeployqt6.exe"
+          )) {
+            if (Test-Path $candidate) { $wdq = $candidate; break }
+          }
+
+          if ($wdq) {
+            # --plugindir puts all Qt plugins into plugins/ so qt.conf can find them.
+            & $wdq --release --no-translations --plugindir $qtPluginsDir "$pkg\AppCSXCAD.exe"
+            # windeployqt6 exits non-zero on warnings about optional Qt modules — not fatal.
+            $global:LASTEXITCODE = 0
+            # Keep only the plugin categories AppCSXCAD needs.
+            $keepPlugins = @("platforms", "styles", "iconengines")
+            Get-ChildItem $qtPluginsDir -Directory |
+              Where-Object { $_.Name -notin $keepPlugins } |
+              Remove-Item -Recurse -Force
+          } else {
+            Write-Warning "windeployqt6 not found — falling back to manual plugin copy"
+          }
+
+          # Fallback: copy needed plugin categories from the preserved tree.
+          if (-not (Test-Path "$qtPluginsDir\platforms")) {
+            foreach ($src in @("$HOME\opt\Qt6-plugins",
+                               "D:\vi\x64-windows-openems\Qt6\plugins")) {
+              if (Test-Path "$src\platforms") {
+                foreach ($cat in @("platforms", "styles", "iconengines")) {
+                  if (Test-Path "$src\$cat") {
+                    Copy-Item "$src\$cat" "$qtPluginsDir\$cat" -Recurse -Force
+                  }
+                }
+                Write-Host "Copied Qt plugins from $src"
+                break
+              }
+            }
+          }
+
+          # qt.conf: tell Qt where plugins/ lives relative to the executable.
+          "[Paths]`nPlugins = plugins" | Set-Content "$pkg\qt.conf" -Encoding UTF8
+
+          # ── MSVC C++ runtime ─────────────────────────────────────────────────────
+          # Ship the CRT next to the binaries. Without it the package needs the
+          # (matching, i.e. latest) "Microsoft Visual C++ Redistributable"
+          # installed system wide — python.org's Python ships vcruntime140*.dll
+          # but not msvcp140.dll, so importing the extensions fails with
+          # "DLL load failed" on a machine that does not have it.
+          # Copied before the dependency walk below, so the walk keeps exactly
+          # the CRT DLLs that are actually imported and prunes the rest.
+          $crtDir = Get-ChildItem "${env:VS_ROOT_DIR}\VC\Redist\MSVC" -Directory `
+                        -Filter "Microsoft.VC*.CRT" -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\Microsoft\.VC' -and
+                           $_.FullName -notmatch 'onecore' } |
+            Sort-Object FullName | Select-Object -Last 1 -ExpandProperty FullName
+          if ($crtDir) {
+            Copy-Item "$crtDir\*.dll" $pkg -Force
+            Write-Host "Copied MSVC runtime from $crtDir"
+          } else {
+            Write-Warning "MSVC redistributable not found — package will require the VC++ redistributable"
+          }
+
+          # ── vcpkg runtime DLLs via dependency walk ────────────────────────────
+          # Use dumpbin to recursively resolve imports of every EXE/DLL already
+          # staged in $pkg (our binaries + Qt DLLs from windeployqt6), then pull
+          # in only the required DLLs from vcpkg — no more copy-everything.
+          $vcpkgSearchDirs = @(
+            "D:\vi\x64-windows-openems\bin",
+            "C:\vcpkg\installed\x64-windows-openems\bin",
+            "$env:VCPKG_ROOT\installed\x64-windows-openems\bin"
+          ) | Where-Object { Test-Path $_ }
+
+          $dumpbin = Get-ChildItem "${env:VS_ROOT_DIR}\VC\Tools\MSVC" `
+              -Recurse -Filter "dumpbin.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match 'Hostx64\\x64' } |
+            Select-Object -First 1 -ExpandProperty FullName
+
+          if ($dumpbin -and $vcpkgSearchDirs) {
+            $processed = [System.Collections.Generic.HashSet[string]]::new(
+              [System.StringComparer]::OrdinalIgnoreCase)
+            $queue = [System.Collections.Generic.Queue[string]]::new()
+
+            # Seed with only the top-level EXEs — DLL dependencies are
+            # discovered transitively, so seeding DLLs would pull in everything
+            # already staged (including unreferenced vcpkg DLLs).
+            Get-ChildItem $pkg -Filter "*.exe" |
+              ForEach-Object { $queue.Enqueue($_.FullName) }
+
+            while ($queue.Count -gt 0) {
+              $bin = $queue.Dequeue()
+              if (-not $processed.Add([IO.Path]::GetFileName($bin))) { continue }
+
+              $imports = & $dumpbin /dependents $bin 2>$null |
+                Where-Object { $_ -match '^\s{4}\S+\.dll\s*$' } |
+                ForEach-Object { $_.Trim() }
+
+              foreach ($dep in $imports) {
+                if ($processed.Contains($dep)) { continue }
+                # Already staged flat in $pkg?
+                if (Test-Path "$pkg\$dep") {
+                  $queue.Enqueue("$pkg\$dep"); continue
+                }
+                # Search vcpkg dirs and copy if found.
+                foreach ($dir in $vcpkgSearchDirs) {
+                  if (Test-Path "$dir\$dep") {
+                    Copy-Item "$dir\$dep" $pkg
+                    $queue.Enqueue("$pkg\$dep")
+                    Write-Host "  + $dep"
+                    break
+                  }
+                }
+                # Not found = Windows system DLL, silently skip.
+              }
+            }
+            Write-Host "Dependency walk done — $($processed.Count) imports resolved."
+
+            # Remove every DLL in $pkg that is not reachable from the EXEs.
+            # $processed is exactly the transitive import closure, so anything
+            # outside it is unused — vcpkg surplus, stale preserves, etc.
+            # Our own DLLs (CSXCAD.dll, openEMS.dll, …) are always in $processed
+            # because the EXEs import them, so they are never removed here.
+            $removed = 0
+            Get-ChildItem "$pkg\*.dll" | Where-Object {
+              -not $processed.Contains($_.Name)
+            } | ForEach-Object { Remove-Item $_.FullName -Force; $removed++ }
+            Write-Host "Removed $removed unreferenced DLLs."
+          } else {
+            Write-Warning "dumpbin not found — falling back to copy-all vcpkg DLLs"
+            foreach ($dir in $vcpkgSearchDirs) {
+              Copy-Item "$dir\*.dll" $pkg -ErrorAction SilentlyContinue
+            }
+          }
+
+          # ── matlab/: merged Octave/Matlab interface ───────────────────────────
+          New-Item -ItemType Directory -Force "$pkg/matlab"
+          # Installed interface scripts from CSXCAD and openEMS; the latter
+          # installs the whole matlab/ directory, Tutorials included.
+          if (Test-Path "$HOME/opt/share/CSXCAD/matlab") {
+            Copy-Item "$HOME/opt/share/CSXCAD/matlab/*" "$pkg/matlab/" -Recurse -Force
+          }
+          if (Test-Path "$HOME/opt/share/openEMS/matlab") {
+            Copy-Item "$HOME/opt/share/openEMS/matlab/*" "$pkg/matlab/" -Recurse -Force
+          }
+
+          # ── resources/: data files used by the octave tutorials ───────────────
+          # Found via matlab/openEMS_resource_path.m, i.e. one level above the
+          # interface directory -- as in the source tree and in an installation.
+          if (Test-Path "$HOME/opt/share/openEMS/resources") {
+            Copy-Item "$HOME/opt/share/openEMS/resources" "$pkg/resources" -Recurse -Force
+          }
+
+          # ── CTB/: Circuit Toolbox (*.m and *.txt only) ───────────────────────────
+          New-Item -ItemType Directory -Force "$pkg/CTB"
+          Copy-Item "$env:GITHUB_WORKSPACE/CTB/*.m"   "$pkg/CTB/"
+          Copy-Item "$env:GITHUB_WORKSPACE/CTB/*.txt" "$pkg/CTB/"
+
+          # ── python/: wheels + tutorials + Cython declarations ────────────────
+          New-Item -ItemType Directory -Force "$pkg/python"
+          Copy-Item "$env:GITHUB_WORKSPACE/wheels/*.whl" "$pkg/python/"
+          # Line-wise Get-/Set-Content writes CRLF line endings for Notepad
+          Get-Content "$env:GITHUB_WORKSPACE/.github/windows-package/python/README.txt" |
+            Set-Content "$pkg/python/README.txt" -Encoding UTF8
+          if (Test-Path "$env:GITHUB_WORKSPACE/openEMS/python/Tutorials") {
+            Copy-Item "$env:GITHUB_WORKSPACE/openEMS/python/Tutorials" `
+                      "$pkg/python/Tutorials" -Recurse
+          }
+          # .pxd files for anyone building Cython extensions against these DLLs
+          New-Item -ItemType Directory -Force "$pkg/python/CSXCAD"
+          Copy-Item "$env:GITHUB_WORKSPACE/CSXCAD/python/CSXCAD/*.pxd" "$pkg/python/CSXCAD/"
+          New-Item -ItemType Directory -Force "$pkg/python/openEMS"
+          Copy-Item "$env:GITHUB_WORKSPACE/openEMS/python/openEMS/*.pxd" "$pkg/python/openEMS/" `
+                    -ErrorAction SilentlyContinue
+
+          # ── include/ + lib/: headers and import libs for downstream extensions ──
+          if (Test-Path "$HOME/opt/include") {
+            Copy-Item "$HOME/opt/include" "$pkg/include" -Recurse
+          }
+          # Import libraries (.lib) let users link their own extensions against
+          # the installed DLLs without rebuilding openEMS/CSXCAD from source.
+          New-Item -ItemType Directory -Force "$pkg/lib"
+          Get-ChildItem "$HOME/opt" -Recurse -Filter "*.lib" -ErrorAction SilentlyContinue |
+            Copy-Item -Destination "$pkg/lib/"
+
+          # ── README ────────────────────────────────────────────────────────────
+          Get-Content "$env:GITHUB_WORKSPACE/.github/windows-package/README.txt" |
+            ForEach-Object { $_ -replace '@PACKAGE_NAME@', $stem } |
+            Set-Content "$pkg/README.txt" -Encoding UTF8
+          # the GPU engine of this build
+          @"
+
+
+          GPU engine
+          ----------
+
+          This build contains the HIP GPU engine for NVIDIA GPUs from Turing (GeForce
+          RTX 20xx) to Blackwell (RTX 50xx), and later GPUs through PTX. It needs an
+          NVIDIA driver 570 or newer, no CUDA toolkit. Select it on the command line:
+
+              openEMS.exe <simulation.xml> --engine=gpu
+
+          or in Python:
+
+              FDTD.Run(sim_path, engine='gpu')
+
+          Without a supported GPU, the GPU engine falls back to its reference backend
+          on the CPU, which is slower than the default engine.
+          "@ | Add-Content "$pkg/README.txt" -Encoding UTF8
+
+          # ── strip debug symbols ───────────────────────────────────────────────
+          Get-ChildItem $pkg -Recurse -Filter "*.pdb" | Remove-Item -Force
+
+          # ── ZIP ───────────────────────────────────────────────────────────────
+          Compress-Archive -Path $pkg `
+                           -DestinationPath "$env:GITHUB_WORKSPACE\$stem.zip"
+
+      - name: Smoke test
+        run: |
+          $pkg = "$env:GITHUB_WORKSPACE\pkgstage\openEMS"
+          # HDF5 is linked statically: a hdf5.dll here would be picked up by
+          # h5py as well and break it (see .github/vcpkg-triplets/).
+          foreach ($dll in @("hdf5.dll", "hdf5_hl.dll")) {
+            if (Test-Path "$pkg\$dll") {
+              Write-Error "$dll must not be part of the package"
+              exit 1
+            }
+          }
+          # The CRT has to be shipped app-local, otherwise the package (and the
+          # python extensions in particular) needs the VC++ redistributable.
+          foreach ($dll in @("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")) {
+            if (-not (Test-Path "$pkg\$dll")) {
+              Write-Error "$dll is missing from the package"
+              exit 1
+            }
+          }
+          # Run with no arguments: openEMS prints usage and exits -1.
+          # A Windows loader failure (missing DLL) produces 0xC0000135 (-1073741515
+          # as signed int32) instead — $LASTEXITCODE is always signed in PowerShell.
+          & "$pkg\openEMS.exe"
+          $code = [int]$LASTEXITCODE
+          Write-Host "openEMS.exe exit code: $code"
+          # 0xC0000135 = -1073741515, 0xC0000139 = -1073741313 (signed int32)
+          if ($code -eq -1073741515 -or $code -eq -1073741313) {
+            Write-Error "openEMS.exe could not start — missing DLL (exit code $code)"
+            exit 1
+          }
+          # openEMS exits -1 when called with no arguments (usage page) — that is normal.
+          # Reset so the non-zero LASTEXITCODE does not fail the step.
+          $global:LASTEXITCODE = 0
+
+      - name: Test Python wheels
+        run: |
+          $env:CSXCAD_INSTALL_PATH = "$env:GITHUB_WORKSPACE\pkgstage\openEMS"
+
+          # CSXCAD is already installed from the 3.14 wheel build step.
+          Set-Location "$env:GITHUB_WORKSPACE/CSXCAD/python/tests"
+          python -m unittest
+
+      - name: Set up Python 3.13 for the h5py interoperability test
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Test h5py interoperability
+        run: |
+          $env:CSXCAD_INSTALL_PATH = "$env:GITHUB_WORKSPACE\pkgstage\openEMS"
+          $env:OPENEMS_INSTALL_PATH = "$env:GITHUB_WORKSPACE\pkgstage\openEMS"
+          python -m pip install --upgrade pip
+          # Deliberately an h5py that still bundles HDF5 1.14: it is the
+          # combination that fails when the package ships its own hdf5.dll.
+          python -m pip install numpy "h5py<3.16"
+          $csxcad  = Get-ChildItem "$env:GITHUB_WORKSPACE/wheels/CSXCAD-*cp313*.whl"  | Select-Object -Last 1
+          $openems = Get-ChildItem "$env:GITHUB_WORKSPACE/wheels/openEMS-*cp313*.whl" | Select-Object -Last 1
+          python -m pip install $csxcad.FullName $openems.FullName
+          python -c "import openEMS, h5py; print('openEMS', openEMS.__version__, '- h5py', h5py.__version__, 'with HDF5', h5py.version.hdf5_version)"
+
+      - name: Check the bundled tutorial resources
+        run: |
+          # The MRI phantoms have to be inside the wheel and inside the
+          # package: a tutorial is typically run from wherever the user
+          # copied it to, so nothing may be resolved relative to the script.
+          $env:CSXCAD_INSTALL_PATH = "$env:GITHUB_WORKSPACE\pkgstage\openEMS"
+          Set-Location $env:TEMP
+          python -c "import openEMS, os; p = os.path.join(os.path.dirname(openEMS.__file__), 'resources', 'phantoms', 'phantom_head_298MHz.h5'); assert os.path.isfile(p), p; print('bundled in the wheel: ' + p)"
+          $phantoms = "$env:GITHUB_WORKSPACE\pkgstage\openEMS\resources\phantoms"
+          if (-not (Test-Path "$phantoms\phantom_head_298MHz.h5")) {
+            Write-Error "resources/phantoms is missing from the package"
+            exit 1
+          }
+          Write-Host "OK: the package ships resources/phantoms"
+
+      - name: Save vcpkg cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.VCPKG_CACHE_PATH }}
+          key: "Windows-cuda-package-MSVC-${{ github.sha }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: pkgstage/
+          retention-days: 30
+
+      - name: Create or update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.pkg.outputs.tag }}
+          name: ${{ steps.pkg.outputs.title }}
+          prerelease: ${{ steps.pkg.outputs.prerelease }}
+          files: ${{ steps.pkg.outputs.name }}.zip
+          body: |
+            Windows 64-bit binary package for **openEMS ${{ steps.pkg.outputs.tag }}** (MSVC build) with the HIP GPU engine for NVIDIA GPUs (Turing to Blackwell, driver 570 or newer).
+
+            The ZIP archive contains the openEMS binary, CSXCAD, AppCSXCAD, Octave/Matlab scripts, Python wheels (cp313/cp314), and C++ headers and import libraries for building extensions. See `README.txt` inside the archive for installation instructions.
+
+            **Change history:**
+            - openEMS: https://github.com/SeanMollet/openEMS/commits/GPU_experiments
+            - CSXCAD: https://github.com/thliebig/CSXCAD/commits/master
+
+            **Documentation:** https://docs.openems.de
