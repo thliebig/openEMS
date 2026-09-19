@@ -138,7 +138,7 @@ def case_dumps():
 
 
 def case_dumps_snapshot():
-    """ NF2FF box (TD dumps of E and H) on a grid large enough for field snapshots (>= 512k nodes) """
+    """ NF2FF box (TD dumps of E and H) and FD dumps on a grid large enough for field snapshots (>= 512k nodes) """
     FDTD = openEMS(NrTS=400, EndCriteria=0)
     FDTD.SetGaussExcite(5e9, 4e9)
     FDTD.SetBoundaryCond(['PML_8']*6)
@@ -154,6 +154,8 @@ def case_dumps_snapshot():
     CSX.AddProbe('et', p_type=2).AddPoint([5, 5, 5])
     FDTD.CreateNF2FFBox()
     CSX.AddDump('td_cell', dump_type=0, dump_mode=2, file_type=1).AddBox([-20, -20, -10], [20, 20, 10])
+    for t in (0, 1):
+        CSX.AddDump(f'fd_{t}', dump_type=10+t, dump_mode=1, file_type=1, frequency=[3e9, 6e9]).AddBox([-30, -30, -5], [30, 30, 5])
     return FDTD, CSX
 
 
