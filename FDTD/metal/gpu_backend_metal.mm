@@ -26,16 +26,17 @@
 #include "FDTD/operator.h"
 
 // Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents.
-// One thread per mesh node, gid = (z, y, x).
+// One thread per mesh node, gid = (z, y, x) relative to the start node O of the update range.
 static const char* BASE_SOURCE = R"MSL(
 kernel void update_voltages(device float* volt       [[buffer(0)]],
                             const device float* curr [[buffer(1)]],
                             const device float* vv   [[buffer(2)]],
                             const device float* vi   [[buffer(3)]],
                             constant GridDim& N      [[buffer(4)]],
+                            constant GridDim& O      [[buffer(5)]],
                             uint3 gid [[thread_position_in_grid]])
 {
-	const uint z = gid.x, y = gid.y, x = gid.z;
+	const uint z = O.nz + gid.x, y = O.ny + gid.y, x = O.nx + gid.z;
 	const uint sn = N.nx*N.ny*N.nz;
 	const uint i  = nijk(N, 0, x, y, z);
 	const uint xm = (x>0) ? N.ny*N.nz : 0;   // shift to the previous line, none on the first
@@ -64,9 +65,10 @@ kernel void update_currents(device float* curr       [[buffer(0)]],
                             const device float* ii   [[buffer(2)]],
                             const device float* iv   [[buffer(3)]],
                             constant GridDim& N      [[buffer(4)]],
+                            constant GridDim& O      [[buffer(5)]],
                             uint3 gid [[thread_position_in_grid]])
 {
-	const uint z = gid.x, y = gid.y, x = gid.z;
+	const uint z = O.nz + gid.x, y = O.ny + gid.y, x = O.nx + gid.z;
 	const uint sn = N.nx*N.ny*N.nz;
 	const uint i  = nijk(N, 0, x, y, z);
 	const uint xp = N.ny*N.nz;
@@ -96,9 +98,10 @@ kernel void update_voltages_c(device float* volt        [[buffer(0)]],
                               const device ushort* index[[buffer(2)]],
                               const device float* coeff [[buffer(3)]],
                               constant GridDim& N       [[buffer(4)]],
+                              constant GridDim& O       [[buffer(5)]],
                               uint3 gid [[thread_position_in_grid]])
 {
-	const uint z = gid.x, y = gid.y, x = gid.z;
+	const uint z = O.nz + gid.x, y = O.ny + gid.y, x = O.nx + gid.z;
 	const uint sn = N.nx*N.ny*N.nz;
 	const uint i  = nijk(N, 0, x, y, z);
 	const uint xm = (x>0) ? N.ny*N.nz : 0;
@@ -129,9 +132,10 @@ kernel void update_currents_c(device float* curr        [[buffer(0)]],
                               const device ushort* index[[buffer(2)]],
                               const device float* coeff [[buffer(3)]],
                               constant GridDim& N       [[buffer(4)]],
+                              constant GridDim& O       [[buffer(5)]],
                               uint3 gid [[thread_position_in_grid]])
 {
-	const uint z = gid.x, y = gid.y, x = gid.z;
+	const uint z = O.nz + gid.x, y = O.ny + gid.y, x = O.nx + gid.z;
 	const uint sn = N.nx*N.ny*N.nz;
 	const uint i  = nijk(N, 0, x, y, z);
 	const uint xp = N.ny*N.nz;
@@ -332,6 +336,9 @@ bool GPU_Backend_Metal::Init(const Operator* op)
 	d->dim.ny = numLines[1];
 	d->dim.nz = numLines[2];
 	d->numCells = (size_t)numLines[0]*numLines[1]*numLines[2];
+	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
+	d->main_stop = d->dim;
+	d->upml_fused = -1;
 
 	// the kernels index with 32 bit
 	if (3*d->numCells > std::numeric_limits<uint32_t>::max())
@@ -455,7 +462,10 @@ void GPU_Backend_Metal::UpdateVoltages()
 	[enc setBuffer:(d->coeff ? d->index : d->vv) offset:0 atIndex:2];
 	[enc setBuffer:(d->coeff ? d->coeff : d->vi) offset:0 atIndex:3];
 	d->SetGridDim(4);
-	d->Dispatch(pso, d->dim.nz, d->dim.ny, d->dim.nx);
+	[enc setBytes:&d->main_start length:sizeof(d->main_start) atIndex:5];
+	const Metal_GridDim& b = d->main_start;
+	const Metal_GridDim& e = d->main_stop;
+	d->Dispatch(pso, e.nz-b.nz, e.ny-b.ny, e.nx-b.nx);
 }
 
 void GPU_Backend_Metal::UpdateCurrents()
@@ -468,8 +478,14 @@ void GPU_Backend_Metal::UpdateCurrents()
 	[enc setBuffer:(d->coeff ? d->index : d->ii) offset:0 atIndex:2];
 	[enc setBuffer:(d->coeff ? d->coeff : d->iv) offset:0 atIndex:3];
 	d->SetGridDim(4);
+	[enc setBytes:&d->main_start length:sizeof(d->main_start) atIndex:5];
 	// the currents on the last mesh line are not updated
-	d->Dispatch(pso, d->dim.nz-1, d->dim.ny-1, d->dim.nx-1);
+	const Metal_GridDim& b = d->main_start;
+	const unsigned int ex = std::min(d->main_stop.nx, d->dim.nx-1);
+	const unsigned int ey = std::min(d->main_stop.ny, d->dim.ny-1);
+	const unsigned int ez = std::min(d->main_stop.nz, d->dim.nz-1);
+	if ((ex>b.nx) && (ey>b.ny) && (ez>b.nz))
+		d->Dispatch(pso, ez-b.nz, ey-b.ny, ex-b.nx);
 }
 
 static void CopyField(const void* src, void* dst, size_t src_bytes, size_t dst_bytes)

@@ -89,6 +89,12 @@ struct GPU_Backend_Metal::Impl
 	id<MTLBuffer> index, coeff;     //!< compressed coefficients: set index per node, sets (see update_voltages_c)
 	id<MTLBuffer> energy;           //!< per-line energy sums, see GPU_Backend_Metal::CalcFastEnergy()
 
+	//! The main updates cover the nodes in [main_start, main_stop), the fused UPML kernels the others (see metal_ext_upml.mm)
+	Metal_GridDim main_start, main_stop;
+	//! UPML extensions of this grid and whether they run fused with the main updates (-1: not decided yet), see metal_ext_upml.mm
+	std::vector<GPU_Extension*> upml;
+	int upml_fused;
+
 	id<MTLComputePipelineState> Pipeline(const char* source, const char* function) {return ctx->Pipeline(source, function);}
 	id<MTLComputeCommandEncoder> Encoder() {return ctx->Encoder();}
 	void Flush() {ctx->Flush();}
