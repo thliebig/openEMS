@@ -1,0 +1,24 @@
+#!/bin/bash
+# usage: run-bench <script.py> [engine]  -- run a simulation script with all simulations on the
+# given engine (default gpu); records the output, the time and peak memory (/usr/bin/time) and the
+# peak GPU memory above the idle baseline (nvidia-smi) in /workspace/logs/<script>_<engine>.*
+SCRIPT=$(realpath $1); E=${2:-gpu}
+O=/workspace/logs/$(basename $SCRIPT .py)_$E
+mkdir -p /workspace/logs /workspace/simtmp/bench_$E
+rm -f $O.*
+export PYTHONPATH=/opt/openEMS/tools/inject OPENEMS_TEST_ENGINE=$E MPLBACKEND=Agg TMPDIR=/workspace/simtmp/bench_$E
+cd $(dirname $SCRIPT)
+base=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1)
+/usr/bin/time -v /opt/openEMS/venv/bin/python -u $SCRIPT > $O.log 2> $O.time &
+T=$!; gmax=$base
+while kill -0 $T 2>/dev/null; do
+	g=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1)
+	[ "$g" -gt "$gmax" ] && gmax=$g
+	sleep 0.5
+done
+wait $T; rc=$?
+echo "gpu_mem_MB=$((gmax-base)) baseline_MB=$base" > $O.gpu
+grep -E "Time for|Speed: .*MCells" $O.log
+grep -E "Elapsed|Maximum resident" $O.time
+cat $O.gpu
+exit $rc

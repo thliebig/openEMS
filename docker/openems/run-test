@@ -1,0 +1,15 @@
+#!/bin/bash
+# usage: run-test <test name> [engine] [source dir]  -- run python/Tests/<test name>.py, optionally
+# with all simulations on the given engine (e.g. gpu); log in /workspace/logs/<test>_<engine>.log
+T=$1; E=$2; SRC=${3:-/workspace/openEMS-Project}
+LOG=/workspace/logs/${T}_${E:-default}.log
+mkdir -p /workspace/logs /workspace/simtmp /workspace/run
+export MPLBACKEND=Agg TMPDIR=/workspace/simtmp PYTHONPATH=/opt/openEMS/tools/inject
+[ -n "$E" ] && export OPENEMS_TEST_ENGINE=$E
+cd /workspace/run
+st=$(date +%s.%N)
+/opt/openEMS/venv/bin/python $SRC/openEMS/python/Tests/$T.py > $LOG 2>&1; rc=$?
+en=$(date +%s.%N)
+printf "%-34s %-14s rc=%d %6.1fs\n" $T ${E:-default} $rc $(awk "BEGIN {print $en - $st}")
+[ $rc != 0 ] && grep -E "FAIL|Error|Traceback" $LOG | head -5
+exit $rc

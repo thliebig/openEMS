@@ -1,0 +1,18 @@
+#!/bin/bash
+# usage: collect-runtime-libs <package list> <dest dir> <path...>  -- copy the shared libraries that the
+# ELF files under the paths load into <dest dir>, except those under /opt/openEMS and those of the
+# packages in the list (installed in the runtime image). Run in the build image, where they resolve.
+set -e
+PACKAGES=$1; DEST=$2; shift 2
+mkdir -p $DEST
+find "$@" -type f \( -name '*.so*' -o -perm -u+x \) -print0 | xargs -0 -n 50 ldd 2>/dev/null \
+	| awk '$2=="=>" && $3 ~ /^\// {print $3}' | sort -u | while read lib; do
+	case $lib in /opt/openEMS/*) continue;; esac
+	pkg=$(dpkg -S "$lib" 2>/dev/null || dpkg -S "$(realpath $lib)" 2>/dev/null || dpkg -S "/usr$lib" 2>/dev/null || true)
+	pkg=$(echo "$pkg" | head -1 | cut -d: -f1)
+	if [ -n "$pkg" ] && grep -qx "$pkg" $PACKAGES; then
+		continue
+	fi
+	cp -L $lib $DEST/
+	echo "collect-runtime-libs: $(basename $lib) (${pkg:-no package})"
+done

@@ -1,0 +1,12 @@
+# build outputs and local files in the openEMS-Project build context
+**/build
+**/python/build
+**/*.egg-info
+**/__pycache__
+**/*.pyc
+**/*.so
+**/*.h5
+**/*.vtr
+**/*.vtu
+**/*.profraw
+**/.DS_Store
