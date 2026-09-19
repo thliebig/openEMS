@@ -95,6 +95,12 @@ struct GPU_Backend_HIP::Impl
 	void* index;
 	float* coeff;
 
+	//! The main updates cover the nodes in [main_start, main_stop), the fused UPML kernels the others (see hip_ext_upml.cu)
+	HIP_GridDim main_start, main_stop;
+	//! UPML extensions of this grid and whether they run fused with the main updates (-1: not decided yet), see hip_ext_upml.cu
+	std::vector<GPU_Extension*> upml;
+	int upml_fused;
+
 	Impl();
 	~Impl();
 

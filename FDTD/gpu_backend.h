@@ -82,6 +82,27 @@ public:
 	virtual void InterpolateToBase() = 0;
 };
 
+//! Nodes of a UPML region on the device: start node and number of nodes per direction
+struct GPU_UPMLRegion
+{
+	unsigned int start[3];
+	unsigned int size[3];
+};
+
+//! Whether the UPML of \a eng can run fused with the main updates, and the node box [start, stop) the main updates then cover
+/*!
+  Fused kernels do the UPML pre-update, the main update and the UPML post-update of
+  the nodes of a region in one pass. This is the same as the separate steps if:
+  - the UPML hooks run directly before and after the main update: only extensions
+    without device pre/post hooks (steady-state) come before the UPML extensions,
+  - all UPML extensions of the engine run on the device (\a regions has one entry per UPML extension),
+  - the regions cover exactly the nodes outside a box, which the main updates then cover.
+  A voltage/current update only reads its own node of the updated field, so the
+  regions and the box can be updated in any order.
+  */
+bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
+                       unsigned int start[3], unsigned int stop[3]);
+
 //! Abstract interface to the device used by Engine_GPU
 /*!
   A backend owns the device memory: the voltage and current fields and the update

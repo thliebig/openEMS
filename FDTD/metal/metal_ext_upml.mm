@@ -19,7 +19,6 @@
 #include "FDTD/engine.h"
 #include "FDTD/extensions/operator_ext_upml.h"
 #include "FDTD/extensions/engine_ext_upml.h"
-#include "FDTD/extensions/engine_ext_steadystate.h"
 
 #include <algorithm>
 #include <iostream>
@@ -308,73 +307,26 @@ bool Metal_Ext_UPML::Fused()
 	return d->upml_fused>0;
 }
 
-// The fused kernels replace the UPML hooks and the main update of the UPML regions.
-// This requires:
-// - the UPML hooks run directly before and after the main update: only extensions
-//   without device pre/post hooks (steady-state) come before the UPML extensions,
-// - all UPML extensions of the grid run on the device,
-// - the regions cover exactly the nodes outside a box, which the main updates then cover.
+// The fused kernels replace the UPML hooks and the main update of the UPML regions,
+// see GPU_UPMLFusionBox() for the conditions.
 bool Metal_Ext_UPML::CanFuse()
 {
-	size_t num_upml = 0;
-	size_t last_upml = 0;
-	for (size_t n=0; n<m_Eng->GetExtensionCount(); ++n)
-		if (dynamic_cast<Engine_Ext_UPML*>(m_Eng->GetExtension(n)))
-		{
-			++num_upml;
-			last_upml = n;
-		}
-	if (num_upml!=d->upml.size())
-		return false;
-	for (size_t n=0; n<last_upml; ++n)
-	{
-		Engine_Extension* ext = m_Eng->GetExtension(n);
-		if (!dynamic_cast<Engine_Ext_UPML*>(ext) && !dynamic_cast<Engine_Ext_SteadyState*>(ext))
-			return false;
-	}
-
-	// mark the region nodes, the others must form a box
-	const Metal_GridDim& N = d->dim;
-	std::vector<unsigned char> mask(d->numCells, 0);
+	std::vector<GPU_UPMLRegion> regions;
 	for (size_t r=0; r<d->upml.size(); ++r)
 	{
 		const Metal_Ext_UPML* u = static_cast<const Metal_Ext_UPML*>(d->upml[r]);
-		const unsigned int sx = u->m_Region.sx, sy = u->m_Region.sy, sz = u->m_Region.sz;
-		if ((sx+u->m_Region.lx>N.nx) || (sy+u->m_Region.ly>N.ny) || (sz+u->m_Region.lz>N.nz))
-			return false;
-		for (unsigned int x=sx; x<sx+u->m_Region.lx; ++x)
-			for (unsigned int y=sy; y<sy+u->m_Region.ly; ++y)
-				for (unsigned int z=sz; z<sz+u->m_Region.lz; ++z)
-				{
-					unsigned char& m = mask[((size_t)x*N.ny + y)*N.nz + z];
-					if (m)
-						return false;   // overlapping regions
-					m = 1;
-				}
+		const GPU_UPMLRegion R = {{u->m_Region.sx, u->m_Region.sy, u->m_Region.sz}, {u->m_Region.lx, u->m_Region.ly, u->m_Region.lz}};
+		regions.push_back(R);
 	}
-	Metal_GridDim lo = N, hi = {0, 0, 0};
-	size_t free_nodes = 0;
-	for (unsigned int x=0; x<N.nx; ++x)
-		for (unsigned int y=0; y<N.ny; ++y)
-			for (unsigned int z=0; z<N.nz; ++z)
-				if (!mask[((size_t)x*N.ny + y)*N.nz + z])
-				{
-					++free_nodes;
-					lo.nx = std::min(lo.nx, x); hi.nx = std::max(hi.nx, x+1);
-					lo.ny = std::min(lo.ny, y); hi.ny = std::max(hi.ny, y+1);
-					lo.nz = std::min(lo.nz, z); hi.nz = std::max(hi.nz, z+1);
-				}
-	if (free_nodes==0)
+	const unsigned int numLines[3] = {d->dim.nx, d->dim.ny, d->dim.nz};
+	unsigned int start[3], stop[3];
+	if (!GPU_UPMLFusionBox(m_Eng, regions, numLines, start, stop))
 		return false;
-	if (free_nodes!=(size_t)(hi.nx-lo.nx)*(hi.ny-lo.ny)*(hi.nz-lo.nz))
-		return false;
-
-	d->main_start = lo;
-	d->main_stop = hi;
+	d->main_start.nx = start[0]; d->main_start.ny = start[1]; d->main_start.nz = start[2];
+	d->main_stop.nx = stop[0]; d->main_stop.ny = stop[1]; d->main_stop.nz = stop[2];
 	return true;
 }
 
-// full_a/full_b: the full main coefficient arrays, used if the coefficients are not compressed
 void Metal_Ext_UPML::Fuse(const char* kernel, id<MTLBuffer> field, id<MTLBuffer> other, id<MTLBuffer> flux,
                           id<MTLBuffer> c_old, id<MTLBuffer> c_fo, id<MTLBuffer> c_fn,
                           id<MTLBuffer> full_a, id<MTLBuffer> full_b, const void* group)

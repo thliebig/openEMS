@@ -23,16 +23,17 @@
 #include "hip_internal.h"
 #include "FDTD/operator.h"
 
-// Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents.
-// One thread per mesh node: z along x-threads (contiguous), y along y-threads, x along the grid z-dimension.
-// The coefficients are read with main_coeff().
+// Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents,
+// over the nodes in [B, E). One thread per mesh node: z along x-threads (contiguous), y along
+// y-threads, x along the grid z-dimension. The coefficients are read with main_coeff().
 __global__ void update_voltages(float* __restrict__ volt, const float* __restrict__ curr,
-                                const void* index, const float* ca, const float* cb, unsigned int mode, HIP_GridDim N)
+                                const void* index, const float* ca, const float* cb, unsigned int mode,
+                                HIP_GridDim N, HIP_GridDim B, HIP_GridDim E)
 {
-	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
-	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
-	const unsigned int x = blockIdx.z;
-	if (z>=N.nz || y>=N.ny || x>=N.nx)
+	const unsigned int z = B.nz + blockIdx.x*blockDim.x + threadIdx.x;
+	const unsigned int y = B.ny + blockIdx.y*blockDim.y + threadIdx.y;
+	const unsigned int x = B.nx + blockIdx.z;
+	if (z>=E.nz || y>=E.ny || x>=E.nx)
 		return;
 	const unsigned int sn = N.nx*N.ny*N.nz;
 	const unsigned int i  = nijk(N, 0, x, y, z);
@@ -63,12 +64,13 @@ __global__ void update_voltages(float* __restrict__ volt, const float* __restric
 
 // the currents on the last mesh line of each direction are not updated
 __global__ void update_currents(float* __restrict__ curr, const float* __restrict__ volt,
-                                const void* index, const float* ca, const float* cb, unsigned int mode, HIP_GridDim N)
+                                const void* index, const float* ca, const float* cb, unsigned int mode,
+                                HIP_GridDim N, HIP_GridDim B, HIP_GridDim E)
 {
-	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
-	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
-	const unsigned int x = blockIdx.z;
-	if (z+1>=N.nz || y+1>=N.ny || x+1>=N.nx)
+	const unsigned int z = B.nz + blockIdx.x*blockDim.x + threadIdx.x;
+	const unsigned int y = B.ny + blockIdx.y*blockDim.y + threadIdx.y;
+	const unsigned int x = B.nx + blockIdx.z;
+	if (z>=E.nz || y>=E.ny || x>=E.nx || z+1>=N.nz || y+1>=N.ny || x+1>=N.nx)
 		return;
 	const unsigned int sn = N.nx*N.ny*N.nz;
 	const unsigned int i  = nijk(N, 0, x, y, z);
@@ -251,6 +253,9 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	d->dim.ny = numLines[1];
 	d->dim.nz = numLines[2];
 	d->numCells = (size_t)numLines[0]*numLines[1]*numLines[2];
+	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
+	d->main_stop = d->dim;
+	d->upml_fused = -1;
 
 	// the kernels index with 32 bit
 	if (3*d->numCells > std::numeric_limits<unsigned int>::max())
@@ -309,15 +314,19 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 void GPU_Backend_HIP::UpdateVoltages()
 {
 	const bool c = d->coeff_mode>0;
-	HIP_Launch(d, "update_voltages", update_voltages, d->dim.nz, d->dim.ny, d->dim.nx,
-	            d->volt, (const float*)d->curr, (const void*)d->index, (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi), d->coeff_mode, d->dim);
+	const HIP_GridDim& B = d->main_start;
+	const HIP_GridDim& E = d->main_stop;
+	HIP_Launch(d, "update_voltages", update_voltages, E.nz-B.nz, E.ny-B.ny, E.nx-B.nx,
+	            d->volt, (const float*)d->curr, (const void*)d->index, (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi), d->coeff_mode, d->dim, B, E);
 }
 
 void GPU_Backend_HIP::UpdateCurrents()
 {
 	const bool c = d->coeff_mode>0;
-	HIP_Launch(d, "update_currents", update_currents, d->dim.nz, d->dim.ny, d->dim.nx,
-	            d->curr, (const float*)d->volt, (const void*)d->index, (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim);
+	const HIP_GridDim& B = d->main_start;
+	const HIP_GridDim& E = d->main_stop;
+	HIP_Launch(d, "update_currents", update_currents, E.nz-B.nz, E.ny-B.ny, E.nx-B.nx,
+	            d->curr, (const float*)d->volt, (const void*)d->index, (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim, B, E);
 }
 
 static void CheckSize(size_t host_count, size_t device_count)
