@@ -35,6 +35,8 @@ Processing::Processing(Engine_Interface_Base* eng_if)
 	ProcessInterval=0;
 	m_FD_SampleCount=0;
 	m_FD_Interval=0;
+	m_FD_Nyquist=0;
+	m_FD_OverSampling=1;
 	m_weight=1;
 	m_Flush = false;
 	m_dualMesh = false;
@@ -161,12 +163,22 @@ void Processing::AddFrequency(double freq)
 		cerr << "Processing::AddFrequency: Warning: Requested frequency " << freq << " is higher than maximum excited frequency..." << endl;
 	}
 
-	if (m_FD_Interval==0)
-		m_FD_Interval = Op->GetNumberOfNyquistTimesteps();
-	if (m_FD_Interval>nyquistTS)
-		m_FD_Interval = nyquistTS;
+	if (m_FD_Nyquist==0)
+		m_FD_Nyquist = Op->GetNumberOfNyquistTimesteps();
+	if (m_FD_Nyquist>nyquistTS)
+		m_FD_Nyquist = nyquistTS;
+	// sampled at the Nyquist rate, the spectrum just above the highest excited frequency
+	// aliases onto the upper band edge
+	m_FD_Interval = std::max(1u, m_FD_Nyquist/m_FD_OverSampling);
 
 	m_FD_Samples.push_back(freq);
+}
+
+void Processing::SetFDOverSampling(unsigned int factor)
+{
+	m_FD_OverSampling = std::max(1u, factor);
+	if (m_FD_Nyquist)
+		m_FD_Interval = std::max(1u, m_FD_Nyquist/m_FD_OverSampling);
 }
 
 void Processing::AddFrequency(vector<double> *freqs)

@@ -8,7 +8,8 @@ function FDTD = InitFDTD(varargin)
 % - EndCriteria:    end criteria, e.g. 1e-5, simulations stops if energy has
 %                   decayed by this value (<1e-4 is recommended, default=1e-5)
 % - MaxTime:        max. real time in seconds to simulate
-% - OverSampling:   nyquist oversampling of time domain dumps
+% - OverSampling:   nyquist oversampling of the time domain dumps and probes
+%                   and of the frequency domain recording (default 4)
 % - CoordSystem:    choose coordinate system (0 Cartesian, 1 Cylindrical)
 % - MultiGrid:      define a cylindrical sub-grid radius
 % - TimeStep:       force to use a given timestep (dangerous!)
