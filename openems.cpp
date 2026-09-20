@@ -1395,6 +1395,10 @@ void openEMS::RunFDTD()
 	ProcessFields* ProcField = new ProcessFields(NewEngineInterface());
 	PA->AddProcessing(ProcField);
 	double maxE=0,currE=0;
+	// evaluate the energy end criteria once per Nyquist period, but at most every 100 timesteps
+	// (Dirac and step excitations have a Nyquist period of a single timestep)
+	if (Eng_Ext_SSD==NULL)
+		ProcField->SetProcessInterval((std::max)(FDTD_Op->GetExcitationSignal()->GetNyquistNum(), 100u));   // (): not the max macro of windows.h
 
 	//init processings
 	PA->InitAll();
@@ -1427,11 +1431,15 @@ void openEMS::RunFDTD()
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
 
-		if ((Eng_Ext_SSD==NULL) && ProcField->CheckTimestep())
+		if (Eng_Ext_SSD)
+			change = Eng_Ext_SSD->GetLastDiff();
+		else if (ProcField->CheckTimestep())
 		{
 			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
 				maxE=currE;
+			if (maxE)
+				change = currE/maxE;
 		}
 
 		currTS = FDTD_Eng->GetNumberOfTimesteps();
@@ -1448,19 +1456,9 @@ void openEMS::RunFDTD()
 			cout << "[@" <<  FormatTime(t_run) <<  "] Timestep: " << setw(12)  << currTS ;
 			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 			if (Eng_Ext_SSD==NULL)
-			{
-				currE = ProcField->CalcTotalEnergyEstimate();
-				if (currE>maxE)
-					maxE=currE;
-				if (maxE)
-					change = currE/maxE;
 				cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
-			}
 			else
-			{
-				change = Eng_Ext_SSD->GetLastDiff();
 				cout << " || SteadyState: " << setw(6) << setprecision(2) << std::fixed << 10.0*log10(change) << " dB" << endl;
-			}
 			prevTime=currTime;
 			prevTS=currTS;
 
