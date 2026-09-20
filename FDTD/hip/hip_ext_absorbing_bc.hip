@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "hip/hip_runtime.h"
 #include "hip_internal.h"
 #include "FDTD/engine.h"
 #include "FDTD/extensions/operator_ext_absorbing_bc.h"

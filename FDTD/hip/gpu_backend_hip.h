@@ -20,7 +20,7 @@
 
 #include "FDTD/gpu_backend.h"
 
-//! GPU backend using NVIDIA CUDA
+//! GPU backend using HIP, for AMD GPUs and for NVIDIA GPUs through CUDA
 /*!
   The fields and coefficients live in device memory. The host mirror of
   Engine_GPU is a separate copy, synchronized with explicit transfers (the host

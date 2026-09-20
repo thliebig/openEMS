@@ -15,7 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// CUDA only: the fused UPML update of a node, shared by the UPML kernels and the main
+// HIP only: the fused UPML update of a node, shared by the UPML kernels and the main
 // updates (which update the UPML regions along z, see HIP_ZSlabs)
 
 #ifndef HIP_UPML_HIPH

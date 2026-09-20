@@ -15,12 +15,13 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "hip/hip_runtime.h"
 #include "hip_internal.h"
 #include "FDTD/engine.h"
 #include "FDTD/extensions/operator_ext_cylinder.h"
 #include "FDTD/extensions/engine_extension.h"
 // not engine_ext_cylinder.h: it pulls in Boost.Thread (through operator_cylinder.h), whose
-// headers hipcc cannot compile with MSVC and Boost 1.91, so Engine_Ext_Cylinder is not a type
+// headers the device compiler cannot compile with MSVC and Boost 1.91, so Engine_Ext_Cylinder is not a type
 // here and the extension is detected through its operator extension instead (see
 // HIP_CreateExt_Cylinder())
 

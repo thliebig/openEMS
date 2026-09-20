@@ -15,7 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// CUDA only: shared by the HIP backend and the HIP extensions
+// HIP only: shared by the HIP backend and the HIP extensions
 
 #ifndef HIP_INTERNAL_H
 #define HIP_INTERNAL_H
@@ -75,6 +75,7 @@ struct HIP_Context
 	hipStream_t stream;
 	hipStream_t copy_stream;   //!< downloads of field snapshots, overlapping the work (see GPU_Backend_HIP::SnapshotFields())
 	std::string name;
+	unsigned int warp_size;    //!< threads that run in lockstep: 32 on NVIDIA, 64 on the CDNA GPUs of AMD
 
 	HIP_Context();
 	~HIP_Context();

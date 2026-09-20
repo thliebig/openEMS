@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "hip/hip_runtime.h"
 #include <algorithm>
 #include <climits>
 #include <cstdio>
@@ -191,6 +192,8 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
 	v[2] = t;
 }
 
+// FUSED_TZ is one warp of an NVIDIA GPU. On a CDNA GPU of AMD, where a wavefront is 64
+// threads, a tile is half a wavefront and the shape wants measuring again.
 #define FUSED_TZ 32   // threads along z, the last one computes the border voltages only
 #define FUSED_TY 8    // threads along y, the last row computes the border voltages only
 #define FUSED_XC 4    // x lines per block (default): short blocks are faster, despite the voltages of one more x line
@@ -480,6 +483,7 @@ HIP_Context::HIP_Context()
 	device = 0;
 	stream = 0;
 	copy_stream = 0;
+	warp_size = 32;
 }
 
 HIP_Context::~HIP_Context()
@@ -626,7 +630,8 @@ void GPU_Backend_HIP::Impl::MainRange(HIP_GridDim& B, HIP_GridDim& E, unsigned i
 	// nodes runs both code paths (on a RTX 5070 Ti 3 % slower for 300^3 cells)
 	if (zslab_lo || zslab_hi)
 	{
-		auto warps = [](unsigned int n) {return (n+31)/32*32;};
+		const unsigned int w = ctx->warp_size;
+		auto warps = [w](unsigned int n) {return (n+w-1)/w*w;};
 		zslabs.t_lo = warps(zslabs.z_lo - B.nz);
 		zslabs.t_int = warps(zslabs.z_hi - zslabs.z_lo);
 		threads_z = zslabs.t_lo + zslabs.t_int + warps(E.nz - zslabs.z_hi);
@@ -637,8 +642,8 @@ void GPU_Backend_HIP::Impl::FreeSnapshots()
 {
 	hipFree(snap_entries);
 	hipFree(snap_dev);
-	hipFreeHost(snap_host[0]);
-	hipFreeHost(snap_host[1]);
+	hipHostFree(snap_host[0]);
+	hipHostFree(snap_host[1]);
 	snap_entries = NULL;
 	snap_dev = snap_host[0] = snap_host[1] = NULL;
 	snap_nv = snap_n = 0;
@@ -693,9 +698,10 @@ GPU_Backend_HIP* GPU_Backend_HIP::New()
 	Impl* impl = new Impl();
 	impl->ctx = std::make_shared<HIP_Context>();
 	HIP_Check(hipGetDevice(&impl->ctx->device), "hipGetDevice");
-	hipDeviceProp prop;
+	hipDeviceProp_t prop;
 	HIP_Check(hipGetDeviceProperties(&prop, impl->ctx->device), "hipGetDeviceProperties");
 	impl->ctx->name = prop.name;
+	impl->ctx->warp_size = prop.warpSize > 0 ? prop.warpSize : 32;
 	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->stream, hipStreamNonBlocking), "hipStreamCreate");
 	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->copy_stream, hipStreamNonBlocking), "hipStreamCreate");
 	return new GPU_Backend_HIP(impl);
@@ -723,7 +729,7 @@ GPU_Backend_HIP::~GPU_Backend_HIP()
 
 std::string GPU_Backend_HIP::GetName() const
 {
-	return "CUDA (" + d->ctx->name + ")";
+	return "HIP (" + d->ctx->name + ")";
 }
 
 bool GPU_Backend_HIP::Init(const Operator* op)
@@ -913,7 +919,7 @@ bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt
 		return false;
 	// not fatal: without snapshots the dumps read the fields from the host mirror
 	if ((hipMalloc(&d->snap_entries, n*sizeof(GPU_GatherEntry))!=hipSuccess) || (hipMalloc(&d->snap_dev, n*sizeof(float))!=hipSuccess)
-	    || (hipMallocHost(&d->snap_host[0], n*sizeof(float))!=hipSuccess) || (hipMallocHost(&d->snap_host[1], n*sizeof(float))!=hipSuccess))
+	    || (hipHostMalloc(&d->snap_host[0], n*sizeof(float))!=hipSuccess) || (hipHostMalloc(&d->snap_host[1], n*sizeof(float))!=hipSuccess))
 	{
 		hipGetLastError();
 		d->FreeSnapshots();

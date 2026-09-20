@@ -18,17 +18,17 @@ endif()
 # HIP GPU backend
 if(ENABLE_HIP)
   set(HIP_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/gpu_backend_hip.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_excitation.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_upml.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_mur_abc.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_lorentzmaterial.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_lumpedRLC.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_tfsf.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_absorbing_bc.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_steadystate.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_ext_cylinder.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/hip_multigrid.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/gpu_backend_hip.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_excitation.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_upml.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_mur_abc.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_lorentzmaterial.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_lumpedRLC.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_tfsf.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_absorbing_bc.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_steadystate.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_cylinder.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_multigrid.hip
   )
 endif()
 

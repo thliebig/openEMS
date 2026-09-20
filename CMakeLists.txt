@@ -55,32 +55,38 @@ IF(APPLE AND ENABLE_METAL)
   ADD_DEFINITIONS( -DOPENEMS_WITH_METAL )
 ENDIF()
 
-# HIP GPU backend for the GPU engine (--engine=gpu), built if a CUDA compiler is found
+# HIP GPU backend for the GPU engine (--engine=gpu), built if a HIP compiler is found.
+# HIP runs on AMD GPUs through ROCm and on NVIDIA GPUs through CUDA, from the same
+# sources: with HIP_PLATFORM=nvidia hipcc compiles them with hipcc, and the binary needs
+# the CUDA runtime, not a ROCm one.
 include(CheckLanguage)
-check_language(CUDA)
+check_language(HIP)
 IF(CMAKE_HIP_COMPILER)
   OPTION(ENABLE_HIP "Build the HIP GPU backend" ON)
 ELSE()
   OPTION(ENABLE_HIP "Build the HIP GPU backend" OFF)
 ENDIF()
 IF(ENABLE_HIP)
-  IF(POLICY CMP0104)
-    cmake_policy(SET CMP0104 NEW)
-  ENDIF()
   # default: the GPU of the build machine
   IF(NOT DEFINED CMAKE_HIP_ARCHITECTURES)
-    IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
-      set(CMAKE_HIP_ARCHITECTURES native)
-    ELSE()
-      set(CMAKE_HIP_ARCHITECTURES 75)
-    ENDIF()
+    set(CMAKE_HIP_ARCHITECTURES native)
   ENDIF()
-  enable_language(CUDA)
+  enable_language(HIP)
   set(CMAKE_HIP_STANDARD 14)
-  # no fused multiply-add and the same denormal handling, so the kernels round like the CPU engines
-  set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --fmad=false")
-  IF(ENABLE_FLUSH_TO_ZERO)
-    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --ftz=true")
+  # No fused multiply-add and the same denormal handling, so the kernels round like the
+  # CPU engines (python/Tests/GPU_Engine.py compares them value by value). The flags are
+  # those of the compiler behind hipcc: hipcc on the NVIDIA platform, clang on AMD, and
+  # the clang spelling would only reach the host compiler under hipcc.
+  IF(CMAKE_HIP_PLATFORM STREQUAL "nvidia")
+    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --fmad=false")
+    IF(ENABLE_FLUSH_TO_ZERO)
+      set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --ftz=true")
+    ENDIF()
+  ELSE()
+    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -ffp-contract=off")
+    IF(ENABLE_FLUSH_TO_ZERO)
+      set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -fgpu-flush-denormals-to-zero")
+    ENDIF()
   ENDIF()
   message(STATUS "HIP GPU backend enabled, architectures: ${CMAKE_HIP_ARCHITECTURES}")
   ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
@@ -242,6 +248,18 @@ TARGET_LINK_LIBRARIES( openEMS
 )
 IF(APPLE AND ENABLE_METAL)
   TARGET_LINK_LIBRARIES( openEMS "-framework Metal" "-framework Foundation" )
+ENDIF()
+
+IF(ENABLE_HIP)
+  # On the AMD platform HIP is a runtime library and the kernels need it at link
+  # time; on the NVIDIA platform hipcc compiles to CUDA and hip::host carries the
+  # CUDA runtime instead.
+  find_package(hip QUIET)
+  IF(hip_FOUND)
+    TARGET_LINK_LIBRARIES( openEMS hip::host )
+  ELSEIF(CMAKE_HIP_PLATFORM STREQUAL "amd")
+    TARGET_LINK_LIBRARIES( openEMS amdhip64 )
+  ENDIF()
 ENDIF()
 
 if (WIN32)

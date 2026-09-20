@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "hip/hip_runtime.h"
 #include "hip_internal.h"
 
 // Coupling of a cylindrical multi-grid level (base) and its sub-grid, see

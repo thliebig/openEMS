@@ -27,7 +27,7 @@
 #include "metal/gpu_backend_metal.h"
 #endif
 #ifdef OPENEMS_WITH_HIP
-#include "cuda/gpu_backend_hip.h"
+#include "hip/gpu_backend_hip.h"
 #endif
 
 GPU_Backend* GPU_Backend::New(const std::string& name)
