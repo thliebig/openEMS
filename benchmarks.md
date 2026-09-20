@@ -35,6 +35,8 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | Machine | Host CPU | Total run | Timestepping | MCells/s | Host memory | GPU memory |
 |---|---|---|---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 123.2 s | 118.7 s | 303 | 716 MiB | - |
+| Ryzen 9 7900X, CPU (multithreaded) | Ryzen 9 7900X | 136.8 s | 132.1 s | 273 | 585 MiB | - |
+| i7-12700K, CPU (multithreaded) | i7-12700K | 255.5 s | 250.8 s | 144 | 586 MiB | - |
 | Apple M5 Max, GPU (Metal) | Apple M5 Max | 15.4 s | 10.9 s | 3307 | 1216 MiB (1) | 343 MiB (1) |
 | GTX 1080 Ti | EPYC 7551 | 32.4 s | 19.0 s | 1900 | 838 MiB | 436 MiB |
 | GTX 1660 Ti | Ryzen 9 3900X | 27.1 s | 19.5 s | 1846 | 817 MiB | 373 MiB |
@@ -69,12 +71,15 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 5090 | EPYC 7742 | 20.3 s | 9.3 s | 3894 | 821 MiB | 806 MiB |
 | A100 SXM4 40 GB | EPYC 7K62 | 18.9 s | 8.0 s | 4530 | 801 MiB | 723 MiB |
 | H200 | Xeon Platinum 8488C | 20.3 s | 13.0 s | 2775 | 904 MiB | 827 MiB |
+| AMD MI300X (HIP) | EPYC (8 threads) | 22.9 s | 15.4 s | 2339 | 2095 MiB | 1692 MiB |
 
 ### Horn antenna, frequency-domain NF2FF
 
 | Machine | Host CPU | Total run | Timestepping | MCells/s | Host memory | GPU memory |
 |---|---|---|---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 121.8 s | 120.1 s | 300 | 496 MiB | - |
+| Ryzen 9 7900X, CPU (multithreaded) | Ryzen 9 7900X | 134.8 s | 131.6 s | 274 | 453 MiB | - |
+| i7-12700K, CPU (multithreaded) | i7-12700K | 253.9 s | 251.1 s | 143 | 452 MiB | - |
 | Apple M5 Max, GPU (Metal) | Apple M5 Max | 12.4 s | 10.7 s | 3377 | 943 MiB (1) | 343 MiB (1) |
 | GTX 1080 Ti | EPYC 7551 | 37.1 s | 19.2 s | 1879 | 659 MiB | 442 MiB |
 | GTX 1660 Ti | Ryzen 9 3900X | 24.1 s | 19.6 s | 1838 | 637 MiB | 379 MiB |
@@ -109,12 +114,15 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 5090 | EPYC 7742 | 8.9 s | 2.7 s | 13168 | 640 MiB | 812 MiB |
 | A100 SXM4 40 GB | EPYC 7K62 | 11.3 s | 4.8 s | 7448 | 631 MiB | 729 MiB |
 | H200 | Xeon Platinum 8488C | 7.1 s | **2.3 s** | **15362** | 729 MiB | 833 MiB |
+| AMD MI300X (HIP) | EPYC (8 threads) | 7.6 s | 2.5 s | 14650 | 1400 MiB | 1339 MiB |
 
 ### Free space
 
 | Machine | Host CPU | PML_8: MCells/s | PEC: MCells/s |
 |---|---|---|---|
 | Apple M5 Max, CPU (multithreaded) | Apple M5 Max | 485 | 1106 |
+| Ryzen 9 7900X, CPU (multithreaded) | Ryzen 9 7900X | 280 | 567 |
+| i7-12700K, CPU (multithreaded) | i7-12700K | 184 | 350 |
 | Apple M5 Max, GPU (Metal) | Apple M5 Max | 4192 | 4687 |
 | GTX 1080 Ti | EPYC 7551 | 2619 | 4029 |
 | GTX 1660 Ti | Ryzen 9 3900X | 2268 | 3399 |
@@ -149,6 +157,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 5090 | EPYC 7742 | 19774 | 27644 |
 | A100 SXM4 40 GB | EPYC 7K62 | 11473 | 18938 |
 | H200 | Xeon Platinum 8488C | **25178** | **41076** |
+| AMD MI300X (HIP) | EPYC (8 threads) | 23366 | 30346 |
 
 (1) Unified memory: the Metal buffers are part of the host memory figure.
 
@@ -162,10 +171,17 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
   baseline, mostly the HIP context (the simulation's buffers are ~100 MiB).
   Metal: peak of the "graphics" categories of `footprint`.
 
-The CUDA machines are Vast.ai containers (Ubuntu 24.04, CUDA 12.8), built in
+The GPU engine is built with HIP, which compiles the same sources for both
+vendors: through CUDA on the NVIDIA GPUs and through ROCm on the AMD one. The
+NVIDIA machines are Vast.ai containers (Ubuntu 24.04, CUDA 12.8), built in
 release mode for the architecture of each GPU, on drivers 550 to 610. The GTX
 1080 Ti (Pascal) and the GTX 1660 Ti (Turing) ran a build for all architectures
-from Pascal on, the one of the packages.
+from Pascal on, the one of the packages. The MI300X (gfx942, ROCm 7.2) is a
+rented machine with 8 host threads.
+
+The rows of a CPU are the multithreaded engine on the same test, for scale.
+openEMS picks its own thread count there, 6 to 8 of the threads of these
+machines: the field updates are bound by the memory, not by the cores.
 
 ## Notes
 
