@@ -155,6 +155,15 @@
    },
    "rate_inf_mcells_s": 7745.1
   },
+  "RTX 3080 Ti": {
+   "half_cells": 874415,
+   "host_cpu": "EPYC 7352",
+   "measured": {
+    "free_space_pml_mcells_s": 7486.0,
+    "horn_fd_mcells_s": 5675.0
+   },
+   "rate_inf_mcells_s": 7728.4
+  },
   "RTX 3090": {
    "half_cells": 1257197,
    "host_cpu": "Ryzen 5 5600G",

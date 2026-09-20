@@ -49,6 +49,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 3070 | Ryzen 5 5600X | 16.6 s | 9.6 s | 3739 | 811 MiB | 460 MiB |
 | RTX 3070 Ti | i7-8700 | 15.8 s | 8.1 s | 4430 | 810 MiB | 466 MiB |
 | RTX 3080 10 GB | Ryzen 9 5950X | 15.2 s | 6.7 s | 5388 | 889 MiB | 522 MiB |
+| RTX 3080 Ti | EPYC 7352 | 19.1 s | 8.5 s | 4239 | 810 MiB | 557 MiB |
 | RTX 3090 | Ryzen 5 5600G | 12.5 s | 5.5 s | 6571 | 807 MiB | 558 MiB |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 11.9 s | 5.2 s | 6939 | 808 MiB | 568 MiB |
 | RTX 4060 | Xeon E5-2673 v4 | 27.3 s | 13.5 s | 2674 | 810 MiB | 400 MiB |
@@ -87,6 +88,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 3070 | Ryzen 5 5600X | 13.8 s | 9.6 s | 3743 | 631 MiB | 466 MiB |
 | RTX 3070 Ti | i7-8700 | 12.6 s | 8.1 s | 4422 | 631 MiB | 472 MiB |
 | RTX 3080 10 GB | Ryzen 9 5950X | 11.8 s | 6.7 s | 5416 | 711 MiB | 528 MiB |
+| RTX 3080 Ti | EPYC 7352 | 12.7 s | 6.3 s | 5675 | 631 MiB | 563 MiB |
 | RTX 3090 | Ryzen 5 5600G | 10.4 s | 5.5 s | 6498 | 629 MiB | 564 MiB |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 9.0 s | 5.2 s | 6911 | 630 MiB | 574 MiB |
 | RTX 4060 | Xeon E5-2673 v4 | 20.5 s | 13.7 s | 2629 | 630 MiB | 406 MiB |
@@ -125,6 +127,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 3070 | Ryzen 5 5600X | 4941 | 6505 |
 | RTX 3070 Ti | i7-8700 | 5858 | 8740 |
 | RTX 3080 10 GB | Ryzen 9 5950X | 7458 | 10404 |
+| RTX 3080 Ti | EPYC 7352 | 7486 | 9905 |
 | RTX 3090 | Ryzen 5 5600G | 9439 | 13229 |
 | RTX 3090 Ti | Threadripper PRO 5955WX | 9939 | 14109 |
 | RTX 4060 | Xeon E5-2673 v4 | 3536 | 4796 |
