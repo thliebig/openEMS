@@ -1531,13 +1531,16 @@ void openEMS::WriteDryRun()
 	default:                          engine = "unknown"; break;
 	}
 
+	stringstream timestep;
+	timestep << scientific << FDTD_Op->GetTimestep();
+
 	ofstream json("dry_run.json");
 	json << "{\n"
 	     << "  \"cells\": " << cells << ",\n"
 	     << "  \"lines\": [" << FDTD_Op->GetNumberOfLines(0) << ", " << FDTD_Op->GetNumberOfLines(1)
 	     <<              ", " << FDTD_Op->GetNumberOfLines(2) << "],\n"
 	     << "  \"max_timesteps\": " << NrTS << ",\n"
-	     << "  \"timestep_s\": " << scientific << FDTD_Op->GetTimestep() << defaultfloat << ",\n"
+	     << "  \"timestep_s\": " << timestep.str() << ",\n"
 	     << "  \"excitation_timesteps\": " << m_Exc->GetLength() << ",\n"
 	     << "  \"nyquist_timesteps\": " << m_Exc->GetNyquistNum() << ",\n"
 	     << "  \"end_criteria\": " << endCrit << ",\n"
