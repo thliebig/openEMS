@@ -250,16 +250,16 @@ IF(APPLE AND ENABLE_METAL)
   TARGET_LINK_LIBRARIES( openEMS "-framework Metal" "-framework Foundation" )
 ENDIF()
 
-IF(ENABLE_HIP)
-  # On the AMD platform HIP is a runtime library and the kernels need it at link
-  # time; on the NVIDIA platform hipcc compiles to CUDA and hip::host carries the
-  # CUDA runtime instead.
-  find_package(hip QUIET)
-  IF(hip_FOUND)
-    TARGET_LINK_LIBRARIES( openEMS hip::host )
-  ELSEIF(CMAKE_HIP_PLATFORM STREQUAL "amd")
-    TARGET_LINK_LIBRARIES( openEMS amdhip64 )
+IF(ENABLE_HIP AND CMAKE_HIP_PLATFORM STREQUAL "amd")
+  # On the AMD platform HIP is a runtime library the kernels need at link time. Not
+  # find_package(hip): its config file requires the ROCm clang as the C++ compiler,
+  # while openEMS builds its C++ with the system one. On the NVIDIA platform hipcc
+  # compiles to CUDA and the CUDA runtime comes with the HIP sources.
+  find_library(HIP_RUNTIME_LIBRARY amdhip64 HINTS ${ROCM_PATH}/lib $ENV{ROCM_PATH}/lib /opt/rocm/lib)
+  IF(NOT HIP_RUNTIME_LIBRARY)
+    message(FATAL_ERROR "HIP on AMD needs libamdhip64, set ROCM_PATH")
   ENDIF()
+  TARGET_LINK_LIBRARIES( openEMS ${HIP_RUNTIME_LIBRARY} )
 ENDIF()
 
 if (WIN32)
