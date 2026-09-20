@@ -163,6 +163,9 @@ number moved up and patch releases now have somewhere to go.
 - Octave: `plotRefl` died with "vertical dimensions mismatch" instead of
   drawing the Smith chart, because it added the trace after the legend and
   Octave's legend autoupdate could not append it (#172).
+- B-field dumps (`DumpType` 5/15) were not placed on the dual time/mesh like
+  H-field dumps, despite reading the same dual-grid values: values were
+  labelled half a cell and half a timestep off.
 
 ### Build
 
