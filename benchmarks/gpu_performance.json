@@ -1,0 +1,303 @@
+{
+ "_model": "rate(N) = rate_inf * N / (N + half_cells), MCells/s",
+ "_source": "openEMS benchmarks.md, GPU engine",
+ "machines": {
+  "A100 SXM4 40 GB": {
+   "half_cells": 1514801,
+   "host_cpu": "EPYC 7K62",
+   "measured": {
+    "free_space_pml_mcells_s": 11473.0,
+    "horn_fd_mcells_s": 7448.0
+   },
+   "rate_inf_mcells_s": 12116.7
+  },
+  "Apple M5 Max, CPU (multithreaded)": {
+   "half_cells": 1742335,
+   "host_cpu": "Apple M5 Max",
+   "measured": {
+    "free_space_pml_mcells_s": 485.0,
+    "horn_fd_mcells_s": 300.0
+   },
+   "rate_inf_mcells_s": 516.3
+  },
+  "Apple M5 Max, GPU (Metal)": {
+   "half_cells": 656110,
+   "host_cpu": "Apple M5 Max",
+   "measured": {
+    "free_space_pml_mcells_s": 4192.0,
+    "horn_fd_mcells_s": 3377.0
+   },
+   "rate_inf_mcells_s": 4293.9
+  },
+  "GTX 1080 Ti": {
+   "half_cells": 1087364,
+   "host_cpu": "EPYC 7551",
+   "measured": {
+    "free_space_pml_mcells_s": 2619.0,
+    "horn_fd_mcells_s": 1879.0
+   },
+   "rate_inf_mcells_s": 2724.5
+  },
+  "GTX 1660 Ti": {
+   "half_cells": 635551,
+   "host_cpu": "Ryzen 9 3900X",
+   "measured": {
+    "free_space_pml_mcells_s": 2268.0,
+    "horn_fd_mcells_s": 1838.0
+   },
+   "rate_inf_mcells_s": 2321.4
+  },
+  "H200": {
+   "half_cells": 1809602,
+   "host_cpu": "Xeon Platinum 8488C",
+   "measured": {
+    "free_space_pml_mcells_s": 25178.0,
+    "horn_fd_mcells_s": 15362.0
+   },
+   "rate_inf_mcells_s": 26865.5
+  },
+  "RTX 2060": {
+   "half_cells": 555418,
+   "host_cpu": "i9-9900K",
+   "measured": {
+    "free_space_pml_mcells_s": 2674.0,
+    "horn_fd_mcells_s": 2219.0
+   },
+   "rate_inf_mcells_s": 2729.0
+  },
+  "RTX 2060 Super": {
+   "half_cells": 645447,
+   "host_cpu": "Ryzen 5 3600",
+   "measured": {
+    "free_space_pml_mcells_s": 3913.0,
+    "horn_fd_mcells_s": 3162.0
+   },
+   "rate_inf_mcells_s": 4006.5
+  },
+  "RTX 2070": {
+   "half_cells": 703066,
+   "host_cpu": "Xeon E3-1225 V2",
+   "measured": {
+    "free_space_pml_mcells_s": 3772.0,
+    "horn_fd_mcells_s": 2998.0
+   },
+   "rate_inf_mcells_s": 3870.2
+  },
+  "RTX 2070 Super": {
+   "half_cells": 731198,
+   "host_cpu": "Xeon E5-2673 v3",
+   "measured": {
+    "free_space_pml_mcells_s": 3948.0,
+    "horn_fd_mcells_s": 3113.0
+   },
+   "rate_inf_mcells_s": 4054.9
+  },
+  "RTX 2080 Ti": {
+   "half_cells": 923615,
+   "host_cpu": "Xeon E5-2673 v4",
+   "measured": {
+    "free_space_pml_mcells_s": 5803.0,
+    "horn_fd_mcells_s": 4342.0
+   },
+   "rate_inf_mcells_s": 6001.5
+  },
+  "RTX 3050": {
+   "half_cells": 734558,
+   "host_cpu": "Xeon E5-2660 v3",
+   "measured": {
+    "free_space_pml_mcells_s": 2205.0,
+    "horn_fd_mcells_s": 1737.0
+   },
+   "rate_inf_mcells_s": 2265.0
+  },
+  "RTX 3060": {
+   "half_cells": 895103,
+   "host_cpu": "Ryzen 9 5900X",
+   "measured": {
+    "free_space_pml_mcells_s": 3649.0,
+    "horn_fd_mcells_s": 2751.0
+   },
+   "rate_inf_mcells_s": 3770.0
+  },
+  "RTX 3060 Ti": {
+   "half_cells": 852492,
+   "host_cpu": "Xeon E5-2690 v3",
+   "measured": {
+    "free_space_pml_mcells_s": 4397.0,
+    "horn_fd_mcells_s": 3353.0
+   },
+   "rate_inf_mcells_s": 4535.8
+  },
+  "RTX 3070": {
+   "half_cells": 877089,
+   "host_cpu": "Ryzen 5 5600X",
+   "measured": {
+    "free_space_pml_mcells_s": 4941.0,
+    "horn_fd_mcells_s": 3743.0
+   },
+   "rate_inf_mcells_s": 5101.5
+  },
+  "RTX 3070 Ti": {
+   "half_cells": 890325,
+   "host_cpu": "i7-8700",
+   "measured": {
+    "free_space_pml_mcells_s": 5858.0,
+    "horn_fd_mcells_s": 4422.0
+   },
+   "rate_inf_mcells_s": 6051.2
+  },
+  "RTX 3080 10 GB": {
+   "half_cells": 1039207,
+   "host_cpu": "Ryzen 9 5950X",
+   "measured": {
+    "free_space_pml_mcells_s": 7458.0,
+    "horn_fd_mcells_s": 5416.0
+   },
+   "rate_inf_mcells_s": 7745.1
+  },
+  "RTX 3090": {
+   "half_cells": 1257197,
+   "host_cpu": "Ryzen 5 5600G",
+   "measured": {
+    "free_space_pml_mcells_s": 9439.0,
+    "horn_fd_mcells_s": 6498.0
+   },
+   "rate_inf_mcells_s": 9878.5
+  },
+  "RTX 3090 Ti": {
+   "half_cells": 1215228,
+   "host_cpu": "Threadripper PRO 5955WX",
+   "measured": {
+    "free_space_pml_mcells_s": 9939.0,
+    "horn_fd_mcells_s": 6911.0
+   },
+   "rate_inf_mcells_s": 10386.3
+  },
+  "RTX 4060": {
+   "half_cells": 947815,
+   "host_cpu": "Xeon E5-2673 v4",
+   "measured": {
+    "free_space_pml_mcells_s": 3536.0,
+    "horn_fd_mcells_s": 2629.0
+   },
+   "rate_inf_mcells_s": 3660.1
+  },
+  "RTX 4060 Ti 16 GB": {
+   "half_cells": 970477,
+   "host_cpu": "i7-12700",
+   "measured": {
+    "free_space_pml_mcells_s": 4067.0,
+    "horn_fd_mcells_s": 3006.0
+   },
+   "rate_inf_mcells_s": 4213.2
+  },
+  "RTX 4070": {
+   "half_cells": 920254,
+   "host_cpu": "Ryzen 9 5900X",
+   "measured": {
+    "free_space_pml_mcells_s": 5894.0,
+    "horn_fd_mcells_s": 4414.0
+   },
+   "rate_inf_mcells_s": 6094.9
+  },
+  "RTX 4070 Super": {
+   "half_cells": 930626,
+   "host_cpu": "Xeon E5-2673 v4",
+   "measured": {
+    "free_space_pml_mcells_s": 6119.0,
+    "horn_fd_mcells_s": 4570.0
+   },
+   "rate_inf_mcells_s": 6329.9
+  },
+  "RTX 4070 Ti Super": {
+   "half_cells": 977547,
+   "host_cpu": "EPYC 7702P",
+   "measured": {
+    "free_space_pml_mcells_s": 7970.0,
+    "horn_fd_mcells_s": 5880.0
+   },
+   "rate_inf_mcells_s": 8258.6
+  },
+  "RTX 4080": {
+   "half_cells": 1084773,
+   "host_cpu": "Threadripper PRO 3975WX",
+   "measured": {
+    "free_space_pml_mcells_s": 8898.0,
+    "horn_fd_mcells_s": 6388.0
+   },
+   "rate_inf_mcells_s": 9255.5
+  },
+  "RTX 4080 Super": {
+   "half_cells": 1084877,
+   "host_cpu": "Xeon E5-2673 v4",
+   "measured": {
+    "free_space_pml_mcells_s": 9142.0,
+    "horn_fd_mcells_s": 6563.0
+   },
+   "rate_inf_mcells_s": 9509.3
+  },
+  "RTX 4090": {
+   "half_cells": 1169700,
+   "host_cpu": "EPYC 7K62",
+   "measured": {
+    "free_space_pml_mcells_s": 12695.0,
+    "horn_fd_mcells_s": 8925.0
+   },
+   "rate_inf_mcells_s": 13245.0
+  },
+  "RTX 5060": {
+   "half_cells": 975186,
+   "host_cpu": "Xeon E5-2683 v4",
+   "measured": {
+    "free_space_pml_mcells_s": 5050.0,
+    "horn_fd_mcells_s": 3728.0
+   },
+   "rate_inf_mcells_s": 5232.4
+  },
+  "RTX 5060 Ti 16 GB": {
+   "half_cells": 998098,
+   "host_cpu": "Ryzen 9 5950X",
+   "measured": {
+    "free_space_pml_mcells_s": 5516.0,
+    "horn_fd_mcells_s": 4048.0
+   },
+   "rate_inf_mcells_s": 5719.9
+  },
+  "RTX 5070": {
+   "half_cells": 1057792,
+   "host_cpu": "Threadripper PRO 3955WX",
+   "measured": {
+    "free_space_pml_mcells_s": 8160.0,
+    "horn_fd_mcells_s": 5898.0
+   },
+   "rate_inf_mcells_s": 8479.7
+  },
+  "RTX 5070 Ti": {
+   "half_cells": 1116585,
+   "host_cpu": "Ryzen 7 5700X",
+   "measured": {
+    "free_space_pml_mcells_s": 10346.0,
+    "horn_fd_mcells_s": 7369.0
+   },
+   "rate_inf_mcells_s": 10773.9
+  },
+  "RTX 5080": {
+   "half_cells": 1080923,
+   "host_cpu": "Ryzen 9 9900X",
+   "measured": {
+    "free_space_pml_mcells_s": 11706.0,
+    "horn_fd_mcells_s": 8412.0
+   },
+   "rate_inf_mcells_s": 12174.6
+  },
+  "RTX 5090": {
+   "half_cells": 1400570,
+   "host_cpu": "EPYC 7742",
+   "measured": {
+    "free_space_pml_mcells_s": 19774.0,
+    "horn_fd_mcells_s": 13168.0
+   },
+   "rate_inf_mcells_s": 20799.7
+  }
+ }
+}

@@ -149,6 +149,7 @@ protected:
 	bool m_DumpStats;
 	bool m_debugBox, m_debugPEC, m_no_simulation;
 	bool m_exactEndCriteria;
+	bool m_dry_run;
 
 	double endCrit;
 	int m_OverSampling;
@@ -168,6 +169,9 @@ protected:
 
 	//! Setup an operator matching the requested engine
 	virtual bool SetupOperator();
+
+	//! Write the scope of the simulation to "dry_run.json" and show it, for --dry-run
+	void WriteDryRun();
 
 	//! Read boundary conditions from xml element and apply to FDTD operator
 	bool SetupBoundaryConditions();

@@ -62,6 +62,7 @@ public:
 	virtual void ShowSnappedCoords();
 
 	void SetProcessInterval(unsigned int interval);
+	unsigned int GetProcessInterval() const {return ProcessInterval;}
 	void SetProcessStartStopTime(double start, double stop);
 
 	void AddStep(unsigned int step);
@@ -70,6 +71,9 @@ public:
 	//! Sample the frequency domain data \a factor times per Nyquist interval (call before AddFrequency())
 	void SetFDOverSampling(unsigned int factor);
 	void AddFrequency(double freq);
+
+	//! Number of frequencies this processing records
+	size_t GetNumberOfFrequencies() const {return m_FD_Samples.size();}
 	void AddFrequency(std::vector<double> *freqs);
 
 	//! Get the time-domain sampling interval in timesteps \sa SetProcessInterval

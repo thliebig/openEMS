@@ -67,6 +67,13 @@ public:
 
 	//! Set dump type: 0 for E-fields, 1 for H-fields, 2 for D-fields, 3 for B-fields, 4 for J-fields, etc...
 	virtual void SetDumpType(DumpType type) {m_DumpType=type;}
+	virtual DumpType GetDumpType() const {return m_DumpType;}
+
+	//! Number of lines this dump writes, per direction (valid after InitProcess())
+	const unsigned int* GetNumberOfLines() const {return numLines;}
+
+	//! Work out the geometry of the dump without opening its file, for a dry run
+	void CalcDumpGeometry() {if (Enabled) CalcMeshPos();}
 
 	double CalcTotalEnergyEstimate() const;
 
