@@ -205,10 +205,11 @@ Metal_Ext_UPML::Metal_Ext_UPML(GPU_Backend_Metal::Impl* impl, Operator_Ext_UPML*
 	d->Pipeline(UPML_SOURCE, "upml_fused_curr");
 }
 
+// The engine drops the device extensions on a host fallback or a reset, so undo the fusion: the
+// main updates cover the whole grid again and no buffer of this object stays bound to a z slab.
 Metal_Ext_UPML::~Metal_Ext_UPML()
 {
 	d->upml.erase(std::remove(d->upml.begin(), d->upml.end(), this), d->upml.end());
-	// the main updates cover the whole grid again
 	d->upml_fused = -1;
 	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
 	d->main_stop = d->dim;

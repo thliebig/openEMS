@@ -25,6 +25,13 @@
   The operator is built on the host like the basic operator, with the material
   and PEC evaluation split over threads like Operator_Multithread. Engine_GPU
   uploads the final coefficients to the device.
+
+  It derives from the basic Operator and not from Operator_Multithread; only the
+  two threaded build steps are repeated here.
+
+  This is the operator of a Cartesian mesh only. A cylindrical mesh keeps its
+  Operator_Cylinder / Operator_CylinderMultiGrid, which create the GPU engine
+  once Operator_Cylinder::SetGPUBackend() named a backend.
   */
 class Operator_GPU : public Operator
 {
@@ -33,6 +40,7 @@ public:
 	static Operator_GPU* New(const std::string& backend="auto");
 	virtual ~Operator_GPU();
 
+	//! Create the Engine_GPU on the backend of this operator
 	virtual Engine* CreateEngine();
 
 	const std::string& GetBackendName() const {return m_Backend;}
@@ -45,7 +53,7 @@ protected:
 	virtual bool Calc_EC();
 	virtual bool CalcPEC();
 
-	//! x line ranges of the threads
+	//! x line ranges of the threads, at most one per available CPU, bounds inclusive
 	void ThreadRanges(std::vector<unsigned int>& start, std::vector<unsigned int>& stop) const;
 
 	std::string m_Backend;

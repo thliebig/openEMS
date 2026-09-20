@@ -27,19 +27,22 @@
 
 #include "engine_interface_base.h"
 
-//! Background work of the field dumps, one thread in the order of the tasks.
-//! - the HDF5 writes of the TD dumps: during the run it is the only user of HDF5 (the
-//!   other dumps write in InitProcess()/PostProcess(), after FinishAsync()), so the writes
-//!   and the simulation overlap,
-//! - with field snapshots of the engine (see Engine_Interface_Base::TakeFieldSnapshot()),
-//!   the dumped fields from the snapshot (TD dumps) and the FD sums (FD dumps), while the
-//!   engine continues.
+//! Background work of the field dumps: one thread, the tasks in the order they were pushed
+/*!
+  During a run this thread is the only user of HDF5. Every other dump writes in
+  InitProcess()/PostProcess(), outside the run, and ProcessingArray::PostProcess() calls
+  FinishAsync() before any of them. That is what makes the unsynchronised HDF5 use safe.
+
+  It runs the HDF5 writes of the TD dumps, and, if the engine has field snapshots (see
+  Engine_Interface_Base::TakeFieldSnapshot()), the field evaluation of the TD dumps and
+  the FD sums as well, while the engine keeps stepping.
+  */
 class AsyncDumps
 {
 public:
 	static AsyncDumps& Get()
 	{
-		static AsyncDumps* dumps = new AsyncDumps();   // never deleted: no joining at exit
+		static AsyncDumps* dumps = new AsyncDumps();   // never deleted: the worker is detached, it is never joined
 		return *dumps;
 	}
 
@@ -60,7 +63,7 @@ public:
 		m_Changed.wait(lock, [&] {return m_Slots[next].refs==0;});
 		m_Slots[next].id = NULL;
 		lock.unlock();
-		const bool ok = eng_if->TakeFieldSnapshot(next, volt, curr);   // on the main thread, which drives the engine
+		const bool ok = eng_if->TakeFieldSnapshot(next, volt, curr);   // must run on the thread driving the engine
 		lock.lock();
 		if (!ok)
 			return false;
@@ -82,7 +85,7 @@ public:
 			std::thread(&AsyncDumps::Work, this).detach();
 			m_Started = true;
 		}
-		// bounded: tasks without a snapshot hold their field data
+		// bounded queue: a task without a snapshot carries a whole field array of its own
 		m_Changed.wait(lock, [&] {return m_Tasks.size()<64;});
 		if (slot>=0)
 			++m_Slots[slot].refs;

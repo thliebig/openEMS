@@ -49,8 +49,8 @@ protected:
 	int m_FieldDFT;
 	//! else the samples may be summed from field snapshots in the background (see AsyncDumps)
 	bool m_Snapshots;
-	bool m_AsyncUsed;
-	std::atomic<bool> m_AsyncFailed;
+	bool m_AsyncUsed;	//!< tasks were pushed, FinishAsync() has to wait for them
+	std::atomic<bool> m_AsyncFailed;	//!< written by the background task
 };
 
 #endif // PROCESSFIELDS_FD_H

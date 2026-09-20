@@ -92,7 +92,7 @@ public:
 	//! Process data after simulation has finished.
 	virtual void PostProcess();
 
-	//! Wait for data processing still running in the background (e.g. dumps written asynchronously), called before any PostProcess()
+	//! Wait for work still running in the background (see AsyncDumps), called for every processing before the first PostProcess()
 	virtual void FinishAsync() {}
 
 	//! If disabled, Process() will do nothing...

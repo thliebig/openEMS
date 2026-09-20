@@ -48,7 +48,8 @@ bool GPU_FindSets(size_t count, unsigned int width, const std::function<void(siz
 {
 	if ((width==0) || (width>GPU_MAX_SET_WIDTH))
 		return false;
-	// at most half the size of the full arrays (width floats per item)
+	// at most half the size of the full arrays (width floats per item), counting
+	// 4 bytes per index: whether 16 bit ones are enough is not known yet
 	const size_t max_sets16 = (size_t)std::numeric_limits<uint16_t>::max()+1;
 	const size_t max_sets = std::max(max_sets16, (2*width*count - 4*count)/(4*width));
 	sets.index.resize(count);

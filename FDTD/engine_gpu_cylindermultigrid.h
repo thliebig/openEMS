@@ -61,9 +61,9 @@ protected:
 	void HostInterpolate(ArrayLib::ArrayNIJK<FDTD_FLOAT>& base, const ArrayLib::ArrayNIJK<FDTD_FLOAT>& sub, bool currents, unsigned int r);
 
 	const Operator_CylinderMultiGrid* Op_CMG;
-	Engine_GPU* m_InnerEngine;
+	Engine_GPU* m_InnerEngine;   //!< sub-grid engine, owned here: its operator only keeps a pointer
 	GPU_MultiGridInterpolation m_Interpol;
-	GPU_MultiGridLink* m_Link;
+	GPU_MultiGridLink* m_Link;   //!< device coupling, NULL in the host fallback
 };
 
 #endif // ENGINE_GPU_CYLINDERMULTIGRID_H

@@ -455,7 +455,7 @@ def compare_outputs(path_a, path_b, rtol=0):
     return [(n, d) for n, d in diff if d > rtol], len(probes), len(dumps), worst
 
 
-# (name, case, all extensions have a Metal implementation)
+# (name, case, every extension the case uses has a device implementation)
 cases = [('excitation',     case_excitation,     True),
          ('pml',            case_pml,            True),
          ('mur',            case_mur,            True),

@@ -25,8 +25,18 @@
   Keeps its own "device" copies of the fields and coefficients, separate from the
   host mirror of Engine_GPU, so that all synchronization paths are exercised. The
   updates follow Engine::UpdateVoltages/UpdateCurrents operation by operation, the
-  results are bit-identical to the basic engine. Used until a real device backend
-  exists and as the reference to validate one against.
+  results are bit-identical to the basic engine.
+
+  It needs no GPU and no GPU SDK and is built unconditionally, so Engine_GPU can
+  be built and tested anywhere, and GPU_Backend::New() falls back to it when no
+  device is found. Being bit-identical makes it the oracle of the GPU engine test
+  (python/Tests/GPU_Engine.py runs every case with the basic engine, this backend
+  and the device backend): a difference here is in the engine, not in a device
+  backend.
+
+  It implements only the required methods, so everything optional (snapshots,
+  device DFT sums, energy, device extensions, multi-grid coupling) takes the host
+  fallback of Engine_GPU and is exercised too.
   */
 class GPU_Backend_Reference : public GPU_Backend
 {
@@ -46,12 +56,13 @@ public:
 	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
 	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
 
+	//! On the CPU there is no work stream to share, a sub-grid just gets its own backend
 	virtual GPU_Backend* NewSubGridBackend() {return new GPU_Backend_Reference();}
 
 protected:
 	unsigned int numLines[3];
 
-	// "device" memory
+	// "device" memory, never handed to the engine (no GetSharedVoltages())
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> m_volt;
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> m_curr;
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> m_vv;

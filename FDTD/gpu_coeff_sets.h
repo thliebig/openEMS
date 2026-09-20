@@ -25,6 +25,11 @@
 
 //! Coefficients stored as distinct sets and a set index per item (node or cell), see GPU_FindSets()
 #define GPU_MAX_SET_WIDTH 18
+/*!
+  Most items share one of a few sets (same material and mesh spacing), so an
+  index plus the table is much smaller than the full coefficient arrays and
+  removes most of their memory traffic in the device updates.
+  */
 struct GPU_CoeffSets
 {
 	uint32_t mode;                //!< 1: 16 bit index, 2: 32 bit index
@@ -36,8 +41,9 @@ struct GPU_CoeffSets
 //! Find the distinct sets of \a width values of \a count items, \a get(i, values) returns the values of item i
 /*!
   Returns false if a set index plus the sets would be larger than half the full
-  arrays (\a width floats per item). 16 bit indices for up to 65536 sets, else 32 bit.
-  The sets hold the bit patterns of the values, so reading them is exact.
+  arrays (\a width floats per item), in which case the caller keeps those.
+  16 bit indices for up to 65536 sets, else 32 bit. The sets hold the bit
+  patterns of the values, so reading them is exact.
   */
 bool GPU_FindSets(size_t count, unsigned int width, const std::function<void(size_t, float*)>& get, GPU_CoeffSets& sets);
 

@@ -191,6 +191,9 @@ struct Metal_Context
 	const void* group;
 
 	//! Compile (once) and return the pipeline of kernel \a function in \a source (without METAL_COMMON_SOURCE)
+	/*!
+	  Cached by function name over all sources, so a kernel name must be unique in the backend.
+	  */
 	id<MTLComputePipelineState> Pipeline(const char* source, const char* function);
 
 	//! The encoder of the current batch, created on demand
@@ -205,6 +208,9 @@ struct Metal_Context
 
 
 //! A UPML region along z, updated by the main kernels (see update_voltages), [0]: voltages, [1]: currents
+/*!
+  The buffers belong to the Metal_Ext_UPML of the region, which clears the slab when it is destroyed.
+  */
 struct Metal_ZSlab
 {
 	bool active;
@@ -215,9 +221,12 @@ struct Metal_ZSlab
 };
 
 //! State of one grid
+/*!
+  ARC owns the Metal objects below: they are released with the Impl, which the backend deletes.
+  */
 struct GPU_Backend_Metal::Impl
 {
-	std::shared_ptr<Metal_Context> ctx;
+	std::shared_ptr<Metal_Context> ctx;   //!< shared with the sub-grid backends: one queue, so all grids run in order
 	id<MTLDevice> device;
 
 	Metal_GridDim dim;
@@ -244,7 +253,7 @@ struct GPU_Backend_Metal::Impl
 	id<MTLComputeCommandEncoder> Encoder() {return ctx->Encoder();}
 	void Flush() {ctx->Flush();}
 
-	//! Shared buffer of \a bytes, initialized with \a data or zero
+	//! Buffer of \a bytes in shared storage (host and device see the same memory), initialized with \a data or zero
 	id<MTLBuffer> NewBuffer(size_t bytes, const void* data=NULL);
 
 	//! Dispatch \a pso with one thread per (i,j,k), i fastest; the pipeline and its arguments must be set on Encoder()
@@ -274,6 +283,11 @@ struct GPU_Backend_Metal::Impl
 };
 
 //! Factory of a Metal extension: the device implementation of \a eng_ext, or NULL if \a eng_ext is not of its type
+/*!
+  Engine_GPU owns the extension and deletes it before the backend, also in the middle of its
+  Init() if it falls back to the host, so an extension must undo in its destructor what it
+  changed in \a d.
+  */
 typedef GPU_Extension* (*Metal_ExtensionFactory)(GPU_Backend_Metal::Impl* d, Engine_Extension* eng_ext, Engine* eng);
 
 GPU_Extension* Metal_CreateExt_Excitation(GPU_Backend_Metal::Impl* d, Engine_Extension* eng_ext, Engine* eng);

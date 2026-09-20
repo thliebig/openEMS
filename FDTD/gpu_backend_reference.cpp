@@ -54,11 +54,14 @@ bool GPU_Backend_Reference::Init(const Operator* op)
 	return true;
 }
 
+// operation by operation like Engine::UpdateVoltages(): reordering the float
+// operations alone would break the bit-identical results
 void GPU_Backend_Reference::UpdateVoltages()
 {
 	unsigned int pos[3];
 	bool shift[3];
 
+	// shift is 0 on the lower boundary, where the neighbour term cancels itself
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		shift[0]=pos[0];
@@ -102,10 +105,12 @@ void GPU_Backend_Reference::UpdateVoltages()
 	}
 }
 
+// see Engine::UpdateCurrents()
 void GPU_Backend_Reference::UpdateCurrents()
 {
 	unsigned int pos[3];
 
+	// the last line of each direction has no upper neighbour and stays untouched
 	for (pos[0]=0; pos[0]<numLines[0]-1; ++pos[0])
 	{
 		for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])

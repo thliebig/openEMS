@@ -25,9 +25,14 @@
 //! GPU backend using Apple Metal
 /*!
   The fields and coefficients live in shared-storage Metal buffers (unified
-  memory), which Engine_GPU uses directly as its host mirror. All kernels of a
-  batch of timesteps are encoded into one serial compute encoder, which is only
-  committed when the host needs the fields.
+  memory), which Engine_GPU uses directly as its host mirror: there is no
+  download, Download/Upload only wait for the device. All kernels of a batch of
+  timesteps are encoded into one serial compute encoder, which is only committed
+  when the host needs the fields.
+
+  The field dumps are copied on the device at a snapshot (see SnapshotFields())
+  and evaluated on the dump thread while the device keeps stepping; the frequency
+  domain dumps are summed there too, where CUDA sums them on the device.
 
   This header is plain C++, the Metal state is kept in Impl (see metal_internal.h).
   */

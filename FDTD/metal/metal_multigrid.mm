@@ -73,8 +73,8 @@ protected:
 	               const std::vector<float> w_2p[2], const std::vector<float> w_2pp[2]);
 	void Interpolate(id<MTLBuffer> base_field, id<MTLBuffer> sub_field, const Weights& w, unsigned int r0, unsigned int count);
 
-	GPU_Backend_Metal::Impl* b;
-	GPU_Backend_Metal::Impl* s;
+	GPU_Backend_Metal::Impl* b;   //!< base grid, owned by its backend
+	GPU_Backend_Metal::Impl* s;   //!< sub-grid, owned by its backend
 	unsigned int m_SplitPos;
 	Weights m_Volt, m_Curr;
 };

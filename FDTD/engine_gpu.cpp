@@ -92,6 +92,9 @@ void Engine_GPU::Init()
 	m_FieldsOnHost = !host_exts.empty();
 	if (m_FieldsOnHost)
 	{
+		// all or nothing: with one extension on the host, both fields are uploaded
+		// before every main update, which would overwrite what a device extension
+		// did to them
 		ClearGPUExtensions();
 		cout << "Engine_GPU: extensions run on the host copy of the fields (host fallback)" << endl;
 		cerr << "Engine_GPU::Init: Warning: extensions without a GPU implementation run on the host, the fields are copied every timestep:" << endl;

@@ -53,7 +53,7 @@ protected:
 	unsigned int m_Period;       //!< timesteps per period
 	unsigned int m_Count;        //!< number of probes
 	unsigned int* m_Index;       //!< flat NIJK index of the probed voltages
-	float* m_Records;            //!< [probe][2*period]
+	float* m_Records;            //!< [probe][2*period]: the two periods CheckPeriod() compares
 	std::vector<float> m_HostRecords;
 };
 

@@ -27,6 +27,8 @@
   arrays are page-locked on first use for full transfer speed). All kernels of
   the grids of a simulation run in order on one HIP stream (see
   NewSubGridBackend()), which is only synchronized when the host needs the fields.
+  Where the extensions allow it, a timestep is a single fused kernel with the UPML
+  regions folded into it (see Impl::DecideFusedStep()).
   The field dumps are evaluated on the device at a snapshot and downloaded on a
   second stream, overlapping the work (see SnapshotFields()). Frequency domain
   dumps are summed on the device (see AddFieldDFT()).

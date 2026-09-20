@@ -198,6 +198,8 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
 // Fused step: the voltages and currents of the main nodes [B, E) in one pass, from the current
 // fields (volt_in, curr_in) into the next buffers (volt_out, curr_out); every value is computed
 // with the same operations as update_voltages/update_currents.
+// One kernel for the whole timestep: the current update reads the new voltages from shared
+// memory, instead of a second pass reading them back from global memory.
 // A block marches along FUSED_XC x lines of a (FUSED_TZ-1)x(FUSED_TY-1) tile in (z,y). At each
 // x it computes the new voltages of the tile and its border (+z, +y) into shared memory and of
 // the next x line (registers), then the new currents of the tile. The border voltages of other
@@ -295,7 +297,8 @@ __global__ void __launch_bounds__(FUSED_TZ*FUSED_TY) update_fused(
 }
 
 // the dumped values of a snapshot: entries [0, nv) from the voltages, [nv, n) from the currents
-// (see GPU_GatherEntry). Double precision without FMA contraction (--fmad=false), as on the host.
+// (see GPU_GatherEntry). Evaluated here so that only the dumped values go over PCIe, not the
+// whole fields. Double precision without FMA contraction (--fmad=false), as on the host.
 __device__ inline double gather_raw(const float* f, const GPU_GatherEntry& e, int k)
 {
 	if (e.delta[k])
@@ -338,7 +341,7 @@ __global__ void gather_dumps(const float* __restrict__ volt, const float* __rest
 
 // frequency domain dumps: sums[k*n + i] += value(i) * w[k] for the weights of one timestep,
 // as ProcessFieldsFD::Process() (a float times a complex float, then a complex sum)
-#define DFT_WEIGHTS 32
+#define DFT_WEIGHTS 32   // weights per launch, passed by value in the kernel parameters
 struct HIP_DFTWeights { float2 w[DFT_WEIGHTS]; };
 
 __global__ void field_dft(const float* __restrict__ f, const GPU_GatherEntry* __restrict__ entries, unsigned int n,
@@ -796,8 +799,7 @@ void GPU_Backend_HIP::UpdateVoltages()
 	const bool c = d->coeff_mode>0;
 	if (d->DecideFusedStep())
 	{
-		// the voltages and currents of the main nodes, see update_fused
-		// the main nodes, or the whole grid with the UPML regions in the kernel
+		// the main nodes, or the whole grid with the UPML regions in the kernel (see update_fused)
 		HIP_GridDim B = d->main_start;
 		HIP_GridDim E = d->main_stop;
 		if (d->fregions.count)
@@ -818,6 +820,7 @@ void GPU_Backend_HIP::UpdateVoltages()
 		d->CheckLaunch("update_fused");
 		if (timed)
 			HIP_KernelTimes::End(d->Stream(), "update_fused");
+		// only the voltages: UpdateCurrents swaps the currents, once the fix-up has read the old ones
 		std::swap(d->volt, d->volt_next);
 		return;
 	}

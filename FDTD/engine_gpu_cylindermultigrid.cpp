@@ -50,6 +50,8 @@ void Engine_GPU_CylinderMultiGrid::Init()
 	// this grid: backend, extensions, device or host fallback
 	Engine_GPU::Init();
 
+	// the interpolation data, copied out of the operator: a backend knows neither
+	// the operator classes nor their SIMD types
 	m_Interpol.split_pos = Op_CMG->m_Split_Pos;
 	for (int n=0; n<2; ++n)
 		for (unsigned int a=0; a<numLines[1]; ++a)
@@ -120,6 +122,8 @@ void Engine_GPU_CylinderMultiGrid::CurrentHalfStep()
 {
 	Engine_GPU::CurrentHalfStep();
 	m_InnerEngine->CurrentHalfStep();
+	// the base grid takes its currents at split_pos-2 from the sub-grid, see
+	// Engine_Ext_CylinderMultiGrid::SyncCurrents()
 	if (m_Link)
 		m_Link->SyncCurrents();
 	else if (m_Interpol.split_pos>=2)

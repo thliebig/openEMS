@@ -53,7 +53,7 @@ void ProcessFieldsTD::FinishAsync()
 	}
 }
 
-// on the background writer: calculate the field from the snapshot \a src (if \a field is NULL) and write it
+// on the background thread: with no ready field, calculate it from the snapshot src first
 bool ProcessFieldsTD::WriteHDF5(unsigned int ts, float time, ArrayLib::ArrayNIJK<float>* field, const float* src)
 {
 	ArrayLib::ArrayNIJK<float> calc_field;
@@ -79,7 +79,8 @@ void ProcessFieldsTD::InitProcess()
 
 	ProcessFields::InitProcess();
 
-	// before the first snapshot, e.g. to evaluate the dumped nodes on the device
+	// only the HDF5 dumps go through AsyncDumps (see Process()), and the gather has to be
+	// prepared before the first snapshot
 	if (m_fileType==HDF5_FILETYPE)
 	{
 		GetGather();
@@ -117,7 +118,8 @@ int ProcessFieldsTD::Process()
 
 	string filename = m_filename;
 
-	// HDF5: written in the background, see AsyncDumps; with a snapshot of the fields also calculated there
+	// HDF5 is written in the background (see AsyncDumps); with a field snapshot the field
+	// is calculated there too, so the engine does not wait for the dump at all
 	if (m_fileType==HDF5_FILETYPE)
 	{
 		const unsigned int ts = m_Eng_Interface->GetNumberOfTimesteps();
@@ -130,6 +132,7 @@ int ProcessFieldsTD::Process()
 		ArrayLib::ArrayNIJK<float>* field = NULL;
 		if (!src)
 		{
+			// no snapshot: calculate here and hand the array over, the task deletes it
 			field = new ArrayLib::ArrayNIJK<float>("TD_field", numLines);
 			if (!CalcField(*field))
 			{

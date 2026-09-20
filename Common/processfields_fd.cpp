@@ -76,8 +76,9 @@ void ProcessFieldsFD::InitProcess()
 		m_FD_Fields.push_back(field_fd);
 	}
 
-	// the sums kept by the engine (e.g. on the device), else summed from field snapshots
-	// in the background; both before the first snapshot (not for the SAR dumps: no gather)
+	// let the engine keep the sums (e.g. on the device), else sum them from field snapshots
+	// in the background; both need the node gather and have to be set up before the first
+	// snapshot, so not for the SAR dumps, whose dump type has no gather
 	if (GetGather())
 	{
 		m_FieldDFT = m_Eng_Interface->CreateFieldDFT(m_Gather, m_FD_Samples.size());
@@ -106,15 +107,15 @@ int ProcessFieldsFD::Process()
 
 	++m_FD_SampleCount;
 
-	// the sums kept by the engine, e.g. on the device, with the same operations
+	// summed by the engine with the same weights: the fields never leave the device
 	if (m_FieldDFT>=0)
 	{
 		m_Eng_Interface->AccumulateFieldDFT(m_FieldDFT, weights);
 		return GetNextInterval();
 	}
 
-	// from a snapshot of the fields in the background, while the engine continues; the
-	// samples are added in order, as here
+	// else from a field snapshot, summed in the background while the engine continues;
+	// AsyncDumps keeps the task order, so the samples are added in the order taken
 	int slot = -1;
 	const float *volt = NULL, *curr = NULL;
 	if (m_Snapshots && AsyncDumps::Get().Snapshot(m_Eng_Interface, m_Eng_Interface->GetNumberOfTimesteps(), slot, volt, curr))

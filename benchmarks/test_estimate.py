@@ -4,7 +4,8 @@
 
 The rate model has to reproduce the two points that fixed it, and the estimate
 of a whole run has to land near the runs of benchmarks.md. The horn of the
-benchmarks ran 14900 timesteps on every machine, so its rows are 32 test cases.
+benchmarks ran 14900 timesteps on every machine, so every row of its two tables
+is a test case.
 """
 
 import os

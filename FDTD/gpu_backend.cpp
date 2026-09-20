@@ -58,7 +58,8 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
                        unsigned int start[3], unsigned int stop[3])
 {
-	// the extension order: UPML (and steady-state) first
+	// the extension order: UPML (and steady-state) first, so that nothing else
+	// touches the fields between the UPML hooks and the main update
 	size_t num_upml = 0;
 	size_t last_upml = 0;
 	for (size_t n=0; n<eng->GetExtensionCount(); ++n)
@@ -113,6 +114,7 @@ bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, 
 				}
 	if (free_nodes==0)
 		return false;
+	// the nodes left over must fill their bounding box, else they are no single box
 	if (free_nodes!=(size_t)(hi[0]-lo[0])*(hi[1]-lo[1])*(hi[2]-lo[2]))
 		return false;
 

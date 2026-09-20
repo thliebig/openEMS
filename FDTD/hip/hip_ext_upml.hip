@@ -89,7 +89,8 @@ public:
 			Pre(d->volt, m_VoltFlux, m_VV, m_VVFO);
 		else if ((d->fused_step>0) && d->fregions.count)
 		{
-			// in the kernel: the current voltage flux in, the new one into the second buffer
+			// in the kernel: the current voltage flux in, the new one into the second buffer,
+			// as blocks that only need a border voltage compute the node again on the old flux
 			d->fregions.volt[m_Side].flux = m_VoltFlux;
 			d->fregions.volt[m_Side].flux_out = m_VoltFlux2;
 			std::swap(m_VoltFlux, m_VoltFlux2);
@@ -162,7 +163,7 @@ protected:
 	UPMLRegion m_Region;
 	bool m_InMain;   //!< fused: updated by the main kernels (see HIP_ZSlabs)
 	int m_Side;      //!< fused step with the regions in the kernel: the side of the region (see HIP_FusedRegions)
-	float* m_VoltFlux2;   //!< ... and the second buffer of the voltage flux
+	float* m_VoltFlux2;   //!< ... and the second buffer of the voltage flux, written by the block that owns the node
 
 	float *m_VoltFlux, *m_CurrFlux;
 	float *m_VV, *m_VVFO, *m_VVFN;
@@ -181,6 +182,7 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 	m_InMain = false;
 	m_Side = -1;
 	m_VoltFlux2 = NULL;
+	// the UPML extensions of a grid decide together whether they fuse (see CanFuse())
 	d->upml.push_back(this);
 	m_Region.sx = op_ext->m_StartPos[0];
 	m_Region.sy = op_ext->m_StartPos[1];

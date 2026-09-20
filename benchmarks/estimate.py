@@ -2,9 +2,9 @@
 
 openEMS --dry-run works out the scope of a simulation without running it: the
 number of cells, the dumps and the maximum number of timesteps. Together with
-the measured speed of a machine (assets/gpu_performance.json, from the
-benchmarks of the GPU engine) that gives a run time, and with the price per
-hour of a rented machine, a price.
+the measured speed of a machine (gpu_performance.json, from the benchmarks of
+the GPU engine) that gives a run time, and with the price per hour of a rented
+machine, a price.
 
     from estimate import Scope, estimate, MACHINES
     scope = Scope.from_file("sim/dry_run.json")
@@ -14,11 +14,11 @@ or from the command line:
 
     python3 estimate.py sim/dry_run.json --timesteps 20000
 
-What it cannot know is how many timesteps the run really takes. openEMS stops
-on its end criteria, i.e. when the energy in the domain has decayed, and how
-long that takes depends on the structure (a resonant one rings for longer).
-Thus every number here is "for N timesteps", and the default N is the maximum
-of the model, which is an upper bound, usually a generous one.
+What it cannot know is how many timesteps the run really takes: openEMS stops
+once the energy in the domain has decayed to its end criteria, and how long
+that takes depends on the structure (a resonant one rings for longer). Every
+number here is therefore "for N timesteps", with N defaulting to the maximum of
+the model, a usually generous upper bound.
 """
 
 import json
@@ -77,8 +77,8 @@ class Scope:
 def resolve(name):
     """Give the full name of a machine, from a part of it ("5080", "Metal").
 
-    The names hold a comma ("Apple M5 Max, GPU (Metal)"), so a list of them on
-    the command line cannot be split on commas alone.
+    Some names hold a comma ("Apple M5 Max, GPU (Metal)"), so a full name cannot
+    be given in the comma separated --machines list.
     """
     if name in MACHINES:
         return name

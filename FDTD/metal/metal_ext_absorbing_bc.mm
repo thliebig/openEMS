@@ -161,6 +161,7 @@ Metal_Ext_Absorbing_BC::Metal_Ext_Absorbing_BC(GPU_Backend_Metal::Impl* impl, Op
 	m_Curr_nyPP = d->NewBuffer(bytes);
 	m_K1_nyP  = d->NewBuffer(bytes, op_ext->m_K1_nyP.data());
 	m_K1_nyPP = d->NewBuffer(bytes, op_ext->m_K1_nyPP.data());
+	// K2 only exists with super-absorption, but the kernels still bind it: zero then
 	m_K2_nyP  = d->NewBuffer(bytes, op_ext->m_K2_nyP.valid() ? op_ext->m_K2_nyP.data() : NULL);
 	m_K2_nyPP = d->NewBuffer(bytes, op_ext->m_K2_nyPP.valid() ? op_ext->m_K2_nyPP.data() : NULL);
 

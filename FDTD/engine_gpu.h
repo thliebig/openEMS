@@ -38,6 +38,9 @@ class GPU_Extension;
 
   An extension runs on the device if its operator extension IsGPUSave() and the
   backend provides a device implementation (GPU_Backend::CreateExtension()).
+  Every concrete operator extension of openEMS reports IsGPUSave(), so a fallback
+  means the backend has no implementation of one of them (the reference backend
+  has none at all).
   If all extensions do, the fields stay on the device for a whole IterateTS()
   call. Without shared memory, the host mirror is then not updated at the end of
   a batch: GetVolt/GetCurr read the z-line of a value from the device (e.g. for
@@ -48,6 +51,11 @@ class GPU_Extension;
   and post-update hooks may write the fields too, despite the Engine_Extension
   documentation: the UPML in all four, the TF/SF and the cylinder extension in
   the post-update hooks.
+
+  The engine type is Engine::GPU, which the extension dispatcher and
+  Engine_Interface_FDTD handle like the basic engine, because that is the layout
+  of the host mirror. The engine owns the backend and the device extensions and
+  deletes the extensions first.
   */
 class Engine_GPU : public Engine
 {
@@ -56,9 +64,12 @@ public:
 	static Engine_GPU* New(const Operator* op, const std::string& backend, GPU_Backend* parent=NULL);
 	virtual ~Engine_GPU();
 
+	//! Create the backend, the device extensions and decide device or host fallback
 	virtual void Init();
+	//! Free the device extensions before the backend they belong to
 	virtual void Reset();
 
+	//! A batch of timesteps, the host mirror is brought up to date at its end
 	virtual bool IterateTS(unsigned int iterTS);
 
 	//! One voltage half-step: extensions and main update (with sub-grids, see Engine_GPU_CylinderMultiGrid)
@@ -144,7 +155,9 @@ protected:
 		std::unordered_map<unsigned int, std::vector<FDTD_FLOAT>> lines;
 	};
 	mutable StaleField m_StaleVolt, m_StaleCurr;
+	//! Read a value of a stale field from the device, keeping its z-line for the rest of the batch
 	FDTD_FLOAT ReadStale(bool currents, unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
+	//! The device updated the field, the host mirror is out of date from here on
 	void MarkStale(StaleField& field);
 
 	void ClearGPUExtensions();

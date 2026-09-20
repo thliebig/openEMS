@@ -85,7 +85,7 @@ bool Operator_GPU::CalcPEC()
 {
 	std::vector<unsigned int> start, stop;
 	ThreadRanges(start, stop);
-	std::vector<unsigned int> counter(3*start.size(), 0);
+	std::vector<unsigned int> counter(3*start.size(), 0);   // three PEC counters per thread, summed up below
 	std::vector<std::thread> threads;
 	for (size_t n=0; n<start.size(); ++n)
 		threads.push_back(std::thread(&Operator_GPU::CalcPEC_Range, this, start[n], stop[n], &counter[3*n]));

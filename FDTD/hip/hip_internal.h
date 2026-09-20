@@ -112,7 +112,7 @@ struct GPU_Backend_HIP::Impl
 	int fused_step;                          //!< -1: not decided yet, 0: off, 1: on
 	int fused_blockers;                      //!< extensions or grids that do not allow it
 	float *volt_next, *curr_next;
-	std::vector<unsigned int> volt_modified; //!< flat indices of voltages changed between the half-steps (e.g. excitation)
+	std::vector<unsigned int> volt_modified; //!< flat indices of the voltages the extensions register as changed between the half-steps (excitation, lumped RLC)
 	HIP_FusedRegions fregions;              //!< the UPML regions in the kernel (see HIP_Ext_UPML::CanFuse())
 	unsigned int* fixup;                     //!< main nodes whose currents are recomputed after the voltage extensions
 	unsigned int fixup_count;
@@ -197,7 +197,6 @@ protected:
 	std::set<void*> m_Pinned;
 };
 
-//! Launch \a kernel with one thread per (i,j,k) on the stream of \a d; the kernel checks its bounds
 //! Kernel timing for development (environment variable OPENEMS_HIP_KERNEL_TIMES=1): the
 //! time of every launch, per kernel name, printed at exit. Waits for each kernel.
 struct HIP_KernelTimes
@@ -207,6 +206,7 @@ struct HIP_KernelTimes
 	static void End(hipStream_t stream, const char* name);
 };
 
+//! Launch \a kernel with one thread per (i,j,k) on the stream of \a d; the kernel checks its bounds
 template <typename Kernel, typename... Args>
 void HIP_Launch(GPU_Backend_HIP::Impl* d, const char* name, Kernel kernel, size_t ni, size_t nj, size_t nk, Args... args)
 {

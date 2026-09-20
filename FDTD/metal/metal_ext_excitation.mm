@@ -75,7 +75,7 @@ protected:
 	struct Sources
 	{
 		unsigned int count;
-		bool serial;          //!< points share an edge, apply them one after the other
+		bool serial;          //!< points share an edge: one thread in the host order, parallel adds would race
 		id<MTLBuffer> index;  //!< flat NIJK index of the excited edge
 		id<MTLBuffer> amp;
 		id<MTLBuffer> delay;

@@ -268,11 +268,16 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 
 namespace
 {
-//! Precomputed GetRawInterpolatedField()/GetRawInterpolatedDualField() (type 0) of the
-//! nodes of a dump, for engines with the fields in the basic engine layout (GPU host mirror).
-//! Every node component is one of a few forms, evaluated with the same operations as there.
-//! The entries can also be evaluated on the device at every snapshot (see
-//! Engine_GPU::AddSnapshotGather()), a snapshot then holds the dumped values.
+//! Precomputed GetRawInterpolatedField()/GetRawInterpolatedDualField() (type 0) at the nodes of a dump
+/*!
+  Only for engines holding the fields in the basic engine layout (the GPU host mirror).
+  Every node component reduces to one of a few forms, evaluated with the same operations
+  as the interpolation it stands in for.
+
+  The same entries can be evaluated on the device at every snapshot (see
+  Engine_GPU::AddSnapshotGather()); the snapshot then holds the dumped values instead of
+  the fields, so only the dump itself crosses the bus.
+  */
 class Field_Gather_FDTD : public Engine_Field_Gather
 {
 public:
@@ -293,6 +298,7 @@ public:
 
 	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const
 	{
+		// the device evaluated the entries into the snapshot, just unpack them
 		if (src && m_Evaluated)
 		{
 			for (size_t l=line_start; l<line_stop; ++l)
@@ -482,7 +488,7 @@ bool Engine_Interface_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gather)
 {
 	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
 	if (!eng_gpu || !eng_gpu->CanSnapshotGather())
-		return true;   // snapshots of the fields, if any
+		return true;   // plain field snapshots, if the backend has any: evaluated on the host
 	Field_Gather_FDTD* g = dynamic_cast<Field_Gather_FDTD*>(gather);
 	size_t offset = 0;
 	if (!g || !eng_gpu->AddSnapshotGather(g->HField(), g->entries, offset))
@@ -547,7 +553,8 @@ void Engine_Interface_FDTD::WaitFieldSnapshot(unsigned int slot) const
 
 void Engine_Interface_FDTD::PrepareFieldAccess()
 {
-	// the GPU engine reads out-of-date values from the device, which is not thread-safe
+	// refresh the host mirror here: GetVolt()/GetCurr() would fetch the stale lines from
+	// the device themselves, which several threads cannot do at once
 	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
 	if (eng_gpu)
 		eng_gpu->UpdateHostMirror();

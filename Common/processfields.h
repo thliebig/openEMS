@@ -105,13 +105,13 @@ protected:
 	unsigned int numLines[3];	//number of lines to dump
 	unsigned int* posLines[3];	//grid positions to dump
 
-	//! precomputed E/H evaluation at the dumped nodes (if the engine interface has one), created at the first CalcField()
+	//! precomputed E/H evaluation at the dumped nodes, owned here; NULL if the engine interface has none
 	Engine_Field_Gather* m_Gather;
-	bool m_GatherTried;
+	bool m_GatherTried;	//!< m_Gather was asked for once, it stays NULL if that failed
 	double* discLines[3];		//mesh disc lines to dump
 
 	//! Calculate and return the defined field. Caller has to cleanup the array.
-	//! Calculate the dumped field, from the fields \a src (a snapshot, see Engine_Field_Gather::Evaluate()) or the current fields (NULL)
+	//! \a src: the fields of a snapshot (see Engine_Field_Gather::Evaluate()), NULL: the current fields
 	bool CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const float* src=NULL);
 	//! The precomputed evaluation of the dumped nodes, NULL if there is none
 	const Engine_Field_Gather* GetGather();

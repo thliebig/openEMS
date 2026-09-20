@@ -248,6 +248,7 @@ id<MTLComputeCommandEncoder> Metal_Context::Encoder()
 {
 	if (enc)
 		return enc;
+	// command buffer and encoder are autoreleased: without a pool they would pile up for a run
 	@autoreleasepool
 	{
 		cmd = [queue commandBuffer];
@@ -291,6 +292,8 @@ void Metal_Context::Flush()
 
 id<MTLBuffer> GPU_Backend_Metal::Impl::NewBuffer(size_t bytes, const void* data)
 {
+	// shared storage: the host and the kernels work on the same pages, so the fields never
+	// have to be transferred. Metal rejects a zero length buffer, empty arrays get the minimum.
 	id<MTLBuffer> buf = [device newBufferWithLength:std::max(bytes, (size_t)4) options:MTLResourceStorageModeShared];
 	if (!buf)
 		throw std::runtime_error("GPU_Backend_Metal: buffer allocation failed");
@@ -308,6 +311,7 @@ void GPU_Backend_Metal::Impl::Dispatch(id<MTLComputePipelineState> pso, size_t n
 	if ((group==NULL) || (group!=ctx->group))
 		[enc memoryBarrierWithScope:MTLBarrierScopeBuffers];
 	ctx->group = group;
+	// wide in the first dimension: the callers pass z first, which is contiguous in ArrayNIJK
 	NSUInteger w = pso.threadExecutionWidth;
 	NSUInteger h = std::max<NSUInteger>(1, std::min<NSUInteger>(4, pso.maxTotalThreadsPerThreadgroup / w));
 	MTLSize size = (nj>1) ? MTLSizeMake(w, h, 1) : MTLSizeMake(std::min<NSUInteger>(pso.maxTotalThreadsPerThreadgroup, 256), 1, 1);
@@ -318,7 +322,7 @@ void GPU_Backend_Metal::Impl::SetCoefficients(unsigned int index_idx, unsigned i
                                               id<MTLBuffer> full_a, id<MTLBuffer> full_b)
 {
 	id<MTLComputeCommandEncoder> enc = Encoder();
-	// unused arguments get a valid buffer
+	// every buffer argument of a kernel must be bound, so unused ones get a valid buffer
 	[enc setBuffer:(coeff_mode ? index : full_a) offset:0 atIndex:index_idx];
 	[enc setBuffer:(coeff_mode ? coeff : full_a) offset:0 atIndex:a_idx];
 	[enc setBuffer:(coeff_mode ? coeff : full_b) offset:0 atIndex:b_idx];
@@ -397,6 +401,8 @@ GPU_Backend_Metal::GPU_Backend_Metal(Impl* impl)
 
 GPU_Backend_Metal::~GPU_Backend_Metal()
 {
+	// run out the encoded batch: its encoder must be ended, and the device must be done
+	// before ARC releases the buffers
 	d->Flush();
 	delete d;
 }
@@ -539,6 +545,8 @@ static void CopyField(const void* src, void* dst, size_t src_bytes, size_t dst_b
 		std::memcpy(dst, src, src_bytes);
 }
 
+// unified memory: Engine_GPU maps its host mirror onto these buffers, so the fields never
+// travel and Download/Upload only have to wait for the device
 FDTD_FLOAT* GPU_Backend_Metal::GetSharedVoltages() const
 {
 	return static_cast<FDTD_FLOAT*>([d->volt contents]);
@@ -549,11 +557,14 @@ FDTD_FLOAT* GPU_Backend_Metal::GetSharedCurrents() const
 	return static_cast<FDTD_FLOAT*>([d->curr contents]);
 }
 
+// the host reads the shared buffers directly, so it has to wait for the encoded batch
 void GPU_Backend_Metal::Synchronize()
 {
 	d->Flush();
 }
 
+// The dump thread reads the fields (and sums the frequency domain dumps) while the engine keeps
+// stepping, so the device copies them into a slot of its own instead of sharing the field buffers.
 bool GPU_Backend_Metal::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
 {
 	if (slot>1)
@@ -582,6 +593,7 @@ bool GPU_Backend_Metal::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &vol
 	return true;
 }
 
+// called from the dump thread, while the main thread encodes the next timesteps
 void GPU_Backend_Metal::WaitSnapshot(unsigned int slot)
 {
 	id<MTLCommandBuffer> cmd = (slot<2) ? d->snap_cmd[slot] : nil;
