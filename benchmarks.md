@@ -56,6 +56,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 4060 Ti 16 GB | i7-12700 | 17.8 s | 11.8 s | 3042 | 809 MiB | 426 MiB |
 | RTX 4070 | Ryzen 9 5900X | 17.1 s | 8.2 s | 4417 | 808 MiB | 460 MiB |
 | RTX 4070 Super | Xeon E5-2673 v4 | 22.9 s | 10.7 s | 3366 | 810 MiB | 488 MiB |
+| RTX 4070 Ti | Ryzen 9 3900X | 15.2 s | 7.4 s | 4851 | 808 MiB | 500 MiB |
 | RTX 4070 Ti Super | EPYC 7702P | 16.8 s | 6.8 s | 5298 | 802 MiB | 516 MiB |
 | RTX 4080 | Threadripper PRO 3975WX | 13.9 s | 5.7 s | 6332 | 807 MiB | 544 MiB |
 | RTX 4080 Super | Xeon E5-2673 v4 | 25.8 s | 10.1 s | 3557 | 806 MiB | 555 MiB |
@@ -95,6 +96,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 4060 Ti 16 GB | i7-12700 | 15.5 s | 12.0 s | 3006 | 629 MiB | 432 MiB |
 | RTX 4070 | Ryzen 9 5900X | 13.4 s | 8.2 s | 4414 | 629 MiB | 466 MiB |
 | RTX 4070 Super | Xeon E5-2673 v4 | 14.1 s | 7.9 s | 4570 | 630 MiB | 494 MiB |
+| RTX 4070 Ti | Ryzen 9 3900X | 11.7 s | 7.4 s | 4864 | 630 MiB | 506 MiB |
 | RTX 4070 Ti Super | EPYC 7702P | 12.0 s | 6.1 s | 5880 | 627 MiB | 522 MiB |
 | RTX 4080 | Threadripper PRO 3975WX | 10.4 s | 5.6 s | 6388 | 629 MiB | 550 MiB |
 | RTX 4080 Super | Xeon E5-2673 v4 | 13.7 s | 5.5 s | 6563 | 627 MiB | 561 MiB |
@@ -134,6 +136,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | RTX 4060 Ti 16 GB | i7-12700 | 4067 | 5021 |
 | RTX 4070 | Ryzen 9 5900X | 5894 | 9059 |
 | RTX 4070 Super | Xeon E5-2673 v4 | 6119 | 8195 |
+| RTX 4070 Ti | Ryzen 9 3900X | 6675 | 8722 |
 | RTX 4070 Ti Super | EPYC 7702P | 7970 | 12029 |
 | RTX 4080 | Threadripper PRO 3975WX | 8898 | 12066 |
 | RTX 4080 Super | Xeon E5-2673 v4 | 9142 | 12744 |
