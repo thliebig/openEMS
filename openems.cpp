@@ -633,10 +633,10 @@ bool openEMS::SetupProcessing()
 						ProcField->SetProcessInterval(Nyquist/m_OverSampling);
 						if (db->GetStopTime()>0 || db->GetStartTime()>0)
 							ProcField->SetProcessStartStopTime(db->GetStartTime(), db->GetStopTime());
-						if ((db->GetDumpType()==1) || (db->GetDumpType()==11))
+						if ((db->GetDumpType()==1) || (db->GetDumpType()==11) || (db->GetDumpType()==5) || (db->GetDumpType()==15))
 						{
 							ProcField->SetDualTime(true);
-							//make dualMesh the default mesh for h-field dumps, maybe overwritten by interpolation type (node-interpolation)
+							//make dualMesh the default mesh for h- and b-field dumps, maybe overwritten by interpolation type (node-interpolation)
 							ProcField->SetDualMesh(true);
 						}
 						if (db->GetDumpType()>=10)
