@@ -22,6 +22,11 @@
 #include <climits>
 #include <iomanip>
 #include <sstream>
+#include <fstream>
+#include <thread>
+#ifdef __linux__
+#include <sched.h>
+#endif
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 
@@ -38,6 +43,54 @@ double CalcNyquistFrequency(unsigned int nyquist, double dT)
 	if (nyquist==0) return 0;
 	if (dT==0) return 0;
 	return floor(1/(double)nyquist/2/dT);
+}
+
+namespace
+{
+#ifdef __linux__
+//! CPUs of a cgroup CPU quota (rounded up), 0 if there is none
+unsigned int CgroupCPUQuota()
+{
+	// cgroup v2: "<quota> <period>" or "max <period>"
+	std::ifstream v2("/sys/fs/cgroup/cpu.max");
+	std::string quota;
+	double period = 0;
+	if (v2 >> quota >> period)
+	{
+		if ((quota=="max") || (period<=0))
+			return 0;
+		return (unsigned int)std::ceil(std::atof(quota.c_str())/period);
+	}
+	// cgroup v1: quota -1 without limit
+	std::ifstream q1("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"), p1("/sys/fs/cgroup/cpu/cpu.cfs_period_us");
+	double q = -1, p = 0;
+	if ((q1 >> q) && (p1 >> p) && (q>0) && (p>0))
+		return (unsigned int)std::ceil(q/p);
+	return 0;
+}
+#endif
+}
+
+unsigned int AvailableCPUs()
+{
+	static unsigned int cpus = 0;
+	if (cpus)
+		return cpus;
+	unsigned int n = std::thread::hardware_concurrency();
+#ifdef __linux__
+	cpu_set_t set;
+	if (sched_getaffinity(0, sizeof(set), &set)==0)
+	{
+		const unsigned int affinity = CPU_COUNT(&set);
+		if ((affinity>0) && ((n==0) || (affinity<n)))
+			n = affinity;
+	}
+	const unsigned int quota = CgroupCPUQuota();
+	if ((quota>0) && ((n==0) || (quota<n)))
+		n = quota;
+#endif
+	cpus = (n>0) ? n : 1;
+	return cpus;
 }
 
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty)

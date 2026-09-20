@@ -206,7 +206,7 @@ nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vecto
 	}
 
 	m_Barrier = NULL;
-	m_numThreads = boost::thread::hardware_concurrency();
+	m_numThreads = AvailableCPUs();
 }
 
 nf2ff_calc::~nf2ff_calc()

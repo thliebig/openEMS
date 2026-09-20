@@ -115,8 +115,8 @@ void Operator_Multithread::CalcStartStopLines(
 
 int Operator_Multithread::CalcECOperator( DebugFlags debugFlags )
 {
-	if ((m_numThreads == 0) || (m_numThreads > boost::thread::hardware_concurrency()))
-		m_numThreads = boost::thread::hardware_concurrency();
+	if ((m_numThreads == 0) || (m_numThreads > AvailableCPUs()))
+		m_numThreads = AvailableCPUs();
 
 	std::vector<unsigned int> m_Start_Lines;
 	std::vector<unsigned int> m_Stop_Lines;

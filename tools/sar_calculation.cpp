@@ -1385,7 +1385,7 @@ bool SAR_Calculation::CalcAveragedSAR(unsigned int numThreads)
 	ArrayLib::ArrayIJK<bool> Vx_Valid("vx_valid", out_num_lines);
 
 	if (numThreads==0)
-		numThreads = std::thread::hardware_concurrency();
+		numThreads = AvailableCPUs();
 
 	numThreads = min((size_t)numThreads, m_cellIndices[0].size());
 
