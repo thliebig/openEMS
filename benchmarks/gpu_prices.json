@@ -1,0 +1,284 @@
+{
+ "_asof": "2026-09",
+ "_method": "eBay does not serve its sold listings to a script (HTTP 403 without a session), so every price here is a tracker's aggregation of completed eBay sales, not listings counted one by one: getpcparts.com for the older cards, pcpartvalue.com (medians of completed sales) for the GeForce 40 series, cross-checked against jawa.gg, a used marketplace that publishes its own completed sales, and against active asking prices. Each figure blends the models of a card, reference and premium. The used market was rising fast when this was collected, 5 to 8 percent over 30 days for the older cards and 10 to 27 percent over 90 days for the 40 series, so read the table as a snapshot of September 2026. The GeForce 50 series is a special case: only active asking prices were available for it, in the middle of a memory shortage that has every 50 series card 30 to 130 percent above its launch price, so those rows carry low confidence. Where the used asking price stands above new retail, as it does for the RTX 5090, the table takes the retail price, because that is what the card really costs to get.",
+ "_sources": [
+  "https://www.getpcparts.com/market-prices/gpu-graphics-cards/",
+  "https://pcpartvalue.com/",
+  "https://jawa.gg/",
+  "https://resaleprices.com/"
+ ],
+ "prices": {
+  "GTX 1080 Ti": {
+   "median_usd": 155,
+   "range_usd": "$137-177",
+   "condition": "used",
+   "confidence": "medium",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "GTX 1660 Ti": {
+   "median_usd": 103,
+   "range_usd": "$88-103",
+   "condition": "used",
+   "confidence": "medium",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "RTX 2060": {
+   "median_usd": 138,
+   "range_usd": "$119-146",
+   "condition": "used",
+   "confidence": "medium",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "RTX 2060 Super": {
+   "median_usd": 168,
+   "range_usd": "$142-197",
+   "condition": "used",
+   "confidence": "medium",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "RTX 2070": {
+   "median_usd": 160,
+   "range_usd": "$135-201",
+   "condition": "used",
+   "confidence": "medium",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "RTX 2070 Super": {
+   "median_usd": 174,
+   "range_usd": "$148-200",
+   "condition": "used",
+   "confidence": "low",
+   "note": "the asking prices average $228, a gap of 24 percent against the sold figure, far wider than the 4 to 11 percent of the other cards: the clearing price is probably $175 to $200",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "RTX 2080 Ti": {
+   "median_usd": 271,
+   "range_usd": "$232-300",
+   "condition": "used",
+   "confidence": "medium",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "RTX 3050": {
+   "median_usd": 175,
+   "range_usd": "$151-190",
+   "condition": "used",
+   "confidence": "medium",
+   "note": "dearer than the faster RTX 2060 and near the RTX 2070: it is still sold new (about $259), which anchors the used price to retail rather than to performance",
+   "source": "getpcparts",
+   "n": "weekly tracker, not single sales"
+  },
+  "RTX 4060": {
+   "median_usd": 289,
+   "range_usd": "$275-304",
+   "n": "4 sales",
+   "confidence": "medium",
+   "source": "pcpartvalue",
+   "note": "jawa.gg gives $259 over 12 months"
+  },
+  "RTX 4060 Ti 16 GB": {
+   "median_usd": 547,
+   "range_usd": "$411-650",
+   "n": "6 sales",
+   "confidence": "low",
+   "source": "pcpartvalue",
+   "note": "the sources disagree by a third ($411 jawa.gg, $547 pcpartvalue, $650 asking); the 16 GB card goes for about 65 percent more than the 8 GB one ($330), bought for the memory rather than for games"
+  },
+  "RTX 4070": {
+   "median_usd": 515,
+   "range_usd": "$475-544",
+   "n": "8 sales",
+   "confidence": "medium",
+   "source": "pcpartvalue"
+  },
+  "RTX 4070 Super": {
+   "median_usd": 550,
+   "range_usd": "$537-617",
+   "n": "3 sales",
+   "confidence": "medium",
+   "source": "pcpartvalue"
+  },
+  "RTX 4070 Ti Super": {
+   "median_usd": 801,
+   "range_usd": "$735-1020",
+   "n": "3 sales",
+   "confidence": "low",
+   "source": "pcpartvalue",
+   "note": "three sales only, and the sources span $735 to $1020: read it as $800 to $900"
+  },
+  "RTX 4080": {
+   "median_usd": 905,
+   "range_usd": "$859-954",
+   "n": "32 sales",
+   "confidence": "high",
+   "source": "pcpartvalue",
+   "note": "the one solid figure of the 40 series: jawa.gg independently gives $892 over 34 sales"
+  },
+  "RTX 4080 Super": {
+   "median_usd": 1095,
+   "range_usd": "$964-1150",
+   "n": "5 sales",
+   "confidence": "medium",
+   "source": "pcpartvalue"
+  },
+  "RTX 4090": {
+   "median_usd": 2805,
+   "range_usd": "$2500-3010",
+   "n": "12 sales",
+   "confidence": "medium",
+   "source": "pcpartvalue",
+   "note": "about 1.75 times its launch price of $1599, which four trackers agree on: the memory of the AI market"
+  },
+  "RTX 3060": {
+   "median_usd": 295,
+   "range_usd": "$212-295",
+   "n": "weekly tracker",
+   "confidence": "medium",
+   "condition": "used",
+   "source": "getpcparts",
+   "note": "pcprice.watch gives EUR 249 over 1447 completed sales, which agrees"
+  },
+  "RTX 3060 Ti": {
+   "median_usd": 248,
+   "range_usd": "$228-269",
+   "n": "6 sales",
+   "confidence": "medium",
+   "condition": "used",
+   "source": "pcpartvalue"
+  },
+  "RTX 3070": {
+   "median_usd": 260,
+   "range_usd": "$208-345",
+   "n": "68 sales",
+   "confidence": "high",
+   "condition": "used",
+   "source": "pcpartvalue",
+   "note": "the best sampled card of the set, and pcprice.watch agrees over 1222 sales"
+  },
+  "RTX 3070 Ti": {
+   "median_usd": 309,
+   "range_usd": "$270-317",
+   "n": "12 sales",
+   "confidence": "medium",
+   "condition": "used",
+   "source": "pcpartvalue"
+  },
+  "RTX 3080 10 GB": {
+   "median_usd": 358,
+   "range_usd": "$304-391",
+   "n": "35 sales",
+   "confidence": "high",
+   "condition": "used",
+   "source": "pcpartvalue",
+   "note": "three trackers land within a few percent: $357.59, $358 and EUR 354"
+  },
+  "RTX 3080 Ti": {
+   "median_usd": 487,
+   "range_usd": "$419-562",
+   "n": "weekly tracker",
+   "confidence": "medium",
+   "condition": "used",
+   "source": "getpcparts",
+   "note": "the other tracker had two sales only, so this one is the headline"
+  },
+  "RTX 3090": {
+   "median_usd": 1032,
+   "range_usd": "$1032-1499",
+   "n": "weekly tracker",
+   "confidence": "low",
+   "condition": "used",
+   "source": "getpcparts",
+   "note": "the trackers disagree badly for the same month ($1032 to $1499) and one 90 day average sits 40 percent under its own 30 day average; the 24 GB cards trade on the demand for memory, not on their speed"
+  },
+  "RTX 3090 Ti": {
+   "median_usd": 1398,
+   "range_usd": "$1254-1529",
+   "n": "weekly tracker",
+   "confidence": "medium",
+   "condition": "used",
+   "source": "getpcparts",
+   "note": "at or above its launch price, like the RTX 3090"
+  },
+  "RTX 5060": {
+   "median_usd": 370,
+   "new_usd": 459,
+   "range_usd": "$352-388",
+   "n": "57 listings",
+   "confidence": "low",
+   "condition": "used, asking",
+   "source": "resaleprices"
+  },
+  "RTX 5060 Ti 16 GB": {
+   "median_usd": 640,
+   "new_usd": 780,
+   "range_usd": "$560-720",
+   "n": "131 listings",
+   "confidence": "low",
+   "condition": "used, asking",
+   "source": "resaleprices",
+   "note": "the pool of listings mixes the 8 GB and 16 GB cards, so the figure is biased low for the 16 GB one"
+  },
+  "RTX 5070": {
+   "median_usd": 700,
+   "new_usd": 980,
+   "range_usd": "$668-732",
+   "n": "77 listings",
+   "confidence": "low",
+   "condition": "used, asking",
+   "source": "resaleprices"
+  },
+  "RTX 5070 Ti": {
+   "median_usd": 1050,
+   "new_usd": 1200,
+   "range_usd": "$1002-1098",
+   "n": "53 listings",
+   "confidence": "low",
+   "condition": "used, asking",
+   "source": "resaleprices"
+  },
+  "RTX 5080": {
+   "median_usd": 1530,
+   "new_usd": 1600,
+   "range_usd": "$1421-1639",
+   "n": "91 listings",
+   "confidence": "low",
+   "condition": "used, asking",
+   "source": "resaleprices",
+   "note": "completed sales across seven markets give about $1490, which agrees"
+  },
+  "RTX 5090": {
+   "median_usd": 5099,
+   "new_usd": 4600,
+   "range_usd": "$4620-5579",
+   "n": "70 listings",
+   "confidence": "low",
+   "condition": "new retail",
+   "source": "resaleprices, videocardprices",
+   "note": "the used asking price ($5099) is ABOVE new retail ($4600), a scalper premium on a card that is hard to buy: the table takes the retail price"
+  },
+  "A100 SXM4 40 GB": {
+   "median_usd": null,
+   "range_usd": "$2800-4200",
+   "n": "none verified",
+   "confidence": "low",
+   "condition": "used",
+   "source": "none",
+   "note": "no completed sale could be verified; the band comes from a buying guide that names no source, and the SXM4 40 GB barely trades (the 80 GB card is the volume part). It also needs an SXM carrier board, so it is not a card one simply buys and plugs in"
+  },
+  "H200": {
+   "median_usd": null,
+   "range_usd": "$39999-77995",
+   "n": "17 asking listings",
+   "confidence": "low",
+   "condition": "used and new, asking",
+   "source": "gpupoet",
+   "note": "it does trade, but only asking prices are published, from $40k to $78k: no median is honest here"
+  }
+ }
+}
