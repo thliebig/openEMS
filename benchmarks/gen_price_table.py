@@ -64,7 +64,9 @@ def main():
            '"Horn" is the speed on a mesh of 2.4 million cells, the size of a real job;',
            '"free space" is the speed on 27 million cells, where a big GPU stretches its',
            'legs. "Hours to break even" is the purchase price divided by the cheapest',
-           'Vast.ai rental of the same GPU: rent for fewer hours than that and renting wins.', '',
+           'Vast.ai rental of the same GPU: rent for fewer hours than that and renting wins.',
+           'A dash there means nobody was renting that GPU out when this was generated,',
+           'which is itself worth knowing: the rare ones are the RTX 4070 Ti and the 3080 Ti.', '',
            'AI disclosure: collected and written up with Claude Opus 5 (Claude Code).', '',
            '## Table', '']
     cols = ['GPU', 'Price', 'Horn MCells/s', 'Free space MCells/s', 'MCells/s per $100']

@@ -279,6 +279,15 @@
    "condition": "used and new, asking",
    "source": "gpupoet",
    "note": "it does trade, but only asking prices are published, from $40k to $78k: no median is honest here"
+  },
+  "RTX 4070 Ti": {
+   "median_usd": 688,
+   "range_usd": "$616-752",
+   "n": "34 sales",
+   "confidence": "medium",
+   "condition": "used",
+   "source": "getpcparts",
+   "note": "two trackers of completed sales agree within $10 ($688 and $698); jawa.gg gives $632 over 12 months, lower because it averages the whole year of a rising market"
   }
  }
 }
