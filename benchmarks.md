@@ -72,6 +72,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | A100 SXM4 40 GB | EPYC 7K62 | 18.9 s | 8.0 s | 4530 | 801 MiB | 723 MiB |
 | H200 | Xeon Platinum 8488C | 20.3 s | 13.0 s | 2775 | 904 MiB | 827 MiB |
 | AMD MI300X (HIP) | EPYC (8 threads) | 22.9 s | 15.4 s | 2339 | 2095 MiB | 1692 MiB |
+| AMD Radeon 760M (HIP) | Ryzen 5 7640HS | 186.5 s | 181.1 s | 199 | 588 MiB (2) | - (2) |
 
 ### Horn antenna, frequency-domain NF2FF
 
@@ -115,6 +116,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | A100 SXM4 40 GB | EPYC 7K62 | 11.3 s | 4.8 s | 7448 | 631 MiB | 729 MiB |
 | H200 | Xeon Platinum 8488C | 7.1 s | **2.3 s** | **15362** | 729 MiB | 833 MiB |
 | AMD MI300X (HIP) | EPYC (8 threads) | 7.6 s | 2.5 s | 14650 | 1400 MiB | 1339 MiB |
+| AMD Radeon 760M (HIP) | Ryzen 5 7640HS | 181.0 s | 177.2 s | 203 | 456 MiB (2) | - (2) |
 
 ### Free space
 
@@ -158,8 +160,12 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | A100 SXM4 40 GB | EPYC 7K62 | 11473 | 18938 |
 | H200 | Xeon Platinum 8488C | **25178** | **41076** |
 | AMD MI300X (HIP) | EPYC (8 threads) | 23366 | 30346 |
+| AMD Radeon 760M (HIP) | Ryzen 5 7640HS | 747 | 999 |
 
 (1) Unified memory: the Metal buffers are part of the host memory figure.
+
+(2) The Radeon 760M is the integrated GPU of the host CPU and has no memory of
+its own; its buffers are part of the host memory figure as well.
 
 - **Total run**: wall-clock time of the whole script, including setup and
   post-processing.
