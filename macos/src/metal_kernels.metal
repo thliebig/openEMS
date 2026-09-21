@@ -428,20 +428,11 @@ kernel void update_diamond(
 			}
 		}
 		threadgroup_barrier(mem_flags::mem_device);
+		// Apply2Voltages order on the CPU is by descending extension priority:
+		// lumped RLC (default priority) before the excitation (negative), so an
+		// edge carrying both sees the RLC node voltage first.
 		if ((diamondExcitations || lumpedRLC) && tid == 0)
 		{
-			if (diamondExcitations)
-				for (uint n = step.voltage_source_offset;
-				     n < step.voltage_source_offset + step.voltage_source_count; ++n)
-				{
-					const DiamondSource source = sources[source_indices[n]];
-					uint sample = p.timestep + timestep > source.delay ?
-						p.timestep + timestep - source.delay : 0;
-					sample %= source.period ? source.period : p.timestep + timestep + 1;
-					if (sample >= source.signal_length) sample = 0;
-					((device float*)volt)[source.field_index] +=
-						source.amplitude * signal[source.signal_offset + sample];
-				}
 			if (lumpedRLC)
 			{
 				device float* field = (device float*)volt;
@@ -462,6 +453,18 @@ kernel void update_diamond(
 					rlc_state[e] = s;
 				}
 			}
+			if (diamondExcitations)
+				for (uint n = step.voltage_source_offset;
+				     n < step.voltage_source_offset + step.voltage_source_count; ++n)
+				{
+					const DiamondSource source = sources[source_indices[n]];
+					uint sample = p.timestep + timestep > source.delay ?
+						p.timestep + timestep - source.delay : 0;
+					sample %= source.period ? source.period : p.timestep + timestep + 1;
+					if (sample >= source.signal_length) sample = 0;
+					((device float*)volt)[source.field_index] +=
+						source.amplitude * signal[source.signal_offset + sample];
+				}
 		}
 		threadgroup_barrier(mem_flags::mem_device);
 		if (step.current_range.x >= 0)

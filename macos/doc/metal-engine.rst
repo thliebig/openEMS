@@ -131,7 +131,9 @@ packs its coefficients (``dJdV``, ``aV``, ``aQ``, ``aJ``, ``vcd``, ``vvd`` and
 the parallel-inductor term) plus four state words (``Vd``, ``J``, ``q``,
 ``Il``) into one GPU record. Each element is attached to the tile whose voltage
 range covers its ``(x, y)``, so it is visited exactly once per local timestep, in
-increasing time order, between the voltage source and the current update. One
+increasing time order, after the Yee voltage update and before the voltage
+source (the CPU ``Apply2Voltages`` order: lumped RLC has a higher extension
+priority than the excitation). One
 thread per tile applies the recurrence in the CPU element order, which keeps the
 result in the same floating-point neighbourhood as the CPU extension. The FP32
 trapezoidal form is the same well-conditioned update used on the CPU; the older
