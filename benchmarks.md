@@ -1,6 +1,6 @@
 # GPU engine benchmarks
 
-The GPU engine (`engine='gpu'`: Metal on macOS, CUDA elsewhere) against the
+The GPU engine (`engine='gpu'`: Metal on macOS, HIP elsewhere) against the
 multithreaded CPU engine.
 
 AI disclosure: measured and written up with Claude Opus 5 (Claude Code).
@@ -173,8 +173,9 @@ its own; its buffers are part of the host memory figure as well.
   processing during the run (probes, dumps).
 - **MCells/s**: cells x timesteps per second of timestepping.
 - **Host memory**: peak resident set size (`/usr/bin/time`).
-- **GPU memory**: CUDA: peak `nvidia-smi` memory in use minus the idle
-  baseline, mostly the HIP context (the simulation's buffers are ~100 MiB).
+- **GPU memory**: HIP: peak memory in use (`nvidia-smi`, `rocm-smi` on the
+  AMD machines) minus the idle baseline, mostly the context of the runtime
+  (the simulation's buffers are ~100 MiB).
   Metal: peak of the "graphics" categories of `footprint`.
 
 The GPU engine is built with HIP, which compiles the same sources for both
@@ -199,5 +200,5 @@ machines: the field updates are bound by the memory, not by the cores.
   closest to their GPU time.
 
 - **Frequency-domain NF2FF** writes 12 MB instead of 4.7 GB and gives the same
-  far field. On CUDA the frequencies are summed on the GPU. On Metal a
+  far field. On HIP the frequencies are summed on the GPU. On Metal a
   background thread sums them from field snapshots while the GPU continues.
