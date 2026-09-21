@@ -45,9 +45,9 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 #endif
 
 #ifdef OPENEMS_WITH_HIP
-	GPU_Backend* cuda = GPU_Backend_HIP::New();
-	if (cuda)
-		return cuda;
+	GPU_Backend* hip = GPU_Backend_HIP::New();
+	if (hip)
+		return hip;
 	std::cerr << "GPU_Backend::New: Warning: no HIP device found" << std::endl;
 #endif
 

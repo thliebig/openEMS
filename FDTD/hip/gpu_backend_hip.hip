@@ -687,6 +687,11 @@ dim3 GPU_Backend_HIP::Impl::Grid(dim3 block, size_t ni, size_t nj, size_t nk)
 
 /***************************** GPU_Backend_HIP *****************************/
 
+//! Smallest kernel there is, to see whether this build has code for this device (see New())
+__global__ void probe_device()
+{
+}
+
 GPU_Backend_HIP* GPU_Backend_HIP::New()
 {
 	int count = 0;
@@ -704,6 +709,27 @@ GPU_Backend_HIP* GPU_Backend_HIP::New()
 	impl->ctx->warp_size = prop.warpSize > 0 ? prop.warpSize : 32;
 	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->stream, hipStreamNonBlocking), "hipStreamCreate");
 	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->copy_stream, hipStreamNonBlocking), "hipStreamCreate");
+
+	// A GPU whose architecture this build has no code for is found and described like any
+	// other, and launching on it takes the process down with it rather than returning an
+	// error. Ask about a kernel instead of running one: this reports the missing code and
+	// leaves the CPU to fall back to.
+	hipFuncAttributes attr;
+	hipError_t err = hipFuncGetAttributes(&attr, reinterpret_cast<const void*>(probe_device));
+	if (err!=hipSuccess)
+	{
+		// the architecture is the name to add to the build, but only the AMD platform
+		// fills it in: the NVIDIA one leaves gcnArchName of the properties untouched
+		std::string arch;
+#ifdef __HIP_PLATFORM_AMD__
+		arch = std::string(" (") + prop.gcnArchName + ")";
+#endif
+		std::cerr << "GPU_Backend_HIP: no kernels for " << impl->ctx->name << arch
+		          << " in this build: " << hipGetErrorString(err) << std::endl;
+		hipGetLastError();
+		delete impl;
+		return NULL;
+	}
 	return new GPU_Backend_HIP(impl);
 }
 
