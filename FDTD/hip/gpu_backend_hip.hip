@@ -192,8 +192,11 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
 	v[2] = t;
 }
 
-// FUSED_TZ is one warp of an NVIDIA GPU. On a CDNA GPU of AMD, where a wavefront is 64
-// threads, a tile is half a wavefront and the shape wants measuring again.
+// The tile is as wide as a wavefront, so that a wavefront is one row of it: 32 threads on
+// NVIDIA and on the RDNA GPUs of AMD, 64 on the CDNA ones. The kernel is compiled for both
+// widths and the backend picks by the warp size of the device (see UpdateVoltages), so one
+// binary serves either.
+// OPENEMS_HIP_FUSED_TZ and _TY override the shape, to measure it on a new GPU.
 #define FUSED_TZ 32   // threads along z, the last one computes the border voltages only
 #define FUSED_TY 8    // threads along y, the last row computes the border voltages only
 #define FUSED_XC 4    // x lines per block (default): short blocks are faster, despite the voltages of one more x line
@@ -211,19 +214,20 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
 // With the UPML regions in the kernel (F.count>0, [B, E) is the whole grid), the region nodes
 // are computed like the main nodes, from the current flux (the new voltage flux goes to a
 // second buffer, written by the node's own block; the current flux in place).
-__global__ void __launch_bounds__(FUSED_TZ*FUSED_TY) update_fused(
+template<unsigned int TZ, unsigned int TY>
+__global__ void __launch_bounds__(TZ*TY) update_fused(
 	const float* __restrict__ volt_in, const float* __restrict__ curr_in, float* volt_out, float* __restrict__ curr_out,
 	const void* index, const float* va, const float* vb, const float* ia, const float* ib, unsigned int mode,
 	HIP_GridDim N, HIP_GridDim B, HIP_GridDim E, HIP_FusedRegions F, unsigned int xc)
 {
-	__shared__ float sV[3][FUSED_TY][FUSED_TZ];
+	__shared__ float sV[3][TY][TZ];
 	const unsigned int tz = threadIdx.x, ty = threadIdx.y;
-	const unsigned int z = B.nz + blockIdx.x*(FUSED_TZ-1) + tz;
-	const unsigned int y = B.ny + blockIdx.y*(FUSED_TY-1) + ty;
+	const unsigned int z = B.nz + blockIdx.x*(TZ-1) + tz;
+	const unsigned int y = B.ny + blockIdx.y*(TY-1) + ty;
 	const unsigned int xs = B.nx + blockIdx.z*xc;
 	const unsigned int xe = min(xs+xc, E.nx);
 	const bool main_yz = (z<E.nz) && (y<E.ny);                          // a main node line
-	const bool owner = main_yz && (tz<FUSED_TZ-1) && (ty<FUSED_TY-1);  // written by this block
+	const bool owner = main_yz && (tz<TZ-1) && (ty<TY-1);  // written by this block
 	const bool in_grid = (z<N.nz) && (y<N.ny);
 	const unsigned int sn = N.nx*N.ny*N.nz;
 
@@ -296,6 +300,44 @@ __global__ void __launch_bounds__(FUSED_TZ*FUSED_TY) update_fused(
 		__syncthreads();
 		sV[0][ty][tz] = v1[0]; sV[1][ty][tz] = v1[1]; sV[2][ty][tz] = v1[2];
 		__syncthreads();
+	}
+}
+
+// The arguments of update_fused, so that a launch is written once for every tile shape
+struct HIP_FusedArgs
+{
+	const float* volt_in;
+	const float* curr_in;
+	float* volt_out;
+	float* curr_out;
+	const void* index;
+	const float* va;
+	const float* vb;
+	const float* ia;
+	const float* ib;
+	unsigned int mode;
+	HIP_GridDim N, B, E;
+	HIP_FusedRegions F;
+	unsigned int xc;
+};
+
+template<unsigned int TZ, unsigned int TY>
+static void launch_fused(hipStream_t stream, const HIP_FusedArgs& a)
+{
+	const dim3 block(TZ, TY, 1);
+	const dim3 grid((a.E.nz-a.B.nz+TZ-2)/(TZ-1), (a.E.ny-a.B.ny+TY-2)/(TY-1), (a.E.nx-a.B.nx+a.xc-1)/a.xc);
+	update_fused<TZ, TY><<<grid, block, 0, stream>>>(a.volt_in, a.curr_in, a.volt_out, a.curr_out, a.index,
+	                                                 a.va, a.vb, a.ia, a.ib, a.mode, a.N, a.B, a.E, a.F, a.xc);
+}
+
+template<unsigned int TZ>
+static void launch_fused_ty(hipStream_t stream, const HIP_FusedArgs& a, unsigned int ty)
+{
+	switch (ty)
+	{
+		case 4:  launch_fused<TZ, 4>(stream, a); break;
+		case 16: launch_fused<TZ, 16>(stream, a); break;
+		default: launch_fused<TZ, 8>(stream, a); break;
 	}
 }
 
@@ -840,15 +882,23 @@ void GPU_Backend_HIP::UpdateVoltages()
 			E = d->dim;
 		}
 		static const unsigned int xc = getenv("OPENEMS_HIP_FUSED_XC") ? std::max(1, atoi(getenv("OPENEMS_HIP_FUSED_XC"))) : FUSED_XC;
-		const dim3 block(FUSED_TZ, FUSED_TY, 1);
-		const dim3 grid((E.nz-B.nz+FUSED_TZ-2)/(FUSED_TZ-1), (E.ny-B.ny+FUSED_TY-2)/(FUSED_TY-1), (E.nx-B.nx+xc-1)/xc);
 		const bool timed = HIP_KernelTimes::Enabled();
 		if (timed)
 			HIP_KernelTimes::Begin(d->Stream());
-		update_fused<<<grid, block, 0, d->Stream()>>>((const float*)d->volt, (const float*)d->curr, d->volt_next, d->curr_next, (const void*)d->index,
-		                                              (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi),
-		                                              (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv),
-		                                              d->coeff_mode, d->dim, B, E, d->fregions, xc);
+		// the tile is a wavefront wide (see FUSED_TZ); OPENEMS_HIP_FUSED_TY sets the other side
+		static const unsigned int ty = getenv("OPENEMS_HIP_FUSED_TY") ? std::max(2, atoi(getenv("OPENEMS_HIP_FUSED_TY"))) : FUSED_TY;
+		const HIP_FusedArgs a = { (const float*)d->volt, (const float*)d->curr, d->volt_next, d->curr_next, (const void*)d->index,
+		                          (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi),
+		                          (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv),
+		                          d->coeff_mode, d->dim, B, E, d->fregions, xc };
+#ifdef __HIP_PLATFORM_AMD__
+		// only AMD has wavefronts of 64; compiling them for NVIDIA would be dead code
+		static const unsigned int tz = getenv("OPENEMS_HIP_FUSED_TZ") ? atoi(getenv("OPENEMS_HIP_FUSED_TZ")) : 0;
+		if (tz ? (tz>=64) : (d->ctx->warp_size>=64))
+			launch_fused_ty<64>(d->Stream(), a, ty);
+		else
+#endif
+			launch_fused_ty<32>(d->Stream(), a, ty);
 		d->CheckLaunch("update_fused");
 		if (timed)
 			HIP_KernelTimes::End(d->Stream(), "update_fused");
