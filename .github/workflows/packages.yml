@@ -73,12 +73,13 @@ jobs:
       - name: Install the CUDA toolkit
         run: |
           # compiler, runtime and Visual Studio integration only (no display driver);
-          # in 12.8 crt and nvvm are part of nvcc
+          # in 12.8 crt and nvvm are part of nvcc. cuda_profiler_api is its own
+          # component and the HIP headers include it.
           $v = '12.8.1'; $m = '12.8'
           Invoke-WebRequest -Uri "https://developer.download.nvidia.com/compute/cuda/$v/network_installers/cuda_${v}_windows_network.exe" `
                             -OutFile "$env:RUNNER_TEMP\cuda.exe" -UseBasicParsing
           $p = Start-Process -FilePath "$env:RUNNER_TEMP\cuda.exe" -Wait -PassThru `
-                             -ArgumentList '-s', "nvcc_$m", "cudart_$m", "cuobjdump_$m", "nvml_dev_$m", "visual_studio_integration_$m"
+                             -ArgumentList '-s', "nvcc_$m", "cudart_$m", "cuobjdump_$m", "nvml_dev_$m", "cuda_profiler_api_$m", "visual_studio_integration_$m"
           if ($p.ExitCode -ne 0) { throw "CUDA installer failed with exit code $($p.ExitCode)" }
           $cuda = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$m"
           & "$cuda\bin\nvcc.exe" --version
@@ -173,9 +174,10 @@ jobs:
           mkdir build && cd build
           cmake ../ -GNinja `
                     -DCMAKE_BUILD_TYPE=Release `
-                    -DCMAKE_HIP_PLATFORM=nvidia -DCMAKE_HIP_COMPILER="$env:CUDA_PATH/bin/nvcc.exe" `
-                    -DCMAKE_HIP_FLAGS="-I`"$env:HIP_INCLUDE`" -Wno-deprecated-gpu-targets" `
-                    -DCMAKE_HIP_ARCHITECTURES="60-real;61-real;70-real;75-real;80-real;86-real;89-real;90-real;100-real;120" `
+                    -DCMAKE_CUDA_COMPILER="$env:CUDA_PATH/bin/nvcc.exe" `
+                    -DCMAKE_CUDA_FLAGS="-Wno-deprecated-gpu-targets" `
+                    -DCMAKE_CUDA_ARCHITECTURES="60-real;61-real;70-real;75-real;80-real;86-real;89-real;90-real;100-real;120" `
+                    -DHIP_INCLUDE_DIR="$env:HIP_INCLUDE" `
                     -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
                     -DFPARSER_ROOT_DIR="$HOME/opt" `
                     -DCSXCAD_ROOT_DIR="$HOME/opt" `
@@ -186,6 +188,15 @@ jobs:
                     -DVCPKG_TARGET_TRIPLET="x64-windows-openems"
           if (-not (Select-String -Path CMakeCache.txt -Pattern '^ENABLE_HIP:BOOL=ON' -Quiet)) { throw "the HIP backend is not enabled" }
           cmake --build ./ --parallel
+          # a build without the kernels still links and then runs on the CPU, so
+          # check that the objects really carry device code before packaging it
+          $objs = Get-ChildItem -Recurse -Filter '*.hip.obj' 'CMakeFiles/openEMS.dir/FDTD/hip'
+          if ($objs.Count -eq 0) { throw "no HIP objects were built" }
+          foreach ($o in $objs) {
+            $elf = & "$env:CUDA_PATH/bin/cuobjdump.exe" -lelf $o.FullName
+            if (-not ($elf -match 'cubin')) { throw "$($o.Name) has no device code" }
+          }
+          Write-Host "$($objs.Count) HIP objects carry device code"
           cmake --install ./
 
       - name: Preserve vcpkg DLLs
@@ -721,7 +732,9 @@ jobs:
           echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/latest noble main" | sudo tee /etc/apt/sources.list.d/rocm.list
           printf 'Package: *\nPin: origin repo.radeon.com\nPin-Priority: 1001\n' | sudo tee /etc/apt/preferences.d/rocm
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends hip-dev hipcc-nvidia rocm-core
+          # hip-dev alone: the kernels are compiled by nvcc below, and hipcc-nvidia would
+          # collide with the hipcc of hip-dev over the same file
+          sudo apt-get install -y --no-install-recommends hip-dev rocm-core
           echo "OPT=$RUNNER_TEMP/opt" >> $GITHUB_ENV
 
       - name: Build and install fparser, CSXCAD and openEMS
@@ -738,9 +751,12 @@ jobs:
           configure fparser && build_install fparser
           configure CSXCAD -DFPARSER_ROOT_DIR="$OPT" && build_install CSXCAD
           configure openEMS -DFPARSER_ROOT_DIR="$OPT" -DCSXCAD_ROOT_DIR="$OPT" \
-              -DCMAKE_HIP_PLATFORM=nvidia -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES" \
+              -DCMAKE_HIP_PLATFORM=nvidia -DCMAKE_HIP_COMPILER=/usr/local/cuda-12.8/bin/nvcc \
+              -DCMAKE_HIP_COMPILER_ROCM_ROOT=/opt/rocm \
+              -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES" \
               -DCMAKE_HIP_FLAGS="-Wno-deprecated-gpu-targets"
-          grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || { echo "the HIP backend is not enabled"; exit 1; }
+          grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || {
+            echo "the HIP backend is not enabled"; ls -l /opt/rocm/llvm/bin/clang++ /usr/local/cuda-12.8/bin/nvcc 2>&1; exit 1; }
           build_install openEMS
 
       - name: Set up Python 3.13 and 3.14
@@ -894,8 +910,10 @@ jobs:
           configure fparser && build_install fparser
           configure CSXCAD -DFPARSER_ROOT_DIR="$OPT" && build_install CSXCAD
           configure openEMS -DFPARSER_ROOT_DIR="$OPT" -DCSXCAD_ROOT_DIR="$OPT" \
-              -DCMAKE_HIP_PLATFORM=amd -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES"
-          grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || { echo "the HIP backend is not enabled"; exit 1; }
+              -DCMAKE_HIP_PLATFORM=amd -DCMAKE_HIP_COMPILER=/opt/rocm/llvm/bin/clang++ \
+              -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES"
+          grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || {
+            echo "the HIP backend is not enabled"; ls -l /opt/rocm/llvm/bin/clang++ /usr/local/cuda-12.8/bin/nvcc 2>&1; exit 1; }
           build_install openEMS
 
       - name: Set up Python 3.13 and 3.14

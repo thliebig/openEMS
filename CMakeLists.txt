@@ -57,16 +57,46 @@ ENDIF()
 
 # HIP GPU backend for the GPU engine (--engine=gpu), built if a HIP compiler is found.
 # HIP runs on AMD GPUs through ROCm and on NVIDIA GPUs through CUDA, from the same
-# sources: with HIP_PLATFORM=nvidia hipcc compiles them with hipcc, and the binary needs
-# the CUDA runtime, not a ROCm one.
+# sources: on the NVIDIA platform the compiler is nvcc and the binary needs the CUDA
+# runtime, not a ROCm one.
+#
+# On Windows the HIP language of CMake is not usable: it refuses every generator but
+# Make and Ninja, and its compiler test fails to link with nvcc. The same sources are
+# compiled as CUDA there, which is the same compiler over the same headers, since the
+# HIP headers of the NVIDIA platform map the calls to CUDA inline. HIP_INCLUDE_DIR
+# then says where those headers are (the hip-dev package of AMD, which is for Linux
+# but holds the headers of every system).
 include(CheckLanguage)
-check_language(HIP)
-IF(CMAKE_HIP_COMPILER)
-  OPTION(ENABLE_HIP "Build the HIP GPU backend" ON)
+IF(WIN32)
+  check_language(CUDA)
+  IF(CMAKE_CUDA_COMPILER AND HIP_INCLUDE_DIR)
+    OPTION(ENABLE_HIP "Build the HIP GPU backend" ON)
+  ELSE()
+    OPTION(ENABLE_HIP "Build the HIP GPU backend" OFF)
+  ENDIF()
+  set(OPENEMS_HIP_AS_CUDA ON)
 ELSE()
-  OPTION(ENABLE_HIP "Build the HIP GPU backend" OFF)
+  check_language(HIP)
+  IF(CMAKE_HIP_COMPILER)
+    OPTION(ENABLE_HIP "Build the HIP GPU backend" ON)
+  ELSE()
+    OPTION(ENABLE_HIP "Build the HIP GPU backend" OFF)
+  ENDIF()
+  set(OPENEMS_HIP_AS_CUDA OFF)
 ENDIF()
-IF(ENABLE_HIP)
+IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
+  IF(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+  ENDIF()
+  enable_language(CUDA)
+  set(CMAKE_CUDA_STANDARD 14)
+  # the same rounding as the HIP flags below give on the other systems
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --fmad=false")
+  IF(ENABLE_FLUSH_TO_ZERO)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ftz=true")
+  ENDIF()
+  message(STATUS "HIP GPU backend enabled as CUDA sources, architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+ELSEIF(ENABLE_HIP)
   # default: the GPU of the build machine
   IF(NOT DEFINED CMAKE_HIP_ARCHITECTURES)
     set(CMAKE_HIP_ARCHITECTURES native)
@@ -89,6 +119,9 @@ IF(ENABLE_HIP)
     ENDIF()
   ENDIF()
   message(STATUS "HIP GPU backend enabled, architectures: ${CMAKE_HIP_ARCHITECTURES}")
+ENDIF()
+
+IF(ENABLE_HIP)
   ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
 ENDIF()
 
@@ -234,7 +267,18 @@ INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )    #find tools
 
 message(STATUS "Sources:"  ${SOURCES})
 
+IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
+  # the backend sources are HIP, compiled by nvcc as CUDA (see the HIP block above);
+  # nvcc does not know the .hip suffix, hence -x cu
+  set_source_files_properties(${HIP_SOURCES} PROPERTIES LANGUAGE CUDA COMPILE_OPTIONS "-x;cu")
+ENDIF()
+
 add_library( openEMS SHARED ${SOURCES})
+
+IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
+  target_include_directories( openEMS PRIVATE ${HIP_INCLUDE_DIR} )
+  target_compile_definitions( openEMS PRIVATE __HIP_PLATFORM_NVIDIA__=1 )
+ENDIF()
 #ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})
 set_target_properties(openEMS PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR} )
 TARGET_LINK_LIBRARIES( openEMS

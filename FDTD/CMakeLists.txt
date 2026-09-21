@@ -30,6 +30,9 @@ if(ENABLE_HIP)
     ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_cylinder.hip
     ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_multigrid.hip
   )
+  # the top level needs the list by itself: source file properties belong to the
+  # directory of the target, and the openEMS target is defined there
+  set(HIP_SOURCES ${HIP_SOURCES} PARENT_SCOPE)
 endif()
 
 set(SOURCES
