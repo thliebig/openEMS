@@ -28,6 +28,7 @@
 #include "engine_multithread.h"
 #include "extensions/engine_extension.h"
 #include "tools/denormal.h"
+#include "tools/useful.h"
 
 #include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/date_time/gregorian/gregorian.hpp"
@@ -57,7 +58,7 @@ Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : Engine_
 	m_startBarrier = 0;
 	m_stopBarrier = 0;
 	m_thread_group = 0;
-	m_max_numThreads = boost::thread::hardware_concurrency();
+	m_max_numThreads = AvailableThreads();
 	m_numThreads = 0;
 	m_last_speed = 0;
 	m_opt_speed = false;

@@ -27,6 +27,12 @@ unsigned int CalcNyquistNum(double fmax, double dT);
 //! Calc the highest frequency allowed for a given nyquist number of timesteps and timestep
 double CalcNyquistFrequency(unsigned int nyquist, double dT);
 
+//! Number of threads this process can usefully run in parallel: the visible CPUs,
+//! limited by the CPU affinity and a cgroup CPU quota (e.g. a container or systemd
+//! unit with a CPU limit). Falls back to hardware_concurrency() where none of that
+//! applies or cannot be determined (non-Linux).
+unsigned int AvailableThreads();
+
 //! Calculate an optimal job distribution to a given number of threads. Will return a vector with the jobs for each thread.
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty=false);
 

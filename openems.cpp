@@ -341,8 +341,8 @@ void openEMS::SetLibraryArguments(std::vector<std::string> allOptions)
 
 void openEMS::SetNumberOfThreads(int val)
 {
-	if ((val<0) || (val>(int)boost::thread::hardware_concurrency()))
-		val = boost::thread::hardware_concurrency();
+	if ((val<0) || (val>(int)AvailableThreads()))
+		val = AvailableThreads();
 	m_engine_numThreads = val;
 }
 

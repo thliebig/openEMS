@@ -131,6 +131,10 @@ number moved up and patch releases now have somewhere to go.
   installed CSXCAD.
 - Internally, the multi-dimensional field arrays were replaced by a new
   `ArrayLib`, and the engine, operator and their extensions converted to it.
+- Default thread counts (multithreaded engine, nf2ff, SAR) now respect CPU
+  affinity and cgroup CPU quotas (Linux only) instead of always using every
+  CPU of the host, so a container or systemd unit with a CPU limit no longer
+  oversubscribes it.
 
 ### Fixed
 

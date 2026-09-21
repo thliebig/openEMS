@@ -22,6 +22,11 @@
 #include <climits>
 #include <iomanip>
 #include <sstream>
+#include <fstream>
+#include <thread>
+#ifdef __linux__
+#include <sched.h>
+#endif
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 
@@ -38,6 +43,146 @@ double CalcNyquistFrequency(unsigned int nyquist, double dT)
 	if (nyquist==0) return 0;
 	if (dT==0) return 0;
 	return floor(1/(double)nyquist/2/dT);
+}
+
+namespace
+{
+#ifdef __linux__
+//! true if the comma-separated cgroup v1 controller list contains "name"
+bool HasController(const std::string& list, const std::string& name)
+{
+	for (size_t pos=0; pos<=list.size(); )
+	{
+		size_t comma = list.find(',', pos);
+		size_t len = (comma==std::string::npos) ? std::string::npos : comma-pos;
+		if (list.compare(pos, len, name)==0)
+			return true;
+		if (comma==std::string::npos)
+			break;
+		pos = comma+1;
+	}
+	return false;
+}
+
+//! This process' cgroup path for a given v1 controller (e.g. "cpu"), or empty if
+//! the controller isn't mounted / cgroup v1 isn't in use
+std::string OwnCgroupV1Path(const std::string& controller)
+{
+	std::ifstream self("/proc/self/cgroup");
+	std::string line;
+	while (std::getline(self, line))
+	{
+		size_t c1 = line.find(':');
+		size_t c2 = (c1==std::string::npos) ? std::string::npos : line.find(':', c1+1);
+		if (c2==std::string::npos)
+			continue;
+		if (HasController(line.substr(c1+1, c2-c1-1), controller))
+			return line.substr(c2+1);
+	}
+	return "";
+}
+
+//! CPUs of a cgroup v1 CPU quota (rounded up) for this process' own cgroup, 0 if none
+unsigned int CgroupV1Quota()
+{
+	std::string rel = OwnCgroupV1Path("cpu");
+	if (rel.empty())
+		return 0;
+	// the "cpu" controller may be mounted combined with "cpuacct"
+	for (const char* base : {"/sys/fs/cgroup/cpu", "/sys/fs/cgroup/cpu,cpuacct"})
+	{
+		std::string dir = std::string(base) + rel;
+		std::ifstream q1(dir + "/cpu.cfs_quota_us"), p1(dir + "/cpu.cfs_period_us");
+		double q = -1, p = 0;
+		if ((q1 >> q) && (p1 >> p) && (q>0) && (p>0))
+			return (unsigned int)std::ceil(q/p);
+	}
+	return 0;
+}
+
+//! CPUs allowed by one cgroup v2 "cpu.max" file, 0 if unlimited or missing
+unsigned int CgroupV2QuotaAt(const std::string& dir)
+{
+	std::ifstream f(dir + "/cpu.max");
+	std::string quota;
+	double period = 0;
+	if (!(f >> quota >> period))
+		return 0;
+	if ((quota=="max") || (period<=0))
+		return 0;
+	return (unsigned int)std::ceil(std::atof(quota.c_str())/period);
+}
+
+//! CPUs of a cgroup v2 CPU quota (rounded up), 0 if there is none. cgroup v2 quotas
+//! are hierarchical (a parent's quota always constrains its children), so this
+//! walks from this process' own cgroup up to the mount root and returns the
+//! tightest limit found.
+unsigned int CgroupV2Quota()
+{
+	std::ifstream self("/proc/self/cgroup");
+	std::string line, rel;
+	while (std::getline(self, line))
+	{
+		if (line.compare(0, 3, "0::")==0) // unified hierarchy: "0::<path>"
+		{
+			rel = line.substr(3);
+			break;
+		}
+	}
+	if (rel.empty())
+		return 0;
+
+	const std::string root = "/sys/fs/cgroup";
+	unsigned int quota = 0;
+	std::string dir = root + rel;
+	while (true)
+	{
+		unsigned int q = CgroupV2QuotaAt(dir);
+		if ((q>0) && ((quota==0) || (q<quota)))
+			quota = q;
+		if (dir==root)
+			break;
+		size_t slash = dir.find_last_of('/');
+		dir = (slash>root.size()) ? dir.substr(0, slash) : root;
+	}
+	return quota;
+}
+
+//! CPUs of this process' cgroup CPU quota (rounded up), 0 if there is none
+unsigned int CgroupCPUQuota()
+{
+	unsigned int q = CgroupV2Quota();
+	return (q>0) ? q : CgroupV1Quota();
+}
+#endif
+}
+
+unsigned int AvailableThreads()
+{
+	static unsigned int threads = 0;
+	if (threads)
+		return threads;
+
+	unsigned int n = std::thread::hardware_concurrency();
+#ifdef __linux__
+	unsigned int visible = n;
+	cpu_set_t set;
+	if (sched_getaffinity(0, sizeof(set), &set)==0)
+	{
+		const unsigned int affinity = CPU_COUNT(&set);
+		if ((affinity>0) && ((n==0) || (affinity<n)))
+			n = affinity;
+	}
+	const unsigned int quota = CgroupCPUQuota();
+	if ((quota>0) && ((n==0) || (quota<n)))
+		n = quota;
+	if ((n>0) && (n!=visible))
+		std::cerr << "Note: limiting the default thread count to " << n << " of "
+				   << visible << " visible CPUs (CPU affinity and/or a cgroup CPU quota)"
+				   << std::endl;
+#endif
+	threads = (n>0) ? n : 1;
+	return threads;
 }
 
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty)
