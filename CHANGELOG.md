@@ -82,6 +82,15 @@ number moved up and patch releases now have somewhere to go.
   performance are unaffected unless a box opts in.
 - **`--verbose`/`-vv` now reports the actual TD/FD sampling interval** for
   each probe and dump box during `SetupProcessing`.
+- **`--exact-endcriteria`.** The energy end-criteria is normally re-evaluated
+  every few seconds of wall-clock time, to keep its cost (a full-domain
+  energy estimate) off the hot path; this makes the exact stopping timestep
+  depend on machine speed/load. This option instead evaluates it every
+  Nyquist period, for a stopping point that is reproducible across
+  machines/builds, at the cost of performance — mainly useful for engine or
+  code verification. The steady-state detection extension is unaffected: its
+  diff estimate is cheap and is now always kept current every timestep
+  rather than only at the wall-clock report interval.
 
 ### Changed
 

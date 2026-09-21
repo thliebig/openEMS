@@ -79,6 +79,7 @@ openEMS::openEMS()
 	m_debugCSX = false;
 	m_debugBox = m_debugPEC = m_no_simulation = false;
 	m_DumpStats = false;
+	m_exactEndCriteria = false;
 
 	m_engine = EngineType_Multithreaded; //default engine type
 	m_engine_numThreads = 0;
@@ -298,6 +299,22 @@ void openEMS::collectCommandLineArguments()
 			),
 			"dump simulation statistics to '" OPENEMS_RUN_STAT_FILE
 			"' and '" OPENEMS_STAT_FILE "'"
+		)
+		(
+			"exact-endcriteria",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - evaluating the end criteria on a fixed timestep schedule "
+						 << "for a machine-independent stopping point (reduces speed)" << endl;
+					m_exactEndCriteria = true;
+				}
+			),
+			"evaluate the energy end criteria every Nyquist timesteps instead of "
+			"every few seconds of wall-clock time, so the run stops at the same "
+			"timestep regardless of machine speed/load; costs performance, useful "
+			"mainly for engine/code verification"
 		);
 
 	// register our supported options to g_settings
@@ -1435,6 +1452,16 @@ void openEMS::RunFDTD()
 	//add all timesteps to end-crit field processing with max excite amplitude
 	unsigned int maxExcite = FDTD_Op->GetExcitationSignal()->GetMaxExcitationTimestep();
 	ProcField->AddStep(maxExcite);
+	// --exact-endcriteria: also evaluate on a fixed timestep schedule, independent of the
+	// wall-clock progress report, at the cost of far more (expensive, full-domain) energy
+	// estimates -- default stays wall-clock throttled to keep normal runs fast
+	if ((Eng_Ext_SSD==NULL) && m_exactEndCriteria)
+	{
+		unsigned int endCritInterval = FDTD_Op->GetExcitationSignal()->GetNyquistNum();
+		cout << "Exact-endcriteria: evaluating the end criteria every "
+			 << endCritInterval << " timestep(s) (this excitation's Nyquist rate)" << endl;
+		ProcField->SetProcessInterval(endCritInterval);
+	}
 
 	double change=1;
 	int prevTS=0,currTS=0;
@@ -1460,11 +1487,15 @@ void openEMS::RunFDTD()
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
 
-		if ((Eng_Ext_SSD==NULL) && ProcField->CheckTimestep())
+		if (Eng_Ext_SSD)
+			change = Eng_Ext_SSD->GetLastDiff(); // cheap: extension keeps this up to date itself
+		else if (ProcField->CheckTimestep())
 		{
 			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
 				maxE=currE;
+			if (m_exactEndCriteria && maxE)
+				change = currE/maxE;
 		}
 
 		currTS = FDTD_Eng->GetNumberOfTimesteps();
@@ -1482,18 +1513,18 @@ void openEMS::RunFDTD()
 			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 			if (Eng_Ext_SSD==NULL)
 			{
-				currE = ProcField->CalcTotalEnergyEstimate();
-				if (currE>maxE)
-					maxE=currE;
-				if (maxE)
-					change = currE/maxE;
+				if (!m_exactEndCriteria) // otherwise already kept current above, every Nyquist period
+				{
+					currE = ProcField->CalcTotalEnergyEstimate();
+					if (currE>maxE)
+						maxE=currE;
+					if (maxE)
+						change = currE/maxE;
+				}
 				cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
 			}
 			else
-			{
-				change = Eng_Ext_SSD->GetLastDiff();
 				cout << " || SteadyState: " << setw(6) << setprecision(2) << std::fixed << 10.0*log10(change) << " dB" << endl;
-			}
 			prevTime=currTime;
 			prevTS=currTS;
 
@@ -1507,6 +1538,8 @@ void openEMS::RunFDTD()
 	if ((change>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))
 		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
+	else if (FDTD_Op->GetExcitationSignal()->GetExciteType()==0)
+		cout << "RunFDTD: end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB reached after " << FDTD_Eng->GetNumberOfTimesteps() << " timesteps (-" << fabs(10.0*log10(change)) << "dB)" << endl;
 
 	gettimeofday(&currTime,NULL);
 	t_diff = CalcDiffTime(currTime,startTime);
