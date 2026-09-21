@@ -272,7 +272,7 @@ The index format has a very high ceiling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The GPU kernels use 32-bit indices. The diamond field update addresses ``float4``
-words, and the legacy indexed UPML, excitation and ADE kernels address scalar
+words, and the legacy indexed UPML and ADE kernels address scalar
 components. The scalar limit is around ``UINT32_MAX / 3`` -- roughly
 1.4 billion cells, about 100 GB of field plus coefficient state -- and the
 packed field update is good for roughly four times that. A model beyond the

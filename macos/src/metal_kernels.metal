@@ -74,38 +74,6 @@ kernel void update_voltages(
 	volt[base + 2] = ez * vv[c + 2] + vi[c + 2] * (cy - hy_x - cx + hx_y);
 }
 
-struct ExcitationSource
-{
-	uint fieldIndex;
-	float amplitude;
-	uint delay;
-};
-
-struct ExcitationParams
-{
-	uint count;
-	uint timestep;
-	uint signalLength;
-	uint period;
-};
-
-// Excitations are intentionally applied by one thread. Source lists are sparse,
-// and serial application preserves CPU ordering when source entries overlap.
-kernel void apply_excitation(
-	device float* field [[buffer(0)]],
-	const device ExcitationSource* sources [[buffer(1)]],
-	const device float* signal [[buffer(2)]],
-	constant ExcitationParams& p [[buffer(3)]])
-{
-	for (uint n = 0; n < p.count; ++n)
-	{
-		uint sample = p.timestep > sources[n].delay ? p.timestep - sources[n].delay : 0;
-		sample %= p.period;
-		if (sample >= p.signalLength) sample = 0;
-		field[sources[n].fieldIndex] += sources[n].amplitude * signal[sample];
-	}
-}
-
 kernel void update_currents(
 	device float4* curr [[buffer(0)]],
 	const device float4* volt [[buffer(1)]],

@@ -69,14 +69,7 @@ struct ExcitationSource
 	uint32_t fieldIndex;
 	float amplitude;
 	uint32_t delay;
-};
-
-struct ExcitationParams
-{
-	uint32_t count;
-	uint32_t timestep;
-	uint32_t signalLength;
-	uint32_t period;
+	uint32_t x, y; // grid position, owns the source's diamond tile
 };
 
 static const unsigned int DIAMOND_DEPTH = 4;
@@ -203,7 +196,6 @@ struct Engine_Metal::MetalState
 	id<MTLComputePipelineState> voltagePipeline;
 	id<MTLComputePipelineState> currentPipeline;
 	id<MTLComputePipelineState> diamondPipeline;
-	id<MTLComputePipelineState> excitationPipeline;
 	id<MTLComputePipelineState> adeAdvancePipeline;
 	id<MTLComputePipelineState> adeApplyPipeline;
 	id<MTLBuffer> volt;
@@ -230,12 +222,12 @@ struct Engine_Metal::MetalState
 	float rlcDtHalf = 0.0f;
 	id<MTLBuffer> diamondSignal;
 
+	// Host-side source lists per excitation extension; consumed only by
+	// InitDiamondUpdate. The signal pointers stay owned by the operator.
 	struct ExcitationRegion
 	{
-		Engine_Ext_Excitation* extension;
-		id<MTLBuffer> sources[2];
-		id<MTLBuffer> signals[2];
-		uint32_t counts[2];
+		std::vector<ExcitationSource> sources[2];
+		const FDTD_FLOAT* signal[2];
 		uint32_t signalLength;
 		uint32_t period;
 	};
@@ -660,12 +652,6 @@ void Engine_Metal::Init()
 		m_Metal->currentPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 		if (!m_Metal->currentPipeline)
 			throw MetalError("Metal: failed to create current pipeline", error);
-		function = [library newFunctionWithName:@"apply_excitation"];
-		if (!function)
-			throw std::runtime_error("Metal: apply_excitation kernel not found");
-		m_Metal->excitationPipeline = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
-		if (!m_Metal->excitationPipeline)
-			throw MetalError("Metal: failed to create excitation pipeline", error);
 		function = [library newFunctionWithName:@"ade_advance"];
 		if (!function)
 			throw std::runtime_error("Metal: ade_advance kernel not found");
@@ -694,7 +680,7 @@ void Engine_Metal::Init()
 			if (!m_Metal->pmlPostPipeline[compressed]) throw MetalError("Metal: UPML post pipeline failed", error);
 		}
 		InitExcitations();
-
+		ScanExtensionsForDiamond();
 		const char* reference = std::getenv("OPENEMS_METAL_FP64_REFERENCE");
 		m_Metal->referenceEnabled = reference && reference[0] != '\0' && reference[0] != '0';
 		const char* wavefront = std::getenv("OPENEMS_METAL_FUSED_PIPELINE");
@@ -895,44 +881,55 @@ void Engine_Metal::InitUPMLDiamond()
 	cout << "Metal: diamond UPML: " << regions.size() << " regions, zero-copy" << endl;
 }
 
+void Engine_Metal::ScanExtensionsForDiamond()
+{
+	for (Engine_Extension* extension : m_Eng_exts)
+	{
+		if (dynamic_cast<Engine_Ext_UPML*>(extension) ||
+		    dynamic_cast<Engine_Ext_LumpedRLC*>(extension))
+			continue;
+		if (Engine_Ext_Excitation* excitation = dynamic_cast<Engine_Ext_Excitation*>(extension))
+		{
+			Operator_Ext_Excitation* op = excitation->m_Op_Exc;
+			if (!op || !op->m_Exc || op->m_Exc->GetLength() == 0)
+			{
+				if (m_Metal->diamondRequested)
+				{
+					m_Metal->diamondRequested = false;
+					std::cerr << "Metal: excitation has no signal and cannot use the diamond wavefront" << std::endl;
+				}
+			}
+			continue;
+		}
+		if (m_Metal->diamondRequested)
+		{
+			m_Metal->diamondRequested = false;
+			std::cerr << "Metal: extension '" << extension->GetExtensionName()
+			          << "' has not migrated to the diamond wavefront" << std::endl;
+		}
+	}
+}
+
 void Engine_Metal::InitExcitations()
 {
 	for (Engine_Extension* extension : m_Eng_exts)
 	{
 		Engine_Ext_Excitation* excitation = dynamic_cast<Engine_Ext_Excitation*>(extension);
 		if (!excitation)
-		{
-			if (!dynamic_cast<Engine_Ext_UPML*>(extension) &&
-			    !dynamic_cast<Engine_Ext_LumpedRLC*>(extension) && m_Metal->diamondRequested)
-			{
-				m_Metal->diamondRequested = false;
-				std::cerr << "Metal: extension '" << extension->GetExtensionName()
-				          << "' has not migrated to the diamond wavefront" << std::endl;
-			}
 			continue;
-		}
 		Operator_Ext_Excitation* op = excitation->m_Op_Exc;
 		if (!op || !op->m_Exc || op->m_Exc->GetLength() == 0)
-		{
-			if (m_Metal->diamondRequested)
-			{
-				m_Metal->diamondRequested = false;
-				std::cerr << "Metal: excitation has no signal and cannot use the diamond wavefront" << std::endl;
-			}
 			continue;
-		}
 		MetalState::ExcitationRegion region;
-		region.extension = excitation;
-		region.counts[0] = op->Volt_Count;
-		region.counts[1] = op->Curr_Count;
 		region.signalLength = op->m_Exc->GetLength();
 		double signalPeriod = op->m_Exc->GetSignalPeriod();
 		region.period = signalPeriod > 0 ? static_cast<uint32_t>(signalPeriod / op->m_Exc->GetTimestep()) : 0;
+		region.signal[0] = op->m_Exc->GetVoltageSignal();
+		region.signal[1] = op->m_Exc->GetCurrentSignal();
 		for (unsigned int field = 0; field < 2; ++field)
 		{
-			const uint32_t count = region.counts[field];
-			if (!count) continue;
-			std::vector<ExcitationSource> sources(count);
+			const uint32_t count = field ? op->Curr_Count : op->Volt_Count;
+			region.sources[field].resize(count);
 			for (uint32_t n = 0; n < count; ++n)
 			{
 				const uint32_t x = field ? op->Curr_index[0][n] : op->Volt_index[0][n];
@@ -940,19 +937,12 @@ void Engine_Metal::InitExcitations()
 				const uint32_t z = field ? op->Curr_index[2][n] : op->Volt_index[2][n];
 				const uint32_t dir = field ? op->Curr_dir[n] : op->Volt_dir[n];
 				const size_t index = ((((size_t)x * numLines[1] + y) * numVectors + z % numVectors) * 3 + dir) * 4 + z / numVectors;
-				sources[n] = {static_cast<uint32_t>(index),
+				region.sources[field][n] = {static_cast<uint32_t>(index),
 					field ? op->Curr_amp[n] : op->Volt_amp[n],
-					field ? op->Curr_delay[n] : op->Volt_delay[n]};
+					field ? op->Curr_delay[n] : op->Volt_delay[n], x, y};
 			}
-			region.sources[field] = [m_Metal->device newBufferWithBytes:sources.data()
-				length:sources.size() * sizeof(ExcitationSource) options:MTLResourceStorageModeShared];
-			FDTD_FLOAT* signal = field ? op->m_Exc->GetCurrentSignal() : op->m_Exc->GetVoltageSignal();
-			region.signals[field] = [m_Metal->device newBufferWithBytes:signal
-				length:region.signalLength * sizeof(FDTD_FLOAT) options:MTLResourceStorageModeShared];
-			if (!region.sources[field] || !region.signals[field])
-				throw std::runtime_error("Metal: failed to allocate excitation buffers");
 		}
-		m_Metal->excitations.push_back(region);
+		m_Metal->excitations.push_back(std::move(region));
 	}
 }
 
@@ -975,25 +965,21 @@ void Engine_Metal::InitDiamondUpdate()
 	for (const auto& region : m_Metal->excitations)
 		for (unsigned int field = 0; field < 2; ++field)
 		{
-			if (!region.counts[field])
+			if (region.sources[field].empty())
 				continue;
 			if (signal.size() + region.signalLength > std::numeric_limits<uint32_t>::max())
 				throw std::runtime_error("Metal: diamond signal buffer exceeds uint32");
 			const uint32_t signalOffset = static_cast<uint32_t>(signal.size());
-			const float* samples = static_cast<const float*>(region.signals[field].contents);
-			signal.insert(signal.end(), samples, samples + region.signalLength);
-			const ExcitationSource* sources = static_cast<const ExcitationSource*>(region.sources[field].contents);
-			for (uint32_t n = 0; n < region.counts[field]; ++n)
+			signal.insert(signal.end(), region.signal[field],
+				region.signal[field] + region.signalLength);
+			for (const ExcitationSource& source : region.sources[field])
 			{
 				if (sourceTable.size() == std::numeric_limits<uint32_t>::max())
 					throw std::runtime_error("Metal: diamond source table exceeds uint32");
-				uint32_t q = sources[n].fieldIndex / 4 / 3 / numVectors;
-				const uint32_t y = q % numLines[1];
-				const uint32_t x = q / numLines[1];
 				sourceTemplates.push_back({static_cast<uint32_t>(sourceTable.size()),
-					x, y, field == 0});
-				sourceTable.push_back({sources[n].fieldIndex, sources[n].amplitude,
-					sources[n].delay, signalOffset, region.signalLength, region.period});
+					source.x, source.y, field == 0});
+				sourceTable.push_back({source.fieldIndex, source.amplitude,
+					source.delay, signalOffset, region.signalLength, region.period});
 			}
 		}
 	NSError* error = nil;
@@ -1172,28 +1158,6 @@ void Engine_Metal::InitDiamondUpdate()
 	     << ", " << auxiliaryBytes << " auxiliary bytes" << endl;
 }
 
-void Engine_Metal::ApplyMetalExcitations(bool voltage)
-{
-	@autoreleasepool
-	{
-		const unsigned int field = voltage ? 0 : 1;
-		for (const auto& region : m_Metal->excitations)
-		{
-			if (!region.counts[field]) continue;
-			ExcitationParams params = {region.counts[field], numTS, region.signalLength,
-				region.period ? region.period : numTS + 1};
-			id<MTLComputeCommandEncoder> encoder = [m_Metal->Commands() computeCommandEncoder];
-			[encoder setComputePipelineState:m_Metal->excitationPipeline];
-			[encoder setBuffer:voltage ? m_Metal->volt : m_Metal->curr offset:0 atIndex:0];
-			[encoder setBuffer:region.sources[field] offset:0 atIndex:1];
-			[encoder setBuffer:region.signals[field] offset:0 atIndex:2];
-			[encoder setBytes:&params length:sizeof(params) atIndex:3];
-			[encoder dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-			[encoder endEncoding];
-		}
-	}
-}
-
 void Engine_Metal::FinishMetalCommands()
 {
 	if (!m_Metal || !m_Metal->pending)
@@ -1206,13 +1170,15 @@ void Engine_Metal::FinishMetalCommands()
 		throw MetalError("Metal: field/UPML update failed", commands.error);
 }
 
-void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
+void Engine_Metal::DispatchExtensionHooks(bool voltage, bool pre)
 {
 	@autoreleasepool
 	{
-		// Keep the CPU extension order exactly: pre in reverse, post forward.
-		// Separate encoders order even overlapping regions; CPU hooks see only
-		// completed GPU writes. Typically pre/field/post share one submission.
+		// Legacy path only (Engine::IterateTS drives these hooks; the diamond
+		// kernel never calls them). Keep the CPU extension order exactly: pre in
+		// reverse, post forward. Separate encoders order even overlapping
+		// regions; CPU hooks see only completed GPU writes. Typically
+		// pre/field/post share one submission.
 		for (size_t i = 0; i < m_Eng_exts.size(); ++i)
 		{
 			Engine_Extension* extension = m_Eng_exts[pre ? m_Eng_exts.size() - 1 - i : i];
@@ -1229,8 +1195,6 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 				[extension](const MetalState::PMLRegion& r) { return r.extension == extension; });
 			if (region == m_Metal->pml.end())
 			{
-				if (m_Metal->diamondRequested && dynamic_cast<Engine_Ext_Excitation*>(extension))
-					continue;
 				FinishMetalCommands();
 				if (voltage)
 				{
@@ -1261,15 +1225,15 @@ void Engine_Metal::RunUPMLExtensions(bool voltage, bool pre)
 				threadsPerThreadgroup:MTLSizeMake(pipeline.threadExecutionWidth, 1, 1)];
 			[encoder endEncoding];
 		}
-		if (!pre && !m_Metal->diamondRequested)
+		if (!pre)
 			FinishMetalCommands(); // CPU Apply hooks need completed fields.
 	}
 }
 
-void Engine_Metal::DoPreVoltageUpdates() { RunUPMLExtensions(true, true); }
-void Engine_Metal::DoPostVoltageUpdates() { RunUPMLExtensions(true, false); }
-void Engine_Metal::DoPreCurrentUpdates() { RunUPMLExtensions(false, true); }
-void Engine_Metal::DoPostCurrentUpdates() { RunUPMLExtensions(false, false); }
+void Engine_Metal::DoPreVoltageUpdates() { DispatchExtensionHooks(true, true); }
+void Engine_Metal::DoPostVoltageUpdates() { DispatchExtensionHooks(true, false); }
+void Engine_Metal::DoPreCurrentUpdates() { DispatchExtensionHooks(false, true); }
+void Engine_Metal::DoPostCurrentUpdates() { DispatchExtensionHooks(false, false); }
 
 bool Engine_Metal::HasADEOffload(const Engine_Extension* extension) const
 {
@@ -1571,39 +1535,9 @@ bool Engine_Metal::IterateTS(unsigned int iterTS)
 		FinishMetalCommands();
 		return true;
 	}
-	if (!m_Metal->diamondRequested)
-		return Engine::IterateTS(iterTS);
-
-	for (unsigned int iter = 0; iter < iterTS; ++iter)
-	{
-		DoPreVoltageUpdates();
-		UpdateVoltages(0, numLines[0]);
-		DoPostVoltageUpdates();
-		if (m_Metal->referenceEnabled)
-		{
-			FinishMetalCommands();
-			Engine::Apply2Voltages();
-		}
-		else
-			ApplyMetalExcitations(true);
-
-		DoPreCurrentUpdates();
-		UpdateCurrents(0, numLines[0] - 1);
-		DoPostCurrentUpdates();
-		if (m_Metal->referenceEnabled)
-		{
-			FinishMetalCommands();
-			Engine::Apply2Current();
-		}
-		else
-			ApplyMetalExcitations(false);
-
-		// Submit one ordered GPU pipeline per timestep. This is also the
-		// synchronization point for CPU probes, dumps, and convergence checks.
-		FinishMetalCommands();
-		++numTS;
-	}
-	return true;
+	// Legacy diagnostic path: the base loop drives the hooks; every GPU
+	// dispatch is drained before the CPU Apply hooks run (DispatchExtensionHooks).
+	return Engine::IterateTS(iterTS);
 }
 
 void Engine_Metal::Reset()
@@ -1691,7 +1625,7 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1], numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || (!m_Metal->diamondRequested && m_Metal->pml.empty()))
+		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)
@@ -1758,7 +1692,7 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1] - 1, numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || (!m_Metal->diamondRequested && m_Metal->pml.empty()))
+		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)

@@ -44,8 +44,12 @@ private:
 	bool HasADEOffload(const Engine_Extension* extension) const;
 	void AdvanceADEOffload(Engine_Extension* extension);
 	void ApplyADEOffload(Engine_Extension* extension);
-	void RunUPMLExtensions(bool voltage, bool pre);
-	void ApplyMetalExcitations(bool voltage);
+	//! Scan engine extensions and disable the diamond wavefront for any hook
+	//! that has not migrated into the fused kernel.
+	void ScanExtensionsForDiamond();
+	//! Legacy path only: dispatch one pre/post hook round, running migrated
+	//! extensions on the GPU and draining before every CPU hook.
+	void DispatchExtensionHooks(bool voltage, bool pre);
 	void FinishMetalCommands();
 
 	struct MetalState;
