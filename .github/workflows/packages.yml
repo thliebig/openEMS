@@ -637,8 +637,8 @@ jobs:
         run: |
           $pkg = "$env:GITHUB_WORKSPACE\pkgstage\openEMS"
           # machine code for every architecture, and PTX for later GPUs
-          $elf = & "$env:HIP_PATH\bin\cuobjdump.exe" --list-elf "$pkg\openEMS.dll"
-          $ptx = & "$env:HIP_PATH\bin\cuobjdump.exe" --list-ptx "$pkg\openEMS.dll"
+          $elf = & "$env:CUDA_PATH\bin\cuobjdump.exe" --list-elf "$pkg\openEMS.dll"
+          $ptx = & "$env:CUDA_PATH\bin\cuobjdump.exe" --list-ptx "$pkg\openEMS.dll"
           $elf; $ptx
           foreach ($a in @('60', '61', '70', '75', '80', '86', '89', '90', '100', '120')) {
             if (-not ($elf -match "\.sm_$a\.cubin")) { throw "no machine code for sm_$a" }
@@ -648,7 +648,7 @@ jobs:
           $env:CSXCAD_INSTALL_PATH = $pkg
           $env:OPENEMS_INSTALL_PATH = $pkg
           Set-Location $env:TEMP
-          python "$env:GITHUB_WORKSPACE\openEMS\.github\packaging\check_gpu_engine.py" cuda
+          python "$env:GITHUB_WORKSPACE\openEMS\.github\packaging\check_gpu_engine.py" hip
           if ($LASTEXITCODE -ne 0) { throw "check_gpu_engine.py failed" }
 
       - name: Check the bundled tutorial resources
@@ -837,7 +837,7 @@ jobs:
             python /tests/Coax.py
             python /tests/GPU_Engine.py
             # the package contains the HIP backend (no GPU on the runner: it reports no device)
-            python /packaging/check_gpu_engine.py cuda'
+            python /packaging/check_gpu_engine.py hip'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -992,7 +992,7 @@ jobs:
             python /tests/Coax.py
             python /tests/GPU_Engine.py
             # the package contains the HIP backend (no GPU on the runner: it reports no device)
-            python /packaging/check_gpu_engine.py cuda'
+            python /packaging/check_gpu_engine.py hip'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

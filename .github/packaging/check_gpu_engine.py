@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that the installed openEMS modules and libraries contain a GPU backend.
 
-usage: check_gpu_engine.py cuda|metal
+usage: check_gpu_engine.py hip|metal
 
 Runs a tiny simulation with engine='gpu' and checks the console output of the
 engine: it must have created the backend, or reported that there is no device
@@ -19,7 +19,7 @@ import tempfile
 from CSXCAD import ContinuousStructure
 from openEMS import openEMS
 
-EXPECTED = {'cuda': ('backend: CUDA', 'no HIP device found'),
+EXPECTED = {'hip': ('backend: HIP', 'no HIP device found'),
             'metal': ('backend: Metal', 'no Metal device found')}
 
 
