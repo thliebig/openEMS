@@ -177,7 +177,7 @@ NVIDIA machines are Vast.ai containers (Ubuntu 24.04, CUDA 12.8), built in
 release mode for the architecture of each GPU, on drivers 550 to 610. The GTX
 1080 Ti (Pascal) and the GTX 1660 Ti (Turing) ran a build for all architectures
 from Pascal on, the one of the packages. The MI300X (gfx942, ROCm 7.2) is a
-rented machine with 8 host threads.
+machine rented from Hot Aisle, with 8 host threads.
 
 The rows of a CPU are the multithreaded engine on the same test, for scale.
 openEMS picks its own thread count there, 6 to 8 of the threads of these
