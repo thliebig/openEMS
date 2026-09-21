@@ -2,7 +2,9 @@
 # - windows: upstream's Windows package workflow (thliebig/openEMS-Project,
 #   .github/workflows/windows-package.yml) with openEMS from this repository and the
 #   HIP backend: a ZIP with the programs, AppCSXCAD, the DLLs and Python wheels
-# - linux:   x86_64 with CUDA, a relocatable archive (.github/packaging/bundle_linux.py)
+# - linux:     x86_64 for NVIDIA GPUs (HIP over CUDA), a relocatable archive
+#              (.github/packaging/bundle_linux.py)
+# - linux-amd: x86_64 for AMD GPUs (HIP over ROCm), the same
 # - macos:   arm64 with Metal, a relocatable archive (.github/packaging/bundle_macos.py)
 # A tag, or a run by hand with "publish", makes a GitHub release with the three packages.
 name: Packages
@@ -20,7 +22,7 @@ on:
 
 jobs:
   windows:
-    name: Build and package (Windows MSVC, CUDA)
+    name: Build and package (Windows MSVC, HIP over CUDA)
     # Visual Studio 2022: CUDA 12.8 does not support later compilers
     runs-on: windows-2022
 
@@ -71,7 +73,7 @@ jobs:
       - name: Install the CUDA toolkit
         run: |
           # compiler, runtime and Visual Studio integration only (no display driver);
-          # in 12.8 crt and nvvm are part of hipcc
+          # in 12.8 crt and nvvm are part of nvcc
           $v = '12.8.1'; $m = '12.8'
           Invoke-WebRequest -Uri "https://developer.download.nvidia.com/compute/cuda/$v/network_installers/cuda_${v}_windows_network.exe" `
                             -OutFile "$env:RUNNER_TEMP\cuda.exe" -UseBasicParsing
@@ -79,10 +81,34 @@ jobs:
                              -ArgumentList '-s', "nvcc_$m", "cudart_$m", "cuobjdump_$m", "nvml_dev_$m", "visual_studio_integration_$m"
           if ($p.ExitCode -ne 0) { throw "CUDA installer failed with exit code $($p.ExitCode)" }
           $cuda = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v$m"
-          & "$cuda\bin\hipcc.exe" --version
-          # the installer does not add hipcc to the PATH
-          echo "HIP_PATH=$cuda" >> $env:GITHUB_ENV
+          & "$cuda\bin\nvcc.exe" --version
+          # the installer does not add nvcc to the PATH
+          echo "CUDA_PATH=$cuda" >> $env:GITHUB_ENV
           echo "$cuda\bin" >> $env:GITHUB_PATH
+
+      - name: Install the HIP headers
+        run: |
+          # The GPU engine is written in HIP. On the NVIDIA platform HIP is headers over
+          # the CUDA runtime and CMake compiles the kernels with nvcc, so the headers are
+          # all that is needed here. AMD packages them for Linux only, hence the .deb:
+          # they are the same text on every system, and this keeps them at the version the
+          # Linux packages of this workflow are built with.
+          $base = 'https://repo.radeon.com/rocm/apt/latest/pool/main/h/hip-dev'
+          $page = (Invoke-WebRequest -Uri $base -UseBasicParsing).Content
+          $deb  = ([regex]'hip-dev_[^"]+_amd64\.deb').Matches($page) | Select-Object -Last 1 -ExpandProperty Value
+          if (-not $deb) { throw "no hip-dev package at $base" }
+          Write-Host "HIP headers from $deb"
+          Invoke-WebRequest -Uri "$base/$deb" -OutFile "$env:RUNNER_TEMP\hip-dev.deb" -UseBasicParsing
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\hip" | Out-Null
+          # bsdtar reads the ar archive of a .deb, then its data member
+          tar -xf "$env:RUNNER_TEMP\hip-dev.deb" -C "$env:RUNNER_TEMP\hip"
+          $data = Get-ChildItem "$env:RUNNER_TEMP\hip\data.tar*" | Select-Object -First 1
+          tar -xf $data.FullName -C "$env:RUNNER_TEMP\hip"
+          $inc = (Get-ChildItem "$env:RUNNER_TEMP\hip\opt" -Recurse -Filter hip_runtime.h |
+                  Select-Object -First 1).Directory.Parent.FullName
+          if (-not $inc) { throw "hip_runtime.h is not in the package" }
+          Write-Host "HIP include directory: $inc"
+          echo "HIP_INCLUDE=$inc" >> $env:GITHUB_ENV
 
       - name: Create vcpkg cache directories
         run: |
@@ -147,9 +173,9 @@ jobs:
           mkdir build && cd build
           cmake ../ -GNinja `
                     -DCMAKE_BUILD_TYPE=Release `
-                    -DCMAKE_HIP_COMPILER="$env:HIP_PATH/bin/hipcc.exe" `
+                    -DCMAKE_HIP_PLATFORM=nvidia -DCMAKE_HIP_COMPILER="$env:CUDA_PATH/bin/nvcc.exe" `
+                    -DCMAKE_HIP_FLAGS="-I`"$env:HIP_INCLUDE`" -Wno-deprecated-gpu-targets" `
                     -DCMAKE_HIP_ARCHITECTURES="60-real;61-real;70-real;75-real;80-real;86-real;89-real;90-real;100-real;120" `
-                    -DCMAKE_HIP_FLAGS="-Wno-deprecated-gpu-targets" `
                     -DCMAKE_INSTALL_PREFIX="$HOME/opt" `
                     -DFPARSER_ROOT_DIR="$HOME/opt" `
                     -DCSXCAD_ROOT_DIR="$HOME/opt" `
@@ -687,7 +713,15 @@ jobs:
               https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i "$RUNNER_TEMP/cuda-keyring.deb"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cuda-hipcc-12-8 cuda-cudart-dev-12-8 cuda-cuobjdump-12-8
+          sudo apt-get install -y --no-install-recommends cuda-nvcc-12-8 cuda-cudart-dev-12-8 \
+              cuda-cuobjdump-12-8 cuda-profiler-api-12-8
+          # HIP over CUDA: on this platform it is headers and a wrapper around nvcc, and the
+          # binaries link the CUDA runtime, so the package carries nothing new
+          curl -fsSL https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/rocm.gpg > /dev/null
+          echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/latest noble main" | sudo tee /etc/apt/sources.list.d/rocm.list
+          printf 'Package: *\nPin: origin repo.radeon.com\nPin-Priority: 1001\n' | sudo tee /etc/apt/preferences.d/rocm
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends hip-dev hipcc-nvidia rocm-core
           echo "OPT=$RUNNER_TEMP/opt" >> $GITHUB_ENV
 
       - name: Build and install fparser, CSXCAD and openEMS
@@ -704,7 +738,7 @@ jobs:
           configure fparser && build_install fparser
           configure CSXCAD -DFPARSER_ROOT_DIR="$OPT" && build_install CSXCAD
           configure openEMS -DFPARSER_ROOT_DIR="$OPT" -DCSXCAD_ROOT_DIR="$OPT" \
-              -DCMAKE_HIP_COMPILER=/usr/local/cuda-12.8/bin/hipcc -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES" \
+              -DCMAKE_HIP_PLATFORM=nvidia -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES" \
               -DCMAKE_HIP_FLAGS="-Wno-deprecated-gpu-targets"
           grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || { echo "the HIP backend is not enabled"; exit 1; }
           build_install openEMS
@@ -763,6 +797,159 @@ jobs:
             echo "$elf" | grep -q "\.sm_$a\.cubin" || { echo "no machine code for sm_$a"; exit 1; }
           done
           echo "$ptx" | grep -q "\.sm_120\.ptx" || { echo "no PTX for later GPUs"; exit 1; }
+
+      - name: Test the programs in a clean system
+        run: |
+          # every library resolves without the build dependencies, and openEMS starts
+          docker run --rm -v "$RUNNER_TEMP/pkgstage:/pkg:ro" ubuntu:24.04 bash -ec '
+            missing=$(for f in /pkg/openEMS/bin/* /pkg/openEMS/lib/*.so* /pkg/openEMS/lib/deps/*; do
+                        ldd "$f" 2>/dev/null | grep "not found" | sed "s#^#$f: #" || true; done)
+            if [ -n "$missing" ]; then echo "$missing"; exit 1; fi
+            /pkg/openEMS/bin/openEMS | grep "openEMS 64bit"'
+
+      - name: Test the Python modules in a clean system
+        run: |
+          # as README.txt describes it; no GPU here: GPU_Engine.py tests the reference backend
+          docker run --rm -v "$RUNNER_TEMP/pkgstage:/pkg:ro" -v "$GITHUB_WORKSPACE/openEMS/python/Tests:/tests:ro" \
+                     -v "$GITHUB_WORKSPACE/openEMS/.github/packaging:/packaging:ro" python:3.13-slim bash -ec '
+            python -m pip install -q numpy h5py matplotlib
+            python -m pip install -q --no-index --find-links /pkg/openEMS/python openEMS
+            export LD_LIBRARY_PATH=/pkg/openEMS/lib MPLBACKEND=Agg
+            cd /tmp
+            python -c "import openEMS, h5py; print(\"openEMS\", openEMS.__version__, \"- h5py with HDF5\", h5py.version.hdf5_version)"
+            python -m unittest discover -s /tests -p "test_*.py"
+            python /tests/Coax.py
+            python /tests/GPU_Engine.py
+            # the package contains the HIP backend (no GPU on the runner: it reports no device)
+            python /packaging/check_gpu_engine.py cuda'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ runner.temp }}/${{ steps.pkg.outputs.name }}.tar.gz
+          retention-days: 30
+
+      - name: Upload the archive for the release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: ${{ runner.temp }}/${{ steps.pkg.outputs.name }}.tar.gz
+          retention-days: 5
+
+  linux-amd:
+    name: Build and package (Linux x86_64, ROCm)
+    runs-on: ubuntu-24.04
+
+    env:
+      # CDNA 2 and 3 (MI200, MI300) and RDNA 2 and 3 (RX 6000, RX 7000)
+      HIP_ARCHITECTURES: "gfx90a;gfx942;gfx1030;gfx1100"
+
+    steps:
+      - name: Checkout openEMS-Project.git
+        uses: actions/checkout@v4
+        with:
+          repository: thliebig/openEMS-Project
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Replace the openEMS submodule with this repository
+        run: rm -rf "$GITHUB_WORKSPACE/openEMS"
+
+      - name: Checkout openEMS (this repository)
+        uses: actions/checkout@v4
+        with:
+          path: openEMS
+          fetch-depth: 0
+
+      - name: Install dependencies and ROCm
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build patchelf \
+              libhdf5-dev libvtk9-dev libcgal-dev libtinyxml-dev libgmp-dev libmpfr-dev \
+              libboost-program-options-dev libboost-thread-dev libboost-date-time-dev \
+              libboost-serialization-dev libboost-chrono-dev libboost-system-dev
+          # Ubuntu carries ROCm packages of its own, and a mix of the two puts the headers
+          # of one beside the compiler of the other
+          curl -fsSL https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/rocm.gpg > /dev/null
+          echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/latest noble main" | sudo tee /etc/apt/sources.list.d/rocm.list
+          printf 'Package: *\nPin: origin repo.radeon.com\nPin-Priority: 1001\n' | sudo tee /etc/apt/preferences.d/rocm
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              hipcc hip-dev rocm-device-libs rocm-llvm comgr hsa-rocr-dev rocm-core
+          echo "ROCM_PATH=/opt/rocm" >> $GITHUB_ENV
+          echo "OPT=$RUNNER_TEMP/opt" >> $GITHUB_ENV
+
+      - name: Build and install fparser, CSXCAD and openEMS
+        run: |
+          configure() {  # configure <dir> <cmake options...>
+            local dir=$1; shift
+            cmake -S "$GITHUB_WORKSPACE/$dir" -B "$RUNNER_TEMP/build/$dir" -GNinja \
+                  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$OPT" "$@"
+          }
+          build_install() {
+            cmake --build "$RUNNER_TEMP/build/$1" --parallel
+            cmake --install "$RUNNER_TEMP/build/$1"
+          }
+          configure fparser && build_install fparser
+          configure CSXCAD -DFPARSER_ROOT_DIR="$OPT" && build_install CSXCAD
+          configure openEMS -DFPARSER_ROOT_DIR="$OPT" -DCSXCAD_ROOT_DIR="$OPT" \
+              -DCMAKE_HIP_PLATFORM=amd -DCMAKE_HIP_ARCHITECTURES="$HIP_ARCHITECTURES"
+          grep -q '^ENABLE_HIP:BOOL=ON' "$RUNNER_TEMP/build/openEMS/CMakeCache.txt" || { echo "the HIP backend is not enabled"; exit 1; }
+          build_install openEMS
+
+      - name: Set up Python 3.13 and 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.13
+            3.14
+          allow-prereleases: true
+
+      - name: Build the Python wheels
+        run: |
+          export CSXCAD_INSTALL_PATH="$OPT" OPENEMS_INSTALL_PATH="$OPT"
+          mkdir -p "$RUNNER_TEMP/wheels"
+          for v in 3.13 3.14; do
+            python$v -m venv "$RUNNER_TEMP/venv$v"
+            py="$RUNNER_TEMP/venv$v/bin/python"
+            $py -m pip install --upgrade pip cython setuptools setuptools-scm wheel numpy
+            # CSXCAD first, installed: openEMS needs its Cython declarations
+            (cd "$GITHUB_WORKSPACE/CSXCAD/python" && rm -rf build &&
+             $py -m pip wheel . --no-deps --no-build-isolation -w "$RUNNER_TEMP/wheels")
+            $py -m pip install "$RUNNER_TEMP"/wheels/csxcad-*-cp${v/./}-*.whl
+            (cd "$GITHUB_WORKSPACE/openEMS/python" && rm -rf build &&
+             $py -m pip wheel . --no-deps --no-build-isolation -w "$RUNNER_TEMP/wheels")
+          done
+          ls -l "$RUNNER_TEMP/wheels"
+
+      - name: Assemble the package
+        id: pkg
+        run: |
+          gitdesc=$(git -C "$GITHUB_WORKSPACE/openEMS" describe --tags --always)
+          stem="openEMS_linux_x86_64_${gitdesc}_rocm"
+          pkg="$RUNNER_TEMP/pkgstage/openEMS"
+          mkdir -p "$pkg/lib" "$pkg/python"
+          cp -a "$OPT/bin" "$OPT/share" "$pkg/"
+          cp -a "$OPT"/lib/*.so* "$pkg/lib/"
+          # the libraries they need, relative run paths
+          python3 "$GITHUB_WORKSPACE/openEMS/.github/packaging/bundle_linux.py" "$pkg"
+          cp "$RUNNER_TEMP"/wheels/*.whl "$pkg/python/"
+          cp -r "$GITHUB_WORKSPACE/openEMS/python/Tutorials" "$pkg/python/"
+          sed "s/@PACKAGE_NAME@/$stem/" "$GITHUB_WORKSPACE/openEMS/.github/packaging/README-linux-amd.txt" > "$pkg/README.txt"
+          tar -C "$RUNNER_TEMP/pkgstage" -czf "$RUNNER_TEMP/$stem.tar.gz" openEMS
+          du -sh "$pkg" "$RUNNER_TEMP/$stem.tar.gz"
+          echo "name=$stem" >> $GITHUB_OUTPUT
+
+      - name: Check the GPU code in the package
+        run: |
+          # a code object for every architecture, in the bundled ELF
+          lib=$(ls "$RUNNER_TEMP"/pkgstage/openEMS/lib/libopenEMS.so.*.* | head -1)
+          objs=$(/opt/rocm/llvm/bin/llvm-objdump --offloading "$lib" || true)
+          echo "$objs"
+          for a in gfx90a gfx942 gfx1030 gfx1100; do
+            echo "$objs" | grep -q "$a" || { echo "no code object for $a"; exit 1; }
+          done
 
       - name: Test the programs in a clean system
         run: |
@@ -956,7 +1143,7 @@ jobs:
 
   release:
     name: GitHub release
-    needs: [windows, linux, macos]
+    needs: [windows, linux, linux-amd, macos]
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
     runs-on: ubuntu-latest
     permissions:
