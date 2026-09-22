@@ -148,12 +148,10 @@ python3 -m unittest discover -s python/Tests -p "test_*.py" -v
 
 ## Contributing
 
-Pull requests are welcome. Please:
-
-1. Follow the existing code style (C++11, no trailing whitespace — enforced by CI).
-2. Add or update tests in `TESTSUITE/` for non-trivial changes.
-3. Disclose AI tool usage per [AI_POLICY.md](AI_POLICY.md).
-4. Include `Signed-off-by: Your Name <email>` in commit messages (DCO).
+Pull requests are welcome. [AGENTS.md](AGENTS.md) has the working rules —
+architecture, build and test cycle, code style, changelog and commit
+conventions — and applies to human and AI-assisted contributions alike.
+Disclosure and sign-off requirements are in [AI_POLICY.md](AI_POLICY.md).
 
 ---
 
