@@ -62,6 +62,7 @@ public:
 	virtual void ShowSnappedCoords();
 
 	void SetProcessInterval(unsigned int interval);
+	//! Get the time-domain sampling interval in timesteps \sa SetProcessInterval
 	unsigned int GetProcessInterval() const {return ProcessInterval;}
 	void SetProcessStartStopTime(double start, double stop);
 
@@ -76,8 +77,6 @@ public:
 	size_t GetNumberOfFrequencies() const {return m_FD_Samples.size();}
 	void AddFrequency(std::vector<double> *freqs);
 
-	//! Get the time-domain sampling interval in timesteps \sa SetProcessInterval
-	unsigned int GetProcessInterval() const {return ProcessInterval;}
 	//! Get the frequency-domain accumulation interval in timesteps \sa SetFDOverSampling
 	unsigned int GetFDInterval() const {return m_FD_Interval;}
 
