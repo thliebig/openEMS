@@ -7,10 +7,11 @@ AI disclosure: measured and written up with Claude Opus 5 (Claude Code).
 
 ## Tests
 
-**Horn antenna, time-domain NF2FF**: the horn antenna tutorial by Thorsten
-Liebig (`Horn_Antenna.py`, openEMS v0.37 tutorials), run unchanged including
-its post-processing (port, far field at 15 GHz, plots), without the geometry
-viewer.
+**Horn antenna, time-domain NF2FF**: `python/Tests/Horn_Antenna_Benchmark.py td`,
+the horn antenna tutorial by Thorsten Liebig (`python/Tutorials/Horn_Antenna.py`)
+with its post-processing (port, far field at 15 GHz, plots), without the geometry
+viewer. It evaluates the end criteria on a fixed schedule (`SetExactEndCriteria`),
+so that every machine stops at the same timestep and the times compare.
 
 - a pyramidal horn fed by a coaxial pin (lumped port), 10-20 GHz excitation,
 - 123 x 111 x 177 = 2.42 million cells, PML_8 on all sides,
@@ -18,9 +19,9 @@ viewer.
 - every run stopped after 14900 timesteps with the same result: directivity
   16.9 dBi, aperture efficiency 64.6 %.
 
-**Horn antenna, frequency-domain NF2FF**: the same script with
-`CreateNF2FFBox(frequency=[f0])`: the box records the 15 GHz fields during the
-run instead of dumping the time-domain fields. Same stop timestep and result.
+**Horn antenna, frequency-domain NF2FF**: the same script as `fd`, where the
+NF2FF box is created with `frequency=[f0]`: it records the 15 GHz fields during
+the run instead of dumping the time-domain fields. Same stop timestep and result.
 
 **Free space**: `python/Tests/FreeSpace_Benchmark.py`, the field updates alone.
 
@@ -72,7 +73,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | A100 SXM4 40 GB | EPYC 7K62 | 18.9 s | 8.0 s | 4530 | 801 MiB | 723 MiB |
 | H200 | Xeon Platinum 8488C | 20.3 s | 13.0 s | 2775 | 904 MiB | 827 MiB |
 | AMD MI300X (HIP) | EPYC (8 threads) | 22.9 s | 15.4 s | 2339 | 2095 MiB | 1692 MiB |
-| AMD Radeon 760M (HIP) | Ryzen 5 7640HS | 186.5 s | 181.1 s | 199 | 588 MiB (2) | - (2) |
+| AMD Radeon 760M (HIP) | Ryzen 5 7640HS | 69.9 s | 64.2 s | 561 | 884 MiB (2) | - (2) |
 
 ### Horn antenna, frequency-domain NF2FF
 
@@ -116,7 +117,7 @@ run instead of dumping the time-domain fields. Same stop timestep and result.
 | A100 SXM4 40 GB | EPYC 7K62 | 11.3 s | 4.8 s | 7448 | 631 MiB | 729 MiB |
 | H200 | Xeon Platinum 8488C | 7.1 s | **2.3 s** | **15362** | 729 MiB | 833 MiB |
 | AMD MI300X (HIP) | EPYC (8 threads) | 7.6 s | 2.5 s | 14650 | 1400 MiB | 1339 MiB |
-| AMD Radeon 760M (HIP) | Ryzen 5 7640HS | 181.0 s | 177.2 s | 203 | 456 MiB (2) | - (2) |
+| AMD Radeon 760M (HIP) | Ryzen 5 7640HS | 66.3 s | 62.4 s | 577 | 632 MiB (2) | - (2) |
 
 ### Free space
 
