@@ -64,6 +64,9 @@ public:
 	void SetNumberOfTimeSteps(unsigned int val) {NrTS=val;}
 	void SetEnableDumps(bool val) {Enable_Dumps=val;}
 	void SetEndCriteria(double val) {endCrit=val;}
+	//! Evaluate the end criteria on a fixed schedule instead of a wall-clock one,
+	//! so that a run stops at the same timestep on every machine (--exact-endcriteria)
+	void SetExactEndCriteria(bool val) {m_exactEndCriteria=val;}
 	void SetOverSampling(int val) {m_OverSampling=val;}
 	void SetCellConstantMaterial(bool val) {m_CellConstantMaterial=val;}
 

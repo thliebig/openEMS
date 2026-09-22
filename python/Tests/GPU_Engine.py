@@ -66,6 +66,10 @@ def channel_1d(FDTD, CSX, sinus=False):
 
 def case_dispersive_pml():
     FDTD = openEMS(NrTS=5000, EndCriteria=1e-5)
+    # the backends are compared value by value, so both runs have to stop at the
+    # same timestep: the end criteria is otherwise evaluated on a wall-clock
+    # schedule and the faster backend runs a few timesteps further
+    FDTD.SetExactEndCriteria(True)
     CSX = ContinuousStructure()
     FDTD.SetCSX(CSX)
     CSX.GetGrid().SetDeltaUnit(unit)

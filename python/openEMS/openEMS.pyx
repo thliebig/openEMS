@@ -135,6 +135,16 @@ cdef class openEMS:
         """
         self.thisptr.SetEndCriteria(val)
 
+    def SetExactEndCriteria(self, val):
+        """ SetExactEndCriteria(val)
+
+        Evaluate the end criteria every Nyquist period instead of every few
+        seconds of wall-clock time, so that the run stops at the same timestep
+        on every machine. Costs performance; meant for comparing engines and
+        for benchmarks that have to run the same number of timesteps.
+        """
+        self.thisptr.SetExactEndCriteria(val)
+
     def SetOverSampling(self, val):
         """ SetOverSampling(val)
 

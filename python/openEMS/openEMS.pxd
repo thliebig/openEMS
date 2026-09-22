@@ -32,6 +32,7 @@ cdef extern from "openEMS/openems.h":
         _ContinuousStructure* GetCSX()
 
         void SetEndCriteria(double val)
+        void SetExactEndCriteria(bool val)
         void SetOverSampling(int val)
         void SetCellConstantMaterial(bool val)
 
