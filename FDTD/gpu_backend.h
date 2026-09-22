@@ -21,9 +21,35 @@
 #include <string>
 
 #include "tools/constants.h"
+#include "tools/global.h"
 #include "tools/arraylib/array_nijk.h"
 
 class Operator;
+class Engine;
+class Engine_Extension;
+
+//! Device implementation of an engine extension, see GPU_Backend::CreateExtension()
+/*!
+  Engine_GPU calls it through the same hooks and in the same order as the engine
+  extension it replaces, while the fields stay on the device. It works on the
+  device data of the backend that created it.
+  */
+class GPU_Extension
+{
+public:
+	virtual ~GPU_Extension() {}
+
+	virtual void DoPreVoltageUpdates() {}
+	virtual void DoPostVoltageUpdates() {}
+	virtual void Apply2Voltages() {}
+
+	virtual void DoPreCurrentUpdates() {}
+	virtual void DoPostCurrentUpdates() {}
+	virtual void Apply2Current() {}
+
+	//! Called after each IterateTS() of the engine, with the host mirror up to date
+	virtual void Synchronize() {}
+};
 
 //! Abstract interface to the device used by Engine_GPU
 /*!
@@ -37,8 +63,8 @@ class Operator;
 class GPU_Backend
 {
 public:
-	//! Create the backend compiled into this build. It's the responsibility of the caller to free it.
-	static GPU_Backend* New();
+	//! Create a backend by name: "reference" or "auto" (the best device backend available). It's the responsibility of the caller to free it.
+	static GPU_Backend* New(const std::string& name);
 
 	virtual ~GPU_Backend() {}
 
@@ -60,6 +86,9 @@ public:
 	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt) = 0;
 	//! Copy the host mirror currents to the device
 	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr) = 0;
+
+	//! Create the device implementation of the engine extension \a eng_ext of engine \a eng, or NULL if this backend has none
+	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng) {UNUSED(eng_ext); UNUSED(eng); return NULL;}
 };
 
 #endif // GPU_BACKEND_H

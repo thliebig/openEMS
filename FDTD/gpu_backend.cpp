@@ -15,11 +15,18 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <iostream>
+
 #include "gpu_backend.h"
 #include "gpu_backend_reference.h"
 
-GPU_Backend* GPU_Backend::New()
+GPU_Backend* GPU_Backend::New(const std::string& name)
 {
-	// device backends will be selected here, depending on the build options
+	if (name=="reference")
+		return new GPU_Backend_Reference();
+	if (name!="auto")
+		std::cerr << "GPU_Backend::New: Warning: unknown GPU backend \"" << name << "\", using the best available" << std::endl;
+
+	std::cerr << "GPU_Backend::New: Warning: no GPU backend available, using the reference backend on the CPU" << std::endl;
 	return new GPU_Backend_Reference();
 }

@@ -19,6 +19,13 @@ number moved up and patch releases now have somewhere to go.
 
 ### Added
 
+- **A GPU engine**, `--engine=gpu` (`engine='gpu'` from Python), which runs the
+  field updates on a device instead of the CPU. It is selected like the other
+  engines and writes the same probes and dumps; `--engine=gpu-reference` runs the
+  same engine against a reference backend on the CPU, which is there to check the
+  device backends against. Cylindrical coordinates are not supported and fall back
+  to the multithreaded engine.
+
 - **SAR calculation reworked.** Averaging is done once for all frequencies
   instead of per frequency, and the calculation is multi-threaded, together
   giving a large speedup. Averaging follows IEEE/IEC 62704-1. The `--autorange`

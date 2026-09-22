@@ -254,6 +254,11 @@ void openEMS::collectCommandLineArguments()
 						cout << "openEMS - enabled GPU engine" << endl;
 						m_engine = EngineType_GPU;
 					}
+					else if (val == "gpu-reference")
+					{
+						cout << "openEMS - enabled GPU engine with the reference backend" << endl;
+						m_engine = EngineType_GPU_Reference;
+					}
 				}
 			),
 		    "Choose engine type \n\n"
@@ -264,7 +269,8 @@ void openEMS::collectCommandLineArguments()
 			"operator + sse vector extensions\n"
 			"  multithreaded: \tengine using compressed "
 			"operator + sse vector extensions + multithreading\n"
-			"  gpu: \tGPU engine (reference backend on the CPU for now)\n"
+			"  gpu: \tGPU engine on the best available backend\n"
+			"  gpu-reference: \tGPU engine with the reference backend on the CPU\n"
 		)
 		(
 			"numThreads",
@@ -785,7 +791,7 @@ bool openEMS::SetupOperator()
 {
 	if (CylinderCoords)
 	{
-		if (m_engine == EngineType_GPU)
+		if ((m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference))
 			cerr << "openEMS::SetupOperator: Warning: the GPU engine does not support cylindrical coordinates, using the multithreaded engine" << endl;
 		if (m_CC_MultiGrid.size()>0)
 		{
@@ -808,9 +814,9 @@ bool openEMS::SetupOperator()
 	{
 		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
 	}
-	else if (m_engine == EngineType_GPU)
+	else if ((m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference))
 	{
-		FDTD_Op = Operator_GPU::New();
+		FDTD_Op = Operator_GPU::New(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
 	}
 	else
 	{

@@ -21,16 +21,17 @@
 using std::cout;
 using std::endl;
 
-Operator_GPU* Operator_GPU::New()
+Operator_GPU* Operator_GPU::New(const std::string& backend)
 {
 	cout << "Create FDTD operator (GPU)" << endl;
-	Operator_GPU* op = new Operator_GPU();
+	Operator_GPU* op = new Operator_GPU(backend);
 	op->Init();
 	return op;
 }
 
-Operator_GPU::Operator_GPU() : Operator()
+Operator_GPU::Operator_GPU(const std::string& backend) : Operator()
 {
+	m_Backend = backend;
 }
 
 Operator_GPU::~Operator_GPU()

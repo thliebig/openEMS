@@ -28,15 +28,19 @@
 class Operator_GPU : public Operator
 {
 public:
-	//! Create a new operator
-	static Operator_GPU* New();
+	//! Create a new operator for the GPU backend \a backend (see GPU_Backend::New)
+	static Operator_GPU* New(const std::string& backend="auto");
 	virtual ~Operator_GPU();
 
 	virtual Engine* CreateEngine();
 
+	const std::string& GetBackendName() const {return m_Backend;}
+
 protected:
 	//! use New() for creating a new Operator
-	Operator_GPU();
+	Operator_GPU(const std::string& backend);
+
+	std::string m_Backend;
 };
 
 #endif // OPERATOR_GPU_H
