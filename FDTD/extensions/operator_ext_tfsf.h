@@ -38,6 +38,7 @@ public:
 	virtual Engine_Extension* CreateEngineExtention();
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const {UNUSED(closedAlpha); UNUSED(R0_included); return false;}
+	virtual bool IsGPUSave() const {return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const {UNUSED(child); return false;}
 
 	virtual std::string GetExtensionName() const

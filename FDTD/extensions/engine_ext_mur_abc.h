@@ -41,6 +41,9 @@ public:
 	virtual void Apply2Voltages() {Engine_Ext_Mur_ABC::Apply2Voltages(0);}
 	virtual void Apply2Voltages(int threadID);
 
+	//! The ABC is switched off until this timestep, if an excitation lies on its plane
+	unsigned int GetStartTimestep() const {return m_start_TS;}
+
 protected:
 	template <typename EngType>
 	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
