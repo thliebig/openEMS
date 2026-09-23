@@ -149,12 +149,14 @@ class HDF5Dump:
 
     def __init__(self, filename):
         self._owns_file = not isinstance(filename, h5py.File)
-        self._h5 = h5py.File(filename, 'r') if self._owns_file else filename
+        #: the open `h5py.File`, for anything not wrapped here (e.g. the
+        #: ``/CellData`` and ``/CellWidth`` groups of a raw SAR dump)
+        self.file = h5py.File(filename, 'r') if self._owns_file else filename
         try:
             self._Init()
         except Exception:
             if self._owns_file:
-                self._h5.close()
+                self.file.close()
             raise
 
     ###########################################################################
@@ -162,7 +164,7 @@ class HDF5Dump:
     ###########################################################################
 
     def _Init(self):
-        h5 = self._h5
+        h5 = self.file
         self._root_attrs = dict(h5.attrs)
 
         if 'Mesh' not in h5:
@@ -176,8 +178,14 @@ class HDF5Dump:
             raise KeyError('"{}" does not contain any /FieldData/TD or '
                            '/FieldData/FD data'.format(h5.filename))
 
-        self._frequencies = self._ReadFrequencies()
-        self._legacy, self._shape, self._is_vector = self._ProbeLayout()
+        #: the frequencies stored in the file, in Hz (empty for a TD-only dump)
+        self.frequencies = self._ReadFrequencies()
+        #: grid size (Nx, Ny, Nz) of the full dump, in logical axis order
+        self._legacy, self.shape, self._is_vector = self._ProbeLayout()
+
+        #: the openEMS dump type as an integer, or None if not stored
+        self.dump_type = (int(np.asarray(self._root_attrs['dump_type']).flatten()[0])
+                          if 'dump_type' in self._root_attrs else None)
 
         self.ResetRegion()
 
@@ -190,12 +198,12 @@ class HDF5Dump:
 
     def Close(self):
         """Close the file, unless it was handed in already open."""
-        if self._owns_file and self._h5:
-            self._h5.close()
-        self._h5 = None
+        if self._owns_file and self.file:
+            self.file.close()
+        self.file = None
 
     def __repr__(self):
-        if self._h5 is None:
+        if self.file is None:
             return '<HDF5Dump (closed)>'
         domain = []
         if self._td_names:
@@ -206,15 +214,15 @@ class HDF5Dump:
         if self._sampling != [1, 1, 1]:
             region += ', sampling {}'.format(tuple(self._sampling))
         return '<HDF5Dump {!r}: {}, {}, shape {}, region {}>'.format(
-            self._h5.filename, self.DumpTypeName, ', '.join(domain),
-            self._shape, region)
+            self.file.filename, self.GetDumpTypeName(), ', '.join(domain),
+            self.shape, region)
 
     ###########################################################################
     # metadata gathered at open time
     ###########################################################################
 
     def _ReadMesh(self):
-        grp = self._h5['Mesh']
+        grp = self.file['Mesh']
         attrs = dict(grp.attrs)
         m_type = int(attrs.get('mesh_type', 0))
         names = self._MESH_NAMES.get(m_type, self._MESH_NAMES[0])
@@ -225,17 +233,17 @@ class HDF5Dump:
                     m_type, names = t, cand
                     break
             else:
-                raise KeyError('"{}" does not contain a valid /Mesh group'.format(self._h5.filename))
+                raise KeyError('"{}" does not contain a valid /Mesh group'.format(self.file.filename))
         return {'lines': [np.array(grp[n]) for n in names],
                 'names': list(names), 'type': m_type,
                 'scaling': float(attrs.get('mesh_scaling', 1.0))}
 
     def _ScanFDIndices(self):
         """Collect the numeric indices of the f<n> datasets present."""
-        if 'FieldData/FD' not in self._h5:
+        if 'FieldData/FD' not in self.file:
             return []
         found = set()
-        for key in self._h5['FieldData/FD'].keys():
+        for key in self.file['FieldData/FD'].keys():
             if not key.startswith('f'):
                 continue
             stem = key[1:]
@@ -250,7 +258,7 @@ class HDF5Dump:
     def _ReadFrequencies(self):
         if not self._fd_indices:
             return np.array([])
-        grp = self._h5['FieldData/FD']
+        grp = self.file['FieldData/FD']
         if 'frequency' in grp.attrs:
             return np.atleast_1d(np.array(grp.attrs['frequency'], dtype=float))
         # fall back to the per-dataset attribute
@@ -264,9 +272,9 @@ class HDF5Dump:
     def _ProbeLayout(self):
         """Determine axis order, logical grid shape and vector/scalar layout."""
         if self._fd_indices:
-            ds = self._FDDataset(self._h5['FieldData/FD'], self._fd_indices[0])
+            ds = self._FDDataset(self.file['FieldData/FD'], self._fd_indices[0])
         else:
-            ds = self._h5['FieldData/TD'][self._td_names[0]]
+            ds = self.file['FieldData/TD'][self._td_names[0]]
         # the d_order attribute is authoritative where present, otherwise the
         # file version decides (mirrors the C++ reader): no version or <= 0.2
         # is always legacy, above that the legacy_fmt attribute says so
@@ -308,65 +316,35 @@ class HDF5Dump:
     # public metadata
     ###########################################################################
 
-    @property
-    def File(self):
-        """The open `h5py.File`, for direct access to anything not wrapped here
-        (e.g. the ``/CellData`` and ``/CellWidth`` groups of a raw SAR dump)."""
-        return self._h5
-
-    @property
-    def DumpType(self):
-        """The openEMS dump type as an integer, or None if not stored."""
-        if 'dump_type' not in self._root_attrs:
-            return None
-        return int(np.asarray(self._root_attrs['dump_type']).flatten()[0])
-
-    @property
-    def DumpTypeName(self):
+    def GetDumpTypeName(self):
         """Human readable name of the dump type."""
-        return self._DUMP_TYPE_NAMES.get(self.DumpType, 'unknown dump type')
+        return self._DUMP_TYPE_NAMES.get(self.dump_type, 'unknown dump type')
 
-    @property
     def IsTD(self):
         """True if the file holds time domain data."""
         return len(self._td_names) > 0
 
-    @property
     def IsFD(self):
         """True if the file holds frequency domain data."""
         return len(self._fd_indices) > 0
 
-    @property
     def IsVector(self):
         """True for a vector field dump, False for a scalar one (e.g. SAR)."""
         return self._is_vector
 
-    @property
-    def Shape(self):
-        """Grid size (Nx, Ny, Nz) of the full dump, in logical axis order."""
-        return self._shape
-
-    @property
-    def NumTimesteps(self):
+    def GetNumTimesteps(self):
         """Number of recorded timesteps (0 for an FD-only dump)."""
         return len(self._td_names)
 
-    @property
-    def NumFrequencies(self):
+    def GetNumFrequencies(self):
         """Number of recorded frequencies (0 for a TD-only dump)."""
         return len(self._fd_indices)
 
-    @property
-    def Frequencies(self):
-        """The frequencies stored in the file, in Hz (empty for a TD-only dump)."""
-        return self._frequencies
-
-    @property
-    def Times(self):
+    def GetTimes(self):
         """The simulation times of the recorded timesteps, in s."""
-        if not self.IsTD:
+        if not self.IsTD():
             return np.array([])
-        grp = self._h5['FieldData/TD']
+        grp = self.file['FieldData/TD']
         return np.array([self._TimeOf(grp, n) for n in self._td_names])
 
     @staticmethod
@@ -467,7 +445,7 @@ class HDF5Dump:
             raise ValueError('SetPlane: give exactly one of `pos` or `idx`')
         if pos is not None:
             idx = self.NearestIndex(ny, pos)
-        n_max = self._shape[ny]
+        n_max = self.shape[ny]
         if not -n_max <= idx < n_max:
             raise IndexError('SetPlane: index {} out of range for direction {} '
                              'with {} lines'.format(idx, ny, n_max))
@@ -532,7 +510,7 @@ class HDF5Dump:
                 raise ValueError('SetLine: no position given for direction '
                                  '"{}"'.format(names[n]))
             i = self.NearestIndex(n, vals[n]) if pos is not None else vals[n]
-            n_max = self._shape[n]
+            n_max = self.shape[n]
             if not -n_max <= i < n_max:
                 raise IndexError('SetLine: index {} out of range for direction '
                                  '"{}" with {} lines'.format(i, names[n], n_max))
@@ -572,7 +550,7 @@ class HDF5Dump:
             raise ValueError('SetRange: no range given')
         if by_coord:
             i0 = 0 if start is None else self.NearestIndex(ny, start)
-            i1 = self._shape[ny] if stop is None else self.NearestIndex(ny, stop) + 1
+            i1 = self.shape[ny] if stop is None else self.NearestIndex(ny, stop) + 1
         else:
             i0, i1 = idx_start, idx_stop
         self._region[ny] = (i0, i1)
@@ -643,7 +621,7 @@ class HDF5Dump:
         sel = self._SpatialSelection()[ny]
         if not isinstance(sel, slice):
             return 1
-        return len(range(*sel.indices(self._shape[ny])))
+        return len(range(*sel.indices(self.shape[ny])))
 
     def _BuildIndex(self, component):
         """Map the configured region onto the on-disk axis order."""
@@ -681,7 +659,7 @@ class HDF5Dump:
             data.imag = imag
         else:
             raise KeyError('"{}" does not contain the dataset {}/{}'.format(
-                self._h5.filename, grp.name, name))
+                self.file.filename, grp.name, name))
         return self._FixOrder(data, index)
 
     def _TDName(self, t_idx):
@@ -689,7 +667,7 @@ class HDF5Dump:
             return t_idx
         if not -len(self._td_names) <= t_idx < len(self._td_names):
             raise IndexError('timestep index {} out of range, "{}" holds {} '
-                             'timesteps'.format(t_idx, self._h5.filename,
+                             'timesteps'.format(t_idx, self.file.filename,
                                                 len(self._td_names)))
         return self._td_names[t_idx]
 
@@ -698,16 +676,16 @@ class HDF5Dump:
             return f_idx
         if not -len(self._fd_indices) <= f_idx < len(self._fd_indices):
             raise IndexError('frequency index {} out of range, "{}" holds {} '
-                             'frequencies'.format(f_idx, self._h5.filename,
+                             'frequencies'.format(f_idx, self.file.filename,
                                                   len(self._fd_indices)))
         return 'f{}'.format(self._fd_indices[f_idx])
 
     def _Group(self, domain):
         path = 'FieldData/' + domain
-        if path not in self._h5:
+        if path not in self.file:
             raise KeyError('"{}" does not contain any /{} data'.format(
-                self._h5.filename, path))
-        return self._h5[path]
+                self.file.filename, path))
+        return self.file[path]
 
     def GetFieldAtIndex(self, f_idx=None, t_idx=None, component=None):
         """Read one field sample, addressed by its index in the file.
@@ -755,35 +733,35 @@ class HDF5Dump:
         component : int or str, optional
             Read only this vector component; by default all three are read.
         """
-        if self.IsFD:
+        if self.IsFD():
             f_idx = self._MatchFrequency(freq)
             if f_idx is not None:
                 return self.GetFieldAtIndex(f_idx=f_idx, component=component)
-            if not self.IsTD:
+            if not self.IsTD():
                 raise ValueError(
                     '{:g} Hz is not stored in "{}", available frequencies are '
-                    '{}'.format(freq, self._h5.filename, self._frequencies))
+                    '{}'.format(freq, self.file.filename, self.frequencies))
         return self._DFT(freq, component)
 
     def _MatchFrequency(self, freq):
         """Index of the stored frequency matching *freq*, or None."""
-        if not self.NumFrequencies:
+        if not self.GetNumFrequencies():
             return None
-        n = int(np.argmin(np.abs(self._frequencies - freq)))
-        if np.isclose(self._frequencies[n], freq, rtol=self.FREQ_RTOL, atol=0.0):
+        n = int(np.argmin(np.abs(self.frequencies - freq)))
+        if np.isclose(self.frequencies[n], freq, rtol=self.FREQ_RTOL, atol=0.0):
             return n
         return None
 
     def _DFT(self, freq, component):
         """Single frequency DFT of the time domain data, one timestep at a time."""
-        if not self.IsTD:
+        if not self.IsTD():
             raise ValueError('"{}" contains no time domain data to transform'.format(
-                self._h5.filename))
+                self.file.filename))
         grp = self._Group('TD')
-        times = self.Times
+        times = self.GetTimes()
         if len(times) < 2:
             raise ValueError('need at least two timesteps for a DFT, "{}" has '
-                             '{}'.format(self._h5.filename, len(times)))
+                             '{}'.format(self.file.filename, len(times)))
         dt = times[1] - times[0]
         accum = None
         for name, t in zip(self._td_names, times):
@@ -802,8 +780,8 @@ class HDF5Dump:
         (freq, data) : tuple of float and ndarray
             The frequency in Hz and the field data, see `GetFieldAtIndex`.
         """
-        for n in range(self.NumFrequencies):
-            yield float(self._frequencies[n]), \
+        for n in range(self.GetNumFrequencies()):
+            yield float(self.frequencies[n]), \
                   self.GetFieldAtIndex(f_idx=n, component=component)
 
     def IterTD(self, component=None):
@@ -838,7 +816,7 @@ class HDF5Dump:
             name = name + '_real'
         if name not in grp:
             raise KeyError('"{}" does not contain the dataset /FieldData/{}/{}'.format(
-                self._h5.filename, domain, name))
+                self.file.filename, domain, name))
         attrs = dict(self._root_attrs)
         attrs.update(grp.attrs)
         attrs.update(grp[name].attrs)

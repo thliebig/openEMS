@@ -50,7 +50,10 @@ number moved up and patch releases now have somewhere to go.
   timesteps); `SetPlane`/`SetLine`/`SetRange`/`SetSampling` push the selection
   down into HDF5 so only the requested part is read; and
   `GetFieldAtFrequency()` runs an on-the-fly DFT so time-domain and
-  frequency-domain dumps are post-processed the same way.
+  frequency-domain dumps are post-processed the same way. Stored values are
+  plain attributes (`file`, `shape`, `frequencies`, `dump_type`) and everything
+  that computes is a call (`GetNumTimesteps()`, `GetNumFrequencies()`,
+  `GetTimes()`, `GetDumpTypeName()`, `IsTD()`, `IsFD()`, `IsVector()`).
 - **`SetLibraryArguments()`**, which accepts almost every option of the
   `openEMS` executable as a string. The Python binding uses it, so engine
   selection and the debugging options are now reachable from Python.

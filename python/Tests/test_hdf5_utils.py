@@ -148,30 +148,30 @@ class Test_Metadata(_TempFile):
     def test_fd_metadata(self):
         _write_fd_vector(self.path)
         with HDF5Dump(self.path) as dump:
-            self.assertTrue(dump.IsFD)
-            self.assertFalse(dump.IsTD)
-            self.assertTrue(dump.IsVector)
-            self.assertEqual(dump.Shape, (NX, NY, NZ))
-            self.assertEqual(dump.NumFrequencies, 1)
-            self.assertEqual(dump.NumTimesteps, 0)
-            self.assertEqual(dump.DumpType, 10)
-            self.assertEqual(dump.DumpTypeName, 'E-field (FD)')
-            np.testing.assert_allclose(dump.Frequencies, [1e9])
+            self.assertTrue(dump.IsFD())
+            self.assertFalse(dump.IsTD())
+            self.assertTrue(dump.IsVector())
+            self.assertEqual(dump.shape, (NX, NY, NZ))
+            self.assertEqual(dump.GetNumFrequencies(), 1)
+            self.assertEqual(dump.GetNumTimesteps(), 0)
+            self.assertEqual(dump.dump_type, 10)
+            self.assertEqual(dump.GetDumpTypeName(), 'E-field (FD)')
+            np.testing.assert_allclose(dump.frequencies, [1e9])
 
     def test_legacy_shape_is_reported_in_logical_order(self):
         _write_fd_vector(self.path, legacy=True)
         with HDF5Dump(self.path) as dump:
-            self.assertEqual(dump.Shape, (NX, NY, NZ))
+            self.assertEqual(dump.shape, (NX, NY, NZ))
 
     def test_repr_does_not_raise(self):
         _write_fd_vector(self.path)
         with HDF5Dump(self.path) as dump:
             self.assertIn('E-field (FD)', repr(dump))
 
-    def test_file_property_exposes_handle(self):
+    def test_file_attribute_exposes_handle(self):
         _write_fd_vector(self.path)
         with HDF5Dump(self.path) as dump:
-            self.assertIn('Mesh', dump.File)
+            self.assertIn('Mesh', dump.file)
 
     def test_open_file_handle_is_not_closed(self):
         _write_fd_vector(self.path)
@@ -244,8 +244,8 @@ class Test_FD(_TempFile):
             ds = h5.create_dataset('FieldData/FD/f0', data=ref)
             ds.attrs['d_order'] = np.bytes_(b'XYZ')
         with HDF5Dump(self.path) as dump:
-            self.assertFalse(dump.IsVector)
-            self.assertEqual(dump.DumpTypeName, 'local SAR')
+            self.assertFalse(dump.IsVector())
+            self.assertEqual(dump.GetDumpTypeName(), 'local SAR')
             data = dump.GetFieldAtIndex(f_idx=0)
         self.assertEqual(data.shape, (NX, NY, NZ))
         np.testing.assert_allclose(data, ref)
@@ -318,11 +318,11 @@ class _TDFile(_TempFile):
 class Test_TD(_TDFile):
     def test_metadata(self):
         with HDF5Dump(self.path) as dump:
-            self.assertTrue(dump.IsTD)
-            self.assertFalse(dump.IsFD)
-            self.assertEqual(dump.NumTimesteps, 3)
-            self.assertEqual(dump.DumpTypeName, 'E-field (TD)')
-            np.testing.assert_allclose(dump.Times, self.TIMES)
+            self.assertTrue(dump.IsTD())
+            self.assertFalse(dump.IsFD())
+            self.assertEqual(dump.GetNumTimesteps(), 3)
+            self.assertEqual(dump.GetDumpTypeName(), 'E-field (TD)')
+            np.testing.assert_allclose(dump.GetTimes(), self.TIMES)
 
     def test_index_is_the_position_in_the_file(self):
         with HDF5Dump(self.path) as dump:
