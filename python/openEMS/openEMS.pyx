@@ -457,6 +457,12 @@ cdef class openEMS:
         This method will automatically adept the recording box to the current
         FDTD grid and boundary conditions.
 
+        The automatically derived `directions` and `mirror` settings can be
+        overruled by passing them explicitly, e.g. to skip a face the antenna
+        feed passes through:
+
+        >>> FDTD.CreateNF2FFBox(directions=[1, 1, 1, 1, 0, 1])
+
         Notes
         -----
         * Make sure the mesh grid and all boundary conditions are finially defined.
@@ -497,6 +503,9 @@ cdef class openEMS:
                     raise Exception('Error::CreateNF2FFBox: not enough lines in some direction')
                 start[n] = l[BC_size[2*n]]
                 stop[n]  = l[-1*BC_size[2*n+1]-1]
+        # an explicitly given directions/mirror wins over the derived one
+        directions = kw.pop('directions', directions)
+        mirror     = kw.pop('mirror',     mirror)
         return nf2ff.nf2ff(self.__CSX, name, start, stop, directions=directions, mirror=mirror, **kw)
 
     def SetCSX(self, ContinuousStructure CSX):

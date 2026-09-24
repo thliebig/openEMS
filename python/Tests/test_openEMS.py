@@ -216,6 +216,32 @@ class Test_SetCSX(unittest.TestCase):
             self.fdtd.CreateNF2FFBox()
 
 
+class Test_CreateNF2FFBox(unittest.TestCase):
+    """The recording directions are derived from the boundary conditions, but
+    must be overridable: an antenna whose feed crosses one face needs that
+    face left out of the Huygens surface (see Tutorials/Conical_Horn_Antenna).
+    """
+
+    def setUp(self):
+        self.fdtd = openEMS()
+        self.fdtd.SetCSX(_make_csx_with_grid())
+        self.start = [-40, -40, -4]
+        self.stop  = [ 40,  40,  4]
+
+    def test_explicit_directions_override_the_derived_ones(self):
+        self.fdtd.SetBoundaryCond(['PML_8']*6)
+        nf2ff = self.fdtd.CreateNF2FFBox('nf2ff', self.start, self.stop,
+                                         directions=[1, 1, 1, 1, 0, 1])
+        self.assertEqual(list(nf2ff.directions), [1, 1, 1, 1, 0, 1])
+
+    def test_directions_still_derived_from_boundary_conditions(self):
+        # a PEC boundary disables its direction and mirrors instead
+        self.fdtd.SetBoundaryCond(['PML_8', 'PML_8', 'PML_8', 'PML_8', 'PEC', 'PML_8'])
+        nf2ff = self.fdtd.CreateNF2FFBox('nf2ff', self.start, self.stop)
+        self.assertEqual(list(nf2ff.directions), [True]*4 + [False, True])
+        self.assertEqual(list(nf2ff.mirror), [0, 0, 0, 0, 1, 0])
+
+
 class Test_AddLumpedPort(unittest.TestCase):
     def setUp(self):
         self.fdtd = openEMS()

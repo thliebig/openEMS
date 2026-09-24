@@ -42,6 +42,9 @@ number moved up and patch releases now have somewhere to go.
   Ports also store their time base, which makes plotting easier. On a
   cylindrical mesh `CircWGPort` uses the mode profile in its native
   (rho, a, z) form.
+- **`CreateNF2FFBox()` (Python) accepts `directions` and `mirror`**, which
+  overrule the settings derived from the boundary conditions, e.g. to leave
+  the face an antenna feed passes through out of the Huygens surface.
 - **Localized Mur and SA-Mur absorbers** as stand-alone engine extensions, so an
   absorbing boundary can be placed inside the simulation domain rather than only
   at its edge.
