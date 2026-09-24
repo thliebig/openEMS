@@ -64,6 +64,9 @@ public:
 	void SetNumberOfTimeSteps(unsigned int val) {NrTS=val;}
 	void SetEnableDumps(bool val) {Enable_Dumps=val;}
 	void SetEndCriteria(double val) {endCrit=val;}
+	//! Evaluate the end criteria on a fixed schedule instead of a wall-clock one,
+	//! so that a run stops at the same timestep on every machine (--exact-endcriteria)
+	void SetExactEndCriteria(bool val) {m_exactEndCriteria=val;}
 	void SetOverSampling(int val) {m_OverSampling=val;}
 	void SetCellConstantMaterial(bool val) {m_CellConstantMaterial=val;}
 
@@ -149,6 +152,7 @@ protected:
 	bool m_DumpStats;
 	bool m_debugBox, m_debugPEC, m_no_simulation;
 	bool m_exactEndCriteria;
+	bool m_dry_run;
 
 	double endCrit;
 	int m_OverSampling;
@@ -162,12 +166,15 @@ protected:
 
 	bool m_Abort;
 
-	enum EngineType {EngineType_Basic, EngineType_SSE, EngineType_SSE_Compressed, EngineType_Multithreaded};
+	enum EngineType {EngineType_Basic, EngineType_SSE, EngineType_SSE_Compressed, EngineType_Multithreaded, EngineType_GPU, EngineType_GPU_Reference};
 	EngineType m_engine;
 	unsigned int m_engine_numThreads;
 
 	//! Setup an operator matching the requested engine
 	virtual bool SetupOperator();
+
+	//! Write the scope of the simulation to "dry_run.json" and show it, for --dry-run
+	void WriteDryRun();
 
 	//! Read boundary conditions from xml element and apply to FDTD operator
 	bool SetupBoundaryConditions();

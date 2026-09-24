@@ -167,8 +167,8 @@ void Processing::AddFrequency(double freq)
 		m_FD_Nyquist = Op->GetNumberOfNyquistTimesteps();
 	if (m_FD_Nyquist>nyquistTS)
 		m_FD_Nyquist = nyquistTS;
-	// sampled at the Nyquist rate, the spectrum just above the highest excited frequency
-	// aliases onto the upper band edge
+	// at the Nyquist rate whatever sits just above the highest excited frequency aliases
+	// onto the upper band edge, so the oversampling divides the interval down
 	m_FD_Interval = std::max(1u, m_FD_Nyquist/m_FD_OverSampling);
 
 	m_FD_Samples.push_back(freq);
@@ -379,6 +379,9 @@ int ProcessingArray::Process()
 
 void ProcessingArray::PostProcess()
 {
+	// the background work first: it is the only HDF5 user during the run, and the
+	// PostProcess() calls below write HDF5 as well
+	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->FinishAsync();
 	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->PostProcess();
 }
 

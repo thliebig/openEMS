@@ -135,6 +135,16 @@ cdef class openEMS:
         """
         self.thisptr.SetEndCriteria(val)
 
+    def SetExactEndCriteria(self, val):
+        """ SetExactEndCriteria(val)
+
+        Evaluate the end criteria every Nyquist period instead of every few
+        seconds of wall-clock time, so that the run stops at the same timestep
+        on every machine. Costs performance; meant for comparing engines and
+        for benchmarks that have to run the same number of timesteps.
+        """
+        self.thisptr.SetExactEndCriteria(val)
+
     def SetOverSampling(self, val):
         """ SetOverSampling(val)
 
@@ -661,6 +671,9 @@ cdef class openEMS:
         * debug_operator (bool) - dump operator to vtk file for debugging
         * debug_boxes (bool) - Dump e.g. probe boxes to vtk file for debugging
         * debug_CSX (bool) - Write CSX geometry file to debugCSX.xml
+        * dry_run (bool) - report the scope of the simulation (cells, dumps,
+          timesteps) to `dry_run.json` and to the console, and do not simulate.
+          See benchmarks/README.md for run time estimates built on it.
         * dump_statistics (bool) - dump simulation statistics to
           `openEMS_run_stats.txt` and `openEMS_stats.txt`
         * showProbeDiscretization (bool) - show probe discretization information

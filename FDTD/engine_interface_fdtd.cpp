@@ -16,6 +16,7 @@
 */
 
 #include "engine_interface_fdtd.h"
+#include "engine_gpu.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -265,13 +266,321 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 	return 0.0;
 }
 
+namespace
+{
+//! Precomputed GetRawInterpolatedField()/GetRawInterpolatedDualField() (type 0) at the nodes of a dump
+/*!
+  Only for engines holding the fields in the basic engine layout (the GPU host mirror).
+  Every node component reduces to one of a few forms, evaluated with the same operations
+  as the interpolation it stands in for.
+
+  The same entries can be evaluated on the device at every snapshot (see
+  Engine_GPU::AddSnapshotGather()); the snapshot then holds the dumped values instead of
+  the fields, so only the dump itself crosses the bus.
+  */
+class Field_Gather_FDTD : public Engine_Field_Gather
+{
+public:
+	//! one component of a node: raw(k) = value(idx[k])/delta[k] (0 if delta is 0), see GetRawField()
+	typedef GPU_GatherEntry Entry;
+	typedef GPU_GatherEntry G;
+
+	Field_Gather_FDTD(const Engine_GPU* eng, bool h_field, unsigned int nj, unsigned int nk)
+		: m_Eng(eng), m_H(h_field), m_nj(nj), m_nk(nk), m_Evaluated(false), m_Offset(0) {}
+
+	std::vector<Entry> entries;   //!< [line][k][n]
+
+	bool HField() const {return m_H;}
+	unsigned int NumLinesJ() const {return m_nj;}
+	unsigned int NumLinesK() const {return m_nk;}
+	//! Snapshots hold the evaluated entries from \a offset on
+	void SetSnapshotEvaluated(size_t offset) {m_Evaluated = true; m_Offset = offset;}
+
+	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const
+	{
+		// the device evaluated the entries into the snapshot, just unpack them
+		if (src && m_Evaluated)
+		{
+			for (size_t l=line_start; l<line_stop; ++l)
+			{
+				const float* v = src + m_Offset + l*m_nk*3;
+				const unsigned int i = l/m_nj;
+				const unsigned int j = l%m_nj;
+				for (unsigned int k=0; k<m_nk; ++k)
+					for (int n=0; n<3; ++n)
+						field(n, i, j, k) = v[k*3 + n];
+			}
+			return;
+		}
+		const float* f = src ? src : (m_H ? m_Eng->HostCurrents().data() : m_Eng->HostVoltages().data());
+		for (size_t l=line_start; l<line_stop; ++l)
+		{
+			const unsigned int i = l/m_nj;
+			const unsigned int j = l%m_nj;
+			for (unsigned int k=0; k<m_nk; ++k)
+				for (int n=0; n<3; ++n)
+				{
+					const Entry& e = entries[(l*m_nk + k)*3 + n];
+					double out = 0;
+					switch (e.form)
+					{
+					case G::ZERO:
+						break;
+					case G::RAW:
+						out = Raw(f, e, 0);
+						break;
+					case G::LERP:
+						out = Raw(f, e, 0)*(1.0-e.rel) + Raw(f, e, 1)*e.rel;
+						break;
+					case G::AVG4:
+						out = Raw(f, e, 0);
+						out+= Raw(f, e, 1);
+						out+= Raw(f, e, 2);
+						out+= Raw(f, e, 3);
+						out/=4;
+						break;
+					}
+					field(n, i, j, k) = out;
+				}
+		}
+	}
+
+protected:
+	static inline double Raw(const float* f, const Entry& e, int k)
+	{
+		double value = f[e.idx[k]];
+		if (e.delta[k])
+			return value/e.delta[k];
+		return 0.0;
+	}
+
+	const Engine_GPU* m_Eng;
+	bool m_H;
+	unsigned int m_nj, m_nk;
+	bool m_Evaluated;   //!< a snapshot holds the evaluated entries, see SetSnapshotEvaluated()
+	size_t m_Offset;
+};
+}
+
+// The same values as GetEField()/GetHField() of this class: subclasses that change the
+// field evaluation must override this (see Engine_Interface_Cylindrical_FDTD).
+Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
+{
+	// only for the GPU engine, whose host mirror has the basic engine layout
+	const Engine_GPU* eng_gpu = dynamic_cast<const Engine_GPU*>(m_Eng);
+	if (!eng_gpu)
+		return NULL;
+
+	unsigned int N[3];
+	for (int n=0; n<3; ++n)
+		N[n] = m_Op->GetNumberOfLines(n, true);
+	auto index = [&](int n, const unsigned int* p) -> unsigned int {return ((n*N[0] + p[0])*N[1] + p[1])*N[2] + p[2];};
+	auto delta = [&](int n, const unsigned int* p) -> double {return m_Op->GetEdgeLength(n, p, h_field);};
+
+	typedef GPU_GatherEntry G;
+	Field_Gather_FDTD* gather = new Field_Gather_FDTD(eng_gpu, h_field, numLines[1], numLines[2]);
+	gather->entries.resize((size_t)numLines[0]*numLines[1]*numLines[2]*3);
+	size_t e_idx = 0;
+	for (unsigned int i=0; i<numLines[0]; ++i)
+		for (unsigned int j=0; j<numLines[1]; ++j)
+			for (unsigned int k=0; k<numLines[2]; ++k)
+			{
+				const unsigned int pos[3] = {posLines[0][i], posLines[1][j], posLines[2][k]};
+				for (int n=0; n<3; ++n)
+				{
+					G& e = gather->entries[e_idx++];
+					e.form = G::ZERO;
+					e.rel = 0;
+					for (int m=0; m<4; ++m) {e.idx[m] = 0; e.delta[m] = 0;}
+					unsigned int p[3] = {pos[0], pos[1], pos[2]};
+					const int nP = (n+1)%3;
+					const int nPP = (n+2)%3;
+					auto set = [&](int m) {e.idx[m] = index(n, p); e.delta[m] = delta(n, p);};
+					const bool upper = (pos[0]==N[0]-1) || (pos[1]==N[1]-1) || (pos[2]==N[2]-1);
+					switch (m_InterpolType)
+					{
+					default:
+					case NO_INTERPOLATION:
+						e.form = G::RAW;
+						set(0);
+						break;
+					case NODE_INTERPOLATE:
+						if (!h_field)
+						{
+							// see GetRawInterpolatedField()
+							if (pos[n]==N[n]-1)
+							{
+								--p[n];
+								e.form = G::RAW;
+								set(0);
+								break;
+							}
+							const double d = delta(n, p);
+							if (d==0)
+								break;   // ZERO
+							e.form = G::RAW;
+							set(0);
+							if (pos[n]==0)
+								break;
+							--p[n];
+							const double d_down = delta(n, p);
+							e.form = G::LERP;
+							e.rel = d / (d+d_down);
+							set(1);
+						}
+						else
+						{
+							// see GetRawInterpolatedDualField()
+							if (upper || (pos[nP]==0) || (pos[nPP]==0))
+								break;   // ZERO
+							e.form = G::AVG4;
+							set(0);
+							--p[nP];
+							set(1);
+							--p[nPP];
+							set(2);
+							++p[nP];
+							set(3);
+						}
+						break;
+					case CELL_INTERPOLATE:
+						if (!h_field)
+						{
+							// see GetRawInterpolatedField()
+							if (upper)
+								break;   // ZERO
+							e.form = G::AVG4;
+							set(0);
+							++p[nP];
+							set(1);
+							++p[nPP];
+							set(2);
+							--p[nP];
+							set(3);
+						}
+						else
+						{
+							// see GetRawInterpolatedDualField()
+							if (pos[n]>=N[n]-1)
+								break;   // ZERO
+							const double d = delta(n, p);
+							e.form = G::LERP;
+							set(0);
+							++p[n];
+							const double d_up = delta(n, p);
+							e.rel = d / (d+d_up);
+							set(1);
+						}
+						break;
+					}
+				}
+			}
+	return gather;
+}
+
+bool Engine_Interface_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	return eng_gpu && eng_gpu->SnapshotFields(slot, volt, curr);
+}
+
+bool Engine_Interface_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gather)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	if (!eng_gpu || !eng_gpu->CanSnapshotGather())
+		return true;   // plain field snapshots, if the backend has any: evaluated on the host
+	Field_Gather_FDTD* g = dynamic_cast<Field_Gather_FDTD*>(gather);
+	size_t offset = 0;
+	if (!g || !eng_gpu->AddSnapshotGather(g->HField(), g->entries, offset))
+		return false;
+	g->SetSnapshotEvaluated(offset);
+	return true;
+}
+
+int Engine_Interface_FDTD::CreateFieldDFT(const Engine_Field_Gather* gather, unsigned int count)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	const Field_Gather_FDTD* g = dynamic_cast<const Field_Gather_FDTD*>(gather);
+	if (!eng_gpu || !g || g->entries.empty())
+		return -1;
+	const int id = eng_gpu->AddFieldDFT(g->HField(), g->entries, count);
+	if (id>=0)
+	{
+		const unsigned int nj = g->NumLinesJ(), nk = g->NumLinesK();
+		m_FieldDFT[id] = {(unsigned int)(g->entries.size()/(3*(size_t)nj*nk)), nj, nk};
+	}
+	return id;
+}
+
+void Engine_Interface_FDTD::AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	if (eng_gpu)
+		eng_gpu->AccumulateFieldDFT(id, weights);
+}
+
+bool Engine_Interface_FDTD::ReadFieldDFT(int id, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*>& fields)
+{
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	std::map<int, std::array<unsigned int, 3>>::const_iterator it = m_FieldDFT.find(id);
+	std::vector<std::complex<float>> sums;
+	if (!eng_gpu || (it==m_FieldDFT.end()) || !eng_gpu->ReadFieldDFT(id, sums))
+		return false;
+	// the entries in the order of Field_Gather_FDTD: [line][k][n]
+	const unsigned int ni = it->second[0], nj = it->second[1], nk = it->second[2];
+	const size_t count = (size_t)ni*nj*nk*3;
+	if (sums.size()!=count*fields.size())
+		return false;
+	for (size_t f=0; f<fields.size(); ++f)
+	{
+		const std::complex<float>* s = sums.data() + f*count;
+		ArrayLib::ArrayNIJK<std::complex<float>>& field = *fields[f];
+		for (unsigned int i=0; i<ni; ++i)
+			for (unsigned int j=0; j<nj; ++j)
+				for (unsigned int k=0; k<nk; ++k)
+					for (int n=0; n<3; ++n)
+						field(n, i, j, k) = *s++;
+	}
+	return true;
+}
+
+void Engine_Interface_FDTD::WaitFieldSnapshot(unsigned int slot) const
+{
+	const Engine_GPU* eng_gpu = dynamic_cast<const Engine_GPU*>(m_Eng);
+	if (eng_gpu)
+		eng_gpu->WaitSnapshot(slot);
+}
+
+void Engine_Interface_FDTD::PrepareFieldAccess()
+{
+	// refresh the host mirror here: GetVolt()/GetCurr() would fetch the stale lines from
+	// the device themselves, which several threads cannot do at once
+	Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+	if (eng_gpu)
+		eng_gpu->UpdateHostMirror();
+}
+
 double Engine_Interface_FDTD::CalcFastEnergy() const
 {
 	double E_energy=0.0;
 	double H_energy=0.0;
 
 	unsigned int pos[3];
-	if (m_Eng->GetType()==Engine::BASIC)
+	if (m_Eng->GetType()==Engine::GPU)
+	{
+		// on the device, if the backend can
+		Engine_GPU* eng_gpu = dynamic_cast<Engine_GPU*>(m_Eng);
+		unsigned int numNodes[3];
+		for (int n=0; n<3; ++n)
+			numNodes[n] = m_Op->GetNumberOfLines(n)-1;
+		if (eng_gpu && eng_gpu->CalcFastEnergy(numNodes, E_energy, H_energy))
+			return EPS0*E_energy + MUE0*H_energy;
+		// else on the host mirror below
+		if (eng_gpu)
+			eng_gpu->UpdateHostMirror();
+	}
+	// the GPU engine keeps a host mirror in the basic engine layout
+	if ((m_Eng->GetType()==Engine::BASIC) || (m_Eng->GetType()==Engine::GPU))
 	{
 		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
 		{

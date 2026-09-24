@@ -19,6 +19,7 @@
 #include "Common/operator_base.h"
 #include "tools/vtk_file_writer.h"
 #include "tools/hdf5_file_writer.h"
+#include "async_dumps.h"
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -27,10 +28,15 @@ using namespace std;
 
 ProcessFieldsFD::ProcessFieldsFD(Engine_Interface_Base* eng_if) : ProcessFields(eng_if)
 {
+	m_FieldDFT = -1;
+	m_Snapshots = false;
+	m_AsyncUsed = false;
+	m_AsyncFailed = false;
 }
 
 ProcessFieldsFD::~ProcessFieldsFD()
 {
+	FinishAsync();
 	for (size_t n = 0; n<m_FD_Fields.size(); ++n)
 	{
 		delete m_FD_Fields.at(n);
@@ -40,6 +46,8 @@ ProcessFieldsFD::~ProcessFieldsFD()
 
 void ProcessFieldsFD::InitProcess()
 {
+	m_FieldDFT = -1;
+	m_Snapshots = false;
 	if (Enabled==false) return;
 
 	if (m_FD_Samples.size()==0)
@@ -67,6 +75,16 @@ void ProcessFieldsFD::InitProcess()
 		ArrayLib::ArrayNIJK<std::complex<float>>* field_fd = new ArrayLib::ArrayNIJK<std::complex<float>>("FD field", numLines);
 		m_FD_Fields.push_back(field_fd);
 	}
+
+	// let the engine keep the sums (e.g. on the device), else sum them from field snapshots
+	// in the background; both need the node gather and have to be set up before the first
+	// snapshot, so not for the SAR dumps, whose dump type has no gather
+	if (GetGather())
+	{
+		m_FieldDFT = m_Eng_Interface->CreateFieldDFT(m_Gather, m_FD_Samples.size());
+		if (m_FieldDFT<0)
+			m_Snapshots = m_Eng_Interface->PrepareSnapshotGather(m_Gather);
+	}
 }
 
 int ProcessFieldsFD::Process()
@@ -77,30 +95,82 @@ int ProcessFieldsFD::Process()
 	if ((m_FD_Interval==0) || (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval!=0))
 		return GetNextInterval();
 
-	ArrayLib::ArrayNIJK<FDTD_FLOAT> tmp_field_td;
-	if (!CalcField(tmp_field_td))
-		return -1;
-	FDTD_FLOAT* field_td = tmp_field_td.data();
-
-	std::complex<float>* field_fd = NULL;
-
+	std::vector<std::complex<float>> weights(m_FD_Samples.size());
 	double T = m_Eng_Interface->GetTime(m_dualTime);
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
 		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * I_UNIT * PI * m_FD_Samples.at(n) * T) );
 		exp_jwt_2_dt *= 2; // *2 for single-sided spectrum
 		exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
-		unsigned int N = m_FD_Fields.at(n)->size();
-		field_fd = m_FD_Fields.at(n)->data();
-		for (unsigned int ijk=0;ijk<N;++ijk)
-			field_fd[ijk] += field_td[ijk] * exp_jwt_2_dt;
+		weights[n] = exp_jwt_2_dt;
 	}
+
 	++m_FD_SampleCount;
+
+	// summed by the engine with the same weights: the fields never leave the device
+	if (m_FieldDFT>=0)
+	{
+		m_Eng_Interface->AccumulateFieldDFT(m_FieldDFT, weights);
+		return GetNextInterval();
+	}
+
+	// else from a field snapshot, summed in the background while the engine continues;
+	// AsyncDumps keeps the task order, so the samples are added in the order taken
+	int slot = -1;
+	const float *volt = NULL, *curr = NULL;
+	if (m_Snapshots && AsyncDumps::Get().Snapshot(m_Eng_Interface, m_Eng_Interface->GetNumberOfTimesteps(), slot, volt, curr))
+	{
+		const float* src = (m_DumpType==H_FIELD_DUMP) ? curr : volt;
+		m_AsyncUsed = true;
+		AsyncDumps::Get().Push(this, slot, [this, src, slot, weights]()
+		{
+			m_Eng_Interface->WaitFieldSnapshot(slot);   // the copy may still run on the device
+			ArrayLib::ArrayNIJK<FDTD_FLOAT> field;
+			if (CalcField(field, src))
+				AddSample(field, weights);
+			else
+				m_AsyncFailed = true;
+		});
+		return GetNextInterval();
+	}
+
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> tmp_field_td;
+	if (!CalcField(tmp_field_td))
+		return -1;
+	AddSample(tmp_field_td, weights);
 	return GetNextInterval();
+}
+
+void ProcessFieldsFD::AddSample(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& field, const std::vector<std::complex<float>>& weights)
+{
+	const FDTD_FLOAT* field_td = field.data();
+	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
+	{
+		unsigned int N = m_FD_Fields.at(n)->size();
+		std::complex<float>* field_fd = m_FD_Fields.at(n)->data();
+		for (unsigned int ijk=0;ijk<N;++ijk)
+			field_fd[ijk] += field_td[ijk] * weights[n];
+	}
+}
+
+void ProcessFieldsFD::FinishAsync()
+{
+	if (!m_AsyncUsed)
+		return;
+	AsyncDumps::Get().Wait(this);
+	m_AsyncUsed = false;
+	if (m_AsyncFailed)
+	{
+		cerr << "ProcessFieldsFD: can't calculate the field of a sample... the frequency domain dump is incomplete!" << endl;
+		m_AsyncFailed = false;
+	}
 }
 
 void ProcessFieldsFD::PostProcess()
 {
+	FinishAsync();
+	if ((m_FieldDFT>=0) && !m_Eng_Interface->ReadFieldDFT(m_FieldDFT, m_FD_Fields))
+		cerr << "ProcessFieldsFD::PostProcess: can't read the frequency domain fields of the engine!" << endl;
 	DumpFDData();
 }
 

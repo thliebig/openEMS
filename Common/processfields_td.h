@@ -18,6 +18,8 @@
 #ifndef PROCESSFIELDS_TD_H
 #define PROCESSFIELDS_TD_H
 
+#include <atomic>
+
 #include "processfields.h"
 
 class ProcessFieldsTD : public ProcessFields
@@ -32,11 +34,23 @@ public:
 
 	virtual int Process();
 
+	//! Close the dump file, so other readers see all data
+	virtual void PostProcess();
+
+	//! Wait for the dumps written in the background
+	virtual void FinishAsync();
+
 	//! Set the length of the filename timestep pad filled with zeros (default is 8)
 	void SetPadLength(int val) {pad_length=val;};
 
 protected:
 	int pad_length;
+
+	//! Write the dump of timestep \a ts, see Process()
+	bool WriteHDF5(unsigned int ts, float time, ArrayLib::ArrayNIJK<float>* field, const float* src);
+	std::atomic<bool> m_AsyncFailed;   //!< a background write failed
+	bool m_AsyncUsed;
+	bool m_Snapshots;   //!< the dumps may read field snapshots (see Engine_Interface_Base::PrepareSnapshotGather())
 };
 
 #endif // PROCESSFIELDS_TD_H

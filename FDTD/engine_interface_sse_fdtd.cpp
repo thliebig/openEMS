@@ -21,9 +21,10 @@
 Engine_Interface_SSE_FDTD::Engine_Interface_SSE_FDTD(Operator_sse* op) : Engine_Interface_FDTD(op)
 {
 	m_Op_SSE = op;
+	// NULL for engines with another storage, e.g. the GPU engine on a cylindrical operator
 	m_Eng_SSE = dynamic_cast<Engine_sse*>(m_Op_SSE->GetEngine());
-	if (m_Eng_SSE==NULL)
-		throw std::runtime_error("Engine_Interface_SSE_FDTD::Engine_Interface_SSE_FDTD: Error: SSE-Engine is not set!");
+	if (m_Op_SSE->GetEngine()==NULL)
+		throw std::runtime_error("Engine_Interface_SSE_FDTD::Engine_Interface_SSE_FDTD: Error: Engine is not set!");
 }
 
 Engine_Interface_SSE_FDTD::~Engine_Interface_SSE_FDTD()
@@ -42,7 +43,7 @@ double Engine_Interface_SSE_FDTD::CalcFastEnergy() const
 	f4vector H_energy;
 	H_energy = E_energy;
 
-	if (m_Eng_SSE->GetType()!=Engine::SSE)
+	if ((m_Eng_SSE==NULL) || (m_Eng_SSE->GetType()!=Engine::SSE))
 		return Engine_Interface_FDTD::CalcFastEnergy();
 
 	unsigned int pos[3];

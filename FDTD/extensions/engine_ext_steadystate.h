@@ -27,6 +27,8 @@ class Engine_Interface_FDTD;
 
 class Engine_Ext_SteadyState : public Engine_Extension
 {
+	friend class Metal_Ext_SteadyState;
+	friend class HIP_Ext_SteadyState;
 public:
 	Engine_Ext_SteadyState(Operator_Ext_SteadyState* op_ext);
 	virtual ~Engine_Ext_SteadyState();

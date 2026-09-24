@@ -25,6 +25,7 @@
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
+#include "FDTD/operator_gpu.h"
 #include "FDTD/extensions/operator_ext_excitation.h"
 #include "FDTD/extensions/operator_ext_tfsf.h"
 #include "FDTD/extensions/operator_ext_mur_abc.h"
@@ -78,6 +79,7 @@ openEMS::openEMS()
 	DebugOp = false;
 	m_debugCSX = false;
 	m_debugBox = m_debugPEC = m_no_simulation = false;
+	m_dry_run = false;
 	m_DumpStats = false;
 	m_exactEndCriteria = false;
 
@@ -248,6 +250,16 @@ void openEMS::collectCommandLineArguments()
 						cout << "openEMS - enabled multithreading" << endl;
 						m_engine = EngineType_Multithreaded;
 					}
+					else if (val == "gpu")
+					{
+						cout << "openEMS - enabled GPU engine" << endl;
+						m_engine = EngineType_GPU;
+					}
+					else if (val == "gpu-reference")
+					{
+						cout << "openEMS - enabled GPU engine with the reference backend" << endl;
+						m_engine = EngineType_GPU_Reference;
+					}
 				}
 			),
 		    "Choose engine type \n\n"
@@ -258,6 +270,8 @@ void openEMS::collectCommandLineArguments()
 			"operator + sse vector extensions\n"
 			"  multithreaded: \tengine using compressed "
 			"operator + sse vector extensions + multithreading\n"
+			"  gpu: \tGPU engine on the best available backend (Metal on macOS, CUDA)\n"
+			"  gpu-reference: \tGPU engine with the reference backend on the CPU\n"
 		)
 		(
 			"numThreads",
@@ -284,6 +298,18 @@ void openEMS::collectCommandLineArguments()
 				}
 			),
 			"only run preprocessing; do not simulate"
+		)
+		(
+			"dry-run",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - dry run => report the scope of the simulation, do not simulate" << endl;
+					m_dry_run = true;
+				}
+			),
+			"report the size of the simulation to 'dry_run.json' and exit, for run time estimates"
 		)
 		(
 			"dump-statistics",
@@ -778,14 +804,15 @@ bool openEMS::SetupOperator()
 {
 	if (CylinderCoords)
 	{
+		bool gpu = (m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference);
+		Operator_Cylinder* op_cyl = NULL;
 		if (m_CC_MultiGrid.size()>0)
-		{
-			FDTD_Op = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
-			if (FDTD_Op==NULL)
-				FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
-		}
-		else
-			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
+			op_cyl = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
+		if (op_cyl==NULL)
+			op_cyl = Operator_Cylinder::New(m_engine_numThreads);
+		if (gpu)
+			op_cyl->SetGPUBackend(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
+		FDTD_Op = op_cyl;
 	}
 	else if (m_engine == EngineType_SSE)
 	{
@@ -798,6 +825,10 @@ bool openEMS::SetupOperator()
 	else if (m_engine == EngineType_Multithreaded)
 	{
 		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
+	}
+	else if ((m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference))
+	{
+		FDTD_Op = Operator_GPU::New(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
 	}
 	else
 	{
@@ -1435,8 +1466,113 @@ bool openEMS::CheckAbortCond()
 	return false;
 }
 
+void openEMS::WriteDryRun()
+{
+	// what a run of this setup would cost: the cell updates it has to do and the data it would
+	// write. Everything but the timestepping has happened at this point, so these are the numbers
+	// of the operator, not an estimate of them.
+	const uint64_t cells = FDTD_Op->GetNumberCells();
+
+	// the dumps of the time domain are given per timestep: the number of timesteps is usually
+	// decided by the end criteria during the run, not by the maximum here
+	double td_bytes_per_ts = 0;
+	uint64_t fd_bytes = 0;
+	size_t td_dumps = 0, fd_dumps = 0, probes = 0;
+	stringstream dumps_json;
+	dumps_json << "[";
+	for (size_t n=0; n<PA->GetNumberOfProcessings(); ++n)
+	{
+		Processing* proc = PA->GetProcessing(n);
+		const unsigned int interval = (std::max)(1u, proc->GetProcessInterval());
+		uint64_t bytes = 0;   // per dump, i.e. every 'interval' timesteps
+
+		ProcessFields* pf = dynamic_cast<ProcessFields*>(proc);
+		if (pf)
+		{
+			pf->CalcDumpGeometry();   // the dumps are not initialized in a dry run
+			const unsigned int* nl = pf->GetNumberOfLines();
+			const uint64_t nodes = (uint64_t)nl[0] * nl[1] * nl[2];
+			if (dynamic_cast<ProcessFieldsFD*>(proc))
+			{
+				// one complex vector field per frequency, written once at the end
+				bytes = nodes * 3 * 2 * sizeof(float) * proc->GetNumberOfFrequencies();
+				fd_bytes += bytes;
+				++fd_dumps;
+			}
+			else
+			{
+				// one vector field per dump, in single precision
+				bytes = nodes * 3 * sizeof(float);
+				td_bytes_per_ts += (double)bytes / interval;
+				++td_dumps;
+			}
+		}
+		else
+			++probes;
+
+		if (n) dumps_json << ",";
+		dumps_json << "\n    {\"name\": \"" << proc->GetName() << "\""
+		           << ", \"type\": \"" << proc->GetProcessingName() << "\""
+		           << ", \"interval\": " << interval
+		           << ", \"frequencies\": " << proc->GetNumberOfFrequencies()
+		           << ", \"bytes_per_dump\": " << bytes << "}";
+	}
+	dumps_json << "\n  ]";
+
+	string engine;
+	switch (m_engine)
+	{
+	case EngineType_Basic:            engine = "basic"; break;
+	case EngineType_SSE:              engine = "sse"; break;
+	case EngineType_SSE_Compressed:   engine = "sse-compressed"; break;
+	case EngineType_Multithreaded:    engine = "multithreaded"; break;
+	case EngineType_GPU:              engine = "gpu"; break;
+	case EngineType_GPU_Reference:    engine = "gpu-reference"; break;
+	default:                          engine = "unknown"; break;
+	}
+
+	stringstream timestep;
+	timestep << scientific << FDTD_Op->GetTimestep();
+
+	ofstream json("dry_run.json");
+	json << "{\n"
+	     << "  \"cells\": " << cells << ",\n"
+	     << "  \"lines\": [" << FDTD_Op->GetNumberOfLines(0) << ", " << FDTD_Op->GetNumberOfLines(1)
+	     <<              ", " << FDTD_Op->GetNumberOfLines(2) << "],\n"
+	     << "  \"max_timesteps\": " << NrTS << ",\n"
+	     << "  \"timestep_s\": " << timestep.str() << ",\n"
+	     << "  \"excitation_timesteps\": " << m_Exc->GetLength() << ",\n"
+	     << "  \"nyquist_timesteps\": " << m_Exc->GetNyquistNum() << ",\n"
+	     << "  \"end_criteria\": " << endCrit << ",\n"
+	     << "  \"engine\": \"" << engine << "\",\n"
+	     << "  \"cylindrical\": " << (CylinderCoords ? "true" : "false") << ",\n"
+	     << "  \"time_domain_dump_bytes_per_timestep\": " << (uint64_t)(td_bytes_per_ts+0.5) << ",\n"
+	     << "  \"frequency_domain_dump_bytes\": " << fd_bytes << ",\n"
+	     << "  \"processings\": " << dumps_json.str() << "\n"
+	     << "}\n";
+	json.close();
+
+	cout << "\n --- Dry run: the scope of this simulation ---" << endl;
+	cout << "FDTD cells      : " << cells << endl;
+	cout << "Max. timesteps  : " << NrTS << " (the end criteria of " << endCrit
+	     << " usually stops the run earlier)" << endl;
+	cout << "Cell updates    : " << cells << " per timestep" << endl;
+	cout << "Field dumps     : " << td_dumps << " time domain, " << fd_dumps << " frequency domain, "
+	     << probes << " probes" << endl;
+	cout << "Data to write   : " << td_bytes_per_ts/1024.0 << " KiB per timestep, plus "
+	     << (double)fd_bytes/1024.0/1024.0 << " MiB at the end" << endl;
+	cout << "Written to      : dry_run.json" << endl;
+	cout << " --- no simulation was run ---\n" << endl;
+}
+
 void openEMS::RunFDTD()
 {
+	if (m_dry_run)
+	{
+		WriteDryRun();
+		return;
+	}
+
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
 	Signal::SetupHandlerForSIGINT(SIGNAL_EXIT_GRACEFUL);

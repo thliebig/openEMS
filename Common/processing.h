@@ -62,6 +62,8 @@ public:
 	virtual void ShowSnappedCoords();
 
 	void SetProcessInterval(unsigned int interval);
+	//! Get the time-domain sampling interval in timesteps \sa SetProcessInterval
+	unsigned int GetProcessInterval() const {return ProcessInterval;}
 	void SetProcessStartStopTime(double start, double stop);
 
 	void AddStep(unsigned int step);
@@ -70,10 +72,11 @@ public:
 	//! Sample the frequency domain data \a factor times per Nyquist interval (call before AddFrequency())
 	void SetFDOverSampling(unsigned int factor);
 	void AddFrequency(double freq);
+
+	//! Number of frequencies this processing records
+	size_t GetNumberOfFrequencies() const {return m_FD_Samples.size();}
 	void AddFrequency(std::vector<double> *freqs);
 
-	//! Get the time-domain sampling interval in timesteps \sa SetProcessInterval
-	unsigned int GetProcessInterval() const {return ProcessInterval;}
 	//! Get the frequency-domain accumulation interval in timesteps \sa SetFDOverSampling
 	unsigned int GetFDInterval() const {return m_FD_Interval;}
 
@@ -87,6 +90,9 @@ public:
 
 	//! Process data after simulation has finished.
 	virtual void PostProcess();
+
+	//! Wait for work still running in the background (see AsyncDumps), called for every processing before the first PostProcess()
+	virtual void FinishAsync() {}
 
 	//! If disabled, Process() will do nothing...
 	virtual void SetEnable(bool val) {Enabled=val;}

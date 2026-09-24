@@ -31,6 +31,7 @@
 class Operator_CylinderMultiGrid : public Operator_Cylinder
 {
 	friend class Engine_CylinderMultiGrid;
+	friend class Engine_GPU_CylinderMultiGrid;
 public:
 	static Operator_CylinderMultiGrid* New(
 		std::vector<double> Split_Radii,

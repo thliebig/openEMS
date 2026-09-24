@@ -62,6 +62,7 @@
 		(this)->template impl<Engine_sse>((Engine_sse*) m_Eng); \
 		break; \
 	case Engine::BASIC: \
+	case Engine::GPU: /* host mirror in the basic engine layout */ \
 		(this)->template impl<Engine>((Engine*) m_Eng); \
 		break; \
 	default: \
@@ -78,6 +79,7 @@
 		(this)->template impl<Engine_sse>((Engine_sse*) m_Eng, __VA_ARGS__); \
 		break; \
 	case Engine::BASIC: \
+	case Engine::GPU: /* host mirror in the basic engine layout */ \
 		(this)->template impl<Engine>((Engine*) m_Eng, __VA_ARGS__); \
 		break; \
 	default: \
