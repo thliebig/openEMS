@@ -206,6 +206,9 @@ number moved up and patch releases now have somewhere to go.
   extension setup loop out of bounds and crash.
 - Lumped RLC: a series element could grow without bound in long runs, as the
   single-precision update had a pole just outside the unit circle.
+- Two probes writing the same output file (CSXCAD allows duplicate property
+  names) interleaved their data into an unreadable file; the run now stops
+  with an error naming both.
 
 ### Build
 

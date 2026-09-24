@@ -21,6 +21,8 @@
 #include <algorithm>
 #include "processing.h"
 #include <climits>
+#include <map>
+#include <stdexcept>
 
 using namespace std;
 
@@ -237,8 +239,27 @@ void Processing::SetProcessStartStopTime(double start, double stop)
 	}
 }
 
+// A probe or dump derives its output file name from its CSXCAD property name,
+// but a property name is only a label: CSXCAD assigns a unique ID to every
+// property and deliberately does not require names to be unique.  Two
+// properties with the same name therefore open the same path twice, each
+// ofstream holding its own write offset, and the two interleave into a file no
+// reader can parse.  Track who owns each open output file and refuse the
+// second claim, so a model that means two different outputs has to say so.
+static map<string, const Processing*> open_output_files;
+
 void Processing::OpenFile( string outfile )
 {
+	map<string, const Processing*>::iterator it = open_output_files.find(outfile);
+	if (it != open_output_files.end() && it->second != this)
+		throw std::runtime_error("Processing::OpenFile: Error: output file '" + outfile +
+			"' is already written by processing '" + it->second->GetName() + "'. Two processings"
+			" may not share one output file, because each opens it separately and the two writes"
+			" interleave into an unreadable file. Give the properties distinct names, or put"
+			" several boxes into one property, which is written as '" + outfile + "_0', '" +
+			outfile + "_1', ...");
+	open_output_files[outfile] = this;
+
 	if (file.is_open())
 		file.close();
 
@@ -328,6 +349,8 @@ void ProcessingArray::AddProcessing(Processing* proc)
 
 void ProcessingArray::InitAll()
 {
+	// One run: every processing claims its output file for the run.
+	open_output_files.clear();
 	for (size_t i=0; i<ProcessArray.size(); ++i)
 	{
 		ProcessArray.at(i)->InitProcess();
