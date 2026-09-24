@@ -45,6 +45,9 @@ number moved up and patch releases now have somewhere to go.
 - **`CreateNF2FFBox()` (Python) accepts `directions` and `mirror`**, which
   overrule the settings derived from the boundary conditions, e.g. to leave
   the face an antenna feed passes through out of the Huygens surface.
+- **`DelayFidelity()` (Python)**, the time delay from the source port to the
+  antenna phase centre and the fidelity of the radiated pulse, for any
+  polarisation via complex weights on E_theta and E_phi.
 - **Localized Mur and SA-Mur absorbers** as stand-alone engine extensions, so an
   absorbing boundary can be placed inside the simulation domain rather than only
   at its edge.

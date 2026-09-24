@@ -22,6 +22,7 @@ import numpy as np
 import h5py
 
 from CSXCAD.Utilities import CheckNyDir
+from openEMS.physical_constants import C0
 
 def DFT_time2freq( t, val, freq, signal_type='pulse'):
     assert len(t)==len(val)
@@ -51,6 +52,96 @@ def Check_Array_Equal(a,b, tol, relative=False):
     else:
         d = np.abs((a-b))
     return np.max(d)<tol
+
+def DelayFidelity(nf2ff, port, sim_path, weight_theta, weight_phi, theta, phi,
+                  f_0, f_c, center=[0, 0, 0], radius=1, read_cached=False,
+                  verbose=0):
+    """Time delay from the source port to the antenna phase centre, and fidelity.
+
+    The fidelity is the similarity between the excitation pulse and the radiated
+    pulse, as a normalised scalar product. With Gaussian excitation the delay
+    resolution is at or below ``((f_0+f_c)*OverSampling)**-1``, where
+    `OverSampling` is the :class:`openEMS.openEMS` parameter.
+
+    `weight_theta` and `weight_phi` weight the two far-field components and may
+    be complex, so any polarisation can be examined: ``(sin(t), cos(t))`` for a
+    linear tilt of `t`, ``(-1j, 1)`` for right hand circular.
+
+    :param nf2ff: the box returned by `CreateNF2FFBox`
+    :param port: the port the antenna is fed from
+    :param sim_path: str -- path of the simulation results
+    :param weight_theta/weight_phi: complex -- weights of E_theta / E_phi
+    :param theta/phi: array like -- angles to evaluate, in degrees
+    :param f_0: float -- center frequency of `SetGaussExcite`
+    :param f_c: float -- cutoff frequency of `SetGaussExcite`
+    :param center: (3,) array -- phase center, forwarded to `CalcNF2FF`
+    :param radius: float -- radius, forwarded to `CalcNF2FF`
+    :returns: (delay, fidelity, nf2ff_results) -- delay in s and fidelity in
+              0..1, both with theta along the rows and phi along the columns
+
+    See Also
+    --------
+    openEMS.nf2ff.nf2ff.CalcNF2FF
+    """
+    # deferred: openEMS.ports imports this module
+    from openEMS.ports import _load_ui_file
+    ut, _ = _load_ui_file(os.path.join(sim_path, port.U_filenames[0]))
+    it, _ = _load_ui_file(os.path.join(sim_path, port.I_filenames[0]))
+    dt = ut[1, 0] - ut[0, 0]
+
+    fftsize = 2**(int(np.ceil(np.log2(ut.shape[0]))) + 1)
+    df      = 1.0/(dt*fftsize)
+    uport   = np.fft.fft(ut[:, 1], fftsize)[:fftsize//2+1]
+    iport   = np.fft.fft(it[:, 1], fftsize)[:fftsize//2+1]
+    fport   = df*np.arange(fftsize//2 + 1)
+
+    f_ind = np.where((fport > f_0 - f_c) & (fport < f_0 + f_c))[0]
+    if len(f_ind) == 0:
+        raise Exception('DelayFidelity: no frequency samples inside f_0 +/- f_c')
+    if verbose:
+        print('DelayFidelity: {} frequencies'.format(len(f_ind)))
+
+    # the feed resistance is named R on a lumped port and feed_R on a
+    # transmission line port
+    feed_R = getattr(port, 'feed_R', None)
+    if feed_R is None:
+        feed_R = getattr(port, 'R', None)
+    if feed_R is None or not np.isfinite(feed_R):
+        raise Exception('DelayFidelity: the port has no finite feed resistance')
+
+    # excitation in the frequency domain, kept only inside the band
+    exc_f        = uport + iport*feed_R
+    band         = np.zeros_like(exc_f)
+    band[f_ind]  = exc_f[f_ind]
+    exc_f        = band/np.sqrt(np.sum(np.abs(band)**2))
+
+    res = nf2ff.CalcNF2FF(sim_path, fport[f_ind], theta, phi, radius=radius,
+                          center=center, read_cached=read_cached, verbose=verbose)
+
+    # (theta, phi, frequency)
+    radfield = np.stack([weight_theta*res.E_theta[n] + weight_phi*res.E_phi[n]
+                         for n in range(len(res.freq))], axis=2)
+    # undo the propagation delay over the far-field radius
+    correction = np.exp(-2j*np.pi*res.r/C0*np.asarray(res.freq)).reshape(1, 1, -1)
+    radfield  = radfield/correction
+    radfield  = radfield/np.sqrt(np.sum(np.abs(radfield)**2, axis=2))[:, :, None]
+
+    rad_f = np.zeros((len(res.theta), len(res.phi), len(fport)), dtype=complex)
+    rad_f[:, :, f_ind] = radfield
+
+    # cross correlation, evaluated in the time domain as an analytic signal
+    cr_f = rad_f*np.conj(exc_f).reshape(1, 1, -1)
+    cr   = np.fft.ifft(cr_f[:, :, :-1], axis=2)*(len(fport) - 1)
+
+    fidelity  = np.max(np.abs(cr), axis=2)
+    delay_ind = np.argmax(np.abs(cr), axis=2)
+    # double the time step: the spectrum above was single sided
+    delay     = delay_ind*dt*2
+
+    if verbose:
+        print('DelayFidelity: delay resolution = {:g} ns'.format(dt*2e9))
+    return delay, fidelity, res
+
 
 def check_mode_purity(label, signal, purity, threshold=0.99, sig_frac=0.01):
     """Assert mode purity > threshold where the signal exceeds sig_frac * peak.
