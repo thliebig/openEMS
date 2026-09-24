@@ -117,7 +117,7 @@ def run_loop(Sim_Path, element_fn):
 
     element_fn(CSX)
 
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
     port.CalcPort(Sim_Path, freq)
     s11  = port.uf_ref / port.uf_inc

@@ -172,7 +172,7 @@ if 1:  # debugging only
 
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, verbose=0, cleanup=False)
+    FDTD.Run(Sim_Path, verbose=0, cleanup=False, exact_endcriteria=True)
 
 ### Post-processing and plrorotting
 f = np.linspace(max(1e9,f0-fc),f0+fc,401)

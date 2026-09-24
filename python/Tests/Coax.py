@@ -70,7 +70,7 @@ ports.append(CoaxialPort(CSX, 2, copper, None, start, stop, 'z',
                          coax_rad_i, coax_rad_ai, coax_rad_aa, priority=10))
 
 ### Run the simulation
-FDTD.Run(Sim_Path, cleanup=True)
+FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
 ### Post-processing
 freq = np.linspace(1e6, f_stop, 201)

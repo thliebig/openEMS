@@ -86,7 +86,7 @@ port2 = StripLinePort(CSX, 2, pec, portstart, portstop, 'x', 'z', SL_height,
 ports = [port1, port2]
 
 ### Run the simulation
-FDTD.Run(Sim_Path, cleanup=True)
+FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
 ### Post-processing
 f = np.linspace(1e6, f_max, 1601)

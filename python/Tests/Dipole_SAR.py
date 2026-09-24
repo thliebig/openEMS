@@ -124,7 +124,7 @@ sar_dump.AddBox(
 )
 
 os.makedirs(Sim_Path, exist_ok=True)
-FDTD.Run(Sim_Path, cleanup=True)
+FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
 # Accepted power at f0 — used to normalize all SAR values to 1 W input
 f_sweep = np.linspace(0.5e9, f_stop, 501)
