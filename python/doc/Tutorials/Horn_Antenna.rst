@@ -1,3 +1,5 @@
+.. _tutorial_horn_antenna:
+
 Horn Antenna with Coaxial Pin Feed
 ===================================
 

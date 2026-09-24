@@ -8,3 +8,4 @@ Antennas
     Helical_Antenna
     Bent_Patch_Antenna
     Horn_Antenna
+    Conical_Horn_Antenna
