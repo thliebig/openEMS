@@ -83,7 +83,7 @@ def run(Sim_Path, material_fn=None):
         mat = material_fn(CSX)
         mat.AddBox([0, 0, slab_z0], [width, width, slab_z0 + slab_d], priority=10)
 
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
     # field probe file columns: t/s, Ex, Ey, Ez
     data = np.loadtxt(os.path.join(Sim_Path, 'et_trans'), comments='%')

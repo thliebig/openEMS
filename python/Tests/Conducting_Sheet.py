@@ -82,7 +82,7 @@ def run(Sim_Path, sheet=None):
         cs = CSX.AddConductingSheet('sheet', conductivity=sheet[0], thickness=sheet[1])
         cs.AddBox([0, 0, z_sheet], [width, width, z_sheet], priority=10)
 
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
     # field probe file columns: t/s, Ex, Ey, Ez
     data = np.loadtxt(os.path.join(Sim_Path, 'et_trans'), comments='%')

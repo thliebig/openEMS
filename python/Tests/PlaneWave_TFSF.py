@@ -85,7 +85,7 @@ def run_direction(label, k_dir, E_dir):
     for name, pos in p_out.items():
         CSX.AddProbe('et_out_' + name, p_type=2).AddPoint(pos)
 
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
     ### inside the TF/SF box
     t, E1 = load_probe(Sim_Path, 'et_in1')

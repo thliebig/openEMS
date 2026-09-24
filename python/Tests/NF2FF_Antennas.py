@@ -158,7 +158,7 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'NF2FF_Dipole')
 FDTD, CSX = setup(monopole=False)
 port = CurvePort(CSX, 1, R=73, start=[0, 0, -arm_len], stop=[0, 0, arm_len], excite=1)
 nf2ff = FDTD.CreateNF2FFBox()
-FDTD.Run(Sim_Path, cleanup=True)
+FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 res_dipole = check_far_field('dipole', port, nf2ff, Sim_Path, 1.64, (0, 180), theta)
 print('PASS [dipole]')
 
@@ -171,7 +171,7 @@ wire = CSX.AddMetal('monopole')
 wire.AddCurve([[0, 0], [0, 0], [mesh_res, arm_len]], priority=10)
 f_nf2ff = 0.91e9   # FD recording at the expected resonance
 nf2ff = FDTD.CreateNF2FFBox(frequency=[f_nf2ff])
-FDTD.Run(Sim_Path, cleanup=True)
+FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 res_mono = check_far_field('monopole', port, nf2ff, Sim_Path, 3.28, (0, 90), theta[theta <= 90],
                            f_rec=f_nf2ff, half_space=True)
 print('PASS [monopole]')
