@@ -613,6 +613,48 @@ class Test_CurvePort(unittest.TestCase):
         self.assertTrue(port.U_filenames[0].startswith('cv_'))
 
 
+class Test_CircWGPort_Cylindrical(unittest.TestCase):
+    """On a cylindrical mesh the mode profile must stay in its native
+    (rho, a, z) form and must not be shifted by a local origin: the port box
+    spans the full 0..2*pi in a, so its midpoint is not a point on the axis.
+    """
+
+    def setUp(self):
+        self.csx = _make_csx_cylindrical()
+
+    def _make_port(self, exc_dir='z'):
+        stop = [350, 2 * np.pi, 200]
+        return CircWGPort(self.csx, port_nr=1,
+                          start=[0, 0, 0], stop=stop,
+                          exc_dir=exc_dir, radius=350e-3, mode_name='TE11',
+                          excite=1)
+
+    def test_mode_profile_uses_native_rho_and_a(self):
+        port = self._make_port()
+        # E_rho / E_a carry the profile, E_z is zero, and the Cartesian
+        # transverse form (sqrt(x*x+y*y), atan2) is not used at all.
+        self.assertEqual(port.E_func[2], '0')
+        for func in (port.E_func[0], port.E_func[1]):
+            self.assertIn('rho', func)
+            self.assertNotIn('atan2', func)
+            self.assertNotIn('sqrt(', func)
+
+    def test_no_local_origin_shift(self):
+        port = self._make_port()
+        for prop in port.port_props:
+            if isinstance(prop, CSPropExcitation):
+                origin = prop.GetWeightOrigin()
+            elif isinstance(prop, CSPropProbeBox):
+                origin = prop.GetModeOrigin()
+            else:
+                continue
+            np.testing.assert_allclose(origin, [0, 0, 0])
+
+    def test_non_z_propagation_raises(self):
+        with self.assertRaises(Exception):
+            self._make_port(exc_dir='x')
+
+
 class Test_WaveguidePort_LocalOrigin(unittest.TestCase):
     """The mode origin must reach the excitation and both mode-match probes
     identically. If the two ever diverge, the excited and the probed mode are

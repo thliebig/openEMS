@@ -657,9 +657,18 @@ class CircWGPort(WaveguidePort):
     local_origin : array-like, 'corner', or 'center', optional
         Forwarded to :class:`WaveguidePort`.  Defaults to ``'center'`` so
         that the mode functions are evaluated relative to the port midpoint.
+        Ignored on a cylindrical mesh, see the notes below.
 
     Notes
     -----
+    On a **cylindrical** mesh the mode profile is used in its native
+    (rho, a, z) form and the propagation direction must be ``'z'``.  ``rho``
+    and ``a`` are then the mesh coordinates themselves, already measured from
+    the mesh axis = the waveguide axis, so no ``local_origin`` shift is
+    applied (the port box spans the full 0..2*pi in ``a``, whose midpoint is
+    not a point on the axis).  On a Cartesian mesh the profile is converted
+    to the two transverse Cartesian components and masked to ``rho < radius``.
+
     Supported modes and their Bessel zeros p'_nm (zeros of J_n'):
 
       TE01 3.832  TE11 1.841  TE21 3.054
@@ -703,12 +712,23 @@ class CircWGPort(WaveguidePort):
         ny_P   = (exc_ny + 1) % 3
         ny_PP  = (exc_ny + 2) % 3
 
-        # Transverse cylindrical coordinates as fparser expressions for any propagation axis
-        coords = 'xyz'
-        u     = coords[ny_P]
-        v     = coords[ny_PP]
-        rho_t = 'sqrt({0}*{0}+{1}*{1})'.format(u, v)
-        a_t   = 'atan2({},{})'.format(v, u)
+        cyl_mesh = CSX.GetGrid().GetMeshType() == CoordinateSystem.CYLINDRICAL
+
+        if cyl_mesh:
+            # Cylindrical mesh: rho/a are the mesh coordinates themselves and are
+            # already measured from the mesh axis, which is the waveguide axis.
+            if exc_ny != 2:
+                raise Exception('CircWGPort: on a cylindrical mesh the propagation '
+                                'direction must be z')
+            rho_t = 'rho'
+            a_t   = 'a'
+        else:
+            # Transverse cylindrical coordinates as fparser expressions for any propagation axis
+            coords = 'xyz'
+            u     = coords[ny_P]
+            v     = coords[ny_PP]
+            rho_t = 'sqrt({0}*{0}+{1}*{1})'.format(u, v)
+            a_t   = 'atan2({},{})'.format(v, u)
         ang   = '({})-{:.15g}'.format(a_t, pol_ang)
 
         # Cylindrical E and H components (Pozar 3rd ed., TE_nm pattern n=1)
@@ -719,17 +739,27 @@ class CircWGPort(WaveguidePort):
         Hr = '{C:.15g}*sin({a})*0.5*(j0({k:.15g}*({r}))-jn(2,{k:.15g}*({r})))'.format(C=-c_a, r=rho_t, a=ang, k=kc_draw)
         Ha = '{C:.15g}/({r})*cos({a})*j1({k:.15g}*({r}))'.format(C=c_r,  r=rho_t, a=ang, k=kc_draw)
 
-        # Cartesian conversion: cos(a_t)=u/rho_t, sin(a_t)=v/rho_t; map to transverse axes
-        r_draw = radius / unit
-        mask  = '(({r})<{d:.15g})'.format(r=rho_t, d=r_draw)
-        cos_a = '{}/({})'.format(u, rho_t)
-        sin_a = '{}/({})'.format(v, rho_t)
-        E_func = ['0', '0', '0']
-        H_func = ['0', '0', '0']
-        E_func[ny_P]  = '(({Er})*({ca})-({Ea})*({sa}))*{m}'.format(Er=Er, Ea=Ea, ca=cos_a, sa=sin_a, m=mask)
-        E_func[ny_PP] = '(({Er})*({sa})+({Ea})*({ca}))*{m}'.format(Er=Er, Ea=Ea, ca=cos_a, sa=sin_a, m=mask)
-        H_func[ny_P]  = '(({Hr})*({ca})-({Ha})*({sa}))*{m}'.format(Hr=Hr, Ha=Ha, ca=cos_a, sa=sin_a, m=mask)
-        H_func[ny_PP] = '(({Hr})*({sa})+({Ha})*({ca}))*{m}'.format(Hr=Hr, Ha=Ha, ca=cos_a, sa=sin_a, m=mask)
+        if cyl_mesh:
+            # The mesh components already are (rho, a, z), so the mode profile is
+            # used as-is. The port box spans the full 0..2*pi in a, so its
+            # "center" is not a point on the axis and must not be used as local
+            # origin --> no shift at all.
+            E_func = [Er, Ea, '0']
+            H_func = [Hr, Ha, '0']
+            if local_origin in ('center', 'corner'):
+                local_origin = None
+        else:
+            # Cartesian conversion: cos(a_t)=u/rho_t, sin(a_t)=v/rho_t; map to transverse axes
+            r_draw = radius / unit
+            mask  = '(({r})<{d:.15g})'.format(r=rho_t, d=r_draw)
+            cos_a = '{}/({})'.format(u, rho_t)
+            sin_a = '{}/({})'.format(v, rho_t)
+            E_func = ['0', '0', '0']
+            H_func = ['0', '0', '0']
+            E_func[ny_P]  = '(({Er})*({ca})-({Ea})*({sa}))*{m}'.format(Er=Er, Ea=Ea, ca=cos_a, sa=sin_a, m=mask)
+            E_func[ny_PP] = '(({Er})*({sa})+({Ea})*({ca}))*{m}'.format(Er=Er, Ea=Ea, ca=cos_a, sa=sin_a, m=mask)
+            H_func[ny_P]  = '(({Hr})*({ca})-({Ha})*({sa}))*{m}'.format(Hr=Hr, Ha=Ha, ca=cos_a, sa=sin_a, m=mask)
+            H_func[ny_PP] = '(({Hr})*({sa})+({Ha})*({ca}))*{m}'.format(Hr=Hr, Ha=Ha, ca=cos_a, sa=sin_a, m=mask)
 
         super(CircWGPort, self).__init__(
             CSX, port_nr=port_nr, start=start, stop=stop,

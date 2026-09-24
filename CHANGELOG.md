@@ -39,7 +39,9 @@ number moved up and patch releases now have somewhere to go.
   `check_mode_purity()` utility. Convenience methods `AddCircWaveGuidePort`,
   `AddCoaxialPort`, `AddStripLinePort`, `AddCPWPort` and `AddCurvePort` on the
   `openEMS` class mirror the existing `AddLumpedPort`/`AddMSLPort` pattern.
-  Ports also store their time base, which makes plotting easier.
+  Ports also store their time base, which makes plotting easier. On a
+  cylindrical mesh `CircWGPort` uses the mode profile in its native
+  (rho, a, z) form.
 - **Localized Mur and SA-Mur absorbers** as stand-alone engine extensions, so an
   absorbing boundary can be placed inside the simulation domain rather than only
   at its edge.
