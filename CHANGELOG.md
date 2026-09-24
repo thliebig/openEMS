@@ -156,6 +156,9 @@ number moved up and patch releases now have somewhere to go.
 - Python: `GetCSX()` returned an empty list after the structure had been read
   with `ReadFromXML()`, and a wrapper could dangle after `Reset()`.
 - UPML: copy-paste errors in the update coefficients (#221).
+- Tutorial `CRLH_LeakyWaveAnt.m`: the ground plane was added at the same
+  priority as the substrate that spans z=0 as well, so it lost the tie and
+  never made it into the operator.
 - Modes higher than 0 in the parallel-plate direction were not excited
   correctly.
 - The mode-match probe coordinates now match the excitation coordinates.

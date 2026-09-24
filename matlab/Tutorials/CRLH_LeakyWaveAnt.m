@@ -107,10 +107,13 @@ end
 %% matched-terminated, enabling both S11 (return loss) and S21 (insertion
 %% loss) to be extracted from a single simulation run.
 %ground plane
+% priority 10, not 0: substrate1 spans z=0 as well, and on a priority tie the
+% property added first wins -- at priority 0 the ground plane is shadowed by
+% the substrate and never makes it into the operator ("Unused primitive").
 CSX = AddMetal( CSX, 'ground' );
 start = [-feed_length-(N_Cells*CRLH.LL)/2, -substrate_width/2, 0];
 stop  = [+feed_length+(N_Cells*CRLH.LL)/2,  substrate_width/2, 0];
-CSX = AddBox( CSX, 'ground', 0, start, stop );
+CSX = AddBox( CSX, 'ground', 10, start, stop );
 
 CSX = AddMetal( CSX, 'PEC' );
 portstart = [ -feed_length-(N_Cells*CRLH.LL)/2 , -CRLH.LW/2, substratelines(end)];
