@@ -117,7 +117,10 @@ if __name__ == '__main__':
     resolution = C0/(f_stop*np.sqrt(max(substrate_epsr)))/unit /30 # resolution of lambda/30
     CRLH.setEdgeResolution(resolution/4)
 
-    mesh.SetLines('x', [-feed_length-CRLH.LL/2, 0, feed_length+CRLH.LL/2])
+    # deliberately no fixed line at x=0: it would pin the mesh in the middle
+    # of the stub (x = +/-SW/2) between its two metal edge lines, and it does
+    # not help the via either, which contributes no mesh hint of its own
+    mesh.SetLines('x', [-feed_length-CRLH.LL/2, feed_length+CRLH.LL/2])
     mesh.SetLines('y', [-30000, 0, 30000])
 
     substratelines = np.cumsum(substrate_thickness)
