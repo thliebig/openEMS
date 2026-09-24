@@ -184,7 +184,8 @@ axis.set_ylabel('reflection coefficient $|S_{11}|$ (dB)')
 thetaRange = np.arange(0, 360, 2) - 180
 phiRange   = np.array([0, 90])
 print('calculating far field at phi=[0 90] deg...')
-res = nf2ff.CalcNF2FF(Sim_Path, f0, thetaRange, phiRange)
+res = nf2ff.CalcNF2FF(Sim_Path, f0, thetaRange, phiRange,
+                      read_cached=post_proc_only)
 
 Dlog = 10*np.log10(res.Dmax[0])
 G_a  = 4*np.pi*A/(C0/f0)**2
@@ -239,7 +240,8 @@ thetaRange_3D = np.unique(np.concatenate((np.arange(0, 50, 1), np.arange(50, 100
 
 print('calculating 3D far field...')
 res_3D = nf2ff.CalcNF2FF(Sim_Path, f0, thetaRange_3D, phiRange_3D,
-                         outfile='nf2ff_3D.h5', verbose=2)
+                         outfile='nf2ff_3D.h5', verbose=2,
+                         read_cached=post_proc_only)
 
 E_far_normalized = res_3D.E_norm[0]/np.max(res_3D.E_norm[0])
 theta_g, phi_g = np.meshgrid(thetaRange_3D/180*np.pi, phiRange_3D/180*np.pi, indexing='ij')
