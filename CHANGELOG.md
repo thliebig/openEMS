@@ -80,7 +80,9 @@ number moved up and patch releases now have somewhere to go.
   not installed.
 - New tutorials and examples: Python `Horn_Antenna` (coaxial pin feed with
   backshort), `StripLine2MSL`, `Dipole_SAR`, `MRI_Loop_Coil`, a rectangular
-  resonant cavity example, and a SAR averaging tutorial.
+  resonant cavity example, and a SAR averaging tutorial. Ported from Octave:
+  `Parallel_Plate_Waveguide`, `Circ_Waveguide`, `Conical_Horn_Antenna`,
+  `CylindricalWave_CC` and `RadarUWBTutorial`.
 - Python unit and integration tests, run in CI after each smoke test.
 - **Optional oversampling for frequency-domain dumps and probes.** The running
   DFT accumulation for FD/SAR dumps and probes is sampled at exactly the
