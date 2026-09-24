@@ -23,6 +23,14 @@ Get the latest version `from git <https://raw.githubusercontent.com/thliebig/ope
 
 Images
 -------------
+.. figure:: images/UWB_Antenna.png
+    :width: 80%
+    :alt: 3D view of the UWB monopole antenna
+
+    The UWB monopole: radiating patch (front), feed line and the ground
+    plane on the back of the substrate, with the graded mesh
+    (AppCSXCAD)
+
 .. figure:: images/UWB_S11.png
     :width: 80%
     :alt: S11 magnitude and phase over frequency

@@ -23,6 +23,14 @@ Get the latest version `from git <https://raw.githubusercontent.com/thliebig/ope
 
 Images
 -------------
+.. figure:: images/Conical_Horn.png
+    :width: 80%
+    :alt: 3D view of the conical horn antenna
+
+    Conical horn and circular waveguide feed, swept from a single
+    cross-sectional polygon; the waveguide port sits in the feed section
+    on the right (AppCSXCAD)
+
 .. figure:: images/Conical_Horn_S11.png
     :width: 80%
     :alt: Reflection coefficient S11
