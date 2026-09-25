@@ -21,7 +21,7 @@ if any(strcmp( options, 'run_testsuite' ))
     SILENT = 1;
 end
 % clean openEMS_options
-openEMS_options = regexprep( openEMS_options, '--engine=\w+', '' );
+openEMS_options = regexprep( openEMS_options, '--engine=[\w-]+', '' );
 
 engines = {'--engine=basic' '--engine=sse' '--engine=sse-compressed' '--engine=multithreaded'};
 % engines = [engines {'--engine=sse-compressed-linear' '--engine=multithreaded-linear'}];
