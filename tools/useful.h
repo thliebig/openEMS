@@ -18,8 +18,14 @@
 #ifndef USEFUL_H
 #define USEFUL_H
 
+#include <cstddef>
 #include <vector>
 #include <string>
+
+//! Peak resident set size of this process in bytes, as the OS counted it, or 0
+//! if it cannot be determined. Unlike ArrayLib::MemTrack this covers the whole
+//! process -- geometry, output buffers, allocator overhead and all.
+size_t PeakResidentBytes();
 
 //! Calc the nyquist number of timesteps for a given frequency and timestep
 unsigned int CalcNyquistNum(double fmax, double dT);

@@ -45,13 +45,7 @@ public:
 
 	void Init(std::string name, std::array<IndexType, 2> extent)
 	{
-		if (this->m_ptr != NULL)
-			Base::AllocatorType::free(this->m_ptr, this->m_size);
-
-		this->m_name = name;
-		this->m_size = extent[0] * extent[1];
-		this->m_bytes = sizeof(T) * this->m_size;
-		this->m_ptr = Base::AllocatorType::alloc(this->m_size);
+		this->Allocate(name, extent[0] * extent[1]);
 
 		this->m_extent = extent;
 		this->m_stride[0] = extent[1];

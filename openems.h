@@ -86,6 +86,7 @@ public:
 	void DebugBox() {m_debugBox=true;}
 	void DebugPEC() {m_debugPEC=true;}
 	void DebugCSX() {m_debugCSX=true;}
+	void DebugMemory() {m_debugMemory=true;}
 
 	void Set_BC_Type(int idx, int type);
 	int Get_BC_Type(int idx);
@@ -148,6 +149,7 @@ protected:
 	bool m_debugCSX;
 	bool m_DumpStats;
 	bool m_debugBox, m_debugPEC, m_no_simulation;
+	bool m_debugMemory;
 	bool m_exactEndCriteria;
 
 	double endCrit;
@@ -183,6 +185,9 @@ protected:
 
 	//! Setup all processings.
 	virtual bool SetupProcessing();
+
+	//! Report the memory held by the ArrayLib arrays plus the peak RSS so far
+	void ShowMemoryStat(const std::string& stage) const;
 
 	//! Dump statistics to file
 	virtual bool DumpStatistics(const std::string& filename, double time);

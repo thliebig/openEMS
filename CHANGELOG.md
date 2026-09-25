@@ -104,6 +104,10 @@ number moved up and patch releases now have somewhere to go.
   code verification. The steady-state detection extension is unaffected: its
   diff estimate is cheap and is now always kept current every timestep
   rather than only at the wall-clock report interval.
+- **`--debug-memory`** reports how much memory the field and operator arrays
+  hold, broken down per array, both currently and at the high-water mark, plus
+  the peak resident set size of the whole process as the OS counted it. The
+  per-array numbers are also given per FDTD cell, to compare mesh sizes.
 
 ### Changed
 

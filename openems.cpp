@@ -21,6 +21,7 @@
 #include <fstream>
 #include "tools/signal.h"
 #include "tools/useful.h"
+#include "tools/arraylib/impl/memtrack.h"
 #include "FDTD/operator_cylinder.h"
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
@@ -78,6 +79,7 @@ openEMS::openEMS()
 	DebugOp = false;
 	m_debugCSX = false;
 	m_debugBox = m_debugPEC = m_no_simulation = false;
+	m_debugMemory = false;
 	m_DumpStats = false;
 	m_exactEndCriteria = false;
 
@@ -217,6 +219,18 @@ void openEMS::collectCommandLineArguments()
 				}
 			),
 			"Write CSX geometry file to debugCSX.xml"
+		)
+		(
+			"debug-memory",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (!val) return;
+					cout << "openEMS - reporting memory usage" << endl;
+					DebugMemory();
+				}
+			),
+			"Report the memory held by the field and operator arrays, and the peak memory usage"
 		)
 		(
 			"engine",
@@ -1332,6 +1346,8 @@ int openEMS::SetupFDTD()
 		FDTD_Op->ShowExtStat();
 		cout << "Creation time for operator: " << CalcDiffTime(OpDoneTime,startTime) << " s" << endl;
 	}
+	if (m_debugMemory)
+		ShowMemoryStat("operator built");
 	cout << "FDTD simulation size: " << FDTD_Op->GetNumberOfLines(0) << "x" << FDTD_Op->GetNumberOfLines(1) << "x" << FDTD_Op->GetNumberOfLines(2) << " --> "  << FDTD_Op->GetNumberCells() << " FDTD cells " << endl;
 	cout << "FDTD timestep is: " <<FDTD_Op->GetTimestep()  << " s; Nyquist rate: " <<  m_Exc->GetNyquistNum() << " timesteps @" << CalcNyquistFrequency(m_Exc->GetNyquistNum(),FDTD_Op->GetTimestep()) << " Hz" << endl;
 	if (m_Exc->GetNyquistNum()>1000)
@@ -1392,6 +1408,24 @@ int openEMS::SetupFDTD()
 
 	Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 	return 0;
+}
+
+void openEMS::ShowMemoryStat(const string& stage) const
+{
+	ArrayLib::MemTrack::FormatGuard guard(cout);
+	size_t numCells = FDTD_Op ? FDTD_Op->GetNumberCells() : 0;
+
+	cout << "------- Stat: memory (" << stage << ") -------" << endl;
+	ArrayLib::MemTrack::Print(cout, numCells);
+	size_t rss = PeakResidentBytes();
+	if (rss>0)
+	{
+		cout << "Peak memory (RSS)\t: " << fixed << setprecision(2) << (double)rss/1024.0/1024.0 << " MiB";
+		if (numCells>0)
+			cout << " (" << fixed << setprecision(2) << (double)rss/(double)numCells << " Byte/cell)";
+		cout << endl;
+	}
+	cout << "-----------------------------------" << endl;
 }
 
 string FormatTime(int sec)
@@ -1549,6 +1583,9 @@ void openEMS::RunFDTD()
 
 	if (m_DumpStats)
 		DumpStatistics(OPENEMS_STAT_FILE, t_diff);
+
+	if (m_debugMemory)
+		ShowMemoryStat("simulation done");
 
 	//*************** postproc ************//
 	PA->PostProcess();

@@ -27,8 +27,33 @@
 #ifdef __linux__
 #include <sched.h>
 #endif
+#ifdef _WIN32
+#include <windows.h>
+#include <psapi.h>
+#else
+#include <sys/resource.h>
+#endif
 #include <boost/algorithm/string.hpp>
 #include <iostream>
+
+size_t PeakResidentBytes()
+{
+#ifdef _WIN32
+	PROCESS_MEMORY_COUNTERS pmc;
+	if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+		return (size_t)pmc.PeakWorkingSetSize;
+	return 0;
+#else
+	struct rusage ru;
+	if (getrusage(RUSAGE_SELF, &ru)!=0)
+		return 0;
+#ifdef __APPLE__
+	return (size_t)ru.ru_maxrss;        // macOS reports bytes
+#else
+	return (size_t)ru.ru_maxrss * 1024; // everyone else reports kiB
+#endif
+#endif
+}
 
 unsigned int CalcNyquistNum(double fmax, double dT)
 {

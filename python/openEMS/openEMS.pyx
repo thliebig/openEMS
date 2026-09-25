@@ -661,6 +661,8 @@ cdef class openEMS:
         * debug_operator (bool) - dump operator to vtk file for debugging
         * debug_boxes (bool) - Dump e.g. probe boxes to vtk file for debugging
         * debug_CSX (bool) - Write CSX geometry file to debugCSX.xml
+        * debug_memory (bool) - report the memory held by the field and
+          operator arrays, and the peak memory usage
         * dump_statistics (bool) - dump simulation statistics to
           `openEMS_run_stats.txt` and `openEMS_stats.txt`
         * showProbeDiscretization (bool) - show probe discretization information

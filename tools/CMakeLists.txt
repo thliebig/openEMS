@@ -39,7 +39,7 @@ INSTALL(FILES sar_calculation.h hdf5_file_reader.h hdf5_file_writer.h vtk_file_w
 
 # not ideal, but no way around it?
 INSTALL(FILES arraylib/array_ij.h arraylib/array_ijk.h arraylib/array_nijk.h DESTINATION include/openEMS/arraylib)
-INSTALL(FILES arraylib/impl/allocator.h arraylib/impl/array_base.h arraylib/impl/subscript.h DESTINATION include/openEMS/arraylib/impl)
+INSTALL(FILES arraylib/impl/allocator.h arraylib/impl/array_base.h arraylib/impl/memtrack.h arraylib/impl/subscript.h DESTINATION include/openEMS/arraylib/impl)
 
 INSTALL(TARGETS sar_bin DESTINATION bin)
 

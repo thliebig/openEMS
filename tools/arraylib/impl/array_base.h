@@ -22,6 +22,7 @@
 
 #include "subscript.h"
 #include "allocator.h"
+#include "memtrack.h"
 
 // ArrayBase is a base class of which 2D, 3D and 4D arrays are derived from.
 // this reduces code duplication and allows minimum code in derived classes.
@@ -71,6 +72,18 @@ protected:
 	// 2-phase initialization
 	ArrayBase() {}
 
+	// Allocate the data buffer for `size` elements, releasing whatever this
+	// array held before. Derived Init() calls this, then sets extent/stride.
+	void Allocate(std::string name, IndexType size)
+	{
+		Reset();
+		this->m_name  = name;
+		this->m_size  = size;
+		this->m_bytes = sizeof(T) * (size_t)size;
+		this->m_ptr   = AllocatorType::alloc(this->m_size);
+		MemTrack::Add(this->m_name, this->m_bytes);
+	}
+
 public:
 	// Access array via arr({i, j, k}) syntax with one array of indices.
 	// Each derived class should also implement operator(i, j, k), which
@@ -85,6 +98,7 @@ public:
 	void Reset()
 	{
 		if (this->m_ptr==NULL) return;
+		MemTrack::Sub(this->m_name, this->m_bytes);
 		AllocatorType::free(this->m_ptr, this->m_size);
 		this->m_name    = "";
 		this->m_ptr     = NULL;

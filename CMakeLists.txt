@@ -201,6 +201,8 @@ TARGET_LINK_LIBRARIES( openEMS
 if (WIN32)
     # make sure "BUILD_OPENEMS_LIB" is only set for openEMS (dll) not openEMS_bin (exe)
     target_compile_definitions(openEMS PRIVATE -DBUILD_OPENEMS_LIB )
+    # GetProcessMemoryInfo() for the peak memory report
+    target_link_libraries(openEMS psapi)
 endif (WIN32)
 
 # main program
