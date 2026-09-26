@@ -58,6 +58,8 @@ public:
 
 	virtual Operator_Extension* Clone(Operator* op);
 
+	virtual bool IsGPUSave() const {return true;}
+
 	virtual bool BuildExtension();
 
 	virtual Engine_Extension* CreateEngineExtention();
