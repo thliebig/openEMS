@@ -26,6 +26,11 @@
   #define MP_FABS(a) std::fabs(a)
 #endif
 
+// PEC primitive kinds and winner sentinels shared by the host and pec_mask.
+enum { MP_KIND_CPU = 0, MP_KIND_BOX = 1, MP_KIND_POLYGON = 2, MP_KIND_CYLINDER = 3, MP_KIND_SHELL = 4 };
+#define MP_WINNER_NONE 0xffffffffu // no MATERIAL|METAL primitive at the query
+#define MP_WINNER_CPU  0xfffffffeu // undecidable on the GPU: resolve via CSXCAD
+
 // Double-float (two-float) value hi + lo.
 typedef struct { float hi, lo; } mp_df;
 

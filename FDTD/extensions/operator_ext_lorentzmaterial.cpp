@@ -188,26 +188,32 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	v_Lor_ADE = new FDTD_FLOAT**[m_Order];
 	i_Lor_ADE = new FDTD_FLOAT**[m_Order];
 
-	// The Metal geometry pass already resolved the winning MATERIAL|METAL primitive
-	// at every Yee component. Reuse those winners instead of re-collecting and
-	// re-sorting all primitives per (x,y) row and re-running the point-in-polygon
-	// test for every component. Geometry is order independent, so the tables are
-	// built once.
+	// An accelerated operator may already have resolved the winning primitive at
+	// every Yee component; consume those winners instead of re-querying CSXCAD
+	// per component. Geometry does not depend on the order, so index them once.
 	typedef std::array<CSPrimitives*,3> WinnerTriple;
 	const std::vector<Operator::GeometryWinner>* geoPrimal =
 		m_Op->GetGeometryWinners(Operator::GEO_DISPERSIVE, false);
 	const std::vector<Operator::GeometryWinner>* geoDual =
 		m_Op->GetGeometryWinners(Operator::GEO_DISPERSIVE, true);
-	std::unordered_map<uint64_t,WinnerTriple> primalWinners, dualWinners;
-	auto cellKey = [&](const unsigned int* p) -> uint64_t {
-		return (uint64_t(p[0])*numLines[1] + p[1])*numLines[2] + p[2];
+	auto cellKey = [&](unsigned int x, unsigned int y, unsigned int z) -> uint64_t {
+		return (uint64_t(x)*numLines[1] + y)*numLines[2] + z;
 	};
-	if (geoPrimal)
-		for (const auto& w : *geoPrimal)
-			primalWinners[(uint64_t(w.x)*numLines[1]+w.y)*numLines[2]+w.z][w.n] = w.primitive;
-	if (geoDual)
-		for (const auto& w : *geoDual)
-			dualWinners[(uint64_t(w.x)*numLines[1]+w.y)*numLines[2]+w.z][w.n] = w.primitive;
+	auto indexWinners = [&](const std::vector<Operator::GeometryWinner>* winners) {
+		std::unordered_map<uint64_t,WinnerTriple> byCell;
+		if (winners)
+			for (const auto& w : *winners)
+				byCell[cellKey(w.x,w.y,w.z)][w.n] = w.primitive; // value-initialized to NULL
+		return byCell;
+	};
+	const std::unordered_map<uint64_t,WinnerTriple> primalWinners = indexWinners(geoPrimal);
+	const std::unordered_map<uint64_t,WinnerTriple> dualWinners = indexWinners(geoDual);
+	// Winning property of component n at pos; a component missing from the
+	// winner table has no dispersive primitive.
+	auto winnerProperty = [&](const std::unordered_map<uint64_t,WinnerTriple>& byCell, int n) -> CSProperties* {
+		auto it = byCell.find(cellKey(pos[0],pos[1],pos[2]));
+		return it != byCell.end() && it->second[n] ? it->second[n]->GetProperty() : NULL;
+	};
 	if (geoPrimal || geoDual)
 		cout << "Metal dispersive material: " << primalWinners.size() << " primal, "
 		     << dualWinners.size() << " dual cells from resolved geometry winners" << endl;
@@ -238,7 +244,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
 				std::vector<CSPrimitives*> vPrims;
-				if (!geoPrimal && !geoDual)
+				if (!geoPrimal || !geoDual)
 					vPrims = m_Op->GetPrimitivesBoundBox(
 						pos[0], pos[1], -1,
 						(CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL)
@@ -249,12 +255,6 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 					unsigned int index = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
 					//calc epsilon lorentz material
 					b_pos_on = false;
-					const WinnerTriple* primalCell = NULL;
-					if (geoPrimal)
-					{
-						auto it = primalWinners.find(cellKey(pos));
-						if (it != primalWinners.end()) primalCell = &it->second;
-					}
 					for (int n=0; n<3; ++n)
 					{
 						L_D[n]=0;
@@ -268,13 +268,8 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_Op->GetVI(n,pos[0],pos[1],pos[2])==0)
 							continue;
 
-						CSProperties* prop = NULL;
-						if (primalCell)
-						{
-							if ((*primalCell)[n]) prop = (*primalCell)[n]->GetProperty();
-						}
-						else if (!geoPrimal)
-							prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
+						CSProperties* prop = geoPrimal ? winnerProperty(primalWinners, n)
+							: m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 
 						if (prop==NULL) continue;
 
@@ -318,12 +313,6 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						}
 					}
 
-					const WinnerTriple* dualCell = NULL;
-					if (geoDual)
-					{
-						auto it = dualWinners.find(cellKey(pos));
-						if (it != dualWinners.end()) dualCell = &it->second;
-					}
 					for (int n=0; n<3; ++n)
 					{
 						C_D[n]=0;
@@ -334,13 +323,8 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_Op->GetIV(n,pos[0],pos[1],pos[2])==0)
 							continue;
 
-						CSProperties* prop = NULL;
-						if (dualCell)
-						{
-							if ((*dualCell)[n]) prop = (*dualCell)[n]->GetProperty();
-						}
-						else if (!geoDual)
-							prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
+						CSProperties* prop = geoDual ? winnerProperty(dualWinners, n)
+							: m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 
 						if (prop==NULL) continue;
 

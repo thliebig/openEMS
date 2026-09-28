@@ -12,14 +12,13 @@
 #include "extensions/operator_ext_upml.h"
 #include "extensions/operator_ext_excitation.h"
 #include "extensions/operator_ext_mur_abc.h"
-#include <cstdlib>
+#include "tools/useful.h"
+#include <algorithm>
 #include <cstdint>
 #include <limits>
 #include <string>
-#include <typeinfo>
 #include <thread>
-#include <exception>
-#include <algorithm>
+#include <typeinfo>
 
 using std::cout;
 using std::endl;
@@ -27,7 +26,6 @@ using std::endl;
 Operator_Metal* Operator_Metal::New(unsigned int threads)
 {
 	// Fail before the costly material/geometry sampling if no GPU is present.
-	// Engine_Metal also checks again at engine construction as a backstop.
 	std::string reason;
 	if (!MetalDeviceAvailable(reason))
 	{
@@ -104,69 +102,32 @@ bool Operator_Metal::Calc_EC()
 
 	MainOp->SetPos(0,0,0);
 
-	// The CPU engine parallelizes the material/geometry sampling by X range in
-	// Operator_Multithread. Operator_Metal derives from Operator_sse, so without
-	// this override the same CSXCAD-bound sampling runs on a single thread and
-	// dominates Metal operator setup. Writes are disjoint per X slice and the
-	// CSXCAD queries are read-only, matching the audited multithreaded path.
-	// (CSXCAD still writes its idempotent used-flag on the winning primitive,
-	// exactly as the existing Operator_Multithread path does.)
-	unsigned int workers = GetSetupThreads();
-	workers = std::min(workers,numLines[0]);
-	std::vector<std::thread> threads;
-	std::vector<std::exception_ptr> errors(workers);
-	auto run = [&](unsigned int worker) {
-		try {
-			const unsigned int start = numLines[0]*worker/workers;
-			const unsigned int stop = numLines[0]*(worker+1)/workers;
-			if (start < stop) Calc_EC_Range(start, stop-1);
-		} catch (...) { errors[worker]=std::current_exception(); }
-	};
-	try {
-		for (unsigned int i=0;i<workers;++i) threads.emplace_back(run,i);
-	} catch (...) {
-		for (auto& thread:threads) thread.join();
-		throw;
-	}
-	for (auto& thread:threads) thread.join();
-	for (auto error:errors) if (error) std::rethrow_exception(error);
-
+	// Same disjoint-X-slice parallel sampling as Operator_Multithread; CSXCAD
+	// queries are read-only apart from its idempotent primitive used-flag.
+	const unsigned int workers = std::min(GetSetupThreads(), numLines[0]);
+	ParallelRanges(numLines[0], workers, [this](unsigned int start, unsigned int stop) {
+		Calc_EC_Range(start, stop-1);
+	});
 	cout << "Metal: material EC threads: " << workers << endl;
 	return true;
 }
 
 void Operator_Metal::CalcOperatorCoefficients()
 {
-	unsigned int workers = GetSetupThreads();
-	workers = std::min(workers,numLines[0]);
-	// This arithmetic pass touches no CSXCAD geometry: it only reads EC arrays
-	// and writes disjoint X slabs of the operator coefficients. A thread-local
-	// AdrOp computes the linear index, so the shared MainOp position is never
-	// mutated concurrently.
-	std::vector<std::thread> threads;
-	std::vector<std::exception_ptr> errors(workers);
-	auto run = [&](unsigned int worker) {
-		try {
-			AdrOp address(MainOp);
-			unsigned int pos[3];
-			for (pos[0]=numLines[0]*worker/workers; pos[0]<numLines[0]*(worker+1)/workers; ++pos[0])
-				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2]) {
-						unsigned int index=address.SetPos(pos[0],pos[1],pos[2]);
-						// Call the index form directly: Calc_ECOperatorPos would use the
-						// shared MainOp position and is therefore not thread-safe.
-						for (int n=0; n<3; ++n) Calc_ECOperatorIndex(n,pos,index);
-					}
-		} catch (...) { errors[worker]=std::current_exception(); }
-	};
-	try {
-		for (unsigned int i=0;i<workers;++i) threads.emplace_back(run,i);
-	} catch (...) {
-		for (auto& thread:threads) thread.join();
-		throw;
-	}
-	for (auto& thread:threads) thread.join();
-	for (auto error:errors) if (error) std::rethrow_exception(error);
+	// Arithmetic only: reads EC arrays and writes disjoint X slabs. Each worker
+	// uses its own AdrOp, since Calc_ECOperatorPos mutates the shared MainOp.
+	const unsigned int workers = std::min(GetSetupThreads(), numLines[0]);
+	ParallelRanges(numLines[0], workers, [this](unsigned int start, unsigned int stop) {
+		AdrOp address(MainOp);
+		unsigned int pos[3];
+		for (pos[0]=start; pos[0]<stop; ++pos[0])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				{
+					const unsigned int index = address.SetPos(pos[0],pos[1],pos[2]);
+					for (int n=0; n<3; ++n) Calc_ECOperatorIndex(n,pos,index);
+				}
+	});
 	cout << "Metal: operator coefficient threads: " << workers << endl;
 }
 

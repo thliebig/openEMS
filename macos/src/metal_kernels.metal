@@ -156,7 +156,7 @@ struct DiamondParams
 	uint nx;
 	uint ny;
 	uint nzv;
-	uint timestep;
+	uint timestep; // absolute timestep of the first local step
 	uint depth;
 	float dT_half;
 	uint pml_region_count;
@@ -216,6 +216,18 @@ struct UPMLArgs
 	device float* flux[UPML_MAX_REGIONS * 2];
 };
 
+// Signal index of a soft source at absolute timestep t, mirroring
+// Engine_Ext_Excitation: delayed, wrapped by the period (none: t + 1), sample 0
+// past the signal length. Callers keep "field += amplitude * signal[i]" in one
+// expression so it contracts to the same FMA as the CPU hook.
+inline uint source_sample(const DiamondSource source, uint t)
+{
+	uint sample = t > source.delay ? t - source.delay : 0;
+	sample %= source.period ? source.period : t + 1;
+	if (sample >= source.signal_length) sample = 0;
+	return source.signal_offset + sample;
+}
+
 inline void pml_pre_component(device float4* field, uint fi,
 	const device float* self, const device float* old, device float* flux,
 	uint off, uint slot, uint nzv, uint sz, uint nz)
@@ -269,8 +281,8 @@ inline void pml_post_component(device float4* field, uint fi,
 }
 
 // Apply one region to all three components of a packed field. Regions are
-// disjoint in (x, y), so a cell is touched by at most one slab; callers still
-// walk the full list so a nonstandard layout stays correct.
+// disjoint boxes, so each lane is touched by at most one slab, but the lower and
+// upper z slabs share (x, y) and one float4 can hold lanes of both.
 inline void pml_region(device float4* field, uint base, uint x, uint y,
 	uint slot, uint nzv, const device PMLRegion* regions, uint r,
 	const device UPMLArgs& args, bool voltage, bool post)
@@ -326,9 +338,9 @@ kernel void update_diamond(
 	const uint slot0 = tid % slots;
 	const uint pair0 = tid / slots;
 	const uint groups = threads / slots;
-	for (uint timestep = 0; timestep < p.depth; ++timestep)
+	for (uint local_step = 0; local_step < p.depth; ++local_step)
 	{
-		const DiamondStep step = tiles[tileId].steps[timestep];
+		const DiamondStep step = tiles[tileId].steps[local_step];
 		if (step.voltage_range.x >= 0)
 		{
 			const uint vx0 = step.voltage_range.x, vy0 = step.voltage_range.z;
@@ -426,12 +438,8 @@ kernel void update_diamond(
 				     n < step.voltage_source_offset + step.voltage_source_count; ++n)
 				{
 					const DiamondSource source = sources[source_indices[n]];
-					uint sample = p.timestep + timestep > source.delay ?
-						p.timestep + timestep - source.delay : 0;
-					sample %= source.period ? source.period : p.timestep + timestep + 1;
-					if (sample >= source.signal_length) sample = 0;
 					((device float*)volt)[source.field_index] +=
-						source.amplitude * signal[source.signal_offset + sample];
+						source.amplitude * signal[source_sample(source, p.timestep + local_step)];
 				}
 		}
 		threadgroup_barrier(mem_flags::mem_device);
@@ -510,12 +518,8 @@ kernel void update_diamond(
 			     n < step.current_source_offset + step.current_source_count; ++n)
 			{
 				const DiamondSource source = sources[source_indices[n]];
-				uint sample = p.timestep + timestep > source.delay ?
-					p.timestep + timestep - source.delay : 0;
-				sample %= source.period ? source.period : p.timestep + timestep + 1;
-				if (sample >= source.signal_length) sample = 0;
 				((device float*)curr)[source.field_index] +=
-					source.amplitude * signal[source.signal_offset + sample];
+					source.amplitude * signal[source_sample(source, p.timestep + local_step)];
 			}
 		threadgroup_barrier(mem_flags::mem_device);
 	}
@@ -632,12 +636,12 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 	mp_df cd[3] = {{gridD[gidx[0]].x, gridD[gidx[0]].y},
 	               {gridD[gidx[1]].x, gridD[gidx[1]].y},
 	               {gridD[gidx[2]].x, gridD[gidx[2]].y}};
-	uint result = 0xffffffffu;
+	uint result = MP_WINNER_NONE;
 	for (uint k = offsets[line]; k < offsets[line+1]; ++k)
 	{
 		uint id = candidates[k];
 		Primitive q = prims[id];
-		if (q.kind == 0) { result = 0xfffffffeu; break; }
+		if (q.kind == MP_KIND_CPU) { result = MP_WINNER_CPU; break; }
 		bool outside = false, uncertain = false;
 		uint pos[3] = {x,y,z};
 		for (uint a = 0; a < 3; ++a)
@@ -646,8 +650,8 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 			outside |= pos[a] < q.bounds[b] || pos[a] >= q.bounds[b+1];
 		}
 		if (outside) continue;
-		if (q.kind == 1) { result = id; break; }
-		if (q.kind == 3 || q.kind == 4)
+		if (q.kind == MP_KIND_BOX) { result = id; break; }
+		if (q.kind == MP_KIND_CYLINDER || q.kind == MP_KIND_SHELL)
 		{
 			Cylinder cy = cyls[q.first];
 			float3 a = float3(cy.p0[0], cy.p0[1], cy.p0[2]);
@@ -678,7 +682,7 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 				else
 				{
 					float d = length(pp - (a + t*ab));
-					if (q.kind == 3)
+					if (q.kind == MP_KIND_CYLINDER)
 					{
 						if (d <= cy.radius - e) { result = id; break; }
 						if (d <= cy.radius + e) uncertain = true;
@@ -693,7 +697,7 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 					}
 				}
 			}
-			if (uncertain) { result = 0xfffffffeu; break; }
+			if (uncertain) { result = MP_WINNER_CPU; break; }
 			continue;
 		}
 		// Mirror CSPrimPolygon::IsInside with exact (double-float) predicates.
@@ -731,7 +735,7 @@ kernel void pec_mask(const device Primitive* prims [[buffer(0)]],
 			startover = endover;
 			x1 = x2; y1 = y2;
 		}
-		if (uncertain) { result = 0xfffffffeu; break; }
+		if (uncertain) { result = MP_WINNER_CPU; break; }
 		if (onedge || winding != 0) { result = id; break; }
 		continue;
 	}

@@ -229,12 +229,8 @@ public:
 
 	Operator_Ext_Excitation* GetExcitationExtension() const;
 
-	//! Number of threads to use for parallel, disjoint setup passes.
-	/*!
-	  Returns 0 when the operator does not support parallel setup, in which case
-	  setup passes stay single-threaded. Operator_Metal returns its configured
-	  thread count, or the hardware concurrency for the auto setting.
-	*/
+	//! Number of threads for parallel, disjoint setup passes; 0 or 1 keeps them
+	//! single-threaded.
 	virtual unsigned int GetSetupThreads() const { return 0; }
 
 	//! One Yee component whose winning MATERIAL|METAL primitive was resolved by
@@ -250,14 +246,13 @@ public:
 	//! Class of EC-consuming extension a resolved winner belongs to.
 	enum GeometryWinnerType { GEO_CONDUCTING_SHEET, GEO_DISPERSIVE };
 
-	//! Resolved geometry winners for an EC-consuming extension.
+	//! Resolved geometry winners of \a type, sorted by (x, y, z, n).
 	/*!
-	  An accelerated operator (e.g. Metal) may resolve the winning MATERIAL|METAL
-	  primitive at every Yee component while mapping PEC. Extensions that would
-	  otherwise re-query CSXCAD per cell can consume these instead, avoiding the
-	  per-row GetAllPrimitives re-sort and the per-component point-in-polygon test.
-	  Returns NULL when no such pass ran; callers must then fall back to CSXCAD.
-	  Only valid during extension construction.
+	  An accelerated operator may resolve the winning MATERIAL|METAL primitive at
+	  every Yee component while mapping PEC; extensions consume these instead of
+	  re-querying CSXCAD per component. A component absent from the list has no
+	  primitive of \a type. Returns NULL when no such pass ran; callers must then
+	  query CSXCAD. Only valid during extension construction.
 	*/
 	virtual const std::vector<GeometryWinner>* GetGeometryWinners(GeometryWinnerType type, bool dualMesh) const { return nullptr; }
 
@@ -355,9 +350,13 @@ protected:
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);
+	//! Calc operator at \a pos with its precomputed linear \a index; unlike
+	//! Calc_ECOperatorPos it does not touch MainOp, so it is thread-safe.
 	void Calc_ECOperatorIndex(int n, unsigned int* pos, unsigned int index);
+	//! Calc operator at every position.
 	virtual void CalcOperatorCoefficients();
-	// Opt-in only: legacy/material extensions may still consume EC arrays.
+	//! True if no extension reads the EC arrays, so they can be freed before
+	//! the extensions are built. Opt-in: extensions may consume EC arrays.
 	virtual bool CanReleaseECBeforeExtensions() const { return false; }
 
 	//! Calculate and setup lumped elements

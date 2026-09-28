@@ -12,6 +12,10 @@
 
 #include "engine_sse.h"
 
+#include <string>
+
+class Operator_Ext_LorentzMaterial;
+
 class Engine_Metal : public Engine_sse
 {
 public:
@@ -34,21 +38,23 @@ protected:
 	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
 
 private:
-	void InitUPML();
+	//! Why the diamond kernel cannot run this model, or "" if it can.
+	std::string DiamondBlocker() const;
+	// Diamond path setup.
 	void InitUPMLDiamond();
-	void InitExcitations();
-	void InitADE();
 	void InitRLC();
+	void InitExcitations();
 	void InitDiamondUpdate();
 	void UpdateDiamond(unsigned int depth);
+	// Legacy diagnostic path setup and stepping.
+	void InitUPML();
+	void InitADE();
+	static bool IsPlainVoltADE(const Operator_Ext_LorentzMaterial* op, int order);
 	bool HasADEOffload(const Engine_Extension* extension) const;
 	void AdvanceADEOffload(Engine_Extension* extension);
 	void ApplyADEOffload(Engine_Extension* extension);
-	//! Scan engine extensions and disable the diamond wavefront for any hook
-	//! that has not migrated into the fused kernel.
-	void ScanExtensionsForDiamond();
-	//! Legacy path only: dispatch one pre/post hook round, running migrated
-	//! extensions on the GPU and draining before every CPU hook.
+	//! Dispatch one pre/post hook round, running offloaded extensions on the
+	//! GPU and draining before every CPU hook.
 	void DispatchExtensionHooks(bool voltage, bool pre);
 	void FinishMetalCommands();
 

@@ -14,6 +14,8 @@
 #include "extensions/operator_ext_excitation.h"
 #include "extensions/engine_ext_lorentzmaterial.h"
 #include "extensions/engine_ext_lumpedRLC.h"
+#include "extensions/operator_ext_lorentzmaterial.h"
+#include "extensions/operator_ext_lumpedRLC.h"
 #include "excitation.h"
 #include "metal_library.h"
 
@@ -93,7 +95,7 @@ struct DiamondParams
 {
 	uint32_t nx, ny, nzv, timestep, depth;
 	float dT_half;
-	uint32_t pmlRegionCount, pmlPad;
+	uint32_t pmlRegionCount, pad0;
 };
 
 struct DiamondSource
@@ -117,8 +119,7 @@ using DiamondRange = std::pair<int32_t, int32_t>;
 using DiamondBlock = std::vector<DiamondRange>;
 using DiamondAxis = std::array<std::vector<DiamondBlock>, 2>;
 
-// Mountain/valley construction adapted for Metal from the experimental
-// project-diamond-rework1 CPU tiler. At every half-step, both phases together
+// Mountain/valley construction for one axis. At every half-step, both phases together
 // partition the axis while each phase remains internally independent.
 static DiamondAxis MakeDiamondAxis(uint32_t width, uint32_t blockWidth, uint32_t halfSteps)
 {
@@ -176,6 +177,26 @@ static_assert(sizeof(RLCEntry) == 32, "Metal RLCEntry ABI");
 static_assert(sizeof(RLCState) == 16, "Metal RLCState ABI");
 static_assert(sizeof(PMLRegionDesc) == 24, "Metal PMLRegionDesc ABI");
 
+// Scalar float index of component n at grid (x, y, z) in the packed engine
+// layout [x][y][z % nzv][n][z / nzv]. SetupCSXGrid bounds it to uint32.
+static uint32_t PackedIndex(uint32_t ny, uint32_t nzv, uint32_t x, uint32_t y, uint32_t z, uint32_t n)
+{
+	return static_cast<uint32_t>(((((size_t)x * ny + y) * nzv + z % nzv) * 3 + n) * 4 + z / nzv);
+}
+
+// Diagnostic switches: set means non-empty and not "0"; off means exactly "0".
+static bool EnvSet(const char* name)
+{
+	const char* value = std::getenv(name);
+	return value && value[0] != '\0' && value[0] != '0';
+}
+
+static bool EnvOff(const char* name)
+{
+	const char* value = std::getenv(name);
+	return value && value[0] == '0';
+}
+
 static std::runtime_error MetalError(const char* what, NSError* error)
 {
 	std::string message(what);
@@ -209,21 +230,18 @@ struct Engine_Metal::MetalState
 	id<MTLComputePipelineState> pmlPostPipeline[2];
 	size_t reusedPMLBytes = 0;
 	id<MTLCommandBuffer> pending;
-	bool diamondRequested = true;
-	bool legacyRequested = false;
+	// Chosen once in Init: the in-place diamond kernel, or the explicitly
+	// requested legacy two-dispatch diagnostic path.
+	bool diamond = false;
 	id<MTLBuffer> diamondTiles[DIAMOND_DEPTH + 1][4];
 	id<MTLBuffer> diamondSourceIndices[DIAMOND_DEPTH + 1][4];
 	id<MTLBuffer> diamondRLCIndices[DIAMOND_DEPTH + 1][4];
 	id<MTLBuffer> diamondSourceTable;
 	uint32_t diamondTileCount[DIAMOND_DEPTH + 1][4] = {};
-	bool diamondUpdate = false;
-	bool diamondHasSources = false;
-	bool diamondHasRLC = false;
-	float rlcDtHalf = 0.0f;
-	id<MTLBuffer> diamondSignal;
+	id<MTLBuffer> diamondSignal; // nil when the model has no sources
 
-	// Host-side source lists per excitation extension; consumed only by
-	// InitDiamondUpdate. The signal pointers stay owned by the operator.
+	// Host-side source lists per excitation extension, filled by InitExcitations
+	// for InitDiamondUpdate. The signal pointers stay owned by the operator.
 	struct ExcitationRegion
 	{
 		std::vector<ExcitationSource> sources[2];
@@ -233,7 +251,10 @@ struct Engine_Metal::MetalState
 	};
 	std::vector<ExcitationRegion> excitations;
 
-	struct PMLRegion
+	// Legacy path: one UPML slab conditioned by the indexed pre/post kernels.
+	// Operator coefficient arrays are permuted into packed-field order in place
+	// (see ReorderedArray) or replaced by lossless dictionaries (CompressPML).
+	struct LegacyPMLRegion
 	{
 		Engine_Ext_UPML* extension;
 		PMLParams params;
@@ -245,10 +266,10 @@ struct Engine_Metal::MetalState
 		id<MTLBuffer> newFlux[2];
 		bool coefficientsReleased[2] = {false, false};
 	};
-	std::vector<PMLRegion> pml;
+	std::vector<LegacyPMLRegion> legacyPml;
 
-	// Plain volt-ADE (conducting-sheet) regions offloaded to the GPU. One entry
-	// per active packed-field edge, with two poles packed into coeff/state.
+	// Legacy path: plain volt-ADE (conducting-sheet) regions offloaded to the
+	// GPU. One entry per active packed-field edge, two poles packed per entry.
 	struct ADERegion
 	{
 		Engine_Ext_LorentzMaterial* extension;
@@ -259,21 +280,23 @@ struct Engine_Metal::MetalState
 	};
 	std::vector<ADERegion> ade;
 
-	// Lumped RLC elements folded into the diamond wavefront. One merged region
-	// keeps the kernel signature to a single entries/state/index triple; the
-	// host copy of each element's (x, y) drives the per-step schedule.
+	// Lumped RLC elements of all extensions, merged so the kernel binds a single
+	// entries/state/index triple; the host copy of each element's (x, y) drives
+	// the per-step schedule. count == 0 means no RLC in the diamond kernel.
 	struct RLCRegion
 	{
-		uint32_t count;
+		uint32_t count = 0;
+		float dtHalf = 0.0f;
 		id<MTLBuffer> entries;
 		id<MTLBuffer> state;
 		std::vector<std::array<uint32_t, 2>> xy;
 	};
-	std::vector<RLCRegion> rlc;
+	RLCRegion rlc;
 
 	// UPML slabs folded into the diamond wavefront. The operator coefficient and
 	// extension flux arrays are wrapped in place (no copy) and referenced through
-	// one argument buffer; RegionDesc carries only the grid bounds.
+	// one argument buffer; PMLRegionDesc carries only the grid bounds.
+	// count == 0 means no UPML in the diamond kernel.
 	struct DiamondPML
 	{
 		id<MTLBuffer> regions;
@@ -283,9 +306,8 @@ struct Engine_Metal::MetalState
 		uint32_t count = 0;
 	};
 	DiamondPML diamondPml;
-	bool diamondHasUPML = false;
 
-	void CompressPML(PMLRegion& region, unsigned int field)
+	void CompressPML(LegacyPMLRegion& region, unsigned int field)
 	{
 		// Lossless dictionaries substantially reduce resident PML memory.
 		using Record = std::array<uint32_t, 3>;
@@ -389,7 +411,7 @@ struct Engine_Metal::MetalState
 		// Compact dictionaries replaced and released the operator-owned dense
 		// arrays during the run. Recreate scalar NIJK order so the same operator
 		// remains valid if a caller constructs another CPU or Metal engine.
-		for (auto& region : pml)
+		for (auto& region : legacyPml)
 			for (unsigned int field=0; field<2; ++field)
 			{
 				if (!region.coefficientsReleased[field]) continue;
@@ -679,29 +701,32 @@ void Engine_Metal::Init()
 			m_Metal->pmlPostPipeline[compressed] = [m_Metal->device newComputePipelineStateWithFunction:function error:&error];
 			if (!m_Metal->pmlPostPipeline[compressed]) throw MetalError("Metal: UPML post pipeline failed", error);
 		}
-		InitExcitations();
-		ScanExtensionsForDiamond();
-		const char* reference = std::getenv("OPENEMS_METAL_FP64_REFERENCE");
-		m_Metal->referenceEnabled = reference && reference[0] != '\0' && reference[0] != '0';
-		const char* wavefront = std::getenv("OPENEMS_METAL_FUSED_PIPELINE");
-		if (wavefront && wavefront[0] == '0')
+		m_Metal->referenceEnabled = EnvSet("OPENEMS_METAL_FP64_REFERENCE");
+		const bool legacy = m_Metal->referenceEnabled ||
+			EnvOff("OPENEMS_METAL_FUSED_PIPELINE") || EnvOff("OPENEMS_METAL_PML");
+		if (legacy)
+			std::cerr << "Metal: legacy two-dispatch pipeline selected by a diagnostic override" << std::endl;
+		else
 		{
-			m_Metal->diamondRequested = false;
-			m_Metal->legacyRequested = true;
-			std::cerr << "Metal: legacy two-dispatch pipeline selected by OPENEMS_METAL_FUSED_PIPELINE=0" << std::endl;
+			const std::string blocker = DiamondBlocker();
+			if (!blocker.empty())
+				throw std::runtime_error("Metal: " + blocker +
+					"; refusing to start a legacy simulation. "
+					"Use OPENEMS_METAL_FUSED_PIPELINE=0 only for an explicit diagnostic run.");
 		}
-		if (m_Metal->referenceEnabled)
+		m_Metal->diamond = !legacy;
+		if (m_Metal->diamond)
 		{
-			m_Metal->diamondRequested = false;
-			m_Metal->legacyRequested = true;
+			InitUPMLDiamond();
+			InitRLC();
+			InitDiamondUpdate();
 		}
-		InitADE();
-		if (!m_Metal->ade.empty())
-			m_Metal->diamondRequested = false;
-		InitUPML();
-		InitRLC();
-		InitDiamondUpdate();
-		cout << "Metal: in-place diamond E/H pipeline: " << (m_Metal->diamondUpdate ? "enabled" : "disabled") << endl;
+		else
+		{
+			InitADE();
+			InitUPML();
+		}
+		cout << "Metal: in-place diamond E/H pipeline: " << (m_Metal->diamond ? "enabled" : "disabled") << endl;
 		if (m_Metal->referenceEnabled)
 		{
 			size_t scalarCount = f4_volt_ptr->size() * 4;
@@ -721,17 +746,9 @@ void Engine_Metal::InitUPML()
 	for (Engine_Extension* extension : m_Eng_exts)
 		if (dynamic_cast<Engine_Ext_UPML*>(extension))
 			m_Metal->hasUPML = true;
-	const char* setting = std::getenv("OPENEMS_METAL_PML");
-	if (setting && setting[0] == '0')
+	if (EnvOff("OPENEMS_METAL_PML"))
 	{
-		m_Metal->diamondRequested = false;
-		m_Metal->legacyRequested = true;
 		cout << "Metal: CPU UPML conditioning selected" << endl;
-		return;
-	}
-	if (m_Metal->diamondRequested)
-	{
-		InitUPMLDiamond();
 		return;
 	}
 
@@ -754,7 +771,7 @@ void Engine_Metal::InitUPML()
 		// Keep its no-op CPU hook rather than creating zero-length buffers.
 		if (!op->m_numLines[0] || !op->m_numLines[1] || !op->m_numLines[2])
 			continue;
-		MetalState::PMLRegion region;
+		MetalState::LegacyPMLRegion region;
 		region.extension = pml;
 		region.params = {op->m_StartPos[0], op->m_StartPos[1], op->m_StartPos[2],
 			op->m_numLines[0], op->m_numLines[1], op->m_numLines[2], numLines[1], numVectors};
@@ -812,9 +829,9 @@ void Engine_Metal::InitUPML()
 		}
 		// Register before compressing: CompressPML may release the operator-owned
 		// dense arrays, and RestorePML can only rebuild them from pml.
-		m_Metal->pml.push_back(region);
-		m_Metal->CompressPML(m_Metal->pml.back(), 0);
-		m_Metal->CompressPML(m_Metal->pml.back(), 1);
+		m_Metal->legacyPml.push_back(region);
+		m_Metal->CompressPML(m_Metal->legacyPml.back(), 0);
+		m_Metal->CompressPML(m_Metal->legacyPml.back(), 1);
 	}
 	// When every reordered operator coefficient was replaced by a compact
 	// dictionary, no scalar restoration needs the setup scratch. Flux storage is
@@ -824,9 +841,9 @@ void Engine_Metal::InitUPML()
 		m_Metal->reorderScratch.clear();
 		m_Metal->reorderScratch.shrink_to_fit();
 	}
-	if (!m_Metal->pml.empty())
+	if (!m_Metal->legacyPml.empty())
 	{
-		cout << "Metal: GPU UPML conditioning: " << m_Metal->pml.size() << " regions" << endl;
+		cout << "Metal: GPU UPML conditioning: " << m_Metal->legacyPml.size() << " regions" << endl;
 		cout << "Metal: UPML duplicate bytes avoided: " << m_Metal->reusedPMLBytes << endl;
 		cout << "Metal: UPML reorder scratch bytes retained: " << m_Metal->reorderScratch.size()*sizeof(float) << endl;
 	}
@@ -877,11 +894,10 @@ void Engine_Metal::InitUPMLDiamond()
 	if (!m_Metal->diamondPml.regions)
 		throw std::runtime_error("Metal: failed to allocate diamond UPML region buffer");
 	m_Metal->diamondPml.count = static_cast<uint32_t>(regions.size());
-	m_Metal->diamondHasUPML = true;
 	cout << "Metal: diamond UPML: " << regions.size() << " regions, zero-copy" << endl;
 }
 
-void Engine_Metal::ScanExtensionsForDiamond()
+std::string Engine_Metal::DiamondBlocker() const
 {
 	for (Engine_Extension* extension : m_Eng_exts)
 	{
@@ -892,22 +908,12 @@ void Engine_Metal::ScanExtensionsForDiamond()
 		{
 			Operator_Ext_Excitation* op = excitation->m_Op_Exc;
 			if (!op || !op->m_Exc || op->m_Exc->GetLength() == 0)
-			{
-				if (m_Metal->diamondRequested)
-				{
-					m_Metal->diamondRequested = false;
-					std::cerr << "Metal: excitation has no signal and cannot use the diamond wavefront" << std::endl;
-				}
-			}
+				return "excitation has no signal and cannot use the diamond wavefront";
 			continue;
 		}
-		if (m_Metal->diamondRequested)
-		{
-			m_Metal->diamondRequested = false;
-			std::cerr << "Metal: extension '" << extension->GetExtensionName()
-			          << "' has not migrated to the diamond wavefront" << std::endl;
-		}
+		return "extension '" + extension->GetExtensionName() + "' has not migrated to the diamond wavefront";
 	}
+	return "";
 }
 
 void Engine_Metal::InitExcitations()
@@ -936,8 +942,7 @@ void Engine_Metal::InitExcitations()
 				const uint32_t y = field ? op->Curr_index[1][n] : op->Volt_index[1][n];
 				const uint32_t z = field ? op->Curr_index[2][n] : op->Volt_index[2][n];
 				const uint32_t dir = field ? op->Curr_dir[n] : op->Volt_dir[n];
-				const size_t index = ((((size_t)x * numLines[1] + y) * numVectors + z % numVectors) * 3 + dir) * 4 + z / numVectors;
-				region.sources[field][n] = {static_cast<uint32_t>(index),
+				region.sources[field][n] = {PackedIndex(numLines[1], numVectors, x, y, z, dir),
 					field ? op->Curr_amp[n] : op->Volt_amp[n],
 					field ? op->Curr_delay[n] : op->Volt_delay[n], x, y};
 			}
@@ -948,16 +953,7 @@ void Engine_Metal::InitExcitations()
 
 void Engine_Metal::InitDiamondUpdate()
 {
-	if (!m_Metal->diamondRequested || !m_Metal->pml.empty() || !m_Metal->ade.empty())
-	{
-		if (m_Metal->legacyRequested)
-			return;
-		const std::string reason = !m_Metal->pml.empty() ? "UPML" :
-			!m_Metal->ade.empty() ? "ADE" : "a CPU extension hook";
-		throw std::runtime_error("Metal: " + reason +
-			" has not migrated to the diamond E/H kernel; refusing to start a legacy simulation. "
-			"Use OPENEMS_METAL_FUSED_PIPELINE=0 only for an explicit diagnostic run.");
-	}
+	InitExcitations();
 	struct SourceTemplate { uint32_t sourceIndex, x, y; bool voltage; };
 	std::vector<SourceTemplate> sourceTemplates;
 	std::vector<DiamondSource> sourceTable;
@@ -986,8 +982,8 @@ void Engine_Metal::InitDiamondUpdate()
 	MTLFunctionConstantValues* constants = [MTLFunctionConstantValues new];
 	bool compressed = m_Metal->coeffIndex != nil;
 	bool hasSources = !sourceTemplates.empty();
-	bool hasRLC = m_Metal->diamondHasRLC && !m_Metal->rlc.empty();
-	bool hasPML = m_Metal->diamondHasUPML && m_Metal->diamondPml.count > 0;
+	bool hasRLC = m_Metal->rlc.count > 0;
+	bool hasPML = m_Metal->diamondPml.count > 0;
 	[constants setConstantValue:&compressed type:MTLDataTypeBool atIndex:0];
 	[constants setConstantValue:&hasSources type:MTLDataTypeBool atIndex:2];
 	[constants setConstantValue:&hasRLC type:MTLDataTypeBool atIndex:3];
@@ -1021,7 +1017,6 @@ void Engine_Metal::InitDiamondUpdate()
 					atIndex:UPML_MAX_REGIONS * 6 + r * 2 + b];
 		}
 	}
-	m_Metal->diamondHasSources = hasSources;
 	if (hasSources)
 	{
 		m_Metal->diamondSourceTable = [m_Metal->device newBufferWithBytes:sourceTable.data()
@@ -1047,15 +1042,14 @@ void Engine_Metal::InitDiamondUpdate()
 	{
 		rlcByXY.resize((size_t)numLines[0] * numLines[1]);
 		uint32_t element = 0;
-		for (const auto& region : m_Metal->rlc)
-			for (const auto& position : region.xy)
-				rlcByXY[(size_t)position[0] * numLines[1] + position[1]].push_back(element++);
+		for (const auto& position : m_Metal->rlc.xy)
+			rlcByXY[(size_t)position[0] * numLines[1] + position[1]].push_back(element++);
 	}
 
 	const uint32_t blockWidth = 2;
 	uint64_t auxiliaryBytes = signal.size() * sizeof(float) +
 		sourceTable.size() * sizeof(DiamondSource) +
-		(hasRLC ? m_Metal->rlc.front().count * (sizeof(RLCEntry) + sizeof(RLCState)) : 0);
+		m_Metal->rlc.count * (sizeof(RLCEntry) + sizeof(RLCState));
 	for (uint32_t depth = 1; depth <= DIAMOND_DEPTH; ++depth)
 	{
 		const DiamondAxis xAxis = MakeDiamondAxis(numLines[0], blockWidth, depth * 2);
@@ -1152,7 +1146,6 @@ void Engine_Metal::InitDiamondUpdate()
 				throw std::runtime_error("Metal: failed to allocate diamond schedule");
 		}
 	}
-	m_Metal->diamondUpdate = true;
 	cout << "Metal: in-place diamond update: " << DIAMOND_DEPTH
 	     << " timesteps/block, width " << blockWidth
 	     << ", " << auxiliaryBytes << " auxiliary bytes" << endl;
@@ -1174,8 +1167,7 @@ void Engine_Metal::DispatchExtensionHooks(bool voltage, bool pre)
 {
 	@autoreleasepool
 	{
-		// Legacy path only (Engine::IterateTS drives these hooks; the diamond
-		// kernel never calls them). Keep the CPU extension order exactly: pre in
+		// Keep the CPU extension order exactly: pre in
 		// reverse, post forward. Separate encoders order even overlapping
 		// regions; CPU hooks see only completed GPU writes. Typically
 		// pre/field/post share one submission.
@@ -1191,9 +1183,9 @@ void Engine_Metal::DispatchExtensionHooks(bool voltage, bool pre)
 					AdvanceADEOffload(extension);
 				continue;
 			}
-			auto region = std::find_if(m_Metal->pml.begin(), m_Metal->pml.end(),
-				[extension](const MetalState::PMLRegion& r) { return r.extension == extension; });
-			if (region == m_Metal->pml.end())
+			auto region = std::find_if(m_Metal->legacyPml.begin(), m_Metal->legacyPml.end(),
+				[extension](const MetalState::LegacyPMLRegion& r) { return r.extension == extension; });
+			if (region == m_Metal->legacyPml.end())
 			{
 				FinishMetalCommands();
 				if (voltage)
@@ -1297,37 +1289,38 @@ void Engine_Metal::Apply2Voltages()
 	}
 }
 
+// True for the plain volt-ADE recurrence (the conducting-sheet model), the only
+// ADE form the ade_advance/ade_apply kernels implement. Lorentz flux states and
+// ADE currents would need extra GPU state.
+bool Engine_Metal::IsPlainVoltADE(const Operator_Ext_LorentzMaterial* op, int order)
+{
+	if (order < 1 || order > 2 || static_cast<int>(op->m_LM_Count.size()) < order)
+		return false;
+	bool any = false;
+	for (int o = 0; o < order; ++o)
+	{
+		if (op->m_volt_Lor_ADE_On[o] || op->m_curr_ADE_On[o] || op->m_curr_Lor_ADE_On[o])
+			return false;
+		any = any || op->m_volt_ADE_On[o];
+	}
+	return any;
+}
+
 void Engine_Metal::InitADE()
 {
-	// The FP64 reference reproduces every extension on the CPU, and the diamond
-	// pipeline never calls Apply2Voltages, so both keep the ADE on the CPU.
-	if (m_Metal->referenceEnabled || m_Metal->diamondRequested)
-	{
-		for (Engine_Extension* extension : m_Eng_exts)
-		{
-			Engine_Ext_LorentzMaterial* lor = dynamic_cast<Engine_Ext_LorentzMaterial*>(extension);
-			if (lor && lor->MetalADEOffloadSupported())
-			{
-				std::cerr << "Metal: conducting-sheet ADE stays on the CPU ("
-				          << (m_Metal->referenceEnabled ? "FP64 reference mode" : "diamond pipeline")
-				          << ")" << std::endl;
-				break;
-			}
-		}
+	// The FP64 reference reproduces every extension on the CPU.
+	if (m_Metal->referenceEnabled)
 		return;
-	}
 
-	const uint32_t ny = numLines[1];
-	const uint32_t nzv = numVectors;
 	size_t total = 0;
 	for (Engine_Extension* extension : m_Eng_exts)
 	{
 		Engine_Ext_LorentzMaterial* lor = dynamic_cast<Engine_Ext_LorentzMaterial*>(extension);
 		if (!lor)
 			continue;
-		if (!lor->MetalADEOffloadSupported())
+		const Operator_Ext_LorentzMaterial* op = lor->m_Op_Ext_Lor;
+		if (!IsPlainVoltADE(op, lor->m_Order))
 		{
-			// Lorentz flux states and ADE-current schemes need extra GPU state.
 			std::cerr << "Metal: dispersive/ADE extension '" << extension->GetExtensionName()
 			          << "' stays on the CPU (only the conducting-sheet volt-ADE is offloaded)" << std::endl;
 			continue;
@@ -1337,46 +1330,33 @@ void Engine_Metal::InitADE()
 		// so merge by packed field index. One thread then owns every pole of one
 		// edge, which keeps the apply subtraction race-free and bit-identical to
 		// the CPU sequence (pole 0 then pole 1).
-		std::unordered_map<uint32_t, uint32_t> first;
+		std::unordered_map<uint32_t, uint32_t> entryOf;
 		std::vector<uint32_t> indices;
 		std::vector<float> coeff;
-		const int order = lor->MetalADEOrder();
-		for (int o = 0; o < order; ++o)
+		for (int o = 0; o < lor->m_Order; ++o)
 		{
-			if (!lor->MetalADEVoltOn(o))
+			if (!op->m_volt_ADE_On[o])
 				continue;
-			const unsigned int count = lor->MetalADECount(o);
-			const unsigned int* px = lor->MetalADEPos(o, 0);
-			const unsigned int* py = lor->MetalADEPos(o, 1);
-			const unsigned int* pz = lor->MetalADEPos(o, 2);
-			for (unsigned int i = 0; i < count; ++i)
-			{
-				const uint32_t x = px[i], y = py[i], z = pz[i];
-				const uint32_t slot = z % nzv;
-				const uint32_t lane = z / nzv;
+			unsigned int* const* pos = op->m_LM_pos[o];
+			for (unsigned int i = 0; i < op->m_LM_Count[o]; ++i)
 				for (int n = 0; n < 3; ++n)
 				{
-					const float vi = lor->MetalADEVoltInt(o, n)[i];
-					const float ve = lor->MetalADEVoltExt(o, n)[i];
+					const float vi = op->v_int_ADE[o][n][i];
+					const float ve = op->v_ext_ADE[o][n][i];
 					if (vi == 0.0f && ve == 0.0f)
 						continue;
-					const uint32_t f = (3 * ((x * ny + y) * nzv + slot) + n) * 4 + lane;
-					auto found = first.find(f);
-					uint32_t entry;
-					if (found == first.end())
+					const uint32_t f = PackedIndex(numLines[1], numVectors, pos[0][i], pos[1][i], pos[2][i], n);
+					auto inserted = entryOf.emplace(f, static_cast<uint32_t>(indices.size()));
+					if (inserted.second)
 					{
-						entry = static_cast<uint32_t>(indices.size());
-						first.emplace(f, entry);
 						indices.push_back(f);
 						// Identity poles so an absent order stays a no-op.
 						coeff.insert(coeff.end(), {1.0f, 0.0f, 1.0f, 0.0f});
 					}
-					else
-						entry = found->second;
+					const uint32_t entry = inserted.first->second;
 					coeff[entry * 4 + 2 * o] = vi;
 					coeff[entry * 4 + 2 * o + 1] = ve;
 				}
-			}
 		}
 		if (indices.empty())
 			continue;
@@ -1403,53 +1383,35 @@ void Engine_Metal::InitADE()
 
 void Engine_Metal::InitRLC()
 {
-	// The legacy diagnostic path keeps the lumped RLC on the CPU, so only build
-	// the GPU region when the diamond wavefront will run.
-	if (!m_Metal->diamondRequested)
-		return;
-
 	std::vector<RLCEntry> entries;
 	std::vector<std::array<uint32_t, 2>> xy;
-	FDTD_FLOAT dTHalf = 0.0;
 	for (Engine_Extension* extension : m_Eng_exts)
 	{
 		Engine_Ext_LumpedRLC* rlc = dynamic_cast<Engine_Ext_LumpedRLC*>(extension);
-		if (!rlc || !rlc->MetalRLCOffloadSupported())
+		if (!rlc)
 			continue;
-		dTHalf = rlc->MetalRLCDtHalf();
-		const uint32_t count = rlc->MetalRLCCount();
-		for (uint32_t i = 0; i < count; ++i)
+		const Operator_Ext_LumpedRLC* op = rlc->m_Op_Ext_RLC;
+		m_Metal->rlc.dtHalf = op->m_dT_half;
+		for (uint32_t i = 0; i < op->RLC_count; ++i)
 		{
-			const int dir = rlc->MetalRLCDir(i);
+			const int dir = op->v_RLC_dir[i];
 			if (dir < 0 || dir > 2)
 				throw std::runtime_error("Metal: lumped RLC direction out of range");
-			const uint32_t x = rlc->MetalRLCPos(0, i);
-			const uint32_t y = rlc->MetalRLCPos(1, i);
-			const uint32_t z = rlc->MetalRLCPos(2, i);
+			const uint32_t x = op->v_RLC_pos[0][i];
+			const uint32_t y = op->v_RLC_pos[1][i];
+			const uint32_t z = op->v_RLC_pos[2][i];
 			if (x >= numLines[0] || y >= numLines[1] || z >= numLines[2])
 				throw std::runtime_error("Metal: lumped RLC position outside the grid");
-			const uint32_t slot = z % numVectors;
-			const uint32_t lane = z / numVectors;
-			const uint32_t fieldIndex = static_cast<uint32_t>(
-				((((size_t)x * numLines[1] + y) * numVectors + slot) * 3 + dir) * 4 + lane);
-			RLCEntry entry;
-			entry.fieldIndex = fieldIndex;
-			entry.dJdV = rlc->MetalRLCDJdV(i);
-			entry.aV = rlc->MetalRLCAV(i);
-			entry.aQ = rlc->MetalRLCAQ(i);
-			entry.aJ = rlc->MetalRLCAJ(i);
-			entry.vcd = rlc->MetalRLCVcd(i);
-			entry.vvd = rlc->MetalRLCVvd(i);
-			entry.aIl = rlc->MetalRLCIlCoeff(i);
-			entries.push_back(entry);
+			entries.push_back({PackedIndex(numLines[1], numVectors, x, y, z, dir),
+				op->v_RLC_dJdV[i], op->v_RLC_aV[i], op->v_RLC_aQ[i], op->v_RLC_aJ[i],
+				op->v_RLC_vcd[i], op->v_RLC_vvd[i], op->v_RLC_i2v[i] * op->v_RLC_ilv[i]});
 			xy.push_back({x, y});
 		}
 	}
 	if (entries.empty())
 		return;
 
-	MetalState::RLCRegion region;
-	region.count = static_cast<uint32_t>(entries.size());
+	MetalState::RLCRegion& region = m_Metal->rlc;
 	region.entries = [m_Metal->device newBufferWithBytes:entries.data()
 		length:entries.size() * sizeof(RLCEntry) options:MTLResourceStorageModeShared];
 	region.state = [m_Metal->device newBufferWithLength:entries.size() * sizeof(RLCState)
@@ -1457,16 +1419,14 @@ void Engine_Metal::InitRLC()
 	if (!region.entries || !region.state)
 		throw std::runtime_error("Metal: failed to allocate lumped RLC buffers");
 	std::memset(region.state.contents, 0, entries.size() * sizeof(RLCState));
+	region.count = static_cast<uint32_t>(entries.size());
 	region.xy = std::move(xy);
-	m_Metal->rlcDtHalf = static_cast<float>(dTHalf);
-	m_Metal->diamondHasRLC = true;
-	m_Metal->rlc.push_back(std::move(region));
 	cout << "Metal: lumped RLC offload: " << entries.size() << " active edges" << endl;
 }
 
 void Engine_Metal::UpdateDiamond(unsigned int depth)
 {
-	DiamondParams params = {numLines[0], numLines[1], numVectors, numTS, depth, m_Metal->rlcDtHalf,
+	DiamondParams params = {numLines[0], numLines[1], numVectors, numTS, depth, m_Metal->rlc.dtHalf,
 		m_Metal->diamondPml.count, 0};
 	// The kernel maps whole packed-Z slot groups to threads, so the threadgroup
 	// must be an exact multiple of the slot count it can cover.
@@ -1493,19 +1453,19 @@ void Engine_Metal::UpdateDiamond(unsigned int depth)
 		[encoder setBuffer:m_Metal->diamondTiles[depth][phase] offset:0 atIndex:7];
 		if (m_Metal->coeffIndex)
 			[encoder setBuffer:m_Metal->coeffIndex offset:0 atIndex:8];
-		if (m_Metal->diamondHasSources)
+		if (m_Metal->diamondSignal)
 		{
 			[encoder setBuffer:m_Metal->diamondSourceTable offset:0 atIndex:9];
 			[encoder setBuffer:m_Metal->diamondSourceIndices[depth][phase] offset:0 atIndex:10];
 			[encoder setBuffer:m_Metal->diamondSignal offset:0 atIndex:11];
 		}
-		if (m_Metal->diamondHasRLC && !m_Metal->rlc.empty())
+		if (m_Metal->rlc.count)
 		{
-			[encoder setBuffer:m_Metal->rlc.front().entries offset:0 atIndex:12];
-			[encoder setBuffer:m_Metal->rlc.front().state offset:0 atIndex:13];
+			[encoder setBuffer:m_Metal->rlc.entries offset:0 atIndex:12];
+			[encoder setBuffer:m_Metal->rlc.state offset:0 atIndex:13];
 			[encoder setBuffer:m_Metal->diamondRLCIndices[depth][phase] offset:0 atIndex:14];
 		}
-		if (m_Metal->diamondHasUPML)
+		if (m_Metal->diamondPml.count)
 		{
 			[encoder setBuffer:m_Metal->diamondPml.regions offset:0 atIndex:15];
 			[encoder setBuffer:m_Metal->diamondPml.args offset:0 atIndex:16];
@@ -1522,7 +1482,7 @@ void Engine_Metal::UpdateDiamond(unsigned int depth)
 
 bool Engine_Metal::IterateTS(unsigned int iterTS)
 {
-	if (m_Metal->diamondUpdate)
+	if (m_Metal->diamond)
 	{
 		unsigned int remaining = iterTS;
 		while (remaining)
@@ -1535,8 +1495,7 @@ bool Engine_Metal::IterateTS(unsigned int iterTS)
 		FinishMetalCommands();
 		return true;
 	}
-	// Legacy diagnostic path: the base loop drives the hooks; every GPU
-	// dispatch is drained before the CPU Apply hooks run (DispatchExtensionHooks).
+	// Legacy diagnostic path: Engine::IterateTS drives the hook overrides.
 	return Engine::IterateTS(iterTS);
 }
 
@@ -1625,7 +1584,7 @@ void Engine_Metal::UpdateVoltages(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1], numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
+		if (m_Metal->referenceEnabled || m_Metal->legacyPml.empty())
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)
@@ -1692,7 +1651,7 @@ void Engine_Metal::UpdateCurrents(unsigned int startX, unsigned int numX)
 		MTLSize grid = MTLSizeMake(numVectors, numLines[1] - 1, numX);
 		[encoder dispatchThreads:grid threadsPerThreadgroup:threadsPerGroup];
 		[encoder endEncoding];
-		if (m_Metal->referenceEnabled || m_Metal->pml.empty())
+		if (m_Metal->referenceEnabled || m_Metal->legacyPml.empty())
 			FinishMetalCommands();
 	}
 	if (m_Metal->referenceEnabled)

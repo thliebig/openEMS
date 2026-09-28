@@ -20,6 +20,9 @@
 
 #include <vector>
 #include <string>
+#include <exception>
+#include <functional>
+#include <thread>
 
 //! Calc the nyquist number of timesteps for a given frequency and timestep
 unsigned int CalcNyquistNum(double fmax, double dT);
@@ -35,6 +38,33 @@ unsigned int AvailableThreads();
 
 //! Calculate an optimal job distribution to a given number of threads. Will return a vector with the jobs for each thread.
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty=false);
+
+//! Split [0, count) into \a workers contiguous ranges and run \a body(start, stop)
+//! (stop exclusive) on each in its own thread. All threads are joined before the
+//! first worker exception is rethrown.
+inline void ParallelRanges(unsigned int count, unsigned int workers, const std::function<void(unsigned int, unsigned int)>& body)
+{
+	if (workers > count) workers = count;
+	if (workers <= 1)
+	{
+		if (count) body(0, count);
+		return;
+	}
+	std::vector<std::thread> threads;
+	std::vector<std::exception_ptr> errors(workers);
+	auto run = [&](unsigned int worker) {
+		try { body(count*worker/workers, count*(worker+1)/workers); }
+		catch (...) { errors[worker] = std::current_exception(); }
+	};
+	try {
+		for (unsigned int i=0; i<workers; ++i) threads.emplace_back(run, i);
+	} catch (...) {
+		for (auto& thread : threads) thread.join();
+		throw;
+	}
+	for (auto& thread : threads) thread.join();
+	for (auto& error : errors) if (error) std::rethrow_exception(error);
+}
 
 std::vector<float> SplitString2Float(std::string str, std::string delimiter=",");
 std::vector<double> SplitString2Double(std::string str, std::string delimiter=",");

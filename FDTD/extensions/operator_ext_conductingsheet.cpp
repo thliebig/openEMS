@@ -55,8 +55,8 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 
 	m_Order = 0;
 	std::vector<unsigned int> v_pos[3];
-	// Full-grid lookup tables are only needed by the CSXCAD fallback path; the
-	// resolved-winner path stores sigma/tau per active cell (see below).
+	// Full-grid lookup tables, only for the CSXCAD path; the resolved-winner
+	// path keeps sigma/tau/tanDir per active cell instead.
 	ArrayLib::ArrayNIJK<int8_t> tanDir;
 	ArrayLib::ArrayNIJK<float> Conductivity;
 	ArrayLib::ArrayNIJK<float> Thickness;
@@ -74,40 +74,34 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	std::map<unsigned int,size_t> zeroSheet;                  // primitive ID
 	std::map<std::pair<double,double>,size_t> tableOverflow;  // (conductivity, thickness)
 
-	// The Metal operator may already have resolved the winning MATERIAL|METAL
-	// primitive at every Yee component while mapping PEC. Consume those winners
-	// instead of re-collecting and re-sorting all primitives for every (x,y) row
-	// and re-running the point-in-polygon test for every component. tanDir is read
-	// at neighbour cells, so keep inactive cells at -1 by caching active cells.
+	// An accelerated operator may already have resolved the winning primitive
+	// at every Yee component while mapping PEC; consume those winners instead of
+	// re-querying CSXCAD per component.
 	const std::vector<Operator::GeometryWinner>* geoWinners =
 		m_Op->GetGeometryWinners(Operator::GEO_CONDUCTING_SHEET, false);
 	if (geoWinners)
 		cout << "Metal conducting sheet: " << geoWinners->size()
 		     << " resolved geometry winners" << endl;
-	std::unordered_map<uint64_t,int8_t> sparseTan;
+	// Active cells only: 2 bits per component n hold tanDir+1 (0 = inactive).
+	std::unordered_map<uint64_t,uint8_t> sparseTanDir;
 	auto cellKey = [&](unsigned int x, unsigned int y, unsigned int z) -> uint64_t {
 		return (uint64_t(x)*numLines[1] + y)*numLines[2] + z;
 	};
 	auto tanDirAt = [&](int n, unsigned int x, unsigned int y, unsigned int z) -> int {
 		if (geoWinners)
 		{
-			auto it = sparseTan.find(cellKey(x,y,z));
-			if (it == sparseTan.end()) return -1;
+			auto it = sparseTanDir.find(cellKey(x,y,z));
+			if (it == sparseTanDir.end()) return -1;
 			return ((it->second >> (2*n)) & 0x3) - 1;
 		}
 		return tanDir(n,x,y,z);
 	};
 
 	std::vector<float> activeCond, activeThick; // 3 per active cell, in v_pos order
-	if (!geoWinners)
-	{
-		tanDir.Init("tanDir", numLines);
-		Conductivity.Init("Conductivity", numLines);
-		Thickness.Init("Thickness", numLines);
-	}
-
 	if (geoWinners)
 	{
+		// Winners arrive grouped by cell (x, y, z) with n innermost; accumulate
+		// the three components of one cell, then flush it as one active entry.
 		unsigned int cur[3] = {0,0,0};
 		bool on = false;
 		float condCell[3] = {0,0,0}, thickCell[3] = {0,0,0};
@@ -135,12 +129,10 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 			}
 			unsigned int wp[] = {w.x,w.y,w.z};
 			int n = w.n;
-			if (w.x>=numLines[0] || w.y>=numLines[1] || w.z>=numLines[2])
-				continue;
-			// GetYeeCoords(...,false)==false marks components the scan below skips.
+			// Mirrors the full-grid scan below, including its skipped components.
 			if (m_Op->GetYeeCoords(n,wp,coord,false)==false)
 				continue;
-			bool disable_pos = false;
+			disable_pos = false;
 			for (int m=0;m<3;++m)
 				if ((wp[m]<=(unsigned int)m_Op->GetBCSize(2*m)) || (wp[m]>=(numLines[m]-m_Op->GetBCSize(2*m+1)-1)))
 					disable_pos = true;
@@ -180,21 +172,20 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 			}
 			cs_sheet->GetBoundBox(box);
 			nP = (n+1)%3; nPP = (n+2)%3;
-			int8_t td = -1;
+			int td = -1;
 			if (box[2*nP]!=box[2*nP+1]) td = nP;
 			if (box[2*nPP]!=box[2*nPP+1]) td = nPP;
-			uint64_t k = cellKey(wp[0],wp[1],wp[2]);
-			uint8_t code = 0;
-			auto it = sparseTan.find(k);
-			if (it != sparseTan.end()) code = static_cast<uint8_t>(it->second);
-			code = static_cast<uint8_t>((code & ~(0x3 << (2*n))) | (((td+1)&0x3) << (2*n)));
-			sparseTan[k] = static_cast<int8_t>(code);
+			uint8_t& code = sparseTanDir[cellKey(wp[0],wp[1],wp[2])];
+			code = static_cast<uint8_t>((code & ~(0x3 << (2*n))) | ((td+1) << (2*n)));
 			on = true;
 		}
 		flush();
 	}
 	else
 	{
+	tanDir.Init("tanDir", numLines);
+	Conductivity.Init("Conductivity", numLines);
+	Thickness.Init("Thickness", numLines);
 	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])

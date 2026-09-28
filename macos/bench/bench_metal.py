@@ -100,8 +100,6 @@ def parse_output(stdout):
             info['cells'] = float(tok[5])
         elif line.startswith('Speed:'):
             info['speed'] = float(line.split()[1])
-        if 'Metal: UPML layout:' in line:
-            info['notes'].append(line.split(':', 1)[1].strip())
         if 'Metal: in-place diamond E/H pipeline:' in line:
             info['notes'].append('diamond' if line.rstrip().endswith('enabled') else 'legacy')
         if line.startswith('Metal: in-place diamond update:'):

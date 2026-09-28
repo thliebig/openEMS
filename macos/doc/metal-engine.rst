@@ -2,14 +2,14 @@ Metal engine
 ============
 
 ``openEMS model.xml --engine=metal`` runs the FDTD field updates on Apple GPUs
-via Metal. Build with ``-DWITH_METAL=ON``; the option is off by default. It
-enables every Metal feature; there are no per-feature switches. The same binary
-keeps the SSE and multithreaded engines for comparison.
+via Metal. ``-DWITH_METAL`` is on by default on macOS and unavailable
+elsewhere. It enables every Metal feature; there are no per-feature switches.
+The same binary keeps the SSE and multithreaded engines for comparison.
 
 Operator construction, mesh grading, material EC sampling and the coefficient
-build stay on the CPU. The GPU also executes the PEC / ``MATERIAL|METAL``
-geometry pass; its winners remain available to the conducting-sheet and
-dispersive-material setup code.
+build stay on the CPU (multithreaded; ``--numThreads`` sets the thread count).
+The GPU also executes the PEC / ``MATERIAL|METAL`` geometry pass; its winners
+remain available to the conducting-sheet and dispersive-material setup code.
 
 Field updates
 -------------
@@ -100,7 +100,8 @@ binding and one flux binding instead of one per array. The kernel applies the
 flux recurrence around the Yee E and H updates, component by component. A packed
 ``float4`` spans four z positions, so each of its lanes is filtered by the
 slab's z range; lanes outside the slab keep the identity and are left untouched.
-Regions never overlap in ``(x, y)``, so a cell belongs to at most one slab.
+Slabs are disjoint boxes, so a cell belongs to at most one slab, but one
+``float4`` can hold lanes of both the lower and the upper z slab.
 
 The diamond path reproduces the legacy GPU conditioners bit for bit: the same
 local update, in the same CPU order (pre in reverse extension order, post
@@ -108,7 +109,7 @@ forward), with the same FP32 operations. The explicit legacy path
 (``OPENEMS_METAL_FUSED_PIPELINE=0``) keeps the indexed conditioning kernels,
 which permute the operator coefficient arrays in place, restore them on
 teardown and rebuild them from lossless 32-bit dictionaries. Setting
-``OPENEMS_METAL_PML=0`` selects the CPU extension hooks.
+``OPENEMS_METAL_PML=0`` selects the legacy path with the CPU UPML hooks.
 
 Coefficient dictionaries
 ------------------------
@@ -133,11 +134,10 @@ the parallel-inductor term) plus four state words (``Vd``, ``J``, ``q``,
 range covers its ``(x, y)``, so it is visited exactly once per local timestep, in
 increasing time order, after the Yee voltage update and before the voltage
 source (the CPU ``Apply2Voltages`` order: lumped RLC has a higher extension
-priority than the excitation). One
-thread per tile applies the recurrence in the CPU element order, which keeps the
-result in the same floating-point neighbourhood as the CPU extension. The FP32
-trapezoidal form is the same well-conditioned update used on the CPU; the older
-second-order ADE formed ``b1*ib0 ~ -2`` by cancellation and lost its damping.
+priority than the excitation). One thread per tile applies the recurrence in the
+CPU element order, which keeps the result in the same floating-point
+neighbourhood as the CPU extension. The FP32
+trapezoidal form is the same well-conditioned update used on the CPU.
 
 A lumped element on its own, or combined with UPML, stays on the primary
 diamond path.
@@ -146,16 +146,15 @@ Conducting-sheet ADE
 --------------------
 
 The conducting-sheet model advances two ADE poles per active edge every step.
-The Metal engine runs that recurrence in two kernels: ``ade_advance`` before the
-voltage update and ``ade_apply`` from ``Apply2Voltages`` after it. One thread
-owns all poles of one packed field edge, so the apply is race-free and matches
-the CPU subtraction order. Previously the recurrence ran on the CPU and the
-engine drained the GPU before each hook, serializing CPU and GPU.
+On the legacy path the Metal engine runs that recurrence in two kernels:
+``ade_advance`` before the voltage update and ``ade_apply`` from
+``Apply2Voltages`` after it. One thread owns all poles of one packed field edge,
+so the apply is race-free and matches the CPU subtraction order.
 
-Only the explicit legacy diagnostic path currently runs the plain volt-ADE
-offload. ADE has not yet migrated into the diamond wavefront; a default Metal
-run requiring ADE aborts before stepping. Models needing Lorentz flux states or ADE
-currents (Lorentz, Drude, Debye) likewise require explicit legacy diagnostics.
+ADE has not migrated into the diamond wavefront; a default Metal run requiring
+ADE aborts before stepping. Models needing Lorentz flux states or ADE currents
+(Lorentz, Drude, Debye) run on the CPU, legacy path only. The FP64 reference
+keeps every ADE on the CPU.
 
 Diagnostic overrides
 --------------------
@@ -172,7 +171,7 @@ default to the primary path and are never required.
    * - ``OPENEMS_METAL_PEC=0`` or ``verify``
      - whole PEC pass on the CPU, or GPU plus CPU comparison
    * - ``OPENEMS_METAL_PML=0``
-     - CPU UPML conditioning instead of the GPU kernels
+     - legacy path with CPU UPML conditioning
    * - ``OPENEMS_METAL_FUSED_PIPELINE=0``
      - explicitly selects the legacy two-dispatch path (UPML, ADE)
    * - ``OPENEMS_METAL_FP64_REFERENCE=1``
@@ -283,15 +282,17 @@ only so the abort is not a surprise.
 Kernel compilation
 ~~~~~~~~~~~~~~~~~~
 
-The kernels are compiled once at build time into ``openEMS.metallib``, needs Metal
-toolchain component, installed it in XCode or:
+The kernels are compiled once at build time into ``openEMS.metallib`` and
+embedded in ``libopenEMS``. This needs the Metal toolchain component; install it
+from Xcode or with:
 
 .. code-block:: sh
 
    xcodebuild -downloadComponent MetalToolchain
 
 A load or pipeline-creation failure aborts. The PEC pass alone catches its own
-failure and runs on the CPU. Fast math is off at compile time.
+failure and runs on the CPU. Fast math is off at compile time
+(``-fno-fast-math``; the Metal compiler defaults to fast math).
 
 Geometry fallbacks and explicit legacy diagnostics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -326,7 +327,7 @@ aborts unless the user explicitly requested the legacy diagnostic.
        normal Metal run
      - aborts before timestep 0; these operations have not migrated inside the
        diamond wavefront
-   * - ``OPENEMS_METAL_FUSED_PIPELINE=0``
+   * - ``OPENEMS_METAL_FUSED_PIPELINE=0`` or ``OPENEMS_METAL_PML=0``
      - explicitly runs the legacy two-dispatch diagnostic path
    * - ``OPENEMS_METAL_FP64_REFERENCE=1``
      - explicitly selects the legacy path plus diagnostic CPU reference

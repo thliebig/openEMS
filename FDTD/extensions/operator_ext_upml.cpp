@@ -20,10 +20,7 @@
 #include "engine_ext_upml.h"
 #include "fparser.hh"
 
-#include <algorithm>
-#include <exception>
-#include <thread>
-#include <vector>
+#include "tools/useful.h"
 
 using namespace std;
 
@@ -369,38 +366,12 @@ bool Operator_Ext_UPML::BuildExtension()
 	iifo.Init("iifo", m_numLines);
 	iifn.Init("iifn", m_numLines);
 
-	// Material sampling below is bound by CSXCAD point-in-polygon queries and is
-	// otherwise single-threaded, so it dominates operator setup for large models.
-	// Each X slice writes disjoint operator/extension entries; this mirrors the
-	// audited parallel material sampling already used by Operator_Multithread.
+	// Material sampling is bound by CSXCAD point-in-polygon queries. Each X slice
+	// writes disjoint operator/extension entries, as in Operator_Multithread.
 	// Operators that do not opt in (GetSetupThreads() == 0) stay single-threaded.
-	// An empty X range (opposing slabs) is a valid no-op, not a huge range.
-	if (!m_numLines[0])
-		return true;
-	unsigned int workers = std::min(m_Op->GetSetupThreads(), m_numLines[0]);
-	if (workers <= 1)
-	{
-		BuildExtensionRange(0, m_numLines[0]-1);
-		return true;
-	}
-
-	std::vector<std::thread> threads;
-	std::vector<std::exception_ptr> errors(workers);
-	auto run = [&](unsigned int worker) {
-		try {
-			const unsigned int start = m_numLines[0]*worker/workers;
-			const unsigned int stop = m_numLines[0]*(worker+1)/workers;
-			if (start < stop) BuildExtensionRange(start, stop-1);
-		} catch (...) { errors[worker]=std::current_exception(); }
-	};
-	try {
-		for (unsigned int i=0;i<workers;++i) threads.emplace_back(run,i);
-	} catch (...) {
-		for (auto& thread:threads) thread.join();
-		throw;
-	}
-	for (auto& thread:threads) thread.join();
-	for (auto error:errors) if (error) std::rethrow_exception(error);
+	ParallelRanges(m_numLines[0], m_Op->GetSetupThreads(), [this](unsigned int start, unsigned int stop) {
+		BuildExtensionRange(start, stop-1);
+	});
 	return true;
 }
 
