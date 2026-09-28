@@ -257,13 +257,12 @@ explicit legacy path (``OPENEMS_METAL_FUSED_PIPELINE=0``) runs them on the CPU.
      - n/a
      - cylindrical operator; Metal is Cartesian only
 
-Platform and coordinate systems
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Coordinate systems
+~~~~~~~~~~~~~~~~~~
 
-* Cartesian meshes only. For a cylindrical mesh ``SetupOperator()`` selects the
-  cylindrical operator regardless of ``--engine``, so ``--engine=metal`` is
-  ignored with a warning.
-* MPI is not supported (``Operator_Metal`` is not an MPI operator).
+Cartesian meshes only. For a cylindrical mesh ``SetupOperator()`` selects the
+cylindrical operator regardless of ``--engine``, so ``--engine=metal`` is
+ignored with a warning.
 
 The index format has a very high ceiling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

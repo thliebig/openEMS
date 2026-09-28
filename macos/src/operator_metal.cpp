@@ -46,7 +46,7 @@ Operator_Metal::Operator_Metal() : Operator_sse(), m_setupThreads(0),
 
 unsigned int Operator_Metal::GetSetupThreads() const
 {
-	return m_setupThreads ? m_setupThreads : std::max(1U,std::thread::hardware_concurrency());
+	return m_setupThreads ? m_setupThreads : AvailableThreads();
 }
 
 const std::vector<Operator::GeometryWinner>* Operator_Metal::GetGeometryWinners(GeometryWinnerType type, bool dualMesh) const
