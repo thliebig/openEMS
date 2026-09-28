@@ -41,10 +41,9 @@ endif()
 if(WITH_METAL AND NOT APPLE)
   message(FATAL_ERROR "WITH_METAL is only supported on Apple platforms")
 endif()
-# Fast math for the Metal kernels is deliberately not offered. It does not make
-# the field updates faster (they are memory-bandwidth bound) and it perturbs the
-# reproducible bit patterns the Metal tests rely on, so the shaders always
-# compile with fast math off.
+# The Metal compiler defaults to fast math, so -fno-fast-math is mandatory: it
+# would not speed up the bandwidth-bound field updates, but its reassociation
+# cancels the error terms of the double-float PEC predicates.
 if(WITH_METAL)
   enable_language(OBJCXX)
   add_definitions(-DOPENEMS_WITH_METAL)
@@ -66,7 +65,7 @@ if(WITH_METAL)
   set(METAL_LIB "${CMAKE_CURRENT_BINARY_DIR}/openEMS.metallib")
   set(METAL_EMBED "${CMAKE_CURRENT_BINARY_DIR}/metal_library_src.h")
   add_custom_command(OUTPUT "${METAL_EMBED}"
-    COMMAND xcrun -sdk macosx metal -c "${METAL_KERNELS}" -I "${PROJECT_SOURCE_DIR}/macos/src" -o "${METAL_AIR}"
+    COMMAND xcrun -sdk macosx metal -c -fno-fast-math "${METAL_KERNELS}" -I "${PROJECT_SOURCE_DIR}/macos/src" -o "${METAL_AIR}"
     COMMAND xcrun -sdk macosx metallib "${METAL_AIR}" -o "${METAL_LIB}"
     COMMAND xxd -i -n metalLibrary "${METAL_LIB}" "${METAL_EMBED}"
     DEPENDS "${METAL_KERNELS}" "${METAL_PREDICATES}"
