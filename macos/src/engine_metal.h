@@ -51,8 +51,9 @@ private:
 	void InitADE();
 	static bool IsPlainVoltADE(const Operator_Ext_LorentzMaterial* op, int order);
 	bool HasADEOffload(const Engine_Extension* extension) const;
-	void AdvanceADEOffload(Engine_Extension* extension);
-	void ApplyADEOffload(Engine_Extension* extension);
+	//! Queue the ADE advance (before the E update) or apply (after it).
+	void DispatchADE(Engine_Extension* extension, bool advance);
+	void DispatchFieldUpdate(bool voltage, unsigned int startX, unsigned int numX);
 	//! Dispatch one pre/post hook round, running offloaded extensions on the
 	//! GPU and draining before every CPU hook.
 	void DispatchExtensionHooks(bool voltage, bool pre);

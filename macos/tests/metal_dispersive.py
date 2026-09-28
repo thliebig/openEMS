@@ -21,7 +21,7 @@ from CSXCAD import ContinuousStructure
 from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from openEMS import openEMS
 
-from metal_fields import h5_arrays
+from metal_fields import assert_identical_outputs
 
 
 def fixture(path, kind):
@@ -93,24 +93,7 @@ def run(binary, model, mode, output):
 
 
 def compare(a, b):
-    files = {p.relative_to(a) for p in a.rglob('*') if p.is_file() and p.name != 'solver.log'}
-    other = {p.relative_to(b) for p in b.rglob('*') if p.is_file() and p.name != 'solver.log'}
-    if files != other:
-        raise AssertionError('Output file sets differ')
-    for name in files:
-        if name.suffix == '.h5':
-            x, y = h5_arrays(a / name), h5_arrays(b / name)
-            if x.keys() != y.keys():
-                raise AssertionError('HDF5 datasets differ')
-            for key in x:
-                if (x[key].dtype != y[key].dtype or x[key].shape != y[key].shape
-                        or x[key].tobytes() != y[key].tobytes()):
-                    raise AssertionError(str(name) + '/' + key)
-        else:
-            rows = lambda p: [s for s in p.read_text().splitlines()
-                              if s.strip() and not s.startswith(('#', '%'))]
-            if rows(a / name) != rows(b / name):
-                raise AssertionError(str(name))
+    assert_identical_outputs(a, b)
     print('  Bit-identical field datasets / probe numeric outputs')
 
 

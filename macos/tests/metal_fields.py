@@ -112,6 +112,30 @@ def h5_arrays(path):
     return values
 
 
+def assert_identical_outputs(a, b):
+    """Bit-compare two simulation output trees: every HDF5 dataset, and the
+    numeric rows of every probe file (headers carry creation timestamps)."""
+    listing = lambda root: {p.relative_to(root) for p in root.rglob('*')
+                            if p.is_file() and p.name != 'solver.log'}
+    files = listing(a)
+    if files != listing(b):
+        raise AssertionError('Output file sets differ')
+    rows = lambda p: [s for s in p.read_text().splitlines()
+                      if s.strip() and not s.startswith(('#', '%'))]
+    for name in files:
+        if name.suffix != '.h5':
+            if rows(a / name) != rows(b / name):
+                raise AssertionError(str(name))
+            continue
+        x, y = h5_arrays(a / name), h5_arrays(b / name)
+        if x.keys() != y.keys():
+            raise AssertionError('HDF5 datasets differ')
+        for key in x:
+            if (x[key].dtype != y[key].dtype or x[key].shape != y[key].shape
+                    or x[key].tobytes() != y[key].tobytes()):
+                raise AssertionError(str(name) + '/' + key)
+
+
 def compare(reference, result, rtol, atol):
     ref = h5_arrays(reference)
     got = h5_arrays(result)
