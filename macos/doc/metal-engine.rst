@@ -20,14 +20,12 @@ alternating mountain and valley ranges whose faces advance by one cell per E/H
 half-step. Their Cartesian product gives four independent phases.
 
 .. figure:: metal-wavefront.svg
-   :alt: Diamond schedule over one axis. Cell index runs across, half-step runs down. Mountains (blue) shrink and valleys (orange) widen by one cell per half-step; red arrows mark the advancing wavefront; all cells of one colour at a half-step are one parallel dispatch.
+   :alt: Top: one axis over one temporal block; mountains (blue) shrink and valleys (orange) widen by one cell per E/H half-step. Bottom: the XY product of the two axes gives four phases, dispatched in order.
 
-   One axis of the diamond schedule. Mountains contract and valleys widen by
-   one cell per half-step, so the two faces of every valley *are* the advancing
-   wavefront (red). All cells of one colour at one half-step belong to a single
-   dispatch and run in parallel: **there is no compute order inside a range.**
-   The only orders are the half-step sequence and the phase sequence. The four
-   real phases are the Cartesian product of this picture over the X and Y axes.
+   Top: the real schedule of a 24-cell axis at depth 4. Mountains shrink, so
+   they depend only on their own earlier cells; valleys widen into the cells the
+   mountains finished. Bottom: the XY product gives four phases, each one
+   dispatch; tiles of one phase are disjoint and run in parallel.
 
 Every threadgroup owns one XY diamond, spans all packed-Z slots, and advances
 up to four timesteps in place. Mountains within a phase are independent, and so

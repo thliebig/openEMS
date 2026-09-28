@@ -102,8 +102,6 @@ def parse_output(stdout):
             info['speed'] = float(line.split()[1])
         if 'Metal: in-place diamond E/H pipeline:' in line:
             info['notes'].append('diamond' if line.rstrip().endswith('enabled') else 'legacy')
-        if line.startswith('Metal: in-place diamond update:'):
-            info['notes'].append(line.split(':', 2)[2].strip())
         if 'coefficient dictionary limit' in line:
             info['notes'].append('dense-fallback')
     info['note'] = '+'.join(dict.fromkeys(info['notes']))
@@ -246,14 +244,14 @@ def main():
     mt = [r for r in results if r['name'].startswith('mt-') and r['threads']]
     best = min(mt, key=lambda r: r['step_s']) if mt else None
 
-    hdr = '%-9s %9s %9s %9s %9s %9s   %s' % ('config', 'wall[s]', 'step[s]', 'setup[s]',
-                                             'MCells/s', 'RSS[MB]', 'note')
+    hdr = '%-12s %9s %9s %9s %9s %9s   %s' % ('config', 'wall[s]', 'step[s]', 'setup[s]',
+                                              'MCells/s', 'RSS[MB]', 'note')
     print()
     print(hdr)
     print('-' * (len(hdr) + 6))
     for r in results:
         rss = '%9s' % '-' if r['peak_rss_mb'] is None else '%9.1f' % r['peak_rss_mb']
-        print('%-9s %9.3f %9.3f %9.3f %9.1f %s   %s'
+        print('%-12s %9.3f %9.3f %9.3f %9.1f %s   %s'
               % (r['name'], r['wall_s'], r['step_s'], r['setup_s'],
                  r['mcells_per_s'], rss, r['note']))
     speedup = None
