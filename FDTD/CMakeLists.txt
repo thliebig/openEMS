@@ -1,5 +1,15 @@
+if (WITH_METAL)
+  set(METAL_SOURCES
+    ${PROJECT_SOURCE_DIR}/macos/src/engine_metal.mm
+    ${PROJECT_SOURCE_DIR}/macos/src/operator_metal.cpp
+    ${PROJECT_SOURCE_DIR}/macos/src/operator_metal_pec.mm
+    ${PROJECT_SOURCE_DIR}/macos/src/metal_library.mm
+  )
+endif()
+
 set(SOURCES
   ${SOURCES}
+  ${METAL_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/engine.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_multithread.cpp

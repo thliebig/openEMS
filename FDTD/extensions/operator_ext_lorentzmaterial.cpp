@@ -23,7 +23,13 @@
 #include "CSPropLorentzMaterial.h"
 #include "CSPropDebyeMaterial.h"
 
+#include <array>
+#include <cstdint>
+#include <iostream>
+#include <unordered_map>
+
 using std::cerr;
+using std::cout;
 using std::endl;
 
 Operator_Ext_LorentzMaterial::Operator_Ext_LorentzMaterial(Operator* op) : Operator_Ext_Dispersive(op)
@@ -182,6 +188,36 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 	v_Lor_ADE = new FDTD_FLOAT**[m_Order];
 	i_Lor_ADE = new FDTD_FLOAT**[m_Order];
 
+	// An accelerated operator may already have resolved the winning primitive at
+	// every Yee component; consume those winners instead of re-querying CSXCAD
+	// per component. Geometry does not depend on the order, so index them once.
+	typedef std::array<CSPrimitives*,3> WinnerTriple;
+	const std::vector<Operator::GeometryWinner>* geoPrimal =
+		m_Op->GetGeometryWinners(Operator::GEO_DISPERSIVE, false);
+	const std::vector<Operator::GeometryWinner>* geoDual =
+		m_Op->GetGeometryWinners(Operator::GEO_DISPERSIVE, true);
+	auto cellKey = [&](unsigned int x, unsigned int y, unsigned int z) -> uint64_t {
+		return (uint64_t(x)*numLines[1] + y)*numLines[2] + z;
+	};
+	auto indexWinners = [&](const std::vector<Operator::GeometryWinner>* winners) {
+		std::unordered_map<uint64_t,WinnerTriple> byCell;
+		if (winners)
+			for (const auto& w : *winners)
+				byCell[cellKey(w.x,w.y,w.z)][w.n] = w.primitive; // value-initialized to NULL
+		return byCell;
+	};
+	const std::unordered_map<uint64_t,WinnerTriple> primalWinners = indexWinners(geoPrimal);
+	const std::unordered_map<uint64_t,WinnerTriple> dualWinners = indexWinners(geoDual);
+	// Winning property of component n at pos; a component missing from the
+	// winner table has no dispersive primitive.
+	auto winnerProperty = [&](const std::unordered_map<uint64_t,WinnerTriple>& byCell, int n) -> CSProperties* {
+		auto it = byCell.find(cellKey(pos[0],pos[1],pos[2]));
+		return it != byCell.end() && it->second[n] ? it->second[n]->GetProperty() : NULL;
+	};
+	if (geoPrimal || geoDual)
+		cout << "Metal dispersive material: " << primalWinners.size() << " primal, "
+		     << dualWinners.size() << " dual cells from resolved geometry winners" << endl;
+
 	for (int order=0;order<m_Order;++order)
 	{
 		m_volt_ADE_On[order]=false;
@@ -207,10 +243,12 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 		{
 			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 			{
-				std::vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(
-					pos[0], pos[1], -1,
-					(CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL)
-				);
+				std::vector<CSPrimitives*> vPrims;
+				if (!geoPrimal || !geoDual)
+					vPrims = m_Op->GetPrimitivesBoundBox(
+						pos[0], pos[1], -1,
+						(CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL)
+					);
 
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
@@ -230,8 +268,8 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_Op->GetVI(n,pos[0],pos[1],pos[2])==0)
 							continue;
 
-//						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
-						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
+						CSProperties* prop = geoPrimal ? winnerProperty(primalWinners, n)
+							: m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 
 						if (prop==NULL) continue;
 
@@ -285,8 +323,8 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if (m_Op->GetIV(n,pos[0],pos[1],pos[2])==0)
 							continue;
 
-//						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord,(CSProperties::PropertyType)(CSProperties::METAL | CSProperties::MATERIAL), true);
-						CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
+						CSProperties* prop = geoDual ? winnerProperty(dualWinners, n)
+							: m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, vPrims, true);
 
 						if (prop==NULL) continue;
 

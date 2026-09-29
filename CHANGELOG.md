@@ -104,6 +104,10 @@ number moved up and patch releases now have somewhere to go.
   code verification. The steady-state detection extension is unaffected: its
   diff estimate is cheap and is now always kept current every timestep
   rather than only at the wall-clock report interval.
+- **Apple Metal GPU engine** (experimental, macOS): `--engine=metal` runs the
+  FDTD field updates, the excitation, UPML, lumped RLC and the PEC geometry
+  pass on the GPU; see `macos/doc/metal-engine.rst`. A model that needs an
+  extension the GPU does not run stops before timestep 0.
 
 ### Changed
 
@@ -198,6 +202,13 @@ number moved up and patch releases now have somewhere to go.
 - Six of the nine steady-state detection probes sat on the first mesh line of
   their direction (usually a field-free boundary) instead of a quarter/three
   quarters across, due to an integer-division bug.
+- UPML: opposing PML slabs that left no interior between them made the
+  extension setup loop out of bounds and crash.
+- Lumped RLC: a series element could grow without bound in long runs, as the
+  single-precision update had a pole just outside the unit circle.
+- Two probes writing the same output file (CSXCAD allows duplicate property
+  names) interleaved their data into an unreadable file; the run now stops
+  with an error naming both.
 
 ### Build
 
@@ -216,6 +227,11 @@ number moved up and patch releases now have somewhere to go.
   `update_openEMS.sh` were removed.
 - CI covers Linux, macOS, FreeBSD and Windows, and compiles with warnings
   enabled.
+- `WITH_METAL` is on by default on macOS; `-DWITH_METAL=OFF` gives a CPU-only
+  build.
+- The Metal engine needs the Xcode Metal toolchain (`xcodebuild
+  -downloadComponent MetalToolchain`); CMake stops with that hint when it is
+  missing. Pass `-DWITH_METAL=OFF` to build without it.
 
 ### Upgrade notes
 

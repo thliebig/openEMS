@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="560" viewBox="0 0 760 560" font-family="Helvetica,Arial,sans-serif" font-size="12" fill="#333">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker></defs>
+<rect width="760" height="560" fill="#fff"/>
+<text x="96" y="24" font-size="14" font-weight="bold">One axis, one temporal block (depth 4, shortest span 2)</text>
+<text x="96" y="42">Cell index runs across; the E and H half-steps of four local timesteps run down.</text>
+<text x="86" y="73" text-anchor="end">E0</text>
+<text x="86" y="95" text-anchor="end">H0</text>
+<text x="86" y="117" text-anchor="end">E1</text>
+<text x="86" y="139" text-anchor="end">H1</text>
+<text x="86" y="161" text-anchor="end">E2</text>
+<text x="86" y="183" text-anchor="end">H2</text>
+<text x="86" y="205" text-anchor="end">E3</text>
+<text x="86" y="227" text-anchor="end">H3</text>
+<rect x="96" y="58" width="132" height="22" fill="#dbe7f6"/>
+<rect x="96" y="80" width="110" height="22" fill="#dbe7f6"/>
+<rect x="96" y="102" width="110" height="22" fill="#dbe7f6"/>
+<rect x="96" y="124" width="88" height="22" fill="#dbe7f6"/>
+<rect x="96" y="146" width="88" height="22" fill="#dbe7f6"/>
+<rect x="96" y="168" width="66" height="22" fill="#dbe7f6"/>
+<rect x="96" y="190" width="66" height="22" fill="#dbe7f6"/>
+<rect x="96" y="212" width="44" height="22" fill="#dbe7f6"/>
+<path d="M228,58 L228,80 L206,80 L206,102 L206,102 L206,124 L184,124 L184,146 L184,146 L184,168 L162,168 L162,190 L162,190 L162,212 L140,212 L140,234 L96,234 L96,212 L96,212 L96,190 L96,190 L96,168 L96,168 L96,146 L96,146 L96,124 L96,124 L96,102 L96,102 L96,80 L96,80 L96,58 z" fill="none" stroke="#3b5f9e" stroke-width="1.8"/>
+<text x="140.0" y="161" text-anchor="middle" fill="#3b5f9e" font-weight="bold">M0</text>
+<rect x="272" y="58" width="198" height="22" fill="#dbe7f6"/>
+<rect x="272" y="80" width="176" height="22" fill="#dbe7f6"/>
+<rect x="294" y="102" width="154" height="22" fill="#dbe7f6"/>
+<rect x="294" y="124" width="132" height="22" fill="#dbe7f6"/>
+<rect x="316" y="146" width="110" height="22" fill="#dbe7f6"/>
+<rect x="316" y="168" width="88" height="22" fill="#dbe7f6"/>
+<rect x="338" y="190" width="66" height="22" fill="#dbe7f6"/>
+<rect x="338" y="212" width="44" height="22" fill="#dbe7f6"/>
+<path d="M470,58 L470,80 L448,80 L448,102 L448,102 L448,124 L426,124 L426,146 L426,146 L426,168 L404,168 L404,190 L404,190 L404,212 L382,212 L382,234 L338,234 L338,212 L338,212 L338,190 L316,190 L316,168 L316,168 L316,146 L294,146 L294,124 L294,124 L294,102 L272,102 L272,80 L272,80 L272,58 z" fill="none" stroke="#3b5f9e" stroke-width="1.8"/>
+<text x="371.0" y="161" text-anchor="middle" fill="#3b5f9e" font-weight="bold">M1</text>
+<rect x="514" y="58" width="110" height="22" fill="#dbe7f6"/>
+<rect x="514" y="80" width="110" height="22" fill="#dbe7f6"/>
+<rect x="536" y="102" width="88" height="22" fill="#dbe7f6"/>
+<rect x="536" y="124" width="88" height="22" fill="#dbe7f6"/>
+<rect x="558" y="146" width="66" height="22" fill="#dbe7f6"/>
+<rect x="558" y="168" width="66" height="22" fill="#dbe7f6"/>
+<rect x="580" y="190" width="44" height="22" fill="#dbe7f6"/>
+<rect x="580" y="212" width="44" height="22" fill="#dbe7f6"/>
+<path d="M624,58 L624,80 L624,80 L624,102 L624,102 L624,124 L624,124 L624,146 L624,146 L624,168 L624,168 L624,190 L624,190 L624,212 L624,212 L624,234 L580,234 L580,212 L580,212 L580,190 L558,190 L558,168 L558,168 L558,146 L536,146 L536,124 L536,124 L536,102 L514,102 L514,80 L514,80 L514,58 z" fill="none" stroke="#3b5f9e" stroke-width="1.8"/>
+<text x="591.0" y="161" text-anchor="middle" fill="#3b5f9e" font-weight="bold">M2</text>
+<rect x="228" y="58" width="44" height="22" fill="#fde7c8"/>
+<rect x="206" y="80" width="66" height="22" fill="#fde7c8"/>
+<rect x="206" y="102" width="88" height="22" fill="#fde7c8"/>
+<rect x="184" y="124" width="110" height="22" fill="#fde7c8"/>
+<rect x="184" y="146" width="132" height="22" fill="#fde7c8"/>
+<rect x="162" y="168" width="154" height="22" fill="#fde7c8"/>
+<rect x="162" y="190" width="176" height="22" fill="#fde7c8"/>
+<rect x="140" y="212" width="198" height="22" fill="#fde7c8"/>
+<path d="M272,58 L272,80 L272,80 L272,102 L294,102 L294,124 L294,124 L294,146 L316,146 L316,168 L316,168 L316,190 L338,190 L338,212 L338,212 L338,234 L140,234 L140,212 L162,212 L162,190 L162,190 L162,168 L184,168 L184,146 L184,146 L184,124 L206,124 L206,102 L206,102 L206,80 L228,80 L228,58 z" fill="none" stroke="#b5701f" stroke-width="1.8"/>
+<text x="250.0" y="161" text-anchor="middle" fill="#b5701f" font-weight="bold">V0</text>
+<rect x="470" y="58" width="44" height="22" fill="#fde7c8"/>
+<rect x="448" y="80" width="66" height="22" fill="#fde7c8"/>
+<rect x="448" y="102" width="88" height="22" fill="#fde7c8"/>
+<rect x="426" y="124" width="110" height="22" fill="#fde7c8"/>
+<rect x="426" y="146" width="132" height="22" fill="#fde7c8"/>
+<rect x="404" y="168" width="154" height="22" fill="#fde7c8"/>
+<rect x="404" y="190" width="176" height="22" fill="#fde7c8"/>
+<rect x="382" y="212" width="198" height="22" fill="#fde7c8"/>
+<path d="M514,58 L514,80 L514,80 L514,102 L536,102 L536,124 L536,124 L536,146 L558,146 L558,168 L558,168 L558,190 L580,190 L580,212 L580,212 L580,234 L382,234 L382,212 L404,212 L404,190 L404,190 L404,168 L426,168 L426,146 L426,146 L426,124 L448,124 L448,102 L448,102 L448,80 L470,80 L470,58 z" fill="none" stroke="#b5701f" stroke-width="1.8"/>
+<text x="492.0" y="161" text-anchor="middle" fill="#b5701f" font-weight="bold">V1</text>
+<line x1="96" y1="58" x2="96" y2="234" stroke="#0000001a"/>
+<line x1="118" y1="58" x2="118" y2="234" stroke="#0000001a"/>
+<line x1="140" y1="58" x2="140" y2="234" stroke="#0000001a"/>
+<line x1="162" y1="58" x2="162" y2="234" stroke="#0000001a"/>
+<line x1="184" y1="58" x2="184" y2="234" stroke="#0000001a"/>
+<line x1="206" y1="58" x2="206" y2="234" stroke="#0000001a"/>
+<line x1="228" y1="58" x2="228" y2="234" stroke="#0000001a"/>
+<line x1="250" y1="58" x2="250" y2="234" stroke="#0000001a"/>
+<line x1="272" y1="58" x2="272" y2="234" stroke="#0000001a"/>
+<line x1="294" y1="58" x2="294" y2="234" stroke="#0000001a"/>
+<line x1="316" y1="58" x2="316" y2="234" stroke="#0000001a"/>
+<line x1="338" y1="58" x2="338" y2="234" stroke="#0000001a"/>
+<line x1="360" y1="58" x2="360" y2="234" stroke="#0000001a"/>
+<line x1="382" y1="58" x2="382" y2="234" stroke="#0000001a"/>
+<line x1="404" y1="58" x2="404" y2="234" stroke="#0000001a"/>
+<line x1="426" y1="58" x2="426" y2="234" stroke="#0000001a"/>
+<line x1="448" y1="58" x2="448" y2="234" stroke="#0000001a"/>
+<line x1="470" y1="58" x2="470" y2="234" stroke="#0000001a"/>
+<line x1="492" y1="58" x2="492" y2="234" stroke="#0000001a"/>
+<line x1="514" y1="58" x2="514" y2="234" stroke="#0000001a"/>
+<line x1="536" y1="58" x2="536" y2="234" stroke="#0000001a"/>
+<line x1="558" y1="58" x2="558" y2="234" stroke="#0000001a"/>
+<line x1="580" y1="58" x2="580" y2="234" stroke="#0000001a"/>
+<line x1="602" y1="58" x2="602" y2="234" stroke="#0000001a"/>
+<line x1="624" y1="58" x2="624" y2="234" stroke="#0000001a"/>
+<line x1="96" y1="58" x2="624" y2="58" stroke="#0000001a"/>
+<line x1="96" y1="80" x2="624" y2="80" stroke="#0000001a"/>
+<line x1="96" y1="102" x2="624" y2="102" stroke="#0000001a"/>
+<line x1="96" y1="124" x2="624" y2="124" stroke="#0000001a"/>
+<line x1="96" y1="146" x2="624" y2="146" stroke="#0000001a"/>
+<line x1="96" y1="168" x2="624" y2="168" stroke="#0000001a"/>
+<line x1="96" y1="190" x2="624" y2="190" stroke="#0000001a"/>
+<line x1="96" y1="212" x2="624" y2="212" stroke="#0000001a"/>
+<line x1="96" y1="234" x2="624" y2="234" stroke="#0000001a"/>
+<text x="96" y="250" text-anchor="middle" font-size="11">0</text>
+<text x="184" y="250" text-anchor="middle" font-size="11">4</text>
+<text x="272" y="250" text-anchor="middle" font-size="11">8</text>
+<text x="360" y="250" text-anchor="middle" font-size="11">12</text>
+<text x="448" y="250" text-anchor="middle" font-size="11">16</text>
+<text x="536" y="250" text-anchor="middle" font-size="11">20</text>
+<text x="624" y="250" text-anchor="middle" font-size="11">24</text>
+<text x="632" y="250">x</text>
+<line x1="52" y1="58" x2="52" y2="234" stroke="#333" stroke-width="1.3" marker-end="url(#a)"/>
+<text x="44" y="146.0" text-anchor="middle" transform="rotate(-90 44 146.0)">time</text>
+<rect x="96" y="263" width="14" height="12" fill="#dbe7f6" stroke="#3b5f9e"/>
+<text x="116" y="274"><tspan font-weight="bold">Mountains</tspan> shrink by one cell per half-step: they need nothing from outside, so all run first.</text>
+<rect x="96" y="283" width="14" height="12" fill="#fde7c8" stroke="#b5701f"/>
+<text x="116" y="294"><tspan font-weight="bold">Valleys</tspan> widen into the cells the mountains left behind, reading their finished edges.</text>
+<text x="96" y="316">Each labelled tile is one threadgroup; it walks its rows top to bottom with a barrier between rows.</text>
+<text x="96" y="346" font-size="14" font-weight="bold">Two axes: four phases, one dispatch each, run in order 1 → 4</text>
+<rect x="96" y="360" width="54" height="54" fill="#dbe7f6" stroke="#3b5f9e" stroke-width="1.2"/>
+<text x="123.0" y="391.0" text-anchor="middle" font-size="10" fill="#3b5f9e">1</text>
+<rect x="96" y="432" width="54" height="72" fill="#dbe7f6" stroke="#3b5f9e" stroke-width="1.2"/>
+<text x="123.0" y="472.0" text-anchor="middle" font-size="10" fill="#3b5f9e">1</text>
+<rect x="96" y="414" width="54" height="18" fill="#e6dcf5" stroke="#6a4c9c" stroke-width="1.2"/>
+<text x="123.0" y="427.0" text-anchor="middle" font-size="10" fill="#6a4c9c">2</text>
+<rect x="168" y="360" width="81" height="54" fill="#dbe7f6" stroke="#3b5f9e" stroke-width="1.2"/>
+<text x="208.5" y="391.0" text-anchor="middle" font-size="10" fill="#3b5f9e">1</text>
+<rect x="168" y="432" width="81" height="72" fill="#dbe7f6" stroke="#3b5f9e" stroke-width="1.2"/>
+<text x="208.5" y="472.0" text-anchor="middle" font-size="10" fill="#3b5f9e">1</text>
+<rect x="168" y="414" width="81" height="18" fill="#e6dcf5" stroke="#6a4c9c" stroke-width="1.2"/>
+<text x="208.5" y="427.0" text-anchor="middle" font-size="10" fill="#6a4c9c">2</text>
+<rect x="267" y="360" width="45" height="54" fill="#dbe7f6" stroke="#3b5f9e" stroke-width="1.2"/>
+<text x="289.5" y="391.0" text-anchor="middle" font-size="10" fill="#3b5f9e">1</text>
+<rect x="267" y="432" width="45" height="72" fill="#dbe7f6" stroke="#3b5f9e" stroke-width="1.2"/>
+<text x="289.5" y="472.0" text-anchor="middle" font-size="10" fill="#3b5f9e">1</text>
+<rect x="267" y="414" width="45" height="18" fill="#e6dcf5" stroke="#6a4c9c" stroke-width="1.2"/>
+<text x="289.5" y="427.0" text-anchor="middle" font-size="10" fill="#6a4c9c">2</text>
+<rect x="150" y="360" width="18" height="54" fill="#dcefdc" stroke="#3c7d3c" stroke-width="1.2"/>
+<text x="159.0" y="391.0" text-anchor="middle" font-size="10" fill="#3c7d3c">3</text>
+<rect x="150" y="432" width="18" height="72" fill="#dcefdc" stroke="#3c7d3c" stroke-width="1.2"/>
+<text x="159.0" y="472.0" text-anchor="middle" font-size="10" fill="#3c7d3c">3</text>
+<rect x="150" y="414" width="18" height="18" fill="#fde7c8" stroke="#b5701f" stroke-width="1.2"/>
+<text x="159.0" y="427.0" text-anchor="middle" font-size="10" fill="#b5701f">4</text>
+<rect x="249" y="360" width="18" height="54" fill="#dcefdc" stroke="#3c7d3c" stroke-width="1.2"/>
+<text x="258.0" y="391.0" text-anchor="middle" font-size="10" fill="#3c7d3c">3</text>
+<rect x="249" y="432" width="18" height="72" fill="#dcefdc" stroke="#3c7d3c" stroke-width="1.2"/>
+<text x="258.0" y="472.0" text-anchor="middle" font-size="10" fill="#3c7d3c">3</text>
+<rect x="249" y="414" width="18" height="18" fill="#fde7c8" stroke="#b5701f" stroke-width="1.2"/>
+<text x="258.0" y="427.0" text-anchor="middle" font-size="10" fill="#b5701f">4</text>
+<text x="204.0" y="520" text-anchor="middle" font-size="11">x</text>
+<text x="88" y="432.0" text-anchor="end" font-size="11">y</text>
+<rect x="342" y="359" width="14" height="12" fill="#dbe7f6" stroke="#3b5f9e"/>
+<text x="362" y="370"><tspan font-weight="bold">1</tspan>  X mountain × Y mountain</text>
+<rect x="342" y="381" width="14" height="12" fill="#e6dcf5" stroke="#6a4c9c"/>
+<text x="362" y="392"><tspan font-weight="bold">2</tspan>  X mountain × Y valley</text>
+<rect x="342" y="403" width="14" height="12" fill="#dcefdc" stroke="#3c7d3c"/>
+<text x="362" y="414"><tspan font-weight="bold">3</tspan>  X valley × Y mountain</text>
+<rect x="342" y="425" width="14" height="12" fill="#fde7c8" stroke="#b5701f"/>
+<text x="362" y="436"><tspan font-weight="bold">4</tspan>  X valley × Y valley</text>
+<text x="342" y="466">Tiles shown at the first E half-step (x: 24 cells, y: 16 cells).</text>
+<text x="342" y="484">Tiles of one phase never touch each other's cells;</text>
+<text x="342" y="500">the dispatch boundary is the only barrier between phases.</text>
+</svg>

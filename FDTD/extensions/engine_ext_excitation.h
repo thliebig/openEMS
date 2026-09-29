@@ -27,6 +27,7 @@ class Operator_Ext_Excitation;
 
 class Engine_Ext_Excitation : public Engine_Extension
 {
+	friend class Engine_Metal;
 public:
 	Engine_Ext_Excitation(Operator_Ext_Excitation* op_ext);
 	virtual ~Engine_Ext_Excitation();

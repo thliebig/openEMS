@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Compare GPU UPML with CPU UPML on the same Metal fields, and with SSE."""
+
+import argparse
+import os
+from pathlib import Path
+import shutil
+import re
+import tempfile
+
+from metal_fields import compare, h5_arrays, make_model, np, run
+
+
+def check_fields(reference, result, rtol, atol, l2_limit, pointwise=True):
+    for field in ('Et.h5', 'Ht.h5'):
+        for directory in (reference, result):
+            arrays = h5_arrays(directory / field)
+            samples = [a for name, a in arrays.items() if name.startswith('FieldData/')]
+            if not samples or not any(np.any(a) for a in samples):
+                raise AssertionError('Missing or zero field data: ' + str(directory / field))
+            if not all(np.isfinite(a).all() for a in arrays.values()):
+                raise AssertionError('Non-finite data: ' + str(directory / field))
+        stats = compare(reference / field, result / field, rtol, atol)
+        print('    {}: max abs {:.6g}, relative L2 {:.6g}, pointwise failures {}'.format(
+            field, stats['max_abs'], stats['relative_l2'], stats['failures']))
+        if (pointwise and stats['failures']) or stats['relative_l2'] > l2_limit:
+            raise AssertionError('Field tolerance exceeded: ' + field)
+
+
+def run_case(args, label, cells, steps, boundaries, nonuniform=False):
+    root = Path(tempfile.mkdtemp(prefix='openems-metal-pml-'))
+    try:
+        model = root / 'model.xml'
+        # A short pulse exercises propagation into PML and post-pulse decay.
+        make_model(model, cells, steps, nonuniform, boundaries, frequency=5e9)
+        sse_time, _ = run(args.openems, model, 'sse', root / 'sse')
+        cpu_time, cpu_log = run(args.openems, model, 'metal', root / 'cpu',
+                                args.fp64_reference, pml=False, wavefront=False)
+        gpu_time, gpu_log = run(args.openems, model, 'metal', root / 'gpu',
+                                args.fp64_reference, pml=True, wavefront=False)
+        expected = sum(b.startswith('PML') for b in boundaries)
+        marker = 'Metal: GPU UPML conditioning: {} regions'.format(expected)
+        if expected and marker not in gpu_log:
+            raise AssertionError('GPU UPML not exercised: ' + gpu_log)
+        if not expected and 'Metal: GPU UPML conditioning:' in gpu_log:
+            raise AssertionError('Unexpected UPML regions')
+        if 'Metal: CPU UPML conditioning selected' not in cpu_log:
+            raise AssertionError('CPU UPML fallback not exercised')
+        # Mur/ABC hooks have not migrated, so the diamond path cannot run them.
+        # Every PML/PEC case must reproduce the legacy GPU conditioners exactly:
+        # the same local flux recurrence, now fused into the diamond kernel.
+        unsupported = any(not b.startswith('PML') and b != 'PEC' for b in boundaries)
+        diamond_time = None
+        if not unsupported and not args.fp64_reference:
+            diamond_time, diamond_log = run(args.openems, model, 'metal',
+                root / 'diamond', args.fp64_reference, pml=True, wavefront=True)
+            if 'Metal: in-place diamond E/H pipeline: enabled' not in diamond_log:
+                raise AssertionError('UPML did not use the diamond wavefront: ' + diamond_log)
+            if expected:
+                if 'Metal: diamond UPML: {} regions'.format(expected) not in diamond_log:
+                    raise AssertionError('Diamond UPML regions mismatch: ' + diamond_log)
+            elif 'Metal: diamond UPML:' in diamond_log:
+                raise AssertionError('Unexpected diamond UPML regions')
+        print('{}: {}, {} steps; SSE/CPU-PML/GPU-PML wall {:.3f}/{:.3f}/{:.3f}s'.format(
+            label, cells, steps, sse_time, cpu_time, gpu_time))
+        print('  CPU/GPU UPML:')
+        check_fields(root / 'cpu', root / 'gpu', args.rtol, args.atol, args.l2)
+        if diamond_time is not None:
+            print('  legacy GPU/diamond UPML (bit-identical):')
+            check_fields(root / 'gpu', root / 'diamond', 0, 0, 0)
+        print('  SSE/GPU UPML:')
+        # SSE/Metal already differ near cancellation zeros in long runs.
+        # Gate that comparison on global relative L2; CPU/GPU PML above
+        # also enforces pointwise tolerances, isolating this implementation.
+        check_fields(root / 'sse', root / 'gpu', args.rtol, args.atol, args.l2,
+                     pointwise=False)
+        if args.fp64_reference:
+            prefix = 'Metal FP64 update reference:'
+            diagnostic = [s for s in gpu_log.splitlines() if s.startswith(prefix)]
+            if not diagnostic:
+                raise AssertionError('Missing FP64 diagnostic')
+            if re.search(r'\b(?:nan|inf)\b', diagnostic[-1], re.IGNORECASE):
+                raise AssertionError('Non-finite FP64 diagnostic')
+            print('  ' + diagnostic[-1])
+        if expected:
+            match = re.search(r'Metal: UPML duplicate bytes avoided: (\d+)', gpu_log)
+            if not match or int(match[1]) <= 0:
+                raise AssertionError('UPML storage reuse not exercised')
+            if not any(s in gpu_log for s in ('Metal: lossless UPML coefficients:', 'Metal: UPML coefficient dictionary fallback')):
+                raise AssertionError('UPML compression/fallback not exercised')
+    finally:
+        if args.keep:
+            print('  kept ' + str(root))
+        else:
+            shutil.rmtree(root)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--openems', default=os.environ.get('OPENEMS_BIN', 'openEMS'))
+    parser.add_argument('--rtol', type=float, default=5e-4)
+    parser.add_argument('--atol', type=float, default=2e-6)
+    parser.add_argument('--l2', type=float, default=1e-4)
+    parser.add_argument('--fp64-reference', action='store_true')
+    parser.add_argument('--keep', action='store_true')
+    args = parser.parse_args()
+    cases = [
+        ('no-pml', (17, 19, 21), 100, ['PEC'] * 6, False),
+        ('six-faces-corners', (24, 23, 22), 400, ['PML_4'] * 6, False),
+        ('overlapping-slabs', (8, 15, 14), 400,
+         ['PML_4', 'PML_4', 'PEC', 'PEC', 'PEC', 'PEC'], False),
+        ('nonuniform-asymmetric', (29, 27, 25), 400,
+         ['PML_3', 'PML_5', 'PML_4', 'PML_3', 'PML_5', 'PML_4'], True),
+        ('mixed-mur-pec-pml', (25, 24, 23), 400,
+         ['PML_4', 'MUR', 'PEC', 'PML_3', 'PML_4', 'PEC'], False),
+        ('long-run', (32, 31, 30), 1200, ['PML_8'] * 6, False),
+        ('thin-board', (65, 66, 32), 600, ['PML_8'] * 6, True),
+    ]
+    # Each physical face alone: includes all four z-line-count remainders.
+    for face in range(6):
+        boundaries = ['PEC'] * 6
+        boundaries[face] = 'PML_3'
+        cases.append(('face-' + str(face), (21, 22, 20 + face % 4), 250,
+                      boundaries, False))
+    for case in cases:
+        run_case(args, *case)
+
+
+if __name__ == '__main__':
+    main()

@@ -18,11 +18,15 @@
 #ifndef ARRAYLIB_ALLOCATOR_H
 #define ARRAYLIB_ALLOCATOR_H
 
+#include <algorithm>
 #include <cstddef>
 #include <cmath>
 #include <cstring>
 #include <iostream>
 #include <memory>
+#ifdef __APPLE__
+#include <unistd.h>
+#endif
 
 namespace ArrayLib
 {
@@ -79,7 +83,18 @@ public:
 			throw std::bad_alloc();
 		}
 #else
+#ifdef __APPLE__
+		// Metal can wrap page-aligned, page-sized allocations without a copy.
+		// The small amount of padding is harmless to ArrayBase, which retains
+		// the logical element count.
+		size_t page_size = (size_t) getpagesize();
+		alignment = std::max(alignment, page_size);
+		size_t bytes = numelem * sizeof(T);
+		size_t alloc_bytes = (bytes + page_size - 1) / page_size * page_size;
+		int retval = posix_memalign((void**) &buf, alignment, alloc_bytes);
+#else
 		int retval = posix_memalign((void**) &buf, alignment, numelem * sizeof(T));
+#endif
 		if (retval != 0)
 		{
 			std::cerr << "Failed to allocate aligned memory" << std::endl;

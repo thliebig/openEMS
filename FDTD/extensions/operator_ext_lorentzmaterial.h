@@ -24,6 +24,7 @@
 class Operator_Ext_LorentzMaterial : public Operator_Ext_Dispersive
 {
 	friend class Engine_Ext_LorentzMaterial;
+	friend class Engine_Metal;
 public:
 	Operator_Ext_LorentzMaterial(Operator* op);
 	virtual ~Operator_Ext_LorentzMaterial();

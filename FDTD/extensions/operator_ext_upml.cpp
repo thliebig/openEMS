@@ -20,6 +20,8 @@
 #include "engine_ext_upml.h"
 #include "fparser.hh"
 
+#include "tools/useful.h"
+
 using namespace std;
 
 Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
@@ -62,7 +64,9 @@ void Operator_Ext_UPML::SetRange(const unsigned int start[3], const unsigned int
 	for (int n=0; n<3; ++n)
 	{
 		m_StartPos[n]=start[n];
-		m_numLines[n]=stop[n]-start[n]+1;
+		// Opposing PML slabs can leave an empty interior (start > stop). Keep an
+		// explicit empty range instead of underflowing the unsigned line count.
+		m_numLines[n] = (stop[n] >= start[n]) ? (stop[n]-start[n]+1) : 0;
 	}
 }
 
@@ -268,6 +272,9 @@ bool Operator_Ext_UPML::SetGradingFunction(string func)
 
 void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3])
 {
+	// fparser's Eval() is only reentrant with FP_USE_THREAD_SAFE_EVAL (off by
+	// default); BuildExtensionRange calls this from several threads.
+	std::lock_guard<std::mutex> grading_lock(m_GradingMutex);
 	double depth=0;
 	double width=0;
 	for (int n=0; n<3; ++n)
@@ -359,6 +366,17 @@ bool Operator_Ext_UPML::BuildExtension()
 	iifo.Init("iifo", m_numLines);
 	iifn.Init("iifn", m_numLines);
 
+	// Material sampling is bound by CSXCAD point-in-polygon queries. Each X slice
+	// writes disjoint operator/extension entries, as in Operator_Multithread.
+	// Operators that do not opt in (GetSetupThreads() == 0) stay single-threaded.
+	ParallelRanges(m_numLines[0], m_Op->GetSetupThreads(), [this](unsigned int start, unsigned int stop) {
+		BuildExtensionRange(start, stop-1);
+	});
+	return true;
+}
+
+void Operator_Ext_UPML::BuildExtensionRange(unsigned int xStart, unsigned int xStop)
+{
 	unsigned int pos[3];
 	unsigned int loc_pos[3];
 	int nP,nPP;
@@ -367,7 +385,7 @@ bool Operator_Ext_UPML::BuildExtension()
 	double eff_Mat[4];
 	double dT = m_Op->GetTimestep();
 
-	for (loc_pos[0]=0; loc_pos[0]<m_numLines[0]; ++loc_pos[0])
+	for (loc_pos[0]=xStart; loc_pos[0]<=xStop; ++loc_pos[0])
 	{
 		pos[0] = loc_pos[0] + m_StartPos[0];
 		for (loc_pos[1]=0; loc_pos[1]<m_numLines[1]; ++loc_pos[1])
@@ -441,7 +459,6 @@ bool Operator_Ext_UPML::BuildExtension()
 			}
 		}
 	}
-	return true;
 }
 
 Engine_Extension* Operator_Ext_UPML::CreateEngineExtention()

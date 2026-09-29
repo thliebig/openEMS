@@ -16,6 +16,7 @@ and is used together with [CSXCAD](https://github.com/thliebig/CSXCAD) for geome
 - 3-D FDTD solver for electromagnetic wave propagation
 - Cartesian and cylindrical (including multi-grid) coordinate systems
 - SIMD-accelerated engines (SSE2, multi-threaded)
+- Apple Metal GPU engine, `--engine=metal` (macOS; see [macos/doc/metal-engine.rst](macos/doc/metal-engine.rst))
 - Uniaxial PML and Mur ABC absorbing boundary conditions
 - Total-field / scattered-field (TFSF) excitation
 - Lumped RLC elements
@@ -55,6 +56,13 @@ recommended full-stack build.
 
 Required dependencies: CSXCAD, fparser, TinyXML, HDF5, VTK, Boost (≥ 1.46,
 components: thread, date\_time, serialization, chrono, program\_options).
+
+Building the Apple Metal engine (`-DWITH_METAL=ON`, the macOS default) also
+needs the optional Xcode Metal toolchain component, installed once with:
+
+```bash
+xcodebuild -downloadComponent MetalToolchain
+```
 
 ```bash
 mkdir build && cd build
