@@ -242,7 +242,15 @@ cdef class openEMS:
     def SetMaxTime(self, val):
         """ SetMaxTime(val)
 
-        Set max simulation time for a max. number of timesteps.
+        Set the maximum simulated time, i.e. the physical time the fields are
+        propagated for. This is not a wall-clock limit: openEMS divides it by
+        the timestep and uses the result as a cap on the number of timesteps.
+
+        Typical values for RF simulations are in the nanosecond range. The
+        simulated duration also sets the frequency resolution of the result,
+        `df = 1/val`, which is the usual way to choose it.
+
+        :param val: float -- max. simulated time in seconds
         """
         self.thisptr.SetMaxTime(val)
 
