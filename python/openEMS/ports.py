@@ -128,6 +128,17 @@ class Port(object):
         return CSX.AddProbe(name, **kw)
 
     def SetEnabled(self, val):
+        """ SetEnabled(val)
+
+        Enable or disable this port's excitation, so the same structure can be
+        run once per active port without rebuilding it. A passive port still
+        records what arrives at it.
+
+        :param val: bool -- True to excite from this port
+
+        Raises an exception when enabling a port that was created with
+        ``excite=0`` and therefore has no excitation to enable.
+        """
         from CSXCAD.CSProperties import CSPropExcitation
         found_any = False
         for prop in self.port_props:
@@ -139,6 +150,18 @@ class Port(object):
             raise Exception('Unable to enable port! No excitation found!')
 
     def ReadUIData(self, sim_path, freq, signal_type ='pulse'):
+        """ ReadUIData(sim_path, freq, signal_type='pulse')
+
+        Read the voltage and current probe files this port wrote and sum them
+        into the total voltage and current, in the time domain (`ut_tot`,
+        `it_tot`) and the frequency domain (`uf_tot`, `if_tot`). Called by
+        :meth:`CalcPort`; call it directly only to inspect the raw probe data.
+
+        :param sim_path: str -- simulation directory holding the probe files
+        :param freq: array -- frequencies to evaluate
+        :param signal_type: str -- 'pulse' (default) or 'periodic', see
+            :func:`openEMS.utilities.DFT_time2freq`
+        """
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type )
         self.uf_tot = 0
         self.ut_tot = 0
@@ -161,6 +184,29 @@ class Port(object):
 
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
+        """ CalcPort(sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse')
+
+        Post-process this port: read its probe files and separate the total
+        voltage and current into incident and reflected waves. Run it after
+        the simulation, once per port, before reading any of the results.
+
+        The results are attributes of the port: `uf_inc`, `uf_ref`, `uf_tot`
+        and the matching `if_*` currents in the frequency domain, `ut_*` and
+        `it_*` in the time domain (incident and reflected only for a scalar
+        reference impedance), and the powers `P_inc`, `P_ref` and `P_acc`.
+        S-parameters follow from the ratios, e.g.
+        ``s11 = port[0].uf_ref / port[0].uf_inc``.
+
+        :param sim_path: str -- simulation directory holding the probe files
+        :param freq: array -- frequencies to evaluate
+        :param ref_impedance: float or array -- reference impedance to
+            normalize to, e.g. 50. Defaults to the port resistance for a
+            lumped port, or the extracted line impedance for a transmission
+            line or waveguide port.
+        :param ref_plane_shift: float -- move the reference plane by this
+            distance in drawing units (transmission line and waveguide ports)
+        :param signal_type: str -- 'pulse' (default) or 'periodic'
+        """
         self.ReadUIData(sim_path, freq, signal_type)
 
         if ref_impedance is not None:
@@ -250,6 +296,12 @@ class LumpedPort(Port):
         self.port_props.append(i_probe)
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
+        """ CalcPort(sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse')
+
+        As :meth:`Port.CalcPort`, with the reference impedance defaulting to
+        the port resistance `R`. A lumped port has no reference plane to move,
+        so `ref_plane_shift` is ignored.
+        """
         if ref_impedance is None:
             self.Z_ref = self.R
         if ref_plane_shift is not None:
@@ -365,6 +417,12 @@ class MSLPort(Port):
                 self.port_props.append(lumped_R)
 
     def ReadUIData(self, sim_path, freq, signal_type ='pulse'):
+        """ ReadUIData(sim_path, freq, signal_type='pulse')
+
+        As :meth:`Port.ReadUIData`, but the total voltage and current are taken
+        from the probe at the measurement plane rather than summed over all
+        probes; the other probes are used to separate the traveling waves.
+        """
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type )
         self.uf_tot = self.u_data.ui_f_val[1]
         self.ut_tot = self.u_data.ui_val[1]
@@ -408,7 +466,7 @@ class WaveguidePort(Port):
         Use ``None`` when supplying a mode file.
     kc : float
         Cut-off wavenumber of the mode in drawing units (e.g. pi/a for TE10).
-        Used by :meth:`CalcPort` to compute the propagation constant beta and
+        Used by :meth:`~openEMS.ports.Port.CalcPort` to compute the propagation constant beta and
         the analytic waveguide impedance.
     E_WG_file : str or None
         Path to an HDF5 file containing the electric field mode profile.
@@ -549,6 +607,15 @@ class WaveguidePort(Port):
         self.port_props.append(i_probe)
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse', ZL = -1):
+        """ CalcPort(sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse', ZL=-1)
+
+        As :meth:`Port.CalcPort`, but the propagation constant `beta` and the
+        wave impedance `ZL` are calculated analytically from the mode's cutoff
+        wavenumber, and the S-parameters are normalized to `ZL` unless
+        `ref_impedance` is given.
+
+        :param ZL: float -- override the analytic wave impedance
+        """
         k = 2.0*np.pi*freq/C0*self.ref_index
         self.beta = np.sqrt(k**2 - self.kc**2)
         if ZL <= 0:
@@ -929,6 +996,11 @@ class CoaxialPort(Port):
             raise Exception('CoaxialPort: Feed_R <= 0 is not allowed')
 
     def ReadUIData(self, sim_path, freq, signal_type='pulse'):
+        """ ReadUIData(sim_path, freq, signal_type='pulse')
+
+        As :meth:`Port.ReadUIData`, taking the total voltage and current from
+        the probe at the measurement plane.
+        """
         self.u_data = UI_data(self.U_filenames, sim_path, freq, signal_type)
         self.uf_tot = self.u_data.ui_f_val[1]
         self.ut_tot = self.u_data.ui_val[1]
@@ -1125,6 +1197,11 @@ class StripLinePort(Port):
             raise Exception('StripLinePort: Feed_R must be >= 0')
 
     def ReadUIData(self, sim_path, freq, signal_type='pulse'):
+        """ ReadUIData(sim_path, freq, signal_type='pulse')
+
+        As :meth:`Port.ReadUIData`, taking the total voltage and current from
+        the probe at the measurement plane.
+        """
         all_u = UI_data(self.U_filenames, sim_path, freq, signal_type)
 
         # Sum paired (upper+lower) probes at each of the three positions
@@ -1326,6 +1403,11 @@ class CPWPort(Port):
             raise Exception('CPWPort: Feed_R must be >= 0')
 
     def ReadUIData(self, sim_path, freq, signal_type='pulse'):
+        """ ReadUIData(sim_path, freq, signal_type='pulse')
+
+        As :meth:`Port.ReadUIData`, taking the total voltage and current from
+        the probe at the measurement plane.
+        """
         all_u = UI_data(self.U_filenames, sim_path, freq, signal_type)
 
         # Sum paired (left+right gap) probes at each of the three positions
@@ -1480,6 +1562,12 @@ class CurvePort(Port):
             self.port_props.append(exc)
 
     def CalcPort(self, sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse'):
+        """ CalcPort(sim_path, freq, ref_impedance=None, ref_plane_shift=None, signal_type='pulse')
+
+        As :meth:`Port.CalcPort`, with the reference impedance defaulting to
+        the port resistance `R`. A curve port has no reference plane to move,
+        so `ref_plane_shift` is ignored.
+        """
         if ref_impedance is None:
             self.Z_ref = self.R
         if ref_plane_shift is not None:
