@@ -1,4 +1,4 @@
-.. _octave_tut_transmission_lines:
+.. _tut_transmission_lines:
 
 Transmission Lines and Filters
 -------------------------------
