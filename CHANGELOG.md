@@ -19,29 +19,23 @@ number moved up and patch releases now have somewhere to go.
 
 ### Added
 
-- **SAR calculation reworked.** Averaging is done once for all frequencies
-  instead of per frequency, and the calculation is multi-threaded, together
-  giving a large speedup. Averaging follows IEEE/IEC 62704-1. The `--autorange`
-  option restricts the calculation to the cells whose local SAR is within a
-  given range of the peak, plus a padding of about one averaging cube; it is a
-  speedup and not a guarantee to find the global peak, and a warning is printed
-  when the averaged peak falls below the threshold. There is simple progress
-  feedback. Available from Python (`sar_calculation`) and from Octave, where
-  `CalcSAR.m` exposes `autoRange`, `numThreads` and `progress`. A tutorial
-  demonstrating SAR averaging was added.
+- **SAR calculation reworked**, following IEEE/IEC 62704-1: averaging is done
+  once for all frequencies instead of per frequency, and is multi-threaded,
+  together giving a large speedup. The new `--autorange` option restricts the
+  calculation to the cells near the peak, a further speedup that does not
+  guarantee finding the global peak. Available from Python
+  (`sar_calculation`) and from Octave (`CalcSAR.m`, with `autoRange`,
+  `numThreads` and `progress`), with a new SAR averaging tutorial.
 - **Waveguide mode excitation and probe from an HDF5 mode file**, complementing
   the analytic mode functions. `WaveguidePort`/`RectWGPort` accept a
   `mode_file` argument, the `Add*WaveGuidePort` methods accept a `local_origin`,
   and `matlab/h5writemode.m` (with an Octave oct-file) writes the mode files.
   Requires the matching CSXCAD support.
 - **New Python port classes**: `CircWGPort`, `CoaxialPort`, `StripLinePort`,
-  `CPWPort` and `CurvePort`, each with an integration test, plus a
-  `check_mode_purity()` utility. Convenience methods `AddCircWaveGuidePort`,
-  `AddCoaxialPort`, `AddStripLinePort`, `AddCPWPort` and `AddCurvePort` on the
-  `openEMS` class mirror the existing `AddLumpedPort`/`AddMSLPort` pattern.
-  Ports also store their time base, which makes plotting easier. On a
-  cylindrical mesh `CircWGPort` uses the mode profile in its native
-  (rho, a, z) form.
+  `CPWPort` and `CurvePort`, with matching `Add*Port` convenience methods on
+  the `openEMS` class following the existing `AddLumpedPort`/`AddMSLPort`
+  pattern, plus a `check_mode_purity()` utility. Ports also store their time
+  base, which makes plotting easier.
 - **`CreateNF2FFBox()` (Python) accepts `directions` and `mirror`**, which
   overrule the settings derived from the boundary conditions, e.g. to leave
   the face an antenna feed passes through out of the Huygens surface.
@@ -53,15 +47,11 @@ number moved up and patch releases now have somewhere to go.
   at its edge.
 - **Lumped RLC elements**: series and parallel R/L/C, implemented with an
   auxiliary differential equation.
-- **`HDF5Dump` (Python)** for reading field dumps. A dump can be inspected
-  before any field data is read (TD/FD, dump type, grid size, frequencies,
-  timesteps); `SetPlane`/`SetLine`/`SetRange`/`SetSampling` push the selection
-  down into HDF5 so only the requested part is read; and
+- **`HDF5Dump` (Python)** for reading field dumps: a dump can be inspected
+  before any field data is read, `SetPlane`/`SetLine`/`SetRange`/`SetSampling`
+  push the selection down into HDF5 so only the requested part is read, and
   `GetFieldAtFrequency()` runs an on-the-fly DFT so time-domain and
-  frequency-domain dumps are post-processed the same way. Stored values are
-  plain attributes (`file`, `shape`, `frequencies`, `dump_type`) and everything
-  that computes is a call (`GetNumTimesteps()`, `GetNumFrequencies()`,
-  `GetTimes()`, `GetDumpTypeName()`, `IsTD()`, `IsFD()`, `IsVector()`).
+  frequency-domain dumps are post-processed the same way.
 - **`SetLibraryArguments()`**, which accepts almost every option of the
   `openEMS` executable as a string. The Python binding uses it, so engine
   selection and the debugging options are now reachable from Python.
@@ -84,26 +74,17 @@ number moved up and patch releases now have somewhere to go.
   `Parallel_Plate_Waveguide`, `Circ_Waveguide`, `Conical_Horn_Antenna`,
   `CylindricalWave_CC` and `RadarUWBTutorial`.
 - Python unit and integration tests, run in CI after each smoke test.
-- **Optional oversampling for frequency-domain dumps and probes.** The running
-  DFT accumulation for FD/SAR dumps and probes is sampled at exactly the
-  Nyquist rate, which aliases the spectrum just above the highest excited
-  frequency onto the upper band edge. A probe/dump can now oversample its own
-  FD accumulation (e.g. by the same factor `OverSampling` gives the
-  time-domain recording, default 4) via CSXCAD's new `OverSampling` property
-  on that box — see the CSXCAD changelog. It defaults to the plain Nyquist
-  rate, matching prior behavior, so existing simulations and their
-  performance are unaffected unless a box opts in.
+- **Optional oversampling for frequency-domain dumps and probes**, to avoid
+  the aliasing onto the upper band edge that sampling the DFT accumulation at
+  exactly the Nyquist rate causes. A box opts in through CSXCAD's new
+  `OverSampling` property; the default is unchanged, so existing simulations
+  and their performance are unaffected.
 - **`--verbose`/`-vv` now reports the actual TD/FD sampling interval** for
   each probe and dump box during `SetupProcessing`.
-- **`--exact-endcriteria`.** The energy end-criteria is normally re-evaluated
-  every few seconds of wall-clock time, to keep its cost (a full-domain
-  energy estimate) off the hot path; this makes the exact stopping timestep
-  depend on machine speed/load. This option instead evaluates it every
-  Nyquist period, for a stopping point that is reproducible across
-  machines/builds, at the cost of performance — mainly useful for engine or
-  code verification. The steady-state detection extension is unaffected: its
-  diff estimate is cheap and is now always kept current every timestep
-  rather than only at the wall-clock report interval.
+- **`--exact-endcriteria`**, which evaluates the energy end-criteria every
+  Nyquist period instead of every few seconds of wall-clock time. The run
+  then stops at the same timestep regardless of machine speed and load, at
+  the cost of performance — mainly useful for engine or code verification.
 
 ### Changed
 
@@ -113,14 +94,12 @@ number moved up and patch releases now have somewhere to go.
   unaffected. `WITH_MPI`, `--engine=MPI`, `openEMS_MPI.sh`, `RunOpenEMS_MPI`
   and `SetupMPI` are gone. See *Upgrade notes*.
 - **nf2ff result format.** The far field is written as one compound complex
-  dataset per frequency, `/nf2ff/E_theta/FD/f{n}`, stored in (theta, phi)
-  order — the format every other frequency-domain dump has used since HDF5
-  version 0.3 — instead of a split `f{n}_real`/`f{n}_imag` pair in
-  (phi, theta) order. `h5py` reads it as a native complex array, so no axis
-  has to be swapped after reading. The Octave/Matlab interface keeps the old
-  layout, which `CalcNF2FF` requests through the new `LegacyHDF5` attribute of
-  the nf2ff XML file: Octave reads a compound complex dataset as zeros without
-  any error. See *Upgrade notes*.
+  dataset per frequency, `/nf2ff/E_theta/FD/f{n}` in (theta, phi) order — the
+  format every other frequency-domain dump has used since HDF5 version 0.3 —
+  instead of a split `f{n}_real`/`f{n}_imag` pair in (phi, theta) order.
+  Octave cannot read compound complex datasets, so the Octave/Matlab interface
+  keeps the old layout, requested by `CalcNF2FF` through the new `LegacyHDF5`
+  attribute of the nf2ff XML file. See *Upgrade notes*.
 - **Simulation directory cleanup no longer deletes the directory.**
   `CleanupSimPath()` (Octave/Matlab) and `cleanup=True` in Python's `FDTD.Run()`
   now remove only known openEMS output files. Pointing `Sim_Path` at `$HOME`, or
@@ -176,8 +155,7 @@ number moved up and patch releases now have somewhere to go.
 - Python: `Run()` failed on a relative `sim_path`, and on one containing
   symlinks, with an assertion; both work now.
 - Octave: an oct-file left over from an older Octave version is rebuilt
-  instead of failing the run. It was still found by `exist()`, so `setup` was
-  never re-run and the call died with "failed to load" or, on Windows, "the
+  instead of failing the run with "failed to load" or, on Windows, "the
   specified module could not be found" (#318).
 - Octave/Matlab: paths containing spaces are quoted for the binary and the log
   file, and HDF5 detection in `setup.m` was improved and is now tested in CI.
@@ -207,11 +185,10 @@ number moved up and patch releases now have somewhere to go.
   Studio 2022; the `openEMS` and `nf2ff` import libraries are installed to
   `lib/`.
 - Builds on ppc64le.
-- Two new knobs for comparing the output of two builds bit by bit, both off the
-  default path: debug builds compile with `-ffp-contract=off` on GCC and Clang,
-  so multiply-add pairs are no longer contracted into FMA instructions, and the
-  new `ENABLE_FLUSH_TO_ZERO` CMake option can be set to `OFF` to keep denormal
-  values in the engines instead of flushing them to zero.
+- Two knobs for comparing the output of two builds bit by bit, both off the
+  default path: debug builds compile with `-ffp-contract=off` on GCC and
+  Clang, and the new `ENABLE_FLUSH_TO_ZERO` CMake option can be set to `OFF`
+  to keep denormals in the engines.
 - The `WITH_MPI` CMake option and the `--with-MPI` option of
   `update_openEMS.sh` were removed.
 - CI covers Linux, macOS, FreeBSD and Windows, and compiles with warnings
