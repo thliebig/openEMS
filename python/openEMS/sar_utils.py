@@ -21,11 +21,12 @@ def readSAR(fn, f_idx=0):
         SAR values in W/kg.
     mesh : list of three 1-D ndarrays
         Mesh node coordinates [x, y, z] in metres.  This is ``mesh['lines']``
-        from :meth:`HDF5Dump.GetMesh` -- a deliberate simplification for the
-        common SAR use case (always Cartesian, coordinates already in metres).
-        For full mesh metadata (type, scaling, names), for reading only a part
-        of a large result, or for the ``/CellData`` and ``/CellWidth`` groups
-        of a raw SAR dump, use :class:`HDF5Dump` directly.
+        from :meth:`~openEMS.utilities.HDF5Dump.GetMesh` -- a deliberate
+        simplification for the common SAR use case (always Cartesian,
+        coordinates already in metres).  For full mesh metadata (type,
+        scaling, names), for reading only a part of a large result, or for the
+        ``/CellData`` and ``/CellWidth`` groups of a raw SAR dump, use
+        :class:`~openEMS.utilities.HDF5Dump` directly.
     sar_data : dict
         Metadata from the file: 'mass' (kg), 'frequency' (Hz), 'power' (W),
         and any other dump attributes (e.g. 'maxSAR', 'dump_type').

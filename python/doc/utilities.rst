@@ -20,6 +20,8 @@ Utilities
 
     .. autofunction:: DFT_time2freq
 
+    .. autofunction:: DelayFidelity
+
     .. autofunction:: check_mode_purity
 
     .. autofunction:: Check_Array_Equal
