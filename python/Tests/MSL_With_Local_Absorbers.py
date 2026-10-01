@@ -1,14 +1,34 @@
+# -*- coding: utf-8 -*-
 """
- Microstrip Line with local absorber test
+ Microstrip Line with a local absorber Test
 
- (c) 20@3-2025 Gadi Lahav <gadi@rfwithcare.com>
+ A 50 mm microstrip line on FR4, fed by a lumped port and terminated by a local
+ Mur absorbing boundary (MUR_1ST) in front of the PEC block at the far end. The
+ absorber runs at the phase velocity of the line, not at c0, so this also covers
+ SetPhaseVelocity.
+
+ Pass criteria:
+   max(dB(S11)) < -8 dB over 1..3 GHz
+
+ The bound is loose because this return loss is not the absorber alone: the line
+ is referenced to 50 Ohm and its own mismatch is in there too. Measured -10.4 dB
+ worst case (at the low band edge) and -19.5 dB at 2.5 GHz, against ~0 dB for an
+ end that does not absorb -- which is the regression this catches. Placing the
+ absorber directly on the PEC block, as done here, costs about 3 dB against the
+ variant one cell away (see the commented-out start/stop below).
+
+ Tested with
+  - python 3.14
+  - openEMS v0.0.36+
+
+ (c) 2023-2025 Gadi Lahav <gadi@rfwithcare.com>
 
 """
 
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+import numpy as np
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -115,7 +135,7 @@ mesh.AddLine('z',[start[2],stop[2]])
 
 
 # add extra cells to discretize the substrate thickness
-mesh.AddLine('y', linspace(0, substrate_thickness, substrate_cells+1))
+mesh.AddLine('y', np.linspace(0, substrate_thickness, substrate_cells+1))
 
 # create ground (same size as substrate)
 gnd = CSX.AddMaterial('cu_bot',kappa=56000000)
@@ -162,7 +182,7 @@ abs2.SetPhaseVelocity(v_phase);
 
 
 ### Run the simulation
-if 1:  # debugging only
+if 0:  # set to 1 to inspect the geometry in AppCSXCAD
     CSX_file = os.path.join(Sim_Path, 'msl_w_lumped_port_and_absorber.xml')
     if not os.path.exists(Sim_Path):
         os.mkdir(Sim_Path)
@@ -172,21 +192,36 @@ if 1:  # debugging only
 
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, verbose=0, cleanup=False, exact_endcriteria=True)
+    FDTD.Run(Sim_Path, verbose=0, cleanup=True, exact_endcriteria=True)
 
-### Post-processing and plrorotting
-f = np.linspace(max(1e9,f0-fc),f0+fc,401)
+### Post-processing
+f = np.linspace(max(1e9, f0-fc), f0+fc, 401)
 port1.CalcPort(Sim_Path, f, ref_impedance = 50.0)
 s11 = port1.uf_ref/port1.uf_inc
 
 s11_dB = np.transpose(20.0*np.log10(np.abs(s11)))
 
-figure()
-plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
-grid()
-legend()
-ylabel('S-Parameter (dB)')
-xlabel('Frequency (GHz)')
+### Pass / fail checks
+print('max(dB(S11)) = {:.1f} dB at {:.2f} GHz'.format(
+    np.max(s11_dB), f[np.argmax(s11_dB)]/1e9))
 
-show()
+# The far end is a PEC block: without the absorber in front of it the line is
+# shorted and reflects everything. A diverging run lands here as well, either
+# through |S11| > 1 or as a NaN, which fails the comparison too.
+assert np.max(s11_dB) < -8, \
+    'FAIL: max(dB(S11)) = {:.1f} dB, expected < -8 dB'.format(np.max(s11_dB))
 
+print('PASS')
+
+if 0:  # set to 1 for debugging plots
+    import matplotlib.pyplot as plt
+
+    fig, axis = plt.subplots(num='S-Parameter', tight_layout=True)
+    axis.plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
+    axis.grid()
+    axis.set_xmargin(0)
+    axis.set_xlabel('Frequency (GHz)')
+    axis.set_ylabel('S-Parameter (dB)')
+    axis.legend()
+
+    plt.show()

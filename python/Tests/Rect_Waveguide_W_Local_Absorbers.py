@@ -1,13 +1,30 @@
+# -*- coding: utf-8 -*-
 """
- Rectangular Waveguide with local absorber test
+ Rectangular Waveguide with local absorbers Test
 
- (c) 20@3-2025 Gadi Lahav <gadi@rfwithcare.com>
+ A WR42 section closed by PEC at both ends, with a local Mur absorbing boundary
+ (MUR_1ST_SA) placed in front of each end. Verifies that the local absorber
+ terminates the guide -- the PEC box would be a resonator without it -- and that
+ the wave impedance of AddRectWaveGuidePort matches the analytic TE10 value.
+
+ Pass criteria:
+   max(dB(S11)) < -40 dB    (the absorbers terminate the guide; measured -48 dB,
+                             a reflecting end would give ~0 dB)
+   |dB(S21)| < 0.05 dB      (lossless section between the two ports)
+   real(ZL) within 3 % of the analytic TE10 wave impedance, |imag(ZL)| below
+   3 % of it (measured 0.8 % each at this lambda/50 mesh)
+
+ Tested with
+  - python 3.14
+  - openEMS v0.0.36+
+
+ (c) 2023-2025 Gadi Lahav <gadi@rfwithcare.com>
 
 """
 
 ### Import Libraries
 import os, tempfile
-from pylab import *
+import numpy as np
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
@@ -104,7 +121,7 @@ mesh.SmoothMeshLines('all', mesh_res, ratio=1.4)
 # Et.AddBox(start, stop);
 
 ### Run the simulation
-if 1:  # debugging only
+if 0:  # set to 1 to inspect the geometry in AppCSXCAD
     CSX_file = os.path.join(Sim_Path, 'rect_wg.xml')
     if not os.path.exists(Sim_Path):
         os.mkdir(Sim_Path)
@@ -113,35 +130,69 @@ if 1:  # debugging only
     os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
 if not post_proc_only:
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
-### Postprocessing & plotting
-freq = linspace(f_start,f_stop,201)
+### Post-processing
+freq = np.linspace(f_start, f_stop, 201)
 for port in ports:
     port.CalcPort(Sim_Path, freq)
 
 s11 = ports[0].uf_ref / ports[0].uf_inc
 s21 = ports[1].uf_ref / ports[0].uf_inc
-ZL  = ports[0].uf_tot / ports[0].if_tot
-ZL_a = ports[0].ZL # analytic waveguide impedance
+ZL   = ports[0].uf_tot / ports[0].if_tot
+ZL_a = ports[0].ZL  # analytic TE10 wave impedance
 
-## Plot s-parameter
-figure()
-plot(freq*1e-6,20*log10(abs(s11)),'k-',linewidth=2, label='$S_{11}$')
-grid()
-plot(freq*1e-6,20*log10(abs(s21)),'r--',linewidth=2, label='$S_{21}$')
-legend();
-ylabel('S-Parameter (dB)')
-xlabel(r'frequency (MHz) $\rightarrow$')
+s11_dB = 20*np.log10(np.abs(s11))
+s21_dB = 20*np.log10(np.abs(s21))
 
-## Compare analytic and numerical wave-impedance
-figure()
-plot(freq*1e-6,real(ZL), linewidth=2, label='$\Re\{Z_L\}$')
-grid()
-plot(freq*1e-6,imag(ZL),'r--', linewidth=2, label='$\Im\{Z_L\}$')
-plot(freq*1e-6,ZL_a,'g-.',linewidth=2, label='$Z_{L, analytic}$')
-ylabel('ZL $(\Omega)$')
-xlabel(r'frequency (MHz) $\rightarrow$')
-legend()
+### Pass / fail checks
+print('max(dB(S11))  = {:.1f} dB'.format(np.max(s11_dB)))
+print('dB(S21)       = {:.3f} .. {:.3f} dB'.format(np.min(s21_dB), np.max(s21_dB)))
 
-show()
+# Both ends are PEC with a local absorber in front of them, so the only way out
+# of the box is through the absorbers: a broken one turns this into a resonator.
+assert np.max(s11_dB) < -40, \
+    'FAIL: max(dB(S11)) = {:.1f} dB, expected < -40 dB'.format(np.max(s11_dB))
+
+# lossless section between the ports -- and a guard against a sign or
+# normalisation error, which would show up as gain
+assert np.min(s21_dB) > -0.05, \
+    'FAIL: min(dB(S21)) = {:.3f} dB, expected > -0.05 dB'.format(np.min(s21_dB))
+assert np.max(s21_dB) < 0.05, \
+    'FAIL: max(dB(S21)) = {:.3f} dB, expected < +0.05 dB (sign error?)'.format(np.max(s21_dB))
+
+# the wave impedance the port reports against the closed form of the TE10 mode;
+# the tolerance is what the lambda/50 mesh and the de-embedding leave over
+err_re = np.max(np.abs(np.real(ZL) - ZL_a) / ZL_a)
+err_im = np.max(np.abs(np.imag(ZL)) / ZL_a)
+print('ZL error      = {:.1f} % real, {:.1f} % imaginary'.format(err_re*100, err_im*100))
+assert err_re < 0.03, \
+    'FAIL: real(ZL) deviates by {:.1f} %, expected < 3 %'.format(err_re*100)
+assert err_im < 0.03, \
+    'FAIL: imag(ZL) reaches {:.1f} % of ZL, expected < 3 %'.format(err_im*100)
+
+print('PASS')
+
+if 0:  # set to 1 for debugging plots
+    import matplotlib.pyplot as plt
+
+    fig, axis = plt.subplots(num='S-Parameters', tight_layout=True)
+    axis.plot(freq/1e9, s11_dB, 'k-',  linewidth=2, label='$S_{11}$')
+    axis.plot(freq/1e9, s21_dB, 'r--', linewidth=2, label='$S_{21}$')
+    axis.grid()
+    axis.set_xmargin(0)
+    axis.set_xlabel('Frequency (GHz)')
+    axis.set_ylabel('S-Parameter (dB)')
+    axis.legend()
+
+    fig, axis = plt.subplots(num='Wave Impedance', tight_layout=True)
+    axis.plot(freq/1e9, np.real(ZL), linewidth=2, label=r'$\Re\{Z_L\}$')
+    axis.plot(freq/1e9, np.imag(ZL), 'r--', linewidth=2, label=r'$\Im\{Z_L\}$')
+    axis.plot(freq/1e9, ZL_a, 'g-.', linewidth=2, label='$Z_{L,analytic}$')
+    axis.grid()
+    axis.set_xmargin(0)
+    axis.set_xlabel('Frequency (GHz)')
+    axis.set_ylabel(r'Wave impedance $(\Omega)$')
+    axis.legend()
+
+    plt.show()

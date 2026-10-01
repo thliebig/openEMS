@@ -119,7 +119,7 @@ start = [-CPW_length/2,  CPW_width/2 + CPW_gap, substrate_thickness]
 stop  = [ CPW_length/2,  substrate_width/2,      substrate_thickness]
 gnd.AddBox(start, stop, priority=999)
 
-if 1:  # debugging only
+if 0:  # set to 1 to inspect the geometry in AppCSXCAD
     CSX_file = os.path.join(Sim_Path, 'cpw_line.xml')
     if not os.path.exists(Sim_Path):
         os.mkdir(Sim_Path)
@@ -155,7 +155,7 @@ assert np.max(s21_dB[mask]) < 0.05, \
 
 print('PASS')
 
-if 1:  # set to 1 for debugging plots
+if 0:  # set to 1 for debugging plots
     import matplotlib.pyplot as plt
 
     fig, axis = plt.subplots(num='S-Parameters', tight_layout=True)

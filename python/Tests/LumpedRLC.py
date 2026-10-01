@@ -263,7 +263,7 @@ check_spot('Series RC', Z_ser_rc,
 
 print('\nAll lumped RLC tests PASSED')
 
-if 1:  # set to 1 for debugging plots
+if 0:  # set to 1 for debugging plots
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(2, 3, figsize=(16, 8))

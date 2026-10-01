@@ -111,13 +111,16 @@ Tests:
 
 ```bash
 cd TESTSUITE && octave --no-gui run_testsuite.m       # the Octave/Matlab test suite
-python3 -m unittest discover -s python/Tests -p "test_*.py" -v
+python3 -m unittest discover -s python/Tests -p "test_*.py" -v   # the Python unit tests
+cd python/Tests && python3 run_testsuite.py           # the Python full simulations, slow
 ```
 
-The scripts in `python/Tests/` and `python/Tutorials/` that are not `test_*.py`
-run full simulations — useful as integration checks, slow. Run Python tests from
-outside `python/`, or you import the unbuilt source instead of the installed
-module.
+`run_testsuite.py` runs and judges the scripts in `python/Tests/` that are not
+`test_*.py`: each one is a full simulation checked against a closed-form
+reference. `--unittests` adds the `test_*.py` modules to the same run. The
+scripts in `python/Tutorials/` also simulate but check nothing, so they are
+demonstrations, not tests. Run Python tests from anywhere but `python/`, or you
+import the unbuilt source instead of the installed module.
 
 **Build it and run the tests before reporting a change as working.** A solver
 change that compiles is not a solver change that converges; reading the code is
@@ -131,7 +134,7 @@ not verification.
 - **Tests**: add a focused test for behaviour that could silently regress —
   `TESTSUITE/` for solver behaviour and for the `matlab/` layer (see
   `TESTSUITE/README.md` for the test contract), `python/Tests/test_*.py` for
-  anything reachable from Python. A few tests that each catch something distinct beat
+  anything reachable from Python (`python/Tests/README.md` for that contract). A few tests that each catch something distinct beat
   many that overlap. Numerical tests need a stated tolerance, not an exact
   comparison.
 - **Changelog**: a change a user can notice — new or removed API, changed
