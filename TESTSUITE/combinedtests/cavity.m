@@ -1,24 +1,26 @@
-function pass = cavity( openEMS_options, options )
+function pass = cavity(varargin)
+%pass = cavity(<key>, <value>, ...)
+%
+% Rectangular PEC cavity, excited by a short current curve. The spectrum of
+% three orthogonal voltage probes is checked against the analytic resonances
+%
+%     f_mnl = c0/(2*pi) * sqrt((m*pi/a)^2 + (n*pi/b)^2 + (l*pi/d)^2)
+%
+% Two things are verified: every analytic resonance carries a peak ('inside'),
+% and the spectrum stays low between them ('outside').
+%
+% See ts_options for the accepted options.
+%
+% openEMS testsuite
+% -----------------
+%
+% See also run_testsuite, ts_options
 
+% the shared check helpers, also when this test is run on its own
+addpath(fullfile(fileparts(fileparts(mfilename('fullpath'))), 'helperscripts'));
+
+opt = ts_options(varargin{:});
 physical_constants;
-
-
-ENABLE_PLOTS = 1;
-CLEANUP = 1;        % if enabled and result is PASS, remove simulation folder
-STOP_IF_FAILED = 1; % if enabled and result is FAILED, stop with error
-SILENT = 0;         % 0=show openEMS output
-
-if nargin < 1
-    openEMS_options = '';
-end
-if nargin < 2
-    options = '';
-end
-if any(strcmp( options, 'run_testsuite' ))
-    ENABLE_PLOTS = 0;
-    STOP_IF_FAILED = 0;
-    SILENT = 1;
-end
 
 % LIMITS - inside
 lower_rel_limit = 1.3e-3;    % -0.13%
@@ -44,24 +46,16 @@ end
 f_start = 1e9;
 f_stop = 10e9;
 
-Sim_Path = 'tmp_cavity';
+Sim_Path = ts_sim_path(mfilename('fullpath'));
 Sim_CSX = 'cavity.xml';
 
-[status,message,messageid]=rmdir(Sim_Path,'s');
-[status,message,messageid]=mkdir(Sim_Path);
-
 %setup FDTD parameter
-FDTD = InitFDTD( 20000,1e-6 );
+FDTD = InitFDTD('NrTS', 20000, 'EndCriteria', 1e-6);
 FDTD = SetGaussExcite(FDTD,(f_stop-f_start)/2,(f_stop-f_start)/2);
-BC = [0 0 0 0 0 0]; % PEC boundaries
-FDTD = SetBoundaryCond(FDTD,BC);
+FDTD = SetBoundaryCond(FDTD,{'PEC','PEC','PEC','PEC','PEC','PEC'});
 
 %setup CSXCAD geometry
 CSX = InitCSX();
-% grid_res = 2e-3;
-% mesh.x = 0:grid_res:a; %linspace(0,a,25);
-% mesh.y = 0:grid_res:b; %linspace(0,b,25);
-% mesh.z = 0:grid_res:d; %linspace(0,d,25);
 mesh.x = linspace(0,a,26);
 mesh.y = linspace(0,b,11);
 mesh.z = linspace(0,d,32);
@@ -76,24 +70,6 @@ p(1,2) = mesh.x(floor(end*2/3)+1);
 p(2,2) = mesh.y(floor(end*2/3)+1);
 p(3,2) = mesh.z(floor(end*2/3)+1);
 CSX = AddCurve( CSX, 'excite1', 0, p );
- 
-%dump
-% CSX = AddDump(CSX,'Et_',0,2);
-% pos1 = [mesh.x(1) mesh.y(1) mesh.z(1)];
-% pos2 = [mesh.x(end) mesh.y(end) mesh.z(end)];
-% CSX = AddBox(CSX,'Et_',0 , pos1,pos2);
-
-% %dump
-% CSX = AddDump(CSX,'Et2_',0,2);
-% pos1 = [mesh.x(1) mesh.y(1) mesh.z(1)];
-% pos2 = [mesh.x(end) mesh.y(1) mesh.z(end)];
-% CSX = AddBox(CSX,'Et2_',0 , pos1,pos2);
-% 
-% %dump
-% CSX = AddDump(CSX,'Et3_',0,2);
-% pos1 = [mesh.x(1) mesh.y(end-1) mesh.z(1)];
-% pos2 = [mesh.x(end) mesh.y(end-1) mesh.z(end)];
-% CSX = AddBox(CSX,'Et3_',0 , pos1,pos2);
 
 %voltage calc
 CSX = AddProbe(CSX,'ut1x',0);
@@ -115,10 +91,9 @@ CSX = AddBox(CSX,'ut1z', 0 ,pos1,pos2);
 WriteOpenEMS([Sim_Path '/' Sim_CSX],FDTD,CSX);
 
 % run openEMS
-folder = fileparts( mfilename('fullpath') );
-Settings.LogFile = [folder '/' Sim_Path '/openEMS.log'];
-Settings.Silent = SILENT;
-RunOpenEMS( Sim_Path, Sim_CSX, openEMS_options, Settings );
+Settings.LogFile = [Sim_Path '/openEMS.log'];
+Settings.Silent = opt.Silent;
+RunOpenEMS( Sim_Path, Sim_CSX, opt.openEMS_opts, Settings );
 UI = ReadUI( {[Sim_Path '/ut1x'], [Sim_Path '/ut1y'], [Sim_Path '/ut1z']} );
 
 
@@ -179,7 +154,7 @@ for n=1:numel(temp)-1
 end
 
 
-if ENABLE_PLOTS
+if opt.Plots
     figure
     plot(f/1e9,abs(uy))
     max1 = max(abs(uy));
@@ -207,23 +182,17 @@ if ENABLE_PLOTS
     title( 'TM-modes' )
 end
 
-pass1 = check_frequency( f, abs(uy), f_TE*(1+upper_rel_limit),    f_TE*(1-lower_rel_limit),    min_rel_amplitude, 'inside' );
-pass2 = check_frequency( f, abs(uz), f_TM*(1+upper_rel_limit_TM), f_TM*(1-lower_rel_limit_TM), min_rel_amplitude_TM, 'inside' );
-pass3 = check_frequency( f, abs(uy), f_outer2, f_outer1, max_rel_amplitude, 'outside' );
-pass4 = check_frequency( f, abs(uz), f_outer2_TM, f_outer1_TM, max_rel_amplitude, 'outside' );
-pass = pass1 && pass2 && pass3 && pass4;
-if pass
-    disp( 'combinedtests/cavity.m (resonance frequency):  pass' );
-else
-    disp( 'combinedtests/cavity.m (resonance frequency):  * FAILED *' );
-end
+pass = ts_check('TE resonances present', ...
+         check_frequency( f, abs(uy), f_TE*(1+upper_rel_limit), f_TE*(1-lower_rel_limit), min_rel_amplitude, 'inside' ), ...
+         '%s GHz, at least %g%% of the peak amplitude', mat2str(round(f_TE/1e8)/10), min_rel_amplitude*100);
+pass = ts_check('TM resonances present', ...
+         check_frequency( f, abs(uz), f_TM*(1+upper_rel_limit_TM), f_TM*(1-lower_rel_limit_TM), min_rel_amplitude_TM, 'inside' ), ...
+         '%s GHz, at least %g%% of the peak amplitude', mat2str(round(f_TM/1e8)/10), min_rel_amplitude_TM*100) && pass;
+pass = ts_check('no spurious TE response', ...
+         check_frequency( f, abs(uy), f_outer2, f_outer1, max_rel_amplitude, 'outside' ), ...
+         'below %g%% of the peak amplitude between the resonances', max_rel_amplitude*100) && pass;
+pass = ts_check('no spurious TM response', ...
+         check_frequency( f, abs(uz), f_outer2_TM, f_outer1_TM, max_rel_amplitude, 'outside' ), ...
+         'below %g%% of the peak amplitude between the resonances', max_rel_amplitude*100) && pass;
 
-
-
-
-if pass && CLEANUP
-    rmdir( Sim_Path, 's' );
-end
-if ~pass && STOP_IF_FAILED
-    error 'test failed';
-end
+pass = ts_finish(opt, mfilename, pass, Sim_Path);

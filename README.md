@@ -136,8 +136,10 @@ python3 MSL_NotchFilter.py
 **Full Octave test suite:**
 ```bash
 cd TESTSUITE
-octave --no-gui run_testsuite.m
+octave --no-gui run_testsuite.m          # add --list, --all-engines or a test name
 ```
+It reports PASS/FAIL per test and exits non-zero on failure. See
+[TESTSUITE/README.md](TESTSUITE/README.md).
 
 **Python unit tests:**
 ```bash

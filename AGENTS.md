@@ -110,7 +110,7 @@ octave --no-gui --eval "setup()"
 Tests:
 
 ```bash
-cd TESTSUITE && octave --no-gui run_testsuite.m       # the C++ solver test suite
+cd TESTSUITE && octave --no-gui run_testsuite.m       # the Octave/Matlab test suite
 python3 -m unittest discover -s python/Tests -p "test_*.py" -v
 ```
 
@@ -129,8 +129,9 @@ not verification.
   whitespace.** No drive-by reformatting, no reorganising code you were not
   asked to touch — a diff should contain only what the change actually needs.
 - **Tests**: add a focused test for behaviour that could silently regress —
-  `TESTSUITE/` for solver behaviour, `python/Tests/test_*.py` for anything
-  reachable from Python. A few tests that each catch something distinct beat
+  `TESTSUITE/` for solver behaviour and for the `matlab/` layer (see
+  `TESTSUITE/README.md` for the test contract), `python/Tests/test_*.py` for
+  anything reachable from Python. A few tests that each catch something distinct beat
   many that overlap. Numerical tests need a stated tolerance, not an exact
   comparison.
 - **Changelog**: a change a user can notice — new or removed API, changed
