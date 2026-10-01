@@ -122,6 +122,15 @@ jobs:
           #                required.
           #          false: use standard GitHub's actions/checkout.
           # docker-image: string, image on DockerHub to use
+          # full-tests: true or false (default false).
+          #             true: also run the full Octave and Python test suites,
+          #                   which simulate. They check numerical results,
+          #                   which are a property of the source and not of the
+          #                   distribution, so exactly one modern entry should
+          #                   carry them; the smoketests above are what covers
+          #                   every entry. The Python suite also needs at least
+          #                   Python 3.6 for its f-strings, which rules out the
+          #                   Ubuntu 14.04 entry.
           - name: "CentOS 7"
             libc: "GNU"
             ancient: true
@@ -146,6 +155,7 @@ jobs:
             libc: "GNU"
             ancient: false
             docker-image: "ubuntu:latest"
+            full-tests: true
 
           - name: "Fedora"
             libc: "GNU"
@@ -578,6 +588,18 @@ jobs:
       - name: Run Python unit tests
         run: |
           python3 -m unittest discover -s $GITHUB_WORKSPACE/openEMS/python/Tests -p "test_*.py" -v
+
+      - name: Run Octave test suite
+        if: matrix.os.full-tests
+        run: |
+          cd $GITHUB_WORKSPACE/openEMS/TESTSUITE
+          octave --no-gui run_testsuite.m
+
+      - name: Run Python simulation test suite
+        if: matrix.os.full-tests
+        run: |
+          cd $GITHUB_WORKSPACE/openEMS/python/Tests
+          python3 run_testsuite.py
 
       - name: Create Python venv and install dependencies
         run: |
