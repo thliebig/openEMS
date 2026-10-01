@@ -155,7 +155,7 @@ def run_direction(exc_dir):
     # -------------------------------------------------------------------
     # Run
     # -------------------------------------------------------------------
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
     # -------------------------------------------------------------------
     # Post-processing

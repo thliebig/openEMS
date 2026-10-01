@@ -107,7 +107,7 @@ def run_direction(exc_dir):
         os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
     ### Run
-    FDTD.Run(Sim_Path, cleanup=True)
+    FDTD.Run(Sim_Path, cleanup=True, exact_endcriteria=True)
 
     ### Post-processing
     freq = np.linspace(f_start, f_stop, 201)
