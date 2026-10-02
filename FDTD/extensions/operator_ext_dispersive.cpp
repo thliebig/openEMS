@@ -55,6 +55,7 @@ Operator_Ext_Dispersive::~Operator_Ext_Dispersive()
 		delete[] m_LM_pos[n][0];
 		delete[] m_LM_pos[n][1];
 		delete[] m_LM_pos[n][2];
+		delete[] m_LM_pos[n];
 	}
 	delete[] m_LM_pos;
 	m_LM_pos=NULL;
