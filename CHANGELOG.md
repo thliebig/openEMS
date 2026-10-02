@@ -130,6 +130,12 @@ number moved up and patch releases now have somewhere to go.
 
 ### Fixed
 
+- **`DebyeMaterial` diverged** once `sum(eps_delta)` approached `epsilon`, and did
+  so silently -- the NaN energy satisfied the end criteria, so the run reported a
+  normal finish. Its branch carries no inductance, so integrating it like the
+  Drude/Lorentz branch put the update's root on -1. It now integrates the pole's
+  capacitor voltage, in its own extension pair; `eps_delta` is no longer limited,
+  and a pole shorter than three timesteps is refused with a warning (#229).
 - Python: a `ContinuousStructure` handed to `SetCSX()` is no longer destroyed
   twice. `SetCSX()` takes ownership, which the binding now states, and
   `GetCSX()` no longer leaks a fresh structure per call. Requires a CSXCAD

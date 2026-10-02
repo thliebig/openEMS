@@ -30,6 +30,7 @@
 #include "FDTD/extensions/operator_ext_mur_abc.h"
 #include "FDTD/extensions/operator_ext_upml.h"
 #include "FDTD/extensions/operator_ext_lorentzmaterial.h"
+#include "FDTD/extensions/operator_ext_debyematerial.h"
 #include "FDTD/extensions/operator_ext_lumpedRLC.h"
 #include "FDTD/extensions/operator_ext_conductingsheet.h"
 #include "FDTD/extensions/operator_ext_steadystate.h"
@@ -1283,8 +1284,10 @@ int openEMS::SetupFDTD()
 		FDTD_Op->AddExtension(Op_Ext_SSD);
 	}
 
-	if ((m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0) || (m_CSX->GetQtyPropertyType(CSProperties::DEBYEMATERIAL)>0))
+	if (m_CSX->GetQtyPropertyType(CSProperties::LORENTZMATERIAL)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_LorentzMaterial(FDTD_Op));
+	if (m_CSX->GetQtyPropertyType(CSProperties::DEBYEMATERIAL)>0)
+		FDTD_Op->AddExtension(new Operator_Ext_DebyeMaterial(FDTD_Op));
 	if (m_CSX->GetQtyPropertyType(CSProperties::CONDUCTINGSHEET)>0)
 		FDTD_Op->AddExtension(new Operator_Ext_ConductingSheet(FDTD_Op, m_Exc->GetMaxFreq()));
 	if (m_CSX->GetQtyPropertyType(CSProperties::LUMPED_ELEMENT)>0)

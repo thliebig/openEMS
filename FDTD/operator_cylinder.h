@@ -34,6 +34,7 @@ class Operator_Cylinder : public Operator_Multithread
 	friend class Operator_CylinderMultiGrid;
 	friend class Operator_Ext_Cylinder;
 	friend class Operator_Ext_LorentzMaterial;
+	friend class Operator_Ext_DebyeMaterial;
 public:
 	static Operator_Cylinder* New(unsigned int numThreads = 0);
 	virtual ~Operator_Cylinder();

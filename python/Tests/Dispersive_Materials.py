@@ -130,7 +130,9 @@ def lorentz(CSX):
 def eps_lorentz(f):
     return 1 - fp**2 / (f**2 - f_pole**2 - 1j*f/(2*np.pi*tau))
 
-# Note: the Debye ADE becomes unstable for d_eps >~ eps_inf, keep d_eps small
+# A weak pole, which is what a low-loss substrate needs. Debye_Water.py covers
+# a strong one (d_eps/eps_inf = 14.2), which diverged before the Debye ADE was
+# reworked and is no longer restricted.
 eps_inf   = 4.0
 d_eps     = 1.0
 tau_debye = 1 / (2*np.pi*4e9)   # relaxation frequency 4 GHz
