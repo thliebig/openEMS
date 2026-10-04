@@ -88,6 +88,9 @@ number moved up and patch releases now have somewhere to go.
 
 ### Changed
 
+- **Faster multithreaded engine with extensions.** Extensions with no work in
+  a phase no longer cost a thread barrier per timestep. The results are
+  bitwise identical; `--no-ext-opt` restores the previous scheduling.
 - **The MPI engine was removed.** It had not compiled for years, as it used
   the C++ MPI bindings that MPI-3 dropped, it had no tests, and several
   extensions never supported it (#260). The multithreaded engine is

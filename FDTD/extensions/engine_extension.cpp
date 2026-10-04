@@ -19,6 +19,7 @@
 #include "operator_extension.h"
 
 #include "FDTD/engine.h"
+#include "tools/global.h"
 
 Engine_Extension::Engine_Extension(Operator_Extension* op_ext)
 {
@@ -87,6 +88,11 @@ void Engine_Extension::Apply2Current(int threadID)
 	//if this method gets called the derived extension obviously doesn't support multithrading, calling non-MT method...
 	if (threadID==0)
 		Apply2Current();
+}
+
+bool Engine_Extension::UseOptimizedPaths()
+{
+	return !(g_settings.hasOption("no-ext-opt") && g_settings.getOption("no-ext-opt").as<bool>());
 }
 
 bool Engine_Extension::operator< (const Engine_Extension& other)
