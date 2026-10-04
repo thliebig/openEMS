@@ -46,17 +46,24 @@ public:
 protected:
 	template <typename EngType>
 	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
+	void DoPreVoltageUpdatesSSECursor(Engine_sse* eng, int threadID);
 
 	template <typename EngType>
 	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
+	void DoPostVoltageUpdatesSSECursor(Engine_sse* eng, int threadID);
 
 	template <typename EngType>
 	void DoPreCurrentUpdatesImpl(EngType* eng, int threadID);
+	void DoPreCurrentUpdatesSSECursor(Engine_sse* eng, int threadID);
 
 	template <typename EngType>
 	void DoPostCurrentUpdatesImpl(EngType* eng, int threadID);
+	void DoPostCurrentUpdatesSSECursor(Engine_sse* eng, int threadID);
 
 	Operator_Ext_UPML* m_Op_UPML;
+
+	//! use the specialized SSE update loops where the engine type allows it
+	bool m_UseOptimized;
 
 	std::vector<unsigned int> m_start;
 	std::vector<unsigned int> m_numX;

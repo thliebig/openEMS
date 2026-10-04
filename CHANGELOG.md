@@ -88,6 +88,9 @@ number moved up and patch releases now have somewhere to go.
 
 ### Changed
 
+- **Faster UPML update in the SSE engines.** The PML update walks the field
+  arrays along z instead of recomputing an index per cell. The results are
+  bitwise identical; `--no-ext-opt` restores the previous loops.
 - **Faster multithreaded engine with extensions.** Extensions with no work in
   a phase no longer cost a thread barrier per timestep. The results are
   bitwise identical; `--no-ext-opt` restores the previous scheduling.
