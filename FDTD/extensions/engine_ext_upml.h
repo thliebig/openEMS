@@ -60,6 +60,14 @@ protected:
 	void DoPostCurrentUpdatesImpl(EngType* eng, int threadID);
 	void DoPostCurrentUpdatesSSECursor(Engine_sse* eng, int threadID);
 
+	//! Same as the SSECursor variants, but with row pointers into the coefficient
+	//! and flux arrays. Returns false, before touching any data, if the arrays
+	//! are too small, so the caller falls back to the cursor loop.
+	bool TryDoPreVoltageUpdatesSSECursorRows(Engine_sse* eng, int threadID);
+	bool TryDoPostVoltageUpdatesSSECursorRows(Engine_sse* eng, int threadID);
+	bool TryDoPreCurrentUpdatesSSECursorRows(Engine_sse* eng, int threadID);
+	bool TryDoPostCurrentUpdatesSSECursorRows(Engine_sse* eng, int threadID);
+
 	Operator_Ext_UPML* m_Op_UPML;
 
 	//! use the specialized SSE update loops where the engine type allows it
