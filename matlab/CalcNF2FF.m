@@ -34,6 +34,11 @@ function nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi, varargin)
 %              direction.
 %              Example: 'Mirror', {0, 'PMC', +100}
 %
+% - 'Backend': who evaluates the surface integral: 'auto' (default), 'cpu'
+%              or 'gpu'. 'auto' uses the GPU if nf2ff was built with
+%              -DNF2FF_HIP=ON and a GPU is usable, else the CPU.
+%              'gpu' fails if it cannot be used.
+%
 % See also: CreateNF2FFBox, ReadNF2FF
 %
 % openEMS matlab interface

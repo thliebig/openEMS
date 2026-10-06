@@ -29,6 +29,9 @@ class nf2ff_calc;
 
 enum MirrorType { MIRROR_OFF = 0, MIRROR_PEC = 1, MIRROR_PMC = 2 };
 
+//! Who evaluates the surface integral: auto takes the GPU if it can and falls back to the CPU
+enum Nf2ffBackend { NF2FF_BACKEND_AUTO = 0, NF2FF_BACKEND_CPU = 1, NF2FF_BACKEND_GPU = 2 };
+
 // data structure to exchange data between thread-controller and worker-threads
 struct nf2ff_data
 {
@@ -90,6 +93,11 @@ public:
 
 	void SetMirror(int type, int dir, float pos);
 
+	//! Select the backend (Nf2ffBackend). With NF2FF_BACKEND_GPU, AddPlane fails if the GPU cannot be used.
+	void SetBackend(int backend) {m_backend=static_cast<Nf2ffBackend>(backend);}
+	//! True if the last plane was transformed on the GPU
+	bool UsedGPU() const {return m_usedGPU;}
+
 	bool AddPlane(float **lines, unsigned int* numLines, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, int MeshType=0);
 
 protected:
@@ -114,12 +122,16 @@ protected:
 	float* m_theta;
 	float* m_phi;
 
+	Nf2ffBackend m_backend;
+	bool m_usedGPU;
+
 	//mirror settings
 	MirrorType m_MirrorType[3];
 	float m_MirrorPos[3];
 
 	int GetNormalDir(unsigned int* numLines);
 	bool AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, int MeshType=0);
+	bool CalcPlaneGPU(int ny, float **lines, unsigned int* numLines, const float* normDir, const float* edge_length_P, const float* edge_length_PP, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, ArrayLib::ArrayIJ<std::complex<float>> &Nt, ArrayLib::ArrayIJ<std::complex<float>> &Np, ArrayLib::ArrayIJ<std::complex<float>> &Lt, ArrayLib::ArrayIJ<std::complex<float>> &Lp);
 	bool AddMirrorPlane(int n, float **lines, unsigned int* numLines, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, int MeshType=0);
 
 	//boost multi-threading

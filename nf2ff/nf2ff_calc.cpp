@@ -23,6 +23,11 @@
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <string>
+
+#ifdef NF2FF_WITH_GPU
+#include "nf2ff_gpu.h"
+#endif
 
 using namespace std;
 
@@ -205,6 +210,9 @@ nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vecto
 		m_MirrorPos[n]  = 0.0;
 	}
 
+	m_backend = NF2FF_BACKEND_AUTO;
+	m_usedGPU = false;
+
 	m_Barrier = NULL;
 	m_numThreads = AvailableThreads();
 }
@@ -297,9 +305,100 @@ bool nf2ff_calc::AddMirrorPlane(int n, float **lines, unsigned int* numLines, Ar
 	return this->AddSinglePlane(lines, numLines, E_field, H_field, MeshType);
 }
 
+//! True if the GPU can take a plane of this mesh type, otherwise the reason why not
+static bool GPUUsable(int MeshType, string& reason)
+{
+#ifdef NF2FF_WITH_GPU
+	if (MeshType!=0)
+	{
+		reason = "the GPU backend supports Cartesian meshes only";
+		return false;
+	}
+	if (!nf2ff_gpu::Available())
+	{
+		reason = nf2ff_gpu::LastError();
+		return false;
+	}
+	return true;
+#else
+	reason = "built without GPU support (configure with -DNF2FF_HIP=ON)";
+	return false;
+#endif
+}
+
+bool nf2ff_calc::CalcPlaneGPU(int ny, float **lines, unsigned int* numLines, const float* normDir, const float* edge_length_P, const float* edge_length_PP, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, ArrayLib::ArrayIJ<std::complex<float>> &Nt, ArrayLib::ArrayIJ<std::complex<float>> &Np, ArrayLib::ArrayIJ<std::complex<float>> &Lt, ArrayLib::ArrayIJ<std::complex<float>> &Lp)
+{
+#ifdef NF2FF_WITH_GPU
+	int nP  = (ny+1)%3;
+	int nPP = (ny+2)%3;
+
+	// contract the longer in-plane axis in the matrix product
+	int ax_p = nP, ax_q = nPP;
+	const float* w_p = edge_length_P;
+	const float* w_q = edge_length_PP;
+	if (numLines[ax_p] < numLines[ax_q])
+	{
+		swap(ax_p, ax_q);
+		swap(w_p, w_q);
+	}
+	unsigned int n_p = numLines[ax_p];
+	unsigned int n_q = numLines[ax_q];
+
+	vector<float> crd_p(n_p), crd_q(n_q);
+	for (unsigned int i=0;i<n_p;++i)
+		crd_p[i] = lines[ax_p][i] - m_centerCoord[ax_p];
+	for (unsigned int j=0;j<n_q;++j)
+		crd_q[j] = lines[ax_q][j] - m_centerCoord[ax_q];
+
+	// J = n x H and M = -n x E have no component along n, so only the two
+	// tangential ones are kept, [J_nP, J_nPP, M_nP, M_nPP], times the cell area
+	const float s = normDir[ny];
+	vector<complex<float> > G((size_t)n_p*4*n_q);
+	for (unsigned int i=0;i<n_p;++i)
+		for (unsigned int j=0;j<n_q;++j)
+		{
+			unsigned int pos[3];
+			pos[ny] = 0;
+			pos[ax_p] = i;
+			pos[ax_q] = j;
+			float dA = w_p[i]*w_q[j];
+			complex<float>* g = &G[(size_t)i*4*n_q + j];
+			g[0*n_q] = -s*H_field(nPP, pos[0], pos[1], pos[2])*dA;
+			g[1*n_q] =  s*H_field(nP,  pos[0], pos[1], pos[2])*dA;
+			g[2*n_q] =  s*E_field(nPP, pos[0], pos[1], pos[2])*dA;
+			g[3*n_q] = -s*E_field(nP,  pos[0], pos[1], pos[2])*dA;
+		}
+
+	float k = 2*PI*m_freq/C0*sqrt(m_permittivity*m_permeability);
+	size_t nAng = (size_t)m_numTheta*m_numPhi;
+	vector<complex<float> > res(4*nAng);
+	if (!nf2ff_gpu::PlaneSums(k, m_numTheta, m_theta, m_numPhi, m_phi, ny, ax_p, ax_q,
+	                           n_p, &crd_p[0], n_q, &crd_q[0], lines[ny][0] - m_centerCoord[ny],
+	                           &G[0], &res[0]))
+	{
+		cerr << "nf2ff_calc::AddPlane: GPU transformation failed: " << nf2ff_gpu::LastError() << endl;
+		return false;
+	}
+
+	for (unsigned int tn=0;tn<m_numTheta;++tn)
+		for (unsigned int pn=0;pn<m_numPhi;++pn)
+		{
+			size_t a = (size_t)tn*m_numPhi + pn;
+			Nt(tn, pn) = res[0*nAng + a];
+			Np(tn, pn) = res[1*nAng + a];
+			Lt(tn, pn) = res[2*nAng + a];
+			Lp(tn, pn) = res[3*nAng + a];
+		}
+	return true;
+#else
+	return false;
+#endif
+}
+
 bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, int MeshType)
 {
-	this->AddSinglePlane(lines, numLines, E_field, H_field, MeshType);
+	if (!this->AddSinglePlane(lines, numLines, E_field, H_field, MeshType))
+		return false;
 
 	for (int n=0;n<3;++n)
 	{
@@ -308,7 +407,8 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, ArrayLib::Array
 		// check if a single mirror plane is on
 		if ((m_MirrorType[n]!=MIRROR_OFF) && (m_MirrorType[nP]==MIRROR_OFF) && (m_MirrorType[nPP]==MIRROR_OFF))
 		{
-			this->AddMirrorPlane(n, lines, numLines, E_field, H_field, MeshType);
+			if (!this->AddMirrorPlane(n, lines, numLines, E_field, H_field, MeshType))
+				return false;
 
 			for (unsigned int i=0;i<numLines[n];++i)
 				lines[n][i] = 2.0*m_MirrorPos[n] - lines[n][i];
@@ -318,9 +418,12 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, ArrayLib::Array
 		//check if two planes are on
 		else if ((m_MirrorType[n]==MIRROR_OFF) && (m_MirrorType[nP]!=MIRROR_OFF) && (m_MirrorType[nPP]!=MIRROR_OFF))
 		{
-			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
-			this->AddMirrorPlane(nPP, lines, numLines, E_field, H_field, MeshType);
-			this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType);
+			if (!this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType))
+				return false;
+			if (!this->AddMirrorPlane(nPP, lines, numLines, E_field, H_field, MeshType))
+				return false;
+			if (!this->AddMirrorPlane(nP, lines, numLines, E_field, H_field, MeshType))
+				return false;
 
 			for (unsigned int i=0;i<numLines[nPP];++i)
 				lines[nPP][i] = 2.0*m_MirrorPos[nPP] - lines[nPP][i];
@@ -331,13 +434,20 @@ bool nf2ff_calc::AddPlane(float **lines, unsigned int* numLines, ArrayLib::Array
 	// check if all planes are on
 	if ((m_MirrorType[0]!=MIRROR_OFF) && (m_MirrorType[1]!=MIRROR_OFF) && (m_MirrorType[2]!=MIRROR_OFF))
 	{
-		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
-		this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType);
-		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
-		this->AddMirrorPlane(2, lines, numLines, E_field, H_field, MeshType);
-		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
-		this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType);
-		this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType);
+		if (!this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType))
+			return false;
+		if (!this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType))
+			return false;
+		if (!this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType))
+			return false;
+		if (!this->AddMirrorPlane(2, lines, numLines, E_field, H_field, MeshType))
+			return false;
+		if (!this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType))
+			return false;
+		if (!this->AddMirrorPlane(1, lines, numLines, E_field, H_field, MeshType))
+			return false;
+		if (!this->AddMirrorPlane(0, lines, numLines, E_field, H_field, MeshType))
+			return false;
 
 		for (unsigned int i=0;i<numLines[2];++i)
 			lines[2][i] = 2.0*m_MirrorPos[2] - lines[2][i];
@@ -361,6 +471,18 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 	}
 	int nP  = (ny+1)%3;
 	int nPP = (ny+2)%3;
+
+	bool use_gpu = false;
+	if (m_backend != NF2FF_BACKEND_CPU)
+	{
+		string reason;
+		use_gpu = GPUUsable(MeshType, reason);
+		if ((!use_gpu) && (m_backend==NF2FF_BACKEND_GPU))
+		{
+			cerr << "nf2ff_calc::AddPlane: Error, GPU backend requested but not usable: " << reason << endl;
+			return false;
+		}
+	}
 
 	ArrayLib::ArrayNIJK<std::complex<float>> Js("Js", numLines);
 	ArrayLib::ArrayNIJK<std::complex<float>> Ms("Ms", numLines);
@@ -415,10 +537,30 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 			}
 	unsigned int numAngles[2] = {m_numTheta, m_numPhi};
 
+	ArrayLib::ArrayIJ<complex<float>> Nt("l_Nt", numAngles);
+	ArrayLib::ArrayIJ<complex<float>> Np("l_Np", numAngles);
+	ArrayLib::ArrayIJ<complex<float>> Lt("l_Lt", numAngles);
+	ArrayLib::ArrayIJ<complex<float>> Lp("l_Lp", numAngles);
+
+	m_usedGPU = false;
+	if (use_gpu)
+	{
+		m_usedGPU = CalcPlaneGPU(ny, lines, numLines, normDir, edge_length_P, edge_length_PP, E_field, H_field, Nt, Np, Lt, Lp);
+		if ((!m_usedGPU) && (m_backend==NF2FF_BACKEND_GPU))
+		{
+			delete[] edge_length_P;
+			delete[] edge_length_PP;
+			return false;
+		}
+	}
+
+	nf2ff_data* thread_data = NULL;
+	if (!m_usedGPU)
+	{
 	// setup multi-threading jobs
 	vector<unsigned int> jpt = AssignJobs2Threads(numLines[nP], m_numThreads, true);
 	m_numThreads = jpt.size();
-	nf2ff_data* thread_data = new nf2ff_data[m_numThreads];
+	thread_data = new nf2ff_data[m_numThreads];
 	m_Barrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
 	unsigned int start=0;
 	unsigned int stop=jpt.at(0)-1;
@@ -457,11 +599,6 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 
 	m_Barrier->wait(); //combine all thread local Nt,Np,Lt and Lp
 
-	ArrayLib::ArrayIJ<complex<float>> Nt("l_Nt", numAngles);
-	ArrayLib::ArrayIJ<complex<float>> Np("l_Np", numAngles);
-	ArrayLib::ArrayIJ<complex<float>> Lt("l_Lt", numAngles);
-	ArrayLib::ArrayIJ<complex<float>> Lp("l_Lp", numAngles);
-
 	for (unsigned int n=0; n<m_numThreads; n++)
 	{
 		for (unsigned int tn=0;tn<m_numTheta;++tn)
@@ -482,6 +619,7 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 	m_thread_group.join_all(); // wait for termination
 	delete m_Barrier;
 	m_Barrier = NULL;
+	}
 
 	//cleanup Js & Ms
 	Js.Reset();

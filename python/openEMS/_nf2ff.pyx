@@ -60,6 +60,23 @@ cdef class _nf2ff:
     def SetRadius(self, radius):
         self.thisptr.SetRadius(radius)
 
+    def SetBackend(self, backend):
+        """Select who evaluates the surface integral: 'auto' (default), 'cpu' or 'gpu'.
+
+        'gpu' needs openEMS built with NF2FF_HIP; AnalyseFile then fails if no
+        usable device is found. 'auto' takes the GPU if there is one, else the CPU.
+        """
+        backends = {'auto': 0, 'cpu': 1, 'gpu': 2}
+        try:
+            self.thisptr.SetBackend(backends[str(backend).lower()])
+        except KeyError:
+            raise ValueError("Unknown backend {!r}, use 'auto', 'cpu' or 'gpu'".format(backend))
+
+    @staticmethod
+    def GetGpuDevice():
+        """Name of the GPU of the GPU backend, '' if there is none."""
+        return cpp_nf2ff.GetGpuDevice().decode('UTF-8')
+
     def Write2HDF5(self, filename):
         return self.thisptr.Write2HDF5(filename.encode('UTF-8'))
 

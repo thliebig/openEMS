@@ -95,8 +95,8 @@ class nf2ff:
                 self.e_dump.AddBox(l_start, l_stop)
                 self.h_dump.AddBox(l_start, l_stop)
 
-    def CalcNF2FF(self, sim_path, freq, theta, phi, radius=1, center=[0,0,0], outfile=None, read_cached=False, verbose=0):
-        """ CalcNF2FF(sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
+    def CalcNF2FF(self, sim_path, freq, theta, phi, radius=1, center=[0,0,0], outfile=None, read_cached=False, verbose=0, backend='auto'):
+        """ CalcNF2FF(sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0, backend='auto'):
 
         Calculate the far-field after the simulation is done.
 
@@ -108,6 +108,8 @@ class nf2ff:
         :param outfile: str -- File to save results in. (defaults to recording name)
         :param read_cached: bool -- enable/disable read already existing results (default off)
         :param verbose: int -- set verbose level (default 0)
+        :param backend: str -- 'auto' (default), 'cpu' or 'gpu'. 'auto' uses the GPU if openEMS was
+                         built with NF2FF_HIP and a device is usable, else the CPU; 'gpu' raises if it cannot.
 
         :returns: nf2ff_results class instance
         """
@@ -134,6 +136,7 @@ class nf2ff:
                 nfc.SetMirror(self.mirror[2*ny+1], ny, self.stop[ny])
 
             nfc.SetRadius(radius)
+            nfc.SetBackend(backend)
 
             for n in range(6):
                 fn_e = os.path.join(sim_path, self.e_file + '_{}.h5'.format(n))

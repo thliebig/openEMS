@@ -33,6 +33,11 @@ cdef extern from "openEMS/nf2ff.h":
 
         void SetMirror(int _type, int _dir, float pos);
 
+        void SetBackend(int backend)
+
+        @staticmethod
+        string GetGpuDevice()
+
         bool Write2HDF5(string filename) nogil
 
         void SetVerboseLevel(int level)

@@ -86,6 +86,15 @@ number moved up and patch releases now have somewhere to go.
   then stops at the same timestep regardless of machine speed and load, at
   the cost of performance — mainly useful for engine or code verification.
 
+- **nf2ff can run its surface integral on a GPU.** Select it with the
+  `Backend` attribute of the nf2ff XML (`'Backend', 'gpu'` in
+  `CalcNF2FF.m`) or `backend=` in `CalcNF2FF()` (Python): `auto` (default)
+  uses the GPU if the build has GPU support and a device is usable, `cpu`
+  always runs the original code, `gpu` fails instead of falling back.
+  The results agree with the CPU ones to about 1e-6 of the pattern peak.
+  Written in HIP, so it runs on AMD and on NVIDIA GPUs. Needs the new
+  `NF2FF_HIP` build option.
+
 ### Changed
 
 - **The MPI engine was removed.** It had not compiled for years, as it used
@@ -182,6 +191,8 @@ number moved up and patch releases now have somewhere to go.
 - Six of the nine steady-state detection probes sat on the first mesh line of
   their direction (usually a field-free boundary) instead of a quarter/three
   quarters across, due to an integer-division bug.
+- nf2ff stops with an error if a plane cannot be processed, instead of
+  printing it and continuing with a far field that is missing that plane.
 
 ### Build
 
@@ -199,6 +210,9 @@ number moved up and patch releases now have somewhere to go.
   `update_openEMS.sh` were removed.
 - CI covers Linux, macOS, FreeBSD and Windows, and compiles with warnings
   enabled.
+- New `NF2FF_HIP` CMake option (default `OFF`) builds the GPU backend of
+  nf2ff. It needs CMake 3.21 or newer (3.28 for NVIDIA GPUs) and the HIP
+  toolkit; nothing changes for builds without it.
 
 ### Upgrade notes
 
