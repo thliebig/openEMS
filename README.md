@@ -79,6 +79,22 @@ SET(CSXCAD_ROOT_DIR       "$ENV{HOME}/opt/openEMS")
 The build produces `libopenEMS.so` and the `openEMS` binary, both installed under
 `<prefix>/lib` and `<prefix>/bin`.
 
+### Optional: nf2ff on the GPU
+
+The near-to-far-field transform (`nf2ff`) can run its surface integral on a
+GPU, which is much faster for dense angular grids and many frequencies. It is
+written in HIP and runs on AMD and on NVIDIA GPUs. It is off by default; to
+build it, pass `-DNF2FF_HIP=ON` (needs CMake ≥ 3.21 and the HIP toolkit;
+CMake ≥ 3.28 for NVIDIA GPUs, with `-DCMAKE_HIP_PLATFORM=nvidia`). Without it
+nothing changes. Select the GPUs with `-DCMAKE_HIP_ARCHITECTURES=...`, e.g.
+`gfx90a;gfx1100`.
+
+The backend is chosen at run time: `Backend="auto|cpu|gpu"` in the nf2ff XML
+(`'Backend'` option of `CalcNF2FF.m`), or `backend=` of `CalcNF2FF()` in Python.
+`auto` (the default) uses the GPU if there is one and otherwise the CPU, `cpu`
+always runs the CPU code, and `gpu` fails if the GPU cannot be used. Only
+Cartesian meshes run on the GPU; cylindrical ones use the CPU.
+
 ### Octave post-install
 
 After `make install`, run the Octave setup once to compile the HDF5 helper:

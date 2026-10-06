@@ -35,6 +35,24 @@ set(HEADERS
   nf2ff_calc.h
 )
 
+# Optional GPU backend of the surface integral, written in HIP so that it runs
+# on AMD and on NVIDIA GPUs. Off by default, so a plain build has no GPU
+# dependency; the CPU code is always built and stays the fallback (see
+# nf2ff::SetBackend).
+option(NF2FF_HIP "Build the HIP (AMD or NVIDIA GPU) backend of nf2ff" OFF)
+
+if (NF2FF_HIP)
+  if (CMAKE_VERSION VERSION_LESS 3.21)
+    message(FATAL_ERROR "NF2FF_HIP needs CMake 3.21 or newer (3.28 for NVIDIA GPUs)")
+  endif()
+  # select the GPUs with CMAKE_HIP_ARCHITECTURES, the platform with CMAKE_HIP_PLATFORM (amd or nvidia)
+  enable_language(HIP)
+  find_package(hip REQUIRED)
+  message(STATUS "nf2ff: HIP backend enabled (${CMAKE_HIP_COMPILER_ID} ${CMAKE_HIP_COMPILER_VERSION})")
+  set(SOURCES ${SOURCES} nf2ff_gpu.hip)
+  set(HEADERS ${HEADERS} nf2ff_gpu.h)
+endif()
+
 add_library( nf2ff SHARED ${SOURCES})
 set_target_properties(nf2ff PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR})
 set_target_properties(nf2ff PROPERTIES CXX_STANDARD 11)
@@ -47,6 +65,15 @@ TARGET_LINK_LIBRARIES( nf2ff
   ${HDF5_LIBRARIES}
   ${Boost_LIBRARIES}
 )
+
+if (NF2FF_HIP)
+  target_compile_definitions(nf2ff PRIVATE NF2FF_WITH_GPU)
+  if (MSVC)
+    # keep std::mutex usable with the older msvcp140.dll another install may have loaded first
+    target_compile_definitions(nf2ff PRIVATE _DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+  endif()
+  target_link_libraries(nf2ff hip::host)
+endif()
 
 ADD_EXECUTABLE( nf2ff_bin main.cpp )
 SET_TARGET_PROPERTIES(nf2ff_bin PROPERTIES OUTPUT_NAME nf2ff)

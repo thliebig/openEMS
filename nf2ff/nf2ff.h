@@ -51,6 +51,15 @@ public:
 
 	void SetMirror(int type, int dir, float pos);
 
+	/*! Select who evaluates the surface integral: 0 auto (default), 1 CPU, 2 GPU.
+	    Auto uses the GPU if this build has GPU support and a device is usable,
+	    otherwise the CPU. 2 fails in AnalyseFile if the GPU cannot be used.
+	*/
+	void SetBackend(int backend);
+
+	//! Name of the GPU used by the GPU backend, empty if this build has none or no device is usable
+	static std::string GetGpuDevice();
+
 	double GetTotalRadPower(size_t f_idx) const;
 	double GetMaxDirectivity(size_t f_idx) const;
 

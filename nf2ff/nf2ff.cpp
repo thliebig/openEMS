@@ -34,6 +34,10 @@
 //external libs
 #include "tinyxml.h"
 
+#ifdef NF2FF_WITH_GPU
+#include "nf2ff_gpu.h"
+#endif
+
 using namespace std;
 
 nf2ff::nf2ff(vector<float> freq, vector<float> theta, vector<float> phi, vector<float> center, unsigned int numThreads)
@@ -135,6 +139,26 @@ void nf2ff::SetMirror(int type, int dir, float pos)
 		m_nf2ff.at(fn)->SetMirror(type, dir, pos);
 }
 
+
+void nf2ff::SetBackend(int backend)
+{
+	if ((backend<NF2FF_BACKEND_AUTO) || (backend>NF2FF_BACKEND_GPU))
+	{
+		cerr << __func__ << ": Error, invalid backend! skipping!" << endl;
+		return;
+	}
+	for (size_t fn=0;fn<m_nf2ff.size();++fn)
+		m_nf2ff.at(fn)->SetBackend(backend);
+}
+
+string nf2ff::GetGpuDevice()
+{
+#ifdef NF2FF_WITH_GPU
+	if (nf2ff_gpu::Available())
+		return nf2ff_gpu::DeviceName();
+#endif
+	return string();
+}
 
 double nf2ff::GetTotalRadPower(size_t f_idx) const
 {
@@ -249,6 +273,24 @@ bool nf2ff::AnalyseXMLNode(TiXmlElement* ti_nf2ff)
 	int legacy_fmt = 0;
 	if (ti_nf2ff->QueryIntAttribute("LegacyHDF5",&legacy_fmt) == TIXML_SUCCESS)
 		l_nf2ff->SetLegacyFormat(legacy_fmt!=0);
+
+	attr = ti_nf2ff->Attribute("Backend");
+	if (attr!=NULL)
+	{
+		string backend = boost::to_lower_copy(string(attr));
+		if (backend=="auto")
+			l_nf2ff->SetBackend(NF2FF_BACKEND_AUTO);
+		else if (backend=="cpu")
+			l_nf2ff->SetBackend(NF2FF_BACKEND_CPU);
+		else if (backend=="gpu")
+			l_nf2ff->SetBackend(NF2FF_BACKEND_GPU);
+		else
+		{
+			cerr << "nf2ff::AnalyseXMLNode: Error, unknown backend \"" << attr << "\", use auto, cpu or gpu ... " << endl;
+			delete l_nf2ff;
+			return false;
+		}
+	}
 
 	// read mirrors
 	TiXmlElement* ti_Mirror = ti_nf2ff->FirstChildElement("Mirror");
@@ -498,7 +540,12 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 		{
 			if (m_Verbose>1)
 				cerr << "nf2ff: f = " << m_freq.at(fn) << "Hz (" << fn+1 << "/" << m_freq.size() << ") ...";
-			m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, *E_fd_data.at(fn), *H_fd_data.at(fn),E_meshType);
+			if (m_nf2ff.at(fn)->AddPlane(E_lines, E_numLines, *E_fd_data.at(fn), *H_fd_data.at(fn),E_meshType)==false)
+			{
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
+			}
 			if (m_Verbose>1)
 				cerr << " done." << endl;
 		}
@@ -542,7 +589,12 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 
 			if (m_Verbose>1)
 				cerr << "nf2ff: f = " << m_freq.at(n) << "Hz (" << n+1 << "/" << m_freq.size() << ") ...";
-			m_nf2ff.at(n)->AddPlane(E_lines, E_numLines, E_fd_data, H_fd_data, E_meshType);
+			if (m_nf2ff.at(n)->AddPlane(E_lines, E_numLines, E_fd_data, H_fd_data, E_meshType)==false)
+			{
+				for (int n=0;n<3;++n)
+					delete[] E_lines[n];
+				return false;
+			}
 			if (m_Verbose>1)
 				cerr << " done." << endl;
 		}
@@ -550,6 +602,14 @@ bool nf2ff::AnalyseFile(string E_Field_file, string H_Field_file)
 
 	for (int n=0;n<3;++n)
 		delete[] E_lines[n];
+
+	if ((m_Verbose>0) && (m_nf2ff.size()>0))
+	{
+		if (m_nf2ff.front()->UsedGPU())
+			cerr << "nf2ff: surface integral on the GPU (" << GetGpuDevice() << ")" << endl;
+		else
+			cerr << "nf2ff: surface integral on the CPU" << endl;
+	}
 
 	return true;
 }
