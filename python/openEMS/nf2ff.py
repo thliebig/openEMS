@@ -95,7 +95,7 @@ class nf2ff:
                 self.e_dump.AddBox(l_start, l_stop)
                 self.h_dump.AddBox(l_start, l_stop)
 
-    def CalcNF2FF(self, sim_path, freq, theta, phi, radius=1, center=[0,0,0], outfile=None, read_cached=False, verbose=0):
+    def CalcNF2FF(self, sim_path, freq, theta, phi, radius=1, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
         """ CalcNF2FF(sim_path, freq, theta, phi, center=[0,0,0], outfile=None, read_cached=True, verbose=0):
 
         Calculate the far-field after the simulation is done.
@@ -106,7 +106,7 @@ class nf2ff:
         :param radius: float -- Radius to calculate the far-field (default is 1m)
         :param center: (3,) array -- phase center, must be inside the recording box
         :param outfile: str -- File to save results in. (defaults to recording name)
-        :param read_cached: bool -- enable/disable read already existing results (default off)
+        :param read_cached: bool -- enable/disable read already existing results (default on)
         :param verbose: int -- set verbose level (default 0)
 
         :returns: nf2ff_results class instance
