@@ -15,15 +15,14 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ENGINE_CYLINDER_H
-#define ENGINE_CYLINDER_H
+#ifndef ENGINE_EXT_CYLINDER_H
+#define ENGINE_EXT_CYLINDER_H
 
 #include "FDTD/engine.h"
 #include "engine_extension.h"
 #include "FDTD/operator_cylinder.h"
 
 class Operator_Ext_Cylinder;
-class Engine_sse;
 
 class Engine_Ext_Cylinder : public Engine_Extension
 {
@@ -34,11 +33,14 @@ public:
 
 	virtual void DoPostCurrentUpdates();
 
-	virtual void SetEngine(Engine* eng);
-
 protected:
+	template <typename EngType>
+	void DoPostVoltageUpdatesImpl(EngType* eng);
+
+	template <typename EngType>
+	void DoPostCurrentUpdatesImpl(EngType* eng);
+
 	Operator_Ext_Cylinder* cyl_Op;
-	Engine_sse* m_Eng_SSE;
 
 	unsigned int numLines[3];
 
@@ -46,4 +48,4 @@ protected:
 	bool CC_R0_included;
 };
 
-#endif // ENGINE_CYLINDER_H
+#endif // ENGINE_EXT_CYLINDER_H

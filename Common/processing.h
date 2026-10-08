@@ -88,6 +88,9 @@ public:
 	//! Process data after simulation has finished.
 	virtual void PostProcess();
 
+	//! Wait for data processing still running in the background (e.g. dumps written asynchronously), called before any PostProcess()
+	virtual void FinishAsync() {}
+
 	//! If disabled, Process() will do nothing...
 	virtual void SetEnable(bool val) {Enabled=val;}
 	//! If disabled, Process() will do nothing...
