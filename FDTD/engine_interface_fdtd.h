@@ -54,6 +54,8 @@ public:
 
 	virtual double CalcFastEnergy() const;
 
+	virtual const void* GetEngineID() const {return m_Eng;}
+
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;

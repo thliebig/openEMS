@@ -19,11 +19,11 @@
 #include "engine_ext_cylinder.h"
 #include "operator_ext_cylinder.h"
 #include "FDTD/engine_sse.h"
+#include "engine_extension_dispatcher.h"
 
 Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine_Extension(op_ext)
 {
 	cyl_Op = op_ext;
-	m_Eng_SSE = NULL;
 
 	CC_closedAlpha = op_ext->CC_closedAlpha;
 	CC_R0_included = op_ext->CC_R0_included;
@@ -35,13 +35,8 @@ Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine
 	m_Priority = ENG_EXT_PRIO_CYLINDER;
 }
 
-void Engine_Ext_Cylinder::SetEngine(Engine* eng)
-{
-	Engine_Extension::SetEngine(eng);
-	m_Eng_SSE = dynamic_cast<Engine_sse*>(m_Eng);
-}
-
-void Engine_Ext_Cylinder::DoPostVoltageUpdates()
+template <typename EngType>
+void Engine_Ext_Cylinder::DoPostVoltageUpdatesImpl(EngType* eng)
 {
 	if (CC_closedAlpha==false) return;
 
@@ -52,18 +47,18 @@ void Engine_Ext_Cylinder::DoPostVoltageUpdates()
 		FDTD_FLOAT volt=0;
 		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			volt =m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]];
+			volt =eng->EngType::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]];
 			for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
-				volt +=cyl_Op->vi_R0[pos[2]] *  m_Eng_SSE->Engine_sse::GetCurr(1,0,pos[1],pos[2]);
-			m_Eng_SSE->Engine_sse::SetVolt(2,0,0,pos[2], volt);
+				volt +=cyl_Op->vi_R0[pos[2]] *  eng->EngType::GetCurr(1,0,pos[1],pos[2]);
+			eng->EngType::SetVolt(2,0,0,pos[2], volt);
 		}
 
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
-				m_Eng_SSE->Engine_sse::SetVolt(1,0,pos[1],pos[2], 0); //no voltage in alpha-direction at r=0
-				m_Eng_SSE->Engine_sse::SetVolt(2,0,pos[1],pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,0,0,pos[2]) );
+				eng->EngType::SetVolt(1,0,pos[1],pos[2], 0); //no voltage in alpha-direction at r=0
+				eng->EngType::SetVolt(2,0,pos[1],pos[2], eng->EngType::GetVolt(2,0,0,pos[2]) );
 			}
 		}
 	}
@@ -76,13 +71,14 @@ void Engine_Ext_Cylinder::DoPostVoltageUpdates()
 	{
 		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
-			m_Eng_SSE->Engine_sse::SetVolt(0,pos[0],0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(0,pos[0],last_A_Line,pos[2]) );
-			m_Eng_SSE->Engine_sse::SetVolt(2,pos[0],0,pos[2], m_Eng_SSE->Engine_sse::GetVolt(2,pos[0],last_A_Line,pos[2]) );
+			eng->EngType::SetVolt(0,pos[0],0,pos[2], eng->EngType::GetVolt(0,pos[0],last_A_Line,pos[2]) );
+			eng->EngType::SetVolt(2,pos[0],0,pos[2], eng->EngType::GetVolt(2,pos[0],last_A_Line,pos[2]) );
 		}
 	}
 }
 
-void Engine_Ext_Cylinder::DoPostCurrentUpdates()
+template <typename EngType>
+void Engine_Ext_Cylinder::DoPostCurrentUpdatesImpl(EngType* eng)
 {
 	if (CC_closedAlpha==false) return;
 
@@ -94,8 +90,18 @@ void Engine_Ext_Cylinder::DoPostCurrentUpdates()
 		unsigned int last_A_Line = numLines[1]-2;
 		for (pos[2]=0; pos[2]<numLines[2]-1; ++pos[2])
 		{
-			m_Eng_SSE->Engine_sse::SetCurr(0,pos[0],last_A_Line,pos[2], m_Eng_SSE->Engine_sse::GetCurr(0,pos[0],0,pos[2]) );
-			m_Eng_SSE->Engine_sse::SetCurr(2,pos[0],last_A_Line,pos[2], m_Eng_SSE->Engine_sse::GetCurr(2,pos[0],0,pos[2]) );
+			eng->EngType::SetCurr(0,pos[0],last_A_Line,pos[2], eng->EngType::GetCurr(0,pos[0],0,pos[2]) );
+			eng->EngType::SetCurr(2,pos[0],last_A_Line,pos[2], eng->EngType::GetCurr(2,pos[0],0,pos[2]) );
 		}
 	}
+}
+
+void Engine_Ext_Cylinder::DoPostVoltageUpdates()
+{
+	ENG_DISPATCH(DoPostVoltageUpdatesImpl);
+}
+
+void Engine_Ext_Cylinder::DoPostCurrentUpdates()
+{
+	ENG_DISPATCH(DoPostCurrentUpdatesImpl);
 }

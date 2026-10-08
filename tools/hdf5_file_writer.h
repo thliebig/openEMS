@@ -34,6 +34,14 @@ public:
 	HDF5_File_Writer(std::string filename);
 	~HDF5_File_Writer();
 
+	//! Keep the file open between the writes (faster for many small writes), until Close() or the destruction
+	/*!
+	  Other readers (e.g. h5py) must not open the file before Close(): they may not see all data.
+	  */
+	void SetKeepOpen(bool val);
+	//! Close the file if it is kept open, it is reopened by the next write
+	void Close();
+
 	bool WriteRectMesh(unsigned int const* numLines, double const* const* discLines, int MeshType=0, double scaling=1, std::string s_mesh_grp="/Mesh");
 	bool WriteRectMesh(unsigned int const* numLines, float const* const* discLines, int MeshType=0, double scaling=1, std::string s_mesh_grp="/Mesh");
 
@@ -71,6 +79,12 @@ public:
 protected:
 	std::string m_filename;
 	std::string m_Group;
+	hid_t m_File;       //!< the open file if m_KeepOpen, else -1
+	bool m_KeepOpen;
+
+	//! Open the file (or return the kept one), close it again with CloseFile()
+	hid_t OpenFile();
+	void CloseFile(hid_t hdf5_file);
 
 	hid_t OpenGroup(hid_t hdf5_file, std::string group);
 	bool WriteData(hid_t group, std::string dataSetName, hid_t mem_type, void const* field_buf, size_t dim, size_t* datasize, std::string d_order="");

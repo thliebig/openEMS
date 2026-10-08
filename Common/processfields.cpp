@@ -16,6 +16,11 @@
 */
 
 #include <iomanip>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <thread>
+#include <vector>
 #include "tools/global.h"
 #include "tools/vtk_file_writer.h"
 #include "tools/hdf5_file_writer.h"
@@ -33,6 +38,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	m_SampleType = NONE;
 	m_Vtk_Dump_File = NULL;
 	m_HDF5_Dump_File = NULL;
+	m_Gather = NULL;
+	m_GatherTried = false;
 	SetPrecision(6);
 	m_dualTime = false;
 
@@ -51,6 +58,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 
 ProcessFields::~ProcessFields()
 {
+	delete m_Gather;
+	m_Gather = NULL;
 	delete m_Vtk_Dump_File;
 	m_Vtk_Dump_File = NULL;
 	for (int n=0; n<3; ++n)
@@ -128,6 +137,11 @@ bool ProcessFields::NeedPermeability() const
 
 void ProcessFields::InitProcess()
 {
+	// the dumped nodes may have changed
+	delete m_Gather;
+	m_Gather = NULL;
+	m_GatherTried = false;
+
 	if (Enabled==false) return;
 
 	CalcMeshPos();
@@ -284,131 +298,168 @@ void ProcessFields::CalcMeshPos()
 	}
 }
 
-bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field)
+namespace
 {
-	unsigned int pos[3];
-	double out[3];
+//! Worker threads for the field dumps, kept for the whole process: starting threads
+//! for every dump is expensive (a NF2FF box has twelve dumps every few timesteps)
+class DumpThreads
+{
+public:
+	static DumpThreads& Get()
+	{
+		static DumpThreads* pool = new DumpThreads();   // never deleted: no joining at exit
+		return *pool;
+	}
+
+	//! Call fn(t) for t in [0, n), on n threads (t=0 on the calling thread), and wait for all
+	void Run(size_t n, const std::function<void(size_t)>& fn)
+	{
+		// one caller at a time (the main thread and the background dump writer, see processfields_td.cpp)
+		std::lock_guard<std::mutex> run(m_RunMutex);
+		std::unique_lock<std::mutex> lock(m_Mutex);
+		while (m_Workers.size()+1 < n)
+		{
+			const size_t id = m_Workers.size()+1;
+			m_Workers.push_back(std::thread(&DumpThreads::Work, this, id));
+			m_Workers.back().detach();
+		}
+		m_Fn = &fn;
+		m_Count = n;
+		m_Pending = n-1;
+		++m_Generation;
+		m_Start.notify_all();
+		lock.unlock();
+
+		fn(0);
+
+		lock.lock();
+		m_Done.wait(lock, [this] {return m_Pending==0;});
+		m_Fn = NULL;
+	}
+
+protected:
+	void Work(size_t id)
+	{
+		size_t generation = 0;
+		std::unique_lock<std::mutex> lock(m_Mutex);
+		while (true)
+		{
+			m_Start.wait(lock, [&] {return m_Generation!=generation;});
+			generation = m_Generation;
+			if (id>=m_Count)
+				continue;
+			const std::function<void(size_t)>* fn = m_Fn;
+			lock.unlock();
+			(*fn)(id);
+			lock.lock();
+			if (--m_Pending==0)
+				m_Done.notify_one();
+		}
+	}
+
+	std::mutex m_RunMutex;
+	std::mutex m_Mutex;
+	std::condition_variable m_Start, m_Done;
+	std::vector<std::thread> m_Workers;
+	const std::function<void(size_t)>* m_Fn = NULL;
+	size_t m_Count = 0;
+	size_t m_Pending = 0;
+	size_t m_Generation = 0;
+};
+}
+
+const Engine_Field_Gather* ProcessFields::GetGather()
+{
+	if ((m_DumpType!=E_FIELD_DUMP) && (m_DumpType!=H_FIELD_DUMP))
+		return NULL;
+	if (!m_GatherTried)
+	{
+		m_GatherTried = true;
+		m_Gather = m_Eng_Interface->CreateFieldGather(m_DumpType==H_FIELD_DUMP, numLines, posLines);
+	}
+	return m_Gather;
+}
+
+bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const float* src)
+{
 	//init the array
 	field.Init("Field", numLines);
+
+	double* (Engine_Interface_Base::*getField)(const unsigned int*, double*) const = NULL;
 	switch (m_DumpType)
 	{
 	case E_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetEField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetEField;
+		break;
 	case H_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetHField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetHField;
+		break;
 	case J_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetJField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetJField;
+		break;
 	case ROTH_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetRotHField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetRotHField;
+		break;
 	case D_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetDField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetDField;
+		break;
 	case B_FIELD_DUMP:
-		for (unsigned int i=0; i<numLines[0]; ++i)
-		{
-			pos[0]=posLines[0][i];
-			for (unsigned int j=0; j<numLines[1]; ++j)
-			{
-				pos[1]=posLines[1][j];
-				for (unsigned int k=0; k<numLines[2]; ++k)
-				{
-					pos[2]=posLines[2][k];
-
-					m_Eng_Interface->GetBField(pos,out);
-					field(0, i, j, k) = out[0];
-					field(1, i, j, k) = out[1];
-					field(2, i, j, k) = out[2];
-				}
-			}
-		}
-		return true;
+		getField = &Engine_Interface_Base::GetBField;
+		break;
 	default:
 		cerr << "ProcessFields::CalcField(): Error, unknown dump type..." << endl;
 		return false;
 	}
+
+	// E and H dumps with the precomputed node evaluation, if the engine interface has one
+	const Engine_Field_Gather* gather = GetGather();
+	if (src && !gather)
+		return false;   // a snapshot needs the precomputed evaluation
+
+	// the (x,y) lines [l_start, l_stop), line l = i*numLines[1] + j
+	auto calc = [&](size_t l_start, size_t l_stop)
+	{
+		if (gather)
+		{
+			gather->Evaluate(l_start, l_stop, field, src);
+			return;
+		}
+		unsigned int pos[3];
+		double out[3];
+		for (size_t l=l_start; l<l_stop; ++l)
+		{
+			const unsigned int i = l/numLines[1];
+			const unsigned int j = l%numLines[1];
+			pos[0]=posLines[0][i];
+			pos[1]=posLines[1][j];
+			for (unsigned int k=0; k<numLines[2]; ++k)
+			{
+				pos[2]=posLines[2][k];
+
+				(m_Eng_Interface->*getField)(pos,out);
+				field(0, i, j, k) = out[0];
+				field(1, i, j, k) = out[1];
+				field(2, i, j, k) = out[2];
+			}
+		}
+	};
+
+	// The nodes are independent: split large dumps (e.g. the surfaces of a NF2FF box
+	// every few timesteps) over threads, the engine waits for the processing anyway.
+	// A thread per thousand nodes or more.
+	const size_t lines = (size_t)numLines[0]*numLines[1];
+	const size_t nodes = lines*numLines[2];
+	const size_t num_threads = std::min<size_t>(std::min<size_t>(std::max(1u, std::thread::hardware_concurrency()), nodes/1024), lines);
+	if (gather && !src)
+		m_Eng_Interface->PrepareFieldAccess();   // reads the host mirror directly
+	if (num_threads<=1)
+	{
+		calc(0, lines);
+		return true;
+	}
+	if (!src)
+		m_Eng_Interface->PrepareFieldAccess();
+	DumpThreads::Get().Run(num_threads, [&](size_t t) {calc(lines*t/num_threads, lines*(t+1)/num_threads);});
+	return true;
 }
 

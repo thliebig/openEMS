@@ -19,8 +19,25 @@
 #define ENGINE_INTERFACE_BASE_H
 
 #include "tools/global.h"
+#include "tools/arraylib/array_nijk.h"
 
 class Operator_Base;
+
+//! Evaluates the (interpolated) E or H field at the nodes of a dump, see Engine_Interface_Base::CreateFieldGather()
+/*!
+  The same values as Get?Field() for every node, with the node positions,
+  edge lengths and interpolation weights computed once.
+  */
+class Engine_Field_Gather
+{
+public:
+	virtual ~Engine_Field_Gather() {}
+	//! Evaluate the (x,y) lines [line_start, line_stop) of the dump (line i*numLines[1]+j) into \a field, thread-safe
+	/*!
+	  \param src The voltages (E) or currents (H) to read in the engine layout, e.g. a snapshot (see Engine_Interface_Base::TakeFieldSnapshot()), NULL: the current fields
+	  */
+	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const = 0;
+};
 
 //! This is the abstract base for all Engine Interface classes.
 /*!
@@ -47,6 +64,28 @@ public:
 	std::string GetInterpolationTypeString() {return GetInterpolationNameByType(m_InterpolType);}
 	//! Get the current interpolation type \sa SetInterpolationType
 	InterpolationType GetInterpolationType() {return m_InterpolType;}
+
+	//! Called before several threads read the fields concurrently (Get*Field()), e.g. to copy device fields to the host
+	virtual void PrepareFieldAccess() {}
+
+	//! Copy the current fields into snapshot \a slot (0 or 1) for a later Engine_Field_Gather::Evaluate(), returns the voltages and currents (engine layout), or false if the engine has no snapshots
+	/*!
+	  The copy may still be running: WaitFieldSnapshot() before reading it.
+	  */
+	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
+	//! Wait until snapshot \a slot can be read, may be called from another thread
+	virtual void WaitFieldSnapshot(unsigned int slot) const {UNUSED(slot);}
+	//! Prepare \a gather to read snapshots (before the first one), e.g. to evaluate it on the device at every snapshot. Returns false if it cannot read them.
+	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather) {UNUSED(gather); return true;}
+	//! The engine the fields belong to, identifies the snapshots
+	virtual const void* GetEngineID() const {return NULL;}
+
+	//! Fast repeated evaluation of GetEField() (\a h_field false) or GetHField() at fixed nodes, see Engine_Field_Gather
+	/*!
+	  Returns NULL if the interface has none for its engine. It's the responsibility of the caller to free it.
+	  */
+	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
+	{UNUSED(h_field); UNUSED(numLines); UNUSED(posLines); return NULL;}
 
 	//! Get the (interpolated) electric field at \p pos. \sa SetInterpolationType
 	virtual double* GetEField(const unsigned int* pos, double* out) const =0;
