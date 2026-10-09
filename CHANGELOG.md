@@ -11,7 +11,7 @@ of the [openEMS documentation](https://docs.openems.de/).
 same commit**, creating that section if it is not there — it exists only while
 there are unreleased changes. It becomes the next release entry.
 
-## Unreleased
+## 0.37.0 — 2026-10-09
 
 The version scheme changed with this release: the previous release was v0.0.36,
 this one is v0.37.0. The leading `0.0.` was never going anywhere, so the minor
