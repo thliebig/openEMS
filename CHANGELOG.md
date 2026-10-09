@@ -88,6 +88,13 @@ number moved up and patch releases now have somewhere to go.
 
 ### Changed
 
+- **Faster UPML update in the SSE engines.** The PML update walks the field
+  arrays along z instead of recomputing an index per cell, and the PML
+  coefficient and flux arrays through row pointers. The results are
+  bitwise identical; `--no-ext-opt` restores the previous loops.
+- **Faster multithreaded engine with extensions.** Extensions with no work in
+  a phase no longer cost a thread barrier per timestep. The results are
+  bitwise identical; `--no-ext-opt` restores the previous scheduling.
 - **The MPI engine was removed.** It had not compiled for years, as it used
   the C++ MPI bindings that MPI-3 dropped, it had no tests, and several
   extensions never supported it (#260). The multithreaded engine is

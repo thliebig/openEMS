@@ -275,6 +275,13 @@ void openEMS::collectCommandLineArguments()
 			"(needs: --engine=multithreaded)"
 		)
 		(
+			"no-ext-opt",
+			po::bool_switch(),
+			"do not use the optimized update paths of the CPU engine "
+			"extensions (the results are identical, only slower); "
+			"for debugging and benchmarking"
+		)
+		(
 			"no-simulation",
 			po::bool_switch()->notifier(
 				[&](bool val)
