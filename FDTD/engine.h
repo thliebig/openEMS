@@ -19,6 +19,7 @@
 #define ENGINE_H
 
 #include <fstream>
+#include <vector>
 #include "operator.h"
 
 #include "tools/arraylib/array_nijk.h"
@@ -29,6 +30,7 @@ class thread; // evil hack to access numTS from multithreading context
 }
 
 class Engine_Extension;
+struct Engine_GatherEntry;
 
 class Engine
 {
@@ -131,6 +133,20 @@ public:
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
 	//! Wait until snapshot \a slot can be read, may be called from another thread
 	virtual void WaitSnapshot(unsigned int slot) const {UNUSED(slot);}
+
+	//! The fields in the basic engine layout for a direct evaluation of the dumped nodes (see Field_Gather_FDTD), valid after PrepareFieldAccess()
+	/*!
+	  False for an engine with another storage model, or that does not offer it.
+	  */
+	virtual bool GetBasicFieldArrays(const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &volt, const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &curr) const {UNUSED(volt); UNUSED(curr); return false;}
+	//! Whether the snapshots evaluate the dumped nodes themselves (see AddSnapshotGather()), instead of copying the fields
+	virtual bool CanSnapshotGather() const {return false;}
+	//! Evaluate the dump entries \a entries of the E (\a h_field false) or H field at every snapshot
+	/*!
+	  The snapshot then holds their values from \a offset on, in the voltages (E) or currents (H)
+	  returned by SnapshotFields(). Only before the first snapshot, returns false otherwise.
+	  */
+	virtual bool AddSnapshotGather(bool h_field, const std::vector<Engine_GatherEntry>& entries, size_t& offset) {UNUSED(h_field); UNUSED(entries); UNUSED(offset); return false;}
 
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}

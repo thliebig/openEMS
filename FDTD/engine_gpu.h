@@ -111,13 +111,10 @@ public:
 	//! Wait until snapshot \a slot can be read, may be called from another thread
 	virtual void WaitSnapshot(unsigned int slot) const;
 	//! Whether the snapshots evaluate the dumped nodes on the device (see AddSnapshotGather()), instead of copying the fields
-	bool CanSnapshotGather() const;
-	//! Evaluate the dump entries \a entries of the E (\a h_field false) or H field at every snapshot
-	/*!
-	  The snapshot then holds their values from \a offset on, in the voltages (E) or currents (H)
-	  returned by SnapshotFields(). Only before the first snapshot, returns false otherwise.
-	  */
-	bool AddSnapshotGather(bool h_field, const std::vector<GPU_GatherEntry>& entries, size_t& offset);
+	virtual bool CanSnapshotGather() const;
+	virtual bool AddSnapshotGather(bool h_field, const std::vector<Engine_GatherEntry>& entries, size_t& offset);
+	//! The host mirror
+	virtual bool GetBasicFieldArrays(const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &volt, const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &curr) const {volt = volt_ptr; curr = curr_ptr; return true;}
 
 	//! Sums of weighted dump entries on the device, see GPU_Backend::AddFieldDFT(); -1 if not available
 	int AddFieldDFT(bool h_field, const std::vector<GPU_GatherEntry>& entries, unsigned int count);

@@ -16,6 +16,7 @@
 */
 
 #include "engine_interface_cylindrical_fdtd.h"
+#include <vector>
 
 Engine_Interface_Cylindrical_FDTD::Engine_Interface_Cylindrical_FDTD(Operator_Cylinder* op) : Engine_Interface_FDTD(op)
 {
@@ -56,4 +57,22 @@ double* Engine_Interface_Cylindrical_FDTD::GetRawInterpolatedField(const unsigne
 		iPos[1]=0;
 
 	return Engine_Interface_FDTD::GetRawInterpolatedField(iPos,out,type);
+}
+
+Engine_Field_Gather* Engine_Interface_Cylindrical_FDTD::CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
+{
+	if (m_Op_Cyl->GetClosedAlpha()==false)
+		return Engine_Interface_FDTD::CreateFieldGather(h_field, numLines, posLines);
+
+	// the nodes on the alpha seam are evaluated on its other side, see GetHField() and GetRawInterpolatedField()
+	std::vector<unsigned int> alpha(posLines[1], posLines[1]+numLines[1]);
+	for (size_t n=0; n<alpha.size(); ++n)
+	{
+		if ((m_InterpolType==NODE_INTERPOLATE) && (alpha[n]==0))
+			alpha[n]=m_Op->GetNumberOfLines(1);
+		else if ((m_InterpolType==CELL_INTERPOLATE) && (alpha[n]==m_Op->GetNumberOfLines(1)))
+			alpha[n]=0;
+	}
+	unsigned int* const lines[3] = {posLines[0], alpha.data(), posLines[2]};
+	return Engine_Interface_FDTD::CreateFieldGather(h_field, numLines, lines);
 }

@@ -210,6 +210,9 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
 	if (m_FieldsOnHost)
 		return false;
+	// not for a sub-grid, see Engine_GPU_CylinderMultiGrid::SnapshotFields()
+	if (m_ParentBackend)
+		return false;
 	// A snapshot has a fixed cost (a separate command buffer or stream, the background thread), which
 	// small grids with short batches between dumps do not recover (e.g. 69k cells dumped
 	// every few timesteps: twice the engine time). The copy itself scales with the grid,
@@ -239,10 +242,12 @@ void Engine_GPU::WaitSnapshot(unsigned int slot) const
 
 bool Engine_GPU::CanSnapshotGather() const
 {
+	if (m_ParentBackend)
+		return false;
 	return m_Backend->CanSnapshotGather();
 }
 
-bool Engine_GPU::AddSnapshotGather(bool h_field, const std::vector<GPU_GatherEntry>& entries, size_t& offset)
+bool Engine_GPU::AddSnapshotGather(bool h_field, const std::vector<Engine_GatherEntry>& entries, size_t& offset)
 {
 	if (m_SnapshotGatherSet || !CanSnapshotGather())
 		return false;

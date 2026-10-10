@@ -341,8 +341,10 @@ def case_cylinder_closed():
     CSX.AddProbe('et', p_type=2).AddPoint([20, np.pi/4, 14])
     CSX.AddProbe('ht', p_type=3).AddPoint([10, -np.pi/3, 8])
     CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([0, -np.pi, 14], [40, np.pi, 14])
-    # large enough to be evaluated by several threads, which read the fields of the engine concurrently
-    CSX.AddDump('Et_vol', dump_type=0, file_type=1).AddBox([0, -np.pi, 0], [40, np.pi, 30])
+    # large enough to be evaluated by several threads, which read the fields of the engine concurrently.
+    # Node interpolated: the nodes on the alpha seam are evaluated from the other side of it
+    CSX.AddDump('Et_vol', dump_type=0, dump_mode=1, file_type=1).AddBox([0, -np.pi, 0], [40, np.pi, 30])
+    CSX.AddDump('Ht_cell', dump_type=1, dump_mode=2, file_type=1).AddBox([0, -np.pi, 0], [40, np.pi, 30])
     return FDTD, CSX
 
 

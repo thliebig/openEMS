@@ -53,6 +53,10 @@ public:
 
 	virtual void ForceHostFallback();
 
+	//! No snapshots with sub-grids, whose backends share the device work stream: the dumps read the host mirrors
+	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
+	virtual bool CanSnapshotGather() const {return false;}
+
 protected:
 	Engine_GPU_CylinderMultiGrid(const Operator_CylinderMultiGrid* op, const std::string& backend, GPU_Backend* parent);
 

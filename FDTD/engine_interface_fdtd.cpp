@@ -16,6 +16,7 @@
 */
 
 #include "engine_interface_fdtd.h"
+#include "engine_field_gather.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -287,4 +288,26 @@ bool Engine_Interface_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &v
 void Engine_Interface_FDTD::WaitFieldSnapshot(unsigned int slot) const
 {
 	m_Eng->WaitSnapshot(slot);
+}
+
+bool Engine_Interface_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gather)
+{
+	if (!m_Eng->CanSnapshotGather())
+		return true;   // plain field snapshots, if the engine has any: evaluated on the host
+	// the engine only snapshots the dumped nodes, so it has to know them beforehand
+	Field_Gather_FDTD* g = dynamic_cast<Field_Gather_FDTD*>(gather);
+	size_t offset = 0;
+	if (!g || !m_Eng->AddSnapshotGather(g->HField(), g->entries, offset))
+		return false;
+	g->SetSnapshotEvaluated(offset);
+	return true;
+}
+
+Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
+{
+	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* volt = NULL;
+	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr = NULL;
+	if (!m_Eng->GetBasicFieldArrays(volt, curr))
+		return NULL;   // no gather, the caller reads the fields node by node
+	return Field_Gather_FDTD::New(m_Op, m_InterpolType, volt, curr, h_field, numLines, posLines);
 }

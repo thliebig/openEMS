@@ -25,6 +25,7 @@
 #include "tools/constants.h"
 #include "tools/global.h"
 #include "tools/arraylib/array_nijk.h"
+#include "engine_field_gather.h"
 
 class Operator;
 class Engine;
@@ -113,25 +114,8 @@ struct GPU_UPMLRegion
 bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
                        unsigned int start[3], unsigned int stop[3]);
 
-//! One component of a dumped node: the (interpolated) E or H field from up to four voltages or currents
-/*!
-  idx[k] indexes the voltages or currents in the flat ArrayNIJK layout,
-  ((n*numLines[0] + x)*numLines[1] + y)*numLines[2] + z.
-  raw(k) = field[idx[k]] / delta[k] (0 if delta[k] is 0), and the value is
-  - ZERO: 0
-  - RAW: raw(0)
-  - LERP: raw(0)*(1-rel) + raw(1)*rel
-  - AVG4: (raw(0) + raw(1) + raw(2) + raw(3)) / 4
-  in double precision, rounded to float. See Engine_Interface_FDTD::CreateFieldGather().
-  */
-struct GPU_GatherEntry
-{
-	enum Form { ZERO, RAW, LERP, AVG4 };
-	unsigned int form;
-	unsigned int idx[4];
-	double delta[4];
-	double rel;
-};
+//! The dump entries a backend evaluates on the device, see Engine_GatherEntry
+typedef Engine_GatherEntry GPU_GatherEntry;
 
 //! Abstract interface to the device used by Engine_GPU
 /*!

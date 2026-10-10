@@ -58,6 +58,9 @@ public:
 	virtual void PrepareFieldAccess();
 	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr);
 	virtual void WaitFieldSnapshot(unsigned int slot) const;
+	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather);
+	//! Only for an engine that offers its fields in the basic engine layout, see Engine::GetBasicFieldArrays()
+	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const;
 
 	virtual const void* GetEngineID() const {return m_Eng;}
 
