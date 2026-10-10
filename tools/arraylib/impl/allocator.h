@@ -43,7 +43,7 @@ public:
 		return ptr;
 	}
 
-	static void free(T* ptr, size_t numelem)
+	static void free(T* ptr, size_t /*numelem*/)
 	{
 		delete[] ptr;
 	}
