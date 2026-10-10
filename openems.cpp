@@ -512,9 +512,6 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 	Operator_GPU* op_gpu = dynamic_cast<Operator_GPU*>(FDTD_Op);
 	if (op_gpu)
 		return new Engine_Interface_GPU_FDTD(op_gpu);
-	Operator_sse* op_sse = dynamic_cast<Operator_sse*>(FDTD_Op);
-	if (op_sse)
-		return new Engine_Interface_SSE_FDTD(op_sse);
 	return new Engine_Interface_FDTD(FDTD_Op);
 }
 

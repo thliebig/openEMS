@@ -15,16 +15,16 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "engine_interface_sse_fdtd.h"
+#include "engine_interface_fdtd.h"
 #include "operator_cylinder.h"
 
 #ifndef ENGINE_INTERFACE_CYLINDRICAL_FDTD_H
 #define ENGINE_INTERFACE_CYLINDRICAL_FDTD_H
 
-class Engine_Interface_Cylindrical_FDTD : public Engine_Interface_SSE_FDTD
+class Engine_Interface_Cylindrical_FDTD : public Engine_Interface_FDTD
 {
 public:
-	Engine_Interface_Cylindrical_FDTD(Operator_sse* op);
+	Engine_Interface_Cylindrical_FDTD(Operator_Cylinder* op);
 	virtual ~Engine_Interface_Cylindrical_FDTD();
 
 	virtual double* GetHField(const unsigned int* pos, double* out) const;

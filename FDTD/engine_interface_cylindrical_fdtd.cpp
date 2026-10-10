@@ -16,13 +16,10 @@
 */
 
 #include "engine_interface_cylindrical_fdtd.h"
-#include <stdexcept>
 
-Engine_Interface_Cylindrical_FDTD::Engine_Interface_Cylindrical_FDTD(Operator_sse* op) : Engine_Interface_SSE_FDTD(op)
+Engine_Interface_Cylindrical_FDTD::Engine_Interface_Cylindrical_FDTD(Operator_Cylinder* op) : Engine_Interface_FDTD(op)
 {
-	m_Op_Cyl = dynamic_cast<Operator_Cylinder*>(op);
-	if (m_Op_Cyl==NULL)
-		throw std::runtime_error("Engine_Interface_Cylindrical_FDTD::Engine_Interface_Cylindrical_FDTD: Error: Operator is not a cylindrical operator!");
+	m_Op_Cyl = op;
 }
 
 Engine_Interface_Cylindrical_FDTD::~Engine_Interface_Cylindrical_FDTD()

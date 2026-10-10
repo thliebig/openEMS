@@ -24,7 +24,6 @@
 
 class Operator_sse : public Operator
 {
-	friend class Engine_Interface_SSE_FDTD;
 public:
 	//! Create a new operator
 	static Operator_sse* New();

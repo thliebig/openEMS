@@ -23,14 +23,15 @@
 
 class Engine_GPU;
 
-//! Engine interface of the GPU engine, see Engine_Interface_FDTD.
+//! Engine interface of the GPU engine on a cartesian mesh, see Engine_Interface_FDTD.
 /*!
-  The fields live on the device, so the processing hooks of Engine_Interface_Base
-  mean something here: the host mirror has to be up to date before the fields are
-  read (PrepareFieldAccess()), and a dump can be evaluated from a snapshot the
-  device copies while it goes on time-stepping (TakeFieldSnapshot()).
-  The mirror has the basic engine layout, which is what lets CreateFieldGather()
-  evaluate the dumped nodes from the raw arrays.
+  Adds the precomputed evaluation of the dumped nodes (CreateFieldGather()): the
+  host mirror of the GPU engine has the basic engine layout, which lets it read
+  the raw arrays, and with it a dump can be evaluated from a snapshot the device
+  copies while it goes on time-stepping (PrepareSnapshotGather()).
+  What only depends on where the engine keeps its fields (the energy estimate,
+  PrepareFieldAccess(), the snapshots themselves) is asked from the engine by
+  Engine_Interface_FDTD, for every mesh.
   */
 class Engine_Interface_GPU_FDTD : public Engine_Interface_FDTD
 {
@@ -38,9 +39,6 @@ public:
 	Engine_Interface_GPU_FDTD(Operator_GPU* op);
 	virtual ~Engine_Interface_GPU_FDTD();
 
-	virtual void PrepareFieldAccess();
-	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr);
-	virtual void WaitFieldSnapshot(unsigned int slot) const;
 	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather);
 	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const;
 

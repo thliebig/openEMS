@@ -28,24 +28,6 @@ Engine_Interface_GPU_FDTD::~Engine_Interface_GPU_FDTD()
 	m_Eng_GPU = NULL;
 }
 
-void Engine_Interface_GPU_FDTD::PrepareFieldAccess()
-{
-	// several threads read the fields next; reading them from the device one by one is not thread-safe
-	if (m_Eng_GPU)
-		m_Eng_GPU->UpdateHostMirror();
-}
-
-bool Engine_Interface_GPU_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr)
-{
-	return m_Eng_GPU && m_Eng_GPU->SnapshotFields(slot, volt, curr);
-}
-
-void Engine_Interface_GPU_FDTD::WaitFieldSnapshot(unsigned int slot) const
-{
-	if (m_Eng_GPU)
-		m_Eng_GPU->WaitSnapshot(slot);
-}
-
 namespace
 {
 //! Precomputed GetRawInterpolatedField()/GetRawInterpolatedDualField() (type 0) of the

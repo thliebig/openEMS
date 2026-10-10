@@ -90,8 +90,11 @@ public:
 	//! True if the extensions run on the host mirror, which is then kept in sync during IterateTS()
 	bool FieldsOnHost() const {return m_FieldsOnHost;}
 
-	//! Field energy sums on the device (see GPU_Backend::CalcFastEnergy()), false if the host has to compute them
-	bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
+	//! The energy estimate from sums on the device (see GPU_Backend::CalcFastEnergy()), or from the updated host mirror
+	virtual double CalcFastEnergy(const unsigned int numNodes[3]) const;
+
+	//! Several threads read the fields next: update the host mirror, reading it from the device value by value is not thread-safe
+	virtual void PrepareFieldAccess() {UpdateHostMirror();}
 
 	//! Host mirror of the fields (basic engine layout)
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>& HostVoltages() const {return *volt_ptr;}
@@ -104,9 +107,9 @@ public:
 	void UpdateHostMirror();
 
 	//! Copy of the current fields in snapshot \a slot (0 or 1), see GPU_Backend::SnapshotFields(); false if not available
-	bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
+	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	//! Wait until snapshot \a slot can be read, may be called from another thread
-	void WaitSnapshot(unsigned int slot) const;
+	virtual void WaitSnapshot(unsigned int slot) const;
 	//! Whether the snapshots evaluate the dumped nodes on the device (see AddSnapshotGather()), instead of copying the fields
 	bool CanSnapshotGather() const;
 	//! Evaluate the dump entries \a entries of the E (\a h_field false) or H field at every snapshot

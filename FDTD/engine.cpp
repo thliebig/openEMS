@@ -284,3 +284,28 @@ bool Engine::IterateTS(unsigned int iterTS)
 	}
 	return true;
 }
+
+double Engine::CalcFastEnergy(const unsigned int numNodes[3]) const
+{
+	double E_energy=0.0;
+	double H_energy=0.0;
+
+	unsigned int pos[3];
+	for (pos[0]=0; pos[0]<numNodes[0]; ++pos[0])
+	{
+		for (pos[1]=0; pos[1]<numNodes[1]; ++pos[1])
+		{
+			for (pos[2]=0; pos[2]<numNodes[2]; ++pos[2])
+			{
+				E_energy+=Engine::GetVolt(0,pos[0],pos[1],pos[2]) * Engine::GetVolt(0,pos[0],pos[1],pos[2]);
+				E_energy+=Engine::GetVolt(1,pos[0],pos[1],pos[2]) * Engine::GetVolt(1,pos[0],pos[1],pos[2]);
+				E_energy+=Engine::GetVolt(2,pos[0],pos[1],pos[2]) * Engine::GetVolt(2,pos[0],pos[1],pos[2]);
+
+				H_energy+=Engine::GetCurr(0,pos[0],pos[1],pos[2]) * Engine::GetCurr(0,pos[0],pos[1],pos[2]);
+				H_energy+=Engine::GetCurr(1,pos[0],pos[1],pos[2]) * Engine::GetCurr(1,pos[0],pos[1],pos[2]);
+				H_energy+=Engine::GetCurr(2,pos[0],pos[1],pos[2]) * Engine::GetCurr(2,pos[0],pos[1],pos[2]);
+			}
+		}
+	}
+	return EPS0*E_energy + MUE0*H_energy;
+}

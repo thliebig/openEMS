@@ -16,7 +16,6 @@
 */
 
 #include "engine_interface_fdtd.h"
-#include "engine_gpu.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -268,63 +267,24 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 
 double Engine_Interface_FDTD::CalcFastEnergy() const
 {
-	double E_energy=0.0;
-	double H_energy=0.0;
+	// the engine knows how its fields are stored
+	unsigned int numNodes[3];
+	for (int n=0; n<3; ++n)
+		numNodes[n] = m_Op->GetNumberOfLines(n)-1;
+	return m_Eng->CalcFastEnergy(numNodes);
+}
 
-	// the fields of the GPU engine live on the device: the end criteria asks for
-	// this every Nyquist period, so it is worth the device implementation; without
-	// one the host mirror has to be brought up to date, it is not written at the
-	// end of a batch
-	Engine_GPU* eng_gpu = (m_Eng->GetType()==Engine::GPU) ? dynamic_cast<Engine_GPU*>(m_Eng) : NULL;
-	if (eng_gpu)
-	{
-		unsigned int numNodes[3];
-		for (int n=0; n<3; ++n)
-			numNodes[n] = m_Op->GetNumberOfLines(n)-1;
-		if (eng_gpu->CalcFastEnergy(numNodes, E_energy, H_energy))
-			return EPS0*E_energy + MUE0*H_energy;
-		eng_gpu->UpdateHostMirror();
-	}
+void Engine_Interface_FDTD::PrepareFieldAccess()
+{
+	m_Eng->PrepareFieldAccess();
+}
 
-	unsigned int pos[3];
-	// the GPU engine keeps a host mirror in the basic engine layout
-	if ((m_Eng->GetType()==Engine::BASIC) || (m_Eng->GetType()==Engine::GPU))
-	{
-		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
-		{
-			for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
-			{
-				for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
-				{
-					E_energy+=m_Eng->Engine::GetVolt(0,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(0,pos[0],pos[1],pos[2]);
-					E_energy+=m_Eng->Engine::GetVolt(1,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(1,pos[0],pos[1],pos[2]);
-					E_energy+=m_Eng->Engine::GetVolt(2,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(2,pos[0],pos[1],pos[2]);
+bool Engine_Interface_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr)
+{
+	return m_Eng->SnapshotFields(slot, volt, curr);
+}
 
-					H_energy+=m_Eng->Engine::GetCurr(0,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetCurr(0,pos[0],pos[1],pos[2]);
-					H_energy+=m_Eng->Engine::GetCurr(1,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetCurr(1,pos[0],pos[1],pos[2]);
-					H_energy+=m_Eng->Engine::GetCurr(2,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetCurr(2,pos[0],pos[1],pos[2]);
-				}
-			}
-		}
-	}
-	else
-	{
-		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
-		{
-			for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
-			{
-				for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
-				{
-					E_energy+=m_Eng->GetVolt(0,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(0,pos[0],pos[1],pos[2]);
-					E_energy+=m_Eng->GetVolt(1,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(1,pos[0],pos[1],pos[2]);
-					E_energy+=m_Eng->GetVolt(2,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(2,pos[0],pos[1],pos[2]);
-
-					H_energy+=m_Eng->GetCurr(0,pos[0],pos[1],pos[2]) * m_Eng->GetCurr(0,pos[0],pos[1],pos[2]);
-					H_energy+=m_Eng->GetCurr(1,pos[0],pos[1],pos[2]) * m_Eng->GetCurr(1,pos[0],pos[1],pos[2]);
-					H_energy+=m_Eng->GetCurr(2,pos[0],pos[1],pos[2]) * m_Eng->GetCurr(2,pos[0],pos[1],pos[2]);
-				}
-			}
-		}
-	}
-	return EPS0*E_energy + MUE0*H_energy;
+void Engine_Interface_FDTD::WaitFieldSnapshot(unsigned int slot) const
+{
+	m_Eng->WaitSnapshot(slot);
 }

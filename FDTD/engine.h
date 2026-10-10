@@ -118,6 +118,20 @@ public:
 	//! Apply extension current changes
 	virtual void Apply2Current();
 
+	//! Calc (roughly) the total energy of the first numNodes[n] nodes in each direction, see Engine_Interface_Base::CalcFastEnergy()
+	/*!
+	  To be overloaded by an engine with a different storage model, like the field access functions.
+	  */
+	virtual double CalcFastEnergy(const unsigned int numNodes[3]) const;
+
+	//! Called before several threads read the fields concurrently (GetVolt()/GetCurr()), see Engine_Interface_Base::PrepareFieldAccess()
+	virtual void PrepareFieldAccess() {}
+
+	//! Copy the current fields into snapshot \a slot (0 or 1), see Engine_Interface_Base::TakeFieldSnapshot(); false if the engine has no snapshots
+	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
+	//! Wait until snapshot \a slot can be read, may be called from another thread
+	virtual void WaitSnapshot(unsigned int slot) const {UNUSED(slot);}
+
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
 	virtual void SortExtensionByPriority();

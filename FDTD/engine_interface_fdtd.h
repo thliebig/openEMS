@@ -54,6 +54,11 @@ public:
 
 	virtual double CalcFastEnergy() const;
 
+	// the fields belong to the engine, which may keep them elsewhere (e.g. on a GPU)
+	virtual void PrepareFieldAccess();
+	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr);
+	virtual void WaitFieldSnapshot(unsigned int slot) const;
+
 	virtual const void* GetEngineID() const {return m_Eng;}
 
 protected:

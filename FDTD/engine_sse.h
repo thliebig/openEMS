@@ -83,6 +83,9 @@ public:
 		f4_curr(n, pos[0], pos[1], pos[2]%numVectors).f[pos[2]/numVectors]=value;
 	}
 
+	//! The energy estimate from the sse vectors, including the last z-line(s)
+	virtual double CalcFastEnergy(const unsigned int numNodes[3]) const;
+
 protected:
 	Engine_sse(const Operator_sse* op);
 	const Operator_sse* Op;
