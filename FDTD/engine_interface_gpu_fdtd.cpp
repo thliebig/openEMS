@@ -28,24 +28,6 @@ Engine_Interface_GPU_FDTD::~Engine_Interface_GPU_FDTD()
 	m_Eng_GPU = NULL;
 }
 
-double Engine_Interface_GPU_FDTD::CalcFastEnergy() const
-{
-	// the end criteria asks for this every Nyquist period, so it is worth the
-	// device implementation; without one the host mirror has to be brought up to
-	// date, it is not written at the end of a batch
-	if (m_Eng_GPU)
-	{
-		unsigned int numNodes[3];
-		for (int n=0; n<3; ++n)
-			numNodes[n] = m_Op->GetNumberOfLines(n)-1;
-		double E_energy=0.0, H_energy=0.0;
-		if (m_Eng_GPU->CalcFastEnergy(numNodes, E_energy, H_energy))
-			return EPS0*E_energy + MUE0*H_energy;
-		m_Eng_GPU->UpdateHostMirror();
-	}
-	return Engine_Interface_FDTD::CalcFastEnergy();
-}
-
 void Engine_Interface_GPU_FDTD::PrepareFieldAccess()
 {
 	// several threads read the fields next; reading them from the device one by one is not thread-safe

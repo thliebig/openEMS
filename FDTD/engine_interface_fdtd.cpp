@@ -16,6 +16,7 @@
 */
 
 #include "engine_interface_fdtd.h"
+#include "engine_gpu.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -269,6 +270,21 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 {
 	double E_energy=0.0;
 	double H_energy=0.0;
+
+	// the fields of the GPU engine live on the device: the end criteria asks for
+	// this every Nyquist period, so it is worth the device implementation; without
+	// one the host mirror has to be brought up to date, it is not written at the
+	// end of a batch
+	Engine_GPU* eng_gpu = (m_Eng->GetType()==Engine::GPU) ? dynamic_cast<Engine_GPU*>(m_Eng) : NULL;
+	if (eng_gpu)
+	{
+		unsigned int numNodes[3];
+		for (int n=0; n<3; ++n)
+			numNodes[n] = m_Op->GetNumberOfLines(n)-1;
+		if (eng_gpu->CalcFastEnergy(numNodes, E_energy, H_energy))
+			return EPS0*E_energy + MUE0*H_energy;
+		eng_gpu->UpdateHostMirror();
+	}
 
 	unsigned int pos[3];
 	// the GPU engine keeps a host mirror in the basic engine layout

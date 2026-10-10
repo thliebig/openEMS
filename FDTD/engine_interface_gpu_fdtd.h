@@ -38,7 +38,6 @@ public:
 	Engine_Interface_GPU_FDTD(Operator_GPU* op);
 	virtual ~Engine_Interface_GPU_FDTD();
 
-	virtual double CalcFastEnergy() const;
 	virtual void PrepareFieldAccess();
 	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr);
 	virtual void WaitFieldSnapshot(unsigned int slot) const;

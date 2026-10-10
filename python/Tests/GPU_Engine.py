@@ -345,8 +345,10 @@ def case_cylinder_closed():
 
 
 def case_cylinder_wedge():
-    """ open alpha wedge with r>0 and PML in z: excitation, UPML and (inactive) cylinder extensions """
-    FDTD = openEMS(CoordSystem=1, NrTS=1000, EndCriteria=0)
+    """ open alpha wedge with r>0 and PML in z: excitation, UPML and (inactive) cylinder extensions.
+        No field dump, and stopped by the end criteria: its energy estimate has to see
+        the fields on the device, a run that stops at another timestep fails the comparison """
+    FDTD = openEMS(CoordSystem=1, NrTS=20000, EndCriteria=1e-3)
     FDTD.SetGaussExcite(3e9, 2e9)
     FDTD.SetBoundaryCond(['PEC', 'PEC', 'PEC', 'PEC', 'PML_8', 'PML_8'])
     CSX = cylinder_mesh(FDTD, np.linspace(-np.pi/4, np.pi/4, 13), 10, 40, z_pad=16)
