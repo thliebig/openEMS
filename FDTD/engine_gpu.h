@@ -117,9 +117,9 @@ public:
 	virtual bool GetBasicFieldArrays(const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &volt, const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &curr) const {volt = volt_ptr; curr = curr_ptr; return true;}
 
 	//! Sums of weighted dump entries on the device, see GPU_Backend::AddFieldDFT(); -1 if not available
-	int AddFieldDFT(bool h_field, const std::vector<GPU_GatherEntry>& entries, unsigned int count);
-	void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {m_Backend->AccumulateFieldDFT(id, weights);}
-	bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, sums);}
+	virtual int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count);
+	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {m_Backend->AccumulateFieldDFT(id, weights);}
+	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, sums);}
 
 	//! Field values, read from the device if the host mirror is out of date (see class description)
 	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;

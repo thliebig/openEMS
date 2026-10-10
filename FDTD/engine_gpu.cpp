@@ -257,7 +257,7 @@ bool Engine_GPU::AddSnapshotGather(bool h_field, const std::vector<Engine_Gather
 	return true;
 }
 
-int Engine_GPU::AddFieldDFT(bool h_field, const std::vector<GPU_GatherEntry>& entries, unsigned int count)
+int Engine_GPU::AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count)
 {
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
 	if (m_FieldsOnHost)

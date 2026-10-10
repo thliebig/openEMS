@@ -19,6 +19,8 @@
 #define ENGINE_INTERFACE_FDTD_H
 
 #include <cmath>
+#include <array>
+#include <map>
 
 #include "Common/engine_interface_base.h"
 #include "operator.h"
@@ -59,6 +61,9 @@ public:
 	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr);
 	virtual void WaitFieldSnapshot(unsigned int slot) const;
 	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather);
+	virtual int CreateFieldDFT(const Engine_Field_Gather* gather, unsigned int count);
+	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights);
+	virtual bool ReadFieldDFT(int id, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*>& fields);
 	//! Only for an engine that offers its fields in the basic engine layout, see Engine::GetBasicFieldArrays()
 	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const;
 
@@ -67,6 +72,9 @@ public:
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;
+
+	//! dumped lines (i, j, k) of the field DFTs of the engine, by id (see CreateFieldDFT())
+	std::map<int, std::array<unsigned int, 3>> m_FieldDFT;
 
 	//! Internal method to get an interpolated field of a given type. (0: E, 1: J, 2: rotH, 3: D)
 	virtual double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;

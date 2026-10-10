@@ -18,6 +18,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#include <complex>
 #include <fstream>
 #include <vector>
 #include "operator.h"
@@ -147,6 +148,11 @@ public:
 	  returned by SnapshotFields(). Only before the first snapshot, returns false otherwise.
 	  */
 	virtual bool AddSnapshotGather(bool h_field, const std::vector<Engine_GatherEntry>& entries, size_t& offset) {UNUSED(h_field); UNUSED(entries); UNUSED(offset); return false;}
+
+	//! Sums over timesteps of weighted dump entries, kept by the engine, see Engine_Interface_Base::CreateFieldDFT(); -1 if not available
+	virtual int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count) {UNUSED(h_field); UNUSED(entries); UNUSED(count); return -1;}
+	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {UNUSED(id); UNUSED(weights);}
+	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {UNUSED(id); UNUSED(sums); return false;}
 
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}

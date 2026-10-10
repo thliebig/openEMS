@@ -27,6 +27,7 @@ using namespace std;
 
 ProcessFieldsFD::ProcessFieldsFD(Engine_Interface_Base* eng_if) : ProcessFields(eng_if)
 {
+	m_FieldDFT = -1;
 }
 
 ProcessFieldsFD::~ProcessFieldsFD()
@@ -40,6 +41,7 @@ ProcessFieldsFD::~ProcessFieldsFD()
 
 void ProcessFieldsFD::InitProcess()
 {
+	m_FieldDFT = -1;
 	if (Enabled==false) return;
 
 	if (m_FD_Samples.size()==0)
@@ -67,6 +69,11 @@ void ProcessFieldsFD::InitProcess()
 		ArrayLib::ArrayNIJK<std::complex<float>>* field_fd = new ArrayLib::ArrayNIJK<std::complex<float>>("FD field", numLines);
 		m_FD_Fields.push_back(field_fd);
 	}
+
+	// let the engine keep the sums (e.g. on the device); it needs the node gather,
+	// so not for the SAR dumps, whose dump type has none
+	if (GetGather())
+		m_FieldDFT = m_Eng_Interface->CreateFieldDFT(m_Gather, m_FD_Samples.size());
 }
 
 int ProcessFieldsFD::Process()
@@ -77,30 +84,42 @@ int ProcessFieldsFD::Process()
 	if ((m_FD_Interval==0) || (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval!=0))
 		return GetNextInterval();
 
-	ArrayLib::ArrayNIJK<FDTD_FLOAT> tmp_field_td;
-	if (!CalcField(tmp_field_td))
-		return -1;
-	FDTD_FLOAT* field_td = tmp_field_td.data();
-
-	std::complex<float>* field_fd = NULL;
-
+	std::vector<std::complex<float>> weights(m_FD_Samples.size());
 	double T = m_Eng_Interface->GetTime(m_dualTime);
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
 		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * I_UNIT * PI * m_FD_Samples.at(n) * T) );
 		exp_jwt_2_dt *= 2; // *2 for single-sided spectrum
 		exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
-		size_t N = m_FD_Fields.at(n)->size();
-		field_fd = m_FD_Fields.at(n)->data();
-		for (size_t ijk=0;ijk<N;++ijk)
-			field_fd[ijk] += field_td[ijk] * exp_jwt_2_dt;
+		weights[n] = exp_jwt_2_dt;
 	}
 	++m_FD_SampleCount;
+
+	// summed by the engine with the same weights: the fields never leave the device
+	if (m_FieldDFT>=0)
+	{
+		m_Eng_Interface->AccumulateFieldDFT(m_FieldDFT, weights);
+		return GetNextInterval();
+	}
+
+	ArrayLib::ArrayNIJK<FDTD_FLOAT> tmp_field_td;
+	if (!CalcField(tmp_field_td))
+		return -1;
+	FDTD_FLOAT* field_td = tmp_field_td.data();
+	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
+	{
+		size_t N = m_FD_Fields.at(n)->size();
+		std::complex<float>* field_fd = m_FD_Fields.at(n)->data();
+		for (size_t ijk=0;ijk<N;++ijk)
+			field_fd[ijk] += field_td[ijk] * weights[n];
+	}
 	return GetNextInterval();
 }
 
 void ProcessFieldsFD::PostProcess()
 {
+	if ((m_FieldDFT>=0) && !m_Eng_Interface->ReadFieldDFT(m_FieldDFT, m_FD_Fields))
+		cerr << "ProcessFieldsFD::PostProcess: can't read the frequency domain fields of the engine!" << endl;
 	DumpFDData();
 }
 

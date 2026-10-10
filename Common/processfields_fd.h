@@ -39,6 +39,9 @@ protected:
 
 	//! frequency domain field storage
 	std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*> m_FD_Fields;
+
+	//! the sums are kept by the engine instead (see Engine_Interface_Base::CreateFieldDFT()): -1: no, else its id
+	int m_FieldDFT;
 };
 
 #endif // PROCESSFIELDS_FD_H

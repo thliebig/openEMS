@@ -68,6 +68,8 @@ public:
 	std::vector<Entry> entries;   //!< [line][k][n]
 
 	bool HField() const {return m_H;}
+	unsigned int NumLinesJ() const {return m_nj;}
+	unsigned int NumLinesK() const {return m_nk;}
 	//! The snapshots hold the values of these entries from \a offset on, see PrepareSnapshotGather()
 	void SetSnapshotEvaluated(size_t offset) {m_Evaluated = true; m_Offset = offset;}
 
