@@ -21,6 +21,9 @@ there are unreleased changes. It becomes the next release entry.
   (including multi-grid) with the usual extensions on the device, and writes
   the same probes and dumps. `--engine=gpu-reference` runs it on a CPU
   reference backend, to check the device backends against.
+- `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
+  and field dumps of two runs, e.g. of two engines, and
+  `openEMS.compare.compare_sim_results()` does the same from Python.
 
 ### Fixed
 

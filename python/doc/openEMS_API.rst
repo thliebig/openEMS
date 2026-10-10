@@ -11,4 +11,5 @@ openEMS Python Interface
     sar
     automesh
     utilities
+    compare
 
