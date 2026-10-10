@@ -11,6 +11,15 @@ of the [openEMS documentation](https://docs.openems.de/).
 same commit**, creating that section if it is not there — it exists only while
 there are unreleased changes. It becomes the next release entry.
 
+## Unreleased
+
+### Changed
+
+- The memory of the operator and the engine is freed at the end of the
+  simulation, not when the `openEMS` object is destroyed. A post-processing in
+  the same script (NF2FF, SAR) has it available, and running one `openEMS`
+  object several times no longer keeps the memory of every run.
+
 ## 0.37.0 — 2026-10-09
 
 The version scheme changed with this release: the previous release was v0.0.36,

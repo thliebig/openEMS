@@ -60,6 +60,8 @@ public:
 	virtual void RunFDTD();
 
 	void Reset();
+	//! Free the operator, the engine and the processings of a simulation, the setup is kept (called at the end of RunFDTD())
+	void FreeSimulation();
 
 	void SetNumberOfTimeSteps(unsigned int val) {NrTS=val;}
 	void SetEnableDumps(bool val) {Enable_Dumps=val;}

@@ -98,7 +98,7 @@ openEMS::~openEMS()
 	Reset();
 }
 
-void openEMS::Reset()
+void openEMS::FreeSimulation()
 {
 	if (PA) PA->DeleteAll();
 	delete PA;
@@ -107,11 +107,16 @@ void openEMS::Reset()
 	FDTD_Eng=0;
 	delete FDTD_Op;
 	FDTD_Op=0;
+	Eng_Ext_SSD=0; // non-owning observer; deleted by the engine (m_Eng_exts) in 'delete FDTD_Eng' above
+}
+
+void openEMS::Reset()
+{
+	FreeSimulation();
 	delete m_CSX;
 	m_CSX=0;
 	delete m_Exc;
 	m_Exc=0;
-	Eng_Ext_SSD=0; // non-owning observer; deleted by the engine (m_Eng_exts) in 'delete FDTD_Eng' above
 
 	CylinderCoords = false;
 	m_CC_MultiGrid.clear();
@@ -1176,6 +1181,9 @@ ContinuousStructure* openEMS::GetCSX() const
 
 int openEMS::SetupFDTD()
 {
+	// of a previous setup that was not run
+	FreeSimulation();
+
 	timeval startTime;
 	gettimeofday(&startTime,NULL);
 
@@ -1440,6 +1448,12 @@ bool openEMS::CheckAbortCond()
 
 void openEMS::RunFDTD()
 {
+	if ((FDTD_Op==NULL) || (FDTD_Eng==NULL) || (PA==NULL))
+	{
+		cerr << "openEMS::RunFDTD: Error: no simulation is set up, run SetupFDTD() first!" << endl;
+		return;
+	}
+
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
 	Signal::SetupHandlerForSIGINT(SIGNAL_EXIT_GRACEFUL);
@@ -1555,6 +1569,10 @@ void openEMS::RunFDTD()
 
 	//*************** postproc ************//
 	PA->PostProcess();
+
+	// the results are written: free the memory of the operator and the engine,
+	// e.g. for a post-processing in the same process (NF2FF, SAR)
+	FreeSimulation();
 
 	Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 }
