@@ -602,8 +602,10 @@ cdef class openEMS:
                 # "True" boolean options are implicit
                 opt = "%s" % key
             elif val is False:
-                # "False" boolean options are ignored
-                opt = ""
+                # "False" boolean options are left out. Not as an empty
+                # argument: that ends the options, the ones after it would
+                # be ignored
+                continue
             elif (val is not True) and (val is not False):
                 # integer and string options are explicit
                 opt = "%s=%s" % (key, val)

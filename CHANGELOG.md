@@ -13,6 +13,12 @@ there are unreleased changes. It becomes the next release entry.
 
 ## Unreleased
 
+### Fixed
+
+- Python: an option passed as `False` to `Run()`, e.g. `debug_PEC=False`, made
+  openEMS ignore all options after it without a message, so that for example
+  a following `engine=...` or `numThreads=...` had no effect.
+
 ### Changed
 
 - The memory of the operator and the engine is freed at the end of the
