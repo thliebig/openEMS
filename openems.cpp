@@ -317,10 +317,11 @@ void openEMS::collectCommandLineArguments()
 					m_exactEndCriteria = true;
 				}
 			),
-			"evaluate the energy end criteria every Nyquist timesteps instead of "
-			"every few seconds of wall-clock time, so the run stops at the same "
-			"timestep regardless of machine speed/load; costs performance, useful "
-			"mainly for engine/code verification"
+			"evaluate the energy end criteria every Nyquist timesteps for the whole "
+			"run, not only during its first minute and then every few seconds of "
+			"wall-clock time, so the run stops at the same timestep regardless of "
+			"machine speed/load; costs performance, useful mainly for engine/code "
+			"verification"
 		);
 
 	// register our supported options to g_settings
@@ -1446,6 +1447,9 @@ bool openEMS::CheckAbortCond()
 	return false;
 }
 
+//! Wall-clock time of a run (s) during which the end criteria is evaluated every Nyquist period, see RunFDTD()
+static const double EXACT_ENDCRIT_TIME = 60;
+
 void openEMS::RunFDTD()
 {
 	if ((FDTD_Op==NULL) || (FDTD_Eng==NULL) || (PA==NULL))
@@ -1469,14 +1473,22 @@ void openEMS::RunFDTD()
 	//add all timesteps to end-crit field processing with max excite amplitude
 	unsigned int maxExcite = FDTD_Op->GetExcitationSignal()->GetMaxExcitationTimestep();
 	ProcField->AddStep(maxExcite);
-	// --exact-endcriteria: also evaluate on a fixed timestep schedule, independent of the
-	// wall-clock progress report, at the cost of far more (expensive, full-domain) energy
-	// estimates -- default stays wall-clock throttled to keep normal runs fast
-	if ((Eng_Ext_SSD==NULL) && m_exactEndCriteria)
+	// The end criteria is evaluated on a fixed timestep schedule, every Nyquist period,
+	// during the first EXACT_ENDCRIT_TIME seconds: a wall-clock schedule lets a short
+	// simulation run several times longer than necessary, the more the faster the engine.
+	// After that only with the wall-clock progress report, which then is a small overshoot
+	// and saves the (full-domain) energy estimates -- unless --exact-endcriteria asks
+	// for a machine-independent stopping point.
+	bool exactEndCrit = (Eng_Ext_SSD==NULL);
+	if (exactEndCrit)
 	{
 		unsigned int endCritInterval = FDTD_Op->GetExcitationSignal()->GetNyquistNum();
-		cout << "Exact-endcriteria: evaluating the end criteria every "
-			 << endCritInterval << " timestep(s) (this excitation's Nyquist rate)" << endl;
+		if (m_exactEndCriteria)
+			cout << "Exact-endcriteria: evaluating the end criteria every "
+				 << endCritInterval << " timestep(s) (this excitation's Nyquist rate)" << endl;
+		else if (g_settings.GetVerboseLevel()>0)
+			cout << "Evaluating the end criteria every " << endCritInterval << " timestep(s) during the first "
+				 << EXACT_ENDCRIT_TIME << " s, with the progress report after that" << endl;
 		ProcField->SetProcessInterval(endCritInterval);
 	}
 
@@ -1512,7 +1524,7 @@ void openEMS::RunFDTD()
 			currE = ProcField->CalcTotalEnergyEstimate();
 			if (currE>maxE)
 				maxE=currE;
-			if (m_exactEndCriteria && maxE)
+			if (exactEndCrit && maxE)
 				change = currE/maxE;
 		}
 
@@ -1523,6 +1535,15 @@ void openEMS::RunFDTD()
 
 		t_diff = CalcDiffTime(currTime,prevTime);
 
+		if (exactEndCrit && !m_exactEndCriteria && (CalcDiffTime(currTime,startTime)>EXACT_ENDCRIT_TIME))
+		{
+			// from here on with the progress report only
+			exactEndCrit = false;
+			if (g_settings.GetVerboseLevel()>0)
+				cout << "Evaluating the end criteria with the progress report only from here on" << endl;
+			ProcField->ClearProcessInterval();
+		}
+
 		if (t_diff>4)
 		{
 			t_run = CalcDiffTime(currTime,startTime);
@@ -1531,7 +1552,7 @@ void openEMS::RunFDTD()
 			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 			if (Eng_Ext_SSD==NULL)
 			{
-				if (!m_exactEndCriteria) // otherwise already kept current above, every Nyquist period
+				if (!exactEndCrit) // otherwise already kept current above, every Nyquist period
 				{
 					currE = ProcField->CalcTotalEnergyEstimate();
 					if (currE>maxE)

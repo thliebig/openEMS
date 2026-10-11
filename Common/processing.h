@@ -62,6 +62,8 @@ public:
 	virtual void ShowSnappedCoords();
 
 	void SetProcessInterval(unsigned int interval);
+	//! No regular processing anymore, the steps of AddStep() remain
+	void ClearProcessInterval() {ProcessInterval=0;}
 	void SetProcessStartStopTime(double start, double stop);
 
 	void AddStep(unsigned int step);

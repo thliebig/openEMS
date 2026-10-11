@@ -24,6 +24,12 @@ there are unreleased changes. It becomes the next release entry.
 
 ### Changed
 
+- The end criteria is checked every Nyquist period during the first minute of
+  a simulation, and only after that with the progress report every few
+  seconds. A short simulation used to run on until the first report, on a fast
+  machine several times longer than necessary, with correspondingly larger
+  dumps; it now stops where the end criteria is met, at the same timestep on
+  every machine. `--exact-endcriteria` keeps this for the whole run.
 - The memory of the operator and the engine is freed at the end of the
   simulation, not when the `openEMS` object is destroyed. A post-processing in
   the same script (NF2FF, SAR) has it available, and running one `openEMS`

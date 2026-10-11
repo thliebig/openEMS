@@ -46,9 +46,10 @@ repeat.
 
 ## Why every test passes `--exact-endcriteria`
 
-Without it openEMS only re-evaluates the energy end criteria every few seconds
-of wall-clock time, so a run stops at a timestep that depends on machine speed
-and load. That changes the length of the time record every result is computed
+Without it openEMS re-evaluates the energy end criteria every Nyquist period
+only during the first minute of a run, and after that every few seconds of
+wall-clock time, so a longer run stops at a timestep that depends on machine
+speed and load. That changes the length of the time record every result is computed
 from, and with it the accuracy behind every tolerance here -- measured on this
 suite, `combinedtests/Coax` stopped anywhere between 1054 and 1560 timesteps and
 its impedance moved from 51.10 to 51.53 Ohm against a 51.44 Ohm limit. With the
