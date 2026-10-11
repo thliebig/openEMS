@@ -19,6 +19,10 @@ there are unreleased changes. It becomes the next release entry.
   simulation, not when the `openEMS` object is destroyed. A post-processing in
   the same script (NF2FF, SAR) has it available, and running one `openEMS`
   object several times no longer keeps the memory of every run.
+- Reading a time-domain field dump with many timesteps is much faster: its
+  datasets are listed once instead of looked up one by one, which took
+  quadratic time. A far-field (NF2FF) calculation from a recording of 3200
+  timesteps went from 79 s to 2.4 s per frequency.
 
 ## 0.37.0 — 2026-10-09
 
