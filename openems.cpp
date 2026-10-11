@@ -1499,7 +1499,8 @@ void openEMS::RunFDTD()
 	PA->PreProcess();
 	int step=PA->Process();
 	if ((step<0) || (step>(int)NrTS)) step=NrTS;
-	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit) && !CheckAbortCond())
+	bool aborted = false;
+	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit) && !(aborted = CheckAbortCond()))
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
@@ -1552,7 +1553,15 @@ void openEMS::RunFDTD()
 			FDTD_Eng->NextInterval(speed);
 		}
 	}
-	if ((change>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))
+	if (aborted)
+	{
+		// not the timestep limit: say so, the advice below would be wrong
+		cout << "RunFDTD: simulation aborted after " << FDTD_Eng->GetNumberOfTimesteps() << " timesteps";
+		if (Eng_Ext_SSD==NULL)
+			cout << " (-" << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)";
+		cout << endl;
+	}
+	else if ((change>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))
 		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 	else if (FDTD_Op->GetExcitationSignal()->GetExciteType()==0)

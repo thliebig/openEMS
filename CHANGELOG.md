@@ -18,6 +18,9 @@ there are unreleased changes. It becomes the next release entry.
 - Python: an option passed as `False` to `Run()`, e.g. `debug_PEC=False`, made
   openEMS ignore all options after it without a message, so that for example
   a following `engine=...` or `numThreads=...` had no effect.
+- A simulation that was aborted (`SetAbort()`, an `ABORT` file, Ctrl-C) no
+  longer ends with the warning that the max. number of timesteps was reached;
+  it reports the abort.
 
 ### Changed
 
