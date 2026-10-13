@@ -157,17 +157,12 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 
 double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) const
 {
-	if (m_ClosedMesh)
-	{
-		const unsigned int seamPos[3] = {GetSeamLine(0, pos[0]), GetSeamLine(1, pos[1]), GetSeamLine(2, pos[2])};
-		return GetRawInterpolatedDualField(seamPos, out, 0);
-	}
 	return GetRawInterpolatedDualField(pos, out, 0);
 }
 
 double* Engine_Interface_FDTD::GetBField(const unsigned int* pos, double* out) const
 {
-		return GetRawInterpolatedDualField(pos, out, 1);
+	return GetRawInterpolatedDualField(pos, out, 1);
 }
 
 double Engine_Interface_FDTD::GetRawDualField(unsigned int n, const unsigned int* pos, int type) const
@@ -186,6 +181,13 @@ double Engine_Interface_FDTD::GetRawDualField(unsigned int n, const unsigned int
 
 double* Engine_Interface_FDTD::GetRawInterpolatedDualField(const unsigned int* pos, double* out, int type) const
 {
+	unsigned int seamPos[3];
+	if (m_ClosedMesh)
+	{
+		for (int n=0; n<3; ++n)
+			seamPos[n] = GetSeamLine(n, pos[n]);
+		pos = seamPos;
+	}
 	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
 	int nP,nPP;
 	double delta;

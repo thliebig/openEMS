@@ -35,6 +35,9 @@ there are unreleased changes. It becomes the next release entry.
 - Python: an option passed as `False` to `Run()`, e.g. `debug_PEC=False`, made
   openEMS ignore all options after it without a message, so that for example
   a following `engine=...` or `numThreads=...` had no effect.
+- A node-interpolated B-field dump of a closed cylindrical mesh was zero on
+  its first alpha line: the B field was not evaluated across the seam of the
+  mesh as the H field is.
 - A simulation that was aborted (`SetAbort()`, an `ABORT` file, Ctrl-C) no
   longer ends with the warning that the max. number of timesteps was reached;
   it reports the abort.

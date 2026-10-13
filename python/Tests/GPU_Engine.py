@@ -345,6 +345,9 @@ def case_cylinder_closed():
     # Node interpolated: the nodes on the alpha seam are evaluated from the other side of it
     CSX.AddDump('Et_vol', dump_type=0, dump_mode=1, file_type=1).AddBox([0, -np.pi, 0], [40, np.pi, 30])
     CSX.AddDump('Ht_cell', dump_type=1, dump_mode=2, file_type=1).AddBox([0, -np.pi, 0], [40, np.pi, 30])
+    # B has to be mue0*H on the seam too, see the check of this case below
+    CSX.AddDump('Ht_node', dump_type=1, dump_mode=1, file_type=1).AddBox([0, -np.pi, 0], [40, np.pi, 30])
+    CSX.AddDump('Bt_node', dump_type=5, dump_mode=1, file_type=1).AddBox([0, -np.pi, 0], [40, np.pi, 30])
     return FDTD, CSX
 
 
@@ -542,6 +545,13 @@ for name, case, on_device in cases:
     diff, n_probes, n_dumps, _ = compare_outputs(paths['basic'], paths['gpu-reference'])
     print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
     assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
+
+    if name=='cylinder_closed':
+        # the H and the B field are interpolated alike, also on the alpha seam of the mesh
+        with h5py.File(os.path.join(paths['basic'], 'Ht_node.h5'), 'r') as H, h5py.File(os.path.join(paths['basic'], 'Bt_node.h5'), 'r') as B:
+            ts = sorted(H['FieldData/TD'].keys())[-1]
+            dev = deviation(H['FieldData/TD'][ts][()], B['FieldData/TD'][ts][()]/(4e-7*np.pi))
+        assert dev<1e-6, f'FAIL [{name}]: the B field dump is not mue0 times the H field dump ({dev:.1e} of the peak)'
 
     backend = re.search(r'Create FDTD engine \(GPU, backend: (\w+)', logs['gpu'])
     backend = backend.group(1) if backend else None
