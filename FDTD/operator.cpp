@@ -161,23 +161,37 @@ double Operator::GetDiscDelta(int n, unsigned int pos, bool dualMesh) const
 {
 	if ((n<0) || (n>2)) return 0.0;
 	if (pos>=numLines[n]) return 0.0;
-	double delta=0;
+
+	const double* lines = discLines[n];
+
 	if (dualMesh==false)
 	{
 		if (pos<numLines[n]-1)
-			delta = GetDiscLine(n,pos+1,false) - GetDiscLine(n,pos,false);
-		else
-			delta = GetDiscLine(n,pos,false) - GetDiscLine(n,pos-1,false);
-		return delta;
-	}
-	else
-	{
+			return lines[pos+1] - lines[pos];
 		if (pos>0)
-			delta = GetDiscLine(n,pos,true) - GetDiscLine(n,pos-1,true);
-		else
-			delta = GetDiscLine(n,1,false) - GetDiscLine(n,0,false);
-		return delta;
+			return lines[pos] - lines[pos-1];
+
+		// Preserve the original behavior for a single-line mesh.
+		return lines[pos];
 	}
+
+	if (pos==0)
+	{
+		if (numLines[n]>1)
+			return lines[1] - lines[0];
+
+		// Preserve the original behavior for a single-line mesh.
+		return -lines[0];
+	}
+
+	if (pos<numLines[n]-1)
+		return 0.5*(lines[pos] + lines[pos+1])
+		     - 0.5*(lines[pos-1] + lines[pos]);
+
+	// Last dual-mesh position: GetDiscLine() extrapolates the
+	// final dual node beyond the field domain.
+	return (lines[pos] + 0.5*(lines[pos] - lines[pos-1]))
+	     - 0.5*(lines[pos-1] + lines[pos]);
 }
 
 bool Operator::GetYeeCoords(int ny, unsigned int pos[3], double* coords, bool dualMesh) const
