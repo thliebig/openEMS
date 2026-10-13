@@ -1392,7 +1392,17 @@ int openEMS::SetupFDTD()
 	}
 
 	//create FDTD engine
-	FDTD_Eng = FDTD_Op->CreateEngine();
+	try
+	{
+		FDTD_Eng = FDTD_Op->CreateEngine();
+	}
+	catch (const std::exception& e)
+	{
+		// e.g. the GPU engine without a device: do not run something else instead
+		cerr << "openEMS::SetupFDTD: Error: creating the FDTD engine failed: " << e.what() << endl;
+		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
+		return 4;
+	}
 
 	if (Op_Ext_SSD)
 	{

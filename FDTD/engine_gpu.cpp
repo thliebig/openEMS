@@ -31,7 +31,15 @@ using std::endl;
 Engine_GPU* Engine_GPU::New(const Operator* op, const std::string& backend, GPU_Backend* parent)
 {
 	Engine_GPU* e = new Engine_GPU(op, backend, parent);
-	e->Init();
+	try
+	{
+		e->Init();
+	}
+	catch (...)
+	{
+		delete e;
+		throw;
+	}
 	return e;
 }
 
@@ -63,6 +71,8 @@ void Engine_GPU::Init()
 
 	// a sub-grid shares the device work stream of its parent grid
 	m_Backend = m_ParentBackend ? m_ParentBackend->NewSubGridBackend() : GPU_Backend::New(m_BackendName);
+	if (m_Backend==NULL)
+		throw std::runtime_error("no GPU backend with a usable device is available for --engine=gpu");
 	cout << "Create FDTD engine (GPU, backend: " << m_Backend->GetName() << ")" << endl;
 	if (!m_Backend->Init(Op))
 		throw std::runtime_error("Engine_GPU::Init: GPU backend initialization failed");

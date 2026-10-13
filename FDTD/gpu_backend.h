@@ -140,6 +140,10 @@ class GPU_Backend
 {
 public:
 	//! Create a backend by name: "reference" or "auto" (the best device backend available), as chosen by --engine=gpu-reference / --engine=gpu. It's the responsibility of the caller to free it.
+	/*!
+	  Returns NULL if "auto" finds no device backend: there is no silent fallback to the
+	  (slow) reference backend.
+	  */
 	static GPU_Backend* New(const std::string& name);
 
 	virtual ~GPU_Backend() {}

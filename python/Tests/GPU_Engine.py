@@ -560,6 +560,9 @@ for name, case, on_device in cases:
         assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
             ', '.join(f'{n} ({d:.1e})' for n, d in diff)
     else:
+        # no silent fallback to the (slow) reference backend
+        assert 'Running FDTD engine' not in logs['gpu'], \
+            f'FAIL [{name}]: engine=gpu ran without a GPU device'
         print('  no GPU device, device backend not tested')
     print('PASS [{}]'.format(name))
 

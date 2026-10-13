@@ -19,8 +19,9 @@ there are unreleased changes. It becomes the next release entry.
   backend on macOS and a HIP backend for AMD (ROCm) and NVIDIA (CUDA) GPUs. It
   is selected like the other engines, runs Cartesian and cylindrical meshes
   (including multi-grid) with the usual extensions on the device, and writes
-  the same probes and dumps. `--engine=gpu-reference` runs it on a CPU
-  reference backend, to check the device backends against.
+  the same probes and dumps. Without a usable GPU the setup fails with an
+  error instead of running something slower. `--engine=gpu-reference` runs it
+  on a CPU reference backend, to check the device backends against.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.

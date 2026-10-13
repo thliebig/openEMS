@@ -41,7 +41,7 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 	GPU_Backend* hip = GPU_Backend_HIP::New();
 	if (hip)
 		return hip;
-	std::cerr << "GPU_Backend::New: Warning: no HIP device found" << std::endl;
+	std::cerr << "GPU_Backend::New: Warning: no usable HIP device found" << std::endl;
 #endif
 
 #ifdef OPENEMS_WITH_METAL
@@ -51,8 +51,11 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 	std::cerr << "GPU_Backend::New: Warning: no Metal device found" << std::endl;
 #endif
 
-	std::cerr << "GPU_Backend::New: Warning: no GPU backend available, using the reference backend on the CPU" << std::endl;
-	return new GPU_Backend_Reference();
+#if !defined(OPENEMS_WITH_HIP) && !defined(OPENEMS_WITH_METAL)
+	std::cerr << "GPU_Backend::New: Warning: openEMS was built without a GPU backend (HIP or Metal)" << std::endl;
+#endif
+	// not the reference backend: it is far slower than the CPU engines, the caller has to say so
+	return NULL;
 }
 
 bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],

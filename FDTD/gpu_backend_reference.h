@@ -28,8 +28,9 @@
   results are bit-identical to the basic engine.
 
   It needs no GPU and no GPU SDK and is built unconditionally, so Engine_GPU can
-  be built and tested anywhere, and GPU_Backend::New() falls back to it when no
-  device is found. Being bit-identical makes it the oracle of the GPU engine test
+  be built and tested anywhere (--engine=gpu-reference). It is never chosen
+  by itself: --engine=gpu without a device is an error. Being bit-identical
+  makes it the oracle of the GPU engine test
   (python/Tests/GPU_Engine.py runs every case with the basic engine, this backend
   and the device backend): a difference here is in the engine, not in a device
   backend.
