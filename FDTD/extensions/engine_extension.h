@@ -74,6 +74,9 @@ public:
 
 	virtual std::string GetExtensionName() const;
 
+	//! Whether the optimized CPU engine paths may be used (disabled by the option --no-ext-opt)
+	static bool UseOptimizedPaths();
+
 protected:
 	Engine_Extension(Operator_Extension* op_ext);
 

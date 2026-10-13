@@ -27,6 +27,10 @@
 
 #include "engine_multithread.h"
 #include "extensions/engine_extension.h"
+#include "extensions/engine_ext_excitation.h"
+#include "extensions/engine_ext_lumpedRLC.h"
+#include "extensions/engine_ext_mur_abc.h"
+#include "extensions/engine_ext_upml.h"
 #include "tools/denormal.h"
 #include "tools/useful.h"
 
@@ -63,6 +67,7 @@ Engine_Multithread::Engine_Multithread(const Operator_Multithread* op) : Engine_
 	m_last_speed = 0;
 	m_opt_speed = false;
 	m_stopThreads = true;
+	m_usePhaseDispatch = Engine_Extension::UseOptimizedPaths();
 }
 
 Engine_Multithread::~Engine_Multithread()
@@ -98,6 +103,7 @@ void Engine_Multithread::Init()
 	m_stopThreads = true;
 	m_opt_speed = false;
 	Engine_SSE_Compressed::Init();
+	BuildPhaseDispatch();
 
 	// initialize threads
 	m_stopThreads = false;
@@ -194,6 +200,11 @@ void Engine_Multithread::changeNumThreads(unsigned int numThreads)
 
 bool Engine_Multithread::IterateTS(unsigned int iterTS)
 {
+	// extensions may be added or replaced after Init(), rebuild the schedules
+	// while all worker threads are still waiting at the start barrier
+	if (m_usePhaseDispatch && !PhaseDispatchIsCurrent())
+		BuildPhaseDispatch();
+
 	m_iterTS = iterTS;
 
 	//cerr << "bool Engine_Multithread::IterateTS(): starting threads ...";
@@ -204,6 +215,49 @@ bool Engine_Multithread::IterateTS(unsigned int iterTS)
 	m_stopBarrier->wait(); // wait for the threads to finish <iterTS> time steps
 
 	return true;
+}
+
+void Engine_Multithread::BuildPhaseDispatch()
+{
+	m_phaseDispatch.clear();
+	m_phaseDispatchExtensions.clear();
+	if (!m_usePhaseDispatch)
+		return;
+
+	EngineExtensionPhaseDispatch::Build(
+		m_Eng_exts,
+		m_phaseDispatch,
+		[](const Engine_Extension* extension) {
+			return EngineExtensionPhaseDispatch::ActivePhases<
+				Engine_Extension,
+				Engine_Ext_UPML,
+				Engine_Ext_Excitation,
+				Engine_Ext_LumpedRLC,
+				Engine_Ext_Mur_ABC>(extension);
+		});
+	m_phaseDispatchExtensions = m_Eng_exts;
+
+	if (g_settings.GetVerboseLevel()>0 && !m_Eng_exts.empty())
+	{
+		size_t barriers = 0;
+		for (size_t phase = 0; phase < EngineExtensionPhaseDispatch::PHASE_COUNT; ++phase)
+			barriers += m_phaseDispatch.phases[phase].size();
+		cout << "Multithreaded Engine: extension barriers per timestep: " << barriers
+			<< " (" << EngineExtensionPhaseDispatch::PHASE_COUNT * m_Eng_exts.size() << " without phase dispatch)" << endl;
+	}
+}
+
+bool Engine_Multithread::PhaseDispatchIsCurrent() const
+{
+	return m_phaseDispatchExtensions == m_Eng_exts;
+}
+
+void Engine_Multithread::ClearExtensions()
+{
+	// the schedules hold pointers to the extensions that are deleted here
+	m_phaseDispatch.clear();
+	m_phaseDispatchExtensions.clear();
+	Engine_SSE_Compressed::ClearExtensions();
 }
 
 void Engine_Multithread::NextInterval(float curr_speed)
@@ -225,6 +279,15 @@ void Engine_Multithread::NextInterval(float curr_speed)
 
 void Engine_Multithread::DoPreVoltageUpdates(int threadID)
 {
+	if (m_usePhaseDispatch)
+	{
+		EngineExtensionPhaseDispatch::Dispatch(
+			m_phaseDispatch.phases[EngineExtensionPhaseDispatch::PRE_VOLTAGE],
+			[threadID](Engine_Extension* extension) { extension->DoPreVoltageUpdates(threadID); },
+			[this]() { m_IterateBarrier->wait(); });
+		return;
+	}
+
 	//execute extensions in reverse order -> highest priority gets access to the voltages last
 	for (int n=m_Eng_exts.size()-1; n>=0; --n)
 	{
@@ -236,6 +299,15 @@ void Engine_Multithread::DoPreVoltageUpdates(int threadID)
 
 void Engine_Multithread::DoPostVoltageUpdates(int threadID)
 {
+	if (m_usePhaseDispatch)
+	{
+		EngineExtensionPhaseDispatch::Dispatch(
+			m_phaseDispatch.phases[EngineExtensionPhaseDispatch::POST_VOLTAGE],
+			[threadID](Engine_Extension* extension) { extension->DoPostVoltageUpdates(threadID); },
+			[this]() { m_IterateBarrier->wait(); });
+		return;
+	}
+
 	//execute extensions in normal order -> highest priority gets access to the voltages first
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
@@ -246,6 +318,15 @@ void Engine_Multithread::DoPostVoltageUpdates(int threadID)
 
 void Engine_Multithread::Apply2Voltages(int threadID)
 {
+	if (m_usePhaseDispatch)
+	{
+		EngineExtensionPhaseDispatch::Dispatch(
+			m_phaseDispatch.phases[EngineExtensionPhaseDispatch::APPLY_VOLTAGE],
+			[threadID](Engine_Extension* extension) { extension->Apply2Voltages(threadID); },
+			[this]() { m_IterateBarrier->wait(); });
+		return;
+	}
+
 	//execute extensions in normal order -> highest priority gets access to the voltages first
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
@@ -256,6 +337,15 @@ void Engine_Multithread::Apply2Voltages(int threadID)
 
 void Engine_Multithread::DoPreCurrentUpdates(int threadID)
 {
+	if (m_usePhaseDispatch)
+	{
+		EngineExtensionPhaseDispatch::Dispatch(
+			m_phaseDispatch.phases[EngineExtensionPhaseDispatch::PRE_CURRENT],
+			[threadID](Engine_Extension* extension) { extension->DoPreCurrentUpdates(threadID); },
+			[this]() { m_IterateBarrier->wait(); });
+		return;
+	}
+
 	//execute extensions in reverse order -> highest priority gets access to the currents last
 	for (int n=m_Eng_exts.size()-1; n>=0; --n)
 	{
@@ -266,6 +356,15 @@ void Engine_Multithread::DoPreCurrentUpdates(int threadID)
 
 void Engine_Multithread::DoPostCurrentUpdates(int threadID)
 {
+	if (m_usePhaseDispatch)
+	{
+		EngineExtensionPhaseDispatch::Dispatch(
+			m_phaseDispatch.phases[EngineExtensionPhaseDispatch::POST_CURRENT],
+			[threadID](Engine_Extension* extension) { extension->DoPostCurrentUpdates(threadID); },
+			[this]() { m_IterateBarrier->wait(); });
+		return;
+	}
+
 	//execute extensions in normal order -> highest priority gets access to the currents first
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
@@ -276,6 +375,15 @@ void Engine_Multithread::DoPostCurrentUpdates(int threadID)
 
 void Engine_Multithread::Apply2Current(int threadID)
 {
+	if (m_usePhaseDispatch)
+	{
+		EngineExtensionPhaseDispatch::Dispatch(
+			m_phaseDispatch.phases[EngineExtensionPhaseDispatch::APPLY_CURRENT],
+			[threadID](Engine_Extension* extension) { extension->Apply2Current(threadID); },
+			[this]() { m_IterateBarrier->wait(); });
+		return;
+	}
+
 	//execute extensions in normal order -> highest priority gets access to the currents first
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
