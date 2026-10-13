@@ -45,6 +45,9 @@ public:
 
 	virtual unsigned int GetNumberOfLines(int ny, bool full=false) const;
 
+	//! The first and the last alpha line of a closed mesh are the same line
+	virtual bool GetClosedMeshLines(int ny, unsigned int &first, unsigned int &last) const;
+
 	//! Get the name for the given direction: 0 -> rho, 1 -> alpha, 2 -> z
 	virtual std::string GetDirName(int ny) const;
 

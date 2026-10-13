@@ -18,9 +18,9 @@
 #include "engine_field_gather.h"
 #include "operator.h"
 
-// The same values as GetEField()/GetHField() of Engine_Interface_FDTD: an engine interface
-// that changes the field evaluation has to change the nodes it asks for accordingly
-// (see Engine_Interface_Cylindrical_FDTD::CreateFieldGather()).
+// The same values as GetEField()/GetHField() of Engine_Interface_FDTD for the given nodes;
+// the caller has moved the nodes on the seam of a closed mesh as those do
+// (see Engine_Interface_GPU_FDTD::CreateFieldGather()).
 Field_Gather_FDTD* Field_Gather_FDTD::New(const Operator* op, Engine_Interface_Base::InterpolationType interpol,
                                           const ArrayLib::ArrayNIJK<FDTD_FLOAT>* volt, const ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr,
                                           bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3])

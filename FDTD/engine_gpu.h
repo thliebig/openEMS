@@ -90,11 +90,8 @@ public:
 	//! True if the extensions run on the host mirror, which is then kept in sync during IterateTS()
 	bool FieldsOnHost() const {return m_FieldsOnHost;}
 
-	//! The energy estimate from sums on the device (see GPU_Backend::CalcFastEnergy()), or from the updated host mirror
-	virtual double CalcFastEnergy(const unsigned int numNodes[3]) const;
-
-	//! Several threads read the fields next: update the host mirror, reading it from the device value by value is not thread-safe
-	virtual void PrepareFieldAccess() {UpdateHostMirror();}
+	//! Sums of the squared voltages and currents on the device (see GPU_Backend::CalcFastEnergy()); false if it has none or the fields are on the host
+	bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
 
 	//! Host mirror of the fields (basic engine layout)
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>& HostVoltages() const {return *volt_ptr;}
@@ -109,17 +106,15 @@ public:
 	//! Copy of the current fields in snapshot \a slot (0 or 1), see GPU_Backend::SnapshotFields(); false if not available
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	//! Wait until snapshot \a slot can be read, may be called from another thread
-	virtual void WaitSnapshot(unsigned int slot) const;
+	void WaitSnapshot(unsigned int slot) const;
 	//! Whether the snapshots evaluate the dumped nodes on the device (see AddSnapshotGather()), instead of copying the fields
 	virtual bool CanSnapshotGather() const;
 	virtual bool AddSnapshotGather(bool h_field, const std::vector<Engine_GatherEntry>& entries, size_t& offset);
-	//! The host mirror
-	virtual bool GetBasicFieldArrays(const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &volt, const ArrayLib::ArrayNIJK<FDTD_FLOAT>* &curr) const {volt = volt_ptr; curr = curr_ptr; return true;}
 
 	//! Sums of weighted dump entries on the device, see GPU_Backend::AddFieldDFT(); -1 if not available
-	virtual int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count);
-	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {m_Backend->AccumulateFieldDFT(id, weights);}
-	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, sums);}
+	int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count);
+	void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {m_Backend->AccumulateFieldDFT(id, weights);}
+	bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, sums);}
 
 	//! Field values, read from the device if the host mirror is out of date (see class description)
 	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;

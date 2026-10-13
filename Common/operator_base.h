@@ -50,6 +50,12 @@ public:
 	//! Returns the number of lines as needed for post-processing etc.
 	virtual unsigned int GetNumberOfLines(int ny, bool full=false) const =0;
 
+	//! Whether the mesh is closed (periodic) in direction \a ny: its lines \a first and \a last are then the same line, e.g. alpha of a closed cylindrical mesh
+	/*!
+	  An interpolated field at one of them is evaluated at the other one where that has the neighbours (see Engine_Interface_FDTD).
+	  */
+	virtual bool GetClosedMeshLines(int ny, unsigned int &first, unsigned int &last) const {UNUSED(ny); UNUSED(first); UNUSED(last); return false;}
+
 	//! Get the name for the given direction: 0 -> x, 1 -> y, 2 -> z
 	virtual std::string GetDirName(int ny) const;
 

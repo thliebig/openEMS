@@ -46,13 +46,13 @@ struct Engine_GatherEntry
 };
 
 //! Precomputed GetRawInterpolatedField()/GetRawInterpolatedDualField() (type 0) of the
-//! nodes of a dump, for fields in the basic engine layout (see Engine::GetBasicFieldArrays()).
+//! nodes of a dump, for fields in the basic engine layout (e.g. the host mirror of Engine_GPU).
 //! Every node component is one of a few forms, evaluated with the same operations as there.
 class Field_Gather_FDTD : public Engine_Field_Gather
 {
 public:
 	//! one component of a node: raw(k) = value(idx[k])/delta[k] (0 if delta is 0), see GetRawField().
-	//! The layout a backend evaluates on the device, see Engine::AddSnapshotGather().
+	//! The layout a backend evaluates on the device, see Engine_GPU::AddSnapshotGather().
 	typedef Engine_GatherEntry Entry;
 	typedef Engine_GatherEntry G;
 

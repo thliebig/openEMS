@@ -19,8 +19,6 @@
 #define ENGINE_INTERFACE_FDTD_H
 
 #include <cmath>
-#include <array>
-#include <map>
 
 #include "Common/engine_interface_base.h"
 #include "operator.h"
@@ -33,7 +31,7 @@ public:
 	virtual ~Engine_Interface_FDTD();
 
 	//! Set the FDTD operator
-	virtual void SetFDTDOperator(Operator* op) {SetOperator(op); m_Op=op;}
+	virtual void SetFDTDOperator(Operator* op);
 	//! Set the FDTD engine
 	virtual void SetFDTDEngine(Engine* eng) {m_Eng=eng;}
 
@@ -56,25 +54,17 @@ public:
 
 	virtual double CalcFastEnergy() const;
 
-	// the fields belong to the engine, which may keep them elsewhere (e.g. on a GPU)
-	virtual void PrepareFieldAccess();
-	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr);
-	virtual void WaitFieldSnapshot(unsigned int slot) const;
-	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather);
-	virtual int CreateFieldDFT(const Engine_Field_Gather* gather, unsigned int count);
-	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights);
-	virtual bool ReadFieldDFT(int id, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*>& fields);
-	//! Only for an engine that offers its fields in the basic engine layout, see Engine::GetBasicFieldArrays()
-	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const;
-
-	virtual const void* GetEngineID() const {return m_Eng;}
-
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;
 
-	//! dumped lines (i, j, k) of the field DFTs of the engine, by id (see CreateFieldDFT())
-	std::map<int, std::array<unsigned int, 3>> m_FieldDFT;
+	//! The closed (periodic) directions of the mesh, see Operator_Base::GetClosedMeshLines()
+	bool m_ClosedMesh;
+	bool m_Closed[3];
+	unsigned int m_ClosedFirst[3], m_ClosedLast[3];
+	void UpdateClosedMesh();
+	//! The line of direction \a n an interpolated field at \a line is evaluated at: on the seam of a closed mesh its other side, where the interpolation has the neighbours
+	unsigned int GetSeamLine(int n, unsigned int line) const;
 
 	//! Internal method to get an interpolated field of a given type. (0: E, 1: J, 2: rotH, 3: D)
 	virtual double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;

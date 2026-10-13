@@ -16,7 +16,6 @@
 */
 
 #include "engine_interface_fdtd.h"
-#include "engine_field_gather.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -30,6 +29,36 @@ Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op) : Engine_Interface_Ba
 	m_Eng = m_Op->GetEngine();
 	if (m_Eng==NULL)
 		throw std::runtime_error("Engine_Interface_FDTD::Engine_Interface_FDTD: Error: Engine is not set!");
+	UpdateClosedMesh();
+}
+
+void Engine_Interface_FDTD::SetFDTDOperator(Operator* op)
+{
+	SetOperator(op);
+	m_Op=op;
+	UpdateClosedMesh();
+}
+
+void Engine_Interface_FDTD::UpdateClosedMesh()
+{
+	m_ClosedMesh = false;
+	for (int n=0; n<3; ++n)
+	{
+		m_Closed[n] = m_Op->GetClosedMeshLines(n, m_ClosedFirst[n], m_ClosedLast[n]);
+		m_ClosedMesh |= m_Closed[n];
+	}
+}
+
+unsigned int Engine_Interface_FDTD::GetSeamLine(int n, unsigned int line) const
+{
+	if (!m_Closed[n])
+		return line;
+	// node interpolation reads the lower neighbours, cell interpolation the upper ones
+	if ((m_InterpolType==NODE_INTERPOLATE) && (line==m_ClosedFirst[n]))
+		return m_ClosedLast[n];
+	if ((m_InterpolType==CELL_INTERPOLATE) && (line==m_ClosedLast[n]))
+		return m_ClosedFirst[n];
+	return line;
 }
 
 Engine_Interface_FDTD::~Engine_Interface_FDTD()
@@ -58,6 +87,13 @@ double* Engine_Interface_FDTD::GetRotHField(const unsigned int* pos, double* out
 
 double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const
 {
+	unsigned int seamPos[3];
+	if (m_ClosedMesh)
+	{
+		for (int n=0; n<3; ++n)
+			seamPos[n] = GetSeamLine(n, pos[n]);
+		pos = seamPos;
+	}
 	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
 	int nP,nPP;
 	double delta;
@@ -121,7 +157,12 @@ double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, 
 
 double* Engine_Interface_FDTD::GetHField(const unsigned int* pos, double* out) const
 {
-		return GetRawInterpolatedDualField(pos, out, 0);
+	if (m_ClosedMesh)
+	{
+		const unsigned int seamPos[3] = {GetSeamLine(0, pos[0]), GetSeamLine(1, pos[1]), GetSeamLine(2, pos[2])};
+		return GetRawInterpolatedDualField(seamPos, out, 0);
+	}
+	return GetRawInterpolatedDualField(pos, out, 0);
 }
 
 double* Engine_Interface_FDTD::GetBField(const unsigned int* pos, double* out) const
@@ -268,89 +309,47 @@ double Engine_Interface_FDTD::GetRawField(unsigned int n, const unsigned int* po
 
 double Engine_Interface_FDTD::CalcFastEnergy() const
 {
-	// the engine knows how its fields are stored
-	unsigned int numNodes[3];
-	for (int n=0; n<3; ++n)
-		numNodes[n] = m_Op->GetNumberOfLines(n)-1;
-	return m_Eng->CalcFastEnergy(numNodes);
-}
+	double E_energy=0.0;
+	double H_energy=0.0;
 
-void Engine_Interface_FDTD::PrepareFieldAccess()
-{
-	m_Eng->PrepareFieldAccess();
-}
-
-bool Engine_Interface_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr)
-{
-	return m_Eng->SnapshotFields(slot, volt, curr);
-}
-
-void Engine_Interface_FDTD::WaitFieldSnapshot(unsigned int slot) const
-{
-	m_Eng->WaitSnapshot(slot);
-}
-
-bool Engine_Interface_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gather)
-{
-	if (!m_Eng->CanSnapshotGather())
-		return true;   // plain field snapshots, if the engine has any: evaluated on the host
-	// the engine only snapshots the dumped nodes, so it has to know them beforehand
-	Field_Gather_FDTD* g = dynamic_cast<Field_Gather_FDTD*>(gather);
-	size_t offset = 0;
-	if (!g || !m_Eng->AddSnapshotGather(g->HField(), g->entries, offset))
-		return false;
-	g->SetSnapshotEvaluated(offset);
-	return true;
-}
-
-Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
-{
-	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* volt = NULL;
-	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr = NULL;
-	if (!m_Eng->GetBasicFieldArrays(volt, curr))
-		return NULL;   // no gather, the caller reads the fields node by node
-	return Field_Gather_FDTD::New(m_Op, m_InterpolType, volt, curr, h_field, numLines, posLines);
-}
-
-int Engine_Interface_FDTD::CreateFieldDFT(const Engine_Field_Gather* gather, unsigned int count)
-{
-	const Field_Gather_FDTD* g = dynamic_cast<const Field_Gather_FDTD*>(gather);
-	if (!g || g->entries.empty())
-		return -1;
-	const int id = m_Eng->AddFieldDFT(g->HField(), g->entries, count);
-	if (id>=0)
+	unsigned int pos[3];
+	if (m_Eng->GetType()==Engine::BASIC)
 	{
-		const unsigned int nj = g->NumLinesJ(), nk = g->NumLinesK();
-		m_FieldDFT[id] = {(unsigned int)(g->entries.size()/(3*(size_t)nj*nk)), nj, nk};
+		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
+		{
+			for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
+			{
+				for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
+				{
+					E_energy+=m_Eng->Engine::GetVolt(0,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(0,pos[0],pos[1],pos[2]);
+					E_energy+=m_Eng->Engine::GetVolt(1,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(1,pos[0],pos[1],pos[2]);
+					E_energy+=m_Eng->Engine::GetVolt(2,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(2,pos[0],pos[1],pos[2]);
+
+					H_energy+=m_Eng->Engine::GetCurr(0,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetCurr(0,pos[0],pos[1],pos[2]);
+					H_energy+=m_Eng->Engine::GetCurr(1,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetCurr(1,pos[0],pos[1],pos[2]);
+					H_energy+=m_Eng->Engine::GetCurr(2,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetCurr(2,pos[0],pos[1],pos[2]);
+				}
+			}
+		}
 	}
-	return id;
-}
-
-void Engine_Interface_FDTD::AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights)
-{
-	m_Eng->AccumulateFieldDFT(id, weights);
-}
-
-bool Engine_Interface_FDTD::ReadFieldDFT(int id, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*>& fields)
-{
-	std::map<int, std::array<unsigned int, 3>>::const_iterator it = m_FieldDFT.find(id);
-	std::vector<std::complex<float>> sums;
-	if ((it==m_FieldDFT.end()) || !m_Eng->ReadFieldDFT(id, sums))
-		return false;
-	// the entries in the order of Field_Gather_FDTD: [line][k][n]
-	const unsigned int ni = it->second[0], nj = it->second[1], nk = it->second[2];
-	const size_t count = (size_t)ni*nj*nk*3;
-	if (sums.size()!=count*fields.size())
-		return false;
-	for (size_t f=0; f<fields.size(); ++f)
+	else
 	{
-		const std::complex<float>* s = sums.data() + f*count;
-		ArrayLib::ArrayNIJK<std::complex<float>>& field = *fields[f];
-		for (unsigned int i=0; i<ni; ++i)
-			for (unsigned int j=0; j<nj; ++j)
-				for (unsigned int k=0; k<nk; ++k)
-					for (int n=0; n<3; ++n)
-						field(n, i, j, k) = *s++;
+		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
+		{
+			for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
+			{
+				for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
+				{
+					E_energy+=m_Eng->GetVolt(0,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(0,pos[0],pos[1],pos[2]);
+					E_energy+=m_Eng->GetVolt(1,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(1,pos[0],pos[1],pos[2]);
+					E_energy+=m_Eng->GetVolt(2,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(2,pos[0],pos[1],pos[2]);
+
+					H_energy+=m_Eng->GetCurr(0,pos[0],pos[1],pos[2]) * m_Eng->GetCurr(0,pos[0],pos[1],pos[2]);
+					H_energy+=m_Eng->GetCurr(1,pos[0],pos[1],pos[2]) * m_Eng->GetCurr(1,pos[0],pos[1],pos[2]);
+					H_energy+=m_Eng->GetCurr(2,pos[0],pos[1],pos[2]) * m_Eng->GetCurr(2,pos[0],pos[1],pos[2]);
+				}
+			}
+		}
 	}
-	return true;
+	return EPS0*E_energy + MUE0*H_energy;
 }

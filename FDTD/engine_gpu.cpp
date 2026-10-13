@@ -367,20 +367,12 @@ void Engine_GPU::CurrentHalfStep()
 	Apply2Current();
 }
 
-double Engine_GPU::CalcFastEnergy(const unsigned int numNodes[3]) const
+bool Engine_GPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const
 {
-	// the end criteria asks for this every Nyquist period, so it is worth the
-	// device implementation. In the host fallback the host mirror holds the latest
-	// fields, otherwise it has to be brought up to date: it is not written at the
-	// end of a batch
-	if (!m_FieldsOnHost)
-	{
-		double E_energy=0.0, H_energy=0.0;
-		if (m_Backend->CalcFastEnergy(numNodes, E_energy, H_energy))
-			return EPS0*E_energy + MUE0*H_energy;
-		const_cast<Engine_GPU*>(this)->UpdateHostMirror();   // the host mirror is a cache of the device fields
-	}
-	return Engine::CalcFastEnergy(numNodes);
+	// in the host fallback the host mirror holds the latest fields
+	if (m_FieldsOnHost)
+		return false;
+	return m_Backend->CalcFastEnergy(numNodes, E_energy, H_energy);
 }
 
 void Engine_GPU::NextTimestep()

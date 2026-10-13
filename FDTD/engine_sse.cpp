@@ -268,37 +268,3 @@ void Engine_sse::UpdateCurrents(unsigned int startX, unsigned int numX)
 		++pos[0];
 	}
 }
-
-double Engine_sse::CalcFastEnergy(const unsigned int numNodes[3]) const
-{
-	f4vector E_energy;
-	E_energy.f[0]=0;
-	E_energy.f[1]=0;
-	E_energy.f[2]=0;
-	E_energy.f[3]=0;
-	f4vector H_energy;
-	H_energy = E_energy;
-
-	ArrayLib::ArrayENG<f4vector>& f4_volt = *f4_volt_ptr;
-	ArrayLib::ArrayENG<f4vector>& f4_curr = *f4_curr_ptr;
-
-	unsigned int pos[3];
-	for (pos[0]=0; pos[0]<numNodes[0]; ++pos[0])
-	{
-		for (pos[1]=0; pos[1]<numNodes[1]; ++pos[1])
-		{
-			for (pos[2]=0; pos[2]<numVectors; ++pos[2])
-			{
-				E_energy.v += f4_volt(0, pos[0], pos[1], pos[2]).v * f4_volt(0, pos[0], pos[1], pos[2]).v;
-				E_energy.v += f4_volt(1, pos[0], pos[1], pos[2]).v * f4_volt(1, pos[0], pos[1], pos[2]).v;
-				E_energy.v += f4_volt(2, pos[0], pos[1], pos[2]).v * f4_volt(2, pos[0], pos[1], pos[2]).v;
-
-				H_energy.v += f4_curr(0, pos[0], pos[1], pos[2]).v * f4_curr(0, pos[0], pos[1], pos[2]).v;
-				H_energy.v += f4_curr(1, pos[0], pos[1], pos[2]).v * f4_curr(1, pos[0], pos[1], pos[2]).v;
-				H_energy.v += f4_curr(2, pos[0], pos[1], pos[2]).v * f4_curr(2, pos[0], pos[1], pos[2]).v;
-			}
-		}
-	}
-
-	return EPS0*(E_energy.f[0]+E_energy.f[1]+E_energy.f[2]+E_energy.f[3]) + MUE0*(H_energy.f[0]+H_energy.f[1]+H_energy.f[2]+H_energy.f[3]);
-}

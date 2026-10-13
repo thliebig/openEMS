@@ -126,6 +126,15 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny, bool full) const
 	return Operator_Multithread::GetNumberOfLines(ny, full);
 }
 
+bool Operator_Cylinder::GetClosedMeshLines(int ny, unsigned int &first, unsigned int &last) const
+{
+	if (!CC_closedAlpha || (ny!=1))
+		return false;
+	first = 0;
+	last = GetNumberOfLines(1);
+	return true;
+}
+
 std::string Operator_Cylinder::GetDirName(int ny) const
 {
 	if (ny==0) return "rho";

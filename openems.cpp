@@ -39,7 +39,9 @@
 #include "FDTD/extensions/operator_ext_absorbing_bc.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
 #include "FDTD/engine_interface_fdtd.h"
-#include "FDTD/engine_interface_cylindrical_fdtd.h"
+#include "FDTD/engine_interface_sse_fdtd.h"
+#include "FDTD/engine_interface_gpu_fdtd.h"
+#include "FDTD/engine_gpu.h"
 #include "Common/processvoltage.h"
 #include "Common/processcurrent.h"
 #include "Common/processfieldprobe.h"
@@ -483,6 +485,17 @@ void openEMS::SetupAbsorbingSheets()
 
 }
 
+//! The engine interface for the field storage of the engine of \a op; what depends on the mesh, the interfaces ask the operator
+static Engine_Interface_FDTD* NewEngineInterface(Operator* op)
+{
+	if (dynamic_cast<Engine_GPU*>(op->GetEngine()))
+		return new Engine_Interface_GPU_FDTD(op);
+	Operator_sse* op_sse = dynamic_cast<Operator_sse*>(op);
+	if (op_sse)
+		return new Engine_Interface_SSE_FDTD(op_sse);
+	return new Engine_Interface_FDTD(op);
+}
+
 Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 {
 	Operator_CylinderMultiGrid* op_cyl_mg = dynamic_cast<Operator_CylinderMultiGrid*>(FDTD_Op);
@@ -493,7 +506,7 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 		{
 			if (g_settings.GetVerboseLevel()>0)
 				cout << __func__ << ": Operator with requested multi-grid level found." << endl;
-			return new Engine_Interface_Cylindrical_FDTD(op_cyl_mg);
+			return ::NewEngineInterface(op_cyl_mg);
 		}
 		Operator_Cylinder* op_cyl_inner = op_cyl_mg->GetInnerOperator();
 		op_cyl_mg = dynamic_cast<Operator_CylinderMultiGrid*>(op_cyl_inner);
@@ -501,14 +514,11 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 		{
 			if (g_settings.GetVerboseLevel()>0)
 				cout << __func__ << ": Operator with highest multi-grid level chosen." << endl;
-			return new Engine_Interface_Cylindrical_FDTD(op_cyl_inner);
+			return ::NewEngineInterface(op_cyl_inner);
 		}
 		// try next level
 	}
-	Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(FDTD_Op);
-	if (op_cyl)
-		return new Engine_Interface_Cylindrical_FDTD(op_cyl);
-	return new Engine_Interface_FDTD(FDTD_Op);
+	return ::NewEngineInterface(FDTD_Op);
 }
 
 void openEMS::SetVerboseLevel(int level)
