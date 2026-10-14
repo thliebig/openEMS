@@ -314,17 +314,29 @@ bool HIP_Ext_UPML::CanFuse()
 	}
 	if (!sides_ok)
 		F.count = 0;
-	if (F.count)
+	// the second flux buffers only for the regions in the kernel, which are optional (as the fused step)
+	for (size_t r=0; (r<d->upml.size()) && F.count; ++r)
+	{
+		HIP_Ext_UPML* u = static_cast<HIP_Ext_UPML*>(d->upml[r]);
+		const size_t n = 3*(size_t)u->m_Region.lx*u->m_Region.ly*u->m_Region.lz;
+		u->m_VoltFlux2 = d->TryAlloc<float>(n);
+		if (u->m_VoltFlux2)
+			HIP_Check(hipMemcpyAsync(u->m_VoltFlux2, u->m_VoltFlux, n*sizeof(float), hipMemcpyDeviceToDevice, d->Stream()), "UPML flux");
+		else
+			F.count = 0;
+	}
+	const bool fused_step = d->DecideFusedStep();
+	if (!fused_step)
+		F.count = 0;
+	if (!F.count)
 		for (size_t r=0; r<d->upml.size(); ++r)
 		{
 			HIP_Ext_UPML* u = static_cast<HIP_Ext_UPML*>(d->upml[r]);
-			const size_t n = 3*(size_t)u->m_Region.lx*u->m_Region.ly*u->m_Region.lz;
-			u->m_VoltFlux2 = d->Alloc<float>(n);
-			HIP_Check(hipMemcpyAsync(u->m_VoltFlux2, u->m_VoltFlux, n*sizeof(float), hipMemcpyDeviceToDevice, d->Stream()), "UPML flux");
+			d->Free(u->m_VoltFlux2);
+			u->m_VoltFlux2 = NULL;
 		}
-	if (d->DecideFusedStep())
+	if (fused_step)
 		return true;
-	F.count = 0;
 
 	// The regions along z (which cover the x/y range of the main updates) are updated by the
 	// main kernels, along full z lines: a region of their own would only have short rows

@@ -634,12 +634,21 @@ bool GPU_Backend_HIP::Impl::DecideFusedStep()
 		else if (fregions.count)
 			list.push_back(*it);
 	}
+	// The buffers are allocated last, after the field dumps: without them the run is only slower.
+	volt_next = TryAlloc<float>(3*numCells);
+	curr_next = TryAlloc<float>(3*numCells);
+	if ((volt_next==NULL) || (curr_next==NULL))
+	{
+		Free(volt_next);
+		Free(curr_next);
+		volt_next = curr_next = NULL;
+		std::cout << "GPU_Backend_HIP: not enough device memory for the fused step, using separate updates" << std::endl;
+		return false;
+	}
 	fixup_count = list.size();
 	fixup = Alloc<unsigned int>(fixup_count, list.data());
 
 	// both buffers start with the current fields
-	volt_next = Alloc<float>(3*numCells);
-	curr_next = Alloc<float>(3*numCells);
 	HIP_Check(hipMemcpyAsync(volt_next, volt, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
 	HIP_Check(hipMemcpyAsync(curr_next, curr, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
 	Flush();

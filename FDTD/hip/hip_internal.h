@@ -164,6 +164,30 @@ struct GPU_Backend_HIP::Impl
 		return ptr;
 	}
 
+	//! Uninitialized device buffer of \a count elements for an optional optimization, freed with
+	//! this Impl or by Free(); NULL if the device memory is not sufficient
+	template <typename T>
+	T* TryAlloc(size_t count)
+	{
+		T* ptr = NULL;
+		if (hipMalloc(&ptr, std::max(count, (size_t)1)*sizeof(T))!=hipSuccess)
+		{
+			(void)hipGetLastError();   // not sticky, but reported by the next CheckLaunch()
+			return NULL;
+		}
+		m_Allocations.push_back(ptr);
+		return ptr;
+	}
+
+	//! Free a buffer of Alloc() or TryAlloc() before this Impl
+	void Free(void* ptr)
+	{
+		if (ptr==NULL)
+			return;
+		m_Allocations.erase(std::remove(m_Allocations.begin(), m_Allocations.end(), ptr), m_Allocations.end());
+		hipFree(ptr);
+	}
+
 	//! Device buffer of the set indices of \a sets (16 or 32 bit)
 	void* AllocIndex(const GPU_CoeffSets& sets)
 	{
