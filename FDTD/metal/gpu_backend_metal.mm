@@ -567,13 +567,22 @@ void GPU_Backend_Metal::Synchronize()
 // stepping, so the device copies them into a slot of its own instead of sharing the field buffers.
 bool GPU_Backend_Metal::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
 {
-	if (slot>1)
+	if ((slot>1) || d->snap_failed)
 		return false;
 	const size_t bytes = 3*d->numCells*sizeof(float);
 	if (!d->snap_volt[slot])
 	{
-		d->snap_volt[slot] = d->NewBuffer(bytes);
-		d->snap_curr[slot] = d->NewBuffer(bytes);
+		// optional, allocated during the run: without them the dumps read the shared field buffers
+		d->snap_volt[slot] = [d->device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
+		d->snap_curr[slot] = [d->device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
+		if (!d->snap_volt[slot] || !d->snap_curr[slot])
+		{
+			d->snap_volt[slot] = nil;
+			d->snap_curr[slot] = nil;
+			d->snap_failed = true;
+			std::cout << "GPU_Backend_Metal: not enough memory for field snapshots, the dumps read the fields" << std::endl;
+			return false;
+		}
 	}
 	const uint32_t count = 3*d->numCells;
 	id<MTLComputePipelineState> pso = d->Pipeline(BASE_SOURCE, "copy_fields");
