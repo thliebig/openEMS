@@ -24,6 +24,7 @@
 #include "hip/gpu_backend_hip.h"
 #endif
 #include "engine.h"
+#include "operator.h"
 #include "extensions/engine_ext_upml.h"
 #include "extensions/engine_ext_steadystate.h"
 #ifdef OPENEMS_WITH_METAL
@@ -127,4 +128,36 @@ bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, 
 		stop[n] = hi[n];
 	}
 	return true;
+}
+
+static FDTD_FLOAT GPU_Coefficient(const Operator* op, int c, int n, unsigned int x, unsigned int y, unsigned int z)
+{
+	switch (c)
+	{
+	case 0: return op->GetVV(n, x, y, z);
+	case 1: return op->GetVI(n, x, y, z);
+	case 2: return op->GetII(n, x, y, z);
+	default: return op->GetIV(n, x, y, z);
+	}
+}
+
+void GPU_NodeCoefficients(const Operator* op, const unsigned int numLines[3], size_t node, float values[12])
+{
+	const unsigned int x = node/((size_t)numLines[1]*numLines[2]);
+	const unsigned int y = (node/numLines[2]) % numLines[1];
+	const unsigned int z = node % numLines[2];
+	for (int c=0; c<4; ++c)
+		for (int n=0; n<3; ++n)
+			values[3*c+n] = GPU_Coefficient(op, c, n, x, y, z);
+}
+
+void GPU_CoefficientArray(const Operator* op, const unsigned int numLines[3], int c, std::vector<float>& values)
+{
+	values.resize(3*(size_t)numLines[0]*numLines[1]*numLines[2]);
+	size_t idx = 0;
+	for (int n=0; n<3; ++n)
+		for (unsigned int x=0; x<numLines[0]; ++x)
+			for (unsigned int y=0; y<numLines[1]; ++y)
+				for (unsigned int z=0; z<numLines[2]; ++z, ++idx)
+					values[idx] = GPU_Coefficient(op, c, n, x, y, z);
 }

@@ -114,6 +114,16 @@ struct GPU_UPMLRegion
 bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
                        unsigned int start[3], unsigned int stop[3]);
 
+//! The 12 update coefficients of node \a node of \a op, in the order vv[3], vi[3], ii[3], iv[3]
+/*!
+  \a node is (x*numLines[1] + y)*numLines[2] + z. The backends read the operator node by
+  node while uploading it, instead of copying its arrays first: a host copy would be
+  another 48 bytes per node at the peak of the host memory.
+  */
+void GPU_NodeCoefficients(const Operator* op, const unsigned int numLines[3], size_t node, float values[12]);
+//! Coefficient array \a c (0: vv, 1: vi, 2: ii, 3: iv) of \a op as uploaded, the value of direction n at [n*numCells + node]
+void GPU_CoefficientArray(const Operator* op, const unsigned int numLines[3], int c, std::vector<float>& values);
+
 //! Abstract interface to the device used by Engine_GPU
 /*!
   A backend owns the device memory: the voltage and current fields and the update

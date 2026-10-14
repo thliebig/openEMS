@@ -834,32 +834,11 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	d->volt = d->Alloc<float>(count);
 	d->curr = d->Alloc<float>(count);
 
-	// upload the final operator coefficients, including all changes by operator extensions
-	std::vector<float> vv(count), vi(count), ii(count), iv(count);
-	unsigned int pos[3];
-	size_t idx = 0;
-	for (int n=0; n<3; ++n)
-		for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2], ++idx)
-				{
-					vv[idx] = op->GetVV(n, pos[0], pos[1], pos[2]);
-					vi[idx] = op->GetVI(n, pos[0], pos[1], pos[2]);
-					ii[idx] = op->GetII(n, pos[0], pos[1], pos[2]);
-					iv[idx] = op->GetIV(n, pos[0], pos[1], pos[2]);
-				}
-
+	// upload the final operator coefficients, including all changes by operator extensions.
 	// Most nodes share one of a few coefficient sets (same material and mesh spacing): store
 	// every distinct set of the 12 coefficients of a node once and a set index per node
-	const size_t sn = d->numCells;
-	const std::vector<float>* src[4] = {&vv, &vi, &ii, &iv};
 	GPU_CoeffSets sets;
-	if (GPU_FindSets(sn, 12, [&](size_t i, float* values)
-	    {
-		    for (int c=0; c<4; ++c)
-			    for (int n=0; n<3; ++n)
-				    values[3*c+n] = (*src[c])[n*sn+i];
-	    }, sets))
+	if (GPU_FindSets(d->numCells, 12, [&](size_t i, float* values) {GPU_NodeCoefficients(op, numLines, i, values);}, sets))
 	{
 		d->coeff_mode = sets.mode;
 		d->index = d->AllocIndex(sets);
@@ -869,11 +848,14 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 		return true;
 	}
 
+	// the full arrays, one host copy at a time
 	d->coeff_mode = 0;
-	d->vv = d->Alloc<float>(count, vv.data());
-	d->vi = d->Alloc<float>(count, vi.data());
-	d->ii = d->Alloc<float>(count, ii.data());
-	d->iv = d->Alloc<float>(count, iv.data());
+	std::vector<float> values;
+	auto upload = [&](int c) {GPU_CoefficientArray(op, numLines, c, values); return d->Alloc<float>(count, values.data());};
+	d->vv = upload(0);
+	d->vi = upload(1);
+	d->ii = upload(2);
+	d->iv = upload(3);
 	return true;
 }
 

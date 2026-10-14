@@ -45,6 +45,12 @@ Operator_GPU::~Operator_GPU()
 Engine* Operator_GPU::CreateEngine()
 {
 	m_Engine = Engine_GPU::New(this, m_Backend);
+	// The device holds the coefficients now: free the host arrays (48 bytes per node), as
+	// Operator_SSE_Compressed frees its full arrays. GetVV() and friends are invalid after this.
+	delete vv_ptr; vv_ptr = NULL;
+	delete vi_ptr; vi_ptr = NULL;
+	delete ii_ptr; ii_ptr = NULL;
+	delete iv_ptr; iv_ptr = NULL;
 	return m_Engine;
 }
 

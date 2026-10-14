@@ -74,8 +74,7 @@ protected:
 	GPU_Backend_Metal(Impl* impl);
 
 	//! Store the coefficients as distinct sets and a set index per node, returns false if there are too many sets
-	bool CompressCoefficients(const std::vector<float>& vv, const std::vector<float>& vi,
-	                          const std::vector<float>& ii, const std::vector<float>& iv);
+	bool CompressCoefficients(const Operator* op, const unsigned int numLines[3]);
 
 	Impl* d;
 };
