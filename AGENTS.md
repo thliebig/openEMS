@@ -63,6 +63,9 @@ current-side equivalents.
   declaration order is not a contract.
 - An extension that touches the engine's fields must work for every engine
   subclass, not just the basic one.
+- For the GPU engine that means a device implementation in every backend (HIP,
+  Metal): one extension without one moves all extensions to the host and copies
+  both fields every half-step, which makes GPU runs slow.
 
 Modifying `Operator`/`Engine` directly is for changes that genuinely belong to
 the core scheme, and those need discussion first.
