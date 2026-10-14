@@ -21,6 +21,9 @@ there are unreleased changes. It becomes the next release entry.
 - A simulation that was aborted (`SetAbort()`, an `ABORT` file, Ctrl-C) no
   longer ends with the warning that the max. number of timesteps was reached;
   it reports the abort.
+- An error during the setup or the run of a simulation, e.g. running out of
+  memory, no longer terminates the process: openEMS ends with an error message,
+  Python raises a `RuntimeError`, and Ctrl-C works again afterwards.
 
 ### Changed
 

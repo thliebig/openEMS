@@ -59,6 +59,12 @@
 using namespace std;
 namespace po = boost::program_options;
 
+// restores the original SIGINT handler when leaving a function, also by an exception
+struct RestoreSIGINT
+{
+	~RestoreSIGINT() {Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);}
+};
+
 double CalcDiffTime(timeval t1, timeval t2)
 {
 	double s_diff = t1.tv_sec - t2.tv_sec;
@@ -1189,17 +1195,16 @@ int openEMS::SetupFDTD()
 	gettimeofday(&startTime,NULL);
 
 	Signal::SetupHandlerForSIGINT(SIGNAL_EXIT_FORCE);
+	RestoreSIGINT restoreSIGINT;
 
 	if (m_CSX==NULL)
 	{
 		cerr << "openEMS::SetupFDTD: Error: CSXCAD is not set!" << endl;
-		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 3;
 	}
 	if (m_CSX==NULL)
 	{
 		cerr << "openEMS::SetupFDTD: Error: CSXCAD is not set!" << endl;
-		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 3;
 	}
 	std::string ec = m_CSX->Update();
@@ -1221,7 +1226,6 @@ int openEMS::SetupFDTD()
 	//*************** setup operator ************//
 	if (SetupOperator()==false)
 	{
-		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 2;
 	}
 
@@ -1238,7 +1242,6 @@ int openEMS::SetupFDTD()
 	if (m_Exc==NULL)
 	{
 		cerr << "openEMS::SetupFDTD: Error, excitation is not defined! Abort!" << endl;
-		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 3;
 	}
 
@@ -1249,7 +1252,6 @@ int openEMS::SetupFDTD()
 
 	if (FDTD_Op->SetGeometryCSX(m_CSX)==false)
 	{
-		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return(2);
 	}
 
@@ -1370,7 +1372,6 @@ int openEMS::SetupFDTD()
 	if (m_no_simulation)
 	{
 		// simulation was disabled (to generate debug output only)
-		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 1;
 	}
 
@@ -1386,7 +1387,6 @@ int openEMS::SetupFDTD()
 	//setup all processing classes
 	if (SetupProcessing()==false)
 	{
-		Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 		return 2;
 	}
 
@@ -1402,7 +1402,6 @@ int openEMS::SetupFDTD()
 		PA->DumpBoxes2File("box_dump_");
 	}
 
-	Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 	return 0;
 }
 
@@ -1461,6 +1460,7 @@ void openEMS::RunFDTD()
 	cout << "Running FDTD engine... this may take a while... grab a cup of coffee?!?" << endl;
 
 	Signal::SetupHandlerForSIGINT(SIGNAL_EXIT_GRACEFUL);
+	RestoreSIGINT restoreSIGINT;
 
 	//special handling of a field processing, needed to realize the end criteria...
 	ProcessFields* ProcField = new ProcessFields(NewEngineInterface());
@@ -1603,8 +1603,6 @@ void openEMS::RunFDTD()
 	// the results are written: free the memory of the operator and the engine,
 	// e.g. for a post-processing in the same process (NF2FF, SAR)
 	FreeSimulation();
-
-	Signal::SetupHandlerForSIGINT(SIGNAL_ORIGINAL);
 }
 
 bool openEMS::DumpStatistics(const string& filename, double time)

@@ -43,14 +43,22 @@ int main(int argc, const char* argv[])
 
 	g_settings.parseCommandLineArguments(argc, argv);
 
-	int EC = FDTD.ParseFDTDSetup(argv[1]);
-	if (!EC) {
-		cerr << "openEMS - ParseFDTDSetup failed." << endl;
+	try
+	{
+		int EC = FDTD.ParseFDTDSetup(argv[1]);
+		if (!EC) {
+			cerr << "openEMS - ParseFDTDSetup failed." << endl;
+			return 1;
+		}
+		EC = FDTD.SetupFDTD();
+		if (EC) return EC;
+		FDTD.RunFDTD();
+	}
+	catch (const std::exception& e)
+	{
+		cerr << "openEMS: Error: " << e.what() << endl;
 		return 1;
 	}
-	EC = FDTD.SetupFDTD();
-	if (EC) return EC;
-	FDTD.RunFDTD();
 
 	return 0;
 }
