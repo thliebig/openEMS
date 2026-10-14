@@ -114,9 +114,6 @@ struct GPU_UPMLRegion
 bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
                        unsigned int start[3], unsigned int stop[3]);
 
-//! The dump entries a backend evaluates on the device, see Engine_GatherEntry
-typedef Engine_GatherEntry GPU_GatherEntry;
-
 //! Abstract interface to the device used by Engine_GPU
 /*!
   A backend owns the device memory: the voltage and current fields and the update
@@ -200,15 +197,15 @@ public:
 	  and of \a curr_entries (from the currents) in \a curr, in the order of the entries.
 	  Called before the first snapshot. Returns false if the backend cannot (no snapshots then).
 	  */
-	virtual bool SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries) {UNUSED(volt_entries); UNUSED(curr_entries); return false;}
+	virtual bool SetSnapshotGather(const std::vector<Engine_GatherEntry>& volt_entries, const std::vector<Engine_GatherEntry>& curr_entries) {UNUSED(volt_entries); UNUSED(curr_entries); return false;}
 
 	//! Sums over timesteps of weighted dump entries on the device (frequency domain dumps), see Engine_Interface_Base::CreateFieldDFT()
 	/*!
-	  \param entries evaluated from the currents if \a currents, else from the voltages
+	  \param h_field \a entries are evaluated from the currents, else from the voltages
 	  \param count number of sums (weights per AccumulateFieldDFT())
 	  Returns an id, or -1 if the backend cannot.
 	  */
-	virtual int AddFieldDFT(const std::vector<GPU_GatherEntry>& entries, bool currents, unsigned int count) {UNUSED(entries); UNUSED(currents); UNUSED(count); return -1;}
+	virtual int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count) {UNUSED(h_field); UNUSED(entries); UNUSED(count); return -1;}
 	//! Add \a weights[n] times the current values of the entries to sum n of \a id (in order with the updates)
 	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {UNUSED(id); UNUSED(weights);}
 	//! The sums of \a id: sum n of entry e at [n*entries + e]

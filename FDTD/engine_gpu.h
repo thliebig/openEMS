@@ -134,7 +134,7 @@ protected:
 	bool m_FieldsOnHost;
 	bool m_SharedMemory; //!< the host mirror is the device memory
 	bool m_SnapshotsUsed; //!< SnapshotFields() succeeded once
-	std::vector<GPU_GatherEntry> m_SnapshotGather[2];   //!< dump entries of the snapshots: E, H (see AddSnapshotGather())
+	std::vector<Engine_GatherEntry> m_SnapshotGather[2];   //!< dump entries of the snapshots: E, H (see AddSnapshotGather())
 	bool m_SnapshotGatherSet;                           //!< m_SnapshotGather was passed to the backend
 	bool m_FieldDFTUsed;                                //!< AddFieldDFT() succeeded once
 

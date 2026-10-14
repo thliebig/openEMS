@@ -234,8 +234,8 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 		// once: without enough device memory the backend has no snapshots
 		m_Backend->SetSnapshotGather(m_SnapshotGather[0], m_SnapshotGather[1]);
 		m_SnapshotGatherSet = true;
-		std::vector<GPU_GatherEntry>().swap(m_SnapshotGather[0]);
-		std::vector<GPU_GatherEntry>().swap(m_SnapshotGather[1]);
+		std::vector<Engine_GatherEntry>().swap(m_SnapshotGather[0]);
+		std::vector<Engine_GatherEntry>().swap(m_SnapshotGather[1]);
 	}
 	if (!m_Backend->SnapshotFields(slot, volt, curr))
 		return false;
@@ -261,7 +261,7 @@ bool Engine_GPU::AddSnapshotGather(bool h_field, const std::vector<Engine_Gather
 {
 	if (m_SnapshotGatherSet || !CanSnapshotGather())
 		return false;
-	std::vector<GPU_GatherEntry>& all = m_SnapshotGather[h_field ? 1 : 0];
+	std::vector<Engine_GatherEntry>& all = m_SnapshotGather[h_field ? 1 : 0];
 	offset = all.size();
 	all.insert(all.end(), entries.begin(), entries.end());
 	return true;
@@ -272,7 +272,7 @@ int Engine_GPU::AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>&
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
 	if (m_FieldsOnHost)
 		return -1;
-	const int id = m_Backend->AddFieldDFT(entries, h_field, count);
+	const int id = m_Backend->AddFieldDFT(h_field, entries, count);
 	if ((id>=0) && !m_FieldDFTUsed)
 	{
 		cout << "Engine_GPU: frequency domain dumps accumulated on the device" << endl;

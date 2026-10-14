@@ -59,8 +59,8 @@ public:
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	virtual void WaitSnapshot(unsigned int slot);
 	virtual bool CanSnapshotGather() const {return true;}
-	virtual bool SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries);
-	virtual int AddFieldDFT(const std::vector<GPU_GatherEntry>& entries, bool currents, unsigned int count);
+	virtual bool SetSnapshotGather(const std::vector<Engine_GatherEntry>& volt_entries, const std::vector<Engine_GatherEntry>& curr_entries);
+	virtual int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count);
 	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights);
 	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums);
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);

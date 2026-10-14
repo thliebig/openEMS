@@ -123,7 +123,7 @@ struct GPU_Backend_HIP::Impl
 	//! Field snapshots (see GPU_Backend_HIP::SnapshotFields()): the dumped values, evaluated on the device
 	//! (gather_dumps) and downloaded on the copy stream into one of two page-locked host slots while the
 	//! next timesteps run
-	GPU_GatherEntry* snap_entries;   //!< the entries of the voltages, then of the currents
+	Engine_GatherEntry* snap_entries;   //!< the entries of the voltages, then of the currents
 	unsigned int snap_nv, snap_n;     //!< number of voltage entries, of all entries
 	float* snap_dev;                  //!< the values of the entries
 	float* snap_host[2];              //!< the values of the entries, for each slot
@@ -135,7 +135,7 @@ struct GPU_Backend_HIP::Impl
 	//! Sums of weighted dump entries (frequency domain dumps, see GPU_Backend_HIP::AddFieldDFT())
 	struct FieldDFT
 	{
-		GPU_GatherEntry* entries;
+		Engine_GatherEntry* entries;
 		unsigned int n;       //!< number of entries
 		unsigned int count;   //!< number of sums per entry
 		bool currents;        //!< entries from the currents, else from the voltages

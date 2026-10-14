@@ -342,27 +342,27 @@ static void launch_fused_ty(hipStream_t stream, const HIP_FusedArgs& a, unsigned
 }
 
 // the dumped values of a snapshot: entries [0, nv) from the voltages, [nv, n) from the currents
-// (see GPU_GatherEntry). Evaluated here so that only the dumped values go over PCIe, not the
+// (see Engine_GatherEntry). Evaluated here so that only the dumped values go over PCIe, not the
 // whole fields. Double precision without FMA contraction (--fmad=false), as on the host.
-__device__ inline double gather_raw(const float* f, const GPU_GatherEntry& e, int k)
+__device__ inline double gather_raw(const float* f, const Engine_GatherEntry& e, int k)
 {
 	if (e.delta[k])
 		return (double)f[e.idx[k]] / e.delta[k];
 	return 0.0;
 }
 
-__device__ inline float gather_value(const float* f, const GPU_GatherEntry& e)
+__device__ inline float gather_value(const float* f, const Engine_GatherEntry& e)
 {
 	double v = 0;
 	switch (e.form)
 	{
-	case GPU_GatherEntry::RAW:
+	case Engine_GatherEntry::RAW:
 		v = gather_raw(f, e, 0);
 		break;
-	case GPU_GatherEntry::LERP:
+	case Engine_GatherEntry::LERP:
 		v = gather_raw(f, e, 0)*(1.0-e.rel) + gather_raw(f, e, 1)*e.rel;
 		break;
-	case GPU_GatherEntry::AVG4:
+	case Engine_GatherEntry::AVG4:
 		v = gather_raw(f, e, 0);
 		v+= gather_raw(f, e, 1);
 		v+= gather_raw(f, e, 2);
@@ -375,7 +375,7 @@ __device__ inline float gather_value(const float* f, const GPU_GatherEntry& e)
 	return v;
 }
 
-__global__ void gather_dumps(const float* __restrict__ volt, const float* __restrict__ curr, const GPU_GatherEntry* __restrict__ entries,
+__global__ void gather_dumps(const float* __restrict__ volt, const float* __restrict__ curr, const Engine_GatherEntry* __restrict__ entries,
                              unsigned int nv, unsigned int n, float* __restrict__ out)
 {
 	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -389,7 +389,7 @@ __global__ void gather_dumps(const float* __restrict__ volt, const float* __rest
 #define DFT_WEIGHTS 32   // weights per launch, passed by value in the kernel parameters
 struct HIP_DFTWeights { float2 w[DFT_WEIGHTS]; };
 
-__global__ void field_dft(const float* __restrict__ f, const GPU_GatherEntry* __restrict__ entries, unsigned int n,
+__global__ void field_dft(const float* __restrict__ f, const Engine_GatherEntry* __restrict__ entries, unsigned int n,
                           HIP_DFTWeights W, unsigned int nw, float2* __restrict__ sums)
 {
 	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -995,7 +995,7 @@ void GPU_Backend_HIP::Synchronize()
 	d->Flush();
 }
 
-bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt_entries, const std::vector<GPU_GatherEntry>& curr_entries)
+bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherEntry>& volt_entries, const std::vector<Engine_GatherEntry>& curr_entries)
 {
 	HIP_Check(hipStreamSynchronize(d->ctx->copy_stream), "stream synchronization");
 	d->FreeSnapshots();
@@ -1003,7 +1003,7 @@ bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt
 	if ((n==0) || (n>UINT_MAX))
 		return false;
 	// not fatal: without snapshots the dumps read the fields from the host mirror
-	if ((hipMalloc(&d->snap_entries, n*sizeof(GPU_GatherEntry))!=hipSuccess) || (hipMalloc(&d->snap_dev, n*sizeof(float))!=hipSuccess)
+	if ((hipMalloc(&d->snap_entries, n*sizeof(Engine_GatherEntry))!=hipSuccess) || (hipMalloc(&d->snap_dev, n*sizeof(float))!=hipSuccess)
 	    || (hipHostMalloc(&d->snap_host[0], n*sizeof(float))!=hipSuccess) || (hipHostMalloc(&d->snap_host[1], n*sizeof(float))!=hipSuccess))
 	{
 		hipGetLastError();
@@ -1013,8 +1013,8 @@ bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<GPU_GatherEntry>& volt
 	}
 	d->snap_nv = volt_entries.size();
 	d->snap_n = n;
-	HIP_Check(hipMemcpy(d->snap_entries, volt_entries.data(), volt_entries.size()*sizeof(GPU_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
-	HIP_Check(hipMemcpy(d->snap_entries + d->snap_nv, curr_entries.data(), curr_entries.size()*sizeof(GPU_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
+	HIP_Check(hipMemcpy(d->snap_entries, volt_entries.data(), volt_entries.size()*sizeof(Engine_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
+	HIP_Check(hipMemcpy(d->snap_entries + d->snap_nv, curr_entries.data(), curr_entries.size()*sizeof(Engine_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
 	return true;
 }
 
@@ -1026,7 +1026,7 @@ bool GPU_Backend_HIP::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt,
 	if (d->snap_last>=0)
 		HIP_Check(hipStreamWaitEvent(d->Stream(), d->snap_done[d->snap_last], 0), "hipStreamWaitEvent");
 	HIP_Launch(d, "gather_dumps", gather_dumps, d->snap_n, 1, 1, (const float*)d->volt, (const float*)d->curr,
-	            (const GPU_GatherEntry*)d->snap_entries, d->snap_nv, d->snap_n, d->snap_dev);
+	            (const Engine_GatherEntry*)d->snap_entries, d->snap_nv, d->snap_n, d->snap_dev);
 	HIP_Check(hipEventRecord(d->snap_evaluated, d->Stream()), "hipEventRecord");
 	// the download on the copy stream, while the work stream continues with the next timesteps
 	hipStream_t copy = d->ctx->copy_stream;
@@ -1039,7 +1039,7 @@ bool GPU_Backend_HIP::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt,
 	return true;
 }
 
-int GPU_Backend_HIP::AddFieldDFT(const std::vector<GPU_GatherEntry>& entries, bool currents, unsigned int count)
+int GPU_Backend_HIP::AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count)
 {
 	const size_t n = entries.size();
 	if ((n==0) || (count==0) || (n>UINT_MAX))
@@ -1047,10 +1047,10 @@ int GPU_Backend_HIP::AddFieldDFT(const std::vector<GPU_GatherEntry>& entries, bo
 	Impl::FieldDFT dft;
 	dft.n = n;
 	dft.count = count;
-	dft.currents = currents;
+	dft.currents = h_field;
 	try
 	{
-		dft.entries = d->Alloc<GPU_GatherEntry>(n, entries.data());
+		dft.entries = d->Alloc<Engine_GatherEntry>(n, entries.data());
 		dft.sums = d->Alloc<float2>(n*count);
 	}
 	catch (std::runtime_error&)
@@ -1077,7 +1077,7 @@ void GPU_Backend_HIP::AccumulateFieldDFT(int id, const std::vector<std::complex<
 		for (unsigned int k=0; k<nw; ++k)
 			W.w[k] = make_float2(weights[k0+k].real(), weights[k0+k].imag());
 		HIP_Launch(d, "field_dft", field_dft, dft.n, 1, 1, (const float*)(dft.currents ? d->curr : d->volt),
-		            (const GPU_GatherEntry*)dft.entries, dft.n, W, nw, dft.sums + (size_t)k0*dft.n);
+		            (const Engine_GatherEntry*)dft.entries, dft.n, W, nw, dft.sums + (size_t)k0*dft.n);
 	}
 }
 
