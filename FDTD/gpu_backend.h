@@ -154,6 +154,11 @@ public:
 	/*!
 	  \a op is fully built: its coefficients include all changes made by the
 	  operator extensions.
+	  Returns false if the backend cannot run this operator. After a successful Init(),
+	  a device failure (a failed launch, transfer or required allocation, a lost
+	  device) throws std::runtime_error; it ends the run with an error message, see
+	  main() and openEMS::RunFDTD(). Memory that only speeds things up (the fused
+	  step, snapshots) is optional: without it the backend takes the slower path.
 	  */
 	virtual bool Init(const Operator* op) = 0;
 
