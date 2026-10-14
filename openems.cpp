@@ -1072,6 +1072,18 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 
 bool openEMS::Write2XML(TiXmlNode* rootNode)
 {
+	// ParseFDTDSetup() cannot read a setup without either of them
+	if (m_Exc==NULL)
+	{
+		cerr << "openEMS::Write2XML: Error, no excitation defined" << endl;
+		return false;
+	}
+	if (m_CSX==NULL)
+	{
+		cerr << "openEMS::Write2XML: Error, no structure (CSX) defined" << endl;
+		return false;
+	}
+
 	TiXmlElement main("openEMS");
 
 	TiXmlElement fdtd("FDTD");

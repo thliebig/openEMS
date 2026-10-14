@@ -142,6 +142,16 @@ class Test_Write2XML(unittest.TestCase):
         # CSXCAD structure is embedded as a child of the root
         self.assertIsNotNone(root.find('ContinuousStructure'))
 
+    def test_incomplete_setup_fails(self):
+        # used to crash; a setup without either cannot be read back
+        fdtd = openEMS()
+        fdtd.SetCSX(_make_csx())
+        self.assertFalse(fdtd.Write2XML(self.fn))
+        fdtd = openEMS()
+        fdtd.SetGaussExcite(f0=1e9, fc=500e6)
+        self.assertFalse(fdtd.Write2XML(self.fn))
+        self.assertFalse(os.path.exists(self.fn))
+
 
 class Test_ReadFromXML(unittest.TestCase):
     def setUp(self):

@@ -53,6 +53,9 @@ there are unreleased changes. It becomes the next release entry.
   at 2 to 4 billion nodes.
 - A SAR dump kept a second, unused copy of its frequency domain fields:
   24 bytes per dumped cell and frequency less memory now.
+- `Write2XML()` crashed when no excitation or no structure was set. It now
+  reports the missing part and returns false, as the file could not be read
+  back anyway.
 
 ### Changed
 
