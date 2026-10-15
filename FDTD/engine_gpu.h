@@ -107,12 +107,13 @@ public:
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	//! Wait until snapshot \a slot can be read, may be called from another thread
 	void WaitSnapshot(unsigned int slot) const;
-	//! Whether the snapshots evaluate the dumped nodes on the device (see AddSnapshotGather()), instead of copying the fields
+	//! Whether the snapshots copy only the raw values the dumps read (see AddSnapshotGather()), instead of the fields
 	virtual bool CanSnapshotGather() const;
-	virtual bool AddSnapshotGather(bool h_field, const std::vector<Engine_GatherEntry>& entries, size_t& offset);
+	//! Add the raw values \a region of a dump to the snapshots, at \a offset of the voltages or currents (\a h_field)
+	virtual bool AddSnapshotGather(bool h_field, const Engine_GatherRegion& region, size_t& offset);
 
-	//! Sums of weighted dump entries on the device, see GPU_Backend::AddFieldDFT(); -1 if not available
-	int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count);
+	//! Sums of the weighted raw values \a region on the device, see GPU_Backend::AddFieldDFT(); -1 if not available
+	int AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count);
 	void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {m_Backend->AccumulateFieldDFT(id, weights);}
 	bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, sums);}
 
@@ -134,7 +135,8 @@ protected:
 	bool m_FieldsOnHost;
 	bool m_SharedMemory; //!< the host mirror is the device memory
 	bool m_SnapshotsUsed; //!< SnapshotFields() succeeded once
-	std::vector<Engine_GatherEntry> m_SnapshotGather[2];   //!< dump entries of the snapshots: E, H (see AddSnapshotGather())
+	std::vector<Engine_GatherRegion> m_SnapshotGather[2]; //!< raw values of the snapshots: from the voltages, the currents (see AddSnapshotGather())
+	size_t m_SnapshotGatherSize[2];                     //!< their number of raw values
 	bool m_SnapshotGatherSet;                           //!< m_SnapshotGather was passed to the backend
 	bool m_FieldDFTUsed;                                //!< AddFieldDFT() succeeded once
 

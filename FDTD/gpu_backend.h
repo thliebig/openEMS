@@ -199,26 +199,28 @@ public:
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
 	//! Wait until the copy of snapshot \a slot is done, may be called from another thread
 	virtual void WaitSnapshot(unsigned int slot) {UNUSED(slot);}
-	//! Whether the snapshots can evaluate the dumped nodes on the device, see SetSnapshotGather()
+	//! Whether the snapshots can copy only the raw values the dumps read, see SetSnapshotGather()
 	virtual bool CanSnapshotGather() const {return false;}
-	//! Snapshots evaluate these dump entries instead of copying the fields
+	//! Snapshots copy the raw values of these regions instead of the fields
 	/*!
-	  SnapshotFields() then returns the values of \a volt_entries (from the voltages) in \a volt
-	  and of \a curr_entries (from the currents) in \a curr, in the order of the entries.
-	  Called before the first snapshot. Returns false if the backend cannot (no snapshots then).
+	  SnapshotFields() then returns the voltages of \a volt_regions in \a volt and the currents
+	  of \a curr_regions in \a curr, region after region (see Engine_GatherRegion); the host
+	  interpolates them. Called before the first snapshot. Returns false if the backend
+	  cannot (no snapshots then).
 	  */
-	virtual bool SetSnapshotGather(const std::vector<Engine_GatherEntry>& volt_entries, const std::vector<Engine_GatherEntry>& curr_entries) {UNUSED(volt_entries); UNUSED(curr_entries); return false;}
+	virtual bool SetSnapshotGather(const std::vector<Engine_GatherRegion>& volt_regions, const std::vector<Engine_GatherRegion>& curr_regions) {UNUSED(volt_regions); UNUSED(curr_regions); return false;}
 
-	//! Sums over timesteps of weighted dump entries on the device (frequency domain dumps), see Engine_Interface_Base::CreateFieldDFT()
+	//! Sums over timesteps of the weighted raw values of a dump on the device (frequency domain dumps), see Engine_Interface_Base::CreateFieldDFT()
 	/*!
-	  \param h_field \a entries are evaluated from the currents, else from the voltages
+	  \param h_field the raw values \a region of the currents, else of the voltages
 	  \param count number of sums (weights per AccumulateFieldDFT())
+	  The host interpolates the sums, see Field_Gather_FDTD::EvaluateSums().
 	  Returns an id, or -1 if the backend cannot.
 	  */
-	virtual int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count) {UNUSED(h_field); UNUSED(entries); UNUSED(count); return -1;}
-	//! Add \a weights[n] times the current values of the entries to sum n of \a id (in order with the updates)
+	virtual int AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count) {UNUSED(h_field); UNUSED(region); UNUSED(count); return -1;}
+	//! Add \a weights[n] times the current raw values to sum n of \a id (in order with the updates)
 	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {UNUSED(id); UNUSED(weights);}
-	//! The sums of \a id: sum n of entry e at [n*entries + e]
+	//! The sums of \a id: sum n of raw value e at [n*region size + e]
 	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {UNUSED(id); UNUSED(sums); return false;}
 
 	//! Sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, see Engine_Interface_FDTD::CalcFastEnergy(). Returns false if the backend cannot compute them.

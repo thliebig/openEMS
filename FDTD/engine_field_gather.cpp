@@ -134,5 +134,46 @@ Field_Gather_FDTD* Field_Gather_FDTD::New(const Operator* op, Engine_Interface_B
 					}
 				}
 			}
+	gather->SetRegion(N);
 	return gather;
+}
+
+void Field_Gather_FDTD::SetRegion(const unsigned int N[3])
+{
+	static const int used[4] = {0, 1, 2, 4};   // raw values read by ZERO, RAW, LERP, AVG4
+	for (int n=0; n<3; ++n)
+	{
+		m_N[n] = N[n];
+		for (int d=0; d<3; ++d)
+			m_RegionPos[n][d].assign(N[d], UINT_MAX);
+	}
+	// mark the lines the entries read, per component and direction
+	for (size_t e=0; e<entries.size(); ++e)
+		for (int k=0; k<used[entries[e].form]; ++k)
+		{
+			unsigned int idx = entries[e].idx[k];
+			const unsigned int z = idx%N[2];
+			idx /= N[2];
+			const unsigned int y = idx%N[1];
+			idx /= N[1];
+			const unsigned int x = idx%N[0];
+			const unsigned int n = idx/N[0];
+			m_RegionPos[n][0][x] = m_RegionPos[n][1][y] = m_RegionPos[n][2][z] = 0;
+		}
+	size_t start = 0;
+	for (int n=0; n<3; ++n)
+	{
+		for (int d=0; d<3; ++d)
+		{
+			region.lines[n][d].clear();
+			for (unsigned int l=0; l<N[d]; ++l)
+				if (m_RegionPos[n][d][l]!=UINT_MAX)
+				{
+					m_RegionPos[n][d][l] = region.lines[n][d].size();
+					region.lines[n][d].push_back(l);
+				}
+		}
+		m_RegionStart[n] = start;
+		start += region.Size(n);
+	}
 }

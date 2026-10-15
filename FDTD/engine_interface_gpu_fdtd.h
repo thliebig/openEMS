@@ -23,6 +23,8 @@
 
 #include "engine_interface_fdtd.h"
 
+class Field_Gather_FDTD;
+
 class Engine_GPU;
 
 //! Engine interface of the GPU engine, see Engine_Interface_FDTD.
@@ -61,8 +63,8 @@ public:
 protected:
 	Engine_GPU* m_Eng_GPU;
 
-	//! dumped lines (i, j, k) of the field DFTs of the engine, by id (see CreateFieldDFT())
-	std::map<int, std::array<unsigned int, 3>> m_FieldDFT;
+	//! the gathers of the field DFTs of the engine, by id (see CreateFieldDFT()); owned by their dumps
+	std::map<int, const Field_Gather_FDTD*> m_FieldDFT;
 };
 
 #endif // ENGINE_INTERFACE_GPU_FDTD_H

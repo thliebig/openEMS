@@ -78,7 +78,7 @@ public:
 	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
 	//! Wait until snapshot \a slot can be read, may be called from another thread
 	virtual void WaitFieldSnapshot(unsigned int slot) const {UNUSED(slot);}
-	//! Prepare \a gather to read snapshots (before the first one), e.g. to evaluate it on the device at every snapshot. Returns false if it cannot read them.
+	//! Prepare \a gather to read snapshots (before the first one), e.g. to copy only the values it reads at every snapshot. Returns false if it cannot read them.
 	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather) {UNUSED(gather); return true;}
 	//! The engine the fields belong to, identifies the snapshots
 	virtual const void* GetEngineID() const {return NULL;}

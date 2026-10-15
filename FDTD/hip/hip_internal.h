@@ -47,6 +47,27 @@ __device__ __forceinline__ size_t nijk(const HIP_GridDim& N, unsigned int n, uns
 //! Main update coefficients of node i, see GPU_Backend_HIP::Impl::coeff_mode:
 //! a[n*s] and b[n*s] are vv/vi (voltages, set_offset 0) or ii/iv (currents, set_offset 6)
 //! of direction n. Mode 0: ca/cb are the full arrays, else ca is the table of sets.
+//! The raw values of a dump on the device, see Engine_GatherRegion: value e of component n is
+//! the edge (n, lines[n][0][a], lines[n][1][b], lines[n][2][c]) with e = start[n] + (a*size[n][1] + b)*size[n][2] + c
+struct HIP_GatherRegion
+{
+	const unsigned int* lines[3][3];
+	unsigned int size[3][3];
+	size_t start[3];
+	size_t total;
+};
+
+__device__ __forceinline__ size_t region_field_index(const HIP_GatherRegion& R, const HIP_GridDim& N, size_t e)
+{
+	const int n = (e>=R.start[2]) ? 2 : ((e>=R.start[1]) ? 1 : 0);
+	size_t l = e - R.start[n];
+	const unsigned int c = l % R.size[n][2];
+	l /= R.size[n][2];
+	const unsigned int b = l % R.size[n][1];
+	const unsigned int a = l / R.size[n][1];
+	return nijk(N, n, R.lines[n][0][a], R.lines[n][1][b], R.lines[n][2][c]);
+}
+
 struct HIP_MainCoeff { const float* a; const float* b; size_t s; };
 
 __device__ __forceinline__ HIP_MainCoeff main_coeff(const void* index, const float* ca, const float* cb,
@@ -120,27 +141,29 @@ struct GPU_Backend_HIP::Impl
 	//! Decide once whether the fused step is used, and prepare it
 	bool DecideFusedStep();
 
-	//! Field snapshots (see GPU_Backend_HIP::SnapshotFields()): the dumped values, evaluated on the device
-	//! (gather_dumps) and downloaded on the copy stream into one of two page-locked host slots while the
-	//! next timesteps run
-	Engine_GatherEntry* snap_entries;   //!< the entries of the voltages, then of the currents
-	unsigned int snap_nv, snap_n;     //!< number of voltage entries, of all entries
-	float* snap_dev;                  //!< the values of the entries
-	float* snap_host[2];              //!< the values of the entries, for each slot
+	//! Field snapshots (see GPU_Backend_HIP::SnapshotFields()): the raw values the dumps read, copied on
+	//! the device (gather_region) and downloaded on the copy stream into one of two page-locked host
+	//! slots while the next timesteps run
+	std::vector<HIP_GatherRegion> snap_regions[2];   //!< of the voltages, of the currents
+	std::vector<void*> snap_lines;    //!< device line tables of the regions
+	unsigned int snap_nv, snap_n;     //!< number of raw voltages, of all raw values
+	float* snap_dev;                  //!< the raw values
+	float* snap_host[2];              //!< the raw values, for each slot
 	hipEvent_t snap_evaluated;       //!< snap_dev is written
 	hipEvent_t snap_done[2];         //!< the download into each slot is done
 	int snap_last;                    //!< slot of the last download from snap_dev, -1: none
 	void FreeSnapshots();
 
-	//! Sums of weighted dump entries (frequency domain dumps, see GPU_Backend_HIP::AddFieldDFT())
+	//! Sums of weighted raw values (frequency domain dumps, see GPU_Backend_HIP::AddFieldDFT())
 	struct FieldDFT
 	{
-		Engine_GatherEntry* entries;
-		unsigned int n;       //!< number of entries
-		unsigned int count;   //!< number of sums per entry
-		bool currents;        //!< entries from the currents, else from the voltages
-		float2* sums;         //!< sum k of entry i at [k*n + i]
+		HIP_GatherRegion region;
+		unsigned int count;   //!< number of sums per raw value
+		bool currents;        //!< raw values of the currents, else of the voltages
+		float2* sums;         //!< sum k of raw value e at [k*region.total + e]
 	};
+	//! Device copy of the line tables of \a region (one buffer, see TryAlloc()); NULL if out of memory
+	void* UploadRegion(const Engine_GatherRegion& region, HIP_GatherRegion& dev);
 	std::vector<FieldDFT> field_dfts;
 
 	Impl();

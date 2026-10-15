@@ -53,6 +53,7 @@ Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend, GPU_Backe
 	m_SharedMemory = false;
 	m_SnapshotsUsed = false;
 	m_SnapshotGatherSet = false;
+	m_SnapshotGatherSize[0] = m_SnapshotGatherSize[1] = 0;
 	m_FieldDFTUsed = false;
 	m_StaleVolt.stale = m_StaleCurr.stale = false;
 	m_StaleVolt.full_this_batch = m_StaleCurr.full_this_batch = false;
@@ -235,8 +236,8 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 		// once: without enough device memory the backend has no snapshots
 		m_Backend->SetSnapshotGather(m_SnapshotGather[0], m_SnapshotGather[1]);
 		m_SnapshotGatherSet = true;
-		std::vector<Engine_GatherEntry>().swap(m_SnapshotGather[0]);
-		std::vector<Engine_GatherEntry>().swap(m_SnapshotGather[1]);
+		std::vector<Engine_GatherRegion>().swap(m_SnapshotGather[0]);
+		std::vector<Engine_GatherRegion>().swap(m_SnapshotGather[1]);
 	}
 	if (!m_Backend->SnapshotFields(slot, volt, curr))
 		return false;
@@ -258,22 +259,23 @@ bool Engine_GPU::CanSnapshotGather() const
 	return m_Backend->CanSnapshotGather();
 }
 
-bool Engine_GPU::AddSnapshotGather(bool h_field, const std::vector<Engine_GatherEntry>& entries, size_t& offset)
+bool Engine_GPU::AddSnapshotGather(bool h_field, const Engine_GatherRegion& region, size_t& offset)
 {
 	if (m_SnapshotGatherSet || !CanSnapshotGather())
 		return false;
-	std::vector<Engine_GatherEntry>& all = m_SnapshotGather[h_field ? 1 : 0];
-	offset = all.size();
-	all.insert(all.end(), entries.begin(), entries.end());
+	const int f = h_field ? 1 : 0;
+	offset = m_SnapshotGatherSize[f];
+	m_SnapshotGather[f].push_back(region);
+	m_SnapshotGatherSize[f] += region.Size();
 	return true;
 }
 
-int Engine_GPU::AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count)
+int Engine_GPU::AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count)
 {
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
 	if (m_FieldsOnHost)
 		return -1;
-	const int id = m_Backend->AddFieldDFT(h_field, entries, count);
+	const int id = m_Backend->AddFieldDFT(h_field, region, count);
 	if ((id>=0) && !m_FieldDFTUsed)
 	{
 		cout << "Engine_GPU: frequency domain dumps accumulated on the device" << endl;

@@ -59,8 +59,8 @@ public:
 	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	virtual void WaitSnapshot(unsigned int slot);
 	virtual bool CanSnapshotGather() const {return true;}
-	virtual bool SetSnapshotGather(const std::vector<Engine_GatherEntry>& volt_entries, const std::vector<Engine_GatherEntry>& curr_entries);
-	virtual int AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count);
+	virtual bool SetSnapshotGather(const std::vector<Engine_GatherRegion>& volt_regions, const std::vector<Engine_GatherRegion>& curr_regions);
+	virtual int AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count);
 	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights);
 	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums);
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);

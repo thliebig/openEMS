@@ -341,67 +341,33 @@ static void launch_fused_ty(hipStream_t stream, const HIP_FusedArgs& a, unsigned
 	}
 }
 
-// the dumped values of a snapshot: entries [0, nv) from the voltages, [nv, n) from the currents
-// (see Engine_GatherEntry). Evaluated here so that only the dumped values go over PCIe, not the
-// whole fields. Double precision without FMA contraction (--fmad=false), as on the host.
-__device__ inline double gather_raw(const float* f, const Engine_GatherEntry& e, int k)
+// the raw values of a dump region (see HIP_GatherRegion) for a snapshot: only these go over
+// PCIe, not the whole fields; the host interpolates them
+__global__ void gather_region(const float* __restrict__ f, HIP_GatherRegion R, HIP_GridDim N, float* __restrict__ out)
 {
-	if (e.delta[k])
-		return (double)f[e.idx[k]] / e.delta[k];
-	return 0.0;
+	const size_t e = (size_t)blockIdx.x*blockDim.x + threadIdx.x;
+	if (e<R.total)
+		out[e] = f[region_field_index(R, N, e)];
 }
 
-__device__ inline float gather_value(const float* f, const Engine_GatherEntry& e)
-{
-	double v = 0;
-	switch (e.form)
-	{
-	case Engine_GatherEntry::RAW:
-		v = gather_raw(f, e, 0);
-		break;
-	case Engine_GatherEntry::LERP:
-		v = gather_raw(f, e, 0)*(1.0-e.rel) + gather_raw(f, e, 1)*e.rel;
-		break;
-	case Engine_GatherEntry::AVG4:
-		v = gather_raw(f, e, 0);
-		v+= gather_raw(f, e, 1);
-		v+= gather_raw(f, e, 2);
-		v+= gather_raw(f, e, 3);
-		v/= 4;
-		break;
-	default:
-		break;
-	}
-	return v;
-}
-
-__global__ void gather_dumps(const float* __restrict__ volt, const float* __restrict__ curr, const Engine_GatherEntry* __restrict__ entries,
-                             unsigned int nv, unsigned int n, float* __restrict__ out)
-{
-	const size_t i = blockIdx.x*blockDim.x + threadIdx.x;
-	if (i>=n)
-		return;
-	out[i] = gather_value((i<nv) ? volt : curr, entries[i]);
-}
-
-// frequency domain dumps: sums[k*n + i] += value(i) * w[k] for the weights of one timestep,
-// as ProcessFieldsFD::Process() (a float times a complex float, then a complex sum)
+// frequency domain dumps: sums[k*total + e] += raw value(e) * w[k] for the weights of one timestep,
+// a float times a complex float, then a complex sum; the host interpolates the sums
 #define DFT_WEIGHTS 32   // weights per launch, passed by value in the kernel parameters
 struct HIP_DFTWeights { float2 w[DFT_WEIGHTS]; };
 
-__global__ void field_dft(const float* __restrict__ f, const Engine_GatherEntry* __restrict__ entries, unsigned int n,
+__global__ void field_dft(const float* __restrict__ f, HIP_GatherRegion R, HIP_GridDim N,
                           HIP_DFTWeights W, unsigned int nw, float2* __restrict__ sums)
 {
-	const size_t i = blockIdx.x*blockDim.x + threadIdx.x;
-	if (i>=n)
+	const size_t e = (size_t)blockIdx.x*blockDim.x + threadIdx.x;
+	if (e>=R.total)
 		return;
-	const float v = gather_value(f, entries[i]);
+	const float v = f[region_field_index(R, N, e)];
 	for (unsigned int k=0; k<nw; ++k)
 	{
-		float2 s = sums[(size_t)k*n + i];
+		float2 s = sums[k*R.total + e];
 		s.x += v*W.w[k].x;
 		s.y += v*W.w[k].y;
-		sums[(size_t)k*n + i] = s;
+		sums[k*R.total + e] = s;
 	}
 }
 
@@ -558,7 +524,6 @@ GPU_Backend_HIP::Impl::Impl()
 	volt_next = curr_next = NULL;
 	fixup = NULL;
 	fixup_count = 0;
-	snap_entries = NULL;
 	snap_nv = snap_n = 0;
 	snap_dev = NULL;
 	snap_host[0] = snap_host[1] = NULL;
@@ -691,11 +656,14 @@ void GPU_Backend_HIP::Impl::MainRange(HIP_GridDim& B, HIP_GridDim& E, unsigned i
 
 void GPU_Backend_HIP::Impl::FreeSnapshots()
 {
-	hipFree(snap_entries);
+	for (size_t r=0; r<snap_lines.size(); ++r)
+		Free(snap_lines[r]);
+	snap_lines.clear();
+	snap_regions[0].clear();
+	snap_regions[1].clear();
 	hipFree(snap_dev);
 	hipHostFree(snap_host[0]);
 	hipHostFree(snap_host[1]);
-	snap_entries = NULL;
 	snap_dev = snap_host[0] = snap_host[1] = NULL;
 	snap_nv = snap_n = 0;
 	snap_last = -1;
@@ -970,26 +938,69 @@ void GPU_Backend_HIP::Synchronize()
 	d->Flush();
 }
 
-bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherEntry>& volt_entries, const std::vector<Engine_GatherEntry>& curr_entries)
+void* GPU_Backend_HIP::Impl::UploadRegion(const Engine_GatherRegion& region, HIP_GatherRegion& dev)
+{
+	std::vector<unsigned int> lines;
+	for (int n=0; n<3; ++n)
+		for (int k=0; k<3; ++k)
+			lines.insert(lines.end(), region.lines[n][k].begin(), region.lines[n][k].end());
+	unsigned int* buf = TryAlloc<unsigned int>(lines.size());
+	if (!buf)
+		return NULL;
+	HIP_Check(hipMemcpy(buf, lines.data(), lines.size()*sizeof(unsigned int), hipMemcpyHostToDevice), "hipMemcpy");
+	size_t pos = 0, start = 0;
+	for (int n=0; n<3; ++n)
+	{
+		for (int k=0; k<3; ++k)
+		{
+			dev.lines[n][k] = buf + pos;
+			dev.size[n][k] = region.lines[n][k].size();
+			pos += dev.size[n][k];
+		}
+		dev.start[n] = start;
+		start += region.Size(n);
+	}
+	dev.total = start;
+	return buf;
+}
+
+bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherRegion>& volt_regions, const std::vector<Engine_GatherRegion>& curr_regions)
 {
 	HIP_Check(hipStreamSynchronize(d->ctx->copy_stream), "stream synchronization");
 	d->FreeSnapshots();
-	const size_t n = volt_entries.size() + curr_entries.size();
+	size_t nv = 0, n = 0;
+	for (size_t r=0; r<volt_regions.size(); ++r)
+		nv += volt_regions[r].Size();
+	n = nv;
+	for (size_t r=0; r<curr_regions.size(); ++r)
+		n += curr_regions[r].Size();
 	if ((n==0) || (n>UINT_MAX))
 		return false;
 	// not fatal: without snapshots the dumps read the fields from the host mirror
-	if ((hipMalloc(&d->snap_entries, n*sizeof(Engine_GatherEntry))!=hipSuccess) || (hipMalloc(&d->snap_dev, n*sizeof(float))!=hipSuccess)
-	    || (hipHostMalloc(&d->snap_host[0], n*sizeof(float))!=hipSuccess) || (hipHostMalloc(&d->snap_host[1], n*sizeof(float))!=hipSuccess))
+	bool ok = (hipMalloc(&d->snap_dev, n*sizeof(float))==hipSuccess)
+	          && (hipHostMalloc(&d->snap_host[0], n*sizeof(float))==hipSuccess) && (hipHostMalloc(&d->snap_host[1], n*sizeof(float))==hipSuccess);
+	const std::vector<Engine_GatherRegion>* regions[2] = {&volt_regions, &curr_regions};
+	for (int f=0; f<2 && ok; ++f)
+		for (size_t r=0; r<regions[f]->size() && ok; ++r)
+		{
+			HIP_GatherRegion dev;
+			void* buf = d->UploadRegion(regions[f]->at(r), dev);
+			ok = (buf!=NULL);
+			if (ok)
+			{
+				d->snap_lines.push_back(buf);
+				d->snap_regions[f].push_back(dev);
+			}
+		}
+	if (!ok)
 	{
 		hipGetLastError();
 		d->FreeSnapshots();
 		std::cerr << "GPU_Backend_HIP: not enough memory for field snapshots, the field dumps wait for the device" << std::endl;
 		return false;
 	}
-	d->snap_nv = volt_entries.size();
+	d->snap_nv = nv;
 	d->snap_n = n;
-	HIP_Check(hipMemcpy(d->snap_entries, volt_entries.data(), volt_entries.size()*sizeof(Engine_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
-	HIP_Check(hipMemcpy(d->snap_entries + d->snap_nv, curr_entries.data(), curr_entries.size()*sizeof(Engine_GatherEntry), hipMemcpyHostToDevice), "hipMemcpy");
 	return true;
 }
 
@@ -997,11 +1008,17 @@ bool GPU_Backend_HIP::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt,
 {
 	if ((slot>1) || !d->snap_n)
 		return false;
-	// the dumped values on the work stream, once the last snapshot was downloaded from snap_dev
+	// the raw values on the work stream, once the last snapshot was downloaded from snap_dev
 	if (d->snap_last>=0)
 		HIP_Check(hipStreamWaitEvent(d->Stream(), d->snap_done[d->snap_last], 0), "hipStreamWaitEvent");
-	HIP_Launch(d, "gather_dumps", gather_dumps, d->snap_n, 1, 1, (const float*)d->volt, (const float*)d->curr,
-	            (const Engine_GatherEntry*)d->snap_entries, d->snap_nv, d->snap_n, d->snap_dev);
+	size_t offset = 0;
+	for (int f=0; f<2; ++f)
+		for (size_t r=0; r<d->snap_regions[f].size(); ++r)
+		{
+			const HIP_GatherRegion& R = d->snap_regions[f][r];
+			HIP_Launch(d, "gather_region", gather_region, R.total, 1, 1, (const float*)(f ? d->curr : d->volt), R, d->dim, d->snap_dev + offset);
+			offset += R.total;
+		}
 	HIP_Check(hipEventRecord(d->snap_evaluated, d->Stream()), "hipEventRecord");
 	// the download on the copy stream, while the work stream continues with the next timesteps
 	hipStream_t copy = d->ctx->copy_stream;
@@ -1014,27 +1031,24 @@ bool GPU_Backend_HIP::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt,
 	return true;
 }
 
-int GPU_Backend_HIP::AddFieldDFT(bool h_field, const std::vector<Engine_GatherEntry>& entries, unsigned int count)
+int GPU_Backend_HIP::AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count)
 {
-	const size_t n = entries.size();
-	if ((n==0) || (count==0) || (n>UINT_MAX))
+	const size_t n = region.Size();
+	if ((n==0) || (count==0))
 		return -1;
 	Impl::FieldDFT dft;
-	dft.n = n;
 	dft.count = count;
 	dft.currents = h_field;
-	try
+	void* lines = d->UploadRegion(region, dft.region);
+	dft.sums = lines ? d->TryAlloc<float2>(n*count) : NULL;
+	if (!dft.sums)
 	{
-		dft.entries = d->Alloc<Engine_GatherEntry>(n, entries.data());
-		dft.sums = d->Alloc<float2>(n*count);
-	}
-	catch (std::runtime_error&)
-	{
-		// not fatal: without device sums the dump accumulates the fields on the host
-		hipGetLastError();
+		// not fatal: without device sums the dump sums the fields on the host
+		d->Free(lines);
 		std::cerr << "GPU_Backend_HIP: not enough memory for a frequency domain dump on the device" << std::endl;
 		return -1;
 	}
+	HIP_Check(hipMemsetAsync(dft.sums, 0, n*count*sizeof(float2), d->Stream()), "hipMemset");
 	d->field_dfts.push_back(dft);
 	return d->field_dfts.size()-1;
 }
@@ -1051,8 +1065,8 @@ void GPU_Backend_HIP::AccumulateFieldDFT(int id, const std::vector<std::complex<
 		const unsigned int nw = std::min(count-k0, (unsigned int)DFT_WEIGHTS);
 		for (unsigned int k=0; k<nw; ++k)
 			W.w[k] = make_float2(weights[k0+k].real(), weights[k0+k].imag());
-		HIP_Launch(d, "field_dft", field_dft, dft.n, 1, 1, (const float*)(dft.currents ? d->curr : d->volt),
-		            (const Engine_GatherEntry*)dft.entries, dft.n, W, nw, dft.sums + (size_t)k0*dft.n);
+		HIP_Launch(d, "field_dft", field_dft, dft.region.total, 1, 1, (const float*)(dft.currents ? d->curr : d->volt),
+		            dft.region, d->dim, W, nw, dft.sums + k0*dft.region.total);
 	}
 }
 
@@ -1061,7 +1075,7 @@ bool GPU_Backend_HIP::ReadFieldDFT(int id, std::vector<std::complex<float>>& sum
 	if ((id<0) || ((size_t)id>=d->field_dfts.size()))
 		return false;
 	const Impl::FieldDFT& dft = d->field_dfts[id];
-	sums.resize((size_t)dft.n*dft.count);
+	sums.resize(dft.region.total*dft.count);
 	HIP_Check(hipMemcpyAsync(sums.data(), dft.sums, sums.size()*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "download");
 	d->Flush();
 	return true;
