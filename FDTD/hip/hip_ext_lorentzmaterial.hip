@@ -25,18 +25,18 @@
 // and Engine_Ext_Dispersive. One launch per dispersion order, one thread per mesh
 // position of that order (unique within an order). The ADE state and coefficients
 // are stored per order as [direction][position].
-struct ADEParam { unsigned int count; unsigned int lorentz; unsigned int sn; };
+struct ADEParam { size_t count; unsigned int lorentz; size_t sn; };
 
 // ADE update before the main update, reads the field
 __global__ void lorentz_pre(const float* field, float* ade, float* lor, const float* c_int, const float* c_ext,
-                            const float* c_lor, const unsigned int* pos, ADEParam P)
+                            const float* c_lor, const size_t* pos, ADEParam P)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	const size_t i = (size_t)blockIdx.x*blockDim.x + threadIdx.x;
 	if (i>=P.count)
 		return;
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const unsigned int k = n*P.count + i;
+		const size_t k = n*P.count + i;
 		const float f = field[n*P.sn + pos[i]];
 		if (P.lorentz)
 		{
@@ -53,14 +53,14 @@ __global__ void lorentz_pre(const float* field, float* ade, float* lor, const fl
 }
 
 // subtract the ADE current from the field
-__global__ void dispersive_apply(float* field, const float* ade, const unsigned int* pos, ADEParam P)
+__global__ void dispersive_apply(float* field, const float* ade, const size_t* pos, ADEParam P)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	const size_t i = (size_t)blockIdx.x*blockDim.x + threadIdx.x;
 	if (i>=P.count)
 		return;
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const unsigned int g = n*P.sn + pos[i];
+		const size_t g = n*P.sn + pos[i];
 		field[g] = field[g] - ade[n*P.count + i];
 	}
 }
@@ -80,22 +80,22 @@ protected:
 	struct Order
 	{
 		ADEParam param;
-		unsigned int* pos;          //!< flat NIJK index of direction 0
+		size_t* pos;                //!< flat NIJK index of direction 0
 		float *ade, *lor;           //!< state
 		float *c_int, *c_ext, *c_lor;
 	};
 
-	void Setup(std::vector<Order>& orders, unsigned int count, unsigned int** pos,
+	void Setup(std::vector<Order>& orders, size_t count, unsigned int** pos,
 	           bool lorentz, FDTD_FLOAT** c_int, FDTD_FLOAT** c_ext, FDTD_FLOAT** c_lor);
-	float* Coefficients(unsigned int count, FDTD_FLOAT** c);
+	float* Coefficients(size_t count, FDTD_FLOAT** c);
 	void Pre(Order& o, float* field)
 	{
 		HIP_Launch(d, "lorentz_pre", lorentz_pre, o.param.count, 1, 1, (const float*)field, o.ade, o.lor,
-		            (const float*)o.c_int, (const float*)o.c_ext, (const float*)o.c_lor, (const unsigned int*)o.pos, o.param);
+		            (const float*)o.c_int, (const float*)o.c_ext, (const float*)o.c_lor, (const size_t*)o.pos, o.param);
 	}
 	void Apply(Order& o, float* field)
 	{
-		HIP_Launch(d, "dispersive_apply", dispersive_apply, o.param.count, 1, 1, field, (const float*)o.ade, (const unsigned int*)o.pos, o.param);
+		HIP_Launch(d, "dispersive_apply", dispersive_apply, o.param.count, 1, 1, field, (const float*)o.ade, (const size_t*)o.pos, o.param);
 	}
 
 	GPU_Backend_HIP::Impl* d;
@@ -108,7 +108,7 @@ HIP_Ext_LorentzMaterial::HIP_Ext_LorentzMaterial(GPU_Backend_HIP::Impl* impl, Op
 	d = impl;
 	for (int o=0; o<op_ext->m_Order; ++o)
 	{
-		const unsigned int count = op_ext->m_LM_Count.at(o);
+		const size_t count = op_ext->m_LM_Count.at(o);
 		if (op_ext->m_volt_ADE_On[o])
 			Setup(m_Volt, count, op_ext->m_LM_pos[o], op_ext->m_volt_Lor_ADE_On[o],
 			      op_ext->v_int_ADE[o], op_ext->v_ext_ADE[o], op_ext->m_volt_Lor_ADE_On[o] ? op_ext->v_Lor_ADE[o] : NULL);
@@ -118,17 +118,17 @@ HIP_Ext_LorentzMaterial::HIP_Ext_LorentzMaterial(GPU_Backend_HIP::Impl* impl, Op
 	}
 }
 
-float* HIP_Ext_LorentzMaterial::Coefficients(unsigned int count, FDTD_FLOAT** c)
+float* HIP_Ext_LorentzMaterial::Coefficients(size_t count, FDTD_FLOAT** c)
 {
 	std::vector<float> data(3*(size_t)count, 0);
 	if (c)
 		for (int n=0; n<3; ++n)
-			for (unsigned int i=0; i<count; ++i)
+			for (size_t i=0; i<count; ++i)
 				data[n*count + i] = c[n][i];
 	return d->Alloc<float>(data.size(), data.data());
 }
 
-void HIP_Ext_LorentzMaterial::Setup(std::vector<Order>& orders, unsigned int count, unsigned int** pos,
+void HIP_Ext_LorentzMaterial::Setup(std::vector<Order>& orders, size_t count, unsigned int** pos,
                                      bool lorentz, FDTD_FLOAT** c_int, FDTD_FLOAT** c_ext, FDTD_FLOAT** c_lor)
 {
 	if (count==0)
@@ -138,10 +138,10 @@ void HIP_Ext_LorentzMaterial::Setup(std::vector<Order>& orders, unsigned int cou
 	ord.param.lorentz = lorentz;
 	ord.param.sn = d->numCells;
 
-	std::vector<unsigned int> flat(count);
-	for (unsigned int i=0; i<count; ++i)
-		flat[i] = (pos[0][i]*d->dim.ny + pos[1][i])*d->dim.nz + pos[2][i];
-	ord.pos = d->Alloc<unsigned int>(count, flat.data());
+	std::vector<size_t> flat(count);
+	for (size_t i=0; i<count; ++i)
+		flat[i] = ((size_t)pos[0][i]*d->dim.ny + pos[1][i])*d->dim.nz + pos[2][i];
+	ord.pos = d->Alloc<size_t>(count, flat.data());
 
 	ord.ade = d->Alloc<float>(3*(size_t)count);
 	ord.lor = d->Alloc<float>(3*(size_t)count);

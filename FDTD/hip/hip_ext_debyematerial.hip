@@ -25,14 +25,14 @@
 // poles in the same thread, since the implicit solve couples them. The pole states
 // and coefficients are stored as [pole][direction][position], the rest as
 // [direction][position].
-struct DebyeParam { unsigned int count; unsigned int poles; unsigned int sn; };
+struct DebyeParam { size_t count; unsigned int poles; size_t sn; };
 
 // before the main update, the only place V^n exists: the part of the new pole
 // states V^n fixes, and its sum
 __global__ void debye_pre(const float* field, float* pole, float* pre, const float* relax, const float* drive,
-                          const unsigned int* pos, DebyeParam P)
+                          const size_t* pos, DebyeParam P)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	const size_t i = (size_t)blockIdx.x*blockDim.x + threadIdx.x;
 	if (i>=P.count)
 		return;
 	for (unsigned int n=0; n<3; ++n)
@@ -41,7 +41,7 @@ __global__ void debye_pre(const float* field, float* pole, float* pre, const flo
 		float sum = 0;
 		for (unsigned int o=0; o<P.poles; ++o)
 		{
-			const unsigned int k = (o*3 + n)*P.count + i;
+			const size_t k = (o*3 + n)*P.count + i;
 			const float W = relax[k]*pole[k] + drive[k]*volt;
 			sum = sum + (W - pole[k]);
 			pole[k] = W;
@@ -53,34 +53,34 @@ __global__ void debye_pre(const float* field, float* pole, float* pre, const flo
 // after the main update: solve for V^(n+1), keep the correction for
 // debye_apply and finish the pole states
 __global__ void debye_post(const float* field, float* pole, const float* pre, float* ade, const float* drive,
-                           const float* solve, const unsigned int* pos, DebyeParam P)
+                           const float* solve, const size_t* pos, DebyeParam P)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	const size_t i = (size_t)blockIdx.x*blockDim.x + threadIdx.x;
 	if (i>=P.count)
 		return;
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const unsigned int j = n*P.count + i;
+		const size_t j = n*P.count + i;
 		const float v_raw = field[n*P.sn + pos[i]];
 		const float volt = (v_raw - pre[j]) * solve[j];
 		ade[j] = v_raw - volt;
 		for (unsigned int o=0; o<P.poles; ++o)
 		{
-			const unsigned int k = (o*3 + n)*P.count + i;
+			const size_t k = (o*3 + n)*P.count + i;
 			pole[k] = pole[k] + drive[k]*volt;
 		}
 	}
 }
 
 // subtract the correction from the field
-__global__ void debye_apply(float* field, const float* ade, const unsigned int* pos, DebyeParam P)
+__global__ void debye_apply(float* field, const float* ade, const size_t* pos, DebyeParam P)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	const size_t i = (size_t)blockIdx.x*blockDim.x + threadIdx.x;
 	if (i>=P.count)
 		return;
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const unsigned int g = n*P.sn + pos[i];
+		const size_t g = n*P.sn + pos[i];
 		field[g] = field[g] - ade[n*P.count + i];
 	}
 }
@@ -94,18 +94,18 @@ public:
 	{
 		if (m_Param.count)
 			HIP_Launch(d, "debye_pre", debye_pre, m_Param.count, 1, 1, (const float*)d->volt, m_Pole, m_Pre,
-			           (const float*)m_Relax, (const float*)m_Drive, (const unsigned int*)m_Pos, m_Param);
+			           (const float*)m_Relax, (const float*)m_Drive, (const size_t*)m_Pos, m_Param);
 	}
 	virtual void DoPostVoltageUpdates()
 	{
 		if (m_Param.count)
 			HIP_Launch(d, "debye_post", debye_post, m_Param.count, 1, 1, (const float*)d->volt, m_Pole, (const float*)m_Pre,
-			           m_ADE, (const float*)m_Drive, (const float*)m_Solve, (const unsigned int*)m_Pos, m_Param);
+			           m_ADE, (const float*)m_Drive, (const float*)m_Solve, (const size_t*)m_Pos, m_Param);
 	}
 	virtual void Apply2Voltages()
 	{
 		if (m_Param.count)
-			HIP_Launch(d, "debye_apply", debye_apply, m_Param.count, 1, 1, d->volt, (const float*)m_ADE, (const unsigned int*)m_Pos, m_Param);
+			HIP_Launch(d, "debye_apply", debye_apply, m_Param.count, 1, 1, d->volt, (const float*)m_ADE, (const size_t*)m_Pos, m_Param);
 	}
 
 protected:
@@ -113,7 +113,7 @@ protected:
 
 	GPU_Backend_HIP::Impl* d;
 	DebyeParam m_Param;
-	unsigned int* m_Pos;               //!< flat NIJK index of direction 0
+	size_t* m_Pos;                     //!< flat NIJK index of direction 0
 	float *m_Pole, *m_Pre, *m_ADE;     //!< state
 	float *m_Relax, *m_Drive, *m_Solve;
 };
@@ -121,7 +121,7 @@ protected:
 HIP_Ext_DebyeMaterial::HIP_Ext_DebyeMaterial(GPU_Backend_HIP::Impl* impl, Operator_Ext_DebyeMaterial* op_ext)
 {
 	d = impl;
-	const unsigned int count = op_ext->m_LM_Count.at(0);
+	const size_t count = op_ext->m_LM_Count.at(0);
 	m_Param.count = count;
 	m_Param.poles = op_ext->m_PoleCount;
 	m_Param.sn = d->numCells;
@@ -129,10 +129,10 @@ HIP_Ext_DebyeMaterial::HIP_Ext_DebyeMaterial(GPU_Backend_HIP::Impl* impl, Operat
 		return;
 
 	unsigned int** pos = op_ext->m_LM_pos[0];
-	std::vector<unsigned int> flat(count);
-	for (unsigned int i=0; i<count; ++i)
-		flat[i] = (pos[0][i]*d->dim.ny + pos[1][i])*d->dim.nz + pos[2][i];
-	m_Pos = d->Alloc<unsigned int>(count, flat.data());
+	std::vector<size_t> flat(count);
+	for (size_t i=0; i<count; ++i)
+		flat[i] = ((size_t)pos[0][i]*d->dim.ny + pos[1][i])*d->dim.nz + pos[2][i];
+	m_Pos = d->Alloc<size_t>(count, flat.data());
 
 	m_Pole  = d->Alloc<float>((size_t)m_Param.poles*3*count);
 	m_Pre   = d->Alloc<float>(3*(size_t)count);
@@ -144,11 +144,11 @@ HIP_Ext_DebyeMaterial::HIP_Ext_DebyeMaterial(GPU_Backend_HIP::Impl* impl, Operat
 
 float* HIP_Ext_DebyeMaterial::Coefficients(int poles, FDTD_FLOAT*** c)
 {
-	const unsigned int count = m_Param.count;
+	const size_t count = m_Param.count;
 	std::vector<float> data((size_t)poles*3*count);
 	for (int o=0; o<poles; ++o)
 		for (int n=0; n<3; ++n)
-			for (unsigned int i=0; i<count; ++i)
+			for (size_t i=0; i<count; ++i)
 				data[((size_t)o*3 + n)*count + i] = c[o][n][i];
 	return d->Alloc<float>(data.size(), data.data());
 }

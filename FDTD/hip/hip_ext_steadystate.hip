@@ -31,7 +31,7 @@
 // it (GetLastDiff()).
 struct SSDParam { unsigned int count; unsigned int length; unsigned int rel_pos; };
 
-__global__ void ssd_record(const float* volt, float* records, const unsigned int* index, SSDParam P)
+__global__ void ssd_record(const float* volt, float* records, const size_t* index, SSDParam P)
 {
 	const unsigned int n = blockIdx.x*blockDim.x + threadIdx.x;
 	if (n<P.count)
@@ -53,7 +53,7 @@ protected:
 	Engine_GPU* m_Eng;
 	unsigned int m_Period;       //!< timesteps per period
 	unsigned int m_Count;        //!< number of probes
-	unsigned int* m_Index;       //!< flat NIJK index of the probed voltages
+	size_t* m_Index;             //!< flat NIJK index of the probed voltages
 	float* m_Records;            //!< [probe][2*period]: the two periods CheckPeriod() compares
 	std::vector<float> m_HostRecords;
 };
@@ -66,11 +66,11 @@ HIP_Ext_SteadyState::HIP_Ext_SteadyState(GPU_Backend_HIP::Impl* impl, Operator_E
 	m_Period = op_ext->m_TS_period;
 	m_Count = op_ext->m_E_probe_dir.size();
 
-	std::vector<unsigned int> index(std::max(m_Count, 1u), 0);
+	std::vector<size_t> index(std::max(m_Count, 1u), 0);
 	for (unsigned int n=0; n<m_Count; ++n)
-		index[n] = ((op_ext->m_E_probe_dir.at(n)*d->dim.nx + op_ext->m_E_probe_pos[0].at(n))*d->dim.ny
+		index[n] = (((size_t)op_ext->m_E_probe_dir.at(n)*d->dim.nx + op_ext->m_E_probe_pos[0].at(n))*d->dim.ny
 		            + op_ext->m_E_probe_pos[1].at(n))*d->dim.nz + op_ext->m_E_probe_pos[2].at(n);
-	m_Index = d->Alloc<unsigned int>(index.size(), index.data());
+	m_Index = d->Alloc<size_t>(index.size(), index.data());
 	m_HostRecords.resize(std::max(m_Count, 1u)*2*(size_t)m_Period);
 	m_Records = d->Alloc<float>(m_HostRecords.size());
 }
@@ -84,7 +84,7 @@ void HIP_Ext_SteadyState::Apply2Voltages()
 	if (m_Count>0)
 	{
 		SSDParam param = {m_Count, 2*p, rel_pos};
-		HIP_Launch(d, "ssd_record", ssd_record, m_Count, 1, 1, (const float*)d->volt, m_Records, (const unsigned int*)m_Index, param);
+		HIP_Launch(d, "ssd_record", ssd_record, m_Count, 1, 1, (const float*)d->volt, m_Records, (const size_t*)m_Index, param);
 	}
 
 	if ((TS%p==0) && (TS>=2*p))

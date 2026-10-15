@@ -32,7 +32,7 @@ struct RLCParam { unsigned int count; unsigned int vd0, vd1, vd2; unsigned int j
 struct RLCData
 {
 	float* il; float* vd; float* j;
-	const unsigned int* index;
+	const size_t* index;
 	const float* ilv; const float* i2v;
 	const float* vv2; const float* vj1; const float* vj2; const float* vvd;
 	const float* ib0; const float* b1;  const float* b2;
@@ -112,18 +112,18 @@ HIP_Ext_LumpedRLC::HIP_Ext_LumpedRLC(GPU_Backend_HIP::Impl* impl, Operator_Ext_L
 	if (count==0)
 		return;
 
-	std::vector<unsigned int> index(count);
-	std::set<unsigned int> edges;
+	std::vector<size_t> index(count);
+	std::set<size_t> edges;
 	for (unsigned int p=0; p<count; ++p)
 	{
-		index[p] = ((op_ext->v_RLC_dir[p]*d->dim.nx + op_ext->v_RLC_pos[0][p])*d->dim.ny + op_ext->v_RLC_pos[1][p])*d->dim.nz + op_ext->v_RLC_pos[2][p];
+		index[p] = (((size_t)op_ext->v_RLC_dir[p]*d->dim.nx + op_ext->v_RLC_pos[0][p])*d->dim.ny + op_ext->v_RLC_pos[1][p])*d->dim.nz + op_ext->v_RLC_pos[2][p];
 		if (!edges.insert(index[p]).second)
 			m_Serial = true;
 	}
 	// fused step (see update_fused): Apply2Voltages() changes these voltages after the voltage
 	// update, the currents next to them are recomputed
 	d->volt_modified.insert(d->volt_modified.end(), index.begin(), index.end());
-	m_Data.index = d->Alloc<unsigned int>(count, index.data());
+	m_Data.index = d->Alloc<size_t>(count, index.data());
 	m_Data.il = d->Alloc<float>(count);
 	m_Data.vd = d->Alloc<float>(3*(size_t)count);
 	m_Data.j  = d->Alloc<float>(3*(size_t)count);

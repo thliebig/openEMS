@@ -28,7 +28,7 @@
 // One thread per excitation point, or a single thread if points share an edge.
 struct ExcitationParam { int numTS; int period; int length; unsigned int count; };
 
-__device__ __forceinline__ void excite(float* field, const unsigned int* index, const float* amp,
+__device__ __forceinline__ void excite(float* field, const size_t* index, const float* amp,
                                        const unsigned int* delay, const float* signal, const ExcitationParam& P, unsigned int n)
 {
 	int exc_pos = P.numTS - (int)delay[n];
@@ -38,7 +38,7 @@ __device__ __forceinline__ void excite(float* field, const unsigned int* index, 
 	field[index[n]] = field[index[n]] + amp[n]*signal[exc_pos];
 }
 
-__global__ void excitation_apply(float* field, const unsigned int* index, const float* amp,
+__global__ void excitation_apply(float* field, const size_t* index, const float* amp,
                                  const unsigned int* delay, const float* signal, ExcitationParam P)
 {
 	const unsigned int n = blockIdx.x*blockDim.x + threadIdx.x;
@@ -47,7 +47,7 @@ __global__ void excitation_apply(float* field, const unsigned int* index, const 
 }
 
 // same, in the order of the host, for excitation points sharing an edge
-__global__ void excitation_apply_serial(float* field, const unsigned int* index, const float* amp,
+__global__ void excitation_apply_serial(float* field, const size_t* index, const float* amp,
                                         const unsigned int* delay, const float* signal, ExcitationParam P)
 {
 	if (blockIdx.x*blockDim.x + threadIdx.x != 0)
@@ -69,7 +69,7 @@ protected:
 	{
 		unsigned int count;
 		bool serial;            //!< points share an edge, apply them one after the other
-		unsigned int* index;    //!< flat NIJK index of the excited edge
+		size_t* index;          //!< flat NIJK index of the excited edge
 		float* amp;
 		unsigned int* delay;
 		float* signal;
@@ -98,7 +98,7 @@ HIP_Ext_Excitation::HIP_Ext_Excitation(GPU_Backend_HIP::Impl* impl, Operator_Ext
 	// fused step (see update_fused): the currents next to the excited voltages are recomputed;
 	// excited currents on the last mesh lines (never updated) would differ between its buffers
 	for (unsigned int n=0; n<op_ext->Volt_Count; ++n)
-		d->volt_modified.push_back(((op_ext->Volt_dir[n]*d->dim.nx + op_ext->Volt_index[0][n])*d->dim.ny + op_ext->Volt_index[1][n])*d->dim.nz + op_ext->Volt_index[2][n]);
+		d->volt_modified.push_back((((size_t)op_ext->Volt_dir[n]*d->dim.nx + op_ext->Volt_index[0][n])*d->dim.ny + op_ext->Volt_index[1][n])*d->dim.nz + op_ext->Volt_index[2][n]);
 	for (unsigned int n=0; n<op_ext->Curr_Count; ++n)
 		if ((op_ext->Curr_index[0][n]+1>=d->dim.nx) || (op_ext->Curr_index[1][n]+1>=d->dim.ny) || (op_ext->Curr_index[2][n]+1>=d->dim.nz))
 			d->fused_blockers++;
@@ -112,15 +112,15 @@ void HIP_Ext_Excitation::Setup(Sources& s, unsigned int count, unsigned int* con
 	if (count==0)
 		return;
 
-	std::vector<unsigned int> flat(count);
-	std::set<unsigned int> edges;
+	std::vector<size_t> flat(count);
+	std::set<size_t> edges;
 	for (unsigned int n=0; n<count; ++n)
 	{
-		flat[n] = ((dir[n]*d->dim.nx + index[0][n])*d->dim.ny + index[1][n])*d->dim.nz + index[2][n];
+		flat[n] = (((size_t)dir[n]*d->dim.nx + index[0][n])*d->dim.ny + index[1][n])*d->dim.nz + index[2][n];
 		if (!edges.insert(flat[n]).second)
 			s.serial = true;
 	}
-	s.index = d->Alloc<unsigned int>(count, flat.data());
+	s.index = d->Alloc<size_t>(count, flat.data());
 	s.amp = d->Alloc<float>(count, amp);
 	s.delay = d->Alloc<unsigned int>(count, delay);
 	s.signal = d->Alloc<float>(m_Op_Exc->m_Exc->GetLength(), signal);
@@ -141,10 +141,10 @@ void HIP_Ext_Excitation::Apply(Sources& s, float* field)
 
 	if (s.serial)
 		HIP_Launch(d, "excitation_apply_serial", excitation_apply_serial, 1, 1, 1,
-		            field, (const unsigned int*)s.index, (const float*)s.amp, (const unsigned int*)s.delay, (const float*)s.signal, param);
+		            field, (const size_t*)s.index, (const float*)s.amp, (const unsigned int*)s.delay, (const float*)s.signal, param);
 	else
 		HIP_Launch(d, "excitation_apply", excitation_apply, s.count, 1, 1,
-		            field, (const unsigned int*)s.index, (const float*)s.amp, (const unsigned int*)s.delay, (const float*)s.signal, param);
+		            field, (const size_t*)s.index, (const float*)s.amp, (const unsigned int*)s.delay, (const float*)s.signal, param);
 }
 
 GPU_Extension* HIP_CreateExt_Excitation(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng)

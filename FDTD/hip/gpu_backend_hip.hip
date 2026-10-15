@@ -74,15 +74,15 @@ __global__ void update_voltages(float* __restrict__ volt, const float* __restric
 		upml_fused_volt_node(volt, volt, curr, Z.volt_hi, N, Z.R_hi, x-Z.R_hi.sx, y-Z.R_hi.sy, z-Z.R_hi.sz);
 		return;
 	}
-	const unsigned int sn = N.nx*N.ny*N.nz;
-	const unsigned int i  = nijk(N, 0, x, y, z);
-	const unsigned int xm = (x>0) ? N.ny*N.nz : 0;   // shift to the previous line, none on the first
-	const unsigned int ym = (y>0) ? N.nz : 0;
-	const unsigned int zm = (z>0) ? 1 : 0;
+	const size_t sn = (size_t)N.nx*N.ny*N.nz;
+	const size_t i  = nijk(N, 0, x, y, z);
+	const size_t xm = (x>0) ? (size_t)N.ny*N.nz : 0;   // shift to the previous line, none on the first
+	const size_t ym = (y>0) ? N.nz : 0;
+	const size_t zm = (z>0) ? 1 : 0;
 	const HIP_MainCoeff C = main_coeff(index, ca, cb, mode, sn, i, 0);
 	const float* vv = C.a;
 	const float* vi = C.b;
-	const unsigned int s = C.s;
+	const size_t s = C.s;
 	float v;
 
 	//for x
@@ -141,14 +141,14 @@ __global__ void update_currents(float* __restrict__ curr, const float* __restric
 	}
 	if (z+1>=N.nz || y+1>=N.ny || x+1>=N.nx)
 		return;
-	const unsigned int sn = N.nx*N.ny*N.nz;
-	const unsigned int i  = nijk(N, 0, x, y, z);
-	const unsigned int xp = N.ny*N.nz;
-	const unsigned int yp = N.nz;
+	const size_t sn = (size_t)N.nx*N.ny*N.nz;
+	const size_t i  = nijk(N, 0, x, y, z);
+	const size_t xp = (size_t)N.ny*N.nz;
+	const size_t yp = N.nz;
 	const HIP_MainCoeff C = main_coeff(index, ca, cb, mode, sn, i, 6);
 	const float* ii = C.a;
 	const float* iv = C.b;
-	const unsigned int s = C.s;
+	const size_t s = C.s;
 	float c;
 
 	//for x
@@ -174,11 +174,11 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
                                            const void* index, const float* va, const float* vb, unsigned int mode,
                                            const HIP_GridDim& N, unsigned int x, unsigned int y, unsigned int z, float v[3])
 {
-	const unsigned int sn = N.nx*N.ny*N.nz;
-	const unsigned int i  = nijk(N, 0, x, y, z);
-	const unsigned int xm = (x>0) ? N.ny*N.nz : 0;
-	const unsigned int ym = (y>0) ? N.nz : 0;
-	const unsigned int zm = (z>0) ? 1 : 0;
+	const size_t sn = (size_t)N.nx*N.ny*N.nz;
+	const size_t i  = nijk(N, 0, x, y, z);
+	const size_t xm = (x>0) ? (size_t)N.ny*N.nz : 0;
+	const size_t ym = (y>0) ? N.nz : 0;
+	const size_t zm = (z>0) ? 1 : 0;
 	const HIP_MainCoeff C = main_coeff(index, va, vb, mode, sn, i, 0);
 	float t;
 	t  = volt[i] * C.a[0];
@@ -229,7 +229,7 @@ __global__ void __launch_bounds__(TZ*TY) update_fused(
 	const bool main_yz = (z<E.nz) && (y<E.ny);                          // a main node line
 	const bool owner = main_yz && (tz<TZ-1) && (ty<TY-1);  // written by this block
 	const bool in_grid = (z<N.nz) && (y<N.ny);
-	const unsigned int sn = N.nx*N.ny*N.nz;
+	const size_t sn = (size_t)N.nx*N.ny*N.nz;
 
 	// the new voltages at x: computed on main nodes, else from the UPML regions (or unused)
 	auto volt_at = [&](unsigned int x, float v[3])
@@ -243,13 +243,13 @@ __global__ void __launch_bounds__(TZ*TY) update_fused(
 				upml_volt_value(volt_in, curr_in, F.volt[r], N, F.R[r], x, y, z, owner && (x<xe), v);
 			if (owner && (x<xe))
 			{
-				const unsigned int i = nijk(N, 0, x, y, z);
+				const size_t i = nijk(N, 0, x, y, z);
 				volt_out[i] = v[0]; volt_out[sn+i] = v[1]; volt_out[2*sn+i] = v[2];
 			}
 		}
 		else if (in_grid && (x<N.nx))
 		{
-			const unsigned int i = nijk(N, 0, x, y, z);
+			const size_t i = nijk(N, 0, x, y, z);
 			v[0] = volt_out[i]; v[1] = volt_out[sn+i]; v[2] = volt_out[2*sn+i];
 		}
 		else
@@ -280,7 +280,7 @@ __global__ void __launch_bounds__(TZ*TY) update_fused(
 				upml_curr_value(curr_in, curr_out, F.curr[r], N, F.R[r], x, y, z, update, curl);
 			else if (update)
 			{
-				const unsigned int i = nijk(N, 0, x, y, z);
+				const size_t i = nijk(N, 0, x, y, z);
 				const HIP_MainCoeff C = main_coeff(index, ia, ib, mode, sn, i, 6);
 				float c;
 				//for x
@@ -378,7 +378,7 @@ __device__ inline float gather_value(const float* f, const Engine_GatherEntry& e
 __global__ void gather_dumps(const float* __restrict__ volt, const float* __restrict__ curr, const Engine_GatherEntry* __restrict__ entries,
                              unsigned int nv, unsigned int n, float* __restrict__ out)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	const size_t i = blockIdx.x*blockDim.x + threadIdx.x;
 	if (i>=n)
 		return;
 	out[i] = gather_value((i<nv) ? volt : curr, entries[i]);
@@ -392,7 +392,7 @@ struct HIP_DFTWeights { float2 w[DFT_WEIGHTS]; };
 __global__ void field_dft(const float* __restrict__ f, const Engine_GatherEntry* __restrict__ entries, unsigned int n,
                           HIP_DFTWeights W, unsigned int nw, float2* __restrict__ sums)
 {
-	const unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+	const size_t i = blockIdx.x*blockDim.x + threadIdx.x;
 	if (i>=n)
 		return;
 	const float v = gather_value(f, entries[i]);
@@ -408,16 +408,16 @@ __global__ void field_dft(const float* __restrict__ f, const Engine_GatherEntry*
 // the currents of the given main nodes again (update_currents), after the voltage extensions
 // changed voltages they read (see GPU_Backend_HIP::Impl::fixup)
 __global__ void update_currents_nodes(const float* __restrict__ curr_in, float* __restrict__ curr_out, const float* __restrict__ volt,
-                                      const unsigned int* nodes, unsigned int count,
+                                      const size_t* nodes, unsigned int count,
                                       const void* index, const float* ia, const float* ib, unsigned int mode, HIP_GridDim N)
 {
 	const unsigned int k = blockIdx.x*blockDim.x + threadIdx.x;
 	if (k>=count)
 		return;
-	const unsigned int sn = N.nx*N.ny*N.nz;
-	const unsigned int i  = nodes[k];
-	const unsigned int xp = N.ny*N.nz;
-	const unsigned int yp = N.nz;
+	const size_t sn = (size_t)N.nx*N.ny*N.nz;
+	const size_t i  = nodes[k];
+	const size_t xp = (size_t)N.ny*N.nz;
+	const size_t yp = N.nz;
 	const HIP_MainCoeff C = main_coeff(index, ia, ib, mode, sn, i, 6);
 	float c;
 	c  = curr_in[i] * C.a[0];
@@ -440,11 +440,11 @@ __global__ void energy_lines(const float* __restrict__ volt, const float* __rest
 	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
 	if (z>=L.nz || y>=L.ny)
 		return;
-	const unsigned int sn = N.nx*N.ny*N.nz;
+	const size_t sn = (size_t)N.nx*N.ny*N.nz;
 	float E = 0, H = 0;
 	for (unsigned int x=0; x<L.nx; ++x)
 	{
-		const unsigned int i = nijk(N, 0, x, y, z);
+		const size_t i = nijk(N, 0, x, y, z);
 		E += volt[i]*volt[i];
 		E += volt[sn+i]*volt[sn+i];
 		E += volt[2*sn+i]*volt[2*sn+i];
@@ -598,11 +598,11 @@ bool GPU_Backend_HIP::Impl::DecideFusedStep()
 	// again. With the UPML regions in the kernel, region nodes cannot (the current flux is
 	// updated in place): then the region kernels update the regions.
 	const bool folded = fregions.count>0;
-	std::set<unsigned int> nodes;
+	std::set<size_t> nodes;
 	for (size_t k=0; k<volt_modified.size(); ++k)
 	{
-		const unsigned int node = volt_modified[k] % numCells;
-		const unsigned int p[3] = {node/(dim.ny*dim.nz), (node/dim.nz)%dim.ny, node%dim.nz};
+		const size_t node = volt_modified[k] % numCells;
+		const unsigned int p[3] = {(unsigned int)(node/((size_t)dim.ny*dim.nz)), (unsigned int)((node/dim.nz)%dim.ny), (unsigned int)(node%dim.nz)};
 		const unsigned int start[3] = {main_start.nx, main_start.ny, main_start.nz};
 		const unsigned int stop[3] = {main_stop.nx, main_stop.ny, main_stop.nz};
 		const unsigned int n_lines[3] = {dim.nx, dim.ny, dim.nz};
@@ -622,13 +622,13 @@ bool GPU_Backend_HIP::Impl::DecideFusedStep()
 				continue;
 			if (folded && (fused_region_of(fregions, c[0], c[1], c[2])>=0))
 				fregions.count = 0;   // a region node: no regions in the kernel
-			nodes.insert((c[0]*dim.ny + c[1])*dim.nz + c[2]);
+			nodes.insert(((size_t)c[0]*dim.ny + c[1])*dim.nz + c[2]);
 		}
 	}
-	std::vector<unsigned int> list;
-	for (std::set<unsigned int>::const_iterator it=nodes.begin(); it!=nodes.end(); ++it)
+	std::vector<size_t> list;
+	for (std::set<size_t>::const_iterator it=nodes.begin(); it!=nodes.end(); ++it)
 	{
-		const unsigned int c[3] = {*it/(dim.ny*dim.nz), (*it/dim.nz)%dim.ny, *it%dim.nz};
+		const unsigned int c[3] = {(unsigned int)(*it/((size_t)dim.ny*dim.nz)), (unsigned int)((*it/dim.nz)%dim.ny), (unsigned int)(*it%dim.nz)};
 		if ((c[0]>=main_start.nx) && (c[0]<main_stop.nx) && (c[1]>=main_start.ny) && (c[1]<main_stop.ny) && (c[2]>=main_start.nz) && (c[2]<main_stop.nz))
 			list.push_back(*it);   // main nodes only, the region kernels update the others after the extensions
 		else if (fregions.count)
@@ -646,7 +646,7 @@ bool GPU_Backend_HIP::Impl::DecideFusedStep()
 		return false;
 	}
 	fixup_count = list.size();
-	fixup = Alloc<unsigned int>(fixup_count, list.data());
+	fixup = Alloc<size_t>(fixup_count, list.data());
 
 	// both buffers start with the current fields
 	HIP_Check(hipMemcpyAsync(volt_next, volt, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
@@ -823,13 +823,6 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	d->upml_fused = -1;
 	d->ResetZSlabs();
 
-	// the kernels index with 32 bit
-	if (3*d->numCells > std::numeric_limits<unsigned int>::max())
-	{
-		std::cerr << "GPU_Backend_HIP::Init: Error: the mesh is too large for 32 bit indexing" << std::endl;
-		return false;
-	}
-
 	const size_t count = 3*d->numCells;
 	d->volt = d->Alloc<float>(count);
 	d->curr = d->Alloc<float>(count);
@@ -912,7 +905,7 @@ void GPU_Backend_HIP::UpdateCurrents()
 		// done by update_fused, but for the currents next to voltages changed by extensions since
 		if (d->fixup_count)
 			HIP_Launch(d, "update_currents_nodes", update_currents_nodes, d->fixup_count, 1, 1, (const float*)d->curr, d->curr_next, (const float*)d->volt,
-			            (const unsigned int*)d->fixup, d->fixup_count, (const void*)d->index,
+			            (const size_t*)d->fixup, d->fixup_count, (const void*)d->index,
 			            (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim);
 		std::swap(d->curr, d->curr_next);
 		return;

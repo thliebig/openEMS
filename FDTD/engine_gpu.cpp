@@ -181,15 +181,15 @@ FDTD_FLOAT Engine_GPU::ReadStale(bool currents, unsigned int n, unsigned int x, 
 {
 	Engine_GPU* self = const_cast<Engine_GPU*>(this);   // the host mirror is a cache of the device fields
 	StaleField& field = currents ? m_StaleCurr : m_StaleVolt;
-	const unsigned int key = (n*numLines[0] + x)*numLines[1] + y;
-	std::unordered_map<unsigned int, std::vector<FDTD_FLOAT>>::const_iterator it = field.lines.find(key);
+	const size_t key = ((size_t)n*numLines[0] + x)*numLines[1] + y;
+	std::unordered_map<size_t, std::vector<FDTD_FLOAT>>::const_iterator it = field.lines.find(key);
 	if (it!=field.lines.end())
 		return it->second.at(z);
 
 	if (!field.full_last_batch && (field.lines.size()<MAX_STALE_LINES))
 	{
 		std::vector<FDTD_FLOAT> line(numLines[2]);
-		if (m_Backend->DownloadRange(currents, (size_t)key*numLines[2], numLines[2], line.data()))
+		if (m_Backend->DownloadRange(currents, key*numLines[2], numLines[2], line.data()))
 		{
 			const FDTD_FLOAT value = line.at(z);
 			field.lines[key].swap(line);

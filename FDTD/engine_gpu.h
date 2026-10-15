@@ -147,7 +147,7 @@ protected:
 		bool stale;
 		bool full_this_batch;   //!< this batch read the whole field
 		bool full_last_batch;   //!< the last batch read the whole field, so will this one
-		std::unordered_map<unsigned int, std::vector<FDTD_FLOAT>> lines;
+		std::unordered_map<size_t, std::vector<FDTD_FLOAT>> lines;
 	};
 	mutable StaleField m_StaleVolt, m_StaleCurr;
 	//! Read a value of a stale field from the device, keeping its z-line for the rest of the batch

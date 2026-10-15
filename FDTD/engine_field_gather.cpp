@@ -15,6 +15,8 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <climits>
+
 #include "engine_field_gather.h"
 #include "operator.h"
 
@@ -28,6 +30,9 @@ Field_Gather_FDTD* Field_Gather_FDTD::New(const Operator* op, Engine_Interface_B
 	unsigned int N[3];
 	for (int n=0; n<3; ++n)
 		N[n] = op->GetNumberOfLines(n, true);
+	// the entries index the fields with 32 bit: larger grids dump without a gather
+	if (3*(size_t)N[0]*N[1]*N[2] > UINT_MAX)
+		return NULL;
 	auto index = [&](int n, const unsigned int* p) -> unsigned int {return ((n*N[0] + p[0])*N[1] + p[1])*N[2] + p[2];};
 	auto delta = [&](int n, const unsigned int* p) -> double {return op->GetEdgeLength(n, p, h_field);};
 

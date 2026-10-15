@@ -52,7 +52,8 @@ bool GPU_FindSets(size_t count, unsigned int width, const std::function<void(siz
 	// at most half the size of the full arrays (width floats per item), counting
 	// 4 bytes per index: whether 16 bit ones are enough is not known yet
 	const size_t max_sets16 = (size_t)std::numeric_limits<uint16_t>::max()+1;
-	const size_t max_sets = (2*width*count - 4*count)/(4*width);
+	// and no more sets than a 32 bit index can number
+	const size_t max_sets = std::min((2*width*count - 4*count)/(4*width), (size_t)std::numeric_limits<uint32_t>::max());
 	sets.index.resize(count);
 	sets.table.clear();
 	std::unordered_map<SetKey, uint32_t, SetKeyHash> found;

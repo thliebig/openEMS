@@ -64,7 +64,7 @@ __global__ void tfsf_apply(float* field, const unsigned int* delay, const float*
 	for (unsigned int c=0; c<2; ++c)
 	{
 		const unsigned int k = c*count + i*P.nj + j;
-		const unsigned int g = nijk(N, (c==0) ? P.nP : P.nPP, pos[0], pos[1], pos[2]);
+		const size_t g = nijk(N, (c==0) ? P.nP : P.nPP, pos[0], pos[1], pos[2]);
 		field[g] = field[g]
 		         + (1.0f-delta[k])*amp[k]*signal[tfsf_lookup(delay[k], P)]
 		         +       delta[k] *amp[k]*signal[tfsf_lookup(1+delay[k], P)];

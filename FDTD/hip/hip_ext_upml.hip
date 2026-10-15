@@ -40,8 +40,8 @@ __global__ void upml_pre(float* field, float* flux, const float* c_old, const fl
 	UPML_THREAD
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const unsigned int l = upml_local(R, n, x, y, z);
-		const unsigned int g = nijk(N, n, R.sx + x, R.sy + y, R.sz + z);
+		const size_t l = upml_local(R, n, x, y, z);
+		const size_t g = nijk(N, n, R.sx + x, R.sy + y, R.sz + z);
 		const float f_help = c_old[l]*field[g] - c_fo[l]*flux[l];
 		field[g] = flux[l];
 		flux[l] = f_help;
@@ -54,8 +54,8 @@ __global__ void upml_post(float* field, float* flux, const float* c_fn, HIP_Grid
 	UPML_THREAD
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const unsigned int l = upml_local(R, n, x, y, z);
-		const unsigned int g = nijk(N, n, R.sx + x, R.sy + y, R.sz + z);
+		const size_t l = upml_local(R, n, x, y, z);
+		const size_t g = nijk(N, n, R.sx + x, R.sy + y, R.sz + z);
 		const float f_help = flux[l];
 		flux[l] = field[g];
 		field[g] = f_help + c_fn[l]*flux[l];

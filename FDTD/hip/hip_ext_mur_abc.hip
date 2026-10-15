@@ -25,7 +25,7 @@
 // One thread per (i,j) of the plane, i along m_nyP, j along m_nyPP.
 struct MurParam { int ny, nyP, nyPP; unsigned int line, line_shift; unsigned int ni, nj; };
 
-__device__ __forceinline__ unsigned int mur_index(const HIP_GridDim& N, const MurParam& P, unsigned int n, unsigned int line, unsigned int i, unsigned int j)
+__device__ __forceinline__ size_t mur_index(const HIP_GridDim& N, const MurParam& P, unsigned int n, unsigned int line, unsigned int i, unsigned int j)
 {
 	unsigned int pos[3];
 	pos[P.ny] = line;

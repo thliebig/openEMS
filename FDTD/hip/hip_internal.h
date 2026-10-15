@@ -39,18 +39,18 @@ struct HIP_GridDim
 
 //! Fields and coefficients use the ArrayNIJK layout of the host:
 //! index(n,x,y,z) = n*nx*ny*nz + x*ny*nz + y*nz + z
-__device__ __forceinline__ unsigned int nijk(const HIP_GridDim& N, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
+__device__ __forceinline__ size_t nijk(const HIP_GridDim& N, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
 {
-	return ((n*N.nx + x)*N.ny + y)*N.nz + z;
+	return (((size_t)n*N.nx + x)*N.ny + y)*N.nz + z;
 }
 
 //! Main update coefficients of node i, see GPU_Backend_HIP::Impl::coeff_mode:
 //! a[n*s] and b[n*s] are vv/vi (voltages, set_offset 0) or ii/iv (currents, set_offset 6)
 //! of direction n. Mode 0: ca/cb are the full arrays, else ca is the table of sets.
-struct HIP_MainCoeff { const float* a; const float* b; unsigned int s; };
+struct HIP_MainCoeff { const float* a; const float* b; size_t s; };
 
 __device__ __forceinline__ HIP_MainCoeff main_coeff(const void* index, const float* ca, const float* cb,
-                                                     unsigned int mode, unsigned int sn, unsigned int i, unsigned int set_offset)
+                                                     unsigned int mode, size_t sn, size_t i, unsigned int set_offset)
 {
 	HIP_MainCoeff c;
 	if (mode==0)
@@ -113,9 +113,9 @@ struct GPU_Backend_HIP::Impl
 	int fused_step;                          //!< -1: not decided yet, 0: off, 1: on
 	int fused_blockers;                      //!< extensions or grids that do not allow it
 	float *volt_next, *curr_next;
-	std::vector<unsigned int> volt_modified; //!< flat indices of the voltages the extensions register as changed between the half-steps (excitation, lumped RLC)
+	std::vector<size_t> volt_modified;       //!< flat indices of the voltages the extensions register as changed between the half-steps (excitation, lumped RLC)
 	HIP_FusedRegions fregions;              //!< the UPML regions in the kernel (see HIP_Ext_UPML::CanFuse())
-	unsigned int* fixup;                     //!< main nodes whose currents are recomputed after the voltage extensions
+	size_t* fixup;                           //!< main nodes whose currents are recomputed after the voltage extensions
 	unsigned int fixup_count;
 	//! Decide once whether the fused step is used, and prepare it
 	bool DecideFusedStep();

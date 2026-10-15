@@ -36,7 +36,7 @@ struct ABCData
 	const float* k2_nyP; const float* k2_nyPP;
 };
 
-__device__ __forceinline__ unsigned int abc_index(const HIP_GridDim& N, const ABCParam& P, unsigned int n, unsigned int line, unsigned int i, unsigned int j)
+__device__ __forceinline__ size_t abc_index(const HIP_GridDim& N, const ABCParam& P, unsigned int n, unsigned int line, unsigned int i, unsigned int j)
 {
 	unsigned int pos[3];
 	pos[P.ny] = line;
@@ -81,8 +81,8 @@ __global__ void abc_apply_volt(float* field, ABCData D, HIP_GridDim N, ABCParam 
 __global__ void abc_apply_curr(float* field, ABCData D, HIP_GridDim N, ABCParam P)
 {
 	ABC_THREAD
-	const unsigned int gP  = abc_index(N, P, P.nyP,  P.line, i, j);
-	const unsigned int gPP = abc_index(N, P, P.nyPP, P.line, i, j);
+	const size_t gP  = abc_index(N, P, P.nyP,  P.line, i, j);
+	const size_t gPP = abc_index(N, P, P.nyPP, P.line, i, j);
 	field[gP]  = (D.s_nyP[ij] *D.k2_nyP[ij]  + field[gP]) /(D.k2_nyP[ij]  + 1.0f);
 	field[gPP] = (D.s_nyPP[ij]*D.k2_nyPP[ij] + field[gPP])/(D.k2_nyPP[ij] + 1.0f);
 }
