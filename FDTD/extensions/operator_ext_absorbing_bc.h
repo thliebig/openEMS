@@ -77,7 +77,7 @@ protected:
 	Operator_Ext_Absorbing_BC(Operator* op, Operator_Ext_Absorbing_BC* op_ext);
 	void Initialize();
 
-	unsigned int			m_numCells;		// Number of cells in each primitive
+	size_t					m_numCells;		// Number of cells in each primitive
 
 	// Storage for the directions. ny is the normal direction to the sheet
 	int				m_ny,

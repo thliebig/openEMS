@@ -34,7 +34,7 @@ Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_dis
 			if (m_Op_Ext_Disp->m_curr_ADE_On[o]==true)
 			{
 				curr_ADE[o][n] = new FDTD_FLOAT[m_Op_Ext_Disp->m_LM_Count[o]];
-				for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count[o]; ++i)
+				for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count[o]; ++i)
 					curr_ADE[o][n][i]=0.0;
 			}
 			else
@@ -42,7 +42,7 @@ Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_dis
 			if (m_Op_Ext_Disp->m_volt_ADE_On[o]==true)
 			{
 				volt_ADE[o][n] = new FDTD_FLOAT[m_Op_Ext_Disp->m_LM_Count[o]];
-				for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count[o]; ++i)
+				for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count[o]; ++i)
 					volt_ADE[o][n][i]=0.0;
 			}
 			else
@@ -82,7 +82,7 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
 		{
 			eng->EngType::SetVolt(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]
@@ -111,7 +111,7 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (unsigned int i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
 		{
 			eng->EngType::SetCurr(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]

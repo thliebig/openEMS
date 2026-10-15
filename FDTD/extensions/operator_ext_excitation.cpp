@@ -318,9 +318,9 @@ void Operator_Ext_Excitation::setupVoltageExcitation(
 	Volt_dir = new unsigned short[Volt_Count];
 
 	for (int n=0; n<3; n++)
-		for (unsigned int i=0; i<Volt_Count; i++)
+		for (size_t i=0; i<Volt_Count; i++)
 			Volt_index[n][i] = volt_vIndex[n].at(i);
-	for (unsigned int i=0; i<Volt_Count; i++)
+	for (size_t i=0; i<Volt_Count; i++)
 	{
 		Volt_delay[i] = volt_vDelay.at(i);
 		Volt_amp[i]   = volt_vExcit.at(i);
@@ -351,9 +351,9 @@ void Operator_Ext_Excitation::setupCurrentExcitation(
 	Curr_dir = new unsigned short[Curr_Count];
 
 	for (int n=0; n<3; ++n)
-		for (unsigned int i=0; i<Curr_Count; i++)
+		for (size_t i=0; i<Curr_Count; i++)
 			Curr_index[n][i] = curr_vIndex[n].at(i);
-	for (unsigned int i=0; i<Curr_Count; i++)
+	for (size_t i=0; i<Curr_Count; i++)
 	{
 		Curr_delay[i] = curr_vDelay.at(i);
 		Curr_amp[i]   = curr_vExcit.at(i);

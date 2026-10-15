@@ -429,5 +429,5 @@ void Operator_Ext_TFSF::ShowStat(std::ostream &ostr) const
 	cout << "Box Dimensions\t\t: " << m_numLines[0] << " x " << m_numLines[1] << " x " << m_numLines[2] << endl;
 	cout << "Max. Delay (TS)\t\t: " << m_maxDelay << endl;
 	int dirs = m_ActiveDir[0][0] + m_ActiveDir[0][1] + m_ActiveDir[1][0] + m_ActiveDir[1][1] + m_ActiveDir[2][0] + m_ActiveDir[2][1] ;
-	cout << "Memory usage (est.)\t: ~" << m_numLines[0] * m_numLines[1] * m_numLines[2] * dirs * 4 * 4 / 1024 << " kiB" << endl;
+	cout << "Memory usage (est.)\t: ~" << (size_t)m_numLines[0] * m_numLines[1] * m_numLines[2] * dirs * 4 * 4 / 1024 << " kiB" << endl;
 }

@@ -510,17 +510,17 @@ void Operator::SetMaterialAvgMethod(MatAverageMethods method)
 
 double Operator::GetNumberCells() const
 {
-	return (numLines[0])*(numLines[1])*(numLines[2]);
+	return (double)numLines[0]*numLines[1]*numLines[2];
 }
 
 void Operator::ShowStat() const
 {
-	unsigned int OpSize = 12*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
-	unsigned int FieldSize = 6*numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
+	size_t OpSize = 12*(size_t)numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
+	size_t FieldSize = 6*(size_t)numLines[0]*numLines[1]*numLines[2]*sizeof(FDTD_FLOAT);
 	double MBdiff = 1024*1024;
 
 	cout << "------- Stat: FDTD Operator -------" << endl;
-	cout << "Dimensions\t\t: " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  numLines[0]*numLines[1]*numLines[2] << " Cells (" << numLines[0]*numLines[1]*numLines[2]/1e6 << " MCells)" << endl;
+	cout << "Dimensions\t\t: " << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << " = " <<  GetNumberCells() << " Cells (" << GetNumberCells()/1e6 << " MCells)" << endl;
 	cout << "Size of Operator\t: " << OpSize << " Byte (" << (double)OpSize/MBdiff << " MiB) " << endl;
 	cout << "Size of Field-Data\t: " << FieldSize << " Byte (" << (double)FieldSize/MBdiff << " MiB) " << endl;
 	cout << "-----------------------------------" << endl;
@@ -575,7 +575,7 @@ void Operator::DumpOperator2File(std::string filename)
 		{
 			ArrayLib::ArrayNIJK<FDTD_FLOAT> exc("exc", numLines);
 
-			for (unsigned int n=0; n<  Op_Ext_Exc->Volt_Count; ++n)
+			for (size_t n=0; n<Op_Ext_Exc->Volt_Count; ++n)
 				exc(Op_Ext_Exc->Volt_dir[n], Op_Ext_Exc->Volt_index[0][n], Op_Ext_Exc->Volt_index[1][n], Op_Ext_Exc->Volt_index[2][n]) =   Op_Ext_Exc->Volt_amp[n];
 			vtk_Writer->AddVectorField("exc_volt",exc);
 		}
@@ -584,7 +584,7 @@ void Operator::DumpOperator2File(std::string filename)
 		{
 			ArrayLib::ArrayNIJK<FDTD_FLOAT> exc("exc", numLines);
 
-			for (unsigned int n=0; n<  Op_Ext_Exc->Curr_Count; ++n)
+			for (size_t n=0; n<Op_Ext_Exc->Curr_Count; ++n)
 				exc(Op_Ext_Exc->Curr_dir[n], Op_Ext_Exc->Curr_index[0][n], Op_Ext_Exc->Curr_index[1][n], Op_Ext_Exc->Curr_index[2][n]) =   Op_Ext_Exc->Curr_amp[n];
 			vtk_Writer->AddVectorField("exc_curr",exc);
 		}

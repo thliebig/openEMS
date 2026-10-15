@@ -114,9 +114,9 @@ void VTK_File_Writer::SetMeshLines(double const* const* lines, unsigned int cons
 
 		StructGrid->SetDimensions(count[0],count[1],count[2]);
 		vtkPoints *points = vtkPoints::New();
-		points->SetNumberOfPoints(count[0]*count[1]*count[2]);
+		points->SetNumberOfPoints((vtkIdType)count[0]*count[1]*count[2]);
 		double r[3];
-		int id=0;
+		vtkIdType id=0;
 		for (unsigned int k=0; k<count[2]; ++k)
 			for (unsigned int j=0; j<count[1]; ++j)
 				for (unsigned int i=0; i<count[0]; ++i)
@@ -140,7 +140,7 @@ void VTK_File_Writer::AddScalarField(std::string fieldname, ArrayLib::ArrayIJK<f
 	vtkFloatArray* array = vtkFloatArray::New();
 	array->SetNumberOfTuples(m_MeshLines[0].size()*m_MeshLines[1].size()*m_MeshLines[2].size());
 	array->SetName(fieldname.c_str());
-	int id=0;
+	vtkIdType id=0;
 	for (unsigned int k=0;k<m_MeshLines[2].size();++k)
 	{
 		for (unsigned int j=0;j<m_MeshLines[1].size();++j)
@@ -161,7 +161,7 @@ void VTK_File_Writer::AddVectorField(string fieldname, ArrayLib::ArrayNIJK<float
 	array->SetNumberOfComponents(3);
 	array->SetNumberOfTuples(m_MeshLines[0].size()*m_MeshLines[1].size()*m_MeshLines[2].size());
 	array->SetName(fieldname.c_str());
-	int id=0;
+	vtkIdType id=0;
 	float out[3];
 	for (unsigned int k=0;k<m_MeshLines[2].size();++k)
 	{

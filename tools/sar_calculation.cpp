@@ -196,7 +196,7 @@ void SAR_Calculation::AddEFieldAndConductivity(float freq, ArrayLib::ArrayNIJK<s
 	float* cell_dens = m_cell_density->data();
 	float cond=0;
 	double max_lsar=0;
-	unsigned int loc=0;
+	size_t loc=0;
 	unsigned int pos[3];
 	double l_pow=0;
 	double power=0;
@@ -239,7 +239,7 @@ void SAR_Calculation::AddEFieldAndJField(float freq, ArrayLib::ArrayNIJK<std::co
 	float* cell_vol = m_cell_volume->data();
 	float* cell_dens = m_cell_density->data();
 	double max_lsar=0;
-	unsigned int loc=0;
+	size_t loc=0;
 	unsigned int pos[3];
 	double l_pow;
 	double power=0;
@@ -336,7 +336,7 @@ double SAR_Calculation::CalcTotalMass()
 	double mass = 0;
 	float* cell_density = m_cell_density->data();
 	float* cell_volume = m_cell_volume->data();
-	for (unsigned int n=0;n<m_cell_density->size();++n)
+	for (size_t n=0;n<m_cell_density->size();++n)
 		mass += cell_density[n]*cell_volume[n];
 	return mass;
 }
@@ -378,7 +378,7 @@ bool SAR_Calculation::ReadFromHDF5(std::string h5_fn)
 		return false;
 	}
 	if (m_DebugLevel>0)
-		cout << "SAR_Calculation::CalcFromHDF5: Mesh read complete. Total number of cells: " << m_numLines[0]*m_numLines[1]*m_numLines[2] << endl;
+		cout << "SAR_Calculation::CalcFromHDF5: Mesh read complete. Total number of cells: " << (size_t)m_numLines[0]*m_numLines[1]*m_numLines[2] << endl;
 
 	// read cell width
 	double* cellWidth[3]={NULL,NULL,NULL};
@@ -559,7 +559,7 @@ void SAR_Calculation::InitSAR()
 	// this will fill m_posInOutput with all 0, 0 meaning not in the output data
 	// a value > 0 gives the position+1 in the 3D output array
 	unsigned int pos[3];
-	unsigned int loc=0;
+	size_t loc=0;
 	for (unsigned int i=0; i<m_cellIndices[0].size();++i)
 	{
 		pos[0] = m_cellIndices[0].at(i);
@@ -621,7 +621,7 @@ void SAR_Calculation::DoAutoRange()
 	min_idx = {m_numLines[0],m_numLines[1],m_numLines[2]};
 	max_idx = {0,0,0};
 	float* cell_dens = m_cell_density->data();
-	unsigned int loc=0;
+	size_t loc=0;
 	for (unsigned int i=0; i<m_numLines[0];++i)
 		for (unsigned int j=0; j<m_numLines[1];++j)
 			for (unsigned int k=0; k<m_numLines[2];++k)
@@ -658,7 +658,7 @@ void SAR_Calculation::DoAutoRange()
 	if (m_avg_mass>0)
 	{
 		double dens_min = 0;
-		for (unsigned int n=0;n<m_cell_density->size();++n)
+		for (size_t n=0;n<m_cell_density->size();++n)
 			if ((cell_dens[n]>0) && ((dens_min==0) || (cell_dens[n]<dens_min)))
 				dens_min = cell_dens[n];
 		if (dens_min>0)
@@ -984,7 +984,7 @@ void SAR_Calculation::CalcCubicalSAR(double* vx_sar, unsigned int start[3], unsi
 	double mass=0;
 	double weight[3];
 	unsigned int f_pos[3];
-	unsigned int loc;
+	size_t loc;
 	size_t N=m_SAR.size();
 	for (size_t n=0;n<N;++n)
 		vx_sar[n] = 0;

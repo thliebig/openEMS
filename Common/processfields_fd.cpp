@@ -90,9 +90,9 @@ int ProcessFieldsFD::Process()
 		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * I_UNIT * PI * m_FD_Samples.at(n) * T) );
 		exp_jwt_2_dt *= 2; // *2 for single-sided spectrum
 		exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
-		unsigned int N = m_FD_Fields.at(n)->size();
+		size_t N = m_FD_Fields.at(n)->size();
 		field_fd = m_FD_Fields.at(n)->data();
-		for (unsigned int ijk=0;ijk<N;++ijk)
+		for (size_t ijk=0;ijk<N;++ijk)
 			field_fd[ijk] += field_td[ijk] * exp_jwt_2_dt;
 	}
 	++m_FD_SampleCount;
@@ -124,14 +124,14 @@ void ProcessFieldsFD::DumpFDData()
 			else
 				str_freq = std::to_string(freq);
 
-			unsigned int N = m_FD_Fields.at(n)->size();
+			size_t N = m_FD_Fields.at(n)->size();
 			field_fd = m_FD_Fields.at(n)->data();
 			//dump multiple phase to vtk-files
 			for (int p=0; p<Nr_Ph; ++p)
 			{
 				angle = 2.0 * PI * p / Nr_Ph;
 				std::complex<float> exp_jwt = std::exp( (std::complex<float>)(I_UNIT * angle) );
-				for (unsigned int ijk=0;ijk<N;++ijk)
+				for (size_t ijk=0;ijk<N;++ijk)
 					field[ijk] = real(field_fd[ijk] * exp_jwt);
 
 				stringstream ss;
@@ -146,7 +146,7 @@ void ProcessFieldsFD::DumpFDData()
 
 			{
 				//dump magnitude to vtk-files
-				for (unsigned int ijk=0;ijk<N;++ijk)
+				for (size_t ijk=0;ijk<N;++ijk)
 					field[ijk] = abs(field_fd[ijk]);
 
 				stringstream ss;
@@ -160,7 +160,7 @@ void ProcessFieldsFD::DumpFDData()
 
 			{
 				//dump phase to vtk-files
-				for (unsigned int ijk=0;ijk<N;++ijk)
+				for (size_t ijk=0;ijk<N;++ijk)
 					field[ijk] = arg(field_fd[ijk]);
 
 				stringstream ss;

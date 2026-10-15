@@ -24,6 +24,13 @@ there are unreleased changes. It becomes the next release entry.
 - An error during the setup or the run of a simulation, e.g. running out of
   memory, no longer terminates the process: openEMS ends with an error message,
   Python raises a `RuntimeError`, and Ctrl-C works again afterwards.
+- A simulation with more than about 1.4 billion mesh nodes no longer
+  overflows the size of its field and coefficient arrays, which corrupted
+  memory without a message. The operator statistics show the right memory
+  size above about 89 million nodes, and the cell count, the speed, frequency
+  domain and SAR dumps, the SAR calculation, VTK field dumps and the node
+  counts of materials, excitations and lumped elements no longer wrap around
+  at 2 to 4 billion nodes.
 
 ### Changed
 
@@ -41,6 +48,11 @@ there are unreleased changes. It becomes the next release entry.
   datasets are listed once instead of looked up one by one, which took
   quadratic time. A far-field (NF2FF) calculation from a recording of 3200
   timesteps went from 79 s to 2.4 s per frequency.
+
+### Upgrade notes
+
+- **Rebuild the Python bindings** together with openEMS: the layout of its
+  array classes changed, the soname did not.
 
 ## 0.37.0 — 2026-10-09
 

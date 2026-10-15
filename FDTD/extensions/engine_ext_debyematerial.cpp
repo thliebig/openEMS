@@ -23,7 +23,7 @@ Engine_Ext_DebyeMaterial::Engine_Ext_DebyeMaterial(Operator_Ext_DebyeMaterial* o
 {
 	m_Op_Ext_Deb = op_ext_debye;
 	// the base allocated volt_ADE[0], which carries the joint correction
-	unsigned int count = m_Op_Ext_Deb->m_LM_Count.at(0);
+	size_t count = m_Op_Ext_Deb->m_LM_Count.at(0);
 
 	volt_pole_ADE = new FDTD_FLOAT**[m_Op_Ext_Deb->m_PoleCount];
 	for (int o=0; o<m_Op_Ext_Deb->m_PoleCount; ++o)
@@ -32,7 +32,7 @@ Engine_Ext_DebyeMaterial::Engine_Ext_DebyeMaterial(Operator_Ext_DebyeMaterial* o
 		for (int n=0; n<3; ++n)
 		{
 			volt_pole_ADE[o][n] = new FDTD_FLOAT[count];
-			for (unsigned int i=0; i<count; ++i)
+			for (size_t i=0; i<count; ++i)
 				volt_pole_ADE[o][n][i] = 0.0;
 		}
 	}
@@ -41,7 +41,7 @@ Engine_Ext_DebyeMaterial::Engine_Ext_DebyeMaterial(Operator_Ext_DebyeMaterial* o
 	for (int n=0; n<3; ++n)
 	{
 		volt_pre_ADE[n] = new FDTD_FLOAT[count];
-		for (unsigned int i=0; i<count; ++i)
+		for (size_t i=0; i<count; ++i)
 			volt_pre_ADE[n][i] = 0.0;
 	}
 }
@@ -73,7 +73,7 @@ void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
-	for (unsigned int i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
+	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
 	{
 		for (int n=0; n<3; ++n)
 		{
@@ -103,7 +103,7 @@ void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng)
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
-	for (unsigned int i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
+	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
 	{
 		for (int n=0; n<3; ++n)
 		{

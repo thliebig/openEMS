@@ -364,14 +364,14 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 		for (int n=0; n<3; ++n)
 		{
 			m_LM_pos[order][n] = new unsigned int[m_LM_Count.at(order)];
-			for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+			for (size_t i=0; i<m_LM_Count.at(order); ++i)
 				m_LM_pos[order][n][i] = v_pos[n].at(i);
 			if (m_volt_ADE_On[order])
 			{
 				v_int_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
 				v_ext_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
 
-				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+				for (size_t i=0; i<m_LM_Count.at(order); ++i)
 				{
 					v_int_ADE[order][n][i] = v_int[n].at(i);
 					v_ext_ADE[order][n][i] = v_ext[n].at(i);
@@ -382,7 +382,7 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 				i_int_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
 				i_ext_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
 
-				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+				for (size_t i=0; i<m_LM_Count.at(order); ++i)
 				{
 					i_int_ADE[order][n][i] = i_int[n].at(i);
 					i_ext_ADE[order][n][i] = i_ext[n].at(i);
@@ -392,13 +392,13 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 			if (m_volt_Lor_ADE_On[order])
 			{
 				v_Lor_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
-				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+				for (size_t i=0; i<m_LM_Count.at(order); ++i)
 					v_Lor_ADE[order][n][i] = v_Lor[n].at(i);
 			}
 			if (m_curr_Lor_ADE_On[order])
 			{
 				i_Lor_ADE[order][n]  = new FDTD_FLOAT[m_LM_Count.at(order)];
-				for (unsigned int i=0; i<m_LM_Count.at(order); ++i)
+				for (size_t i=0; i<m_LM_Count.at(order); ++i)
 					i_Lor_ADE[order][n][i] = i_Lor[n].at(i);
 			}
 		}

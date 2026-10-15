@@ -55,14 +55,14 @@ public:
 		Base::Init(name, extent);
 		// I-J-K-N ordering
 		this->m_stride[0] = 1;
-		this->m_stride[1] = this->m_extent[2] * this->m_extent[3] * this->m_extent[0];
-		this->m_stride[2] = this->m_extent[3] * this->m_extent[0];
+		this->m_stride[1] = (size_t)this->m_extent[2] * this->m_extent[3] * this->m_extent[0];
+		this->m_stride[2] = (size_t)this->m_extent[3] * this->m_extent[0];
 		this->m_stride[3] = this->m_extent[0];
 
 		// N-I-J-K ordering
 #ifdef OPENEMS_ENGINE_NIJK
-		this->m_stride[0] = this->m_extent[1] * this->m_extent[2] * this->m_extent[3];
-		this->m_stride[1] = this->m_extent[2] * this->m_extent[3];
+		this->m_stride[0] = (size_t)this->m_extent[1] * this->m_extent[2] * this->m_extent[3];
+		this->m_stride[1] = (size_t)this->m_extent[2] * this->m_extent[3];
 		this->m_stride[2] = this->m_extent[3];
 		this->m_stride[3] = 1;
 #endif

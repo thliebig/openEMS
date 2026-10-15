@@ -123,7 +123,7 @@ int ProcessFieldsSAR::Process()
 		return GetNextInterval();
 	field_td = tmp_field_td.data();
 	T = m_Eng_Interface->GetTime(m_dualTime);
-	unsigned int N;
+	size_t N;
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
 		std::complex<float> exp_jwt_2_dt = std::exp( (std::complex<float>)(-2.0 * I_UNIT * PI * m_FD_Samples.at(n) * T) );
@@ -131,7 +131,7 @@ int ProcessFieldsSAR::Process()
 		exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
 		N = m_E_FD_Fields.at(n)->size();
 		field_fd = m_E_FD_Fields.at(n)->data();
-		for (unsigned int ijk=0;ijk<N;++ijk)
+		for (size_t ijk=0;ijk<N;++ijk)
 			field_fd[ijk] += field_td[ijk] * exp_jwt_2_dt;
 	}
 	tmp_field_td.Reset(); // free memory before next calc step
@@ -151,7 +151,7 @@ int ProcessFieldsSAR::Process()
 			exp_jwt_2_dt *= Op->GetTimestep() * m_FD_Interval; // multiply with timestep-interval
 			N = m_J_FD_Fields.at(n)->size();
 			field_fd = m_J_FD_Fields.at(n)->data();
-			for (unsigned int ijk=0;ijk<N;++ijk)
+			for (size_t ijk=0;ijk<N;++ijk)
 				field_fd[ijk] += field_td[ijk] * exp_jwt_2_dt;
 		}
 		tmp_field_td.Reset();

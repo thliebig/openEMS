@@ -46,7 +46,7 @@ Engine_Ext_Mur_ABC::Engine_Ext_Mur_ABC(Operator_Ext_Mur_ABC* op_ext) :
 	Operator_Ext_Excitation* Exc_ext = m_Op_mur->m_Op->GetExcitationExtension();
 	if (Exc_ext) //an unused excitation extension is dropped by the operator
 	{
-		for (unsigned int n=0; n<Exc_ext->GetVoltCount(); ++n)
+		for (size_t n=0; n<Exc_ext->GetVoltCount(); ++n)
 		{
 			if ( ((Exc_ext->Volt_dir[n]==m_nyP) || (Exc_ext->Volt_dir[n]==m_nyPP)) && (Exc_ext->Volt_index[m_ny][n]==m_LineNr) )
 			{

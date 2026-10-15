@@ -45,7 +45,7 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	for (unsigned int n=0; n<m_Op_Exc->Volt_Count; ++n)
+	for (size_t n=0; n<m_Op_Exc->Volt_Count; ++n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
 		exc_pos *= (exc_pos>0);
@@ -79,7 +79,7 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	for (unsigned int n=0; n<m_Op_Exc->Curr_Count; ++n)
+	for (size_t n=0; n<m_Op_Exc->Curr_Count; ++n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
 		exc_pos *= (exc_pos>0);

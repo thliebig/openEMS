@@ -49,12 +49,12 @@ public:
 			Base::AllocatorType::free(this->m_ptr, this->m_size);
 
 		this->m_name = name;
-		this->m_size = extent[0] * extent[1] * extent[2];
+		this->m_size = (size_t)extent[0] * extent[1] * extent[2];
 		this->m_bytes = sizeof(T) * this->m_size;
 		this->m_ptr = Base::AllocatorType::alloc(this->m_size);
 
 		this->m_extent = extent;
-		this->m_stride[0] = extent[1] * extent[2];
+		this->m_stride[0] = (size_t)extent[1] * extent[2];
 		this->m_stride[1] = extent[2];
 		this->m_stride[2] = 1;
 	}
@@ -75,7 +75,7 @@ public:
 		Init(name, {extent[0], extent[1], extent[2]});
 	}
 
-	IndexType linearIndex(std::array<IndexType, 3> tupleIndex) const
+	size_t linearIndex(std::array<IndexType, 3> tupleIndex) const
 	{
 		return  this->m_stride[0] * tupleIndex[0] +
 		        this->m_stride[1] * tupleIndex[1] +

@@ -145,8 +145,8 @@ bool Operator_Ext_Absorbing_BC::BuildExtension()
 
 	double 			delta;
 
-	unsigned int	Ncells[] = {0,0,0},
-					totCells = 1;
+	unsigned int	Ncells[] = {0,0,0};
+	size_t			totCells = 1;
 
 	// Count the number of cells in each direction
 	for (unsigned int dimIdx = 0 ; dimIdx < 3 ; dimIdx++)

@@ -69,7 +69,7 @@ Engine* Operator_CylinderMultiGrid::CreateEngine()
 
 double Operator_CylinderMultiGrid::GetNumberCells() const
 {
-	return (numLines[0]-m_Split_Pos)*(numLines[1])*(numLines[2]) + m_InnerOp->GetNumberCells();
+	return (double)(numLines[0]-m_Split_Pos)*numLines[1]*numLines[2] + m_InnerOp->GetNumberCells();
 }
 
 bool Operator_CylinderMultiGrid::SetupCSXGrid(CSRectGrid* grid)

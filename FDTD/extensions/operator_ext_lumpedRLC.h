@@ -79,7 +79,7 @@ protected:
 	unsigned int			**v_RLC_pos;
 
 	// Vector length indicator
-	unsigned int			RLC_count;
+	size_t					RLC_count;
 
 
 

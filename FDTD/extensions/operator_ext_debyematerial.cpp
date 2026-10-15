@@ -223,7 +223,7 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 		}
 	}
 
-	unsigned int count = v_pos[0].size();
+	size_t count = v_pos[0].size();
 	if (count==0)
 		return false; //no active cell, drop this extension
 
@@ -253,7 +253,7 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 	{
 		m_LM_pos[0][n] = new unsigned int[count];
 		v_solve_ADE[n]       = new FDTD_FLOAT[count];
-		for (unsigned int i=0; i<count; ++i)
+		for (size_t i=0; i<count; ++i)
 		{
 			m_LM_pos[0][n][i] = v_pos[n].at(i);
 			v_solve_ADE[n][i]       = v_solve[n].at(i);
@@ -262,7 +262,7 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 		{
 			v_relax_ADE[o][n] = new FDTD_FLOAT[count];
 			v_drive_ADE[o][n]  = new FDTD_FLOAT[count];
-			for (unsigned int i=0; i<count; ++i)
+			for (size_t i=0; i<count; ++i)
 			{
 				v_relax_ADE[o][n][i] = v_relax[n][o].at(i);
 				v_drive_ADE[o][n][i]  = v_drive[n][o].at(i);

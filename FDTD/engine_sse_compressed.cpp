@@ -54,15 +54,15 @@ void Engine_SSE_Compressed::UpdateVoltages(unsigned int startX, unsigned int num
 	f4vector* f4_curr = f4_curr_ptr->data();
 
 	unsigned int pos[3];
-	unsigned int v_pos;
-	unsigned int i_pos;
-	unsigned i_pos_z_start, i_pos_z_end;
-	int i_shift[3]; // shift of current index by x/y/z
+	size_t v_pos;
+	size_t i_pos;
+	size_t i_pos_z_start, i_pos_z_end;
+	size_t i_shift[3]; // shift of current index by x/y/z
 	f4vector temp;
 
 	// array index shift for x/y/z field component
-	int v_N_shift  = f4_volt_ptr->stride(0);
-	int i_N_shift  = f4_curr_ptr->stride(0);
+	size_t v_N_shift  = f4_volt_ptr->stride(0);
+	size_t i_N_shift  = f4_curr_ptr->stride(0);
 
 	// index shift for a z-position
 	i_shift[2] = f4_curr_ptr->stride(3);
@@ -184,17 +184,17 @@ void Engine_SSE_Compressed::UpdateCurrents(unsigned int startX, unsigned int num
 	f4vector* f4_volt = f4_volt_ptr->data();
 	f4vector* f4_curr = f4_curr_ptr->data();
 
-	unsigned int v_pos;
-	unsigned int i_pos;
-	int v_shift[3]; // shift of voltages index by x/y/z
-	unsigned v_pos_z_start, v_pos_z_end;
+	size_t v_pos;
+	size_t i_pos;
+	size_t v_shift[3]; // shift of voltages index by x/y/z
+	size_t v_pos_z_start, v_pos_z_end;
 
 	unsigned int pos[3];
 	f4vector temp;
 
 	// array index shift for x/y/z field component
-	int v_N_shift  = f4_volt_ptr->stride(0);
-	int i_N_shift  = f4_curr_ptr->stride(0);
+	size_t v_N_shift  = f4_volt_ptr->stride(0);
+	size_t i_N_shift  = f4_curr_ptr->stride(0);
 
 	// index shift for a x-, y- and z-position
 	for (unsigned int n=0;n<3;++n)

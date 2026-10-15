@@ -180,7 +180,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	{
 		m_LM_pos[0][n] = new unsigned int[numCS];
 		m_LM_pos[1][n] = new unsigned int[numCS];
-		for (unsigned int i=0; i<numCS; ++i)
+		for (size_t i=0; i<numCS; ++i)
 		{
 			m_LM_pos[0][n][i] = v_pos[n].at(i);
 			m_LM_pos[1][n][i] = v_pos[n].at(i);
@@ -201,7 +201,7 @@ bool Operator_Ext_ConductingSheet::BuildExtension()
 	int t_dir=0; //tangential sheet direction
 	unsigned int tpos[] = {0,0,0};
 	unsigned int optParaPos;
-	for (unsigned int i=0;i<numCS;++i)
+	for (size_t i=0;i<numCS;++i)
 	{
 		pos[0]=m_LM_pos[0][0][i];pos[1]=m_LM_pos[0][1][i];pos[2]=m_LM_pos[0][2][i];
 		tpos[0]=pos[0];tpos[1]=pos[1];tpos[2]=pos[2];

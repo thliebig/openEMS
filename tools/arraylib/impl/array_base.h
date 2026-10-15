@@ -62,8 +62,8 @@ protected:
 	std::string m_name="";
 	bool m_swapped=false; // record if swapped axis
 	std::array<IndexType, rank> m_extent = {};
-	std::array<IndexType, rank> m_stride = {};
-	IndexType m_size=0;
+	std::array<size_t, rank> m_stride = {};
+	size_t m_size=0;
 	size_t m_bytes=0;
 
 	T* __restrict m_ptr = NULL;
@@ -110,7 +110,7 @@ public:
 	std::string                 name()              const { return m_name;     }
 	std::array<IndexType, rank> extent()            const { return m_extent;   }
 	IndexType                   extent(IndexType n) const { return m_extent[n];}
-	IndexType                   stride(IndexType n) const { return m_stride[n];}
+	size_t                      stride(IndexType n) const { return m_stride[n];}
 	bool                        valid()             const { return m_ptr!=NULL;}
 
 	// allow to swap axis
@@ -127,14 +127,14 @@ public:
 	bool wasSwapped() const {return m_swapped;}
 
 	// return the number of array elements
-	IndexType                   size()              const { return m_size;     }
+	size_t                      size()              const { return m_size;     }
 
 	// return occupied memory
 	size_t                      bytes()             const { return m_bytes;    }
 
 	// return raw pointer to underlying data
 	T*                          data()              const { return m_ptr;      }
-	T&                          data(IndexType n)   const { return m_ptr[n];   }
+	T&                          data(size_t n)      const { return m_ptr[n];   }
 };
 
 #endif // ARRAYLIB_ARRAY_BASE_H

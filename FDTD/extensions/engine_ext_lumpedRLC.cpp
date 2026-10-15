@@ -38,7 +38,7 @@ Engine_Ext_LumpedRLC::Engine_Ext_LumpedRLC(Operator_Ext_LumpedRLC* op_ext_RLC) :
 	// Initialize ADE containers for currents and voltages
 	v_Il		= new FDTD_FLOAT[m_Op_Ext_RLC->RLC_count];
 
-	for (unsigned int posIdx = 0 ; posIdx < m_Op_Ext_RLC->RLC_count ; ++posIdx)
+	for (size_t posIdx = 0 ; posIdx < m_Op_Ext_RLC->RLC_count ; ++posIdx)
 		v_Il[posIdx] 	= 0.0;
 
 	for (unsigned int k = 0 ; k < 3 ; k++)
@@ -46,7 +46,7 @@ Engine_Ext_LumpedRLC::Engine_Ext_LumpedRLC(Operator_Ext_LumpedRLC* op_ext_RLC) :
 		v_Vdn[k] = new FDTD_FLOAT[m_Op_Ext_RLC->RLC_count];
 		v_Jn[k] = new FDTD_FLOAT[m_Op_Ext_RLC->RLC_count];
 
-		for (unsigned int posIdx = 0 ; posIdx < m_Op_Ext_RLC->RLC_count ; ++posIdx)
+		for (size_t posIdx = 0 ; posIdx < m_Op_Ext_RLC->RLC_count ; ++posIdx)
 		{
 			v_Jn[k][posIdx] = 0.0;
 			v_Vdn[k][posIdx] = 0.0;
@@ -95,7 +95,7 @@ void Engine_Ext_LumpedRLC::DoPreVoltageUpdates()
 	v_Vdn[0] = v_temp;
 
 	// In pre-process, only update the parallel inductor current:
-	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
+	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
 		v_Il[pIdx] += (m_Op_Ext_RLC->v_RLC_i2v[pIdx])*(m_Op_Ext_RLC->v_RLC_ilv[pIdx])*v_Vdn[1][pIdx];
 
 	return;
@@ -119,11 +119,11 @@ void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngType* eng)
 
 
 	// Read engine calculated node voltage
-	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
+	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
 		v_Vdn[0][pIdx] = eng->EngType::GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);
 
 	// Post process: Calculate node voltage with respect to the lumped RLC auxilliary quantity, J
-	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
+	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
 	{
 		// Calculate updated node voltage, with series and parallel additions
 		v_Vdn[0][pIdx] = 	(m_Op_Ext_RLC->v_RLC_vvd[pIdx])*(
@@ -145,7 +145,7 @@ void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngType* eng)
 
 
 	// Update node voltage
-	for (unsigned int pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
+	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
 		eng->EngType::SetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx],v_Vdn[0][pIdx]);
 }
 
