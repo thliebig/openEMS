@@ -15,165 +15,106 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #include <climits>
 
 #include "engine_field_gather.h"
+#include "engine_interface_fdtd.h"
 #include "operator.h"
 
-// The same values as GetEField()/GetHField() of Engine_Interface_FDTD for the given nodes;
-// the caller has moved the nodes on the seam of a closed mesh as those do
-// (see Engine_Interface_GPU_FDTD::CreateFieldGather()).
-Field_Gather_FDTD* Field_Gather_FDTD::New(const Operator* op, Engine_Interface_Base::InterpolationType interpol,
-                                          const ArrayLib::ArrayNIJK<FDTD_FLOAT>* volt, const ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr,
-                                          bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3])
+Field_Gather_FDTD::Field_Gather_FDTD(const Engine_Interface_FDTD* eng_if, const Operator* op,
+                                     const ArrayLib::ArrayNIJK<FDTD_FLOAT>* volt, const ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr,
+                                     bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3])
+	: m_EngIf(eng_if), m_Op(op), m_Volt(volt), m_Curr(curr), m_H(h_field), m_RegionSnapshot(false), m_Offset(0)
 {
-	unsigned int N[3];
 	for (int n=0; n<3; ++n)
-		N[n] = op->GetNumberOfLines(n, true);
-	// the entries index the fields with 32 bit: larger grids dump without a gather
-	if (3*(size_t)N[0]*N[1]*N[2] > UINT_MAX)
-		return NULL;
-	auto index = [&](int n, const unsigned int* p) -> unsigned int {return ((n*N[0] + p[0])*N[1] + p[1])*N[2] + p[2];};
-	auto delta = [&](int n, const unsigned int* p) -> double {return op->GetEdgeLength(n, p, h_field);};
+	{
+		m_PosLines[n].assign(posLines[n], posLines[n]+numLines[n]);
+		m_N[n] = op->GetNumberOfLines(n, true);
+	}
+	for (int n=0; n<3; ++n)
+		for (int d=0; d<3; ++d)
+			m_RegionPos[n][d].assign(m_N[d], UINT_MAX);
 
-	typedef Engine_GatherEntry G;
-	Field_Gather_FDTD* gather = new Field_Gather_FDTD(volt, curr, h_field, numLines[1], numLines[2]);
-	gather->entries.resize((size_t)numLines[0]*numLines[1]*numLines[2]*3);
-	size_t e_idx = 0;
+	// the region: the lines of the edges the interpolation of the dumped nodes reads
+	auto mark = [this](unsigned int n, const unsigned int* p) -> double
+	{
+		for (int d=0; d<3; ++d)
+			m_RegionPos[n][d][p[d]] = 0;
+		return 0.0;
+	};
+	double out[3];
 	for (unsigned int i=0; i<numLines[0]; ++i)
 		for (unsigned int j=0; j<numLines[1]; ++j)
 			for (unsigned int k=0; k<numLines[2]; ++k)
-			{
-				const unsigned int pos[3] = {posLines[0][i], posLines[1][j], posLines[2][k]};
-				for (int n=0; n<3; ++n)
-				{
-					G& e = gather->entries[e_idx++];
-					e.form = G::ZERO;
-					e.rel = 0;
-					for (int m=0; m<4; ++m) {e.idx[m] = 0; e.delta[m] = 0;}
-					unsigned int p[3] = {pos[0], pos[1], pos[2]};
-					const int nP = (n+1)%3;
-					const int nPP = (n+2)%3;
-					auto set = [&](int m) {e.idx[m] = index(n, p); e.delta[m] = delta(n, p);};
-					const bool upper = (pos[0]==N[0]-1) || (pos[1]==N[1]-1) || (pos[2]==N[2]-1);
-					switch (interpol)
-					{
-					default:
-					case Engine_Interface_Base::NO_INTERPOLATION:
-						e.form = G::RAW;
-						set(0);
-						break;
-					case Engine_Interface_Base::NODE_INTERPOLATE:
-						if (!h_field)
-						{
-							// see GetRawInterpolatedField()
-							if (pos[n]==N[n]-1)
-							{
-								--p[n];
-								e.form = G::RAW;
-								set(0);
-								break;
-							}
-							const double d = delta(n, p);
-							if (d==0)
-								break;   // ZERO
-							e.form = G::RAW;
-							set(0);
-							if (pos[n]==0)
-								break;
-							--p[n];
-							const double d_down = delta(n, p);
-							e.form = G::LERP;
-							e.rel = d / (d+d_down);
-							set(1);
-						}
-						else
-						{
-							// see GetRawInterpolatedDualField()
-							if (upper || (pos[nP]==0) || (pos[nPP]==0))
-								break;   // ZERO
-							e.form = G::AVG4;
-							set(0);
-							--p[nP];
-							set(1);
-							--p[nPP];
-							set(2);
-							++p[nP];
-							set(3);
-						}
-						break;
-					case Engine_Interface_Base::CELL_INTERPOLATE:
-						if (!h_field)
-						{
-							// see GetRawInterpolatedField()
-							if (upper)
-								break;   // ZERO
-							e.form = G::AVG4;
-							set(0);
-							++p[nP];
-							set(1);
-							++p[nPP];
-							set(2);
-							--p[nP];
-							set(3);
-						}
-						else
-						{
-							// see GetRawInterpolatedDualField()
-							if (pos[n]>=N[n]-1)
-								break;   // ZERO
-							const double d = delta(n, p);
-							e.form = G::LERP;
-							set(0);
-							++p[n];
-							const double d_up = delta(n, p);
-							e.rel = d / (d+d_up);
-							set(1);
-						}
-						break;
-					}
-				}
-			}
-	gather->SetRegion(N);
-	return gather;
-}
-
-void Field_Gather_FDTD::SetRegion(const unsigned int N[3])
-{
-	static const int used[4] = {0, 1, 2, 4};   // raw values read by ZERO, RAW, LERP, AVG4
-	for (int n=0; n<3; ++n)
-	{
-		m_N[n] = N[n];
-		for (int d=0; d<3; ++d)
-			m_RegionPos[n][d].assign(N[d], UINT_MAX);
-	}
-	// mark the lines the entries read, per component and direction
-	for (size_t e=0; e<entries.size(); ++e)
-		for (int k=0; k<used[entries[e].form]; ++k)
-		{
-			unsigned int idx = entries[e].idx[k];
-			const unsigned int z = idx%N[2];
-			idx /= N[2];
-			const unsigned int y = idx%N[1];
-			idx /= N[1];
-			const unsigned int x = idx%N[0];
-			const unsigned int n = idx/N[0];
-			m_RegionPos[n][0][x] = m_RegionPos[n][1][y] = m_RegionPos[n][2][z] = 0;
-		}
+				Interpolate(i, j, k, out, mark);
 	size_t start = 0;
 	for (int n=0; n<3; ++n)
 	{
 		for (int d=0; d<3; ++d)
-		{
-			region.lines[n][d].clear();
-			for (unsigned int l=0; l<N[d]; ++l)
+			for (unsigned int l=0; l<m_N[d]; ++l)
 				if (m_RegionPos[n][d][l]!=UINT_MAX)
 				{
 					m_RegionPos[n][d][l] = region.lines[n][d].size();
 					region.lines[n][d].push_back(l);
 				}
-		}
 		m_RegionStart[n] = start;
 		start += region.Size(n);
 	}
+}
+
+template <typename T, typename Raw>
+void Field_Gather_FDTD::Interpolate(unsigned int i, unsigned int j, unsigned int k, T out[3], Raw raw) const
+{
+	const unsigned int pos[3] = {m_PosLines[0][i], m_PosLines[1][j], m_PosLines[2][k]};
+	if (m_H)
+		m_EngIf->InterpolateDualField(pos, out, raw);
+	else
+		m_EngIf->InterpolateField(pos, out, raw);
+}
+
+void Field_Gather_FDTD::Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src) const
+{
+	// the raw values of the region in a snapshot (see SetSnapshotRegion()), else the whole field
+	const bool in_region = src && m_RegionSnapshot;
+	const float* f = in_region ? src + m_Offset : (src ? src : (m_H ? m_Curr->data() : m_Volt->data()));
+	// as GetRawField()/GetRawDualField() (type 0) of Engine_Interface_FDTD
+	auto raw = [&](unsigned int n, const unsigned int* p) -> double
+	{
+		double value = Value(f, in_region, n, p);
+		double delta = m_Op->GetEdgeLength(n, p, m_H);
+		if (delta)
+			return value/delta;
+		return 0.0;
+	};
+	const unsigned int nj = m_PosLines[1].size();
+	double out[3];
+	for (size_t l=line_start; l<line_stop; ++l)
+		for (unsigned int k=0; k<m_PosLines[2].size(); ++k)
+		{
+			Interpolate(l/nj, l%nj, k, out, raw);
+			for (int n=0; n<3; ++n)
+				field(n, l/nj, l%nj, k) = out[n];
+		}
+}
+
+void Field_Gather_FDTD::EvaluateSums(const std::complex<float>* raw_sums, ArrayLib::ArrayNIJK<std::complex<float>> &field) const
+{
+	auto raw = [&](unsigned int n, const unsigned int* p) -> std::complex<double>
+	{
+		std::complex<double> value = Value(raw_sums, true, n, p);
+		double delta = m_Op->GetEdgeLength(n, p, m_H);
+		if (delta)
+			return value/delta;
+		return 0.0;
+	};
+	std::complex<double> out[3];
+	for (unsigned int i=0; i<m_PosLines[0].size(); ++i)
+		for (unsigned int j=0; j<m_PosLines[1].size(); ++j)
+			for (unsigned int k=0; k<m_PosLines[2].size(); ++k)
+			{
+				Interpolate(i, j, k, out, raw);
+				for (int n=0; n<3; ++n)
+					field(n, i, j, k) = out[n];
+			}
 }

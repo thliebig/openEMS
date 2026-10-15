@@ -220,8 +220,8 @@ public:
 	virtual int AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count) {UNUSED(h_field); UNUSED(region); UNUSED(count); return -1;}
 	//! Add \a weights[n] times the current raw values to sum n of \a id (in order with the updates)
 	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {UNUSED(id); UNUSED(weights);}
-	//! The sums of \a id: sum n of raw value e at [n*region size + e]
-	virtual bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {UNUSED(id); UNUSED(sums); return false;}
+	//! Sum \a k of \a id, one value per raw value of its region
+	virtual bool ReadFieldDFT(int id, unsigned int k, std::vector<std::complex<float>>& sums) {UNUSED(id); UNUSED(k); UNUSED(sums); return false;}
 
 	//! Sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, see Engine_Interface_FDTD::CalcFastEnergy(). Returns false if the backend cannot compute them.
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) {UNUSED(numNodes); UNUSED(E_energy); UNUSED(H_energy); return false;}

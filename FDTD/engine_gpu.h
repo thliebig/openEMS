@@ -115,7 +115,7 @@ public:
 	//! Sums of the weighted raw values \a region on the device, see GPU_Backend::AddFieldDFT(); -1 if not available
 	int AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count);
 	void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights) {m_Backend->AccumulateFieldDFT(id, weights);}
-	bool ReadFieldDFT(int id, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, sums);}
+	bool ReadFieldDFT(int id, unsigned int k, std::vector<std::complex<float>>& sums) {return m_Backend->ReadFieldDFT(id, k, sums);}
 
 	//! Field values, read from the device if the host mirror is out of date (see class description)
 	virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;

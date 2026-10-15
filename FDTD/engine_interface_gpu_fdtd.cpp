@@ -74,30 +74,19 @@ bool Engine_Interface_GPU_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gathe
 	size_t offset = 0;
 	if (!g || !m_Eng_GPU->AddSnapshotGather(g->HField(), g->region, offset))
 		return false;
-	g->SetSnapshotEvaluated(offset);
+	g->SetSnapshotRegion(offset);
 	return true;
 }
 
 Engine_Field_Gather* Engine_Interface_GPU_FDTD::CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
 {
-	// the gather evaluates the nodes like GetEField()/GetHField(), which move the nodes
-	// on the seam of a closed mesh to its other side (see GetSeamLine())
-	std::vector<unsigned int> seam[3];
-	unsigned int* lines[3];
-	for (int n=0; n<3; ++n)
-	{
-		seam[n].assign(posLines[n], posLines[n]+numLines[n]);
-		for (size_t l=0; l<seam[n].size(); ++l)
-			seam[n][l] = GetSeamLine(n, seam[n][l]);
-		lines[n] = seam[n].data();
-	}
-	return Field_Gather_FDTD::New(m_Op, m_InterpolType, &m_Eng_GPU->HostVoltages(), &m_Eng_GPU->HostCurrents(), h_field, numLines, lines);
+	return new Field_Gather_FDTD(this, m_Op, &m_Eng_GPU->HostVoltages(), &m_Eng_GPU->HostCurrents(), h_field, numLines, posLines);
 }
 
 int Engine_Interface_GPU_FDTD::CreateFieldDFT(const Engine_Field_Gather* gather, unsigned int count)
 {
 	const Field_Gather_FDTD* g = dynamic_cast<const Field_Gather_FDTD*>(gather);
-	if (!g || g->entries.empty())
+	if (!g || (g->region.Size()==0))
 		return -1;
 	const int id = m_Eng_GPU->AddFieldDFT(g->HField(), g->region, count);
 	if (id>=0)
@@ -113,14 +102,15 @@ void Engine_Interface_GPU_FDTD::AccumulateFieldDFT(int id, const std::vector<std
 bool Engine_Interface_GPU_FDTD::ReadFieldDFT(int id, std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*>& fields)
 {
 	std::map<int, const Field_Gather_FDTD*>::const_iterator it = m_FieldDFT.find(id);
+	if (it==m_FieldDFT.end())
+		return false;
+	// the sums of the raw values, one frequency at a time: interpolated here, like the dump does it with the fields
 	std::vector<std::complex<float>> sums;
-	if ((it==m_FieldDFT.end()) || !m_Eng_GPU->ReadFieldDFT(id, sums))
-		return false;
-	// the sums of the raw values: interpolated here, like the dump does it with the fields
-	const size_t count = it->second->region.Size();
-	if (sums.size()!=count*fields.size())
-		return false;
 	for (size_t f=0; f<fields.size(); ++f)
-		it->second->EvaluateSums(sums.data() + f*count, *fields[f]);
+	{
+		if (!m_Eng_GPU->ReadFieldDFT(id, f, sums) || (sums.size()!=it->second->region.Size()))
+			return false;
+		it->second->EvaluateSums(sums.data(), *fields[f]);
+	}
 	return true;
 }

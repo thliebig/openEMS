@@ -1070,13 +1070,13 @@ void GPU_Backend_HIP::AccumulateFieldDFT(int id, const std::vector<std::complex<
 	}
 }
 
-bool GPU_Backend_HIP::ReadFieldDFT(int id, std::vector<std::complex<float>>& sums)
+bool GPU_Backend_HIP::ReadFieldDFT(int id, unsigned int k, std::vector<std::complex<float>>& sums)
 {
-	if ((id<0) || ((size_t)id>=d->field_dfts.size()))
+	if ((id<0) || ((size_t)id>=d->field_dfts.size()) || (k>=d->field_dfts[id].count))
 		return false;
 	const Impl::FieldDFT& dft = d->field_dfts[id];
-	sums.resize(dft.region.total*dft.count);
-	HIP_Check(hipMemcpyAsync(sums.data(), dft.sums, sums.size()*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "download");
+	sums.resize(dft.region.total);
+	HIP_Check(hipMemcpyAsync(sums.data(), dft.sums + k*dft.region.total, sums.size()*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "download");
 	d->Flush();
 	return true;
 }

@@ -87,71 +87,7 @@ double* Engine_Interface_FDTD::GetRotHField(const unsigned int* pos, double* out
 
 double* Engine_Interface_FDTD::GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const
 {
-	unsigned int seamPos[3];
-	if (m_ClosedMesh)
-	{
-		for (int n=0; n<3; ++n)
-			seamPos[n] = GetSeamLine(n, pos[n]);
-		pos = seamPos;
-	}
-	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
-	int nP,nPP;
-	double delta;
-	switch (m_InterpolType)
-	{
-	default:
-	case NO_INTERPOLATION:
-		for (int n=0; n<3; ++n)
-			out[n] = GetRawField(n,pos,type);
-		break;
-	case NODE_INTERPOLATE:
-		for (int n=0; n<3; ++n)
-		{
-			if (pos[n]==m_Op->GetNumberOfLines(n, true)-1)  // use only the "lower value" at the upper bound
-			{
-				--iPos[n];
-				out[n] = (double)GetRawField(n,iPos,type);
-				++iPos[n];
-				continue;
-			}
-			delta = m_Op->GetEdgeLength(n,iPos);
-			out[n] = GetRawField(n,iPos,type);
-			if (delta==0)
-			{
-				out[n]=0;
-				continue;
-			}
-			if (pos[n]==0) // use only the "upper value" at the lower bound
-				continue;
-			--iPos[n];
-			double deltaDown = m_Op->GetEdgeLength(n,iPos);
-			double deltaRel = delta / (delta+deltaDown);
-			out[n] = out[n]*(1.0-deltaRel) + (double)GetRawField(n,iPos,type)*deltaRel;
-			++iPos[n];
-		}
-		break;
-	case CELL_INTERPOLATE:
-		for (int n=0; n<3; ++n)
-		{
-			nP = (n+1)%3;
-			nPP = (n+2)%3;
-			if ((pos[0]==m_Op->GetNumberOfLines(0,true)-1) || (pos[1]==m_Op->GetNumberOfLines(1,true)-1) || (pos[2]==m_Op->GetNumberOfLines(2,true)-1))
-			{
-				out[n] = 0; //electric field outside the field domain is always zero
-				continue;
-			}
-			out[n]=GetRawField(n,iPos,type);
-			++iPos[nP];
-			out[n]+=GetRawField(n,iPos,type);
-			++iPos[nPP];
-			out[n]+=GetRawField(n,iPos,type);
-			--iPos[nP];
-			out[n]+=GetRawField(n,iPos,type);
-			--iPos[nPP];
-			out[n]/=4;
-		}
-		break;
-	}
+	InterpolateField(pos, out, [this, type](unsigned int n, const unsigned int* p) {return GetRawField(n, p, type);});
 	return out;
 }
 
@@ -181,64 +117,7 @@ double Engine_Interface_FDTD::GetRawDualField(unsigned int n, const unsigned int
 
 double* Engine_Interface_FDTD::GetRawInterpolatedDualField(const unsigned int* pos, double* out, int type) const
 {
-	unsigned int seamPos[3];
-	if (m_ClosedMesh)
-	{
-		for (int n=0; n<3; ++n)
-			seamPos[n] = GetSeamLine(n, pos[n]);
-		pos = seamPos;
-	}
-	unsigned int iPos[] = {pos[0],pos[1],pos[2]};
-	int nP,nPP;
-	double delta;
-	switch (m_InterpolType)
-	{
-	default:
-	case NO_INTERPOLATION:
-		out[0] = GetRawDualField(0, pos, type);
-		out[1] = GetRawDualField(1, pos, type);
-		out[2] = GetRawDualField(2, pos, type);
-		break;
-	case NODE_INTERPOLATE:
-		for (int n=0; n<3; ++n)
-		{
-			nP = (n+1)%3;
-			nPP = (n+2)%3;
-			if ((pos[0]==m_Op->GetNumberOfLines(0,true)-1) || (pos[1]==m_Op->GetNumberOfLines(1,true)-1) || (pos[2]==m_Op->GetNumberOfLines(2,true)-1) || (pos[nP]==0) || (pos[nPP]==0))
-			{
-				out[n] = 0;
-				continue;
-			}
-			out[n] = GetRawDualField(n, iPos, type);
-			--iPos[nP];
-			out[n]+= GetRawDualField(n, iPos, type);
-			--iPos[nPP];
-			out[n]+= GetRawDualField(n, iPos, type);
-			++iPos[nP];
-			out[n]+= GetRawDualField(n, iPos, type);
-			++iPos[nPP];
-			out[n]/=4;
-		}
-		break;
-	case CELL_INTERPOLATE:
-		for (int n=0; n<3; ++n)
-		{
-			delta = m_Op->GetEdgeLength(n,iPos,true);
-			out[n] = GetRawDualField(n, iPos, type);
-			if ((pos[n]>=m_Op->GetNumberOfLines(n,true)-1))
-			{
-				out[n] = 0; //magnetic field on the outer boundaries is always zero
-				continue;
-			}
-			++iPos[n];
-			double deltaUp = m_Op->GetEdgeLength(n,iPos,true);
-			double deltaRel = delta / (delta+deltaUp);
-			out[n] = out[n]*(1.0-deltaRel) + (double)GetRawDualField(n, iPos, type)*deltaRel;
-			--iPos[n];
-		}
-		break;
-	}
-
+	InterpolateDualField(pos, out, [this, type](unsigned int n, const unsigned int* p) {return GetRawDualField(n, p, type);});
 	return out;
 }
 
