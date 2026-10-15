@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstdlib>
 #include <stdexcept>
 
 #include "engine_gpu.h"
@@ -55,6 +56,7 @@ Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend, GPU_Backe
 	m_SnapshotGatherSet = false;
 	m_SnapshotGatherSize[0] = m_SnapshotGatherSize[1] = 0;
 	m_FieldDFTUsed = false;
+	m_DumpPath = 0;
 	m_StaleVolt.stale = m_StaleCurr.stale = false;
 	m_StaleVolt.full_this_batch = m_StaleCurr.full_this_batch = false;
 	m_StaleVolt.full_last_batch = m_StaleCurr.full_last_batch = false;
@@ -75,6 +77,14 @@ void Engine_GPU::Init()
 	if (m_Backend==NULL)
 		throw std::runtime_error("no GPU backend with a usable device is available for --engine=gpu");
 	cout << "Create FDTD engine (GPU, backend: " << m_Backend->GetName() << ")" << endl;
+	m_DumpPath = 0;
+	if (const char* env = getenv("OPENEMS_GPU_DUMPS"))
+	{
+		const std::string path(env);
+		m_DumpPath = (path=="snapshot") ? 1 : ((path=="host") ? 2 : 0);
+		if (m_DumpPath)
+			cout << "Engine_GPU: OPENEMS_GPU_DUMPS=" << path << ": field dumps " << (m_DumpPath==1 ? "without device sums" : "on the host") << endl;
+	}
 	if (!m_Backend->Init(Op))
 		throw std::runtime_error("Engine_GPU::Init: GPU backend initialization failed");
 
@@ -221,6 +231,8 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
 	if (m_FieldsOnHost)
 		return false;
+	if (m_DumpPath>=2)
+		return false;
 	// not for a sub-grid: the dumps read the base grid, which FinishBatch() of
 	// Engine_GPU_CylinderMultiGrid gave the sub-grid fields on the work stream before
 	if (m_ParentBackend)
@@ -254,7 +266,7 @@ void Engine_GPU::WaitSnapshot(unsigned int slot) const
 
 bool Engine_GPU::CanSnapshotGather() const
 {
-	if (m_ParentBackend)
+	if (m_ParentBackend || (m_DumpPath>=2))
 		return false;
 	return m_Backend->CanSnapshotGather();
 }
@@ -273,7 +285,7 @@ bool Engine_GPU::AddSnapshotGather(bool h_field, const Engine_GatherRegion& regi
 int Engine_GPU::AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count)
 {
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
-	if (m_FieldsOnHost)
+	if (m_FieldsOnHost || (m_DumpPath>=1))
 		return -1;
 	const int id = m_Backend->AddFieldDFT(h_field, region, count);
 	if ((id>=0) && !m_FieldDFTUsed)

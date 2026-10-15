@@ -20,8 +20,9 @@
  Pass criteria (per case)
    the requested backend was created (not a silent fallback)
    device backend: all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
-   device backend, cases dumps_snapshot and multigrid_snapshot: the dumps read field snapshots
-     (FULL_DEVICE_BACKENDS)
+   device backend, cases dumps_snapshot, multigrid_snapshot and dumps_snapshot_host_dft: the
+     dumps read field snapshots (FULL_DEVICE_BACKENDS); dumps_snapshot_host_dft sums the
+     frequency domain dumps from them on the host (OPENEMS_GPU_DUMPS=snapshot)
    device backend, case dumps: the FD dumps are accumulated on the device (DEVICE_DFT_BACKENDS)
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
      a 32 bit index, and as full arrays (FULL_DEVICE_BACKENDS)
@@ -583,7 +584,12 @@ cases = [('excitation',     case_excitation,     True),
          ('dumps_snapshot', case_dumps_snapshot, True),
          ('coax_resonator', case_coax_resonator, True),
          ('coeff_index32',  case_coeff_index32,  True),
-         ('coeff_full',     case_coeff_full,     True)]
+         ('coeff_full',     case_coeff_full,     True),
+         ('dumps_snapshot_host_dft', case_dumps_snapshot, True)]
+
+# environment of a case: the frequency domain dumps of dumps_snapshot without device sums,
+# summed on the host from the snapshots
+CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'}}
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
@@ -595,7 +601,12 @@ engines = ('basic', 'gpu-reference', 'gpu')
 for name, case, on_device in cases:
     print(f'Testing case: {name}')
     paths = {engine: os.path.join(tempfile.gettempdir(), f'GPU_Engine_{name}_{engine}') for engine in engines}
-    logs  = {engine: run_captured(case, paths[engine], engine) for engine in engines}
+    os.environ.update(CASE_ENV.get(name, {}))
+    try:
+        logs = {engine: run_captured(case, paths[engine], engine) for engine in engines}
+    finally:
+        for var in CASE_ENV.get(name, {}):
+            del os.environ[var]
 
     assert 'Create FDTD engine (GPU' not in logs['basic'], \
         f'FAIL [{name}]: engine=basic created the GPU engine'
@@ -619,9 +630,12 @@ for name, case, on_device in cases:
         if on_device and backend in FULL_DEVICE_BACKENDS:
             assert ('Engine_GPU: all extensions run on the device' in logs['gpu']) and ('host fallback' not in logs['gpu']), \
                 f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
-        if name in ('dumps_snapshot', 'multigrid_snapshot') and backend in FULL_DEVICE_BACKENDS:
+        if name in ('dumps_snapshot', 'multigrid_snapshot', 'dumps_snapshot_host_dft') and backend in FULL_DEVICE_BACKENDS:
             assert 'Engine_GPU: field dumps from snapshots' in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not take field snapshots for the dumps'
+        if name=='dumps_snapshot_host_dft':
+            assert 'frequency domain dumps accumulated on the device' not in logs['gpu'], \
+                f'FAIL [{name}]: OPENEMS_GPU_DUMPS=snapshot did not keep the sums off the device'
         if name=='dumps' and backend in DEVICE_DFT_BACKENDS:
             assert 'Engine_GPU: frequency domain dumps accumulated on the device' in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not accumulate the frequency domain dumps'

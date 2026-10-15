@@ -139,6 +139,9 @@ protected:
 	size_t m_SnapshotGatherSize[2];                     //!< their number of raw values
 	bool m_SnapshotGatherSet;                           //!< m_SnapshotGather was passed to the backend
 	bool m_FieldDFTUsed;                                //!< AddFieldDFT() succeeded once
+	//! How far the field dumps may use the device (OPENEMS_GPU_DUMPS, for tests and bug reports):
+	//! 0 (device): device sums and snapshots, 1 (snapshot): no device sums, 2 (host): neither
+	int m_DumpPath;
 
 	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
 	std::vector<GPU_Extension*> m_GPU_exts;
