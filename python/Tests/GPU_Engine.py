@@ -22,6 +22,8 @@
    device backend: all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
    device backend, case dumps_snapshot: the dumps read field snapshots (FULL_DEVICE_BACKENDS)
    device backend, case dumps: the FD dumps are accumulated on the device (DEVICE_DFT_BACKENDS)
+   device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
+     a 32 bit index, and as full arrays (FULL_DEVICE_BACKENDS)
    reference backend: all probe data and field dumps bit-identical
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
@@ -405,6 +407,38 @@ def case_steady_state():
     return FDTD, CSX
 
 
+def graded(n):
+    """ n mesh lines with all spacings different, so most nodes get their own update coefficients """
+    return np.cumsum(1.002**np.arange(n)) * 0.5
+
+
+def coeff_case(lines):
+    """ dipole in a PML box on a graded mesh """
+    FDTD = openEMS(NrTS=150, EndCriteria=0)
+    FDTD.SetGaussExcite(5.5e9, 4.5e9)
+    FDTD.SetBoundaryCond(['PML_8'] * 6)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    for ax, l in zip('xyz', lines):
+        mesh.AddLine(ax, l - l[len(l)//2])
+    CSX.AddExcitation('dipole', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -1], [0, 0, 1])
+    CSX.AddProbe('et', p_type=2).AddPoint([4, 3, 2])
+    CSX.AddProbe('ht', p_type=3).AddPoint([-3, 5, 0])
+    return FDTD, CSX
+
+
+def case_coeff_index32():
+    """ graded in x and y: more than 65536 coefficient sets, a 32 bit set index """
+    return coeff_case([graded(300), graded(300), np.arange(-6, 6.5, 1)])
+
+
+def case_coeff_full():
+    """ graded in all directions: nearly a set per node, the full coefficient arrays """
+    return coeff_case([graded(70), graded(70), graded(70)])
+
+
 def run_captured(case, Sim_Path, engine):
     """ Run a case with the given engine, return the openEMS console output """
     FDTD, CSX = case()
@@ -523,7 +557,9 @@ cases = [('excitation',     case_excitation,     True),
          ('steady_state',   case_steady_state,   True),
          ('dumps',          case_dumps,          True),
          ('dumps_snapshot', case_dumps_snapshot, True),
-         ('coax_resonator', case_coax_resonator, True)]
+         ('coax_resonator', case_coax_resonator, True),
+         ('coeff_index32',  case_coeff_index32,  True),
+         ('coeff_full',     case_coeff_full,     True)]
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
@@ -565,6 +601,12 @@ for name, case, on_device in cases:
         if name=='dumps' and backend in DEVICE_DFT_BACKENDS:
             assert 'Engine_GPU: frequency domain dumps accumulated on the device' in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not accumulate the frequency domain dumps'
+        if name=='coeff_index32' and backend in FULL_DEVICE_BACKENDS:
+            assert 'compressed update coefficients (32 bit index)' in logs['gpu'], \
+                f'FAIL [{name}]: the {backend} backend did not use a 32 bit coefficient set index'
+        if name=='coeff_full' and backend in FULL_DEVICE_BACKENDS:
+            assert 'compressed update coefficients' not in logs['gpu'], \
+                f'FAIL [{name}]: the {backend} backend did not use the full coefficient arrays'
         diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
         print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
         assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
