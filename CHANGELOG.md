@@ -31,6 +31,8 @@ there are unreleased changes. It becomes the next release entry.
   domain and SAR dumps, the SAR calculation, VTK field dumps and the node
   counts of materials, excitations and lumped elements no longer wrap around
   at 2 to 4 billion nodes.
+- A SAR dump kept a second, unused copy of its frequency domain fields:
+  24 bytes per dumped cell and frequency less memory now.
 
 ### Changed
 

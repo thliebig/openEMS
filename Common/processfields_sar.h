@@ -54,9 +54,7 @@ protected:
 
 	std::string m_SAR_method;
 
-	//! frequency domain electric field storage
-	std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*> m_E_FD_Fields;
-	//! frequency domain current density storage
+	//! frequency domain current density storage (the electric field is in m_FD_Fields)
 	std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*> m_J_FD_Fields;
 };
 
