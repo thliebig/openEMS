@@ -220,7 +220,8 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
 	if (m_FieldsOnHost)
 		return false;
-	// not for a sub-grid, see Engine_GPU_CylinderMultiGrid::SnapshotFields()
+	// not for a sub-grid: the dumps read the base grid, which FinishBatch() of
+	// Engine_GPU_CylinderMultiGrid gave the sub-grid fields on the work stream before
 	if (m_ParentBackend)
 		return false;
 	// A snapshot has a fixed cost (a separate command buffer or stream, the background thread), which

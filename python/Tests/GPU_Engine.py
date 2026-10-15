@@ -20,7 +20,8 @@
  Pass criteria (per case)
    the requested backend was created (not a silent fallback)
    device backend: all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
-   device backend, case dumps_snapshot: the dumps read field snapshots (FULL_DEVICE_BACKENDS)
+   device backend, cases dumps_snapshot and multigrid_snapshot: the dumps read field snapshots
+     (FULL_DEVICE_BACKENDS)
    device backend, case dumps: the FD dumps are accumulated on the device (DEVICE_DFT_BACKENDS)
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
      a 32 bit index, and as full arrays (FULL_DEVICE_BACKENDS)
@@ -398,6 +399,27 @@ def case_multigrid_wedge():
     return multigrid([14], np.linspace(-np.pi/2, np.pi/2, 25), z_bc='PML_8')
 
 
+def case_multigrid_snapshot():
+    """ one multi-grid level on a grid large enough for field snapshots (>= 512k nodes):
+        the dumps read the base grid after the sub-grid fields were interpolated into it """
+    FDTD = openEMS(CoordSystem=1, NrTS=300, EndCriteria=0, MultiGrid=[20])
+    FDTD.SetGaussExcite(3e9, 2e9)
+    FDTD.SetBoundaryCond(['PEC'] * 6)
+    CSX = ContinuousStructure(CoordSystem=1)
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('r', np.arange(0, 60.5, 1))
+    mesh.AddLine('a', (np.arange(129) - 64) * 2*np.pi/128)
+    mesh.AddLine('z', np.arange(0, 40.25, 0.5))
+    CSX.AddExcitation('inner', exc_type=0, exc_val=[0, 0, 1]).AddBox([6, 0, 10], [6, 0, 30])
+    CSX.AddExcitation('outer', exc_type=0, exc_val=[1, 0, 0]).AddBox([30, np.pi/2, 20], [36, np.pi/2, 20])
+    CSX.AddProbe('et', p_type=2).AddPoint([10, np.pi/4, 18])
+    CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([0, -np.pi, 20], [60, np.pi, 20])
+    CSX.AddDump('Ht', dump_type=1, dump_mode=2, file_type=1).AddBox([0, 0, 0], [60, 0, 40])
+    return FDTD, CSX
+
+
 def case_steady_state():
     FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
     CSX = ContinuousStructure()
@@ -552,6 +574,7 @@ cases = [('excitation',     case_excitation,     True),
          ('multigrid',      case_multigrid,       True),
          ('multigrid2',     case_multigrid2,      True),
          ('multigrid_wedge', case_multigrid_wedge, True),
+         ('multigrid_snapshot', case_multigrid_snapshot, True),
          ('dispersive_pml', case_dispersive_pml, True),
          ('3d_mixed',       case_3d_mixed,       True),
          ('steady_state',   case_steady_state,   True),
@@ -595,7 +618,7 @@ for name, case, on_device in cases:
         if on_device and backend in FULL_DEVICE_BACKENDS:
             assert ('Engine_GPU: all extensions run on the device' in logs['gpu']) and ('host fallback' not in logs['gpu']), \
                 f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
-        if name=='dumps_snapshot' and backend in FULL_DEVICE_BACKENDS:
+        if name in ('dumps_snapshot', 'multigrid_snapshot') and backend in FULL_DEVICE_BACKENDS:
             assert 'Engine_GPU: field dumps from snapshots' in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not take field snapshots for the dumps'
         if name=='dumps' and backend in DEVICE_DFT_BACKENDS:
