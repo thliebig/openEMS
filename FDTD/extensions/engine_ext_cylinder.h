@@ -15,8 +15,8 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ENGINE_CYLINDER_H
-#define ENGINE_CYLINDER_H
+#ifndef ENGINE_EXT_CYLINDER_H
+#define ENGINE_EXT_CYLINDER_H
 
 #include "FDTD/engine.h"
 #include "engine_extension.h"
@@ -46,4 +46,4 @@ protected:
 	bool CC_R0_included;
 };
 
-#endif // ENGINE_CYLINDER_H
+#endif // ENGINE_EXT_CYLINDER_H
