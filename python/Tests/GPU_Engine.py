@@ -149,9 +149,9 @@ def case_dumps_snapshot():
     FDTD.SetCSX(CSX)
     mesh = CSX.GetGrid()
     mesh.SetDeltaUnit(unit)
-    mesh.AddLine('x', np.linspace(-50, 50, 100))
-    mesh.AddLine('y', np.linspace(-40, 40, 80))
-    mesh.AddLine('z', np.linspace(-36, 36, 72))
+    mesh.AddLine('x', np.linspace(-50, 50, 101))   # with a line at 0 for the excitation
+    mesh.AddLine('y', np.linspace(-40, 40, 81))
+    mesh.AddLine('z', np.linspace(-36, 36, 73))
     CSX.AddMaterial('diel', epsilon=4, kappa=0.01).AddBox([-10, -8, -5], [6, 9, 7])
     CSX.AddExcitation('d', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -2], [0, 0, 2])
     CSX.AddProbe('et', p_type=2).AddPoint([5, 5, 5])
@@ -515,6 +515,7 @@ def compare_outputs(path_a, path_b, rtol=0):
             # field data relative to the peak of the whole dump, not of each (possibly decayed) timestep
             fields = [n for n in names if n.startswith('FieldData')]
             peak = max([np.max(np.abs(a[n][()])) for n in fields] or [0])
+            assert peak > 0, f'FAIL: the field dump {f} of {path_a} is zero, the comparison would test nothing'
             for n in names:
                 if n not in b:
                     diff.append((f'{f}:{n}', np.inf))
