@@ -23,7 +23,8 @@
    device backend, cases dumps_snapshot, multigrid_snapshot and dumps_snapshot_host_dft: the
      dumps read field snapshots (FULL_DEVICE_BACKENDS); dumps_snapshot_host_dft sums the
      frequency domain dumps from them on the host (OPENEMS_GPU_DUMPS=snapshot)
-   device backend, case dumps: the FD dumps are accumulated on the device (DEVICE_DFT_BACKENDS)
+   device backend, cases dumps and sar: the FD dumps (the E field of the SAR) are accumulated on
+     the device (DEVICE_DFT_BACKENDS)
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
      a 32 bit index, and as full arrays (FULL_DEVICE_BACKENDS)
    reference backend: all probe data and field dumps bit-identical
@@ -160,6 +161,24 @@ def case_dumps_snapshot():
     CSX.AddDump('td_cell', dump_type=0, dump_mode=2, file_type=1).AddBox([-20, -20, -10], [20, 20, 10])
     for t in (0, 1):
         CSX.AddDump(f'fd_{t}', dump_type=10+t, dump_mode=1, file_type=1, frequency=[3e9, 6e9]).AddBox([-30, -30, -5], [30, 30, 5])
+    return FDTD, CSX
+
+
+def case_sar():
+    """ local SAR of a lossy block: the E field summed like a frequency domain E dump (on the device) """
+    FDTD = openEMS(NrTS=400, EndCriteria=0)
+    FDTD.SetGaussExcite(2e9, 1.5e9)
+    FDTD.SetBoundaryCond(['PML_8'] * 6)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    for ax in 'xyz':
+        mesh.AddLine(ax, np.arange(-20, 20.5, 1))
+    CSX.AddMaterial('tissue', epsilon=40, kappa=0.8, density=1000).AddBox([-8, -8, -8], [8, 8, 8])
+    CSX.AddExcitation('dipole', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -12], [0, 0, -10])
+    CSX.AddProbe('et', p_type=2).AddPoint([3, 2, 0])
+    CSX.AddDump('SAR', dump_type=20, file_type=1, frequency=[1.5e9, 2.5e9]).AddBox([-20, -20, -20], [20, 20, 20])
     return FDTD, CSX
 
 
@@ -585,7 +604,8 @@ cases = [('excitation',     case_excitation,     True),
          ('coax_resonator', case_coax_resonator, True),
          ('coeff_index32',  case_coeff_index32,  True),
          ('coeff_full',     case_coeff_full,     True),
-         ('dumps_snapshot_host_dft', case_dumps_snapshot, True)]
+         ('dumps_snapshot_host_dft', case_dumps_snapshot, True),
+         ('sar',            case_sar,            True)]
 
 # environment of a case: the frequency domain dumps of dumps_snapshot without device sums,
 # summed on the host from the snapshots
@@ -636,7 +656,7 @@ for name, case, on_device in cases:
         if name=='dumps_snapshot_host_dft':
             assert 'frequency domain dumps accumulated on the device' not in logs['gpu'], \
                 f'FAIL [{name}]: OPENEMS_GPU_DUMPS=snapshot did not keep the sums off the device'
-        if name=='dumps' and backend in DEVICE_DFT_BACKENDS:
+        if name in ('dumps', 'sar') and backend in DEVICE_DFT_BACKENDS:
             assert 'Engine_GPU: frequency domain dumps accumulated on the device' in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not accumulate the frequency domain dumps'
         if name=='coeff_index32' and backend in FULL_DEVICE_BACKENDS:

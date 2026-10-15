@@ -371,12 +371,13 @@ protected:
 
 const Engine_Field_Gather* ProcessFields::GetGather()
 {
-	if ((m_DumpType!=E_FIELD_DUMP) && (m_DumpType!=H_FIELD_DUMP))
+	const DumpType type = FieldDumpType();
+	if ((type!=E_FIELD_DUMP) && (type!=H_FIELD_DUMP))
 		return NULL;
 	if (!m_GatherTried)
 	{
 		m_GatherTried = true;
-		m_Gather = m_Eng_Interface->CreateFieldGather(m_DumpType==H_FIELD_DUMP, numLines, posLines);
+		m_Gather = m_Eng_Interface->CreateFieldGather(type==H_FIELD_DUMP, numLines, posLines);
 	}
 	return m_Gather;
 }
@@ -387,7 +388,7 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const floa
 	field.Init("Field", numLines);
 
 	double* (Engine_Interface_Base::*getField)(const unsigned int*, double*) const = NULL;
-	switch (m_DumpType)
+	switch (FieldDumpType())
 	{
 	case E_FIELD_DUMP:
 		getField = &Engine_Interface_Base::GetEField;

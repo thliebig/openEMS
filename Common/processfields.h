@@ -108,6 +108,8 @@ protected:
 	bool CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const float* src=NULL);
 	//! The precomputed evaluation of the dumped nodes, NULL if there is none
 	const Engine_Field_Gather* GetGather();
+	//! The field the dump is computed from (CalcField(), GetGather()): the dump type, see ProcessFieldsSAR
+	virtual DumpType FieldDumpType() const {return m_DumpType;}
 };
 
 #endif // PROCESSFIELDS_H
