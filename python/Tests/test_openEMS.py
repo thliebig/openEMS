@@ -306,6 +306,16 @@ class Test_Run(unittest.TestCase):
         self.fdtd.Run(os.path.join(self.tmp.name, 'link'), setup_only=True, verbose=0)
         self.assertInDir(os.path.join(self.tmp.name, 'real'))
 
+    def test_flush_to_zero_restored(self):
+        # the engines flush denormals to zero during the run only, not in the calling process
+        tiny = np.float32(1e-39)   # a float32 denormal
+        if not tiny*np.float32(2) > 0:
+            self.skipTest('denormals are flushed already')
+        csx = self.fdtd.GetCSX()
+        csx.AddExcitation('exc', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -2], [0, 0, 2])
+        self.fdtd.Run('sim', verbose=0)
+        self.assertGreater(tiny*np.float32(2), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

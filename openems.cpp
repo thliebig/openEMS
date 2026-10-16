@@ -21,6 +21,7 @@
 #include <fstream>
 #include "tools/signal.h"
 #include "tools/useful.h"
+#include "tools/denormal.h"
 #include "FDTD/operator_cylinder.h"
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
@@ -1461,6 +1462,9 @@ void openEMS::RunFDTD()
 
 	Signal::SetupHandlerForSIGINT(SIGNAL_EXIT_GRACEFUL);
 	RestoreSIGINT restoreSIGINT;
+	// every engine flushes denormals to zero (fast, and the same results for all engines), and
+	// the caller gets its own setting back, e.g. Python for its post-processing
+	Denormal::FlushToZero flushToZero;
 
 	//special handling of a field processing, needed to realize the end criteria...
 	ProcessFields* ProcField = new ProcessFields(NewEngineInterface());

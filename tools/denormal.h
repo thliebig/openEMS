@@ -22,7 +22,21 @@
 
 namespace Denormal
 {
+	//! Flush to zero on the calling thread, for good (e.g. worker threads of the run)
 	inline void Disable();
+
+	//! Flush to zero on the calling thread while it exists, then the previous setting again:
+	//! a run does not change the floating point behaviour of the program that called it
+	class FlushToZero
+	{
+	public:
+		FlushToZero();
+		~FlushToZero();
+		FlushToZero(const FlushToZero&) = delete;
+		FlushToZero& operator=(const FlushToZero&) = delete;
+	private:
+		unsigned int m_OldMXCSR;
+	};
 };
 
 inline void Denormal::Disable()
@@ -36,6 +50,22 @@ inline void Denormal::Disable()
 
 	// write the new MXCSR setting to the MXCSR
 	_mm_setcsr( newMXCSR );
+#endif
+}
+
+inline Denormal::FlushToZero::FlushToZero()
+{
+	m_OldMXCSR = 0;
+#if BOOST_ARCH_X86 && !defined(OPENEMS_NO_FLUSH_TO_ZERO)
+	m_OldMXCSR = _mm_getcsr();
+	Disable();
+#endif
+}
+
+inline Denormal::FlushToZero::~FlushToZero()
+{
+#if BOOST_ARCH_X86 && !defined(OPENEMS_NO_FLUSH_TO_ZERO)
+	_mm_setcsr(m_OldMXCSR);
 #endif
 }
 

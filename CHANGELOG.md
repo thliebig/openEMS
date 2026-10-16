@@ -15,6 +15,10 @@ there are unreleased changes. It becomes the next release entry.
 
 ### Fixed
 
+- A run switched flush-to-zero on in the calling process and left it on: in
+  Python, numpy computations after `Run()` lost their denormal (subnormal)
+  values, and the results of a following run with the basic engine depended
+  on it. Every engine now flushes denormals to zero during the run only.
 - Python: an option passed as `False` to `Run()`, e.g. `debug_PEC=False`, made
   openEMS ignore all options after it without a message, so that for example
   a following `engine=...` or `numThreads=...` had no effect.

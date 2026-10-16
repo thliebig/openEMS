@@ -16,7 +16,6 @@
 */
 
 #include "engine_sse.h"
-#include "tools/denormal.h"
 
 using std::cout;
 using std::endl;
@@ -38,9 +37,6 @@ Engine_sse::Engine_sse(const Operator_sse* op) : Engine(op)
 	f4_volt_ptr = NULL;
 	f4_curr_ptr = NULL;
 	numVectors =  ceil((double)numLines[2]/4.0);
-
-	// speed up the calculation of denormal floating point values (flush-to-zero)
-	Denormal::Disable();
 }
 
 Engine_sse::~Engine_sse()
