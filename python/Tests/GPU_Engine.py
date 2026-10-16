@@ -244,7 +244,7 @@ def case_mur():
 
 
 def case_materials():
-    """ Drude, Lorentz and Debye materials, a magnetic Drude material and a conducting sheet in a PML channel """
+    """ Drude, Lorentz and two Debye materials (two poles, one lossy pole), a magnetic Drude material and a conducting sheet in a PML channel """
     FDTD = openEMS(NrTS=3000, EndCriteria=0)
     CSX = ContinuousStructure()
     FDTD.SetCSX(CSX)
@@ -265,6 +265,13 @@ def case_materials():
     debye.SetDispersiveMaterialProperty(1, eps_delta=0.5, eps_relax=1e-10)
     CSX.AddProperty(debye)
     debye.AddBox([0, 0, 46], [1, 1, 51], priority=10)
+    # a lossy single-pole Debye next to the two-pole one: the device keeps two poles for all of
+    # their cells, those of this one padded
+    debye1 = CSPropDebyeMaterial(CSX.GetParameterSet(), order=1, epsilon=3, kappa=0.05)
+    debye1.SetName('debye1')
+    debye1.SetDispersiveMaterialProperty(0, eps_delta=2, eps_relax=6e-11)
+    CSX.AddProperty(debye1)
+    debye1.AddBox([0, 0, 58], [1, 1, 63], priority=10)
     CSX.AddConductingSheet('sheet', conductivity=1e5, thickness=10e-6).AddBox([0, 0, 55], [1, 1, 55], priority=10)
     return FDTD, CSX
 
