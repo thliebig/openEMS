@@ -452,15 +452,14 @@ bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const floa
 	const size_t lines = (size_t)numLines[0]*numLines[1];
 	const size_t nodes = lines*numLines[2];
 	const size_t num_threads = std::min<size_t>(std::min<size_t>(AvailableThreads(), nodes/1024), lines);
-	if (gather && !src)
-		m_Eng_Interface->PrepareFieldAccess();   // reads the host mirror directly
+	// the gather reads the host mirror directly, and threads must not update it concurrently
+	if (!src && (gather || num_threads>1))
+		m_Eng_Interface->PrepareFieldAccess();
 	if (num_threads<=1)
 	{
 		calc(0, lines);
 		return true;
 	}
-	if (!src)
-		m_Eng_Interface->PrepareFieldAccess();
 	DumpThreads::Get().Run(num_threads, [&](size_t t) {calc(lines*t/num_threads, lines*(t+1)/num_threads);});
 	return true;
 }
