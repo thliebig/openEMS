@@ -96,9 +96,11 @@ void ProcessFieldsSAR::InitProcess()
 
 ProcessFields::DumpType ProcessFieldsSAR::FieldDumpType() const
 {
-	if (m_UseCellKappa && (m_DumpType>=SAR_LOCAL_DUMP))
-		return E_FIELD_DUMP;
-	return m_DumpType;   // E or J, see Process()
+	// Process() switches the dump type to E and J while it evaluates them
+	if ((m_DumpType==E_FIELD_DUMP) || (m_DumpType==J_FIELD_DUMP))
+		return m_DumpType;
+	// a SAR type: computed from E alone with cell conductivity, otherwise from E and J
+	return m_UseCellKappa ? E_FIELD_DUMP : m_DumpType;
 }
 
 int ProcessFieldsSAR::Process()
