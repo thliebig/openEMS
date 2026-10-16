@@ -91,7 +91,7 @@ void HIP_Ext_SteadyState::Apply2Voltages()
 		CheckPeriod(rel_pos);
 }
 
-// same as the period check in Engine_Ext_SteadyState::Apply2Voltages()
+// the check of Engine_Ext_SteadyState, on the records downloaded from the device
 void HIP_Ext_SteadyState::CheckPeriod(unsigned int rel_pos)
 {
 	const unsigned int p = m_Period;
@@ -102,49 +102,8 @@ void HIP_Ext_SteadyState::CheckPeriod(unsigned int rel_pos)
 	HIP_Check(hipMemcpyAsync(m_HostRecords.data(), m_Records, m_HostRecords.size()*sizeof(float), hipMemcpyDeviceToHost, d->Stream()), "copy the steady-state records");
 	d->Flush();
 
-	bool no_valid = true;
-	double& last_max_diff = m_Eng_SSD->m_last_max_diff;
-	last_max_diff = 0;
-	double curr_total_energy = m_Eng_SSD->m_Eng_Interface->CalcFastEnergy();
-	if (m_Eng_SSD->last_total_energy>0)
-	{
-		last_max_diff = std::fabs(curr_total_energy-m_Eng_SSD->last_total_energy)/m_Eng_SSD->last_total_energy;
-		no_valid = false;
-	}
-	m_Eng_SSD->last_total_energy = curr_total_energy;
-
-	unsigned int old_pos = 0;
-	unsigned int new_pos = p;
-	if (rel_pos<=p)
-	{
-		new_pos = 0;
-		old_pos = p;
-	}
-
-	std::vector<double> curr_pow(m_Count, 0), diff_pow(m_Count, 0);
-	double max_pow = 0;
-	for (unsigned int n=0; n<m_Count; ++n)
-	{
-		const float* buf = m_HostRecords.data() + n*2*(size_t)p;
-		for (unsigned int nt=0; nt<p; ++nt)
-		{
-			const double b_new = buf[nt+new_pos];
-			const double b_old = buf[nt+old_pos];
-			curr_pow[n] += b_new*b_new;
-			diff_pow[n] += (b_old-b_new)*(b_old-b_new);
-		}
-		max_pow = std::max(max_pow, curr_pow[n]);
-	}
-	for (unsigned int n=0; n<m_Count; ++n)
-	{
-		if (curr_pow[n]>max_pow*1e-2)
-		{
-			last_max_diff = std::max(last_max_diff, diff_pow[n]/curr_pow[n]);
-			no_valid = false;
-		}
-	}
-	if ((no_valid) || (last_max_diff>1))
-		last_max_diff = 1;
+	const float* records = m_HostRecords.data();
+	m_Eng_SSD->CheckPeriod(rel_pos, [records, p](size_t n, unsigned int t) {return (double)records[n*2*(size_t)p + t];});
 }
 
 GPU_Extension* HIP_CreateExt_SteadyState(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng)
