@@ -32,7 +32,7 @@
 
   The field dumps are copied on the device at a snapshot (see SnapshotFields())
   and evaluated on the dump thread while the device keeps stepping; the frequency
-  domain dumps are summed there too, where CUDA sums them on the device.
+  domain dumps are summed there too, where HIP sums them on the device.
 
   This header is plain C++, the Metal state is kept in Impl (see metal_internal.h).
   */
