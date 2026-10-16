@@ -204,7 +204,8 @@ number moved up and patch releases now have somewhere to go.
 - Default thread counts (multithreaded engine, nf2ff, SAR) now respect CPU
   affinity and cgroup CPU quotas (Linux only) instead of always using every
   CPU of the host, so a container or systemd unit with a CPU limit no longer
-  oversubscribes it.
+  oversubscribes it. They also follow the `numThreads` option of a run: the
+  field dumps, and the NF2FF and SAR calculations of the same Python process.
 - Python `CalcNF2FF()` reads an existing result file by default
   (`read_cached=True`), as its docstring already stated and as the Octave
   `CalcNF2FF` (`'Mode', 0`) always did. Pass `read_cached=False` to force

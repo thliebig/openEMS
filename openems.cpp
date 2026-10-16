@@ -370,6 +370,7 @@ void openEMS::SetLibraryArguments(std::vector<std::string> allOptions)
 
 void openEMS::SetNumberOfThreads(int val)
 {
+	SetThreadLimit(0);   // clamp to the machine, not to the limit of a previous run
 	if ((val<0) || (val>(int)AvailableThreads()))
 		val = AvailableThreads();
 	m_engine_numThreads = val;
@@ -810,6 +811,8 @@ void openEMS::SetupCylinderMultiGrid(std::string val)
 
 bool openEMS::SetupOperator()
 {
+	// what defaults to AvailableThreads() (GPU operator build, field dumps, SAR, nf2ff) honours numThreads
+	SetThreadLimit(m_engine_numThreads);
 	if (CylinderCoords)
 	{
 		bool gpu = (m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference);

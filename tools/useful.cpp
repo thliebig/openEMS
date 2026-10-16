@@ -157,7 +157,11 @@ unsigned int CgroupCPUQuota()
 #endif
 }
 
-unsigned int AvailableThreads()
+namespace
+{
+unsigned int g_ThreadLimit = 0;
+
+unsigned int MachineThreads()
 {
 	static unsigned int threads = 0;
 	if (threads)
@@ -183,6 +187,18 @@ unsigned int AvailableThreads()
 #endif
 	threads = (n>0) ? n : 1;
 	return threads;
+}
+}
+
+unsigned int AvailableThreads()
+{
+	const unsigned int n = MachineThreads();
+	return ((g_ThreadLimit>0) && (g_ThreadLimit<n)) ? g_ThreadLimit : n;
+}
+
+void SetThreadLimit(unsigned int n)
+{
+	g_ThreadLimit = n;
 }
 
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty)

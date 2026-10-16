@@ -17,6 +17,8 @@
 #
 
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -315,6 +317,39 @@ class Test_Run(unittest.TestCase):
         csx.AddExcitation('exc', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -2], [0, 0, 2])
         self.fdtd.Run('sim', verbose=0)
         self.assertGreater(tiny*np.float32(2), 0)
+
+
+_NUM_THREADS_SCRIPT = """
+import os, sys
+from CSXCAD import ContinuousStructure
+from openEMS.openEMS import openEMS
+fdtd = openEMS(NrTS=20, EndCriteria=0)
+fdtd.SetGaussExcite(1e9, 1e9)
+fdtd.SetBoundaryCond(['PEC'] * 6)
+csx = ContinuousStructure()
+fdtd.SetCSX(csx)
+grid = csx.GetGrid()
+grid.SetDeltaUnit(1e-3)
+for d in 'xyz':
+    grid.SetLines(d, range(40))
+csx.AddExcitation('ex', 0, [0, 0, 1]).AddBox([10, 10, 10], [10, 10, 12])
+csx.AddDump('Et', dump_type=0, file_type=1).AddBox([0, 0, 0], [39, 39, 39])
+before = len(os.listdir('/proc/self/task'))
+fdtd.Run(sys.argv[1], verbose=0, numThreads=2)
+assert os.path.isfile(os.path.join(sys.argv[1], 'Et.h5'))
+print(len(os.listdir('/proc/self/task')) - before)
+"""
+
+
+@unittest.skipUnless(os.path.isdir('/proc/self/task'), 'needs /proc/self/task')
+class Test_NumThreads(unittest.TestCase):
+    def test_dump_threads(self):
+        # the field dump threads stay alive after the run: with numThreads=2 at most
+        # one of them, plus the background dump writer
+        with tempfile.TemporaryDirectory() as tmp:
+            out = subprocess.run([sys.executable, '-c', _NUM_THREADS_SCRIPT, tmp],
+                                 capture_output=True, text=True, check=True, cwd=tmp)
+        self.assertLessEqual(int(out.stdout.split()[-1]), 2)
 
 
 if __name__ == '__main__':
