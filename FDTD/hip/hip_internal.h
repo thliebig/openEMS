@@ -142,16 +142,16 @@ struct GPU_Backend_HIP::Impl
 	bool DecideFusedStep();
 
 	//! Field snapshots (see GPU_Backend_HIP::SnapshotFields()): the raw values the dumps read, copied on
-	//! the device (gather_region) and downloaded on the copy stream into one of two page-locked host
-	//! slots while the next timesteps run
+	//! the device (gather_region) and downloaded on the copy stream into a page-locked host buffer
+	//! while the next timesteps run
 	std::vector<HIP_GatherRegion> snap_regions[2];   //!< of the voltages, of the currents
 	std::vector<void*> snap_lines;    //!< device line tables of the regions
 	unsigned int snap_nv, snap_n;     //!< number of raw voltages, of all raw values
 	float* snap_dev;                  //!< the raw values
-	float* snap_host[2];              //!< the raw values, for each slot
+	float* snap_host;                 //!< the downloaded raw values
 	hipEvent_t snap_evaluated;       //!< snap_dev is written
-	hipEvent_t snap_done[2];         //!< the download into each slot is done
-	int snap_last;                    //!< slot of the last download from snap_dev, -1: none
+	hipEvent_t snap_done;            //!< the download is done
+	bool snap_taken;                  //!< a download from snap_dev was started
 	void FreeSnapshots();
 
 	//! Sums of weighted raw values (frequency domain dumps, see GPU_Backend_HIP::AddFieldDFT())

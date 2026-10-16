@@ -238,8 +238,8 @@ struct GPU_Backend_Metal::Impl
 	id<MTLBuffer> vv, vi, ii, iv;
 	id<MTLBuffer> index, coeff;
 	id<MTLBuffer> energy;           //!< per-line energy sums, see GPU_Backend_Metal::CalcFastEnergy()
-	id<MTLBuffer> snap_volt[2], snap_curr[2];   //!< field snapshots, see GPU_Backend_Metal::SnapshotFields()
-	id<MTLCommandBuffer> snap_cmd[2];           //!< the command buffers copying them
+	id<MTLBuffer> snap_volt, snap_curr;         //!< the field snapshot, see GPU_Backend_Metal::SnapshotFields()
+	id<MTLCommandBuffer> snap_cmd;              //!< the command buffer copying it
 	bool snap_failed;                           //!< not enough memory for the snapshots: the dumps read the fields
 
 	//! The main updates cover the nodes in [main_start, main_stop), the fused UPML kernels the others (see metal_ext_upml.mm)

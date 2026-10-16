@@ -118,10 +118,9 @@ int ProcessFieldsTD::Process()
 	{
 		const unsigned int ts = m_Eng_Interface->GetNumberOfTimesteps();
 		const float time = (float)m_Eng_Interface->GetTime(m_dualTime);
-		int slot = -1;
 		const float *volt = NULL, *curr = NULL;
 		const float* src = NULL;
-		if (m_Snapshots && AsyncDumps::Get().Snapshot(m_Eng_Interface, ts, slot, volt, curr))
+		if (m_Snapshots && AsyncDumps::Get().Snapshot(m_Eng_Interface, ts, volt, curr))
 			src = (m_DumpType==H_FIELD_DUMP) ? curr : volt;
 		ArrayLib::ArrayNIJK<float>* field = NULL;
 		if (!src)
@@ -136,10 +135,10 @@ int ProcessFieldsTD::Process()
 			}
 		}
 		m_AsyncUsed = true;
-		AsyncDumps::Get().Push(this, slot, [this, ts, time, field, src, slot]()
+		AsyncDumps::Get().Push(this, src!=NULL, [this, ts, time, field, src]()
 		{
 			if (src)
-				m_Eng_Interface->WaitFieldSnapshot(slot);   // the copy may still run on the device
+				m_Eng_Interface->WaitFieldSnapshot();   // the copy may still run on the device
 			if (!WriteHDF5(ts, time, field, src))
 				m_AsyncFailed = true;
 			delete field;

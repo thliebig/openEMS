@@ -44,37 +44,33 @@ public:
 	}
 
 	//! Snapshot of the fields of timestep \a ts, shared by all dumps of that timestep; false if the engine has none
-	bool Snapshot(Engine_Interface_Base* eng_if, unsigned int ts, int &slot, const float* &volt, const float* &curr)
+	bool Snapshot(Engine_Interface_Base* eng_if, unsigned int ts, const float* &volt, const float* &curr)
 	{
 		std::unique_lock<std::mutex> lock(m_Mutex);
 		const void* id = eng_if->GetEngineID();
-		if ((m_Current>=0) && (m_Slots[m_Current].id==id) && (m_Slots[m_Current].ts==ts))
+		if ((m_Snap.id==id) && (m_Snap.ts==ts))
 		{
-			slot = m_Current;
-			volt = m_Slots[slot].volt;
-			curr = m_Slots[slot].curr;
+			volt = m_Snap.volt;
+			curr = m_Snap.curr;
 			return true;
 		}
-		// the two slots alternate, wait for the tasks reading the other one
-		const int next = (m_Current<0) ? 0 : 1-m_Current;
-		m_Changed.wait(lock, [&] {return m_Slots[next].refs==0;});
-		m_Slots[next].id = NULL;
+		// one snapshot: wait for the tasks still reading the last one
+		m_Changed.wait(lock, [&] {return m_Snap.refs==0;});
+		m_Snap.id = NULL;
 		lock.unlock();
-		const bool ok = eng_if->TakeFieldSnapshot(next, volt, curr);   // on the main thread, which drives the engine
+		const bool ok = eng_if->TakeFieldSnapshot(volt, curr);   // on the main thread, which drives the engine
 		lock.lock();
 		if (!ok)
 			return false;
-		m_Slots[next].id = id;
-		m_Slots[next].ts = ts;
-		m_Slots[next].volt = volt;
-		m_Slots[next].curr = curr;
-		m_Current = next;
-		slot = next;
+		m_Snap.id = id;
+		m_Snap.ts = ts;
+		m_Snap.volt = volt;
+		m_Snap.curr = curr;
 		return true;
 	}
 
-	//! Run \a fn in the background for \a owner, reading snapshot \a slot (-1: none)
-	void Push(const void* owner, int slot, const std::function<void()> &fn)
+	//! Run \a fn in the background for \a owner, reading the snapshot if \a snapshot
+	void Push(const void* owner, bool snapshot, const std::function<void()> &fn)
 	{
 		std::unique_lock<std::mutex> lock(m_Mutex);
 		if (!m_Started)
@@ -85,10 +81,10 @@ public:
 		// one task per dump: tasks without a snapshot hold their field data, so a dump whose
 		// previous write is not done yet makes the engine wait instead of queueing more copies
 		m_Changed.wait(lock, [&] {return m_Pending[owner]==0;});
-		if (slot>=0)
-			++m_Slots[slot].refs;
+		if (snapshot)
+			++m_Snap.refs;
 		++m_Pending[owner];
-		m_Tasks.push_back(Task{owner, slot, fn});
+		m_Tasks.push_back(Task{owner, snapshot, fn});
 		m_Changed.notify_all();
 	}
 
@@ -98,24 +94,20 @@ public:
 		std::unique_lock<std::mutex> lock(m_Mutex);
 		m_Changed.wait(lock, [&] {return m_Pending[owner]==0;});
 		m_Pending.erase(owner);
-		// no tasks left (e.g. at the end of a run): forget the snapshots, the engine may be
+		// no tasks left (e.g. at the end of a run): forget the snapshot, the engine may be
 		// deleted and a new one get the same address
-		if (m_Tasks.empty() && (m_Slots[0].refs==0) && (m_Slots[1].refs==0))
-		{
-			m_Slots[0] = Slot();
-			m_Slots[1] = Slot();
-			m_Current = -1;
-		}
+		if (m_Tasks.empty() && (m_Snap.refs==0))
+			m_Snap = Snap();
 	}
 
 protected:
 	struct Task
 	{
 		const void* owner;
-		int slot;
+		bool snapshot;
 		std::function<void()> fn;
 	};
-	struct Slot
+	struct Snap
 	{
 		const void* id = NULL;
 		unsigned int ts = 0;
@@ -136,8 +128,8 @@ protected:
 			lock.unlock();
 			task.fn();
 			lock.lock();
-			if (task.slot>=0)
-				--m_Slots[task.slot].refs;
+			if (task.snapshot)
+				--m_Snap.refs;
 			--m_Pending[task.owner];
 			m_Changed.notify_all();
 		}
@@ -147,8 +139,7 @@ protected:
 	std::condition_variable m_Changed;
 	std::deque<Task> m_Tasks;
 	std::map<const void*, int> m_Pending;
-	Slot m_Slots[2];
-	int m_Current = -1;
+	Snap m_Snap;
 	bool m_Started = false;
 };
 

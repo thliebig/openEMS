@@ -545,21 +545,21 @@ void GPU_Backend_Metal::Synchronize()
 }
 
 // The dump thread reads the fields (and sums the frequency domain dumps) while the engine keeps
-// stepping, so the device copies them into a slot of its own instead of sharing the field buffers.
-bool GPU_Backend_Metal::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
+// stepping, so the device copies them into buffers of their own instead of sharing the field buffers.
+bool GPU_Backend_Metal::SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
 {
-	if ((slot>1) || d->snap_failed)
+	if (d->snap_failed)
 		return false;
 	const size_t bytes = 3*d->numCells*sizeof(float);
-	if (!d->snap_volt[slot])
+	if (!d->snap_volt)
 	{
 		// optional, allocated during the run: without them the dumps read the shared field buffers
-		d->snap_volt[slot] = [d->device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
-		d->snap_curr[slot] = [d->device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
-		if (!d->snap_volt[slot] || !d->snap_curr[slot])
+		d->snap_volt = [d->device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
+		d->snap_curr = [d->device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
+		if (!d->snap_volt || !d->snap_curr)
 		{
-			d->snap_volt[slot] = nil;
-			d->snap_curr[slot] = nil;
+			d->snap_volt = nil;
+			d->snap_curr = nil;
 			d->snap_failed = true;
 			std::cout << "GPU_Backend_Metal: not enough memory for field snapshots, the dumps read the fields" << std::endl;
 			return false;
@@ -571,22 +571,22 @@ bool GPU_Backend_Metal::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &vol
 	[enc setComputePipelineState:pso];
 	[enc setBuffer:d->volt offset:0 atIndex:0];
 	[enc setBuffer:d->curr offset:0 atIndex:1];
-	[enc setBuffer:d->snap_volt[slot] offset:0 atIndex:2];
-	[enc setBuffer:d->snap_curr[slot] offset:0 atIndex:3];
+	[enc setBuffer:d->snap_volt offset:0 atIndex:2];
+	[enc setBuffer:d->snap_curr offset:0 atIndex:3];
 	[enc setBytes:&count length:sizeof(count) atIndex:4];
 	d->Dispatch(pso, count);
 	// commit without waiting: the next timesteps are encoded into a new command buffer,
 	// which the device executes after this one
-	d->snap_cmd[slot] = d->ctx->Commit();
-	volt = static_cast<const FDTD_FLOAT*>([d->snap_volt[slot] contents]);
-	curr = static_cast<const FDTD_FLOAT*>([d->snap_curr[slot] contents]);
+	d->snap_cmd = d->ctx->Commit();
+	volt = static_cast<const FDTD_FLOAT*>([d->snap_volt contents]);
+	curr = static_cast<const FDTD_FLOAT*>([d->snap_curr contents]);
 	return true;
 }
 
 // called from the dump thread, while the main thread encodes the next timesteps
-void GPU_Backend_Metal::WaitSnapshot(unsigned int slot)
+void GPU_Backend_Metal::WaitSnapshot()
 {
-	id<MTLCommandBuffer> cmd = (slot<2) ? d->snap_cmd[slot] : nil;
+	id<MTLCommandBuffer> cmd = d->snap_cmd;
 	if (cmd)
 		[cmd waitUntilCompleted];
 }

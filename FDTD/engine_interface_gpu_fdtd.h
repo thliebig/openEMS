@@ -49,8 +49,8 @@ public:
 	virtual double CalcFastEnergy() const;
 
 	virtual void PrepareFieldAccess();
-	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr);
-	virtual void WaitFieldSnapshot(unsigned int slot) const;
+	virtual bool TakeFieldSnapshot(const float* &volt, const float* &curr);
+	virtual void WaitFieldSnapshot() const;
 	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather);
 	virtual const void* GetEngineID() const {return m_Eng;}
 

@@ -56,8 +56,8 @@ public:
 
 	virtual bool DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst);
 	virtual void Synchronize();
-	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
-	virtual void WaitSnapshot(unsigned int slot);
+	virtual bool SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
+	virtual void WaitSnapshot();
 	virtual bool CanSnapshotGather() const {return true;}
 	virtual bool SetSnapshotGather(const std::vector<Engine_GatherRegion>& volt_regions, const std::vector<Engine_GatherRegion>& curr_regions);
 	virtual int AddFieldDFT(bool h_field, const Engine_GatherRegion& region, unsigned int count);

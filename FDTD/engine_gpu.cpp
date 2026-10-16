@@ -226,7 +226,7 @@ void Engine_GPU::MarkStale(StaleField& field)
 	field.lines.clear();
 }
 
-bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
+bool Engine_GPU::SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
 {
 	// not with the fields on the host (host fallback of extensions): the dumps read them there
 	if (m_FieldsOnHost)
@@ -251,7 +251,7 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 		std::vector<Engine_GatherRegion>().swap(m_SnapshotGather[0]);
 		std::vector<Engine_GatherRegion>().swap(m_SnapshotGather[1]);
 	}
-	if (!m_Backend->SnapshotFields(slot, volt, curr))
+	if (!m_Backend->SnapshotFields(volt, curr))
 		return false;
 	if (!m_SnapshotsUsed)
 		cout << "Engine_GPU: field dumps from snapshots of the fields" << endl;
@@ -259,9 +259,9 @@ bool Engine_GPU::SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, cons
 	return true;
 }
 
-void Engine_GPU::WaitSnapshot(unsigned int slot) const
+void Engine_GPU::WaitSnapshot() const
 {
-	m_Backend->WaitSnapshot(slot);
+	m_Backend->WaitSnapshot();
 }
 
 bool Engine_GPU::CanSnapshotGather() const

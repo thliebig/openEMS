@@ -55,14 +55,14 @@ void Engine_Interface_GPU_FDTD::PrepareFieldAccess()
 	m_Eng_GPU->UpdateHostMirror();
 }
 
-bool Engine_Interface_GPU_FDTD::TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr)
+bool Engine_Interface_GPU_FDTD::TakeFieldSnapshot(const float* &volt, const float* &curr)
 {
-	return m_Eng_GPU->SnapshotFields(slot, volt, curr);
+	return m_Eng_GPU->SnapshotFields(volt, curr);
 }
 
-void Engine_Interface_GPU_FDTD::WaitFieldSnapshot(unsigned int slot) const
+void Engine_Interface_GPU_FDTD::WaitFieldSnapshot() const
 {
-	m_Eng_GPU->WaitSnapshot(slot);
+	m_Eng_GPU->WaitSnapshot();
 }
 
 bool Engine_Interface_GPU_FDTD::PrepareSnapshotGather(Engine_Field_Gather* gather)

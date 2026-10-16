@@ -71,13 +71,13 @@ public:
 	//! Called before several threads read the fields concurrently (Get*Field()), e.g. to copy device fields to the host
 	virtual void PrepareFieldAccess() {}
 
-	//! Copy the current fields into snapshot \a slot (0 or 1) for a later Engine_Field_Gather::Evaluate(), returns the voltages and currents (engine layout), or false if the engine has no snapshots
+	//! Copy the current fields into the snapshot for a later Engine_Field_Gather::Evaluate(), returns the voltages and currents (engine layout), or false if the engine has no snapshots
 	/*!
 	  The copy may still be running: WaitFieldSnapshot() before reading it.
 	  */
-	virtual bool TakeFieldSnapshot(unsigned int slot, const float* &volt, const float* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
-	//! Wait until snapshot \a slot can be read, may be called from another thread
-	virtual void WaitFieldSnapshot(unsigned int slot) const {UNUSED(slot);}
+	virtual bool TakeFieldSnapshot(const float* &volt, const float* &curr) {UNUSED(volt); UNUSED(curr); return false;}
+	//! Wait until the snapshot can be read, may be called from another thread
+	virtual void WaitFieldSnapshot() const {}
 	//! Prepare \a gather to read snapshots (before the first one), e.g. to copy only the values it reads at every snapshot. Returns false if it cannot read them.
 	virtual bool PrepareSnapshotGather(Engine_Field_Gather* gather) {UNUSED(gather); return true;}
 	//! The engine the fields belong to, identifies the snapshots

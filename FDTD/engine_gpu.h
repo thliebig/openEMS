@@ -103,10 +103,10 @@ public:
 	//! Update the host mirror if it is out of date (see GetVolt())
 	void UpdateHostMirror();
 
-	//! Copy of the current fields in snapshot \a slot (0 or 1), see GPU_Backend::SnapshotFields(); false if not available
-	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
-	//! Wait until snapshot \a slot can be read, may be called from another thread
-	void WaitSnapshot(unsigned int slot) const;
+	//! Copy of the current fields in the snapshot, see GPU_Backend::SnapshotFields(); false if not available
+	virtual bool SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
+	//! Wait until the snapshot can be read, may be called from another thread
+	void WaitSnapshot() const;
 	//! Whether the snapshots copy only the raw values the dumps read (see AddSnapshotGather()), instead of the fields
 	virtual bool CanSnapshotGather() const;
 	//! Add the raw values \a region of a dump to the snapshots, at \a offset of the voltages or currents (\a h_field)

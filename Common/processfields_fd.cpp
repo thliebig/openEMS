@@ -116,15 +116,14 @@ int ProcessFieldsFD::Process()
 
 	// from a snapshot of the fields in the background, while the engine continues; the
 	// single background thread adds the samples in order, so the sums are the same
-	int slot = -1;
 	const float *volt = NULL, *curr = NULL;
-	if (m_Snapshots && AsyncDumps::Get().Snapshot(m_Eng_Interface, m_Eng_Interface->GetNumberOfTimesteps(), slot, volt, curr))
+	if (m_Snapshots && AsyncDumps::Get().Snapshot(m_Eng_Interface, m_Eng_Interface->GetNumberOfTimesteps(), volt, curr))
 	{
 		const float* src = (m_DumpType==H_FIELD_DUMP) ? curr : volt;
 		m_AsyncUsed = true;
-		AsyncDumps::Get().Push(this, slot, [this, src, slot, weights]()
+		AsyncDumps::Get().Push(this, true, [this, src, weights]()
 		{
-			m_Eng_Interface->WaitFieldSnapshot(slot);   // the copy may still run on the device
+			m_Eng_Interface->WaitFieldSnapshot();   // the copy may still run on the device
 			ArrayLib::ArrayNIJK<FDTD_FLOAT> field;
 			if (CalcField(field, src))
 				AddSample(field, weights);

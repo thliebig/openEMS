@@ -192,13 +192,13 @@ public:
 	//! Wait until the device finished all work, required before the host accesses shared memory
 	virtual void Synchronize() {}
 
-	//! Copy the current fields into snapshot \a slot (0 or 1) and return host pointers to them (ArrayNIJK layout), valid until the next snapshot into the same slot. Returns false if the backend cannot.
+	//! Copy the current fields into the snapshot and return host pointers to it (ArrayNIJK layout), valid until the next snapshot. Returns false if the backend cannot.
 	/*!
 	  The copy may still run on the device: WaitSnapshot() before reading it.
 	  */
-	virtual bool SnapshotFields(unsigned int slot, const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(slot); UNUSED(volt); UNUSED(curr); return false;}
-	//! Wait until the copy of snapshot \a slot is done, may be called from another thread
-	virtual void WaitSnapshot(unsigned int slot) {UNUSED(slot);}
+	virtual bool SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr) {UNUSED(volt); UNUSED(curr); return false;}
+	//! Wait until the copy of the snapshot is done, may be called from another thread
+	virtual void WaitSnapshot() {}
 	//! Whether the snapshots can copy only the raw values the dumps read, see SetSnapshotGather()
 	virtual bool CanSnapshotGather() const {return false;}
 	//! Snapshots copy the raw values of these regions instead of the fields
