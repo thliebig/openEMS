@@ -96,9 +96,7 @@ void HIP_Ext_SteadyState::CheckPeriod(unsigned int rel_pos)
 {
 	const unsigned int p = m_Period;
 
-	// the energy is computed by the host on the host mirror
-	m_Eng->VoltagesToHost();
-	m_Eng->CurrentsToHost();
+	// the energy comes from the GPU engine interface, computed on the device
 	HIP_Check(hipMemcpyAsync(m_HostRecords.data(), m_Records, m_HostRecords.size()*sizeof(float), hipMemcpyDeviceToHost, d->Stream()), "copy the steady-state records");
 	d->Flush();
 
