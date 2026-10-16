@@ -65,7 +65,10 @@ current-side equivalents.
   subclass, not just the basic one.
 - For the GPU engine that means a device implementation in every backend (HIP,
   Metal): one extension without one moves all extensions to the host and copies
-  both fields every half-step, which makes GPU runs slow.
+  both fields every half-step, which makes GPU runs slow. A change to an
+  extension's update is made in the host, HIP and Metal versions alike;
+  `python/Tests/GPU_Engine.py` compares them with the CPU, but only on a
+  machine with that GPU (CI has none).
 
 Modifying `Operator`/`Engine` directly is for changes that genuinely belong to
 the core scheme, and those need discussion first.
