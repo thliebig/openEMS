@@ -82,8 +82,9 @@ public:
 			std::thread(&AsyncDumps::Work, this).detach();
 			m_Started = true;
 		}
-		// bounded: tasks without a snapshot hold their field data
-		m_Changed.wait(lock, [&] {return m_Tasks.size()<64;});
+		// one task per dump: tasks without a snapshot hold their field data, so a dump whose
+		// previous write is not done yet makes the engine wait instead of queueing more copies
+		m_Changed.wait(lock, [&] {return m_Pending[owner]==0;});
 		if (slot>=0)
 			++m_Slots[slot].refs;
 		++m_Pending[owner];
