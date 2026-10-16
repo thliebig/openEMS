@@ -25,7 +25,6 @@
 // Total-field/scattered-field plane wave, see Engine_Ext_TFSF.
 // One launch per active box plane (planes share edges, so they run one after the
 // other in the host order), one thread per (i,j) of the plane.
-// The host evaluates part of the sum in double precision, this runs in float.
 struct TFSFParam
 {
 	unsigned int numTS; unsigned int length; int period;   // signal lookup

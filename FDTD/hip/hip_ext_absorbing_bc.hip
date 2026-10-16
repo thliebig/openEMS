@@ -25,7 +25,6 @@
 // currents), see Engine_Ext_Absorbing_BC. One thread per (i,j) of the sheet,
 // i along m_nyP, j along m_nyPP. The state and coefficient arrays have the full
 // sheet size ni x nj, the currents use ni-1 x nj-1 of it.
-// The host divides in double precision, this runs in float.
 struct ABCParam { int ny, nyP, nyPP; unsigned int line, line_shift; unsigned int startP, startPP; unsigned int ni, nj, stride; };
 
 //! state and coefficients of one field

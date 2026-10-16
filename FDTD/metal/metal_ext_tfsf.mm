@@ -24,7 +24,6 @@
 // Total-field/scattered-field plane wave, see Engine_Ext_TFSF.
 // One dispatch per active box plane (planes share edges, so they run one after the
 // other in the host order), one thread per (i,j) of the plane, gid = (j, i).
-// The host evaluates part of the sum in double precision, this runs in float.
 static const char* TFSF_SOURCE = R"MSL(
 struct TFSFParam
 {

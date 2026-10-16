@@ -24,7 +24,6 @@
 // currents), see Engine_Ext_Absorbing_BC. One thread per (i,j) of the sheet,
 // i along m_nyP, j along m_nyPP; gid = (j, i). The state and coefficient arrays
 // have the full sheet size ni x nj, the currents use ni-1 x nj-1 of it.
-// The host divides in double precision, this runs in float.
 static const char* ABSORBING_BC_SOURCE = R"MSL(
 struct ABCParam { int ny, nyP, nyPP; uint line, line_shift; uint startP, startPP; uint nj; };
 
