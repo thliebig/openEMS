@@ -238,7 +238,9 @@ bool HIP_Ext_UPML::Fused()
 {
 	if (d->upml_fused<0)
 	{
-		d->upml_fused = CanFuse();
+		// OPENEMS_HIP_UPML_FUSION=0: the separate UPML kernels, which the usual region layout never needs
+		const char* env = getenv("OPENEMS_HIP_UPML_FUSION");
+		d->upml_fused = (env && (atoi(env)==0)) ? 0 : CanFuse();
 		if (d->upml_fused)
 			std::cout << "GPU_Backend_HIP: " << d->upml.size() << " UPML regions fused with the main updates ("
 			          << d->zslab_lo+d->zslab_hi << " along z in the main kernels)" << std::endl;

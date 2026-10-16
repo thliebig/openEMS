@@ -23,6 +23,9 @@
    device backend, cases dumps_snapshot, multigrid_snapshot and dumps_snapshot_host_dft: the
      dumps read field snapshots (FULL_DEVICE_BACKENDS); dumps_snapshot_host_dft sums the
      frequency domain dumps from them on the host (OPENEMS_GPU_DUMPS=snapshot)
+   HIP backend, cases pml, pml_upml_regions and pml_upml_separate: the UPML is updated in the
+     fused step, by region kernels (OPENEMS_HIP_FUSED_STEP=0) and by separate kernels
+     (OPENEMS_HIP_UPML_FUSION=0), each bit-identical
    device backend, cases dumps and sar: the FD dumps (the E field of the SAR) are accumulated on
      the device (DEVICE_DFT_BACKENDS)
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
@@ -584,6 +587,8 @@ def case_coax_resonator():
 # (name, case, every extension the case uses has a device implementation)
 cases = [('excitation',     case_excitation,     True),
          ('pml',            case_pml,            True),
+         ('pml_upml_regions', case_pml,          True),
+         ('pml_upml_separate', case_pml,         True),
          ('mur',            case_mur,            True),
          ('materials',      case_materials,      True),
          ('lumped',         case_lumped,         True),
@@ -608,8 +613,15 @@ cases = [('excitation',     case_excitation,     True),
          ('sar',            case_sar,            True)]
 
 # environment of a case: the frequency domain dumps of dumps_snapshot without device sums,
-# summed on the host from the snapshots
-CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'}}
+# summed on the host from the snapshots; the pml case with each of the three UPML updates of
+# the HIP backend (in the fused step, region kernels, separate kernels)
+CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'},
+            'pml_upml_regions': {'OPENEMS_HIP_FUSED_STEP': '0'},
+            'pml_upml_separate': {'OPENEMS_HIP_UPML_FUSION': '0'}}
+# the messages of the HIP backend for these UPML updates: (expected, not expected)
+UPML_MODES = {'pml': ('UPML regions in the kernel', None),
+              'pml_upml_regions': ('UPML regions fused with the main updates', 'UPML regions in the kernel'),
+              'pml_upml_separate': (None, 'UPML regions fused with the main updates')}
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
@@ -665,10 +677,16 @@ for name, case, on_device in cases:
         if name=='coeff_full' and backend in FULL_DEVICE_BACKENDS:
             assert 'compressed update coefficients' not in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not use the full coefficient arrays'
+        if name in UPML_MODES and backend=='HIP':
+            expected, unexpected = UPML_MODES[name]
+            assert (expected is None or expected in logs['gpu']) and (unexpected is None or unexpected not in logs['gpu']), \
+                f'FAIL [{name}]: the HIP backend did not take the intended UPML update'
         diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
         print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
         assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
             ', '.join(f'{n} ({d:.1e})' for n, d in diff)
+        if name in UPML_MODES and backend=='HIP':
+            assert worst==0, f'FAIL [{name}]: the HIP UPML update is not bit-identical ({worst:.1e})'
     else:
         # no silent fallback to the (slow) reference backend
         assert 'Running FDTD engine' not in logs['gpu'], \
