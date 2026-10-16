@@ -61,6 +61,8 @@ there are unreleased changes. It becomes the next release entry.
 - Field dumps are written on background threads from a snapshot of the
   fields, instead of stalling the timestepping, and a time-domain dump keeps
   its HDF5 file open for the whole run.
+- Field dumps are evaluated on several threads, with every engine; large
+  dumps, like the surfaces of an NF2FF box, slow the simulation down less.
 - The end criteria is checked every Nyquist period during the first minute of
   a simulation, and only after that with the progress report every few
   seconds. A short simulation used to run on until the first report, on a fast
