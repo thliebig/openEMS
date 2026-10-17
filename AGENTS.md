@@ -149,7 +149,7 @@ not verification.
   rendered into the [openEMS documentation](https://docs.openems.de/), so it
   must stay valid Markdown.
 - **Dependencies**: do not add any. openEMS builds across a wide OS matrix, from
-  CentOS 7 to Alpine, plus macOS and FreeBSD; a new dependency is a discussion,
+  AlmaLinux 8 to Alpine, plus macOS and FreeBSD; a new dependency is a discussion,
   not a commit.
 - **Performance**: the update loops are the hot path. Do not add allocation,
   branching or virtual calls inside them for the sake of tidiness, and measure

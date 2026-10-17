@@ -40,6 +40,8 @@ there are unreleased changes. It becomes the next release entry.
 
 ### Changed
 
+- The Python bindings need Python 3.6 or newer (was 3.4), the oldest version
+  CI still tests; CentOS 7 and Ubuntu 14.04 are no longer tested.
 - The end criteria is checked every Nyquist period during the first minute of
   a simulation, and only after that with the progress report every few
   seconds. A short simulation used to run on until the first report, on a fast

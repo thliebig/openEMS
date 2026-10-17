@@ -116,11 +116,6 @@ jobs:
           # name: OS name (only a name for humans to read).
           # libc: userland libc, "GNU" or "musl"
           #       (only a name for humans to read)
-          # ancient: true or false.
-          #          true: incompatible with GitHub's actions/checkout due to
-          #                node.js compatibility problem. Manual git checkout
-          #                required.
-          #          false: use standard GitHub's actions/checkout.
           # docker-image: string, image on DockerHub to use
           # full-tests: true or false (default false).
           #             true: also run the full Octave and Python test suites,
@@ -128,48 +123,30 @@ jobs:
           #                   which are a property of the source and not of the
           #                   distribution, so exactly one modern entry should
           #                   carry them; the smoketests above are what covers
-          #                   every entry. The Python suite also needs at least
-          #                   Python 3.6 for its f-strings, which rules out the
-          #                   Ubuntu 14.04 entry.
-          - name: "CentOS 7"
-            libc: "GNU"
-            ancient: true
-            docker-image: "centos:7"
-
-          - name: "Ubuntu 14.04"
-            libc: "GNU"
-            ancient: true
-            docker-image: "ubuntu:14.04"
-
+          #                   every entry.
           - name: "Debian oldstable"
             libc: "GNU"
-            ancient: false
             docker-image: "debian:oldstable"
 
           - name: "Debian"
             libc: "GNU"
-            ancient: false
             docker-image: "debian:latest"
 
           - name: "Ubuntu"
             libc: "GNU"
-            ancient: false
             docker-image: "ubuntu:latest"
             full-tests: true
 
           - name: "Fedora"
             libc: "GNU"
-            ancient: false
             docker-image: "fedora:latest"
 
           - name: "AlmaLinux 8"
             libc: "GNU"
-            ancient: false
             docker-image: "almalinux:8"
 
           - name: "AlmaLinux 9"
             libc: "GNU"
-            ancient: false
             docker-image: "almalinux:9"
 
           # Waiting for upstream packages:
@@ -178,12 +155,10 @@ jobs:
           #
           #- name: "AlmaLinux Latest"
           #  libc: "GNU"
-          #  ancient: false
           #  docker-image: "almalinux:latest"
 
           - name: "Alpine"
             libc: "musl"
-            ancient: false
             docker-image: "alpine:latest"
 
     container:
@@ -221,8 +196,7 @@ jobs:
       # order, from the project repo to its dependencies. This reduces
       # race conditions due to force pushes (they are harmless but
       # annoying).
-      - if: ${{ ! matrix.os.ancient }}
-        name: Checkout openEMS.git
+      - name: Checkout openEMS.git
         uses: actions/checkout@v4
         with:
           path: openEMS
@@ -230,8 +204,7 @@ jobs:
           # We need tags for "git describe", otherwise build fails.
           fetch-depth: 0
 
-      - if: ${{ ! matrix.os.ancient }}
-        name: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
+      - name: ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
         uses: actions/checkout@v4
         with:
           repository: "${{ needs.Dependencies.outputs.csxcad_repo }}"
@@ -241,84 +214,12 @@ jobs:
           # We need tags for "git describe", otherwise build fails.
           fetch-depth: 0
 
-      - if: ${{ ! matrix.os.ancient }}
-        name: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
+      - name: ${{ needs.Dependencies.outputs.fparser_checkout_title }}
         uses: actions/checkout@v4
         with:
           repository: "${{ needs.Dependencies.outputs.fparser_repo }}"
           ref: "${{ needs.Dependencies.outputs.fparser_branch }}"
           path: fparser
-
-      - if: ${{ matrix.os.ancient }}
-        name: (legacy) Work around known problems
-        run: |
-          if [ -f /etc/centos-release ]; then
-            # IPv6 on GitHub Actions is broken, causing random network failures
-            # if a CDN rosolves to IPv6.
-            echo "ip_resolve=4" >> /etc/yum.conf
-
-            # CentOS repos are EOL and desupported
-            sed -i 's|^mirrorlist|#mirrorlist|g; s|^#baseurl|baseurl|g; s|mirror.centos.org|vault.centos.org|g' \
-                /etc/yum.repos.d/CentOS-Base.repo
-
-            yum install -y centos-release-scl || true
-            sed -i 's|^mirrorlist|#mirrorlist|g; s|^#baseurl|baseurl|g;
-                    s|^# baseurl|baseurl|g; s|mirror.centos.org|vault.centos.org|g' \
-                /etc/yum.repos.d/CentOS-SCLo-scl.repo \
-                /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
-          fi
-
-      - if: ${{ matrix.os.ancient }}
-        name: (legacy) Install git
-        run: |
-          if [ -f /etc/centos-release ]; then
-            yum install -y git
-          elif grep -q "ID=ubuntu" /etc/os-release && \
-            grep -q 'VERSION_ID="14.04"' /etc/os-release; then
-              apt-get install -y git
-          fi
-
-      - if: ${{ matrix.os.ancient }}
-        name: (legacy) Checkout openEMS.git
-        run: |
-          git clone "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" openEMS
-          cd "$GITHUB_WORKSPACE/openEMS"
-
-          git fetch --force "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "+refs/heads/*:refs/remotes/origin/*"
-          git fetch --force "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "+refs/pull/*/merge:refs/remotes/origin/pr/*"
-          git checkout "$GITHUB_SHA"
-
-      - if: ${{ matrix.os.ancient }}
-        name: (legacy) ${{ needs.Dependencies.outputs.csxcad_checkout_title }}
-        run: |
-          echo "Clone $REPO.git (branch $BRANCH)"
-          git clone "$GITHUB_SERVER_URL/$REPO.git"
-          cd "$GITHUB_WORKSPACE/$CHECKOUT_PATH"
-
-          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/heads/*:refs/remotes/origin/*"
-          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/pull/*/merge:refs/remotes/origin/pr/*"
-          git checkout "$BRANCH"
-        env:
-          # convert template variables to shell variables to avoid arbitrary code injection
-          REPO: ${{ needs.Dependencies.outputs.csxcad_repo }}
-          BRANCH: ${{ needs.Dependencies.outputs.csxcad_branch }}
-          CHECKOUT_PATH: CSXCAD
-
-      - if: ${{ matrix.os.ancient }}
-        name: (legacy) ${{ needs.Dependencies.outputs.fparser_checkout_title }}
-        run: |
-          echo "Clone $REPO.git (branch $BRANCH)"
-          git clone "$GITHUB_SERVER_URL/$REPO.git"
-          cd "$GITHUB_WORKSPACE/$CHECKOUT_PATH"
-
-          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/heads/*:refs/remotes/origin/*"
-          git fetch --force "$GITHUB_SERVER_URL/$REPO.git" "+refs/pull/*/merge:refs/remotes/origin/pr/*"
-          git checkout "$BRANCH"
-        env:
-          # convert template variables to shell variables to avoid arbitrary code injection
-          REPO: ${{ needs.Dependencies.outputs.fparser_repo }}
-          BRANCH: ${{ needs.Dependencies.outputs.fparser_branch }}
-          CHECKOUT_PATH: fparser
 
       - name: Install dependencies
         shell: sh
@@ -363,60 +264,21 @@ jobs:
                                python3-setuptools python3-numpy python3-matplotlib python3-h5py
 
             # VTK9 or VTK7, at least one must succeed (depending on Debian version)
-            # VTK9,  VTK7, or VTK6, at least one must succeed (depending on Debian version)
             apt-get install -y libvtk9-dev || \
-                apt-get install -y libvtk7-dev || \
-                  apt-get install -y libvtk6-dev
+                apt-get install -y libvtk7-dev
 
             # only for CI/CD test builds without networks.
             apt-get install -y iproute2
 
-            if grep -q 'VERSION_ID="14.04"' /etc/os-release; then
-              # Ubuntu 14.04 has CMake 2 by default, but we require CMake 3
-              apt-get install -y cmake3
+            apt-get install -y libboost-all-dev
+            apt-get install -y libcgal-dev
+            apt-get install -y cmake
+            # octave-dev (Bookworm+/Ubuntu 22.04+) was renamed from liboctave-dev (Bullseye and older)
+            apt-get install -y octave-dev || apt-get install -y liboctave-dev
+            apt-get install -y python3-setuptools-scm cython3 python3-matplotlib
 
-              # Ubuntu 14.04 ships Boost 1.54 and is required by libcgal-dev,
-              # but we need Boost 1.55, so we install Boost 1.55 first, then
-              # install CGAL from source.
-              apt-get install -y boost1.55 boost1.55-dev
-
-              apt-get install -y liboctave-dev
-
-              # CGAL v4.14.3 was old enough to be compatible with GCC 4.8. Otherwise,
-              # you get: The compiler feature "cxx_decltype_auto" is not known
-              # to CXX compiler "GNU" version 4.8.5.
-              apt-get install -y libgmp-dev libmpfr-dev
-              git clone $GITHUB_SERVER_URL/CGAL/cgal.git --depth=1 --branch=v4.14.3
-              cd cgal && mkdir build && cd build
-              cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/opt
-              make -j`nproc` && make install
-
-              # Must use Cython 3.0 or lower, since 3.1 uses f-string which is
-              # incompatible with Python 3.4.
-              pip3 install "cython<3.1"
-
-              # Ubuntu 14.04's matplotlib package is ancient, install the
-              # minimum version and its dependencies via pip. Note that the
-              # native build uses Python 3.4 while the venv build (tested
-              # later) uses Python 3.5 without these problems.
-              #
-              # pip's pyparsing is incompatible with Python 3.4
-              apt-get install -y python3-pyparsing
-
-              # same, newer cycler has incompatible type annotation
-              pip3 install "cycler==0.10.0"
-              pip3 install "matplotlib==2.1.0"
-            else
-              apt-get install -y libboost-all-dev
-              apt-get install -y libcgal-dev
-              apt-get install -y cmake
-              # octave-dev (Bookworm+/Ubuntu 22.04+) was renamed from liboctave-dev (Bullseye and older)
-              apt-get install -y octave-dev || apt-get install -y liboctave-dev
-              apt-get install -y python3-setuptools-scm cython3 python3-matplotlib
-
-              # testing Python packages in isolated venv
-              apt-get install -y python3-venv
-            fi
+            # testing Python packages in isolated venv
+            apt-get install -y python3-venv
           elif grep -q "ID=alpine" /etc/os-release; then
             apk add bash \
                     build-base gmp-dev mpfr-dev git cmake \
@@ -428,55 +290,6 @@ jobs:
 
             # only for CI/CD test builds without networks.
             apk add iproute2
-          elif [ -f /etc/centos-release ]; then
-            # "(legacy) Work around known problems" must run before this step
-            yum install -y epel-release
-            yum install -y git
-            yum install -y gcc gcc-c++ gmp-devel mpfr-devel \
-                           cmake3 git tinyxml-devel vtk-devel hdf5-devel octave octave-devel \
-                           python3-devel python3-pip \
-                           python3-setuptools python3-setuptools_scm python3-Cython
-
-            # only for CI/CD test builds without networks.
-            yum install -y iproute
-
-            # use cmake3 instead of default cmake2
-            alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 99
-
-            # To upgrade GCC, one can use GCC 7 from centos-release-scl, required by CGAL.
-            # Even GCC 10+ is provided.
-            # Not used for now, since openEMS is still compatible with GCC 4.8! But we may
-            # need it in the future.
-            # yum install -y devtoolset-7-gcc devtoolset-7-gcc-c++
-            # alternatives --install /usr/local/bin/gcc gcc /opt/rh/devtoolset-7/root/usr/bin/gcc 99
-            # alternatives --install /usr/local/bin/g++ g++ /opt/rh/devtoolset-7/root/usr/bin/g++ 99
-
-            # boost-predef is only available on Boost 1.55 and later.
-            #   /usr/local/include/CGAL/config.h:210:10: fatal error: boost/predef.h:
-            #   No such file or directory
-            # We borrow a copy of Boost 1.58 from rh repo's mariadb backport package.
-            yum install -y rh-mariadb101-boost-devel
-
-            # copy rh repo's Boost to /usr/local because CMake doesn't support CPATH
-            ln -s /opt/rh/rh-mariadb101/root/usr/include/boost /usr/local/include/boost
-            mkdir /usr/local/lib64 && cd /usr/local/lib64
-            for i in /opt/rh/rh-mariadb101/root/usr/lib64/libboost*; do
-                ln -s $i /usr/local/lib64/
-            done
-
-            # setup.py is broken on CentOS 7, installing openEMS shows:
-            # error: Couldn't find a setup script in /tmp/easy_install-8fl5smm_/numpy-2.2.0.tar.gz
-            # Error: Process completed with exit code 1.
-            pip3 install numpy h5py matplotlib --user
-
-            # not package on CentOS
-            # CGAL v4.14.3 was old enough to be compatible with GCC 4.8. Otherwise,
-            # you get: The compiler feature "cxx_decltype_auto" is not known
-            # to CXX compiler "GNU" version 4.8.5.
-            git clone $GITHUB_SERVER_URL/CGAL/cgal.git --depth=1 --branch=v4.14.3
-            cd cgal && mkdir build && cd build
-            cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/opt
-            make -j`nproc` && make install
           else
             echo "Unknown system!"
             exit 1
@@ -524,15 +337,6 @@ jobs:
 
       - name: Build and install openEMS
         run: |
-          # Hack: openEMS requires Boost Predef (1.55+), but CSXCAD requires CGAL, on
-          # Ubuntu 14.04's libcgal-dev requires Boost 1.54. So we install Boost 1.55
-          # after CSXCAD but before openEMS - this uninstalls libcgal-dev (but libcgal
-          # itself is okay)
-          if grep -q 'VERSION_ID="14.04"' /etc/os-release; then
-            apt-get install -y boost1.55-dev
-            apt-get install -y boost1.55
-          fi
-
           cd $GITHUB_WORKSPACE/openEMS
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt
@@ -605,32 +409,10 @@ jobs:
         run: |
           cd ~/
 
-          if grep -q "ID=ubuntu" /etc/os-release && \
-            grep -q 'VERSION_ID="14.04"' /etc/os-release; then
-              # Use Python 3.5 instead of the default Python 3.4 because
-              # 3.5 is the latest available version on Ubuntu 14.04, and
-              # also because Python 3.5 is the first Python that supported
-              # type annotation, while Python 3.4 is locked out from most
-              # modern packages.
-              apt-get install -y curl python3.5-dev
-
-              # Ubuntu 14.04 is ancient, and the python3.5-venv package is
-              # broken. So the best approach is to install a bare Python 3.5
-              # interpreter from apt, and bootstrapping pip ourselves.
-              python3.5 -m venv ~/venv --without-pip
-              curl -O https://bootstrap.pypa.io/pip/3.5/get-pip.py
-              source ~/venv/bin/activate
-              python3.5 get-pip.py
-          else
-            python3 -m venv ~/venv
-            source ~/venv/bin/activate
-          fi
+          python3 -m venv ~/venv
+          source ~/venv/bin/activate
 
           pip install --upgrade pip
-
-          if [ -f /etc/centos-release ]; then
-            pip3 install "cython<3.1"
-          fi
 
       - name: Build and install CSXCAD Python module in venv
         run: |

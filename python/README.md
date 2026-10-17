@@ -18,11 +18,8 @@ Ensure the system's Python interpreter is officially supported by
 Python, such as Python 3.9. Use unsupported Python versions at your
 own risk.
 
-Installation is allowed using practically all Python versions (Python
-3.4+), but for testing purposes only. Use at your own risk. As time of
-writing, Python 3.5 is known to partially work (i.e., run a trivial script),
-while Python 3.6 is likely the lowest fully-functional version.
-In Python 3.5 and lower versions, `SyntaxError` may be encountered.
+The lowest version it installs on is Python 3.6, the oldest one that CI
+still tests (AlmaLinux 8).
 
 #### Other Dependencies
 
@@ -602,6 +599,5 @@ one solution below.
 
    If the system's Python interpreter is older than Python 3.6,
    pip 21.3 cannot be installed. Upgrade your system to Python 3.6,
-   or try an alternative solution above. Note that the openEMS
-   extension is not fully-functional under Python 3.5 and below,
-   `SyntaxError` may occur.
+   or try an alternative solution above. openEMS needs Python 3.6
+   or newer.

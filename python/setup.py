@@ -275,7 +275,7 @@ try:
         install_requires += add_csxcad()
 except ImportError:
     # Python < 3.8: importlib.metadata unavailable.  These old interpreters
-    # only appear on Linux (CentOS 7 / AlmaLinux 8 / Ubuntu 14.04) where
+    # only appear on Linux (AlmaLinux 8, Python 3.6) where
     # "import CSXCAD" works reliably once the package is installed.
     try:
         import CSXCAD  # noqa: F401
