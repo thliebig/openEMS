@@ -23,7 +23,6 @@
 #include "FDTD/operator_cylinder.h"
 
 class Operator_Ext_Cylinder;
-class Engine_sse;
 
 class Engine_Ext_Cylinder : public Engine_Extension
 {
@@ -34,11 +33,14 @@ public:
 
 	virtual void DoPostCurrentUpdates();
 
-	virtual void SetEngine(Engine* eng);
-
 protected:
+	template <typename EngType>
+	void DoPostVoltageUpdatesImpl(EngType* eng);
+
+	template <typename EngType>
+	void DoPostCurrentUpdatesImpl(EngType* eng);
+
 	Operator_Ext_Cylinder* cyl_Op;
-	Engine_sse* m_Eng_SSE;
 
 	unsigned int numLines[3];
 

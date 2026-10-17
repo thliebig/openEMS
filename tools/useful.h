@@ -30,8 +30,11 @@ double CalcNyquistFrequency(unsigned int nyquist, double dT);
 //! Number of threads this process can usefully run in parallel: the visible CPUs,
 //! limited by the CPU affinity and a cgroup CPU quota (e.g. a container or systemd
 //! unit with a CPU limit). Falls back to hardware_concurrency() where none of that
-//! applies or cannot be determined (non-Linux).
+//! applies or cannot be determined (non-Linux). Limited further by SetThreadLimit().
 unsigned int AvailableThreads();
+
+//! Limit AvailableThreads() to n threads (the numThreads option); 0 removes the limit
+void SetThreadLimit(unsigned int n);
 
 //! Calculate an optimal job distribution to a given number of threads. Will return a vector with the jobs for each thread.
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty=false);

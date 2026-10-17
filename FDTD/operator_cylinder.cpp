@@ -17,6 +17,7 @@
 
 #include "engine.h"
 #include "engine_cylinder.h"
+#include "engine_gpu.h"
 #include "Common/processfields.h"
 #include "operator_cylinder.h"
 #include "extensions/operator_extension.h"
@@ -40,6 +41,7 @@ Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 {
 	m_MeshType = CYLINDRICAL;
 	m_Cyl_Ext = NULL;
+	m_GPU_Parent = NULL;
 }
 
 Operator_Cylinder::~Operator_Cylinder()
@@ -49,6 +51,11 @@ Operator_Cylinder::~Operator_Cylinder()
 
 Engine* Operator_Cylinder::CreateEngine()
 {
+	if (!m_GPU_Backend.empty())
+	{
+		m_Engine = Engine_GPU::New(this, m_GPU_Backend, m_GPU_Parent);
+		return m_Engine;
+	}
 	//! create a special cylindrical-engine
 	m_Engine = Engine_Cylinder::New(this, m_orig_numThreads);
 	return m_Engine;
@@ -117,6 +124,15 @@ inline unsigned int Operator_Cylinder::GetNumberOfLines(int ny, bool full) const
 		return Operator_Multithread::GetNumberOfLines(ny, true)-2;
 
 	return Operator_Multithread::GetNumberOfLines(ny, full);
+}
+
+bool Operator_Cylinder::GetClosedMeshLines(int ny, unsigned int &first, unsigned int &last) const
+{
+	if (!CC_closedAlpha || (ny!=1))
+		return false;
+	first = 0;
+	last = GetNumberOfLines(1);
+	return true;
 }
 
 std::string Operator_Cylinder::GetDirName(int ny) const

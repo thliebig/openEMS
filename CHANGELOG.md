@@ -13,6 +13,19 @@ there are unreleased changes. It becomes the next release entry.
 
 ## Unreleased
 
+### Added
+
+- **A GPU engine**, `--engine=gpu` (`engine='gpu'` from Python), with a Metal
+  backend on macOS and a HIP backend for AMD (ROCm) and NVIDIA (CUDA) GPUs. It
+  is selected like the other engines, runs Cartesian and cylindrical meshes
+  (including multi-grid) with the usual extensions on the device, and writes
+  the same probes and dumps. Without a usable GPU the setup fails with an
+  error instead of running something slower. `--engine=gpu-reference` runs it
+  on a CPU reference backend, to check the device backends against.
+- `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
+  and field dumps of two runs, e.g. of two engines, and
+  `openEMS.compare.compare_sim_results()` does the same from Python.
+
 ### Fixed
 
 - A run switched flush-to-zero on in the calling process and left it on: in
@@ -22,6 +35,9 @@ there are unreleased changes. It becomes the next release entry.
 - Python: an option passed as `False` to `Run()`, e.g. `debug_PEC=False`, made
   openEMS ignore all options after it without a message, so that for example
   a following `engine=...` or `numThreads=...` had no effect.
+- A node-interpolated B-field dump of a closed cylindrical mesh was zero on
+  its first alpha line: the B field was not evaluated across the seam of the
+  mesh as the H field is.
 - A simulation that was aborted (`SetAbort()`, an `ABORT` file, Ctrl-C) no
   longer ends with the warning that the max. number of timesteps was reached;
   it reports the abort.
@@ -42,6 +58,11 @@ there are unreleased changes. It becomes the next release entry.
 
 - The Python bindings need Python 3.6 or newer (was 3.4), the oldest version
   CI still tests; CentOS 7 and Ubuntu 14.04 are no longer tested.
+- Time-domain HDF5 field dumps are written in the background instead of
+  stalling the timestepping, with the file kept open for the whole run; with
+  the GPU engine from snapshots of the fields.
+- Field dumps are evaluated on several threads, with every engine; large
+  dumps, like the surfaces of an NF2FF box, slow the simulation down less.
 - The end criteria is checked every Nyquist period during the first minute of
   a simulation, and only after that with the progress report every few
   seconds. A short simulation used to run on until the first report, on a fast
@@ -56,6 +77,18 @@ there are unreleased changes. It becomes the next release entry.
   datasets are listed once instead of looked up one by one, which took
   quadratic time. A far-field (NF2FF) calculation from a recording of 3200
   timesteps went from 79 s to 2.4 s per frequency.
+
+### Build
+
+- `ENABLE_HIP` and `ENABLE_METAL` CMake options for the GPU backends. HIP
+  (CMake 3.28) is on when a HIP compiler is found. `OPENEMS_HIP_AS_CUDA`
+  compiles the same sources as CUDA, for NVIDIA GPUs without a HIP compiler
+  (CMake 3.24, a CUDA compiler and the HIP headers, looked for in `ROCM_PATH`
+  and `/opt/rocm`); it is the default on Windows. Metal (macOS, CMake 3.16)
+  is on by default. The GPU code is built for the GPU of the build machine
+  unless `CMAKE_HIP_ARCHITECTURES` / `CMAKE_CUDA_ARCHITECTURES` name others.
+  Whatever a backend is missing switches it off with a warning; openEMS
+  builds without it.
 
 ### Upgrade notes
 
@@ -177,7 +210,8 @@ number moved up and patch releases now have somewhere to go.
 - Default thread counts (multithreaded engine, nf2ff, SAR) now respect CPU
   affinity and cgroup CPU quotas (Linux only) instead of always using every
   CPU of the host, so a container or systemd unit with a CPU limit no longer
-  oversubscribes it.
+  oversubscribes it. They also follow the `numThreads` option of a run: the
+  field dumps, and the NF2FF and SAR calculations of the same Python process.
 - Python `CalcNF2FF()` reads an existing result file by default
   (`read_cached=True`), as its docstring already stated and as the Octave
   `CalcNF2FF` (`'Mode', 0`) always did. Pass `read_cached=False` to force

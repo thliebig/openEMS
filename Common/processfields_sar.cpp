@@ -94,9 +94,22 @@ void ProcessFieldsSAR::InitProcess()
 			m_J_FD_Fields.push_back(new ArrayLib::ArrayNIJK<std::complex<float>>("J_FD", numLines));
 }
 
+ProcessFields::DumpType ProcessFieldsSAR::FieldDumpType() const
+{
+	// Process() switches the dump type to E and J while it evaluates them
+	if ((m_DumpType==E_FIELD_DUMP) || (m_DumpType==J_FIELD_DUMP))
+		return m_DumpType;
+	// a SAR type: computed from E alone with cell conductivity, otherwise from E and J
+	return m_UseCellKappa ? E_FIELD_DUMP : m_DumpType;
+}
+
 int ProcessFieldsSAR::Process()
 {
 	if (Enabled==false) return -1;
+	// with a precomputed evaluation of the E field (GPU engine) the frequency domain E field
+	// is summed like that of an E field dump: on the device or from snapshots, see ProcessFieldsFD
+	if (m_UseCellKappa && m_Gather)
+		return ProcessFieldsFD::Process();
 	if (CheckTimestep()==false) return GetNextInterval();
 
 	if ((m_FD_Interval==0) || (m_Eng_Interface->GetNumberOfTimesteps()%m_FD_Interval!=0))

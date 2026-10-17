@@ -18,6 +18,8 @@
 #ifndef PROCESSFIELDS_FD_H
 #define PROCESSFIELDS_FD_H
 
+#include <atomic>
+
 #include "processfields.h"
 #include "tools/arraylib/array_nijk.h"
 
@@ -34,11 +36,23 @@ public:
 	virtual int Process();
 	virtual void PostProcess();
 
+	//! Wait for the samples summed from snapshots in the background
+	virtual void FinishAsync();
+
 protected:
 	virtual void DumpFDData();
+	//! Add \a weights[n] times \a field to the frequency domain field n
+	void AddSample(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& field, const std::vector<std::complex<float>>& weights);
 
 	//! frequency domain field storage
 	std::vector<ArrayLib::ArrayNIJK<std::complex<float>>*> m_FD_Fields;
+
+	//! the sums are kept by the engine instead (see Engine_Interface_Base::CreateFieldDFT()): -1: no, else its id
+	int m_FieldDFT;
+	//! else the samples may be summed from field snapshots in the background (see Engine_Interface_Base::PrepareSnapshotGather())
+	bool m_Snapshots;
+	bool m_AsyncUsed;
+	std::atomic<bool> m_AsyncFailed;   //!< a sample summed in the background failed
 };
 
 #endif // PROCESSFIELDS_FD_H

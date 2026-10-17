@@ -30,6 +30,8 @@ HDF5_File_Writer::HDF5_File_Writer(string filename)
 {
 	m_filename = filename;
 	m_Group = "/";
+	m_File = -1;
+	m_KeepOpen = false;
 	hid_t hdf5_file = H5Fcreate(m_filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 	if (hdf5_file<0)
 	{
@@ -40,6 +42,37 @@ HDF5_File_Writer::HDF5_File_Writer(string filename)
 
 HDF5_File_Writer::~HDF5_File_Writer()
 {
+	Close();
+}
+
+void HDF5_File_Writer::SetKeepOpen(bool val)
+{
+	m_KeepOpen = val;
+	if (!m_KeepOpen)
+		Close();
+}
+
+void HDF5_File_Writer::Close()
+{
+	if (m_File>=0)
+		H5Fclose(m_File);
+	m_File = -1;
+}
+
+hid_t HDF5_File_Writer::OpenFile()
+{
+	if (m_File>=0)
+		return m_File;
+	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
+	if (m_KeepOpen && (hdf5_file>=0))
+		m_File = hdf5_file;
+	return hdf5_file;
+}
+
+void HDF5_File_Writer::CloseFile(hid_t hdf5_file)
+{
+	if (hdf5_file!=m_File)
+		H5Fclose(hdf5_file);
 }
 
 hid_t HDF5_File_Writer::OpenGroup(hid_t hdf5_file, string group)
@@ -96,7 +129,7 @@ void HDF5_File_Writer::SetCurrentGroup(std::string group, bool createGrp)
 	if (createGrp==false)
 		return;
 
-	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
+	hid_t hdf5_file = OpenFile();
 	if (hdf5_file<0)
 	{
 		cerr << "HDF5_File_Writer::SetCurrentGroup: Error, opening the given file \"" << m_filename << "\" failed" << endl;
@@ -106,7 +139,7 @@ void HDF5_File_Writer::SetCurrentGroup(std::string group, bool createGrp)
 	if (hdf5_group<0)
 		cerr << "HDF5_File_Writer::WriteData: Error opening group" << endl;
 	H5Gclose(hdf5_group);
-	H5Fclose(hdf5_file);
+	CloseFile(hdf5_file);
 }
 
 bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, float const* const* discLines, int MeshType, double scaling, std::string s_mesh_grp)
@@ -128,7 +161,7 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, float const* 
 
 bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, double const* const* discLines, int MeshType, double scaling, std::string s_mesh_grp)
 {
-	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
+	hid_t hdf5_file = OpenFile();
 	if (hdf5_file<0)
 	{
 		cerr << "HDF5_File_Writer::WriteRectMesh: Error, opening the given file \"" << m_filename << "\" failed" << endl;
@@ -138,7 +171,7 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, double const*
 	if (H5Lexists(hdf5_file, s_mesh_grp.c_str(), H5P_DEFAULT))
 	{
 		cerr << "HDF5_File_Writer::WriteRectMesh: Error, group \"/Mesh\" already exists" << endl;
-		H5Fclose(hdf5_file);
+		CloseFile(hdf5_file);
 		return false;
 	}
 
@@ -146,7 +179,7 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, double const*
 	if (mesh_grp<0)
 	{
 		cerr << "HDF5_File_Writer::WriteRectMesh: Error, creating group \"" << s_mesh_grp << "\" failed" << endl;
-		H5Fclose(hdf5_file);
+		CloseFile(hdf5_file);
 		return false;
 	}
 
@@ -184,14 +217,14 @@ bool HDF5_File_Writer::WriteRectMesh(unsigned int const* numLines, double const*
 		{
 			cerr << "HDF5_File_Writer::WriteRectMesh: Error, writing to dataset failed" << endl;
 			H5Gclose(mesh_grp);
-			H5Fclose(hdf5_file);
+			CloseFile(hdf5_file);
 			delete[] array;
 			return false;
 		}
 		delete[] array;
 	}
 	H5Gclose(mesh_grp);
-	H5Fclose(hdf5_file);
+	CloseFile(hdf5_file);
 	return true;
 }
 
@@ -327,7 +360,7 @@ bool HDF5_File_Writer::WriteData(std::string dataSetName, std::complex<double> c
 
 bool HDF5_File_Writer::WriteData(std::string dataSetName,  hid_t mem_type, void const* field_buf, size_t dim, size_t* datasize, std::string d_order)
 {
-	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
+	hid_t hdf5_file = OpenFile();
 	if (hdf5_file<0)
 	{
 		cerr << "HDF5_File_Writer::WriteData: Error, opening the given file \"" << m_filename << "\" failed" << endl;
@@ -338,14 +371,14 @@ bool HDF5_File_Writer::WriteData(std::string dataSetName,  hid_t mem_type, void 
 	if (group<0)
 	{
 		cerr << "HDF5_File_Writer::WriteData: Error opening group" << endl;
-		H5Fclose(hdf5_file);
+		CloseFile(hdf5_file);
 		return false;
 	}
 
 	bool ok = WriteData(group, dataSetName, mem_type, field_buf, dim, datasize, d_order);
 
 	H5Gclose(group);
-	H5Fclose(hdf5_file);
+	CloseFile(hdf5_file);
 	return ok;
 }
 
@@ -383,7 +416,7 @@ bool HDF5_File_Writer::WriteData(hid_t group, std::string dataSetName, hid_t mem
 
 bool HDF5_File_Writer::WriteAttribute(std::string locName, std::string attr_name, void const* value, hsize_t size, hid_t mem_type)
 {
-	hid_t hdf5_file = H5Fopen( m_filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT );
+	hid_t hdf5_file = OpenFile();
 	if (hdf5_file<0)
 	{
 		cerr << "HDF5_File_Writer::WriteAttribute: Error, opening the given file \"" << m_filename << "\" failed" << endl;
@@ -393,19 +426,19 @@ bool HDF5_File_Writer::WriteAttribute(std::string locName, std::string attr_name
 	if (H5Lexists(hdf5_file, locName.c_str(), H5P_DEFAULT)<0)
 	{
 		cerr << "HDF5_File_Writer::WriteAttribute: Error, failed to find location: \"" << locName << "\"" << endl;
-		H5Fclose(hdf5_file);
+		CloseFile(hdf5_file);
 		return false;
 	}
 	hid_t loc = H5Oopen(hdf5_file, locName.c_str(), H5P_DEFAULT);
 	if (loc<0)
 	{
 		cerr << "HDF5_File_Writer::WriteAttribute: Error, failed to open location: \"" << locName << "\": \"" << attr_name << "\"" << endl;
-		H5Fclose(hdf5_file);
+		CloseFile(hdf5_file);
 		return false;
 	}
 	bool ok = WriteAttribute(loc, attr_name, value, size, mem_type);
 	H5Oclose(loc);
-	H5Fclose(hdf5_file);
+	CloseFile(hdf5_file);
 	return ok;
 }
 

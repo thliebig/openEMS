@@ -26,6 +26,7 @@
 #include "FDTD/operator_cylindermultigrid.h"
 #include "FDTD/engine_multithread.h"
 #include "FDTD/operator_multithread.h"
+#include "FDTD/operator_gpu.h"
 #include "FDTD/extensions/operator_ext_excitation.h"
 #include "FDTD/extensions/operator_ext_tfsf.h"
 #include "FDTD/extensions/operator_ext_mur_abc.h"
@@ -38,7 +39,9 @@
 #include "FDTD/extensions/operator_ext_absorbing_bc.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
 #include "FDTD/engine_interface_fdtd.h"
-#include "FDTD/engine_interface_cylindrical_fdtd.h"
+#include "FDTD/engine_interface_sse_fdtd.h"
+#include "FDTD/engine_interface_gpu_fdtd.h"
+#include "FDTD/engine_gpu.h"
 #include "Common/processvoltage.h"
 #include "Common/processcurrent.h"
 #include "Common/processfieldprobe.h"
@@ -261,6 +264,16 @@ void openEMS::collectCommandLineArguments()
 						cout << "openEMS - enabled multithreading" << endl;
 						m_engine = EngineType_Multithreaded;
 					}
+					else if (val == "gpu")
+					{
+						cout << "openEMS - enabled GPU engine" << endl;
+						m_engine = EngineType_GPU;
+					}
+					else if (val == "gpu-reference")
+					{
+						cout << "openEMS - enabled GPU engine with the reference backend" << endl;
+						m_engine = EngineType_GPU_Reference;
+					}
 				}
 			),
 		    "Choose engine type \n\n"
@@ -271,6 +284,8 @@ void openEMS::collectCommandLineArguments()
 			"operator + sse vector extensions\n"
 			"  multithreaded: \tengine using compressed "
 			"operator + sse vector extensions + multithreading\n"
+			"  gpu: \tGPU engine on the best available backend\n"
+			"  gpu-reference: \tGPU engine with the reference backend on the CPU\n"
 		)
 		(
 			"numThreads",
@@ -355,6 +370,7 @@ void openEMS::SetLibraryArguments(std::vector<std::string> allOptions)
 
 void openEMS::SetNumberOfThreads(int val)
 {
+	SetThreadLimit(0);   // clamp to the machine, not to the limit of a previous run
 	if ((val<0) || (val>(int)AvailableThreads()))
 		val = AvailableThreads();
 	m_engine_numThreads = val;
@@ -470,6 +486,17 @@ void openEMS::SetupAbsorbingSheets()
 
 }
 
+//! The engine interface for the field storage of the engine of \a op; what depends on the mesh, the interfaces ask the operator
+static Engine_Interface_FDTD* NewEngineInterface(Operator* op)
+{
+	if (dynamic_cast<Engine_GPU*>(op->GetEngine()))
+		return new Engine_Interface_GPU_FDTD(op);
+	Operator_sse* op_sse = dynamic_cast<Operator_sse*>(op);
+	if (op_sse)
+		return new Engine_Interface_SSE_FDTD(op_sse);
+	return new Engine_Interface_FDTD(op);
+}
+
 Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 {
 	Operator_CylinderMultiGrid* op_cyl_mg = dynamic_cast<Operator_CylinderMultiGrid*>(FDTD_Op);
@@ -480,7 +507,7 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 		{
 			if (g_settings.GetVerboseLevel()>0)
 				cout << __func__ << ": Operator with requested multi-grid level found." << endl;
-			return new Engine_Interface_Cylindrical_FDTD(op_cyl_mg);
+			return ::NewEngineInterface(op_cyl_mg);
 		}
 		Operator_Cylinder* op_cyl_inner = op_cyl_mg->GetInnerOperator();
 		op_cyl_mg = dynamic_cast<Operator_CylinderMultiGrid*>(op_cyl_inner);
@@ -488,17 +515,11 @@ Engine_Interface_FDTD* openEMS::NewEngineInterface(int multigridlevel)
 		{
 			if (g_settings.GetVerboseLevel()>0)
 				cout << __func__ << ": Operator with highest multi-grid level chosen." << endl;
-			return new Engine_Interface_Cylindrical_FDTD(op_cyl_inner);
+			return ::NewEngineInterface(op_cyl_inner);
 		}
 		// try next level
 	}
-	Operator_Cylinder* op_cyl = dynamic_cast<Operator_Cylinder*>(FDTD_Op);
-	if (op_cyl)
-		return new Engine_Interface_Cylindrical_FDTD(op_cyl);
-	Operator_sse* op_sse = dynamic_cast<Operator_sse*>(FDTD_Op);
-	if (op_sse)
-		return new Engine_Interface_SSE_FDTD(op_sse);
-	return new Engine_Interface_FDTD(FDTD_Op);
+	return ::NewEngineInterface(FDTD_Op);
 }
 
 void openEMS::SetVerboseLevel(int level)
@@ -790,16 +811,19 @@ void openEMS::SetupCylinderMultiGrid(std::string val)
 
 bool openEMS::SetupOperator()
 {
+	// what defaults to AvailableThreads() (GPU operator build, field dumps, SAR, nf2ff) honours numThreads
+	SetThreadLimit(m_engine_numThreads);
 	if (CylinderCoords)
 	{
+		bool gpu = (m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference);
+		Operator_Cylinder* op_cyl = NULL;
 		if (m_CC_MultiGrid.size()>0)
-		{
-			FDTD_Op = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
-			if (FDTD_Op==NULL)
-				FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
-		}
-		else
-			FDTD_Op = Operator_Cylinder::New(m_engine_numThreads);
+			op_cyl = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
+		if (op_cyl==NULL)
+			op_cyl = Operator_Cylinder::New(m_engine_numThreads);
+		if (gpu)
+			op_cyl->SetGPUBackend(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
+		FDTD_Op = op_cyl;
 	}
 	else if (m_engine == EngineType_SSE)
 	{
@@ -812,6 +836,10 @@ bool openEMS::SetupOperator()
 	else if (m_engine == EngineType_Multithreaded)
 	{
 		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
+	}
+	else if ((m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference))
+	{
+		FDTD_Op = Operator_GPU::New(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
 	}
 	else
 	{
@@ -1377,7 +1405,16 @@ int openEMS::SetupFDTD()
 	}
 
 	//create FDTD engine
-	FDTD_Eng = FDTD_Op->CreateEngine();
+	try
+	{
+		FDTD_Eng = FDTD_Op->CreateEngine();
+	}
+	catch (const std::exception& e)
+	{
+		// e.g. the GPU engine without a device: do not run something else instead
+		cerr << "openEMS::SetupFDTD: Error: creating the FDTD engine failed: " << e.what() << endl;
+		return 4;
+	}
 
 	if (Op_Ext_SSD)
 	{

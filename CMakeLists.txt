@@ -175,6 +175,139 @@ set(SOURCES
 
 set(PUB_HEADERS openems.h openems_global.h)
 
+# HIP GPU backend for the GPU engine (--engine=gpu), built if a HIP compiler is found.
+# HIP runs on AMD GPUs through ROCm and on NVIDIA GPUs through CUDA, from the same
+# sources: on the NVIDIA platform the compiler is nvcc and the binary needs the CUDA
+# runtime, not a ROCm one.
+#
+# With OPENEMS_HIP_AS_CUDA the same sources are compiled as CUDA instead, for NVIDIA GPUs
+# without a HIP compiler: it is the same compiler (nvcc) over the same headers, since the
+# HIP headers of the NVIDIA platform map the calls to CUDA inline. This needs a CUDA
+# compiler and the HIP headers (HIP_INCLUDE_DIR, looked for in ROCM_PATH and /opt/rocm;
+# the hip-dev package of AMD holds the headers of every system).
+# It is the default on Windows, where the HIP language of CMake is not usable: it refuses
+# every generator but Make and Ninja, and its compiler test fails to link with nvcc.
+#
+# Whatever is missing for the backend switches it off, with a warning if it was asked
+# for: openEMS builds without it.
+IF(POLICY CMP0077)
+  # the options below keep a value set in localConfig.cmake
+  cmake_policy(SET CMP0077 NEW)
+ENDIF()
+include(CheckLanguage)
+set(HIP_MISSING "")
+IF(WIN32)
+  OPTION(OPENEMS_HIP_AS_CUDA "Compile the HIP GPU backend as CUDA sources (NVIDIA GPUs)" ON)
+ELSE()
+  OPTION(OPENEMS_HIP_AS_CUDA "Compile the HIP GPU backend as CUDA sources (NVIDIA GPUs)" OFF)
+ENDIF()
+IF(OPENEMS_HIP_AS_CUDA)
+  IF(CMAKE_VERSION VERSION_LESS 3.24)
+    set(HIP_MISSING "CMake 3.24 or newer")
+  ELSE()
+    check_language(CUDA)
+    find_path(HIP_INCLUDE_DIR hip/hip_runtime.h HINTS ${ROCM_PATH}/include $ENV{ROCM_PATH}/include /opt/rocm/include)
+    IF(NOT CMAKE_CUDA_COMPILER)
+      set(HIP_MISSING "a CUDA compiler")
+    ELSEIF(NOT HIP_INCLUDE_DIR)
+      set(HIP_MISSING "the HIP headers (HIP_INCLUDE_DIR)")
+    ENDIF()
+  ENDIF()
+ELSE()
+  # CMAKE_HIP_PLATFORM, which tells AMD from NVIDIA below, came with CMake 3.28
+  IF(CMAKE_VERSION VERSION_LESS 3.28)
+    set(HIP_MISSING "CMake 3.28 or newer")
+  ELSE()
+    check_language(HIP)
+    IF(NOT CMAKE_HIP_COMPILER)
+      set(HIP_MISSING "a HIP compiler")
+    ENDIF()
+  ENDIF()
+ENDIF()
+IF(HIP_MISSING)
+  OPTION(ENABLE_HIP "Build the HIP GPU backend" OFF)
+ELSE()
+  OPTION(ENABLE_HIP "Build the HIP GPU backend" ON)
+ENDIF()
+IF(ENABLE_HIP AND HIP_MISSING)
+  message(WARNING "The HIP GPU backend needs ${HIP_MISSING}, building without it")
+  set(ENABLE_HIP OFF)
+ENDIF()
+IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
+  IF(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+  ENDIF()
+  enable_language(CUDA)
+  set(CMAKE_CUDA_STANDARD 14)
+  # the same rounding as the HIP flags below give on the other systems
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --fmad=false")
+  IF(ENABLE_FLUSH_TO_ZERO)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ftz=true")
+  ENDIF()
+  message(STATUS "HIP GPU backend enabled as CUDA sources, architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+ELSEIF(ENABLE_HIP)
+  # default: the GPU of the build machine
+  IF(NOT DEFINED CMAKE_HIP_ARCHITECTURES)
+    set(CMAKE_HIP_ARCHITECTURES native)
+  ENDIF()
+  enable_language(HIP)
+  set(CMAKE_HIP_STANDARD 14)
+  # No fused multiply-add and the same denormal handling, so the kernels round like the
+  # CPU engines (python/Tests/GPU_Engine.py compares them value by value). The flags are
+  # those of the compiler behind hipcc: hipcc on the NVIDIA platform, clang on AMD, and
+  # the clang spelling would only reach the host compiler under hipcc.
+  IF(CMAKE_HIP_PLATFORM STREQUAL "nvidia")
+    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --fmad=false")
+    IF(ENABLE_FLUSH_TO_ZERO)
+      set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} --ftz=true")
+    ENDIF()
+  ELSE()
+    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -ffp-contract=off")
+    IF(ENABLE_FLUSH_TO_ZERO)
+      set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -fgpu-flush-denormals-to-zero")
+    ENDIF()
+  ENDIF()
+  IF(CMAKE_HIP_PLATFORM STREQUAL "amd")
+    # On the AMD platform HIP is a runtime library the kernels need at link time. Not
+    # find_package(hip): its config file requires the ROCm clang as the C++ compiler,
+    # while openEMS builds its C++ with the system one. On the NVIDIA platform hipcc
+    # compiles to CUDA and the CUDA runtime comes with the HIP sources.
+    find_library(HIP_RUNTIME_LIBRARY amdhip64 HINTS ${ROCM_PATH}/lib $ENV{ROCM_PATH}/lib /opt/rocm/lib)
+    IF(NOT HIP_RUNTIME_LIBRARY)
+      message(WARNING "The HIP GPU backend needs libamdhip64 on AMD (set ROCM_PATH), building without it")
+      set(ENABLE_HIP OFF)
+    ENDIF()
+  ENDIF()
+ENDIF()
+IF(ENABLE_HIP AND NOT OPENEMS_HIP_AS_CUDA)
+  message(STATUS "HIP GPU backend enabled, architectures: ${CMAKE_HIP_ARCHITECTURES}")
+ENDIF()
+
+IF(ENABLE_HIP)
+  ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
+ENDIF()
+
+# Metal GPU backend for the GPU engine (--engine=gpu), macOS only
+IF(APPLE)
+  # Objective-C++ is a language of CMake since 3.16
+  IF(CMAKE_VERSION VERSION_LESS 3.16)
+    OPTION(ENABLE_METAL "Build the Metal GPU backend" OFF)
+    IF(ENABLE_METAL)
+      message(WARNING "The Metal GPU backend needs CMake 3.16 or newer, building without it")
+      set(ENABLE_METAL OFF)
+    ENDIF()
+  ELSE()
+    OPTION(ENABLE_METAL "Build the Metal GPU backend" ON)
+  ENDIF()
+ENDIF()
+IF(APPLE AND ENABLE_METAL)
+  message(STATUS "Metal GPU backend enabled")
+  enable_language(OBJCXX)
+  set(CMAKE_OBJCXX_STANDARD ${CMAKE_CXX_STANDARD})
+  set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -fobjc-arc")
+  ADD_DEFINITIONS( -DOPENEMS_WITH_METAL )
+ENDIF()
+
 # libs
 ADD_SUBDIRECTORY( tools )
 ADD_SUBDIRECTORY( FDTD )
@@ -185,8 +318,26 @@ INCLUDE_DIRECTORIES( ${openEMS_SOURCE_DIR} )    #find tools
 
 message(STATUS "Sources:"  ${SOURCES})
 
+IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
+  # the backend sources are HIP, compiled by nvcc as CUDA (see the HIP block above);
+  # nvcc does not know the .hip suffix, hence -x cu
+  set_source_files_properties(${HIP_SOURCES} PROPERTIES LANGUAGE CUDA COMPILE_OPTIONS "-x;cu")
+ENDIF()
+
 add_library( openEMS SHARED ${SOURCES})
+
+IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
+  target_include_directories( openEMS PRIVATE ${HIP_INCLUDE_DIR} )
+  target_compile_definitions( openEMS PRIVATE __HIP_PLATFORM_NVIDIA__=1 )
+ENDIF()
 #ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})
+IF(ENABLE_HIP AND NOT OPENEMS_HIP_AS_CUDA AND CMAKE_HIP_PLATFORM STREQUAL "amd")
+  TARGET_LINK_LIBRARIES( openEMS ${HIP_RUNTIME_LIBRARY} )
+ENDIF()
+IF(APPLE AND ENABLE_METAL)
+  TARGET_LINK_LIBRARIES( openEMS "-framework Metal" "-framework Foundation" )
+ENDIF()
+
 set_target_properties(openEMS PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR} )
 TARGET_LINK_LIBRARIES( openEMS
   ${CSXCAD_LIBRARIES}

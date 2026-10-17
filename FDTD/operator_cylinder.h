@@ -22,6 +22,8 @@
 
 #include "operator_multithread.h"
 
+class GPU_Backend;
+
 class Operator_Ext_Cylinder;
 
 //! This class creates an operator for a cylindrical FDTD.
@@ -42,6 +44,9 @@ public:
 	virtual void ApplyMagneticBC(bool* dirs);
 
 	virtual unsigned int GetNumberOfLines(int ny, bool full=false) const;
+
+	//! The first and the last alpha line of a closed mesh are the same line
+	virtual bool GetClosedMeshLines(int ny, unsigned int &first, unsigned int &last) const;
 
 	//! Get the name for the given direction: 0 -> rho, 1 -> alpha, 2 -> z
 	virtual std::string GetDirName(int ny) const;
@@ -89,6 +94,10 @@ public:
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
+	//! Create a GPU engine on backend \a backend (see GPU_Backend::New) instead of the multithreaded engine; empty: multithreaded engine.
+	//! A multi-grid sub-grid passes the backend of its parent grid as \a parent (see GPU_Backend::NewSubGridBackend()).
+	void SetGPUBackend(const std::string& backend, GPU_Backend* parent=NULL) {m_GPU_Backend = backend; m_GPU_Parent = parent;}
+
 	virtual void AddExtension(Operator_Extension* op_ext);
 
 	virtual Engine* CreateEngine();
@@ -115,6 +124,9 @@ protected:
 	virtual double CalcTimestep();
 	bool CC_closedAlpha;
 	bool CC_R0_included;
+
+	std::string m_GPU_Backend;
+	GPU_Backend* m_GPU_Parent;
 	Operator_Ext_Cylinder* m_Cyl_Ext;
 };
 

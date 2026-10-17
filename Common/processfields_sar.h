@@ -49,6 +49,8 @@ public:
 
 protected:
 	virtual void DumpFDData();
+	//! With the cell conductivity the SAR only needs the E field: computed like an E field dump
+	virtual DumpType FieldDumpType() const;
 
 	bool m_UseCellKappa;
 

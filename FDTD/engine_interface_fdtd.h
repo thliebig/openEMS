@@ -31,7 +31,7 @@ public:
 	virtual ~Engine_Interface_FDTD();
 
 	//! Set the FDTD operator
-	virtual void SetFDTDOperator(Operator* op) {SetOperator(op); m_Op=op;}
+	virtual void SetFDTDOperator(Operator* op);
 	//! Set the FDTD engine
 	virtual void SetFDTDEngine(Engine* eng) {m_Eng=eng;}
 
@@ -54,9 +54,154 @@ public:
 
 	virtual double CalcFastEnergy() const;
 
+	//! The interpolated E field at \a pos from raw(n, pos), the voltage of edge n at pos divided by its length
+	/*!
+	  GetEField() with raw = GetRawField(); the dumps of the GPU engine read the raw values
+	  from field snapshots and frequency domain sums instead, with the same interpolation.
+	  */
+	template <typename T, typename Raw>
+	void InterpolateField(const unsigned int* pos, T* out, Raw raw) const
+	{
+		unsigned int seamPos[3];
+		if (m_ClosedMesh)
+		{
+			for (int n=0; n<3; ++n)
+				seamPos[n] = GetSeamLine(n, pos[n]);
+			pos = seamPos;
+		}
+		unsigned int iPos[] = {pos[0],pos[1],pos[2]};
+		int nP,nPP;
+		double delta;
+		switch (m_InterpolType)
+		{
+		default:
+		case NO_INTERPOLATION:
+			for (int n=0; n<3; ++n)
+				out[n] = raw(n, pos);
+			break;
+		case NODE_INTERPOLATE:
+			for (int n=0; n<3; ++n)
+			{
+				if (pos[n]==m_Op->GetNumberOfLines(n, true)-1)  // use only the "lower value" at the upper bound
+				{
+					--iPos[n];
+					out[n] = raw(n, iPos);
+					++iPos[n];
+					continue;
+				}
+				delta = m_Op->GetEdgeLength(n,iPos);
+				out[n] = raw(n, iPos);
+				if (delta==0)
+				{
+					out[n]=0;
+					continue;
+				}
+				if (pos[n]==0) // use only the "upper value" at the lower bound
+					continue;
+				--iPos[n];
+				double deltaDown = m_Op->GetEdgeLength(n,iPos);
+				double deltaRel = delta / (delta+deltaDown);
+				out[n] = out[n]*(1.0-deltaRel) + raw(n, iPos)*deltaRel;
+				++iPos[n];
+			}
+			break;
+		case CELL_INTERPOLATE:
+			for (int n=0; n<3; ++n)
+			{
+				nP = (n+1)%3;
+				nPP = (n+2)%3;
+				if ((pos[0]==m_Op->GetNumberOfLines(0,true)-1) || (pos[1]==m_Op->GetNumberOfLines(1,true)-1) || (pos[2]==m_Op->GetNumberOfLines(2,true)-1))
+				{
+					out[n] = 0; //electric field outside the field domain is always zero
+					continue;
+				}
+				out[n]=raw(n, iPos);
+				++iPos[nP];
+				out[n]+=raw(n, iPos);
+				++iPos[nPP];
+				out[n]+=raw(n, iPos);
+				--iPos[nP];
+				out[n]+=raw(n, iPos);
+				--iPos[nPP];
+				out[n]/=4;
+			}
+			break;
+		}
+	}
+	//! The interpolated H field at \a pos from raw(n, pos), the current of edge n at pos divided by its dual length, see InterpolateField()
+	template <typename T, typename Raw>
+	void InterpolateDualField(const unsigned int* pos, T* out, Raw raw) const
+	{
+		unsigned int seamPos[3];
+		if (m_ClosedMesh)
+		{
+			for (int n=0; n<3; ++n)
+				seamPos[n] = GetSeamLine(n, pos[n]);
+			pos = seamPos;
+		}
+		unsigned int iPos[] = {pos[0],pos[1],pos[2]};
+		int nP,nPP;
+		double delta;
+		switch (m_InterpolType)
+		{
+		default:
+		case NO_INTERPOLATION:
+			out[0] = raw(0, pos);
+			out[1] = raw(1, pos);
+			out[2] = raw(2, pos);
+			break;
+		case NODE_INTERPOLATE:
+			for (int n=0; n<3; ++n)
+			{
+				nP = (n+1)%3;
+				nPP = (n+2)%3;
+				if ((pos[0]==m_Op->GetNumberOfLines(0,true)-1) || (pos[1]==m_Op->GetNumberOfLines(1,true)-1) || (pos[2]==m_Op->GetNumberOfLines(2,true)-1) || (pos[nP]==0) || (pos[nPP]==0))
+				{
+					out[n] = 0;
+					continue;
+				}
+				out[n] = raw(n, iPos);
+				--iPos[nP];
+				out[n]+= raw(n, iPos);
+				--iPos[nPP];
+				out[n]+= raw(n, iPos);
+				++iPos[nP];
+				out[n]+= raw(n, iPos);
+				++iPos[nPP];
+				out[n]/=4;
+			}
+			break;
+		case CELL_INTERPOLATE:
+			for (int n=0; n<3; ++n)
+			{
+				delta = m_Op->GetEdgeLength(n,iPos,true);
+				out[n] = raw(n, iPos);
+				if ((pos[n]>=m_Op->GetNumberOfLines(n,true)-1))
+				{
+					out[n] = 0; //magnetic field on the outer boundaries is always zero
+					continue;
+				}
+				++iPos[n];
+				double deltaUp = m_Op->GetEdgeLength(n,iPos,true);
+				double deltaRel = delta / (delta+deltaUp);
+				out[n] = out[n]*(1.0-deltaRel) + raw(n, iPos)*deltaRel;
+				--iPos[n];
+			}
+			break;
+		}
+	}
+
 protected:
 	Operator* m_Op;
 	Engine* m_Eng;
+
+	//! The closed (periodic) directions of the mesh, see Operator_Base::GetClosedMeshLines()
+	bool m_ClosedMesh;
+	bool m_Closed[3];
+	unsigned int m_ClosedFirst[3], m_ClosedLast[3];
+	void UpdateClosedMesh();
+	//! The line of direction \a n an interpolated field at \a line is evaluated at: on the seam of a closed mesh its other side, where the interpolation has the neighbours
+	unsigned int GetSeamLine(int n, unsigned int line) const;
 
 	//! Internal method to get an interpolated field of a given type. (0: E, 1: J, 2: rotH, 3: D)
 	virtual double* GetRawInterpolatedField(const unsigned int* pos, double* out, int type) const;

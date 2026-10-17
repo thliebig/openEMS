@@ -379,6 +379,8 @@ int ProcessingArray::Process()
 
 void ProcessingArray::PostProcess()
 {
+	// background processing first, it may use the same libraries (e.g. HDF5) as the post-processing
+	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->FinishAsync();
 	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->PostProcess();
 }
 

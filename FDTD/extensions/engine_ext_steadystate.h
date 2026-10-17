@@ -18,6 +18,8 @@
 #ifndef ENGINE_EXT_STEADYSTATE_H
 #define ENGINE_EXT_STEADYSTATE_H
 
+#include <functional>
+
 #include "engine_extension.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
@@ -36,6 +38,13 @@ public:
 
 	void SetEngineInterface(Engine_Interface_FDTD* eng_if) {m_Eng_Interface=eng_if;}
 	double GetLastDiff() {return m_last_max_diff;}
+
+	//! Compare the last two periods of the records, at a timestep \a rel_pos within the 2 periods of the records
+	/*!
+	  \a record(n, t) returns the voltage of probe \a n at the record position \a t (0 <= t < 2 periods);
+	  also called by the GPU engines, which record the probes on the device.
+	  */
+	void CheckPeriod(unsigned int rel_pos, const std::function<double(size_t, unsigned int)>& record);
 
 protected:
 	Operator_Ext_SteadyState* m_Op_SS;
