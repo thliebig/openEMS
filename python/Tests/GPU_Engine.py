@@ -51,6 +51,7 @@ from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from CSXCAD.CSProperties import ABCtype
 from openEMS.physical_constants import C0
 from openEMS import openEMS
+from openEMS.compare import compare_sim_results, deviation
 from openEMS.ports import LumpedPort
 
 unit = 1e-3   # drawing unit: mm
@@ -515,42 +516,20 @@ def run_captured(case, Sim_Path, engine):
         return log.read()
 
 
-def deviation(a, b, peak=None):
-    """ max. deviation of b from a, relative to peak (default: the peak of a), 0 if identical """
-    a = np.asarray(a); b = np.asarray(b)
-    if a.shape != b.shape:
-        return np.inf
-    if np.array_equal(a, b):
-        return 0.0
-    if peak is None:
-        peak = np.max(np.abs(a))
-    return np.max(np.abs(a - b)) / (peak if peak > 0 else 1.0)
-
-
 def compare_outputs(path_a, path_b, rtol=0):
-    """ compare all probe files and HDF5 dumps, return a list of (name, deviation) above rtol """
-    diff = []
+    """ compare all probe files and field dumps (openEMS.compare), return the (name, deviation)
+        above rtol, the numbers of probe files and of HDF5 dumps, and the max. deviation """
     files = [f for f in os.listdir(path_a) if os.path.isfile(os.path.join(path_a, f))]
     probes = [f for f in files if '.' not in f]   # probe and port files have no extension
     dumps  = [f for f in files if f.endswith('.h5')]
     assert probes, f'FAIL: no probe files in {path_a}'
-    for f in probes:
-        a = np.loadtxt(os.path.join(path_a, f), comments='%')
-        b = np.loadtxt(os.path.join(path_b, f), comments='%')
-        diff.append((f, deviation(a, b)))
     for f in dumps:
-        with h5py.File(os.path.join(path_a, f), 'r') as a, h5py.File(os.path.join(path_b, f), 'r') as b:
-            names = []
-            a.visititems(lambda name, obj: names.append(name) if isinstance(obj, h5py.Dataset) else None)
-            # field data relative to the peak of the whole dump, not of each (possibly decayed) timestep
-            fields = [n for n in names if n.startswith('FieldData')]
-            peak = max([np.max(np.abs(a[n][()])) for n in fields] or [0])
-            assert peak > 0, f'FAIL: the field dump {f} of {path_a} is zero, the comparison would test nothing'
-            for n in names:
-                if n not in b:
-                    diff.append((f'{f}:{n}', np.inf))
-                else:
-                    diff.append((f'{f}:{n}', deviation(a[n][()], b[n][()], peak if n in fields else None)))
+        with h5py.File(os.path.join(path_a, f), 'r') as a:
+            fields = []
+            a.visititems(lambda name, obj: fields.append(obj[()]) if isinstance(obj, h5py.Dataset) and name.startswith('FieldData') else None)
+            assert max([np.max(np.abs(x)) for x in fields] or [0]) > 0, \
+                f'FAIL: the field dump {f} of {path_a} is zero, the comparison would test nothing'
+    diff = compare_sim_results(path_a, path_b)
     worst = max(d for _, d in diff)
     return [(n, d) for n, d in diff if d > rtol], len(probes), len(dumps), worst
 
