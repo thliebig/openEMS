@@ -223,7 +223,7 @@ bool Metal_Ext_UPML::Fused()
 	if (d->upml_fused<0)
 	{
 		d->upml_fused = CanFuse();
-		if (d->upml_fused)
+		if (d->upml_fused && (g_settings.GetVerboseLevel()>1))
 			std::cout << "GPU_Backend_Metal: " << d->upml.size() << " UPML regions fused with the main updates ("
 			          << d->zslab[0].active+d->zslab[1].active << " along z in the main kernels)" << std::endl;
 	}

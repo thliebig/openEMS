@@ -628,10 +628,13 @@ bool GPU_Backend_HIP::Impl::DecideFusedStep()
 	HIP_Check(hipMemcpyAsync(curr_next, curr, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
 	Flush();
 	fused_step = 1;
-	std::cout << "GPU_Backend_HIP: fused voltage and current updates" << (index32 ? ", 32 bit indices" : "");
-	if (fregions.count)
-		std::cout << " (" << fregions.count << " UPML regions in the kernel)";
-	std::cout << std::endl;
+	if (g_settings.GetVerboseLevel()>1)
+	{
+		std::cout << "GPU_Backend_HIP: fused voltage and current updates" << (index32 ? ", 32 bit indices" : "");
+		if (fregions.count)
+			std::cout << " (" << fregions.count << " UPML regions in the kernel)";
+		std::cout << std::endl;
+	}
 	return true;
 }
 
@@ -829,8 +832,9 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 		d->coeff_mode = sets.mode;
 		d->index = d->AllocIndex(sets);
 		d->coeff = d->Alloc<float>(sets.table.size(), sets.table.data());
-		std::cout << "GPU_Backend_HIP: " << sets.count << " distinct coefficient sets, compressed update coefficients ("
-		          << (sets.mode==1 ? 16 : 32) << " bit index)" << std::endl;
+		if (g_settings.GetVerboseLevel()>1)
+			std::cout << "GPU_Backend_HIP: " << sets.count << " distinct coefficient sets, compressed update coefficients ("
+			          << (sets.mode==1 ? 16 : 32) << " bit index)" << std::endl;
 		return true;
 	}
 

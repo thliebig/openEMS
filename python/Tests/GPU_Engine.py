@@ -507,7 +507,7 @@ def run_captured(case, Sim_Path, engine):
             # the backends are compared value by value, so every run has to stop at the
             # same timestep: the end criteria is otherwise evaluated on a wall-clock
             # schedule and the faster backend runs a few timesteps further
-            FDTD.Run(Sim_Path, cleanup=True, engine=engine, exact_endcriteria=True)
+            FDTD.Run(Sim_Path, cleanup=True, engine=engine, exact_endcriteria=True, verbose=2)   # verbose 2: the paths the GPU engine takes
         finally:
             try:   # flush the C stdio buffer of the openEMS library
                 ctypes.CDLL(ctypes.util.find_library('c')).fflush(None)

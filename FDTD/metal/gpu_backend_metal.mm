@@ -480,8 +480,9 @@ bool GPU_Backend_Metal::CompressCoefficients(const Operator* op, const unsigned 
 	d->coeff_mode = sets.mode;
 	d->index = d->NewIndexBuffer(sets);
 	d->coeff = d->NewBuffer(sets.table.size()*sizeof(float), sets.table.data());
-	std::cout << "GPU_Backend_Metal: " << sets.count << " distinct coefficient sets, compressed update coefficients ("
-	          << (d->coeff_mode==1 ? 16 : 32) << " bit index)" << std::endl;
+	if (g_settings.GetVerboseLevel()>1)
+		std::cout << "GPU_Backend_Metal: " << sets.count << " distinct coefficient sets, compressed update coefficients ("
+		          << (d->coeff_mode==1 ? 16 : 32) << " bit index)" << std::endl;
 	return true;
 }
 

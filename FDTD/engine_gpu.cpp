@@ -122,7 +122,7 @@ void Engine_GPU::Init()
 		for (size_t n=0; n<host_exts.size(); ++n)
 			cerr << "\t" << host_exts.at(n) << endl;
 	}
-	else
+	else if (g_settings.GetVerboseLevel()>1)
 		cout << "Engine_GPU: all extensions run on the device" << endl;
 }
 
@@ -253,7 +253,7 @@ bool Engine_GPU::SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr
 	}
 	if (!m_Backend->SnapshotFields(volt, curr))
 		return false;
-	if (!m_SnapshotsUsed)
+	if (!m_SnapshotsUsed && (g_settings.GetVerboseLevel()>1))
 		cout << "Engine_GPU: field dumps from snapshots of the fields" << endl;
 	m_SnapshotsUsed = true;
 	return true;
@@ -290,7 +290,8 @@ int Engine_GPU::AddFieldDFT(bool h_field, const Engine_GatherRegion& region, uns
 	const int id = m_Backend->AddFieldDFT(h_field, region, count);
 	if ((id>=0) && !m_FieldDFTUsed)
 	{
-		cout << "Engine_GPU: frequency domain dumps accumulated on the device" << endl;
+		if (g_settings.GetVerboseLevel()>1)
+			cout << "Engine_GPU: frequency domain dumps accumulated on the device" << endl;
 		m_FieldDFTUsed = true;
 	}
 	return id;
