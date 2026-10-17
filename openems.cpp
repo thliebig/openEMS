@@ -1582,7 +1582,8 @@ void openEMS::RunFDTD()
 	{
 		// not the timestep limit: say so, the advice below would be wrong
 		cout << "RunFDTD: simulation aborted after " << FDTD_Eng->GetNumberOfTimesteps() << " timesteps";
-		if (Eng_Ext_SSD==NULL)
+		// the energy decay, once there is one: with a Gaussian pulse, after the first check
+		if ((Eng_Ext_SSD==NULL) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0) && (change<1))
 			cout << " (-" << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)";
 		cout << endl;
 	}
