@@ -151,6 +151,20 @@ def _compare(path_a, path_b):
                         result.append((f, f'{f}:{n}', np.inf))
                     else:
                         result.append((f, f'{f}:{n}', deviation(a[n][()], b[n][()], peak.get(_peak_group(n)))))
+
+    # an output that only the second run wrote is no agreement either
+    for f in sorted(os.listdir(path_b)):
+        fb = os.path.join(path_b, f)
+        if (f in files) or not os.path.isfile(fb):
+            continue
+        if f.endswith('.h5') or f.endswith('.vtr'):
+            result.append((f, f, np.inf))
+        elif '.' not in f:
+            try:
+                _read_probe(fb)
+            except ValueError:
+                continue    # not a probe file
+            result.append((f, f, np.inf))
     return result
 
 
@@ -176,7 +190,8 @@ def compare_sim_results(path_a, path_b):
     list of (str, float)
         One ``(name, deviation)`` per probe file, per HDF5 dump dataset
         (named ``file.h5:dataset``) and per array of a VTK dump file.  A file
-        or dataset missing in `path_b` has deviation ``inf``.
+        or dataset missing in `path_b`, and a probe file or field dump that only
+        `path_b` has, has deviation ``inf``.
     """
     return [(name, dev) for _, name, dev in _compare(path_a, path_b)]
 

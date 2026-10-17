@@ -84,6 +84,12 @@ class Test_Compare(unittest.TestCase):
         self.setUp()
         write_run(self.b, self.probe, self.time + 1e-12, self.dump, e_phi=1e-9)
         self.assertEqual(self.worst()['ut'], np.inf)
+        # nor is an output that only the second run wrote
+        self.tmp.cleanup()
+        self.setUp()
+        write_run(self.b, self.probe, self.time, self.dump, e_phi=1e-9)
+        np.savetxt(os.path.join(self.b, 'it'), np.column_stack([self.time, self.probe]), comments='% ')
+        self.assertEqual(self.worst()['it'], np.inf)
 
 
 if __name__ == '__main__':
