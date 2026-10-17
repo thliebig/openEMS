@@ -803,6 +803,16 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	d->upml_fused = -1;
 	d->ResetZSlabs();
 
+	// the main updates launch one block per x line along z, which the device limits (64k on AMD and NVIDIA)
+	int max_grid_z = 0;
+	HIP_Check(hipDeviceGetAttribute(&max_grid_z, hipDeviceAttributeMaxGridDimZ, d->ctx->device), "hipDeviceGetAttribute");
+	if ((max_grid_z>0) && (d->dim.nx>(unsigned int)max_grid_z))
+	{
+		std::cerr << "GPU_Backend_HIP::Init: Error: " << d->dim.nx << " mesh lines in x, the device allows at most "
+		          << max_grid_z << "; swap the axes, or use a CPU engine" << std::endl;
+		return false;
+	}
+
 	// The fused step indexes with 32 bit on NVIDIA while the fields fit (faster there), with
 	// 64 bit on AMD; OPENEMS_HIP_INDEX=32 or 64 overrides.
 	const bool fits32 = 3*d->numCells <= UINT_MAX;
