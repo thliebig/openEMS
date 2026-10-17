@@ -163,7 +163,6 @@ Metal_Ext_UPML::Metal_Ext_UPML(GPU_Backend_Metal::Impl* impl, Operator_Ext_UPML*
 	d = impl;
 	m_Eng = eng;
 	m_InMain = false;
-	d->upml.push_back(this);
 	m_Region.sx = op_ext->m_StartPos[0];
 	m_Region.sy = op_ext->m_StartPos[1];
 	m_Region.sz = op_ext->m_StartPos[2];
@@ -203,6 +202,9 @@ Metal_Ext_UPML::Metal_Ext_UPML(GPU_Backend_Metal::Impl* impl, Operator_Ext_UPML*
 	d->Pipeline(UPML_SOURCE, "upml_post");
 	d->Pipeline(UPML_SOURCE, "upml_fused_volt");
 	d->Pipeline(UPML_SOURCE, "upml_fused_curr");
+
+	// registered only once complete: a constructor that throws must not stay in the list
+	d->upml.push_back(this);
 }
 
 // The engine drops the device extensions on a host fallback or a reset, so undo the fusion: the

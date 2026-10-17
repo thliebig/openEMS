@@ -183,8 +183,6 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 	m_InMain = false;
 	m_Side = -1;
 	m_VoltFlux2 = NULL;
-	// the UPML extensions of a grid decide together whether they fuse (see CanFuse())
-	d->upml.push_back(this);
 	m_Region.sx = op_ext->m_StartPos[0];
 	m_Region.sy = op_ext->m_StartPos[1];
 	m_Region.sz = op_ext->m_StartPos[2];
@@ -220,6 +218,10 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 		m_SetIndex = d->AllocIndex(sets);
 		m_Sets = d->Alloc<float>(sets.table.size(), sets.table.data());
 	}
+
+	// the UPML extensions of a grid decide together whether they fuse (see CanFuse()); only once
+	// complete: a constructor that throws (out of device memory) must not stay in the list
+	d->upml.push_back(this);
 }
 
 HIP_Ext_UPML::~HIP_Ext_UPML()
