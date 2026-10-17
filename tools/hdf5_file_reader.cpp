@@ -636,7 +636,7 @@ bool HDF5_File_Reader::ReadTimeSteps(std::vector<unsigned int> &timestep, std::v
 	std::vector<std::string> all_names;
 	if (!GetDataSetNames(TD_grp, all_names) || (all_names.size()!=numObj))
 	{
-		cerr << "HDF5_File_Reader::ReadTimeSteps: invalid timestep found!" << endl;
+		cerr << "HDF5_File_Reader::ReadTimeSteps: can't list the datasets" << endl;
 		H5Gclose(TD_grp);
 		return false;
 	}
@@ -917,7 +917,10 @@ bool HDF5_File_Reader::CalcFDVectorData(std::vector<float> &frequencies, std::ve
 		bool ok = GetDataSetNames(TD_grp, ts_names);
 		H5Gclose(TD_grp);
 		if (!ok)
+		{
+			cerr << "HDF5_File_Reader::CalcFDVectorData: error, can't list the TD datasets" << endl;
 			return false;
+		}
 	}
 	if (ts_names.empty())
 	{
