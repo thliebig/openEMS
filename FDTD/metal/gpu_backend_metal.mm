@@ -283,10 +283,13 @@ void Metal_Context::Flush()
 		[enc endEncoding];
 		[cmd commit];
 		[cmd waitUntilCompleted];
-		if (cmd.status==MTLCommandBufferStatusError)
-			throw std::runtime_error(std::string("GPU_Backend_Metal: command buffer failed: ") + [[cmd.error localizedDescription] UTF8String]);
+		// done with this batch either way: a failed one must not be ended or committed again
+		const bool failed = (cmd.status==MTLCommandBufferStatusError);
+		const std::string what = failed ? [[cmd.error localizedDescription] UTF8String] : "";
 		enc = nil;
 		cmd = nil;
+		if (failed)
+			throw std::runtime_error("GPU_Backend_Metal: command buffer failed: " + what);
 	}
 }
 
@@ -402,8 +405,15 @@ GPU_Backend_Metal::GPU_Backend_Metal(Impl* impl)
 GPU_Backend_Metal::~GPU_Backend_Metal()
 {
 	// run out the encoded batch: its encoder must be ended, and the device must be done
-	// before ARC releases the buffers
-	d->Flush();
+	// before ARC releases the buffers; a device error was reported already, do not throw here
+	try
+	{
+		d->Flush();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+	}
 	delete d;
 }
 
