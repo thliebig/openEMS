@@ -68,7 +68,7 @@ inline MainCoeff main_coeff(const device void* index, const device float* ca, co
 		return c;
 	}
 	const uint set = (mode==1) ? uint(((const device ushort*)index)[i]) : ((const device uint*)index)[i];
-	c.a = ca + 12*set + set_offset; c.b = c.a + 3; c.s = 1;
+	c.a = ca + ulong(12)*set + set_offset; c.b = c.a + 3; c.s = 1;   // 64 bit: more than 358M sets wrap in 32
 	return c;
 }
 
@@ -96,7 +96,7 @@ inline UPMLCoeff upml_coeff(uint mode, const device void* index, const device fl
 		return c;
 	}
 	const uint set = (mode==1) ? uint(((const device ushort*)index)[l0]) : ((const device uint*)index)[l0];
-	c.old = sets + 18*set + set_offset; c.fo = c.old + 3; c.fn = c.old + 6; c.s = 1;
+	c.old = sets + ulong(18)*set + set_offset; c.fo = c.old + 3; c.fn = c.old + 6; c.s = 1;
 	return c;
 }
 

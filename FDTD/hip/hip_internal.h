@@ -89,7 +89,7 @@ __device__ __forceinline__ HIP_MainCoeffT<I> main_coeff(const void* index, const
 		return c;
 	}
 	const unsigned int set = (mode==1) ? (unsigned int)((const unsigned short*)index)[i] : ((const unsigned int*)index)[i];
-	c.a = ca + 12*set + set_offset; c.b = c.a + 3; c.s = 1;
+	c.a = ca + (size_t)12*set + set_offset; c.b = c.a + 3; c.s = 1;   // 64 bit: more than 358M sets wrap in 32
 	return c;
 }
 

@@ -57,7 +57,7 @@ __device__ __forceinline__ UPMLCoeffT<I> upml_coeff(const UPMLFusedArgs& A, type
 		return c;
 	}
 	const unsigned int set = (A.u_mode==1) ? (unsigned int)((const unsigned short*)A.u_index)[l0] : ((const unsigned int*)A.u_index)[l0];
-	c.old = A.u_sets + 18*set + set_offset; c.fo = c.old + 3; c.fn = c.old + 6; c.s = 1;
+	c.old = A.u_sets + (size_t)18*set + set_offset; c.fo = c.old + 3; c.fn = c.old + 6; c.s = 1;
 	return c;
 }
 
