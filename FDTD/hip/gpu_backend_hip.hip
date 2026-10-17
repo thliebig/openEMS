@@ -170,16 +170,17 @@ __global__ void update_currents(float* __restrict__ curr, const float* __restric
 // ---- fused step
 
 // the voltages of node (x,y,z), the same operations as update_voltages
+template<typename I>
 __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const float* __restrict__ curr,
                                            const void* index, const float* va, const float* vb, unsigned int mode,
                                            const HIP_GridDim& N, unsigned int x, unsigned int y, unsigned int z, float v[3])
 {
-	const size_t sn = (size_t)N.nx*N.ny*N.nz;
-	const size_t i  = nijk(N, 0, x, y, z);
-	const size_t xm = (x>0) ? (size_t)N.ny*N.nz : 0;
-	const size_t ym = (y>0) ? N.nz : 0;
-	const size_t zm = (z>0) ? 1 : 0;
-	const HIP_MainCoeff C = main_coeff(index, va, vb, mode, sn, i, 0);
+	const I sn = (I)N.nx*N.ny*N.nz;
+	const I i  = nijk<I>(N, 0, x, y, z);
+	const I xm = (x>0) ? (I)N.ny*N.nz : 0;
+	const I ym = (y>0) ? N.nz : 0;
+	const I zm = (z>0) ? 1 : 0;
+	const HIP_MainCoeffT<I> C = main_coeff<I>(index, va, vb, mode, sn, i, 0);
 	float t;
 	t  = volt[i] * C.a[0];
 	t += C.b[0] * (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
@@ -214,7 +215,7 @@ __device__ __forceinline__ void fused_volt(const float* __restrict__ volt, const
 // With the UPML regions in the kernel (F.count>0, [B, E) is the whole grid), the region nodes
 // are computed like the main nodes, from the current flux (the new voltage flux goes to a
 // second buffer, written by the node's own block; the current flux in place).
-template<unsigned int TZ, unsigned int TY>
+template<typename I, unsigned int TZ, unsigned int TY>
 __global__ void __launch_bounds__(TZ*TY) update_fused(
 	const float* __restrict__ volt_in, const float* __restrict__ curr_in, float* volt_out, float* __restrict__ curr_out,
 	const void* index, const float* va, const float* vb, const float* ia, const float* ib, unsigned int mode,
@@ -229,7 +230,7 @@ __global__ void __launch_bounds__(TZ*TY) update_fused(
 	const bool main_yz = (z<E.nz) && (y<E.ny);                          // a main node line
 	const bool owner = main_yz && (tz<TZ-1) && (ty<TY-1);  // written by this block
 	const bool in_grid = (z<N.nz) && (y<N.ny);
-	const size_t sn = (size_t)N.nx*N.ny*N.nz;
+	const I sn = (I)N.nx*N.ny*N.nz;
 
 	// the new voltages at x: computed on main nodes, else from the UPML regions (or unused)
 	auto volt_at = [&](unsigned int x, float v[3])
@@ -238,18 +239,18 @@ __global__ void __launch_bounds__(TZ*TY) update_fused(
 		{
 			const int r = F.count ? fused_region_of(F, x, y, z) : -1;
 			if (r<0)
-				fused_volt(volt_in, curr_in, index, va, vb, mode, N, x, y, z, v);
+				fused_volt<I>(volt_in, curr_in, index, va, vb, mode, N, x, y, z, v);
 			else
-				upml_volt_value(volt_in, curr_in, F.volt[r], N, F.R[r], x, y, z, owner && (x<xe), v);
+				upml_volt_value<I>(volt_in, curr_in, F.volt[r], N, F.R[r], x, y, z, owner && (x<xe), v);
 			if (owner && (x<xe))
 			{
-				const size_t i = nijk(N, 0, x, y, z);
+				const I i = nijk<I>(N, 0, x, y, z);
 				volt_out[i] = v[0]; volt_out[sn+i] = v[1]; volt_out[2*sn+i] = v[2];
 			}
 		}
 		else if (in_grid && (x<N.nx))
 		{
-			const size_t i = nijk(N, 0, x, y, z);
+			const I i = nijk<I>(N, 0, x, y, z);
 			v[0] = volt_out[i]; v[1] = volt_out[sn+i]; v[2] = volt_out[2*sn+i];
 		}
 		else
@@ -277,11 +278,11 @@ __global__ void __launch_bounds__(TZ*TY) update_fused(
 			}
 			const int r = F.count ? fused_region_of(F, x, y, z) : -1;
 			if (r>=0)
-				upml_curr_value(curr_in, curr_out, F.curr[r], N, F.R[r], x, y, z, update, curl);
+				upml_curr_value<I>(curr_in, curr_out, F.curr[r], N, F.R[r], x, y, z, update, curl);
 			else if (update)
 			{
-				const size_t i = nijk(N, 0, x, y, z);
-				const HIP_MainCoeff C = main_coeff(index, ia, ib, mode, sn, i, 6);
+				const I i = nijk<I>(N, 0, x, y, z);
+				const HIP_MainCoeffT<I> C = main_coeff<I>(index, ia, ib, mode, sn, i, 6);
 				float c;
 				//for x
 				c  = curr_in[i] * C.a[0];
@@ -321,24 +322,34 @@ struct HIP_FusedArgs
 	unsigned int xc;
 };
 
-template<unsigned int TZ, unsigned int TY>
+template<typename I, unsigned int TZ, unsigned int TY>
 static void launch_fused(hipStream_t stream, const HIP_FusedArgs& a)
 {
 	const dim3 block(TZ, TY, 1);
 	const dim3 grid((a.E.nz-a.B.nz+TZ-2)/(TZ-1), (a.E.ny-a.B.ny+TY-2)/(TY-1), (a.E.nx-a.B.nx+a.xc-1)/a.xc);
-	update_fused<TZ, TY><<<grid, block, 0, stream>>>(a.volt_in, a.curr_in, a.volt_out, a.curr_out, a.index,
+	update_fused<I, TZ, TY><<<grid, block, 0, stream>>>(a.volt_in, a.curr_in, a.volt_out, a.curr_out, a.index,
 	                                                 a.va, a.vb, a.ia, a.ib, a.mode, a.N, a.B, a.E, a.F, a.xc);
 }
 
-template<unsigned int TZ>
+template<typename I, unsigned int TZ>
 static void launch_fused_ty(hipStream_t stream, const HIP_FusedArgs& a, unsigned int ty)
 {
 	switch (ty)
 	{
-		case 4:  launch_fused<TZ, 4>(stream, a); break;
-		case 16: launch_fused<TZ, 16>(stream, a); break;
-		default: launch_fused<TZ, 8>(stream, a); break;
+		case 4:  launch_fused<I, TZ, 4>(stream, a); break;
+		case 16: launch_fused<I, TZ, 16>(stream, a); break;
+		default: launch_fused<I, TZ, 8>(stream, a); break;
 	}
+}
+
+// the index type of the fused step, see GPU_Backend_HIP::Impl::index32
+template<unsigned int TZ>
+static void launch_fused_tz(hipStream_t stream, const HIP_FusedArgs& a, unsigned int ty, bool index32)
+{
+	if (index32)
+		launch_fused_ty<unsigned int, TZ>(stream, a, ty);
+	else
+		launch_fused_ty<size_t, TZ>(stream, a, ty);
 }
 
 // the raw values of a dump region (see HIP_GatherRegion) for a snapshot: only these go over
@@ -523,6 +534,7 @@ GPU_Backend_HIP::Impl::Impl()
 	fregions.count = 0;
 	volt_next = curr_next = NULL;
 	fixup = NULL;
+	index32 = false;
 	fixup_count = 0;
 	snap_nv = snap_n = 0;
 	snap_dev = NULL;
@@ -616,7 +628,7 @@ bool GPU_Backend_HIP::Impl::DecideFusedStep()
 	HIP_Check(hipMemcpyAsync(curr_next, curr, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
 	Flush();
 	fused_step = 1;
-	std::cout << "GPU_Backend_HIP: fused voltage and current updates";
+	std::cout << "GPU_Backend_HIP: fused voltage and current updates" << (index32 ? ", 32 bit indices" : "");
 	if (fregions.count)
 		std::cout << " (" << fregions.count << " UPML regions in the kernel)";
 	std::cout << std::endl;
@@ -788,6 +800,22 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	d->upml_fused = -1;
 	d->ResetZSlabs();
 
+	// The fused step indexes with 32 bit on NVIDIA while the fields fit (faster there), with
+	// 64 bit on AMD; OPENEMS_HIP_INDEX=32 or 64 overrides.
+	const bool fits32 = 3*d->numCells <= UINT_MAX;
+#ifdef __HIP_PLATFORM_AMD__
+	d->index32 = false;
+#else
+	d->index32 = fits32;
+#endif
+	if (const char* env = getenv("OPENEMS_HIP_INDEX"))
+		d->index32 = (atoi(env)==32);
+	if (d->index32 && !fits32)
+	{
+		std::cerr << "GPU_Backend_HIP: the mesh is too large for 32 bit indices, the fused step uses 64 bit" << std::endl;
+		d->index32 = false;
+	}
+
 	const size_t count = 3*d->numCells;
 	d->volt = d->Alloc<float>(count);
 	d->curr = d->Alloc<float>(count);
@@ -844,10 +872,10 @@ void GPU_Backend_HIP::UpdateVoltages()
 		// only AMD has wavefronts of 64; compiling them for NVIDIA would be dead code
 		static const unsigned int tz = getenv("OPENEMS_HIP_FUSED_TZ") ? atoi(getenv("OPENEMS_HIP_FUSED_TZ")) : 0;
 		if (tz ? (tz>=64) : (d->ctx->warp_size>=64))
-			launch_fused_ty<64>(d->Stream(), a, ty);
+			launch_fused_tz<64>(d->Stream(), a, ty, d->index32);
 		else
 #endif
-			launch_fused_ty<32>(d->Stream(), a, ty);
+			launch_fused_tz<32>(d->Stream(), a, ty, d->index32);
 		d->CheckLaunch("update_fused");
 		if (timed)
 			HIP_KernelTimes::End(d->Stream(), "update_fused");

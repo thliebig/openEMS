@@ -25,7 +25,8 @@
      frequency domain dumps from them on the host (OPENEMS_GPU_DUMPS=snapshot)
    HIP backend, cases pml, pml_upml_regions and pml_upml_separate: the UPML is updated in the
      fused step, by region kernels (OPENEMS_HIP_FUSED_STEP=0) and by separate kernels
-     (OPENEMS_HIP_UPML_FUSION=0), each bit-identical
+     (OPENEMS_HIP_UPML_FUSION=0), each bit-identical; pml_index32: the fused step with 32 bit
+     indices (OPENEMS_HIP_INDEX=32, the default on NVIDIA), bit-identical
    device backend, cases dumps and sar: the FD dumps (the E field of the SAR) are accumulated on
      the device (DEVICE_DFT_BACKENDS)
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
@@ -580,6 +581,7 @@ cases = [('excitation',     case_excitation,     True),
          ('pml',            case_pml,            True),
          ('pml_upml_regions', case_pml,          True),
          ('pml_upml_separate', case_pml,         True),
+         ('pml_index32',    case_pml,            True),
          ('mur',            case_mur,            True),
          ('materials',      case_materials,      True),
          ('lumped',         case_lumped,         True),
@@ -608,9 +610,11 @@ cases = [('excitation',     case_excitation,     True),
 # the HIP backend (in the fused step, region kernels, separate kernels)
 CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'},
             'pml_upml_regions': {'OPENEMS_HIP_FUSED_STEP': '0'},
-            'pml_upml_separate': {'OPENEMS_HIP_UPML_FUSION': '0'}}
+            'pml_upml_separate': {'OPENEMS_HIP_UPML_FUSION': '0'},
+            'pml_index32': {'OPENEMS_HIP_INDEX': '32'}}
 # the messages of the HIP backend for these UPML updates: (expected, not expected)
 UPML_MODES = {'pml': ('UPML regions in the kernel', None),
+              'pml_index32': ('fused voltage and current updates, 32 bit indices', None),
               'pml_upml_regions': ('UPML regions fused with the main updates', 'UPML regions in the kernel'),
               'pml_upml_separate': (None, 'UPML regions fused with the main updates')}
 

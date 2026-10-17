@@ -25,9 +25,10 @@
 // The flux and coefficient arrays use the local region size.
 struct UPMLRegion { unsigned int sx, sy, sz; unsigned int lx, ly, lz; };
 
-__device__ __forceinline__ size_t upml_local(const UPMLRegion& R, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
+template<typename I = size_t>
+__device__ __forceinline__ I upml_local(const UPMLRegion& R, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
 {
-	return (((size_t)n*R.lx + x)*R.ly + y)*R.lz + z;
+	return (((I)n*R.lx + x)*R.ly + y)*R.lz + z;
 }
 
 //! Arguments of the fused kernels: the flux and UPML coefficients of the region, the main coefficients
@@ -42,11 +43,14 @@ struct UPMLFusedArgs
 
 //! UPML coefficients of the region cell l0: old[n*s], fo[n*s] and fn[n*s] are vv/vvfo/vvfn (set_offset 0)
 //! or ii/iifo/iifn (set_offset 9) of direction n. Mode 0: the full arrays, else a 16/32 bit set index and the sets of 18.
-struct UPMLCoeff { const float* old; const float* fo; const float* fn; size_t s; };
+template<typename I> struct UPMLCoeffT { const float* old; const float* fo; const float* fn; I s; };
+typedef UPMLCoeffT<size_t> UPMLCoeff;
 
-__device__ __forceinline__ UPMLCoeff upml_coeff(const UPMLFusedArgs& A, size_t l0, size_t cells, unsigned int set_offset)
+template<typename I = size_t>
+__device__ __forceinline__ UPMLCoeffT<I> upml_coeff(const UPMLFusedArgs& A, typename HIP_NoDeduce<I>::type l0,
+                                                    typename HIP_NoDeduce<I>::type cells, unsigned int set_offset)
 {
-	UPMLCoeff c;
+	UPMLCoeffT<I> c;
 	if (A.u_mode==0)
 	{
 		c.old = A.c_old + l0; c.fo = A.c_fo + l0; c.fn = A.c_fn + l0; c.s = cells;
@@ -131,27 +135,28 @@ __device__ __forceinline__ void upml_fused_curr_node(float* curr_out, const floa
 // The fused step (update_fused) with the UPML regions in the kernel: the voltages of a region
 // node from the current fields and flux (A.flux), the new flux into A.flux_out if write (the
 // node's own block; other blocks compute it again), the same operations as upml_fused_volt_node
+template<typename I>
 __device__ __forceinline__ void upml_volt_value(const float* volt, const float* curr, const UPMLFusedArgs& A,
                                                 const HIP_GridDim& N, const UPMLRegion& R,
                                                 unsigned int gx, unsigned int gy, unsigned int gz, bool write, float out[3])
 {
 	const unsigned int x = gx-R.sx, y = gy-R.sy, z = gz-R.sz;
-	const size_t sn = (size_t)N.nx*N.ny*N.nz;
-	const size_t i  = nijk(N, 0, gx, gy, gz);
-	const size_t xm = (gx>0) ? (size_t)N.ny*N.nz : 0;
-	const size_t ym = (gy>0) ? N.nz : 0;
-	const size_t zm = (gz>0) ? 1 : 0;
-	const HIP_MainCoeff C = main_coeff(A.index, A.ca, A.cb, A.mode, sn, i, 0);
-	const size_t cells = (size_t)R.lx*R.ly*R.lz;
-	const UPMLCoeff U = upml_coeff(A, (x*R.ly + y)*R.lz + z, cells, 0);
+	const I sn = (I)N.nx*N.ny*N.nz;
+	const I i  = nijk<I>(N, 0, gx, gy, gz);
+	const I xm = (gx>0) ? (I)N.ny*N.nz : 0;
+	const I ym = (gy>0) ? N.nz : 0;
+	const I zm = (gz>0) ? 1 : 0;
+	const HIP_MainCoeffT<I> C = main_coeff<I>(A.index, A.ca, A.cb, A.mode, sn, i, 0);
+	const I cells = (I)R.lx*R.ly*R.lz;
+	const UPMLCoeffT<I> U = upml_coeff<I>(A, (x*R.ly + y)*R.lz + z, cells, 0);
 	float curl[3];
 	curl[0] = (curr[2*sn+i] - curr[2*sn+i-ym] - curr[sn+i] + curr[sn+i-zm]);
 	curl[1] = (curr[i] - curr[i-zm] - curr[2*sn+i] + curr[2*sn+i-xm]);
 	curl[2] = (curr[sn+i] - curr[sn+i-xm] - curr[i] + curr[i-ym]);
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const size_t l = upml_local(R, n, x, y, z);
-		const size_t g = n*sn + i;
+		const I l = upml_local<I>(R, n, x, y, z);
+		const I g = n*sn + i;
 		const float f_help = U.old[n*U.s]*volt[g] - U.fo[n*U.s]*A.flux[l];
 		float v;
 		v  = A.flux[l] * C.a[n*C.s];
@@ -164,22 +169,23 @@ __device__ __forceinline__ void upml_volt_value(const float* volt, const float* 
 
 // ... and the currents of a region node (the node's own block only, the flux in place), with the
 // curl of the new voltages (the expressions of upml_fused_curr_node); update: not on the last mesh lines
+template<typename I>
 __device__ __forceinline__ void upml_curr_value(const float* curr_in, float* curr_out, const UPMLFusedArgs& A,
                                                 const HIP_GridDim& N, const UPMLRegion& R,
                                                 unsigned int gx, unsigned int gy, unsigned int gz, bool update, const float curl[3])
 {
 	const unsigned int x = gx-R.sx, y = gy-R.sy, z = gz-R.sz;
-	const size_t sn = (size_t)N.nx*N.ny*N.nz;
-	const size_t i  = nijk(N, 0, gx, gy, gz);
-	const size_t cells = (size_t)R.lx*R.ly*R.lz;
-	const UPMLCoeff U = upml_coeff(A, (x*R.ly + y)*R.lz + z, cells, 9);
-	HIP_MainCoeff C = {A.ca, A.cb, 0};
+	const I sn = (I)N.nx*N.ny*N.nz;
+	const I i  = nijk<I>(N, 0, gx, gy, gz);
+	const I cells = (I)R.lx*R.ly*R.lz;
+	const UPMLCoeffT<I> U = upml_coeff<I>(A, (x*R.ly + y)*R.lz + z, cells, 9);
+	HIP_MainCoeffT<I> C = {A.ca, A.cb, 0};
 	if (update)
-		C = main_coeff(A.index, A.ca, A.cb, A.mode, sn, i, 6);
+		C = main_coeff<I>(A.index, A.ca, A.cb, A.mode, sn, i, 6);
 	for (unsigned int n=0; n<3; ++n)
 	{
-		const size_t l = upml_local(R, n, x, y, z);
-		const size_t g = n*sn + i;
+		const I l = upml_local<I>(R, n, x, y, z);
+		const I g = n*sn + i;
 		const float f_help = U.old[n*U.s]*curr_in[g] - U.fo[n*U.s]*A.flux[l];
 		float c = A.flux[l];
 		if (update)

@@ -37,11 +37,17 @@ struct HIP_GridDim
 	unsigned int nx, ny, nz;
 };
 
+//! The kernels index the fields with size_t. The fused step (update_fused) is also built with
+//! 32 bit indices, chosen in Init() (see GPU_Backend_HIP::Impl::index32); the helpers it uses take
+//! the index type I as a template parameter, size_t by default.
+template<typename T> struct HIP_NoDeduce { typedef T type; };
+
 //! Fields and coefficients use the ArrayNIJK layout of the host:
 //! index(n,x,y,z) = n*nx*ny*nz + x*ny*nz + y*nz + z
-__device__ __forceinline__ size_t nijk(const HIP_GridDim& N, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
+template<typename I = size_t>
+__device__ __forceinline__ I nijk(const HIP_GridDim& N, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
 {
-	return (((size_t)n*N.nx + x)*N.ny + y)*N.nz + z;
+	return (((I)n*N.nx + x)*N.ny + y)*N.nz + z;
 }
 
 //! Main update coefficients of node i, see GPU_Backend_HIP::Impl::coeff_mode:
@@ -68,12 +74,15 @@ __device__ __forceinline__ size_t region_field_index(const HIP_GatherRegion& R, 
 	return nijk(N, n, R.lines[n][0][a], R.lines[n][1][b], R.lines[n][2][c]);
 }
 
-struct HIP_MainCoeff { const float* a; const float* b; size_t s; };
+template<typename I> struct HIP_MainCoeffT { const float* a; const float* b; I s; };
+typedef HIP_MainCoeffT<size_t> HIP_MainCoeff;
 
-__device__ __forceinline__ HIP_MainCoeff main_coeff(const void* index, const float* ca, const float* cb,
-                                                     unsigned int mode, size_t sn, size_t i, unsigned int set_offset)
+template<typename I = size_t>
+__device__ __forceinline__ HIP_MainCoeffT<I> main_coeff(const void* index, const float* ca, const float* cb, unsigned int mode,
+                                                        typename HIP_NoDeduce<I>::type sn, typename HIP_NoDeduce<I>::type i,
+                                                        unsigned int set_offset)
 {
-	HIP_MainCoeff c;
+	HIP_MainCoeffT<I> c;
 	if (mode==0)
 	{
 		c.a = ca + i; c.b = cb + i; c.s = sn;
@@ -138,6 +147,7 @@ struct GPU_Backend_HIP::Impl
 	HIP_FusedRegions fregions;              //!< the UPML regions in the kernel (see HIP_Ext_UPML::CanFuse())
 	size_t* fixup;                           //!< main nodes whose currents are recomputed after the voltage extensions
 	unsigned int fixup_count;
+	bool index32;                            //!< the fused step indexes with 32 bit (see Init())
 	//! Decide once whether the fused step is used, and prepare it
 	bool DecideFusedStep();
 
