@@ -11,7 +11,7 @@
  the GPU, whose float arithmetic may differ in rounding (e.g. fused
  multiply-add), so it is compared with a tolerance.
 
- Together the cases use the excitation, UPML, Mur ABC, Lorentz material,
+ Together the cases use the excitation, UPML, Mur ABC, Lorentz and Debye material,
  lumped RLC, conducting sheet, TF/SF, local absorber, steady-state and
  cylinder extensions, and cylindrical meshes with one and two multi-grid
  levels. For cylindrical meshes the engine choice 'basic' has no effect, the
@@ -36,7 +36,7 @@
 
  Tested with
   - python 3.13
-  - openEMS v0.0.37+
+  - openEMS v0.37+
 
  (c) 2026 Sean Mollet <sean@malmoset.com>
 
@@ -70,7 +70,9 @@ def channel_1d(FDTD, CSX, sinus=False):
     mesh.AddLine('z', np.arange(0, 100.5, 0.5))
     CSX.AddExcitation('plane', exc_type=0, exc_val=[1, 0, 0]).AddBox([0, 0, 20], [1, 1, 20])
     CSX.AddProbe('et', p_type=2).AddPoint([0.5, 0.5, 70])
-    CSX.AddProbe('ht', p_type=3).AddPoint([0.5, 0.5, 70])
+    # the H probe reads the dual node: y=0.75 gives Hy on the line y=0.5, which carries the
+    # wave; on the walls (y=0, 1) openEMS zeroes it, also at a PMC wall
+    CSX.AddProbe('ht', p_type=3).AddPoint([0.5, 0.75, 70])
 
 
 def case_dispersive_pml():
@@ -346,7 +348,7 @@ def case_absorbers():
     CSX.AddAbsorbingBC('abs_high', NormalSignPositive=True, AbsorbingBoundaryType=ABCtype.MUR_1ST_SA,
                        PhaseVelocity=C0).AddBox([0, 0, 95], [1, 1, 95], priority=6)
     CSX.AddProbe('et', p_type=2).AddPoint([0.5, 0.5, 70])
-    CSX.AddProbe('ht', p_type=3).AddPoint([0.5, 0.5, 20])
+    CSX.AddProbe('ht', p_type=3).AddPoint([0.5, 0.75, 20])   # Hy on the line y=0.5, see channel_1d()
     return FDTD, CSX
 
 
@@ -523,6 +525,9 @@ def compare_outputs(path_a, path_b, rtol=0):
     probes = [f for f in files if '.' not in f]   # probe and port files have no extension
     dumps  = [f for f in files if f.endswith('.h5')]
     assert probes, f'FAIL: no probe files in {path_a}'
+    for f in probes:
+        assert np.any(np.loadtxt(os.path.join(path_a, f), comments='%')[:, 1:]), \
+            f'FAIL: the probe {f} of {path_a} is zero, the comparison would test nothing'
     for f in dumps:
         with h5py.File(os.path.join(path_a, f), 'r') as a:
             fields = []
