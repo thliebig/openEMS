@@ -28,7 +28,15 @@ Engine_GPU_CylinderMultiGrid* Engine_GPU_CylinderMultiGrid::New(const Operator_C
 {
 	cout << "Create FDTD engine (GPU, cylindrical multi-grid level " << op->GetMultiGridLevel() << ")" << endl;
 	Engine_GPU_CylinderMultiGrid* e = new Engine_GPU_CylinderMultiGrid(op, backend, parent);
-	e->Init();
+	try
+	{
+		e->Init();
+	}
+	catch (...)
+	{
+		delete e;
+		throw;
+	}
 	return e;
 }
 
