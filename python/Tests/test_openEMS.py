@@ -167,7 +167,7 @@ class Test_LibraryArguments(unittest.TestCase):
     def test_false_option_does_not_hide_the_following_ones(self):
         # an option that is switched off must not end the option list: what
         # follows it, here an invalid option, still has to be looked at
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(RuntimeError, 'not-an-option'):
             openEMS()._SetLibraryArguments({'debug_PEC': False, 'not_an_option': True})
 
 
