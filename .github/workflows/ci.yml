@@ -502,8 +502,15 @@ jobs:
 
           # already installed on the CI/CD system, disable to avoid warning fatigue
           # brew install python3 cmake
-          brew install boost hdf5 cgal vtk octave \
-                       python-setuptools cython numpy python-matplotlib
+          brew install boost hdf5 cgal vtk octave python@3.14
+
+          # Homebrew's default Python is 3.15, for which h5py has no wheels yet
+          # (pip would build it from source and fail): use 3.14 in every
+          # following step, with the Python packages installed by its pip.
+          PYBIN="$(brew --prefix python@3.14)/libexec/bin"
+          echo "$PYBIN" >> $GITHUB_PATH
+          "$PYBIN/pip3" install --break-system-packages \
+                        setuptools setuptools_scm cython numpy matplotlib h5py
 
           echo "export NCPUS=$(python3 -c 'import os; print(os.cpu_count())')" >> ~/.zprofile
           source ~/.zprofile
@@ -624,7 +631,7 @@ jobs:
         run: |
           # remove Python dependencies to see if venv really works
           pip3 uninstall -y CSXCAD openEMS --break-system-packages
-          brew remove python-setuptools cython numpy python-matplotlib
+          pip3 uninstall -y cython numpy matplotlib h5py --break-system-packages
 
           python3 -m venv ~/venv
           source ~/venv/bin/activate
