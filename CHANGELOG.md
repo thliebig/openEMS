@@ -58,9 +58,9 @@ there are unreleased changes. It becomes the next release entry.
 
 - The Python bindings need Python 3.6 or newer (was 3.4), the oldest version
   CI still tests; CentOS 7 and Ubuntu 14.04 are no longer tested.
-- Field dumps are written on background threads from a snapshot of the
-  fields, instead of stalling the timestepping, and a time-domain dump keeps
-  its HDF5 file open for the whole run.
+- Time-domain HDF5 field dumps are written in the background instead of
+  stalling the timestepping, with the file kept open for the whole run; with
+  the GPU engine from snapshots of the fields.
 - Field dumps are evaluated on several threads, with every engine; large
   dumps, like the surfaces of an NF2FF box, slow the simulation down less.
 - The end criteria is checked every Nyquist period during the first minute of
@@ -80,9 +80,15 @@ there are unreleased changes. It becomes the next release entry.
 
 ### Build
 
-- `ENABLE_METAL` (macOS, on by default) and `ENABLE_HIP` (on when a HIP
-  compiler is found) CMake options for the GPU backends. On Windows the HIP
-  sources are compiled as CUDA and need `HIP_INCLUDE_DIR`.
+- `ENABLE_HIP` and `ENABLE_METAL` CMake options for the GPU backends. HIP
+  (CMake 3.28) is on when a HIP compiler is found. `OPENEMS_HIP_AS_CUDA`
+  compiles the same sources as CUDA, for NVIDIA GPUs without a HIP compiler
+  (CMake 3.24, a CUDA compiler and the HIP headers, looked for in `ROCM_PATH`
+  and `/opt/rocm`); it is the default on Windows. Metal (macOS, CMake 3.16)
+  is on by default. The GPU code is built for the GPU of the build machine
+  unless `CMAKE_HIP_ARCHITECTURES` / `CMAKE_CUDA_ARCHITECTURES` name others.
+  Whatever a backend is missing switches it off with a warning; openEMS
+  builds without it.
 
 ### Upgrade notes
 
