@@ -348,7 +348,8 @@ class Test_NumThreads(unittest.TestCase):
         # one of them, plus the background dump writer
         with tempfile.TemporaryDirectory() as tmp:
             out = subprocess.run([sys.executable, '-c', _NUM_THREADS_SCRIPT, tmp],
-                                 capture_output=True, text=True, check=True, cwd=tmp)
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 universal_newlines=True, check=True, cwd=tmp)
         self.assertLessEqual(int(out.stdout.split()[-1]), 2)
 
 
