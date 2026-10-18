@@ -99,7 +99,13 @@ there are unreleased changes. It becomes the next release entry.
   is on by default. The GPU code is built for the GPU of the build machine
   unless `CMAKE_HIP_ARCHITECTURES` / `CMAKE_CUDA_ARCHITECTURES` name others.
   Whatever a backend is missing switches it off with a warning; openEMS
-  builds without it.
+  builds without it. The HIP backend is a plugin, `openEMS_gpu_hip_amd` or
+  `openEMS_gpu_hip_nvidia`, loaded at runtime from `openEMS/plugins` next to
+  `libopenEMS` (`OPENEMS_PLUGIN_PATH` overrides that directory), so
+  `libopenEMS` itself needs no GPU runtime; a plugin of another build is
+  refused (a release build is told by its version, so it stays
+  reproducible). `OPENEMS_GPU_PLUGINS=OFF` links it into `libopenEMS`
+  instead, the default on Windows for now.
 - C++17 is now required (was C++11), e.g. GCC 8 or newer, also for the
   Python bindings and the GPU sources (HIP/CUDA, were C++14).
 - VTK is no longer needed: openEMS writes its VTK files (`.vtr`, `.vts`,

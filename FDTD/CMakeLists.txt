@@ -15,8 +15,13 @@ if(ENABLE_HIP)
     ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_multigrid.hip
   )
   # the top level needs the list by itself: source file properties belong to the
-  # directory of the target, and the openEMS target is defined there
+  # directory of the target, and the openEMS and plugin targets are defined there
   set(HIP_SOURCES ${HIP_SOURCES} PARENT_SCOPE)
+  if(OPENEMS_GPU_PLUGINS)
+    set(HIP_PLUGIN_SOURCES ${HIP_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_plugin.cpp PARENT_SCOPE)
+    # in a plugin, not in libopenEMS
+    set(HIP_SOURCES "")
+  endif()
 endif()
 
 # Metal GPU backend (Objective-C++)
@@ -62,6 +67,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_gpu.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_gpu_cylindermultigrid.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/gpu_plugins.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_coeff_sets.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend_reference.cpp
   PARENT_SCOPE

@@ -272,9 +272,33 @@ IF(ENABLE_HIP AND NOT OPENEMS_HIP_AS_CUDA)
   message(STATUS "HIP GPU backend enabled, architectures: ${CMAKE_HIP_ARCHITECTURES}")
 ENDIF()
 
-IF(ENABLE_HIP)
+# The HIP backend is a plugin loaded at runtime (FDTD/gpu_plugin.h): libopenEMS then
+# needs no GPU runtime, a missing driver or device only makes the backend unavailable.
+# OFF links it into libopenEMS, e.g. for GPU debuggers and profilers. Not yet on
+# Windows, where the plugin needs the classes it uses exported from openEMS.dll.
+IF(WIN32)
+  OPTION(OPENEMS_GPU_PLUGINS "Build the HIP GPU backend as a plugin loaded at runtime" OFF)
+ELSE()
+  OPTION(OPENEMS_GPU_PLUGINS "Build the HIP GPU backend as a plugin loaded at runtime" ON)
+ENDIF()
+IF(ENABLE_HIP AND NOT OPENEMS_GPU_PLUGINS)
   ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
 ENDIF()
+
+# libopenEMS refuses a plugin of another build (see FDTD/gpu_plugin.h). In a git
+# checkout the version does not tell uncommitted changes apart: a random id per build
+# directory, kept across reconfigures. A release (no .git) is told by its version
+# alone, so that its build is reproducible.
+IF(NOT OPENEMS_GPU_BUILD_ID)
+  IF(EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    string(RANDOM LENGTH 12 _gpu_build_id)
+  ELSE()
+    set(_gpu_build_id release)
+  ENDIF()
+  set(OPENEMS_GPU_BUILD_ID ${_gpu_build_id} CACHE INTERNAL "id of this build, shared by libopenEMS and its GPU plugins")
+ENDIF()
+configure_file(FDTD/gpu_build_id.h.in ${CMAKE_CURRENT_BINARY_DIR}/gpu_build_id.h)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # Metal GPU backend for the GPU engine (--engine=gpu), macOS only
 IF(APPLE)
@@ -315,13 +339,40 @@ ENDIF()
 
 add_library( openEMS SHARED ${SOURCES})
 
+# the target the HIP sources are built into: libopenEMS or the plugin
+IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
+  IF(OPENEMS_HIP_AS_CUDA OR (CMAKE_HIP_PLATFORM STREQUAL "nvidia"))
+    set(GPU_PLUGIN_NAME hip_nvidia)
+  ELSE()
+    set(GPU_PLUGIN_NAME hip_amd)
+  ENDIF()
+  set(HIP_TARGET openEMS_gpu_${GPU_PLUGIN_NAME})
+  message(STATUS "HIP GPU backend built as the plugin ${HIP_TARGET}")
+  add_library( ${HIP_TARGET} MODULE ${HIP_PLUGIN_SOURCES} )
+  string(REPLACE "_" "-" _gpu_plugin_label ${GPU_PLUGIN_NAME})
+  target_compile_definitions( ${HIP_TARGET} PRIVATE OPENEMS_GPU_PLUGIN_NAME="${_gpu_plugin_label}" )
+  # installed to openEMS/plugins next to libopenEMS, where it is looked for; in the
+  # build tree, where the openEMS binary takes that name, OPENEMS_PLUGIN_PATH=plugins
+  set_target_properties( ${HIP_TARGET} PROPERTIES PREFIX ""
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/plugins
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/plugins )
+  TARGET_LINK_LIBRARIES( ${HIP_TARGET} openEMS )
+ELSEIF(ENABLE_HIP)
+  set(HIP_TARGET openEMS)
+ENDIF()
 IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
-  target_include_directories( openEMS PRIVATE ${HIP_INCLUDE_DIR} )
-  target_compile_definitions( openEMS PRIVATE __HIP_PLATFORM_NVIDIA__=1 )
+  target_include_directories( ${HIP_TARGET} PRIVATE ${HIP_INCLUDE_DIR} )
+  target_compile_definitions( ${HIP_TARGET} PRIVATE __HIP_PLATFORM_NVIDIA__=1 )
 ENDIF()
 #ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})
 IF(ENABLE_HIP AND NOT OPENEMS_HIP_AS_CUDA AND CMAKE_HIP_PLATFORM STREQUAL "amd")
-  TARGET_LINK_LIBRARIES( openEMS ${HIP_RUNTIME_LIBRARY} )
+  TARGET_LINK_LIBRARIES( ${HIP_TARGET} ${HIP_RUNTIME_LIBRARY} )
+ENDIF()
+# the plugin loader (FDTD/gpu_plugins.cpp): dlopen, and std::filesystem, which GCC 8
+# keeps in a library of its own
+TARGET_LINK_LIBRARIES( openEMS ${CMAKE_DL_LIBS} )
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+  TARGET_LINK_LIBRARIES( openEMS stdc++fs )
 ENDIF()
 IF(APPLE AND ENABLE_METAL)
   TARGET_LINK_LIBRARIES( openEMS "-framework Metal" "-framework Foundation" )
@@ -354,6 +405,9 @@ else()
     INSTALL(TARGETS openEMS DESTINATION lib${LIB_SUFFIX})
 endif()
 INSTALL(TARGETS openEMS_bin DESTINATION bin)
+IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
+  INSTALL(TARGETS ${HIP_TARGET} LIBRARY DESTINATION lib${LIB_SUFFIX}/openEMS/plugins RUNTIME DESTINATION bin/openEMS/plugins)
+ENDIF()
 
 if (UNIX)
     INSTALL( FILES openEMS.sh 

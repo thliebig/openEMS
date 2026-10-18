@@ -20,6 +20,7 @@
 
 #include "gpu_backend.h"
 #include "gpu_backend_reference.h"
+#include "gpu_plugin.h"
 #ifdef OPENEMS_WITH_HIP
 #include "hip/gpu_backend_hip.h"
 #endif
@@ -39,11 +40,17 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 		std::cerr << "GPU_Backend::New: Warning: unknown GPU backend \"" << name << "\", using the best available" << std::endl;
 
 #ifdef OPENEMS_WITH_HIP
+	// linked into libopenEMS (OPENEMS_GPU_PLUGINS=OFF)
 	GPU_Backend* hip = GPU_Backend_HIP::New();
 	if (hip)
 		return hip;
 	std::cerr << "GPU_Backend::New: Warning: no usable HIP device found" << std::endl;
 #endif
+
+	std::vector<std::string> messages;
+	GPU_Backend* plugin = GPU_NewPluginBackend(messages);
+	if (plugin)
+		return plugin;
 
 #ifdef OPENEMS_WITH_METAL
 	GPU_Backend* metal = GPU_Backend_Metal::New();
@@ -52,9 +59,8 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 	std::cerr << "GPU_Backend::New: Warning: no Metal device found" << std::endl;
 #endif
 
-#if !defined(OPENEMS_WITH_HIP) && !defined(OPENEMS_WITH_METAL)
-	std::cerr << "GPU_Backend::New: Warning: openEMS was built without a GPU backend (HIP or Metal)" << std::endl;
-#endif
+	for (const std::string& msg : messages)
+		std::cerr << "GPU_Backend::New: Warning: " << msg << std::endl;
 	// not the reference backend: it is far slower than the CPU engines, the caller has to say so
 	return NULL;
 }

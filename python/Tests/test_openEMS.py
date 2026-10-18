@@ -364,5 +364,41 @@ class Test_NumThreads(unittest.TestCase):
         self.assertLessEqual(int(out.stdout.split()[-1]), 2)
 
 
+_GPU_ENGINE_SCRIPT = """
+import sys
+from CSXCAD import ContinuousStructure
+from openEMS.openEMS import openEMS
+fdtd = openEMS(NrTS=10, EndCriteria=0)
+fdtd.SetGaussExcite(1e9, 1e9)
+fdtd.SetBoundaryCond(['PEC'] * 6)
+csx = ContinuousStructure()
+fdtd.SetCSX(csx)
+grid = csx.GetGrid()
+grid.SetDeltaUnit(1e-3)
+for d in 'xyz':
+    grid.SetLines(d, range(10))
+csx.AddExcitation('ex', 0, [0, 0, 1]).AddBox([4, 4, 4], [4, 4, 6])
+fdtd.Run(sys.argv[1], verbose=0, engine='gpu')
+"""
+
+
+class Test_GPUPlugins(unittest.TestCase):
+    def test_broken_plugin_is_reported(self):
+        # a file named like a plugin that is none: the GPU engine fails, and says which file and why
+        with tempfile.TemporaryDirectory() as tmp:
+            plugins = os.path.join(tmp, 'plugins')
+            os.mkdir(plugins)
+            bogus = os.path.join(plugins, 'openEMS_gpu_bogus' + ('.dll' if os.name == 'nt' else '.so'))
+            open(bogus, 'w').close()
+            env = dict(os.environ, OPENEMS_PLUGIN_PATH=plugins)
+            out = subprocess.run([sys.executable, '-c', _GPU_ENGINE_SCRIPT, os.path.join(tmp, 'sim')],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 universal_newlines=True, env=env, cwd=tmp)
+        if 'backend: Metal' in out.stdout:
+            self.skipTest('the built-in Metal backend is used')
+        self.assertIn(bogus, out.stderr)
+        self.assertIn('creating the FDTD engine failed', out.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()
