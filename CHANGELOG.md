@@ -91,6 +91,8 @@ there are unreleased changes. It becomes the next release entry.
   unless `CMAKE_HIP_ARCHITECTURES` / `CMAKE_CUDA_ARCHITECTURES` name others.
   Whatever a backend is missing switches it off with a warning; openEMS
   builds without it.
+- C++17 is now required (was C++11), e.g. GCC 8 or newer, also for the
+  Python bindings and the GPU sources (HIP/CUDA, were C++14).
 
 ### Upgrade notes
 

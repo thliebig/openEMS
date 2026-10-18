@@ -1,4 +1,4 @@
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # define build type
 IF( DEFINED CMAKE_BUILD_TYPE )
@@ -238,7 +238,7 @@ IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
     set(CMAKE_CUDA_ARCHITECTURES native)
   ENDIF()
   enable_language(CUDA)
-  set(CMAKE_CUDA_STANDARD 14)
+  set(CMAKE_CUDA_STANDARD 17)
   # the same rounding as the HIP flags below give on the other systems
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --fmad=false")
   IF(ENABLE_FLUSH_TO_ZERO)
@@ -251,7 +251,7 @@ ELSEIF(ENABLE_HIP)
     set(CMAKE_HIP_ARCHITECTURES native)
   ENDIF()
   enable_language(HIP)
-  set(CMAKE_HIP_STANDARD 14)
+  set(CMAKE_HIP_STANDARD 17)
   # No fused multiply-add and the same denormal handling, so the kernels round like the
   # CPU engines (python/Tests/GPU_Engine.py compares them value by value). The flags are
   # those of the compiler behind hipcc: hipcc on the NVIDIA platform, clang on AMD, and

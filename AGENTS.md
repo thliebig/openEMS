@@ -134,7 +134,7 @@ not verification.
 
 ## House rules
 
-- **Style**: C++11. Match the file you are editing. **CI rejects trailing
+- **Style**: C++17. Match the file you are editing. **CI rejects trailing
   whitespace.** No drive-by reformatting, no reorganising code you were not
   asked to touch — a diff should contain only what the change actually needs.
 - **Tests**: add a focused test for behaviour that could silently regress —

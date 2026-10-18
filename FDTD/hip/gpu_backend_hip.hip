@@ -473,19 +473,19 @@ void HIP_KernelTimes::Begin(hipStream_t stream)
 	KernelTimeTable& t = KernelTimes();
 	if (!t.start)
 	{
-		hipEventCreate(&t.start);
-		hipEventCreate(&t.stop);
+		(void)hipEventCreate(&t.start);
+		(void)hipEventCreate(&t.stop);
 	}
-	hipEventRecord(t.start, stream);
+	(void)hipEventRecord(t.start, stream);
 }
 
 void HIP_KernelTimes::End(hipStream_t stream, const char* name)
 {
 	KernelTimeTable& t = KernelTimes();
-	hipEventRecord(t.stop, stream);
-	hipEventSynchronize(t.stop);
+	(void)hipEventRecord(t.stop, stream);
+	(void)hipEventSynchronize(t.stop);
 	float ms = 0;
-	hipEventElapsedTime(&ms, t.start, t.stop);
+	(void)hipEventElapsedTime(&ms, t.start, t.stop);
 	std::pair<double, size_t>& entry = t.times[name];
 	entry.first += ms;
 	++entry.second;
@@ -509,13 +509,13 @@ HIP_Context::~HIP_Context()
 {
 	if (stream)
 	{
-		hipStreamSynchronize(stream);
-		hipStreamDestroy(stream);
+		(void)hipStreamSynchronize(stream);
+		(void)hipStreamDestroy(stream);
 	}
 	if (copy_stream)
 	{
-		hipStreamSynchronize(copy_stream);
-		hipStreamDestroy(copy_stream);
+		(void)hipStreamSynchronize(copy_stream);
+		(void)hipStreamDestroy(copy_stream);
 	}
 }
 
@@ -548,16 +548,16 @@ GPU_Backend_HIP::Impl::~Impl()
 {
 	if (ctx)
 	{
-		hipStreamSynchronize(ctx->stream);
-		hipStreamSynchronize(ctx->copy_stream);
+		(void)hipStreamSynchronize(ctx->stream);
+		(void)hipStreamSynchronize(ctx->copy_stream);
 	}
 	FreeSnapshots();
-	hipEventDestroy(snap_evaluated);
-	hipEventDestroy(snap_done);
+	(void)hipEventDestroy(snap_evaluated);
+	(void)hipEventDestroy(snap_done);
 	for (size_t n=0; n<m_Allocations.size(); ++n)
-		hipFree(m_Allocations.at(n));
+		(void)hipFree(m_Allocations.at(n));
 	for (std::set<void*>::iterator it=m_Pinned.begin(); it!=m_Pinned.end(); ++it)
-		hipHostUnregister(*it);
+		(void)hipHostUnregister(*it);
 }
 
 bool GPU_Backend_HIP::Impl::DecideFusedStep()
@@ -674,8 +674,8 @@ void GPU_Backend_HIP::Impl::FreeSnapshots()
 	snap_lines.clear();
 	snap_regions[0].clear();
 	snap_regions[1].clear();
-	hipFree(snap_dev);
-	hipHostFree(snap_host);
+	(void)hipFree(snap_dev);
+	(void)hipHostFree(snap_host);
 	snap_dev = snap_host = NULL;
 	snap_nv = snap_n = 0;
 	snap_taken = false;
@@ -699,7 +699,7 @@ void GPU_Backend_HIP::Impl::PinHostMemory(void* ptr, size_t bytes)
 	if (hipHostRegister(ptr, bytes, hipHostRegisterDefault)==hipSuccess)
 		m_Pinned.insert(ptr);
 	else
-		hipGetLastError();
+		(void)hipGetLastError();
 }
 
 dim3 GPU_Backend_HIP::Impl::Block(size_t ni, size_t nj)
@@ -728,7 +728,7 @@ GPU_Backend_HIP* GPU_Backend_HIP::New()
 	int count = 0;
 	if ((hipGetDeviceCount(&count)!=hipSuccess) || (count==0))
 	{
-		hipGetLastError();
+		(void)hipGetLastError();
 		return NULL;
 	}
 	Impl* impl = new Impl();
@@ -757,7 +757,7 @@ GPU_Backend_HIP* GPU_Backend_HIP::New()
 #endif
 		std::cerr << "GPU_Backend_HIP: no kernels for " << impl->ctx->name << arch
 		          << " in this build: " << hipGetErrorString(err) << std::endl;
-		hipGetLastError();
+		(void)hipGetLastError();
 		delete impl;
 		return NULL;
 	}
@@ -1033,7 +1033,7 @@ bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherRegion>& 
 		}
 	if (!ok)
 	{
-		hipGetLastError();
+		(void)hipGetLastError();
 		d->FreeSnapshots();
 		std::cerr << "GPU_Backend_HIP: not enough memory for field snapshots, the field dumps wait for the device" << std::endl;
 		return false;

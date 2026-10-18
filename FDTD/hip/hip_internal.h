@@ -218,7 +218,7 @@ struct GPU_Backend_HIP::Impl
 		if (ptr==NULL)
 			return;
 		m_Allocations.erase(std::remove(m_Allocations.begin(), m_Allocations.end(), ptr), m_Allocations.end());
-		hipFree(ptr);
+		(void)hipFree(ptr);
 	}
 
 	//! Device buffer of the set indices of \a sets (16 or 32 bit)
