@@ -172,6 +172,11 @@ class Test_LibraryArguments(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'not-an-option'):
             openEMS()._SetLibraryArguments({'debug_PEC': False, 'not_an_option': True})
 
+    def test_unknown_engine(self):
+        # a typo must not silently run the default engine
+        with self.assertRaisesRegex(RuntimeError, "'cuda'.*engine"):
+            openEMS()._SetLibraryArguments({'engine': 'cuda'})
+
 
 class Test_Excitation(unittest.TestCase):
     def setUp(self):

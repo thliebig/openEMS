@@ -77,6 +77,8 @@ there are unreleased changes. It becomes the next release entry.
   datasets are listed once instead of looked up one by one, which took
   quadratic time. A far-field (NF2FF) calculation from a recording of 3200
   timesteps went from 79 s to 2.4 s per frequency.
+- An unknown `--engine` value (`engine=` from Python) is an error; it used to
+  run the default engine without a word, e.g. for `--engine=GPU` or `cuda`.
 
 ### Build
 

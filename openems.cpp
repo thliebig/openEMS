@@ -274,6 +274,12 @@ void openEMS::collectCommandLineArguments()
 						cout << "openEMS - enabled GPU engine with the reference backend" << endl;
 						m_engine = EngineType_GPU_Reference;
 					}
+					else
+					{
+						po::invalid_option_value e(val);
+						e.set_option_name("--engine");
+						throw e;
+					}
 				}
 			),
 		    "Choose engine type \n\n"
