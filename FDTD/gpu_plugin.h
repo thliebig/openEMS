@@ -23,19 +23,29 @@
 
 class GPU_Backend;
 
-//! What a GPU plugin provides: a shared library with a GPU backend, loaded at runtime
+//! A device of a GPU backend, see GPU_Plugin::DeviceInfo
+struct GPU_DeviceInfo
+{
+	char name[256];
+	unsigned long long memory;   //!< bytes
+	bool integrated;             //!< shares the memory of the host (APU, Apple silicon)
+};
+
+//! A GPU backend and its devices: a plugin loaded at runtime, or a backend built into libopenEMS
 /*!
-  A plugin is built from the same sources as libopenEMS and reads its classes
-  directly, so it only fits the build it belongs to: libopenEMS refuses a plugin
-  whose build_id differs from its own (OPENEMS_GPU_BUILD_ID from CMake: the version
-  and a random id per build directory, or only the version of a release). The
-  plugin exports GPU_PLUGIN_ENTRY, which returns this.
+  A plugin is a shared library built from the same sources as libopenEMS. It reads
+  its classes directly, so it only fits the build it belongs to: libopenEMS refuses
+  a plugin whose build_id differs from its own (OPENEMS_GPU_BUILD_ID from CMake: the
+  version and a random id per build directory, or only the version of a release).
+  The plugin exports GPU_PLUGIN_ENTRY, which returns this.
   */
 struct GPU_Plugin
 {
-	const char* build_id;           //!< OPENEMS_GPU_BUILD_ID of the build the plugin belongs to
-	const char* name;               //!< short name, e.g. "hip-amd"
-	GPU_Backend* (*NewBackend)();   //!< a backend on a usable device, or NULL if there is none
+	const char* build_id;                            //!< OPENEMS_GPU_BUILD_ID of the build it belongs to
+	const char* name;                                //!< short name, e.g. "hip-amd"
+	int (*DeviceCount)();                            //!< number of devices, 0 if there is no runtime or driver
+	bool (*DeviceInfo)(int n, GPU_DeviceInfo* info); //!< describe device n
+	GPU_Backend* (*NewBackend)(int n);               //!< a backend on device n, or NULL if it cannot run there
 };
 
 //! Name of the function a plugin exports, of type GPU_PluginEntry
@@ -48,13 +58,13 @@ typedef const GPU_Plugin* (*GPU_PluginEntry)();
 #define GPU_PLUGIN_EXPORT extern "C" __attribute__((visibility("default")))
 #endif
 
-//! A backend of the first GPU plugin with a usable device, or NULL
+//! The GPU plugins that loaded and belong to this build
 /*!
   The plugins are the files openEMS_gpu_*.so (.dll on Windows) in the directories
   of OPENEMS_PLUGIN_PATH if set, else in openEMS/plugins next to libopenEMS. They
   are loaded once per process and never unloaded. \a messages says, for every
-  directory and plugin, why it gave no backend.
+  directory and file, why it gave no plugin.
   */
-GPU_Backend* GPU_NewPluginBackend(std::vector<std::string>& messages);
+std::vector<const GPU_Plugin*> GPU_LoadPlugins(std::vector<std::string>& messages);
 
 #endif // GPU_PLUGIN_H

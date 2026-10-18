@@ -41,19 +41,29 @@ Operator_Cylinder::Operator_Cylinder() : Operator_Multithread()
 {
 	m_MeshType = CYLINDRICAL;
 	m_Cyl_Ext = NULL;
+	m_GPU_Backend = NULL;
 	m_GPU_Parent = NULL;
 }
 
 Operator_Cylinder::~Operator_Cylinder()
 {
+	delete m_GPU_Backend;
+}
+
+void Operator_Cylinder::SetGPUBackend(GPU_Backend* backend, GPU_Backend* parent)
+{
+	if (backend!=m_GPU_Backend)
+		delete m_GPU_Backend;
+	m_GPU_Backend = backend;
+	m_GPU_Parent = parent;
 }
 
 
 Engine* Operator_Cylinder::CreateEngine()
 {
-	if (!m_GPU_Backend.empty())
+	if (UseGPU())
 	{
-		m_Engine = Engine_GPU::New(this, m_GPU_Backend, m_GPU_Parent);
+		m_Engine = Engine_GPU::New(this, TakeGPUBackend(), m_GPU_Parent);
 		return m_Engine;
 	}
 	//! create a special cylindrical-engine

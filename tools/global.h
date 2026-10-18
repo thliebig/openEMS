@@ -50,6 +50,10 @@ public:
 	//! Get the verbose level
 	int GetVerboseLevel() const {return m_VerboseLevel;}
 
+	//! GPU device of the GPU engine (--gpu-device), -1: the best one
+	void SetGPUDevice(int device) {m_GPUDevice=device;}
+	int GetGPUDevice() const {return m_GPUDevice;}
+
 	//! Set a new verbose level temporarily, restore it with RestoreVerboseLevel()
 	void SetTempVerboseLevel(int level) {m_SavedVerboseLevel=m_VerboseLevel;m_VerboseLevel=level;}
 	//! Restore the temporarily overwritten verbose level
@@ -132,6 +136,7 @@ protected:
 	bool m_legacyHDF5;
 	int m_VerboseLevel;
 	int m_SavedVerboseLevel;
+	int m_GPUDevice;
 
 	boost::program_options::variables_map m_options;
 	boost::program_options::options_description* m_optionDesc;

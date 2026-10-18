@@ -27,6 +27,7 @@
 #include <stdexcept>
 
 #include "hip_internal.h"
+#include "gpu_build_id.h"
 #include "FDTD/operator.h"
 #include "FDTD/extensions/engine_ext_upml.h"
 #include "FDTD/extensions/engine_ext_excitation.h"
@@ -723,17 +724,55 @@ __global__ void probe_device()
 {
 }
 
-GPU_Backend_HIP* GPU_Backend_HIP::New()
+int GPU_Backend_HIP::DeviceCount()
 {
 	int count = 0;
-	if ((hipGetDeviceCount(&count)!=hipSuccess) || (count==0))
+	if (hipGetDeviceCount(&count)!=hipSuccess)
+	{
+		(void)hipGetLastError();
+		return 0;
+	}
+	return count;
+}
+
+bool GPU_Backend_HIP::DeviceInfo(int n, GPU_DeviceInfo* info)
+{
+	hipDeviceProp_t prop;
+	if (hipGetDeviceProperties(&prop, n)!=hipSuccess)
+	{
+		(void)hipGetLastError();
+		return false;
+	}
+	snprintf(info->name, sizeof(info->name), "%s", prop.name);
+	info->memory = prop.totalGlobalMem;
+	info->integrated = prop.integrated!=0;
+	return true;
+}
+
+namespace
+{
+GPU_Backend* NewHIPBackend(int n)
+{
+	return GPU_Backend_HIP::New(n);
+}
+}
+
+const GPU_Plugin* GPU_Backend_HIP::Plugin()
+{
+	static const GPU_Plugin plugin = {OPENEMS_GPU_BUILD_ID, OPENEMS_GPU_PLUGIN_NAME, DeviceCount, DeviceInfo, NewHIPBackend};
+	return &plugin;
+}
+
+GPU_Backend_HIP* GPU_Backend_HIP::New(int device)
+{
+	if ((device<0) || (device>=DeviceCount()) || (hipSetDevice(device)!=hipSuccess))
 	{
 		(void)hipGetLastError();
 		return NULL;
 	}
 	Impl* impl = new Impl();
 	impl->ctx = std::make_shared<HIP_Context>();
-	HIP_Check(hipGetDevice(&impl->ctx->device), "hipGetDevice");
+	impl->ctx->device = device;
 	hipDeviceProp_t prop;
 	HIP_Check(hipGetDeviceProperties(&prop, impl->ctx->device), "hipGetDeviceProperties");
 	impl->ctx->name = prop.name;

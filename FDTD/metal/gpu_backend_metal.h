@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "FDTD/gpu_backend.h"
+#include "FDTD/gpu_plugin.h"
 
 //! GPU backend using Apple Metal
 /*!
@@ -41,6 +42,8 @@ class GPU_Backend_Metal : public GPU_Backend
 public:
 	//! Create the backend on the default Metal device, or return NULL if there is none
 	static GPU_Backend_Metal* New();
+	//! This backend and its device (the default one), see FDTD/gpu_plugin.h
+	static const GPU_Plugin* Plugin();
 	virtual ~GPU_Backend_Metal();
 
 	virtual std::string GetName() const;

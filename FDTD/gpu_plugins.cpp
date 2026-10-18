@@ -137,7 +137,7 @@ const GPU_Plugin* LoadPlugin(const fs::path& file, std::string& error)
 		return NULL;
 	}
 	const GPU_Plugin* plugin = entry();
-	if (!plugin || !plugin->build_id || !plugin->NewBackend)
+	if (!plugin || !plugin->build_id || !plugin->name || !plugin->DeviceCount || !plugin->DeviceInfo || !plugin->NewBackend)
 	{
 		error = "invalid plugin description";
 		return NULL;
@@ -157,7 +157,7 @@ struct PluginFile
 	std::string error;
 };
 
-//! All plugin files, loaded on the first call; \a dirs_messages says which directories had none
+//! All plugin files, loaded on the first call; \a dir_messages says which directories had none
 const std::vector<PluginFile>& Plugins(std::vector<std::string>& dir_messages)
 {
 	static std::vector<std::string> s_dir_messages;
@@ -189,24 +189,20 @@ const std::vector<PluginFile>& Plugins(std::vector<std::string>& dir_messages)
 			s_dir_messages.push_back("no directory to look for GPU plugins in");
 		return found;
 	}();
-	dir_messages = s_dir_messages;
+	dir_messages.insert(dir_messages.end(), s_dir_messages.begin(), s_dir_messages.end());
 	return plugins;
 }
 }
 
-GPU_Backend* GPU_NewPluginBackend(std::vector<std::string>& messages)
+std::vector<const GPU_Plugin*> GPU_LoadPlugins(std::vector<std::string>& messages)
 {
-	const std::vector<PluginFile>& plugins = Plugins(messages);
-	for (const PluginFile& p : plugins)
+	std::vector<const GPU_Plugin*> loaded;
+	for (const PluginFile& p : Plugins(messages))
 	{
-		if (!p.plugin)
-		{
+		if (p.plugin)
+			loaded.push_back(p.plugin);
+		else
 			messages.push_back(p.file.string() + ": " + p.error);
-			continue;
-		}
-		if (GPU_Backend* backend = p.plugin->NewBackend())
-			return backend;
-		messages.push_back(p.file.string() + ": no usable " + p.plugin->name + " device");
 	}
-	return NULL;
+	return loaded;
 }

@@ -97,9 +97,9 @@ public:
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
-	//! Create a GPU engine on backend \a backend (see GPU_Backend::New) instead of the multithreaded engine; empty: multithreaded engine.
-	//! A multi-grid sub-grid passes the backend of its parent grid as \a parent (see GPU_Backend::NewSubGridBackend()).
-	void SetGPUBackend(const std::string& backend, GPU_Backend* parent=NULL) {m_GPU_Backend = backend; m_GPU_Parent = parent;}
+	//! Create a GPU engine on \a backend (see GPU_Backend::New), which the operator takes over and hands on to its engine, instead of the multithreaded engine.
+	//! A multi-grid sub-grid passes the backend of its parent grid as \a parent instead (see GPU_Backend::NewSubGridBackend()).
+	void SetGPUBackend(GPU_Backend* backend, GPU_Backend* parent=NULL);
 
 	virtual void AddExtension(Operator_Extension* op_ext);
 
@@ -128,7 +128,10 @@ protected:
 	bool CC_closedAlpha;
 	bool CC_R0_included;
 
-	std::string m_GPU_Backend;
+	bool UseGPU() const {return m_GPU_Backend || m_GPU_Parent;}
+	//! hands the backend on to the engine
+	GPU_Backend* TakeGPUBackend() {GPU_Backend* b = m_GPU_Backend; m_GPU_Backend = NULL; return b;}
+	GPU_Backend* m_GPU_Backend; //!< until CreateEngine()
 	GPU_Backend* m_GPU_Parent;
 	Operator_Ext_Cylinder* m_Cyl_Ext;
 };

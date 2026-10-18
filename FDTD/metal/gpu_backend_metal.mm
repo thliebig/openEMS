@@ -16,6 +16,7 @@
 */
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -373,6 +374,43 @@ void GPU_Backend_Metal::Impl::SetGridDim(unsigned int index)
 }
 
 /***************************** GPU_Backend_Metal *****************************/
+
+namespace
+{
+int MetalDeviceCount()
+{
+	@autoreleasepool
+	{
+		return MTLCreateSystemDefaultDevice() ? 1 : 0;
+	}
+}
+
+bool MetalDeviceInfo(int n, GPU_DeviceInfo* info)
+{
+	@autoreleasepool
+	{
+		id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+		if ((n!=0) || !device)
+			return false;
+		snprintf(info->name, sizeof(info->name), "%s", [[device name] UTF8String]);
+		info->memory = [device recommendedMaxWorkingSetSize];
+		info->integrated = [device hasUnifiedMemory];
+		return true;
+	}
+}
+
+GPU_Backend* NewMetalBackend(int n)
+{
+	return n==0 ? GPU_Backend_Metal::New() : NULL;
+}
+}
+
+const GPU_Plugin* GPU_Backend_Metal::Plugin()
+{
+	// built into libopenEMS, never loaded as a plugin: no build id to check
+	static const GPU_Plugin plugin = {"", "metal", MetalDeviceCount, MetalDeviceInfo, NewMetalBackend};
+	return &plugin;
+}
 
 GPU_Backend_Metal* GPU_Backend_Metal::New()
 {

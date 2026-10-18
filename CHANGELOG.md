@@ -21,7 +21,10 @@ there are unreleased changes. It becomes the next release entry.
   (including multi-grid) with the usual extensions on the device, and writes
   the same probes and dumps. Without a usable GPU the setup fails with an
   error instead of running something slower. `--engine=gpu-reference` runs it
-  on a CPU reference backend, to check the device backends against.
+  on a CPU reference backend, to check the device backends against. With
+  several GPUs it takes a discrete one before an integrated one, then the one
+  with more memory; `--gpu-device=N` (`gpu_device=N`) picks device N of the
+  list printed at `--verbose=1`.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.

@@ -378,8 +378,14 @@ grid.SetDeltaUnit(1e-3)
 for d in 'xyz':
     grid.SetLines(d, range(10))
 csx.AddExcitation('ex', 0, [0, 0, 1]).AddBox([4, 4, 4], [4, 4, 6])
-fdtd.Run(sys.argv[1], verbose=0, engine='gpu')
+fdtd.Run(sys.argv[1], verbose=0, engine='gpu', **eval(sys.argv[2]))
 """
+
+
+def _run_gpu_engine(tmp, kw, env):
+    return subprocess.run([sys.executable, '-c', _GPU_ENGINE_SCRIPT, os.path.join(tmp, 'sim'), repr(kw)],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          universal_newlines=True, env=env, cwd=tmp)
 
 
 class Test_GPUPlugins(unittest.TestCase):
@@ -391,13 +397,18 @@ class Test_GPUPlugins(unittest.TestCase):
             bogus = os.path.join(plugins, 'openEMS_gpu_bogus' + ('.dll' if os.name == 'nt' else '.so'))
             open(bogus, 'w').close()
             env = dict(os.environ, OPENEMS_PLUGIN_PATH=plugins)
-            out = subprocess.run([sys.executable, '-c', _GPU_ENGINE_SCRIPT, os.path.join(tmp, 'sim')],
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 universal_newlines=True, env=env, cwd=tmp)
-        if 'backend: Metal' in out.stdout:
-            self.skipTest('the built-in Metal backend is used')
+            out = _run_gpu_engine(tmp, {}, env)
+        # a backend built into libopenEMS (Metal, HIP with OPENEMS_GPU_PLUGINS=OFF) may run
+        if ('backend: Metal' in out.stdout) or ('backend: HIP' in out.stdout):
+            self.skipTest('a built-in GPU backend is used')
         self.assertIn(bogus, out.stderr)
-        self.assertIn('creating the FDTD engine failed', out.stderr)
+        self.assertIn('no GPU backend with a usable device', out.stderr)
+
+    def test_unknown_gpu_device(self):
+        # a device number beyond the list is an error that shows the list
+        with tempfile.TemporaryDirectory() as tmp:
+            out = _run_gpu_engine(tmp, {'gpu_device': 99}, os.environ)
+        self.assertIn('--gpu-device=99, but there', out.stderr)
 
 
 if __name__ == '__main__':

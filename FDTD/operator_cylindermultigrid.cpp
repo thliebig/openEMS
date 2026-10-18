@@ -64,8 +64,8 @@ Operator_CylinderMultiGrid* Operator_CylinderMultiGrid::New(
 
 Engine* Operator_CylinderMultiGrid::CreateEngine()
 {
-	if (!m_GPU_Backend.empty())
-		m_Engine = Engine_GPU_CylinderMultiGrid::New(this, m_GPU_Backend, m_GPU_Parent);
+	if (UseGPU())
+		m_Engine = Engine_GPU_CylinderMultiGrid::New(this, TakeGPUBackend(), m_GPU_Parent);
 	else
 		m_Engine = Engine_CylinderMultiGrid::New(this, m_orig_numThreads);
 	return m_Engine;

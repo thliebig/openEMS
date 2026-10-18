@@ -29,7 +29,7 @@ using std::endl;
 
 //! \brief construct an Engine_GPU instance
 //! it's the responsibility of the caller to free the returned pointer
-Engine_GPU* Engine_GPU::New(const Operator* op, const std::string& backend, GPU_Backend* parent)
+Engine_GPU* Engine_GPU::New(const Operator* op, GPU_Backend* backend, GPU_Backend* parent)
 {
 	Engine_GPU* e = new Engine_GPU(op, backend, parent);
 	try
@@ -44,12 +44,12 @@ Engine_GPU* Engine_GPU::New(const Operator* op, const std::string& backend, GPU_
 	return e;
 }
 
-Engine_GPU::Engine_GPU(const Operator* op, const std::string& backend, GPU_Backend* parent) : Engine(op)
+Engine_GPU::Engine_GPU(const Operator* op, GPU_Backend* backend, GPU_Backend* parent) : Engine(op)
 {
-	m_BackendName = backend;
 	m_ParentBackend = parent;
 	m_type = GPU;
-	m_Backend = NULL;
+	// ours from here on, Reset() frees it even if Init() fails
+	m_Backend = backend;
 	m_FieldsOnHost = true;
 	m_SharedMemory = false;
 	m_SnapshotsUsed = false;
@@ -73,9 +73,10 @@ void Engine_GPU::Init()
 	Engine::Init();
 
 	// a sub-grid shares the device work stream of its parent grid
-	m_Backend = m_ParentBackend ? m_ParentBackend->NewSubGridBackend() : GPU_Backend::New(m_BackendName);
+	if (m_ParentBackend)
+		m_Backend = m_ParentBackend->NewSubGridBackend();
 	if (m_Backend==NULL)
-		throw std::runtime_error("no GPU backend with a usable device is available for --engine=gpu");
+		throw std::runtime_error("Engine_GPU::Init: no GPU backend");
 	cout << "Create FDTD engine (GPU, backend: " << m_Backend->GetName() << ")" << endl;
 	m_DumpPath = 0;
 	if (const char* env = getenv("OPENEMS_GPU_DUMPS"))

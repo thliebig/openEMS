@@ -16,7 +16,10 @@
 */
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
+#include <stdexcept>
 
 #include "gpu_backend.h"
 #include "gpu_backend_reference.h"
@@ -32,6 +35,33 @@
 #include "metal/gpu_backend_metal.h"
 #endif
 
+namespace
+{
+struct GPU_Device
+{
+	const GPU_Plugin* plugin;
+	int index;              //!< device number within the plugin
+	GPU_DeviceInfo info;
+};
+
+//! Discrete GPUs first, then the one with more memory
+bool BetterDevice(const GPU_Device& a, const GPU_Device& b)
+{
+	if (a.info.integrated!=b.info.integrated)
+		return !a.info.integrated;
+	return a.info.memory>b.info.memory;
+}
+
+std::string DeviceLine(size_t n, const GPU_Device& dev)
+{
+	std::ostringstream line;
+	line << n << ": " << dev.info.name << " (" << dev.plugin->name << ", "
+	     << std::fixed << std::setprecision(1) << dev.info.memory/1073741824.0 << " GiB"
+	     << (dev.info.integrated ? ", integrated" : "") << ")";
+	return line.str();
+}
+}
+
 GPU_Backend* GPU_Backend::New(const std::string& name)
 {
 	if (name=="reference")
@@ -39,25 +69,69 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 	if (name!="auto")
 		std::cerr << "GPU_Backend::New: Warning: unknown GPU backend \"" << name << "\", using the best available" << std::endl;
 
-#ifdef OPENEMS_WITH_HIP
-	// linked into libopenEMS (OPENEMS_GPU_PLUGINS=OFF)
-	GPU_Backend* hip = GPU_Backend_HIP::New();
-	if (hip)
-		return hip;
-	std::cerr << "GPU_Backend::New: Warning: no usable HIP device found" << std::endl;
-#endif
-
+	// every backend there is, built in or a plugin; the device numbers of --gpu-device
+	// follow this order
 	std::vector<std::string> messages;
-	GPU_Backend* plugin = GPU_NewPluginBackend(messages);
-	if (plugin)
-		return plugin;
-
-#ifdef OPENEMS_WITH_METAL
-	GPU_Backend* metal = GPU_Backend_Metal::New();
-	if (metal)
-		return metal;
-	std::cerr << "GPU_Backend::New: Warning: no Metal device found" << std::endl;
+	std::vector<const GPU_Plugin*> plugins;
+#ifdef OPENEMS_WITH_HIP
+	plugins.push_back(GPU_Backend_HIP::Plugin());   // OPENEMS_GPU_PLUGINS=OFF
 #endif
+	const std::vector<const GPU_Plugin*> loaded = GPU_LoadPlugins(messages);
+	plugins.insert(plugins.end(), loaded.begin(), loaded.end());
+#ifdef OPENEMS_WITH_METAL
+	plugins.push_back(GPU_Backend_Metal::Plugin());
+#endif
+
+	std::vector<GPU_Device> devices;
+	for (const GPU_Plugin* plugin : plugins)
+	{
+		const int count = plugin->DeviceCount();
+		if (count==0)
+			messages.push_back(std::string("no ") + plugin->name + " device");
+		for (int n=0; n<count; ++n)
+		{
+			GPU_Device dev;
+			dev.plugin = plugin;
+			dev.index = n;
+			if (plugin->DeviceInfo(n, &dev.info))
+				devices.push_back(dev);
+		}
+	}
+
+	const int chosen = g_settings.GetGPUDevice();
+	if (g_settings.GetVerboseLevel()>0)
+	{
+		std::cout << "GPU devices:" << std::endl;
+		for (size_t n=0; n<devices.size(); ++n)
+			std::cout << "  " << DeviceLine(n, devices.at(n)) << std::endl;
+	}
+	if ((chosen<-1) || (chosen>=(int)devices.size()))
+	{
+		std::ostringstream err;
+		err << "--gpu-device=" << chosen << ", but there " << (devices.size()==1 ? "is " : "are ")
+		    << devices.size() << " GPU device" << (devices.size()==1 ? "" : "s");
+		for (size_t n=0; n<devices.size(); ++n)
+			err << (n==0 ? ": " : ", ") << DeviceLine(n, devices.at(n));
+		throw std::runtime_error(err.str());
+	}
+
+	// the chosen device, else the best one that can run
+	std::vector<size_t> order;
+	if (chosen>=0)
+		order.push_back(chosen);
+	else
+	{
+		for (size_t n=0; n<devices.size(); ++n)
+			order.push_back(n);
+		std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) {return BetterDevice(devices.at(a), devices.at(b));});
+	}
+	for (size_t n : order)
+	{
+		const GPU_Device& dev = devices.at(n);
+		if (GPU_Backend* backend = dev.plugin->NewBackend(dev.index))
+			return backend;
+		messages.push_back("cannot run on device " + DeviceLine(n, dev));
+	}
 
 	for (const std::string& msg : messages)
 		std::cerr << "GPU_Backend::New: Warning: " << msg << std::endl;

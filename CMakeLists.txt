@@ -340,17 +340,17 @@ ENDIF()
 add_library( openEMS SHARED ${SOURCES})
 
 # the target the HIP sources are built into: libopenEMS or the plugin
-IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
+IF(ENABLE_HIP)
   IF(OPENEMS_HIP_AS_CUDA OR (CMAKE_HIP_PLATFORM STREQUAL "nvidia"))
     set(GPU_PLUGIN_NAME hip_nvidia)
   ELSE()
     set(GPU_PLUGIN_NAME hip_amd)
   ENDIF()
+ENDIF()
+IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
   set(HIP_TARGET openEMS_gpu_${GPU_PLUGIN_NAME})
   message(STATUS "HIP GPU backend built as the plugin ${HIP_TARGET}")
   add_library( ${HIP_TARGET} MODULE ${HIP_PLUGIN_SOURCES} )
-  string(REPLACE "_" "-" _gpu_plugin_label ${GPU_PLUGIN_NAME})
-  target_compile_definitions( ${HIP_TARGET} PRIVATE OPENEMS_GPU_PLUGIN_NAME="${_gpu_plugin_label}" )
   # installed to openEMS/plugins next to libopenEMS, where it is looked for; in the
   # build tree, where the openEMS binary takes that name, OPENEMS_PLUGIN_PATH=plugins
   set_target_properties( ${HIP_TARGET} PROPERTIES PREFIX ""
@@ -359,6 +359,11 @@ IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
   TARGET_LINK_LIBRARIES( ${HIP_TARGET} openEMS )
 ELSEIF(ENABLE_HIP)
   set(HIP_TARGET openEMS)
+ENDIF()
+IF(ENABLE_HIP)
+  # the name of the backend in the device list, e.g. "hip-amd"
+  string(REPLACE "_" "-" _gpu_plugin_label ${GPU_PLUGIN_NAME})
+  target_compile_definitions( ${HIP_TARGET} PRIVATE OPENEMS_GPU_PLUGIN_NAME="${_gpu_plugin_label}" )
 ENDIF()
 IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
   target_include_directories( ${HIP_TARGET} PRIVATE ${HIP_INCLUDE_DIR} )

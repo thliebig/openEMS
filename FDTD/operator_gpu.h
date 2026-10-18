@@ -22,6 +22,8 @@
 
 #include <vector>
 
+class GPU_Backend;
+
 //! Operator for the GPU engine
 /*!
   The operator is built on the host like the basic operator. Engine_GPU uploads
@@ -30,17 +32,15 @@
 class Operator_GPU : public Operator
 {
 public:
-	//! Create a new operator for the GPU backend \a backend (see GPU_Backend::New)
-	static Operator_GPU* New(const std::string& backend="auto");
+	//! Create a new operator for the GPU backend \a backend (see GPU_Backend::New), which it takes over and hands on to its engine
+	static Operator_GPU* New(GPU_Backend* backend);
 	virtual ~Operator_GPU();
 
 	virtual Engine* CreateEngine();
 
-	const std::string& GetBackendName() const {return m_Backend;}
-
 protected:
 	//! use New() for creating a new Operator
-	Operator_GPU(const std::string& backend);
+	Operator_GPU(GPU_Backend* backend);
 
 	//! Calc_EC_Range() and CalcPEC_Range() over x line ranges in parallel
 	/*!
@@ -54,7 +54,7 @@ protected:
 	//! x line ranges of the threads, at most one per available CPU, bounds inclusive
 	void ThreadRanges(std::vector<unsigned int>& start, std::vector<unsigned int>& stop) const;
 
-	std::string m_Backend;
+	GPU_Backend* m_Backend; //!< until CreateEngine()
 };
 
 #endif // OPERATOR_GPU_H

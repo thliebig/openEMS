@@ -25,7 +25,7 @@
 using std::cout;
 using std::endl;
 
-Operator_GPU* Operator_GPU::New(const std::string& backend)
+Operator_GPU* Operator_GPU::New(GPU_Backend* backend)
 {
 	cout << "Create FDTD operator (GPU)" << endl;
 	Operator_GPU* op = new Operator_GPU(backend);
@@ -33,18 +33,21 @@ Operator_GPU* Operator_GPU::New(const std::string& backend)
 	return op;
 }
 
-Operator_GPU::Operator_GPU(const std::string& backend) : Operator()
+Operator_GPU::Operator_GPU(GPU_Backend* backend) : Operator()
 {
 	m_Backend = backend;
 }
 
 Operator_GPU::~Operator_GPU()
 {
+	delete m_Backend;
 }
 
 Engine* Operator_GPU::CreateEngine()
 {
-	m_Engine = Engine_GPU::New(this, m_Backend);
+	GPU_Backend* backend = m_Backend;
+	m_Backend = NULL;
+	m_Engine = Engine_GPU::New(this, backend);
 	// The device holds the coefficients now: free the host arrays (48 bytes per node), as
 	// Operator_SSE_Compressed frees its full arrays. GetVV() and friends are invalid after this.
 	delete vv_ptr; vv_ptr = NULL;

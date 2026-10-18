@@ -40,7 +40,7 @@ class Operator_CylinderMultiGrid;
 class Engine_GPU_CylinderMultiGrid : public Engine_GPU
 {
 public:
-	static Engine_GPU_CylinderMultiGrid* New(const Operator_CylinderMultiGrid* op, const std::string& backend, GPU_Backend* parent=NULL);
+	static Engine_GPU_CylinderMultiGrid* New(const Operator_CylinderMultiGrid* op, GPU_Backend* backend, GPU_Backend* parent=NULL);
 	virtual ~Engine_GPU_CylinderMultiGrid();
 
 	virtual void Init();
@@ -54,7 +54,7 @@ public:
 	virtual void ForceHostFallback();
 
 protected:
-	Engine_GPU_CylinderMultiGrid(const Operator_CylinderMultiGrid* op, const std::string& backend, GPU_Backend* parent);
+	Engine_GPU_CylinderMultiGrid(const Operator_CylinderMultiGrid* op, GPU_Backend* backend, GPU_Backend* parent);
 
 	//! host fallback of the coupling, see GPU_MultiGridLink
 	void HostSyncVoltages();

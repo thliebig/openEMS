@@ -19,6 +19,7 @@
 #define GPU_BACKEND_HIP_H
 
 #include "FDTD/gpu_backend.h"
+#include "FDTD/gpu_plugin.h"
 
 //! GPU backend using HIP, for AMD GPUs and for NVIDIA GPUs through CUDA
 /*!
@@ -38,8 +39,14 @@
 class GPU_Backend_HIP : public GPU_Backend
 {
 public:
-	//! Create the backend on the current HIP device, or return NULL if there is none
-	static GPU_Backend_HIP* New();
+	//! Create the backend on HIP device \a device, or return NULL if it cannot run there
+	static GPU_Backend_HIP* New(int device);
+	//! Number of HIP devices, 0 without a runtime or driver
+	static int DeviceCount();
+	//! Describe HIP device \a n
+	static bool DeviceInfo(int n, GPU_DeviceInfo* info);
+	//! This backend and its devices, built into libopenEMS or as a plugin (see FDTD/gpu_plugin.h)
+	static const GPU_Plugin* Plugin();
 	virtual ~GPU_Backend_HIP();
 
 	virtual std::string GetName() const;

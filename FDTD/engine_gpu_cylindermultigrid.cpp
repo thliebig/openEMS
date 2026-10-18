@@ -24,7 +24,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-Engine_GPU_CylinderMultiGrid* Engine_GPU_CylinderMultiGrid::New(const Operator_CylinderMultiGrid* op, const std::string& backend, GPU_Backend* parent)
+Engine_GPU_CylinderMultiGrid* Engine_GPU_CylinderMultiGrid::New(const Operator_CylinderMultiGrid* op, GPU_Backend* backend, GPU_Backend* parent)
 {
 	cout << "Create FDTD engine (GPU, cylindrical multi-grid level " << op->GetMultiGridLevel() << ")" << endl;
 	Engine_GPU_CylinderMultiGrid* e = new Engine_GPU_CylinderMultiGrid(op, backend, parent);
@@ -40,7 +40,7 @@ Engine_GPU_CylinderMultiGrid* Engine_GPU_CylinderMultiGrid::New(const Operator_C
 	return e;
 }
 
-Engine_GPU_CylinderMultiGrid::Engine_GPU_CylinderMultiGrid(const Operator_CylinderMultiGrid* op, const std::string& backend, GPU_Backend* parent)
+Engine_GPU_CylinderMultiGrid::Engine_GPU_CylinderMultiGrid(const Operator_CylinderMultiGrid* op, GPU_Backend* backend, GPU_Backend* parent)
 	: Engine_GPU(op, backend, parent)
 {
 	Op_CMG = op;
@@ -75,7 +75,7 @@ void Engine_GPU_CylinderMultiGrid::Init()
 
 	// the sub-grid engine, created by its operator on a backend sharing our work stream
 	Operator_Cylinder* inner_op = Op_CMG->GetInnerOperator();
-	inner_op->SetGPUBackend(m_BackendName, m_Backend);
+	inner_op->SetGPUBackend(NULL, m_Backend);
 	m_InnerEngine = dynamic_cast<Engine_GPU*>(inner_op->CreateEngine());
 	if (m_InnerEngine==NULL)
 		throw std::runtime_error("Engine_GPU_CylinderMultiGrid::Init: the sub-grid engine is not a GPU engine");

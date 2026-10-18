@@ -60,8 +60,8 @@ class GPU_Extension;
 class Engine_GPU : public Engine
 {
 public:
-	//! Create the engine for \a op on the GPU backend \a backend (see GPU_Backend::New), or for a sub-grid on a backend sharing the work stream of \a parent
-	static Engine_GPU* New(const Operator* op, const std::string& backend, GPU_Backend* parent=NULL);
+	//! Create the engine for \a op on \a backend (see GPU_Backend::New), which the engine takes over, or for a sub-grid on a backend sharing the work stream of \a parent
+	static Engine_GPU* New(const Operator* op, GPU_Backend* backend, GPU_Backend* parent=NULL);
 	virtual ~Engine_GPU();
 
 	//! Create the backend, the device extensions and decide device or host fallback
@@ -127,9 +127,8 @@ public:
 	void CurrentsToDevice();
 
 protected:
-	Engine_GPU(const Operator* op, const std::string& backend, GPU_Backend* parent);
+	Engine_GPU(const Operator* op, GPU_Backend* backend, GPU_Backend* parent);
 
-	std::string m_BackendName;
 	GPU_Backend* m_ParentBackend;
 	GPU_Backend* m_Backend;
 	bool m_FieldsOnHost;

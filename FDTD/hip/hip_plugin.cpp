@@ -18,20 +18,8 @@
 // Entry point of the HIP backend built as a plugin (OPENEMS_GPU_PLUGINS), see FDTD/gpu_plugin.h
 
 #include "gpu_backend_hip.h"
-#include "FDTD/gpu_plugin.h"
-#include "gpu_build_id.h"
-
-namespace
-{
-GPU_Backend* NewBackend()
-{
-	return GPU_Backend_HIP::New();
-}
-
-const GPU_Plugin plugin = {OPENEMS_GPU_BUILD_ID, OPENEMS_GPU_PLUGIN_NAME, NewBackend};
-}
 
 GPU_PLUGIN_EXPORT const GPU_Plugin* openEMS_gpu_plugin()
 {
-	return &plugin;
+	return GPU_Backend_HIP::Plugin();
 }

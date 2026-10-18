@@ -42,6 +42,7 @@
 #include "FDTD/engine_interface_sse_fdtd.h"
 #include "FDTD/engine_interface_gpu_fdtd.h"
 #include "FDTD/engine_gpu.h"
+#include "FDTD/gpu_backend.h"
 #include "Common/processvoltage.h"
 #include "Common/processcurrent.h"
 #include "Common/processfieldprobe.h"
@@ -292,6 +293,17 @@ void openEMS::collectCommandLineArguments()
 			"operator + sse vector extensions + multithreading\n"
 			"  gpu: \tGPU engine on the best available backend\n"
 			"  gpu-reference: \tGPU engine with the reference backend on the CPU\n"
+		)
+		(
+			"gpu-device",
+			po::value<int>()->default_value(-1)->notifier(
+				[&](int val)
+				{
+					g_settings.SetGPUDevice(val);
+				}
+			),
+			"GPU device of --engine=gpu, a number of the device list "
+			"printed at --verbose=1 (default: the best device)"
 		)
 		(
 			"numThreads",
@@ -819,16 +831,37 @@ bool openEMS::SetupOperator()
 {
 	// what defaults to AvailableThreads() (GPU operator build, field dumps, SAR, nf2ff) honours numThreads
 	SetThreadLimit(m_engine_numThreads);
+
+	// the GPU backend first: without a usable device the operator is not worth building
+	const bool gpu = (m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference);
+	GPU_Backend* gpu_backend = NULL;
+	if (gpu)
+	{
+		try
+		{
+			gpu_backend = GPU_Backend::New(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
+		}
+		catch (const std::exception& e)
+		{
+			cerr << "openEMS::SetupFDTD: Error: " << e.what() << endl;
+			return false;
+		}
+		if (gpu_backend==NULL)
+		{
+			cerr << "openEMS::SetupFDTD: Error: no GPU backend with a usable device is available for --engine=gpu" << endl;
+			return false;
+		}
+	}
+
 	if (CylinderCoords)
 	{
-		bool gpu = (m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference);
 		Operator_Cylinder* op_cyl = NULL;
 		if (m_CC_MultiGrid.size()>0)
 			op_cyl = Operator_CylinderMultiGrid::New(m_CC_MultiGrid, m_engine_numThreads);
 		if (op_cyl==NULL)
 			op_cyl = Operator_Cylinder::New(m_engine_numThreads);
 		if (gpu)
-			op_cyl->SetGPUBackend(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
+			op_cyl->SetGPUBackend(gpu_backend);
 		FDTD_Op = op_cyl;
 	}
 	else if (m_engine == EngineType_SSE)
@@ -843,9 +876,9 @@ bool openEMS::SetupOperator()
 	{
 		FDTD_Op = Operator_Multithread::New(m_engine_numThreads);
 	}
-	else if ((m_engine == EngineType_GPU) || (m_engine == EngineType_GPU_Reference))
+	else if (gpu)
 	{
-		FDTD_Op = Operator_GPU::New(m_engine == EngineType_GPU_Reference ? "reference" : "auto");
+		FDTD_Op = Operator_GPU::New(gpu_backend);
 	}
 	else
 	{

@@ -584,7 +584,7 @@ cdef class openEMS:
 
     def _SetLibraryArguments(self, arguments):
         allOptions = []
-        integerOptions = ["verbose", "numthreads"]
+        integerOptions = ["verbose", "numthreads", "gpu-device"]
 
         for key, val in arguments.items():
             key = key.replace("_", "-")
@@ -664,6 +664,9 @@ cdef class openEMS:
 
         * verbose (int) -- set the openEMS verbosity level 0..3
         * numThreads (int) -- set the number of threads (default 0 --> max)
+        * engine (str) -- e.g. 'gpu' for the GPU engine
+        * gpu_device (int) -- GPU device of the GPU engine, a number of the
+          device list printed at verbose >= 1 (default: the best device)
         * disable_dumps (bool) -- disable all field dumps for faster simulation
         * debug_material (bool) - dump material distribution to a vtk file for
           debugging.

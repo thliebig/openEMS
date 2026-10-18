@@ -34,6 +34,7 @@ Global::Global()
 	m_legacyHDF5 = false;
 	m_VerboseLevel = 0;
 	m_SavedVerboseLevel = 0;
+	m_GPUDevice = -1;
 	m_optionDesc = NULL;
 }
 
