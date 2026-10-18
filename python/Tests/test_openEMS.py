@@ -320,7 +320,7 @@ class Test_Run(unittest.TestCase):
 
 
 _NUM_THREADS_SCRIPT = """
-import os, sys
+import os, sys, time
 from CSXCAD import ContinuousStructure
 from openEMS.openEMS import openEMS
 fdtd = openEMS(NrTS=20, EndCriteria=0)
@@ -337,7 +337,13 @@ csx.AddDump('Et', dump_type=0, file_type=1).AddBox([0, 0, 0], [39, 39, 39])
 before = len(os.listdir('/proc/self/task'))
 fdtd.Run(sys.argv[1], verbose=0, numThreads=2)
 assert os.path.isfile(os.path.join(sys.argv[1], 'Et.h5'))
-print(len(os.listdir('/proc/self/task')) - before)
+# a joined thread can still be listed for a moment while the kernel tears it down
+for n in range(50):
+    extra = len(os.listdir('/proc/self/task')) - before
+    if extra <= 2:
+        break
+    time.sleep(0.02)
+print(extra)
 """
 
 
