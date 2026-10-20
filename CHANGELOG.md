@@ -82,6 +82,12 @@ there are unreleased changes. It becomes the next release entry.
   timesteps went from 79 s to 2.4 s per frequency.
 - An unknown `--engine` value (`engine=` from Python) is an error; it used to
   run the default engine without a word, e.g. for `--engine=GPU` or `cuda`.
+- A mesh line within 1/1000 of the smallest mesh step of a primitive's
+  surface counts as lying on it, and so as metal or material there (CSXCAD's
+  drawing tolerance): for STL files, coordinates rounded in the XML or
+  computed ones. A few edges more can become metal, e.g. on sloped walls; a
+  slit at x=0 in the split ground plane of the StripLine2MSL tutorial is
+  closed.
 
 ### Build
 

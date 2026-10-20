@@ -834,7 +834,29 @@ bool Operator::SetGeometryCSX(ContinuousStructure* geo)
 	SetBackgroundDensity(0);
 
 	CSRectGrid* grid=CSX->GetGrid();
-	return SetupCSXGrid(CSRectGrid::Clone(grid));
+	if (!SetupCSXGrid(CSRectGrid::Clone(grid)))
+		return false;
+
+	// a mesh line closer to a primitive's surface than this lies on it, e.g. for the single
+	// precision coordinates of an STL file or coordinates rounded in the XML; an operator of a
+	// multi grid sets it again, the smallest wins
+	double tol = 1e-3*GetMinMeshStep();
+	if (tol>0 && (CSX->GetDrawingTolerance()<=0 || tol<CSX->GetDrawingTolerance()))
+		CSX->SetDrawingTolerance(tol);
+	return true;
+}
+
+double Operator::GetMinMeshStep() const
+{
+	double step = 0;
+	for (int n=0;n<3;++n)
+		for (unsigned int i=0;i+1<numLines[n];++i)
+		{
+			double d = discLines[n][i+1]-discLines[n][i];
+			if (d>0 && (step==0 || d<step))
+				step = d;
+		}
+	return step;
 }
 
 void Operator::InitOperator()

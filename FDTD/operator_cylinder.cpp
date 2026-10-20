@@ -226,6 +226,34 @@ double Operator_Cylinder::GetEdgeLength(int ny, const unsigned int pos[3], bool 
 	return length * GetDiscLine(0,pos[0],dualMesh);
 }
 
+double Operator_Cylinder::GetMinMeshStep() const
+{
+	double step = 0, r_min = 0, da = 0;
+	for (int n=0;n<3;++n)
+		for (unsigned int i=0;i+1<numLines[n];++i)
+		{
+			double d = discLines[n][i+1]-discLines[n][i];
+			if (d<=0)
+				continue;
+			if (n==1)
+			{
+				if (da==0 || d<da)
+					da = d;
+			}
+			else if (step==0 || d<step)
+				step = d;
+		}
+	for (unsigned int i=0;i<numLines[0];++i)
+		if (discLines[0][i]>0)
+		{
+			r_min = discLines[0][i];
+			break;
+		}
+	if (r_min*da>0 && (step==0 || r_min*da<step))
+		step = r_min*da;
+	return step;
+}
+
 double Operator_Cylinder::GetCellVolume(const unsigned int pos[3], bool dualMesh) const
 {
 	return GetEdgeArea(2,pos,dualMesh)*GetEdgeLength(2,pos,dualMesh);

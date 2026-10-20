@@ -67,6 +67,9 @@ public:
 	//! Get the length of an FDTD edge, including radius corrected alpha-mesh width.
 	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 
+	//! The smallest mesh step, in alpha at the smallest radius above zero (in drawing units)
+	virtual double GetMinMeshStep() const;
+
 	//! Get the volume of an FDTD cell
 	virtual double GetCellVolume(const unsigned int pos[3], bool dualMesh = false) const;
 
