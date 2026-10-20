@@ -41,10 +41,11 @@ int main(int argc, const char* argv[])
 		return -1;
 	}
 
-	g_settings.parseCommandLineArguments(argc, argv);
-
 	try
 	{
+		// an unknown option or value throws
+		g_settings.parseCommandLineArguments(argc, argv);
+
 		int EC = FDTD.ParseFDTDSetup(argv[1]);
 		if (!EC) {
 			cerr << "openEMS - ParseFDTDSetup failed." << endl;

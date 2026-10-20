@@ -45,7 +45,8 @@ there are unreleased changes. It becomes the next release entry.
   longer ends with the warning that the max. number of timesteps was reached;
   it reports the abort.
 - An error during the setup or the run of a simulation, e.g. running out of
-  memory, no longer terminates the process: openEMS ends with an error message,
+  memory, or an invalid command line option, e.g. an unknown `--engine`, no
+  longer terminates the process: openEMS ends with an error message,
   Python raises a `RuntimeError`, and Ctrl-C works again afterwards.
 - A simulation with more than about 1.4 billion mesh nodes no longer
   overflows the size of its field and coefficient arrays, which corrupted
