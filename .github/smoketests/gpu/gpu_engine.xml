@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<openEMS>
+    <FDTD NumberOfTimesteps="10" endCriteria="0" OverSampling="4" TimeStepMethod="3">
+        <Excitation Type="0" f0="1e+09" fc="1e+09" />
+        <BoundaryCond xmin="PEC" xmax="PEC" ymin="PEC" ymax="PEC" zmin="PEC" zmax="PEC" />
+    </FDTD>
+    <ContinuousStructure CoordSystem="0">
+        <RectilinearGrid DeltaUnit="0.001" CoordSystem="0">
+            <XLines Qty="10">0,1,2,3,4,5,6,7,8,9</XLines>
+            <YLines Qty="10">0,1,2,3,4,5,6,7,8,9</YLines>
+            <ZLines Qty="10">0,1,2,3,4,5,6,7,8,9</ZLines>
+        </RectilinearGrid>
+        <BackgroundMaterial Epsilon="1" Mue="1" Kappa="0" Sigma="0" />
+        <ParameterSet />
+        <Properties>
+            <Excitation ID="0" Name="ex" Number="0" Enabled="1" Frequency="0.000000e+00" Delay="0.000000e+00" Type="0" Excite="0.000000e+00,0.000000e+00,1.000000e+00" PropDir="0.000000e+00,0.000000e+00,0.000000e+00">
+                <FillColor R="103" G="198" B="105" a="255" />
+                <EdgeColor R="103" G="198" B="105" a="255" />
+                <Primitives>
+                    <Box Priority="0">
+                        <P1 X="4.000000e+00" Y="4.000000e+00" Z="4.000000e+00" />
+                        <P2 X="4.000000e+00" Y="4.000000e+00" Z="6.000000e+00" />
+                    </Box>
+                </Primitives>
+                <Weight X="1.000000e+00" Y="1.000000e+00" Z="1.000000e+00" />
+            </Excitation>
+        </Properties>
+    </ContinuousStructure>
+</openEMS>

@@ -137,6 +137,19 @@ jobs:
             docker-image: "ubuntu:latest"
             full-tests: true
 
+          # gpu: also build a HIP GPU plugin and check it on a runner without a GPU;
+          # rocm: for AMD, with ROCm from AMD's Python wheels; cuda: for NVIDIA, the
+          # HIP sources compiled as CUDA, with the HIP headers from those wheels
+          - name: "Ubuntu + ROCm"
+            libc: "GNU"
+            docker-image: "ubuntu:latest"
+            gpu: "rocm"
+
+          - name: "Ubuntu + CUDA"
+            libc: "GNU"
+            docker-image: "nvidia/cuda:12.9.1-devel-ubuntu24.04"
+            gpu: "cuda"
+
           - name: "Fedora"
             libc: "GNU"
             docker-image: "fedora:latest"
@@ -292,6 +305,39 @@ jobs:
             exit 1
           fi
 
+      - name: Install ROCm (AMD's Python wheels)
+        if: matrix.os.gpu == 'rocm'
+        run: |
+          python3 -m venv /opt/rocm-venv
+          /opt/rocm-venv/bin/pip install --index-url https://stable.repo.amd.com/rocm/whl-next/ "rocm[devel]==10.0.0"
+          /opt/rocm-venv/bin/rocm-sdk init
+          ROCM_ROOT=$(/opt/rocm-venv/bin/rocm-sdk path --root)
+          echo "ROCm: $ROCM_ROOT"
+          ls $ROCM_ROOT/lib/libamdhip64* $ROCM_ROOT/lib/llvm/bin/clang++
+          echo "ROCM_PATH=$ROCM_ROOT" >> $GITHUB_ENV
+          # clang does not report this layout as a HIP installation by itself
+          echo "HIP_PATH=$ROCM_ROOT" >> $GITHUB_ENV
+          echo "HIP_DEVICE_LIB_PATH=$ROCM_ROOT/lib/llvm/amdgcn/bitcode" >> $GITHUB_ENV
+          echo "OPENEMS_CI_GPU=rocm" >> $GITHUB_ENV
+
+      - name: Install the HIP headers for NVIDIA (AMD's apt repository)
+        if: matrix.os.gpu == 'cuda'
+        run: |
+          # only the headers of one ROCm version, unpacked without dependencies:
+          # hip-runtime-nvidia would pull in NVIDIA's cuda meta package with the driver
+          apt-get install -y curl gnupg
+          curl -fsSL https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor > /usr/share/keyrings/rocm.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/7.2.4 noble main" \
+            > /etc/apt/sources.list.d/rocm.list
+          apt-get update
+          mkdir -p /tmp/hipdeb && cd /tmp/hipdeb
+          apt-get download hip-dev hip-runtime-nvidia
+          for deb in *.deb; do dpkg -x $deb /opt/hip; done
+          ROCM_ROOT=$(ls -d /opt/hip/opt/rocm-*)
+          ls $ROCM_ROOT/include/hip/hip_runtime.h $ROCM_ROOT/include/hip/hip_version.h $ROCM_ROOT/include/hip/nvidia_detail/nvidia_hip_runtime.h
+          echo "ROCM_PATH=$ROCM_ROOT" >> $GITHUB_ENV
+          echo "OPENEMS_CI_GPU=cuda" >> $GITHUB_ENV
+
       - name: Build and install fparser
         run: |
           cd $GITHUB_WORKSPACE/fparser
@@ -336,7 +382,17 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/openEMS
           mkdir build && cd build
-          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt
+          hip_opts=()
+          if [ "${OPENEMS_CI_GPU:-}" = "cuda" ]; then
+            hip_opts=( -DENABLE_HIP=ON -DOPENEMS_HIP_AS_CUDA=ON )
+          elif [ "${OPENEMS_CI_GPU:-}" = "rocm" ]; then
+            # ROCm's clang takes the newest GCC directory it finds, which need not be
+            # the one with C++ headers: use the GCC of the system's g++
+            hip_opts=( -DENABLE_HIP=ON -DCMAKE_HIP_COMPILER=$ROCM_PATH/lib/llvm/bin/clang++
+                       -DCMAKE_HIP_COMPILER_ROCM_ROOT=$ROCM_PATH
+                       "-DCMAKE_HIP_FLAGS=--gcc-install-dir=$(dirname $(g++ -print-libgcc-file-name))" )
+          fi
+          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt "${hip_opts[@]}"
           make -j`nproc` && make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
@@ -389,6 +445,42 @@ jobs:
       - name: Run Python unit tests
         run: |
           python3 -m unittest discover -s $GITHUB_WORKSPACE/openEMS/python/Tests -p "test_*.py" -v
+
+      - name: GPU plugin on a machine without a GPU
+        if: matrix.os.gpu
+        run: |
+          if [ "$OPENEMS_CI_GPU" = "cuda" ]; then vendor=nvidia; else vendor=amd; fi
+          plugin=$HOME/opt/lib/openEMS/plugins/openEMS_gpu_hip_$vendor.so
+          ls -l $plugin
+          readelf -d $plugin | grep NEEDED
+          # libopenEMS itself needs no GPU runtime
+          if readelf -d $HOME/opt/lib/libopenEMS.so | grep -qE "amdhip64|cudart|libcuda"; then
+            echo "libopenEMS links a GPU runtime"; exit 1
+          fi
+          cd /tmp
+          cat > gpu_run.py << 'EOF'
+          import tempfile
+          from CSXCAD import ContinuousStructure
+          from openEMS.openEMS import openEMS
+          fdtd = openEMS(NrTS=10, EndCriteria=0)
+          fdtd.SetGaussExcite(1e9, 1e9)
+          fdtd.SetBoundaryCond(['PEC'] * 6)
+          csx = ContinuousStructure()
+          fdtd.SetCSX(csx)
+          grid = csx.GetGrid()
+          grid.SetDeltaUnit(1e-3)
+          for d in 'xyz':
+              grid.SetLines(d, range(10))
+          csx.AddExcitation('ex', 0, [0, 0, 1]).AddBox([4, 4, 4], [4, 4, 6])
+          fdtd.Run(tempfile.mkdtemp(), verbose=1, engine='gpu')
+          EOF
+          # the plugin loads (the AMD one finds the HIP runtime it was built with
+          # through its RPATH, the NVIDIA one has the CUDA runtime linked in),
+          # finds no device, and the GPU engine fails cleanly
+          python3 gpu_run.py > out.txt 2>&1 || true
+          cat out.txt
+          grep -q "no hip-$vendor device" out.txt
+          grep -q "no GPU backend with a usable device" out.txt
 
       - name: Run Octave test suite
         if: matrix.os.full-tests
@@ -841,7 +933,7 @@ jobs:
             python3 -m unittest discover -s $GITHUB_WORKSPACE/openEMS/python/Tests -p "test_*.py" -v
 
   Windows:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.toolchain.runner || 'windows-latest' }}
     needs: Dependencies
 
     strategy:
@@ -862,6 +954,27 @@ jobs:
             CC: "clang-cl"
             CXX: "clang-cl"
 
+          # gpu: "rocm": also build the AMD GPU plugin, with ROCm from AMD's
+          # Python wheels, and check it on a runner without a GPU.
+          # runner: the HIP math headers of ROCm's clang 23 collide with the
+          # STL of MSVC 14.51 (isgreater & co.), so stay on VS 2022 for now
+          - name: "clang + ROCm"
+            CC: "cl"
+            CXX: "cl"
+            gpu: "rocm"
+            runner: "windows-2022"
+
+          # gpu: "cuda+rocm": both GPU plugins, as the Windows package builds
+          # them: openEMS and the NVIDIA plugin (nvcc of the CUDA toolkit, the
+          # HIP headers for NVIDIA) with MSVC, then the AMD plugin alone with
+          # ROCm's clang in a second build that shares the build id.
+          # runner: CUDA 12.9 knows MSVC up to VS 2022
+          - name: "MSVC + CUDA + ROCm"
+            CC: "cl"
+            CXX: "cl"
+            gpu: "cuda+rocm"
+            runner: "windows-2022"
+
     env:
       CC: "${{ matrix.toolchain.CC }}"
       CXX: "${{ matrix.toolchain.CXX }}"
@@ -874,7 +987,7 @@ jobs:
       VCPKG_ASSET_CACHE_PATH: "${{ github.workspace }}/vcpkg-cache/asset"
       X_VCPKG_ASSET_SOURCES: "x-azurl,file://${{ github.workspace }}/vcpkg-cache/asset,readwrite"
 
-    name: "Windows (${{ matrix.toolchain.name }}, latest)"
+    name: "Windows (${{ matrix.toolchain.name }}, ${{ matrix.toolchain.runner || 'latest' }})"
 
     steps:
       - name: Locate Visual Studio installation
@@ -943,10 +1056,10 @@ jobs:
         with:
           path: ${{ env.VCPKG_CACHE_PATH }}
           # almost always nonexistent
-          key: "Windows - ${{ matrix.toolchain.name }} - ${{ github.sha }}"
+          key: "Windows - ${{ matrix.toolchain.name }}${{ matrix.toolchain.runner }} - ${{ github.sha }}"
           # use GitHub's fallback feature to pick the latest cache with this prefix
           restore-keys: |
-            Windows - ${{ matrix.toolchain.name }}
+            Windows - ${{ matrix.toolchain.name }}${{ matrix.toolchain.runner }}
 
       - name: Build and install fparser
         run: |
@@ -978,10 +1091,79 @@ jobs:
           cmake --build ./ --parallel
           cmake --install ./ --parallel 8
 
+      - name: Install ROCm (AMD's Python wheels)
+        if: contains(matrix.toolchain.gpu, 'rocm')
+        run: |
+          python -m venv C:\rocm
+          C:\rocm\Scripts\pip install --index-url https://stable.repo.amd.com/rocm/whl-next/ "rocm[devel]==10.0.0"
+          C:\rocm\Scripts\rocm-sdk init
+          if ($LASTEXITCODE -ne 0) { throw "rocm-sdk init failed" }
+          $root = (C:\rocm\Scripts\rocm-sdk path --root).Trim()
+          Write-Host "ROCm: $root"
+          echo "HIP_PATH=$root" >> $env:GITHUB_ENV
+          echo "HIP_DEVICE_LIB_PATH=$root\lib\llvm\amdgcn\bitcode" >> $env:GITHUB_ENV
+
+      - name: Install CUDA and the HIP headers for NVIDIA
+        if: contains(matrix.toolchain.gpu, 'cuda')
+        run: |
+          # the compiler and the runtime only, no driver; the HIP headers for
+          # NVIDIA include cuda_profiler_api.h
+          $installer = "$env:RUNNER_TEMP\cuda.exe"
+          Invoke-WebRequest -Uri "https://developer.download.nvidia.com/compute/cuda/12.9.1/network_installers/cuda_12.9.1_windows_network.exe" -OutFile $installer
+          Start-Process -FilePath $installer -ArgumentList "-s", "nvcc_12.9", "cudart_12.9", "cuda_profiler_api_12.9" -Wait
+          $cuda = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9"
+          & "$cuda\bin\nvcc.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "nvcc not installed" }
+          echo "CUDA_PATH=$cuda" >> $env:GITHUB_ENV
+          echo "CUDACXX=$cuda\bin\nvcc.exe" >> $env:GITHUB_ENV
+
+          # the HIP headers of one ROCm release from AMD's apt repository, as on
+          # Linux; the headers are the same for Windows, and tar unpacks a .deb
+          $repo = "https://repo.radeon.com/rocm/apt/7.2.4"
+          Invoke-WebRequest -Uri "$repo/dists/noble/main/binary-amd64/Packages" -OutFile "$env:RUNNER_TEMP\Packages"
+          $index = Get-Content -Raw "$env:RUNNER_TEMP\Packages"
+          $hip = "C:\hip"
+          New-Item -ItemType Directory -Force -Path $hip, "$env:RUNNER_TEMP\hipdeb" | Out-Null
+          foreach ($pkg in @("hip-dev", "hip-runtime-nvidia")) {
+            $file = [regex]::Match($index, "(?m)^Package: $pkg\r?\n(?:[^\n]+\n)*?Filename: (\S+)").Groups[1].Value
+            if (-not $file) { throw "$pkg not in the repository" }
+            $deb = "$env:RUNNER_TEMP\hipdeb\$pkg.deb"
+            Invoke-WebRequest -Uri "$repo/$file" -OutFile $deb
+            cd "$env:RUNNER_TEMP\hipdeb"
+            tar -xf $deb
+            $data = Get-ChildItem -Filter "data.tar*" | Select-Object -First 1
+            tar -xf $data.FullName -C $hip
+            Remove-Item data.tar*, control.tar*, debian-binary
+          }
+          $root = (Get-ChildItem "$hip\opt" -Directory -Filter "rocm-*" | Select-Object -First 1).FullName
+          foreach ($h in @("hip_runtime.h", "hip_version.h", "nvidia_detail\nvidia_hip_runtime.h")) {
+            if (-not (Test-Path "$root\include\hip\$h")) { throw "$h missing" }
+          }
+          Write-Host "HIP headers: $root"
+          echo "HIP_NVIDIA_ROOT=$root" >> $env:GITHUB_ENV
+
       - name: Build and install openEMS
         run: |
           & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
 
+          $hip_opts = @()
+          if ("${{ matrix.toolchain.gpu }}" -eq "rocm") {
+            # CMake does not mix MSVC with the GNU-like clang for HIP: ROCm's
+            # clang builds all of openEMS (for the MSVC ABI), fparser and
+            # CSXCAD stay with MSVC
+            $rocm = $env:HIP_PATH -replace '\\', '/'
+            $env:CFLAGS = "-D_WIN32_WINNT=0x0601"
+            $env:CXXFLAGS = "-D_WIN32_WINNT=0x0601"
+            $hip_opts = @("-DENABLE_HIP=ON", "-DOPENEMS_HIP_AS_CUDA=OFF", "-DROCM_PATH=$rocm",
+                          "-DCMAKE_C_COMPILER=$rocm/lib/llvm/bin/clang.exe",
+                          "-DCMAKE_CXX_COMPILER=$rocm/lib/llvm/bin/clang++.exe",
+                          "-DCMAKE_HIP_COMPILER=$rocm/lib/llvm/bin/clang++.exe",
+                          "-DCMAKE_HIP_COMPILER_ROCM_ROOT=$rocm")
+          }
+          if ("${{ matrix.toolchain.gpu }}" -match "cuda") {
+            $hip_opts = @("-DENABLE_HIP=ON", "-DOPENEMS_HIP_AS_CUDA=ON",
+                          "-DROCM_PATH=$($env:HIP_NVIDIA_ROOT -replace '\\', '/')")
+          }
           cd "$env:GITHUB_WORKSPACE/openEMS"
           mkdir build && cd build
           cmake ../ -GNinja `
@@ -991,10 +1173,80 @@ jobs:
                     -DCSXCAD_ROOT_DIR="$HOME/opt" `
                     -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
                     -DVCPKG_HOST_TRIPLET="x64-windows-release" `
-                    -DVCPKG_TARGET_TRIPLET="x64-windows-release"
+                    -DVCPKG_TARGET_TRIPLET="x64-windows-release" `
+                    @hip_opts
+          if ($LASTEXITCODE -ne 0) { throw "cmake failed" }
 
           cmake --build ./ --parallel
+          if ($LASTEXITCODE -ne 0) { throw "build failed" }
           cmake --install ./ --parallel 8
+
+          if ("${{ matrix.toolchain.gpu }}" -eq "cuda+rocm") {
+            # the AMD plugin from a second build with ROCm's clang (CMake does not
+            # mix it with MSVC), against the openEMS.dll of the build above: the
+            # same sources, exports and build id
+            $id = (Select-String -Path CMakeCache.txt -Pattern "^OPENEMS_GPU_BUILD_ID:INTERNAL=(.+)$").Matches[0].Groups[1].Value
+            Write-Host "build id: $id"
+            $rocm = $env:HIP_PATH -replace '\\', '/'
+            $env:ROCM_PATH = $env:HIP_PATH
+            $env:CFLAGS = "-D_WIN32_WINNT=0x0601"
+            $env:CXXFLAGS = "-D_WIN32_WINNT=0x0601"
+            cd "$env:GITHUB_WORKSPACE/openEMS"
+            mkdir build-amd && cd build-amd
+            cmake ../ -GNinja `
+                      -DCMAKE_BUILD_TYPE=Release `
+                      -DFPARSER_ROOT_DIR="$HOME/opt" `
+                      -DCSXCAD_ROOT_DIR="$HOME/opt" `
+                      -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+                      -DVCPKG_HOST_TRIPLET="x64-windows-release" `
+                      -DVCPKG_TARGET_TRIPLET="x64-windows-release" `
+                      -DOPENEMS_GPU_BUILD_ID="$id" `
+                      -DENABLE_HIP=ON -DOPENEMS_HIP_AS_CUDA=OFF -DROCM_PATH="$rocm" `
+                      -DCMAKE_C_COMPILER="$rocm/lib/llvm/bin/clang.exe" `
+                      -DCMAKE_CXX_COMPILER="$rocm/lib/llvm/bin/clang++.exe" `
+                      -DCMAKE_HIP_COMPILER="$rocm/lib/llvm/bin/clang++.exe" `
+                      -DCMAKE_HIP_COMPILER_ROCM_ROOT="$rocm"
+            if ($LASTEXITCODE -ne 0) { throw "cmake (AMD plugin) failed" }
+            cmake --build ./ --parallel --target openEMS_gpu_hip_amd
+            if ($LASTEXITCODE -ne 0) { throw "build (AMD plugin) failed" }
+            Copy-Item plugins/openEMS_gpu_hip_amd.dll "$HOME/opt/bin/openEMS/plugins/"
+          }
+
+      - name: GPU plugin on a machine without a GPU
+        if: matrix.toolchain.gpu
+        run: |
+          & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+          $amd = "${{ matrix.toolchain.gpu }}" -match "rocm"
+          $nvidia = "${{ matrix.toolchain.gpu }}" -match "cuda"
+          $plugins = "$HOME/opt/bin/openEMS/plugins"
+          Get-ChildItem $plugins | Format-Table Name, Length
+          Get-ChildItem $plugins -Filter "openEMS_gpu_*.dll" | ForEach-Object { dumpbin /nologo /dependents $_.FullName }
+          # openEMS.dll itself needs no GPU runtime
+          if (dumpbin /nologo /dependents "$HOME/opt/bin/openEMS.dll" | Select-String "amdhip64|cudart|nvcuda") {
+            throw "openEMS.dll links a GPU runtime"
+          }
+          $env:PATH = "$HOME/opt/bin;$env:GITHUB_WORKSPACE/openEMS/build/vcpkg_installed/x64-windows-release/bin;$env:PATH"
+          $xml = "$env:GITHUB_WORKSPACE/openEMS/.github/smoketests/gpu/gpu_engine.xml"
+          cd $env:RUNNER_TEMP
+
+          # without a driver: the NVIDIA plugin (CUDA runtime linked in statically,
+          # it looks for the driver when asked for devices) loads and finds no
+          # device, the AMD plugin cannot load without the HIP runtime and says why
+          $out = & "$HOME/opt/bin/openEMS.exe" $xml --engine=gpu -v 2>&1 | Out-String
+          Write-Host $out
+          if ($nvidia -and $out -notmatch "no hip-nvidia device") { throw "the NVIDIA plugin did not load" }
+          if ($amd -and $out -notmatch "openEMS_gpu_hip_amd.dll: .*library the plugin needs is missing") { throw "no load error for the AMD plugin" }
+          if ($out -notmatch "no GPU backend with a usable device") { throw "the GPU engine did not fail" }
+          if (-not $amd) { exit 0 }
+
+          # with the runtime of the build next to the plugin: it loads and finds no device
+          foreach ($p in @("amdhip64_7.dll", "rocm_kpack.dll", "amd_comgr*.dll")) {
+            Get-ChildItem "$env:HIP_PATH/bin" -Filter $p | Copy-Item -Destination $plugins
+          }
+          $out = & "$HOME/opt/bin/openEMS.exe" $xml --engine=gpu -v 2>&1 | Out-String
+          Write-Host $out
+          if ($out -notmatch "no hip-amd device") { throw "the AMD plugin did not load" }
+          exit 0
 
       - name: Save vcpkg cache
         if: always()  # save even after a build failure.
@@ -1003,4 +1255,4 @@ jobs:
           path: ${{ env.VCPKG_CACHE_PATH }}
           # GitHub cache is immutable and can't be overwritten
           # save a new cache key every time
-          key: Windows - ${{ matrix.toolchain.name }} - ${{ github.sha }}
+          key: Windows - ${{ matrix.toolchain.name }}${{ matrix.toolchain.runner }} - ${{ github.sha }}
