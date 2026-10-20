@@ -174,8 +174,9 @@ set(PUB_HEADERS openems.h openems_global.h)
 # HIP headers of the NVIDIA platform map the calls to CUDA inline. This needs a CUDA
 # compiler and the HIP headers (HIP_INCLUDE_DIR, looked for in ROCM_PATH and /opt/rocm;
 # the hip-dev package of AMD holds the headers of every system).
-# It is the default on Windows, where the HIP language of CMake is not usable: it refuses
-# every generator but Make and Ninja, and its compiler test fails to link with nvcc.
+# It is the default on Windows, where the HIP language of CMake is not usable for NVIDIA:
+# it refuses every generator but Make and Ninja, and its compiler test fails to link with
+# nvcc. For AMD it works there, with ROCm's clang and Ninja.
 #
 # Whatever is missing for the backend switches it off, with a warning if it was asked
 # for: openEMS builds without it.
@@ -318,13 +319,8 @@ ENDIF()
 
 # The HIP backend is a plugin loaded at runtime (FDTD/gpu_plugin.h): libopenEMS then
 # needs no GPU runtime, a missing driver or device only makes the backend unavailable.
-# OFF links it into libopenEMS, e.g. for GPU debuggers and profilers. Not yet on
-# Windows, where the plugin needs the classes it uses exported from openEMS.dll.
-IF(WIN32)
-  OPTION(OPENEMS_GPU_PLUGINS "Build the HIP GPU backend as a plugin loaded at runtime" OFF)
-ELSE()
-  OPTION(OPENEMS_GPU_PLUGINS "Build the HIP GPU backend as a plugin loaded at runtime" ON)
-ENDIF()
+# OFF links it into libopenEMS, e.g. for GPU debuggers and profilers.
+OPTION(OPENEMS_GPU_PLUGINS "Build the HIP GPU backend as a plugin loaded at runtime" ON)
 IF(ENABLE_HIP AND NOT OPENEMS_GPU_PLUGINS)
   ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
 ENDIF()
@@ -425,6 +421,10 @@ IF(ENABLE_HIP)
       string(REPLACE ";" "," _hip_archs "${_hip_archs}")
       target_compile_definitions( ${HIP_TARGET} PRIVATE OPENEMS_HIP_ARCHITECTURES="${_hip_archs}" )
     ENDIF()
+    IF(WIN32)
+      # the device compile ignores the dllimport of every exported class, once per architecture
+      target_compile_options( ${HIP_TARGET} PRIVATE $<$<COMPILE_LANGUAGE:HIP>:-Wno-ignored-attributes> )
+    ENDIF()
   ENDIF()
 ENDIF()
 IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
@@ -473,7 +473,13 @@ else()
 endif()
 INSTALL(TARGETS openEMS_bin DESTINATION bin)
 IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
-  INSTALL(TARGETS ${HIP_TARGET} LIBRARY DESTINATION lib${LIB_SUFFIX}/openEMS/plugins RUNTIME DESTINATION bin/openEMS/plugins)
+  # next to libopenEMS, where it is looked for: bin on Windows (a module is a
+  # LIBRARY to install() there too)
+  IF(WIN32)
+    INSTALL(TARGETS ${HIP_TARGET} LIBRARY DESTINATION bin/openEMS/plugins)
+  ELSE()
+    INSTALL(TARGETS ${HIP_TARGET} LIBRARY DESTINATION lib${LIB_SUFFIX}/openEMS/plugins)
+  ENDIF()
 ENDIF()
 
 if (UNIX)

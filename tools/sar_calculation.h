@@ -25,7 +25,7 @@
 #include "arraylib/array_ijk.h"
 #include "arraylib/array_nijk.h"
 
-#if defined(WIN32)
+#if defined(_WIN32)
 	#ifdef BUILD_OPENEMS_LIB
 	#define SAR_EXPORT __declspec(dllexport)
 	#else

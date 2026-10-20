@@ -885,9 +885,12 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	d->upml_fused = -1;
 	d->ResetZSlabs();
 
-	// the main updates launch one block per x line along z, which the device limits (64k on AMD and NVIDIA)
-	int max_grid_z = 0;
-	HIP_Check(hipDeviceGetAttribute(&max_grid_z, hipDeviceAttributeMaxGridDimZ, d->ctx->device), "hipDeviceGetAttribute");
+	// the main updates launch one block per x line along z, which the device limits (64k on AMD and NVIDIA);
+	// from the properties: hipDeviceGetAttribute calls the CUDA driver API on NVIDIA, which the
+	// plugin does not link (MSVC keeps that call, GCC folds it away)
+	hipDeviceProp_t prop;
+	HIP_Check(hipGetDeviceProperties(&prop, d->ctx->device), "hipGetDeviceProperties");
+	int max_grid_z = prop.maxGridSize[2];
 	if ((max_grid_z>0) && (d->dim.nx>(unsigned int)max_grid_z))
 	{
 		std::cerr << "GPU_Backend_HIP::Init: Error: " << d->dim.nx << " mesh lines in x, the device allows at most "

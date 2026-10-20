@@ -23,6 +23,8 @@
 #include <functional>
 #include <vector>
 
+#include "openems_global.h"
+
 //! Coefficients stored as distinct sets and a set index per item (node or cell), see GPU_FindSets()
 #define GPU_MAX_SET_WIDTH 18
 /*!
@@ -45,6 +47,6 @@ struct GPU_CoeffSets
   16 bit indices for up to 65536 sets, else 32 bit. The sets hold the bit
   patterns of the values, so reading them is exact.
   */
-bool GPU_FindSets(size_t count, unsigned int width, const std::function<void(size_t, float*)>& get, GPU_CoeffSets& sets);
+OPENEMS_EXPORT bool GPU_FindSets(size_t count, unsigned int width, const std::function<void(size_t, float*)>& get, GPU_CoeffSets& sets);
 
 #endif // GPU_COEFF_SETS_H

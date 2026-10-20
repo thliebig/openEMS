@@ -20,6 +20,7 @@
 
 #include <functional>
 
+#include "openems_global.h"
 #include "engine_extension.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
@@ -44,7 +45,7 @@ public:
 	  \a record(n, t) returns the voltage of probe \a n at the record position \a t (0 <= t < 2 periods);
 	  also called by the GPU engines, which record the probes on the device.
 	  */
-	void CheckPeriod(unsigned int rel_pos, const std::function<double(size_t, unsigned int)>& record);
+	OPENEMS_EXPORT void CheckPeriod(unsigned int rel_pos, const std::function<double(size_t, unsigned int)>& record);
 
 protected:
 	Operator_Ext_SteadyState* m_Op_SS;

@@ -38,6 +38,10 @@ struct GPU_DeviceInfo
   a plugin whose build_id differs from its own (OPENEMS_GPU_BUILD_ID from CMake: the
   version and a random id per build directory, or only the version of a release).
   The plugin exports GPU_PLUGIN_ENTRY, which returns this.
+
+  On Windows a function of libopenEMS that the plugin calls must be OPENEMS_EXPORT,
+  as GPU_FindSets() is; the classes are exported already. A missing export is a link
+  error of the plugin, which only the Windows builds show.
   */
 struct GPU_Plugin
 {

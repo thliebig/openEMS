@@ -111,7 +111,10 @@ there are unreleased changes. It becomes the next release entry.
   `libopenEMS` itself needs no GPU runtime; a plugin of another build is
   refused (a release build is told by its version, so it stays
   reproducible). `OPENEMS_GPU_PLUGINS=OFF` links it into `libopenEMS`
-  instead, the default on Windows for now.
+  instead. On Windows the AMD plugin needs ROCm's clang, which CMake does not
+  combine with MSVC: build all of openEMS with it, or only the plugin in a
+  second build with `-DOPENEMS_GPU_BUILD_ID` of the first, as the Windows
+  package does.
 - C++17 is now required (was C++11), e.g. GCC 8 or newer, also for the
   Python bindings and the GPU sources (HIP/CUDA, were C++14).
 - VTK is no longer needed: openEMS writes its VTK files (`.vtr`, `.vts`,
