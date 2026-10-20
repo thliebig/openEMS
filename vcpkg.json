@@ -1,8 +1,11 @@
 {
   "dependencies": [
     "boost",
-    "hdf5",
+    {
+      "name": "hdf5",
+      "features": ["hl"]
+    },
     "tinyxml",
-    { "name": "vtk", "default-features": false }
+    "zlib"
   ]
 }

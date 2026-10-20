@@ -27,10 +27,6 @@
 #include "fparser.hh"
 #include "extensions/operator_ext_excitation.h"
 
-#include "vtkPolyData.h"
-#include "vtkCellArray.h"
-#include "vtkPoints.h"
-#include "vtkXMLPolyDataWriter.h"
 #include "CSPrimBox.h"
 #include "CSPrimCurve.h"
 
@@ -642,9 +638,8 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 			stop[n] = range[2*n+1];
 		}
 
-	vtkPolyData* polydata = vtkPolyData::New();
-	vtkCellArray *poly = vtkCellArray::New();
-	vtkPoints *points = vtkPoints::New();
+	std::vector<float> points;
+	std::vector<int64_t> lines;
 
 	int* pointIdx[2];
 	pointIdx[0] = new int[numLines[0]*numLines[1]];
@@ -680,7 +675,6 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 						rpos[1]=pos[1];
 						rpos[2]=pos[2];
 
-						poly->InsertNextCell(2);
 
 						mesh_idx = rpos[0] + rpos[1]*numLines[0];
 						if (pointIdx[0][mesh_idx]<0)
@@ -690,9 +684,10 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 							TransformCoordSystem(coord, coord, m_MeshType, CARTESIAN);
 							for (int m=0;m<3;++m)
 								coord[m] *= scaling;
-							pointIdx[0][mesh_idx] = (int)points->InsertNextPoint(coord);
+							pointIdx[0][mesh_idx] = (int)(points.size()/3);
+							points.insert(points.end(), coord, coord+3);
 						}
-						poly->InsertCellPoint(pointIdx[0][mesh_idx]);
+						lines.push_back(pointIdx[0][mesh_idx]);
 
 						++rpos[n];
 						mesh_idx = rpos[0] + rpos[1]*numLines[0];
@@ -703,9 +698,10 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 							TransformCoordSystem(coord, coord, m_MeshType, CARTESIAN);
 							for (int m=0;m<3;++m)
 								coord[m] *= scaling;
-							pointIdx[n==2][mesh_idx] = (int)points->InsertNextPoint(coord);
+							pointIdx[n==2][mesh_idx] = (int)(points.size()/3);
+							points.insert(points.end(), coord, coord+3);
 						}
-						poly->InsertCellPoint(pointIdx[n==2][mesh_idx]);
+						lines.push_back(pointIdx[n==2][mesh_idx]);
 					}
 				}
 			}
@@ -713,25 +709,8 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 	delete[] pointIdx[0];
 	delete[] pointIdx[1];
 
-	polydata->SetPoints(points);
-	points->Delete();
-	polydata->SetLines(poly);
-	poly->Delete();
-
-	vtkXMLPolyDataWriter* writer  = vtkXMLPolyDataWriter::New();
-	filename += ".vtp";
-	writer->SetFileName(filename.c_str());
-
-#if VTK_MAJOR_VERSION>=6
-	writer->SetInputData(polydata);
-#else
-	writer->SetInput(polydata);
-#endif
-	writer->Write();
-
-	writer->Delete();
-	polydata->Delete();
-	cout << " done." << endl;
+	if (VTK_File_Writer::WriteLines(filename + ".vtp", points, lines))
+		cout << " done." << endl;
 }
 
 void Operator::DumpMaterial2File(std::string filename)

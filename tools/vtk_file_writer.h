@@ -18,35 +18,25 @@
 #ifndef VTK_FILE_WRITER_H
 #define VTK_FILE_WRITER_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
+#include <cstdint>
 #include <string>
 #include <vector>
-#include <complex>
 
 #include "tools/arraylib/array_nijk.h"
 #include "tools/arraylib/array_ijk.h"
 
-class vtkDataSet;
-
+//! Write fields on the mesh as VTK XML files (.vtr for a Cartesian, .vts for a cylindrical mesh),
+//! the arrays zlib compressed, without the VTK library
 class VTK_File_Writer
 {
 public:
 	VTK_File_Writer(std::string filename, int meshType=0);
 	virtual ~VTK_File_Writer();
 
-	//! Set the filename
+	//! Set the filename, without extension
 	virtual void SetFilename(std::string filename) {m_filename=filename;}
-	//! Set the header information. May not be supported by all file types or setting.
+	//! Set the header information. Not written to the XML files.
 	virtual void SetHeader(std::string header) {m_header=header;}
-
-	//! Tell write to append data. May fail if filename has changed or filetype doesn't support this.
-	virtual void SetAppendMode(bool val) {m_AppendMode=val;}
-	//! Set binary flag (if the file type supports it)
-	virtual void SetBinary(bool val) {m_Binary=val;}
-	//! Set compression flag (if the file type supports it)
-	virtual void SetCompress(bool val) {m_Compress=val;}
 
 	void SetNativeDump(bool val) {m_NativeDump=val;}
 
@@ -67,8 +57,12 @@ public:
 
 	virtual bool Write();
 
-	virtual bool WriteASCII();
-	virtual bool WriteXML();
+	//! Write lines as a VTK XML poly data file (.vtp): points (x,y,z each) and lines (two point
+	//! indices each); optional a value per line as cell data, and the metres per coordinate unit
+	//! (if >0) as field data
+	static bool WriteLines(std::string filename, const std::vector<float>& points, const std::vector<int64_t>& lines,
+						   std::string cellDataName="", const std::vector<unsigned char>& cellData=std::vector<unsigned char>(),
+						   double lengthUnit=0);
 
 protected:
 	std::string m_filename;
@@ -78,16 +72,22 @@ protected:
 	bool m_ActiveTS;
 	unsigned int m_timestep;
 
-	vtkDataSet* m_GridData;
-
 	//mesh information
 	int m_MeshType;
 	std::vector<double> m_MeshLines[3];
 	bool m_NativeDump;
+	//! the points of a cylindrical mesh in Cartesian coordinates
+	std::vector<float> m_Points;
 
-	bool m_AppendMode;
-	bool m_Binary;
-	bool m_Compress;
+	struct Field
+	{
+		std::string name;
+		int components;
+		std::vector<float> values;
+	};
+	std::vector<Field> m_Fields;
+	//! remove a field of that name, as a new one replaces it
+	void ClearField(std::string fieldname);
 
 	virtual std::string GetTimestepFilename(int pad_length=10) const;
 };

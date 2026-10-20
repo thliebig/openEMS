@@ -102,6 +102,9 @@ there are unreleased changes. It becomes the next release entry.
   builds without it.
 - C++17 is now required (was C++11), e.g. GCC 8 or newer, also for the
   Python bindings and the GPU sources (HIP/CUDA, were C++14).
+- VTK is no longer needed: openEMS writes its VTK files (`.vtr`, `.vts`,
+  `.vtp`) itself, in the same format as before. zlib is needed instead,
+  which HDF5 usually brings along.
 
 ### Upgrade notes
 

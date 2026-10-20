@@ -51,7 +51,7 @@
 #include "Common/processfields_sar.h"
 #include <hdf5.h>            // only for H5get_libversion()
 #include <boost/version.hpp> // only for BOOST_LIB_VERSION
-#include <vtkVersion.h>
+#include <zlib.h>
 
 //external libs
 #include "tinyxml.h"
@@ -406,9 +406,9 @@ string openEMS::GetExtLibsInfo(string prefix)
 	// boost
 	str << prefix << "\t" << "boost  -- compiled against: " << BOOST_LIB_VERSION << endl;
 
-	//vtk
-	str << prefix << "\t" << "vtk -- Version: " << vtkVersion::GetVTKMajorVersion() << "." << vtkVersion::GetVTKMinorVersion() << "." << vtkVersion::GetVTKBuildVersion() << endl;
-	str << prefix << "\t" << "       compiled against: " << VTK_VERSION << endl;
+	// zlib
+	str << prefix << "\t" << "zlib   -- Version: " << zlibVersion() << endl;
+	str << prefix << "\t" << "          compiled against: " << ZLIB_VERSION << endl;
 
 	return str.str();
 }

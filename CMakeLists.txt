@@ -151,20 +151,9 @@ message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
 INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
 
-# vtk
-find_package(VTK COMPONENTS vtkCommonCore NO_MODULE QUIET)
-if ("${VTK_VERSION}" VERSION_GREATER "9")
-    find_package(VTK REQUIRED COMPONENTS IOXML IOGeometry IOLegacy IOPLY NO_MODULE REQUIRED)
-else()
-    find_package(VTK REQUIRED COMPONENTS vtkIOXML vtkIOGeometry vtkIOLegacy vtkIOPLY NO_MODULE REQUIRED)
-    include(${VTK_USE_FILE})
-endif()
-
-message(STATUS "Found package VTK. Using version " ${VTK_VERSION})
-set( vtk_LIBS ${VTK_LIBRARIES} )
-message(STATUS "vtk libraries " ${vtk_LIBS})
-
-INCLUDE_DIRECTORIES (${VTK_INCLUDE_DIR})
+# zlib, for the compressed VTK files
+find_package(ZLIB REQUIRED)
+INCLUDE_DIRECTORIES (${ZLIB_INCLUDE_DIRS})
 
 # independent tool
 ADD_SUBDIRECTORY( nf2ff )
@@ -346,7 +335,7 @@ TARGET_LINK_LIBRARIES( openEMS
   ${HDF5_LIBRARIES}
   ${HDF5_HL_LIBRARIES}
   ${Boost_LIBRARIES}
-  ${vtk_LIBS}
+  ${ZLIB_LIBRARIES}
 )
 
 if (WIN32)
