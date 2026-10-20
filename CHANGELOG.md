@@ -99,8 +99,11 @@ there are unreleased changes. It becomes the next release entry.
   compiles the same sources as CUDA, for NVIDIA GPUs without a HIP compiler
   (CMake 3.24, a CUDA compiler and the HIP headers, looked for in `ROCM_PATH`
   and `/opt/rocm`); it is the default on Windows. Metal (macOS, CMake 3.16)
-  is on by default. The GPU code is built for the GPU of the build machine
-  unless `CMAKE_HIP_ARCHITECTURES` / `CMAKE_CUDA_ARCHITECTURES` name others.
+  is on by default. The GPU code is built for the GPU of the build machine,
+  or without one (CI, packages) for all AMD GPUs from RDNA1 and CDNA1 on
+  (`OPENEMS_HIP_AMD_ARCHITECTURES`, the plugin is then about 9 MB) or all
+  major NVIDIA architectures, unless `CMAKE_HIP_ARCHITECTURES` /
+  `CMAKE_CUDA_ARCHITECTURES` name others.
   Whatever a backend is missing switches it off with a warning; openEMS
   builds without it. The HIP backend is a plugin, `openEMS_gpu_hip_amd` or
   `openEMS_gpu_hip_nvidia`, loaded at runtime from `openEMS/plugins` next to

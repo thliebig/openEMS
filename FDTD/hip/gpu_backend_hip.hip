@@ -20,6 +20,7 @@
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <map>
 #include <set>
 #include <iostream>
@@ -763,6 +764,37 @@ const GPU_Plugin* GPU_Backend_HIP::Plugin()
 	return &plugin;
 }
 
+#ifdef OPENEMS_HIP_ARCHITECTURES
+namespace
+{
+//! Whether this build has code for the AMD architecture \a arch (gcnArchName, e.g. "gfx1100:sramecc-:xnack-")
+bool BuiltForArch(std::string arch)
+{
+	arch = arch.substr(0, arch.find(':'));
+	// a generic target covers a family of architectures (see the AMDGPU docs of LLVM)
+	static const char* const generic[][2] = {
+		{"gfx9-generic", "gfx90"}, {"gfx9-4-generic", "gfx94"}, {"gfx9-4-generic", "gfx95"},
+		{"gfx10-1-generic", "gfx101"}, {"gfx10-3-generic", "gfx103"}, {"gfx11-generic", "gfx11"}, {"gfx12-generic", "gfx12"}};
+	const std::string list = OPENEMS_HIP_ARCHITECTURES;
+	size_t start = 0;
+	while (start<list.size())
+	{
+		size_t end = list.find(',', start);
+		if (end==std::string::npos)
+			end = list.size();
+		const std::string target = list.substr(start, std::min(list.find(':', start), end)-start);
+		start = end+1;
+		if (target==arch)
+			return true;
+		for (const auto& g : generic)
+			if ((target==g[0]) && (arch.compare(0, strlen(g[1]), g[1])==0) && (arch!="gfx908") && (arch!="gfx90a"))
+				return true;
+	}
+	return false;
+}
+}
+#endif
+
 GPU_Backend_HIP* GPU_Backend_HIP::New(int device)
 {
 	if ((device<0) || (device>=DeviceCount()) || (hipSetDevice(device)!=hipSuccess))
@@ -777,6 +809,17 @@ GPU_Backend_HIP* GPU_Backend_HIP::New(int device)
 	HIP_Check(hipGetDeviceProperties(&prop, impl->ctx->device), "hipGetDeviceProperties");
 	impl->ctx->name = prop.name;
 	impl->ctx->warp_size = prop.warpSize > 0 ? prop.warpSize : 32;
+#ifdef OPENEMS_HIP_ARCHITECTURES
+	// Some AMD runtimes (ROCm 7.2 with assertions) abort in the query below on a device
+	// the build has no code for, instead of returning an error: compare with the list first.
+	if (!BuiltForArch(prop.gcnArchName))
+	{
+		std::cerr << "GPU_Backend_HIP: no kernels for " << impl->ctx->name << " (" << prop.gcnArchName
+		          << ") in this build, which is for " << OPENEMS_HIP_ARCHITECTURES << std::endl;
+		delete impl;
+		return NULL;
+	}
+#endif
 	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->stream, hipStreamNonBlocking), "hipStreamCreate");
 	HIP_Check(hipStreamCreateWithFlags(&impl->ctx->copy_stream, hipStreamNonBlocking), "hipStreamCreate");
 
