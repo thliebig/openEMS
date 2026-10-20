@@ -53,7 +53,7 @@ recommended full-stack build.
 
 ### Stand-alone CMake build
 
-Required dependencies: CSXCAD, fparser, TinyXML, HDF5, VTK, Boost (≥ 1.46,
+Required dependencies: CSXCAD, fparser, TinyXML, HDF5, zlib, Boost (≥ 1.46,
 components: thread, date\_time, serialization, chrono, program\_options).
 
 ```bash

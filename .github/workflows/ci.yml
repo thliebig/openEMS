@@ -228,8 +228,8 @@ jobs:
 
           if grep -q "ID=fedora" /etc/os-release; then
             dnf install -y git
-            dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave octave-devel python3-pip \
+            dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel hdf5-devel zlib-devel \
+                           octave octave-devel python3-pip python3-devel \
                            python3-setuptools python3-setuptools_scm \
                            python3-Cython python3-numpy python3-h5py python3-matplotlib
 
@@ -245,10 +245,12 @@ jobs:
             dnf config-manager --set-enabled powertools || dnf config-manager --set-enabled crb
 
             dnf install -y git
-            dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel vtk-devel hdf5-devel \
-                           CGAL-devel octave octave-devel python3-pip \
+            dnf install -y gcc gcc-c++ cmake git boost-devel tinyxml-devel hdf5-devel zlib-devel \
+                           octave octave-devel python3-pip python3-devel \
                            python3-setuptools python3-wheel python3-setuptools_scm \
                            python3-Cython python3-numpy python3-h5py python3-matplotlib
+            # for mkoctfile, see Fedora above
+            dnf install -y redhat-rpm-config
 
             # only for CI/CD test builds without networks.
             dnf install -y iproute
@@ -258,20 +260,15 @@ jobs:
             apt-get update
 
             apt-get install -y build-essential git \
-                               libhdf5-dev libtinyxml-dev \
+                               libhdf5-dev libtinyxml-dev zlib1g-dev \
                                octave \
                                python3-pip \
                                python3-setuptools python3-numpy python3-matplotlib python3-h5py
-
-            # VTK9 or VTK7, at least one must succeed (depending on Debian version)
-            apt-get install -y libvtk9-dev || \
-                apt-get install -y libvtk7-dev
 
             # only for CI/CD test builds without networks.
             apt-get install -y iproute2
 
             apt-get install -y libboost-all-dev
-            apt-get install -y libcgal-dev
             apt-get install -y cmake
             # octave-dev (Bookworm+/Ubuntu 22.04+) was renamed from liboctave-dev (Bullseye and older)
             apt-get install -y octave-dev || apt-get install -y liboctave-dev
@@ -281,8 +278,8 @@ jobs:
             apt-get install -y python3-venv
           elif grep -q "ID=alpine" /etc/os-release; then
             apk add bash \
-                    build-base gmp-dev mpfr-dev git cmake \
-                    boost-dev tinyxml-dev hdf5-dev cgal-dev vtk-dev \
+                    build-base git cmake \
+                    boost-dev tinyxml-dev hdf5-dev zlib-dev \
                     octave octave-dev \
                     python3-dev py3-pip \
                     py3-setuptools py3-setuptools_scm cython \
@@ -502,7 +499,7 @@ jobs:
 
           # already installed on the CI/CD system, disable to avoid warning fatigue
           # brew install python3 cmake
-          brew install boost hdf5 cgal vtk octave python@3.14
+          brew install boost hdf5 octave python@3.14
 
           # Homebrew's default Python is 3.15, for which h5py has no wheels yet
           # (pip would build it from source and fail): use 3.14 in every
@@ -742,7 +739,7 @@ jobs:
             # patchelf: meson-python >= 0.22 runs it while building a wheel, and
             # PyPI ships no FreeBSD wheels, so the venv stage below builds numpy
             # from source.
-            sudo pkg install -y cmake git boost-libs tinyxml vtk9 hdf5 cgal octave \
+            sudo pkg install -y cmake git boost-libs tinyxml hdf5 octave pkgconf \
                                 python3 patchelf
             # Derive the version prefix from whatever Python FreeBSD ships
             # (e.g. "py311" for 3.11, "py313" for 3.13) so the CI doesn't
