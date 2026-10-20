@@ -31,6 +31,8 @@
      the device (DEVICE_DFT_BACKENDS)
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
      a 32 bit index, and as full arrays (FULL_DEVICE_BACKENDS)
+   HIP backend: UPML coefficient storage uses 16 bit sets, 32 bit sets or full arrays,
+     including separate kernels with fusion disabled
    reference backend: all probe data and field dumps bit-identical
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
@@ -495,6 +497,26 @@ def case_coeff_full():
     return coeff_case([graded(70), graded(70), graded(70)])
 
 
+def case_pml_coeff_full():
+    """ spatially varying permittivity: too many UPML sets to compress """
+    FDTD, CSX = coeff_case([graded(30), graded(30), graded(30)])
+    mat = CSX.AddMaterial('graded_eps', epsilon=2)
+    mat.SetMaterialWeight(epsilon='1+0.02*sin(x)+0.03*cos(y)+0.04*sin(z)')
+    mat.AddBox([-1000]*3, [1000]*3)
+    return FDTD, CSX
+
+
+def case_pml_coeff_index32():
+    """ more than 65536 UPML sets, with a periodic transverse permittivity """
+    FDTD, CSX = coeff_case([np.arange(-10, 11), np.arange(-500, 500), np.arange(-40, 41)])
+    FDTD.SetBoundaryCond(['PML_8', 'PEC', 'PEC', 'PEC', 'PEC', 'PEC'])
+    FDTD.SetCellConstantMaterial(1)
+    mat = CSX.AddMaterial('graded_eps', epsilon=2)
+    mat.SetMaterialWeight(epsilon='1+0.0001*y+0.05*sin(pi*z/8)')
+    mat.AddBox([-10000]*3, [10000]*3)
+    return FDTD, CSX
+
+
 def run_captured(case, Sim_Path, engine):
     """ Run a case with the given engine, return the openEMS console output """
     FDTD, CSX = case()
@@ -602,6 +624,10 @@ cases = [('excitation',     case_excitation,     True),
          ('coax_resonator', case_coax_resonator, True),
          ('coeff_index32',  case_coeff_index32,  True),
          ('coeff_full',     case_coeff_full,     True),
+         ('pml_full',       case_pml_coeff_full, True),
+         ('pml_full_separate', case_pml_coeff_full, True),
+         ('pml_coeff_index32', case_pml_coeff_index32, True),
+         ('pml_coeff_index32_separate', case_pml_coeff_index32, True),
          ('dumps_snapshot_host_dft', case_dumps_snapshot, True),
          ('sar',            case_sar,            True)]
 
@@ -611,7 +637,9 @@ cases = [('excitation',     case_excitation,     True),
 CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'},
             'pml_upml_regions': {'OPENEMS_HIP_FUSED_STEP': '0'},
             'pml_upml_separate': {'OPENEMS_HIP_UPML_FUSION': '0'},
-            'pml_index32': {'OPENEMS_HIP_INDEX': '32'}}
+            'pml_index32': {'OPENEMS_HIP_INDEX': '32'},
+            'pml_full_separate': {'OPENEMS_HIP_UPML_FUSION': '0'},
+            'pml_coeff_index32_separate': {'OPENEMS_HIP_UPML_FUSION': '0'}}
 # the messages of the HIP backend for these UPML updates: (expected, not expected)
 UPML_MODES = {'pml': ('UPML regions in the kernel', None),
               'pml_index32': ('fused voltage and current updates, 32 bit indices', None),
@@ -672,6 +700,20 @@ for name, case, on_device in cases:
         if name=='coeff_full' and backend in FULL_DEVICE_BACKENDS:
             assert 'compressed update coefficients' not in logs['gpu'], \
                 f'FAIL [{name}]: the {backend} backend did not use the full coefficient arrays'
+        if backend=='HIP':
+            # Exercise each representation in the fused and separate kernels. These
+            # are UPML set indices, independent of the main update/node indices.
+            modes = re.findall(r'UPML coefficients: \d+ cells, (.*?), \d+ device bytes', logs['gpu'])
+            if name.startswith('pml_coeff_index32'):
+                assert '32 bit sets' in modes, f'FAIL [{name}]: no 32 bit UPML coefficient sets'
+            elif name in ('pml_full', 'pml_full_separate'):
+                assert 'full arrays' in modes, f'FAIL [{name}]: no full UPML coefficient arrays'
+            elif name in UPML_MODES:
+                assert modes and all(m=='16 bit sets' for m in modes), \
+                    f'FAIL [{name}]: expected 16 bit UPML coefficient sets, got {modes}'
+            if name.endswith('_separate'):
+                assert 'UPML regions fused with the main updates' not in logs['gpu'], \
+                    f'FAIL [{name}]: the separate UPML kernels were not used'
         if name in UPML_MODES and backend=='HIP':
             expected, unexpected = UPML_MODES[name]
             assert (expected is None or expected in logs['gpu']) and (unexpected is None or unexpected not in logs['gpu']), \

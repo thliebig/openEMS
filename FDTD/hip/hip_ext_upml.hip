@@ -35,30 +35,34 @@
 	const unsigned int y = t / R.lz;
 
 // before the main update: store the scaled old field in the flux, hand the old flux to the engine
-__global__ void upml_pre(float* field, float* flux, const float* c_old, const float* c_fo, HIP_GridDim N, UPMLRegion R)
+__global__ void upml_pre(float* field, UPMLFusedArgs A, unsigned int set_offset, HIP_GridDim N, UPMLRegion R)
 {
 	UPML_THREAD
+	const size_t cells = (size_t)R.lx*R.ly*R.lz;
+	const UPMLCoeff U = upml_coeff(A, upml_local(R, 0, x, y, z), cells, set_offset);
 	for (unsigned int n=0; n<3; ++n)
 	{
 		const size_t l = upml_local(R, n, x, y, z);
 		const size_t g = nijk(N, n, R.sx + x, R.sy + y, R.sz + z);
-		const float f_help = c_old[l]*field[g] - c_fo[l]*flux[l];
-		field[g] = flux[l];
-		flux[l] = f_help;
+		const float f_help = U.old[n*U.s]*field[g] - U.fo[n*U.s]*A.flux[l];
+		field[g] = A.flux[l];
+		A.flux[l] = f_help;
 	}
 }
 
 // after the main update: keep the updated flux, combine it with the stored field
-__global__ void upml_post(float* field, float* flux, const float* c_fn, HIP_GridDim N, UPMLRegion R)
+__global__ void upml_post(float* field, UPMLFusedArgs A, unsigned int set_offset, HIP_GridDim N, UPMLRegion R)
 {
 	UPML_THREAD
+	const size_t cells = (size_t)R.lx*R.ly*R.lz;
+	const UPMLCoeff U = upml_coeff(A, upml_local(R, 0, x, y, z), cells, set_offset);
 	for (unsigned int n=0; n<3; ++n)
 	{
 		const size_t l = upml_local(R, n, x, y, z);
 		const size_t g = nijk(N, n, R.sx + x, R.sy + y, R.sz + z);
-		const float f_help = flux[l];
-		flux[l] = field[g];
-		field[g] = f_help + c_fn[l]*flux[l];
+		const float f_help = A.flux[l];
+		A.flux[l] = field[g];
+		field[g] = f_help + U.fn[n*U.s]*A.flux[l];
 	}
 }
 
@@ -87,7 +91,7 @@ public:
 	virtual void DoPreVoltageUpdates()
 	{
 		if (!Fused())
-			Pre(d->volt, m_VoltFlux, m_VV, m_VVFO);
+			Pre(d->volt, VoltArgs(), 0);
 		else if ((d->fused_step>0) && d->fregions.count)
 		{
 			// in the kernel: the current voltage flux in, the new one into the second buffer,
@@ -104,12 +108,12 @@ public:
 		if (Fused() && (d->fused_step<=0) && !m_InMain)
 			FuseVolt(d->volt);
 		else if (!Fused())
-			Post(d->volt, m_VoltFlux, m_VVFN);
+			Post(d->volt, VoltArgs(), 0);
 	}
 	virtual void DoPreCurrentUpdates()
 	{
 		if (!Fused())
-			Pre(d->curr, m_CurrFlux, m_II, m_IIFO);
+			Pre(d->curr, CurrArgs(), 9);
 		else if ((d->fused_step>0) && !d->fregions.count)
 			FuseCurr(d->curr_next);
 	}
@@ -118,17 +122,17 @@ public:
 		if (Fused() && (d->fused_step<=0) && !m_InMain)
 			FuseCurr(d->curr);
 		else if (!Fused())
-			Post(d->curr, m_CurrFlux, m_IIFN);
+			Post(d->curr, CurrArgs(), 9);
 	}
 
 protected:
-	void Pre(float* field, float* flux, const float* c_old, const float* c_fo)
+	void Pre(float* field, UPMLFusedArgs A, unsigned int set_offset)
 	{
-		HIP_Launch(d, "upml_pre", upml_pre, m_Region.lz*m_Region.ly, 1, m_Region.lx, field, flux, c_old, c_fo, d->dim, m_Region);
+		HIP_Launch(d, "upml_pre", upml_pre, m_Region.lz*m_Region.ly, 1, m_Region.lx, field, A, set_offset, d->dim, m_Region);
 	}
-	void Post(float* field, float* flux, const float* c_fn)
+	void Post(float* field, UPMLFusedArgs A, unsigned int set_offset)
 	{
-		HIP_Launch(d, "upml_post", upml_post, m_Region.lz*m_Region.ly, 1, m_Region.lx, field, flux, c_fn, d->dim, m_Region);
+		HIP_Launch(d, "upml_post", upml_post, m_Region.lz*m_Region.ly, 1, m_Region.lx, field, A, set_offset, d->dim, m_Region);
 	}
 	UPMLFusedArgs VoltArgs() {return Args(m_VoltFlux, m_VV, m_VVFO, m_VVFN, d->vv, d->vi);}
 	UPMLFusedArgs CurrArgs() {return Args(m_CurrFlux, m_II, m_IIFO, m_IIFN, d->ii, d->iv);}
@@ -170,7 +174,7 @@ protected:
 	float *m_VV, *m_VVFO, *m_VVFN;
 	float *m_II, *m_IIFO, *m_IIFN;
 
-	//! Coefficients for the fused kernels: 0: the full arrays, 1/2: a 16/32 bit set index per cell and the sets (see upml_coeff())
+	//! Coefficients for all UPML kernels: 0: the full arrays, 1/2: a 16/32 bit set index per cell and the sets (see upml_coeff())
 	unsigned int m_CoeffMode;
 	void* m_SetIndex;
 	float* m_Sets;
@@ -193,14 +197,10 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 	const size_t cells = (size_t)m_Region.lx*m_Region.ly*m_Region.lz;
 	m_VoltFlux = d->Alloc<float>(3*cells);
 	m_CurrFlux = d->Alloc<float>(3*cells);
-	m_VV   = Upload(op_ext->vv);
-	m_VVFO = Upload(op_ext->vvfo);
-	m_VVFN = Upload(op_ext->vvfn);
-	m_II   = Upload(op_ext->ii);
-	m_IIFO = Upload(op_ext->iifo);
-	m_IIFN = Upload(op_ext->iifn);
+	m_VV = m_VVFO = m_VVFN = NULL;
+	m_II = m_IIFO = m_IIFN = NULL;
 
-	// the 18 coefficients of a cell for the fused kernels: vv[3], vvfo[3], vvfn[3], ii[3], iifo[3], iifn[3]
+	// the 18 coefficients of a cell for all UPML kernels: vv[3], vvfo[3], vvfn[3], ii[3], iifo[3], iifn[3]
 	const FDTD_FLOAT* src[6] = {op_ext->vv.data(), op_ext->vvfo.data(), op_ext->vvfn.data(),
 	                            op_ext->ii.data(), op_ext->iifo.data(), op_ext->iifn.data()};
 	GPU_CoeffSets sets;
@@ -217,6 +217,25 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 		m_CoeffMode = sets.mode;
 		m_SetIndex = d->AllocIndex(sets);
 		m_Sets = d->Alloc<float>(sets.table.size(), sets.table.data());
+	}
+	else
+	{
+		// Keep only one representation, including during setup. Separate pre/post
+		// kernels use upml_coeff() too, so disabling fusion needs no full copy.
+		m_VV   = Upload(op_ext->vv);
+		m_VVFO = Upload(op_ext->vvfo);
+		m_VVFN = Upload(op_ext->vvfn);
+		m_II   = Upload(op_ext->ii);
+		m_IIFO = Upload(op_ext->iifo);
+		m_IIFN = Upload(op_ext->iifn);
+	}
+	if (g_settings.GetVerboseLevel()>1)
+	{
+		const size_t bytes = m_CoeffMode ? cells*(m_CoeffMode==1 ? 2 : 4) + sets.table.size()*sizeof(float)
+		                               : 18*cells*sizeof(float);
+		std::cout << "GPU_Backend_HIP: UPML coefficients: " << cells << " cells, "
+		          << (m_CoeffMode==1 ? "16 bit sets" : m_CoeffMode==2 ? "32 bit sets" : "full arrays")
+		          << ", " << bytes << " device bytes" << std::endl;
 	}
 
 	// the UPML extensions of a grid decide together whether they fuse (see CanFuse()); only once

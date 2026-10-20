@@ -56,6 +56,10 @@ there are unreleased changes. It becomes the next release entry.
 
 ### Changed
 
+- HIP/CUDA UPML stores either exact compressed coefficient sets or full
+  arrays, rather than both. Separate pre/post updates also use compressed
+  sets, so the memory saving does not require UPML fusion.
+
 - The Python bindings need Python 3.6 or newer (was 3.4), the oldest version
   CI still tests; CentOS 7 and Ubuntu 14.04 are no longer tested.
 - Time-domain HDF5 field dumps are written in the background instead of
