@@ -52,6 +52,17 @@ items (hidden at first) and the figures, and takes the options of
         --set 'visible={"results/fields/Et": true}' \
         --set 'items={"results/fields/Et": {"quantity": "z", "scale": "log"}}'
 
+The metal edges of a run with ``debug_PEC=True`` (``PEC_dump.vtp``, also read
+by ParaView) are the hidden item ``results/debug/PEC_dump.vtp``. Over the
+metals alone they show how the mesh snaps them, x, y and z edges coloured
+like the axes:
+
+.. code-block:: bash
+
+    openems-view /tmp/Simp_Patch --png pec.png --set isolate=type:Metal \
+        --set 'visible={"results/debug/PEC_dump.vtp": true}' \
+        --set 'items={"results/debug/PEC_dump.vtp": {"color_by": "direction"}}'
+
 .. autoclass:: openEMS.Viewer.Slices.FieldSlices
     :members: GetPlanes, SetPlanes, AddPlane, RemovePlane
 

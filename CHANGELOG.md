@@ -63,6 +63,13 @@ there are unreleased changes. It becomes the next release entry.
   For it, `Run()` writes the setup into the simulation path
   (`openEMS_setup.xml` and `.json`), and `Results.Show()`/`AddToViewer()`
   store their figures there.
+- **Metal edges in the viewer:** `openems-view` shows the `PEC_dump.vtp` of
+  `--debug-PEC` (`debug_PEC=True`) as the hidden item
+  `results/debug/PEC_dump.vtp`, e.g. over the metals alone
+  (`--set isolate=type:Metal`), to check how the mesh snaps them. The dump
+  now records each edge's direction (cell array `direction`, colour with
+  `color_by`) and its length unit (field data `LengthUnit`); ParaView reads
+  it as before.
 
 ### Fixed
 

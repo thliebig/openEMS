@@ -703,7 +703,9 @@ cdef class openEMS:
         * disable_dumps (bool) -- disable all field dumps for faster simulation
         * debug_material (bool) - dump material distribution to a vtk file for
           debugging.
-        * debug_PEC (bool) - dump metal distribution to a vtk file for debugging
+        * debug_PEC (bool) - dump the metal edges of the mesh to `PEC_dump.vtp`
+          for debugging; ``openems-view sim_path`` shows them (item
+          ``results/debug/PEC_dump.vtp``), as does ParaView
         * debug_operator (bool) - dump operator to vtk file for debugging
         * debug_boxes (bool) - Dump e.g. probe boxes to vtk file for debugging
         * debug_CSX (bool) - Write CSX geometry file to debugCSX.xml

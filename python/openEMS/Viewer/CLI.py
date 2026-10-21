@@ -22,7 +22,8 @@ It reads the setup :meth:`openEMS.openEMS.openEMS.Run` wrote into the
 simulation path (``openEMS_setup.xml`` and ``.json``), recreates the ports,
 NF2FF boxes and the figures of :class:`openEMS.results.Results`, adds the
 HDF5 field dumps found there as hidden :class:`FieldSlices` (shown with the
-view key ``visible`` or in the tree), and then opens the GUI or writes the
+view key ``visible`` or in the tree) and the metal edges of ``--debug-PEC``
+(``PEC_dump.vtp``), also hidden, and then opens the GUI or writes the
 outputs, with the view and output options of ``csxcad-view``.
 """
 
@@ -38,6 +39,8 @@ EPILOG = """\
 SIM_PATH is the simulation path (Run() writes openEMS_setup.xml and .json
 there) or an XML file written by Write2XML. Field dumps are items below
 results/fields, hidden at first; --describe lists them with their settings.
+The metal edges of a run with debug_PEC=True (PEC_dump.vtp) are the hidden
+item results/debug/PEC_dump.vtp.
 The view options are those of csxcad-view (--list-view-keys explains them).
 
 examples:
@@ -46,6 +49,8 @@ examples:
   openems-view /tmp/Simp_Patch --png Et.png --set view=+z --set 'visible={"results/fields/Et": true}'
   openems-view /tmp/Simp_Patch --png Ez.png --set 'visible={"results/fields/Et": true}' \\
       --set 'items={"results/fields/Et": {"quantity": "z", "scale": "log"}}'
+  openems-view /tmp/Simp_Patch --png pec.png --set isolate=type:Metal \\
+      --set 'visible={"results/debug/PEC_dump.vtp": true}'
 """
 
 
@@ -110,9 +115,16 @@ def FieldDumps(CSX, sim_dir):
     return out
 
 
+def DebugFiles(sim_dir):
+    """ The metal edges openEMS wrote into `sim_dir` with ``--debug-PEC``
+    (one file per multigrid level). """
+    return sorted(glob.glob(os.path.join(sim_dir, 'PEC_dump*.vtp')))
+
+
 def Main(argv=None):
     """ Entry point of ``openems-view``; returns the exit code. """
-    from CSXCAD.Viewer.CLI import ViewFromArgs, HasOutputs, WriteOutputs, ErrorText, KeyList, ItemSettings, UnknownPaths
+    from CSXCAD.Viewer.CLI import (ViewFromArgs, HasOutputs, WriteOutputs, ErrorText, KeyList, ItemSettings,
+                                   UnknownPaths, AddFiles)
     args = _Parser().parse_args(argv)
     if args.list_view_keys:
         print(KeyList())
@@ -127,6 +139,7 @@ def Main(argv=None):
         from CSXCAD.Viewer import Viewer
         v = Viewer(FDTD.GetCSX(), offscreen=not want_window, name=os.path.basename(os.path.normpath(sim_dir)),
                    **ViewFromArgs(args))
+        AddFiles(v, args)
     except (FileNotFoundError, ValueError, KeyError) as err:
         print('openems-view: {}'.format(ErrorText(err)), file=sys.stderr)
         return 1
@@ -138,6 +151,11 @@ def Main(argv=None):
                     v.AddItem(FieldSlices(fn), visible=False)
                 except Exception as err:   # e.g. a dump of another layout
                     warnings.warn('{}: not shown: {}'.format(os.path.basename(fn), err))
+        for fn in DebugFiles(sim_dir):
+            try:
+                v.AddFile(fn, group='results/debug', visible=False, render=False)
+            except Exception as err:
+                warnings.warn('{}: not shown: {}'.format(os.path.basename(fn), err))
     if results is not None:
         results.AddToViewer(v, store=False, skip_failed=True)
     errors = wrong.errors + UnknownPaths(v, ViewFromArgs(args))

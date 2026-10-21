@@ -640,6 +640,8 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 
 	std::vector<float> points;
 	std::vector<int64_t> lines;
+	// the direction of each edge: 0, 1, 2 for x, y, z (r, a, z)
+	std::vector<unsigned char> direction;
 
 	int* pointIdx[2];
 	pointIdx[0] = new int[numLines[0]*numLines[1]];
@@ -675,6 +677,7 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 						rpos[1]=pos[1];
 						rpos[2]=pos[2];
 
+						direction.push_back(n);
 
 						mesh_idx = rpos[0] + rpos[1]*numLines[0];
 						if (pointIdx[0][mesh_idx]<0)
@@ -709,7 +712,8 @@ void Operator::DumpPEC2File(std::string filename , unsigned int *range)
 	delete[] pointIdx[0];
 	delete[] pointIdx[1];
 
-	if (VTK_File_Writer::WriteLines(filename + ".vtp", points, lines))
+	// with the metres per coordinate unit, for readers such as the CSXCAD viewer
+	if (VTK_File_Writer::WriteLines(filename + ".vtp", points, lines, "direction", direction, GetGridDelta()/scaling))
 		cout << " done." << endl;
 }
 

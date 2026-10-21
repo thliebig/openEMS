@@ -281,9 +281,12 @@ class Test_VTK_Dumps(unittest.TestCase):
         np.testing.assert_allclose(pts[:, 2], 0, atol=1e-9)
         mid = (pts[lines[:, 0]] + pts[lines[:, 1]]) / 2
         self.assertTrue(np.all(np.abs(mid[:, 0]) <= 10e-3) and np.all(np.abs(mid[:, 1]) <= 8e-3))
-        # each edge runs along one axis, from one mesh line to the next
+        direction = data['CellData']['direction']
+        self.assertEqual(len(direction), len(lines))
+        # each edge runs along its direction
         step = np.abs(pts[lines[:, 1]] - pts[lines[:, 0]])
-        np.testing.assert_array_equal(np.count_nonzero(step > 1e-12, axis=1), 1)
+        np.testing.assert_array_equal(np.argmax(step, axis=1), direction)
+        self.assertEqual(data['FieldData']['LengthUnit'][0], 1)
         data = _read(self.path('cyl', 'PEC_dump.vtp'))
         self.assertGreater(len(data['Lines']), 0)
         np.testing.assert_allclose(data['Points'][:, 2], 32e-3, rtol=1e-6)

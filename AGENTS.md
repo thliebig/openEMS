@@ -150,6 +150,15 @@ generic `ViewItem` interface.
   ```
   Field dumps start hidden. From Python, `Viewer.GetItemParameters(item)`
   lists an item's settings with their values, choices and help texts.
+- **How the mesh sees the metal**: `Run(..., debug_PEC=True)` (with
+  `setup_only=True` it does not simulate) writes `PEC_dump.vtp`, the mesh
+  edges that are metal. Compare them with the drawn metals:
+  ```bash
+  openems-view sim --png pec.png --set isolate=type:Metal \
+      --set 'visible={"results/debug/PEC_dump.vtp": true}' \
+      --set 'items={"results/debug/PEC_dump.vtp": {"color_by": "direction"}}'
+  ```
+  A gap or a missing via between the edges is one the simulation has too.
 - **Checking a view headless**: tutorials show their structure with
   `SHOW_STRUCTURE=1` and their fields with `SHOW_FIELDS=1`; with
   `CSXCAD_VIEWER_OUTPUT=<dir>` they write the images instead of opening

@@ -153,5 +153,40 @@ class Test_ViewCLI(unittest.TestCase):
             shutil.rmtree(empty)
 
 
+    @unittest.skipUnless(HAS_VTK, 'vtk not available')
+    def test_debug_pec(self):
+        # the metal edges of debug_PEC: on the mesh lines of the strip, with
+        # their unit and direction, shown hidden by openems-view
+        from CSXCAD.Viewer import Viewer
+        from CSXCAD.Viewer.Files import ReadFile, FileUnit
+        from openEMS.Viewer import CLI
+        sim = os.path.join(self.dir, 'pec')
+        fdtd, csx = _make_fdtd()
+        PORTS['MSL'](fdtd, csx)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(fdtd.Run(sim, setup_only=True, debug_PEC=True), 0)
+        self.assertEqual(CLI.DebugFiles(sim), [os.path.join(sim, 'PEC_dump.vtp')])
+        data = ReadFile(CLI.DebugFiles(sim)[0])
+        self.assertEqual(FileUnit(data), 1.0)                 # metres
+        from vtkmodules.util.numpy_support import vtk_to_numpy
+        direction = vtk_to_numpy(data.GetCellData().GetArray('direction'))
+        self.assertEqual(len(direction), data.GetNumberOfLines())
+        self.assertEqual(set(direction), {0, 1})              # a sheet in z: x and y edges
+        np.testing.assert_allclose(data.GetBounds(), (0, 0.030, 0.040, 0.044, 0.010, 0.010), atol=1e-7)
+
+        v = Viewer(fdtd.GetCSX(), offscreen=True)
+        item = v.AddFile(CLI.DebugFiles(sim)[0])
+        np.testing.assert_allclose(item.GetBounds(), v._scene.Entry('msl').GetBounds(), atol=1e-5)
+
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = CLI.Main([sim, '--describe', 'json', '--set', 'isolate=type:Metal'])
+        self.assertEqual(code, 0, err.getvalue())
+        d = json.loads(out.getvalue())
+        pec = d['items']['results/debug/PEC_dump.vtp']
+        self.assertFalse(pec['visible'])
+        self.assertEqual(pec['settings']['color_by']['choices'], ['solid', 'direction'])
+        self.assertEqual([p['name'] for p in d['properties'] if p['shown']], ['msl'])
+
 if __name__ == '__main__':
     unittest.main()
