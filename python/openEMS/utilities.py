@@ -17,12 +17,42 @@
 #
 
 import os
+import functools
+import inspect
 
 import numpy as np
 import h5py
 
 from CSXCAD.Utilities import CheckNyDir
 from openEMS.physical_constants import C0
+
+def SetupType(name):
+    """ Class decorator for the objects of a simulation setup (ports, NF2FF
+    boxes) that :mod:`openEMS.setup_file` can store: names the type `name` and
+    makes the constructor remember its arguments in `_init_args`, as
+    (class, dict), for the outermost call only (a subclass calling its base
+    class constructor is recorded once, with its own arguments). """
+    def decorate(cls):
+        init = cls.__init__
+        sig = inspect.signature(init)
+
+        @functools.wraps(init)
+        def wrapper(self, *args, **kw):
+            if not hasattr(self, '_init_args'):
+                bound = sig.bind(self, *args, **kw)
+                bound.apply_defaults()
+                rec = {}
+                for k, v in list(bound.arguments.items())[2:]:   # without self and CSX
+                    if sig.parameters[k].kind == inspect.Parameter.VAR_KEYWORD:
+                        rec.update(v)
+                    else:
+                        rec[k] = v
+                self._init_args = (cls, rec)
+            init(self, *args, **kw)
+        cls.__init__ = wrapper
+        cls.SETUP_TYPE = name
+        return cls
+    return decorate
 
 def DFT_time2freq( t, val, freq, signal_type='pulse'):
     assert len(t)==len(val)

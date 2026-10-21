@@ -17,11 +17,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os, sys, glob
+import os, sys, glob, warnings
 import numpy as np
 import h5py
 cimport openEMS
-from openEMS import ports, nf2ff, automesh
+from openEMS import ports, nf2ff, automesh, setup_file
 from pathlib import Path
 
 from CSXCAD.Utilities import GetMultiDirs
@@ -76,6 +76,7 @@ cdef class openEMS:
     def __cinit__(self, *args, **kw):
         self.thisptr = new _openEMS()
         self.__CSX = None
+        self._setup = setup_file.Setup()
 
         if 'NrTS' in kw:
             self.SetNumberOfTimeSteps(kw['NrTS'])
@@ -344,6 +345,7 @@ cdef class openEMS:
         if self.__CSX is None:
             raise Exception('AddLumpedPort: CSX is not set!')
         port = ports.LumpedPort(self.__CSX, port_nr, R, start, stop, p_dir, excite, **kw)
+        self._setup.AddPort(port)
         edges2grid = kw.get('edges2grid', None)
         if edges2grid is not None:
             grid = self.__CSX.GetGrid()
@@ -364,7 +366,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddCurvePort: CSX is not set!')
-        return ports.CurvePort(self.__CSX, port_nr, R, start, stop, excite, **kw)
+        port = ports.CurvePort(self.__CSX, port_nr, R, start, stop, excite, **kw)
+        return self._setup.AddPort(port)
 
     def AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func = None, H_func = None, kc = 0.0, excite = 0, excite_type = 0, E_file = None, H_file = None, **kw):
         """ AddWaveGuidePort(self, port_nr, start, stop, p_dir, E_func = None, H_func = None, kc = 0.0, excite = 0, excite_type = 0, E_file = None, H_file = None, **kw)
@@ -377,7 +380,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddWaveGuidePort: CSX is not set!')
-        return ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, excite_type, E_file, H_file, **kw)
+        port = ports.WaveguidePort(self.__CSX, port_nr, start, stop, p_dir, E_func, H_func, kc, excite, excite_type, E_file, H_file, **kw)
+        return self._setup.AddPort(port)
 
     def AddRectWaveGuidePort(self, port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw):
         """ AddRectWaveGuidePort(port_nr, start, stop, p_dir, a, b, mode_name, excite=0, **kw)
@@ -390,7 +394,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddRectWaveGuidePort: CSX is not set!')
-        return ports.RectWGPort(self.__CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
+        port = ports.RectWGPort(self.__CSX, port_nr, start, stop, p_dir, a, b, mode_name, excite, **kw)
+        return self._setup.AddPort(port)
 
     def AddCircWaveGuidePort(self, port_nr, start, stop, exc_dir, radius, mode_name, pol_ang=0, excite=0, **kw):
         """ AddCircWaveGuidePort(port_nr, start, stop, exc_dir, radius, mode_name, pol_ang=0, excite=0, **kw)
@@ -403,7 +408,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddCircWaveGuidePort: CSX is not set!')
-        return ports.CircWGPort(self.__CSX, port_nr, start, stop, exc_dir, radius, mode_name, pol_ang, excite, **kw)
+        port = ports.CircWGPort(self.__CSX, port_nr, start, stop, exc_dir, radius, mode_name, pol_ang, excite, **kw)
+        return self._setup.AddPort(port)
 
     def AddCoaxialPort(self, port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite=0, **kw):
         """ AddCoaxialPort(port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite=0, **kw)
@@ -416,7 +422,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddCoaxialPort: CSX is not set!')
-        return ports.CoaxialPort(self.__CSX, port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite, **kw)
+        port = ports.CoaxialPort(self.__CSX, port_nr, pec_prop, mat_prop, start, stop, prop_dir, r_i, r_o, r_os, excite, **kw)
+        return self._setup.AddPort(port)
 
     def AddMSLPort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw):
         """ AddMSLPort(port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite=0, **kw)
@@ -429,7 +436,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddMSLPort: CSX is not set!')
-        return ports.MSLPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
+        port = ports.MSLPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, excite, **kw)
+        return self._setup.AddPort(port)
 
     def AddStripLinePort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, height, excite=0, **kw):
         """ AddStripLinePort(port_nr, metal_prop, start, stop, prop_dir, exc_dir, height, excite=0, **kw)
@@ -442,7 +450,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddStripLinePort: CSX is not set!')
-        return ports.StripLinePort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, height, excite, **kw)
+        port = ports.StripLinePort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, height, excite, **kw)
+        return self._setup.AddPort(port)
 
     def AddCPWPort(self, port_nr, metal_prop, start, stop, prop_dir, exc_dir, gap_width, excite=0, **kw):
         """ AddCPWPort(port_nr, metal_prop, start, stop, prop_dir, exc_dir, gap_width, excite=0, **kw)
@@ -455,7 +464,8 @@ cdef class openEMS:
         """
         if self.__CSX is None:
             raise Exception('AddCPWPort: CSX is not set!')
-        return ports.CPWPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, gap_width, excite, **kw)
+        port = ports.CPWPort(self.__CSX, port_nr, metal_prop, start, stop, prop_dir, exc_dir, gap_width, excite, **kw)
+        return self._setup.AddPort(port)
 
     def CreateNF2FFBox(self, name='nf2ff', start=None, stop=None, **kw):
         """ CreateNF2FFBox(name='nf2ff', start=None, stop=None, **kw)
@@ -514,7 +524,8 @@ cdef class openEMS:
         # an explicitly given directions/mirror wins over the derived one
         directions = kw.pop('directions', directions)
         mirror     = kw.pop('mirror',     mirror)
-        return nf2ff.nf2ff(self.__CSX, name, start, stop, directions=directions, mirror=mirror, **kw)
+        box = nf2ff.nf2ff(self.__CSX, name, start, stop, directions=directions, mirror=mirror, **kw)
+        return self._setup.AddNF2FF(box)
 
     def SetCSX(self, ContinuousStructure CSX):
         """ SetCSX(CSX)
@@ -711,9 +722,18 @@ cdef class openEMS:
         Write the openEMS FDTD setup and CSX data into an \*.xml file.
         Can be run by the standalone openEMS binary.
 
+        The ports and NF2FF boxes are written next to it, see
+        :meth:`WriteSetup`.
+
         :param file: xml file name
         """
-        return self.thisptr.Write2XML(file.encode('UTF-8'))
+        ok = self.thisptr.Write2XML(file.encode('UTF-8'))
+        if ok:
+            try:
+                self.WriteSetup(setup_file.SetupFileName(file))
+            except (TypeError, OSError) as err:
+                warnings.warn('Write2XML: setup file not written: {}'.format(err))
+        return ok
 
     def ReadFromXML(self, file):
         """ ReadFromXML(file)
@@ -725,4 +745,92 @@ cdef class openEMS:
         """
         # resets first, which destroys the structure and invalidates its wrapper
         self.__CSX = None
+        self._setup.Clear()
         return self.thisptr.ReadFromXML(file.encode('UTF-8'))
+
+    def GetPorts(self):
+        """ GetPorts()
+
+        The ports added with the `Add*Port` methods, or recreated by
+        :meth:`ReadSetup`, in the order they were added.
+
+        :returns: list of :class:`openEMS.ports.Port`
+        """
+        return self._setup.GetPorts()
+
+    def GetPort(self, port_nr, prefix=''):
+        """ GetPort(port_nr, prefix='')
+
+        The port with the number `port_nr` and the `PortNamePrefix` `prefix`,
+        see :meth:`GetPorts`.
+        """
+        return self._setup.GetPort(port_nr, prefix)
+
+    def AddPort(self, port):
+        """ AddPort(port)
+
+        Add a port created directly from :mod:`openEMS.ports` (with the
+        structure, not through an `Add*Port` method), so that
+        :meth:`WriteSetup` stores it too. Adding a port twice has no effect.
+
+        :param port: :class:`openEMS.ports.Port`
+        :returns: the port
+        """
+        return self._setup.AddPort(port)
+
+    def AddNF2FFBox(self, box):
+        """ AddNF2FFBox(box)
+
+        As :meth:`AddPort`, for an :class:`openEMS.nf2ff.nf2ff` box created
+        directly instead of by :meth:`CreateNF2FFBox`.
+        """
+        return self._setup.AddNF2FF(box)
+
+    def GetNF2FFBoxes(self):
+        """ GetNF2FFBoxes()
+
+        The boxes created with :meth:`CreateNF2FFBox`, or recreated by
+        :meth:`ReadSetup`.
+
+        :returns: list of :class:`openEMS.nf2ff.nf2ff`
+        """
+        return self._setup.GetNF2FFBoxes()
+
+    def WriteSetup(self, file):
+        """ WriteSetup(file)
+
+        Write the ports and NF2FF boxes, as JSON, so that :meth:`ReadSetup`
+        can recreate them for post-processing after :meth:`ReadFromXML`.
+        :meth:`Write2XML` writes this file next to the XML, with the same
+        name ending in `.json`.
+
+        Stored are the ports of the `Add*Port` methods and the boxes of
+        :meth:`CreateNF2FFBox`; add ports and boxes created directly with
+        :meth:`AddPort` and :meth:`AddNF2FFBox`. Without an openEMS object,
+        :class:`openEMS.setup_file.Setup` does the same.
+
+        :param file: str -- JSON file name
+        """
+        self._setup.Write(file)
+
+    def ReadSetup(self, file):
+        """ ReadSetup(file)
+
+        Recreate the ports and NF2FF boxes written by :meth:`WriteSetup`,
+        for the structure read by :meth:`ReadFromXML`. Nothing is added to
+        the structure: every property a port would create has to exist in it
+        already, unchanged (look aside), and the port then uses it.
+
+        >>> FDTD = openEMS()
+        >>> FDTD.ReadFromXML('sim/model.xml')
+        >>> FDTD.ReadSetup('sim/model.json')
+        >>> port = FDTD.GetPort(1)
+        >>> port.CalcPort('sim', f)
+
+        :param file: str -- JSON file name
+        :raises ValueError: if a property is missing, ambiguous or differs
+        """
+        CSX = self.GetCSX()
+        if CSX is None:
+            raise Exception('ReadSetup: no structure, call ReadFromXML first')
+        self._setup.Read(file, CSX)

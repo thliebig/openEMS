@@ -246,6 +246,7 @@ class Port(object):
         # accepted power (incoming - reflected)
         self.P_acc = 0.5*np.real(self.uf_tot*np.conj(self.if_tot))
 
+@utilities.SetupType('Lumped')
 class LumpedPort(Port):
     """
     The lumped port.
@@ -308,6 +309,7 @@ class LumpedPort(Port):
             Warning('A lumped port does not support a reference plane shift! Ignoring...')
         super(LumpedPort, self).CalcPort(sim_path, freq, ref_impedance, ref_plane_shift, signal_type)
 
+@utilities.SetupType('MSL')
 class MSLPort(Port):
     """
     The microstrip transmission line port.
@@ -446,6 +448,7 @@ class MSLPort(Port):
         # determine ZL
         self.Z_ref = np.sqrt(Et * dEt / (Ht * dHt))
 
+@utilities.SetupType('WaveGuide')
 class WaveguidePort(Port):
     """
     Base class for any waveguide port.
@@ -626,6 +629,7 @@ class WaveguidePort(Port):
             self.Z_ref = self.ZL
         super(WaveguidePort, self).CalcPort(sim_path, freq, ref_impedance, ref_plane_shift, signal_type)
 
+@utilities.SetupType('RectWG')
 class RectWGPort(WaveguidePort):
     """
     Rectangular waveguide port with automatic TE mode profile generation.
@@ -702,6 +706,7 @@ class RectWGPort(WaveguidePort):
 
         super(RectWGPort, self).__init__(CSX, port_nr=port_nr, start=start, stop=stop, exc_dir=exc_dir, E_WG_func=E_func, H_WG_func=H_func, kc=kc, excite=excite, local_origin=local_origin, **kw)
 
+@utilities.SetupType('CircWG')
 class CircWGPort(WaveguidePort):
     """Circular waveguide port with analytic TE mode profile.
 
@@ -834,6 +839,7 @@ class CircWGPort(WaveguidePort):
             kc=kc, excite=excite, local_origin=local_origin, **kw)
 
 
+@utilities.SetupType('Coaxial')
 class CoaxialPort(Port):
     """Coaxial transmission line port.
 
@@ -1021,6 +1027,7 @@ class CoaxialPort(Port):
         self.Z_ref = np.sqrt(Et * dEt / (Ht * dHt))
 
 
+@utilities.SetupType('StripLine')
 class StripLinePort(Port):
     """Stripline transmission line port.
 
@@ -1229,6 +1236,7 @@ class StripLinePort(Port):
         self.Z_ref = np.sqrt(Et * dEt / (Ht * dHt))
 
 
+@utilities.SetupType('CPW')
 class CPWPort(Port):
     """Coplanar waveguide (CPW) port.
 
@@ -1435,6 +1443,7 @@ class CPWPort(Port):
         self.Z_ref = np.sqrt(Et * dEt / (Ht * dHt))
 
 
+@utilities.SetupType('Curve')
 class CurvePort(Port):
     """One-dimensional curve-based lumped port.
 

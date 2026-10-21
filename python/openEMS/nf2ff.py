@@ -23,6 +23,7 @@ import h5py
 from openEMS import _nf2ff
 from openEMS import utilities
 
+@utilities.SetupType('NF2FF')
 class nf2ff:
     """
     Create an nf2ff recording box. The nf2ff can either record in time-domain

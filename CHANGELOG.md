@@ -25,6 +25,16 @@ there are unreleased changes. It becomes the next release entry.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.
+- Python: ports and NF2FF boxes can be recreated after `ReadFromXML()`, for
+  post-processing without rerunning the setup script. `Write2XML()` writes
+  how they were created into a JSON file next to the XML (also
+  `WriteSetup()`); `ReadSetup()` creates them again from it, using the probes
+  and excitations of the loaded structure and adding nothing to it (calling
+  `Add*Port` again failed on the duplicate probe check, openEMS#234).
+  `GetPorts()`, `GetPort()` and `GetNF2FFBoxes()` return them. Ports and
+  boxes created directly from their classes are added with `AddPort()` and
+  `AddNF2FFBox()`; without an openEMS object, `openEMS.setup_file.Setup`
+  writes and reads the file.
 - **Field results in the CSXCAD viewer** (`openEMS.Viewer`): `FieldSlices`
   (cutting planes through field and SAR dumps, with warp, contour lines and
   arrows; each plane a tree row to show or hide), `FieldIsoSurface` and `FarField` (a 3D pattern from `CalcNF2FF` on
