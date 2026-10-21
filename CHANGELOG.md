@@ -41,7 +41,8 @@ there are unreleased changes. It becomes the next release entry.
   dump slices such as SAR, and arrays of your own) give their data with
   `GetXY()`/`GetMap()`/`GetValue()`; figures of curves and maps (cartesian,
   polar, subplots, optionally over one shared x axis) are drawn with
-  matplotlib. The description is stored in the setup file and
+  matplotlib, or shown as tabs next to the structure in the CSXCAD viewer
+  (`AddToViewer()`). The description is stored in the setup file and
   restored with `Results.Load()`.
 - Python: `GetExcitation()` returns the type and frequencies of the
   excitation.

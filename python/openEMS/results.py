@@ -636,19 +636,21 @@ class Figure:
         self.lines = []           # reference lines: dicts kind ('h'/'v'), value, axes, kw
         self.entries = []         # dicts: q, fmt, label, axes, style, ...
 
-    def AddCurve(self, q, fmt=None, label=None, axes=0, style=None, right=False, **kw):
-        """ AddCurve(q, fmt=None, label=None, axes=0, style=None, right=False, **kw)
+    def AddCurve(self, q, fmt=None, label=None, axes=0, style=None, right=False, name=None, **kw):
+        """ AddCurve(q, fmt=None, label=None, axes=0, style=None, right=False, name=None, **kw)
 
         Add the curve of quantity `q` in format `fmt` (see FORMATS, default
         per quantity), to the axes number `axes`; `right`: on a second y
         axis at the right (e.g. a phase next to a magnitude). `style` is a
         matplotlib format string (``'--'``, ``'r-o'``), further keywords
         (``color``, ``linewidth``) go to ``plot``. An axes shows a legend for
-        several curves, or for a single one with a `label` of its own. """
+        several curves, or for a single one with a `label` of its own.
+        `name` names the curve in the viewer's tree (default: the label,
+        mathtext as plain text, e.g. ``'$S_{11}$'`` as ``'S₁₁'``). """
         if q.KIND != 'curve':
             raise TypeError('{} is a {}; AddCurve needs a curve'.format(q.NAME, q.KIND))
         self._Axes(axes)
-        e = dict(q=q, fmt=fmt or q.DEFAULT_FMT, label=label, axes=axes, style=style, kw=kw)
+        e = dict(q=q, fmt=fmt or q.DEFAULT_FMT, label=label, axes=axes, style=style, name=name, kw=kw)
         if right:
             e['right'] = True
         self.entries.append(e)
@@ -671,15 +673,16 @@ class Figure:
         self._Axes(axes)
         self.lines.append(dict(kind='v', value=x, axes=axes, kw=kw))
 
-    def AddMap(self, q, fmt=None, norm=None, label=None, axes=0, cmap=None, clim=None, **kw):
-        """ AddMap(q, fmt=None, norm=None, label=None, axes=0, cmap=None, clim=None, **kw)
+    def AddMap(self, q, fmt=None, norm=None, label=None, axes=0, cmap=None, clim=None, name=None, **kw):
+        """ AddMap(q, fmt=None, norm=None, label=None, axes=0, cmap=None, clim=None, name=None, **kw)
 
         Add the map of quantity `q`, divided by the quantity `norm` at the
-        map's frequency (e.g. the accepted power ``res.P_acc(1)``). """
+        map's frequency (e.g. the accepted power ``res.P_acc(1)``); `name`
+        as in :meth:`AddCurve`. """
         if q.KIND != 'map':
             raise TypeError('{} is a {}; AddMap needs a map'.format(q.NAME, q.KIND))
         self._Axes(axes)
-        e = dict(q=q, fmt=fmt, norm=norm, label=label, axes=axes, cmap=cmap, clim=clim, kw=kw)
+        e = dict(q=q, fmt=fmt, norm=norm, label=label, axes=axes, cmap=cmap, clim=clim, name=name, kw=kw)
         self.entries.append(e)
         return e
 
@@ -719,11 +722,13 @@ class Figure:
     def Draw(self, fig=None):
         """ Draw(fig=None)
 
-        Draw into the matplotlib figure `fig` (a new one by default) and
-        return it. """
-        import matplotlib.pyplot as plt
+        Draw into the matplotlib figure `fig` (a new pyplot figure by
+        default) and return it. Afterwards :attr:`curves` maps each curve's
+        label to its artists. """
         if fig is None:
+            import matplotlib.pyplot as plt
             fig = plt.figure(figsize=self.Size())
+        self.curves = {}
         n_axes = self.grid[0] * self.grid[1]
         axs = []
         for n in range(n_axes):
@@ -757,6 +762,7 @@ class Figure:
                 kw = dict(dict(shading='auto'), **e['kw'])
                 m = ax.pcolormesh(x, y, c if np.ndim(x) == 2 else c.T, cmap=e.get('cmap'),
                                   vmin=lim[0], vmax=lim[1], **kw)
+                self._Curve(e.get('name') or label, [m])
                 if e['label'] is None and e.get('norm') is not None:
                     label = '{} / {}'.format(label, e['norm'].Label())
                 fig.colorbar(m, ax=ax, label=label)
@@ -776,7 +782,7 @@ class Figure:
                 xunits[e['axes']] = (q.XName(), unit)
                 x = np.asarray(x) / fac
             args = (x, y) if e['style'] is None else (x, y, e['style'])
-            target(e).plot(*args, label=label, **e['kw'])
+            self._Curve(e.get('name') or label, target(e).plot(*args, label=label, **e['kw']))
         for line in self.lines:
             ax = axs[line['axes']]
             kw = dict(dict(color='gray', linestyle='--', linewidth=1), **line['kw'])
@@ -845,6 +851,13 @@ class Figure:
                     getattr(ax, 'set_' + opt)(o[opt])
         fig.suptitle(self.opts.get('title', self.name))
         return fig
+
+    def _Curve(self, label, artists):
+        name, n = label, 1
+        while name in self.curves:
+            n += 1
+            name = '{} ({})'.format(label, n)
+        self.curves[name] = list(artists)
 
     # ------------------------------------------------------------------
     def ToDict(self):
@@ -1087,11 +1100,32 @@ class Results:
     def Show(self, block=True):
         """ Show(block=True)
 
-        Draw all figures with matplotlib and show them. """
+        Draw all figures with matplotlib and show them. To show them next to
+        the structure instead, see :meth:`AddToViewer`. """
         import matplotlib.pyplot as plt
         figs = [fig.Draw() for fig in self.figures]
         plt.show(block=block)
         return figs
+
+    def AddToViewer(self, viewer):
+        """ AddToViewer(viewer)
+
+        Add all figures to the CSXCAD viewer `viewer` (tabs next to the 3D
+        view in its GUI; images in its output mode), each curve as a tree
+        entry to show or hide. Show the viewer afterwards.
+
+        >>> v = Viewer(CSX)
+        >>> res.AddToViewer(v)
+        >>> v.Show()
+
+        :returns: list of :class:`CSXCAD.Viewer.Figures.ViewFigure`
+        """
+        from matplotlib.figure import Figure as MplFigure
+        out = []
+        for fig in self.figures:
+            mpl = fig.Draw(MplFigure(figsize=fig.Size(), tight_layout=True))
+            out.append(viewer.AddFigure(mpl, fig.name, curves=fig.curves))
+        return out
 
     # ------------------------------------------------------------------
     # persistence

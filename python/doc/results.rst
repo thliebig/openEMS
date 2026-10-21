@@ -46,8 +46,21 @@ figures collect quantities as curves or maps:
 
     f, s21 = res.S(2, 1).GetXY()             # the numbers
     print('Dmax: {:.1f} dBi'.format(10*np.log10(res.Dmax('nf2ff', f0).GetValue())))
-    res.Show()
     res.Write(os.path.join(Sim_Path, 'model.json'))
+    res.Show()                               # matplotlib windows
+
+With the CSXCAD viewer (``vtk``, and ``PySide6`` for its GUI) the figures
+become tabs next to the structure, in one window with field displays:
+
+.. code-block:: python
+
+    from CSXCAD.Viewer import Viewer
+    from openEMS.Viewer import FieldSlices
+
+    v = Viewer(CSX)
+    v.AddItem(FieldSlices(os.path.join(Sim_Path, 'Et.h5'), quantity='E_z', freq=f0))
+    res.AddToViewer(v)
+    v.Show()
 
 .. automodule:: openEMS.results
 

@@ -308,6 +308,49 @@ class Test_Results(unittest.TestCase):
         import matplotlib.pyplot as plt
         plt.close('all')
 
+    def test_curve_names(self):
+        # the tree name of a curve: its name=, else the label
+        res = Results(self.fdtd, self.dir)
+        fig = res.AddFigure('P')
+        fig.AddCurve(res.P_acc(7), label='P')
+        fig.AddCurve(res.P_inc(7), label='$P_{inc}$', name='incident')
+        fig.AddCurve(res.P_ref(7))   # neither: the quantity's label
+        fig.Draw()
+        self.assertEqual(list(fig.curves), ['P', 'incident', 'P_ref7'])
+        sidecar = os.path.join(self.dir, 'model.json')
+        res.Write(sidecar)
+        self.assertEqual([e.get('name') for e in Results.Load(self.fdtd, self.dir, sidecar).GetFigure('P').entries],
+                         [None, 'incident', None])
+        import matplotlib.pyplot as plt
+        plt.close('all')
+
+    def test_show_in_viewer(self):
+        # the output mode of the CSXCAD viewer: structure and figures as images
+        try:
+            import vtk  # noqa: F401
+        except ImportError:
+            self.skipTest('vtk not available')
+        res = Results(self.fdtd, self.dir)
+        self._figures(res)
+        out = os.path.join(self.dir, 'out')
+        os.mkdir(out)
+        old = os.environ.get('CSXCAD_VIEWER_OUTPUT')
+        os.environ['CSXCAD_VIEWER_OUTPUT'] = out
+        try:
+            from CSXCAD.Viewer import Viewer
+            v = Viewer(self.fdtd.GetCSX(), offscreen=True, name='res')
+            res.AddToViewer(v)
+            v.Show()
+        finally:
+            if old is None:
+                os.environ.pop('CSXCAD_VIEWER_OUTPUT')
+            else:
+                os.environ['CSXCAD_VIEWER_OUTPUT'] = old
+        files = sorted(os.listdir(out))
+        for name in ('res_view.png', 'res_S-Parameter.png', 'res_Zin.png', 'res_Pattern.png', 'res_E.png'):
+            self.assertIn(name, files)
+        self.assertEqual(v.GetFigures()['Zin'].GetCurves(), ['Re Zin7', 'Im Zin7'])
+
 
 if __name__ == '__main__':
     unittest.main()
