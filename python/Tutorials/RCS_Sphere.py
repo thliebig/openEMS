@@ -16,7 +16,7 @@ from pylab import *
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
 from openEMS.physical_constants import *
-from openEMS.ports  import UI_data
+from openEMS.results import Results
 
 ### Setup the simulation
 Sim_Path = os.path.join(tempfile.gettempdir(), 'RCS_Sphere')
@@ -91,41 +91,27 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Postprocessing & plotting
-# get Gaussian pulse strength at frequency f0
-ef = UI_data('et', Sim_Path, freq=f0)
+# the incident field is the excitation signal 'et' of the plane wave
+res = Results(FDTD, Sim_Path)
+E_amp = norm(E_dir)
 
-Pin = 0.5*norm(E_dir)**2/Z0 * abs(ef.ui_f_val[0])**2
-#
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, 90, arange(-180, 180.1, 2))
-RCS = 4*pi/Pin[0]*nf2ff_res.P_rad[0]
+## the bistatic RCS at f0 in the xy-plane
+fig = res.AddFigure('RCS pattern', kind='polar', title='RCS at {:g} MHz'.format(f0/1e6))
+fig.AddCurve(res.RCS(nf2ff.name, f0, 'et', theta=90, angles=arange(-180, 180.1, 2), E_amp=E_amp),
+             style='k-', linewidth=2, label='xy-plane')
 
-fig = figure()
-ax  = fig.add_subplot(111, polar=True)
-ax.plot( nf2ff_res.phi, RCS[0], 'k-', linewidth=2 )
-ax.grid(True)
+## the backscatter over frequency
+freq = linspace(f_start, f_stop, 100)
+back = res.RCS(nf2ff.name, freq, 'et', theta=90, phi=180+inc_angle, E_amp=E_amp)
+fig = res.AddFigure('RCS', title='radar cross section')
+fig.AddCurve(back, linewidth=2, label='backscatter')
 
-# calculate RCS over frequency
-freq = linspace(f_start,f_stop,100)
-ef = UI_data( 'et', Sim_Path, freq ) # time domain/freq domain voltage
-Pin = 0.5*norm(E_dir)**2/Z0 * abs(np.array(ef.ui_f_val[0]))**2
+## normalized to the sphere's cross section, over its radius in wavelengths
+f, back_scat = back.GetXY()
+a = sphere_rad*unit
+fig = res.AddFigure('normalized RCS', title='normalized radar cross section',
+                    xlabel='sphere radius / wavelength', ylabel='RCS / ($\\pi a^2$)',
+                    yscale='log', ylim=(0.01, 10))
+fig.AddCurve(res.Array(a/C0*f, back_scat/(pi*a**2), domain=None), linewidth=2, label='backscatter')
 
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, freq, 90, 180+inc_angle, outfile='back_nf2ff.h5')
-
-back_scat = np.array([4*pi/Pin[fn]*nf2ff_res.P_rad[fn][0][0] for fn in range(len(freq))])
-
-figure()
-plot(freq/1e6,back_scat, linewidth=2)
-grid()
-xlabel('frequency (MHz)')
-ylabel('RCS ($m^2$)')
-title('radar cross section')
-
-figure()
-semilogy(sphere_rad*unit/C0*freq,back_scat/(pi*sphere_rad*unit*sphere_rad*unit), linewidth=2)
-ylim([0.01, 10])
-grid()
-xlabel('sphere radius / wavelength')
-ylabel('RCS / ($\\pi a^2$)')
-title('normalized radar cross section')
-
-show()
+res.Show()

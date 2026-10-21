@@ -138,13 +138,15 @@ there are unreleased changes. It becomes the next release entry.
   viewer (`CSXCAD.Viewer.Show`), straight from memory instead of writing XML
   for AppCSXCAD, each with a baked-in view. Switch it on with the
   `show_structure` flag at the top of the script, or `SHOW_STRUCTURE=1`.
-- The Python tutorials post-process with `openEMS.results.Results` instead of
-  hand-written matplotlib code: Simple_Patch_Antenna, MSL_NotchFilter,
+- The Python tutorials post-process with `openEMS.results.Results` instead
+  of hand-written matplotlib code: Simple_Patch_Antenna, MSL_NotchFilter,
   StripLine2MSL, Rect_Waveguide, Circ_Waveguide, CRLH_Extraction,
   Helical_Antenna, Horn_Antenna, Conical_Horn_Antenna, Bent_Patch_Antenna,
-  RadarUWBTutorial, Dipole_SAR and MRI_Loop_Coil. Where fields are shown, the
-  figures are tabs next to them in one viewer window; Conical_Horn_Antenna
-  shows its 3D pattern there instead of a matplotlib surface plot.
+  RadarUWBTutorial, Dipole_SAR, MRI_Loop_Coil, RCS_Sphere and the example
+  rectangular_resonant_cavity. Where fields
+  are shown, the figures are tabs next to them in one viewer window;
+  Conical_Horn_Antenna shows its 3D pattern there instead of a matplotlib
+  surface plot.
 
 ### Build
 

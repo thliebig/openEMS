@@ -18,11 +18,11 @@ Tested with
 
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
 from openEMS.physical_constants import C0
+from openEMS.results import Results
 
 # ---------------------------------------------------------------------------
 # Parameters
@@ -78,9 +78,7 @@ def theoretical_resonances(cavity_size, f_max, E_dir, n_max=5):
 # Simulation
 # ---------------------------------------------------------------------------
 
-def run_simulation(sim_path, cavity_size, f_max, sim_time):
-    os.makedirs(sim_path, exist_ok=True)
-
+def setup_simulation(cavity_size, f_max, sim_time):
     CSX  = ContinuousStructure()
     FDTD = openEMS()
     FDTD.SetCSX(CSX)
@@ -110,7 +108,6 @@ def run_simulation(sim_path, cavity_size, f_max, sim_time):
             excite  = 1,
         )
 
-    CSX.Write2XML(os.path.join(sim_path, 'model.xml'))
     ### Show the structure (see show_structure above)
     if show_structure:
         view = dict(view='iso', grid=dict(outline=True))
@@ -120,58 +117,40 @@ def run_simulation(sim_path, cavity_size, f_max, sim_time):
             print('Showing the structure needs vtk: pip install vtk')
         else:
             Show(CSX, **view)
-
-    FDTD.Run(sim_path, cleanup=True)
-
-
-def load_port_voltage(sim_path, port_nr):
-    """Read the time-domain port voltage written by openEMS."""
-    data = np.loadtxt(os.path.join(sim_path, f'port_ut_{port_nr}'), comments='%')
-    return data[:, 0], data[:, 1]   # time (s), voltage (V)
+    return FDTD
 
 # ---------------------------------------------------------------------------
 # Post-processing and plotting
 # ---------------------------------------------------------------------------
 
-def plot_results(cavity_size, f_max, dirs, time_data, voltage_data):
+def plot_results(res, cavity_size, f_max, dirs):
     colors      = ['tab:blue', 'tab:orange', 'tab:green']
     line_styles = ['--', '-.', ':']
 
-    fig, axes = plt.subplots(2, 1, figsize=(10, 8))
     size_str = ' × '.join(f'{v:g}' for v in cavity_size)
-    fig.suptitle(f'Rectangular resonant cavity  {size_str} m')
+    fig = res.AddFigure('Cavity', grid=(2, 1), title=f'Rectangular resonant cavity  {size_str} m')
 
-    # Time domain
-    ax = axes[0]
+    # Time domain: the port voltages
+    fig.SetAxes(0, title='Time domain')
     for i, E_dir in enumerate(dirs):
-        ax.plot(time_data[E_dir] * 1e9, voltage_data[E_dir],
-                color=colors[i], label=f'E_{E_dir}', alpha=0.8)
-    ax.set_xlabel('Time (ns)')
-    ax.set_ylabel('Voltage (V)')
-    ax.legend()
-    ax.set_title('Time domain')
+        fig.AddCurve(res.U(i+1, domain='t'), axes=0, color=colors[i], label=f'E_{E_dir}', alpha=0.8)
 
-    # Frequency domain
-    ax = axes[1]
+    # Frequency domain: their FFT, with the analytical modes
+    fig.SetAxes(1, title='Frequency domain  (dashed lines = analytical modes)',
+                ylabel='|FFT| (arb.)', yscale='log')
     for i, E_dir in enumerate(dirs):
-        t, v = time_data[E_dir], voltage_data[E_dir]
+        t, v = res.U(i+1, domain='t').GetXY()
         dt    = t[1] - t[0]
         freqs = np.fft.rfftfreq(len(v), dt)
         spec  = np.abs(np.fft.rfft(v))
         mask  = (freqs <= f_max) & (freqs>0)
-        ax.semilogy(freqs[mask] / 1e6, spec[mask], color=colors[i], label=f'E_{E_dir}')
+        fig.AddCurve(res.Array(freqs[mask], spec[mask]), axes=1, color=colors[i], label=f'E_{E_dir}')
 
         for f_res in theoretical_resonances(cavity_size, f_max, E_dir):
-            ax.axvline(f_res / 1e6, color=colors[i],
-                       linestyle=line_styles[i], linewidth=0.8, alpha=0.5)
+            fig.AddVLine(f_res / 1e6, axes=1, color=colors[i],   # in MHz, as plotted
+                         linestyle=line_styles[i], linewidth=0.8, alpha=0.5)
 
-    ax.set_xlabel('Frequency (MHz)')
-    ax.set_ylabel('|FFT| (arb.)')
-    ax.legend()
-    ax.set_title('Frequency domain  (dashed lines = analytical modes)')
-
-    plt.tight_layout()
-    plt.show()
+    res.Show()
 
 # ---------------------------------------------------------------------------
 # Main
@@ -179,12 +158,9 @@ def plot_results(cavity_size, f_max, dirs, time_data, voltage_data):
 dirs     = ['x', 'y', 'z']
 sim_time = 1.0 / frequency_resolution
 
+FDTD = setup_simulation(cavity_size, f_max, sim_time)
 if not post_proc_only:
     print('Running simulation ...')
-    run_simulation(Sim_path, cavity_size, f_max, sim_time)
+    FDTD.Run(Sim_path, cleanup=True)
 
-time_data, voltage_data = {}, {}
-for port_nr, E_dir in enumerate(dirs, start=1):
-    time_data[E_dir], voltage_data[E_dir] = load_port_voltage(Sim_path, port_nr)
-
-plot_results(cavity_size, f_max, dirs, time_data, voltage_data)
+plot_results(Results(FDTD, Sim_path), cavity_size, f_max, dirs)
