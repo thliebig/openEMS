@@ -9,6 +9,7 @@ openEMS Python Interface
     ports
     nf2ff
     sar
+    results
     viewer
     automesh
     utilities

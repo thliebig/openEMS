@@ -35,6 +35,16 @@ there are unreleased changes. It becomes the next release entry.
   boxes created directly from their classes are added with `AddPort()` and
   `AddNF2FFBox()`; without an openEMS object, `openEMS.setup_file.Setup`
   writes and reads the file.
+- Python: `openEMS.results.Results` describes what to compute from a
+  simulation and how to plot it: quantities (`S`, `Zin`, `P_acc`, port
+  voltages and currents, probes, far-field cuts, `Dmax`, efficiency, RCS,
+  dump slices such as SAR, and arrays of your own) give their data with
+  `GetXY()`/`GetMap()`/`GetValue()`; figures of curves and maps (cartesian,
+  polar, subplots, optionally over one shared x axis) are drawn with
+  matplotlib. The description is stored in the setup file and
+  restored with `Results.Load()`.
+- Python: `GetExcitation()` returns the type and frequencies of the
+  excitation.
 - **Field results in the CSXCAD viewer** (`openEMS.Viewer`): `FieldSlices`
   (cutting planes through field and SAR dumps, with warp, contour lines and
   arrows; each plane a tree row to show or hide), `FieldIsoSurface` and `FarField` (a 3D pattern from `CalcNF2FF` on

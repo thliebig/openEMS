@@ -111,6 +111,11 @@ public:
 	void SetDiracExcite(double f_max);
 	void SetStepExcite(double f_max);
 	void SetCustomExcite(std::string str, double f0, double fmax);
+	//! Excitation type (Excitation::ExciteTypes), -1 if none is set
+	int GetExciteType() const;
+	double GetExciteCenterFreq() const;
+	double GetExciteCutOffFreq() const;
+	double GetExciteMaxFreq() const;
 
 	Excitation* InitExcitation();
 

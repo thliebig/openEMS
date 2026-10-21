@@ -1182,6 +1182,26 @@ bool openEMS::ReadFromXML(std::string file)
 	return this->ParseFDTDSetup(file);
 }
 
+int openEMS::GetExciteType() const
+{
+	return m_Exc ? m_Exc->GetExciteType() : -1;
+}
+
+double openEMS::GetExciteCenterFreq() const
+{
+	return m_Exc ? m_Exc->GetCenterFreq() : 0;
+}
+
+double openEMS::GetExciteCutOffFreq() const
+{
+	return m_Exc ? m_Exc->GetCutOffFreq() : 0;
+}
+
+double openEMS::GetExciteMaxFreq() const
+{
+	return m_Exc ? m_Exc->GetMaxFreq() : 0;
+}
+
 void openEMS::SetGaussExcite(double f0, double fc)
 {
 	this->InitExcitation();

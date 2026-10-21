@@ -304,6 +304,23 @@ cdef class openEMS:
         """
         self.thisptr.SetCustomExcite(_str.encode('UTF-8'), f0, fmax)
 
+    def GetExcitation(self):
+        """ GetExcitation()
+
+        The excitation set with one of the `Set*Excite` methods or read
+        from an XML file.
+
+        :returns: dict with `type` (``'gauss'``, ``'sinus'``, ``'dirac'``,
+            ``'step'`` or ``'custom'``), `f0`, `fc` and `f_max` in Hz, or
+            None if no excitation is set
+        """
+        types = {0: 'gauss', 1: 'sinus', 2: 'dirac', 3: 'step', 10: 'custom'}
+        t = self.thisptr.GetExciteType()
+        if t not in types:
+            return None
+        return dict(type=types[t], f0=self.thisptr.GetExciteCenterFreq(),
+                    fc=self.thisptr.GetExciteCutOffFreq(), f_max=self.thisptr.GetExciteMaxFreq())
+
     def SetBoundaryCond(self, BC):
         """ SetBoundaryCond(BC)
 
