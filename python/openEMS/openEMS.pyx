@@ -654,6 +654,9 @@ cdef class openEMS:
             'openEMS_run_stats.txt',
             'openEMS_stats.txt',
             'debugCSX.xml',
+            # the setup Run() writes, with the stored results (arrays: .npz)
+            setup_file.RUN_SETUP, setup_file.SetupFileName(setup_file.RUN_SETUP),
+            os.path.splitext(setup_file.RUN_SETUP)[0] + '.npz',
         ]
         for pattern in _ALWAYS_DELETE:
             for f in glob.glob(os.path.join(sim_path, pattern)):
@@ -684,6 +687,11 @@ cdef class openEMS:
         :param sim_path: str -- path to run in and create result data
         :param cleanup: bool -- delete known openEMS output files from sim_path before running (only whitelisted file patterns are removed)
         :param setup_only: bool -- only perform FDTD setup, do not run simulation
+
+        Once the setup succeeded, the structure, ports and NF2FF boxes are
+        written to `sim_path` (``openEMS_setup.xml`` and ``.json``, see
+        :meth:`Write2XML`), so that ``openems-view sim_path`` shows the
+        simulation without the script.
 
         One can also pass almost all command-line options supported by the main
         openEMS executable via keyword parameters (replace dashes with
@@ -725,6 +733,13 @@ cdef class openEMS:
             EC = self.thisptr.SetupFDTD()
         if EC!=0:
             print('Run: Setup failed, error code: {}'.format(EC))
+        else:
+            # for openems-view: after the setup, which checked the excitation
+            # and boundaries Write2XML needs
+            try:
+                self.Write2XML(os.path.join(sim_path, setup_file.RUN_SETUP))
+            except Exception as err:
+                warnings.warn('Run: setup not written to {}: {}'.format(sim_path, err))
         if setup_only or EC!=0:
             return EC
         with nogil:

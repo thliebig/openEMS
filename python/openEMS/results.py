@@ -1103,12 +1103,23 @@ class Results:
         Draw all figures with matplotlib and show them. To show them next to
         the structure instead, see :meth:`AddToViewer`. """
         import matplotlib.pyplot as plt
+        self._Store()
         figs = [fig.Draw() for fig in self.figures]
         plt.show(block=block)
         return figs
 
-    def AddToViewer(self, viewer):
-        """ AddToViewer(viewer)
+    def _Store(self):
+        """ Write the description next to the setup Run() wrote, if it did. """
+        if not os.path.exists(self.SetupFile()):
+            return
+        try:
+            self.Write()
+        except (TypeError, ValueError, OSError) as err:
+            import warnings
+            warnings.warn('Results: figures not stored for openems-view: {}'.format(err))
+
+    def AddToViewer(self, viewer, store=True, skip_failed=False):
+        """ AddToViewer(viewer, store=True, skip_failed=False)
 
         Add all figures to the CSXCAD viewer `viewer` (tabs next to the 3D
         view in its GUI; images in its output mode), each curve as a tree
@@ -1118,12 +1129,24 @@ class Results:
         >>> res.AddToViewer(v)
         >>> v.Show()
 
+        :param store: store the description for ``openems-view``, see :meth:`Write`
+        :param skip_failed: warn about a figure whose data cannot be computed
+            (e.g. a missing file) and go on, instead of raising
         :returns: list of :class:`CSXCAD.Viewer.Figures.ViewFigure`
         """
         from matplotlib.figure import Figure as MplFigure
+        if store:
+            self._Store()
         out = []
         for fig in self.figures:
-            mpl = fig.Draw(MplFigure(figsize=fig.Size(), tight_layout=True))
+            try:
+                mpl = fig.Draw(MplFigure(figsize=fig.Size(), tight_layout=True))
+            except Exception as err:
+                if not skip_failed:
+                    raise
+                import warnings
+                warnings.warn('figure "{}" not shown: {}'.format(fig.name, err))
+                continue
             out.append(viewer.AddFigure(mpl, fig.name, curves=fig.curves))
         return out
 
@@ -1140,12 +1163,22 @@ class Results:
         return dict(f=freq, ports={str(k): v for k, v in self._port_opts.items()},
                     figures=[fig.ToDict() for fig in self.figures], items=[])
 
-    def Write(self, file):
-        """ Write(file)
+    def SetupFile(self):
+        """ The setup file :meth:`openEMS.openEMS.openEMS.Run` wrote into the
+        simulation path (it may not exist). """
+        return setup_file.SetupFileName(os.path.join(self.sim_path, setup_file.RUN_SETUP))
+
+    def Write(self, file=None):
+        """ Write(file=None)
 
         Store the results description under ``"results"`` in the setup file
         `file` (written by :meth:`openEMS.openEMS.WriteSetup`; created if
-        missing). Array data goes to the same name ending in ``.npz``. """
+        missing), by default the one in the simulation path
+        (:meth:`SetupFile`). Array data goes to the same name ending in
+        ``.npz``. :meth:`Show` and :meth:`AddToViewer` do this, so that
+        ``openems-view`` shows the figures too. """
+        if file is None:
+            file = self.SetupFile()
         data = {'format': setup_file.FORMAT, 'version': setup_file.VERSION}
         if os.path.exists(file):
             with open(file) as fh:

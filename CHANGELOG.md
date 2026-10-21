@@ -54,6 +54,15 @@ there are unreleased changes. It becomes the next release entry.
   the time steps or the frequencies, with the value under the
   mouse. Their settings are part of the view state, so *Copy view as Python*
   records them.
+- **`openems-view <sim_path>`** (also `python -m openEMS.Viewer`) shows a
+  finished simulation without its script: the structure, its field dumps
+  as items to switch on, and the figures `Results` showed. It takes the
+  view options of `csxcad-view` (`--set`, `--png`, `--describe`, ...) plus
+  `--figures DIR`, so images of fields and plots can be made from the
+  command line; wrong settings and paths are reported with the valid ones.
+  For it, `Run()` writes the setup into the simulation path
+  (`openEMS_setup.xml` and `.json`), and `Results.Show()`/`AddToViewer()`
+  store their figures there.
 
 ### Fixed
 

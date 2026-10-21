@@ -300,6 +300,9 @@ setup(
     'cython'
   ],
   install_requires=install_requires,
+  entry_points={
+    'console_scripts': ['openems-view = openEMS.Viewer.CLI:Main'],
+  },
   ext_modules=extensions,
   **get_license()
 )

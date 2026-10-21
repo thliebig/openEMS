@@ -59,6 +59,10 @@ from openEMS import ports, nf2ff
 FORMAT  = 'openEMS-setup'
 VERSION = 1
 
+#: the setup :meth:`openEMS.openEMS.openEMS.Run` writes into the simulation
+#: path (the XML; the setup file next to it, see :func:`SetupFileName`)
+RUN_SETUP = 'openEMS_setup.xml'
+
 def _types(module):
     return {cls.SETUP_TYPE: cls for cls in vars(module).values()
             if isinstance(cls, type) and 'SETUP_TYPE' in vars(cls)}

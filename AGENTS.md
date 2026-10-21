@@ -139,6 +139,17 @@ not verification.
 `CalcNF2FF` results. openEMS-specific code stays here; CSXCAD only offers the
 generic `ViewItem` interface.
 
+- **A finished simulation**: `Run()` writes its setup into the simulation
+  path, so `openems-view <sim_path>` shows it without the script, with the
+  options of `csxcad-view`:
+  ```bash
+  openems-view /tmp/Simp_Patch --describe         # field items with their settings, figures, tree paths
+  openems-view /tmp/Simp_Patch --figures figs/    # the Results figures as PNG
+  openems-view /tmp/Simp_Patch --png Ez.png --set view=+z \
+      --set 'visible={"results/fields/Et": true}' --set 'items={"results/fields/Et": {"quantity": "z"}}'
+  ```
+  Field dumps start hidden. From Python, `Viewer.GetItemParameters(item)`
+  lists an item's settings with their values, choices and help texts.
 - **Checking a view headless**: tutorials show their structure with
   `SHOW_STRUCTURE=1` and their fields with `SHOW_FIELDS=1`; with
   `CSXCAD_VIEWER_OUTPUT=<dir>` they write the images instead of opening

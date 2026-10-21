@@ -53,6 +53,9 @@ classifiers = [
     'Operating System :: Microsoft :: Windows',
 ]
 
+[project.scripts]
+openems-view = "openEMS.Viewer.CLI:Main"
+
 [project.urls]
 Homepage = "https://openems.de"
 Documentation = "https://docs.openems.de"

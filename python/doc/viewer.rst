@@ -36,6 +36,22 @@ frequency, with ``unit`` naming the result:
     u_inc = port.uf_inc[np.argmin(np.abs(freq - f0))]
     v.AddItem(FieldSlices(Ef_file, quantity='E_y', norm=u_inc, unit='V/m/V'))
 
+A finished simulation can be shown again without its script:
+``Run()`` writes the setup into the simulation path (``openEMS_setup.xml``
+and ``.json``), and ``Results.Show()`` or ``AddToViewer()`` store their
+figures there. ``openems-view`` reads it back, adds the field dumps as
+items (hidden at first) and the figures, and takes the options of
+``csxcad-view`` (:ref:`csxcad_viewer`):
+
+.. code-block:: bash
+
+    openems-view /tmp/Simp_Patch                     # the GUI
+    openems-view /tmp/Simp_Patch --describe          # items, their settings, figures, tree paths
+    openems-view /tmp/Simp_Patch --figures figures/  # every figure as PNG
+    openems-view /tmp/Simp_Patch --png Ez.png --set view=+z \
+        --set 'visible={"results/fields/Et": true}' \
+        --set 'items={"results/fields/Et": {"quantity": "z", "scale": "log"}}'
+
 .. autoclass:: openEMS.Viewer.Slices.FieldSlices
     :members: GetPlanes, SetPlanes, AddPlane, RemovePlane
 
