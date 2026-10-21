@@ -138,8 +138,9 @@ there are unreleased changes. It becomes the next release entry.
   for AppCSXCAD, each with a baked-in view. Switch it on with the
   `show_structure` flag at the top of the script, or `SHOW_STRUCTURE=1`.
 - The Python tutorials post-process with `openEMS.results.Results` instead of
-  hand-written matplotlib code: Simple_Patch_Antenna. Where fields are shown,
-  the figures are tabs next to them in one viewer window.
+  hand-written matplotlib code: Simple_Patch_Antenna, MSL_NotchFilter,
+  StripLine2MSL, Rect_Waveguide, Circ_Waveguide and CRLH_Extraction. Where
+  fields are shown, the figures are tabs next to them in one viewer window.
 
 ### Build
 

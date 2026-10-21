@@ -13,11 +13,12 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
+import CSXCAD.Viewer  # early: lets the 3D view open after matplotlib figures
 from CSXCAD.CSRectGrid import CoordinateSystem
 from openEMS import openEMS
+from openEMS.results import Results
 
 ### Simulation Parameters
 ## Define the waveguide dimensions and the frequency range of interest.
@@ -30,6 +31,8 @@ print(f'{Sim_Path=}')
 post_proc_only = False
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
 show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+# show field results in 3D after simulating; set False here, or run with SHOW_FIELDS=0
+show_fields = os.environ.get('SHOW_FIELDS', '1') == '1'
 unit = 1e-3    # drawing unit in mm
 
 # waveguide dimensions
@@ -123,29 +126,17 @@ if not post_proc_only:
 ## at each port. S-parameters follow directly from the voltage wave ratios;
 ## the complex wave impedance ZL is the ratio of total voltage to total
 ## current and reveals the dispersive character of the TE11 mode near
-## cut-off.
-freq = np.linspace(f_start, f_stop, 201)
-for port in ports:
-    port.CalcPort(Sim_Path, freq)
-
-s11 = ports[0].uf_ref / ports[0].uf_inc
-s21 = ports[1].uf_ref / ports[0].uf_inc
-ZL   = ports[0].uf_tot / ports[0].if_tot
-ZL_a = ports[0].ZL  # analytic waveguide impedance
+## cut-off. Results does this for every quantity of a figure.
+res = Results(FDTD, Sim_Path, f=np.linspace(f_start, f_stop, 201))
 
 ### S-Parameter Plot
 ## Plot S11 and S21 in dB across the frequency band. Near cut-off S11
 ## rises sharply as the mode cannot propagate; well above cut-off S21
 ## should approach 0 dB (lossless transmission) and S11 should drop,
 ## confirming that the waveguide is matched to the TE11 mode ports.
-fig, axis = plt.subplots(num="S-Parameter", tight_layout=True)
-axis.plot(freq/1e6, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='$S_{11}$')
-axis.plot(freq/1e6, 20*np.log10(abs(s21)), 'r--', linewidth=2, label='$S_{21}$')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('frequency (MHz) $\\rightarrow$')
-axis.set_ylabel('S-Parameter (dB)')
-axis.legend()
+fig = res.AddFigure('S-Parameter and ZL', grid=(2, 1), sharex=True)
+fig.AddCurve(res.S(0, 0), axes=0, style='k-', linewidth=2, label='$S_{11}$')
+fig.AddCurve(res.S(1, 0), axes=0, style='r--', linewidth=2, label='$S_{21}$')
 
 ### Waveguide Impedance Comparison
 ## Overlay the numerically extracted wave impedance (real and imaginary
@@ -153,15 +144,28 @@ axis.legend()
 ## the two validates both the mode excitation and the port normalisation;
 ## the strong frequency dependence near cut-off is the hallmark of
 ## dispersive waveguide propagation.
-fig, axis = plt.subplots(num="ZL", tight_layout=True)
-axis.plot(freq/1e6, np.real(ZL), 'k-',  linewidth=2, label='$\\Re\\{Z_L\\}$')
-axis.plot(freq/1e6, np.imag(ZL), 'r--', linewidth=2, label='$\\Im\\{Z_L\\}$')
-axis.plot(freq/1e6, ZL_a,        'g-.', linewidth=2, label='$Z_{L, analytic}$')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('frequency (MHz) $\\rightarrow$')
-axis.set_ylabel('ZL $(\\Omega)$')
-axis.legend()
+# below the S-parameters, on the same frequency axis
+fig.AddCurve(res.Zin(0), fmt='real', axes=1, style='k-', linewidth=2, label='$\\Re\\{Z_L\\}$')
+fig.AddCurve(res.Zin(0), fmt='imag', axes=1, style='r--', linewidth=2, label='$\\Im\\{Z_L\\}$')
+fig.AddCurve(res.ZL(0), fmt='real', axes=1, style='g-.', linewidth=2, label='$Z_{L, analytic}$')
+fig.SetAxes(1, ylabel='ZL $(\\Omega)$')
 
-# show all plots
-plt.show()
+### Show the results, with the field in 3D next to the structure (see show_fields above)
+## A cut across the guide with the E-field as arrows; play animates the
+## recorded time steps.
+v = None
+if show_fields:
+    try:
+        from CSXCAD.Viewer import Viewer
+        from openEMS.Viewer import FieldSlices
+    except ImportError:
+        print('Showing the fields needs vtk: pip install vtk')
+    else:
+        v = Viewer(CSX, view='iso')
+        v.AddItem(FieldSlices(os.path.join(Sim_Path, 'Et.h5'), planes=[('z', None)], quantity='magnitude',
+                              glyphs=True, glyph_density=15))
+if v is None:
+    res.Show()
+else:
+    res.AddToViewer(v)
+    v.Show()

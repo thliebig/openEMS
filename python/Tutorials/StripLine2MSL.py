@@ -15,10 +15,10 @@
 
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 ### Setup the simulation
@@ -152,21 +152,11 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True, debug_PEC=True)
 
 ### Post-processing
-f = np.linspace(0, f_max, 1601)
+res = Results(FDTD, Sim_Path, f=np.linspace(0, f_max, 1601))
 for port in ports:
-    port.CalcPort(Sim_Path, f, ref_impedance=50)
+    res.SetPort(port.number, ref_impedance=50)
 
-s11 = ports[0].uf_ref / ports[0].uf_inc
-s21 = ports[1].uf_ref / ports[0].uf_inc
-
-fig, axis = plt.subplots(num='S-Parameters', tight_layout=True)
-axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='$S_{11}$')
-axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--', linewidth=2, label='$S_{21}$')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_ylim([-40, 2])
-axis.set_xlabel('Frequency (GHz) $\\rightarrow$')
-axis.set_ylabel('S-Parameter (dB)')
-axis.legend()
-
-plt.show()
+fig = res.AddFigure('S-Parameters', ylim=(-40, 2))
+fig.AddCurve(res.S(1, 1), style='k-', linewidth=2, label='$S_{11}$')
+fig.AddCurve(res.S(2, 1), style='r--', linewidth=2, label='$S_{21}$')
+res.Show()

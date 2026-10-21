@@ -14,10 +14,11 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
+import CSXCAD.Viewer  # early: lets the 3D view open after matplotlib figures
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 
@@ -26,6 +27,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'NotchFilter')
 post_proc_only = False
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
 show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+# show field results in 3D after simulating; set False here, or run with SHOW_FIELDS=0
+show_fields = os.environ.get('SHOW_FIELDS', '1') == '1'
 
 unit = 1e-6 # specify everything in um
 MSL_length = 50000
@@ -93,6 +96,15 @@ start = [-MSL_width/2,  MSL_width/2, substrate_thickness]
 stop  = [ MSL_width/2,  MSL_width/2+stub_length, substrate_thickness]
 pec.AddBox(start, stop, priority=10 )
 
+if show_fields:
+    # the E-field in time domain as HDF5 dump, in a plane inside the substrate
+    # just below the traces, for the 3D view below
+    # cell interpolation: at the top surface it gives the centre of the top
+    # substrate cell, with all field components at the same point
+    Et = CSX.AddDump('Et', file_type=1, dump_mode=2)
+    z_dump = substrate_thickness
+    Et.AddBox([mesh.GetLine('x', 0), mesh.GetLine('y', 0), z_dump], [mesh.GetLine('x', -1), mesh.GetLine('y', -1), z_dump])
+
 ### Show the structure (see show_structure above)
 if show_structure:
     view = dict(view='iso', render_mode='solid+edges')
@@ -108,24 +120,29 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Post-processing and plotting
-f = np.linspace( 1e6, f_max, 1601 )
+res = Results(FDTD, Sim_Path, f=np.linspace(1e6, f_max, 1601))
 for p in port:
-    p.CalcPort( Sim_Path, f, ref_impedance = 50)
+    res.SetPort(p.number, ref_impedance=50)
 
-s11 = port[0].uf_ref / port[0].uf_inc
-s21 = port[1].uf_ref / port[0].uf_inc
+fig = res.AddFigure('S-Parameter')
+fig.AddCurve(res.S(1, 1), style='k-', linewidth=2, label='$S_{11}$')
+fig.AddCurve(res.S(2, 1), style='r--', linewidth=2, label='$S_{21}$')
 
-## Plot s-parameter
-
-fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='$S_{11}$')
-axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='$S_{21}$')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
-axis.set_ylabel('S-Parameter (dB)')
-axis.legend()
-
-# show all plots
-plt.show()
-
+### Show the results, with the field in 3D next to the structure (see show_fields above)
+## The pulse travels along the line and into the stub: press play.
+v = None
+if show_fields:
+    try:
+        from CSXCAD.Viewer import Viewer
+        from openEMS.Viewer import FieldSlices
+    except ImportError:
+        print('Showing the fields needs vtk: pip install vtk')
+    else:
+        # only the see-through traces (to see the field below them), no mesh grid
+        v = Viewer(CSX, view='iso', transparency=0.5, isolate='PEC', grid=dict(visible=False))
+        v.AddItem(FieldSlices(os.path.join(Sim_Path, 'Et.h5'), quantity='E_z', warp=True))
+if v is None:
+    res.Show()
+else:
+    res.AddToViewer(v)
+    v.Show()

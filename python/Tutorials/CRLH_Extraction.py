@@ -14,10 +14,10 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 from openEMS.automesh import mesh_hint_from_box
 
@@ -178,33 +178,25 @@ if __name__ == '__main__':
         FDTD.Run(Sim_Path, cleanup=True)
 
     ### Post-Processing
-    f = np.linspace( f_start, f_stop, 1601 )
+    res = Results(FDTD, Sim_Path, f=np.linspace(f_start, f_stop, 1601))
     for p in port:
-        p.CalcPort( Sim_Path, f, ref_impedance = 50, ref_plane_shift = feed_length)
+        res.SetPort(p.number, ref_impedance=50, ref_plane_shift=feed_length)
 
-    # calculate and plot scattering parameter
-    s11 = port[0].uf_ref / port[0].uf_inc
-    s21 = port[1].uf_ref / port[0].uf_inc
-
-    fig, axis = plt.subplots(num="S11", tight_layout=True)
-    axis.plot(f/1e9, 20*np.log10(abs(s11)), 'k-',  linewidth=2, label='S11')
-    axis.plot(f/1e9, 20*np.log10(abs(s21)), 'r--',  linewidth=2, label='S21')
-    axis.grid()
-    axis.set_xmargin(0)
-    axis.set_xlabel('Frequency (GHz)')
-    axis.set_ylabel('S-Parameter (dB)')
-    axis.legend()
+    # scattering parameter
+    fig = res.AddFigure('S-Parameter')
+    fig.AddCurve(res.S(1, 1), style='k-', linewidth=2, label='S11')
+    fig.AddCurve(res.S(2, 1), style='r--', linewidth=2, label='S21')
 
     ### Extract CRLH parameter form ABCD matrix
+    f, s11 = res.S(1, 1).GetXY()
+    s21 = res.S(2, 1).GetXY()[1]
     A = ((1+s11)*(1-s11) + s21*s21)/(2*s21)
     C = ((1-s11)*(1-s11) - s21*s21)/(2*s21) / port[1].Z_ref
-
     Y = C
     Z = 2*(A-1)/C
 
     iZ = np.imag(Z)
     iY = np.imag(Y)
-
     fse = np.interp(0, iZ, f)
     fsh = np.interp(0, iY, f)
 
@@ -227,19 +219,16 @@ if __name__ == '__main__':
     wsh = 2*np.pi*fsh
     beta_calc = np.real(np.arccos(1-(w**2-wse**2)*(w**2-wsh**2)/(2*w**2/CR/LR)))
 
-    # plot
+    # dispersion diagram: frequency over the phase per cell
     beta = -np.angle(s21)/CRLH.LL/unit
-    fig, axis = plt.subplots(num="beta", tight_layout=True)
-    axis.plot(np.abs(beta)*CRLH.LL*unit/np.pi,f*1e-9, 'k-',  linewidth=2, label=r'$\beta_{CRLH,\ 1\ cell}$')
-    axis.plot(beta_calc/np.pi,f*1e-9,'c--',  linewidth=2, label=r'$\beta_{CRLH,\ \infty\ cells}$')
-    axis.plot(np.real(port[1].beta)*CRLH.LL*unit/np.pi,f*1e-9,'g-',  linewidth=2, label=r'$\beta_{MSL}$')
-    axis.grid()
-    # axis.set_xmargin(0)
-    axis.set_ylim([1, 6])
-    axis.set_xlabel(r'$|\beta| p / \pi$')
-    axis.set_ylabel('S-Parameter (dB)')
-    axis.legend(loc='upper left')
-
+    beta_msl = res.Beta(2).GetXY()[1]
+    fig = res.AddFigure('beta', xlabel=r'$|\beta| p / \pi$', ylabel='frequency (GHz)', ylim=(1, 6))
+    fig.AddCurve(res.Array(np.abs(beta)*CRLH.LL*unit/np.pi, f*1e-9, domain=None),
+                 style='k-', linewidth=2, label=r'$\beta_{CRLH,\ 1\ cell}$')
+    fig.AddCurve(res.Array(beta_calc/np.pi, f*1e-9, domain=None),
+                 style='c--', linewidth=2, label=r'$\beta_{CRLH,\ \infty\ cells}$')
+    fig.AddCurve(res.Array(np.real(beta_msl)*CRLH.LL*unit/np.pi, f*1e-9, domain=None),
+                 style='g-', linewidth=2, label=r'$\beta_{MSL}$')
 
     # show all plots
-    plt.show()
+    res.Show()
