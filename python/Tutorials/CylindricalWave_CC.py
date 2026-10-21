@@ -32,6 +32,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), '2D_CC_Wave')
 print(f'{Sim_Path=}')
 
 post_proc_only = False
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 unit = 1e-3          # drawing unit in mm
 
 mesh_res = 10        # desired mesh resolution
@@ -104,15 +106,17 @@ Ef = CSX.AddDump('Ef_ra', dump_type=10, file_type=1, sub_sampling=[2, 2, 2])
 Ef.SetFrequency([f0])
 Ef.AddBox(start, stop)
 
-### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, '2D_CC_Wave.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+### Show the structure (see show_structure above)
+if show_structure:
+    view = dict(view='+z', grid=dict(outline=True))
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
 
+### Run the simulation
 if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 

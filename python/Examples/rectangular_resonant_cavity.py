@@ -28,6 +28,8 @@ from openEMS.physical_constants import C0
 # Parameters
 # ---------------------------------------------------------------------------
 post_proc_only = False
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 
 unit        = 1                          # metres
 cavity_size = np.array([2.0, 3.0, 7.0]) # m
@@ -109,10 +111,15 @@ def run_simulation(sim_path, cavity_size, f_max, sim_time):
         )
 
     CSX.Write2XML(os.path.join(sim_path, 'model.xml'))
-    if 0:
-        from CSXCAD import AppCSXCAD_BIN
-        os.system(AppCSXCAD_BIN + ' "{}"'.format(os.path.join(sim_path, 'model.xml')))
-
+    ### Show the structure (see show_structure above)
+    if show_structure:
+        view = dict(view='iso', grid=dict(outline=True))
+        try:
+            from CSXCAD.Viewer import Show
+        except ImportError:
+            print('Showing the structure needs vtk: pip install vtk')
+        else:
+            Show(CSX, **view)
 
     FDTD.Run(sim_path, cleanup=True)
 

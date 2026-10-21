@@ -12,7 +12,7 @@ Introduction
 * FDTD setup with a sinusoidal excitation and mixed boundary conditions
 * Geometry and mesh definition with CSXCAD
 * A time-domain E-field dump written as VTK files
-* Geometry inspection with AppCSXCAD and animation in Paraview
+* Geometry inspection with the CSXCAD viewer and animation in Paraview
 
 Python Script
 -------------

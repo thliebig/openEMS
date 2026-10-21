@@ -36,6 +36,8 @@ from openEMS.utilities import HDF5Dump, get_resource_path
 Sim_Path = os.path.join(tempfile.gettempdir(), 'MRI_Loop_Coil')
 
 post_proc_only = False
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 
 unit = 1e-3  # all lengths in mm
 
@@ -187,14 +189,15 @@ hf_xz.AddBox(dump_xz_start, dump_xz_stop)
 sar_xz = CSX.AddDump('SAR_xz', dump_type=20, dump_mode=2, file_type=1, frequency=[f0])
 sar_xz.AddBox(dump_xz_start, dump_xz_stop)
 
-### Optional: write XML and launch AppCSXCAD for geometry inspection
-if 1:
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX_file = os.path.join(Sim_Path, 'MRI_Loop_Coil.xml')
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+### Show the structure (see show_structure above)
+if show_structure:
+    view = dict(view='iso')
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
 
 ### Run Simulation
 if not post_proc_only:

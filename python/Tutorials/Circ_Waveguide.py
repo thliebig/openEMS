@@ -28,6 +28,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'Circ_WG')
 print(f'{Sim_Path=}')
 
 post_proc_only = False
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 unit = 1e-3    # drawing unit in mm
 
 # waveguide dimensions
@@ -95,21 +97,23 @@ ports.append(FDTD.AddCircWaveGuidePort(1, start, stop, 'z', rad*unit, 'TE11'))
 ## spanning the entire simulation domain. Sub-sampling of 4 in every
 ## direction reduces the file size by a factor of 64 while still capturing
 ## the spatial field structure at a resolution sufficient for visualisation
-## in ParaView or AppCSXCAD.
+## in ParaView.
 Et = CSX.AddDump('Et', file_type=1, sub_sampling=[4, 4, 4])
 start = [r_lines[0],  a_lines[0],  z_lines[0]]
 stop  = [r_lines[-1], a_lines[-1], z_lines[-1]]
 Et.AddBox(start, stop)
 
-### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'circ_wg.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+### Show the structure (see show_structure above)
+if show_structure:
+    view = dict(view='iso', grid=dict(outline=True))
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
 
+### Run the simulation
 if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 

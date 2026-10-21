@@ -12,7 +12,7 @@ import os, tempfile
 import numpy as np
 import matplotlib.pyplot as plt
 
-from CSXCAD  import ContinuousStructure, AppCSXCAD_BIN
+from CSXCAD  import ContinuousStructure
 from CSXCAD.CSProperties import LEtype
 from openEMS import openEMS
 from openEMS.physical_constants import C0
@@ -21,7 +21,8 @@ from openEMS.physical_constants import C0
 # Parameters
 # ---------------------------------------------------------------------------
 post_proc_only    = False   # set True to skip simulation and only re-plot
-show_structure    = False   # set True to open AppCSXCAD for geometry inspection
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure    = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 
 substrate_epsR      = 4.5
 substrate_width     = 8       # mm
@@ -109,12 +110,15 @@ LE.AddBox([-microstrip_W*0.5, substrate_length, 0],
 
 mesh.SmoothMeshLines('all', mesh_res, 1.4)
 
-# Write XML and open AppCSXCAD to inspect the structure before simulating
+### Show the structure (see show_structure above)
 if show_structure:
-    os.makedirs(Sim_Path, exist_ok=True)
-    CSX_file = os.path.join(Sim_Path, 'msl_rlc.xml')
-    CSX.Write2XML(CSX_file)
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+    view = dict(view='iso', render_mode='solid+edges')
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
 
 if not post_proc_only:
     FDTD.Run(Sim_Path, verbose=3, cleanup=True)

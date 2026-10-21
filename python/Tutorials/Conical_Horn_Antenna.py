@@ -32,6 +32,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'Conical_Horn')
 print(f'{Sim_Path=}')
 
 post_proc_only = False
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 unit = 1e-3     # all length in mm
 
 horn_radius      = 20                # feed waveguide inner radius
@@ -137,16 +139,18 @@ stop  = [x_lines[-9], y_lines[-9], z_lines[-9]]
 nf2ff = FDTD.CreateNF2FFBox('nf2ff', start, stop, directions=[1, 1, 1, 1, 0, 1])
 
 ### Preview Geometry
-## Open the AppCSXCAD viewer to inspect the mesh and geometry before
-## committing to a full simulation run. Confirming that the horn cross-section
-## and port placement look correct here can save significant compute time.
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'horn_ant.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+## Show the structure to inspect the mesh and geometry before committing to
+## a full simulation run (see show_structure above). Confirming that the horn
+## cross-section and port placement look correct here can save significant
+## compute time.
+if show_structure:
+    view = dict(view='iso', render_mode='solid+edges')
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
 
 ### Run Simulation
 ## Launch the openEMS FDTD solver. The engine iterates time steps until the

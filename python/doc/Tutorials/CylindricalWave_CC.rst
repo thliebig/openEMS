@@ -28,7 +28,7 @@ azimuthal mesh and each inner sub-grid halves that count, so the angular cell
 size scales with the radius. A uniform mesh would over-sample extremely near
 the axis and drive the timestep down.
 
-**AppCSXCAD limitation:** the geometry viewer does not render the sub-grid
+**Viewer limitation:** the structure viewer does not render the sub-grid
 structure — it shows the finest azimuthal mesh at all radii. The actual
 multi-resolution grid only becomes visible in the field dump.
 

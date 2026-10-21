@@ -55,6 +55,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'UWB_' + suffix)
 print(f'{Sim_Path=}')
 
 post_proc_only = False
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 unit = 1e-3     # we will use millimeters
 
 substrate_epsR   = 4      # FR4
@@ -138,15 +140,17 @@ x_l, y_l, z_l = (mesh.GetLines(n) for n in 'xyz')
 nf2ff = FDTD.CreateNF2FFBox('nf2ff', [x_l[9], y_l[9], z_l[9]],
                             [x_l[-10], y_l[-10], z_l[-10]])
 
-### Run the Simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'uwb.xml')
-    if not os.path.exists(Sim_Path):
-        os.makedirs(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+### Show the structure (see show_structure above)
+if show_structure:
+    view = dict(view='iso', render_mode='solid+edges')
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
 
+### Run the Simulation
 if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 

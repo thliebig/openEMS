@@ -59,6 +59,8 @@ from openEMS import openEMS
 from openEMS.physical_constants import C0, EPS0
 
 post_proc_only = False      # True: skip the simulations and re-plot
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 
 ### Target laminate -----------------------------------------------------------
 EPS_TARGET  = 4.30          # eps_r, flat
@@ -158,6 +160,14 @@ def run_msl(tag, fit):
         port = F.AddMSLPort(1, pec, [-msl_w/2, 0, sub_h], [msl_w/2, msl_len, 0],
                             'y', 'z', excite=-1, FeedShift=10,
                             MeasPlaneShift=msl_len/3, priority=10)
+        if show_structure:
+            view = dict(view='iso', render_mode='solid+edges')
+            try:
+                from CSXCAD.Viewer import Show
+            except ImportError:
+                print('Showing the structure needs vtk: pip install vtk')
+            else:
+                Show(CSX, **view)
         if not post_proc_only:
             F.Run(Sim_Path, cleanup=True, verbose=0)
     port.CalcPort(Sim_Path, freq, ref_impedance=50)

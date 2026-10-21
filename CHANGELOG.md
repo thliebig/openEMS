@@ -133,6 +133,10 @@ there are unreleased changes. It becomes the next release entry.
   computed ones. A few edges more can become metal, e.g. on sloped walls; a
   slit at x=0 in the split ground plane of the StripLine2MSL tutorial is
   closed.
+- The Python tutorials and examples show their structure with the CSXCAD
+  viewer (`CSXCAD.Viewer.Show`), straight from memory instead of writing XML
+  for AppCSXCAD, each with a baked-in view. Switch it on with the
+  `show_structure` flag at the top of the script, or `SHOW_STRUCTURE=1`.
 
 ### Build
 

@@ -21,6 +21,9 @@ from openEMS import openEMS
 from openEMS.physical_constants import *
 from openEMS.automesh import mesh_hint_from_box
 
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+
 ### Class to represent single CRLH unit cells
 class CRLH_Cells:
     def __init__(self, LL, LW, Top, Bot, GLT, GLB, SL, SW, VR):
@@ -160,15 +163,17 @@ if __name__ == '__main__':
     portstop  = [ +CRLH.LL/2 ,  CRLH.LW/2, 0]
     port[1] = FDTD.AddMSLPort( 2,  pec, portstart, portstop, 'x', 'z', MeasPlaneShift=feed_length/2, priority=10)
 
-    ### Run the simulation
-    if 1:  # debugging only
-        CSX_file = os.path.join(Sim_Path, 'CRLH_Extraction.xml')
-        if not os.path.exists(Sim_Path):
-            os.mkdir(Sim_Path)
-        CSX.Write2XML(CSX_file)
-        from CSXCAD import AppCSXCAD_BIN
-        os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+    ### Show the structure (see show_structure above)
+    if show_structure:
+        view = dict(view='iso', render_mode='solid+edges')
+        try:
+            from CSXCAD.Viewer import Show
+        except ImportError:
+            print('Showing the structure needs vtk: pip install vtk')
+        else:
+            Show(CSX, **view)
 
+    ### Run the simulation
     if not post_proc_only:
         FDTD.Run(Sim_Path, cleanup=True)
 

@@ -27,6 +27,8 @@ from openEMS.physical_constants import *
 Sim_Path = os.path.join(tempfile.gettempdir(), 'Bent_Patch')
 
 post_proc_only = False
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
 
 unit = 1e-3 # all length in mm
 
@@ -127,16 +129,17 @@ mesh.SmoothMeshLines(2, max_res, 1.4)
 ## Add the nf2ff recording box
 nf2ff = FDTD.CreateNF2FFBox()
 
+### Show the structure (see show_structure above)
+if show_structure:
+    view = dict(view='iso', render_mode='solid+edges')
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
+
 ### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'bent_patch.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
-
-
 if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 

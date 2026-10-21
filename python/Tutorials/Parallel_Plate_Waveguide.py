@@ -17,6 +17,9 @@ import numpy as np
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
 
+# show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
+show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+
 ### Setup the simulation
 Sim_Path = os.path.join(tempfile.gettempdir(), 'Parallel_Plate_WG')
 print(f'{Sim_Path=}')
@@ -56,15 +59,17 @@ exc.AddBox([-10, -10, 0], [10, 10, 0])
 Et = CSX.AddDump('Et', dump_mode=1)
 Et.AddBox([-10, 0, -10], [10, 0, 30])
 
-### Run the simulation
-if 0:  # debugging only
-    CSX_file = os.path.join(Sim_Path, 'parallel_plate_wg.xml')
-    if not os.path.exists(Sim_Path):
-        os.mkdir(Sim_Path)
-    CSX.Write2XML(CSX_file)
-    from CSXCAD import AppCSXCAD_BIN
-    os.system(AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+### Show the structure (see show_structure above)
+if show_structure:
+    view = dict(view='iso', grid=dict(outline=True))
+    try:
+        from CSXCAD.Viewer import Show
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        Show(CSX, **view)
 
+### Run the simulation
 FDTD.Run(Sim_Path, cleanup=True, verbose=3)
 
 print('use Paraview to visualize the FDTD result...')
