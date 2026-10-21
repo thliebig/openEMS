@@ -38,6 +38,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'Horn_Antenna_PinFeed')
 post_proc_only = False
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
 show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+# show how the mesh sees the metal, before simulating; set True here, or run with SHOW_PEC=1
+show_pec = os.environ.get('SHOW_PEC', '0') == '1'
 # show field results in 3D after simulating; set False here, or run with SHOW_FIELDS=0
 show_fields = os.environ.get('SHOW_FIELDS', '1') == '1'
 
@@ -224,6 +226,31 @@ if show_structure:
         print('Showing the structure needs vtk: pip install vtk')
     else:
         Show(CSX, **view)
+
+### Show the metal as the mesh sees it (see show_pec above)
+## A setup-only run with debug_PEC writes the mesh edges that became metal
+## (PEC_dump.vtp, ParaView opens it too). Seen from the top, cut at y=0, the
+## sloped side wall of the flare is a staircase of edges (black) inside its
+## drawn outline (red). Rotate the view for the whole horn.
+if show_pec:
+    FDTD.Run(Sim_Path, cleanup=True, setup_only=True, debug_PEC=True)
+    view = dict(
+        view='+y',
+        clip={'normal': 'y', 'position': 0},
+        isolate='type:Metal',
+        render_mode='edges',
+        edge_color='red',
+        grid={'visible': False},
+        focus=[a_wg/2, horn_ax + 5, -b_wg, 0, -5, horn_length/2],   # the corner where the flare starts
+    )
+    try:
+        from CSXCAD.Viewer import Viewer
+    except ImportError:
+        print('Showing the structure needs vtk: pip install vtk')
+    else:
+        v = Viewer(CSX, **view)
+        v.AddFile(os.path.join(Sim_Path, 'PEC_dump.vtp'), color='black', line_width=1)
+        v.Show()
 
 ### Run the simulation
 if not post_proc_only:

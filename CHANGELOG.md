@@ -70,7 +70,8 @@ there are unreleased changes. It becomes the next release entry.
   (`--set isolate=type:Metal`), to check how the mesh snaps them. The dump
   now records each edge's direction (cell array `direction`, colour with
   `color_by`) and its length unit (field data `LengthUnit`); ParaView reads
-  it as before.
+  it as before. `Horn_Antenna.py` shows it with `SHOW_PEC=1`: the staircase
+  the mesh makes of the sloped horn wall.
 
 ### Fixed
 
