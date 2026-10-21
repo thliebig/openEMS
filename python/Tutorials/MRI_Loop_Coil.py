@@ -23,12 +23,11 @@ import os
 import warnings
 import tempfile
 import numpy as np
-from matplotlib import pylab as plt
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
-from openEMS.sar_utils import readSAR
 from openEMS.utilities import HDF5Dump, get_resource_path
 
 
@@ -206,125 +205,57 @@ if not post_proc_only:
 ### Post-Processing
 
 ## Port post-processing
-freq = np.linspace(f0 - fc, f0 + fc, 501)
-port.CalcPort(Sim_Path, freq)
+res = Results(FDTD, Sim_Path, f=np.linspace(f0 - fc, f0 + fc, 501))
+P0_in = float(res.P_acc(1).At(f0))
 
-Zin = port.uf_tot / port.if_tot
-s11 = port.uf_ref / port.uf_inc
-P0_in = float(np.interp(f0, freq, port.P_acc))
+## S11 above the feed port admittance, over one frequency axis
+fig = res.AddFigure('Feed port', grid=(2, 1), sharex=True,
+                    title='Reflection coefficient S₁₁ and feed port admittance')
+fig.AddCurve(res.S(1, 1), axes=0, style='k-', lw=2, label='$S_{11}$')
+fig.SetAxes(0, ylabel='|S₁₁| (dB)')
+fig.AddCurve(res.Yin(1), fmt='real', axes=1, style='k-', lw=2, label='real')
+fig.AddCurve(res.Yin(1), fmt='imag', axes=1, style='r--', lw=2, label='imag')
+fig.SetAxes(1, ylabel='Admittance Y_in (S)')
 
-## S11 plot
-fig, ax = plt.subplots()
-ax.plot(freq / 1e6, 20 * np.log10(np.abs(s11)), 'k-', lw=2)
-ax.set_xlabel('Frequency (MHz)')
-ax.set_ylabel('|S₁₁| (dB)')
-ax.set_title('Reflection coefficient S₁₁')
-ax.grid(True)
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 1 voltage and current')
+fig.AddCurve(res.U(1, domain='t'), axes=0, style='k-', label='$U_1$')
+fig.AddCurve(res.I(1, domain='t'), axes=1, style='r-', label='$I_1$')
 
-## Admittance plot
-fig, ax = plt.subplots()
-ax.plot(freq / 1e6, np.real(1. / Zin), 'k-', lw=2, label='real')
-ax.plot(freq / 1e6, np.imag(1. / Zin), 'r--', lw=2, label='imag')
-ax.set_xlabel('Frequency (MHz)')
-ax.set_ylabel('Admittance Y_in (S)')
-ax.set_title('Feed port admittance')
-ax.legend()
-ax.grid(True)
+## SAR — axial (xy) and sagittal (xz) planes, per W accepted power, with the same color range
+fig = res.AddFigure('SAR', kind='map', grid=(1, 2), shared_clim=True, title='SAR / P_in  (W/kg per W)')
+fig.AddMap(res.DumpSlice(os.path.join(Sim_Path, 'SAR_xy.h5'), ('z', 0), freq=f0),
+           norm=res.P_acc(1), cmap='hot', axes=0)
+fig.AddMap(res.DumpSlice(os.path.join(Sim_Path, 'SAR_xz.h5'), ('y', 0), freq=f0),
+           norm=res.P_acc(1), cmap='hot', axes=1)
+fig.SetAxes(0, title='Local SAR — axial (xy)', xlabel='x (mm)', ylabel='y (mm)')
+fig.SetAxes(1, title='Local SAR — sagittal (xz)', xlabel='x (mm)', ylabel='z (mm)')
 
-## SAR — axial (xy) and sagittal (xz) planes
-# readSAR returns (sar[Nx,Ny,Nz], mesh[m], sar_data); mesh coords are in SI metres
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+## B1 field maps — axial (xy) and sagittal (xz) plane
+# the circularly polarised parts of the H field, per sqrt(W) accepted power
+def read_B1(fn, plane, pos):
+    # the dump is a single plane; SetPlane drops the length-1 axis so the
+    # field comes back as (3, N1, N2), with the mesh lines to match, in metres
+    with HDF5Dump(os.path.join(Sim_Path, fn)) as dump:
+        dump.SetPlane(plane, pos=pos)
+        H = dump.GetFieldAtIndex(f_idx=0)
+        lines = dump.GetMesh(region=True)['lines']
+    B1p = 0.5 * MUE0 * (H[0] + 1j * H[1]) / np.sqrt(P0_in)
+    B1m = 0.5 * MUE0 * (H[0] - 1j * H[1]) / np.sqrt(P0_in)
+    x, y = [l / unit for n, l in enumerate(lines) if n != 'xyz'.index(plane)]   # m → mm
+    return x, y, B1p, B1m
 
-sar, sar_mesh, sar_data = readSAR(os.path.join(Sim_Path, 'SAR_xy.h5'))
-sar_xy = sar[:, :, 0] / P0_in                          # (Nx, Ny)
-X, Y = np.meshgrid(sar_mesh[0] / unit, sar_mesh[1] / unit, indexing='ij')  # m → mm
+B1 = {'axial': read_B1('Hf_xy.h5', 'z', 0), 'sagittal': read_B1('Hf_xz.h5', 'y', 0)}
 
-im_sar_xy = axs[0].pcolormesh(X, Y, sar_xy, shading='auto', cmap='hot')
-plt.colorbar(im_sar_xy, ax=axs[0])
-axs[0].set_aspect('equal')
-axs[0].set_xlabel('x (mm)')
-axs[0].set_ylabel('y (mm)')
-axs[0].set_title('Local SAR — axial (xy)')
+# all four B1 plots with the same color range, covering B1_dyn_range decades
+# below the overall maximum
+B1_max = max(np.abs(b).max() for x, y, *bs in B1.values() for b in bs)
+clim = (np.log10(B1_max) - B1_dyn_range, np.log10(B1_max))
+for view, (x, y, B1p, B1m) in B1.items():
+    fig = res.AddFigure('B1 ' + view, kind='map', grid=(1, 2))
+    for axes, (val, name) in enumerate(((B1p, 'B₁⁺'), (B1m, 'B₁⁻'))):
+        fig.AddMap(res.ArrayMap(x, y, np.log10(np.abs(val)), label='log₁₀ (T/√W)'), axes=axes, clim=clim)
+        fig.SetAxes(axes, title='{} field log₁₀ (T/√W) — {}'.format(name, view), xlabel='x (mm)',
+                    ylabel='y (mm)' if view == 'axial' else 'z (mm)')
 
-sar, sar_mesh, sar_data = readSAR(os.path.join(Sim_Path, 'SAR_xz.h5'))
-sar_xz = sar[:, 0, :] / P0_in                          # (Nx, Nz)
-X, Z = np.meshgrid(sar_mesh[0] / unit, sar_mesh[2] / unit, indexing='ij')  # m → mm
-
-im_sar_xz = axs[1].pcolormesh(X, Z, sar_xz, shading='auto', cmap='hot')
-plt.colorbar(im_sar_xz, ax=axs[1])
-axs[1].set_aspect('equal')
-axs[1].set_xlabel('x (mm)')
-axs[1].set_ylabel('z (mm)')
-axs[1].set_title('Local SAR — sagittal (xz)')
-
-fig.suptitle('SAR / P_in  (W/kg per W)')
-
-# show both SAR plots with the same color range
-sar_max = max(sar_xy.max(), sar_xz.max())
-im_sar_xy.set_clim(0, sar_max)
-im_sar_xz.set_clim(0, sar_max)
-
-## B1 field maps — axial (xy) plane
-# the dump is a single xy-plane; SetPlane drops the length-1 z-axis so the
-# field comes back as (3, Nx, Ny), with the mesh lines to match, in metres
-with HDF5Dump(os.path.join(Sim_Path, 'Hf_xy.h5')) as dump:
-    dump.SetPlane('z', pos=0)
-    H = dump.GetFieldAtIndex(f_idx=0)
-    H_mesh = dump.GetMesh(region=True)
-Hx = H[0]
-Hy = H[1]
-B1p_xy = 0.5 * MUE0 * (Hx + 1j * Hy) / np.sqrt(P0_in)
-B1m_xy = 0.5 * MUE0 * (Hx - 1j * Hy) / np.sqrt(P0_in)
-
-X, Y = np.meshgrid(H_mesh['lines'][0] / unit, H_mesh['lines'][1] / unit, indexing='ij')
-
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-im_B1p_xy = axs[0].pcolormesh(X, Y, np.log10(np.abs(B1p_xy)), shading='auto')
-plt.colorbar(im_B1p_xy, ax=axs[0])
-axs[0].set_aspect('equal')
-axs[0].set_xlabel('x (mm)')
-axs[0].set_ylabel('y (mm)')
-axs[0].set_title('B₁⁺ field log₁₀ (T/√W) — axial')
-
-im_B1m_xy = axs[1].pcolormesh(X, Y, np.log10(np.abs(B1m_xy)), shading='auto')
-plt.colorbar(im_B1m_xy, ax=axs[1])
-axs[1].set_aspect('equal')
-axs[1].set_xlabel('x (mm)')
-axs[1].set_ylabel('y (mm)')
-axs[1].set_title('B₁⁻ field log₁₀ (T/√W) — axial')
-
-## B1 field maps — sagittal (xz) plane
-with HDF5Dump(os.path.join(Sim_Path, 'Hf_xz.h5')) as dump:
-    dump.SetPlane('y', pos=0)
-    H = dump.GetFieldAtIndex(f_idx=0)
-    H_mesh = dump.GetMesh(region=True)
-Hx = H[0]
-Hy = H[1]
-B1p_xz = 0.5 * MUE0 * (Hx + 1j * Hy) / np.sqrt(P0_in)
-B1m_xz = 0.5 * MUE0 * (Hx - 1j * Hy) / np.sqrt(P0_in)
-
-X, Z = np.meshgrid(H_mesh['lines'][0] / unit, H_mesh['lines'][2] / unit, indexing='ij')
-
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-im_B1p_xz = axs[0].pcolormesh(X, Z, np.log10(np.abs(B1p_xz)), shading='auto')
-plt.colorbar(im_B1p_xz, ax=axs[0])
-axs[0].set_aspect('equal')
-axs[0].set_xlabel('x (mm)')
-axs[0].set_ylabel('z (mm)')
-axs[0].set_title('B₁⁺ field log₁₀ (T/√W) — sagittal')
-
-im_B1m_xz = axs[1].pcolormesh(X, Z, np.log10(np.abs(B1m_xz)), shading='auto')
-plt.colorbar(im_B1m_xz, ax=axs[1])
-axs[1].set_aspect('equal')
-axs[1].set_xlabel('x (mm)')
-axs[1].set_ylabel('z (mm)')
-axs[1].set_title('B₁⁻ field log₁₀ (T/√W) — sagittal')
-
-# show all four B1 plots with the same color range,
-# covering B1_dyn_range decades below the overall maximum
-B1_max = max(np.abs(B1p_xy).max(), np.abs(B1m_xy).max(),
-             np.abs(B1p_xz).max(), np.abs(B1m_xz).max())
-for im in [im_B1p_xy, im_B1m_xy, im_B1p_xz, im_B1m_xz]:
-    im.set_clim(np.log10(B1_max) - B1_dyn_range, np.log10(B1_max))
-
-plt.show()
+res.Show()

@@ -53,7 +53,8 @@ there are unreleased changes. It becomes the next release entry.
   normalised (e.g. to the incident port voltage), animated over the phase,
   the time steps or the frequencies, with the value under the
   mouse. Their settings are part of the view state, so *Copy view as Python*
-  records them.
+  records them. Seven Python tutorials show their fields after simulating
+  (off with `SHOW_FIELDS=0`).
 - **`openems-view <sim_path>`** (also `python -m openEMS.Viewer`) shows a
   finished simulation without its script: the structure, its field dumps
   as items to switch on, and the figures `Results` showed. It takes the
@@ -140,10 +141,10 @@ there are unreleased changes. It becomes the next release entry.
 - The Python tutorials post-process with `openEMS.results.Results` instead of
   hand-written matplotlib code: Simple_Patch_Antenna, MSL_NotchFilter,
   StripLine2MSL, Rect_Waveguide, Circ_Waveguide, CRLH_Extraction,
-  Helical_Antenna, Horn_Antenna, Conical_Horn_Antenna, Bent_Patch_Antenna and
-  RadarUWBTutorial. Where fields are shown, the figures are tabs next to them
-  in one viewer window; Conical_Horn_Antenna shows its 3D pattern there
-  instead of a matplotlib surface plot.
+  Helical_Antenna, Horn_Antenna, Conical_Horn_Antenna, Bent_Patch_Antenna,
+  RadarUWBTutorial, Dipole_SAR and MRI_Loop_Coil. Where fields are shown, the
+  figures are tabs next to them in one viewer window; Conical_Horn_Antenna
+  shows its 3D pattern there instead of a matplotlib surface plot.
 
 ### Build
 

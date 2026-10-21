@@ -12,11 +12,12 @@
 
 ### Import Libraries
 import os, tempfile
-from matplotlib import pylab as plt
 import numpy as np
 
 from CSXCAD  import ContinuousStructure
+import CSXCAD.Viewer  # early: lets the 3D view open after matplotlib figures
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 
@@ -28,6 +29,8 @@ print(f'{Sim_Path=}')
 post_proc_only = False
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
 show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+# show field results in 3D after simulating; set False here, or run with SHOW_FIELDS=0
+show_fields = os.environ.get('SHOW_FIELDS', '1') == '1'
 
 # setup the simulation
 unit = 1e-3 # all lengths in mm
@@ -149,33 +152,21 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Post-processing and plotting
-f = np.linspace(500e6, 1500e6, 501)
-port.CalcPort(Sim_Path, f)
-s11 = port.uf_ref/port.uf_inc
-s11_dB = 20.0*np.log10(np.abs(s11))
-plt.figure()
-plt.plot(f/1e9, s11_dB, 'k-', linewidth=2, label='$S_{11}$')
-plt.grid()
-plt.legend()
-plt.ylabel('S-Parameter (dB)')
-plt.xlabel('Frequency (GHz)')
-plt.title('S-Parameter')
+res = Results(FDTD, Sim_Path, f=np.linspace(500e6, 1500e6, 501))
 
-Zin = port.uf_tot/port.if_tot
+# S11 above the feed point impedance, over one frequency axis
+fig = res.AddFigure('Feed point', grid=(2, 1), sharex=True)
+fig.AddCurve(res.S(1, 1), axes=0, style='k-', linewidth=2, label='$S_{11}$')
+fig.AddCurve(res.Zin(1), fmt='real', axes=1, style='k-', linewidth=2, label=r'$\Re\{Z_{in}\}$')
+fig.AddCurve(res.Zin(1), fmt='imag', axes=1, style='r--', linewidth=2, label=r'$\Im\{Z_{in}\}$')
+fig.SetAxes(1, ylabel='Zin (Ohm)')
 
-Pin_f0 = np.interp(f0, f, port.P_acc)
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 1 voltage and current')
+fig.AddCurve(res.U(1, domain='t'), axes=0, style='k-', label='$U_1$')
+fig.AddCurve(res.I(1, domain='t'), axes=1, style='r-', label='$I_1$')
 
-# plot feed point impedance
-Zin = port.uf_tot/port.if_tot
-plt.figure()
-plt.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label=r'$\Re\{Z_{in}\}$')
-plt.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label=r'$\Im\{Z_{in}\}$')
-plt.grid()
-plt.legend()
-plt.ylabel('Zin (Ohm)')
-plt.xlabel('Frequency (GHz)')
-plt.title('Input Impedance')
-
+Pin_f0 = res.P_acc(1).At(f0)
 
 SAR_src = os.path.join(Sim_Path, 'SAR.h5') # calculated SAR output
 SAR_fn = os.path.join(Sim_Path, 'SAR_10g.h5') # calculated SAR output
@@ -197,34 +188,39 @@ mass = float(sar_data['mass'])
 theta = np.arange(0.0, 180.0, 5.0)
 phi   = np.arange(0.0, 360.0, 5.0)
 # The nf2ff far-field is calculated to determine the radiated power (that was not absorbed)
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, theta, phi, center=[0,0,0], read_cached=post_proc_only, verbose=1)
+Prad = res.Prad(nf2ff.name, f0, theta=theta, phi=phi, center=[0,0,0]).GetValue()
 
 print(f'max SAR: {max_sar/Pin_f0:.4g} W/kg normalized to 1 W accepted power')
 print(f'whole body SAR: {ptotal/Pin_f0/mass:.4g} W/kg normalized to 1 W accepted power')
 print(f'accepted power: {Pin_f0:.4g} W (100 %)')
-print(f'radiated power: {nf2ff_res.Prad[0]:.4g} W ({100*(nf2ff_res.Prad[0]) / Pin_f0:.1f}%)')
+print(f'radiated power: {Prad:.4g} W ({100*Prad / Pin_f0:.1f}%)')
 print(f'absorbed power: {ptotal:.4g} W ({100*(ptotal) / Pin_f0:.1f}%)')
-print(f'power budget:   {100*(nf2ff_res.Prad[0] + ptotal) / Pin_f0:.1f} %')  # this ideally should be within 95 to 100%
+print(f'power budget:   {100*(Prad + ptotal) / Pin_f0:.1f} %')  # this ideally should be within 95 to 100%
 
-#  plot SAR on a x/y and x/z-plane
-fig, axs = plt.subplots(1,2, figsize=(12, 5))
+### Show the results, with the SAR in 3D next to the structure (see show_fields above)
+v = None
+if show_fields:
+    try:
+        from CSXCAD.Viewer import Viewer
+        from openEMS.Viewer import FieldSlices
+    except ImportError:
+        print('Showing the fields needs vtk: pip install vtk')
+    else:
+        v = Viewer(CSX, view='iso')
+        v.SetVisible('properties', False)   # the phantoms would hide the SAR
+        v.AddItem(FieldSlices(SAR_fn, planes=[('z', 0), ('y', 0)], scale='log', dynamic_range=30))
+if v is None:
+    # no 3D view (show_fields off, or no vtk): plot SAR on a x/y and x/z-plane,
+    # per W accepted power, up to the maximum of the volume
+    fig = res.AddFigure('Specific Absorbtion Rate (SAR)', kind='map', grid=(1, 2))
+    for axes, plane in enumerate((('z', mesh[2][len(mesh[2])//2]/unit), ('y', mesh[1][len(mesh[1])//2]/unit))):
+        fig.AddMap(res.DumpSlice(SAR_fn, plane, freq=f0), norm=res.P_acc(1), axes=axes,
+                   cmap='hot', clim=(None, max_sar/Pin_f0))
+    fig.SetAxes(0, title='xy-plane')
+    fig.SetAxes(1, title='xz-plane')
 
-X,Y = np.meshgrid(mesh[0], mesh[1], indexing='ij')
-Nz = len(mesh[2])
-sar_xy = sar[:,:,Nz//2]
-im = axs[0].pcolormesh(X,Y,sar_xy/Pin_f0, vmax=max_sar/Pin_f0, cmap='hot')
-axs[0].axis('equal')
-axs[0].set_title('xy-plane')
-plt.colorbar(im)
-m_idx = np.unravel_index(np.argmax(sar_xy), sar_xy.shape)
-
-X,Z = np.meshgrid(mesh[0], mesh[2], indexing='ij')
-Ny = len(mesh[1])
-sar_xz = sar[:,Ny//2,:]
-im = axs[1].pcolormesh(X,Z,sar_xz/Pin_f0, vmax=max_sar/Pin_f0, cmap='hot')
-axs[1].axis('equal')
-axs[1].set_title('xz-plane')
-plt.colorbar(im)
-fig.suptitle('Specific Absorbtion Rate (SAR)')
-
-plt.show()
+if v is None:
+    res.Show()
+else:
+    res.AddToViewer(v)
+    v.Show()
