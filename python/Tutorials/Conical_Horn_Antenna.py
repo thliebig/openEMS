@@ -17,10 +17,10 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 ### Simulation Parameters
@@ -34,6 +34,8 @@ print(f'{Sim_Path=}')
 post_proc_only = False
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
 show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+# show the 3D far-field pattern after simulating; set False here, or run with SHOW_FIELDS=0
+show_fields = os.environ.get('SHOW_FIELDS', '1') == '1'
 unit = 1e-3     # all length in mm
 
 horn_radius      = 20                # feed waveguide inner radius
@@ -164,20 +166,15 @@ if not post_proc_only:
 ## the frequency domain and derive the input reflection coefficient S11.
 ## A large negative S11 across the band confirms good impedance matching
 ## between the waveguide feed and the radiating aperture.
-freq = np.linspace(f_start, f_stop, 201)
-port.CalcPort(Sim_Path, freq)
+res = Results(FDTD, Sim_Path, f=np.linspace(f_start, f_stop, 201))
+fig = res.AddFigure('S11', title='reflection coefficient $S_{11}$',
+                    ylabel='reflection coefficient $|S_{11}|$ (dB)', ylim=(-60, 0))
+fig.AddCurve(res.S(0, 0), style='k-', linewidth=2, label='$S_{11}$')
 
-Zin = port.uf_tot / port.if_tot
-s11 = port.uf_ref / port.uf_inc
-
-fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(freq/1e9, 20*np.log10(abs(s11)), 'k-', linewidth=2)
-axis.grid()
-axis.set_xmargin(0)
-axis.set_ylim([-60, 0])
-axis.set_title('reflection coefficient $S_{11}$')
-axis.set_xlabel('frequency f / GHz')
-axis.set_ylabel('reflection coefficient $|S_{11}|$ (dB)')
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 0 voltage and current')
+fig.AddCurve(res.U(0, domain='t'), axes=0, style='k-', label='$U_0$')
+fig.AddCurve(res.I(0, domain='t'), axes=1, style='r-', label='$I_0$')
 
 ### Far-Field Radiation Patterns
 ## Invoke the NF2FF transformation at the centre frequency to obtain the
@@ -188,15 +185,13 @@ axis.set_ylabel('reflection coefficient $|S_{11}|$ (dB)')
 thetaRange = np.arange(0, 360, 2) - 180
 phiRange   = np.array([0, 90])
 print('calculating far field at phi=[0 90] deg...')
-res = nf2ff.CalcNF2FF(Sim_Path, f0, thetaRange, phiRange,
-                      read_cached=post_proc_only)
-
-Dlog = 10*np.log10(res.Dmax[0])
+Dmax = res.Dmax(nf2ff.name, f0, theta=thetaRange, phi=phiRange).GetValue()
+Dlog = 10*np.log10(Dmax)
 G_a  = 4*np.pi*A/(C0/f0)**2
-e_a  = res.Dmax[0]/G_a
+e_a  = Dmax/G_a
 
 # display some antenna parameter
-print(f'radiated power: Prad = {res.Prad[0]} Watt')
+print(f'radiated power: Prad = {res.Prad(nf2ff.name, f0, theta=thetaRange, phi=phiRange).GetValue()} Watt')
 print(f'directivity: Dmax = {Dlog:.4g} dBi')
 print(f'aperture efficiency: e_a = {e_a*100:.4g}%')
 
@@ -205,61 +200,47 @@ print(f'aperture efficiency: e_a = {e_a*100:.4g}%')
 ## as a polar diagram for both azimuth cuts. The polar plot reveals the
 ## main-lobe beamwidth and side-lobe levels that characterise the antenna's
 ## angular selectivity and gain performance.
-E_norm = 20*np.log10(res.E_norm[0]/np.max(res.E_norm[0])) + Dlog
-
-fig, axis = plt.subplots(num="Pattern", tight_layout=True)
-axis.plot(thetaRange, E_norm[:, 0], 'k-',  linewidth=2, label='xz-plane ($\\varphi=0^\\circ$)')
-axis.plot(thetaRange, E_norm[:, 1], 'r--', linewidth=2, label='yz-plane ($\\varphi=90^\\circ$)')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_ylim([-40, 20])
-axis.set_title(f'directivity at {f0/1e9:.0f} GHz')
-axis.set_xlabel('theta (deg)')
-axis.set_ylabel('directivity (dBi)')
-axis.legend()
+cuts = [(res.FarFieldCut(nf2ff.name, f0, phi=0, angles=thetaRange), 'k-', 'xz-plane ($\\varphi=0^\\circ$)'),
+        (res.FarFieldCut(nf2ff.name, f0, phi=90, angles=thetaRange), 'r--', 'yz-plane ($\\varphi=90^\\circ$)')]
+fig = res.AddFigure('Pattern', title=f'directivity at {f0/1e9:.0f} GHz', ylim=(-40, 20))
+for q, style, label in cuts:
+    fig.AddCurve(q, style=style, linewidth=2, label=label)
 
 # polar plot
-fig = plt.figure(num="Polar", tight_layout=True)
-axis = fig.add_subplot(111, polar=True)
-axis.plot(thetaRange/180*np.pi, np.clip(E_norm[:, 0], -40, None), 'k-',
-          linewidth=2, label='xz-plane ($\\varphi=0^\\circ$)')
-axis.plot(thetaRange/180*np.pi, np.clip(E_norm[:, 1], -40, None), 'r--',
-          linewidth=2, label='yz-plane ($\\varphi=90^\\circ$)')
-axis.set_rlim([-40, 20])
-axis.set_theta_zero_location('N')
-axis.set_theta_direction(-1)
-axis.set_title(f'directivity (dBi) at {f0/1e9:.0f} GHz')
-axis.legend(loc='lower right')
+fig = res.AddFigure('Polar', kind='polar', title=f'directivity (dBi) at {f0/1e9:.0f} GHz',
+                    ylim=(-40, 20), theta_zero='N', theta_direction=-1)
+for q, style, label in cuts:
+    fig.AddCurve(q, style=style, linewidth=2, label=label)
 
 ### Three-Dimensional Far-Field Pattern
 ## Compute the full 3-D radiation pattern by sweeping over a dense grid of
 ## theta and phi angles. Finer angular spacing is used near the main lobe
 ## and coarser spacing elsewhere to keep the NF2FF computation fast while
-## preserving pattern detail where it matters most.
-phiRange_3D   = np.unique(np.concatenate((np.arange(-180, -100,  5), np.arange(-100, -50, 2.5),
-                                          np.arange( -50,   50,  1), np.arange(  50, 100, 2.5),
-                                          np.arange( 100,  181,  5))))
-thetaRange_3D = np.unique(np.concatenate((np.arange(0, 50, 1), np.arange(50, 100, 2),
-                                          np.arange(100, 181, 5))))
-
-print('calculating 3D far field...')
-res_3D = nf2ff.CalcNF2FF(Sim_Path, f0, thetaRange_3D, phiRange_3D,
-                         outfile='nf2ff_3D.h5', verbose=2,
-                         read_cached=post_proc_only)
-
-E_far_normalized = res_3D.E_norm[0]/np.max(res_3D.E_norm[0])
-theta_g, phi_g = np.meshgrid(thetaRange_3D/180*np.pi, phiRange_3D/180*np.pi, indexing='ij')
-x = E_far_normalized*np.sin(theta_g)*np.cos(phi_g)
-y = E_far_normalized*np.sin(theta_g)*np.sin(phi_g)
-z = E_far_normalized*np.cos(theta_g)
-
-fig = plt.figure(num="3D Pattern", tight_layout=True)
-axis = fig.add_subplot(111, projection='3d')
-axis.plot_surface(x, y, z, cmap='viridis', linewidth=0, antialiased=True,
-                  facecolors=plt.cm.viridis(E_far_normalized))
-axis.set_title(f'normalized 3D far field at {f0/1e9:.0f} GHz')
-axis.set_xlabel('x'); axis.set_ylabel('y'); axis.set_zlabel('z')
-axis.set_box_aspect([1, 1, 1])
+## preserving pattern detail where it matters most. It is shown in 3D next
+## to the horn (see show_fields above).
+v = None
+if show_fields:
+    phiRange_3D   = np.unique(np.concatenate((np.arange(-180, -100,  5), np.arange(-100, -50, 2.5),
+                                              np.arange( -50,   50,  1), np.arange(  50, 100, 2.5),
+                                              np.arange( 100,  181,  5))))
+    thetaRange_3D = np.unique(np.concatenate((np.arange(0, 50, 1), np.arange(50, 100, 2),
+                                              np.arange(100, 181, 5))))
+    print('calculating 3D far field...')
+    ff_3D = nf2ff.CalcNF2FF(Sim_Path, f0, thetaRange_3D, phiRange_3D,
+                            outfile='nf2ff_3D.h5', verbose=2,
+                            read_cached=post_proc_only)
+    try:
+        from CSXCAD.Viewer import Viewer
+        from openEMS.Viewer import FarField
+    except ImportError:
+        print('Showing the fields needs vtk: pip install vtk')
+    else:
+        v = Viewer(CSX, view='iso')
+        v.AddItem(FarField(ff_3D, quantity='directivity', scale='log'))
 
 # show all plots
-plt.show()
+if v is None:
+    res.Show()
+else:
+    res.AddToViewer(v)
+    v.Show()

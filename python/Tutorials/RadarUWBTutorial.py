@@ -21,10 +21,10 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 from openEMS.utilities import DelayFidelity
 from openEMS.automesh import mesh_hint_from_box
@@ -156,50 +156,34 @@ if not post_proc_only:
 
 ### Post-Processing
 ## Reflection coefficient, then delay and fidelity over an azimuthal trace.
-freq = np.linspace(f_0 - f_c, f_0 + f_c, 200)
-port.CalcPort(Sim_Path, freq)
-s11 = port.uf_ref/port.uf_inc
-s11phase = np.unwrap(np.angle(s11))
+res = Results(FDTD, Sim_Path, f=np.linspace(f_0 - f_c, f_0 + f_c, 200))
+fig = res.AddFigure('S11', title=f'reflection coefficient {suffix} $S_{{11}}$',
+                    ylabel='reflection coefficient $|S_{11}|$ (dB)', ylabel_right='$S_{11}$ phase (deg)')
+fig.AddCurve(res.S(1, 1), style='k-', linewidth=2, label='$S_{11}$')
+fig.AddCurve(res.S(1, 1), fmt='phase_unwrap', style='r--', linewidth=2, right=True, label='arg $S_{11}$')
 
-fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(freq/1e6, 20*np.log10(np.abs(s11)), 'k-', linewidth=2)
-axis.set_xlabel('frequency f / MHz')
-axis.set_ylabel('reflection coefficient $|S_{11}|$ (dB)')
-axis.grid()
-axis.set_xmargin(0)
-axis2 = axis.twinx()
-axis2.plot(freq/1e6, s11phase, 'r--', linewidth=2)
-axis2.set_ylabel('$S_{11}$ phase (rad)', color='r')
-axis2.tick_params(axis='y', colors='r')
-axis.set_title(f'reflection coefficient {suffix} $S_{{11}}$')
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 1 voltage and current')
+fig.AddCurve(res.U(1, domain='t'), axes=0, style='k-', label='$U_1$')
+fig.AddCurve(res.I(1, domain='t'), axes=1, style='r-', label='$I_1$')
 
 ## Delay and fidelity around the monopole
 theta = np.arange(-180, 181, 10)
 phi   = [0]
-delay, fidelity, res = DelayFidelity(nf2ff, port, Sim_Path,
-                                     np.sin(tilt), np.cos(tilt), theta, phi,
-                                     f_0, f_c, verbose=1)
+delay, fidelity, ff = DelayFidelity(nf2ff, port, Sim_Path,
+                                    np.sin(tilt), np.cos(tilt), theta, phi,
+                                    f_0, f_c, verbose=1)
 
 # gain at (close to) f_0: turn the directivity into gain
-f_idx = int(np.argmin(np.abs(np.asarray(res.freq) - f_0)))
-port.CalcPort(Sim_Path, res.freq[f_idx])
-gain = res.Dmax[f_idx]*res.Prad[f_idx]/port.P_inc[0]
-print(f'gain at {res.freq[f_idx]/1e9:.2f} GHz: {10*np.log10(gain):.2f} dBi')
+f_idx = int(np.argmin(np.abs(np.asarray(ff.freq) - f_0)))
+port.CalcPort(Sim_Path, ff.freq[f_idx])
+gain = ff.Dmax[f_idx]*ff.Prad[f_idx]/port.P_inc[0]
+print(f'gain at {ff.freq[f_idx]/1e9:.2f} GHz: {10*np.log10(gain):.2f} dBi')
 
-th = theta/180*np.pi
-fig = plt.figure(num="Delay and fidelity", figsize=(11, 5), tight_layout=True)
+fig = res.AddFigure('Delay and fidelity', kind='polar', grid=(1, 2), theta_zero='N', theta_direction=-1)
+fig.AddCurve(res.Array(theta, delay[:, 0]*C0*1000, domain='angle'), style='k-', linewidth=2, label='delay')
+fig.AddCurve(res.Array(theta, fidelity[:, 0]*100, domain='angle'), style='r-', linewidth=2, axes=1, label='fidelity')
+fig.SetAxes(0, title=f'delay {suffix} / mm')
+fig.SetAxes(1, title=f'fidelity {suffix} / %', ylim=(98, 100))
 
-ax = fig.add_subplot(121, polar=True)
-ax.plot(th, delay[:, 0]*C0*1000, 'k-', linewidth=2)
-ax.set_theta_zero_location('N')
-ax.set_theta_direction(-1)
-ax.set_title(f'delay {suffix} / mm')
-
-ax = fig.add_subplot(122, polar=True)
-ax.plot(th, fidelity[:, 0]*100, 'r-', linewidth=2)
-ax.set_theta_zero_location('N')
-ax.set_theta_direction(-1)
-ax.set_rlim([98, 100])
-ax.set_title(f'fidelity {suffix} / %')
-
-plt.show()
+res.Show()

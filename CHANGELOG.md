@@ -139,8 +139,11 @@ there are unreleased changes. It becomes the next release entry.
   `show_structure` flag at the top of the script, or `SHOW_STRUCTURE=1`.
 - The Python tutorials post-process with `openEMS.results.Results` instead of
   hand-written matplotlib code: Simple_Patch_Antenna, MSL_NotchFilter,
-  StripLine2MSL, Rect_Waveguide, Circ_Waveguide and CRLH_Extraction. Where
-  fields are shown, the figures are tabs next to them in one viewer window.
+  StripLine2MSL, Rect_Waveguide, Circ_Waveguide, CRLH_Extraction,
+  Helical_Antenna, Horn_Antenna, Conical_Horn_Antenna, Bent_Patch_Antenna and
+  RadarUWBTutorial. Where fields are shown, the figures are tabs next to them
+  in one viewer window; Conical_Horn_Antenna shows its 3D pattern there
+  instead of a matplotlib surface plot.
 
 ### Build
 

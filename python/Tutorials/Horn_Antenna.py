@@ -25,10 +25,11 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt
 
 from CSXCAD import ContinuousStructure
+import CSXCAD.Viewer  # early: lets the 3D view open after matplotlib figures
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 ### Simulation path
@@ -37,6 +38,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'Horn_Antenna_PinFeed')
 post_proc_only = False
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
 show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+# show field results in 3D after simulating; set False here, or run with SHOW_FIELDS=0
+show_fields = os.environ.get('SHOW_FIELDS', '1') == '1'
 
 unit = 1e-3     # all lengths in mm
 
@@ -103,7 +106,8 @@ margin    = lam0/2 + bc_offset*max_res   # lambda/2 air gap + PML overhead [mm]
 x_max     = horn_ax + margin      # x boundary (same margin used for y)
 y_max     = horn_ay + margin      # y boundary
 z_sim_back  = lam0/4 + bc_offset*max_res  # lambda/4 free space + PML overhead behind back wall
-z_sim_front = margin              # in front of horn aperture: lambda/2 + PML
+z_front   = 2*lam0                # air in front of the horn aperture: 2 lambda [mm]
+z_sim_front = z_front + bc_offset*max_res   # plus PML overhead
 
 # Fixed mesh lines at key geometry locations
 mesh.AddLine('x', [-x_max, -horn_ax, -(a_wg/2 + wg_t), -a_wg/2, -pin_r, pin_r,
@@ -204,6 +208,13 @@ pin_metal.AddBox(priority=10,
 mesh.SmoothMeshLines('all', max_res, 1.4)
 nf2ff = FDTD.CreateNF2FFBox()
 
+if show_fields:
+    # the E-field at f0 as HDF5 frequency-domain dump (cell interpolation), in
+    # the horn and the air in front of it, up to the PML
+    Ef = CSX.AddDump('Ef', dump_type=10, file_type=1, dump_mode=2, frequency=[f0])
+    pml = bc_offset*max_res
+    Ef.AddBox([-(x_max - pml), -(y_max - pml), 0], [x_max - pml, y_max - pml, horn_length + z_front])
+
 ### Show the structure (see show_structure above)
 if show_structure:
     view = dict(view='iso_y', render_mode='solid+edges')
@@ -219,59 +230,70 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Post-processing
-freq = np.linspace(f_start, f_stop, 401)
-port.CalcPort(Sim_Path, freq)
+res = Results(FDTD, Sim_Path, f=np.linspace(f_start, f_stop, 401))
 
-s11    = port.uf_ref / port.uf_inc
-s11_dB = 20.0 * np.log10(np.abs(s11))
-Zin    = port.uf_tot / port.if_tot
+## Reflection coefficient S11 above the input impedance, over one frequency axis
+fig = res.AddFigure('Feed point', grid=(2, 1), sharex=True, title='Reflection Coefficient and Input Impedance')
+fig.AddCurve(res.S(1, 1), axes=0, style='k-', linewidth=2, label='$S_{11}$')
+fig.AddHLine(-10, axes=0)
+fig.SetAxes(0, ylabel='S11 (dB)', ylim=(-40, 5))
+fig.AddCurve(res.Zin(1), fmt='real', axes=1, style='k-', linewidth=2, label=r'$\Re\{Z_{in}\}$')
+fig.AddCurve(res.Zin(1), fmt='imag', axes=1, style='r--', linewidth=2, label=r'$\Im\{Z_{in}\}$')
+fig.SetAxes(1, ylabel='Impedance (Ohm)')
 
-## Reflection coefficient S11
-fig, ax = plt.subplots(num='S11', tight_layout=True)
-ax.plot(freq/1e9, s11_dB, 'k-', linewidth=2)
-ax.axhline(-10, color='gray', linestyle='--', linewidth=1)
-ax.grid()
-ax.set_xmargin(0)
-ax.set_ylim([-40, 5])
-ax.set_xlabel('Frequency (GHz)')
-ax.set_ylabel('S11 (dB)')
-ax.set_title('Reflection Coefficient S11')
-
-## Input impedance
-fig, ax = plt.subplots(num='Zin', tight_layout=True)
-ax.plot(freq/1e9, np.real(Zin), 'k-',  linewidth=2, label=r'$\Re\{Z_{in}\}$')
-ax.plot(freq/1e9, np.imag(Zin), 'r--', linewidth=2, label=r'$\Im\{Z_{in}\}$')
-ax.grid()
-ax.set_xmargin(0)
-ax.set_xlabel('Frequency (GHz)')
-ax.set_ylabel('Impedance (Ohm)')
-ax.set_title('Input Impedance')
-ax.legend()
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 1 voltage and current')
+fig.AddCurve(res.U(1, domain='t'), axes=0, style='k-', label='$U_1$')
+fig.AddCurve(res.I(1, domain='t'), axes=1, style='r-', label='$I_1$')
 
 ## Far-field radiation pattern at f0
 theta = np.arange(-180.0, 180.0, 2.0)
-phi   = [0.0, 90.0]
 print(f'Calculating far field at f0 = {f0/1e9:.1f} GHz ...')
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, theta, phi)
-
-Dmax_dBi = 10.0 * np.log10(nf2ff_res.Dmax[0])
+Dmax = res.Dmax(nf2ff.name, f0, theta=theta, phi=[0.0, 90.0]).GetValue()
+Dmax_dBi = 10.0 * np.log10(Dmax)
 G_a = 4 * np.pi * A_aperture / (C0/f0)**2      # ideal aperture gain (uniform illumination)
-e_a = nf2ff_res.Dmax[0] / G_a                  # aperture efficiency
-
+e_a = Dmax / G_a                               # aperture efficiency
 print(f'Directivity:          Dmax = {Dmax_dBi:.1f} dBi')
 print(f'Aperture efficiency:  e_a  = {e_a*100:.1f} %')
 
-E_norm = (20.0*np.log10(nf2ff_res.E_norm[0] / np.max(nf2ff_res.E_norm[0]))
-          + Dmax_dBi)
+fig = res.AddFigure('Pattern', title=f'Far-Field Pattern at {f0/1e9:.1f} GHz')
+fig.AddCurve(res.FarFieldCut(nf2ff.name, f0, phi=0, angles=theta), style='k-', linewidth=2,
+             label='E-plane  (phi=0°)')
+fig.AddCurve(res.FarFieldCut(nf2ff.name, f0, phi=90, angles=theta), style='r--', linewidth=2,
+             label='H-plane  (phi=90°)')
 
-fig, ax = plt.subplots(num='Pattern', tight_layout=True)
-ax.plot(theta, E_norm[:, 0], 'k-',  linewidth=2, label='E-plane  (phi=0°)')
-ax.plot(theta, E_norm[:, 1], 'r--', linewidth=2, label='H-plane  (phi=90°)')
-ax.grid()
-ax.set_xmargin(0)
-ax.set_xlabel('Theta (deg)')
-ax.set_ylabel('Directivity (dBi)')
-ax.set_title(f'Far-Field Pattern at {f0/1e9:.1f} GHz')
-ax.legend()
-
-plt.show()
+### Show the results, with the field in 3D next to the structure (see show_fields above)
+## Iso-surfaces of the instantaneous E_y at f0 (the TE10 polarisation), at
+## +-10 % of its peak: the wave fronts leaving the horn; press play to
+## animate over the phase. In front of them the 3D far-field pattern.
+v = None
+if show_fields:
+    # a 3D pattern needs a full theta/phi grid
+    nf2ff_3D = nf2ff.CalcNF2FF(Sim_Path, f0, np.arange(0, 181, 3), np.arange(0, 361, 5), outfile='nf2ff_3D.h5')
+    try:
+        from CSXCAD.Viewer import Viewer
+        from openEMS.Viewer import FieldIsoSurface, FarField
+    except ImportError:
+        print('Showing the fields needs vtk: pip install vtk')
+    else:
+        view = dict(
+            size=(0.5, 1.219),
+            transparency=0.3,
+            grid={'visible': False},
+            isolate=('horn',),
+            camera={'position': (196.354, 192.816, 301.839), 'focal_point': (-6.08572, -9.62408, 99.3993), 'view_up': (-0.408248, 0.816497, -0.408248), 'view_angle': 30.0, 'parallel_scale': 127.005, 'parallel_projection': False},
+        )
+        # the field per volt of the incident port voltage at f0
+        u_inc = res.U(1, part='inc').At(f0)
+        # only the see-through horn, no mesh grid
+        v = Viewer(CSX, **view)
+        v.AddItem(FieldIsoSurface(os.path.join(Sim_Path, 'Ef.h5'), quantity='E_y', amplitude=False,
+                                  levels=[-0.1, 0.1], norm=u_inc, unit='V/m/V', legend=False))
+        # added after the wave fronts, the pattern is shifted along its main
+        # lobe until it clears them (origin='auto')
+        v.AddItem(FarField(nf2ff_3D, quantity='directivity', scale='log', size='80%', origin=[0,0,140]))
+if v is None:
+    res.Show()
+else:
+    res.AddToViewer(v)
+    v.Show()

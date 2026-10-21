@@ -13,11 +13,11 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD import CSXCAD
 
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
@@ -136,71 +136,45 @@ if force_re_sim or not os.path.exists(os.path.join(Sim_Path, 'et')):
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Postprocessing & plotting
-freq = np.linspace( f0-fc, f0+fc, 501 )
-port.CalcPort(Sim_Path, freq)
+res = Results(FDTD, Sim_Path, f=np.linspace(f0-fc, f0+fc, 501))
 
-Zin = port.uf_tot / port.if_tot
-s11 = port.uf_ref / port.uf_inc
+## Plot the reflection coefficient S11 above the feed point impedance
+fig = res.AddFigure('Feed point', grid=(2, 1), sharex=True,
+                    title='reflection coefficient $S_{11}$ and feed point impedance')
+fig.AddCurve(res.S(1, 1), axes=0, style='k-', linewidth=2, label='$S_{11}$')
+fig.SetAxes(0, ylabel='S11 (dB)')
+fig.AddCurve(res.Zin(1), fmt='real', axes=1, style='k-', linewidth=2, label='$\\Re(Z_{in})$')
+fig.AddCurve(res.Zin(1), fmt='imag', axes=1, style='r--', linewidth=2, label='$\\Im(Z_{in})$')
+fig.SetAxes(1, ylabel='Zin (Ohm)')
 
-## Plot the feed point impedance
-
-fig, axis = plt.subplots(num="Zin", tight_layout=True)
-axis.plot(freq/1e6, np.real(Zin), 'k-',  linewidth=2, label='$\\Re(Z_{in})$')
-axis.plot(freq/1e6, np.imag(Zin), 'r--', linewidth=2, label='$\\Im(Z_{in})$')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('frequency (MHz)')
-axis.set_ylabel('Zin (Ohm)')
-axis.set_title("feed point impedance")
-axis.legend()
-
-
-## Plot reflection coefficient S11
-fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(freq/1e6, 20*np.log10(abs(s11)), 'k-',  linewidth=2)
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('frequency (MHz)')
-axis.set_ylabel('S11 (dB)')
-axis.set_title('reflection coefficient $S_{11}$' )
-
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 1 voltage and current')
+fig.AddCurve(res.U(1, domain='t'), axes=0, style='k-', label='$U_1$')
+fig.AddCurve(res.I(1, domain='t'), axes=1, style='r-', label='$I_1$')
 
 ### Create the NFFF contour
-## * calculate the far field at phi=0 degrees and at phi=90 degrees
-theta = np.arange(0.,180.,1.)
-phi = np.arange(-180,180,2)
+## * the far field at phi=0 degrees, and on a grid over phi for Dmax
+theta = np.arange(0., 180., 1.)
+phi = np.arange(-180, 180, 2)
 print( 'calculating the 3D far field...' )
-
-nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f0, theta, phi, read_cached=True, verbose=True )
-
-Dmax_dB = 10*np.log10(nf2ff_res.Dmax[0])
-E_norm = 20.0*np.log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10*np.log10(nf2ff_res.Dmax[0])
-
-theta_HPBW = theta[ np.where(np.squeeze(E_norm[:,phi==0])<Dmax_dB-3)[0][0] ]
+Dmax_dB = 10*np.log10(res.Dmax(nf2ff.name, f0, theta=theta, phi=phi).GetValue())
+cut = res.FarFieldCut(nf2ff.name, f0, phi=0, angles=theta)
+D_cut = 10*np.log10(cut.GetXY()[1])
+theta_HPBW = theta[ np.where(D_cut<Dmax_dB-3)[0][0] ]
 
 ## * Display power and directivity
-print('radiated power: Prad = {:.5g} W'.format(nf2ff_res.Prad[0]))
+print('radiated power: Prad = {:.5g} W'.format(res.Prad(nf2ff.name, f0, theta=theta, phi=phi).GetValue()))
 print('directivity: Dmax = {:.2f} dBi'.format(Dmax_dB))
-print('efficiency: nu_rad = {:.1f} %'.format(100*nf2ff_res.Prad[0]/np.interp(f0, freq, port.P_acc)))
+print('efficiency: nu_rad = {:.1f} %'.format(100*res.Efficiency(nf2ff.name, f0, 1, theta=theta, phi=phi).GetValue()))
 print('theta_HPBW = {:.1f} °'.format(theta_HPBW))
 
-E_norm = 20.0*np.log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10*np.log10(nf2ff_res.Dmax[0])
-E_CPRH = 20.0*np.log10(np.abs(nf2ff_res.E_cprh[0])/np.max(nf2ff_res.E_norm[0])) + 10*np.log10(nf2ff_res.Dmax[0])
-E_CPLH = 20.0*np.log10(np.abs(nf2ff_res.E_cplh[0])/np.max(nf2ff_res.E_norm[0])) + 10*np.log10(nf2ff_res.Dmax[0])
-
-## * Plot the pattern
-
-fig, axis = plt.subplots(num="Pattern", tight_layout=True)
-axis.plot(theta, E_norm[:,phi==0], 'k-',  linewidth=2, label='|E total|')
-axis.plot(theta, E_CPRH[:,phi==0], 'r--',  linewidth=2, label='|E CPRH|')
-axis.plot(theta, E_CPLH[:,phi==0], 'g-.',  linewidth=2, label='|E CPLH|')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('theta (deg)')
-axis.set_ylabel('directivity (dBi)')
-axis.set_title('Frequency: {:.2f} GHz'.format(nf2ff_res.freq[0]/1e9))
-axis.legend()
-
+## * Plot the pattern: total and circular polarisations
+fig = res.AddFigure('Pattern', title='Frequency: {:.2f} GHz'.format(f0/1e9))
+fig.AddCurve(cut, style='k-', linewidth=2, label='|E total|')
+fig.AddCurve(res.FarFieldCut(nf2ff.name, f0, phi=0, angles=theta, component='cprh'),
+             style='r--', linewidth=2, label='|E CPRH|')
+fig.AddCurve(res.FarFieldCut(nf2ff.name, f0, phi=0, angles=theta, component='cplh'),
+             style='g-.', linewidth=2, label='|E CPLH|')
 
 # show all plots
-plt.show()
+res.Show()

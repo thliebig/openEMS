@@ -14,12 +14,11 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
-from mpl_toolkits.mplot3d import Axes3D
 
 from CSXCAD import CSXCAD
 
 from openEMS.openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 
@@ -144,76 +143,47 @@ if not post_proc_only:
     FDTD.Run(Sim_Path, cleanup=True)
 
 ### Postprocessing & plotting
-f = np.linspace(max(1e9,f0-fc),f0+fc,401)
-port.CalcPort(Sim_Path, f)
-Zin = port.uf_tot / port.if_tot
-s11 = port.uf_ref/port.uf_inc
+res = Results(FDTD, Sim_Path, f=np.linspace(max(1e9,f0-fc),f0+fc,401))
+
+# the input matching above the input impedance, over one frequency axis
+fig = res.AddFigure('Feed point', grid=(2, 1), sharex=True, title='Input matching and impedance')
+fig.AddCurve(res.S(1, 1), axes=0, style='k-', linewidth=2, label='dB(S11)')
+fig.SetAxes(0, ylabel='S11 (dB)')
+fig.AddCurve(res.Zin(1), fmt='real', axes=1, style='k-', linewidth=2, label='$\\Re(Z_{in})$')
+fig.AddCurve(res.Zin(1), fmt='imag', axes=1, style='r--', linewidth=2, label='$\\Im(Z_{in})$')
+fig.SetAxes(1, ylabel='Impedance ($\\Omega$)')
+
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 1 voltage and current')
+fig.AddCurve(res.U(1, domain='t'), axes=0, style='k-', label='$U_1$')
+fig.AddCurve(res.I(1, domain='t'), axes=1, style='r-', label='$I_1$')
+
+f, s11 = res.S(1, 1).GetXY()
 s11_dB = 20.0*np.log10(np.abs(s11))
-
-fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(f/1e6, s11_dB, 'k-',  linewidth=2, label='dB(S11)')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('Frequency (MHz)')
-axis.set_ylabel('S11 (dB)')
-axis.set_title("Input matching")
-axis.legend()
-
-P_in = 0.5*np.real(port.uf_tot * np.conj(port.if_tot)) # antenna feed power
-
-# plot feed point impedance
-fig, axis = plt.subplots(num="Zin", tight_layout=True)
-axis.plot(f/1e6, np.real(Zin), 'k-', linewidth=2, label='$\\Re(Z_{in})$' )
-axis.plot(f/1e6, np.imag(Zin), 'r--', linewidth=2, label='$\\Im(Z_{in})$')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('Frequency (MHz)')
-axis.set_ylabel('Impedance ($\\Omega$)')
-axis.set_title("Input Impedance")
-axis.legend()
-
-
 idx = np.where((s11_dB<-10) & (s11_dB==np.min(s11_dB)))[0]
 if not len(idx)==1:
     print('No resonance frequency found for far-field calulation')
 else:
     f_res = f[idx[0]]
     theta = np.arange(-180.0, 180.0, 2.0)
-    print("Calculate NF2FF")
-    nf2ff_res_phi0 = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, 0, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xz.h5')
-
-    # --- First subplot (xz-plane) ---
-    fig = plt.figure(figsize=(15, 7), tight_layout=True)
-
-    ax1 = fig.add_subplot(1, 2, 1, polar=True)
-    E_norm_xz = 20.0*np.log10(nf2ff_res_phi0.E_norm/np.max(nf2ff_res_phi0.E_norm)) + 10.0*np.log10(nf2ff_res_phi0.Dmax)
-    ax1.plot(np.deg2rad(theta), 10**(np.squeeze(E_norm_xz)/20), linewidth=2, label='xz-plane')
-    ax1.grid(True)
-    ax1.set_xlabel('theta (deg)')
-    ax1.set_theta_zero_location('N')
-    ax1.set_theta_direction(-1)
-    ax1.legend(loc=3)  # lower left
-
     phi = theta
-    nf2ff_res_theta90 = nf2ff.CalcNF2FF(Sim_Path, f_res, 90, phi, center=np.array([patch_radius+substrate_thickness, 0, 0])*unit, read_cached=True, outfile='nf2ff_xy.h5')
+    center = np.array([patch_radius+substrate_thickness, 0, 0])*unit
+    print("Calculate NF2FF")
+    # the field pattern (the square root of the directivity) in the xz-
+    # and the xy-plane
+    fig = res.AddFigure('Pattern', kind='polar', grid=(1, 2),
+                        title='Bent Patch Antenna Pattern\nFrequency: {} GHz'.format(f_res/1e9))
+    fig.AddCurve(res.FarFieldCut(nf2ff.name, f_res, phi=0, angles=theta, center=center),
+                 fmt='amplitude', linewidth=2, label='xz-plane')
+    fig.AddCurve(res.FarFieldCut(nf2ff.name, f_res, theta=90, angles=phi, center=center),
+                 fmt='amplitude', linewidth=2, label='xy-plane', axes=1)
+    fig.SetAxes(0, xlabel='theta (deg)', theta_zero='N', theta_direction=-1)
+    fig.SetAxes(1, xlabel='phi (deg)')
 
-    # --- Second subplot (xy-plane) ---
-    ax2 = fig.add_subplot(1, 2, 2, polar=True)
-    E_norm_xy = 20.0*np.log10(nf2ff_res_theta90.E_norm/np.max(nf2ff_res_theta90.E_norm)) + 10.0*np.log10(nf2ff_res_theta90.Dmax)
-    
-    ax2.plot(np.deg2rad(phi), 10**(np.squeeze(E_norm_xy)/20), linewidth=2, label='xy-plane')
-    ax2.grid(True)
-    ax2.set_xlabel('phi (deg)')
-    ax2.legend(loc=3)
+    xy = dict(theta=[90], phi=phi, center=center)
+    Dmax = res.Dmax(nf2ff.name, f_res, **xy).GetValue()
+    print( 'radiated power: Prad = {:.2e} Watt'.format(res.Prad(nf2ff.name, f_res, **xy).GetValue()))
+    print( 'directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(Dmax, 10*np.log10(Dmax)))
+    print( 'efficiency:   nu_rad = {:.1f} %'.format(100*res.Efficiency(nf2ff.name, f_res, 1, **xy).GetValue()))
 
-    # --- Figure title ---
-    fig.suptitle('Bent Patch Antenna Pattern\nFrequency: {} GHz'.format(f_res/1e9), fontsize=14)
-
-    print( 'radiated power: Prad = {:.2e} Watt'.format(nf2ff_res_theta90.Prad[0]))
-    print( 'directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(nf2ff_res_theta90.Dmax[0], 10*np.log10(nf2ff_res_theta90.Dmax[0])))
-    print( 'efficiency:   nu_rad = {:.1f} %'.format(100*nf2ff_res_theta90.Prad[0]/np.real(P_in[idx[0]])))
-
-
-    # show all plots
-    plt.show()
-
+res.Show()
