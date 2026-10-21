@@ -14,10 +14,11 @@
 ### Import Libraries
 import os, tempfile
 import numpy as np
-import matplotlib.pyplot as plt  # pip install matplotlib
 
 from CSXCAD  import ContinuousStructure
+import CSXCAD.Viewer  # early: lets the 3D view open after matplotlib figures
 from openEMS import openEMS
+from openEMS.results import Results
 from openEMS.physical_constants import *
 
 ### General parameter setup
@@ -26,6 +27,8 @@ Sim_Path = os.path.join(tempfile.gettempdir(), 'Simp_Patch')
 post_proc_only = False
 # show the structure before simulating; set True here, or run with SHOW_STRUCTURE=1
 show_structure = os.environ.get('SHOW_STRUCTURE', '0') == '1'
+# show field results in 3D after simulating; set False here, or run with SHOW_FIELDS=0
+show_fields = os.environ.get('SHOW_FIELDS', '1') == '1'
 
 # patch width (resonant length) in x-direction
 patch_width  = 32 #
@@ -105,6 +108,15 @@ mesh.SmoothMeshLines('all', mesh_res, 1.4)
 # Add the nf2ff recording box
 nf2ff = FDTD.CreateNF2FFBox()
 
+if show_fields:
+    # the E-field in time domain as HDF5 dump, in a plane inside the substrate
+    # just below the patch; shown at the resonance found below
+    # cell interpolation: at the top surface it gives the centre of the top
+    # substrate cell, with all field components at the same point
+    Et = CSX.AddDump('Et', file_type=1, dump_mode=2)
+    z_dump = substrate_thickness
+    Et.AddBox([-substrate_width/2, -substrate_length/2, z_dump], [substrate_width/2, substrate_length/2, z_dump])
+
 ### Show the structure (see show_structure above)
 if show_structure:
     view = dict(view='iso', render_mode='solid+edges')
@@ -121,22 +133,25 @@ if not post_proc_only:
 
 
 ### Post-processing and plotting
-f = np.linspace(max(1e9,f0-fc),f0+fc,401)
-port.CalcPort(Sim_Path, f)
-s11 = port.uf_ref/port.uf_inc
+# what to compute and plot; frequencies: the excitation band f0 +- fc
+res = Results(FDTD, Sim_Path)
+
+# the input matching above the input impedance, over one frequency axis
+fig = res.AddFigure('Feed point', grid=(2, 1), sharex=True, title='Input matching and impedance')
+fig.AddCurve(res.S(1, 1), fmt='dB', axes=0, style='k-', linewidth=2, label='$S_{11}$')
+fig.AddCurve(res.Zin(1), fmt='real', axes=1, style='k-', linewidth=2, label='$\\Re\\{Z_{in}\\}$')
+fig.AddCurve(res.Zin(1), fmt='imag', axes=1, style='r--', linewidth=2, label='$\\Im\\{Z_{in}\\}$')
+
+## the feed port's voltage above its current, over one time axis
+fig = res.AddFigure('Port signals', grid=(2, 1), sharex=True, title='port 1 voltage and current')
+fig.AddCurve(res.U(1, domain='t'), axes=0, style='k-', label='$U_1$')
+fig.AddCurve(res.I(1, domain='t'), axes=1, style='r-', label='$I_1$')
+
+field_items = []   # 3D field displays, for the viewer below
+
+# the numbers behind a curve
+f, s11 = res.S(1, 1).GetXY()
 s11_dB = 20.0*np.log10(np.abs(s11))
-
-
-fig, axis = plt.subplots(num="S11", tight_layout=True)
-axis.plot(f/1e9, s11_dB, 'k-',  linewidth=2, label='S11')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
-# axis.set_ylim([-30, 10])
-axis.set_ylabel('S-Parameter (dB)')
-axis.set_title("Input matching")
-axis.legend()
-
 
 idx = np.where((s11_dB<-10) & (s11_dB==np.min(s11_dB)))[0]
 if not len(idx)==1:
@@ -144,32 +159,58 @@ if not len(idx)==1:
 else:
     f_res = f[idx[0]]
     theta = np.arange(-180.0, 180.0, 2.0)
-    phi   = [0., 90.]
-    nf2ff_res = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, phi, center=[0,0,1e-3])
+    fig = res.AddFigure('Pattern', title='Frequency: {} GHz'.format(f_res/1e9), xlabel='Theta (deg)',
+                        ylabel='Directivity (dBi)')
+    fig.AddCurve(res.FarFieldCut(nf2ff.name, f_res, phi=0, angles=theta, center=[0,0,1e-3]),
+                 style='k-', linewidth=2, label='xz-plane')
+    fig.AddCurve(res.FarFieldCut(nf2ff.name, f_res, phi=90, angles=theta, center=[0,0,1e-3]),
+                 style='r--', linewidth=2, label='yz-plane')
 
-    E_norm = 20.0*np.log10(nf2ff_res.E_norm[0]/np.max(nf2ff_res.E_norm[0])) + 10.0*np.log10(nf2ff_res.Dmax[0])
-    fig, axis = plt.subplots(num="Pattern", tight_layout=True)
-    axis.plot(theta, np.squeeze(E_norm[:,0]), 'k-', linewidth=2, label='xz-plane')
-    axis.plot(theta, np.squeeze(E_norm[:,1]), 'r--', linewidth=2, label='yz-plane')
-    axis.grid()
-    axis.set_xmargin(0)
-    axis.set_xlabel('Theta (deg))')
-    axis.set_ylabel('Directivity (dBi))')
-    axis.set_title('Frequency: {} GHz'.format(f_res/1e9))
-    axis.legend()
+    ### The 3D far-field pattern and the field below the patch (see show_fields above)
+    if show_fields:
+        # a 3D pattern needs a full theta/phi grid
+        nf2ff_3D = nf2ff.CalcNF2FF(Sim_Path, f_res, np.arange(0, 181, 3), np.arange(0, 361, 5),
+                                   center=[0,0,1e-3], outfile='nf2ff_3D.h5')
+        try:
+            from openEMS.Viewer import FarField, FieldSlices
+        except ImportError:
+            pass   # no vtk: the figures are shown with matplotlib below
+        else:
+            # E_z below the patch at the resonance (a DFT of the time-domain
+            # dump) per volt of the incident port voltage, animated over the
+            # phase: press play
+            u_inc = res.U(1, part='inc').At(f_res)
+            field_items.append(FieldSlices(os.path.join(Sim_Path, 'Et.h5'), quantity='E_z', domain='frequency',
+                                           freq=f_res, warp=True, contours=True, legend=False,
+                                           norm=u_inc, unit='V/m/V'))
+            # the pattern is moved up along its main lobe to clear the field
+            # (origin='auto')
+            field_items.append(FarField(nf2ff_3D, quantity='directivity', scale='log'))
 
 
-Zin = port.uf_tot/port.if_tot
+# store the setup and the results next to the simulation data, to show them
+# again later without this script:
+#   FDTD = openEMS(); FDTD.ReadFromXML(xml); FDTD.ReadSetup(json)
+#   Results.Load(FDTD, Sim_Path, json).Show()
+FDTD.Write2XML(os.path.join(Sim_Path, 'Simple_Patch_Antenna.xml'))
+res.Write(os.path.join(Sim_Path, 'Simple_Patch_Antenna.json'))
 
-fig, axis = plt.subplots(num="Zin", tight_layout=True)
-axis.plot(f/1e9, np.real(Zin), 'k-', linewidth=2, label='$\\Re\\{Z_{in}\\}$')
-axis.plot(f/1e9, np.imag(Zin), 'r--', linewidth=2, label='$\\Im\\{Z_{in}\\}$')
-axis.grid()
-axis.set_xmargin(0)
-axis.set_xlabel('Frequency (GHz)')
-axis.set_ylabel('Zin (Ohm)')
-axis.set_title("Input Impedance")
-axis.legend()
-
-# show all plots
-plt.show()
+### Show the results, with the fields in 3D next to the structure (see
+# show_fields above)
+if not field_items:
+    res.Show()
+else:
+    from CSXCAD.Viewer import Viewer
+    # only the see-through patch, no mesh grid
+    view = dict(
+        size=(0.489, 1.047),
+        transparency=0.5,
+        grid={'visible': False},
+        isolate=('patch',),
+        camera={'position': (116.541, 163.599, 131.925), 'focal_point': (-4.56237, 5.71686, 35.0712), 'view_up': (-0.302527, -0.318947, 0.898193), 'view_angle': 30.0, 'parallel_scale': 69.3971, 'parallel_projection': False},
+    )
+    v = Viewer(CSX, **view)
+    for item in field_items:
+        v.AddItem(item)
+    res.AddToViewer(v)
+    v.Show()

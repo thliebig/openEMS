@@ -137,6 +137,9 @@ there are unreleased changes. It becomes the next release entry.
   viewer (`CSXCAD.Viewer.Show`), straight from memory instead of writing XML
   for AppCSXCAD, each with a baked-in view. Switch it on with the
   `show_structure` flag at the top of the script, or `SHOW_STRUCTURE=1`.
+- The Python tutorials post-process with `openEMS.results.Results` instead of
+  hand-written matplotlib code: Simple_Patch_Antenna. Where fields are shown,
+  the figures are tabs next to them in one viewer window.
 
 ### Build
 

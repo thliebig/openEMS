@@ -160,18 +160,19 @@ generic `ViewItem` interface.
   ```
   A gap or a missing via between the edges is one the simulation has too.
 - **Checking a view headless**: tutorials show their structure with
-  `SHOW_STRUCTURE=1` and their fields with `SHOW_FIELDS=1`; with
+  `SHOW_STRUCTURE=1`, and their fields unless `SHOW_FIELDS=0`; with
   `CSXCAD_VIEWER_OUTPUT=<dir>` they write the images instead of opening
   windows:
   ```bash
-  SHOW_FIELDS=1 CSXCAD_VIEWER_OUTPUT=/tmp/out MPLBACKEND=Agg python3 python/Tutorials/Simple_Patch_Antenna.py
+  CSXCAD_VIEWER_OUTPUT=/tmp/out MPLBACKEND=Agg python3 python/Tutorials/Simple_Patch_Antenna.py
   ```
 - **Dumps for 3D views**: HDF5 (`file_type=1`) with cell interpolation
   (`dump_mode=2`), so all components sit at one point. Frequency-domain
   values are spectra of the excitation; pass `norm` (e.g. the incident port
   voltage) for absolute numbers.
 - **Tests**: `python/Tests/test_viewer.py` uses synthetic dumps, no
-  simulation. In the tutorials `SHOW_FIELDS` defaults to off.
+  simulation. In the tutorials `SHOW_FIELDS` defaults to on and
+  `SHOW_STRUCTURE` to off.
 
 ## House rules
 
