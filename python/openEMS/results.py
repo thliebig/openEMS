@@ -620,7 +620,8 @@ class Figure:
     #: options of the figure (title: of the whole figure) and of its axes
     OPTIONS = ('title', 'xlabel', 'ylabel', 'xscale', 'yscale', 'xlim', 'ylim',
                'ylabel_right', 'ylim_right',          # the right y axis (AddCurve(right=True))
-               'theta_zero', 'theta_direction')       # polar: e.g. 'N' and -1 (clockwise)
+               'theta_zero', 'theta_direction',       # polar: e.g. 'N' and -1 (clockwise)
+               'grid', 'legend')                      # True/False; default: grid on, legend as needed
 
     def __init__(self, res, name, kind='xy', grid=(1, 1), shared_clim=False, sharex=False, **opts):
         if kind not in self.KINDS:
@@ -691,7 +692,8 @@ class Figure:
 
         Options of the axes number `axes` (in a grid; they override the
         figure's), e.g. a title per subplot or a fixed range
-        (``ylim=(-40, 2)``). """
+        (``ylim=(-40, 2)``), see :attr:`OPTIONS`; ``grid=False`` without
+        grid lines, ``legend`` True or False instead of a legend as needed. """
         self._Axes(axes)
         for opt in opts:
             if opt not in self.OPTIONS:
@@ -729,6 +731,7 @@ class Figure:
             import matplotlib.pyplot as plt
             fig = plt.figure(figsize=self.Size())
         self.curves = {}
+        self.curve_entries = {}   # {name in curves: its entry}
         n_axes = self.grid[0] * self.grid[1]
         axs = []
         for n in range(n_axes):
@@ -762,7 +765,7 @@ class Figure:
                 kw = dict(dict(shading='auto'), **e['kw'])
                 m = ax.pcolormesh(x, y, c if np.ndim(x) == 2 else c.T, cmap=e.get('cmap'),
                                   vmin=lim[0], vmax=lim[1], **kw)
-                self._Curve(e.get('name') or label, [m])
+                self._Curve(e.get('name') or label, [m], e)
                 if e['label'] is None and e.get('norm') is not None:
                     label = '{} / {}'.format(label, e['norm'].Label())
                 fig.colorbar(m, ax=ax, label=label)
@@ -782,7 +785,7 @@ class Figure:
                 xunits[e['axes']] = (q.XName(), unit)
                 x = np.asarray(x) / fac
             args = (x, y) if e['style'] is None else (x, y, e['style'])
-            self._Curve(e.get('name') or label, target(e).plot(*args, label=label, **e['kw']))
+            self._Curve(e.get('name') or label, target(e).plot(*args, label=label, **e['kw']), e)
         for line in self.lines:
             ax = axs[line['axes']]
             kw = dict(dict(color='gray', linestyle='--', linewidth=1), **line['kw'])
@@ -791,25 +794,27 @@ class Figure:
             curves = [e for e in self.entries if e['axes'] == n and e['q'].KIND == 'curve']
             left = [e for e in curves if not e.get('right')]
             right = [e for e in curves if e.get('right')]
+            o = {k: v for k, v in self.opts.items() if k != 'title'}
+            o.update(self.axes_opts.get(n, {}))
             if self.kind != 'map' and curves:
-                ax.grid(True)
+                ax.grid(o.get('grid', True))
                 if self.kind == 'xy':
                     ax.set_xmargin(0)   # the curves span the axis
                 # a legend for several curves or a label of your own; one for both y axes
-                if len(curves) > 1 or any(e['label'] for e in curves):
+                if o.get('legend', len(curves) > 1 or any(e['label'] for e in curves)):
                     h, l = ax.get_legend_handles_labels()
                     if n in twins:
                         h2, l2 = twins[n].get_legend_handles_labels()
                         h, l = h + h2, l + l2
                     ax.legend(h, l)
+            elif 'grid' in o:
+                ax.grid(o['grid'])
             if n in inner:
                 ax.tick_params(labelbottom=False)
             elif self.sharex and self.kind == 'xy' and xunits:
                 ax.set_xlabel('{} ({})'.format(*xunits.get(n, next(iter(xunits.values())))))
             elif n in xunits and self.kind == 'xy':
                 ax.set_xlabel('{} ({})'.format(*xunits[n]))
-            o = {k: v for k, v in self.opts.items() if k != 'title'}
-            o.update(self.axes_opts.get(n, {}))
             for opt in ('title', 'xlabel', 'ylabel', 'xscale', 'yscale'):
                 if opt in o and not (opt == 'xlabel' and n in inner):
                     getattr(ax, 'set_' + opt)(o[opt])
@@ -852,12 +857,33 @@ class Figure:
         fig.suptitle(self.opts.get('title', self.name))
         return fig
 
-    def _Curve(self, label, artists):
+    def _Curve(self, label, artists, entry):
         name, n = label, 1
         while name in self.curves:
             n += 1
             name = '{} ({})'.format(label, n)
         self.curves[name] = list(artists)
+        self.curve_entries[name] = entry
+
+    def SetOption(self, name, value, axes=None):
+        """ SetOption(name, value, axes=None)
+
+        Set one of :attr:`OPTIONS` of the figure, or of the axes number
+        `axes` (see :meth:`SetAxes`); None removes it again (e.g. an
+        automatic range). """
+        if name not in self.OPTIONS:
+            raise ValueError('unknown option "{}", use one of {}'.format(name, self.OPTIONS))
+        if axes is None:
+            opts = self.opts
+        else:
+            self._Axes(axes)
+            opts = self.axes_opts.setdefault(axes, {})
+        if value is None:
+            opts.pop(name, None)
+        else:
+            opts[name] = value
+        if axes is not None and not opts:
+            del self.axes_opts[axes]
 
     # ------------------------------------------------------------------
     def ToDict(self):
@@ -880,6 +906,96 @@ class Figure:
                 d['kw'] = e['kw']
             out['entries'].append(d)
         return out
+
+
+_VIEW_FIGURE = None
+
+
+def _ViewFigure():
+    """ The class of a Results figure in the CSXCAD viewer, made on first
+    use: results work without the viewer. """
+    global _VIEW_FIGURE
+    if _VIEW_FIGURE is not None:
+        return _VIEW_FIGURE
+    import copy
+    from CSXCAD.Viewer.Figures import ViewFigure, ParseRange
+
+    class ResultsViewFigure(ViewFigure):
+        """ ResultsViewFigure(figure, mpl)
+
+        The :class:`Figure` `figure`, drawn into the matplotlib figure `mpl`,
+        in the viewer. Its settings (see
+        :meth:`CSXCAD.Viewer.Figures.ViewFigure.GetParameters`) change the
+        description, the figure's options (:meth:`Figure.SetOption`) and its
+        curve entries, which :meth:`Results.ToDict` exports, and draw it
+        anew. """
+
+        def __init__(self, figure, mpl):
+            self.res_figure = figure
+            super().__init__(mpl, figure.name, curves=figure.curves)
+
+        def SetParameter(self, name, value):
+            name, (opt, section, what) = self._Target(name)
+            fig = self.res_figure
+            before = copy.deepcopy((fig.opts, fig.axes_opts, [{k: v for k, v in e.items() if k not in ('q', 'norm')}
+                                                               for e in fig.entries]))
+            try:
+                self._Describe(opt, what, value)
+                self._Draw()
+            except Exception:
+                fig.opts, fig.axes_opts = before[0], before[1]
+                for e, old in zip(fig.entries, before[2]):
+                    e.update(old)
+                    for k in [k for k in e if k not in old and k not in ('q', 'norm')]:
+                        del e[k]
+                self._Draw()
+                raise
+
+        def _Describe(self, opt, what, value):
+            """ The setting in the description of the figure. """
+            fig = self.res_figure
+            if what is None:
+                fig.SetOption('title', str(value))
+                return
+            if what[0] == 'curve':
+                key = list(fig.curves)[list(self._curves).index(what[1])]
+                e = fig.curve_entries[key]
+                if opt == 'label':
+                    if not e.get('name'):
+                        e['name'] = key   # its tree row keeps its name
+                    e['label'] = str(value)
+                elif opt in ('color', 'linestyle', 'linewidth'):
+                    if opt == 'linestyle':
+                        self._Choice(opt, value)
+                    e['kw'] = dict(e['kw'], **{opt: float(value) if opt == 'linewidth' else str(value)})
+                elif opt == 'cmap':
+                    e['cmap'] = str(value)
+                elif opt == 'clim':
+                    rng = ParseRange(value)
+                    e['clim'] = None if rng is None else tuple(rng)
+                return
+            n = what[1]
+            if opt in ('xlim', 'ylim', 'ylim_right'):
+                rng = ParseRange(value)
+                value = None if rng is None else tuple(rng)
+            elif opt in ('xscale', 'yscale', 'theta_zero'):
+                value = self._Choice(opt, value)
+            elif opt == 'theta_direction':
+                value = self._Choice(opt, int(value))
+            elif opt in ('grid', 'legend'):
+                value = bool(value)
+            else:
+                value = str(value)
+            fig.SetOption('title' if opt == 'axes_title' else opt, value, axes=n)
+
+        def _Draw(self):
+            mpl = self.GetFigure()
+            mpl.clear()
+            self.res_figure.Draw(mpl)
+            self._Redrawn(self.res_figure.curves)
+
+    _VIEW_FIGURE = ResultsViewFigure
+    return _VIEW_FIGURE
 
 
 # ----------------------------------------------------------------------
@@ -1147,7 +1263,7 @@ class Results:
                 import warnings
                 warnings.warn('figure "{}" not shown: {}'.format(fig.name, err))
                 continue
-            out.append(viewer.AddFigure(mpl, fig.name, curves=fig.curves))
+            out.append(viewer.AddFigure(_ViewFigure()(fig, mpl), fig.name))
         return out
 
     # ------------------------------------------------------------------

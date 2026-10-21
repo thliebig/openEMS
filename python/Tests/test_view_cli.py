@@ -141,7 +141,7 @@ class Test_ViewCLI(unittest.TestCase):
         self.assertIn('no tree path results/fields/E; the paths:', err)
         self.assertIn('results/fields/Et', err)
         code, _, err = run('--print-view', '--set', 'items={"results/E": {"scale": "log"}}')
-        self.assertIn('no item results/E; the items: results/fields/Et', err)
+        self.assertIn('no item or figure results/E; the items and figures: results/fields/Et', err)
         # a folder without the setup of Run() says how to get one
         empty = tempfile.mkdtemp()
         try:

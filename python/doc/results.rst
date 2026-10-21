@@ -62,13 +62,20 @@ become tabs next to the structure, in one window with field displays:
     res.AddToViewer(v)
     v.Show()
 
+In the viewer a figure's settings, its title, axis labels, ranges, scales,
+grid and legend, and each curve's label, colour and line, are edited in the
+Settings dock or with ``v.SetItemParameter(fig_path, 'ylim', [-30, 0])``.
+They change the figure's description (:meth:`Figure.SetOption`, the curve
+entries) and so what :meth:`Results.ToDict` and :meth:`Results.Write`
+export; the view state keeps them too.
+
 .. automodule:: openEMS.results
 
     .. autoclass:: Results
         :members:
 
     .. autoclass:: Figure
-        :members: AddCurve, AddMap, Draw
+        :members: AddCurve, AddMap, AddHLine, AddVLine, SetAxes, SetOption, Draw, OPTIONS
 
     .. autoclass:: Quantity
         :members: GetXY, GetMap, GetValue, At

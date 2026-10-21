@@ -324,6 +324,52 @@ class Test_Results(unittest.TestCase):
         import matplotlib.pyplot as plt
         plt.close('all')
 
+    def test_viewer_settings(self):
+        # figure settings changed in the viewer change the description, which
+        # ToDict exports, and draw the figure anew
+        try:
+            import vtk  # noqa: F401
+        except ImportError:
+            self.skipTest('vtk not available')
+        from CSXCAD.Viewer import Viewer
+        res = Results(self.fdtd, self.dir)
+        self._figures(res)
+        v = Viewer(self.fdtd.GetCSX(), offscreen=True)
+        vfs = {vf.GetName(): vf for vf in res.AddToViewer(v, store=False)}
+        s, z = vfs['S-Parameter'], vfs['Zin']
+        names = {p['name'] for p in v.GetItemParameters(s)}
+        self.assertTrue({'title', 'ylabel', 'ylim', 'ylabel_right', 'grid', 'legend', 'S77/label'} <= names, names)
+        v.SetItemParameter(s, 'ylim', '-30, 0')
+        v.SetItemParameter(s, 'grid', False)
+        v.SetItemParameter(s, 'S77/label', 'S$_{77}$')
+        v.SetItemParameter(s, 'S77/color', '#00ff00')
+        v.SetItemParameter(z, 'title', 'Input impedance')
+        v.SetItemParameter(z, 'ylabel.1', 'X (Ohm)')
+        d = {f['name']: f for f in res.ToDict()['figures']}
+        self.assertEqual(d['S-Parameter']['axes']['0'], dict(ylim=[-30.0, 0.0], grid=False))
+        e = d['S-Parameter']['entries'][0]
+        self.assertEqual((e['label'], e['name'], e['kw']), ('S$_{77}$', 'S77', dict(color='#00ff00')))
+        self.assertEqual(d['Zin']['opts']['title'], 'Input impedance')
+        self.assertEqual(d['Zin']['axes']['1']['ylabel'], 'X (Ohm)')
+        ax = s.GetFigure().axes[0]   # drawn anew from the description
+        self.assertEqual(ax.get_ylim(), (-30, 0))
+        self.assertEqual(ax.get_legend().get_texts()[0].get_text(), 'S$_{77}$')
+        self.assertEqual(s.GetCurves()[0], 'S77')   # its tree row keeps its name
+        self.assertEqual(z.GetFigure()._suptitle.get_text(), 'Input impedance')
+        v.SetItemParameter(s, 'ylim', '')   # automatic again
+        self.assertNotIn('ylim', res.ToDict()['figures'][0]['axes']['0'])
+        v.SetVisible(s.GetPath() + '/S77', False)   # hidden curves stay hidden
+        v.SetItemParameter(s, 'ylabel', 'dB')
+        self.assertFalse(s.GetCurveVisible('S77'))
+        with self.assertRaises(ValueError):
+            v.SetItemParameter(s, 'xscale', 'cubic')
+        self.assertNotIn('xscale', res.ToDict()['figures'][0]['axes']['0'])
+        self.assertEqual(s.GetFigure().axes[0].get_ylabel(), 'dB')   # drawn as before
+        # the view state carries them, e.g. to a viewer opened later
+        v2 = Viewer(self.fdtd.GetCSX(), offscreen=True, items={s.GetPath(): dict(ylim=[-20, 5])})
+        res.AddToViewer(v2, store=False)
+        self.assertEqual(v2.GetFigures()['S-Parameter'].GetFigure().axes[0].get_ylim(), (-20, 5))
+
     def test_show_in_viewer(self):
         # the output mode of the CSXCAD viewer: structure and figures as images
         try:

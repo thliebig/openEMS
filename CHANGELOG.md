@@ -42,7 +42,9 @@ there are unreleased changes. It becomes the next release entry.
   `GetXY()`/`GetMap()`/`GetValue()`; figures of curves and maps (cartesian,
   polar, subplots, optionally over one shared x axis) are drawn with
   matplotlib, or shown as tabs next to the structure in the CSXCAD viewer
-  (`AddToViewer()`). The description is stored in the setup file and
+  (`AddToViewer()`), where the figure and curve settings (title, axis labels
+  and ranges, grid, legend, curve label, colour and line) are edited and go
+  into the description. The description is stored in the setup file and
   restored with `Results.Load()`.
 - Python: `GetExcitation()` returns the type and frequencies of the
   excitation.
