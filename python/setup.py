@@ -290,7 +290,7 @@ setup(
   version=get_fallback_version(
     "pyproject.toml", "openEMS/__fallback_version__.py"
   ),
-  packages=["openEMS", ],
+  packages=["openEMS", "openEMS.Viewer"],
   package_data={'openEMS': ['*.pxd', 'resources/*', 'resources/*/*']},
   # DO NOT add any new build-time dependency in setup_requires.
   # We should use pyproject.toml exclusively. The only item

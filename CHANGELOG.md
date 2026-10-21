@@ -25,6 +25,14 @@ there are unreleased changes. It becomes the next release entry.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.
+- **Field results in the CSXCAD viewer** (`openEMS.Viewer`): `FieldSlices`
+  (cutting planes through field and SAR dumps, with warp, contour lines and
+  arrows; each plane a tree row to show or hide), `FieldIsoSurface` and `FarField` (a 3D pattern from `CalcNF2FF` on
+  a full theta/phi grid) as viewer items, in linear or dB scale, optionally
+  normalised (e.g. to the incident port voltage), animated over the phase,
+  the time steps or the frequencies, with the value under the
+  mouse. Their settings are part of the view state, so *Copy view as Python*
+  records them.
 
 ### Fixed
 

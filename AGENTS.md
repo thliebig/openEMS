@@ -132,6 +132,27 @@ import the unbuilt source instead of the installed module.
 change that compiles is not a solver change that converges; reading the code is
 not verification.
 
+## Field viewer
+
+`python/openEMS/Viewer/` holds items for the CSXCAD viewer (`CSXCAD.Viewer`):
+`FieldSlices` and `FieldIsoSurface` for HDF5 field dumps, `FarField` for
+`CalcNF2FF` results. openEMS-specific code stays here; CSXCAD only offers the
+generic `ViewItem` interface.
+
+- **Checking a view headless**: tutorials show their structure with
+  `SHOW_STRUCTURE=1` and their fields with `SHOW_FIELDS=1`; with
+  `CSXCAD_VIEWER_OUTPUT=<dir>` they write the images instead of opening
+  windows:
+  ```bash
+  SHOW_FIELDS=1 CSXCAD_VIEWER_OUTPUT=/tmp/out MPLBACKEND=Agg python3 python/Tutorials/Simple_Patch_Antenna.py
+  ```
+- **Dumps for 3D views**: HDF5 (`file_type=1`) with cell interpolation
+  (`dump_mode=2`), so all components sit at one point. Frequency-domain
+  values are spectra of the excitation; pass `norm` (e.g. the incident port
+  voltage) for absolute numbers.
+- **Tests**: `python/Tests/test_viewer.py` uses synthetic dumps, no
+  simulation. In the tutorials `SHOW_FIELDS` defaults to off.
+
 ## House rules
 
 - **Style**: C++17. Match the file you are editing. **CI rejects trailing
