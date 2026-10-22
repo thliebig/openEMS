@@ -494,6 +494,15 @@ jobs:
           cd $GITHUB_WORKSPACE/openEMS/python/Tests
           python3 run_testsuite.py
 
+      - name: Benchmark smoke run
+        if: matrix.os.full-tests
+        run: |
+          # keeps the benchmark working, the timing of a shared runner means nothing
+          cd /tmp
+          python3 $GITHUB_WORKSPACE/openEMS/benchmark/bench.py run --openems $HOME/opt/bin/openEMS \
+                  --size XS --repeat 1 --duration 0.5 --threads 2 --workdir bench
+          python3 $GITHUB_WORKSPACE/openEMS/benchmark/bench.py compare bench/result.json bench/result.json
+
       - name: Create Python venv and install dependencies
         run: |
           cd ~/

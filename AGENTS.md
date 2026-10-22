@@ -159,7 +159,9 @@ not verification.
   not a commit.
 - **Performance**: the update loops are the hot path. Do not add allocation,
   branching or virtual calls inside them for the sake of tidiness, and measure
-  before claiming a speed-up.
+  before claiming a speed-up: a pull request that claims one includes the
+  `benchmark/bench.py compare` table of master against the branch, run
+  interleaved on one machine (see [benchmark/README.md](benchmark/README.md)).
 - **Brevity**: commit messages, PR descriptions and comments as short as a human
   would write them. See the Brevity section of [AI_POLICY.md](AI_POLICY.md).
 - **Keep the tree clean**: never commit build output, installed files,

@@ -39,7 +39,8 @@ openEMS/
 ├── tools/                    # Utility helpers (array types, constants, …)
 ├── nf2ff/                    # Near-field to far-field tool (libnf2ff + nf2ff binary)
 ├── matlab/                   # Octave/Matlab scripting interface
-└── python/openEMS/           # Cython bindings + pure-Python helpers (ports, automesh, …)
+├── python/openEMS/           # Cython bindings + pure-Python helpers (ports, automesh, …)
+└── benchmark/                # Speed benchmark (bench.py)
 ```
 
 ---
@@ -145,6 +146,12 @@ It reports PASS/FAIL per test and exits non-zero on failure. See
 ```bash
 python3 -m unittest discover -s python/Tests -p "test_*.py" -v
 ```
+
+**Speed benchmark:**
+```bash
+python3 benchmark/bench.py run
+```
+See [benchmark/README.md](benchmark/README.md), also for comparing two builds.
 
 ---
 
