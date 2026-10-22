@@ -31,7 +31,7 @@ __device__ __forceinline__ I upml_local(const UPMLRegion& R, unsigned int n, uns
 	return (((I)n*R.lx + x)*R.ly + y)*R.lz + z;
 }
 
-//! Arguments of the fused kernels: the flux and UPML coefficients of the region, the main coefficients
+//! Arguments of the UPML kernels: the flux and UPML coefficients of the region, the main coefficients (fused kernels only)
 struct UPMLFusedArgs
 {
 	float* flux;

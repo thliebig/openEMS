@@ -26,7 +26,8 @@
    HIP backend, cases pml, pml_upml_regions and pml_upml_separate: the UPML is updated in the
      fused step, by region kernels (OPENEMS_HIP_FUSED_STEP=0) and by separate kernels
      (OPENEMS_HIP_UPML_FUSION=0), each bit-identical; pml_index32: the fused step with 32 bit
-     indices (OPENEMS_HIP_INDEX=32, the default on NVIDIA), bit-identical
+     indices (OPENEMS_HIP_INDEX=32, the default on NVIDIA), bit-identical; pml_full_separate: the
+     separate kernels with the full UPML coefficient arrays instead of sets, bit-identical
    device backend, cases dumps and sar: the FD dumps (the E field of the SAR) are accumulated on
      the device (DEVICE_DFT_BACKENDS)
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
@@ -495,6 +496,15 @@ def case_coeff_full():
     return coeff_case([graded(70), graded(70), graded(70)])
 
 
+def case_pml_graded():
+    """ PML around a graded permittivity: nearly a UPML coefficient set per cell, the full arrays """
+    FDTD, CSX = case_pml()
+    mat = CSX.AddMaterial('graded_eps', epsilon=2)
+    mat.SetMaterialWeight(epsilon='1+0.02*sin(x)+0.03*cos(y)+0.04*sin(z)')
+    mat.AddBox([-1000]*3, [1000]*3)
+    return FDTD, CSX
+
+
 def run_captured(case, Sim_Path, engine):
     """ Run a case with the given engine, return the openEMS console output """
     FDTD, CSX = case()
@@ -582,6 +592,7 @@ cases = [('excitation',     case_excitation,     True),
          ('pml_upml_regions', case_pml,          True),
          ('pml_upml_separate', case_pml,         True),
          ('pml_index32',    case_pml,            True),
+         ('pml_full_separate', case_pml_graded,  True),
          ('mur',            case_mur,            True),
          ('materials',      case_materials,      True),
          ('lumped',         case_lumped,         True),
@@ -611,12 +622,14 @@ cases = [('excitation',     case_excitation,     True),
 CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'},
             'pml_upml_regions': {'OPENEMS_HIP_FUSED_STEP': '0'},
             'pml_upml_separate': {'OPENEMS_HIP_UPML_FUSION': '0'},
-            'pml_index32': {'OPENEMS_HIP_INDEX': '32'}}
+            'pml_index32': {'OPENEMS_HIP_INDEX': '32'},
+            'pml_full_separate': {'OPENEMS_HIP_UPML_FUSION': '0'}}
 # the messages of the HIP backend for these UPML updates: (expected, not expected)
 UPML_MODES = {'pml': ('UPML regions in the kernel', None),
               'pml_index32': ('fused voltage and current updates, 32 bit indices', None),
               'pml_upml_regions': ('UPML regions fused with the main updates', 'UPML regions in the kernel'),
-              'pml_upml_separate': (None, 'UPML regions fused with the main updates')}
+              'pml_upml_separate': (None, 'UPML regions fused with the main updates'),
+              'pml_full_separate': ('full coefficient arrays', 'UPML regions fused with the main updates')}
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
