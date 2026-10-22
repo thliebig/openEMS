@@ -91,6 +91,7 @@ openEMS::openEMS()
 	m_debugBox = m_debugPEC = m_no_simulation = false;
 	m_DumpStats = false;
 	m_exactEndCriteria = false;
+	m_dftSnapshots = false;
 
 	m_engine = EngineType_Multithreaded; //default engine type
 	m_engine_numThreads = 0;
@@ -333,6 +334,11 @@ void openEMS::collectCommandLineArguments()
 			),
 			"dump simulation statistics to '" OPENEMS_RUN_STAT_FILE
 			"' and '" OPENEMS_STAT_FILE "'"
+		)
+		(
+			"dft-snapshots",
+			po::bool_switch(&m_dftSnapshots),
+			"accept DFT_SNAPSHOT requests and atomically export accumulated E/H sums without stopping"
 		)
 		(
 			"exact-endcriteria",
@@ -1562,6 +1568,8 @@ void openEMS::RunFDTD()
 	gettimeofday(&currTime,NULL);
 	timeval startTime = currTime;
 	timeval prevTime= currTime;
+	timeval snapshotTime = currTime;
+	snapshotTime.tv_sec -= 1; // accept a request present before the first iteration
 
 	if (m_DumpStats)
 		InitRunStatistics(OPENEMS_RUN_STAT_FILE);
@@ -1591,6 +1599,12 @@ void openEMS::RunFDTD()
 		if ((step<0) || (step>(int)(NrTS - currTS))) step=NrTS - currTS;
 
 		gettimeofday(&currTime,NULL);
+
+		if (m_dftSnapshots && CalcDiffTime(currTime, snapshotTime) >= 1.0)
+		{
+			CheckDFTSnapshot(currE, maxE);
+			gettimeofday(&snapshotTime, NULL);
+		}
 
 		t_diff = CalcDiffTime(currTime,prevTime);
 

@@ -26,6 +26,7 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 %          --engine=multithreaded   engine using compressed operator + sse vector extensions + multithreading
 %      --numThreads=<n>     Force use n threads for multithreaded engine
 %      --no-simulation      only run preprocessing; do not simulate
+%      --dft-snapshots     Accept RequestDFTSnapshot requests without stopping
 %      --dump-statistics    dump simulation statistics to 'openEMS_run_stats.txt' and 'openEMS_stats.txt'
 %
 %       Additional global arguments
