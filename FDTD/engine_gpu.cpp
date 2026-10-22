@@ -412,6 +412,9 @@ void Engine_GPU::FinishBatch()
 		// read on demand, see GetVolt()
 		MarkStale(m_StaleVolt);
 		MarkStale(m_StaleCurr);
+		// IterateTS() returns with its timesteps done, as on the CPU, e.g. for the
+		// speed of the run: the kernels run asynchronously
+		m_Backend->Synchronize();
 	}
 	for (size_t n=0; n<m_GPU_exts.size(); ++n)
 		m_GPU_exts.at(n)->Synchronize();
