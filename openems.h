@@ -26,6 +26,7 @@
 #endif
 #include <ctime>
 #include <vector>
+#include <climits>
 
 #include "openems_global.h"
 
@@ -63,7 +64,8 @@ public:
 	//! Free the operator, the engine and the processings of a simulation, the setup is kept (called at the end of RunFDTD())
 	void FreeSimulation();
 
-	void SetNumberOfTimeSteps(unsigned int val) {NrTS=val;}
+	//! The run counts the timesteps as int: more than INT_MAX are INT_MAX, a run that long is unlimited anyway
+	void SetNumberOfTimeSteps(unsigned int val) {NrTS = (val>(unsigned int)INT_MAX) ? (unsigned int)INT_MAX : val;}
 	void SetEnableDumps(bool val) {Enable_Dumps=val;}
 	void SetEndCriteria(double val) {endCrit=val;}
 	void SetOverSampling(int val) {m_OverSampling=val;}

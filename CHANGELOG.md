@@ -31,6 +31,8 @@ there are unreleased changes. It becomes the next release entry.
 
 ### Fixed
 
+- A number of timesteps above 2^31 (about 2.1e9) made the setup fail with
+  "excitation setup failed". It is now limited to that.
 - A run switched flush-to-zero on in the calling process and left it on: in
   Python, numpy computations after `Run()` lost their denormal (subnormal)
   values, and the results of a following run with the basic engine depended

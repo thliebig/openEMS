@@ -974,7 +974,7 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 	if (dhelp<0)
 		this->SetNumberOfTimeSteps(0);
 	else
-		this->SetNumberOfTimeSteps((unsigned int)dhelp);
+		this->SetNumberOfTimeSteps((unsigned int)(dhelp>INT_MAX ? INT_MAX : dhelp));
 
 	int ihelp = 0;
 	FDTD_Opts->QueryIntAttribute("CylinderCoords",&ihelp);
