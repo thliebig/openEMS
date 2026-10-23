@@ -48,7 +48,8 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
 	for (size_t n=0; n<m_Op_Exc->Volt_Count; ++n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
-		exc_pos *= (exc_pos>0);
+		if (exc_pos<0) // delay not yet expired
+			continue;
 		exc_pos %= p;
 		exc_pos *= (exc_pos<(int)length);
 		ny = m_Op_Exc->Volt_dir[n];
@@ -82,7 +83,8 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
 	for (size_t n=0; n<m_Op_Exc->Curr_Count; ++n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
-		exc_pos *= (exc_pos>0);
+		if (exc_pos<0) // delay not yet expired
+			continue;
 		exc_pos %= p;
 		exc_pos *= (exc_pos<(int)length);
 		ny = m_Op_Exc->Curr_dir[n];

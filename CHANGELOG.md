@@ -62,6 +62,9 @@ there are unreleased changes. It becomes the next release entry.
 - `Write2XML()` crashed when no excitation or no structure was set. It now
   reports the missing part and returns false, as the file could not be read
   back anyway.
+- An excitation with a delay injected the first sample of its signal before
+  the delay had expired: a delayed step excitation started at t=0, and so did
+  a custom excitation whose function is not zero at t=0.
 
 ### Changed
 

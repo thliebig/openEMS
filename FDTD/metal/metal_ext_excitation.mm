@@ -32,7 +32,8 @@ inline void excite(device float* field, const device uint* index, const device f
                    const device uint* delay, const device float* signal, constant ExcitationParam& P, uint n)
 {
 	int exc_pos = P.numTS - (int)delay[n];
-	exc_pos *= (exc_pos>0);
+	if (exc_pos<0) // delay not yet expired
+		return;
 	exc_pos %= P.period;
 	exc_pos *= (exc_pos<P.length);
 	field[index[n]] = field[index[n]] + amp[n]*signal[exc_pos];

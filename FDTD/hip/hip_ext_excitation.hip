@@ -32,7 +32,8 @@ __device__ __forceinline__ void excite(float* field, const size_t* index, const 
                                        const unsigned int* delay, const float* signal, const ExcitationParam& P, unsigned int n)
 {
 	int exc_pos = P.numTS - (int)delay[n];
-	exc_pos *= (exc_pos>0);
+	if (exc_pos<0) // delay not yet expired
+		return;
 	exc_pos %= P.period;
 	exc_pos *= (exc_pos<P.length);
 	field[index[n]] = field[index[n]] + amp[n]*signal[exc_pos];
