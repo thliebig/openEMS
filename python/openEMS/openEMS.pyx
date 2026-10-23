@@ -264,6 +264,21 @@ cdef class openEMS:
         """
         self.thisptr.SetGaussExcite(f0, fc)
 
+    def SetExciteZeroMean(self, val):
+        """ SetExciteZeroMean(val)
+
+        Force the excitation waveform to have zero time-integral.
+
+        A soft E excitation deposits net charge proportional to the integral of
+        its waveform. Inside a structure closed by PEC that leftover is a
+        static field nothing can remove, and it stops the energy criterion from
+        ever tripping. Set this when the excitation band reaches down toward DC.
+        May be called before or after the Set*Excite method.
+
+        :param val: bool -- enable the correction.
+        """
+        self.thisptr.SetExciteZeroMean(val)
+
     def SetSinusExcite(self, f0):
         """ SetSinusExcite(f0)
 

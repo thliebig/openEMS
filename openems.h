@@ -107,6 +107,9 @@ public:
 	bool CheckAbortCond();
 
 	void SetGaussExcite(double f0, double fc);
+
+	//! Force the excitation waveform to zero time-integral. \sa Excitation::SetZeroMean
+	void SetExciteZeroMean(bool val);
 	void SetSinusExcite(double f0);
 	void SetDiracExcite(double f_max);
 	void SetStepExcite(double f_max);
@@ -161,6 +164,9 @@ protected:
 	ProcessingArray* PA;
 
 	Excitation* m_Exc;
+	//! Sticky zero-mean request: InitExcitation() replaces m_Exc, so the flag
+	//! is kept here and re-applied, making the call order irrelevant.
+	bool m_ExcZeroMean;
 
 	bool m_Abort;
 

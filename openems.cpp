@@ -128,6 +128,7 @@ void openEMS::Reset()
 	m_CSX=0;
 	delete m_Exc;
 	m_Exc=0;
+	m_ExcZeroMean=false;
 
 	CylinderCoords = false;
 	m_CC_MultiGrid.clear();
@@ -1092,6 +1093,8 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 		exc->SetupCustomExcite(m_Excite_Elem->Attribute("Function"), f0, f_max);
 		break;
 	}
+	if (m_Excite_Elem->QueryIntAttribute("ZeroMean",&ihelp)==TIXML_SUCCESS)
+		this->SetExciteZeroMean(ihelp!=0);
 
 	if (FDTD_Opts->QueryIntAttribute("TimeStepMethod",&ihelp)==TIXML_SUCCESS)
 		this->SetTimeStepMethod(ihelp);
@@ -1166,6 +1169,8 @@ bool openEMS::Write2XML(TiXmlNode* rootNode)
 		exc.SetAttribute("Function", m_Exc->GetCustomFunction());
 		break;
 	}
+	if (m_ExcZeroMean)
+		exc.SetAttribute("ZeroMean", 1);
 
 	fdtd.SetAttribute("TimeStepMethod", m_TS_method);
 	if (m_TS>0)
@@ -1220,6 +1225,15 @@ void openEMS::SetGaussExcite(double f0, double fc)
 	this->InitExcitation();
 	m_Exc->SetupGaussianPulse(f0, fc);
 }
+void openEMS::SetExciteZeroMean(bool val)
+{
+	// m_Exc is null until an excitation waveform is chosen, and every
+	// Set*Excite() replaces it via InitExcitation(), so remember the request
+	// and apply it to whichever Excitation is current (now and after a reset).
+	m_ExcZeroMean = val;
+	if (m_Exc!=NULL)
+		m_Exc->SetZeroMean(val);
+}
 
 void openEMS::SetSinusExcite(double f0)
 {
@@ -1249,6 +1263,7 @@ Excitation* openEMS::InitExcitation()
 {
 	delete m_Exc;
 	m_Exc = new Excitation();
+	m_Exc->SetZeroMean(m_ExcZeroMean);
 	return m_Exc;
 }
 
