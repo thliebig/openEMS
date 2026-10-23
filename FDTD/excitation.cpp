@@ -27,6 +27,7 @@ using namespace std;
 Excitation::Excitation()
 {
 	m_signal_volt = 0;
+	m_ZeroMean = false;
 	m_signal_curr = 0;
 
 	this->Reset(0);
@@ -131,7 +132,47 @@ bool Excitation::buildExcitationSignal(unsigned int maxTS)
 		return false;
 	}
 
+	if (m_ZeroMean)
+		RemoveSignalMean();
+
 	return true;
+}
+
+void Excitation::RemoveSignalMean()
+{
+	if (m_length < 3)
+		return;
+
+	// Hann bump over the support: zero value AND zero slope at both ends, so
+	// nothing is introduced where the waveform used to be quiet. Subtracting a
+	// constant instead would leave a step at each end.
+	double sW = 0.0;
+	for (unsigned int n=0; n<m_length; ++n)
+		sW += 0.5*(1.0-cos(2.0*PI*(double)(n+1)/(double)(m_length+1)));
+	if (sW <= 0.0)
+		return;
+
+	FDTD_FLOAT* sig[2] = {m_signal_volt, m_signal_curr};
+	const char* nm[2] = {"voltage", "current"};
+	for (int s=0; s<2; ++s)
+	{
+		if (sig[s] == NULL)
+			continue;
+		double sV = 0.0, peak = 0.0;
+		for (unsigned int n=0; n<m_length; ++n)
+		{
+			sV += sig[s][n];
+			if (fabs(sig[s][n]) > peak) peak = fabs(sig[s][n]);
+		}
+		double k = sV/sW;
+		for (unsigned int n=0; n<m_length; ++n)
+			sig[s][n] -= k*0.5*(1.0-cos(2.0*PI*(double)(n+1)/(double)(m_length+1)));
+
+		if (peak > 0.0)
+			cerr << "Excitation::RemoveSignalMean: " << nm[s] << " signal integral "
+			     << sV*m_dT << " s removed (Hann correction " << 100.0*fabs(k)/peak
+			     << "% of peak)" << endl;
+	}
 }
 
 unsigned int Excitation::GetMaxExcitationTimestep() const
