@@ -102,9 +102,7 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 {
 	double 	dT = m_Op->GetTimestep();
 
-	double	fMax = 	m_Op->GetExcitationSignal()->GetCenterFreq()
-					+
-					m_Op->GetExcitationSignal()->GetCutOffFreq();
+	double	fMax = 	m_Op->GetExcitationSignal()->GetMaxFreq();
 
 	unsigned int 	pos[] = {0,0,0};
 

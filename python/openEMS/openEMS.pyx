@@ -254,15 +254,19 @@ cdef class openEMS:
         """
         self.thisptr.SetMaxTime(val)
 
-    def SetGaussExcite(self, f0, fc):
-        """ SetGaussExcite(f0, fc)
+    def SetGaussExcite(self, f0, fc, dc_free=False):
+        """ SetGaussExcite(f0, fc, dc_free=False)
 
         Set a Gaussian pulse as excitation signal.
 
         :param f0: float -- Center frequency in Hz.
         :param fc: float -- -20dB bandwidth in Hz.
+        :param dc_free: bool -- Use a sine instead of a cosine carrier, so the
+            pulse has no DC part and leaves no static charge behind. The
+            spectrum falls to zero at DC below about f0-fc. With f0=0 the pulse
+            is the derivative of the Gaussian, with its peak at about 0.47*fc.
         """
-        self.thisptr.SetGaussExcite(f0, fc)
+        self.thisptr.SetGaussExcite(f0, fc, dc_free)
 
     def SetSinusExcite(self, f0):
         """ SetSinusExcite(f0)

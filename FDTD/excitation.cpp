@@ -28,6 +28,7 @@ Excitation::Excitation()
 {
 	m_signal_volt = 0;
 	m_signal_curr = 0;
+	m_GaussDCFree = false;
 
 	this->Reset(0);
 
@@ -54,12 +55,13 @@ void Excitation::Reset( double timestep )
 	m_foi = 0;
 }
 
-void Excitation::SetupGaussianPulse(double f0, double fc)
+void Excitation::SetupGaussianPulse(double f0, double fc, bool dcFree)
 {
 	m_Excit_Type = Excitation::GaussianPulse;
 	m_f0 = f0;
 	m_fc = fc;
-	m_f_max = f0+fc;
+	m_GaussDCFree = dcFree;
+	m_f_max = CalcGaussianMaxFreq(f0, fc);
 	m_SignalPeriod = 0;
 }
 
@@ -149,6 +151,39 @@ unsigned int Excitation::GetMaxExcitationTimestep() const
 	return maxStep;
 }
 
+double Excitation::CalcGaussianPulse(double f0, double fc, double t) const
+{
+	// u: time from the center in units of the Gaussian width 3/(2*pi*fc)
+	double u = 2.0*PI*fc*t/3.0-3;
+	double env = exp(-u*u);
+	if (!m_GaussDCFree)
+		return cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*env;
+	if (f0>0)
+		return sin(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*env;
+	// monocycle: -d/du of the envelope, scaled to a peak of 1 at u=-1/sqrt(2)
+	return -u*env*sqrt(2.0*exp(1.0));
+}
+
+double Excitation::CalcGaussianMaxFreq(double f0, double fc) const
+{
+	if (!m_GaussDCFree || f0>=fc)
+		return f0+fc;
+	// Below f0=fc the two sidebands of the sine carrier overlap and push the
+	// -20dB edge above f0+fc, up to 1.3*fc at f0=0: search it in the spectrum
+	// |exp(-a(f-f0)^2) - exp(-a(f+f0)^2)|, or f*exp(-a*f^2) at f0=0.
+	double a = 2.25/(fc*fc);
+	double df = fc*1e-3;
+	double peak = 0, f = 0;
+	for (;; f+=df)
+	{
+		double S = (f0>0) ? exp(-a*(f-f0)*(f-f0)) - exp(-a*(f+f0)*(f+f0)) : f*exp(-a*f*f);
+		if (S>peak)
+			peak = S;
+		else if (S<0.1*peak)
+			return f;
+	}
+}
+
 void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 {
 	if (m_dT==0) return;
@@ -168,15 +203,15 @@ void Excitation::CalcGaussianPulsExcitation(double f0, double fc, int nTS)
 	for (unsigned int n=1; n<m_length; ++n)
 	{
 		double t = n*m_dT;
-		m_signal_volt[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
+		m_signal_volt[n] = CalcGaussianPulse(f0, fc, t);
 		t += 0.5*m_dT;
-		m_signal_curr[n] = cos(2.0*PI*f0*(t-9.0/(2.0*PI*fc)))*exp(-1*pow(2.0*PI*fc*t/3.0-3,2));
+		m_signal_curr[n] = CalcGaussianPulse(f0, fc, t);
 	}
 
 	m_foi = f0;
-	m_f_max = f0+fc;
+	m_f_max = CalcGaussianMaxFreq(f0, fc);
 
-	SetNyquistNum( CalcNyquistNum(f0+fc,m_dT) );
+	SetNyquistNum( CalcNyquistNum(m_f_max,m_dT) );
 }
 
 void Excitation::CalcDiracPulsExcitation()

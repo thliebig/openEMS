@@ -113,6 +113,13 @@ class Test_Write2XML(unittest.TestCase):
         self.fdtd.Write2XML(self.fn)
         exc_el = ET.parse(self.fn).getroot().find('FDTD/Excitation')
         self.assertAlmostEqual(float(exc_el.get('fc')), 500e6)
+        self.assertIsNone(exc_el.get('DCFree'))
+
+    def test_gauss_dc_free_in_xml(self):
+        self.fdtd.SetGaussExcite(f0=1e9, fc=500e6, dc_free=True)
+        self.fdtd.Write2XML(self.fn)
+        exc_el = ET.parse(self.fn).getroot().find('FDTD/Excitation')
+        self.assertEqual(int(exc_el.get('DCFree')), 1)
 
     def test_boundary_cond_element_present(self):
         self.fdtd.Write2XML(self.fn)

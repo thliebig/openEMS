@@ -1072,7 +1072,9 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 	case Excitation::GaussianPulse:
 		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
 		m_Excite_Elem->QueryDoubleAttribute("fc",&fc);
-		exc->SetupGaussianPulse(f0, fc);
+		ihelp = 0;
+		m_Excite_Elem->QueryIntAttribute("DCFree",&ihelp);
+		exc->SetupGaussianPulse(f0, fc, ihelp!=0);
 		break;
 	case Excitation::Sinusoidal:  // sinusoidal excite
 		m_Excite_Elem->QueryDoubleAttribute("f0",&f0);
@@ -1150,6 +1152,8 @@ bool openEMS::Write2XML(TiXmlNode* rootNode)
 	case Excitation::GaussianPulse:
 		exc.SetDoubleAttribute("f0", m_Exc->GetCenterFreq());
 		exc.SetDoubleAttribute("fc", m_Exc->GetCutOffFreq());
+		if (m_Exc->GetGaussDCFree())
+			exc.SetAttribute("DCFree", 1);
 		break;
 	case Excitation::Sinusoidal:  // sinusoidal excite
 		exc.SetDoubleAttribute("f0", m_Exc->GetCenterFreq());
@@ -1215,10 +1219,10 @@ bool openEMS::ReadFromXML(std::string file)
 	return this->ParseFDTDSetup(file);
 }
 
-void openEMS::SetGaussExcite(double f0, double fc)
+void openEMS::SetGaussExcite(double f0, double fc, bool dcFree)
 {
 	this->InitExcitation();
-	m_Exc->SetupGaussianPulse(f0, fc);
+	m_Exc->SetupGaussianPulse(f0, fc, dcFree);
 }
 
 void openEMS::SetSinusExcite(double f0)

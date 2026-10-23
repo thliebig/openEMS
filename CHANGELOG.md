@@ -28,6 +28,12 @@ there are unreleased changes. It becomes the next release entry.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.
+- A DC-free Gaussian pulse: `SetGaussExcite(f0, fc, dc_free=True)` (Matlab
+  `'DCFree',1`, XML `DCFree="1"`) uses a sine instead of a cosine carrier, so
+  the pulse has no DC part and leaves no static charge behind, e.g. in a
+  structure closed by PEC. Away from DC the spectrum is the same; below about
+  f0-fc it falls to zero at DC. With `f0=0` the pulse is the derivative of the
+  Gaussian, with its peak at about 0.47*fc and its -20dB edge at 1.3*fc.
 
 ### Fixed
 

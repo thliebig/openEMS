@@ -31,7 +31,15 @@ public:
 
 	virtual void Reset( double timestep );
 
-	void SetupGaussianPulse(double f0, double fc);
+	//! Gaussian pulse at \a f0 with the -20dB half bandwidth \a fc
+	/*!
+	  With \a dcFree the carrier is a sine instead of a cosine: the pulse is odd
+	  about its center, so it has no DC part and a soft excitation leaves no
+	  static charge behind. Its spectrum is the same away from DC; below about
+	  f0-fc it falls to zero at DC. At f0=0 it is the derivative of the
+	  Gaussian (monocycle) instead, with its peak at about 0.47*fc.
+	  */
+	void SetupGaussianPulse(double f0, double fc, bool dcFree=false);
 	void SetupSinusoidal(double f0);
 	void SetupDiracPulse(double fmax);
 	void SetupStepExcite(double fmax);
@@ -39,6 +47,7 @@ public:
 
 	double GetCenterFreq() {return m_f0;}
 	double GetCutOffFreq() {return m_fc;}
+	bool GetGaussDCFree() const {return m_GaussDCFree;}
 	double GetMaxFreq() {return m_f_max;}
 
 	bool buildExcitationSignal(unsigned int maxTS);
@@ -94,6 +103,8 @@ protected:
 
 	// cutoff-frequency (Gaussian pulse only)
 	double m_fc;
+	// sine carrier, no DC part (Gaussian pulse only)
+	bool m_GaussDCFree;
 
 	std::string m_CustomExc_Str;
 
@@ -106,6 +117,10 @@ protected:
 	virtual void CalcCustomExcitation(double f0, int nTS, std::string signal);
 	//! Calculate an excitation with center of \a f0 and the half bandwidth \a fc
 	virtual void CalcGaussianPulsExcitation(double f0, double fc, int nTS);
+	//! The Gaussian pulse at time \a t
+	double CalcGaussianPulse(double f0, double fc, double t) const;
+	//! The max (-20dB) frequency of the Gaussian pulse
+	double CalcGaussianMaxFreq(double f0, double fc) const;
 	//! Calculate a sinusoidal excitation with frequency \a f0 and a duration of \a nTS number of timesteps
 	virtual void CalcSinusExcitation(double f0, int nTS);
 	//! Calculate a dirac impuls excitation
