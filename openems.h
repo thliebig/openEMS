@@ -132,6 +132,8 @@ public:
 
 protected:
 	void collectCommandLineArguments();
+	void CheckDFTSnapshot(double energy, double maxEnergy);
+	bool m_dftSnapshots;
 
 	bool CylinderCoords;
 	std::vector<double> m_CC_MultiGrid;

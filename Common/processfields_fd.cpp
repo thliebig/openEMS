@@ -29,6 +29,9 @@ using namespace std;
 ProcessFieldsFD::ProcessFieldsFD(Engine_Interface_Base* eng_if) : ProcessFields(eng_if)
 {
 	m_FieldDFT = -1;
+	m_DFTFailed = false;
+	m_LastDFTStep = 0;
+	m_LastDFTTime = 0;
 	m_Snapshots = false;
 	m_AsyncUsed = false;
 	m_AsyncFailed = false;
@@ -106,6 +109,8 @@ int ProcessFieldsFD::Process()
 		weights[n] = exp_jwt_2_dt;
 	}
 	++m_FD_SampleCount;
+	m_LastDFTStep = m_Eng_Interface->GetNumberOfTimesteps();
+	m_LastDFTTime = T;
 
 	// summed by the engine with the same weights: the fields never leave the device
 	if (m_FieldDFT>=0)
@@ -135,7 +140,10 @@ int ProcessFieldsFD::Process()
 
 	ArrayLib::ArrayNIJK<FDTD_FLOAT> tmp_field_td;
 	if (!CalcField(tmp_field_td))
+	{
+		m_DFTFailed = true;
 		return -1;
+	}
 	AddSample(tmp_field_td, weights);
 	return GetNextInterval();
 }
@@ -162,7 +170,71 @@ void ProcessFieldsFD::FinishAsync()
 	{
 		cerr << "ProcessFieldsFD: can't calculate the field of a sample... the frequency domain dump is incomplete!" << endl;
 		m_AsyncFailed = false;
+		m_DFTFailed = true;
 	}
+}
+
+bool ProcessFieldsFD::SupportsDFTSnapshot() const
+{
+	return Enabled && m_fileType == HDF5_FILETYPE &&
+	       (m_DumpType == E_FIELD_DUMP || m_DumpType == H_FIELD_DUMP);
+}
+
+bool ProcessFieldsFD::WriteDFTSnapshot(const std::string& directory, std::string& filename)
+{
+	if (!SupportsDFTSnapshot() || m_DFTFailed || m_FD_SampleCount == 0)
+	{
+		return false;
+	}
+	// All background processing has been drained by the caller. This device read
+	// synchronizes pending DFT updates, but neither resets nor reweights the sums.
+	if (m_FieldDFT >= 0 && !m_Eng_Interface->ReadFieldDFT(m_FieldDFT, m_FD_Fields))
+	{
+		return false;
+	}
+	filename = m_filename.substr(m_filename.find_last_of("/\\") + 1) + ".h5";
+	HDF5_File_Writer writer(directory + "/" + filename);
+	writer.SetKeepOpen(true);
+#ifdef OUTPUT_IN_DRAWINGUNITS
+	const double scaling = 1;
+#else
+	const double scaling = Op->GetGridDelta();
+#endif
+	bool ok = writer.WriteRectMesh(numLines, discLines, int(m_Mesh_Type), scaling);
+	ok = writer.WriteAttribute("/", "openEMS_HDF5_version", OPENEMS_HDF5_VERSION) && ok;
+	ok = writer.WriteAttribute("/", "dump_type", m_DumpType) && ok;
+	ok = writer.WriteAttribute("/", "dual_mesh", m_dualMesh) && ok;
+	ok = writer.WriteAttribute("/", "dual_time", m_dualTime) && ok;
+	ok = writer.WriteAttribute("/", "simulation_converged", false) && ok;
+	ok = writer.WriteAttribute("/", "sample_count", m_FD_SampleCount) && ok;
+	ok = writer.WriteAttribute("/", "last_sample_timestep", m_LastDFTStep) && ok;
+	ok = writer.WriteAttribute("/", "last_sample_time", m_LastDFTTime) && ok;
+	ok = writer.WriteAttribute("/", "sample_interval", m_FD_Interval) && ok;
+	writer.SetCurrentGroup("/FieldData/FD");
+	ok = writer.WriteAttribute("/FieldData/FD", "frequency", m_FD_Samples) && ok;
+	if (g_settings.GetLegacyHDF5Dumps())
+	{
+		ok = writer.WriteAttribute("/", "legacy_fmt", true) && ok;
+	}
+	for (size_t n = 0; n < m_FD_Samples.size(); ++n)
+	{
+		const std::string name = "f" + std::to_string(n);
+		ok = writer.WriteVectorField<std::complex<float>>(
+		    name, *m_FD_Fields[n], g_settings.GetLegacyHDF5Dumps()) && ok;
+		if (g_settings.GetLegacyHDF5Dumps())
+		{
+			ok = writer.WriteAttribute("/FieldData/FD/" + name + "_real",
+			                           "frequency", m_FD_Samples[n]) && ok;
+			ok = writer.WriteAttribute("/FieldData/FD/" + name + "_imag",
+			                           "frequency", m_FD_Samples[n]) && ok;
+		}
+		else
+		{
+			ok = writer.WriteAttribute("/FieldData/FD/" + name, "frequency", m_FD_Samples[n]) && ok;
+		}
+	}
+	writer.Close();
+	return ok;
 }
 
 void ProcessFieldsFD::PostProcess()
