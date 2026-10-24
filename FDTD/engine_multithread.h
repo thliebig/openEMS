@@ -20,6 +20,7 @@
 
 #include "operator_multithread.h"
 #include "engine_sse_compressed.h"
+#include "extensions/engine_extension_phase_dispatch.h"
 
 #include <boost/thread.hpp>
 #include <boost/fusion/include/list.hpp>
@@ -104,6 +105,9 @@ public:
 protected:
 	Engine_Multithread(const Operator_Multithread* op);
 	void changeNumThreads(unsigned int numThreads);
+	void BuildPhaseDispatch();
+	bool PhaseDispatchIsCurrent() const;
+	virtual void ClearExtensions();
 	const Operator_Multithread* m_Op_MT;
 	boost::thread_group *m_thread_group;
 	boost::barrier *m_startBarrier, *m_stopBarrier;
@@ -112,6 +116,10 @@ protected:
 	unsigned int m_numThreads; //!< number of worker threads
 	unsigned int m_max_numThreads; //!< max. number of worker threads
 	volatile bool m_stopThreads;
+	//! per-phase extension schedules, see engine_extension_phase_dispatch.h
+	bool m_usePhaseDispatch;
+	EngineExtensionPhaseDispatch::PhaseLists<Engine_Extension> m_phaseDispatch;
+	std::vector<Engine_Extension*> m_phaseDispatchExtensions; //!< extension list the schedules were built from
 	bool m_opt_speed;
 	float m_last_speed;
 
