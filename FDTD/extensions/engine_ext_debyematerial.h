@@ -57,15 +57,17 @@ public:
 	Engine_Ext_DebyeMaterial(Operator_Ext_DebyeMaterial* op_ext_debye);
 	virtual ~Engine_Ext_DebyeMaterial();
 
-	virtual void DoPreVoltageUpdates();
-	virtual void DoPostVoltageUpdates();
+	virtual void DoPreVoltageUpdates() {Engine_Ext_DebyeMaterial::DoPreVoltageUpdates(0);}
+	virtual void DoPreVoltageUpdates(int threadID);
+	virtual void DoPostVoltageUpdates() {Engine_Ext_DebyeMaterial::DoPostVoltageUpdates(0);}
+	virtual void DoPostVoltageUpdates(int threadID);
 
 protected:
 	template <typename EngType>
-	void DoPreVoltageUpdatesImpl(EngType* eng);
+	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
 
 	template <typename EngType>
-	void DoPostVoltageUpdatesImpl(EngType* eng);
+	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
 
 	Operator_Ext_DebyeMaterial* m_Op_Ext_Deb;
 

@@ -77,7 +77,7 @@ Engine_Ext_LorentzMaterial::~Engine_Ext_LorentzMaterial()
 }
 
 template <typename EngType>
-void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
+void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng, int threadID)
 {
 	for (int o=0;o<m_Order;++o)
 	{
@@ -87,7 +87,7 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 
 		if (m_Op_Ext_Lor->m_volt_Lor_ADE_On[o])
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			for (size_t i=m_start[o][threadID]; i<m_start[o][threadID+1]; ++i)
 			{
 				volt_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->v_Lor_ADE[o][0][i]*volt_ADE[o][0][i];
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
@@ -104,7 +104,7 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 		}
 		else
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			for (size_t i=m_start[o][threadID]; i<m_start[o][threadID+1]; ++i)
 			{
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
 				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
@@ -119,13 +119,15 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 	}
 }
 
-void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates()
+void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates(int threadID)
 {
-	ENG_DISPATCH(DoPreVoltageUpdatesImpl);
+	if (threadID>=m_NrThreads)
+		return;
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, threadID);
 }
 
 template <typename EngType>
-void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
+void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng, int threadID)
 {
 	for (int o=0;o<m_Order;++o)
 	{
@@ -135,7 +137,7 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
 
 		if (m_Op_Ext_Lor->m_curr_Lor_ADE_On[o])
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			for (size_t i=m_start[o][threadID]; i<m_start[o][threadID+1]; ++i)
 			{
 				curr_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->i_Lor_ADE[o][0][i]*curr_ADE[o][0][i];
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
@@ -152,7 +154,7 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
 		}
 		else
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			for (size_t i=m_start[o][threadID]; i<m_start[o][threadID+1]; ++i)
 			{
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
 				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);
@@ -167,7 +169,9 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
 	}
 }
 
-void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates()
+void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates(int threadID)
 {
-	ENG_DISPATCH(DoPreCurrentUpdatesImpl);
+	if (threadID>=m_NrThreads)
+		return;
+	ENG_DISPATCH_ARGS(DoPreCurrentUpdatesImpl, threadID);
 }

@@ -31,17 +31,26 @@ public:
 	Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_disp);
 	virtual ~Engine_Ext_Dispersive();
 
-	virtual void Apply2Voltages();
-	virtual void Apply2Current();
+	virtual void SetNumberOfThreads(int nrThread);
+
+	virtual void Apply2Voltages() {Engine_Ext_Dispersive::Apply2Voltages(0);}
+	virtual void Apply2Voltages(int threadID);
+	virtual void Apply2Current() {Engine_Ext_Dispersive::Apply2Current(0);}
+	virtual void Apply2Current(int threadID);
 
 protected:
 	template <typename EngType>
-	void Apply2VoltagesImpl(EngType* eng);
+	void Apply2VoltagesImpl(EngType* eng, int threadID);
 
 	template <typename EngType>
-	void Apply2CurrentImpl(EngType* eng);
+	void Apply2CurrentImpl(EngType* eng, int threadID);
 
 	Operator_Ext_Dispersive* m_Op_Ext_Disp;
+
+	//! Thread t updates the entries [m_start[o][t], m_start[o][t+1]) of order o.
+	//! All orders are split at the same mesh positions, so that each field value
+	//! is only written by one thread.
+	std::vector<std::vector<size_t>> m_start;
 
 	//! Dispersive order
 	int m_Order;

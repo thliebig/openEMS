@@ -19,6 +19,9 @@
 #include "operator_ext_dispersive.h"
 #include "FDTD/engine_sse.h"
 
+#include <algorithm>
+#include <array>
+
 Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_disp) : Engine_Extension(op_ext_disp)
 {
 	m_Op_Ext_Disp = op_ext_disp;
@@ -49,6 +52,8 @@ Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_dis
 				volt_ADE[o][n] = NULL;
 		}
 	}
+
+	SetNumberOfThreads(1);
 }
 
 Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
@@ -73,8 +78,57 @@ Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
 	volt_ADE=NULL;
 }
 
+void Engine_Ext_Dispersive::SetNumberOfThreads(int nrThread)
+{
+	Engine_Extension::SetNumberOfThreads(nrThread);
+
+	// by default, thread 0 does everything
+	int order = m_Op_Ext_Disp->m_Order;
+	m_start.assign(order, std::vector<size_t>(m_NrThreads+1, 0));
+	for (int o=0;o<order;++o)
+		for (int t=1;t<=m_NrThreads;++t)
+			m_start[o][t] = m_Op_Ext_Disp->m_LM_Count.at(o);
+
+	if (m_NrThreads==1)
+		return;
+
+	// The orders can share positions, and a split by index would let two threads
+	// write the same field value. Split all orders at the same positions instead,
+	// which needs each order sorted by position, as the operator extensions build it.
+	typedef std::array<unsigned int,3> Pos;
+	std::vector<Pos> all;
+	for (int o=0;o<order;++o)
+	{
+		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
+		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		{
+			Pos p = {pos[0][i],pos[1][i],pos[2][i]};
+			if ((i>0) && !(all.back()<p))
+				return; // not sorted or not unique, keep it on thread 0
+			all.push_back(p);
+		}
+	}
+	if (all.empty())
+		return;
+	std::sort(all.begin(), all.end());
+
+	// the same number of entries for each thread
+	for (int t=1;t<m_NrThreads;++t)
+	{
+		Pos split = all.at(all.size()*t/m_NrThreads);
+		for (int o=0;o<order;++o)
+		{
+			unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
+			size_t i = m_start[o][t-1];
+			while ((i<m_Op_Ext_Disp->m_LM_Count.at(o)) && (Pos{pos[0][i],pos[1][i],pos[2][i]}<split))
+				++i;
+			m_start[o][t] = i;
+		}
+	}
+}
+
 template <typename EngType>
-void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
+void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng, int threadID)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -82,7 +136,7 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		for (size_t i=m_start[o][threadID]; i<m_start[o][threadID+1]; ++i)
 		{
 			eng->EngType::SetVolt(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]
@@ -97,13 +151,15 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 	}
 }
 
-void Engine_Ext_Dispersive::Apply2Voltages()
+void Engine_Ext_Dispersive::Apply2Voltages(int threadID)
 {
-	ENG_DISPATCH(Apply2VoltagesImpl);
+	if (threadID>=m_NrThreads)
+		return;
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, threadID);
 }
 
 template <typename EngType>
-void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
+void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng, int threadID)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -111,7 +167,7 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		for (size_t i=m_start[o][threadID]; i<m_start[o][threadID+1]; ++i)
 		{
 			eng->EngType::SetCurr(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]
@@ -126,7 +182,9 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 	}
 }
 
-void Engine_Ext_Dispersive::Apply2Current()
+void Engine_Ext_Dispersive::Apply2Current(int threadID)
 {
-	ENG_DISPATCH(Apply2CurrentImpl);
+	if (threadID>=m_NrThreads)
+		return;
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, threadID);
 }

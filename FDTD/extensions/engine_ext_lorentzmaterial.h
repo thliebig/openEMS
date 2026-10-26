@@ -28,16 +28,18 @@ public:
 	Engine_Ext_LorentzMaterial(Operator_Ext_LorentzMaterial* op_ext_lorentz);
 	virtual ~Engine_Ext_LorentzMaterial();
 
-	virtual void DoPreVoltageUpdates();
+	virtual void DoPreVoltageUpdates() {Engine_Ext_LorentzMaterial::DoPreVoltageUpdates(0);}
+	virtual void DoPreVoltageUpdates(int threadID);
 
-	virtual void DoPreCurrentUpdates();
+	virtual void DoPreCurrentUpdates() {Engine_Ext_LorentzMaterial::DoPreCurrentUpdates(0);}
+	virtual void DoPreCurrentUpdates(int threadID);
 
 protected:
 	template <typename EngType>
-	void DoPreVoltageUpdatesImpl(EngType* eng);
+	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
 
 	template <typename EngType>
-	void DoPreCurrentUpdatesImpl(EngType* eng);
+	void DoPreCurrentUpdatesImpl(EngType* eng, int threadID);
 
 	Operator_Ext_LorentzMaterial* m_Op_Ext_Lor;
 

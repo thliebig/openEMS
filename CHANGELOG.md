@@ -103,6 +103,9 @@ there are unreleased changes. It becomes the next release entry.
   computed ones. A few edges more can become metal, e.g. on sloped walls; a
   slit at x=0 in the split ground plane of the StripLine2MSL tutorial is
   closed.
+- Drude, Lorentz and Debye materials and conducting sheets are updated on
+  all threads of the multithreaded engine, not only on the first one. Their
+  results do not change.
 
 ### Build
 

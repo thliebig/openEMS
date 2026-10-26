@@ -68,12 +68,12 @@ Engine_Ext_DebyeMaterial::~Engine_Ext_DebyeMaterial()
 }
 
 template <typename EngType>
-void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
+void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng, int threadID)
 {
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
-	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
+	for (size_t i=m_start[0][threadID]; i<m_start[0][threadID+1]; ++i)
 	{
 		for (int n=0; n<3; ++n)
 		{
@@ -92,18 +92,20 @@ void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 	}
 }
 
-void Engine_Ext_DebyeMaterial::DoPreVoltageUpdates()
+void Engine_Ext_DebyeMaterial::DoPreVoltageUpdates(int threadID)
 {
-	ENG_DISPATCH(DoPreVoltageUpdatesImpl);
+	if (threadID>=m_NrThreads)
+		return;
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, threadID);
 }
 
 template <typename EngType>
-void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng)
+void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng, int threadID)
 {
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
-	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
+	for (size_t i=m_start[0][threadID]; i<m_start[0][threadID+1]; ++i)
 	{
 		for (int n=0; n<3; ++n)
 		{
@@ -118,7 +120,9 @@ void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng)
 	}
 }
 
-void Engine_Ext_DebyeMaterial::DoPostVoltageUpdates()
+void Engine_Ext_DebyeMaterial::DoPostVoltageUpdates(int threadID)
 {
-	ENG_DISPATCH(DoPostVoltageUpdatesImpl);
+	if (threadID>=m_NrThreads)
+		return;
+	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, threadID);
 }
