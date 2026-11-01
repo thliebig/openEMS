@@ -50,30 +50,30 @@ Operator_Extension* Operator_Ext_LossyMetal::Clone(Operator* op)
 	return new Operator_Ext_LossyMetal(op, this);
 }
 
-bool Operator_Ext_LossyMetal::IsLossy(const double* coord) const
+bool Operator_Ext_LossyMetal::IsLossy(const double* coord, const std::vector<CSPrimitives*>& prims) const
 {
-	CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), false);
+	CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, prims, false);
 	return (prop!=NULL) && (prop->GetType() & CSProperties::LOSSYMETAL);
 }
 
-bool Operator_Ext_LossyMetal::IsMetal(const double* coord) const
+bool Operator_Ext_LossyMetal::IsMetal(const double* coord, const std::vector<CSPrimitives*>& prims) const
 {
-	CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL), false);
+	CSProperties* prop = m_Op->GetGeometryCSX()->GetPropertyByCoordPriority(coord, prims, false);
 	return (prop!=NULL) && (prop->GetType() & CSProperties::METAL);
 }
 
-double Operator_Ext_LossyMetal::InsideLength(const double* coord, int dir, int s, double max) const
+double Operator_Ext_LossyMetal::InsideLength(const double* coord, int dir, int s, double max, const std::vector<CSPrimitives*>& prims) const
 {
 	double p[3] = {coord[0], coord[1], coord[2]};
 	p[dir] = coord[dir] + s*max;
-	if (IsLossy(p))
+	if (IsLossy(p, prims))
 		return max;
 	double lo = 0, hi = max;
 	for (int i=0; i<30; ++i)
 	{
 		double mid = (lo+hi)/2;
 		p[dir] = coord[dir] + s*mid;
-		if (IsLossy(p))
+		if (IsLossy(p, prims))
 			lo = mid;
 		else
 			hi = mid;
@@ -81,8 +81,29 @@ double Operator_Ext_LossyMetal::InsideLength(const double* coord, int dir, int s
 	return lo;
 }
 
-double Operator_Ext_LossyMetal::Extent(const double* coord, const unsigned int* pos, int dir, int s) const
+const std::vector<CSPrimitives*>& Operator_Ext_LossyMetal::LinePrimitives(int n, const unsigned int* pos, const double* coord, int dir)
 {
+	// the line is fixed by the edge direction, the edge position along it and the position along the third direction
+	int f = 3 - n - dir;
+	std::array<unsigned int,4> key = {(unsigned int)n, (unsigned int)dir, pos[n], pos[f]};
+	std::map<std::array<unsigned int,4>, std::vector<CSPrimitives*> >::iterator it = m_LinePrims.find(key);
+	if (it!=m_LinePrims.end())
+		return it->second;
+	double tol = m_Op->GetGeometryCSX()->GetDrawingTolerance();
+	double box[6];
+	for (int m=0; m<3; ++m)
+	{
+		box[2*m] = coord[m] - tol;
+		box[2*m+1] = coord[m] + tol;
+	}
+	box[2*dir] = m_Op->GetDiscLine(dir,0);
+	box[2*dir+1] = m_Op->GetDiscLine(dir,m_Op->GetNumberOfLines(dir,true)-1);
+	return m_LinePrims[key] = m_Op->GetGeometryCSX()->GetPrimitivesByBoundBox(box, true, (CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL));
+}
+
+double Operator_Ext_LossyMetal::Extent(int n, const unsigned int* pos, const double* coord, int dir, int s)
+{
+	const std::vector<CSPrimitives*>& prims = LinePrimitives(n, pos, coord, dir);
 	int numLines = m_Op->GetNumberOfLines(dir,true);
 	int idx = pos[dir];
 	double p[3] = {coord[0], coord[1], coord[2]};
@@ -92,12 +113,12 @@ double Operator_Ext_LossyMetal::Extent(const double* coord, const unsigned int* 
 		if ((next<0) || (next>=numLines))
 			return std::fabs(m_Op->GetDiscLine(dir,idx) - coord[dir]);
 		p[dir] = m_Op->GetDiscLine(dir,next);
-		if (!IsLossy(p))
+		if (!IsLossy(p, prims))
 		{
 			double start[3] = {coord[0], coord[1], coord[2]};
 			start[dir] = m_Op->GetDiscLine(dir,idx);
 			double len = std::fabs(m_Op->GetDiscLine(dir,next) - start[dir]);
-			return std::fabs(start[dir] - coord[dir]) + InsideLength(start, dir, s, len);
+			return std::fabs(start[dir] - coord[dir]) + InsideLength(start, dir, s, len, prims);
 		}
 		idx = next;
 	}
@@ -132,7 +153,7 @@ int Operator_Ext_LossyMetal::GetFit(CSPropLossyMetal* prop, double thickness)
 	return idx;
 }
 
-bool Operator_Ext_LossyMetal::AddContributions(int n, const unsigned int* pos, const double* coord, CSPropLossyMetal* prop, std::vector<Contribution>& contrib)
+bool Operator_Ext_LossyMetal::AddContributions(int n, const unsigned int* pos, const double* coord, CSPropLossyMetal* prop, const std::vector<CSPrimitives*>& prims, std::vector<Contribution>& contrib)
 {
 	int dirs[2] = {(n+1)%3, (n+2)%3};
 	double len = m_Op->GetEdgeLength(n,pos)/m_Op->GetGridDelta(); // drawing units, as all lengths here
@@ -165,7 +186,7 @@ bool Operator_Ext_LossyMetal::AddContributions(int n, const unsigned int* pos, c
 			p[0]=coord[0]; p[1]=coord[1]; p[2]=coord[2];
 			p[dirs[0]] += off[dirs[0]][s0];
 			p[dirs[1]] += off[dirs[1]][s1];
-			metal[s0][s1] = IsMetal(p);
+			metal[s0][s1] = IsMetal(p, prims);
 		}
 
 	// a body that ends before the neighbouring cell centres along dirs[m] is thinner than the mesh
@@ -176,9 +197,9 @@ bool Operator_Ext_LossyMetal::AddContributions(int n, const unsigned int* pos, c
 		int d = dirs[m];
 		p[0]=coord[0]; p[1]=coord[1]; p[2]=coord[2];
 		p[d] = coord[d] + off[d][0];
-		thin[m] = !IsLossy(p);
+		thin[m] = !IsLossy(p, prims);
 		p[d] = coord[d] + off[d][1];
-		thin[m] = thin[m] && !IsLossy(p);
+		thin[m] = thin[m] && !IsLossy(p, prims);
 	}
 
 	bool missingThickness = false;
@@ -189,7 +210,7 @@ bool Operator_Ext_LossyMetal::AddContributions(int n, const unsigned int* pos, c
 		int e = dirs[1-m]; // the other direction, normal of a face lying along the segment
 		for (int s=0; s<2; ++s)
 		{
-			double Lin = InsideLength(coord, d, 2*s-1, h[d][s]);
+			double Lin = InsideLength(coord, d, 2*s-1, h[d][s], prims);
 			if (Lin<=0)
 				continue;
 			if (thin[1-m])
@@ -197,7 +218,7 @@ bool Operator_Ext_LossyMetal::AddContributions(int n, const unsigned int* pos, c
 				// a sheet: both faces open, thickness of the body along e
 				// the drawing tolerance makes a body appear larger by tol on either side
 				if (thick[1-m]<0)
-					thick[1-m] = std::max(0.0, InsideLength(coord, e, -1, h[e][0]) + InsideLength(coord, e, +1, h[e][1]) - 2*tol)*delta;
+					thick[1-m] = std::max(0.0, InsideLength(coord, e, -1, h[e][0], prims) + InsideLength(coord, e, +1, h[e][1], prims) - 2*tol)*delta;
 				double t = thick[1-m];
 				if (t <= tol*delta)
 					t = prop->GetThickness(); // a 2D primitive
@@ -218,7 +239,7 @@ bool Operator_Ext_LossyMetal::AddContributions(int n, const unsigned int* pos, c
 			if (q0==q1)
 				continue; // inside the metal or in the open, no face here
 			// a face with normal e, the metal is on the side of the metal quarter cell
-			double t = std::max(Extent(coord, pos, e, q0 ? -1 : +1) - tol, tol)*delta;
+			double t = std::max(Extent(n, pos, coord, e, q0 ? -1 : +1) - tol, tol)*delta;
 			Contribution c;
 			c.fit = GetFit(prop, t);
 			c.weight = Lin/len;
@@ -247,6 +268,7 @@ bool Operator_Ext_LossyMetal::BuildExtension()
 	m_Fits.clear();
 	m_FitThickness.clear();
 	m_FitIndex.clear();
+	m_LinePrims.clear();
 	m_numSurface = m_numFinite = m_numPEC = m_numH = m_numNoThickness = 0;
 
 	m_Order = 0;
@@ -302,7 +324,7 @@ bool Operator_Ext_LossyMetal::BuildExtension()
 						prim->SetPrimitiveUsed(true);
 
 					state(n, pos[0], pos[1], pos[2]) = 1;
-					if (!disable_edge && (lm_prop->GetConductivity()>0) && AddContributions(n, pos, coord, lm_prop, contrib[n]))
+					if (!disable_edge && (lm_prop->GetConductivity()>0) && AddContributions(n, pos, coord, lm_prop, vPrims, contrib[n]))
 					{
 						state(n, pos[0], pos[1], pos[2]) = 2;
 						b_pos_on = true;
@@ -323,6 +345,7 @@ bool Operator_Ext_LossyMetal::BuildExtension()
 			}
 		}
 	}
+	m_LinePrims.clear();
 
 	if (m_numNoThickness>0)
 		cerr << "Operator_Ext_LossyMetal::BuildExtension: Warning: " << m_numNoThickness << " edges of zero-thickness LossyMetal primitives without a Thickness, fallback to PEC!" << endl;
