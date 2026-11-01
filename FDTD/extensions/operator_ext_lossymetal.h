@@ -22,6 +22,7 @@
 #include "operator_ext_lorentzmaterial.h"
 #include "surface_impedance.h"
 
+#include <array>
 #include <map>
 
 class CSPropLossyMetal;
@@ -71,16 +72,20 @@ protected:
 	};
 
 	//! Surface contributions of the E edge (n,pos) at \a coord, empty if it lies inside the metal
-	bool AddContributions(int n, const unsigned int* pos, const double* coord, CSPropLossyMetal* prop, std::vector<Contribution>& contrib);
+	//! \a prims: the priority sorted primitives of the column of pos, see Operator::GetPrimitivesBoundBox
+	bool AddContributions(int n, const unsigned int* pos, const double* coord, CSPropLossyMetal* prop, const std::vector<CSPrimitives*>& prims, std::vector<Contribution>& contrib);
 
-	//! Lossy metal body at this point?
-	bool IsLossy(const double* coord) const;
-	//! Any metal at this point?
-	bool IsMetal(const double* coord) const;
+	//! Lossy metal body at this point, among \a prims?
+	bool IsLossy(const double* coord, const std::vector<CSPrimitives*>& prims) const;
+	//! Any metal at this point, among \a prims?
+	bool IsMetal(const double* coord, const std::vector<CSPrimitives*>& prims) const;
 	//! Length (drawing units) of the lossy metal from \a coord along direction \a dir, sign \a s, at most \a max
-	double InsideLength(const double* coord, int dir, int s, double max) const;
-	//! Extent (drawing units) of the lossy metal from \a coord along \a dir, sign \a s, following the mesh up to the end of the body
-	double Extent(const double* coord, const unsigned int* pos, int dir, int s) const;
+	double InsideLength(const double* coord, int dir, int s, double max, const std::vector<CSPrimitives*>& prims) const;
+	//! Extent (drawing units) of the lossy metal from the edge (n,pos) at \a coord along \a dir, sign \a s, following the mesh up to the end of the body
+	double Extent(int n, const unsigned int* pos, const double* coord, int dir, int s);
+	//! The priority sorted primitives along the line through \a coord in direction \a dir, cached per line
+	const std::vector<CSPrimitives*>& LinePrimitives(int n, const unsigned int* pos, const double* coord, int dir);
+	std::map<std::array<unsigned int,4>, std::vector<CSPrimitives*> > m_LinePrims;
 
 	//! Index of the fit for this property and face thickness (m)
 	int GetFit(CSPropLossyMetal* prop, double thickness);
