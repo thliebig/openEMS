@@ -223,10 +223,10 @@ else
     hg = hggroup;
     set( h,'Parent',hg );
     hold on
-    plot( hg, 0.25+0.75*sin(0:0.01:2*pi), 0.75*cos(0:0.01:2*pi), 'Color', color );
-    plot( hg, 0.5+0.5*sin(0:0.01:2*pi), 0.5*cos(0:0.01:2*pi), 'Color', color );
-    plot( hg, 0.75+0.25*sin(0:0.01:2*pi), 0.25*cos(0:0.01:2*pi), 'Color', color );
-    plot( hg, [-1 1], [0 0], 'Color', color );
+    set( plot( 0.25+0.75*sin(0:0.01:2*pi), 0.75*cos(0:0.01:2*pi), 'Color', color ), 'Parent', hg );
+    set( plot( 0.5+0.5*sin(0:0.01:2*pi), 0.5*cos(0:0.01:2*pi), 'Color', color ), 'Parent', hg );
+    set( plot( 0.75+0.25*sin(0:0.01:2*pi), 0.25*cos(0:0.01:2*pi), 'Color', color ), 'Parent', hg );
+    set( plot( [-1 1], [0 0], 'Color', color ), 'Parent', hg );
     axis equal
     axis off
 end
