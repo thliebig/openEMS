@@ -43,9 +43,10 @@ using std::cerr;
 using std::endl;
 using std::flush;
 
-Operator* Operator::New()
+Operator* Operator::New(unsigned int numThreads)
 {
 	Operator* op = new Operator();
+	op->SetNumThreads(numThreads);
 	op->Init();
 	return op;
 }

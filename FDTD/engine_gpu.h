@@ -36,11 +36,10 @@ class GPU_Extension;
   If the device shares its memory with the host, the host mirror is a view of
   the device memory and no copies are needed.
 
-  An extension runs on the device if its operator extension IsGPUSave() and the
-  backend provides a device implementation (GPU_Backend::CreateExtension()).
-  Every concrete operator extension of openEMS reports IsGPUSave(), so a fallback
-  means the backend has no implementation of one of them (the reference backend
-  has none at all).
+  An extension runs on the device if the backend provides a device
+  implementation of it (GPU_Backend::CreateExtension()); a fallback means the
+  backend has no implementation of one of them (the reference backend has none
+  at all).
   If all extensions do, the fields stay on the device for a whole IterateTS()
   call. Without shared memory, the host mirror is then not updated at the end of
   a batch: GetVolt/GetCurr read the z-line of a value from the device (e.g. for

@@ -879,8 +879,7 @@ bool openEMS::SetupOperator()
 	else
 	{
 		cout << "Create FDTD operator (" << name << ")" << endl;
-		FDTD_Op = Operator::New();
-		FDTD_Op->SetNumThreads(m_engine_numThreads);
+		FDTD_Op = Operator::New(m_engine_numThreads);
 	}
 	FDTD_Op->SetEngineType(type);
 	if (gpu)

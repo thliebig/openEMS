@@ -54,8 +54,8 @@ public:
 
 	enum MatAverageMethods {QuarterCell=0, CentralCell=1};
 
-	//! Create a new operator
-	static Operator* New();
+	//! Create a new operator, running its build and engine on numThreads threads (0: all available)
+	static Operator* New(unsigned int numThreads = 0);
 	virtual ~Operator();
 
 	//! Choose the engine the operator creates (CreateEngine()), Engine::BASIC, SSE or GPU (no default: building the operator without it throws), and with it the layout of the coefficients (Coeffs_SSE_Compressed for the SSE engine, else Coeffs_Basic); before the operator is built, throws after

@@ -103,9 +103,7 @@ void Engine_GPU::Init()
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
 		Engine_Extension* eng_ext = m_Eng_exts.at(n);
-		GPU_Extension* gpu_ext = NULL;
-		if (eng_ext->GetOperatorExtension()->IsGPUSave())
-			gpu_ext = m_Backend->CreateExtension(eng_ext, this);
+		GPU_Extension* gpu_ext = m_Backend->CreateExtension(eng_ext, this);
 		if (gpu_ext)
 			m_GPU_exts.push_back(gpu_ext);
 		else
