@@ -21,6 +21,9 @@
 #include "operator_ext_dispersive.h"
 #include "FDTD/operator.h"
 
+#include <string>
+#include <vector>
+
 //! Operator extension for an n-term Debye dispersive material
 /*!
   eps_r(w) = eps_inf + sum_k d_eps_k / (1 + j w tau_k)
@@ -90,6 +93,21 @@ protected:
 	Operator_Ext_DebyeMaterial(Operator* op, Operator_Ext_DebyeMaterial* op_ext);
 
 	void DeleteArrays();
+
+	//! The Debye cells of a range of x-lines in scan order (x, then y, then z), see BuildExtension()
+	struct CellList
+	{
+		std::vector<unsigned int> v_pos[3];
+		std::vector<double> v_solve[3];
+		std::vector<std::vector<double> > v_relax[3], v_drive[3]; // [direction][pole][cell]
+		// the first pole skipped as too fast for the timestep, for the warning
+		bool skipped = false;
+		double skipped_tau = 0;
+		std::string skipped_mat;
+	};
+
+	//! Collect the Debye cells and their coefficients on the x-lines x_start..x_stop
+	void BuildExtensionRange(unsigned int x_start, unsigned int x_stop, CellList& cells) const;
 
 	//! Number of Debye poles.
 	/*!

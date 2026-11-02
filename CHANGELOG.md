@@ -81,6 +81,9 @@ there are unreleased changes. It becomes the next release entry.
   the GPU engine from snapshots of the fields.
 - Field dumps are evaluated on several threads, with every engine; large
   dumps, like the surfaces of an NF2FF box, slow the simulation down less.
+- The UPML and the Debye material extensions set up their coefficients on
+  several threads (`numThreads`) instead of one: a large model with a PML or
+  a Debye material is set up faster.
 - The end criteria is checked every Nyquist period during the first minute of
   a simulation, and only after that with the progress report every few
   seconds. A short simulation used to run on until the first report, on a fast

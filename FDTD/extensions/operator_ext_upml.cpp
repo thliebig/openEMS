@@ -19,6 +19,9 @@
 #include "FDTD/operator_cylindermultigrid.h"
 #include "engine_ext_upml.h"
 #include "fparser.hh"
+#include "tools/useful.h"
+
+#include <algorithm>
 
 using namespace std;
 
@@ -266,7 +269,7 @@ bool Operator_Ext_UPML::SetGradingFunction(string func)
 	return false;
 }
 
-void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3])
+void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3], FunctionParser* grading)
 {
 	double depth=0;
 	double width=0;
@@ -287,7 +290,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 				depth-=m_Op->GetEdgeLength(n,pos)/2;
 			double vars[5] = {depth, width/m_Size[2*n], width, Zm, (double)m_Size[2*n]};
 			if (depth>0)
-				kappa_v[n] = m_GradingFunction->Eval(vars);
+				kappa_v[n] = grading->Eval(vars);
 			else
 				kappa_v[n]=0;
 			if (n==ny)
@@ -299,7 +302,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 				depth=0;
 			vars[0]=depth;
 			if (depth>0)
-				kappa_i[n] = m_GradingFunction->Eval(vars);
+				kappa_i[n] = grading->Eval(vars);
 			else
 				kappa_i[n] = 0;
 		}
@@ -318,7 +321,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 				depth+=m_Op->GetEdgeLength(n,pos)/2;
 			double vars[5] = {depth, width/(m_Size[2*n+1]), width, Zm, (double)m_Size[2*n+1]};
 			if (depth>0)
-				kappa_v[n] = m_GradingFunction->Eval(vars);
+				kappa_v[n] = grading->Eval(vars);
 			else
 				kappa_v[n]=0;
 			if (n==ny)
@@ -330,7 +333,7 @@ void Operator_Ext_UPML::CalcGradingKappa(int ny, unsigned int pos[3], double Zm,
 				depth=0;
 			vars[0]=depth;
 			if (depth>0)
-				kappa_i[n] = m_GradingFunction->Eval(vars);
+				kappa_i[n] = grading->Eval(vars);
 			else
 				kappa_i[n]=0;
 		}
@@ -359,6 +362,18 @@ bool Operator_Ext_UPML::BuildExtension()
 	iifo.Init("iifo", m_numLines);
 	iifn.Init("iifn", m_numLines);
 
+	// The cells are independent: split the x-lines over the threads (numThreads). Each thread
+	// evaluates the grading function on its own copy, FunctionParser::Eval() is not thread safe.
+	unsigned int numThreads = std::min(AvailableThreads(), m_numLines[0]);
+	std::vector<FunctionParser> grading(numThreads, *m_GradingFunction);
+	for (size_t n=0; n<grading.size(); ++n)
+		grading[n].ForceDeepCopy(); // a copy shares the parser data until this, so do it before the threads start
+	RunJobsInThreads(m_numLines[0], numThreads, [&](unsigned int t, unsigned int start, unsigned int stop) {BuildExtensionRange(start, stop, &grading[t]);});
+	return true;
+}
+
+void Operator_Ext_UPML::BuildExtensionRange(unsigned int x_start, unsigned int x_stop, FunctionParser* grading)
+{
 	unsigned int pos[3];
 	unsigned int loc_pos[3];
 	int nP,nPP;
@@ -367,7 +382,7 @@ bool Operator_Ext_UPML::BuildExtension()
 	double eff_Mat[4];
 	double dT = m_Op->GetTimestep();
 
-	for (loc_pos[0]=0; loc_pos[0]<m_numLines[0]; ++loc_pos[0])
+	for (loc_pos[0]=x_start; loc_pos[0]<=x_stop; ++loc_pos[0])
 	{
 		pos[0] = loc_pos[0] + m_StartPos[0];
 		for (loc_pos[1]=0; loc_pos[1]<m_numLines[1]; ++loc_pos[1])
@@ -380,7 +395,7 @@ bool Operator_Ext_UPML::BuildExtension()
 				for (int n=0; n<3; ++n)
 				{
 					m_Op->Calc_EffMatPos(n,pos,eff_Mat,vPrims);
-					CalcGradingKappa(n, pos,Z0 ,kappa_v ,kappa_i);
+					CalcGradingKappa(n, pos,Z0 ,kappa_v ,kappa_i, grading);
 					nP = (n+1)%3;
 					nPP = (n+2)%3;
 					// if eff_Mat[1] > 1e3 assume a metal and disable PML to continue a signal layer
@@ -441,7 +456,6 @@ bool Operator_Ext_UPML::BuildExtension()
 			}
 		}
 	}
-	return true;
 }
 
 Engine_Extension* Operator_Ext_UPML::CreateEngineExtention()

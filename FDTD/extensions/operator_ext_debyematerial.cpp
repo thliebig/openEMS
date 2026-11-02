@@ -21,8 +21,10 @@
 #include "../operator_cylinder.h"
 
 #include "tools/constants.h"
+#include "tools/useful.h"
 #include "CSPropDebyeMaterial.h"
 
+#include <algorithm>
 #include <vector>
 
 using std::cerr;
@@ -90,9 +92,6 @@ Operator_Extension* Operator_Ext_DebyeMaterial::Clone(Operator* op)
 bool Operator_Ext_DebyeMaterial::BuildExtension()
 {
 	double dT = m_Op->GetTimestep();
-	unsigned int pos[] = {0,0,0};
-	double coord[3];
-	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 
 	m_PoleCount = 0;
 	std::vector<CSProperties*> props = m_Op->GetGeometryCSX()->GetPropertyByType(CSProperties::DEBYEMATERIAL);
@@ -107,15 +106,94 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 	if (m_PoleCount<1)
 		return false; //no Debye material, drop this extension
 
-	// collected in step: one entry per cell, m_PoleCount coefficient sets per direction
-	std::vector<unsigned int> v_pos[3];
-	std::vector<double> v_solve[3];
-	std::vector<std::vector<double> > v_relax[3], v_drive[3];
+	// The cells are independent: scan the x-lines on several threads (numThreads), each into its
+	// own list of one entry per cell. Joined in thread order below, they keep the order of a single scan.
+	unsigned int numLinesX = m_Op->GetNumberOfLines(0,true);
+	unsigned int numThreads = std::min(AvailableThreads(), numLinesX);
+	std::vector<CellList> cells(numThreads);
+	for (size_t t=0; t<cells.size(); ++t)
+		for (int n=0; n<3; ++n)
+		{
+			cells[t].v_relax[n].resize(m_PoleCount);
+			cells[t].v_drive[n].resize(m_PoleCount);
+		}
+	RunJobsInThreads(numLinesX, numThreads, [&](unsigned int t, unsigned int start, unsigned int stop) {BuildExtensionRange(start, stop, cells[t]);});
+
+	// the warning a single scan would have given first
+	for (size_t t=0; t<cells.size(); ++t)
+		if (cells[t].skipped)
+		{
+			cerr << "Operator_Ext_DebyeMaterial::BuildExtension(): Warning, "
+			     << "relaxation time (" << cells[t].skipped_tau << "s) of material \""
+			     << cells[t].skipped_mat << "\" needs at least "
+			     << DEBYE_MIN_TAU_PER_DT << " timesteps (dT=" << dT
+			     << "s), skipping this pole..." << endl;
+			break;
+		}
+
+	size_t count = 0;
+	for (size_t t=0; t<cells.size(); ++t)
+		count += cells[t].v_pos[0].size();
+	if (count==0)
+		return false; //no active cell, drop this extension
+
+	// The base applies one correction per slot; the implicit solve couples all
+	// poles into a single joint correction, so there is exactly one slot and the
+	// cell list is shared, not replicated per pole.
+	m_Order = 1;
+	m_LM_Count.push_back(count);
+	m_volt_ADE_On = new bool[1];
+	m_curr_ADE_On = new bool[1];
+	m_volt_ADE_On[0] = true;
+	m_curr_ADE_On[0] = false;
+
+	m_LM_pos = new unsigned int**[1];
+	m_LM_pos[0] = new unsigned int*[3];
+
+	v_solve_ADE = new FDTD_FLOAT*[3];
+	v_relax_ADE  = new FDTD_FLOAT**[m_PoleCount];
+	v_drive_ADE   = new FDTD_FLOAT**[m_PoleCount];
+	for (int o=0; o<m_PoleCount; ++o)
+	{
+		v_relax_ADE[o] = new FDTD_FLOAT*[3];
+		v_drive_ADE[o]  = new FDTD_FLOAT*[3];
+	}
+
 	for (int n=0; n<3; ++n)
 	{
-		v_relax[n].resize(m_PoleCount);
-		v_drive[n].resize(m_PoleCount);
+		m_LM_pos[0][n] = new unsigned int[count];
+		v_solve_ADE[n]       = new FDTD_FLOAT[count];
+		for (int o=0; o<m_PoleCount; ++o)
+		{
+			v_relax_ADE[o][n] = new FDTD_FLOAT[count];
+			v_drive_ADE[o][n]  = new FDTD_FLOAT[count];
+		}
+		size_t i = 0;
+		for (size_t t=0; t<cells.size(); ++t)
+		{
+			const CellList& list = cells[t];
+			for (size_t c=0; c<list.v_pos[n].size(); ++c, ++i)
+			{
+				m_LM_pos[0][n][i] = list.v_pos[n].at(c);
+				v_solve_ADE[n][i]       = list.v_solve[n].at(c);
+				for (int o=0; o<m_PoleCount; ++o)
+				{
+					v_relax_ADE[o][n][i] = list.v_relax[n][o].at(c);
+					v_drive_ADE[o][n][i]  = list.v_drive[n][o].at(c);
+				}
+			}
+		}
 	}
+
+	return true;
+}
+
+void Operator_Ext_DebyeMaterial::BuildExtensionRange(unsigned int x_start, unsigned int x_stop, CellList& cells) const
+{
+	double dT = m_Op->GetTimestep();
+	unsigned int pos[] = {0,0,0};
+	double coord[3];
+	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 
 	// per cell scratch
 	std::vector<std::vector<double> > relax(3), drive(3);
@@ -126,9 +204,7 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 	}
 	double S[3];
 
-	bool warn_once = true;
-
-	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+	for (pos[0]=x_start; pos[0]<=x_stop; ++pos[0])
 	{
 		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 		{
@@ -185,14 +261,11 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 							continue;
 						if (t_relax < DEBYE_MIN_TAU_PER_DT*dT)
 						{
-							if (warn_once)
+							if (!cells.skipped)
 							{
-								warn_once = false;
-								cerr << "Operator_Ext_DebyeMaterial::BuildExtension(): Warning, "
-								     << "relaxation time (" << t_relax << "s) of material \""
-								     << mat->GetName() << "\" needs at least "
-								     << DEBYE_MIN_TAU_PER_DT << " timesteps (dT=" << dT
-								     << "s), skipping this pole..." << endl;
+								cells.skipped = true;
+								cells.skipped_tau = t_relax;
+								cells.skipped_mat = mat->GetName();
 							}
 							continue;
 						}
@@ -211,66 +284,17 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 
 				for (int n=0; n<3; ++n)
 				{
-					v_pos[n].push_back(pos[n]);
-					v_solve[n].push_back(1.0/(1.0 + S[n]));
+					cells.v_pos[n].push_back(pos[n]);
+					cells.v_solve[n].push_back(1.0/(1.0 + S[n]));
 					for (int o=0; o<m_PoleCount; ++o)
 					{
-						v_relax[n][o].push_back(relax[n][o]);
-						v_drive[n][o].push_back(drive[n][o]);
+						cells.v_relax[n][o].push_back(relax[n][o]);
+						cells.v_drive[n][o].push_back(drive[n][o]);
 					}
 				}
 			}
 		}
 	}
-
-	size_t count = v_pos[0].size();
-	if (count==0)
-		return false; //no active cell, drop this extension
-
-	// The base applies one correction per slot; the implicit solve couples all
-	// poles into a single joint correction, so there is exactly one slot and the
-	// cell list is shared, not replicated per pole.
-	m_Order = 1;
-	m_LM_Count.push_back(count);
-	m_volt_ADE_On = new bool[1];
-	m_curr_ADE_On = new bool[1];
-	m_volt_ADE_On[0] = true;
-	m_curr_ADE_On[0] = false;
-
-	m_LM_pos = new unsigned int**[1];
-	m_LM_pos[0] = new unsigned int*[3];
-
-	v_solve_ADE = new FDTD_FLOAT*[3];
-	v_relax_ADE  = new FDTD_FLOAT**[m_PoleCount];
-	v_drive_ADE   = new FDTD_FLOAT**[m_PoleCount];
-	for (int o=0; o<m_PoleCount; ++o)
-	{
-		v_relax_ADE[o] = new FDTD_FLOAT*[3];
-		v_drive_ADE[o]  = new FDTD_FLOAT*[3];
-	}
-
-	for (int n=0; n<3; ++n)
-	{
-		m_LM_pos[0][n] = new unsigned int[count];
-		v_solve_ADE[n]       = new FDTD_FLOAT[count];
-		for (size_t i=0; i<count; ++i)
-		{
-			m_LM_pos[0][n][i] = v_pos[n].at(i);
-			v_solve_ADE[n][i]       = v_solve[n].at(i);
-		}
-		for (int o=0; o<m_PoleCount; ++o)
-		{
-			v_relax_ADE[o][n] = new FDTD_FLOAT[count];
-			v_drive_ADE[o][n]  = new FDTD_FLOAT[count];
-			for (size_t i=0; i<count; ++i)
-			{
-				v_relax_ADE[o][n][i] = v_relax[n][o].at(i);
-				v_drive_ADE[o][n][i]  = v_drive[n][o].at(i);
-			}
-		}
-	}
-
-	return true;
 }
 
 Engine_Extension* Operator_Ext_DebyeMaterial::CreateEngineExtention()

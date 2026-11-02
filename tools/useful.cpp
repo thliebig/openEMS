@@ -24,6 +24,7 @@
 #include <sstream>
 #include <fstream>
 #include <thread>
+#include <exception>
 #ifdef __linux__
 #include <sched.h>
 #endif
@@ -231,6 +232,41 @@ std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrT
 	}
 
 	return jpt;
+}
+
+void RunJobsInThreads(unsigned int jobs, unsigned int nrThreads, const std::function<void(unsigned int, unsigned int, unsigned int)>& func)
+{
+	if (jobs==0)
+		return;
+	if (nrThreads==0)
+		nrThreads = 1;
+	std::vector<unsigned int> jpt = AssignJobs2Threads(jobs, nrThreads, true);
+	std::vector<unsigned int> start(jpt.size(), 0);
+	for (size_t n=1; n<jpt.size(); ++n)
+		start[n] = start[n-1] + jpt[n-1];
+
+	// an exception must not leave its thread (std::terminate): keep it, rethrow it below
+	std::vector<std::exception_ptr> error(jpt.size());
+	auto run = [&](unsigned int n)
+	{
+		try
+		{
+			func(n, start[n], start[n]+jpt[n]-1);
+		}
+		catch (...)
+		{
+			error[n] = std::current_exception();
+		}
+	};
+	std::vector<std::thread> threads;
+	for (unsigned int n=1; n<jpt.size(); ++n)
+		threads.push_back(std::thread(run, n));
+	run(0);
+	for (size_t n=0; n<threads.size(); ++n)
+		threads[n].join();
+	for (size_t n=0; n<error.size(); ++n)
+		if (error[n])
+			std::rethrow_exception(error[n]);
 }
 
 std::vector<float> SplitString2Float(std::string str, std::string delimiter)

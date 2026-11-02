@@ -94,7 +94,11 @@ protected:
 	std::string m_GradFunc;
 	FunctionParser* m_GradingFunction;
 
-	void CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3]);
+	//! grading: the calling thread's own copy of m_GradingFunction, FunctionParser::Eval() is not reentrant
+	void CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3], FunctionParser* grading);
+
+	//! Calculate the coefficients of the (local) x-lines x_start..x_stop, see BuildExtension()
+	void BuildExtensionRange(unsigned int x_start, unsigned int x_stop, FunctionParser* grading);
 
 	void DeleteOp();
 

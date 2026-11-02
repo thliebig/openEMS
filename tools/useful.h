@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <string>
+#include <functional>
 
 //! Calc the nyquist number of timesteps for a given frequency and timestep
 unsigned int CalcNyquistNum(double fmax, double dT);
@@ -38,6 +39,12 @@ void SetThreadLimit(unsigned int n);
 
 //! Calculate an optimal job distribution to a given number of threads. Will return a vector with the jobs for each thread.
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty=false);
+
+//! Run func(thread, start, stop) over the jobs 0..jobs-1, split by AssignJobs2Threads() into one
+//! consecutive range (start..stop inclusive) per thread, on min(jobs, nrThreads) threads.
+//! Thread 0 runs on the calling thread; returns when all are done. An exception thrown by func
+//! is rethrown here, the one of the lowest range first (what a single thread would have met first).
+void RunJobsInThreads(unsigned int jobs, unsigned int nrThreads, const std::function<void(unsigned int, unsigned int, unsigned int)>& func);
 
 std::vector<float> SplitString2Float(std::string str, std::string delimiter=",");
 std::vector<double> SplitString2Double(std::string str, std::string delimiter=",");
