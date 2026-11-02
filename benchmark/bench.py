@@ -46,8 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cases  # noqa: E402
 
 FORMAT_VERSION = 1
-ENGINES = ('multithreaded', 'gpu', 'basic', 'sse', 'sse-compressed')
-SINGLE_THREAD_ENGINES = ('basic', 'sse', 'sse-compressed')
+ENGINES = ('multithreaded', 'gpu', 'basic')
 MISMATCH = 1e-4     # probe deviation relative to its peak that is reported as a mismatch
 NOISE = 0.03        # a speed ratio within this (or the spread of the runs) is reported as noise
 
@@ -163,7 +162,9 @@ def gpu_devices(path, xml, rundir, gpu_device):
         cmd.append('--gpu-device={}'.format(gpu_device))
     out = subprocess.run(cmd, cwd=rundir, capture_output=True, text=True)
     text = out.stdout + out.stderr
-    if 'Create FDTD operator (GPU)' not in text:
+    # the operator line ends in the engine type on every mesh; it is printed only once a
+    # backend with a usable device exists (--no-simulation creates no engine)
+    if not re.search(r'^Create .*FDTD operator.* \(GPU\)$', text, re.M):
         return []
     m = re.search(r'^GPU devices:\n((?:  .*\n)*)', text, re.M)
     return [l.strip() for l in m.group(1).splitlines()] if m else ['unknown device']
@@ -337,12 +338,8 @@ def cmd_run(args):
     for name in names:
         for size in sizes:
             for engine in engines:
-                if name == 'cylindrical' and engine in cases.CARTESIAN_ONLY_ENGINES:
-                    continue    # same as multithreaded on a cylindrical mesh
-                for nt in ([1] if engine in SINGLE_THREAD_ENGINES else threads):
+                for nt in threads:
                     todo.append((name, size, engine, nt))
-    if any(e in cases.CARTESIAN_ONLY_ENGINES for e in engines) and 'cylindrical' in names:
-        print('note: cylindrical runs multithreaded only, the other CPU engines are the same there')
     if 'gpu' in engines:
         for label, info in binaries.items():
             if not info['gpu_devices']:

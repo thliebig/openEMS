@@ -66,8 +66,7 @@ ts_filter  = {};
 ts_engine_independent = {'unittests', 'enginetests'};
 
 % all known engines, in the order the engine sweep uses them
-ts_all_engines = {'--engine=basic', '--engine=sse', ...
-                  '--engine=sse-compressed', '--engine=multithreaded'};
+ts_all_engines = {'--engine=basic', '--engine=multithreaded'};
 
 % Only "octave run_testsuite.m [options]" puts this script's options into
 % argv(); in a session argv() holds Octave's own command line instead (--gui and

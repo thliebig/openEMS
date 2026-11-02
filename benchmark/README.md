@@ -22,7 +22,7 @@ probes of every run next to it. Other binaries: `--openems path/to/openEMS`.
 |---|---|---|
 | `--cases a,b` | all | `ideal`, `pml`, `inhomogeneous`, `dispersive`, `cylindrical` |
 | `--size S,M` | `S,M` | `XS` (~50 k cells, smoke test), `S` (~1 M), `M` (~8 M), `L` (~30 M, 3–4 GB RAM) |
-| `--engine a,b` | `multithreaded`, plus `gpu` with a device | also `basic`, `sse`, `sse-compressed` (single-threaded) |
+| `--engine a,b` | `multithreaded`, plus `gpu` with a device | also `basic` |
 | `--threads 1,4,8` | the physical cores | performance cores only on a hybrid CPU |
 | `--gpu-device N` | the best device | |
 | `--duration T` | 3 | seconds of time-stepping per run |

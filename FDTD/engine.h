@@ -20,25 +20,19 @@
 
 #include <fstream>
 #include "operator.h"
+#include "engine_type.h"
 
 #include "tools/arraylib/array_nijk.h"
 
-namespace NS_Engine_Multithread
-{
-class thread; // evil hack to access numTS from multithreading context
-}
-
 class Engine_Extension;
+class Engine_ThreadPool;
+class Engine_SubGridCoupling;
 
-class Engine
+class Engine : public Engine_Types
 {
 public:
-	enum EngineType
-	{
-		BASIC, SSE, GPU, UNKNOWN
-	};
-
-	static Engine* New(const Operator* op);
+	//! A basic engine on \a numThreads threads, 0 for finding the best number while running (see NextInterval())
+	static Engine* New(const Operator* op, unsigned int numThreads = 0);
 	virtual ~Engine();
 
 	virtual void Init();
@@ -49,7 +43,11 @@ public:
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;}
 
-	virtual void NextInterval(float curr_speed) {UNUSED(curr_speed);};
+	//! The speed of the last interval, for the thread count of the CPU engines
+	virtual void NextInterval(float curr_speed);
+
+	//! Number of threads of a CPU engine, 0 (default) for finding the best number while running; set before the first IterateTS()
+	void SetNumThreads(unsigned int numThreads) {m_numThreads = numThreads;}
 
 	//this access functions muss be overloaded by any new engine using a different storage model
 	inline virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
@@ -124,6 +122,17 @@ public:
 
 	EngineType GetType() const {return m_type;}
 
+	//! The sub-grid of a cylindrical multi-grid level: its engine (of the same type) and the coupling of the two, both taken over; before the first IterateTS(), throws after
+	void SetSubGrid(Engine* sub, Engine_SubGridCoupling* coupling);
+	//! The engine of the sub-grid, NULL without one; this engine steps it right after itself in every half step (the threads of Engine_ThreadPool, or Engine_GPU)
+	Engine* GetSubGridEngine() const {return m_SubGrid;}
+	//! Couple this grid and its sub-grid, once both did their voltage half step
+	void SyncSubGridVoltages();
+	//! Couple this grid and its sub-grid, once both did their current half step
+	void SyncSubGridCurrents();
+	//! Fill this grid from its sub-grid, at the end of IterateTS() (the sub-grid filled from its own first)
+	void InterpolateFromSubGrid();
+
 protected:
 	EngineType m_type;
 
@@ -140,7 +149,17 @@ protected:
 	virtual void ClearExtensions();
 	std::vector<Engine_Extension*> m_Eng_exts;
 
-	friend class NS_Engine_Multithread::thread; // evil hack to access numTS from multithreading context
+	friend class Engine_ThreadPool;
+	friend class Engine_ThreadPool_Worker;
+	friend class SubGrid_Coupling_Basic;
+
+	Engine* m_SubGrid;                        //!< see SetSubGrid()
+	Engine_SubGridCoupling* m_SubGridCoupling;
+	//! Delete the coupling and the sub-grid engine
+	void ClearSubGrid();
+
+	unsigned int m_numThreads;        //!< see SetNumThreads()
+	Engine_ThreadPool* m_ThreadPool;  //!< the worker threads of a CPU engine, created by the first IterateTS()
 };
 
 #endif // ENGINE_H

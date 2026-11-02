@@ -27,6 +27,7 @@
 #include "tools/global.h"
 #include "tools/arraylib/array_nijk.h"
 #include "engine_field_gather.h"
+#include "multigrid_interpolation.h"
 
 class Operator;
 class Engine;
@@ -56,26 +57,10 @@ public:
 	virtual void Synchronize() {}
 };
 
-//! Coupling of a cylindrical multi-grid level and its sub-grid, see Engine_GPU_CylinderMultiGrid
-/*!
-  Interpolation data of Operator_CylinderMultiGrid, independent of the operator
-  classes. The sub-grid has the same r and z lines as the base grid (up to its
-  size) and every other alpha line. For each alpha line a of the base grid and
-  direction n (0: r and z components, 1: alpha component), a field of the base
-  grid is interpolated from the sub-grid alpha lines pos_2p[n][a] and pos_2pp[n][a]
-  with the weights w_2p[n][a] and w_2pp[n][a] (_v: voltages, _i: currents).
-  */
-struct GPU_MultiGridInterpolation
-{
-	unsigned int split_pos;   //!< first base grid r line not covered by the sub-grid
-	std::vector<unsigned int> pos_v_2p[2], pos_v_2pp[2], pos_i_2p[2], pos_i_2pp[2];
-	std::vector<float> w_v_2p[2], w_v_2pp[2], w_i_2p[2], w_i_2pp[2];
-};
-
 //! Device implementation of the coupling of a multi-grid level and its sub-grid, see GPU_Backend::CreateMultiGridLink()
 /*!
-  Works on the device data of both backends, so Engine_GPU_CylinderMultiGrid
-  deletes it before either of them.
+  Works on the device data of both backends, so SubGrid_Coupling_GPU
+  is deleted before either of them.
   */
 class GPU_MultiGridLink
 {
@@ -88,7 +73,7 @@ public:
 	virtual void SyncCurrents() = 0;
 	//! Interpolate the sub-grid fields to the base grid inside the sub-grid (r lines below split_pos-1 / split_pos-2)
 	/*!
-	  Called at the end of a batch, like Engine_CylinderMultiGrid::IterateTS(),
+	  Called at the end of a batch, like Engine::InterpolateFromSubGrid(),
 	  not in every timestep.
 	  */
 	virtual void InterpolateToBase() = 0;
@@ -230,7 +215,7 @@ public:
 	//! Create a backend for a sub-grid (e.g. a cylindrical multi-grid level) whose work is ordered with the work of this backend. It's the responsibility of the caller to free it.
 	virtual GPU_Backend* NewSubGridBackend() = 0;
 	//! Create the device coupling of this (base grid) backend and \a sub_grid (created by NewSubGridBackend()), or NULL if this backend has none. It's the responsibility of the caller to free it.
-	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const GPU_MultiGridInterpolation& interpol) {UNUSED(sub_grid); UNUSED(interpol); return NULL;}
+	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const MultiGridInterpolation& interpol) {UNUSED(sub_grid); UNUSED(interpol); return NULL;}
 
 	//! Create the device implementation of the engine extension \a eng_ext of engine \a eng, or NULL if this backend has none. It's the responsibility of the caller to free it.
 	/*!
