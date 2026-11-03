@@ -23,26 +23,7 @@
 #include <vector>
 
 #include "engine.h"
-
-//! The update class and the coefficients a run of cells shares
-struct Engine_CPU_Set
-{
-	enum Class : uint8_t {ZERO, LOSSLESS, LOSSY, UPML};
-
-	double m;              //!< the material part of vi (iv): vi = m * g, see Engine_CPU
-	float vv;              //!< vv (ii), 1 for LOSSLESS
-	float uvv, ufo, ufn;   //!< UPML: Operator_Ext_UPML::vv, vvfo, vvfn (ii, iifo, iifn); vv and m are the main update on the flux
-	Class cls;
-};
-
-//! A run of cells along the fast axis with one coefficient set
-struct Engine_CPU_Run
-{
-	uint32_t start;   //!< first line along the fast axis
-	uint32_t stop;    //!< one past the last
-	uint32_t set;     //!< index in Engine_CPU_Runs::sets
-	uint32_t u;       //!< UPML: the index of the first cell's flux in Engine_CPU_UPML
-};
+#include "engine_cpu_kernel.h"
 
 //! The UPML cells of one field component, in the order of their runs: the flux (the coefficients are in the runs)
 struct Engine_CPU_UPML
@@ -147,6 +128,13 @@ protected:
 	//! the UPML region of a cell and the cell's position in it, or NULL
 	const class Operator_Ext_UPML* FindUPML(const unsigned int pos[3], unsigned int loc[3]) const;
 	std::vector<const class Operator_Ext_UPML*> m_UPML;
+
+	//! the kernel data and the kernels of the instruction set of this CPU, after BuildRuns()
+	void InitKernels();
+	Engine_CPU_Kernel m_Kernel;
+	Engine_CPU_Update m_UpdateVoltages;
+	Engine_CPU_Update m_UpdateCurrents;
+	std::string m_ISA;
 	Engine_CPU_UPML m_UPMLCells[2][3];
 
 	int m_FastAxis;

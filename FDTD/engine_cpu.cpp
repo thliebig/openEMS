@@ -86,6 +86,7 @@ void Engine_CPU::Init()
 		w->iifo.Reset();
 		w->iifn.Reset();
 	}
+	InitKernels();
 }
 
 void Engine_CPU::TakeOverUPML()
@@ -364,136 +365,72 @@ void Engine_CPU::BuildRuns()
 }
 
 // ----------------------------------------------------------------------------
-// the kernels: per line of the fast axis in the box, per component, its runs
-// clipped to the box. The curl of a cell is c(k) = A[k] - A[k-oA] - B[k] + B[k-oB]
-// (voltages, the neighbours below) or A[k] - A[k+oA] - B[k] + B[k+oB] (currents,
-// above); along the fast axis the offset is 1.
+// the kernels are in engine_cpu_kernels.inc, compiled per instruction set
 
-namespace
+void Engine_CPU::InitKernels()
 {
-//! the cells [k0, k1) of a run; the curl at k reads A, B at k and k+dA, k+dB
-inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
-                      FDTD_FLOAT* __restrict X, const FDTD_FLOAT* __restrict A, const FDTD_FLOAT* __restrict B,
-                      ptrdiff_t dA, ptrdiff_t dB, const float* __restrict gf, float* __restrict flux)
-{
-	const float vv = set.vv;
-	switch (set.cls)
+	Engine_CPU_Kernel& k = m_Kernel;
+	k.F = m_FastAxis;
+	k.S = m_SplitAxis;
+	k.M = m_MidAxis;
+	for (int a=0; a<3; ++a)
 	{
-	case Engine_CPU_Set::ZERO:
-		for (unsigned int k=k0; k<k1; ++k)
-			X[k] = 0;
-		break;
-	case Engine_CPU_Set::LOSSLESS:
-		for (unsigned int k=k0; k<k1; ++k)
-			X[k] += a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
-		break;
-	case Engine_CPU_Set::LOSSY:
-		for (unsigned int k=k0; k<k1; ++k)
-			X[k] = vv*X[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
-		break;
-	case Engine_CPU_Set::UPML:
-	{
-		// the extension's pre pass, the main update on the flux and its post pass in one
-		const ptrdiff_t j0 = (ptrdiff_t)run.u - (ptrdiff_t)run.start;
-		const float uvv = set.uvv, ufo = set.ufo, ufn = set.ufn;
-		float* __restrict F = flux + j0;
-		for (unsigned int k=k0; k<k1; ++k)
+		k.numLines[a] = numLines[a];
+		k.s[a] = volt_ptr->stride(1+a);
+	}
+	k.sN = volt_ptr->stride(0);
+	k.field[0] = volt_ptr->data();
+	k.field[1] = curr_ptr->data();
+	for (int f=0; f<2; ++f)
+		for (int n=0; n<3; ++n)
 		{
-			const float Fn = vv*F[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
-			X[k] = uvv*X[k] - ufo*F[k] + ufn*Fn;
-			F[k] = Fn;
+			Engine_CPU_Kernel::Component& c = k.comp[f][n];
+			c.runs = m_Runs[f][n].runs.data();
+			c.first = m_Runs[f][n].first.data();
+			c.sets = m_Runs[f][n].sets.data();
+			c.flux = m_UPMLCells[f][n].flux.data();
+			c.gf = m_Gf[f][n].data();
+			c.gS = m_G[f][n][m_SplitAxis].data();
+			c.gM = m_G[f][n][m_MidAxis].data();
 		}
-		break;
+
+	// the instruction set: AVX2 and FMA if the CPU has both (OPENEMS_CPU_ISA=generic overrides)
+	m_ISA = "generic";
+	m_UpdateVoltages = Engine_CPU_Generic::UpdateVoltages;
+	m_UpdateCurrents = Engine_CPU_Generic::UpdateCurrents;
+	const char* env = std::getenv("OPENEMS_CPU_ISA");
+	const std::string want = env ? env : "";
+	if ((want!="") && (want!="generic") && (want!="avx2"))
+		throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_ISA must be generic or avx2");
+#ifdef OPENEMS_CPU_AVX2
+	if (want!="generic")
+	{
+		__builtin_cpu_init();
+		if (__builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma"))
+		{
+			m_ISA = "avx2";
+			m_UpdateVoltages = Engine_CPU_AVX2::UpdateVoltages;
+			m_UpdateCurrents = Engine_CPU_AVX2::UpdateCurrents;
+		}
+		else if (want=="avx2")
+			throw std::runtime_error("Engine_CPU: OPENEMS_CPU_ISA=avx2, but the CPU lacks AVX2 or FMA");
 	}
-	}
-}
+#else
+	if (want=="avx2")
+		throw std::runtime_error("Engine_CPU: OPENEMS_CPU_ISA=avx2, but this build has no AVX2 kernels");
+#endif
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Engine_CPU: kernels for " << m_ISA << endl;
 }
 
 void Engine_CPU::UpdateVoltages(const Engine_Box& box)
 {
-	const int F = m_FastAxis, S = m_SplitAxis, M = m_MidAxis;
-	ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
-	ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
-	const size_t sN = volt.stride(0);
-	const size_t s[3] = {volt.stride(1), volt.stride(2), volt.stride(3)};
-	unsigned int pos[3];
-	pos[F] = 0;
-	for (pos[S]=box.start[S]; pos[S]<box.stop[S]; ++pos[S])
-		for (pos[M]=box.start[M]; pos[M]<box.stop[M]; ++pos[M])
-		{
-			const size_t base = pos[S]*s[S] + pos[M]*s[M];
-			const size_t line = (size_t)pos[S]*numLines[M] + pos[M];
-			for (int n=0; n<3; ++n)
-			{
-				const int nP = (n+1)%3, nPP = (n+2)%3;
-				// V_n += vi * (I_nPP(pos) - I_nPP(pos-e_nP) - I_nP(pos) + I_nP(pos-e_nPP)); at line 0 the neighbour is the cell itself
-				const ptrdiff_t dA = -(ptrdiff_t)((nP==F) ? 1 : (pos[nP]>0 ? s[nP] : 0));
-				const ptrdiff_t dB = -(ptrdiff_t)((nPP==F) ? 1 : (pos[nPP]>0 ? s[nPP] : 0));
-				FDTD_FLOAT* V = volt.data() + n*sN + base;
-				const FDTD_FLOAT* Ia = curr.data() + nPP*sN + base;
-				const FDTD_FLOAT* Ib = curr.data() + nP*sN + base;
-				const Engine_CPU_Runs& r = m_Runs[0][n];
-				Engine_CPU_UPML& u = m_UPMLCells[0][n];
-				const double slow = m_G[0][n][S][pos[S]] * m_G[0][n][M][pos[M]];
-				for (uint64_t i=r.first[line]; i<r.first[line+1]; ++i)
-				{
-					const Engine_CPU_Run& run = r.runs[i];
-					unsigned int k0 = std::max(run.start, box.start[F]);
-					const unsigned int k1 = std::min(run.stop, box.stop[F]);
-					if (k0>=k1)
-						continue;
-					const Engine_CPU_Set& set = r.sets[run.set];
-					const float a = (float)(set.m*slow);
-					if ((k0==0) && (set.cls!=Engine_CPU_Set::ZERO) && ((nP==F) || (nPP==F)))
-					{
-						// the first line of the fast axis has no lower neighbour along it
-						UpdateRun(run, set, a, 0, 1, V, Ia, Ib, (nP==F) ? 0 : dA, (nPP==F) ? 0 : dB, m_Gf[0][n].data(), u.flux.data());
-						k0 = 1;
-					}
-					UpdateRun(run, set, a, k0, k1, V, Ia, Ib, dA, dB, m_Gf[0][n].data(), u.flux.data());
-				}
-			}
-		}
+	m_UpdateVoltages(m_Kernel, box.start, box.stop);
 }
 
 void Engine_CPU::UpdateCurrents(const Engine_Box& box)
 {
-	const int F = m_FastAxis, S = m_SplitAxis, M = m_MidAxis;
-	ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt = *volt_ptr;
-	ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
-	const size_t sN = curr.stride(0);
-	const size_t s[3] = {curr.stride(1), curr.stride(2), curr.stride(3)};
-	unsigned int pos[3];
-	for (pos[S]=box.start[S]; pos[S]<box.stop[S]; ++pos[S])
-		for (pos[M]=box.start[M]; pos[M]<box.stop[M]; ++pos[M])
-		{
-			const size_t base = pos[S]*s[S] + pos[M]*s[M];
-			const size_t line = (size_t)pos[S]*numLines[M] + pos[M];
-			for (int n=0; n<3; ++n)
-			{
-				const int nP = (n+1)%3, nPP = (n+2)%3;
-				// I_n += iv * (V_nPP(pos) - V_nPP(pos+e_nP) - V_nP(pos) + V_nP(pos+e_nPP))
-				const ptrdiff_t dA = (nP==F) ? 1 : s[nP];
-				const ptrdiff_t dB = (nPP==F) ? 1 : s[nPP];
-				FDTD_FLOAT* I = curr.data() + n*sN + base;
-				const FDTD_FLOAT* Va = volt.data() + nPP*sN + base;
-				const FDTD_FLOAT* Vb = volt.data() + nP*sN + base;
-				const Engine_CPU_Runs& r = m_Runs[1][n];
-				Engine_CPU_UPML& u = m_UPMLCells[1][n];
-				const double slow = m_G[1][n][S][pos[S]] * m_G[1][n][M][pos[M]];
-				for (uint64_t i=r.first[line]; i<r.first[line+1]; ++i)
-				{
-					const Engine_CPU_Run& run = r.runs[i];
-					const unsigned int k0 = std::max(run.start, box.start[F]);
-					const unsigned int k1 = std::min(run.stop, box.stop[F]);
-					if (k0<k1)
-					{
-						const Engine_CPU_Set& set = r.sets[run.set];
-						UpdateRun(run, set, (float)(set.m*slow), k0, k1, I, Va, Vb, dA, dB, m_Gf[1][n].data(), u.flux.data());
-					}
-				}
-			}
-		}
+	m_UpdateCurrents(m_Kernel, box.start, box.stop);
 }
 
 void Engine_CPU::UpdateVoltages(unsigned int startX, unsigned int numX)

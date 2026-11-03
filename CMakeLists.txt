@@ -377,7 +377,19 @@ IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
   set_source_files_properties(${HIP_SOURCES} PROPERTIES LANGUAGE CUDA COMPILE_OPTIONS "-x;cu")
 ENDIF()
 
+# the kernels of the CPU engine once more for AVX2 and FMA, chosen at run time
+# (Engine_CPU::InitKernels()); GCC and Clang on x86-64
+set(CPU_AVX2_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/FDTD/engine_cpu_kernels_avx2.cpp)
+IF((CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64") AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang") AND NOT MSVC)
+  set(OPENEMS_CPU_AVX2 ON)
+  set(SOURCES ${SOURCES} ${CPU_AVX2_SOURCE})
+  set_source_files_properties(${CPU_AVX2_SOURCE} PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma")
+ENDIF()
+
 add_library( openEMS SHARED ${SOURCES})
+IF(OPENEMS_CPU_AVX2)
+  target_compile_definitions(openEMS PRIVATE OPENEMS_CPU_AVX2)
+ENDIF()
 
 # the target the HIP sources are built into: libopenEMS or the plugin
 IF(ENABLE_HIP)
