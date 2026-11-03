@@ -58,7 +58,7 @@ public:
 	static Operator* New(unsigned int numThreads = 0);
 	virtual ~Operator();
 
-	//! Choose the engine the operator creates (CreateEngine()), Engine::BASIC, SSE or GPU (no default: building the operator without it throws), and with it the layout of the coefficients (Coeffs_SSE_Compressed for the SSE engine, else Coeffs_Basic); before the operator is built, throws after
+	//! Choose the engine the operator creates (CreateEngine()), Engine::BASIC, SSE, GPU or CPU (no default: building the operator without it throws), and with it the layout of the coefficients (Coeffs_SSE_Compressed for the SSE engine, else Coeffs_Basic); before the operator is built, throws after
 	virtual void SetEngineType(Engine_Types::EngineType type);
 	Engine_Types::EngineType GetEngineType() const {return m_EngineType;}
 	//! The backend of a GPU engine (see GPU_Backend::New), which the operator takes over and hands on to its engine

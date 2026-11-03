@@ -46,7 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cases  # noqa: E402
 
 FORMAT_VERSION = 1
-ENGINES = ('multithreaded', 'gpu', 'basic')
+ENGINES = ('multithreaded', 'gpu', 'basic', 'cpu')
 MISMATCH = 1e-4     # probe deviation relative to its peak that is reported as a mismatch
 NOISE = 0.03        # a speed ratio within this (or the spread of the runs) is reported as noise
 

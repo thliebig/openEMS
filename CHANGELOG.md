@@ -25,6 +25,13 @@ there are unreleased changes. It becomes the next release entry.
   several GPUs it takes a discrete one before an integrated one, then the one
   with more memory; `--gpu-device=N` (`gpu_device=N`) picks device N of the
   list printed at `--verbose=1`.
+- **A CPU engine, experimental**, `--engine=cpu` (`engine='cpu'`): the fields
+  as plain arrays in a memory layout chosen per model, the update coefficients
+  as runs of cell classes (PEC, lossless, lossy, PML) with the mesh geometry
+  factored out, and the UPML updated together with the main update in one pass
+  instead of three. Its results agree with the other engines to float rounding,
+  not bit for bit. On models with a PML it is 1.5-1.9x faster than the default
+  engine; for now it needs more memory than that.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.

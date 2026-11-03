@@ -153,6 +153,9 @@ protected:
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr_ptr;
 	unsigned int numTS;
 
+	//! The memory layout of the fields (ArrayNIJK), allocated by Init()
+	virtual std::string GetFieldLayout() const {return "NIJK";}
+
 	virtual void InitExtensions();
 	virtual void ClearExtensions();
 	std::vector<Engine_Extension*> m_Eng_exts;

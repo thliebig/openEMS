@@ -98,8 +98,8 @@ void Engine::InterpolateFromSubGrid()
 void Engine::Init()
 {
 	numTS = 0;
-	volt_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("volt", numLines);
-	curr_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("curr", numLines);
+	volt_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("volt", {numLines[0], numLines[1], numLines[2]}, GetFieldLayout());
+	curr_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("curr", {numLines[0], numLines[1], numLines[2]}, GetFieldLayout());
 
 	InitExtensions();
 	SortExtensionByPriority();

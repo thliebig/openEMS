@@ -35,6 +35,7 @@ Engine_SubGridCoupling* Engine_SubGridCoupling::New(Engine* base, Engine* sub, c
 	case Engine::SSE:
 		return new SubGrid_Coupling_SSE(static_cast<Engine_sse*>(base), static_cast<Engine_sse*>(sub), op);
 	case Engine::BASIC:
+	case Engine::CPU:   // the basic coupling reads the fields through their layout
 		return new SubGrid_Coupling_Basic(base, sub, op);
 	case Engine::GPU:
 		return new SubGrid_Coupling_GPU(static_cast<Engine_GPU*>(base), static_cast<Engine_GPU*>(sub), op);

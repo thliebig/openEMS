@@ -23,6 +23,7 @@
 #include "tools/useful.h"
 #include "engine.h"
 #include "engine_sse.h"
+#include "engine_cpu.h"
 #include "engine_gpu.h"
 #include "gpu_backend.h"
 #include "extensions/operator_extension.h"
@@ -76,7 +77,7 @@ Operator::~Operator()
 
 void Operator::SetEngineType(Engine_Types::EngineType type)
 {
-	if ((type!=Engine::BASIC) && (type!=Engine::SSE) && (type!=Engine::GPU))
+	if ((type!=Engine::BASIC) && (type!=Engine::SSE) && (type!=Engine::GPU) && (type!=Engine::CPU))
 		throw std::invalid_argument("Operator::SetEngineType: no such engine type");
 	if (m_Coeffs)
 		throw std::logic_error("Operator::SetEngineType: the operator is built already, for another engine type");
@@ -106,6 +107,9 @@ Engine* Operator::CreateEngine()
 		break;
 	case Engine::BASIC:
 		m_Engine = Engine::New(this, m_numThreads);
+		break;
+	case Engine::CPU:
+		m_Engine = Engine_CPU::New(this, m_numThreads);
 		break;
 	default:
 		throw std::logic_error("Operator::CreateEngine: no engine type set (SetEngineType())");

@@ -3,7 +3,9 @@
  GPU engine test — comparison with the basic engine
 
  Each case runs with engine='basic', engine='gpu-reference' and engine='gpu'
- and compares all probe files and all HDF5 field dumps.
+ and compares all probe files and all HDF5 field dumps. The CPU engine
+ (engine='cpu', cell runs and factorised coefficients, the UPML fused into its
+ update) runs every case too and is compared like a device backend.
 
  The reference backend performs the main FDTD updates on the CPU on its own
  copy of the fields, exactly like the basic engine, so its results must be
@@ -35,6 +37,7 @@
    cylindrical and multi-grid cases: engine='multithreaded' bit-identical to engine='basic'
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
+   engine='cpu': created, and max. deviation < 1e-4 of the peak value like a device backend
 
  Tested with
   - python 3.13
@@ -638,7 +641,7 @@ FULL_DEVICE_BACKENDS = ('HIP', 'Metal')
 DEVICE_DFT_BACKENDS = ('HIP',)
 for name, case, on_device in cases:
     print(f'Testing case: {name}')
-    engines = ('basic', 'gpu-reference', 'gpu')
+    engines = ('basic', 'gpu-reference', 'gpu', 'cpu')
     if name.startswith(('cylinder', 'multigrid')):
         engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
     paths = {engine: os.path.join(tempfile.gettempdir(), f'GPU_Engine_{name}_{engine}') for engine in engines}
@@ -657,6 +660,12 @@ for name, case, on_device in cases:
     diff, n_probes, n_dumps, _ = compare_outputs(paths['basic'], paths['gpu-reference'])
     print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
     assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
+
+    assert 'Create FDTD engine (CPU' in logs['cpu'], f'FAIL [{name}]: engine=cpu did not create the CPU engine'
+    diff, _, _, worst = compare_outputs(paths['basic'], paths['cpu'], rtol=DEVICE_RTOL)
+    print(f'  CPU engine: max. deviation {worst:.1e} of the peak value')
+    assert not diff, f'FAIL [{name}]: the CPU engine deviates from the basic engine: ' + \
+        ', '.join(f'{n} ({d:.1e})' for n, d in diff)
 
     if 'multithreaded' in engines:
         diff, _, _, _ = compare_outputs(paths['basic'], paths['multithreaded'])
