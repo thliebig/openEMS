@@ -24,26 +24,31 @@
 
 #include "engine.h"
 
-//! A run of cells along the fast axis with one update class and one coefficient set
-struct Engine_CPU_Run
+//! The update class and the coefficients a run of cells shares
+struct Engine_CPU_Set
 {
 	enum Class : uint8_t {ZERO, LOSSLESS, LOSSY, UPML};
 
-	uint32_t start;   //!< first line along the fast axis
-	uint32_t stop;    //!< one past the last
-	float vv;         //!< vv (ii) of the run, 1 for LOSSLESS
-	float a;          //!< vi (iv) of a cell is a * g(fast line), see Engine_CPU
-	uint64_t u;       //!< UPML: the index of the first cell in Engine_CPU_UPML
+	double m;              //!< the material part of vi (iv): vi = m * g, see Engine_CPU
+	float vv;              //!< vv (ii), 1 for LOSSLESS
+	float uvv, ufo, ufn;   //!< UPML: Operator_Ext_UPML::vv, vvfo, vvfn (ii, iifo, iifn); vv and m are the main update on the flux
 	Class cls;
 };
 
-//! The UPML cells of one field component, in the order of their runs: the main coefficients, the UPML ones and the flux
+//! A run of cells along the fast axis with one coefficient set
+struct Engine_CPU_Run
+{
+	uint32_t start;   //!< first line along the fast axis
+	uint32_t stop;    //!< one past the last
+	uint32_t set;     //!< index in Engine_CPU_Runs::sets
+	uint32_t u;       //!< UPML: the index of the first cell's flux in Engine_CPU_UPML
+};
+
+//! The UPML cells of one field component, in the order of their runs: the flux (the coefficients are in the runs)
 struct Engine_CPU_UPML
 {
-	std::vector<float> vv, vi;          //!< the main update, applied to the flux (Operator_Ext_UPML rewrites them in the PML)
-	std::vector<float> uvv, ufo, ufn;   //!< Operator_Ext_UPML::vv, vvfo, vvfn (ii, iifo, iifn)
 	std::vector<float> flux;
-	void Clear() {vv.clear(); vi.clear(); uvv.clear(); ufo.clear(); ufn.clear(); flux.clear();}
+	void Clear() {flux.clear();}
 };
 
 //! The run lists of one field component, per line of the fast axis
@@ -51,6 +56,7 @@ struct Engine_CPU_Runs
 {
 	std::vector<Engine_CPU_Run> runs;
 	std::vector<uint64_t> first;   //!< per line the index of its first run, plus one entry at the end
+	std::vector<Engine_CPU_Set> sets;   //!< the distinct coefficient sets of the runs
 };
 
 //! CPU engine on plain linear field arrays, the coefficients as runs of cell classes
@@ -71,14 +77,17 @@ struct Engine_CPU_Runs
   the fast factor. So graded meshes do not break runs, and the coefficient
   traffic is the fast factor array (in cache) plus a run per run.
 
-  The cells of a UPML (Operator_Ext_UPML) are the class UPML, with exact per
-  cell coefficients, and the engine updates them itself in one pass instead of
+  The cells of a UPML (Operator_Ext_UPML) are the class UPML, runs with equal
+  main and UPML coefficients and a flux per cell, and the engine updates them
+  itself in one pass instead of
   the extension's pre and post passes around the main update:
     Fn = vv*F + vi*curl,  V = uvv*V - ufo*F + ufn*Fn,  F = Fn
   with F the flux. This is the extension's sequence, which leaves the real
   field in V outside the main update: its pre hook is the last before it, its
   post hook the first after it (its priority), so the other extensions see the
-  same values. The UPML engine extensions are dropped.
+  same values. The UPML engine extensions are dropped, the coefficients of
+  the UPML operator extensions freed, and the operator frees its full
+  coefficients after creating the engine (Operator::CreateEngine()).
 
   The extensions see the fields through Engine::GetVolt() and friends, which
   follow the layout, and run in the dispatch of the basic engine.
@@ -119,12 +128,17 @@ protected:
 	//! The class and coefficients of a cell: neighbours with equal keys form a run
 	struct CellKey
 	{
-		Engine_CPU_Run::Class cls;
+		Engine_CPU_Set::Class cls;
 		float vv;
 		int64_t q;          //!< m quantised on a log scale, see GetCellKey(); its sign in sign
 		int sign;
-		bool operator==(const CellKey& o) const {return cls==o.cls && vv==o.vv && q==o.q && sign==o.sign;}
+		float uvv, ufo, ufn;   //!< UPML only, else 0
+		bool operator==(const CellKey& o) const
+		{
+			return cls==o.cls && vv==o.vv && q==o.q && sign==o.sign && uvv==o.uvv && ufo==o.ufo && ufn==o.ufn;
+		}
 		double M() const;   //!< the m this key stands for
+		uint32_t Hash() const;   //!< for counting runs only (ChooseLayout())
 	};
 	CellKey GetCellKey(int f, int n, const unsigned int pos[3]) const;
 

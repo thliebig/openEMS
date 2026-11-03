@@ -110,6 +110,8 @@ Engine* Operator::CreateEngine()
 		break;
 	case Engine::CPU:
 		m_Engine = Engine_CPU::New(this, m_numThreads);
+		// the engine holds its runs now: free the full coefficients (48 bytes per node), as for the GPU
+		m_Coeffs->Free();
 		break;
 	default:
 		throw std::logic_error("Operator::CreateEngine: no engine type set (SetEngineType())");

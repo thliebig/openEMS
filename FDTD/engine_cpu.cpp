@@ -21,6 +21,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <map>
+#include <tuple>
 #include <stdexcept>
 
 #include "tools/global.h"
@@ -73,6 +75,17 @@ void Engine_CPU::Init()
 	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
 	TakeOverUPML();
 	BuildRuns();
+	// the UPML cells hold their coefficients now: free the extension's (24 bytes per node of a component pair)
+	for (const Operator_Ext_UPML* upml : m_UPML)
+	{
+		Operator_Ext_UPML* w = const_cast<Operator_Ext_UPML*>(upml);
+		w->vv.Reset();
+		w->vvfo.Reset();
+		w->vvfn.Reset();
+		w->ii.Reset();
+		w->iifo.Reset();
+		w->iifn.Reset();
+	}
 }
 
 void Engine_CPU::TakeOverUPML()
@@ -153,9 +166,27 @@ void Engine_CPU::CalcGeometry()
 
 double Engine_CPU::CellKey::M() const
 {
-	if (cls==Engine_CPU_Run::ZERO || sign==0)
+	if (cls==Engine_CPU_Set::ZERO || sign==0)
 		return 0;
 	return sign*std::exp(q*M_TOLERANCE);
+}
+
+uint32_t Engine_CPU::CellKey::Hash() const
+{
+	// FNV-1a over the fields; a collision only merges two runs in the statistics
+	uint32_t h = 2166136261u;
+	auto mix = [&h](const void* p, size_t n) {
+		for (size_t i=0; i<n; ++i)
+			h = (h ^ ((const unsigned char*)p)[i]) * 16777619u;
+	};
+	mix(&cls, sizeof(cls));
+	mix(&vv, sizeof(vv));
+	mix(&q, sizeof(q));
+	mix(&sign, sizeof(sign));
+	mix(&uvv, sizeof(uvv));
+	mix(&ufo, sizeof(ufo));
+	mix(&ufn, sizeof(ufn));
+	return h;
 }
 
 Engine_CPU::CellKey Engine_CPU::GetCellKey(int f, int n, const unsigned int pos[3]) const
@@ -167,19 +198,25 @@ Engine_CPU::CellKey Engine_CPU::GetCellKey(int f, int n, const unsigned int pos[
 	key.vv = s;
 	key.q = 0;
 	key.sign = 0;
+	key.uvv = key.ufo = key.ufn = 0;
 	unsigned int loc[3];
-	if (FindUPML(pos, loc))
+	const Operator_Ext_UPML* upml = FindUPML(pos, loc);
+	if (upml)
 	{
-		key.cls = Engine_CPU_Run::UPML;   // per cell coefficients, one run through the PML
-		key.vv = 0;
+		// the main coefficients (rewritten by the UPML for its flux) and the UPML ones, graded with the depth
+		Operator_Ext_UPML* w = const_cast<Operator_Ext_UPML*>(upml);   // its Get*() are not const
+		key.cls = Engine_CPU_Set::UPML;
+		key.uvv = (f==0) ? w->GetVV(n, loc)   : w->GetII(n, loc);
+		key.ufo = (f==0) ? w->GetVVFO(n, loc) : w->GetIIFO(n, loc);
+		key.ufn = (f==0) ? w->GetVVFN(n, loc) : w->GetIIFN(n, loc);
+	}
+	else if ((s==0) && (c==0))
+	{
+		key.cls = Engine_CPU_Set::ZERO;
 		return key;
 	}
-	if ((s==0) && (c==0))
-	{
-		key.cls = Engine_CPU_Run::ZERO;
-		return key;
-	}
-	key.cls = (s==1.0f) ? Engine_CPU_Run::LOSSLESS : Engine_CPU_Run::LOSSY;
+	else
+		key.cls = (s==1.0f) ? Engine_CPU_Set::LOSSLESS : Engine_CPU_Set::LOSSY;
 	const double g = m_G[f][n][0][pos[0]] * m_G[f][n][1][pos[1]] * m_G[f][n][2][pos[2]];
 	const double m = c/g;
 	if (m!=0)
@@ -195,7 +232,7 @@ void Engine_CPU::ChooseLayout()
 	// the number of runs along each axis, over all components of both fields
 	double runs[3] = {0, 0, 0};
 	const size_t N0 = numLines[0], N1 = numLines[1], N2 = numLines[2];
-	std::vector<CellKey> keys(N0*N1*N2);
+	std::vector<uint32_t> keys(N0*N1*N2);   // 4 bytes per node, the peak of the setup
 	unsigned int pos[3];
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)
@@ -203,13 +240,13 @@ void Engine_CPU::ChooseLayout()
 			for (pos[0]=0; pos[0]<N0; ++pos[0])
 				for (pos[1]=0; pos[1]<N1; ++pos[1])
 					for (pos[2]=0; pos[2]<N2; ++pos[2])
-						keys[(pos[0]*N1 + pos[1])*N2 + pos[2]] = GetCellKey(f, n, pos);
+						keys[(pos[0]*N1 + pos[1])*N2 + pos[2]] = GetCellKey(f, n, pos).Hash();
 			const size_t stride[3] = {N1*N2, N2, 1};
 			for (int a=0; a<3; ++a)
 				for (size_t i=0; i<keys.size(); ++i)
 				{
 					const size_t p_a = (i/stride[a]) % numLines[a];
-					if ((p_a==0) || !(keys[i]==keys[i-stride[a]]))
+					if ((p_a==0) || (keys[i]!=keys[i-stride[a]]))
 						runs[a] += 1;
 				}
 		}
@@ -252,7 +289,11 @@ void Engine_CPU::BuildRuns()
 			Engine_CPU_Runs& r = m_Runs[f][n];
 			Engine_CPU_UPML& u = m_UPMLCells[f][n];
 			r.runs.clear();
+			r.sets.clear();
 			u.Clear();
+			// the index of each distinct key in r.sets
+			typedef std::tuple<int, float, int64_t, int, float, float, float> SetKey;
+			std::map<SetKey, uint32_t> setIndex;
 			r.first.assign((size_t)numLines[S]*numLines[M] + 1, 0);
 			m_Gf[f][n].assign(m_G[f][n][F].begin(), m_G[f][n][F].end());
 			// the currents are updated on [0, numLines-1) per axis
@@ -265,37 +306,39 @@ void Engine_CPU::BuildRuns()
 					r.first[line] = r.runs.size();
 					if ((pos[S]+last>=numLines[S]) || (pos[M]+last>=numLines[M]))
 						continue;
-					const double slow = m_G[f][n][S][pos[S]] * m_G[f][n][M][pos[M]];
 					CellKey prev = CellKey();
 					for (pos[F]=0; pos[F]+last<numLines[F]; ++pos[F])
 					{
 						CellKey key = GetCellKey(f, n, pos);
 						++count[key.cls];
-						if (key.cls==Engine_CPU_Run::UPML)
-						{
-							unsigned int loc[3];
-							const Operator_Ext_UPML* upml = FindUPML(pos, loc);
-							Operator_Ext_UPML* w = const_cast<Operator_Ext_UPML*>(upml);   // its Get*() are not const
-							unsigned int p[3] = {pos[0], pos[1], pos[2]};
-							u.vv.push_back((f==0) ? Op->GetVV(n, p) : Op->GetII(n, p));
-							u.vi.push_back((f==0) ? Op->GetVI(n, p) : Op->GetIV(n, p));
-							u.uvv.push_back((f==0) ? w->GetVV(n, loc)   : w->GetII(n, loc));
-							u.ufo.push_back((f==0) ? w->GetVVFO(n, loc) : w->GetIIFO(n, loc));
-							u.ufn.push_back((f==0) ? w->GetVVFN(n, loc) : w->GetIIFN(n, loc));
+						if (key.cls==Engine_CPU_Set::UPML)
 							u.flux.push_back(0);
-						}
 						if ((pos[F]>0) && (key==prev))
 						{
 							++r.runs.back().stop;
 							continue;
 						}
+						const SetKey sk(key.cls, key.vv, key.q, key.sign, key.uvv, key.ufo, key.ufn);
+						auto it = setIndex.find(sk);
+						if (it==setIndex.end())
+						{
+							Engine_CPU_Set set;
+							set.cls = key.cls;
+							set.m = key.M();
+							set.vv = (key.cls==Engine_CPU_Set::LOSSLESS) ? 1.0f : key.vv;
+							set.uvv = key.uvv;
+							set.ufo = key.ufo;
+							set.ufn = key.ufn;
+							it = setIndex.insert(std::make_pair(sk, (uint32_t)r.sets.size())).first;
+							r.sets.push_back(set);
+						}
 						Engine_CPU_Run run;
 						run.start = pos[F];
 						run.stop = pos[F]+1;
-						run.cls = key.cls;
-						run.vv = (key.cls==Engine_CPU_Run::LOSSLESS) ? 1.0f : key.vv;
-						run.a = (float)(key.M()*slow);
-						run.u = (key.cls==Engine_CPU_Run::UPML) ? u.flux.size()-1 : 0;
+						run.set = it->second;
+						if (u.flux.size() > 0xffffffffu)
+							throw std::length_error("Engine_CPU: more than 2^32 UPML cells in a component");
+						run.u = (key.cls==Engine_CPU_Set::UPML) ? (uint32_t)(u.flux.size()-1) : 0;
 						r.runs.push_back(run);
 						prev = key;
 					}
@@ -305,12 +348,16 @@ void Engine_CPU::BuildRuns()
 
 	if (g_settings.GetVerboseLevel()>0)
 	{
-		size_t runs = 0;
+		size_t runs = 0, sets = 0;
 		for (int f=0; f<2; ++f)
 			for (int n=0; n<3; ++n)
+			{
 				runs += m_Runs[f][n].runs.size();
+				sets += m_Runs[f][n].sets.size();
+			}
 		const double cells = count[0] + count[1] + count[2] + count[3];
-		cout << "Engine_CPU: " << runs << " runs, mean length " << cells/runs << "; cells zero "
+		cout << "Engine_CPU: " << runs << " runs (" << runs*sizeof(Engine_CPU_Run)/1048576.0 << " MiB), " << sets
+		     << " coefficient sets, mean length " << cells/runs << "; cells zero "
 		     << 100.0*count[0]/cells << " %, lossless " << 100.0*count[1]/cells << " %, lossy "
 		     << 100.0*count[2]/cells << " %, upml " << 100.0*count[3]/cells << " %" << endl;
 	}
@@ -325,39 +372,35 @@ void Engine_CPU::BuildRuns()
 namespace
 {
 //! the cells [k0, k1) of a run; the curl at k reads A, B at k and k+dA, k+dB
-inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_UPML& u, unsigned int k0, unsigned int k1,
+inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
                       FDTD_FLOAT* __restrict X, const FDTD_FLOAT* __restrict A, const FDTD_FLOAT* __restrict B,
                       ptrdiff_t dA, ptrdiff_t dB, const float* __restrict gf, float* __restrict flux)
 {
-	const float a = run.a, vv = run.vv;
-	switch (run.cls)
+	const float vv = set.vv;
+	switch (set.cls)
 	{
-	case Engine_CPU_Run::ZERO:
+	case Engine_CPU_Set::ZERO:
 		for (unsigned int k=k0; k<k1; ++k)
 			X[k] = 0;
 		break;
-	case Engine_CPU_Run::LOSSLESS:
+	case Engine_CPU_Set::LOSSLESS:
 		for (unsigned int k=k0; k<k1; ++k)
 			X[k] += a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
 		break;
-	case Engine_CPU_Run::LOSSY:
+	case Engine_CPU_Set::LOSSY:
 		for (unsigned int k=k0; k<k1; ++k)
 			X[k] = vv*X[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
 		break;
-	case Engine_CPU_Run::UPML:
+	case Engine_CPU_Set::UPML:
 	{
 		// the extension's pre pass, the main update on the flux and its post pass in one
 		const ptrdiff_t j0 = (ptrdiff_t)run.u - (ptrdiff_t)run.start;
-		const float* __restrict mvv = u.vv.data() + j0;
-		const float* __restrict mvi = u.vi.data() + j0;
-		const float* __restrict uvv = u.uvv.data() + j0;
-		const float* __restrict ufo = u.ufo.data() + j0;
-		const float* __restrict ufn = u.ufn.data() + j0;
+		const float uvv = set.uvv, ufo = set.ufo, ufn = set.ufn;
 		float* __restrict F = flux + j0;
 		for (unsigned int k=k0; k<k1; ++k)
 		{
-			const float Fn = mvv[k]*F[k] + mvi[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
-			X[k] = uvv[k]*X[k] - ufo[k]*F[k] + ufn[k]*Fn;
+			const float Fn = vv*F[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
+			X[k] = uvv*X[k] - ufo*F[k] + ufn*Fn;
 			F[k] = Fn;
 		}
 		break;
@@ -391,6 +434,7 @@ void Engine_CPU::UpdateVoltages(const Engine_Box& box)
 				const FDTD_FLOAT* Ib = curr.data() + nP*sN + base;
 				const Engine_CPU_Runs& r = m_Runs[0][n];
 				Engine_CPU_UPML& u = m_UPMLCells[0][n];
+				const double slow = m_G[0][n][S][pos[S]] * m_G[0][n][M][pos[M]];
 				for (uint64_t i=r.first[line]; i<r.first[line+1]; ++i)
 				{
 					const Engine_CPU_Run& run = r.runs[i];
@@ -398,13 +442,15 @@ void Engine_CPU::UpdateVoltages(const Engine_Box& box)
 					const unsigned int k1 = std::min(run.stop, box.stop[F]);
 					if (k0>=k1)
 						continue;
-					if ((k0==0) && (run.cls!=Engine_CPU_Run::ZERO) && ((nP==F) || (nPP==F)))
+					const Engine_CPU_Set& set = r.sets[run.set];
+					const float a = (float)(set.m*slow);
+					if ((k0==0) && (set.cls!=Engine_CPU_Set::ZERO) && ((nP==F) || (nPP==F)))
 					{
 						// the first line of the fast axis has no lower neighbour along it
-						UpdateRun(run, u, 0, 1, V, Ia, Ib, (nP==F) ? 0 : dA, (nPP==F) ? 0 : dB, m_Gf[0][n].data(), u.flux.data());
+						UpdateRun(run, set, a, 0, 1, V, Ia, Ib, (nP==F) ? 0 : dA, (nPP==F) ? 0 : dB, m_Gf[0][n].data(), u.flux.data());
 						k0 = 1;
 					}
-					UpdateRun(run, u, k0, k1, V, Ia, Ib, dA, dB, m_Gf[0][n].data(), u.flux.data());
+					UpdateRun(run, set, a, k0, k1, V, Ia, Ib, dA, dB, m_Gf[0][n].data(), u.flux.data());
 				}
 			}
 		}
@@ -434,13 +480,17 @@ void Engine_CPU::UpdateCurrents(const Engine_Box& box)
 				const FDTD_FLOAT* Vb = volt.data() + nP*sN + base;
 				const Engine_CPU_Runs& r = m_Runs[1][n];
 				Engine_CPU_UPML& u = m_UPMLCells[1][n];
+				const double slow = m_G[1][n][S][pos[S]] * m_G[1][n][M][pos[M]];
 				for (uint64_t i=r.first[line]; i<r.first[line+1]; ++i)
 				{
 					const Engine_CPU_Run& run = r.runs[i];
 					const unsigned int k0 = std::max(run.start, box.start[F]);
 					const unsigned int k1 = std::min(run.stop, box.stop[F]);
 					if (k0<k1)
-						UpdateRun(run, u, k0, k1, I, Va, Vb, dA, dB, m_Gf[1][n].data(), u.flux.data());
+					{
+						const Engine_CPU_Set& set = r.sets[run.set];
+						UpdateRun(run, set, (float)(set.m*slow), k0, k1, I, Va, Vb, dA, dB, m_Gf[1][n].data(), u.flux.data());
+					}
 				}
 			}
 		}
