@@ -12,7 +12,7 @@
  multiply-add), so it is compared with a tolerance.
 
  Together the cases use the excitation, UPML, Mur ABC, Lorentz and Debye material,
- lumped RLC, conducting sheet, TF/SF, local absorber, steady-state and
+ lumped RLC, conducting sheet, lossy metal, TF/SF, local absorber, steady-state and
  cylinder extensions, and cylindrical meshes with one and two multi-grid
  levels.
 
@@ -278,6 +278,20 @@ def case_materials():
     CSX.AddProperty(debye1)
     debye1.AddBox([0, 0, 58], [1, 1, 63], priority=10)
     CSX.AddConductingSheet('sheet', conductivity=1e5, thickness=10e-6).AddBox([0, 0, 55], [1, 1, 55], priority=10)
+    return FDTD, CSX
+
+
+def case_lossy_metal():
+    """ lossy metal in a PML channel: a smooth sheet (2D primitive) and a rough body behind the probe,
+        surface impedance branches on the Lorentz extension """
+    FDTD = openEMS(NrTS=3000, EndCriteria=0)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    CSX.GetGrid().SetDeltaUnit(unit)
+    channel_1d(FDTD, CSX)
+    CSX.AddLossyMetal('lm_sheet', conductivity=1e4, thickness=10e-6).AddBox([0, 0, 40], [1, 1, 40], priority=10)
+    rough = CSX.AddLossyMetal('lm_body', conductivity=5.8e7, roughness_model='gradient', rq=1e-6)
+    rough.AddBox([0, 0, 85], [1, 1, 87], priority=10)
     return FDTD, CSX
 
 
@@ -595,6 +609,7 @@ cases = [('excitation',     case_excitation,     True),
          ('pml_full_separate', case_pml_graded,  True),
          ('mur',            case_mur,            True),
          ('materials',      case_materials,      True),
+         ('lossy_metal',    case_lossy_metal,    True),
          ('lumped',         case_lumped,         True),
          ('lumped_pml',     case_lumped_pml,     True),
          ('tfsf',           case_tfsf,           True),

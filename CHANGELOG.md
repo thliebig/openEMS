@@ -34,6 +34,14 @@ there are unreleased changes. It becomes the next release entry.
   structure closed by PEC. Away from DC the spectrum is the same; below about
   f0-fc it falls to zero at DC. With `f0=0` the pulse is the derivative of the
   Gaussian, with its peak at about 0.47*fc and its -20dB edge at 1.3*fc.
+- Conductor loss and surface roughness of ordinary 3D metal bodies, with the
+  CSXCAD `LossyMetal` property (`AddLossyMetal`): the faces of the body carry
+  the surface impedance of the conductor, optionally with the gradient
+  roughness model, as a passive rational fit up to the max. frequency of the
+  excitation, while the inside stays PEC. The skin depth needs no mesh. A
+  body thinner than the mesh becomes a conducting sheet with the thickness
+  of the body; a 2D primitive uses the `Thickness` of the property. It runs
+  on the Lorentz material machinery, so on all engines including the GPU.
 
 ### Fixed
 
