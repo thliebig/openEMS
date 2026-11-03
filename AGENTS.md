@@ -107,8 +107,9 @@ CSXCAD and fparser must already be installed into the prefix you build against.
 mkdir -p build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=~/opt/openEMS \
          -DFPARSER_ROOT_DIR=~/opt/openEMS \
-         -DCSXCAD_ROOT_DIR=~/opt/openEMS
+         -DCSXCAD_ROOT_DIR=~/opt/openEMS -DOPENEMS_BUILD_TESTS=ON
 make -j$(nproc) && make install
+ctest --output-on-failure          # C++ unit tests, off by default
 ```
 
 Local path overrides belong in `localConfig.cmake` (gitignored) rather than in
@@ -148,7 +149,8 @@ not verification.
 - **Tests**: add a focused test for behaviour that could silently regress —
   `TESTSUITE/` for solver behaviour and for the `matlab/` layer (see
   `TESTSUITE/README.md` for the test contract), `python/Tests/test_*.py` for
-  anything reachable from Python (`python/Tests/README.md` for that contract). A few tests that each catch something distinct beat
+  anything reachable from Python (`python/Tests/README.md` for that contract),
+  `tests/` for C++-only logic (array layouts, schedules). A few tests that each catch something distinct beat
   many that overlap. Numerical tests need a stated tolerance, not an exact
   comparison.
 - **Changelog**: a change a user can notice — new or removed API, changed

@@ -392,11 +392,19 @@ jobs:
                        -DCMAKE_HIP_COMPILER_ROCM_ROOT=$ROCM_PATH
                        "-DCMAKE_HIP_FLAGS=--gcc-install-dir=$(dirname $(g++ -print-libgcc-file-name))" )
           fi
-          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt "${hip_opts[@]}"
+          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt -DOPENEMS_BUILD_TESTS=ON "${hip_opts[@]}"
           make -j`nproc` && make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
           echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
+
+      - name: Unittest openEMS C++ library
+        # a deadlocked test must not sit here until the six hour job limit
+        timeout-minutes: 10
+        run: |
+          # covers C++-only logic the simulations reach only indirectly
+          cd $GITHUB_WORKSPACE/openEMS/build
+          ctest --output-on-failure --timeout 300
 
       - name: Run Octave setup (compile h5readatt_octave)
         run: octave --no-gui --eval "setup()"
