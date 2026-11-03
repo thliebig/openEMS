@@ -21,6 +21,7 @@
 #define CYLIDINDERMULTIGRID_LIMIT 20
 
 #include "operator_cylinder.h"
+#include "multigrid_interpolation.h"
 
 //! This is a cylindrical FDTD operator using a simple multi-grid approach.
 /*!
@@ -30,8 +31,6 @@
   */
 class Operator_CylinderMultiGrid : public Operator_Cylinder
 {
-	friend class Engine_CylinderMultiGrid;
-	friend class Engine_GPU_CylinderMultiGrid;
 public:
 	static Operator_CylinderMultiGrid* New(
 		std::vector<double> Split_Radii,
@@ -43,6 +42,8 @@ public:
 
 	virtual double GetNumberCells() const;
 
+	//! The engine of every grid level
+	virtual void SetEngineType(Engine_Types::EngineType type);
 	virtual Engine* CreateEngine();
 
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
@@ -60,6 +61,9 @@ public:
 	int GetMultiGridLevel() const {return m_MultiGridLevel;}
 
 	Operator_Cylinder* GetInnerOperator() const {return m_InnerOp;}
+
+	//! The interpolation of this grid from the sub-grid, see MultiGridInterpolation
+	const MultiGridInterpolation& GetInterpolation() const {return m_Interpol;}
 
 	virtual void SetExcitationSignal(Excitation* exc);
 
@@ -90,24 +94,11 @@ protected:
 
 	Operator_Cylinder* m_InnerOp;
 
-	// sub-grid to base interpolation coefficients
-	unsigned int* m_interpol_pos_v_2p[2];
-	f4vector* f4_interpol_v_2p[2];
-	unsigned int* m_interpol_pos_v_2pp[2];
-	f4vector* f4_interpol_v_2pp[2];
-
-	unsigned int* m_interpol_pos_i_2p[2];
-	f4vector* f4_interpol_i_2p[2];
-	unsigned int* m_interpol_pos_i_2pp[2];
-	f4vector* f4_interpol_i_2pp[2];
+	MultiGridInterpolation m_Interpol;   //!< sub-grid to base interpolation, see SetupInterpolation()
 
 	void SetupInterpolation();
 
-	virtual void CalcStartStopLines(
-		unsigned int &numThreads,
-		std::vector<unsigned int> &start,
-		std::vector<unsigned int> &stop
-	) const;
+	virtual void CalcStartStopLines(unsigned int &numThreads, std::vector<unsigned int> &start, std::vector<unsigned int> &stop) const;
 };
 
 #endif // OPERATOR_CYLINDERMULTIGRID_H

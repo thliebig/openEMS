@@ -19,19 +19,17 @@
 #define ENGINE_INTERFACE_SSE_FDTD_H
 
 #include "engine_interface_fdtd.h"
-#include "operator_sse.h"
 #include "engine_sse.h"
 
 class Engine_Interface_SSE_FDTD : public Engine_Interface_FDTD
 {
 public:
-	Engine_Interface_SSE_FDTD(Operator_sse* op);
+	Engine_Interface_SSE_FDTD(Operator* op);
 	virtual ~Engine_Interface_SSE_FDTD();
 
 	virtual double CalcFastEnergy() const;
 
 protected:
-	Operator_sse* m_Op_SSE;
 	Engine_sse* m_Eng_SSE;
 };
 

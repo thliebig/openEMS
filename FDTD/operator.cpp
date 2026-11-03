@@ -18,8 +18,13 @@
 #include <fstream>
 #include <algorithm>
 #include <stdexcept>
+#include <thread>
 #include "operator.h"
+#include "tools/useful.h"
 #include "engine.h"
+#include "engine_sse.h"
+#include "engine_gpu.h"
+#include "gpu_backend.h"
 #include "extensions/operator_extension.h"
 #include "extensions/operator_ext_excitation.h"
 #include "Common/processfields.h"
@@ -38,10 +43,10 @@ using std::cerr;
 using std::endl;
 using std::flush;
 
-Operator* Operator::New()
+Operator* Operator::New(unsigned int numThreads)
 {
-	cout << "Create FDTD operator" << endl;
 	Operator* op = new Operator();
+	op->SetNumThreads(numThreads);
 	op->Init();
 	return op;
 }
@@ -51,6 +56,11 @@ Operator::Operator() : Operator_Base()
 	m_Exc = 0;
 	m_InvaildTimestep = false;
 	m_TimeStepVar = 3;
+	m_numThreads = 0;
+	m_Coeffs = NULL;
+	m_EngineType = Engine::UNKNOWN;   // SetEngineType() before the build
+	m_GPU_Backend = NULL;
+	m_GPU_Parent = NULL;
 }
 
 Operator::~Operator()
@@ -60,11 +70,46 @@ Operator::~Operator()
 	m_Op_exts.clear();
 
 	Delete();
+	delete m_Coeffs;
+	delete m_GPU_Backend;
+}
+
+void Operator::SetEngineType(Engine_Types::EngineType type)
+{
+	if ((type!=Engine::BASIC) && (type!=Engine::SSE) && (type!=Engine::GPU))
+		throw std::invalid_argument("Operator::SetEngineType: no such engine type");
+	if (m_Coeffs)
+		throw std::logic_error("Operator::SetEngineType: the operator is built already, for another engine type");
+	m_EngineType = type;
+}
+
+void Operator::SetGPUBackend(GPU_Backend* backend, GPU_Backend* parent)
+{
+	if (backend!=m_GPU_Backend)
+		delete m_GPU_Backend;
+	m_GPU_Backend = backend;
+	m_GPU_Parent = parent;
 }
 
 Engine* Operator::CreateEngine()
 {
-	m_Engine = Engine::New(this);
+	switch (m_EngineType)
+	{
+	case Engine::GPU:
+		m_Engine = Engine_GPU::New(this, TakeGPUBackend(), m_GPU_Parent);
+		// The device holds the coefficients now: free the host ones (48 bytes per node),
+		// as the compressed storage frees its full arrays. GetVV() and friends are invalid after this.
+		m_Coeffs->Free();
+		break;
+	case Engine::SSE:
+		m_Engine = Engine_sse::New(this, m_numThreads);
+		break;
+	case Engine::BASIC:
+		m_Engine = Engine::New(this, m_numThreads);
+		break;
+	default:
+		throw std::logic_error("Operator::CreateEngine: no engine type set (SetEngineType())");
+	}
 	return m_Engine;
 }
 
@@ -75,10 +120,8 @@ void Operator::Init()
 
 	Operator_Base::Init();
 
-	vv_ptr = NULL;
-	vi_ptr = NULL;
-	iv_ptr = NULL;
-	ii_ptr = NULL;
+	delete m_Coeffs;
+	m_Coeffs = NULL;
 
 	m_epsR_ptr = NULL;
 	m_kappa_ptr = NULL;
@@ -104,14 +147,8 @@ void Operator::Delete()
 {
 	CSX = NULL;
 
-	delete vv_ptr;
-	delete vi_ptr;
-	delete iv_ptr;
-	delete ii_ptr;
-	vv_ptr = NULL;
-	vi_ptr = NULL;
-	iv_ptr = NULL;
-	ii_ptr = NULL;
+	delete m_Coeffs;
+	m_Coeffs = NULL;
 
 	delete MainOp; MainOp=0;
 	for (int n=0; n<3; ++n)
@@ -535,6 +572,8 @@ void Operator::ShowStat() const
 	cout << "Nyquist criteria (TS)\t: " << m_Exc->GetNyquistNum() << endl;
 	cout << "Nyquist criteria (s)\t: " << m_Exc->GetNyquistNum()*dT << endl;
 	cout << "-----------------------------------" << endl;
+	if (m_Coeffs)
+		m_Coeffs->ShowStat(cout);
 }
 
 void Operator::ShowExtStat() const
@@ -840,14 +879,16 @@ double Operator::GetMinMeshStep() const
 
 void Operator::InitOperator()
 {
-	delete vv_ptr;
-	delete vi_ptr;
-	delete iv_ptr;
-	delete ii_ptr;
-	vv_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("vv", numLines);
-	vi_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("vi", numLines);
-	iv_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("iv", numLines);
-	ii_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("ii", numLines);
+	// the layout the engine reads; the GPU backends read the coefficients through GetVV() and
+	// friends, in any layout, the basic one is the fastest to build and read
+	if (m_EngineType==Engine::UNKNOWN)
+		throw std::logic_error("Operator::InitOperator: no engine type set (SetEngineType())");
+	delete m_Coeffs;
+	if (m_EngineType==Engine::SSE)
+		m_Coeffs = new Coeffs_SSE_Compressed();
+	else
+		m_Coeffs = new Coeffs_Basic();
+	m_Coeffs->Init(numLines);
 }
 
 void Operator::InitDataStorage()
@@ -1096,6 +1137,8 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 		EC_R[n]=NULL;
 	}
 
+	m_Coeffs->Finalize();
+
 	return 0;
 }
 
@@ -1189,12 +1232,7 @@ void Operator::ApplyMagneticBC(bool* dirs)
 	}
 }
 
-bool Operator::Calc_ECPos(
-	int ny,
-	const unsigned int* pos,
-	double* EC,
-	std::vector<CSPrimitives*> vPrims
-) const
+bool Operator::Calc_ECPos(int ny, const unsigned int* pos, double* EC, std::vector<CSPrimitives*> vPrims) const
 {
 	double EffMat[4];
 	Calc_EffMatPos(ny,pos,EffMat, vPrims);
@@ -1276,13 +1314,7 @@ bool Operator::GetCellCenterMaterialAvgCoord(const int pos[], double coord[3]) c
 	return true;
 }
 
-double Operator::GetMaterial(
-	int ny,
-	const double* coords,
-	int MatType,
-	std::vector<CSPrimitives*> vPrims,
-	bool markAsUsed
-) const
+double Operator::GetMaterial(int ny, const double* coords, int MatType, std::vector<CSPrimitives*> vPrims, bool markAsUsed) const
 {
 	CSProperties* prop = CSX->GetPropertyByCoordPriority(coords,vPrims,markAsUsed);
 
@@ -1325,12 +1357,7 @@ double Operator::GetMaterial(
 	}
 }
 
-bool Operator::AverageMatCellCenter(
-	int ny,
-	const unsigned int* pos,
-	double* EffMat,
-	std::vector<CSPrimitives *> vPrims
-) const
+bool Operator::AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat, std::vector<CSPrimitives *> vPrims) const
 {
 	int n=ny;
 	double coord[3];
@@ -1436,12 +1463,7 @@ bool Operator::AverageMatCellCenter(
 	return true;
 }
 
-bool Operator::AverageMatQuarterCell(
-	int ny,
-	const unsigned int* pos,
-	double* EffMat,
-	std::vector<CSPrimitives*> vPrims
-) const
+bool Operator::AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat, std::vector<CSPrimitives*> vPrims) const
 {
 	int n=ny;
 	double coord[3];
@@ -1555,12 +1577,7 @@ bool Operator::AverageMatQuarterCell(
 	return true;
 }
 
-bool Operator::Calc_EffMatPos(
-	int ny,
-	const unsigned int* pos,
-	double* EffMat,
-	std::vector<CSPrimitives *> vPrims
-) const
+bool Operator::Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, std::vector<CSPrimitives *> vPrims) const
 {
 	switch (m_MatAverageMethod)
 	{
@@ -1796,15 +1813,48 @@ bool Operator::Calc_EC()
 	}
 
 	MainOp->SetPos(0,0,0);
-	Calc_EC_Range(0,numLines[0]-1);
+
+	unsigned int numThreads = GetBuildThreads();
+	std::vector<unsigned int> start, stop;
+	CalcStartStopLines(numThreads, start, stop);
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Building the operator on " << numThreads << " threads." << endl;
+
+	std::vector<std::thread> threads;
+	for (unsigned int n=0; n<numThreads; ++n)
+		threads.push_back(std::thread(&Operator::Calc_EC_Range, this, start.at(n), stop.at(n)));
+	for (size_t n=0; n<threads.size(); ++n)
+		threads[n].join();
 	return true;
 }
 
-std::vector<CSPrimitives*>
-Operator::GetPrimitivesBoundBox(
-	int posX, int posY, int posZ,
-	CSProperties::PropertyType type
-) const
+unsigned int Operator::GetBuildThreads() const
+{
+	if ((m_numThreads==0) || (m_numThreads>AvailableThreads()))
+		return AvailableThreads();
+	return m_numThreads;
+}
+
+void Operator::CalcStartStopLines(unsigned int &numThreads, std::vector<unsigned int> &start, std::vector<unsigned int> &stop) const
+{
+	std::vector<unsigned int> jpt = AssignJobs2Threads(numLines[0], numThreads, true);
+
+	numThreads = jpt.size();
+
+	start.resize(numThreads);
+	stop.resize(numThreads);
+
+	start.at(0)=0;
+	stop.at(0)=jpt.at(0)-1;
+
+	for (unsigned int n=1; n<numThreads; n++)
+	{
+		start.at(n) = stop.at(n-1)+1;
+		stop.at(n) = start.at(n) + jpt.at(n) - 1;
+	}
+}
+
+std::vector<CSPrimitives*> Operator::GetPrimitivesBoundBox(int posX, int posY, int posZ, CSProperties::PropertyType type) const
 {
 	double boundBox[6];
 	int BBpos[3] = {posX, posY, posZ};
@@ -2017,11 +2067,23 @@ double Operator::CalcTimestep_Var3()
 
 bool Operator::CalcPEC()
 {
-	m_Nr_PEC[0]=0;
-	m_Nr_PEC[1]=0;
-	m_Nr_PEC[2]=0;
+	unsigned int numThreads = GetBuildThreads();
+	std::vector<unsigned int> start, stop;
+	CalcStartStopLines(numThreads, start, stop);
 
-	CalcPEC_Range(0,numLines[0]-1,m_Nr_PEC);
+	std::vector<unsigned int> counter(3*numThreads, 0);   // three PEC counters per thread, summed up below
+	std::vector<std::thread> threads;
+	for (unsigned int n=0; n<numThreads; ++n)
+		threads.push_back(std::thread(&Operator::CalcPEC_Range, this, start.at(n), stop.at(n), &counter[3*n]));
+	for (size_t n=0; n<threads.size(); ++n)
+		threads[n].join();
+
+	for (int n=0; n<3; ++n)
+	{
+		m_Nr_PEC[n] = 0;
+		for (unsigned int t=0; t<numThreads; ++t)
+			m_Nr_PEC[n] += counter[3*t+n];
+	}
 
 	CalcPEC_Curves();
 

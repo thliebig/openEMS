@@ -36,11 +36,10 @@ class GPU_Extension;
   If the device shares its memory with the host, the host mirror is a view of
   the device memory and no copies are needed.
 
-  An extension runs on the device if its operator extension IsGPUSave() and the
-  backend provides a device implementation (GPU_Backend::CreateExtension()).
-  Every concrete operator extension of openEMS reports IsGPUSave(), so a fallback
-  means the backend has no implementation of one of them (the reference backend
-  has none at all).
+  An extension runs on the device if the backend provides a device
+  implementation of it (GPU_Backend::CreateExtension()); a fallback means the
+  backend has no implementation of one of them (the reference backend has none
+  at all).
   If all extensions do, the fields stay on the device for a whole IterateTS()
   call. Without shared memory, the host mirror is then not updated at the end of
   a batch: GetVolt/GetCurr read the z-line of a value from the device (e.g. for
@@ -52,10 +51,15 @@ class GPU_Extension;
   documentation: the UPML in all four, the TF/SF and the cylinder extension in
   the post-update hooks.
 
+  A cylindrical multi-grid level gets the engine of its sub-grid with
+  Engine::SetSubGrid(): a GPU engine on a backend sharing the work stream of
+  this one (GPU_Backend::NewSubGridBackend()), coupled by SubGrid_Coupling_GPU,
+  on the device or with all levels in the host fallback.
+
   The engine type is Engine::GPU, which the extension dispatcher and
   Engine_Interface_FDTD handle like the basic engine, because that is the layout
-  of the host mirror. The engine owns the backend and the device extensions and
-  deletes the extensions first.
+  of the host mirror. The engine owns the backend and the device extensions;
+  it deletes the sub-grid first, then the extensions, then the backend.
   */
 class Engine_GPU : public Engine
 {
@@ -72,17 +76,17 @@ public:
 	//! A batch of timesteps, the host mirror is brought up to date at its end
 	virtual bool IterateTS(unsigned int iterTS);
 
-	//! One voltage half-step: extensions and main update (with sub-grids, see Engine_GPU_CylinderMultiGrid)
-	virtual void VoltageHalfStep();
-	//! One current half-step: extensions and main update
-	virtual void CurrentHalfStep();
-	//! Count the completed timestep
-	virtual void NextTimestep();
-	//! After a batch of timesteps: update the host mirror for the field processing
-	virtual void FinishBatch();
+	//! One voltage half-step: extensions and main update, then the sub-grid and the coupling of the two (see Engine::SetSubGrid())
+	void VoltageHalfStep();
+	//! One current half-step: extensions and main update, then the sub-grid and the coupling
+	void CurrentHalfStep();
+	//! Count the completed timestep, of the sub-grid too
+	void NextTimestep();
+	//! After a batch of timesteps: fill this grid from the sub-grid, update the host mirror for the field processing
+	void FinishBatch();
 
-	//! Run all extensions on the host mirror, even if they have a device implementation
-	virtual void ForceHostFallback();
+	//! Run all extensions on the host mirror, even if they have a device implementation; the sub-grids too, coupled on the host mirrors
+	void ForceHostFallback();
 
 	//! The device backend holding the fields
 	GPU_Backend* GetBackend() const {return m_Backend;}

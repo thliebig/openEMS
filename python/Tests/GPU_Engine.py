@@ -14,8 +14,7 @@
  Together the cases use the excitation, UPML, Mur ABC, Lorentz and Debye material,
  lumped RLC, conducting sheet, TF/SF, local absorber, steady-state and
  cylinder extensions, and cylindrical meshes with one and two multi-grid
- levels. For cylindrical meshes the engine choice 'basic' has no effect, the
- CPU reference is the cylindrical (multithreaded) engine.
+ levels.
 
  Pass criteria (per case)
    the requested backend was created (not a silent fallback)
@@ -33,6 +32,7 @@
    device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
      a 32 bit index, and as full arrays (FULL_DEVICE_BACKENDS)
    reference backend: all probe data and field dumps bit-identical
+   cylindrical and multi-grid cases: engine='multithreaded' bit-identical to engine='basic'
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
 
@@ -355,7 +355,7 @@ def case_absorbers():
 
 
 def cylinder_mesh(FDTD, alpha, r0, r1, z_pad=0):
-    """ cylindrical mesh, the CPU reference is the cylindrical engine (engine='basic' has no effect);
+    """ cylindrical mesh;
         z_pad extends z beyond 0..30 on both sides, e.g. to make room for a PML """
     CSX = ContinuousStructure(CoordSystem=1)
     FDTD.SetCSX(CSX)
@@ -640,6 +640,9 @@ engines = ('basic', 'gpu-reference', 'gpu')
 
 for name, case, on_device in cases:
     print(f'Testing case: {name}')
+    engines = ('basic', 'gpu-reference', 'gpu')
+    if name.startswith(('cylinder', 'multigrid')):
+        engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
     paths = {engine: os.path.join(tempfile.gettempdir(), f'GPU_Engine_{name}_{engine}') for engine in engines}
     os.environ.update(CASE_ENV.get(name, {}))
     try:
@@ -656,6 +659,10 @@ for name, case, on_device in cases:
     diff, n_probes, n_dumps, _ = compare_outputs(paths['basic'], paths['gpu-reference'])
     print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
     assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
+
+    if 'multithreaded' in engines:
+        diff, _, _, _ = compare_outputs(paths['basic'], paths['multithreaded'])
+        assert not diff, f'FAIL [{name}]: the multithreaded engine differs from the basic engine in: {", ".join(n for n, _ in diff)}'
 
     if name=='cylinder_closed':
         # the H and the B field are interpolated alike, also on the alpha seam of the mesh

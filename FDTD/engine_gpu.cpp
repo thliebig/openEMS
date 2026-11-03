@@ -20,6 +20,7 @@
 
 #include "engine_gpu.h"
 #include "gpu_backend.h"
+#include "engine_subgrid.h"
 #include "extensions/engine_extension.h"
 #include "extensions/operator_extension.h"
 
@@ -102,9 +103,7 @@ void Engine_GPU::Init()
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 	{
 		Engine_Extension* eng_ext = m_Eng_exts.at(n);
-		GPU_Extension* gpu_ext = NULL;
-		if (eng_ext->GetOperatorExtension()->IsGPUSave())
-			gpu_ext = m_Backend->CreateExtension(eng_ext, this);
+		GPU_Extension* gpu_ext = m_Backend->CreateExtension(eng_ext, this);
 		if (gpu_ext)
 			m_GPU_exts.push_back(gpu_ext);
 		else
@@ -129,6 +128,14 @@ void Engine_GPU::Init()
 
 void Engine_GPU::ForceHostFallback()
 {
+	// the sub-grids too: the coupling on the host mirrors needs them up to date
+	if (m_SubGrid)
+	{
+		SubGrid_Coupling_GPU* coupling = dynamic_cast<SubGrid_Coupling_GPU*>(m_SubGridCoupling);
+		if (coupling)
+			coupling->DropLink();
+		static_cast<Engine_GPU*>(m_SubGrid)->ForceHostFallback();
+	}
 	if (m_FieldsOnHost)
 		return;
 	ClearGPUExtensions();
@@ -144,6 +151,8 @@ void Engine_GPU::ClearGPUExtensions()
 
 void Engine_GPU::Reset()
 {
+	// the sub-grid backend shares the work stream of ours, the coupling refers to both
+	ClearSubGrid();
 	// the device extensions refer to the backend and to the engine extensions
 	ClearGPUExtensions();
 	delete m_Backend;
@@ -234,8 +243,8 @@ bool Engine_GPU::SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr
 		return false;
 	if (m_DumpPath>=2)
 		return false;
-	// not for a sub-grid: the dumps read the base grid, which FinishBatch() of
-	// Engine_GPU_CylinderMultiGrid gave the sub-grid fields on the work stream before
+	// not for a sub-grid: the dumps read the base grid, which FinishBatch() gave the
+	// sub-grid fields on the work stream before
 	if (m_ParentBackend)
 		return false;
 	// A snapshot has a fixed cost (a separate command buffer or stream, the background thread), which
@@ -337,6 +346,8 @@ bool Engine_GPU::IterateTS(unsigned int iterTS)
 // Host fallback: any hook may write either field, including the pre-update hooks
 // (the UPML swaps its flux into the fields before the main update), so both
 // fields are uploaded before and the updated one downloaded after each main update.
+// A sub-grid follows in every half step, then the coupling of the two (the order
+// of Engine_ThreadPool: the innermost coupling first).
 
 void Engine_GPU::VoltageHalfStep()
 {
@@ -349,16 +360,23 @@ void Engine_GPU::VoltageHalfStep()
 			m_GPU_exts.at(n)->DoPostVoltageUpdates();
 		for (size_t n=0; n<m_GPU_exts.size(); ++n)
 			m_GPU_exts.at(n)->Apply2Voltages();
-		return;
+	}
+	else
+	{
+		DoPreVoltageUpdates();
+		VoltagesToDevice();
+		CurrentsToDevice();
+		m_Backend->UpdateVoltages();
+		VoltagesToHost();
+		DoPostVoltageUpdates();
+		Apply2Voltages();
 	}
 
-	DoPreVoltageUpdates();
-	VoltagesToDevice();
-	CurrentsToDevice();
-	m_Backend->UpdateVoltages();
-	VoltagesToHost();
-	DoPostVoltageUpdates();
-	Apply2Voltages();
+	if (m_SubGrid)
+	{
+		static_cast<Engine_GPU*>(m_SubGrid)->VoltageHalfStep();
+		SyncSubGridVoltages();
+	}
 }
 
 void Engine_GPU::CurrentHalfStep()
@@ -372,16 +390,23 @@ void Engine_GPU::CurrentHalfStep()
 			m_GPU_exts.at(n)->DoPostCurrentUpdates();
 		for (size_t n=0; n<m_GPU_exts.size(); ++n)
 			m_GPU_exts.at(n)->Apply2Current();
-		return;
+	}
+	else
+	{
+		DoPreCurrentUpdates();
+		VoltagesToDevice();
+		CurrentsToDevice();
+		m_Backend->UpdateCurrents();
+		CurrentsToHost();
+		DoPostCurrentUpdates();
+		Apply2Current();
 	}
 
-	DoPreCurrentUpdates();
-	VoltagesToDevice();
-	CurrentsToDevice();
-	m_Backend->UpdateCurrents();
-	CurrentsToHost();
-	DoPostCurrentUpdates();
-	Apply2Current();
+	if (m_SubGrid)
+	{
+		static_cast<Engine_GPU*>(m_SubGrid)->CurrentHalfStep();
+		SyncSubGridCurrents();
+	}
 }
 
 bool Engine_GPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const
@@ -395,10 +420,18 @@ bool Engine_GPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy
 void Engine_GPU::NextTimestep()
 {
 	++numTS;
+	if (m_SubGrid)
+		static_cast<Engine_GPU*>(m_SubGrid)->NextTimestep();
 }
 
 void Engine_GPU::FinishBatch()
 {
+	// the sub-grid first fills itself from its own sub-grids (see Engine_ThreadPool::IterateTS())
+	if (m_SubGrid)
+	{
+		static_cast<Engine_GPU*>(m_SubGrid)->FinishBatch();
+		InterpolateFromSubGrid();
+	}
 	if (m_FieldsOnHost)
 		return;   // the host mirror is up to date after every half-step
 	if (m_SharedMemory)

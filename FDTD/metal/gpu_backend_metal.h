@@ -66,7 +66,7 @@ public:
 	virtual void WaitSnapshot();
 
 	virtual GPU_Backend* NewSubGridBackend();
-	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const GPU_MultiGridInterpolation& interpol);
+	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const MultiGridInterpolation& interpol);
 
 	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng);
 

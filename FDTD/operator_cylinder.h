@@ -20,9 +20,8 @@
 
 #define OPERATOR_CYLINDER_CLOSED_ALPHA_THRESHOLD 1e-6
 
-#include "operator_multithread.h"
+#include "operator.h"
 
-class GPU_Backend;
 
 class Operator_Ext_Cylinder;
 
@@ -31,7 +30,7 @@ class Operator_Ext_Cylinder;
 This class creates an operator for a cylindrical FDTD. No special engine is necessary,
 all special cases e.g. a closed alpha mesh or an included r=0 case is treated by an operator/engine extension \sa operator_ext_cylinder.
 */
-class Operator_Cylinder : public Operator_Multithread
+class Operator_Cylinder : public Operator
 {
 	friend class Operator_CylinderMultiGrid;
 	friend class Operator_Ext_Cylinder;
@@ -97,13 +96,7 @@ public:
 	bool GetClosedAlpha() const {return CC_closedAlpha;}
 	bool GetR0Included() const {return CC_R0_included;}
 
-	//! Create a GPU engine on \a backend (see GPU_Backend::New), which the operator takes over and hands on to its engine, instead of the multithreaded engine.
-	//! A multi-grid sub-grid passes the backend of its parent grid as \a parent instead (see GPU_Backend::NewSubGridBackend()).
-	void SetGPUBackend(GPU_Backend* backend, GPU_Backend* parent=NULL);
-
 	virtual void AddExtension(Operator_Extension* op_ext);
-
-	virtual Engine* CreateEngine();
 
 protected:
 	Operator_Cylinder();
@@ -115,24 +108,13 @@ protected:
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
-	virtual double GetMaterial(
-		int ny,
-		const double coords[3],
-		int MatType,
-		std::vector<CSPrimitives*> vPrims,
-		bool markAsUsed=true
-	) const;
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, std::vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 	virtual double CalcTimestep();
 	bool CC_closedAlpha;
 	bool CC_R0_included;
 
-	bool UseGPU() const {return m_GPU_Backend || m_GPU_Parent;}
-	//! hands the backend on to the engine
-	GPU_Backend* TakeGPUBackend() {GPU_Backend* b = m_GPU_Backend; m_GPU_Backend = NULL; return b;}
-	GPU_Backend* m_GPU_Backend; //!< until CreateEngine()
-	GPU_Backend* m_GPU_Parent;
 	Operator_Ext_Cylinder* m_Cyl_Ext;
 };
 

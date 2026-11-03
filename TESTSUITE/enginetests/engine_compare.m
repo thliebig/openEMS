@@ -23,8 +23,7 @@ addpath(fullfile(fileparts(fileparts(mfilename('fullpath'))), 'helperscripts'));
 
 opt = ts_options(varargin{:});
 
-engines = {'--engine=basic' '--engine=sse' '--engine=sse-compressed' ...
-           '--engine=multithreaded'};
+engines = {'--engine=basic' '--engine=multithreaded'};
 
 Sim_Path = ts_sim_path(mfilename('fullpath'));
 Sim_CSX  = 'cavity.xml';

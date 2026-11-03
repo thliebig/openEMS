@@ -121,6 +121,18 @@ there are unreleased changes. It becomes the next release entry.
   computed ones. A few edges more can become metal, e.g. on sloped walls; a
   slit at x=0 in the split ground plane of the StripLine2MSL tutorial is
   closed.
+- Two CPU engines, both on all threads (`--numThreads`) and on every mesh:
+  `basic` and the compressed SSE engine, the default. `--engine=sse` and
+  `sse-compressed` (`engine='sse'`...) are other names of `multithreaded`
+  now; they and `basic` ran on a single thread, and on a cylindrical mesh
+  every CPU engine choice ran the multithreaded one. The results do not
+  change. The setup of `basic` takes half the time, the default engine needs
+  about 4 % less memory, and a cylindrical multi-grid mesh of 5.6 MCell runs
+  12-25 % faster.
+- The GPU engine on a cylindrical mesh builds the plain host coefficients
+  instead of the compressed SSE ones and frees them once the device has
+  them, as on a Cartesian mesh: with HIP the setup of an 8 MCell model takes
+  5.6 instead of 6.2 s and 952 instead of 986 MiB.
 
 ### Build
 
@@ -162,6 +174,10 @@ there are unreleased changes. It becomes the next release entry.
 
 - **Rebuild the Python bindings** together with openEMS: the layout of its
   array classes changed, the soname did not.
+- The `sse` and `sse-compressed` engines and `basic` use all threads now; for
+  a run on one thread pass `--numThreads=1` (`numThreads=1`). The
+  uncompressed SSE engine is gone; it was only ever used with an explicit
+  `--engine=sse`.
 
 ## 0.37.0 — 2026-10-09
 

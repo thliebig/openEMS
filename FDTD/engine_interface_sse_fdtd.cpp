@@ -18,17 +18,15 @@
 #include "engine_interface_sse_fdtd.h"
 #include <stdexcept>
 
-Engine_Interface_SSE_FDTD::Engine_Interface_SSE_FDTD(Operator_sse* op) : Engine_Interface_FDTD(op)
+Engine_Interface_SSE_FDTD::Engine_Interface_SSE_FDTD(Operator* op) : Engine_Interface_FDTD(op)
 {
-	m_Op_SSE = op;
-	m_Eng_SSE = dynamic_cast<Engine_sse*>(m_Op_SSE->GetEngine());
+	m_Eng_SSE = dynamic_cast<Engine_sse*>(m_Eng);
 	if (m_Eng_SSE==NULL)
 		throw std::runtime_error("Engine_Interface_SSE_FDTD::Engine_Interface_SSE_FDTD: Error: SSE-Engine is not set!");
 }
 
 Engine_Interface_SSE_FDTD::~Engine_Interface_SSE_FDTD()
 {
-	m_Op_SSE=NULL;
 	m_Eng_SSE=NULL;
 }
 
@@ -42,15 +40,12 @@ double Engine_Interface_SSE_FDTD::CalcFastEnergy() const
 	f4vector H_energy;
 	H_energy = E_energy;
 
-	if (m_Eng_SSE->GetType()!=Engine::SSE)
-		return Engine_Interface_FDTD::CalcFastEnergy();
-
 	unsigned int pos[3];
-	for (pos[0]=0; pos[0]<m_Op_SSE->GetNumberOfLines(0)-1; ++pos[0])
+	for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
 	{
-		for (pos[1]=0; pos[1]<m_Op_SSE->GetNumberOfLines(1)-1; ++pos[1])
+		for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
 		{
-			for (pos[2]=0; pos[2]<m_Op_SSE->numVectors; ++pos[2])
+			for (pos[2]=0; pos[2]<m_Eng_SSE->GetNumberOfVectors(); ++pos[2])
 			{
 				ArrayLib::ArrayNIJK<f4vector>& f4_volt = *m_Eng_SSE->Engine_sse::f4_volt_ptr;
 				ArrayLib::ArrayNIJK<f4vector>& f4_curr = *m_Eng_SSE->Engine_sse::f4_curr_ptr;

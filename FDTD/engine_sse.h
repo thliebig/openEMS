@@ -19,20 +19,18 @@
 #define ENGINE_SSE_H
 
 #include "engine.h"
-#include "operator_sse.h"
 
 #include "tools/arraylib/array_e.h"
 
 class Engine_sse : public Engine
 {
 public:
-	static Engine_sse* New(const Operator_sse* op);
+	//! The SSE engine on the compressed coefficients (Coeffs_SSE_Compressed) on \a numThreads threads, 0 for finding the best number while running
+	static Engine_sse* New(const Operator* op, unsigned int numThreads = 0);
 	virtual ~Engine_sse();
 
 	virtual void Init();
 	virtual void Reset();
-
-	virtual unsigned int GetNumberOfTimesteps() {return numTS;};
 
 	//this access functions muss be overloaded by any new engine using a different storage model
 	inline virtual FDTD_FLOAT GetVolt(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const
@@ -84,8 +82,7 @@ public:
 	}
 
 protected:
-	Engine_sse(const Operator_sse* op);
-	const Operator_sse* Op;
+	Engine_sse(const Operator* op);
 
 	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
 	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
@@ -93,6 +90,8 @@ protected:
 	unsigned int numVectors;
 
 public: //public access to the sse arrays for efficient extensions access... use careful...
+	//! number of f4vectors along z, the z-extent of f4_volt_ptr and f4_curr_ptr
+	unsigned int GetNumberOfVectors() const {return numVectors;}
 	ArrayLib::ArrayENG<f4vector>* f4_volt_ptr;
 	ArrayLib::ArrayENG<f4vector>* f4_curr_ptr;
 };

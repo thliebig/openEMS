@@ -17,7 +17,7 @@ abort the run.
 
 | option | |
 |---|---|
-| `--engine=<e>` | run with one engine: `basic`, `sse`, `sse-compressed`, `multithreaded` |
+| `--engine=<e>` | run with one engine: `basic` or `multithreaded` (also called `sse` and `sse-compressed`) |
 | `--all-engines` | run every simulating test with every engine (slow) |
 | `--keep` | keep the simulation folder of passed tests too |
 | `--list` | list the tests without running them |

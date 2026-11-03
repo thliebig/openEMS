@@ -55,7 +55,6 @@ public:
 	virtual Engine_Extension* CreateEngineExtention();
 
 	virtual bool IsCylinderCoordsSave(bool closedAlpha, bool R0_included) const;
-	virtual bool IsGPUSave() const {return true;}
 	virtual bool IsCylindricalMultiGridSave(bool child) const;
 
 	virtual std::string GetExtensionName() const
