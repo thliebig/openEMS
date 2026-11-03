@@ -5,6 +5,7 @@
 
 set(TESTS
   test_arraylib
+  test_engine_plan
 )
 
 foreach(test ${TESTS})

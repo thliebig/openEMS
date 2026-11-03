@@ -80,8 +80,9 @@ void Engine_ThreadPool::VoltageHalfStep(size_t g, unsigned int threadID)
 	DoPreVoltageUpdates(eng, threadID);
 
 	//voltage updates
-	if (threadID<m_Start[g].size())
-		eng->UpdateVoltages(m_Start[g][threadID], m_Stop[g][threadID]-m_Start[g][threadID]+1);
+	if (threadID<m_Plans[g].GetNumThreads())
+		for (const Engine_Box& box : m_Plans[g].volt[threadID])
+			eng->UpdateVoltages(box);
 
 	m_IterateBarrier->wait();
 
@@ -97,8 +98,9 @@ void Engine_ThreadPool::CurrentHalfStep(size_t g, unsigned int threadID)
 	DoPreCurrentUpdates(eng, threadID);
 
 	//current updates
-	if (threadID<m_Start[g].size())
-		eng->UpdateCurrents(m_Start[g][threadID], m_Stop_h[g][threadID]-m_Start[g][threadID]+1);
+	if (threadID<m_Plans[g].GetNumThreads())
+		for (const Engine_Box& box : m_Plans[g].curr[threadID])
+			eng->UpdateCurrents(box);
 
 	m_IterateBarrier->wait();
 
@@ -180,22 +182,24 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Multithreaded engine using " << m_numThreads << " threads. Utilization: (";
 
-	// the x lines of each grid; the utilization reported is the one of the engine itself
-	m_Start.assign(m_Grids.size(), std::vector<unsigned int>());
-	m_Stop.assign(m_Grids.size(), std::vector<unsigned int>());
-	m_Stop_h.assign(m_Grids.size(), std::vector<unsigned int>());
+	// the plan of each grid; the utilization reported is the one of the engine itself
+	m_Plans.clear();
 	for (size_t g=0; g<m_Grids.size(); ++g)
 	{
-		unsigned int n_g = m_numThreads;
-		m_Grids[g]->Op->CalcStartStopLines(n_g, m_Start[g], m_Stop[g]);
-		m_Stop_h[g] = m_Stop[g];
-		m_Stop_h[g].back() -= 1;   // the last range: one current line less
+		Engine* eng = m_Grids[g];
+		m_Plans.push_back(Engine_Plan::Flat(eng->numLines, m_numThreads, eng->GetSplitAxis()));
 		if (g==0)
-			m_numThreads = n_g;    // the engine itself may use fewer threads (few lines)
+			m_numThreads = m_Plans[0].GetNumThreads();   // the engine itself may use fewer threads (few lines)
 	}
 	if (g_settings.GetVerboseLevel()>0)
+	{
+		const int a = m_Eng->GetSplitAxis();
 		for (unsigned int n=0; n<m_numThreads; n++)
-			cout << m_Stop[0][n]-m_Start[0][n]+1 << ((n == m_numThreads-1) ? ")" : ";");
+		{
+			const Engine_Box& box = m_Plans[0].volt[n].front();
+			cout << box.stop[a]-box.start[a] << ((n == m_numThreads-1) ? ")" : ";");
+		}
+	}
 	if (g_settings.GetVerboseLevel()>0)
 		cout << endl;
 

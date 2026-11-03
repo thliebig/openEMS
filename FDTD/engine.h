@@ -21,6 +21,7 @@
 #include <fstream>
 #include "operator.h"
 #include "engine_type.h"
+#include "engine_plan.h"
 
 #include "tools/arraylib/array_nijk.h"
 
@@ -102,6 +103,8 @@ public:
 	virtual void DoPreVoltageUpdates();
 	//! Main FDTD engine voltage updates
 	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
+	//! The voltage update of \a box (Engine_Plan); the default takes boxes spanning all of y and z, through UpdateVoltages(startX, numX)
+	virtual void UpdateVoltages(const Engine_Box& box);
 	//! Execute Post-Voltage extension updates
 	virtual void DoPostVoltageUpdates();
 	//! Apply extension voltage changes
@@ -111,6 +114,11 @@ public:
 	virtual void DoPreCurrentUpdates();
 	//! Main FDTD engine current updates
 	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
+	//! The current update of \a box, see UpdateVoltages(const Engine_Box&)
+	virtual void UpdateCurrents(const Engine_Box& box);
+
+	//! The axis the flat plan splits over the threads: one of the slowest in memory
+	virtual int GetSplitAxis() const {return 0;}
 	//! Execute Post-Current extension updates
 	virtual void DoPostCurrentUpdates();
 	//! Apply extension current changes

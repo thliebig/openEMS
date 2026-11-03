@@ -219,6 +219,26 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 	}
 }
 
+// the existing kernels update whole y-z planes of x lines
+static void CheckFullYZ(const Engine_Box& box, const unsigned int numLines[3], unsigned int last)
+{
+	for (int n=1; n<3; ++n)
+		if ((box.start[n]!=0) || (box.stop[n]+last<numLines[n]))
+			throw std::logic_error("Engine: this engine only updates boxes spanning all lines in y and z");
+}
+
+void Engine::UpdateVoltages(const Engine_Box& box)
+{
+	CheckFullYZ(box, numLines, 0);
+	UpdateVoltages(box.start[0], box.stop[0]-box.start[0]);
+}
+
+void Engine::UpdateCurrents(const Engine_Box& box)
+{
+	CheckFullYZ(box, numLines, 1);
+	UpdateCurrents(box.start[0], box.stop[0]-box.start[0]);
+}
+
 void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)
 {
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr = *curr_ptr;
