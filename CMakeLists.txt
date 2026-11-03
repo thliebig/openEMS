@@ -325,6 +325,61 @@ IF(ENABLE_HIP AND NOT OPENEMS_GPU_PLUGINS)
   ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
 ENDIF()
 
+# SYCL GPU backend for the GPU engine (--engine=gpu), for Intel GPUs through Level Zero.
+# It needs the Intel oneAPI DPC++ compiler (icpx) and is only built as a plugin:
+# libopenEMS then needs no SYCL runtime. With icpx as the C++ compiler of the whole
+# build the plugin is a target of it; with another one (e.g. GCC) icpx builds the plugin
+# as a project of its own (FDTD/sycl) against the libopenEMS just built, as the HIP
+# plugin is built by hipcc: OPENEMS_ICPX is that icpx, a path that does not exist turns
+# it off. Whatever is missing switches the backend off, with a warning if it was asked for.
+include(CheckCXXSourceCompiles)
+set(SYCL_MISSING "")
+set(_sycl_subbuild OFF)
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+  set(CMAKE_REQUIRED_FLAGS "-fsycl")
+  set(CMAKE_REQUIRED_LINK_OPTIONS "-fsycl")
+  check_cxx_source_compiles("#include <sycl/sycl.hpp>
+int main() { sycl::range<1> r(1); return (int)r.size() - 1; }" OPENEMS_SYCL_COMPILES)
+  unset(CMAKE_REQUIRED_FLAGS)
+  unset(CMAKE_REQUIRED_LINK_OPTIONS)
+  IF(NOT OPENEMS_SYCL_COMPILES)
+    set(SYCL_MISSING "a working -fsycl compiler")
+  ENDIF()
+ELSE()
+  # searched once: a value given by the user, even OPENEMS_ICPX-NOTFOUND, is kept
+  IF(NOT DEFINED OPENEMS_ICPX)
+    find_program(OPENEMS_ICPX icpx HINTS ${ONEAPI_ROOT}/compiler/latest/bin
+                 $ENV{ONEAPI_ROOT}/compiler/latest/bin /opt/intel/oneapi/compiler/latest/bin)
+  ENDIF()
+  IF(OPENEMS_ICPX AND EXISTS "${OPENEMS_ICPX}")
+    set(_sycl_subbuild ON)
+  ELSE()
+    set(SYCL_MISSING "the Intel oneAPI DPC++ compiler (icpx)")
+  ENDIF()
+ENDIF()
+IF(SYCL_MISSING)
+  OPTION(ENABLE_SYCL "Build the SYCL GPU backend (Intel GPUs)" OFF)
+ELSE()
+  OPTION(ENABLE_SYCL "Build the SYCL GPU backend (Intel GPUs)" ON)
+ENDIF()
+IF(ENABLE_SYCL AND SYCL_MISSING)
+  message(WARNING "The SYCL GPU backend needs ${SYCL_MISSING}, building without it")
+  set(ENABLE_SYCL OFF)
+ENDIF()
+IF(ENABLE_SYCL AND NOT OPENEMS_GPU_PLUGINS)
+  message(WARNING "The SYCL GPU backend is only built as a plugin (OPENEMS_GPU_PLUGINS), building without it")
+  set(ENABLE_SYCL OFF)
+ENDIF()
+# The Intel GPUs compiled ahead of time; any other Intel GPU compiles the SPIR-V image
+# when the GPU engine starts.
+set(OPENEMS_SYCL_AOT_DEVICES "bmg-g21" CACHE STRING
+  "Intel GPU targets compiled ahead of time by the SYCL backend (ocloc -device syntax); empty: SPIR-V only, compiled on the device at run time")
+IF(ENABLE_SYCL AND _sycl_subbuild)
+  message(STATUS "SYCL GPU backend enabled, built by ${OPENEMS_ICPX} in the sub-build sycl-plugin, AOT devices: ${OPENEMS_SYCL_AOT_DEVICES}")
+ELSEIF(ENABLE_SYCL)
+  message(STATUS "SYCL GPU backend enabled, AOT devices: ${OPENEMS_SYCL_AOT_DEVICES}")
+ENDIF()
+
 # libopenEMS refuses a plugin of another build (see FDTD/gpu_plugin.h). In a git
 # checkout the version does not tell uncommitted changes apart: a random id per build
 # directory, kept across reconfigures. A release (no .git) is told by its version
@@ -431,6 +486,52 @@ IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
   target_include_directories( ${HIP_TARGET} PRIVATE ${HIP_INCLUDE_DIR} )
   target_compile_definitions( ${HIP_TARGET} PRIVATE __HIP_PLATFORM_NVIDIA__=1 )
 ENDIF()
+IF(ENABLE_SYCL AND NOT _sycl_subbuild)
+  ADD_SUBDIRECTORY( FDTD/sycl )
+ELSEIF(ENABLE_SYCL)
+  # FDTD/sycl as a project of its own, compiled by icpx with the include directories and
+  # definitions of libopenEMS; its plugin lands in plugins/ as the in-tree one does
+  include(ExternalProject)
+  get_directory_property(_sycl_includes INCLUDE_DIRECTORIES)
+  get_directory_property(_sycl_definitions COMPILE_DEFINITIONS)
+  # GIT_VERSION: its quotes do not survive the command line, and the plugin has no use for it
+  set(_sycl_defs "")
+  foreach(_def ${_sycl_definitions})
+    IF(NOT _def MATCHES "^GIT_VERSION=")
+      list(APPEND _sycl_defs ${_def})
+    ENDIF()
+  endforeach()
+  string(REPLACE ";" "|" _sycl_includes "${_sycl_includes}")
+  string(REPLACE ";" "|" _sycl_defs "${_sycl_defs}")
+  set(_sycl_args
+    -DCMAKE_CXX_COMPILER=${OPENEMS_ICPX}
+    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DOPENEMS_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+    -DOPENEMS_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+    -DOPENEMS_LIBRARY=$<TARGET_FILE:openEMS>
+    -DOPENEMS_INCLUDE_DIRS=${_sycl_includes}
+    -DOPENEMS_COMPILE_DEFINITIONS=${_sycl_defs}
+    -DOPENEMS_SYCL_AOT_DEVICES=${OPENEMS_SYCL_AOT_DEVICES}
+    -DENABLE_FLUSH_TO_ZERO=${ENABLE_FLUSH_TO_ZERO})
+  IF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # the GCC of libopenEMS, whose libstdc++ the plugin is compiled against (icpx would
+    # take the newest GCC it finds)
+    execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-libgcc-file-name
+      OUTPUT_VARIABLE _libgcc OUTPUT_STRIP_TRAILING_WHITESPACE)
+    get_filename_component(_gcc_install_dir "${_libgcc}" DIRECTORY)
+    list(APPEND _sycl_args -DOPENEMS_GCC_INSTALL_DIR=${_gcc_install_dir})
+  ENDIF()
+  # BUILD_ALWAYS: the sub-build sees changes of the SYCL sources, the outer one does not
+  ExternalProject_Add( openEMS_gpu_sycl
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/FDTD/sycl
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/sycl-plugin
+    DEPENDS openEMS
+    LIST_SEPARATOR |
+    CMAKE_ARGS ${_sycl_args}
+    BUILD_ALWAYS ON
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/plugins/openEMS_gpu_sycl.so
+    INSTALL_COMMAND "" )
+ENDIF()
 #ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})
 IF(ENABLE_HIP AND NOT OPENEMS_HIP_AS_CUDA AND CMAKE_HIP_PLATFORM STREQUAL "amd")
   TARGET_LINK_LIBRARIES( ${HIP_TARGET} ${HIP_RUNTIME_LIBRARY} )
@@ -480,6 +581,12 @@ IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
   ELSE()
     INSTALL(TARGETS ${HIP_TARGET} LIBRARY DESTINATION lib${LIB_SUFFIX}/openEMS/plugins)
   ENDIF()
+ENDIF()
+
+IF(ENABLE_SYCL AND _sycl_subbuild)
+  # the file of the sub-build; the in-tree target installs itself (FDTD/sycl)
+  INSTALL(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/plugins/openEMS_gpu_sycl.so
+    DESTINATION lib${LIB_SUFFIX}/openEMS/plugins)
 ENDIF()
 
 if (UNIX)

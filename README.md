@@ -56,6 +56,8 @@ recommended full-stack build.
 
 Required dependencies: CSXCAD, fparser, TinyXML, HDF5, zlib, Boost (≥ 1.46,
 components: thread, date\_time, serialization, chrono, program\_options).
+Optional, for the GPU engine: a HIP (ROCm) or CUDA compiler, Xcode (Metal) or
+the Intel oneAPI DPC++ compiler `icpx` (SYCL, Intel GPUs through Level Zero).
 
 ```bash
 mkdir build && cd build

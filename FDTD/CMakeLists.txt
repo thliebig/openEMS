@@ -24,6 +24,8 @@ if(ENABLE_HIP)
   endif()
 endif()
 
+# the SYCL GPU backend is a plugin only, built from FDTD/sycl (see the top level)
+
 # Metal GPU backend (Objective-C++)
 if(APPLE AND ENABLE_METAL)
   set(METAL_SOURCES

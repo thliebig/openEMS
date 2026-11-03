@@ -30,6 +30,7 @@ class Operator_Ext_Excitation : public Operator_Extension
 	friend class Operator;
 	friend class HIP_Ext_Excitation;
 	friend class Metal_Ext_Excitation;
+	friend class SYCL_Ext_Excitation;
 public:
 	Operator_Ext_Excitation(Operator* op);
 	~Operator_Ext_Excitation();

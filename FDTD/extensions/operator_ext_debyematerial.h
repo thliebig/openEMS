@@ -61,6 +61,7 @@ class Operator_Ext_DebyeMaterial : public Operator_Ext_Dispersive
 	friend class Engine_Ext_DebyeMaterial;
 	friend class HIP_Ext_DebyeMaterial;
 	friend class Metal_Ext_DebyeMaterial;
+	friend class SYCL_Ext_DebyeMaterial;
 public:
 	Operator_Ext_DebyeMaterial(Operator* op);
 	virtual ~Operator_Ext_DebyeMaterial();

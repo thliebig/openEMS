@@ -7,8 +7,8 @@
 
  The reference backend performs the main FDTD updates on the CPU on its own
  copy of the fields, exactly like the basic engine, so its results must be
- bit-identical. A device backend (engine='gpu': Metal on macOS, HIP) runs on
- the GPU, whose float arithmetic may differ in rounding (e.g. fused
+ bit-identical. A device backend (engine='gpu': Metal on macOS, HIP, SYCL) runs
+ on the GPU, whose float arithmetic may differ in rounding (e.g. fused
  multiply-add), so it is compared with a tolerance.
 
  Together the cases use the excitation, UPML, Mur ABC, Lorentz and Debye material,
@@ -633,9 +633,11 @@ UPML_MODES = {'pml': ('UPML regions in the kernel', None),
 
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
-FULL_DEVICE_BACKENDS = ('HIP', 'Metal')
+FULL_DEVICE_BACKENDS = ('HIP', 'Metal', 'SYCL')
 # device backends that accumulate the frequency domain dumps
-DEVICE_DFT_BACKENDS = ('HIP',)
+DEVICE_DFT_BACKENDS = ('HIP', 'SYCL')
+engines = ('basic', 'gpu-reference', 'gpu')
+
 for name, case, on_device in cases:
     print(f'Testing case: {name}')
     engines = ('basic', 'gpu-reference', 'gpu')

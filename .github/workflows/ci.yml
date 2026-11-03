@@ -150,6 +150,13 @@ jobs:
             docker-image: "nvidia/cuda:12.9.1-devel-ubuntu24.04"
             gpu: "cuda"
 
+          # gpu: "sycl": the SYCL plugin for Intel GPUs, built by icpx from Intel's
+          # oneAPI apt repository, and run on the OpenCL CPU device that comes with it
+          - name: "Ubuntu + oneAPI"
+            libc: "GNU"
+            docker-image: "ubuntu:latest"
+            gpu: "sycl"
+
           - name: "Fedora"
             libc: "GNU"
             docker-image: "fedora:latest"
@@ -338,6 +345,22 @@ jobs:
           echo "ROCM_PATH=$ROCM_ROOT" >> $GITHUB_ENV
           echo "OPENEMS_CI_GPU=cuda" >> $GITHUB_ENV
 
+      - name: Install the Intel oneAPI DPC++ compiler (Intel's apt repository)
+        if: matrix.os.gpu == 'sycl'
+        run: |
+          # icpx with the SYCL runtime and the OpenCL CPU device, no GPU driver
+          apt-get install -y curl gnupg
+          curl -fsSL https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+            | gpg --dearmor > /usr/share/keyrings/oneapi.gpg
+          echo "deb [signed-by=/usr/share/keyrings/oneapi.gpg] https://apt.repos.intel.com/oneapi all main" \
+            > /etc/apt/sources.list.d/oneapi.list
+          apt-get update
+          apt-get install -y --no-install-recommends intel-oneapi-dpcpp-cpp-2026.2
+          ONEAPI_ROOT=/opt/intel/oneapi
+          $ONEAPI_ROOT/compiler/latest/bin/icpx --version
+          echo "ONEAPI_ROOT=$ONEAPI_ROOT" >> $GITHUB_ENV
+          echo "OPENEMS_CI_GPU=sycl" >> $GITHUB_ENV
+
       - name: Build and install fparser
         run: |
           cd $GITHUB_WORKSPACE/fparser
@@ -382,17 +405,22 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/openEMS
           mkdir build && cd build
-          hip_opts=()
+          gpu_opts=()
           if [ "${OPENEMS_CI_GPU:-}" = "cuda" ]; then
-            hip_opts=( -DENABLE_HIP=ON -DOPENEMS_HIP_AS_CUDA=ON )
+            gpu_opts=( -DENABLE_HIP=ON -DOPENEMS_HIP_AS_CUDA=ON )
           elif [ "${OPENEMS_CI_GPU:-}" = "rocm" ]; then
             # ROCm's clang takes the newest GCC directory it finds, which need not be
             # the one with C++ headers: use the GCC of the system's g++
-            hip_opts=( -DENABLE_HIP=ON -DCMAKE_HIP_COMPILER=$ROCM_PATH/lib/llvm/bin/clang++
+            gpu_opts=( -DENABLE_HIP=ON -DCMAKE_HIP_COMPILER=$ROCM_PATH/lib/llvm/bin/clang++
                        -DCMAKE_HIP_COMPILER_ROCM_ROOT=$ROCM_PATH
                        "-DCMAKE_HIP_FLAGS=--gcc-install-dir=$(dirname $(g++ -print-libgcc-file-name))" )
+          elif [ "${OPENEMS_CI_GPU:-}" = "sycl" ]; then
+            # icpx builds the plugin in a sub-build against the GCC of g++; without
+            # ocloc no ahead-of-time GPU code: SPIR-V only, compiled at run time
+            gpu_opts=( -DENABLE_SYCL=ON -DOPENEMS_ICPX=$ONEAPI_ROOT/compiler/latest/bin/icpx
+                       -DOPENEMS_SYCL_AOT_DEVICES= )
           fi
-          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt "${hip_opts[@]}"
+          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt "${gpu_opts[@]}"
           make -j`nproc` && make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
@@ -449,12 +477,16 @@ jobs:
       - name: GPU plugin on a machine without a GPU
         if: matrix.os.gpu
         run: |
-          if [ "$OPENEMS_CI_GPU" = "cuda" ]; then vendor=nvidia; else vendor=amd; fi
-          plugin=$HOME/opt/lib/openEMS/plugins/openEMS_gpu_hip_$vendor.so
+          case "$OPENEMS_CI_GPU" in
+            cuda) name=hip-nvidia ;;
+            sycl) name=sycl ;;
+            *)    name=hip-amd ;;
+          esac
+          plugin=$HOME/opt/lib/openEMS/plugins/openEMS_gpu_${name/-/_}.so
           ls -l $plugin
           readelf -d $plugin | grep NEEDED
           # libopenEMS itself needs no GPU runtime
-          if readelf -d $HOME/opt/lib/libopenEMS.so | grep -qE "amdhip64|cudart|libcuda"; then
+          if readelf -d $HOME/opt/lib/libopenEMS.so | grep -qE "amdhip64|cudart|libcuda|libsycl"; then
             echo "libopenEMS links a GPU runtime"; exit 1
           fi
           cd /tmp
@@ -474,13 +506,26 @@ jobs:
           csx.AddExcitation('ex', 0, [0, 0, 1]).AddBox([4, 4, 4], [4, 4, 6])
           fdtd.Run(tempfile.mkdtemp(), verbose=1, engine='gpu')
           EOF
-          # the plugin loads (the AMD one finds the HIP runtime it was built with
-          # through its RPATH, the NVIDIA one has the CUDA runtime linked in),
-          # finds no device, and the GPU engine fails cleanly
+          # the plugin loads (the AMD and the SYCL one find the runtime they were
+          # built with through their RPATH, the NVIDIA one has the CUDA runtime
+          # linked in), finds no device, and the GPU engine fails cleanly
           python3 gpu_run.py > out.txt 2>&1 || true
           cat out.txt
-          grep -q "no hip-$vendor device" out.txt
+          grep -q "no $name device" out.txt
           grep -q "no GPU backend with a usable device" out.txt
+
+      - name: SYCL backend on the OpenCL CPU device
+        if: matrix.os.gpu == 'sycl'
+        run: |
+          # the GPU engine test with the SYCL kernels run on the CPU, compared with
+          # the basic engine; the oneAPI environment has the libraries of the OpenCL
+          # CPU runtime (TBB)
+          source $ONEAPI_ROOT/setvars.sh
+          cd $GITHUB_WORKSPACE/openEMS/python/Tests
+          OPENEMS_SYCL_CPU=1 python3 GPU_Engine.py | tee /tmp/gpu_engine.txt
+          # the test passes without a device too: make sure the SYCL backend ran
+          grep -q "SYCL backend: max. deviation" /tmp/gpu_engine.txt
+          if grep -q "device backend not tested" /tmp/gpu_engine.txt; then exit 1; fi
 
       - name: Run Octave test suite
         if: matrix.os.full-tests
