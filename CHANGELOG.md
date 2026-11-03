@@ -15,6 +15,11 @@ there are unreleased changes. It becomes the next release entry.
 
 ### Added
 
+- Opt-in `--dft-snapshots` requests export accumulated E/H HDF5 data at a
+  timestep boundary without stopping or resetting DFT sums. Snapshot directories
+  are published atomically and labelled unconverged with sample timing. Python
+  and Matlab request helpers are provided; final field dumps are unchanged.
+
 - **A GPU engine**, `--engine=gpu` (`engine='gpu'` from Python), with a Metal
   backend on macOS and a HIP backend for AMD (ROCm) and NVIDIA (CUDA) GPUs. It
   is selected like the other engines, runs Cartesian and cylindrical meshes

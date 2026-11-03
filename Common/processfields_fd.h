@@ -39,6 +39,10 @@ public:
 	//! Wait for the samples summed from snapshots in the background
 	virtual void FinishAsync();
 
+	//! Export accumulated E/H sums without changing their state or the normal output.
+	bool WriteDFTSnapshot(const std::string& directory, std::string& filename);
+	bool SupportsDFTSnapshot() const;
+
 protected:
 	virtual void DumpFDData();
 	//! Add \a weights[n] times \a field to the frequency domain field n
@@ -49,6 +53,9 @@ protected:
 
 	//! the sums are kept by the engine instead (see Engine_Interface_Base::CreateFieldDFT()): -1: no, else its id
 	int m_FieldDFT;
+	bool m_DFTFailed;
+	unsigned int m_LastDFTStep;
+	double m_LastDFTTime;
 	//! else the samples may be summed from field snapshots in the background (see Engine_Interface_Base::PrepareSnapshotGather())
 	bool m_Snapshots;
 	bool m_AsyncUsed;
