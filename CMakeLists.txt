@@ -491,4 +491,13 @@ INSTALL(FILES ${PUB_HEADERS} DESTINATION include/openEMS)
 INSTALL( DIRECTORY matlab DESTINATION share/openEMS )
 INSTALL( DIRECTORY python/Tutorials DESTINATION share/openEMS/python )
 INSTALL( DIRECTORY resources DESTINATION share/openEMS )
+
+# C++ unit tests. Off by default: they are of no use to somebody installing
+# openEMS, and building them needs nothing the library does not need anyway.
+# Enable with -DOPENEMS_BUILD_TESTS=ON, then run them with `ctest`.
+option(OPENEMS_BUILD_TESTS "Build the C++ unit tests in tests/" OFF)
+if (OPENEMS_BUILD_TESTS)
+  enable_testing()
+  ADD_SUBDIRECTORY( tests )
+endif()
 # TODO tarball, debug, release
