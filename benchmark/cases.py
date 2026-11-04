@@ -36,7 +36,7 @@ from CSXCAD import ContinuousStructure
 from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from openEMS import openEMS
 
-CASES_VERSION = 3
+CASES_VERSION = 4
 
 SIZES = ('XS', 'S', 'M', 'L')
 DEFAULT_SIZES = ('S', 'M')
@@ -65,9 +65,11 @@ def _setup(bc, **kw):
 
 
 def _uniform(CSX, size):
-    """ a cube of 1 mm cells centred at the origin, returns its half width """
+    """ a cube of 1 mm cells around the origin, returns its half width. The lines
+        are integers, so the dipole and the probes sit on the mesh: with an even
+        number of lines the cube is half a cell off centre """
     n = LINES[size]
-    lines = np.arange(n) - (n - 1) / 2
+    lines = np.arange(n) - n // 2
     mesh = CSX.GetGrid()
     for d in 'xyz':
         mesh.AddLine(d, lines)
