@@ -82,6 +82,32 @@ static inline float RoundMantissa(float x)
 	return x;
 }
 
+void Engine_CPU_NodeSet::Init(size_t nodes)
+{
+	bits.assign((nodes+63)/64, 0);
+	before.clear();
+}
+
+bool Engine_CPU_NodeSet::Add(size_t lin)
+{
+	const uint64_t bit = 1ull<<(lin&63);
+	if (bits[lin>>6] & bit)
+		return false;
+	bits[lin>>6] |= bit;
+	return true;
+}
+
+void Engine_CPU_NodeSet::Finish()
+{
+	before.resize(bits.size());
+	uint32_t count = 0;
+	for (size_t w=0; w<bits.size(); ++w)
+	{
+		before[w] = count;
+		count += std::bitset<64>(bits[w]).count();
+	}
+}
+
 int64_t Engine_CPU_NodeSet::Find(size_t lin) const
 {
 	const uint64_t w = bits[lin>>6];
@@ -198,28 +224,22 @@ void Engine_CPU::FindDispersive()
 		for (int o=0; (o<d.op->m_Order) && why.empty(); ++o)
 		{
 			Engine_CPU_NodeSet& set = d.cells[o];
-			set.bits.assign((nodes+63)/64, 0);
+			set.Init(nodes);
 			unsigned int* const* pos = d.op->m_LM_pos[o];
 			for (size_t i=0; (i<d.op->m_LM_Count[o]) && why.empty(); ++i)
 			{
 				const unsigned int p[3] = {pos[0][i], pos[1][i], pos[2][i]};
 				const size_t lin = (p[0]*N1 + p[1])*N2 + p[2];
 				unsigned int loc[3];
-				if ((set.bits[lin>>6]>>(lin&63)) & 1)
-					why = "a cell twice";
-				else if ((i>0) && (lin < (((size_t)pos[0][i-1]*N1 + pos[1][i-1])*N2 + pos[2][i-1])))
+				// the rank of a cell is its index in the list only if the list ascends
+				if ((i>0) && (lin < (((size_t)pos[0][i-1]*N1 + pos[1][i-1])*N2 + pos[2][i-1])))
 					why = "its cells out of order";
+				else if (!set.Add(lin))
+					why = "a cell twice";
 				else if (FindUPML(p, loc))
 					why = "a dispersive cell in a UPML";
-				set.bits[lin>>6] |= 1ull<<(lin&63);
 			}
-			set.before.resize(set.bits.size());
-			uint32_t count = 0;
-			for (size_t w=0; w<set.bits.size(); ++w)
-			{
-				set.before[w] = count;
-				count += std::bitset<64>(set.bits[w]).count();
-			}
+			set.Finish();
 		}
 		if (why.empty())
 		{

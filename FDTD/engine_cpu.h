@@ -27,10 +27,21 @@
 #include "engine_cpu_kernel.h"
 
 //! A set of mesh nodes by linear index (x*Ny + y)*Nz + z: the rank of a node among them in O(1)
+/*!
+  Init(), Add() each node, Finish(), then Find(). Added in ascending order, the rank is
+  the node's index in that order (an extension's cell list, tests/test_engine_cpu.cpp).
+  */
 struct Engine_CPU_NodeSet
 {
 	std::vector<uint64_t> bits;
 	std::vector<uint32_t> before;   //!< per word the nodes in the words before it
+
+	//! an empty set of \a nodes nodes
+	void Init(size_t nodes);
+	//! add \a lin, false if it is in the set already
+	bool Add(size_t lin);
+	//! the ranks, after the last Add()
+	void Finish();
 	//! the rank of \a lin, or -1 if it is not in the set
 	int64_t Find(size_t lin) const;
 };
