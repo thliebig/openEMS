@@ -71,6 +71,8 @@ public:
 	  on the flat sweep.
 	  */
 	virtual bool SupportsBoxes() const {return false;}
+	//! Timestep \a ts must run flat, with the hooks above on a coherent grid (e.g. a whole-grid energy): blocks end before it
+	virtual bool NeedsFlatStep(unsigned int ts) const {(void)ts; return false;}
 	virtual void DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
 	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
 	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}

@@ -68,13 +68,15 @@ Engine_Ext_DebyeMaterial::~Engine_Ext_DebyeMaterial()
 }
 
 template <typename EngType>
-void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
+void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng, const Engine_Box* box)
 {
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
 	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
 	{
+		if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+			continue;
 		for (int n=0; n<3; ++n)
 		{
 			FDTD_FLOAT volt = eng->EngType::GetVolt(n,pos[0][i],pos[1][i],pos[2][i]);
@@ -94,17 +96,19 @@ void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 
 void Engine_Ext_DebyeMaterial::DoPreVoltageUpdates()
 {
-	ENG_DISPATCH(DoPreVoltageUpdatesImpl);
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, (const Engine_Box*)NULL);
 }
 
 template <typename EngType>
-void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng)
+void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng, const Engine_Box* box)
 {
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
 	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
 	{
+		if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+			continue;
 		for (int n=0; n<3; ++n)
 		{
 			FDTD_FLOAT v_raw = eng->EngType::GetVolt(n,pos[0][i],pos[1][i],pos[2][i]);
@@ -120,5 +124,17 @@ void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng)
 
 void Engine_Ext_DebyeMaterial::DoPostVoltageUpdates()
 {
-	ENG_DISPATCH(DoPostVoltageUpdatesImpl);
+	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, &box);
+}
+
+void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, &box);
 }

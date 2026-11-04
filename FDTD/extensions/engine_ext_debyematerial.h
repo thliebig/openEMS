@@ -60,12 +60,15 @@ public:
 	virtual void DoPreVoltageUpdates();
 	virtual void DoPostVoltageUpdates();
 
+	virtual void DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+
 protected:
 	template <typename EngType>
-	void DoPreVoltageUpdatesImpl(EngType* eng);
+	void DoPreVoltageUpdatesImpl(EngType* eng, const Engine_Box* box);
 
 	template <typename EngType>
-	void DoPostVoltageUpdatesImpl(EngType* eng);
+	void DoPostVoltageUpdatesImpl(EngType* eng, const Engine_Box* box);
 
 	Operator_Ext_DebyeMaterial* m_Op_Ext_Deb;
 

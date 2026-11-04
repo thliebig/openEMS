@@ -77,7 +77,7 @@ Engine_Ext_LorentzMaterial::~Engine_Ext_LorentzMaterial()
 }
 
 template <typename EngType>
-void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
+void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng, const Engine_Box* box)
 {
 	for (int o=0;o<m_Order;++o)
 	{
@@ -89,6 +89,8 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 		{
 			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
 			{
+				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+					continue;
 				volt_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->v_Lor_ADE[o][0][i]*volt_ADE[o][0][i];
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
 				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * (eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][0][i]);
@@ -106,6 +108,8 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 		{
 			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
 			{
+				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+					continue;
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
 				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
 
@@ -121,11 +125,11 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng)
 
 void Engine_Ext_LorentzMaterial::DoPreVoltageUpdates()
 {
-	ENG_DISPATCH(DoPreVoltageUpdatesImpl);
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, (const Engine_Box*)NULL);
 }
 
 template <typename EngType>
-void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
+void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng, const Engine_Box* box)
 {
 	for (int o=0;o<m_Order;++o)
 	{
@@ -137,6 +141,8 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
 		{
 			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
 			{
+				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+					continue;
 				curr_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->i_Lor_ADE[o][0][i]*curr_ADE[o][0][i];
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
 				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * (eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][0][i]);
@@ -154,6 +160,8 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
 		{
 			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
 			{
+				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+					continue;
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
 				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);
 
@@ -169,5 +177,17 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng)
 
 void Engine_Ext_LorentzMaterial::DoPreCurrentUpdates()
 {
-	ENG_DISPATCH(DoPreCurrentUpdatesImpl);
+	ENG_DISPATCH_ARGS(DoPreCurrentUpdatesImpl, (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, &box);
+}
+
+void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(DoPreCurrentUpdatesImpl, &box);
 }

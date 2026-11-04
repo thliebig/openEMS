@@ -27,7 +27,17 @@ struct Engine_Box
 	unsigned int stop[3];
 
 	bool Empty() const {return (start[0]>=stop[0]) || (start[1]>=stop[1]) || (start[2]>=stop[2]);}
+	bool Contains(unsigned int x, unsigned int y, unsigned int z) const
+	{
+		return (x>=start[0]) && (x<stop[0]) && (y>=start[1]) && (y<stop[1]) && (z>=start[2]) && (z<stop[2]);
+	}
 };
+
+//! Whether \a box (all cells if NULL) holds the cell (x, y, z): the filter of the extensions' box hooks
+inline bool Engine_Box_Contains(const Engine_Box* box, unsigned int x, unsigned int y, unsigned int z)
+{
+	return (box==NULL) || box->Contains(x, y, z);
+}
 
 //! The work of the threads of Engine_ThreadPool in a half step
 /*!

@@ -57,11 +57,16 @@ void Engine_ThreadPool_Worker::operator()()
 		unsigned int flat = m_pool->m_iterTS;
 		if (m_pool->m_Blocked)
 		{
-			// whole blocks: the timesteps from the count at the start, which thread 0 advances after them
+			// blocks as long as the timesteps left and the extensions allow (Engine_Extension::NeedsFlatStep()),
+			// the rest as single flat steps; every thread finds the same lengths
 			unsigned int ts = m_pool->m_Eng->numTS;
-			for (const Engine_BlockedPlan& plan : m_pool->m_BlockedPlans)
-				while (flat>=plan.k)
+			unsigned int left = m_pool->m_iterTS;
+			while (left>0)
+			{
+				const unsigned int k = m_pool->BlockLength(ts, left);
+				if (k>=2)
 				{
+					const Engine_BlockedPlan& plan = m_pool->m_BlockedPlans[m_pool->m_BlockedPlans.front().k - k];
 					for (const auto& phase : plan.phases)
 					{
 						if (m_threadID<phase.size())
@@ -69,16 +74,28 @@ void Engine_ThreadPool_Worker::operator()()
 								m_pool->BlockedStep(step, ts + step.t);
 						m_pool->m_IterateBarrier->wait();
 					}
-					ts += plan.k;
-					flat -= plan.k;
+					if (m_threadID == 0)
+						m_pool->m_TS_blocked += k;
 				}
-			if (m_threadID == 0)
-			{
-				m_pool->m_TS_blocked += m_pool->m_iterTS - flat;
-				m_pool->m_TS_flat += flat;
-				m_pool->m_Eng->numTS = ts;
+				else
+				{
+					// a flat step at the count the hooks read
+					if (m_threadID == 0)
+					{
+						m_pool->m_Eng->numTS = ts;
+						++m_pool->m_TS_flat;
+					}
+					m_pool->m_IterateBarrier->wait();
+					m_pool->VoltageHalfStep(0, m_threadID);
+					m_pool->CurrentHalfStep(0, m_threadID);
+				}
+				ts += std::max(k, 1u);
+				left -= std::max(k, 1u);
+				m_pool->m_IterateBarrier->wait();
 			}
-			m_pool->m_IterateBarrier->wait();
+			if (m_threadID == 0)
+				m_pool->m_Eng->numTS = ts;
+			flat = 0;
 		}
 
 		for (unsigned int iter=0; iter<flat; ++iter)
@@ -136,6 +153,22 @@ void Engine_ThreadPool::CurrentHalfStep(size_t g, unsigned int threadID)
 	Apply2Current(eng, threadID);
 }
 
+unsigned int Engine_ThreadPool::BlockLength(unsigned int ts, unsigned int left) const
+{
+	const unsigned int kmax = std::min(left, m_BlockedPlans.front().k);
+	unsigned int k = 0;
+	while (k<kmax)
+	{
+		bool flat = false;
+		for (const Engine_Extension* ext : m_Eng->m_Eng_exts)
+			flat = flat || ext->NeedsFlatStep(ts+k);
+		if (flat)
+			break;
+		++k;
+	}
+	return k;
+}
+
 void Engine_ThreadPool::BlockedStep(const Engine_Step& step, unsigned int ts)
 {
 	std::vector<Engine_Extension*>& exts = m_Eng->m_Eng_exts;
@@ -152,13 +185,19 @@ void Engine_ThreadPool::BlockedStep(const Engine_Step& step, unsigned int ts)
 	}
 	else
 	{
+		// the extensions see the last line of an axis too, which has no current update but
+		// gets their current hooks in the flat sweep: exactly one box per step reaches it
+		Engine_Box hook = step.box;
+		for (int a=0; a<3; ++a)
+			if (hook.stop[a]+1==m_Eng->numLines[a])
+				hook.stop[a] = m_Eng->numLines[a];
 		for (int n=exts.size()-1; n>=0; --n)
-			exts[n]->DoPreCurrentUpdatesBox(step.box, ts);
+			exts[n]->DoPreCurrentUpdatesBox(hook, ts);
 		m_Eng->UpdateCurrents(step.box);
 		for (size_t n=0; n<exts.size(); ++n)
-			exts[n]->DoPostCurrentUpdatesBox(step.box, ts);
+			exts[n]->DoPostCurrentUpdatesBox(hook, ts);
 		for (size_t n=0; n<exts.size(); ++n)
-			exts[n]->Apply2CurrentBox(step.box, ts);
+			exts[n]->Apply2CurrentBox(hook, ts);
 	}
 }
 

@@ -34,12 +34,17 @@ public:
 	virtual void Apply2Voltages();
 	virtual void Apply2Current();
 
+	//! cell-local updates: per box the cells in it
+	virtual bool SupportsBoxes() const {return true;}
+	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts);
+	virtual void Apply2CurrentBox(const Engine_Box& box, unsigned int ts);
+
 protected:
 	template <typename EngType>
-	void Apply2VoltagesImpl(EngType* eng);
+	void Apply2VoltagesImpl(EngType* eng, const Engine_Box* box);
 
 	template <typename EngType>
-	void Apply2CurrentImpl(EngType* eng);
+	void Apply2CurrentImpl(EngType* eng, const Engine_Box* box);
 
 	Operator_Ext_Dispersive* m_Op_Ext_Disp;
 

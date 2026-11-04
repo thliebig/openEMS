@@ -74,7 +74,7 @@ Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
 }
 
 template <typename EngType>
-void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
+void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng, const Engine_Box* box)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -84,6 +84,8 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 
 		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
 		{
+			if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+				continue;
 			eng->EngType::SetVolt(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]
 			);
@@ -99,11 +101,11 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 
 void Engine_Ext_Dispersive::Apply2Voltages()
 {
-	ENG_DISPATCH(Apply2VoltagesImpl);
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, (const Engine_Box*)NULL);
 }
 
 template <typename EngType>
-void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
+void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng, const Engine_Box* box)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -113,6 +115,8 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 
 		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
 		{
+			if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
+				continue;
 			eng->EngType::SetCurr(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]
 			);
@@ -128,5 +132,17 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 
 void Engine_Ext_Dispersive::Apply2Current()
 {
-	ENG_DISPATCH(Apply2CurrentImpl);
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_Dispersive::Apply2VoltagesBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, &box);
+}
+
+void Engine_Ext_Dispersive::Apply2CurrentBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, &box);
 }
