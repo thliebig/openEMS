@@ -28,6 +28,8 @@ probes of every run next to it. Other binaries: `--openems path/to/openEMS`.
 | `--engine a,b` | `multithreaded`, plus `gpu` with a device | also `basic` |
 | `--threads 1,4,8` | the physical cores | performance cores only on a hybrid CPU |
 | `--gpu-device N` | the best device | |
+| `--args LABEL[:ENGINE]=ARGS` | | more openEMS arguments of one binary, with one engine only, see below |
+| `--env LABEL[:ENGINE]=NAME=VALUE` | | an environment variable of one binary, with one engine only |
 | `--duration T` | 3 | seconds of time-stepping per run |
 | `--repeat N` | 1, with two binaries 3 | timed runs per point |
 | `--workdir DIR`, `-o FILE` | `./bench-<date>-<time>/`, `<workdir>/result.json` | |
@@ -82,6 +84,22 @@ pml            M    none    multithreaded      8/8     184.6     185.3  1.004   
   A mismatch does not stop anything, a change in the last bits (fused
   multiply-add, another summation order) is legitimate; a broken update is
   not, and shows up here. `compare` exits with 1 on a mismatch.
+
+Two builds may name their engines differently or need options of their own:
+`--args` gives a binary more arguments, for all its runs or for the runs of
+one engine; an option bench.py sets itself (`--engine`, `--numThreads`,
+`--gpu-device`) is replaced, openEMS takes an option only once. The rows keep
+bench.py's engine name. The same binary twice, with two labels, compares two
+options or environments:
+
+```bash
+python3 benchmark/bench.py run --openems ~/opt/master/bin/openEMS --label master \
+                               --openems ~/opt/branch/bin/openEMS --label branch \
+                               --args 'branch:multithreaded=--engine=avx2-multithreaded'
+```
+
+The arguments and variables of each binary are recorded and shown in the
+headers.
 
 ## Field dumps
 

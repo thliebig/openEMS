@@ -34,6 +34,7 @@ import re
 import sys
 import json
 import time
+import shlex
 import zlib
 import atexit
 import base64
@@ -243,12 +244,32 @@ def binary_info(path):
             'csxcad': csxcad.group(1) if csxcad else None}
 
 
-def gpu_devices(path, xml, rundir, gpu_device):
+def options(info, engine):
+    """ the extra arguments and the environment of the binary `info` with `engine`, from
+        --args and --env """
+    args = info['args'].get('', []) + info['args'].get(engine, [])
+    env = dict(os.environ)
+    for e in info['env'].get('', []) + info['env'].get(engine, []):
+        name, _, value = e.partition('=')
+        env[name] = value
+    return args, env
+
+
+def command(info, xml, engine, own):
+    """ the command line of the binary `info`: `own` options, those also given by --args
+        replaced (openEMS takes an option only once), then the --args """
+    extra, env = options(info, engine)
+    given = {a.split('=')[0] for a in extra if a.startswith('--')}
+    return [info['path'], xml] + [a for a in own if a.split('=')[0] not in given] + extra, env
+
+
+def gpu_devices(info, xml, rundir, gpu_device):
     """ The GPU devices the binary lists, empty if its GPU engine cannot run """
-    cmd = [path, xml, '--engine=gpu', '--no-simulation', '--verbose=1', '--numThreads=1']
+    own = ['--engine=gpu', '--no-simulation', '--verbose=1', '--numThreads=1']
     if gpu_device is not None:
-        cmd.append('--gpu-device={}'.format(gpu_device))
-    out = subprocess.run(cmd, cwd=rundir, capture_output=True, text=True)
+        own.append('--gpu-device={}'.format(gpu_device))
+    cmd, env = command(info, xml, 'gpu', own)
+    out = subprocess.run(cmd, cwd=rundir, env=env, capture_output=True, text=True)
     text = out.stdout + out.stderr
     # the operator line ends in the engine type on every mesh; it is printed only once a
     # backend with a usable device exists (--no-simulation creates no engine)
@@ -297,20 +318,21 @@ def _remove(fn):
         pass
 
 
-def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, guard=None):
+def run_once(info, xml, rundir, engine, threads, gpu_device, duration, log, guard=None):
     """ Run openEMS and stop it `duration` seconds after its time-stepping started, by the
         file ABORT in its working directory: the same time for every engine and machine.
         With `duration` None it runs to its end. `guard` is called during the time-stepping
         and stops the run early when it returns a reason, see Scratch. """
-    cmd = [path, xml, '--engine={}'.format(engine), '--numThreads={}'.format(threads)]
+    own = ['--engine={}'.format(engine), '--numThreads={}'.format(threads)]
     if engine == 'gpu' and gpu_device is not None:
-        cmd.append('--gpu-device={}'.format(gpu_device))
+        own.append('--gpu-device={}'.format(gpu_device))
+    cmd, env = command(info, xml, engine, own)
     abort = os.path.join(rundir, 'ABORT')
     _remove(abort)   # a left-over one would stop the run at once
     done = stopped = None
     with open(log, 'w') as logf:
         t0 = time.perf_counter()
-        p = subprocess.Popen(cmd, cwd=rundir, stdout=logf, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(cmd, cwd=rundir, env=env, stdout=logf, stderr=subprocess.STDOUT)
         try:
             # the setup, until the time-stepping starts
             started = None
@@ -384,6 +406,29 @@ def _point_name(name, size, dumps):
     return '{}_{}'.format(name, size) + ('' if dumps == 'none' else '_' + dumps)
 
 
+def _per_binary(specs, labels, what):
+    """ {label: {engine: [values]}} of the specs LABEL[:ENGINE]=VALUE of --args or --env,
+        engine '' for all engines """
+    out = {l: {} for l in labels}
+    for spec in specs or []:
+        key, eq, value = spec.partition('=')
+        label, _, engine = key.partition(':')
+        if not eq or label not in out or (what == 'env' and '=' not in value):
+            sys.exit('bench.py: --{} {}: give {}, the labels are {}'.format(
+                what, spec, 'LABEL[:ENGINE]=' + ('ARGS' if what == 'args' else 'NAME=VALUE'), ', '.join(labels)))
+        out[label].setdefault(engine, []).extend(shlex.split(value) if what == 'args' else [value])
+    return out
+
+
+def _options_text(info):
+    """ the --args and --env of a binary, for the headers """
+    text = ''
+    for what in ('args', 'env'):
+        for engine, values in info.get(what, {}).items():
+            text += ', {}{}: {}'.format(what, ' with ' + engine if engine else '', ' '.join(values))
+    return text
+
+
 def setup(args):
     """ The binaries, the machine, the thread counts and the scratch space of a run or verify """
     paths = args.openems or [shutil.which('openEMS') or 'openEMS']
@@ -391,6 +436,7 @@ def setup(args):
     labels = args.label or [chr(ord('A') + n) for n in range(len(paths))]
     if len(labels) != len(paths) or len(set(labels)) != len(labels):
         sys.exit('bench.py: give one distinct --label per --openems')
+    extra = {what: _per_binary(getattr(args, what), labels, what) for what in ('args', 'env')}
 
     machine = machine_info()
     if args.threads:
@@ -412,13 +458,14 @@ def setup(args):
         if not os.path.isfile(path):
             sys.exit('bench.py: no openEMS binary at {}'.format(path))
         info = binary_info(path)
+        info['args'], info['env'] = extra['args'][label], extra['env'][label]
         gpudir = os.path.join(workdir, label, 'gpu_check')
         os.makedirs(gpudir, exist_ok=True)
-        info['gpu_devices'] = gpu_devices(path, probe_xml, gpudir, args.gpu_device)
+        info['gpu_devices'] = gpu_devices(info, probe_xml, gpudir, args.gpu_device)
         binaries[label] = info
-        print('{}: {} (openEMS {}, CSXCAD {}){}'.format(
+        print('{}: {} (openEMS {}, CSXCAD {}){}{}'.format(
             label, path, info['version'], info['csxcad'],
-            ', GPU: ' + '; '.join(info['gpu_devices']) if info['gpu_devices'] else ''))
+            ', GPU: ' + '; '.join(info['gpu_devices']) if info['gpu_devices'] else '', _options_text(info)))
     print('machine: {}, {} physical cores / {} logical CPUs, {} GiB RAM, {}'.format(
         machine['cpu'], machine['physical_cores'], machine['logical_cpus'], machine['ram_gib'], machine['os']))
     if machine['env']:
@@ -449,7 +496,7 @@ def cmd_run(args):
         logdir = os.path.join(workdir, label, 'warmup')
         os.makedirs(logdir, exist_ok=True)
         rundir = scratch.rundir('warmup_' + label)
-        run_once(info['path'], probe_xml, rundir, 'multithreaded', threads[0], None, min(1.0, args.duration),
+        run_once(info, probe_xml, rundir, 'multithreaded', threads[0], None, min(1.0, args.duration),
                  os.path.join(logdir, 'openEMS.log'))
         scratch.remove(rundir)
 
@@ -492,7 +539,7 @@ def cmd_run(args):
                     count += 1
                     rundir = scratch.rundir('{}_{}'.format(os.path.basename(pt['dir']), label))
                     try:
-                        r = run_once(binaries[label]['path'], xml, rundir, engine, nt, args.gpu_device, args.duration,
+                        r = run_once(binaries[label], xml, rundir, engine, nt, args.gpu_device, args.duration,
                                      os.path.join(pt['dir'], 'openEMS_{}.log'.format(rep)), scratch.guard(rundir))
                         if 'error' not in r:
                             if rep == 0:
@@ -555,7 +602,7 @@ def _spread(s):
 
 def print_table(result, label):
     info = result['binaries'][label]
-    print('{}: openEMS {} ({})'.format(label, info['version'], info['path']))
+    print('{}: openEMS {} ({}){}'.format(label, info['version'], info['path'], _options_text(info)))
     print('{:14s} {:4s} {:7s} {:14s} {:>4s} {:>7s} {:>9s} {:>9s} {:>6s} {:>8s} {:>8s} {:>9s}'.format(
         'case', 'size', 'dumps', 'engine', 'thr', 'MCells', 'timesteps', 'MC/s', 'spread', 'setup s', 'RSS MiB',
         'dump MB/s'))
@@ -609,8 +656,9 @@ def print_compare(side_a, side_b):
     print('compare {} (A) with {} (B)'.format(la, lb))
     for tag, r, l in (('A', ra, la), ('B', rb, lb)):
         m, b = r['machine'], r['binaries'][l]
-        print('  {}: openEMS {}, {}, {} cores, {}, {}'.format(tag, b['version'], m['cpu'],
-                                                            m['physical_cores'], m['os'], r['date']))
+        print('  {}: openEMS {}, {}, {} cores, {}, {}{}'.format(tag, b['version'], m['cpu'],
+                                                              m['physical_cores'], m['os'], r['date'],
+                                                              _options_text(b)))
     if _machine_key(ra) != _machine_key(rb) or ra['machine']['env'] != rb['machine']['env']:
         print('  different machines (or environment): the ratio is the hardware, not only the code')
     elif ra is not rb:
@@ -722,7 +770,7 @@ def cmd_verify(args):
                         rundir = scratch.rundir('{}_{}'.format(os.path.basename(logdir), label))
                         row = {'case': name, 'size': size, 'dumps': dump, 'label': label, 'engine': engine}
                         try:
-                            r = run_once(binaries[label]['path'], xml, rundir, engine, threads[0], args.gpu_device,
+                            r = run_once(binaries[label], xml, rundir, engine, threads[0], args.gpu_device,
                                          None, os.path.join(logdir, 'openEMS.log'), scratch.guard(rundir))
                             if 'error' in r:
                                 row['error'] = r['error']
@@ -785,6 +833,12 @@ def main(argv=None):
         ', '.join(ENGINES)))
     common.add_argument('--threads', help='comma separated thread counts, default: the physical cores')
     common.add_argument('--gpu-device', type=int, help='GPU device of the gpu engine (default: the best)')
+    common.add_argument('--args', action='append', metavar='LABEL[:ENGINE]=ARGS',
+                        help='more openEMS arguments of the binary LABEL, with ENGINE only; one also set by '
+                             'bench.py (--engine, --numThreads, --gpu-device) replaces it, e.g. '
+                             '"B:multithreaded=--engine=avx2-multithreaded"')
+    common.add_argument('--env', action='append', metavar='LABEL[:ENGINE]=NAME=VALUE',
+                        help='an environment variable of the binary LABEL, with ENGINE only')
     common.add_argument('--workdir', help='for the XML, the logs and the probes '
                                           '(default: ./bench-<date>-<time>, ./verify-<date>-<time>)')
     common.add_argument('--scratch', metavar='DIR',
