@@ -48,6 +48,9 @@ public:
 
 	virtual void ShowStat(std::ostream &ostr) const;
 
+	//! The mesh closes in alpha: the engine extension couples the first and the last alpha planes
+	bool ClosedAlpha() const {return CC_closedAlpha;}
+
 protected:
 	Operator_Cylinder* m_Op_Cyl;
 

@@ -33,7 +33,15 @@ public:
 
 	virtual void DoPostCurrentUpdates();
 
+	//! The box hooks need boxes spanning the whole alpha axis (the CPU engine makes it the fast axis)
+	virtual bool SupportsBoxes() const {return true;}
+	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts);
+
 protected:
+	template <typename EngType>
+	void BoxImpl(EngType* eng, bool volt, const Engine_Box* box);
+
 	template <typename EngType>
 	void DoPostVoltageUpdatesImpl(EngType* eng);
 

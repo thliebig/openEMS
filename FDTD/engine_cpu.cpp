@@ -36,6 +36,7 @@
 #include "tools/useful.h"
 #include "extensions/operator_ext_upml.h"
 #include "extensions/engine_ext_upml.h"
+#include "extensions/operator_ext_cylinder.h"
 
 using std::cout;
 using std::endl;
@@ -305,6 +306,14 @@ void Engine_CPU::ChooseLayout()
 	for (int a=0; a<2; ++a)
 		if ((runs[a]<runs[m_FastAxis]) || ((runs[a]==runs[m_FastAxis]) && (numLines[a]>numLines[m_FastAxis])))
 			m_FastAxis = a;
+	// a closed alpha mesh couples the first and the last alpha plane (Engine_Ext_Cylinder): alpha as the
+	// fast axis, which every box spans, so the blocked plans can run it
+	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
+	{
+		const Operator_Ext_Cylinder* cyl = dynamic_cast<const Operator_Ext_Cylinder*>(Op->GetExtension(n));
+		if (cyl && cyl->ClosedAlpha())
+			m_FastAxis = 1;
+	}
 	const char* env = std::getenv("OPENEMS_CPU_FAST_AXIS");
 	if (env && env[0])
 	{
