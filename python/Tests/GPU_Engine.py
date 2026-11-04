@@ -4,8 +4,8 @@
 
  Each case runs with engine='basic', engine='gpu-reference' and engine='gpu'
  and compares all probe files and all HDF5 field dumps. The CPU engine
- (engine='cpu', cell runs and factorised coefficients, the UPML fused into its
- update) runs every case too and is compared like a device backend, once on
+ (engine='cpu', cell runs and factorised coefficients, the UPML and the
+ dispersive materials fused into its update) runs every case too and is compared like a device backend, once on
  its flat sweep and once with temporal blocking forced (OPENEMS_CPU_TBLOCK).
 
  The reference backend performs the main FDTD updates on the CPU on its own

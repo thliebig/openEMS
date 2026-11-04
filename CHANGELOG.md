@@ -27,14 +27,15 @@ there are unreleased changes. It becomes the next release entry.
   list printed at `--verbose=1`.
 - **A CPU engine, experimental**, `--engine=cpu` (`engine='cpu'`): the fields
   as plain arrays in a memory layout chosen per model, the update coefficients
-  as runs of cell classes (PEC, lossless, lossy, PML) with the mesh geometry
-  factored out, and the UPML updated together with the main update in one pass
-  instead of three. With only excitations and lumped elements besides the PML
-  it advances cache-sized tiles several timesteps at a time (temporal
-  blocking; `OPENEMS_CPU_TBLOCK=0` turns it off). Its results agree with the
-  other engines to float rounding, not bit for bit. On real models with a PML
-  it is 3-6x faster than the default engine and needs less memory while
-  running.
+  as runs of cell classes (PEC, lossless, lossy, PML, dispersive) with the
+  mesh geometry factored out, and the UPML and the Drude, Lorentz and Debye
+  materials updated together with the main update in one pass. Unless the
+  model has local absorbers or a cylindrical multi-grid it advances
+  cache-sized tiles several timesteps at a time (temporal blocking;
+  `OPENEMS_CPU_TBLOCK=0` turns it off). Its results agree with the other
+  engines to float rounding, not bit for bit. On real models with a PML it is
+  3-6x faster than the default engine, with dispersive materials up to 10x,
+  and needs less memory while running.
 - The multithreaded engines wait for each other in a spinning barrier instead
   of sleeping: small models run up to twice as fast.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes

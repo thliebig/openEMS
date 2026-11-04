@@ -34,9 +34,10 @@ static inline unsigned int Min(unsigned int a, unsigned int b) {return a<b ? a :
 //! the cells [k0, k1) of a run, with the coefficients of its set; a = m times the slow geometry factors
 static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
                              float* __restrict X, const float* __restrict A, const float* __restrict B,
-                             ptrdiff_t dA, ptrdiff_t dB, const float* __restrict gf, float* __restrict flux)
+                             ptrdiff_t dA, ptrdiff_t dB, const Engine_CPU_Kernel::Component& c)
 {
 	const float vv = set.vv;
+	const float* __restrict gf = c.gf;
 	switch (set.cls)
 	{
 	case Engine_CPU_Set::ZERO:
@@ -56,12 +57,89 @@ static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& se
 		// the extension's pre pass, the main update on the flux and its post pass in one
 		const ptrdiff_t j0 = (ptrdiff_t)run.u - (ptrdiff_t)run.start;
 		const float uvv = set.uvv, ufo = set.ufo, ufn = set.ufn;
-		float* __restrict F = flux + j0;
+		float* __restrict F = c.state + j0;
 		for (unsigned int k=k0; k<k1; ++k)
 		{
 			const float Fn = vv*F[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
 			X[k] = uvv*X[k] - ufo*F[k] + ufn*Fn;
 			F[k] = Fn;
+		}
+		break;
+	}
+	case Engine_CPU_Set::DISP:
+	{
+		// the extensions' passes in one, per chunk of cells: the Drude/Lorentz ADE currents and the
+		// Debye pole states from the old field, the main update, the Debye solve for the new field and
+		// the rest of its pole states, the Drude/Lorentz apply pass (X -= J)
+		const ptrdiff_t len = (ptrdiff_t)run.stop - (ptrdiff_t)run.start;
+		const Engine_CPU_Pole* P = c.poles + set.pole;
+		const Engine_CPU_Pole* D = P + set.nl;
+		float* const S = c.state + ((ptrdiff_t)run.u - (ptrdiff_t)run.start);
+		const unsigned int CHUNK = 64;
+		float pre[CHUNK];
+		for (unsigned int c0=k0; c0<k1; c0+=CHUNK)
+		{
+			const unsigned int c1 = Min(c0+CHUNK, k1);
+			float* s = S;
+			for (unsigned int p=0; p<set.nl; ++p)
+			{
+				const float ki = P[p].k_int, ke = P[p].k_ext, kl = P[p].k_lor;
+				float* __restrict J = s;
+				s += len;
+				if (kl!=0)
+				{
+					float* __restrict L = s;
+					s += len;
+					for (unsigned int k=c0; k<c1; ++k)
+					{
+						L[k] += kl*J[k];
+						J[k] = J[k]*ki + ke*(X[k] - L[k]);
+					}
+				}
+				else
+					for (unsigned int k=c0; k<c1; ++k)
+						J[k] = J[k]*ki + ke*X[k];
+			}
+			float* const Wd = s;
+			if (set.nd>0)
+			{
+				for (unsigned int k=c0; k<c1; ++k)
+					pre[k-c0] = 0;
+				for (unsigned int p=0; p<set.nd; ++p)
+				{
+					const float kr = D[p].k_int, kd = D[p].k_ext;
+					float* __restrict W = Wd + p*len;
+					for (unsigned int k=c0; k<c1; ++k)
+					{
+						const float w = kr*W[k] + kd*X[k];
+						pre[k-c0] += w - W[k];
+						W[k] = w;
+					}
+				}
+			}
+			for (unsigned int k=c0; k<c1; ++k)
+				X[k] = vv*X[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
+			if (set.nd>0)
+			{
+				const float solve = set.solve;
+				for (unsigned int k=c0; k<c1; ++k)
+					X[k] = (X[k] - pre[k-c0])*solve;
+				for (unsigned int p=0; p<set.nd; ++p)
+				{
+					const float kd = D[p].k_ext;
+					float* __restrict W = Wd + p*len;
+					for (unsigned int k=c0; k<c1; ++k)
+						W[k] += kd*X[k];
+				}
+			}
+			s = S;
+			for (unsigned int p=0; p<set.nl; ++p)
+			{
+				const float* __restrict J = s;
+				s += (P[p].k_lor!=0) ? 2*len : len;
+				for (unsigned int k=c0; k<c1; ++k)
+					X[k] -= J[k];
+			}
 		}
 		break;
 	}
@@ -101,10 +179,10 @@ void UpdateVoltages(const Engine_CPU_Kernel& k, const unsigned int start[3], con
 					if ((k0==0) && (set.cls!=Engine_CPU_Set::ZERO) && ((nP==F) || (nPP==F)))
 					{
 						// the first line of the fast axis has no lower neighbour along it
-						UpdateRun(run, set, a, 0, 1, V, Ia, Ib, (nP==F) ? 0 : dA, (nPP==F) ? 0 : dB, c.gf, c.flux);
+						UpdateRun(run, set, a, 0, 1, V, Ia, Ib, (nP==F) ? 0 : dA, (nPP==F) ? 0 : dB, c);
 						k0 = 1;
 					}
-					UpdateRun(run, set, a, k0, k1, V, Ia, Ib, dA, dB, c.gf, c.flux);
+					UpdateRun(run, set, a, k0, k1, V, Ia, Ib, dA, dB, c);
 				}
 			}
 		}
@@ -139,7 +217,7 @@ void UpdateCurrents(const Engine_CPU_Kernel& k, const unsigned int start[3], con
 					if (k0<k1)
 					{
 						const Engine_CPU_Set& set = c.sets[run.set];
-						UpdateRun(run, set, (float)(set.m*slow), k0, k1, I, Va, Vb, dA, dB, c.gf, c.flux);
+						UpdateRun(run, set, (float)(set.m*slow), k0, k1, I, Va, Vb, dA, dB, c);
 					}
 				}
 			}

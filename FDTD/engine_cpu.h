@@ -25,11 +25,13 @@
 #include "engine.h"
 #include "engine_cpu_kernel.h"
 
-//! The UPML cells of one field component, in the order of their runs: the flux (the coefficients are in the runs)
-struct Engine_CPU_UPML
+//! A set of mesh nodes by linear index (x*Ny + y)*Nz + z: the rank of a node among them in O(1)
+struct Engine_CPU_NodeSet
 {
-	std::vector<float> flux;
-	void Clear() {flux.clear();}
+	std::vector<uint64_t> bits;
+	std::vector<uint32_t> before;   //!< per word the nodes in the words before it
+	//! the rank of \a lin, or -1 if it is not in the set
+	int64_t Find(size_t lin) const;
 };
 
 //! The run lists of one field component, per line of the fast axis
@@ -69,6 +71,17 @@ struct Engine_CPU_Runs
   same values. The UPML engine extensions are dropped, the coefficients of
   the UPML operator extensions freed, and the operator frees its full
   coefficients after creating the engine (Operator::CreateEngine()).
+
+  The cells of a dispersive material, Drude/Lorentz (Operator_Ext_LorentzMaterial,
+  also the conducting sheets) or Debye (Operator_Ext_DebyeMaterial), are the
+  class DISP, with per run the main coefficients and the poles of their ADEs,
+  and per cell and pole their state. The kernel runs the extensions' pre
+  passes, the main update, the Debye post pass and the Drude/Lorentz apply
+  pass (X -= J) in one, so the latter two before the other extensions' post
+  and apply hooks instead of in the order of their priority: the same for
+  additive hooks up to rounding, but not for the cylinder's at r=0. With a
+  cylindrical mesh, a dispersive cell in a UPML, more than MAX_POLES poles of
+  a kind or a second Debye extension, the extension stays.
 
   The extensions see the fields through Engine::GetVolt() and friends, which
   follow the layout, and run in the dispatch of the basic engine.
@@ -121,9 +134,19 @@ protected:
 		int64_t q;          //!< m quantised on a log scale, see GetCellKey(); its sign in sign
 		int sign;
 		float uvv, ufo, ufn;   //!< UPML only, else 0
+		uint8_t nl, nd;        //!< DISP: the Drude/Lorentz poles, then the Debye poles (Engine_CPU_Set); the others 0
+		float solve;           //!< DISP: Engine_CPU_Set::solve, 1 without Debye poles
+		Engine_CPU_Pole poles[8];   //!< k_ext, k_lor and solve rounded to 20 bits of mantissa
+		int NumPoles() const {return nl+nd;}
 		bool operator==(const CellKey& o) const
 		{
-			return cls==o.cls && vv==o.vv && q==o.q && sign==o.sign && uvv==o.uvv && ufo==o.ufo && ufn==o.ufn;
+			if (!(cls==o.cls && vv==o.vv && q==o.q && sign==o.sign && uvv==o.uvv && ufo==o.ufo && ufn==o.ufn
+			      && nl==o.nl && nd==o.nd && solve==o.solve))
+				return false;
+			for (int p=0; p<NumPoles(); ++p)
+				if (!(poles[p].k_int==o.poles[p].k_int && poles[p].k_ext==o.poles[p].k_ext && poles[p].k_lor==o.poles[p].k_lor))
+					return false;
+			return true;
 		}
 		double M() const;   //!< the m this key stands for
 		uint32_t Hash() const;   //!< for counting runs only (ChooseLayout())
@@ -136,13 +159,33 @@ protected:
 	const class Operator_Ext_UPML* FindUPML(const unsigned int pos[3], unsigned int loc[3]) const;
 	std::vector<const class Operator_Ext_UPML*> m_UPML;
 
+	static const int MAX_POLES = 4;   //!< per kind, Drude/Lorentz and Debye
+	//! the dispersive extensions the engine updates itself, with their cells
+	void FindDispersive();
+	//! drop the engine extensions of m_Disp
+	void TakeOverDispersive();
+	struct Dispersive
+	{
+		const class Operator_Ext_Dispersive* op;
+		const class Operator_Ext_LorentzMaterial* lorentz;   //!< or NULL
+		const class Operator_Ext_DebyeMaterial* debye;       //!< or NULL
+		std::vector<Engine_CPU_NodeSet> cells;   //!< per order (Debye: one list for all poles)
+	};
+	std::vector<Dispersive> m_Disp;
+
+	//! the poles of a cell into \a key
+	void GetCellPoles(int f, int n, const unsigned int pos[3], CellKey& key) const;
+
 	//! the kernel data and the kernels of the instruction set of this CPU, after BuildRuns()
 	void InitKernels();
 	Engine_CPU_Kernel m_Kernel;
 	Engine_CPU_Update m_UpdateVoltages;
 	Engine_CPU_Update m_UpdateCurrents;
 	std::string m_ISA;
-	Engine_CPU_UPML m_UPMLCells[2][3];
+	//! [field][component] the state of the UPML and DISP runs (Engine_CPU_Run::u)
+	std::vector<float> m_State[2][3];
+	//! [field][component] the poles of the DISP sets
+	std::vector<Engine_CPU_Pole> m_Poles[2][3];
 
 	int m_FastAxis;
 	int m_SplitAxis;     //!< the slowest axis

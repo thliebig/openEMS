@@ -27,6 +27,8 @@
 #include <functional>
 #include <map>
 #include <tuple>
+#include <typeinfo>
+#include <bitset>
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #endif
@@ -37,6 +39,10 @@
 #include "extensions/operator_ext_upml.h"
 #include "extensions/engine_ext_upml.h"
 #include "extensions/operator_ext_cylinder.h"
+#include "extensions/operator_ext_lorentzmaterial.h"
+#include "extensions/engine_ext_lorentzmaterial.h"
+#include "extensions/operator_ext_debyematerial.h"
+#include "extensions/engine_ext_debyematerial.h"
 
 using std::cout;
 using std::endl;
@@ -58,6 +64,25 @@ static inline double DequantiseM(int64_t q)
 	double m;
 	std::memcpy(&m, &b, sizeof(m));
 	return m;
+}
+
+// a float rounded to the upper 20 bits of its mantissa
+static inline float RoundMantissa(float x)
+{
+	uint32_t b;
+	std::memcpy(&b, &x, sizeof(b));
+	b = (b + 4u) & ~7u;
+	std::memcpy(&x, &b, sizeof(x));
+	return x;
+}
+
+int64_t Engine_CPU_NodeSet::Find(size_t lin) const
+{
+	const uint64_t w = bits[lin>>6];
+	const unsigned int b = lin & 63;
+	if (((w>>b) & 1)==0)
+		return -1;
+	return before[lin>>6] + std::bitset<64>(w & ((1ull<<b)-1)).count();
 }
 
 static const char AXIS_LETTER[3] = {'I', 'J', 'K'};
@@ -94,11 +119,14 @@ void Engine_CPU::Init()
 		if (upml)
 			m_UPML.push_back(upml);
 	}
+	FindDispersive();
 	CalcGeometry();
 	ChooseLayout();
 	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
 	TakeOverUPML();
+	TakeOverDispersive();
 	BuildRuns();
+	m_Disp.clear();   // the cell sets of the setup
 	// the UPML cells hold their coefficients now: free the extension's (24 bytes per node of a component pair)
 	for (const Operator_Ext_UPML* upml : m_UPML)
 	{
@@ -127,6 +155,143 @@ void Engine_CPU::TakeOverUPML()
 	m_Eng_exts = keep;
 }
 
+void Engine_CPU::FindDispersive()
+{
+	m_Disp.clear();
+	bool cylinder = false;
+	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
+		if (dynamic_cast<const Operator_Ext_Cylinder*>(Op->GetExtension(n)))
+			cylinder = true;
+	const size_t N1 = numLines[1], N2 = numLines[2];
+	const size_t nodes = (size_t)numLines[0]*N1*N2;
+	int poles[2] = {0, 0};   // the Drude/Lorentz and the Debye poles a cell may have
+	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
+	{
+		Dispersive d;
+		d.op = dynamic_cast<const Operator_Ext_Dispersive*>(Op->GetExtension(n));
+		d.lorentz = dynamic_cast<const Operator_Ext_LorentzMaterial*>(Op->GetExtension(n));
+		d.debye = dynamic_cast<const Operator_Ext_DebyeMaterial*>(Op->GetExtension(n));
+		if ((d.lorentz==NULL) && (d.debye==NULL))
+			continue;
+		const int kind = d.lorentz ? 0 : 1;
+		const int np = d.lorentz ? d.lorentz->m_Order : d.debye->m_PoleCount;
+		std::string why;
+		if (cylinder)
+			why = "a cylindrical mesh";
+		else if (poles[kind]+np>MAX_POLES)
+			why = "more than 4 poles of a kind";
+		else if (d.debye && (poles[1]>0))
+			why = "a second Debye extension";
+		d.cells.resize(d.op->m_Order);
+		for (int o=0; (o<d.op->m_Order) && why.empty(); ++o)
+		{
+			Engine_CPU_NodeSet& set = d.cells[o];
+			set.bits.assign((nodes+63)/64, 0);
+			unsigned int* const* pos = d.op->m_LM_pos[o];
+			for (size_t i=0; (i<d.op->m_LM_Count[o]) && why.empty(); ++i)
+			{
+				const unsigned int p[3] = {pos[0][i], pos[1][i], pos[2][i]};
+				const size_t lin = (p[0]*N1 + p[1])*N2 + p[2];
+				unsigned int loc[3];
+				if ((set.bits[lin>>6]>>(lin&63)) & 1)
+					why = "a cell twice";
+				else if ((i>0) && (lin < (((size_t)pos[0][i-1]*N1 + pos[1][i-1])*N2 + pos[2][i-1])))
+					why = "its cells out of order";
+				else if (FindUPML(p, loc))
+					why = "a dispersive cell in a UPML";
+				set.bits[lin>>6] |= 1ull<<(lin&63);
+			}
+			set.before.resize(set.bits.size());
+			uint32_t count = 0;
+			for (size_t w=0; w<set.bits.size(); ++w)
+			{
+				set.before[w] = count;
+				count += std::bitset<64>(set.bits[w]).count();
+			}
+		}
+		if (why.empty())
+		{
+			poles[kind] += np;
+			m_Disp.push_back(d);
+		}
+		else if (g_settings.GetVerboseLevel()>0)
+			cout << "Engine_CPU: the " << d.op->GetExtensionName() << " stays an extension: " << why << endl;
+	}
+}
+
+void Engine_CPU::TakeOverDispersive()
+{
+	// the engine updates the dispersive cells itself (the class DISP)
+	std::vector<Engine_Extension*> keep;
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
+	{
+		const Dispersive* fused = NULL;
+		for (const Dispersive& d : m_Disp)
+			if (m_Eng_exts[n]->GetOperatorExtension()==d.op)
+				fused = &d;
+		if (fused==NULL)
+		{
+			keep.push_back(m_Eng_exts[n]);
+			continue;
+		}
+		const std::type_info& type = typeid(*m_Eng_exts[n]);
+		if (type!=(fused->lorentz ? typeid(Engine_Ext_LorentzMaterial) : typeid(Engine_Ext_DebyeMaterial)))
+			throw std::logic_error("Engine_CPU: an unknown engine extension of the " + m_Eng_exts[n]->GetExtensionName());
+		delete m_Eng_exts[n];
+	}
+	m_Eng_exts = keep;
+}
+
+void Engine_CPU::GetCellPoles(int f, int n, const unsigned int pos[3], CellKey& key) const
+{
+	const size_t lin = ((size_t)pos[0]*numLines[1] + pos[1])*numLines[2] + pos[2];
+	// the Drude/Lorentz poles first, in the order of their extensions and orders: their apply passes subtract in it
+	for (const Dispersive& d : m_Disp)
+	{
+		const Operator_Ext_LorentzMaterial* L = d.lorentz;
+		if (L==NULL)
+			continue;
+		for (int o=0; o<L->m_Order; ++o)
+		{
+			if (!((f==0) ? L->m_volt_ADE_On[o] : L->m_curr_ADE_On[o]))
+				continue;
+			const int64_t i = d.cells[o].Find(lin);
+			if (i<0)
+				continue;
+			const float ext = (f==0) ? L->v_ext_ADE[o][n][i] : L->i_ext_ADE[o][n][i];
+			if (ext==0)
+				continue;   // a component without the material: its J stays 0
+			const bool lorentz = (f==0) ? L->m_volt_Lor_ADE_On[o] : L->m_curr_Lor_ADE_On[o];
+			Engine_CPU_Pole& p = key.poles[key.nl++];
+			p.k_int = (f==0) ? L->v_int_ADE[o][n][i] : L->i_int_ADE[o][n][i];
+			p.k_ext = RoundMantissa(ext);
+			p.k_lor = lorentz ? RoundMantissa((f==0) ? L->v_Lor_ADE[o][n][i] : L->i_Lor_ADE[o][n][i]) : 0;
+		}
+	}
+	// then the Debye poles (voltages only), of at most one extension (FindDispersive())
+	for (const Dispersive& d : m_Disp)
+	{
+		const Operator_Ext_DebyeMaterial* D = d.debye;
+		if ((D==NULL) || (f!=0) || !D->m_volt_ADE_On[0])
+			continue;
+		const int64_t i = d.cells[0].Find(lin);
+		if (i<0)
+			continue;
+		for (int o=0; o<D->m_PoleCount; ++o)
+		{
+			const float drive = D->v_drive_ADE[o][n][i];
+			if (drive==0)
+				continue;   // a component without the material: its W stays 0
+			Engine_CPU_Pole& p = key.poles[key.nl + key.nd++];
+			p.k_int = D->v_relax_ADE[o][n][i];
+			p.k_ext = RoundMantissa(drive);
+			p.k_lor = 0;
+		}
+		if (key.nd>0)
+			key.solve = RoundMantissa(D->v_solve_ADE[n][i]);
+	}
+}
+
 const Operator_Ext_UPML* Engine_CPU::FindUPML(const unsigned int pos[3], unsigned int loc[3]) const
 {
 	for (const Operator_Ext_UPML* upml : m_UPML)
@@ -151,7 +316,8 @@ void Engine_CPU::Reset()
 		{
 			m_Runs[f][n].runs.clear();
 			m_Runs[f][n].first.clear();
-			m_UPMLCells[f][n].Clear();
+			m_State[f][n].clear();
+			m_Poles[f][n].clear();
 		}
 }
 
@@ -211,6 +377,10 @@ uint32_t Engine_CPU::CellKey::Hash() const
 	mix(&uvv, sizeof(uvv));
 	mix(&ufo, sizeof(ufo));
 	mix(&ufn, sizeof(ufn));
+	mix(&nl, sizeof(nl));
+	mix(&nd, sizeof(nd));
+	mix(&solve, sizeof(solve));
+	mix(poles, NumPoles()*sizeof(Engine_CPU_Pole));
 	return h;
 }
 
@@ -224,6 +394,9 @@ Engine_CPU::CellKey Engine_CPU::GetCellKey(int f, int n, const unsigned int pos[
 	key.q = 0;
 	key.sign = 0;
 	key.uvv = key.ufo = key.ufn = 0;
+	key.nl = key.nd = 0;
+	key.solve = 1;
+	std::memset(key.poles, 0, sizeof(key.poles));
 	unsigned int loc[3];
 	const Operator_Ext_UPML* upml = FindUPML(pos, loc);
 	if (upml)
@@ -241,7 +414,13 @@ Engine_CPU::CellKey Engine_CPU::GetCellKey(int f, int n, const unsigned int pos[
 		return key;
 	}
 	else
+	{
 		key.cls = (s==1.0f) ? Engine_CPU_Set::LOSSLESS : Engine_CPU_Set::LOSSY;
+		if (!m_Disp.empty())
+			GetCellPoles(f, n, pos, key);
+		if (key.NumPoles()>0)
+			key.cls = Engine_CPU_Set::DISP;
+	}
 	const double g = m_G[f][n][0][pos[0]] * m_G[f][n][1][pos[1]] * m_G[f][n][2][pos[2]];
 	const double m = c/g;
 	if (m!=0)
@@ -342,17 +521,17 @@ void Engine_CPU::BuildRuns()
 {
 	const int F = m_FastAxis, S = m_SplitAxis, M = m_MidAxis;
 	// one thread per component, each with its own cell counts
-	size_t counts[2][3][4] = {};
+	size_t counts[2][3][5] = {};
 	auto build = [&](int f, int n)
 		{
 			size_t* count = counts[f][n];
 			Engine_CPU_Runs& r = m_Runs[f][n];
-			Engine_CPU_UPML& u = m_UPMLCells[f][n];
+			std::vector<Engine_CPU_Pole>& poles = m_Poles[f][n];
 			r.runs.clear();
 			r.sets.clear();
-			u.Clear();
+			poles.clear();
 			// the index of each distinct key in r.sets
-			typedef std::tuple<int, float, int64_t, int, float, float, float> SetKey;
+			typedef std::tuple<int, float, int64_t, int, float, float, float, std::vector<float> > SetKey;
 			std::map<SetKey, uint32_t> setIndex;
 			r.first.assign((size_t)numLines[S]*numLines[M] + 1, 0);
 			m_Gf[f][n].assign(m_G[f][n][F].begin(), m_G[f][n][F].end());
@@ -371,14 +550,21 @@ void Engine_CPU::BuildRuns()
 					{
 						CellKey key = GetCellKey(f, n, pos);
 						++count[key.cls];
-						if (key.cls==Engine_CPU_Set::UPML)
-							u.flux.push_back(0);
 						if ((pos[F]>0) && (key==prev))
 						{
 							++r.runs.back().stop;
 							continue;
 						}
-						const SetKey sk(key.cls, key.vv, key.q, key.sign, key.uvv, key.ufo, key.ufn);
+						std::vector<float> pk;
+						pk.push_back(key.nl);
+						pk.push_back(key.solve);
+						for (int p=0; p<key.NumPoles(); ++p)
+						{
+							pk.push_back(key.poles[p].k_int);
+							pk.push_back(key.poles[p].k_ext);
+							pk.push_back(key.poles[p].k_lor);
+						}
+						const SetKey sk(key.cls, key.vv, key.q, key.sign, key.uvv, key.ufo, key.ufn, pk);
 						auto it = setIndex.find(sk);
 						if (it==setIndex.end())
 						{
@@ -389,6 +575,11 @@ void Engine_CPU::BuildRuns()
 							set.uvv = key.uvv;
 							set.ufo = key.ufo;
 							set.ufn = key.ufn;
+							set.pole = (uint32_t)poles.size();
+							set.nl = key.nl;
+							set.nd = key.nd;
+							set.solve = key.solve;
+							poles.insert(poles.end(), key.poles, key.poles+key.NumPoles());
 							it = setIndex.insert(std::make_pair(sk, (uint32_t)r.sets.size())).first;
 							r.sets.push_back(set);
 						}
@@ -396,14 +587,33 @@ void Engine_CPU::BuildRuns()
 						run.start = pos[F];
 						run.stop = pos[F]+1;
 						run.set = it->second;
-						if (u.flux.size() > 0xffffffffu)
-							throw std::length_error("Engine_CPU: more than 2^32 UPML cells in a component");
-						run.u = (key.cls==Engine_CPU_Set::UPML) ? (uint32_t)(u.flux.size()-1) : 0;
+						run.u = 0;
 						r.runs.push_back(run);
 						prev = key;
 					}
 				}
 			r.first.back() = r.runs.size();
+			// the state of the UPML and DISP runs, now that their lengths are known
+			size_t state = 0;
+			for (Engine_CPU_Run& run : r.runs)
+			{
+				const Engine_CPU_Set& set = r.sets[run.set];
+				const size_t len = run.stop - run.start;
+				if ((set.cls!=Engine_CPU_Set::UPML) && (set.cls!=Engine_CPU_Set::DISP))
+					continue;
+				if (state > 0xffffffffu)
+					throw std::length_error("Engine_CPU: more than 2^32 floats of UPML and ADE state in a component");
+				run.u = (uint32_t)state;
+				if (set.cls==Engine_CPU_Set::UPML)
+					state += len;
+				else
+				{
+					for (unsigned int p=0; p<set.nl; ++p)
+						state += ((poles[set.pole+p].k_lor!=0) ? 2 : 1)*len;
+					state += set.nd*len;
+				}
+			}
+			m_State[f][n].assign(state, 0);
 		};
 	// an exception in a thread would end the program: carried out and rethrown
 	std::exception_ptr error[2][3];
@@ -420,10 +630,10 @@ void Engine_CPU::BuildRuns()
 		for (int n=0; n<3; ++n)
 			if (error[f][n])
 				std::rethrow_exception(error[f][n]);
-	size_t count[4] = {0, 0, 0, 0};
+	size_t count[5] = {0, 0, 0, 0, 0};
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)
-			for (int c=0; c<4; ++c)
+			for (int c=0; c<5; ++c)
 				count[c] += counts[f][n][c];
 
 	if (g_settings.GetVerboseLevel()>0)
@@ -435,11 +645,12 @@ void Engine_CPU::BuildRuns()
 				runs += m_Runs[f][n].runs.size();
 				sets += m_Runs[f][n].sets.size();
 			}
-		const double cells = count[0] + count[1] + count[2] + count[3];
+		const double cells = count[0] + count[1] + count[2] + count[3] + count[4];
 		cout << "Engine_CPU: " << runs << " runs (" << runs*sizeof(Engine_CPU_Run)/1048576.0 << " MiB), " << sets
 		     << " coefficient sets, mean length " << cells/runs << "; cells zero "
 		     << 100.0*count[0]/cells << " %, lossless " << 100.0*count[1]/cells << " %, lossy "
-		     << 100.0*count[2]/cells << " %, upml " << 100.0*count[3]/cells << " %" << endl;
+		     << 100.0*count[2]/cells << " %, upml " << 100.0*count[3]/cells << " %, dispersive "
+		     << 100.0*count[4]/cells << " %" << endl;
 	}
 }
 
@@ -467,7 +678,8 @@ void Engine_CPU::InitKernels()
 			c.runs = m_Runs[f][n].runs.data();
 			c.first = m_Runs[f][n].first.data();
 			c.sets = m_Runs[f][n].sets.data();
-			c.flux = m_UPMLCells[f][n].flux.data();
+			c.state = m_State[f][n].data();
+			c.poles = m_Poles[f][n].data();
 			c.gf = m_Gf[f][n].data();
 			c.gS = m_G[f][n][m_SplitAxis].data();
 			c.gM = m_G[f][n][m_MidAxis].data();
@@ -538,19 +750,19 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 	}
 	else if (why.empty())
 	{
-		// the tile: the cache for the fields, the UPML flux and the runs of its planes (measured: fuller tiles are faster than half the cache)
-		size_t runs = 0, flux = 0;
+		// the tile: the cache for the fields, the UPML and ADE state and the runs of its planes (measured: fuller tiles are faster than half the cache)
+		size_t runs = 0, state = 0;
 		for (int f=0; f<2; ++f)
 			for (int n=0; n<3; ++n)
 			{
 				runs += m_Runs[f][n].runs.size();
-				flux += m_UPMLCells[f][n].flux.size();
+				state += m_State[f][n].size();
 			}
 		double ext = 0;   // the per-cell state of the extensions (dispersive materials)
 		for (size_t n=0; n<m_Eng_exts.size(); ++n)
 			ext += m_Eng_exts[n]->BoxBytes();
 		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
-		const double bytes = plane*24.0 + (4.0*flux + sizeof(Engine_CPU_Run)*runs + ext)/numLines[m_SplitAxis];
+		const double bytes = plane*24.0 + (4.0*state + sizeof(Engine_CPU_Run)*runs + ext)/numLines[m_SplitAxis];
 		W = (unsigned int)(CacheBytes()/bytes);
 		k = std::min(8u, (W>0) ? (W-1)/2 : 0);
 		if (k<2)
