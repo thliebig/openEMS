@@ -58,7 +58,12 @@ static void AddPhase(Engine_BlockedPlan& plan, const unsigned int numLines[3], u
 		return;
 	const unsigned int last = volt ? 0 : 1;   // the currents end a line earlier on every axis
 	std::vector< std::vector<Engine_Step> > phase(numThreads);
-	std::vector<unsigned int> jpt = AssignJobs2Threads(numLines[T]-last, numThreads, false);
+	// at least two lines per thread: an extension on a plane normal to the thread axis
+	// (Mur) needs the line inward of it in the same box
+	const unsigned int lines = numLines[T]-last;
+	const unsigned int used = std::max(1u, std::min(numThreads, lines/2));
+	std::vector<unsigned int> jpt = AssignJobs2Threads(lines, used, false);
+	jpt.resize(numThreads, 0);
 	unsigned int start = 0;
 	for (unsigned int n=0; n<numThreads; ++n)
 	{

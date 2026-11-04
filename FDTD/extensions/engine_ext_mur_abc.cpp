@@ -20,6 +20,9 @@
 #include "FDTD/engine.h"
 #include "FDTD/engine_sse.h"
 #include "tools/useful.h"
+
+#include <algorithm>
+#include <stdexcept>
 #include "operator_ext_excitation.h"
 
 using std::cerr;
@@ -178,4 +181,65 @@ void Engine_Ext_Mur_ABC::Apply2VoltagesImpl(EngType* eng, int threadID)
 void Engine_Ext_Mur_ABC::Apply2Voltages(int threadID)
 {
 	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, threadID);
+}
+
+// The box hooks: the same updates as above on the part of the plane in the box,
+// which must hold the line inward of the plane as well (the post hook reads it
+// after the update of the box).
+template <typename EngType>
+void Engine_Ext_Mur_ABC::BoxImpl(EngType* eng, int hook, const Engine_Box* box, unsigned int ts)
+{
+	if (ts<m_start_TS) return;
+	if ((m_LineNr<box->start[m_ny]) || (m_LineNr>=box->stop[m_ny]))
+		return;
+	if ((m_LineNr_Shift<(int)box->start[m_ny]) || (m_LineNr_Shift>=(int)box->stop[m_ny]))
+		throw std::logic_error("Engine_Ext_Mur_ABC: a box holds the Mur plane but not the line inward of it");
+	const unsigned int i0 = box->start[m_nyP],  i1 = std::min(box->stop[m_nyP],  m_numLines[0]);
+	const unsigned int j0 = box->start[m_nyPP], j1 = std::min(box->stop[m_nyPP], m_numLines[1]);
+	unsigned int pos[] = {0,0,0};
+	unsigned int pos_shift[] = {0,0,0};
+	pos[m_ny] = m_LineNr;
+	pos_shift[m_ny] = m_LineNr_Shift;
+	for (unsigned int i=i0; i<i1; ++i)
+	{
+		pos[m_nyP] = pos_shift[m_nyP] = i;
+		for (unsigned int j=j0; j<j1; ++j)
+		{
+			pos[m_nyPP] = pos_shift[m_nyPP] = j;
+			if (hook==0)
+			{
+				m_volt_nyP(i,j) = eng->EngType::GetVolt(m_nyP, pos_shift) -
+					m_Op_mur->m_Mur_Coeff_nyP(i,j) * eng->EngType::GetVolt(m_nyP, pos);
+				m_volt_nyPP(i,j) = eng->EngType::GetVolt(m_nyPP, pos_shift) -
+					m_Op_mur->m_Mur_Coeff_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP, pos);
+			}
+			else if (hook==1)
+			{
+				m_volt_nyP(i,j) +=
+					m_Op_mur->m_Mur_Coeff_nyP(i,j) * eng->EngType::GetVolt(m_nyP, pos_shift);
+				m_volt_nyPP(i,j) +=
+					m_Op_mur->m_Mur_Coeff_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP, pos_shift);
+			}
+			else
+			{
+				eng->EngType::SetVolt(m_nyP , pos, m_volt_nyP(i,j));
+				eng->EngType::SetVolt(m_nyPP, pos, m_volt_nyPP(i,j));
+			}
+		}
+	}
+}
+
+void Engine_Ext_Mur_ABC::DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, 0, &box, ts);
+}
+
+void Engine_Ext_Mur_ABC::DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, 1, &box, ts);
+}
+
+void Engine_Ext_Mur_ABC::Apply2VoltagesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, 2, &box, ts);
 }
