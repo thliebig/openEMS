@@ -30,8 +30,8 @@ there are unreleased changes. It becomes the next release entry.
   as runs of cell classes (PEC, lossless, lossy, PML, dispersive) with the
   mesh geometry factored out, and the UPML and the Drude, Lorentz and Debye
   materials updated together with the main update in one pass; the magnetic
-  field inside metal is skipped. Unless the model has local absorbers or a
-  cylindrical multi-grid it advances
+  field inside metal is skipped. Unless the model has a cylindrical
+  multi-grid or local absorbers in more than one orientation it advances
   cache-sized tiles several timesteps at a time (temporal blocking;
   `OPENEMS_CPU_TBLOCK=0` turns it off). Its results agree with the other
   engines to float rounding, not bit for bit. On real models with a PML it is

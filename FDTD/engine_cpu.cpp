@@ -47,6 +47,8 @@
 #include "extensions/operator_ext_mur_abc.h"
 #include "extensions/operator_ext_lumpedRLC.h"
 #include "extensions/operator_ext_steadystate.h"
+#include "extensions/engine_ext_absorbing_bc.h"
+#include "extensions/operator_ext_absorbing_bc.h"
 
 using std::cout;
 using std::endl;
@@ -546,14 +548,33 @@ void Engine_CPU::ChooseLayout()
 	for (int a=0; a<2; ++a)
 		if ((runs[a]<runs[m_FastAxis]) || ((runs[a]==runs[m_FastAxis]) && (numLines[a]>numLines[m_FastAxis])))
 			m_FastAxis = a;
+	bool alpha = false;
 	// a closed alpha mesh couples the first and the last alpha plane (Engine_Ext_Cylinder): alpha as the
 	// fast axis, which every box spans, so the blocked plans can run it
 	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
 	{
 		const Operator_Ext_Cylinder* cyl = dynamic_cast<const Operator_Ext_Cylinder*>(Op->GetExtension(n));
 		if (cyl && cyl->ClosedAlpha())
+		{
 			m_FastAxis = 1;
+			alpha = true;
+		}
 	}
+	// a local absorber couples its sheet and the next line along its normal within a half step: that
+	// normal as the fast axis, which every box spans, if all have the same (BuildBlockedPlans())
+	int normal = -1;
+	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
+	{
+		const Operator_Ext_Absorbing_BC* abc = dynamic_cast<const Operator_Ext_Absorbing_BC*>(Op->GetExtension(n));
+		if (abc==NULL)
+			continue;
+		if ((normal>=0) && (normal!=abc->m_ny))
+			normal = 3;   // several: no blocking
+		else if (normal<0)
+			normal = abc->m_ny;
+	}
+	if ((normal>=0) && (normal<3) && !alpha)   // the cylinder's alpha first: its box hooks need it
+		m_FastAxis = normal;
 	const char* env = std::getenv("OPENEMS_CPU_FAST_AXIS");
 	if (env && env[0])
 	{
@@ -804,8 +825,13 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 	else if (m_SubGrid)
 		why = "a cylindrical multi-grid";
 	for (size_t n=0; n<m_Eng_exts.size() && why.empty(); ++n)
+	{
+		const Engine_Ext_Absorbing_BC* abc = dynamic_cast<const Engine_Ext_Absorbing_BC*>(m_Eng_exts[n]);
 		if (!m_Eng_exts[n]->SupportsBoxes())
 			why = "the " + m_Eng_exts[n]->GetExtensionName() + " has no box hooks";
+		else if (abc && (abc->GetNormalAxis()!=m_FastAxis))
+			why = "a local absorber not normal to the fast axis";
+	}
 	if (why.empty() && env && env[0])
 	{
 		char* end = NULL;

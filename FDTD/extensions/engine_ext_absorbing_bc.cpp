@@ -31,6 +31,9 @@
 
 #include "engine_ext_absorbing_bc.h"
 #include "operator_ext_absorbing_bc.h"
+
+#include <algorithm>
+#include <stdexcept>
 #include "FDTD/engine.h"
 #include "FDTD/engine_sse.h"
 #include "tools/array_ops.h"
@@ -363,4 +366,110 @@ void Engine_Ext_Absorbing_BC::Apply2CurrentImpl(EngType* eng, int threadID)
 void Engine_Ext_Absorbing_BC::Apply2Current(int threadID)
 {
 	ENG_DISPATCH_ARGS(Apply2CurrentImpl, threadID);
+}
+
+// The box hooks: the same updates as above on the part of the sheet in the box,
+// which must hold the line next to the sheet as well (the post hook reads it
+// after the update of the box).
+template <typename EngType>
+void Engine_Ext_Absorbing_BC::BoxImpl(EngType* eng, bool volt, int hook, const Engine_Box* box, unsigned int ts)
+{
+	if (ts<m_start_TS)
+		return;
+	if (!volt && ((Operator_Ext_Absorbing_BC::ABCtype)(m_ABCtype) != Operator_Ext_Absorbing_BC::MUR_1ST_SA))
+		return;
+	const unsigned int line  = volt ? m_posStart[m_ny] : m_pos_ny0_I;
+	const unsigned int shift = volt ? m_pos_ny0_shift_V : m_pos_ny0_shift_I;
+	if ((line<box->start[m_ny]) || (line>=box->stop[m_ny]))
+		return;
+	if ((shift<box->start[m_ny]) || (shift>=box->stop[m_ny]))
+		throw std::logic_error("Engine_Ext_Absorbing_BC: a box holds the sheet but not the line next to it");
+	// the sheet's own indices (i, j) of the box; the currents have a line less (dual grid)
+	const unsigned int n0 = volt ? m_numLines[0] : m_numLines[0]-1;
+	const unsigned int n1 = volt ? m_numLines[1] : m_numLines[1]-1;
+	auto clip = [](unsigned int lo, unsigned int hi, unsigned int start, unsigned int n, unsigned int& a, unsigned int& b) {
+		a = (lo>start) ? lo-start : 0;
+		b = (hi>start) ? std::min(hi-start, n) : 0;
+	};
+	unsigned int i0, i1, j0, j1;
+	clip(box->start[m_nyP],  box->stop[m_nyP],  m_posStart[m_nyP],  n0, i0, i1);
+	clip(box->start[m_nyPP], box->stop[m_nyPP], m_posStart[m_nyPP], n1, j0, j1);
+	unsigned int pos[] = {0,0,0};
+	unsigned int pos_shift[] = {0,0,0};
+	pos[m_ny] = line;
+	pos_shift[m_ny] = shift;
+	for (unsigned int i=i0; i<i1; ++i)
+	{
+		pos_shift[m_nyP] = pos[m_nyP] = m_posStart[m_nyP] + i;
+		for (unsigned int j=j0; j<j1; ++j)
+		{
+			pos_shift[m_nyPP] = pos[m_nyPP] = m_posStart[m_nyPP] + j;
+			if (volt)
+			{
+				if (hook==0)
+				{
+					m_V_nyP (i,j) = eng->EngType::GetVolt(m_nyP ,pos_shift) - m_Op_ABC->m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos);
+					m_V_nyPP(i,j) = eng->EngType::GetVolt(m_nyPP,pos_shift) - m_Op_ABC->m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos);
+				}
+				else if (hook==1)
+				{
+					m_V_nyP (i,j) += m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos_shift);
+					m_V_nyPP(i,j) += m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos_shift);
+				}
+				else
+				{
+					eng->EngType::SetVolt(m_nyP ,pos, m_V_nyP (i,j));
+					eng->EngType::SetVolt(m_nyPP,pos, m_V_nyPP(i,j));
+				}
+			}
+			else
+			{
+				if (hook==0)
+				{
+					m_I_nyP (i,j) = eng->EngType::GetCurr(m_nyP ,pos_shift) - m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos);
+					m_I_nyPP(i,j) = eng->EngType::GetCurr(m_nyPP,pos_shift) - m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos);
+				}
+				else if (hook==1)
+				{
+					m_I_nyP (i,j) += m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos_shift);
+					m_I_nyPP(i,j) += m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos_shift);
+				}
+				else
+				{
+					eng->EngType::SetCurr(m_nyP ,pos, (m_I_nyP (i,j)*m_K2_nyP (i,j) + eng->EngType::GetCurr(m_nyP ,pos))/(m_K2_nyP (i,j) + 1.0f));
+					eng->EngType::SetCurr(m_nyPP,pos, (m_I_nyPP(i,j)*m_K2_nyPP(i,j) + eng->EngType::GetCurr(m_nyPP,pos))/(m_K2_nyPP(i,j) + 1.0f));
+				}
+			}
+		}
+	}
+}
+
+void Engine_Ext_Absorbing_BC::DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, true, 0, &box, ts);
+}
+
+void Engine_Ext_Absorbing_BC::DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, true, 1, &box, ts);
+}
+
+void Engine_Ext_Absorbing_BC::Apply2VoltagesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, true, 2, &box, ts);
+}
+
+void Engine_Ext_Absorbing_BC::DoPreCurrentUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, false, 0, &box, ts);
+}
+
+void Engine_Ext_Absorbing_BC::DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, false, 1, &box, ts);
+}
+
+void Engine_Ext_Absorbing_BC::Apply2CurrentBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(BoxImpl, false, 2, &box, ts);
 }

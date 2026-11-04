@@ -42,6 +42,7 @@
 class Operator_Ext_Absorbing_BC : public Operator_Extension
 {
 	friend class Engine_Ext_Absorbing_BC;
+	friend class Engine_CPU;   // the normal, for its fast axis
 	friend class HIP_Ext_Absorbing_BC;
 	friend class Metal_Ext_Absorbing_BC;
 public:
