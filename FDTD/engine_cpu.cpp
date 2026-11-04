@@ -30,6 +30,9 @@
 #include <typeinfo>
 #include <bitset>
 #include <fstream>
+#ifdef OPENEMS_CPU_AVX2
+#include <cpuid.h>
+#endif
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #endif
@@ -908,6 +911,28 @@ void Engine_CPU::BuildRuns()
 // ----------------------------------------------------------------------------
 // the kernels are in engine_cpu_kernels.inc, compiled per instruction set
 
+#ifdef OPENEMS_CPU_AVX2
+// AVX2 and FMA, and the AVX registers saved by the system: from CPUID and XGETBV directly.
+// __builtin_cpu_supports() needs __cpu_model of the compiler runtime, which e.g. clang
+// on Windows does not link (GCC and Clang on x86-64 only, see CMakeLists.txt)
+static bool CpuHasAVX2FMA()
+{
+	unsigned int a, b, c, d;
+	if (!__get_cpuid(1, &a, &b, &c, &d))
+		return false;
+	const bool fma = (c>>12) & 1, osxsave = (c>>27) & 1, avx = (c>>28) & 1;
+	if (!(fma && osxsave && avx))
+		return false;
+	unsigned int xcr0, xcr0_hi;
+	__asm__ volatile ("xgetbv" : "=a"(xcr0), "=d"(xcr0_hi) : "c"(0));
+	if ((xcr0 & 6)!=6)   // the SSE and the AVX state
+		return false;
+	if (!__get_cpuid_count(7, 0, &a, &b, &c, &d))
+		return false;
+	return (b>>5) & 1;   // AVX2
+}
+#endif
+
 void Engine_CPU::InitKernels()
 {
 	Engine_CPU_Kernel& k = m_Kernel;
@@ -949,8 +974,7 @@ void Engine_CPU::InitKernels()
 #ifdef OPENEMS_CPU_AVX2
 	if (want!="generic")
 	{
-		__builtin_cpu_init();
-		if (__builtin_cpu_supports("avx2") && __builtin_cpu_supports("fma"))
+		if (CpuHasAVX2FMA())
 		{
 			m_ISA = "avx2";
 			m_UpdateVoltages = Engine_CPU_AVX2::UpdateVoltages;
