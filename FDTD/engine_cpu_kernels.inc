@@ -31,6 +31,98 @@ namespace ENGINE_CPU_NAMESPACE
 static inline unsigned int Max(unsigned int a, unsigned int b) {return a>b ? a : b;}
 static inline unsigned int Min(unsigned int a, unsigned int b) {return a<b ? a : b;}
 
+#ifndef ENGINE_CPU_NOINLINE
+#if defined(__GNUC__)
+#define ENGINE_CPU_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define ENGINE_CPU_NOINLINE __declspec(noinline)
+#else
+#define ENGINE_CPU_NOINLINE
+#endif
+#endif
+
+//! the DISP class, apart so that UpdateRun() stays small enough to be inlined into the loops of the other classes
+static ENGINE_CPU_NOINLINE void UpdateRunDisp(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
+                                              float* __restrict X, const float* __restrict A, const float* __restrict B,
+                                              ptrdiff_t dA, ptrdiff_t dB, const Engine_CPU_Kernel::Component& c)
+{
+	const float vv = set.vv;
+	const float* __restrict gf = c.gf;
+	// the extensions' passes in one, per chunk of cells: the Drude/Lorentz ADE currents and the
+	// Debye pole states from the old field, the main update, the Debye solve for the new field and
+	// the rest of its pole states, the Drude/Lorentz apply pass (X -= J)
+	const ptrdiff_t len = (ptrdiff_t)run.stop - (ptrdiff_t)run.start;
+	const Engine_CPU_Pole* P = c.poles + set.pole;
+	const Engine_CPU_Pole* D = P + set.nl;
+	float* const S = c.state + ((ptrdiff_t)run.u - (ptrdiff_t)run.start);
+	const unsigned int CHUNK = 64;
+	float pre[CHUNK];
+	for (unsigned int c0=k0; c0<k1; c0+=CHUNK)
+	{
+		const unsigned int c1 = Min(c0+CHUNK, k1);
+		float* s = S;
+		for (unsigned int p=0; p<set.nl; ++p)
+		{
+			const float ki = P[p].k_int, ke = P[p].k_ext, kl = P[p].k_lor;
+			float* __restrict J = s;
+			s += len;
+			if (kl!=0)
+			{
+				float* __restrict L = s;
+				s += len;
+				for (unsigned int k=c0; k<c1; ++k)
+				{
+					L[k] += kl*J[k];
+					J[k] = J[k]*ki + ke*(X[k] - L[k]);
+				}
+			}
+			else
+				for (unsigned int k=c0; k<c1; ++k)
+					J[k] = J[k]*ki + ke*X[k];
+		}
+		float* const Wd = s;
+		if (set.nd>0)
+		{
+			for (unsigned int k=c0; k<c1; ++k)
+				pre[k-c0] = 0;
+			for (unsigned int p=0; p<set.nd; ++p)
+			{
+				const float kr = D[p].k_int, kd = D[p].k_ext;
+				float* __restrict W = Wd + p*len;
+				for (unsigned int k=c0; k<c1; ++k)
+				{
+					const float w = kr*W[k] + kd*X[k];
+					pre[k-c0] += w - W[k];
+					W[k] = w;
+				}
+			}
+		}
+		for (unsigned int k=c0; k<c1; ++k)
+			X[k] = vv*X[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
+		if (set.nd>0)
+		{
+			const float solve = set.solve;
+			for (unsigned int k=c0; k<c1; ++k)
+				X[k] = (X[k] - pre[k-c0])*solve;
+			for (unsigned int p=0; p<set.nd; ++p)
+			{
+				const float kd = D[p].k_ext;
+				float* __restrict W = Wd + p*len;
+				for (unsigned int k=c0; k<c1; ++k)
+					W[k] += kd*X[k];
+			}
+		}
+		s = S;
+		for (unsigned int p=0; p<set.nl; ++p)
+		{
+			const float* __restrict J = s;
+			s += (P[p].k_lor!=0) ? 2*len : len;
+			for (unsigned int k=c0; k<c1; ++k)
+				X[k] -= J[k];
+		}
+	}
+}
+
 //! the cells [k0, k1) of a run, with the coefficients of its set; a = m times the slow geometry factors
 static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
                              float* __restrict X, const float* __restrict A, const float* __restrict B,
@@ -67,82 +159,8 @@ static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& se
 		break;
 	}
 	case Engine_CPU_Set::DISP:
-	{
-		// the extensions' passes in one, per chunk of cells: the Drude/Lorentz ADE currents and the
-		// Debye pole states from the old field, the main update, the Debye solve for the new field and
-		// the rest of its pole states, the Drude/Lorentz apply pass (X -= J)
-		const ptrdiff_t len = (ptrdiff_t)run.stop - (ptrdiff_t)run.start;
-		const Engine_CPU_Pole* P = c.poles + set.pole;
-		const Engine_CPU_Pole* D = P + set.nl;
-		float* const S = c.state + ((ptrdiff_t)run.u - (ptrdiff_t)run.start);
-		const unsigned int CHUNK = 64;
-		float pre[CHUNK];
-		for (unsigned int c0=k0; c0<k1; c0+=CHUNK)
-		{
-			const unsigned int c1 = Min(c0+CHUNK, k1);
-			float* s = S;
-			for (unsigned int p=0; p<set.nl; ++p)
-			{
-				const float ki = P[p].k_int, ke = P[p].k_ext, kl = P[p].k_lor;
-				float* __restrict J = s;
-				s += len;
-				if (kl!=0)
-				{
-					float* __restrict L = s;
-					s += len;
-					for (unsigned int k=c0; k<c1; ++k)
-					{
-						L[k] += kl*J[k];
-						J[k] = J[k]*ki + ke*(X[k] - L[k]);
-					}
-				}
-				else
-					for (unsigned int k=c0; k<c1; ++k)
-						J[k] = J[k]*ki + ke*X[k];
-			}
-			float* const Wd = s;
-			if (set.nd>0)
-			{
-				for (unsigned int k=c0; k<c1; ++k)
-					pre[k-c0] = 0;
-				for (unsigned int p=0; p<set.nd; ++p)
-				{
-					const float kr = D[p].k_int, kd = D[p].k_ext;
-					float* __restrict W = Wd + p*len;
-					for (unsigned int k=c0; k<c1; ++k)
-					{
-						const float w = kr*W[k] + kd*X[k];
-						pre[k-c0] += w - W[k];
-						W[k] = w;
-					}
-				}
-			}
-			for (unsigned int k=c0; k<c1; ++k)
-				X[k] = vv*X[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
-			if (set.nd>0)
-			{
-				const float solve = set.solve;
-				for (unsigned int k=c0; k<c1; ++k)
-					X[k] = (X[k] - pre[k-c0])*solve;
-				for (unsigned int p=0; p<set.nd; ++p)
-				{
-					const float kd = D[p].k_ext;
-					float* __restrict W = Wd + p*len;
-					for (unsigned int k=c0; k<c1; ++k)
-						W[k] += kd*X[k];
-				}
-			}
-			s = S;
-			for (unsigned int p=0; p<set.nl; ++p)
-			{
-				const float* __restrict J = s;
-				s += (P[p].k_lor!=0) ? 2*len : len;
-				for (unsigned int k=c0; k<c1; ++k)
-					X[k] -= J[k];
-			}
-		}
+		UpdateRunDisp(run, set, a, k0, k1, X, A, B, dA, dB, c);
 		break;
-	}
 	}
 }
 
