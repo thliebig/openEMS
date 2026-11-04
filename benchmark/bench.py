@@ -20,10 +20,13 @@
 
     bench.py run [--openems PATH [--openems PATH2]] [options] [-o result.json]
     bench.py compare result.json[:LABEL] [other.json[:LABEL]]
+    bench.py verify [--openems PATH [--openems PATH2]] [options]
 
 `run` writes the cases of cases.py to XML and times the openEMS binary on
 them; given two binaries it interleaves their runs. `compare` compares the
 speed and the probe results of two binaries, from one or two result files.
+`verify` runs the cases for a fixed number of timesteps on every binary and
+engine and compares all their probes and field dumps.
 """
 
 import os
@@ -32,11 +35,13 @@ import sys
 import json
 import time
 import zlib
+import atexit
 import base64
 import shutil
 import argparse
 import platform
 import datetime
+import tempfile
 import statistics
 import subprocess
 
@@ -47,7 +52,7 @@ import cases  # noqa: E402
 
 FORMAT_VERSION = 1
 ENGINES = ('multithreaded', 'gpu', 'basic')
-MISMATCH = 1e-4     # probe deviation relative to its peak that is reported as a mismatch
+MISMATCH = 1e-4     # probe or dump deviation relative to its peak that is reported as a mismatch
 NOISE = 0.03        # a speed ratio within this (or the spread of the runs) is reported as noise
 
 
@@ -144,6 +149,89 @@ def machine_info():
     }
 
 
+# --- scratch space ------------------------------------------------------------
+
+def _fs_type(path):
+    """ the file system type of `path`, None if unknown (only known on Linux) """
+    path = os.path.realpath(path)
+    mount, fstype = '', None
+    for line in (_read('/proc/mounts') or '').splitlines():
+        f = line.split()
+        if len(f) > 2 and (path == f[1] or path.startswith(f[1].rstrip('/') + '/')) and len(f[1]) > len(mount):
+            mount, fstype = f[1], f[2]
+    return fstype
+
+
+def _mem_available():
+    m = re.search(r'^MemAvailable:\s*(\d+) kB', _read('/proc/meminfo') or '', re.M)
+    return int(m.group(1)) * 1024 if m else None
+
+
+def _files(path, dumps):
+    """ the files of a run: its field dumps (with an extension), or its probes (without) """
+    return [e for e in os.scandir(path) if e.is_file() and ('.' in e.name) == dumps]
+
+
+def _bytes(path):
+    return sum(e.stat().st_size for e in os.scandir(path) if e.is_file())
+
+
+def default_scratch():
+    """ /dev/shm, a RAM disk, where there is one """
+    return '/dev/shm' if os.path.isdir('/dev/shm') and os.access('/dev/shm', os.W_OK) else None
+
+
+class Scratch:
+    """ Where openEMS runs, with its field dumps: a directory per run, removed as soon as
+        the run is done, under `base`. A run is stopped early when its files grow beyond
+        `limit_gib` (default: a quarter of the free space, on a tmpfs of the free RAM) or
+        when the file system, on a tmpfs the RAM, gets down to RESERVE. """
+    RESERVE = 2**30
+
+    def __init__(self, base, limit_gib=None):
+        self.ram = _fs_type(base) == 'tmpfs'
+        self.dir = tempfile.mkdtemp(prefix='openems-bench-', dir=base)
+        atexit.register(shutil.rmtree, self.dir, ignore_errors=True)
+        self.limit = limit_gib * 2**30 if limit_gib else self._available() // 4
+
+    def _available(self):
+        free = shutil.disk_usage(self.dir).free
+        mem = _mem_available() if self.ram else None
+        return min(free, mem) if mem is not None else free
+
+    def describe(self):
+        return '{}{}, at most {:.3g} GiB per run'.format(self.dir, ' (RAM)' if self.ram else '', self.limit / 2**30)
+
+    def rundir(self, name):
+        path = os.path.join(self.dir, name)
+        os.makedirs(path)
+        return path
+
+    def guard(self, rundir):
+        """ for run_once: the reason to stop the run in `rundir`, None to go on """
+        last = [0.0]
+
+        def check():
+            now = time.perf_counter()
+            if now - last[0] < 0.1:
+                return None
+            last[0] = now
+            if _bytes(rundir) > self.limit:
+                return 'its files reached {:.3g} GiB'.format(self.limit / 2**30)
+            if self._available() < self.RESERVE:
+                return 'low on ' + ('RAM' if self.ram else 'disk space')
+            return None
+        return check
+
+    def keep_probes(self, rundir, dest):
+        """ copy the probes of a run to `dest` """
+        for e in _files(rundir, False):
+            shutil.copyfile(e.path, os.path.join(dest, e.name))
+
+    def remove(self, rundir):
+        shutil.rmtree(rundir, ignore_errors=True)
+
+
 # --- openEMS ------------------------------------------------------------------
 
 def binary_info(path):
@@ -209,15 +297,17 @@ def _remove(fn):
         pass
 
 
-def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log):
+def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, guard=None):
     """ Run openEMS and stop it `duration` seconds after its time-stepping started, by the
-        file ABORT in its working directory: the same time for every engine and machine """
+        file ABORT in its working directory: the same time for every engine and machine.
+        With `duration` None it runs to its end. `guard` is called during the time-stepping
+        and stops the run early when it returns a reason, see Scratch. """
     cmd = [path, xml, '--engine={}'.format(engine), '--numThreads={}'.format(threads)]
     if engine == 'gpu' and gpu_device is not None:
         cmd.append('--gpu-device={}'.format(gpu_device))
     abort = os.path.join(rundir, 'ABORT')
     _remove(abort)   # a left-over one would stop the run at once
-    done = None
+    done = stopped = None
     with open(log, 'w') as logf:
         t0 = time.perf_counter()
         p = subprocess.Popen(cmd, cwd=rundir, stdout=logf, stderr=subprocess.STDOUT)
@@ -230,9 +320,12 @@ def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log):
                 with open(log) as f:
                     if 'Running FDTD engine' in f.read():
                         started = time.perf_counter()
-            while done is None and time.perf_counter() - started < duration:
+            while done is None and (duration is None or time.perf_counter() - started < duration):
                 time.sleep(0.02)
                 done = _reap(p, False)
+                stopped = guard() if guard and done is None else None
+                if stopped:
+                    break
             if done is None:
                 with open(abort, 'w'):
                     pass
@@ -251,11 +344,15 @@ def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log):
     if code != 0 or not t or not s:
         tail = '\n'.join(text.splitlines()[-15:])
         return {'error': 'exit code {}, see {}\n{}'.format(code, log, tail)}
-    if 'Found file "ABORT"' not in text:
+    if stopped and duration is None:
+        return {'error': 'stopped after {} timesteps, {}'.format(t.group(1), stopped)}
+    if duration is not None and 'Found file "ABORT"' not in text:
         return {'error': 'stopped on its own after {} timesteps, see {}'.format(t.group(1), log)}
     run_s = float(t.group(3))
+    dump_bytes = sum(e.stat().st_size for e in _files(rundir, True))
     r = {'mcells_s': float(s.group(1)), 'timesteps': int(t.group(1)), 'cells': float(t.group(2)), 'run_s': run_s,
-         'wall_s': wall, 'setup_s': wall - run_s, 'rss_mib': rss}
+         'wall_s': wall, 'setup_s': wall - run_s, 'rss_mib': rss,
+         'dump_mb_s': dump_bytes / 1e6 / run_s if run_s > 0 else None, 'stopped': stopped}
     if engine == 'gpu':
         backend = re.search(r'^Create FDTD engine \(GPU, backend: (.*)\)$', text, re.M)
         r['gpu_backend'] = backend.group(1) if backend else None
@@ -277,11 +374,18 @@ def _list(text, choices, what):
     return items
 
 
-def cmd_run(args):
-    names = _list(args.cases, list(cases.CASES), 'case') if args.cases else list(cases.CASES)
-    sizes = _list(args.size, cases.SIZES, 'size') if args.size else list(cases.DEFAULT_SIZES)
-    engines = _list(args.engine, ENGINES, 'engine') if args.engine else None
+def _dumps(text):
+    if text == 'all':
+        return list(cases.DUMPS)
+    return _list(text, list(cases.DUMPS), 'dump')
 
+
+def _point_name(name, size, dumps):
+    return '{}_{}'.format(name, size) + ('' if dumps == 'none' else '_' + dumps)
+
+
+def setup(args):
+    """ The binaries, the machine, the thread counts and the scratch space of a run or verify """
     paths = args.openems or [shutil.which('openEMS') or 'openEMS']
     paths = [os.path.abspath(shutil.which(p) or p) for p in paths]   # the runs change the directory
     labels = args.label or [chr(ord('A') + n) for n in range(len(paths))]
@@ -294,9 +398,10 @@ def cmd_run(args):
     else:
         threads = [machine['physical_cores'] or os.cpu_count()]
 
-    workdir = os.path.abspath(args.workdir or datetime.datetime.now().strftime('bench-%Y%m%d-%H%M%S'))
+    workdir = os.path.abspath(args.workdir or datetime.datetime.now().strftime(
+        '{}-%Y%m%d-%H%M%S'.format('bench' if args.command == 'run' else 'verify')))
     os.makedirs(os.path.join(workdir, 'xml'), exist_ok=True)
-    output = os.path.abspath(args.output or os.path.join(workdir, 'result.json'))
+    scratch = Scratch(args.scratch or default_scratch() or workdir, args.scratch_limit)
 
     # the XS ideal case: GPU check and warm-up
     probe_xml = os.path.join(workdir, 'xml', 'ideal_XS.xml')
@@ -318,29 +423,44 @@ def cmd_run(args):
         machine['cpu'], machine['physical_cores'], machine['logical_cpus'], machine['ram_gib'], machine['os']))
     if machine['env']:
         print('environment: ' + ' '.join('{}={}'.format(k, v) for k, v in machine['env'].items()))
+    print('scratch: ' + scratch.describe())
+    return binaries, machine, threads, workdir, scratch, probe_xml
 
+
+def cmd_run(args):
+    names = _list(args.cases, list(cases.CASES), 'case') if args.cases else list(cases.CASES)
+    sizes = _list(args.size, cases.SIZES, 'size') if args.size else list(cases.DEFAULT_SIZES)
+    dumps = _dumps(args.dumps) if args.dumps else ['none']
+    engines = _list(args.engine, ENGINES, 'engine') if args.engine else None
+
+    binaries, machine, threads, workdir, scratch, probe_xml = setup(args)
+    output = os.path.abspath(args.output or os.path.join(workdir, 'result.json'))
     if engines is None:
         engines = ['multithreaded'] + (['gpu'] if any(b['gpu_devices'] for b in binaries.values()) else [])
 
     result = {'format': FORMAT_VERSION, 'cases_version': cases.CASES_VERSION,
               'date': datetime.datetime.now().isoformat(timespec='seconds'),
               'command': ' '.join(sys.argv), 'machine': machine, 'binaries': binaries,
-              'repeat': args.repeat, 'duration': args.duration, 'points': []}
+              'repeat': args.repeat, 'duration': args.duration,
+              'scratch': {'ram': scratch.ram, 'limit_gib': scratch.limit / 2**30}, 'points': []}
 
     # one discarded run per binary: loads the libraries and wakes the CPU up
     for label, info in binaries.items():
-        rundir = os.path.join(workdir, label, 'warmup')
-        os.makedirs(rundir, exist_ok=True)
+        logdir = os.path.join(workdir, label, 'warmup')
+        os.makedirs(logdir, exist_ok=True)
+        rundir = scratch.rundir('warmup_' + label)
         run_once(info['path'], probe_xml, rundir, 'multithreaded', threads[0], None, min(1.0, args.duration),
-                 os.path.join(rundir, 'openEMS.log'))
+                 os.path.join(logdir, 'openEMS.log'))
+        scratch.remove(rundir)
 
     # all points first, for the progress count
     todo = []
     for name in names:
         for size in sizes:
-            for engine in engines:
-                for nt in threads:
-                    todo.append((name, size, engine, nt))
+            for dump in dumps:
+                for engine in engines:
+                    for nt in threads:
+                        todo.append((name, size, dump, engine, nt))
     if 'gpu' in engines:
         for label, info in binaries.items():
             if not info['gpu_devices']:
@@ -348,21 +468,21 @@ def cmd_run(args):
 
     xml_done = set()
     nruns = sum(args.repeat * sum(1 for l in binaries if e != 'gpu' or binaries[l]['gpu_devices'])
-                for _, _, e, _ in todo)
+                for _, _, _, e, _ in todo)
     count = 0
     try:
-        for name, size, engine, nt in todo:
-            xml = os.path.join(workdir, 'xml', '{}_{}.xml'.format(name, size))
+        for name, size, dump, engine, nt in todo:
+            xml = os.path.join(workdir, 'xml', _point_name(name, size, dump) + '.xml')
             if xml not in xml_done:
-                cases.write_case(name, size, xml)
+                cases.write_case(name, size, xml, dump)
                 xml_done.add(xml)
             run_labels = [l for l in binaries if engine != 'gpu' or binaries[l]['gpu_devices']]
             points = {}
             for label in run_labels:
-                rundir = os.path.join(workdir, label, '{}_{}_{}_t{}'.format(name, size, engine, nt))
-                os.makedirs(rundir, exist_ok=True)
-                points[label] = {'case': name, 'size': size, 'engine': engine, 'threads': nt,
-                                 'label': label, 'runs': [], 'error': None, 'dir': rundir}
+                pointdir = os.path.join(workdir, label, '{}_{}_t{}'.format(_point_name(name, size, dump), engine, nt))
+                os.makedirs(pointdir, exist_ok=True)
+                points[label] = {'case': name, 'size': size, 'dumps': dump, 'engine': engine, 'threads': nt,
+                                 'label': label, 'runs': [], 'error': None, 'dir': pointdir}
             # interleaved: A B A B ...
             for rep in range(args.repeat):
                 for label in run_labels:
@@ -370,23 +490,34 @@ def cmd_run(args):
                     if pt['error']:
                         continue
                     count += 1
-                    r = run_once(binaries[label]['path'], xml, pt['dir'], engine, nt, args.gpu_device, args.duration,
-                                 os.path.join(pt['dir'], 'openEMS_{}.log'.format(rep)))
-                    tag = '[{:3d}/{}] {:14s} {:2s} {:14s} t{:<3d} {}'.format(
-                        count, nruns, name, size, engine, nt, label)
+                    rundir = scratch.rundir('{}_{}'.format(os.path.basename(pt['dir']), label))
+                    try:
+                        r = run_once(binaries[label]['path'], xml, rundir, engine, nt, args.gpu_device, args.duration,
+                                     os.path.join(pt['dir'], 'openEMS_{}.log'.format(rep)), scratch.guard(rundir))
+                        if 'error' not in r:
+                            if rep == 0:
+                                pt['probes'] = read_probes(rundir)
+                            scratch.keep_probes(rundir, pt['dir'])
+                    finally:
+                        scratch.remove(rundir)
+                    tag = '[{:3d}/{}] {:14s} {:2s} {:7s} {:14s} t{:<3d} {}'.format(
+                        count, nruns, name, size, dump, engine, nt, label)
                     if 'error' in r:
                         pt['error'] = r['error']
                         print(tag + ' FAILED: ' + r['error'], flush=True)
                         continue
-                    print(tag + ' {:9.1f} MC/s  setup {:6.2f} s'.format(r['mcells_s'], r['setup_s']), flush=True)
-                    if rep == 0:
-                        pt['probes'] = read_probes(pt['dir'])
+                    print(tag + ' {:9.1f} MC/s  setup {:6.2f} s{}{}'.format(
+                        r['mcells_s'], r['setup_s'],
+                        '  dumps {:7.1f} MB/s'.format(r['dump_mb_s']) if dump != 'none' else '',
+                        '  stopped after {:.1f} s: {}'.format(r['run_s'], r['stopped']) if r['stopped'] else ''),
+                        flush=True)
                     pt['runs'].append(r)
             for label in run_labels:
                 pt = points[label]
                 if pt['runs']:
                     pt['mcells_s'] = _stats([r['mcells_s'] for r in pt['runs']])
                     pt['setup_s'] = _stats([r['setup_s'] for r in pt['runs']])
+                    pt['dump_mb_s'] = statistics.median(r['dump_mb_s'] or 0 for r in pt['runs'])
                     rss = [r['rss_mib'] for r in pt['runs'] if r['rss_mib'] is not None]
                     pt['rss_mib'] = max(rss) if rss else None
                     if engine == 'gpu':
@@ -425,20 +556,28 @@ def _spread(s):
 def print_table(result, label):
     info = result['binaries'][label]
     print('{}: openEMS {} ({})'.format(label, info['version'], info['path']))
-    print('{:14s} {:4s} {:14s} {:>4s} {:>7s} {:>9s} {:>9s} {:>6s} {:>8s} {:>8s}'.format(
-        'case', 'size', 'engine', 'thr', 'MCells', 'timesteps', 'MC/s', 'spread', 'setup s', 'RSS MiB'))
+    print('{:14s} {:4s} {:7s} {:14s} {:>4s} {:>7s} {:>9s} {:>9s} {:>6s} {:>8s} {:>8s} {:>9s}'.format(
+        'case', 'size', 'dumps', 'engine', 'thr', 'MCells', 'timesteps', 'MC/s', 'spread', 'setup s', 'RSS MiB',
+        'dump MB/s'))
     for pt in result['points']:
         if pt['label'] != label:
             continue
-        head = '{:14s} {:4s} {:14s} {:4d}'.format(pt['case'], pt['size'], pt['engine'], pt['threads'])
+        head = '{:14s} {:4s} {:7s} {:14s} {:4d}'.format(pt['case'], pt['size'], pt.get('dumps', 'none'),
+                                                        pt['engine'], pt['threads'])
         if not pt['runs']:
             print(head + '  FAILED')
             continue
-        note = '  (extensions on the host)' if pt.get('gpu_on_device') is False else ''
-        print(head + ' {:7.2f} {:9d} {:9.1f} {:>6s} {:8.2f} {:>8s}{}'.format(
+        notes = []
+        if pt.get('gpu_on_device') is False:
+            notes.append('extensions on the host')
+        if any(r.get('stopped') for r in pt['runs']):
+            notes.append('stopped early: ' + next(r['stopped'] for r in pt['runs'] if r.get('stopped')))
+        print(head + ' {:7.2f} {:9d} {:9.1f} {:>6s} {:8.2f} {:>8s} {:>9s}{}'.format(
             pt['runs'][0]['cells'] / 1e6, int(statistics.median(r['timesteps'] for r in pt['runs'])),
             pt['mcells_s']['median'], _spread_text(pt),
-            pt['setup_s']['median'], '{:.0f}'.format(pt['rss_mib']) if pt['rss_mib'] else '-', note))
+            pt['setup_s']['median'], '{:.0f}'.format(pt['rss_mib']) if pt['rss_mib'] else '-',
+            '{:.1f}'.format(pt['dump_mb_s']) if pt.get('dumps', 'none') != 'none' else '-',
+            '  ({})'.format('; '.join(notes)) if notes else ''))
     print()
 
 
@@ -486,12 +625,13 @@ def print_compare(side_a, side_b):
         d = {}
         for pt in r['points']:
             if pt['label'] == l and pt['runs']:
-                d.setdefault((pt['case'], pt['size'], pt['engine']), {})[pt['threads']] = pt
+                d.setdefault((pt['case'], pt['size'], pt.get('dumps', 'none'), pt['engine']), {})[pt['threads']] = pt
         return d
     pa, pb = points(ra, la), points(rb, lb)
 
-    print('{:14s} {:4s} {:14s} {:>7s} {:>9s} {:>9s} {:>6s} {:>7s} {:>8s} {:>9s}  {}'.format(
-        'case', 'size', 'engine', 'thr A/B', 'A MC/s', 'B MC/s', 'B/A', 'spread', 'change', 'setup B/A', 'probes'))
+    print('{:14s} {:4s} {:7s} {:14s} {:>7s} {:>9s} {:>9s} {:>6s} {:>7s} {:>8s} {:>9s}  {}'.format(
+        'case', 'size', 'dumps', 'engine', 'thr A/B', 'A MC/s', 'B MC/s', 'B/A', 'spread', 'change', 'setup B/A',
+        'probes'))
     mismatches = 0
     for key in [k for k in pa if k in pb]:
         ta, tb = pa[key], pb[key]
@@ -512,8 +652,8 @@ def print_compare(side_a, side_b):
                 if dev > MISMATCH:
                     pr += ' MISMATCH'
                     mismatches += 1
-            print('{:14s} {:4s} {:14s} {:>7s} {:9.1f} {:9.1f} {:6.3f} {:>7s} {:>8s} {:9.2f}  {}'.format(
-                key[0], key[1], key[2], '{}/{}'.format(a['threads'], b['threads']),
+            print('{:14s} {:4s} {:7s} {:14s} {:>7s} {:9.1f} {:9.1f} {:6.3f} {:>7s} {:>8s} {:9.2f}  {}'.format(
+                key[0], key[1], key[2], key[3], '{}/{}'.format(a['threads'], b['threads']),
                 a['mcells_s']['median'], b['mcells_s']['median'], ratio, _spread_text(a, b), change, setup, pr))
     only = sorted(set(pa) ^ set(pb))
     if only:
@@ -547,26 +687,121 @@ def cmd_compare(args):
     return 1 if print_compare(a, b) else 0
 
 
+# --- verify -------------------------------------------------------------------
+
+def cmd_verify(args):
+    """ Run every case for a fixed number of timesteps on every binary and engine and
+        compare all probes and field dumps with the run of the first binary's first engine """
+    from openEMS.compare import compare_sim_results
+    names = _list(args.cases, list(cases.CASES), 'case') if args.cases else list(cases.CASES)
+    sizes = _list(args.size, cases.SIZES, 'size') if args.size else ['XS']
+    dumps = _dumps(args.dumps) if args.dumps else list(cases.DUMPS)
+    engines = _list(args.engine, ENGINES, 'engine') if args.engine else None
+
+    binaries, machine, threads, workdir, scratch, _ = setup(args)
+    if engines is None:
+        engines = ['multithreaded'] + (['gpu'] if any(b['gpu_devices'] for b in binaries.values()) else [])
+    runs = [(l, e) for l in binaries for e in engines if e != 'gpu' or binaries[l]['gpu_devices']]
+    print('reference: {} {}, {} timesteps, deviation relative to the peak, mismatch above {:g}'.format(
+        runs[0][0], runs[0][1], args.timesteps, args.rtol))
+    print()
+    print('{:14s} {:4s} {:7s} {:6s} {:14s} {:>9s} {:>7s} {:>9s}  {}'.format(
+        'case', 'size', 'dumps', 'binary', 'engine', 'timesteps', 'outputs', 'deviation', 'worst'))
+
+    rows = []
+    for name in names:
+        for size in sizes:
+            for dump in dumps:
+                xml = os.path.join(workdir, 'xml', _point_name(name, size, dump) + '.xml')
+                cases.write_case(name, size, xml, dump, args.timesteps)
+                ref = None
+                try:
+                    for n, (label, engine) in enumerate(runs):
+                        logdir = os.path.join(workdir, label, '{}_{}'.format(_point_name(name, size, dump), engine))
+                        os.makedirs(logdir, exist_ok=True)
+                        rundir = scratch.rundir('{}_{}'.format(os.path.basename(logdir), label))
+                        row = {'case': name, 'size': size, 'dumps': dump, 'label': label, 'engine': engine}
+                        try:
+                            r = run_once(binaries[label]['path'], xml, rundir, engine, threads[0], args.gpu_device,
+                                         None, os.path.join(logdir, 'openEMS.log'), scratch.guard(rundir))
+                            if 'error' in r:
+                                row['error'] = r['error']
+                            else:
+                                row['timesteps'] = r['timesteps']
+                                scratch.keep_probes(rundir, logdir)
+                                if n == 0:
+                                    ref, rundir = rundir, None   # kept until the case is done
+                                elif ref is not None:
+                                    devs = compare_sim_results(ref, rundir)
+                                    row['outputs'] = len(devs)
+                                    row['worst'], dev = max(devs, key=lambda d: d[1])
+                                    row['deviation'] = float(dev)
+                        finally:
+                            if rundir:
+                                scratch.remove(rundir)
+                        rows.append(row)
+                        head = '{:14s} {:4s} {:7s} {:6s} {:14s}'.format(name, size, dump, label, engine)
+                        if 'error' in row:
+                            lines = row['error'].splitlines()
+                            print(head + ' FAILED: ' + lines[0] + (': ' + lines[-1].strip() if len(lines) > 1 else ''),
+                                  flush=True)
+                        elif n == 0:
+                            print(head + ' {:9d} {:>7s} {:>9s}'.format(row['timesteps'], '-', 'reference'), flush=True)
+                        elif 'deviation' not in row:
+                            print(head + ' {:9d}  no reference'.format(row['timesteps']), flush=True)
+                        else:
+                            dev = row['deviation']
+                            print(head + ' {:9d} {:7d} {:>9s}  {}{}'.format(
+                                row['timesteps'], row['outputs'], 'identical' if dev == 0 else '{:.1e}'.format(dev),
+                                row['worst'] if dev > 0 else '', '  MISMATCH' if dev > args.rtol else ''),
+                                flush=True)
+                finally:
+                    if ref:
+                        scratch.remove(ref)
+
+    failed = sum(1 for r in rows if 'error' in r)
+    mismatches = sum(1 for r in rows if r.get('deviation', 0) > args.rtol)
+    output = os.path.join(workdir, 'verify.json')
+    with open(output, 'w') as f:
+        json.dump({'format': FORMAT_VERSION, 'cases_version': cases.CASES_VERSION,
+                   'date': datetime.datetime.now().isoformat(timespec='seconds'), 'command': ' '.join(sys.argv),
+                   'machine': machine, 'binaries': binaries, 'timesteps': args.timesteps, 'rtol': args.rtol,
+                   'rows': rows}, f, indent=1)
+    print()
+    print('{} runs, {} failed, {} mismatches; results: {}'.format(len(rows), failed, mismatches, output))
+    return 1 if failed or mismatches else 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='bench.py', description='openEMS speed benchmark')
     sub = parser.add_subparsers(dest='command', required=True)
 
-    p = sub.add_parser('run', help='run the benchmark')
-    p.add_argument('--openems', action='append', metavar='PATH',
-                   help='openEMS binary, twice for an interleaved A/B comparison (default: openEMS in PATH)')
-    p.add_argument('--label', action='append', help='name of each binary (default: A, B)')
-    p.add_argument('--cases', help='comma separated, default: all of ' + ', '.join(cases.CASES))
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument('--openems', action='append', metavar='PATH',
+                        help='openEMS binary, twice for an interleaved A/B comparison (default: openEMS in PATH)')
+    common.add_argument('--label', action='append', help='name of each binary (default: A, B)')
+    common.add_argument('--cases', help='comma separated, default: all of ' + ', '.join(cases.CASES))
+    common.add_argument('--engine', help='comma separated of {}, default: multithreaded, and gpu with a device'.format(
+        ', '.join(ENGINES)))
+    common.add_argument('--threads', help='comma separated thread counts, default: the physical cores')
+    common.add_argument('--gpu-device', type=int, help='GPU device of the gpu engine (default: the best)')
+    common.add_argument('--workdir', help='for the XML, the logs and the probes '
+                                          '(default: ./bench-<date>-<time>, ./verify-<date>-<time>)')
+    common.add_argument('--scratch', metavar='DIR',
+                        help='where openEMS runs and writes its dumps, a directory per run that is removed right '
+                             'after it (default: /dev/shm, a RAM disk, if there is one, else the workdir)')
+    common.add_argument('--scratch-limit', type=float, metavar='GIB',
+                        help='stop a run when its files reach this size (default: a quarter of the free space, '
+                             'on a RAM disk of the free RAM)')
+
+    p = sub.add_parser('run', parents=[common], help='run the benchmark')
     p.add_argument('--size', help='comma separated of {}, default: {}'.format(
         ', '.join(cases.SIZES), ','.join(cases.DEFAULT_SIZES)))
-    p.add_argument('--engine', help='comma separated of {}, default: multithreaded, and gpu with a device'.format(
-        ', '.join(ENGINES)))
-    p.add_argument('--threads', help='comma separated thread counts, default: the physical cores')
-    p.add_argument('--gpu-device', type=int, help='GPU device of the gpu engine (default: the best)')
+    p.add_argument('--dumps', help='comma separated of {}, or all, default: none'.format(', '.join(cases.DUMPS)))
     p.add_argument('--repeat', type=int,
                    help='timed runs per point (default: 1, and 3 with two binaries, a comparison needs the spread)')
     p.add_argument('--duration', type=float, default=3.0,
                    help='seconds of time-stepping per run, the setup comes on top (default: 3)')
-    p.add_argument('--workdir', help='for the XML, the logs and the probes (default: ./bench-<date>-<time>)')
     p.add_argument('-o', '--output', help='result file (default: <workdir>/result.json)')
 
     p = sub.add_parser('compare', help='compare two binaries')
@@ -574,7 +809,18 @@ def main(argv=None):
                    help='reference result; alone: compares its first two binaries')
     p.add_argument('other', metavar='OTHER.json[:LABEL]', nargs='?', help='result compared with the reference')
 
+    p = sub.add_parser('verify', parents=[common],
+                       help='compare the probes and dumps of all binaries and engines, after a fixed number of '
+                            'timesteps')
+    p.add_argument('--size', help='comma separated of {}, default: XS'.format(', '.join(cases.SIZES)))
+    p.add_argument('--dumps', help='comma separated of {}, or all, default: all'.format(', '.join(cases.DUMPS)))
+    p.add_argument('--timesteps', type=int, default=2000, help='timesteps of every run (default: %(default)s)')
+    p.add_argument('--rtol', type=float, default=MISMATCH,
+                   help='max. deviation relative to the peak (default: %(default)g)')
+
     args = parser.parse_args(argv)
+    if args.command == 'verify':
+        return cmd_verify(args)
     if args.command == 'run':
         if args.repeat is None:
             args.repeat = 3 if args.openems and len(args.openems) > 1 else 1
