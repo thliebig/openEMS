@@ -54,6 +54,9 @@ public:
 
 	virtual double CalcFastEnergy() const;
 
+	//! The precomputed evaluation (Field_Gather_FDTD) for the CPU engine, on its fields; NULL for the others
+	virtual Engine_Field_Gather* CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const;
+
 	//! The interpolated E field at \a pos from raw(n, pos), the voltage of edge n at pos divided by its length
 	/*!
 	  GetEField() with raw = GetRawField(); the dumps of the GPU engine read the raw values

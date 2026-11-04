@@ -16,6 +16,7 @@
 */
 
 #include "engine_interface_fdtd.h"
+#include "engine_field_gather.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -233,4 +234,15 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 		}
 	}
 	return EPS0*E_energy + MUE0*H_energy;
+}
+
+Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
+{
+	// the CPU engine's fields are plain arrays (in a layout of its own), read directly; the per-node path
+	// asks the engine for every edge through virtual calls, a fifth of the time of a model with NF2FF dumps
+	if ((m_Eng==NULL) || (m_Eng->GetType()!=Engine::CPU) || (m_Eng->GetVoltageArray()==NULL) || (m_Eng->GetCurrentArray()==NULL))
+		return NULL;
+	Field_Gather_FDTD* g = new Field_Gather_FDTD(this, m_Op, m_Eng->GetVoltageArray(), m_Eng->GetCurrentArray(), h_field, numLines, posLines);
+	g->BuildTable(256u<<20);   // the weights of up to about 5 M nodes; a larger dump interpolates per sample
+	return g;
 }

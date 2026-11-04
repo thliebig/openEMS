@@ -133,6 +133,10 @@ public:
 
 	EngineType GetType() const {return m_type;}
 
+	//! The voltages and currents of the engines that keep them in these arrays (basic, CPU), else NULL
+	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* GetVoltageArray() const {return volt_ptr;}
+	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* GetCurrentArray() const {return curr_ptr;}
+
 	//! The sub-grid of a cylindrical multi-grid level: its engine (of the same type) and the coupling of the two, both taken over; before the first IterateTS(), throws after
 	void SetSubGrid(Engine* sub, Engine_SubGridCoupling* coupling);
 	//! The engine of the sub-grid, NULL without one; this engine steps it right after itself in every half step (the threads of Engine_ThreadPool, or Engine_GPU)
