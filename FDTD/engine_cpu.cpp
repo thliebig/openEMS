@@ -133,6 +133,7 @@ void Engine_CPU::Init()
 	TakeOverUPML();
 	TakeOverDispersive();
 	BuildRuns();
+	FreeDispersive();
 	m_Disp.clear();   // the cell sets of the setup
 	m_ExcitedVolt.clear();
 	// the UPML cells hold their coefficients now: free the extension's (24 bytes per node of a component pair)
@@ -190,6 +191,9 @@ void Engine_CPU::FindDispersive()
 			why = "more than 4 poles of a kind";
 		else if (d.debye && (poles[1]>0))
 			why = "a second Debye extension";
+		for (int o=0; (o<d.op->m_Order) && why.empty(); ++o)
+			if ((d.op->m_LM_Count[o]>0) && (d.op->m_LM_pos[o][0]==NULL))
+				why = "its cells freed by an engine before";
 		d.cells.resize(d.op->m_Order);
 		for (int o=0; (o<d.op->m_Order) && why.empty(); ++o)
 		{
@@ -303,6 +307,63 @@ bool Engine_CPU::IsInertCurr(int n, const unsigned int pos[3]) const
 	--q[nP];
 	++q[nPP];
 	return IsZeroVolt(nP, q);
+}
+
+void Engine_CPU::FreeDispersive()
+{
+	// the sets and the pole states hold it all now: up to 6 floats per cell, pole and component, and the
+	// cell list; the counts and the flags stay (ShowStat()), the destructors take NULL
+	auto free3 = [](FDTD_FLOAT** a) {
+		if (a)
+			for (int n=0; n<3; ++n)
+			{
+				delete[] a[n];
+				a[n] = NULL;
+			}
+	};
+	for (const Dispersive& d : m_Disp)
+	{
+		Operator_Ext_Dispersive* op = const_cast<Operator_Ext_Dispersive*>(d.op);
+		for (int o=0; o<op->m_Order; ++o)
+			for (int n=0; n<3; ++n)
+			{
+				delete[] op->m_LM_pos[o][n];
+				op->m_LM_pos[o][n] = NULL;
+			}
+		if (d.lorentz)
+		{
+			Operator_Ext_LorentzMaterial* L = const_cast<Operator_Ext_LorentzMaterial*>(d.lorentz);
+			for (int o=0; o<L->m_Order; ++o)
+			{
+				if (L->m_volt_ADE_On[o])
+				{
+					free3(L->v_int_ADE[o]);
+					free3(L->v_ext_ADE[o]);
+				}
+				if (L->m_curr_ADE_On[o])
+				{
+					free3(L->i_int_ADE[o]);
+					free3(L->i_ext_ADE[o]);
+				}
+				if (L->m_volt_Lor_ADE_On[o])
+					free3(L->v_Lor_ADE[o]);
+				if (L->m_curr_Lor_ADE_On[o])
+					free3(L->i_Lor_ADE[o]);
+			}
+		}
+		if (d.debye)
+		{
+			Operator_Ext_DebyeMaterial* D = const_cast<Operator_Ext_DebyeMaterial*>(d.debye);
+			for (int o=0; o<D->m_PoleCount; ++o)
+			{
+				if (D->v_relax_ADE)
+					free3(D->v_relax_ADE[o]);
+				if (D->v_drive_ADE)
+					free3(D->v_drive_ADE[o]);
+			}
+			free3(D->v_solve_ADE);
+		}
+	}
 }
 
 void Engine_CPU::GetCellPoles(int f, int n, const unsigned int pos[3], CellKey& key) const

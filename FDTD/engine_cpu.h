@@ -176,6 +176,8 @@ protected:
 	void FindDispersive();
 	//! drop the engine extensions of m_Disp
 	void TakeOverDispersive();
+	//! free the cell lists and coefficients of the operator extensions of m_Disp, after BuildRuns()
+	void FreeDispersive();
 	struct Dispersive
 	{
 		const class Operator_Ext_Dispersive* op;
