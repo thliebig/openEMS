@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -452,7 +451,11 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 			why = "the " + m_Eng_exts[n]->GetExtensionName() + " has no box hooks";
 	if (why.empty() && env && env[0])
 	{
-		if (sscanf(env, "%u:%u", &k, &W)<1 || k==0)
+		char* end = NULL;
+		k = (unsigned int)std::strtoul(env, &end, 10);
+		if ((end!=NULL) && (*end==':'))
+			W = (unsigned int)std::strtoul(end+1, &end, 10);
+		if ((k==0) || (end==NULL) || (*end!='\0'))
 			throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TBLOCK must be 0, k or k:W");
 		if (W==0)
 			W = 2*k+1;
