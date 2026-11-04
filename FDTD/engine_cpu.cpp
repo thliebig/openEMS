@@ -19,8 +19,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <exception>
+#include <thread>
 #include <cstdlib>
 #include <iostream>
+#include <functional>
 #include <map>
 #include <tuple>
 #if defined(__unix__) || defined(__APPLE__)
@@ -36,8 +40,24 @@
 using std::cout;
 using std::endl;
 
-// cells whose material part m differs by less than this (relative) share a run
-static const double M_TOLERANCE = 1e-6;
+// cells whose material part m agrees in the upper 20 bits of the mantissa (2^-20, about
+// 1e-6 relative) share a run: the double rounded to them, as an integer
+static const int M_DROP_BITS = 32;
+
+static inline int64_t QuantiseM(double m)
+{
+	uint64_t b;
+	std::memcpy(&b, &m, sizeof(b));
+	return (int64_t)((b + (1ull<<(M_DROP_BITS-1))) >> M_DROP_BITS);
+}
+
+static inline double DequantiseM(int64_t q)
+{
+	const uint64_t b = (uint64_t)q << M_DROP_BITS;
+	double m;
+	std::memcpy(&m, &b, sizeof(m));
+	return m;
+}
 
 static const char AXIS_LETTER[3] = {'I', 'J', 'K'};
 
@@ -172,7 +192,7 @@ double Engine_CPU::CellKey::M() const
 {
 	if (cls==Engine_CPU_Set::ZERO || sign==0)
 		return 0;
-	return sign*std::exp(q*M_TOLERANCE);
+	return sign*DequantiseM(q);
 }
 
 uint32_t Engine_CPU::CellKey::Hash() const
@@ -226,7 +246,7 @@ Engine_CPU::CellKey Engine_CPU::GetCellKey(int f, int n, const unsigned int pos[
 	if (m!=0)
 	{
 		key.sign = (m>0) ? 1 : -1;
-		key.q = std::llround(std::log(std::fabs(m))/M_TOLERANCE);
+		key.q = QuantiseM(std::fabs(m));
 	}
 	return key;
 }
@@ -237,22 +257,48 @@ void Engine_CPU::ChooseLayout()
 	double runs[3] = {0, 0, 0};
 	const size_t N0 = numLines[0], N1 = numLines[1], N2 = numLines[2];
 	std::vector<uint32_t> keys(N0*N1*N2);   // 4 bytes per node, the peak of the setup
-	unsigned int pos[3];
+	// the threads fill and count slices of x lines
+	const unsigned int numThreads = std::max(1u, std::min(AvailableThreads(), numLines[0]));
+	std::vector<unsigned int> jpt = AssignJobs2Threads(numLines[0], numThreads, true);
+	std::vector<unsigned int> x0(jpt.size()+1, 0);
+	for (size_t t=0; t<jpt.size(); ++t)
+		x0[t+1] = x0[t] + jpt[t];
+	auto parallel = [&](const std::function<void(unsigned int, unsigned int, size_t)>& work) {
+		std::vector<std::thread> threads;
+		for (size_t t=0; t<jpt.size(); ++t)
+			threads.push_back(std::thread(work, x0[t], x0[t+1], t));
+		for (std::thread& th : threads)
+			th.join();
+	};
+	std::vector<double> part(3*jpt.size());
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)
 		{
-			for (pos[0]=0; pos[0]<N0; ++pos[0])
-				for (pos[1]=0; pos[1]<N1; ++pos[1])
-					for (pos[2]=0; pos[2]<N2; ++pos[2])
-						keys[(pos[0]*N1 + pos[1])*N2 + pos[2]] = GetCellKey(f, n, pos).Hash();
-			const size_t stride[3] = {N1*N2, N2, 1};
-			for (int a=0; a<3; ++a)
-				for (size_t i=0; i<keys.size(); ++i)
-				{
-					const size_t p_a = (i/stride[a]) % numLines[a];
-					if ((p_a==0) || (keys[i]!=keys[i-stride[a]]))
-						runs[a] += 1;
-				}
+			parallel([&](unsigned int xa, unsigned int xb, size_t) {
+				unsigned int pos[3];
+				for (pos[0]=xa; pos[0]<xb; ++pos[0])
+					for (pos[1]=0; pos[1]<N1; ++pos[1])
+						for (pos[2]=0; pos[2]<N2; ++pos[2])
+							keys[(pos[0]*N1 + pos[1])*N2 + pos[2]] = GetCellKey(f, n, pos).Hash();
+			});
+			// a run starts at the first line of the axis or where the key changes
+			std::fill(part.begin(), part.end(), 0.0);
+			parallel([&](unsigned int xa, unsigned int xb, size_t t) {
+				for (size_t x=xa; x<xb; ++x)
+					for (size_t y=0; y<N1; ++y)
+					{
+						const uint32_t* k = &keys[(x*N1 + y)*N2];
+						for (size_t z=0; z<N2; ++z)
+						{
+							part[3*t+0] += (x==0) || (k[z]!=k[z-N1*N2]);
+							part[3*t+1] += (y==0) || (k[z]!=k[z-N2]);
+							part[3*t+2] += (z==0) || (k[z]!=k[z-1]);
+						}
+					}
+			});
+			for (size_t t=0; t<jpt.size(); ++t)
+				for (int a=0; a<3; ++a)
+					runs[a] += part[3*t+a];
 		}
 
 	m_FastAxis = 2;
@@ -286,10 +332,11 @@ void Engine_CPU::ChooseLayout()
 void Engine_CPU::BuildRuns()
 {
 	const int F = m_FastAxis, S = m_SplitAxis, M = m_MidAxis;
-	size_t count[4] = {0, 0, 0, 0};   // cells per class
-	for (int f=0; f<2; ++f)
-		for (int n=0; n<3; ++n)
+	// one thread per component, each with its own cell counts
+	size_t counts[2][3][4] = {};
+	auto build = [&](int f, int n)
 		{
+			size_t* count = counts[f][n];
 			Engine_CPU_Runs& r = m_Runs[f][n];
 			Engine_CPU_UPML& u = m_UPMLCells[f][n];
 			r.runs.clear();
@@ -348,7 +395,27 @@ void Engine_CPU::BuildRuns()
 					}
 				}
 			r.first.back() = r.runs.size();
-		}
+		};
+	// an exception in a thread would end the program: carried out and rethrown
+	std::exception_ptr error[2][3];
+	std::vector<std::thread> threads;
+	for (int f=0; f<2; ++f)
+		for (int n=0; n<3; ++n)
+			threads.push_back(std::thread([&, f, n]() {
+				try {build(f, n);}
+				catch (...) {error[f][n] = std::current_exception();}
+			}));
+	for (std::thread& th : threads)
+		th.join();
+	for (int f=0; f<2; ++f)
+		for (int n=0; n<3; ++n)
+			if (error[f][n])
+				std::rethrow_exception(error[f][n]);
+	size_t count[4] = {0, 0, 0, 0};
+	for (int f=0; f<2; ++f)
+		for (int n=0; n<3; ++n)
+			for (int c=0; c<4; ++c)
+				count[c] += counts[f][n][c];
 
 	if (g_settings.GetVerboseLevel()>0)
 	{
