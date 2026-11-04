@@ -34,6 +34,11 @@ class Engine;
   Engine::UpdateCurrents() and runs the thread-aware hooks of the engine
   extensions, with a barrier after the main updates and after each extension.
 
+  With blocked plans of the engine (Engine::BuildBlockedPlans(), a single grid)
+  whole blocks of timesteps run phase by phase, a barrier after each, the
+  extensions through their box hooks: the plan with the largest k that fits
+  the timesteps left, then the smaller ones; what is left runs flat.
+
   A half step (voltages, then currents) is done for the engine and then for its
   chain of sub-grids (Engine::GetSubGridEngine(), cylindrical multi-grid), each
   with its own plan, followed by the coupling of the grids, innermost
@@ -77,6 +82,12 @@ protected:
 	std::vector<Engine*> m_Grids;   //!< the engine and its sub-grids, outermost first
 	//! per grid the plan of the threads; fewer threads in it than in the pool on a small grid
 	std::vector<Engine_Plan> m_Plans;
+	//! the blocked plans of the engine (Engine::BuildBlockedPlans()), by decreasing k: the largest that fits the timesteps left first
+	std::vector<Engine_BlockedPlan> m_BlockedPlans;
+	bool m_Blocked;
+	unsigned long long m_TS_blocked, m_TS_flat;   //!< the timesteps run blocked and flat, for the log
+	//! one step of the blocked plan at timestep \a ts, with the box hooks of the extensions
+	void BlockedStep(const Engine_Step& step, unsigned int ts);
 	boost::thread_group* m_thread_group;
 	boost::barrier* m_startBarrier;
 	boost::barrier* m_stopBarrier;

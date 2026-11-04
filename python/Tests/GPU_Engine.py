@@ -5,7 +5,8 @@
  Each case runs with engine='basic', engine='gpu-reference' and engine='gpu'
  and compares all probe files and all HDF5 field dumps. The CPU engine
  (engine='cpu', cell runs and factorised coefficients, the UPML fused into its
- update) runs every case too and is compared like a device backend.
+ update) runs every case too and is compared like a device backend, once on
+ its flat sweep and once with temporal blocking forced (OPENEMS_CPU_TBLOCK).
 
  The reference backend performs the main FDTD updates on the CPU on its own
  copy of the fields, exactly like the basic engine, so its results must be
@@ -37,7 +38,9 @@
    cylindrical and multi-grid cases: engine='multithreaded' bit-identical to engine='basic'
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
-   engine='cpu': created, and max. deviation < 1e-4 of the peak value like a device backend
+   engine='cpu': created, and max. deviation < 1e-4 of the peak value like a device backend;
+     with blocking forced (2 timesteps per block, tiles of 5 lines) bit-identical to its flat
+     sweep, and blocked in at least one case (the others have an extension without box hooks)
 
  Tested with
   - python 3.13
@@ -639,16 +642,22 @@ DEVICE_RTOL = 1e-4
 FULL_DEVICE_BACKENDS = ('HIP', 'Metal')
 # device backends that accumulate the frequency domain dumps
 DEVICE_DFT_BACKENDS = ('HIP',)
+blocked_cases = []
 for name, case, on_device in cases:
     print(f'Testing case: {name}')
-    engines = ('basic', 'gpu-reference', 'gpu', 'cpu')
+    engines = ('basic', 'gpu-reference', 'gpu', 'cpu', 'cpu-blocked')
     if name.startswith(('cylinder', 'multigrid')):
         engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
     paths = {engine: os.path.join(tempfile.gettempdir(), f'GPU_Engine_{name}_{engine}') for engine in engines}
     os.environ.update(CASE_ENV.get(name, {}))
     try:
-        logs = {engine: run_captured(case, paths[engine], engine) for engine in engines}
+        logs = {}
+        for engine in engines:
+            # the CPU engine flat, and with blocking forced even where the model fits the cache
+            os.environ['OPENEMS_CPU_TBLOCK'] = '2:5' if engine=='cpu-blocked' else '0'
+            logs[engine] = run_captured(case, paths[engine], 'cpu' if engine=='cpu-blocked' else engine)
     finally:
+        del os.environ['OPENEMS_CPU_TBLOCK']
         for var in CASE_ENV.get(name, {}):
             del os.environ[var]
 
@@ -666,6 +675,11 @@ for name, case, on_device in cases:
     print(f'  CPU engine: max. deviation {worst:.1e} of the peak value')
     assert not diff, f'FAIL [{name}]: the CPU engine deviates from the basic engine: ' + \
         ', '.join(f'{n} ({d:.1e})' for n, d in diff)
+    if 'Engine_CPU: temporal blocking' in logs['cpu-blocked']:
+        blocked_cases.append(name)
+        diff, _, _, _ = compare_outputs(paths['cpu'], paths['cpu-blocked'])
+        assert not diff, f'FAIL [{name}]: the blocked CPU engine differs from its flat sweep in: {", ".join(n for n, _ in diff)}'
+        print('  CPU engine blocked: bit-identical to its flat sweep')
 
     if 'multithreaded' in engines:
         diff, _, _, _ = compare_outputs(paths['basic'], paths['multithreaded'])
@@ -716,4 +730,6 @@ for name, case, on_device in cases:
         print('  no GPU device, device backend not tested')
     print('PASS [{}]'.format(name))
 
+assert blocked_cases, 'FAIL: the CPU engine blocked in no case'
+print(f'CPU engine blocked in {len(blocked_cases)} cases: {", ".join(blocked_cases)}')
 print('PASS')

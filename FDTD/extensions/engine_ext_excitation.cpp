@@ -30,14 +30,23 @@ Engine_Ext_Excitation::~Engine_Ext_Excitation()
 
 }
 
+static inline bool InBox(const Engine_Box* box, const unsigned int pos[3])
+{
+	if (box==NULL)
+		return true;
+	for (int a=0; a<3; ++a)
+		if ((pos[a]<box->start[a]) || (pos[a]>=box->stop[a]))
+			return false;
+	return true;
+}
+
 template <typename EngType>
-void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
+void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng, int numTS, const Engine_Box* box)
 {
 	//soft voltage excitation here (E-field excite)
 	int exc_pos;
 	unsigned int ny;
 	unsigned int pos[3];
-	int numTS = m_Eng->GetNumberOfTimesteps();
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_volt =  m_Op_Exc->m_Exc->GetVoltageSignal();
 
@@ -56,23 +65,29 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
 		pos[0]=m_Op_Exc->Volt_index[0][n];
 		pos[1]=m_Op_Exc->Volt_index[1][n];
 		pos[2]=m_Op_Exc->Volt_index[2][n];
+		if (!InBox(box, pos))
+			continue;
 		eng->EngType::SetVolt(ny,pos, eng->EngType::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
 	}
 }
 
 void Engine_Ext_Excitation::Apply2Voltages()
 {
-	ENG_DISPATCH(Apply2VoltagesImpl);
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, (int)m_Eng->GetNumberOfTimesteps(), (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_Excitation::Apply2VoltagesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, (int)ts, &box);
 }
 
 template <typename EngType>
-void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
+void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng, int numTS, const Engine_Box* box)
 {
 	//soft current excitation here (H-field excite)
 	int exc_pos;
 	unsigned int ny;
 	unsigned int pos[3];
-	int numTS = m_Eng->GetNumberOfTimesteps();
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_curr =  m_Op_Exc->m_Exc->GetCurrentSignal();
 
@@ -91,11 +106,18 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
 		pos[0]=m_Op_Exc->Curr_index[0][n];
 		pos[1]=m_Op_Exc->Curr_index[1][n];
 		pos[2]=m_Op_Exc->Curr_index[2][n];
+		if (!InBox(box, pos))
+			continue;
 		eng->EngType::SetCurr(ny,pos, eng->EngType::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
 	}
 }
 
 void Engine_Ext_Excitation::Apply2Current()
 {
-	ENG_DISPATCH(Apply2CurrentImpl);
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, (int)m_Eng->GetNumberOfTimesteps(), (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_Excitation::Apply2CurrentBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, (int)ts, &box);
 }

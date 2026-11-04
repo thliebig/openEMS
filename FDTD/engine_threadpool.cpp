@@ -54,7 +54,34 @@ void Engine_ThreadPool_Worker::operator()()
 		if (m_pool->m_stopThreads)
 			return;
 
-		for (unsigned int iter=0; iter<m_pool->m_iterTS; ++iter)
+		unsigned int flat = m_pool->m_iterTS;
+		if (m_pool->m_Blocked)
+		{
+			// whole blocks: the timesteps from the count at the start, which thread 0 advances after them
+			unsigned int ts = m_pool->m_Eng->numTS;
+			for (const Engine_BlockedPlan& plan : m_pool->m_BlockedPlans)
+				while (flat>=plan.k)
+				{
+					for (const auto& phase : plan.phases)
+					{
+						if (m_threadID<phase.size())
+							for (const Engine_Step& step : phase[m_threadID])
+								m_pool->BlockedStep(step, ts + step.t);
+						m_pool->m_IterateBarrier->wait();
+					}
+					ts += plan.k;
+					flat -= plan.k;
+				}
+			if (m_threadID == 0)
+			{
+				m_pool->m_TS_blocked += m_pool->m_iterTS - flat;
+				m_pool->m_TS_flat += flat;
+				m_pool->m_Eng->numTS = ts;
+			}
+			m_pool->m_IterateBarrier->wait();
+		}
+
+		for (unsigned int iter=0; iter<flat; ++iter)
 		{
 			for (size_t g=0; g<numGrids; ++g)
 				m_pool->VoltageHalfStep(g, m_threadID);
@@ -109,6 +136,32 @@ void Engine_ThreadPool::CurrentHalfStep(size_t g, unsigned int threadID)
 	Apply2Current(eng, threadID);
 }
 
+void Engine_ThreadPool::BlockedStep(const Engine_Step& step, unsigned int ts)
+{
+	std::vector<Engine_Extension*>& exts = m_Eng->m_Eng_exts;
+	// the order of the flat half step, restricted to the box
+	if (step.volt)
+	{
+		for (int n=exts.size()-1; n>=0; --n)
+			exts[n]->DoPreVoltageUpdatesBox(step.box, ts);
+		m_Eng->UpdateVoltages(step.box);
+		for (size_t n=0; n<exts.size(); ++n)
+			exts[n]->DoPostVoltageUpdatesBox(step.box, ts);
+		for (size_t n=0; n<exts.size(); ++n)
+			exts[n]->Apply2VoltagesBox(step.box, ts);
+	}
+	else
+	{
+		for (int n=exts.size()-1; n>=0; --n)
+			exts[n]->DoPreCurrentUpdatesBox(step.box, ts);
+		m_Eng->UpdateCurrents(step.box);
+		for (size_t n=0; n<exts.size(); ++n)
+			exts[n]->DoPostCurrentUpdatesBox(step.box, ts);
+		for (size_t n=0; n<exts.size(); ++n)
+			exts[n]->Apply2CurrentBox(step.box, ts);
+	}
+}
+
 void Engine_ThreadPool::SyncSubGrids(unsigned int threadID, bool voltages)
 {
 	if (m_Grids.size()<2)
@@ -135,6 +188,8 @@ Engine_ThreadPool::Engine_ThreadPool(Engine* eng, unsigned int numThreads)
 	m_stopBarrier = NULL;
 	m_IterateBarrier = NULL;
 	m_iterTS = 0;
+	m_Blocked = false;
+	m_TS_blocked = m_TS_flat = 0;
 	m_max_numThreads = AvailableThreads();
 	m_last_speed = 0;
 	m_opt_speed = false;
@@ -157,6 +212,8 @@ Engine_ThreadPool::Engine_ThreadPool(Engine* eng, unsigned int numThreads)
 
 Engine_ThreadPool::~Engine_ThreadPool()
 {
+	if (m_Blocked && (g_settings.GetVerboseLevel()>0))
+		cout << "Multithreaded engine: " << m_TS_blocked << " timesteps in blocks, " << m_TS_flat << " flat" << endl;
 	StopThreads();
 	delete m_IterateBarrier;
 	delete m_startBarrier;
@@ -202,6 +259,10 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 	}
 	if (g_settings.GetVerboseLevel()>0)
 		cout << endl;
+
+	// a blocked plan, on a single grid only
+	m_BlockedPlans.clear();
+	m_Blocked = (m_Grids.size()==1) && m_Eng->BuildBlockedPlans(m_numThreads, m_BlockedPlans) && !m_BlockedPlans.empty();
 
 	delete m_IterateBarrier;
 	// make sure all threads are waiting

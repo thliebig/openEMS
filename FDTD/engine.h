@@ -119,6 +119,9 @@ public:
 
 	//! The axis the flat plan splits over the threads: one of the slowest in memory
 	virtual int GetSplitAxis() const {return 0;}
+
+	//! Blocked plans (temporal blocking) for \a numThreads threads, by decreasing k, if this engine runs them for this model; the default: none
+	virtual bool BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans) {(void)numThreads; (void)plans; return false;}
 	//! Execute Post-Current extension updates
 	virtual void DoPostCurrentUpdates();
 	//! Apply extension current changes

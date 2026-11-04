@@ -34,12 +34,17 @@ public:
 	virtual void Apply2Voltages();
 	virtual void Apply2Current();
 
+	virtual bool SupportsBoxes() const {return true;}
+	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts);
+	virtual void Apply2CurrentBox(const Engine_Box& box, unsigned int ts);
+
 protected:
+	//! the excitation at timestep \a numTS of the points in \a box, or of all with NULL
 	template <typename EngType>
-	void Apply2VoltagesImpl(EngType* eng);
+	void Apply2VoltagesImpl(EngType* eng, int numTS, const Engine_Box* box);
 
 	template <typename EngType>
-	void Apply2CurrentImpl(EngType* eng);
+	void Apply2CurrentImpl(EngType* eng, int numTS, const Engine_Box* box);
 
 	Operator_Ext_Excitation* m_Op_Exc;
 };

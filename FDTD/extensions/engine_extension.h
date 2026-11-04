@@ -29,6 +29,8 @@
 
 #include <string>
 
+#include "FDTD/engine_plan.h"
+
 class Operator_Extension;
 class Engine;
 
@@ -59,6 +61,22 @@ public:
 	//! This method will be called __after__ all updates to the current and extensions and may add/set its results to the engine current, but may __not__ rely on the current value of the engine current!!!
 	virtual void Apply2Current() {}
 	virtual void Apply2Current(int threadID);
+
+	//! Whether the extension runs in the blocked plans of the CPU engine (Engine_BlockedPlan)
+	/*!
+	  Then the engine calls the box hooks below, per step on its box, instead of
+	  the hooks above: a box hook touches only the cells in \a box and takes the
+	  timestep from \a ts, not from Engine::GetNumberOfTimesteps(), which advances
+	  by a whole block. An extension that does not support this keeps the engine
+	  on the flat sweep.
+	  */
+	virtual bool SupportsBoxes() const {return false;}
+	virtual void DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
+	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
+	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
+	virtual void DoPreCurrentUpdatesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
+	virtual void DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
+	virtual void Apply2CurrentBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}
 
 	//! Set the Engine to this extension. This will usually done automatically by Engine::AddExtension
 	virtual void SetEngine(Engine* eng) {m_Eng=eng;}

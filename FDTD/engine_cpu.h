@@ -84,6 +84,13 @@ public:
 
 	virtual int GetSplitAxis() const {return m_SplitAxis;}
 
+	//! Trapezoid tiles along the split axis sized for the L3, if every extension supports boxes and there is no sub-grid
+	/*!
+	  OPENEMS_CPU_TBLOCK=0 keeps the flat sweep, =k:W sets the timesteps per block
+	  and the tile width in lines.
+	  */
+	virtual bool BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans);
+
 	//! The fast axis (stride 1 in memory)
 	int GetFastAxis() const {return m_FastAxis;}
 

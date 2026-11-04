@@ -19,10 +19,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <map>
 #include <tuple>
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#endif
 #include <stdexcept>
 
 #include "tools/global.h"
@@ -421,6 +425,70 @@ void Engine_CPU::InitKernels()
 #endif
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Engine_CPU: kernels for " << m_ISA << endl;
+}
+
+// the bytes of the last level cache, 32 MiB if the system does not say
+static size_t CacheBytes()
+{
+#ifdef _SC_LEVEL3_CACHE_SIZE
+	long l3 = sysconf(_SC_LEVEL3_CACHE_SIZE);
+	if (l3>0)
+		return l3;
+#endif
+	return 32u<<20;
+}
+
+bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans)
+{
+	const char* env = std::getenv("OPENEMS_CPU_TBLOCK");
+	std::string why;
+	unsigned int k = 0, W = 0;
+	if (env && (std::string(env)=="0"))
+		why = "OPENEMS_CPU_TBLOCK=0";
+	else if (m_SubGrid)
+		why = "a cylindrical multi-grid";
+	for (size_t n=0; n<m_Eng_exts.size() && why.empty(); ++n)
+		if (!m_Eng_exts[n]->SupportsBoxes())
+			why = "the " + m_Eng_exts[n]->GetExtensionName() + " has no box hooks";
+	if (why.empty() && env && env[0])
+	{
+		if (sscanf(env, "%u:%u", &k, &W)<1 || k==0)
+			throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TBLOCK must be 0, k or k:W");
+		if (W==0)
+			W = 2*k+1;
+	}
+	else if (why.empty())
+	{
+		// the tile: the cache for the fields, the UPML flux and the runs of its planes (measured: fuller tiles are faster than half the cache)
+		size_t runs = 0, flux = 0;
+		for (int f=0; f<2; ++f)
+			for (int n=0; n<3; ++n)
+			{
+				runs += m_Runs[f][n].runs.size();
+				flux += m_UPMLCells[f][n].flux.size();
+			}
+		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
+		const double bytes = plane*24.0 + (4.0*flux + sizeof(Engine_CPU_Run)*runs)/numLines[m_SplitAxis];
+		W = (unsigned int)(CacheBytes()/bytes);
+		k = std::min(8u, (W>0) ? (W-1)/2 : 0);
+		if (k<2)
+			why = "a plane is too large for the cache";
+		else if (numLines[m_SplitAxis] < 2*W)
+			why = "the model fits the cache";
+	}
+	if (!why.empty())
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cout << "Engine_CPU: no temporal blocking: " << why << endl;
+		return false;
+	}
+	// k, then halves of it down to 2: the processing between two calls of IterateTS() may leave fewer timesteps
+	for (unsigned int kk=k; kk>=2; kk/=2)
+		plans.push_back(Engine_BlockedPlan::Trapezoids(numLines, numThreads, m_SplitAxis, m_MidAxis, W, kk));
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Engine_CPU: temporal blocking, up to " << k << " timesteps per block, tiles of " << W << " lines along "
+		     << (char)('x'+m_SplitAxis) << ", " << plans[0].phases.size() << " phases" << endl;
+	return true;
 }
 
 void Engine_CPU::UpdateVoltages(const Engine_Box& box)

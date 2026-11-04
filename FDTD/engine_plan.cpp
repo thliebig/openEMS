@@ -49,3 +49,72 @@ Engine_Plan Engine_Plan::Flat(const unsigned int numLines[3], unsigned int numTh
 	}
 	return plan;
 }
+
+// the phase of one half step: the range [lo, hi) along the split axis, split over the threads along the thread axis
+static void AddPhase(Engine_BlockedPlan& plan, const unsigned int numLines[3], unsigned int numThreads, int S, int T,
+                     bool volt, unsigned int t, unsigned int lo, unsigned int hi)
+{
+	if (lo>=hi)
+		return;
+	const unsigned int last = volt ? 0 : 1;   // the currents end a line earlier on every axis
+	std::vector< std::vector<Engine_Step> > phase(numThreads);
+	std::vector<unsigned int> jpt = AssignJobs2Threads(numLines[T]-last, numThreads, false);
+	unsigned int start = 0;
+	for (unsigned int n=0; n<numThreads; ++n)
+	{
+		Engine_Step step;
+		step.volt = volt;
+		step.t = t;
+		for (int a=0; a<3; ++a)
+		{
+			step.box.start[a] = 0;
+			step.box.stop[a] = numLines[a]-last;
+		}
+		step.box.start[S] = lo;
+		step.box.stop[S] = hi;
+		step.box.start[T] = start;
+		step.box.stop[T] = start + jpt[n];
+		start += jpt[n];
+		if (jpt[n]>0)
+			phase[n].push_back(step);
+	}
+	plan.phases.push_back(phase);
+}
+
+Engine_BlockedPlan Engine_BlockedPlan::Trapezoids(const unsigned int numLines[3], unsigned int numThreads, int S, int T,
+                                                  unsigned int width, unsigned int k)
+{
+	Engine_BlockedPlan plan;
+	plan.k = k;
+	const unsigned int N = numLines[S];
+	if (width < 2*k+1)
+		width = 2*k+1;
+	// the tile borders, a short last tile folded into the one before
+	std::vector<unsigned int> border(1, 0);
+	while (N - border.back() >= 2*width)
+		border.push_back(border.back() + width);
+	border.push_back(N);
+
+	// the cores: V_t on [a+t, b-t), I_t on [a+t, b-t-1), not shrinking at the domain edges
+	for (size_t i=0; i+1<border.size(); ++i)
+	{
+		const unsigned int a = border[i], b = border[i+1];
+		for (unsigned int t=0; t<k; ++t)
+		{
+			const unsigned int lo = (a>0) ? a+t : 0;
+			AddPhase(plan, numLines, numThreads, S, T, true,  t, lo, (b<N) ? b-t   : N);
+			AddPhase(plan, numLines, numThreads, S, T, false, t, lo, (b<N) ? b-t-1 : N-1);
+		}
+	}
+	// the wedges at the inner borders: V_t on [a-t, a+t), I_t on [a-t-1, a+t)
+	for (size_t i=1; i+1<border.size(); ++i)
+	{
+		const unsigned int a = border[i];
+		for (unsigned int t=0; t<k; ++t)
+		{
+			AddPhase(plan, numLines, numThreads, S, T, true,  t, a-t,   a+t);
+			AddPhase(plan, numLines, numThreads, S, T, false, t, a-t-1, a+t);
+		}
+	}
+	return plan;
+}

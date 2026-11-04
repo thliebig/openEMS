@@ -29,9 +29,12 @@ there are unreleased changes. It becomes the next release entry.
   as plain arrays in a memory layout chosen per model, the update coefficients
   as runs of cell classes (PEC, lossless, lossy, PML) with the mesh geometry
   factored out, and the UPML updated together with the main update in one pass
-  instead of three. Its results agree with the other engines to float rounding,
-  not bit for bit. On models with a PML it is 1.5-2x faster than the default
-  engine and needs less memory while running.
+  instead of three. With only excitations and lumped elements besides the PML
+  it advances cache-sized tiles several timesteps at a time (temporal
+  blocking; `OPENEMS_CPU_TBLOCK=0` turns it off). Its results agree with the
+  other engines to float rounding, not bit for bit. On real models with a PML
+  it is 3-6x faster than the default engine and needs less memory while
+  running.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.
