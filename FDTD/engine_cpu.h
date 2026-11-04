@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "engine.h"
@@ -82,6 +83,11 @@ struct Engine_CPU_Runs
   additive hooks up to rounding, but not for the cylinder's at r=0. With a
   cylindrical mesh, a dispersive cell in a UPML, more than MAX_POLES poles of
   a kind or a second Debye extension, the extension stays.
+
+  A lossless current inside metal, whose four voltages of the curl are ZERO
+  cells, never changes: it is in no run, so the kernels skip it. Only if no
+  extension writes such a voltage: none on the outer lines (Mur), in a UPML
+  or excited, and only the extensions known not to (FindInert()).
 
   The extensions see the fields through Engine::GetVolt() and friends, which
   follow the layout, and run in the dispatch of the basic engine.
@@ -172,6 +178,14 @@ protected:
 		std::vector<Engine_CPU_NodeSet> cells;   //!< per order (Debye: one list for all poles)
 	};
 	std::vector<Dispersive> m_Disp;
+	//! whether the inert currents may be skipped: only known extensions, and the excited voltages
+	void FindInert();
+	bool m_SkipInert;
+	std::unordered_set<size_t> m_ExcitedVolt;   //!< 3*lin + n
+	//! a voltage that is always 0: ZERO coefficients, and no extension writes it
+	bool IsZeroVolt(int n, const unsigned int pos[3]) const;
+	//! a lossless current whose curl voltages are all IsZeroVolt()
+	bool IsInertCurr(int n, const unsigned int pos[3]) const;
 
 	//! the poles of a cell into \a key
 	void GetCellPoles(int f, int n, const unsigned int pos[3], CellKey& key) const;

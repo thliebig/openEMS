@@ -43,6 +43,10 @@
 #include "extensions/engine_ext_lorentzmaterial.h"
 #include "extensions/operator_ext_debyematerial.h"
 #include "extensions/engine_ext_debyematerial.h"
+#include "extensions/operator_ext_excitation.h"
+#include "extensions/operator_ext_mur_abc.h"
+#include "extensions/operator_ext_lumpedRLC.h"
+#include "extensions/operator_ext_steadystate.h"
 
 using std::cout;
 using std::endl;
@@ -120,6 +124,7 @@ void Engine_CPU::Init()
 			m_UPML.push_back(upml);
 	}
 	FindDispersive();
+	FindInert();
 	CalcGeometry();
 	ChooseLayout();
 	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
@@ -127,6 +132,7 @@ void Engine_CPU::Init()
 	TakeOverDispersive();
 	BuildRuns();
 	m_Disp.clear();   // the cell sets of the setup
+	m_ExcitedVolt.clear();
 	// the UPML cells hold their coefficients now: free the extension's (24 bytes per node of a component pair)
 	for (const Operator_Ext_UPML* upml : m_UPML)
 	{
@@ -240,6 +246,61 @@ void Engine_CPU::TakeOverDispersive()
 		delete m_Eng_exts[n];
 	}
 	m_Eng_exts = keep;
+}
+
+void Engine_CPU::FindInert()
+{
+	m_SkipInert = true;
+	m_ExcitedVolt.clear();
+	if (const char* env = std::getenv("OPENEMS_CPU_INERT"))
+		if (std::string(env)=="0")
+			m_SkipInert = false;
+	for (size_t n=0; n<Op->GetNumberOfExtentions() && m_SkipInert; ++n)
+	{
+		const Operator_Extension* e = Op->GetExtension(n);
+		if (const Operator_Ext_Excitation* exc = dynamic_cast<const Operator_Ext_Excitation*>(e))
+		{
+			for (size_t i=0; i<exc->Volt_Count; ++i)
+			{
+				const size_t lin = ((size_t)exc->Volt_index[0][i]*numLines[1] + exc->Volt_index[1][i])*numLines[2] + exc->Volt_index[2][i];
+				m_ExcitedVolt.insert(3*lin + exc->Volt_dir[i]);
+			}
+			continue;
+		}
+		// extensions that write voltages only where the coefficients are not zero, or on the outer lines
+		const bool known = dynamic_cast<const Operator_Ext_UPML*>(e) || dynamic_cast<const Operator_Ext_Mur_ABC*>(e)
+		                || dynamic_cast<const Operator_Ext_LumpedRLC*>(e) || dynamic_cast<const Operator_Ext_SteadyState*>(e)
+		                || dynamic_cast<const Operator_Ext_LorentzMaterial*>(e) || dynamic_cast<const Operator_Ext_DebyeMaterial*>(e);
+		if (!known)
+			m_SkipInert = false;
+	}
+}
+
+bool Engine_CPU::IsZeroVolt(int n, const unsigned int pos[3]) const
+{
+	for (int a=0; a<3; ++a)
+		if ((pos[a]==0) || (pos[a]+1>=numLines[a]))
+			return false;
+	unsigned int p[3] = {pos[0], pos[1], pos[2]}, loc[3];
+	if ((Op->GetVV(n, p)!=0) || (Op->GetVI(n, p)!=0) || FindUPML(pos, loc))
+		return false;
+	const size_t lin = ((size_t)pos[0]*numLines[1] + pos[1])*numLines[2] + pos[2];
+	return m_ExcitedVolt.count(3*lin + n)==0;
+}
+
+bool Engine_CPU::IsInertCurr(int n, const unsigned int pos[3]) const
+{
+	// I_n += iv * (V_nPP(pos) - V_nPP(pos+e_nP) - V_nP(pos) + V_nP(pos+e_nPP))
+	const int nP = (n+1)%3, nPP = (n+2)%3;
+	unsigned int q[3] = {pos[0], pos[1], pos[2]};
+	if (!IsZeroVolt(nPP, q) || !IsZeroVolt(nP, q))
+		return false;
+	++q[nP];
+	if (!IsZeroVolt(nPP, q))
+		return false;
+	--q[nP];
+	++q[nPP];
+	return IsZeroVolt(nP, q);
 }
 
 void Engine_CPU::GetCellPoles(int f, int n, const unsigned int pos[3], CellKey& key) const
@@ -521,7 +582,7 @@ void Engine_CPU::BuildRuns()
 {
 	const int F = m_FastAxis, S = m_SplitAxis, M = m_MidAxis;
 	// one thread per component, each with its own cell counts
-	size_t counts[2][3][5] = {};
+	size_t counts[2][3][6] = {};
 	auto build = [&](int f, int n)
 		{
 			size_t* count = counts[f][n];
@@ -546,11 +607,18 @@ void Engine_CPU::BuildRuns()
 					if ((pos[S]+last>=numLines[S]) || (pos[M]+last>=numLines[M]))
 						continue;
 					CellKey prev = CellKey();
+					bool open = false;   // the last run ends at pos[F]
 					for (pos[F]=0; pos[F]+last<numLines[F]; ++pos[F])
 					{
 						CellKey key = GetCellKey(f, n, pos);
+						if ((f==1) && m_SkipInert && (key.cls==Engine_CPU_Set::LOSSLESS) && IsInertCurr(n, pos))
+						{
+							++count[5];   // in no run
+							open = false;
+							continue;
+						}
 						++count[key.cls];
-						if ((pos[F]>0) && (key==prev))
+						if (open && (key==prev))
 						{
 							++r.runs.back().stop;
 							continue;
@@ -590,6 +658,7 @@ void Engine_CPU::BuildRuns()
 						run.u = 0;
 						r.runs.push_back(run);
 						prev = key;
+						open = true;
 					}
 				}
 			r.first.back() = r.runs.size();
@@ -630,10 +699,10 @@ void Engine_CPU::BuildRuns()
 		for (int n=0; n<3; ++n)
 			if (error[f][n])
 				std::rethrow_exception(error[f][n]);
-	size_t count[5] = {0, 0, 0, 0, 0};
+	size_t count[6] = {0, 0, 0, 0, 0, 0};
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)
-			for (int c=0; c<5; ++c)
+			for (int c=0; c<6; ++c)
 				count[c] += counts[f][n][c];
 
 	if (g_settings.GetVerboseLevel()>0)
@@ -645,12 +714,12 @@ void Engine_CPU::BuildRuns()
 				runs += m_Runs[f][n].runs.size();
 				sets += m_Runs[f][n].sets.size();
 			}
-		const double cells = count[0] + count[1] + count[2] + count[3] + count[4];
+		const double cells = count[0] + count[1] + count[2] + count[3] + count[4] + count[5];
 		cout << "Engine_CPU: " << runs << " runs (" << runs*sizeof(Engine_CPU_Run)/1048576.0 << " MiB), " << sets
 		     << " coefficient sets, mean length " << cells/runs << "; cells zero "
 		     << 100.0*count[0]/cells << " %, lossless " << 100.0*count[1]/cells << " %, lossy "
 		     << 100.0*count[2]/cells << " %, upml " << 100.0*count[3]/cells << " %, dispersive "
-		     << 100.0*count[4]/cells << " %" << endl;
+		     << 100.0*count[4]/cells << " %, inert (skipped) " << 100.0*count[5]/cells << " %" << endl;
 	}
 }
 
