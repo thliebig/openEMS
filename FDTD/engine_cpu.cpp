@@ -29,8 +29,21 @@
 #include <tuple>
 #include <typeinfo>
 #include <bitset>
+#include <fstream>
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
+#endif
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#endif
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #endif
 #include <stdexcept>
 
@@ -954,14 +967,94 @@ void Engine_CPU::InitKernels()
 		cout << "Engine_CPU: kernels for " << m_ISA << endl;
 }
 
-// the bytes of the last level cache, 32 MiB if the system does not say
-static size_t CacheBytes()
+// the bytes of the last level cache the cores share, and where they come from; 32 MiB if the system does not say
+static size_t CacheBytes(std::string& source)
 {
+#if defined(_WIN32)
+	// the largest cache of the highest level
+	DWORD len = 0;
+	GetLogicalProcessorInformationEx(RelationCache, NULL, &len);
+	if (len>0)
+	{
+		std::vector<char> buf(len);
+		SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* info = (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)buf.data();
+		if (GetLogicalProcessorInformationEx(RelationCache, info, &len))
+		{
+			int level = 0;
+			size_t bytes = 0;
+			for (DWORD off=0; off<len; )
+			{
+				const SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* e = (const SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)(buf.data()+off);
+				if ((e->Relationship==RelationCache) && (e->Cache.Type!=CacheInstruction))
+				{
+					const int l = e->Cache.Level;
+					if ((l>level) || ((l==level) && (e->Cache.CacheSize>bytes)))
+					{
+						level = l;
+						bytes = e->Cache.CacheSize;
+					}
+				}
+				off += e->Size;
+			}
+			if (bytes>0)
+			{
+				source = "L" + std::to_string(level) + " (Windows)";
+				return bytes;
+			}
+		}
+	}
+#elif defined(__APPLE__)
+	// an Intel Mac has an L3; Apple silicon has none (its system cache is not the cores'): the L2 of the performance cores
+	const char* names[] = {"hw.l3cachesize", "hw.perflevel0.l2cachesize", "hw.l2cachesize"};
+	for (const char* name : names)
+	{
+		int64_t bytes = 0;
+		size_t size = sizeof(bytes);
+		if ((sysctlbyname(name, &bytes, &size, NULL, 0)==0) && (bytes>0))
+		{
+			source = name;
+			return (size_t)bytes;
+		}
+	}
+#else
 #ifdef _SC_LEVEL3_CACHE_SIZE
-	long l3 = sysconf(_SC_LEVEL3_CACHE_SIZE);
+	const long l3 = sysconf(_SC_LEVEL3_CACHE_SIZE);
 	if (l3>0)
+	{
+		source = "L3 (sysconf)";
 		return l3;
+	}
 #endif
+	// some systems (e.g. ARM) do not say through sysconf: the cache descriptions of cpu0, the highest level
+	size_t best = 0;
+	int bestLevel = 0;
+	for (int index=0; index<8; ++index)
+	{
+		const std::string dir = "/sys/devices/system/cpu/cpu0/cache/index" + std::to_string(index) + "/";
+		std::ifstream fl(dir + "level"), ft(dir + "type"), fs(dir + "size");
+		int level = 0;
+		std::string type, size;
+		if (!(fl >> level) || !(ft >> type) || !(fs >> size) || (type=="Instruction") || size.empty())
+			continue;
+		size_t bytes = std::strtoul(size.c_str(), NULL, 10);
+		const char unit = size.back();
+		if ((unit=='K') || (unit=='k'))
+			bytes <<= 10;
+		else if ((unit=='M') || (unit=='m'))
+			bytes <<= 20;
+		if ((level>bestLevel) && (bytes>0))
+		{
+			best = bytes;
+			bestLevel = level;
+		}
+	}
+	if (best>0)
+	{
+		source = "L" + std::to_string(bestLevel) + " (sysfs)";
+		return best;
+	}
+#endif
+	source = "assumed, the system does not say";
 	return 32u<<20;
 }
 
@@ -1011,7 +1104,11 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 			ext += m_Eng_exts[n]->BoxBytes();
 		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
 		const double bytes = plane*24.0 + (4.0*state + sizeof(Engine_CPU_Run)*runs + ext)/numLines[m_SplitAxis];
-		const unsigned int full = (unsigned int)(CacheBytes()/bytes);
+		std::string source;
+		const size_t cache = CacheBytes(source);
+		if (g_settings.GetVerboseLevel()>0)
+			cout << "Engine_CPU: cache " << cache/1048576.0 << " MiB, " << source << endl;
+		const unsigned int full = (unsigned int)(cache/bytes);
 		k = std::min(8u, (full>0) ? (full-1)/2 : 0);
 		W = std::max(2*k+1, (unsigned int)(0.75*full));
 		if (k<2)
