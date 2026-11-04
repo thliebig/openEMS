@@ -89,6 +89,12 @@ struct Engine_CPU_Runs
   extension writes such a voltage: none on the outer lines (Mur), in a UPML
   or excited, and only the extensions known not to (FindInert()).
 
+  In a UPML normal to the fast axis the coefficients change from cell to
+  cell along it: neighbouring UPML runs shorter than 4 cells on average are
+  one run of the class UPML_PROFILE, with the coefficients per cell from a
+  profile along the fast axis, which the lines through the same layers
+  share.
+
   The extensions see the fields through Engine::GetVolt() and friends, which
   follow the layout, and run in the dispatch of the basic engine.
   */
@@ -200,6 +206,8 @@ protected:
 	std::vector<float> m_State[2][3];
 	//! [field][component] the poles of the DISP sets
 	std::vector<Engine_CPU_Pole> m_Poles[2][3];
+	//! [field][component] the profiles of the UPML_PROFILE sets: m, vv, uvv, ufo, ufn per cell
+	std::vector<float> m_Profile[2][3][5];
 
 	int m_FastAxis;
 	int m_SplitAxis;     //!< the slowest axis

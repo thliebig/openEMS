@@ -381,6 +381,8 @@ void Engine_CPU::Reset()
 			m_Runs[f][n].first.clear();
 			m_State[f][n].clear();
 			m_Poles[f][n].clear();
+			for (int q=0; q<5; ++q)
+				m_Profile[f][n][q].clear();
 		}
 }
 
@@ -609,6 +611,10 @@ void Engine_CPU::BuildRuns()
 			size_t* count = counts[f][n];
 			Engine_CPU_Runs& r = m_Runs[f][n];
 			std::vector<Engine_CPU_Pole>& poles = m_Poles[f][n];
+			std::vector<float>* profile = m_Profile[f][n];
+			std::map<std::vector<float>, uint32_t> profileIndex;   // the start of each distinct profile
+			for (int q=0; q<5; ++q)
+				profile[q].clear();
 			r.runs.clear();
 			r.sets.clear();
 			poles.clear();
@@ -681,6 +687,67 @@ void Engine_CPU::BuildRuns()
 						prev = key;
 						open = true;
 					}
+					// neighbouring short UPML runs: one run with a profile (a PML normal to the fast axis)
+					std::vector<Engine_CPU_Run> merged;
+					const size_t first = r.first[line];
+					for (size_t i=first; i<r.runs.size(); )
+					{
+						size_t j = i+1;
+						if (r.sets[r.runs[i].set].cls==Engine_CPU_Set::UPML)
+							while ((j<r.runs.size()) && (r.sets[r.runs[j].set].cls==Engine_CPU_Set::UPML) && (r.runs[j].start==r.runs[j-1].stop))
+								++j;
+						const unsigned int len = r.runs[j-1].stop - r.runs[i].start;
+						if ((j-i<2) || (len >= 4*(j-i)))
+						{
+							merged.insert(merged.end(), r.runs.begin()+i, r.runs.begin()+j);
+							i = j;
+							continue;
+						}
+						std::vector<float> values(5*len);
+						for (size_t q=i; q<j; ++q)
+						{
+							const Engine_CPU_Set& s = r.sets[r.runs[q].set];
+							for (unsigned int k=r.runs[q].start; k<r.runs[q].stop; ++k)
+							{
+								const unsigned int c = k - r.runs[i].start;
+								values[0*len+c] = (float)s.m;
+								values[1*len+c] = s.vv;
+								values[2*len+c] = s.uvv;
+								values[3*len+c] = s.ufo;
+								values[4*len+c] = s.ufn;
+							}
+						}
+						auto pit = profileIndex.find(values);
+						if (pit==profileIndex.end())
+						{
+							if (profile[0].size()+len > 0xffffffffu)
+								throw std::length_error("Engine_CPU: more than 2^32 cells of UPML profiles in a component");
+							pit = profileIndex.insert(std::make_pair(values, (uint32_t)profile[0].size())).first;
+							for (int q=0; q<5; ++q)
+								profile[q].insert(profile[q].end(), values.begin()+q*len, values.begin()+(q+1)*len);
+						}
+						const SetKey sk(Engine_CPU_Set::UPML_PROFILE, 0, pit->second, 0, 0, 0, 0, std::vector<float>());
+						auto it = setIndex.find(sk);
+						if (it==setIndex.end())
+						{
+							Engine_CPU_Set set = Engine_CPU_Set();
+							set.cls = Engine_CPU_Set::UPML_PROFILE;
+							set.m = 1;   // the kernel's a is then the slow factor, the profile has m
+							set.solve = 1;
+							set.pole = pit->second;
+							it = setIndex.insert(std::make_pair(sk, (uint32_t)r.sets.size())).first;
+							r.sets.push_back(set);
+						}
+						Engine_CPU_Run run;
+						run.start = r.runs[i].start;
+						run.stop = r.runs[j-1].stop;
+						run.set = it->second;
+						run.u = 0;
+						merged.push_back(run);
+						i = j;
+					}
+					r.runs.resize(first);
+					r.runs.insert(r.runs.end(), merged.begin(), merged.end());
 				}
 			r.first.back() = r.runs.size();
 			// the state of the UPML and DISP runs, now that their lengths are known
@@ -689,12 +756,12 @@ void Engine_CPU::BuildRuns()
 			{
 				const Engine_CPU_Set& set = r.sets[run.set];
 				const size_t len = run.stop - run.start;
-				if ((set.cls!=Engine_CPU_Set::UPML) && (set.cls!=Engine_CPU_Set::DISP))
+				if ((set.cls!=Engine_CPU_Set::UPML) && (set.cls!=Engine_CPU_Set::UPML_PROFILE) && (set.cls!=Engine_CPU_Set::DISP))
 					continue;
 				if (state > 0xffffffffu)
 					throw std::length_error("Engine_CPU: more than 2^32 floats of UPML and ADE state in a component");
 				run.u = (uint32_t)state;
-				if (set.cls==Engine_CPU_Set::UPML)
+				if ((set.cls==Engine_CPU_Set::UPML) || (set.cls==Engine_CPU_Set::UPML_PROFILE))
 					state += len;
 				else
 				{
@@ -770,6 +837,8 @@ void Engine_CPU::InitKernels()
 			c.sets = m_Runs[f][n].sets.data();
 			c.state = m_State[f][n].data();
 			c.poles = m_Poles[f][n].data();
+			for (int q=0; q<5; ++q)
+				c.profile[q] = m_Profile[f][n][q].data();
 			c.gf = m_Gf[f][n].data();
 			c.gS = m_G[f][n][m_SplitAxis].data();
 			c.gM = m_G[f][n][m_MidAxis].data();

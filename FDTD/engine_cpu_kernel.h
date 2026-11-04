@@ -30,12 +30,12 @@
 //! The update class and the coefficients a run of cells shares
 struct Engine_CPU_Set
 {
-	enum Class : uint8_t {ZERO, LOSSLESS, LOSSY, UPML, DISP};
+	enum Class : uint8_t {ZERO, LOSSLESS, LOSSY, UPML, DISP, UPML_PROFILE};
 
 	double m;              //!< the material part of vi (iv): vi = m * g, see Engine_CPU
 	float vv;              //!< vv (ii), 1 for LOSSLESS
 	float uvv, ufo, ufn;   //!< UPML: Operator_Ext_UPML::vv, vvfo, vvfn (ii, iifo, iifn); vv and m are the main update on the flux
-	uint32_t pole;         //!< DISP: the first of its poles in Engine_CPU_Kernel::Component::poles
+	uint32_t pole;         //!< DISP: the first of its poles in Engine_CPU_Kernel::Component::poles; UPML_PROFILE: the profile's first cell
 	uint8_t nl, nd;        //!< DISP: the number of Drude/Lorentz poles, then of Debye poles
 	float solve;           //!< DISP: the implicit solve of the Debye poles (Operator_Ext_DebyeMaterial::v_solve_ADE), 1 without
 	Class cls;
@@ -76,6 +76,7 @@ struct Engine_CPU_Kernel
 		const uint64_t* first;   //!< per line of the fast axis its first run, see Engine_CPU_Runs
 		const Engine_CPU_Set* sets;
 		const Engine_CPU_Pole* poles;   //!< the poles of the DISP sets
+		const float* profile[5];  //!< UPML_PROFILE: per cell m, vv, uvv, ufo, ufn of the UPML along the fast axis
 		float* state;            //!< per UPML run the flux of its cells; per DISP run per Drude/Lorentz pole J and, for a Lorentz pole, L, then per Debye pole W
 		const float* gf;         //!< the geometry factor along the fast axis
 		const double* gS;        //!< the geometry factors along the slow axes

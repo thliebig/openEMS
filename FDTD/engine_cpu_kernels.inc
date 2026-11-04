@@ -123,6 +123,27 @@ static ENGINE_CPU_NOINLINE void UpdateRunDisp(const Engine_CPU_Run& run, const E
 	}
 }
 
+//! the UPML_PROFILE class: a UPML run whose coefficients change along it (a PML normal to the fast axis), per cell from its profile
+static ENGINE_CPU_NOINLINE void UpdateRunProfile(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float slow, unsigned int k0, unsigned int k1,
+                                                 float* __restrict X, const float* __restrict A, const float* __restrict B,
+                                                 ptrdiff_t dA, ptrdiff_t dB, const Engine_CPU_Kernel::Component& c)
+{
+	const ptrdiff_t p0 = (ptrdiff_t)set.pole - (ptrdiff_t)run.start;
+	const float* __restrict m   = c.profile[0] + p0;
+	const float* __restrict vv  = c.profile[1] + p0;
+	const float* __restrict uvv = c.profile[2] + p0;
+	const float* __restrict ufo = c.profile[3] + p0;
+	const float* __restrict ufn = c.profile[4] + p0;
+	const float* __restrict gf = c.gf;
+	float* __restrict F = c.state + ((ptrdiff_t)run.u - (ptrdiff_t)run.start);
+	for (unsigned int k=k0; k<k1; ++k)
+	{
+		const float Fn = vv[k]*F[k] + slow*m[k]*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
+		X[k] = uvv[k]*X[k] - ufo[k]*F[k] + ufn[k]*Fn;
+		F[k] = Fn;
+	}
+}
+
 //! the cells [k0, k1) of a run, with the coefficients of its set; a = m times the slow geometry factors
 static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
                              float* __restrict X, const float* __restrict A, const float* __restrict B,
@@ -160,6 +181,9 @@ static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& se
 	}
 	case Engine_CPU_Set::DISP:
 		UpdateRunDisp(run, set, a, k0, k1, X, A, B, dA, dB, c);
+		break;
+	case Engine_CPU_Set::UPML_PROFILE:
+		UpdateRunProfile(run, set, a, k0, k1, X, A, B, dA, dB, c);   // its m is 1: a is the slow factor
 		break;
 	}
 }
