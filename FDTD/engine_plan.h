@@ -18,6 +18,7 @@
 #ifndef ENGINE_PLAN_H
 #define ENGINE_PLAN_H
 
+#include <cstddef>
 #include <vector>
 
 //! A box of mesh lines, [start, stop) per axis

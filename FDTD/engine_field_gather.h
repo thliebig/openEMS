@@ -20,6 +20,7 @@
 #define ENGINE_FIELD_GATHER_H
 
 #include <complex>
+#include <cstdint>
 #include <vector>
 #include "Common/engine_interface_base.h"
 #include "tools/constants.h"

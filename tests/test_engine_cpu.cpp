@@ -31,6 +31,7 @@
 
 #include <iostream>
 #include <random>
+#include <string>
 #include <vector>
 
 static int g_failures = 0;
