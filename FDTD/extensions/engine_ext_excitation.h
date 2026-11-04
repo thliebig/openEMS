@@ -19,6 +19,7 @@
 #define ENGINE_EXT_EXCITATION_H
 
 #include "engine_extension.h"
+#include "engine_ext_cellindex.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
 #include "engine_extension_dispatcher.h"
@@ -35,6 +36,7 @@ public:
 	virtual void Apply2Current();
 
 	virtual bool SupportsBoxes() const {return true;}
+	virtual void PrepareBoxes(const unsigned int numLines[3]);
 	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts);
 	virtual void Apply2CurrentBox(const Engine_Box& box, unsigned int ts);
 
@@ -47,6 +49,7 @@ protected:
 	void Apply2CurrentImpl(EngType* eng, int numTS, const Engine_Box* box);
 
 	Operator_Ext_Excitation* m_Op_Exc;
+	Engine_Ext_CellIndex m_Index[2];   //!< the voltage and the current excitations by box
 };
 
 #endif // ENGINE_EXT_EXCITATION_H

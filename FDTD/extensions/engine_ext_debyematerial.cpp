@@ -73,10 +73,8 @@ void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng, const Engin
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
-	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
+	m_Index.at(0).ForEach(box, [&](size_t i)
 	{
-		if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-			continue;
 		for (int n=0; n<3; ++n)
 		{
 			FDTD_FLOAT volt = eng->EngType::GetVolt(n,pos[0][i],pos[1][i],pos[2][i]);
@@ -91,7 +89,7 @@ void Engine_Ext_DebyeMaterial::DoPreVoltageUpdatesImpl(EngType* eng, const Engin
 			}
 			volt_pre_ADE[n][i] = pre;
 		}
-	}
+	});
 }
 
 void Engine_Ext_DebyeMaterial::DoPreVoltageUpdates()
@@ -105,10 +103,8 @@ void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng, const Engi
 	unsigned int **pos = m_Op_Ext_Deb->m_LM_pos[0];
 	int poles = m_Op_Ext_Deb->m_PoleCount;
 
-	for (size_t i=0; i<m_Op_Ext_Deb->m_LM_Count.at(0); ++i)
+	m_Index.at(0).ForEach(box, [&](size_t i)
 	{
-		if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-			continue;
 		for (int n=0; n<3; ++n)
 		{
 			FDTD_FLOAT v_raw = eng->EngType::GetVolt(n,pos[0][i],pos[1][i],pos[2][i]);
@@ -119,7 +115,7 @@ void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesImpl(EngType* eng, const Engi
 			for (int o=0; o<poles; ++o)
 				volt_pole_ADE[o][n][i] += m_Op_Ext_Deb->v_drive_ADE[o][n][i]*volt;
 		}
-	}
+	});
 }
 
 void Engine_Ext_DebyeMaterial::DoPostVoltageUpdates()

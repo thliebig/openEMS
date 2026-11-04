@@ -87,10 +87,8 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng, const Eng
 
 		if (m_Op_Ext_Lor->m_volt_Lor_ADE_On[o])
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			m_Index.at(o).ForEach(box, [&](size_t i)
 			{
-				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-					continue;
 				volt_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->v_Lor_ADE[o][0][i]*volt_ADE[o][0][i];
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
 				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * (eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][0][i]);
@@ -102,14 +100,12 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng, const Eng
 				volt_Lor_ADE[o][2][i]+=m_Op_Ext_Lor->v_Lor_ADE[o][2][i]*volt_ADE[o][2][i];
 				volt_ADE[o][2][i] *= m_Op_Ext_Lor->v_int_ADE[o][2][i];
 				volt_ADE[o][2][i] += m_Op_Ext_Lor->v_ext_ADE[o][2][i] * (eng->EngType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i])-volt_Lor_ADE[o][2][i]);
-			}
+			});
 		}
 		else
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			m_Index.at(o).ForEach(box, [&](size_t i)
 			{
-				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-					continue;
 				volt_ADE[o][0][i] *= m_Op_Ext_Lor->v_int_ADE[o][0][i];
 				volt_ADE[o][0][i] += m_Op_Ext_Lor->v_ext_ADE[o][0][i] * eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]);
 
@@ -118,7 +114,7 @@ void Engine_Ext_LorentzMaterial::DoPreVoltageUpdatesImpl(EngType* eng, const Eng
 
 				volt_ADE[o][2][i] *= m_Op_Ext_Lor->v_int_ADE[o][2][i];
 				volt_ADE[o][2][i] += m_Op_Ext_Lor->v_ext_ADE[o][2][i] * eng->EngType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]);
-			}
+			});
 		}
 	}
 }
@@ -139,10 +135,8 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng, const Eng
 
 		if (m_Op_Ext_Lor->m_curr_Lor_ADE_On[o])
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			m_Index.at(o).ForEach(box, [&](size_t i)
 			{
-				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-					continue;
 				curr_Lor_ADE[o][0][i]+=m_Op_Ext_Lor->i_Lor_ADE[o][0][i]*curr_ADE[o][0][i];
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
 				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * (eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][0][i]);
@@ -154,14 +148,12 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng, const Eng
 				curr_Lor_ADE[o][2][i]+=m_Op_Ext_Lor->i_Lor_ADE[o][2][i]*curr_ADE[o][2][i];
 				curr_ADE[o][2][i] *= m_Op_Ext_Lor->i_int_ADE[o][2][i];
 				curr_ADE[o][2][i] += m_Op_Ext_Lor->i_ext_ADE[o][2][i] * (eng->EngType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i])-curr_Lor_ADE[o][2][i]);
-			}
+			});
 		}
 		else
 		{
-			for (size_t i=0; i<m_Op_Ext_Lor->m_LM_Count.at(o); ++i)
+			m_Index.at(o).ForEach(box, [&](size_t i)
 			{
-				if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-					continue;
 				curr_ADE[o][0][i] *= m_Op_Ext_Lor->i_int_ADE[o][0][i];
 				curr_ADE[o][0][i] += m_Op_Ext_Lor->i_ext_ADE[o][0][i] * eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]);
 
@@ -170,7 +162,7 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesImpl(EngType* eng, const Eng
 
 				curr_ADE[o][2][i] *= m_Op_Ext_Lor->i_int_ADE[o][2][i];
 				curr_ADE[o][2][i] += m_Op_Ext_Lor->i_ext_ADE[o][2][i] * eng->EngType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]);
-			}
+			});
 		}
 	}
 }

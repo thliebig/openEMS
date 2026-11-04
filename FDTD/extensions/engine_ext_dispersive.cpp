@@ -49,6 +49,9 @@ Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_dis
 				volt_ADE[o][n] = NULL;
 		}
 	}
+	m_Index.resize(order);
+	for (int o=0;o<order;++o)
+		m_Index[o].SetList(m_Op_Ext_Disp->m_LM_Count[o], m_Op_Ext_Disp->m_LM_pos[o]);
 }
 
 Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
@@ -82,10 +85,8 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng, const Engine_Box* b
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		m_Index.at(o).ForEach(box, [&](size_t i)
 		{
-			if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-				continue;
 			eng->EngType::SetVolt(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]
 			);
@@ -95,7 +96,7 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng, const Engine_Box* b
 			eng->EngType::SetVolt(2,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][2][i]
 			);
-		}
+		});
 	}
 }
 
@@ -113,10 +114,8 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng, const Engine_Box* bo
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		m_Index.at(o).ForEach(box, [&](size_t i)
 		{
-			if (!Engine_Box_Contains(box, pos[0][i], pos[1][i], pos[2][i]))
-				continue;
 			eng->EngType::SetCurr(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]
 			);
@@ -126,7 +125,7 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng, const Engine_Box* bo
 			eng->EngType::SetCurr(2,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][2][i]
 			);
-		}
+		});
 	}
 }
 
@@ -145,4 +144,10 @@ void Engine_Ext_Dispersive::Apply2CurrentBox(const Engine_Box& box, unsigned int
 {
 	(void)ts;   // the update does not depend on the timestep
 	ENG_DISPATCH_ARGS(Apply2CurrentImpl, &box);
+}
+
+void Engine_Ext_Dispersive::PrepareBoxes(const unsigned int numLines[3])
+{
+	for (int o=0; o<m_Op_Ext_Disp->m_Order; ++o)
+		m_Index[o].Build(numLines);
 }

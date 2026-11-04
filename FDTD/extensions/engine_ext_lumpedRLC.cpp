@@ -26,6 +26,7 @@ Engine_Ext_LumpedRLC::Engine_Ext_LumpedRLC(Operator_Ext_LumpedRLC* op_ext_RLC) :
 {
 	// Local pointer of the operator.
 	m_Op_Ext_RLC = op_ext_RLC;
+	m_Index.SetList(op_ext_RLC->RLC_count, op_ext_RLC->v_RLC_pos);
 
 	v_Vdn		= new FDTD_FLOAT*[3];
 	v_Jn		= new FDTD_FLOAT*[3];
@@ -82,17 +83,9 @@ Engine_Ext_LumpedRLC::~Engine_Ext_LumpedRLC()
 
 }
 
-bool Engine_Ext_LumpedRLC::InBox(size_t pIdx, const Engine_Box* box) const
+void Engine_Ext_LumpedRLC::PrepareBoxes(const unsigned int numLines[3])
 {
-	if (box==NULL)
-		return true;
-	for (int a=0; a<3; ++a)
-	{
-		const unsigned int p = m_Op_Ext_RLC->v_RLC_pos[a][pIdx];
-		if ((p<box->start[a]) || (p>=box->stop[a]))
-			return false;
-	}
-	return true;
+	m_Index.Build(numLines);
 }
 
 // The rings hold timesteps ts, ts-1, ts-2 at [ts%3], [(ts+2)%3], [(ts+1)%3]: what the
@@ -105,9 +98,9 @@ void Engine_Ext_LumpedRLC::DoPreVoltageUpdatesImpl(unsigned int ts, const Engine
 	const FDTD_FLOAT* Vd1 = v_Vdn[(ts+2)%3];
 
 	// In pre-process, only update the parallel inductor current:
-	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-		if (InBox(pIdx, box))
-			v_Il[pIdx] += (m_Op_Ext_RLC->v_RLC_i2v[pIdx])*(m_Op_Ext_RLC->v_RLC_ilv[pIdx])*Vd1[pIdx];
+	m_Index.ForEach(box, [&](size_t pIdx) {
+		v_Il[pIdx] += (m_Op_Ext_RLC->v_RLC_i2v[pIdx])*(m_Op_Ext_RLC->v_RLC_ilv[pIdx])*Vd1[pIdx];
+	});
 }
 
 void Engine_Ext_LumpedRLC::DoPreVoltageUpdates()
@@ -135,15 +128,13 @@ void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngType* eng, unsigned int ts, con
 	const FDTD_FLOAT* J2 = v_Jn[(ts+1)%3];
 
 	// Read engine calculated node voltage
-	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-		if (InBox(pIdx, box))
-			Vd0[pIdx] = eng->EngType::GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);
+	m_Index.ForEach(box, [&](size_t pIdx) {
+		Vd0[pIdx] = eng->EngType::GetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx]);
+	});
 
 	// Post process: Calculate node voltage with respect to the lumped RLC auxilliary quantity, J
-	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
+	m_Index.ForEach(box, [&](size_t pIdx)
 	{
-		if (!InBox(pIdx, box))
-			continue;
 		// Calculate updated node voltage, with series and parallel additions
 		Vd0[pIdx] = 	(m_Op_Ext_RLC->v_RLC_vvd[pIdx])*(
 							Vd0[pIdx] - v_Il[pIdx]						// Addition for Parallel inductor
@@ -160,12 +151,12 @@ void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngType* eng, unsigned int ts, con
 						((m_Op_Ext_RLC->v_RLC_b1[pIdx])*(m_Op_Ext_RLC->v_RLC_ib0[pIdx]))*J1[pIdx]
 						-
 						((m_Op_Ext_RLC->v_RLC_b2[pIdx])*(m_Op_Ext_RLC->v_RLC_ib0[pIdx]))*J2[pIdx];
-	}
+	});
 
 	// Update node voltage
-	for (size_t pIdx = 0 ; pIdx < m_Op_Ext_RLC->RLC_count ; pIdx++)
-		if (InBox(pIdx, box))
-			eng->EngType::SetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx],Vd0[pIdx]);
+	m_Index.ForEach(box, [&](size_t pIdx) {
+		eng->EngType::SetVolt(dir[pIdx],pos[0][pIdx],pos[1][pIdx],pos[2][pIdx],Vd0[pIdx]);
+	});
 }
 
 void Engine_Ext_LumpedRLC::Apply2Voltages()

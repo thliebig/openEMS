@@ -482,6 +482,8 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 			cout << "Engine_CPU: no temporal blocking: " << why << endl;
 		return false;
 	}
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
+		m_Eng_exts[n]->PrepareBoxes(numLines);
 	// every k down to 2: the processing between two calls of IterateTS() may leave fewer timesteps
 	for (unsigned int kk=k; kk>=2; --kk)
 		plans.push_back(Engine_BlockedPlan::Trapezoids(numLines, numThreads, m_SplitAxis, m_MidAxis, W, kk));

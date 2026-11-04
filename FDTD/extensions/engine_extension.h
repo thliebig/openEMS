@@ -71,6 +71,8 @@ public:
 	  on the flat sweep.
 	  */
 	virtual bool SupportsBoxes() const {return false;}
+	//! Called once, single-threaded, before the first box hook, e.g. to index the extension's cells by box
+	virtual void PrepareBoxes(const unsigned int numLines[3]) {(void)numLines;}
 	//! Timestep \a ts must run flat, with the hooks above on a coherent grid (e.g. a whole-grid energy): blocks end before it
 	virtual bool NeedsFlatStep(unsigned int ts) const {(void)ts; return false;}
 	virtual void DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts) {(void)box; (void)ts;}

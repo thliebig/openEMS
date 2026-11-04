@@ -20,6 +20,7 @@
 #define ENGINE_EXT_LUMPEDRLC_H
 
 #include "engine_extension.h"
+#include "engine_ext_cellindex.h"
 #include "FDTD/engine.h"
 #include "FDTD/operator.h"
 #include "engine_extension_dispatcher.h"
@@ -41,6 +42,7 @@ public:
 	virtual void Apply2Voltages();
 
 	virtual bool SupportsBoxes() const {return true;}
+	virtual void PrepareBoxes(const unsigned int numLines[3]);
 	virtual void DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
 	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts);
 
@@ -49,7 +51,7 @@ protected:
 	void DoPreVoltageUpdatesImpl(unsigned int ts, const Engine_Box* box);
 	template <typename EngType>
 	void Apply2VoltagesImpl(EngType* eng, unsigned int ts, const Engine_Box* box);
-	bool InBox(size_t pIdx, const Engine_Box* box) const;
+	Engine_Ext_CellIndex m_Index;   //!< the elements by box
 
 	Operator_Ext_LumpedRLC* m_Op_Ext_RLC;
 

@@ -31,7 +31,15 @@ public:
 	virtual void DoPostVoltageUpdates();
 	virtual void DoPostCurrentUpdates();
 
+	//! The box hooks compute the delays per cell, as the threads may run several boxes at once
+	virtual bool SupportsBoxes() const {return true;}
+	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts);
+
 protected:
+	//! the planes of the flat hooks restricted to the box
+	void BoxImpl(bool volt, const Engine_Box& box, unsigned int ts);
+
 	Operator_Ext_TFSF* m_Op_TFSF;
 
 	unsigned int* m_DelayLookup;

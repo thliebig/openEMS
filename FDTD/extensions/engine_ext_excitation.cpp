@@ -21,6 +21,8 @@
 
 Engine_Ext_Excitation::Engine_Ext_Excitation(Operator_Ext_Excitation* op_ext) : Engine_Extension(op_ext)
 {
+	m_Index[0].SetList(op_ext->Volt_Count, op_ext->Volt_index);
+	m_Index[1].SetList(op_ext->Curr_Count, op_ext->Curr_index);
 	m_Op_Exc = op_ext;
 	m_Priority = ENG_EXT_PRIO_EXCITATION;
 }
@@ -28,16 +30,6 @@ Engine_Ext_Excitation::Engine_Ext_Excitation(Operator_Ext_Excitation* op_ext) : 
 Engine_Ext_Excitation::~Engine_Ext_Excitation()
 {
 
-}
-
-static inline bool InBox(const Engine_Box* box, const unsigned int pos[3])
-{
-	if (box==NULL)
-		return true;
-	for (int a=0; a<3; ++a)
-		if ((pos[a]<box->start[a]) || (pos[a]>=box->stop[a]))
-			return false;
-	return true;
 }
 
 template <typename EngType>
@@ -54,21 +46,19 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng, int numTS, const En
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	for (size_t n=0; n<m_Op_Exc->Volt_Count; ++n)
+	m_Index[0].ForEach(box, [&](size_t n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
 		if (exc_pos<0) // delay not yet expired
-			continue;
+			return;
 		exc_pos %= p;
 		exc_pos *= (exc_pos<(int)length);
 		ny = m_Op_Exc->Volt_dir[n];
 		pos[0]=m_Op_Exc->Volt_index[0][n];
 		pos[1]=m_Op_Exc->Volt_index[1][n];
 		pos[2]=m_Op_Exc->Volt_index[2][n];
-		if (!InBox(box, pos))
-			continue;
 		eng->EngType::SetVolt(ny,pos, eng->EngType::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
-	}
+	});
 }
 
 void Engine_Ext_Excitation::Apply2Voltages()
@@ -95,21 +85,19 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng, int numTS, const Eng
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	for (size_t n=0; n<m_Op_Exc->Curr_Count; ++n)
+	m_Index[1].ForEach(box, [&](size_t n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
 		if (exc_pos<0) // delay not yet expired
-			continue;
+			return;
 		exc_pos %= p;
 		exc_pos *= (exc_pos<(int)length);
 		ny = m_Op_Exc->Curr_dir[n];
 		pos[0]=m_Op_Exc->Curr_index[0][n];
 		pos[1]=m_Op_Exc->Curr_index[1][n];
 		pos[2]=m_Op_Exc->Curr_index[2][n];
-		if (!InBox(box, pos))
-			continue;
 		eng->EngType::SetCurr(ny,pos, eng->EngType::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
-	}
+	});
 }
 
 void Engine_Ext_Excitation::Apply2Current()
@@ -120,4 +108,10 @@ void Engine_Ext_Excitation::Apply2Current()
 void Engine_Ext_Excitation::Apply2CurrentBox(const Engine_Box& box, unsigned int ts)
 {
 	ENG_DISPATCH_ARGS(Apply2CurrentImpl, (int)ts, &box);
+}
+
+void Engine_Ext_Excitation::PrepareBoxes(const unsigned int numLines[3])
+{
+	m_Index[0].Build(numLines);
+	m_Index[1].Build(numLines);
 }
