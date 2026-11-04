@@ -85,117 +85,12 @@ void Engine_Ext_Mur_ABC::SetNumberOfThreads(int nrThread)
 }
 
 
+// The cells [i0, i1) x [j0, j1) of the plane (mesh lines along nyP and nyPP): hook 0 pre, 1 post, 2 apply.
+// The flat hooks run it on the lines of their thread, the box hooks on the part in the box.
 template <typename EngType>
-void Engine_Ext_Mur_ABC::DoPreVoltageUpdatesImpl(EngType* eng, int threadID)
+void Engine_Ext_Mur_ABC::PlaneImpl(EngType* eng, int hook, unsigned int i0, unsigned int i1, unsigned int j0, unsigned int j1)
 {
-	if (IsActive()==false) return;
-	if (m_Eng==NULL) return;
-	if (threadID>=m_NrThreads)
-		return;
-
 	// See detailed comments in operator_ext_mur_abc.h, not repeated here.
-	unsigned int pos[] = {0,0,0};
-	unsigned int pos_shift[] = {0,0,0};
-	pos[m_ny] = m_LineNr;
-	pos_shift[m_ny] = m_LineNr_Shift;
-
-	for (unsigned int i = m_start.at(threadID); i < m_start.at(threadID) + m_numX.at(threadID); i++)
-	{
-		pos[m_nyP] = i;
-		pos_shift[m_nyP] = i;
-
-		for (unsigned int j = 0; j < m_numLines[1]; j++)
-		{
-			pos[m_nyPP] = j;
-			pos_shift[m_nyPP] = j;
-
-			m_volt_nyP(i,j) = eng->EngType::GetVolt(m_nyP, pos_shift) -
-				m_Op_mur->m_Mur_Coeff_nyP(i,j) * eng->EngType::GetVolt(m_nyP, pos);
-
-			m_volt_nyPP(i,j) = eng->EngType::GetVolt(m_nyPP, pos_shift) -
-				m_Op_mur->m_Mur_Coeff_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP, pos);
-		}
-	}
-}
-
-void Engine_Ext_Mur_ABC::DoPreVoltageUpdates(int threadID)
-{
-	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, threadID);
-}
-
-template <typename EngType>
-void Engine_Ext_Mur_ABC::DoPostVoltageUpdatesImpl(EngType* eng, int threadID)
-{
-	if (IsActive()==false) return;
-	if (m_Eng==NULL) return;
-	if (threadID>=m_NrThreads)
-		return;
-	unsigned int pos_shift[] = {0,0,0};
-	pos_shift[m_ny] = m_LineNr_Shift;
-
-	for (unsigned int i = m_start.at(threadID); i < m_start.at(threadID) + m_numX.at(threadID); i++)
-	{
-		pos_shift[m_nyP] = i;
-
-		for (unsigned int j = 0; j < m_numLines[1]; j++)
-		{
-			pos_shift[m_nyPP] = j;
-
-			m_volt_nyP(i,j) +=
-				m_Op_mur->m_Mur_Coeff_nyP(i,j) * eng->EngType::GetVolt(m_nyP, pos_shift);
-			m_volt_nyPP(i,j) +=
-				m_Op_mur->m_Mur_Coeff_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP, pos_shift);
-		}
-	}
-}
-
-void Engine_Ext_Mur_ABC::DoPostVoltageUpdates(int threadID)
-{
-	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, threadID);
-}
-
-template <typename EngType>
-void Engine_Ext_Mur_ABC::Apply2VoltagesImpl(EngType* eng, int threadID)
-{
-	if (IsActive()==false) return;
-	if (threadID>=m_NrThreads)
-		return;
-	if (m_Eng==NULL) return;
-	unsigned int pos[] = {0,0,0};
-	pos[m_ny] = m_LineNr;
-
-	for (unsigned int i = m_start.at(threadID); i < m_start.at(threadID) + m_numX.at(threadID); i++)
-	{
-		pos[m_nyP] = i;
-
-		for (unsigned int j = 0; j < m_numLines[1]; j++)
-		{
-			pos[m_nyPP] = j;
-
-			eng->EngType::SetVolt(m_nyP , pos, m_volt_nyP(i,j));
-			eng->EngType::SetVolt(m_nyPP, pos, m_volt_nyPP(i,j));
-		}
-	}
-}
-
-void Engine_Ext_Mur_ABC::Apply2Voltages(int threadID)
-{
-	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, threadID);
-}
-
-// The box hooks: the same updates as above on the part of the plane in the box,
-// which must hold the line inward of the plane as well (the post hook reads it
-// after the update of the box).
-template <typename EngType>
-void Engine_Ext_Mur_ABC::BoxImpl(EngType* eng, int hook, const Engine_Box* box, unsigned int ts)
-{
-	if (ts<m_start_TS) return;
-	if ((m_LineNr<box->start[m_ny]) || (m_LineNr>=box->stop[m_ny]))
-		return;
-	if ((m_LineNr_Shift<(int)box->start[m_ny]) || (m_LineNr_Shift>=(int)box->stop[m_ny]))
-		throw std::logic_error("Engine_Ext_Mur_ABC: a box holds the Mur plane but not the line inward of it");
-	const unsigned int i0 = box->start[m_nyP],  i1 = std::min(box->stop[m_nyP],  m_numLines[0]);
-	const unsigned int j0 = box->start[m_nyPP], j1 = std::min(box->stop[m_nyPP], m_numLines[1]);
 	unsigned int pos[] = {0,0,0};
 	unsigned int pos_shift[] = {0,0,0};
 	pos[m_ny] = m_LineNr;
@@ -227,6 +122,45 @@ void Engine_Ext_Mur_ABC::BoxImpl(EngType* eng, int hook, const Engine_Box* box, 
 			}
 		}
 	}
+}
+
+template <typename EngType>
+void Engine_Ext_Mur_ABC::FlatImpl(EngType* eng, int hook, int threadID)
+{
+	if (IsActive()==false) return;
+	if (m_Eng==NULL) return;
+	if (threadID>=m_NrThreads)
+		return;
+	PlaneImpl(eng, hook, m_start.at(threadID), m_start.at(threadID) + m_numX.at(threadID), 0, m_numLines[1]);
+}
+
+void Engine_Ext_Mur_ABC::DoPreVoltageUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(FlatImpl, 0, threadID);
+}
+
+void Engine_Ext_Mur_ABC::DoPostVoltageUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(FlatImpl, 1, threadID);
+}
+
+void Engine_Ext_Mur_ABC::Apply2Voltages(int threadID)
+{
+	ENG_DISPATCH_ARGS(FlatImpl, 2, threadID);
+}
+
+// The box hooks: the box must hold the line inward of the plane as well (the post
+// hook reads it after the update of the box).
+template <typename EngType>
+void Engine_Ext_Mur_ABC::BoxImpl(EngType* eng, int hook, const Engine_Box* box, unsigned int ts)
+{
+	if (ts<m_start_TS) return;
+	if ((m_LineNr<box->start[m_ny]) || (m_LineNr>=box->stop[m_ny]))
+		return;
+	if ((m_LineNr_Shift<(int)box->start[m_ny]) || (m_LineNr_Shift>=(int)box->stop[m_ny]))
+		throw std::logic_error("Engine_Ext_Mur_ABC: a box holds the Mur plane but not the line inward of it");
+	PlaneImpl(eng, hook, box->start[m_nyP], std::min(box->stop[m_nyP], m_numLines[0]),
+	          box->start[m_nyPP], std::min(box->stop[m_nyPP], m_numLines[1]));
 }
 
 void Engine_Ext_Mur_ABC::DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)

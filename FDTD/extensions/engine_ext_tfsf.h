@@ -37,12 +37,10 @@ public:
 	virtual void DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts);
 
 protected:
-	//! the planes of the flat hooks restricted to the box
-	void BoxImpl(bool volt, const Engine_Box& box, unsigned int ts);
+	//! the cells of the TF/SF planes in \a box at timestep \a ts, the delays per cell (the flat hooks: the whole domain)
+	void PlanesImpl(bool volt, const Engine_Box& box, unsigned int ts);
 
 	Operator_Ext_TFSF* m_Op_TFSF;
-
-	unsigned int* m_DelayLookup;
 };
 
 #endif // ENGINE_EXT_TFSF_H

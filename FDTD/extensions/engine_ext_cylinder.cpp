@@ -38,80 +38,22 @@ Engine_Ext_Cylinder::Engine_Ext_Cylinder(Operator_Ext_Cylinder* op_ext) : Engine
 	m_Priority = ENG_EXT_PRIO_CYLINDER;
 }
 
-template <typename EngType>
-void Engine_Ext_Cylinder::DoPostVoltageUpdatesImpl(EngType* eng)
-{
-	if (CC_closedAlpha==false) return;
-
-	if (CC_R0_included)
-	{
-		unsigned int pos[3];
-		pos[0] = 0;
-		FDTD_FLOAT volt=0;
-		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-		{
-			volt =eng->EngType::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]];
-			for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
-				volt +=cyl_Op->vi_R0[pos[2]] *  eng->EngType::GetCurr(1,0,pos[1],pos[2]);
-			eng->EngType::SetVolt(2,0,0,pos[2], volt);
-		}
-
-		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-		{
-			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-			{
-				eng->EngType::SetVolt(1,0,pos[1],pos[2], 0); //no voltage in alpha-direction at r=0
-				eng->EngType::SetVolt(2,0,pos[1],pos[2], eng->EngType::GetVolt(2,0,0,pos[2]) );
-			}
-		}
-	}
-
-	//close alpha
-	unsigned int pos[3];
-	// copy tangential voltages from last alpha-plane to first
-	unsigned int last_A_Line = numLines[1]-2;
-	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-	{
-		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-		{
-			eng->EngType::SetVolt(0,pos[0],0,pos[2], eng->EngType::GetVolt(0,pos[0],last_A_Line,pos[2]) );
-			eng->EngType::SetVolt(2,pos[0],0,pos[2], eng->EngType::GetVolt(2,pos[0],last_A_Line,pos[2]) );
-		}
-	}
-}
-
-template <typename EngType>
-void Engine_Ext_Cylinder::DoPostCurrentUpdatesImpl(EngType* eng)
-{
-	if (CC_closedAlpha==false) return;
-
-	//close alpha
-	unsigned int pos[3];
-	// copy tangential currents from first alpha-plane to last
-	for (pos[0]=0; pos[0]<numLines[0]-1; ++pos[0])
-	{
-		unsigned int last_A_Line = numLines[1]-2;
-		for (pos[2]=0; pos[2]<numLines[2]-1; ++pos[2])
-		{
-			eng->EngType::SetCurr(0,pos[0],last_A_Line,pos[2], eng->EngType::GetCurr(0,pos[0],0,pos[2]) );
-			eng->EngType::SetCurr(2,pos[0],last_A_Line,pos[2], eng->EngType::GetCurr(2,pos[0],0,pos[2]) );
-		}
-	}
-}
-
+// the flat hooks: the whole domain as the box
 void Engine_Ext_Cylinder::DoPostVoltageUpdates()
 {
-	ENG_DISPATCH(DoPostVoltageUpdatesImpl);
+	const Engine_Box all = {{0, 0, 0}, {numLines[0], numLines[1], numLines[2]}};
+	ENG_DISPATCH_ARGS(BoxImpl, true, &all);
 }
 
 void Engine_Ext_Cylinder::DoPostCurrentUpdates()
 {
-	ENG_DISPATCH(DoPostCurrentUpdatesImpl);
+	const Engine_Box all = {{0, 0, 0}, {numLines[0], numLines[1], numLines[2]}};
+	ENG_DISPATCH_ARGS(BoxImpl, false, &all);
 }
 
-// The flat hooks restricted to the r and z lines of the box, which must span the whole
-// alpha axis: the r=0 axis sums the currents around it, the closed mesh copies the
-// first alpha plane from the last (voltages) and the other way round (currents).
+// The r and z lines of the box, which must span the whole alpha axis: the r=0 axis sums
+// the currents around it, the closed mesh copies the first alpha plane from the last
+// (voltages) and the other way round (currents).
 template <typename EngType>
 void Engine_Ext_Cylinder::BoxImpl(EngType* eng, bool volt, const Engine_Box* box)
 {

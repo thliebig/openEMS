@@ -39,14 +39,9 @@ public:
 	virtual void DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts);
 
 protected:
+	//! the r and z lines of \a box (the flat hooks: the whole domain)
 	template <typename EngType>
 	void BoxImpl(EngType* eng, bool volt, const Engine_Box* box);
-
-	template <typename EngType>
-	void DoPostVoltageUpdatesImpl(EngType* eng);
-
-	template <typename EngType>
-	void DoPostCurrentUpdatesImpl(EngType* eng);
 
 	Operator_Ext_Cylinder* cyl_Op;
 

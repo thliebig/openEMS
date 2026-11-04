@@ -107,164 +107,8 @@ void Engine_Ext_Absorbing_BC::SetNumberOfThreads(int nrThread)
 // E(i,n + 1) = E(i + s,n) + K1*[E(i,n + 1) - E(i,n)]
 // where s is the +-1 shift, depending on the direction, and
 // K1 = (vp*Dt - Dx)/(vp*Dt + Dx)
-
-template <typename EngType>
-void Engine_Ext_Absorbing_BC::DoPreVoltageUpdatesImpl(EngType* eng, int threadID)
-{
-	if (IsActive()==false) return;
-
-	if (m_Eng==NULL) return;
-
-	if (threadID >= m_NrThreads)
-		return;
-
-	unsigned int pos[] = {0,0,0};
-	unsigned int pos_shift[] = {0,0,0};
-
-	pos[m_ny] = m_posStart[m_ny];
-	pos_shift[m_ny] = m_pos_ny0_shift_V;
-	for (unsigned int i = m_threadStartLine.at(threadID) ; i < (m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID)) ; i++)
-	{
-		// Store shifted location in this container
-		pos_shift[m_nyP] = pos[m_nyP] = m_posStart[m_nyP] + i;
-		for (unsigned int j = 0; j < m_numLines[1]; j++)
-		{
-			pos_shift[m_nyPP] = pos[m_nyPP] = m_posStart[m_nyPP] + j;
-
-			// E(i + s,n) - K1*E(i,n)
-			m_V_nyP (i,j) = eng->EngType::GetVolt(m_nyP ,pos_shift) - m_Op_ABC->m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos);
-			m_V_nyPP(i,j) = eng->EngType::GetVolt(m_nyPP,pos_shift) - m_Op_ABC->m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos);
-		}
-
-	}
-
-}
-
-void Engine_Ext_Absorbing_BC::DoPreVoltageUpdates(int threadID)
-{
-	ENG_DISPATCH_ARGS(DoPreVoltageUpdatesImpl, threadID);
-}
-
-template <typename EngType>
-void Engine_Ext_Absorbing_BC::DoPostVoltageUpdatesImpl(EngType* eng, int threadID)
-{
-	if (IsActive()==false) return;
-
-	if (m_Eng==NULL) return;
-
-	if (threadID >= m_NrThreads)
-		return;
-
-	unsigned int pos_shift[] = {0,0,0};
-
-	pos_shift[m_ny] = m_pos_ny0_shift_V;
-	for (unsigned int i = m_threadStartLine.at(threadID) ; i < (m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID)) ; i++)
-	{
-		// Store shifted location in this container
-		pos_shift[m_nyP] = m_posStart[m_nyP] + i;
-		for (unsigned int j = 0; j < m_numLines[1]; j++)
-		{
-			pos_shift[m_nyPP] = m_posStart[m_nyPP] + j;
-
-			// E(i + s,n) - K1*E(i,n) + K1*E(i + s,n) =
-			// E(i + s,n) + [K1*E(i + s,n) - K1*E(i,n)]
-			m_V_nyP (i,j) += m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos_shift);
-			m_V_nyPP(i,j) += m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos_shift);
-		}
-
-	}
-
-}
-
-void Engine_Ext_Absorbing_BC::DoPostVoltageUpdates(int threadID)
-{
-	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, threadID);
-}
-
-template <typename EngType>
-void Engine_Ext_Absorbing_BC::Apply2VoltagesImpl(EngType* eng, int threadID)
-{
-	if (IsActive()==false) return;
-
-	if (m_Eng==NULL) return;
-
-	if (threadID >= m_NrThreads)
-		return;
-
-	unsigned int pos[] = {0,0,0};
-
-	pos[m_ny] = m_posStart[m_ny];
-	for (unsigned int i = m_threadStartLine.at(threadID) ; i < (m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID)) ; i++)
-	{
-		// Store shifted location in this container
-		pos[m_nyP] = m_posStart[m_nyP] + i;
-		for (unsigned int j = 0; j < m_numLines[1]; j++)
-		{
-			pos[m_nyPP] = m_posStart[m_nyPP] + j;
-
-			// E(i,n + 1) = E(i + s,n) + [K1*E(i + s,n) - K1*E(i,n)]
-			eng->EngType::SetVolt(m_nyP ,pos, m_V_nyP (i,j));
-			eng->EngType::SetVolt(m_nyPP,pos, m_V_nyPP(i,j));
-		}
-
-	}
-}
-
-void Engine_Ext_Absorbing_BC::Apply2Voltages(int threadID)
-{
-	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, threadID);
-}
-
-template <typename EngType>
-void Engine_Ext_Absorbing_BC::DoPreCurrentUpdatesImpl(EngType* eng, int threadID)
-{
-
-	if (IsActive()==false) return;
-
-	if (m_Eng==NULL) return;
-
-	if (threadID >= m_NrThreads)
-		return;
-
-	unsigned int 	pos[] = {0,0,0},
-					pos_shift[] = {0,0,0};
-
-
-	// If this isn't the appropriate boundary type, move on to the next primitive
-	if ((Operator_Ext_Absorbing_BC::ABCtype)(m_ABCtype) != Operator_Ext_Absorbing_BC::MUR_1ST_SA)
-		return;
-
-	// For magnetic field, -1, due to dual grid
-	unsigned int numLines_1 = std::min(
-		m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID),
-		m_numLines[0] - 1
-	);
-	unsigned int numLine_0 = m_threadStartLine.at(threadID);
-
-	pos[m_ny] = m_pos_ny0_I;
-	pos_shift[m_ny] = m_pos_ny0_shift_I;
-	for (unsigned int i = numLine_0 ; i < numLines_1 ; i++)
-	{
-		// Store shifted location in this container
-		pos_shift[m_nyP] = pos[m_nyP] = m_posStart[m_nyP] + i;
-		for (unsigned int j = 0; j < (m_numLines[1] - 1); j++)
-		{
-			pos_shift[m_nyPP] = pos[m_nyPP] = m_posStart[m_nyPP] + j;
-
-			// H(i + s,n) - K1*H(i,n)
-			m_I_nyP (i,j) = eng->EngType::GetCurr(m_nyP ,pos_shift) - m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos);
-			m_I_nyPP(i,j) = eng->EngType::GetCurr(m_nyPP,pos_shift) - m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos);
-		}
-	}
-
-}
-
-void Engine_Ext_Absorbing_BC::DoPreCurrentUpdates(int threadID)
-{
-	ENG_DISPATCH_ARGS(DoPreCurrentUpdatesImpl, threadID);
-}
-
-// Super-absorption:
+//
+// Super-absorption (the currents, MUR_1ST_SA only):
 //
 // 1. Re-iterate the Mur B.C.
 // Hsa(i,n + 1) = H(i + s,n) + K1*[H(i,n + 1) - H(i,n)]
@@ -274,103 +118,118 @@ void Engine_Ext_Absorbing_BC::DoPreCurrentUpdates(int threadID)
 // Where Hsa(i,n + 1) is the field calculated by the boundary condition, and
 // Hc(i,n + 1) is the field calculated by the FDTD step.
 // and K2 = vp*Dt/Dx
-
+//
+// The cells [i0, i1) x [j0, j1) of the sheet (its own indices): hook 0 pre, 1 post, 2 apply, of the
+// voltages or currents. The flat hooks run it on the lines of their thread, the box hooks on the part
+// in the box.
 template <typename EngType>
-void Engine_Ext_Absorbing_BC::DoPostCurrentUpdatesImpl(EngType* eng, int threadID)
+void Engine_Ext_Absorbing_BC::SheetImpl(EngType* eng, bool volt, int hook, unsigned int i0, unsigned int i1, unsigned int j0, unsigned int j1)
 {
-
-	if (IsActive()==false) return;
-
-	if (m_Eng==NULL) return;
-
-	if (threadID >= m_NrThreads)
-		return;
-
+	unsigned int pos[] = {0,0,0};
 	unsigned int pos_shift[] = {0,0,0};
-
-	// If this isn't the appropriate boundary type, move on to the next primitive
-	if ((Operator_Ext_Absorbing_BC::ABCtype)(m_ABCtype) != Operator_Ext_Absorbing_BC::MUR_1ST_SA)
-		return;
-
-	// For magnetic field, -1, due to dual grid
-	unsigned int numLine_1 = std::min<unsigned int>(
-		m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID),
-		m_numLines[0] - 1
-	);
-	unsigned int numLine_0 = m_threadStartLine.at(threadID);
-
-	pos_shift[m_ny] = m_pos_ny0_shift_I;
-	for (unsigned int i = numLine_0 ; i < numLine_1 ; i++)
+	pos[m_ny] = volt ? m_posStart[m_ny] : m_pos_ny0_I;
+	pos_shift[m_ny] = volt ? m_pos_ny0_shift_V : m_pos_ny0_shift_I;
+	for (unsigned int i=i0; i<i1; ++i)
 	{
-		// Store shifted location in this container
-		pos_shift[m_nyP] = m_posStart[m_nyP] + i;
-		for (unsigned int j = 0; j < (m_numLines[1] - 1); j++)
+		pos_shift[m_nyP] = pos[m_nyP] = m_posStart[m_nyP] + i;
+		for (unsigned int j=j0; j<j1; ++j)
 		{
-			pos_shift[m_nyPP] = m_posStart[m_nyPP] + j;
-
-			// H(i + s,n) + K1*[H(i,n + 1) - H(i,n)]
-			m_I_nyP (i,j) += m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos_shift);
-			m_I_nyPP(i,j) += m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos_shift);
-
+			pos_shift[m_nyPP] = pos[m_nyPP] = m_posStart[m_nyPP] + j;
+			if (volt)
+			{
+				if (hook==0)
+				{
+					// E(i + s,n) - K1*E(i,n)
+					m_V_nyP (i,j) = eng->EngType::GetVolt(m_nyP ,pos_shift) - m_Op_ABC->m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos);
+					m_V_nyPP(i,j) = eng->EngType::GetVolt(m_nyPP,pos_shift) - m_Op_ABC->m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos);
+				}
+				else if (hook==1)
+				{
+					// E(i + s,n) - K1*E(i,n) + K1*E(i + s,n) = E(i + s,n) + [K1*E(i + s,n) - K1*E(i,n)]
+					m_V_nyP (i,j) += m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos_shift);
+					m_V_nyPP(i,j) += m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos_shift);
+				}
+				else
+				{
+					// E(i,n + 1) = E(i + s,n) + [K1*E(i + s,n) - K1*E(i,n)]
+					eng->EngType::SetVolt(m_nyP ,pos, m_V_nyP (i,j));
+					eng->EngType::SetVolt(m_nyPP,pos, m_V_nyPP(i,j));
+				}
+			}
+			else
+			{
+				if (hook==0)
+				{
+					// H(i + s,n) - K1*H(i,n)
+					m_I_nyP (i,j) = eng->EngType::GetCurr(m_nyP ,pos_shift) - m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos);
+					m_I_nyPP(i,j) = eng->EngType::GetCurr(m_nyPP,pos_shift) - m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos);
+				}
+				else if (hook==1)
+				{
+					// H(i + s,n) + K1*[H(i,n + 1) - H(i,n)]
+					m_I_nyP (i,j) += m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos_shift);
+					m_I_nyPP(i,j) += m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos_shift);
+				}
+				else
+				{
+					// H(i + s,n) = (Hsa*K2 + Hc)/(1 + K2)
+					eng->EngType::SetCurr(m_nyP ,pos, (m_I_nyP (i,j)*m_K2_nyP (i,j) + eng->EngType::GetCurr(m_nyP ,pos))/(m_K2_nyP (i,j) + 1.0f));
+					eng->EngType::SetCurr(m_nyPP,pos, (m_I_nyPP(i,j)*m_K2_nyPP(i,j) + eng->EngType::GetCurr(m_nyPP,pos))/(m_K2_nyPP(i,j) + 1.0f));
+				}
+			}
 		}
 	}
+}
+
+template <typename EngType>
+void Engine_Ext_Absorbing_BC::FlatImpl(EngType* eng, bool volt, int hook, int threadID)
+{
+	if (IsActive()==false) return;
+	if (m_Eng==NULL) return;
+	if (threadID >= m_NrThreads)
+		return;
+	if (!volt && ((Operator_Ext_Absorbing_BC::ABCtype)(m_ABCtype) != Operator_Ext_Absorbing_BC::MUR_1ST_SA))
+		return;
+	const unsigned int i0 = m_threadStartLine.at(threadID);
+	unsigned int i1 = i0 + m_linesPerThread.at(threadID);
+	if (volt)
+		SheetImpl(eng, true, hook, i0, i1, 0, m_numLines[1]);
+	else   // the currents: a line less (dual grid)
+		SheetImpl(eng, false, hook, i0, std::min(i1, m_numLines[0] - 1), 0, m_numLines[1] - 1);
+}
+
+void Engine_Ext_Absorbing_BC::DoPreVoltageUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(FlatImpl, true, 0, threadID);
+}
+
+void Engine_Ext_Absorbing_BC::DoPostVoltageUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(FlatImpl, true, 1, threadID);
+}
+
+void Engine_Ext_Absorbing_BC::Apply2Voltages(int threadID)
+{
+	ENG_DISPATCH_ARGS(FlatImpl, true, 2, threadID);
+}
+
+void Engine_Ext_Absorbing_BC::DoPreCurrentUpdates(int threadID)
+{
+	ENG_DISPATCH_ARGS(FlatImpl, false, 0, threadID);
 }
 
 void Engine_Ext_Absorbing_BC::DoPostCurrentUpdates(int threadID)
 {
-	ENG_DISPATCH_ARGS(DoPostCurrentUpdatesImpl, threadID);
-}
-
-template <typename EngType>
-void Engine_Ext_Absorbing_BC::Apply2CurrentImpl(EngType* eng, int threadID)
-{
-	if (IsActive()==false) return;
-
-	if (m_Eng==NULL) return;
-
-	if (threadID >= m_NrThreads)
-		return;
-
-	unsigned int pos[] = {0,0,0};
-
-	// If this isn't the appropriate boundary type, move on to the next primitive
-	if ((Operator_Ext_Absorbing_BC::ABCtype)(m_ABCtype) != Operator_Ext_Absorbing_BC::MUR_1ST_SA)
-		return;
-
-	// For magnetic field, -1, due to dual grid
-	unsigned int numLine_1 = std::min<unsigned int>(
-		m_threadStartLine.at(threadID) + m_linesPerThread.at(threadID),
-		m_numLines[0] - 1
-	);
-	unsigned int numLine_0 = m_threadStartLine.at(threadID);
-
-	pos[m_ny] = m_pos_ny0_I;
-	for (unsigned int i = numLine_0 ; i < numLine_1 ; i++)
-	{
-		// Store shifted location in this container
-		pos[m_nyP] = m_posStart[m_nyP] + i;
-		for (unsigned int j = 0; j < (m_numLines[1] - 1); j++)
-		{
-			pos[m_nyPP] = m_posStart[m_nyPP] + j;
-
-			// H(i + s,n) = (Hsa*K2 + Hc)/(1 + K2)
-			eng->EngType::SetCurr(m_nyP ,pos, (m_I_nyP (i,j)*m_K2_nyP (i,j) + eng->EngType::GetCurr(m_nyP ,pos))/(m_K2_nyP (i,j) + 1.0f));
-			eng->EngType::SetCurr(m_nyPP,pos, (m_I_nyPP(i,j)*m_K2_nyPP(i,j) + eng->EngType::GetCurr(m_nyPP,pos))/(m_K2_nyPP(i,j) + 1.0f));
-
-
-		}
-	}
-
+	ENG_DISPATCH_ARGS(FlatImpl, false, 1, threadID);
 }
 
 void Engine_Ext_Absorbing_BC::Apply2Current(int threadID)
 {
-	ENG_DISPATCH_ARGS(Apply2CurrentImpl, threadID);
+	ENG_DISPATCH_ARGS(FlatImpl, false, 2, threadID);
 }
 
-// The box hooks: the same updates as above on the part of the sheet in the box,
-// which must hold the line next to the sheet as well (the post hook reads it
-// after the update of the box).
+// The box hooks: the box must hold the line next to the sheet as well (the post hook
+// reads it after the update of the box).
 template <typename EngType>
 void Engine_Ext_Absorbing_BC::BoxImpl(EngType* eng, bool volt, int hook, const Engine_Box* box, unsigned int ts)
 {
@@ -394,54 +253,7 @@ void Engine_Ext_Absorbing_BC::BoxImpl(EngType* eng, bool volt, int hook, const E
 	unsigned int i0, i1, j0, j1;
 	clip(box->start[m_nyP],  box->stop[m_nyP],  m_posStart[m_nyP],  n0, i0, i1);
 	clip(box->start[m_nyPP], box->stop[m_nyPP], m_posStart[m_nyPP], n1, j0, j1);
-	unsigned int pos[] = {0,0,0};
-	unsigned int pos_shift[] = {0,0,0};
-	pos[m_ny] = line;
-	pos_shift[m_ny] = shift;
-	for (unsigned int i=i0; i<i1; ++i)
-	{
-		pos_shift[m_nyP] = pos[m_nyP] = m_posStart[m_nyP] + i;
-		for (unsigned int j=j0; j<j1; ++j)
-		{
-			pos_shift[m_nyPP] = pos[m_nyPP] = m_posStart[m_nyPP] + j;
-			if (volt)
-			{
-				if (hook==0)
-				{
-					m_V_nyP (i,j) = eng->EngType::GetVolt(m_nyP ,pos_shift) - m_Op_ABC->m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos);
-					m_V_nyPP(i,j) = eng->EngType::GetVolt(m_nyPP,pos_shift) - m_Op_ABC->m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos);
-				}
-				else if (hook==1)
-				{
-					m_V_nyP (i,j) += m_K1_nyP (i,j) * eng->EngType::GetVolt(m_nyP ,pos_shift);
-					m_V_nyPP(i,j) += m_K1_nyPP(i,j) * eng->EngType::GetVolt(m_nyPP,pos_shift);
-				}
-				else
-				{
-					eng->EngType::SetVolt(m_nyP ,pos, m_V_nyP (i,j));
-					eng->EngType::SetVolt(m_nyPP,pos, m_V_nyPP(i,j));
-				}
-			}
-			else
-			{
-				if (hook==0)
-				{
-					m_I_nyP (i,j) = eng->EngType::GetCurr(m_nyP ,pos_shift) - m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos);
-					m_I_nyPP(i,j) = eng->EngType::GetCurr(m_nyPP,pos_shift) - m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos);
-				}
-				else if (hook==1)
-				{
-					m_I_nyP (i,j) += m_K1_nyP (i,j)*eng->EngType::GetCurr(m_nyP ,pos_shift);
-					m_I_nyPP(i,j) += m_K1_nyPP(i,j)*eng->EngType::GetCurr(m_nyPP,pos_shift);
-				}
-				else
-				{
-					eng->EngType::SetCurr(m_nyP ,pos, (m_I_nyP (i,j)*m_K2_nyP (i,j) + eng->EngType::GetCurr(m_nyP ,pos))/(m_K2_nyP (i,j) + 1.0f));
-					eng->EngType::SetCurr(m_nyPP,pos, (m_I_nyPP(i,j)*m_K2_nyPP(i,j) + eng->EngType::GetCurr(m_nyPP,pos))/(m_K2_nyPP(i,j) + 1.0f));
-				}
-			}
-		}
-	}
+	SheetImpl(eng, volt, hook, i0, i1, j0, j1);
 }
 
 void Engine_Ext_Absorbing_BC::DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts)

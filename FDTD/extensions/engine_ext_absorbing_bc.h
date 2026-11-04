@@ -64,25 +64,13 @@ public:
 protected:
 	Operator_Ext_Absorbing_BC* m_Op_ABC;
 
+	//! the cells [i0, i1) x [j0, j1) of the sheet: hook 0 pre, 1 post, 2 apply, of the voltages or currents
 	template <typename EngType>
-	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
-
+	void SheetImpl(EngType* eng, bool volt, int hook, unsigned int i0, unsigned int i1, unsigned int j0, unsigned int j1);
+	//! the lines of thread \a threadID
 	template <typename EngType>
-	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
-
-	template <typename EngType>
-	void Apply2VoltagesImpl(EngType* eng, int threadID);
-
-	template <typename EngType>
-	void DoPreCurrentUpdatesImpl(EngType* eng, int threadID);
-
-	template <typename EngType>
-	void DoPostCurrentUpdatesImpl(EngType* eng, int threadID);
-
-	template <typename EngType>
-	void Apply2CurrentImpl(EngType* eng, int threadID);
-
-	//! the cells of the sheet in \a box at timestep \a ts: hook 0 pre, 1 post, 2 apply, of the voltages or currents
+	void FlatImpl(EngType* eng, bool volt, int hook, int threadID);
+	//! the part of the sheet in \a box at timestep \a ts
 	template <typename EngType>
 	void BoxImpl(EngType* eng, bool volt, int hook, const Engine_Box* box, unsigned int ts);
 
