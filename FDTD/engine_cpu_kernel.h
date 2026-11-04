@@ -35,7 +35,7 @@ struct Engine_CPU_Set
 	double m;              //!< the material part of vi (iv): vi = m * g, see Engine_CPU
 	float vv;              //!< vv (ii), 1 for LOSSLESS
 	float uvv, ufo, ufn;   //!< UPML: Operator_Ext_UPML::vv, vvfo, vvfn (ii, iifo, iifn); vv and m are the main update on the flux
-	uint32_t pole;         //!< DISP: the first of its poles in Engine_CPU_Kernel::Component::poles; UPML_PROFILE: the profile's first cell
+	uint32_t offset;       //!< DISP: its first pole in Engine_CPU_Kernel::Component::poles; UPML_PROFILE: its first cell in profile
 	uint8_t nl, nd;        //!< DISP: the number of Drude/Lorentz poles, then of Debye poles
 	float solve;           //!< DISP: the implicit solve of the Debye poles (Operator_Ext_DebyeMaterial::v_solve_ADE), 1 without
 	Class cls;

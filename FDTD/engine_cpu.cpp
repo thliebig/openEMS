@@ -166,6 +166,9 @@ void Engine_CPU::Init()
 		const Operator_Ext_UPML* upml = dynamic_cast<const Operator_Ext_UPML*>(Op->GetExtension(n));
 		if (upml)
 			m_UPML.push_back(upml);
+		// the coefficients are freed below: an operator serves one CPU engine (as its own, Operator::CreateEngine())
+		if (upml && (upml->vv.data()==NULL))
+			throw std::logic_error("Engine_CPU: the UPML coefficients are freed, by an engine created on this operator before");
 	}
 	FindDispersive();
 	FindInert();
@@ -767,7 +770,7 @@ void Engine_CPU::BuildRuns()
 							set.uvv = key.uvv;
 							set.ufo = key.ufo;
 							set.ufn = key.ufn;
-							set.pole = (uint32_t)poles.size();
+							set.offset = (uint32_t)poles.size();
 							set.nl = key.nl;
 							set.nd = key.nd;
 							set.solve = key.solve;
@@ -831,7 +834,7 @@ void Engine_CPU::BuildRuns()
 							set.cls = Engine_CPU_Set::UPML_PROFILE;
 							set.m = 1;   // the kernel's a is then the slow factor, the profile has m
 							set.solve = 1;
-							set.pole = pit->second;
+							set.offset = pit->second;
 							it = setIndex.insert(std::make_pair(sk, (uint32_t)r.sets.size())).first;
 							r.sets.push_back(set);
 						}
@@ -863,7 +866,7 @@ void Engine_CPU::BuildRuns()
 				else
 				{
 					for (unsigned int p=0; p<set.nl; ++p)
-						state += ((poles[set.pole+p].k_lor!=0) ? 2 : 1)*len;
+						state += ((poles[set.offset+p].k_lor!=0) ? 2 : 1)*len;
 					state += set.nd*len;
 				}
 			}
@@ -1127,7 +1130,8 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 		for (size_t n=0; n<m_Eng_exts.size(); ++n)
 			ext += m_Eng_exts[n]->BoxBytes();
 		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
-		const double bytes = plane*24.0 + (4.0*state + sizeof(Engine_CPU_Run)*runs + ext)/numLines[m_SplitAxis];
+		const double fieldBytes = 6*sizeof(FDTD_FLOAT);   // the voltages and currents of a node
+		const double bytes = plane*fieldBytes + (sizeof(float)*state + sizeof(Engine_CPU_Run)*runs + ext)/numLines[m_SplitAxis];
 		std::string source;
 		const size_t cache = CacheBytes(source);
 		if (g_settings.GetVerboseLevel()>0)

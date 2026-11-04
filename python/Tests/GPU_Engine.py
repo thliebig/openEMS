@@ -40,7 +40,7 @@
      (skipped without a GPU device)
    engine='cpu': created, and max. deviation < 1e-4 of the peak value like a device backend;
      with blocking forced (2 timesteps per block, tiles of 5 lines) bit-identical to its flat
-     sweep, and blocked in at least one case (the others have an extension without box hooks)
+     sweep, and blocked in at least one case (the multi-grid cases run the flat sweep)
 
  Tested with
   - python 3.13

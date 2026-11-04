@@ -62,8 +62,10 @@ struct Engine_CPU_Runs
   slowest axis (GetSplitAxis()).
 
   Per field component and line of the fast axis, the cells are runs of one
-  class: ZERO (both coefficients 0: PEC, the outer lines; the field is set to
-  0 as the update would), LOSSLESS (vv == 1: V += vi*curl) or LOSSY. The
+  class (Engine_CPU_Set::Class), each with a kernel of its own: ZERO (both
+  coefficients 0: PEC, the outer lines; the field is set to 0 as the update
+  would), LOSSLESS (vv == 1: V += vi*curl), LOSSY, and the classes of the
+  extensions the engine takes over (UPML, UPML_PROFILE, DISP, below). The
   coefficients are factorised: vi = m * g, with g a product of per-axis mesh
   factors (edge length over area) and m the material part, 1/eps up to
   constants. A run is a maximal set of neighbours with the same class, vv
@@ -108,6 +110,13 @@ struct Engine_CPU_Runs
 
   The extensions see the fields through Engine::GetVolt() and friends, which
   follow the layout, and run in the dispatch of the basic engine.
+
+  Temporal blocking (BuildBlockedPlans()): the threads advance cache-sized
+  tiles along the split axis up to 8 timesteps at a time (Engine_BlockedPlan,
+  walked by Engine_ThreadPool), the extensions per step on the box of the
+  step (Engine_Extension::SupportsBoxes()). It needs every extension to
+  support boxes, no cylindrical multi-grid, and a model larger than the cache;
+  else the engine runs the flat sweep. The results are the same either way.
   */
 class Engine_CPU : public Engine
 {
@@ -149,6 +158,8 @@ protected:
 	void CalcGeometry();
 	void BuildRuns();
 
+	static const int MAX_POLES = 4;   //!< per kind, Drude/Lorentz and Debye
+
 	//! The class and coefficients of a cell: neighbours with equal keys form a run
 	struct CellKey
 	{
@@ -159,7 +170,7 @@ protected:
 		float uvv, ufo, ufn;   //!< UPML only, else 0
 		uint8_t nl, nd;        //!< DISP: the Drude/Lorentz poles, then the Debye poles (Engine_CPU_Set); the others 0
 		float solve;           //!< DISP: Engine_CPU_Set::solve, 1 without Debye poles
-		Engine_CPU_Pole poles[8];   //!< k_ext, k_lor and solve rounded to 20 bits of mantissa
+		Engine_CPU_Pole poles[2*MAX_POLES];   //!< k_ext, k_lor and solve rounded to 20 bits of mantissa
 		int NumPoles() const {return nl+nd;}
 		bool operator==(const CellKey& o) const
 		{
@@ -182,7 +193,6 @@ protected:
 	const class Operator_Ext_UPML* FindUPML(const unsigned int pos[3], unsigned int loc[3]) const;
 	std::vector<const class Operator_Ext_UPML*> m_UPML;
 
-	static const int MAX_POLES = 4;   //!< per kind, Drude/Lorentz and Debye
 	//! the dispersive extensions the engine updates itself, with their cells
 	void FindDispersive();
 	//! drop the engine extensions of m_Disp

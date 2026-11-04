@@ -62,7 +62,7 @@ public:
 	virtual void Apply2Current() {}
 	virtual void Apply2Current(int threadID);
 
-	//! Whether the extension runs in the blocked plans of the CPU engine (Engine_BlockedPlan)
+	//! Whether the extension runs in the blocked plans (Engine_BlockedPlan, temporal blocking; so far the CPU engine)
 	/*!
 	  Then the engine calls the box hooks below, per step on its box, instead of
 	  the hooks above: a box hook touches only the cells in \a box and takes the

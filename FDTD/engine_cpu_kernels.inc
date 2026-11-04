@@ -52,7 +52,7 @@ static ENGINE_CPU_NOINLINE void UpdateRunDisp(const Engine_CPU_Run& run, const E
 	// Debye pole states from the old field, the main update, the Debye solve for the new field and
 	// the rest of its pole states, the Drude/Lorentz apply pass (X -= J)
 	const ptrdiff_t len = (ptrdiff_t)run.stop - (ptrdiff_t)run.start;
-	const Engine_CPU_Pole* P = c.poles + set.pole;
+	const Engine_CPU_Pole* P = c.poles + set.offset;
 	const Engine_CPU_Pole* D = P + set.nl;
 	float* const S = c.state + ((ptrdiff_t)run.u - (ptrdiff_t)run.start);
 	const unsigned int CHUNK = 64;
@@ -128,7 +128,7 @@ static ENGINE_CPU_NOINLINE void UpdateRunProfile(const Engine_CPU_Run& run, cons
                                                  float* __restrict X, const float* __restrict A, const float* __restrict B,
                                                  ptrdiff_t dA, ptrdiff_t dB, const Engine_CPU_Kernel::Component& c)
 {
-	const ptrdiff_t p0 = (ptrdiff_t)set.pole - (ptrdiff_t)run.start;
+	const ptrdiff_t p0 = (ptrdiff_t)set.offset - (ptrdiff_t)run.start;
 	const float* __restrict m   = c.profile[0] + p0;
 	const float* __restrict vv  = c.profile[1] + p0;
 	const float* __restrict uvv = c.profile[2] + p0;
