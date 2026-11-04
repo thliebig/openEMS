@@ -71,6 +71,8 @@ public:
 	  on the flat sweep.
 	  */
 	virtual bool SupportsBoxes() const {return false;}
+	//! The bytes of the extension's per-cell state a timestep touches, for the tile size of the blocked plans
+	virtual size_t BoxBytes() const {return 0;}
 	//! Called once, single-threaded, before the first box hook, e.g. to index the extension's cells by box
 	virtual void PrepareBoxes(const unsigned int numLines[3]) {(void)numLines;}
 	//! Timestep \a ts must run flat, with the hooks above on a coherent grid (e.g. a whole-grid energy): blocks end before it

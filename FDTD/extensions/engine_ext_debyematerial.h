@@ -57,6 +57,8 @@ public:
 	Engine_Ext_DebyeMaterial(Operator_Ext_DebyeMaterial* op_ext_debye);
 	virtual ~Engine_Ext_DebyeMaterial();
 
+	//! per cell: three components of three values per pole and three more, and the position
+	virtual size_t BoxBytes() const;
 	virtual void DoPreVoltageUpdates();
 	virtual void DoPostVoltageUpdates();
 

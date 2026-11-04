@@ -134,3 +134,8 @@ void Engine_Ext_DebyeMaterial::DoPostVoltageUpdatesBox(const Engine_Box& box, un
 	(void)ts;   // the update does not depend on the timestep
 	ENG_DISPATCH_ARGS(DoPostVoltageUpdatesImpl, &box);
 }
+
+size_t Engine_Ext_DebyeMaterial::BoxBytes() const
+{
+	return m_Op_Ext_Deb->m_LM_Count.at(0) * (3*sizeof(unsigned int) + 3*(3*m_Op_Ext_Deb->m_PoleCount + 3)*sizeof(FDTD_FLOAT));
+}

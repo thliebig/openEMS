@@ -183,3 +183,11 @@ void Engine_Ext_LorentzMaterial::DoPreCurrentUpdatesBox(const Engine_Box& box, u
 	(void)ts;   // the update does not depend on the timestep
 	ENG_DISPATCH_ARGS(DoPreCurrentUpdatesImpl, &box);
 }
+
+size_t Engine_Ext_LorentzMaterial::BoxBytes() const
+{
+	size_t bytes = 0;
+	for (int o=0; o<m_Op_Ext_Lor->m_Order; ++o)
+		bytes += m_Op_Ext_Lor->m_LM_Count.at(o) * (3*sizeof(unsigned int) + 3*10*sizeof(FDTD_FLOAT));
+	return bytes;
+}

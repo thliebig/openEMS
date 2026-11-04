@@ -537,8 +537,11 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 				runs += m_Runs[f][n].runs.size();
 				flux += m_UPMLCells[f][n].flux.size();
 			}
+		double ext = 0;   // the per-cell state of the extensions (dispersive materials)
+		for (size_t n=0; n<m_Eng_exts.size(); ++n)
+			ext += m_Eng_exts[n]->BoxBytes();
 		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
-		const double bytes = plane*24.0 + (4.0*flux + sizeof(Engine_CPU_Run)*runs)/numLines[m_SplitAxis];
+		const double bytes = plane*24.0 + (4.0*flux + sizeof(Engine_CPU_Run)*runs + ext)/numLines[m_SplitAxis];
 		W = (unsigned int)(CacheBytes()/bytes);
 		k = std::min(8u, (W>0) ? (W-1)/2 : 0);
 		if (k<2)
