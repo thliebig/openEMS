@@ -305,7 +305,7 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 
 	delete m_IterateBarrier;
 	// make sure all threads are waiting
-	m_IterateBarrier = new boost::barrier(m_numThreads); // numThread workers
+	m_IterateBarrier = new Engine_SpinBarrier(m_numThreads); // numThread workers
 
 	delete m_startBarrier;
 	m_startBarrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller

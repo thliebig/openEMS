@@ -35,6 +35,8 @@ there are unreleased changes. It becomes the next release entry.
   other engines to float rounding, not bit for bit. On real models with a PML
   it is 3-6x faster than the default engine and needs less memory while
   running.
+- The multithreaded engines wait for each other in a spinning barrier instead
+  of sleeping: small models run up to twice as fast.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.

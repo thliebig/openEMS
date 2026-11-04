@@ -21,11 +21,53 @@
 
 #include <vector>
 
+#include <atomic>
+#include <thread>
+
 #include <boost/thread.hpp>
 
 #include "engine_plan.h"
 
 class Engine;
+
+//! A barrier that spins briefly before it yields: the phases of the blocked plans and the
+//! extension hooks wait at one many times per timestep, often for a few microseconds only
+class Engine_SpinBarrier
+{
+public:
+	explicit Engine_SpinBarrier(unsigned int count) : m_Count(count), m_Waiting(0), m_Generation(0) {}
+
+	void wait()
+	{
+		const unsigned int gen = m_Generation.load(std::memory_order_acquire);
+		if (m_Waiting.fetch_add(1, std::memory_order_acq_rel)+1 == m_Count)
+		{
+			// the last one releases the others, and with them the writes of all
+			m_Waiting.store(0, std::memory_order_relaxed);
+			m_Generation.fetch_add(1, std::memory_order_release);
+			return;
+		}
+		for (unsigned int i=0; m_Generation.load(std::memory_order_acquire)==gen; ++i)
+		{
+			if (i<SPIN)
+				Pause();
+			else
+				std::this_thread::yield();   // more threads than cores, or a long wait
+		}
+	}
+
+protected:
+	static const unsigned int SPIN = 2000;
+	static void Pause()
+	{
+#if defined(__x86_64__) || defined(__i386__)
+		__builtin_ia32_pause();
+#endif
+	}
+	const unsigned int m_Count;
+	std::atomic<unsigned int> m_Waiting;
+	std::atomic<unsigned int> m_Generation;
+};
 
 //! The worker threads of a CPU engine
 /*!
@@ -93,7 +135,7 @@ protected:
 	boost::thread_group* m_thread_group;
 	boost::barrier* m_startBarrier;
 	boost::barrier* m_stopBarrier;
-	boost::barrier* m_IterateBarrier;
+	Engine_SpinBarrier* m_IterateBarrier;
 	volatile unsigned int m_iterTS;
 	volatile bool m_stopThreads;
 	unsigned int m_numThreads;       //!< number of worker threads
