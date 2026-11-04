@@ -914,7 +914,10 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 	}
 	else if (why.empty())
 	{
-		// the tile: the cache for the fields, the UPML and ADE state and the runs of its planes (measured: fuller tiles are faster than half the cache)
+		// the tile: the fields, the UPML and ADE state and the runs of its planes in the cache. The timesteps
+		// per block from the whole cache, the width then 3/4 of it as long as it holds them (measured: a tile
+		// that fills the whole cache is much slower, the rest of the working set evicts it; but fewer
+		// timesteps per block cost more than that)
 		size_t runs = 0, state = 0;
 		for (int f=0; f<2; ++f)
 			for (int n=0; n<3; ++n)
@@ -927,8 +930,9 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 			ext += m_Eng_exts[n]->BoxBytes();
 		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
 		const double bytes = plane*24.0 + (4.0*state + sizeof(Engine_CPU_Run)*runs + ext)/numLines[m_SplitAxis];
-		W = (unsigned int)(CacheBytes()/bytes);
-		k = std::min(8u, (W>0) ? (W-1)/2 : 0);
+		const unsigned int full = (unsigned int)(CacheBytes()/bytes);
+		k = std::min(8u, (full>0) ? (full-1)/2 : 0);
+		W = std::max(2*k+1, (unsigned int)(0.75*full));
 		if (k<2)
 			why = "a plane is too large for the cache";
 		else if (numLines[m_SplitAxis] < 2*W)
