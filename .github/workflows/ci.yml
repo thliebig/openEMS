@@ -700,11 +700,31 @@ jobs:
           source ~/.zprofile
           cd $GITHUB_WORKSPACE/openEMS
           mkdir build && cd build
-          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt
+          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt -DOPENEMS_BUILD_TESTS=ON
           make -j$NCPUS && make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
           echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
+
+      - name: Unittest openEMS C++ library
+        timeout-minutes: 10
+        run: |
+          cd $GITHUB_WORKSPACE/openEMS/build
+          ctest --output-on-failure --timeout 300
+
+      - name: Smoketest the CPU engine
+        run: |
+          # the paths that differ per platform: the cache size from the system (Apple
+          # silicon: the L2 of the performance cores), and with blocking forced the
+          # blocked plans and the spinning barrier
+          xml=$GITHUB_WORKSPACE/openEMS/.github/smoketests/gpu/gpu_engine.xml
+          cd $RUNNER_TEMP
+          out=$($HOME/opt/bin/openEMS $xml --engine=cpu -v 2>&1)
+          echo "$out"
+          echo "$out" | grep -Eq "Engine_CPU: cache [0-9.]+ MiB, hw\." || { echo "no cache size from the system"; exit 1; }
+          out=$(OPENEMS_CPU_TBLOCK=2:5 $HOME/opt/bin/openEMS $xml --engine=cpu -v 2>&1)
+          echo "$out"
+          echo "$out" | grep -q "Engine_CPU: temporal blocking" || { echo "the CPU engine did not block"; exit 1; }
 
       - name: Run Octave setup (compile h5readatt_octave)
         run: octave --no-gui --eval "setup()"
@@ -1228,6 +1248,24 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "build (AMD plugin) failed" }
             Copy-Item plugins/openEMS_gpu_hip_amd.dll "$HOME/opt/bin/openEMS/plugins/"
           }
+
+      - name: Smoketest the CPU engine
+        run: |
+          # the paths that differ per platform: the cache size from the system, the
+          # instruction set (AVX2 by CPUID with GCC-like compilers), and with blocking
+          # forced the blocked plans and the spinning barrier
+          $env:PATH = "$HOME/opt/bin;$env:GITHUB_WORKSPACE/openEMS/build/vcpkg_installed/x64-windows-release/bin;$env:PATH"
+          $xml = "$env:GITHUB_WORKSPACE/openEMS/.github/smoketests/gpu/gpu_engine.xml"
+          cd $env:RUNNER_TEMP
+          $out = & "$HOME/opt/bin/openEMS.exe" $xml --engine=cpu -v 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "the CPU engine failed" }
+          if ($out -notmatch "Engine_CPU: cache [0-9.]+ MiB, L[0-9] \(Windows\)") { throw "no cache size from the system" }
+          $env:OPENEMS_CPU_TBLOCK = "2:5"
+          $out = & "$HOME/opt/bin/openEMS.exe" $xml --engine=cpu -v 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "the blocked CPU engine failed" }
+          if ($out -notmatch "Engine_CPU: temporal blocking") { throw "the CPU engine did not block" }
 
       - name: GPU plugin on a machine without a GPU
         if: matrix.toolchain.gpu
