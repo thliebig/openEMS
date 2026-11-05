@@ -109,8 +109,8 @@ struct CellModel_Component
   A lossless current inside metal, whose four voltages of the curl are ZERO
   cells, never changes: it is in no run, so the kernels skip it. Only if no
   extension writes such a voltage: none on the outer lines (Mur), in a UPML
-  or excited, and only the extensions known not to (Analyse()).
-  OPENEMS_CPU_INERT=0 turns it off.
+  or excited, and only the extensions known not to; the engine decides
+  whether to skip them (Analyse()).
 
   The engine updates the fused extensions' cells itself and drops their
   engine extensions (IsFused()); FreeFused() frees their operator data and
@@ -124,12 +124,17 @@ public:
 
 	explicit CellModel(const Operator* op);
 
-	//! The extensions the model takes over (UPML, dispersive) and the inert currents; before the engine's extensions exist
-	void Analyse();
+	//! The extensions the model takes over (UPML, dispersive) and, if \a skipInert, the inert currents; before the engine's extensions exist
+	void Analyse(bool skipInert = true);
 	//! Whether the model updates the cells of the operator extension \a ext: the engine drops its engine extension
 	bool IsFused(const Operator_Extension* ext) const;
 
-	//! The axis along which the cells form the fewest runs, or the one the extensions need (a closed cylinder's alpha, the normal of the local absorbers)
+	//! The axis along which the cells form the fewest runs: the fast axis the model is most compact on
+	/*!
+	  The run statistics only: an engine applies its own constraints on top
+	  (Engine_CPU: the box plans need a closed cylinder's alpha or the local
+	  absorbers' normal as the fast axis).
+	  */
 	int RecommendFastAxis() const;
 	//! The runs along \a fast, the lines ordered by \a split, then \a mid
 	void Build(int fast, int split, int mid);
@@ -195,7 +200,7 @@ protected:
 	//! the poles of a cell into \a key
 	void GetCellPoles(int f, int n, const unsigned int pos[3], CellKey& key) const;
 
-	//! whether the inert currents may be skipped: only known extensions, and the excited voltages
+	//! the excited voltages, and whether the inert currents may be skipped: only with known extensions (m_SkipInert from Analyse())
 	void FindInert();
 	bool m_SkipInert;
 	std::unordered_set<size_t> m_ExcitedVolt;   //!< 3*lin + n

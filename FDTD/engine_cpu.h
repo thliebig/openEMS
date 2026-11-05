@@ -38,9 +38,11 @@
 
   The fields are two ArrayNIJK in a layout chosen per model: N slowest, then
   the two slow axes, the fast axis last (stride 1). The fast axis is the one
-  the model recommends (CellModel::RecommendFastAxis(), OPENEMS_CPU_FAST_AXIS=
-  x|y|z overrides); the threads split the slow axis with more lines
-  (GetSplitAxis()). The engine keeps the state of the runs (UPML flux, ADE
+  with the fewest runs (CellModel::RecommendFastAxis()), unless the box plans
+  need another: a closed cylinder's alpha, the local absorbers' common normal
+  (OPENEMS_CPU_FAST_AXIS=x|y|z overrides both); the threads split the slow
+  axis with more lines (GetSplitAxis()). OPENEMS_CPU_INERT=0 updates the
+  inert currents too (CellModel::Analyse()). The engine keeps the state of the runs (UPML flux, ADE
   states) and the fast geometry factor as float for the kernels.
 
   The extensions see the fields through Engine::GetVolt() and friends, which
@@ -89,7 +91,7 @@ protected:
 
 	virtual std::string GetFieldLayout() const {return m_Layout;}
 
-	//! the axes and the layout from the model's fast axis (OPENEMS_CPU_FAST_AXIS=x|y|z overrides)
+	//! the axes and the layout: the model's fast axis, the constraints of the box plans, OPENEMS_CPU_FAST_AXIS=x|y|z
 	void ChooseLayout();
 	//! drop the engine extensions of the operator extensions the model fuses
 	void DropFusedExtensions();

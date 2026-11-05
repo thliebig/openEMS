@@ -41,7 +41,6 @@
 #include "extensions/operator_ext_mur_abc.h"
 #include "extensions/operator_ext_lumpedRLC.h"
 #include "extensions/operator_ext_steadystate.h"
-#include "extensions/operator_ext_absorbing_bc.h"
 
 using std::cout;
 using std::endl;
@@ -116,8 +115,9 @@ CellModel::CellModel(const Operator* op) : Op(op), m_SkipInert(false)
 		numLines[n] = op->GetNumberOfLines(n, true);
 }
 
-void CellModel::Analyse()
+void CellModel::Analyse(bool skipInert)
 {
+	m_SkipInert = skipInert;
 	m_UPML.clear();
 	m_Fused.clear();
 	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
@@ -225,11 +225,7 @@ void CellModel::FindDispersive()
 
 void CellModel::FindInert()
 {
-	m_SkipInert = true;
 	m_ExcitedVolt.clear();
-	if (const char* env = std::getenv("OPENEMS_CPU_INERT"))
-		if (std::string(env)=="0")
-			m_SkipInert = false;
 	for (size_t n=0; n<Op->GetNumberOfExtentions() && m_SkipInert; ++n)
 	{
 		const Operator_Extension* e = Op->GetExtension(n);
@@ -565,38 +561,11 @@ int CellModel::RecommendFastAxis() const
 	for (int a=0; a<2; ++a)
 		if ((runs[a]<runs[fast]) || ((runs[a]==runs[fast]) && (numLines[a]>numLines[fast])))
 			fast = a;
-	bool alpha = false;
-	// a closed alpha mesh couples the first and the last alpha plane (Engine_Ext_Cylinder): alpha as the
-	// fast axis, which every box spans, so the blocked plans can run it
-	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
-	{
-		const Operator_Ext_Cylinder* cyl = dynamic_cast<const Operator_Ext_Cylinder*>(Op->GetExtension(n));
-		if (cyl && cyl->ClosedAlpha())
-		{
-			fast = 1;
-			alpha = true;
-		}
-	}
-	// a local absorber couples its sheet and the next line along its normal within a half step: that
-	// normal as the fast axis, which every box spans, if all have the same (BuildBlockedPlans())
-	int normal = -1;
-	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
-	{
-		const Operator_Ext_Absorbing_BC* abc = dynamic_cast<const Operator_Ext_Absorbing_BC*>(Op->GetExtension(n));
-		if (abc==NULL)
-			continue;
-		if ((normal>=0) && (normal!=abc->m_ny))
-			normal = 3;   // several: no blocking
-		else if (normal<0)
-			normal = abc->m_ny;
-	}
-	if ((normal>=0) && (normal<3) && !alpha)   // the cylinder's alpha first: its box hooks need it
-		fast = normal;
 	if (g_settings.GetVerboseLevel()>0)
 	{
 		const double cells = 6.0*N0*N1*N2;
 		cout << "CellModel: mean run length along x, y, z: " << cells/runs[0] << ", " << cells/runs[1]
-		     << ", " << cells/runs[2] << "; recommended fast axis " << (char)('x'+fast) << endl;
+		     << ", " << cells/runs[2] << "; the fewest runs along " << (char)('x'+fast) << endl;
 	}
 	return fast;
 }

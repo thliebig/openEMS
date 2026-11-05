@@ -53,6 +53,8 @@
 #include "extensions/engine_ext_lorentzmaterial.h"
 #include "extensions/engine_ext_debyematerial.h"
 #include "extensions/engine_ext_absorbing_bc.h"
+#include "extensions/operator_ext_absorbing_bc.h"
+#include "extensions/operator_ext_cylinder.h"
 
 using std::cout;
 using std::endl;
@@ -84,8 +86,10 @@ Engine_CPU::~Engine_CPU()
 
 void Engine_CPU::Init()
 {
+	// OPENEMS_CPU_INERT=0: update the inert currents too
+	const char* inert = std::getenv("OPENEMS_CPU_INERT");
 	m_Model.reset(new CellModel(Op));
-	m_Model->Analyse();
+	m_Model->Analyse(!(inert && (std::string(inert)=="0")));
 	ChooseLayout();
 	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
 	DropFusedExtensions();
@@ -136,6 +140,27 @@ void Engine_CPU::Reset()
 void Engine_CPU::ChooseLayout()
 {
 	m_FastAxis = m_Model->RecommendFastAxis();
+	// the box plans: a closed alpha mesh couples the first and the last alpha plane (Engine_Ext_Cylinder),
+	// a local absorber its sheet and the next line along its normal within a half step; as the fast
+	// axis, which every box spans, the blocked plans can run them (BuildBlockedPlans())
+	bool alpha = false;
+	int normal = -1;
+	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
+	{
+		const Operator_Extension* e = Op->GetExtension(n);
+		const Operator_Ext_Cylinder* cyl = dynamic_cast<const Operator_Ext_Cylinder*>(e);
+		if (cyl && cyl->ClosedAlpha())
+			alpha = true;
+		const Operator_Ext_Absorbing_BC* abc = dynamic_cast<const Operator_Ext_Absorbing_BC*>(e);
+		if (abc && (normal<0))
+			normal = abc->GetNormalAxis();
+		else if (abc && (normal!=abc->GetNormalAxis()))
+			normal = 3;   // several: no blocking
+	}
+	if (alpha)
+		m_FastAxis = 1;
+	else if ((normal>=0) && (normal<3))   // the cylinder's alpha first: its box hooks need it
+		m_FastAxis = normal;
 	const char* env = std::getenv("OPENEMS_CPU_FAST_AXIS");
 	if (env && env[0])
 	{
