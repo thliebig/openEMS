@@ -147,7 +147,7 @@ protected:
 		s.op.numTS = (int)ts;
 		s.op.period = (int)ts+1;
 		if (m_Op->m_Exc->GetSignalPeriod()>0)
-			s.op.period = int(m_Op->m_Exc->GetSignalPeriod()/m_Op->m_Exc->GetTimestep());
+			s.op.period = m_Op->m_Exc->GetSignalPeriodTS();
 		m_B->RunPoints(GPU_OP_EXCITATION, &s.op, begin, end, s.serial);
 	}
 
@@ -452,7 +452,7 @@ public:
 				P.op.amp = Upload(m_B, P.list.Sorted(pick(amp)));
 				P.op.signal = sig;
 				P.op.length = length;
-				P.op.period = int(op->m_Exc->GetSignalPeriod()/op->m_Exc->GetTimestep());
+				P.op.period = op->m_Exc->GetSignalPeriodTS();
 			}
 		}
 	}

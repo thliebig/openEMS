@@ -77,6 +77,8 @@ to what a user notices, in a few lines; the details belong in the commit.
 - A delayed excitation injected its first sample before the delay.
 - Lumped RLC elements (series, or parallel with an L and no C) could turn the
   fields into NaN at random with any excitation but the Gaussian pulse (#255).
+- A sine excitation could miss its frequency slightly and never reach the
+  steady state.
 
 ### Build
 

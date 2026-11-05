@@ -69,7 +69,7 @@ void Engine_Ext_TFSF::PlanesImpl(bool volt, const Engine_Box& box, unsigned int 
 	const Operator_Ext_TFSF* op = m_Op_TFSF;
 	Engine* eng = m_Eng;
 	const unsigned int length = op->m_Exc->GetLength();
-	const int p = int(op->m_Exc->GetSignalPeriod()/op->m_Exc->GetTimestep());
+	const int p = op->m_Exc->GetSignalPeriodTS();
 	// a voltage gets the H-field signal and the other way round
 	const FDTD_FLOAT* signal = volt ? op->m_Exc->GetCurrentSignal() : op->m_Exc->GetVoltageSignal();
 	// the signal position of each delay at this timestep, built once a plane meets the box (the box hooks of

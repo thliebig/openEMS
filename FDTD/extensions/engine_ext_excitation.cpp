@@ -44,7 +44,7 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng, int numTS, const En
 
 	int p = numTS+1;
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
-		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
+		p = m_Op_Exc->m_Exc->GetSignalPeriodTS();
 
 	m_Index[0].ForEach(box, [&](size_t n)
 	{
@@ -83,7 +83,7 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng, int numTS, const Eng
 
 	int p = numTS+1;
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
-		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
+		p = m_Op_Exc->m_Exc->GetSignalPeriodTS();
 
 	m_Index[1].ForEach(box, [&](size_t n)
 	{
