@@ -1445,7 +1445,7 @@ int openEMS::SetupFDTD()
 	}
 	else
 	{
-		int p = int(m_Exc->GetSignalPeriod()/FDTD_Op->GetTimestep());
+		int p = m_Exc->GetSignalPeriodTS();
 		cout << "Excitation signal period is: " <<  p << " timesteps (" <<  m_Exc->GetSignalPeriod() << "s)" << endl;
 		cout << "Max. number of timesteps: " << NrTS << " ( --> " << (double)NrTS/(double)(m_Exc->GetLength()) << " * Excitation signal period)" << endl;
 		if (NrTS/p < 3)
