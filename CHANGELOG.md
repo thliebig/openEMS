@@ -73,6 +73,9 @@ to what a user notices, in a few lines; the details belong in the commit.
 - A SAR dump needs 24 bytes per dumped cell and frequency less memory.
 - `Write2XML()` crashed when no excitation or no structure was set.
 - A delayed excitation injected its first sample before the delay.
+- On a closed cylindrical mesh including r=0, E_z on the axis took one alpha
+  current twice: a field that has no E_z there, e.g. of two opposite sources,
+  put up to about 0.5 % of its source voltage on the axis.
 
 ### Build
 
