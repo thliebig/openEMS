@@ -48,7 +48,9 @@ void Engine_Ext_Cylinder::DoPostVoltageUpdatesImpl(EngType* eng)
 		for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 		{
 			volt =eng->EngType::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]];
-			for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
+			// the alpha lines numLines[1]-2 and -1 repeat the lines 0 and 1 of the closed
+			// mesh: each alpha current around the axis once, as the capacitance of vi_R0
+			for (pos[1]=0; pos[1]<numLines[1]-2; ++pos[1])
 				volt +=cyl_Op->vi_R0[pos[2]] *  eng->EngType::GetCurr(1,0,pos[1],pos[2]);
 			eng->EngType::SetVolt(2,0,0,pos[2], volt);
 		}

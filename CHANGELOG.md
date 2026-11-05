@@ -71,6 +71,10 @@ there are unreleased changes. It becomes the next release entry.
 - An excitation with a delay injected the first sample of its signal before
   the delay had expired: a delayed step excitation started at t=0, and so did
   a custom excitation whose function is not zero at t=0.
+- On a closed cylindrical mesh including r=0, the E_z update on the axis
+  counted the alpha current of the first alpha line twice. A field without
+  E_z on the axis, e.g. of two opposite sources, put up to about 0.5 % of its
+  source voltage there; on all engines.
 
 ### Changed
 

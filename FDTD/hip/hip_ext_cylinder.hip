@@ -35,7 +35,7 @@ __global__ void cyl_r0_ez(float* volt, const float* curr, const float* vv_R0, co
 	if (z>=N.nz)
 		return;
 	float v = volt[nijk(N, 2, 0, 0, z)]*vv_R0[z];
-	for (unsigned int a=0; a<N.ny-1; ++a)
+	for (unsigned int a=0; a<N.ny-2; ++a)
 		v = v + vi_R0[z]*curr[nijk(N, 1, 0, a, z)];
 	volt[nijk(N, 2, 0, 0, z)] = v;
 }
