@@ -38,7 +38,7 @@ void Engine_Ext_TFSF::DoPostVoltageUpdates()
 	unsigned int numTS = m_Eng->GetNumberOfTimesteps();
 	unsigned int length = m_Op_TFSF->m_Exc->GetLength();
 
-	int p = int(m_Op_TFSF->m_Exc->GetSignalPeriod()/m_Op_TFSF->m_Exc->GetTimestep());
+	int p = m_Op_TFSF->m_Exc->GetSignalPeriodTS();
 
 	for (unsigned int n=0;n<=m_Op_TFSF->m_maxDelay;++n)
 	{
@@ -128,7 +128,7 @@ void Engine_Ext_TFSF::DoPostCurrentUpdates()
 	unsigned int numTS = m_Eng->GetNumberOfTimesteps();
 	unsigned int length = m_Op_TFSF->m_Exc->GetLength();
 
-	int p = int(m_Op_TFSF->m_Exc->GetSignalPeriod()/m_Op_TFSF->m_Exc->GetTimestep());
+	int p = m_Op_TFSF->m_Exc->GetSignalPeriodTS();
 
 	for (unsigned int n=0;n<m_Op_TFSF->m_maxDelay;++n)
 	{

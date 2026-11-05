@@ -160,7 +160,7 @@ void HIP_Ext_TFSF::SetupPlanes(std::vector<Plane>& planes, bool currents, Operat
 void HIP_Ext_TFSF::Apply(std::vector<Plane>& planes, float* field, const float* signal)
 {
 	const unsigned int numTS = m_Eng->GetNumberOfTimesteps();
-	const int period = int(m_Op_TFSF->m_Exc->GetSignalPeriod()/m_Op_TFSF->m_Exc->GetTimestep());
+	const int period = m_Op_TFSF->m_Exc->GetSignalPeriodTS();
 	for (size_t p=0; p<planes.size(); ++p)
 	{
 		Plane& pl = planes[p];

@@ -71,6 +71,12 @@ there are unreleased changes. It becomes the next release entry.
 - An excitation with a delay injected the first sample of its signal before
   the delay had expired: a delayed step excitation started at t=0, and so did
   a custom excitation whose function is not zero at t=0.
+- A sinusoidal excitation whose period came out just below a whole number of
+  timesteps, e.g. 2.4 GHz on some meshes, repeated its signal one timestep
+  early: it skipped a sample every period and ran slightly above its
+  frequency, and the steady-state detection, which compares whole periods,
+  never ended the run. Also the period printed at the start was one timestep
+  short.
 
 ### Changed
 

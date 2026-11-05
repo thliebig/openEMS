@@ -137,7 +137,7 @@ void Metal_Ext_Excitation::Apply(Sources& s, id<MTLBuffer> field)
 	param.numTS = m_Eng->GetNumberOfTimesteps();
 	param.period = param.numTS+1;
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
-		param.period = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
+		param.period = m_Op_Exc->m_Exc->GetSignalPeriodTS();
 	param.length = m_Op_Exc->m_Exc->GetLength();
 	param.count = s.count;
 
