@@ -79,8 +79,8 @@ def _uniform(CSX, size):
 def _dipole(CSX):
     """ a short z-directed soft source at the origin with field probes two cells away """
     CSX.AddExcitation('dipole', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -1], [0, 0, 1])
-    CSX.AddProbe('et', p_type=2).AddPoint([2, 1, 0])
-    CSX.AddProbe('ht', p_type=3).AddPoint([-1, 2, 1])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([2, 1, 0])
+    CSX.AddProbe('H_probe', p_type=3).AddPoint([-1, 2, 1])
 
 
 def _vacuum(size, bc):
@@ -140,7 +140,7 @@ def inhomogeneous(size):
     CSX.AddMaterial('lossy', epsilon=6, kappa=0.5).AddBox([0.2*E, -0.6*E, 0.2*E], [0.6*E, -0.2*E, 0.6*E])
     metal.AddBox([-0.7*E, -0.2*E, -0.5*E], [-0.6*E, 0.2*E, -0.2*E], priority=10)
 
-    CSX.AddProbe('et', p_type=2).AddPoint([0, 0, -h/2])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([0, 0, -h/2])
     return FDTD
 
 
@@ -181,8 +181,8 @@ def cylindrical(size):
 
     CSX.AddMaterial('tube', epsilon=4).AddBox([0.4*R, -np.pi, -Z], [0.6*R, np.pi, Z])
     CSX.AddExcitation('line', exc_type=0, exc_val=[0, 0, 1]).AddBox([3, 0, -1], [3, 0, 1])
-    CSX.AddProbe('et', p_type=2).AddPoint([5, 0.2, 0])
-    CSX.AddProbe('ht', p_type=3).AddPoint([2, -0.3, 1])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([5, 0.2, 0])
+    CSX.AddProbe('H_probe', p_type=3).AddPoint([2, -0.3, 1])
     return FDTD
 
 
