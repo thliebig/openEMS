@@ -86,7 +86,7 @@ pml            M    multithreaded      8/8     184.6     185.3  1.004    0.9%   
 | `pml` | uniform | vacuum, PML_8 on all sides | the UPML extension |
 | `inhomogeneous` | graded 0.25–1 mm | microstrip with two lumped ports, dielectric, lossy and metal blocks, PML_8 | many distinct coefficients, the usual extensions |
 | `dispersive` | uniform | a Lorentz and a Debye block, Mur | the dispersive material extensions |
-| `cylindrical` | cylindrical incl. r=0 | a dielectric ring, PEC and Mur | the cylinder operator and extension |
+| `cylindrical` | cylindrical incl. r=0 | a dielectric tube through both Mur ends, PEC and Mur | the cylinder operator and extension |
 
 Changing a case changes the results: bump `cases.CASES_VERSION` with it.
 
