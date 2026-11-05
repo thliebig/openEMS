@@ -378,12 +378,19 @@ IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
 ENDIF()
 
 # the kernels of the CPU engine once more for AVX2 and FMA, chosen at run time
-# (Engine_CPU::InitKernels()); GCC and Clang on x86-64
+# (Engine_CPU::InitKernels()); on x86-64 with GCC, Clang, MSVC and clang-cl
 set(CPU_AVX2_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/FDTD/engine_cpu_kernels_avx2.cpp)
-IF((CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64") AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang") AND NOT MSVC)
-  set(OPENEMS_CPU_AVX2 ON)
-  set(SOURCES ${SOURCES} ${CPU_AVX2_SOURCE})
-  set_source_files_properties(${CPU_AVX2_SOURCE} PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma")
+IF(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+  IF(MSVC)   # MSVC and clang-cl
+    set(OPENEMS_CPU_AVX2 ON)
+    set_source_files_properties(${CPU_AVX2_SOURCE} PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+  ELSEIF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(OPENEMS_CPU_AVX2 ON)
+    set_source_files_properties(${CPU_AVX2_SOURCE} PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma")
+  ENDIF()
+  IF(OPENEMS_CPU_AVX2)
+    set(SOURCES ${SOURCES} ${CPU_AVX2_SOURCE})
+  ENDIF()
 ENDIF()
 
 add_library( openEMS SHARED ${SOURCES})

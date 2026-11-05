@@ -1261,6 +1261,8 @@ jobs:
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { throw "the CPU engine failed" }
           if ($out -notmatch "Engine_CPU: cache [0-9.]+ MiB, L[0-9] \(Windows\)") { throw "no cache size from the system" }
+          # every toolchain builds the AVX2 kernels (MSVC with /arch:AVX2), and the runners have AVX2
+          if ($out -notmatch "Engine_CPU: kernels for avx2") { throw "not the AVX2 kernels" }
           $env:OPENEMS_CPU_TBLOCK = "2:5"
           $out = & "$HOME/opt/bin/openEMS.exe" $xml --engine=cpu -v 2>&1 | Out-String
           Write-Host $out

@@ -24,7 +24,11 @@
 #include <stdexcept>
 #include <typeinfo>
 #ifdef OPENEMS_CPU_AVX2
-#include <cpuid.h>
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>   // __cpuid(), __cpuidex(), _xgetbv()
+#else
+#include <cpuid.h>    // GCC and Clang, clang-cl too
+#endif
 #endif
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
@@ -157,22 +161,38 @@ void Engine_CPU::ChooseLayout()
 #ifdef OPENEMS_CPU_AVX2
 // AVX2 and FMA, and the AVX registers saved by the system: from CPUID and XGETBV directly.
 // __builtin_cpu_supports() needs __cpu_model of the compiler runtime, which e.g. clang
-// on Windows does not link (GCC and Clang on x86-64 only, see CMakeLists.txt)
+// on Windows does not link (x86-64 only, see CMakeLists.txt)
 static bool CpuHasAVX2FMA()
 {
-	unsigned int a, b, c, d;
+	unsigned int b, c;   // CPUID leaf 1 ECX, leaf 7 EBX
+	unsigned long long xcr0;
+#if defined(_MSC_VER) && !defined(__clang__)
+	int r[4];
+	__cpuid(r, 0);
+	if (r[0]<7)
+		return false;
+	__cpuid(r, 1);
+	c = (unsigned int)r[2];
+	if (!((c>>27) & 1))   // OSXSAVE: XGETBV available
+		return false;
+	xcr0 = _xgetbv(0);
+	__cpuidex(r, 7, 0);
+	b = (unsigned int)r[1];
+#else
+	unsigned int a, d, c7;
 	if (!__get_cpuid(1, &a, &b, &c, &d))
 		return false;
-	const bool fma = (c>>12) & 1, osxsave = (c>>27) & 1, avx = (c>>28) & 1;
-	if (!(fma && osxsave && avx))
+	if (!((c>>27) & 1))   // OSXSAVE: XGETBV available
 		return false;
-	unsigned int xcr0, xcr0_hi;
-	__asm__ volatile ("xgetbv" : "=a"(xcr0), "=d"(xcr0_hi) : "c"(0));
-	if ((xcr0 & 6)!=6)   // the SSE and the AVX state
+	unsigned int lo, hi;
+	__asm__ volatile ("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0));
+	xcr0 = ((unsigned long long)hi<<32) | lo;
+	if (!__get_cpuid_count(7, 0, &a, &b, &c7, &d))   // c keeps leaf 1
 		return false;
-	if (!__get_cpuid_count(7, 0, &a, &b, &c, &d))
-		return false;
-	return (b>>5) & 1;   // AVX2
+#endif
+	const bool fma = (c>>12) & 1, avx = (c>>28) & 1;
+	return fma && avx && ((xcr0 & 6)==6)   // the SSE and the AVX state saved
+	       && ((b>>5) & 1);                // AVX2
 }
 #endif
 
