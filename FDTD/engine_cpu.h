@@ -63,6 +63,8 @@ public:
 	virtual void Reset();
 
 	virtual int GetSplitAxis() const {return m_SplitAxis;}
+	//! Any box: the kernels walk the runs of each line clipped to it
+	virtual bool CanUpdateBox(const Engine_Box& box, bool currents) const {(void)box; (void)currents; return true;}
 
 	//! Trapezoid tiles along the split axis sized for the L3, if every extension supports boxes and there is no sub-grid
 	/*!

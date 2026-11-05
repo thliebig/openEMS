@@ -17,6 +17,7 @@
 */
 
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 #include "engine_threadpool.h"
@@ -151,6 +152,12 @@ void Engine_ThreadPool::CurrentHalfStep(size_t g, unsigned int threadID)
 	//post current stuff
 	DoPostCurrentUpdates(eng, threadID);
 	Apply2Current(eng, threadID);
+}
+
+void Engine_ThreadPool::CheckPlanBox(const Engine* eng, const Engine_Box& box, bool currents)
+{
+	if (!eng->CanUpdateBox(box, currents))
+		throw std::logic_error("Engine_ThreadPool: a box of the plan the engine cannot update");
 }
 
 unsigned int Engine_ThreadPool::BlockLength(unsigned int ts, unsigned int left) const
@@ -302,6 +309,21 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 	// a blocked plan, on a single grid only
 	m_BlockedPlans.clear();
 	m_Blocked = (m_Grids.size()==1) && m_Eng->BuildBlockedPlans(m_numThreads, m_BlockedPlans) && !m_BlockedPlans.empty();
+
+	// every box of the plans must be one its engine can update: checked once here, not per update
+	for (size_t g=0; g<m_Grids.size(); ++g)
+		for (unsigned int t=0; t<m_Plans[g].GetNumThreads(); ++t)
+		{
+			for (const Engine_Box& box : m_Plans[g].volt[t])
+				CheckPlanBox(m_Grids[g], box, false);
+			for (const Engine_Box& box : m_Plans[g].curr[t])
+				CheckPlanBox(m_Grids[g], box, true);
+		}
+	for (const Engine_BlockedPlan& plan : m_BlockedPlans)
+		for (const auto& phase : plan.phases)
+			for (const auto& steps : phase)
+				for (const Engine_Step& step : steps)
+					CheckPlanBox(m_Eng, step.box, !step.volt);
 
 	delete m_IterateBarrier;
 	// make sure all threads are waiting

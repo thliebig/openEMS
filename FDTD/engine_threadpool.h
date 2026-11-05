@@ -140,6 +140,8 @@ protected:
 	unsigned long long m_TS_blocked, m_TS_flat;   //!< the timesteps run blocked and flat, for the log
 	//! one step of the blocked plan at timestep \a ts, with the box hooks of the extensions
 	void BlockedStep(const Engine_Step& step, unsigned int ts);
+	//! throws if \a eng cannot update \a box (Engine::CanUpdateBox())
+	static void CheckPlanBox(const Engine* eng, const Engine_Box& box, bool currents);
 	//! the timesteps of the next block from timestep \a ts on, at most \a left; below 2: a flat step
 	unsigned int BlockLength(unsigned int ts, unsigned int left) const;
 	boost::thread_group* m_thread_group;

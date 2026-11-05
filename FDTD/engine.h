@@ -103,7 +103,7 @@ public:
 	virtual void DoPreVoltageUpdates();
 	//! Main FDTD engine voltage updates
 	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
-	//! The voltage update of \a box (Engine_Plan); the default takes boxes spanning all of y and z, through UpdateVoltages(startX, numX)
+	//! The voltage update of \a box (Engine_Plan), one CanUpdateBox() accepts; the default through UpdateVoltages(startX, numX)
 	virtual void UpdateVoltages(const Engine_Box& box);
 	//! Execute Post-Voltage extension updates
 	virtual void DoPostVoltageUpdates();
@@ -116,6 +116,14 @@ public:
 	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
 	//! The current update of \a box, see UpdateVoltages(const Engine_Box&)
 	virtual void UpdateCurrents(const Engine_Box& box);
+
+	//! Whether UpdateVoltages(const Engine_Box&) (\a currents false) or UpdateCurrents(const Engine_Box&) takes \a box
+	/*!
+	  The default: boxes spanning all lines in y and z (all but the last for the
+	  currents), the x ranges of the kernels of the basic and the SSE engine.
+	  Engine_ThreadPool checks its plans once, when it builds them.
+	  */
+	virtual bool CanUpdateBox(const Engine_Box& box, bool currents) const;
 
 	//! The axis the flat plan splits over the threads: one of the slowest in memory
 	virtual int GetSplitAxis() const {return 0;}
