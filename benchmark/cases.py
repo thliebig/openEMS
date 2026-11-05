@@ -196,8 +196,10 @@ def antenna(size):
 
 
 def cylindrical(size):
-    """ closed cylindrical mesh including r=0, a dielectric ring, PEC/Mur: the cylinder
-        operator and extension """
+    """ closed cylindrical mesh including r=0, a dielectric tube, PEC/Mur: the cylinder
+        operator and extension. The tube runs through both Mur ends: a first-order Mur
+        ABC loads an evanescent TM field with a negative resistance, and the ends of a
+        shorter tube reflect that field back to it, so the fields grew exponentially """
     FDTD, CSX = _setup(['PEC', 'PEC', 'PEC', 'PEC', 'MUR', 'MUR'], CoordSystem=1)
     nr, na, nz = CYL_CELLS[size]
     mesh = CSX.GetGrid()
@@ -207,7 +209,7 @@ def cylindrical(size):
     R = nr - 1
     Z = (nz - 1) / 2
 
-    CSX.AddMaterial('ring', epsilon=4).AddBox([0.4*R, -np.pi, -0.6*Z], [0.6*R, np.pi, 0.6*Z])
+    CSX.AddMaterial('tube', epsilon=4).AddBox([0.4*R, -np.pi, -Z], [0.6*R, np.pi, Z])
     CSX.AddExcitation('line', exc_type=0, exc_val=[0, 0, 1]).AddBox([3, 0, -1], [3, 0, 1])
     CSX.AddProbe('et', p_type=2).AddPoint([5, 0.2, 0])
     CSX.AddProbe('ht', p_type=3).AddPoint([2, -0.3, 1])

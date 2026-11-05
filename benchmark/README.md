@@ -140,7 +140,7 @@ Its variables, all experimental (they may change or go):
 | `inhomogeneous` | graded 0.25–1 mm | microstrip with two lumped ports, dielectric, lossy and metal blocks, PML_8 | many distinct coefficients, the usual extensions |
 | `dispersive` | uniform | a Lorentz and a Debye block, Mur | the dispersive material extensions |
 | `antenna` | graded 0.25–1 mm | patch with a lumped port, a lossy Debye block, PML_8; an NF2FF box (frequency domain) and a time-domain E-field plane | the field dumps of a typical model |
-| `cylindrical` | cylindrical incl. r=0 | a dielectric ring, PEC and Mur | the cylinder operator and extension |
+| `cylindrical` | cylindrical incl. r=0 | a dielectric tube through both Mur ends, PEC and Mur | the cylinder operator and extension |
 
 Changing a case changes the results: bump `cases.CASES_VERSION` with it.
 
