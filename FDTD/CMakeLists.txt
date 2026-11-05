@@ -49,6 +49,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_threadpool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_plan.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cell_model.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_cpu.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_cpu_kernels.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator.cpp

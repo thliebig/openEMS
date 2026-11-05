@@ -6,7 +6,7 @@
 set(TESTS
   test_arraylib
   test_engine_plan
-  test_engine_cpu
+  test_cell_model
 )
 
 foreach(test ${TESTS})

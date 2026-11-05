@@ -24,7 +24,7 @@
 class Operator_Ext_LorentzMaterial : public Operator_Ext_Dispersive
 {
 	friend class Engine_Ext_LorentzMaterial;
-	friend class Engine_CPU;   // updates the cells itself
+	friend class CellModel;   // fuses the cells into the engine update
 	friend class HIP_Ext_LorentzMaterial;
 	friend class Metal_Ext_LorentzMaterial;
 public:

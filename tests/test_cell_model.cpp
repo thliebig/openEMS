@@ -16,7 +16,7 @@
 */
 
 /*
-  Tests for Engine_CPU_NodeSet, the lookup of the CPU engine from a mesh node
+  Tests for CellModel_NodeSet, the lookup of the cell model from a mesh node
   to its index in an extension's cell list (the coefficients of a dispersive
   cell): for nodes added in ascending order, Find() must give each its index
   and -1 for every other node. The sets cover the word boundaries of the bit
@@ -27,7 +27,7 @@
   "FAIL: ..." per failed check.
 */
 
-#include "FDTD/engine_cpu.h"
+#include "FDTD/cell_model.h"
 
 #include <iostream>
 #include <random>
@@ -38,7 +38,7 @@ static int g_failures = 0;
 
 static void Check(const std::string& name, size_t nodes, const std::vector<size_t>& members)
 {
-	Engine_CPU_NodeSet set;
+	CellModel_NodeSet set;
 	set.Init(nodes);
 	for (size_t lin : members)
 		if (!set.Add(lin))
@@ -81,6 +81,6 @@ int main()
 			sparse.push_back(lin);
 	Check("sparse", 100000, sparse);
 	if (g_failures==0)
-		std::cout << "test_engine_cpu: all checks passed" << std::endl;
+		std::cout << "test_cell_model: all checks passed" << std::endl;
 	return g_failures ? 1 : 0;
 }

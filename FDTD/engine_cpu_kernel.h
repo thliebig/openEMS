@@ -27,40 +27,7 @@
 #include <cstddef>
 #include <cstdint>
 
-//! The update class and the coefficients a run of cells shares
-struct Engine_CPU_Set
-{
-	enum Class : uint8_t {ZERO, LOSSLESS, LOSSY, UPML, DISP, UPML_PROFILE};
-
-	double m;              //!< the material part of vi (iv): vi = m * g, see Engine_CPU
-	float vv;              //!< vv (ii), 1 for LOSSLESS
-	float uvv, ufo, ufn;   //!< UPML: Operator_Ext_UPML::vv, vvfo, vvfn (ii, iifo, iifn); vv and m are the main update on the flux
-	uint32_t offset;       //!< DISP: its first pole in Engine_CPU_Kernel::Component::poles; UPML_PROFILE: its first cell in profile
-	uint8_t nl, nd;        //!< DISP: the number of Drude/Lorentz poles, then of Debye poles
-	float solve;           //!< DISP: the implicit solve of the Debye poles (Operator_Ext_DebyeMaterial::v_solve_ADE), 1 without
-	Class cls;
-};
-
-//! A pole of a dispersive material
-/*!
-  Drude/Lorentz (Operator_Ext_LorentzMaterial): v_int_ADE, v_ext_ADE and
-  v_Lor_ADE (i_*), k_lor 0 for a Drude pole. Debye
-  (Operator_Ext_DebyeMaterial): v_relax_ADE in k_int, v_drive_ADE in k_ext.
-  */
-struct Engine_CPU_Pole
-{
-	float k_int, k_ext;
-	float k_lor;
-};
-
-//! A run of cells along the fast axis with one coefficient set
-struct Engine_CPU_Run
-{
-	uint32_t start;   //!< first line along the fast axis
-	uint32_t stop;    //!< one past the last
-	uint32_t set;     //!< index in Engine_CPU_Runs::sets
-	uint32_t u;       //!< UPML, DISP: the index of the run's state in Engine_CPU_Kernel::Component::state
-};
+#include "cell_model_data.h"
 
 //! What the kernels of one engine read and write, filled by Engine_CPU::Init()
 struct Engine_CPU_Kernel
@@ -72,10 +39,10 @@ struct Engine_CPU_Kernel
 	size_t s[3];                 //!< the stride of each mesh axis
 	struct Component
 	{
-		const Engine_CPU_Run* runs;
-		const uint64_t* first;   //!< per line of the fast axis its first run, see Engine_CPU_Runs
-		const Engine_CPU_Set* sets;
-		const Engine_CPU_Pole* poles;   //!< the poles of the DISP sets
+		const CellModel_Run* runs;
+		const uint64_t* first;   //!< per line of the fast axis its first run, see CellModel_Component
+		const CellModel_Set* sets;
+		const CellModel_Pole* poles;   //!< the poles of the DISP sets
 		const float* profile[5];  //!< UPML_PROFILE: per cell m, vv, uvv, ufo, ufn of the UPML along the fast axis
 		float* state;            //!< per UPML run the flux of its cells; per DISP run per Drude/Lorentz pole J and, for a Lorentz pole, L, then per Debye pole W
 		const float* gf;         //!< the geometry factor along the fast axis

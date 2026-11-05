@@ -42,7 +42,7 @@ static inline unsigned int Min(unsigned int a, unsigned int b) {return a<b ? a :
 #endif
 
 //! the DISP class, apart so that UpdateRun() stays small enough to be inlined into the loops of the other classes
-static ENGINE_CPU_NOINLINE void UpdateRunDisp(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
+static ENGINE_CPU_NOINLINE void UpdateRunDisp(const CellModel_Run& run, const CellModel_Set& set, float a, unsigned int k0, unsigned int k1,
                                               float* __restrict X, const float* __restrict A, const float* __restrict B,
                                               ptrdiff_t dA, ptrdiff_t dB, const Engine_CPU_Kernel::Component& c)
 {
@@ -52,8 +52,8 @@ static ENGINE_CPU_NOINLINE void UpdateRunDisp(const Engine_CPU_Run& run, const E
 	// Debye pole states from the old field, the main update, the Debye solve for the new field and
 	// the rest of its pole states, the Drude/Lorentz apply pass (X -= J)
 	const ptrdiff_t len = (ptrdiff_t)run.stop - (ptrdiff_t)run.start;
-	const Engine_CPU_Pole* P = c.poles + set.offset;
-	const Engine_CPU_Pole* D = P + set.nl;
+	const CellModel_Pole* P = c.poles + set.offset;
+	const CellModel_Pole* D = P + set.nl;
 	float* const S = c.state + ((ptrdiff_t)run.u - (ptrdiff_t)run.start);
 	const unsigned int CHUNK = 64;
 	float pre[CHUNK];
@@ -124,7 +124,7 @@ static ENGINE_CPU_NOINLINE void UpdateRunDisp(const Engine_CPU_Run& run, const E
 }
 
 //! the UPML_PROFILE class: a UPML run whose coefficients change along it (a PML normal to the fast axis), per cell from its profile
-static ENGINE_CPU_NOINLINE void UpdateRunProfile(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float slow, unsigned int k0, unsigned int k1,
+static ENGINE_CPU_NOINLINE void UpdateRunProfile(const CellModel_Run& run, const CellModel_Set& set, float slow, unsigned int k0, unsigned int k1,
                                                  float* __restrict X, const float* __restrict A, const float* __restrict B,
                                                  ptrdiff_t dA, ptrdiff_t dB, const Engine_CPU_Kernel::Component& c)
 {
@@ -145,7 +145,7 @@ static ENGINE_CPU_NOINLINE void UpdateRunProfile(const Engine_CPU_Run& run, cons
 }
 
 //! the cells [k0, k1) of a run, with the coefficients of its set; a = m times the slow geometry factors
-static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& set, float a, unsigned int k0, unsigned int k1,
+static inline void UpdateRun(const CellModel_Run& run, const CellModel_Set& set, float a, unsigned int k0, unsigned int k1,
                              float* __restrict X, const float* __restrict A, const float* __restrict B,
                              ptrdiff_t dA, ptrdiff_t dB, const Engine_CPU_Kernel::Component& c)
 {
@@ -153,19 +153,19 @@ static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& se
 	const float* __restrict gf = c.gf;
 	switch (set.cls)
 	{
-	case Engine_CPU_Set::ZERO:
+	case CellModel_Set::ZERO:
 		for (unsigned int k=k0; k<k1; ++k)
 			X[k] = 0;
 		break;
-	case Engine_CPU_Set::LOSSLESS:
+	case CellModel_Set::LOSSLESS:
 		for (unsigned int k=k0; k<k1; ++k)
 			X[k] += a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
 		break;
-	case Engine_CPU_Set::LOSSY:
+	case CellModel_Set::LOSSY:
 		for (unsigned int k=k0; k<k1; ++k)
 			X[k] = vv*X[k] + a*gf[k]*(A[k] - A[k+dA] - B[k] + B[k+dB]);
 		break;
-	case Engine_CPU_Set::UPML:
+	case CellModel_Set::UPML:
 	{
 		// the extension's pre pass, the main update on the flux and its post pass in one
 		const ptrdiff_t j0 = (ptrdiff_t)run.u - (ptrdiff_t)run.start;
@@ -179,10 +179,10 @@ static inline void UpdateRun(const Engine_CPU_Run& run, const Engine_CPU_Set& se
 		}
 		break;
 	}
-	case Engine_CPU_Set::DISP:
+	case CellModel_Set::DISP:
 		UpdateRunDisp(run, set, a, k0, k1, X, A, B, dA, dB, c);
 		break;
-	case Engine_CPU_Set::UPML_PROFILE:
+	case CellModel_Set::UPML_PROFILE:
 		UpdateRunProfile(run, set, a, k0, k1, X, A, B, dA, dB, c);   // its m is 1: a is the slow factor
 		break;
 	}
@@ -211,14 +211,14 @@ void UpdateVoltages(const Engine_CPU_Kernel& k, const unsigned int start[3], con
 				const double slow = c.gS[pos[S]] * c.gM[pos[M]];
 				for (uint64_t i=c.first[line]; i<c.first[line+1]; ++i)
 				{
-					const Engine_CPU_Run& run = c.runs[i];
+					const CellModel_Run& run = c.runs[i];
 					unsigned int k0 = Max(run.start, start[F]);
 					const unsigned int k1 = Min(run.stop, stop[F]);
 					if (k0>=k1)
 						continue;
-					const Engine_CPU_Set& set = c.sets[run.set];
+					const CellModel_Set& set = c.sets[run.set];
 					const float a = (float)(set.m*slow);
-					if ((k0==0) && (set.cls!=Engine_CPU_Set::ZERO) && ((nP==F) || (nPP==F)))
+					if ((k0==0) && (set.cls!=CellModel_Set::ZERO) && ((nP==F) || (nPP==F)))
 					{
 						// the first line of the fast axis has no lower neighbour along it
 						UpdateRun(run, set, a, 0, 1, V, Ia, Ib, (nP==F) ? 0 : dA, (nPP==F) ? 0 : dB, c);
@@ -253,12 +253,12 @@ void UpdateCurrents(const Engine_CPU_Kernel& k, const unsigned int start[3], con
 				const double slow = c.gS[pos[S]] * c.gM[pos[M]];
 				for (uint64_t i=c.first[line]; i<c.first[line+1]; ++i)
 				{
-					const Engine_CPU_Run& run = c.runs[i];
+					const CellModel_Run& run = c.runs[i];
 					const unsigned int k0 = Max(run.start, start[F]);
 					const unsigned int k1 = Min(run.stop, stop[F]);
 					if (k0<k1)
 					{
-						const Engine_CPU_Set& set = c.sets[run.set];
+						const CellModel_Set& set = c.sets[run.set];
 						UpdateRun(run, set, (float)(set.m*slow), k0, k1, I, Va, Vb, dA, dB, c);
 					}
 				}
