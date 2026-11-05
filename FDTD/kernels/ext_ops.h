@@ -200,7 +200,7 @@ struct Op_Cylinder
 		{
 			const uint64_t z = n;
 			float v = volt[2*N + Node(0, 0, z)]*vv_R0[z];
-			for (uint64_t a=0; a<ny-1; ++a)
+			for (uint64_t a=0; a<ny-2; ++a)   // the lines ny-2 and ny-1 repeat 0 and 1, see Engine_Ext_Cylinder
 				v += vi_R0[z] * curr[N + Node(0, a, z)];
 			volt[2*N + Node(0, 0, z)] = v;
 			break;

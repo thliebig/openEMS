@@ -70,7 +70,9 @@ void Engine_Ext_Cylinder::BoxImpl(EngType* eng, bool volt, const Engine_Box* box
 			for (pos[2]=z0; pos[2]<z1; ++pos[2])
 			{
 				FDTD_FLOAT v = eng->EngType::GetVolt(2,0,0,pos[2])*cyl_Op->vv_R0[pos[2]];
-				for (pos[1]=0; pos[1]<numLines[1]-1; ++pos[1])
+				// the alpha lines last_A_Line and last_A_Line+1 repeat the lines 0 and 1: each
+				// alpha current around the axis once, as in the capacitance of vi_R0
+				for (pos[1]=0; pos[1]<last_A_Line; ++pos[1])
 					v += cyl_Op->vi_R0[pos[2]] * eng->EngType::GetCurr(1,0,pos[1],pos[2]);
 				eng->EngType::SetVolt(2,0,0,pos[2], v);
 			}

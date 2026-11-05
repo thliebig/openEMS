@@ -107,6 +107,9 @@ to what a user notices, in a few lines; the details belong in the commit.
   field dump fail at its end.
 - A series lumped RL element (no C) made the fields grow again late in a
   simulation, with any R exponentially until they exploded (#241).
+- On a closed cylindrical mesh including r=0, E_z on the axis took one alpha
+  current twice: a field that has no E_z there, e.g. of two opposite sources,
+  put up to about 0.5 % of its source voltage on the axis.
 
 ### Build
 
