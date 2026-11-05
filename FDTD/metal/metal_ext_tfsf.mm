@@ -164,7 +164,7 @@ void Metal_Ext_TFSF::SetupPlanes(std::vector<Plane>& planes, bool currents, Oper
 void Metal_Ext_TFSF::Apply(std::vector<Plane>& planes, id<MTLBuffer> field, id<MTLBuffer> signal)
 {
 	const unsigned int numTS = m_Eng->GetNumberOfTimesteps();
-	const int period = int(m_Op_TFSF->m_Exc->GetSignalPeriod()/m_Op_TFSF->m_Exc->GetTimestep());
+	const int period = m_Op_TFSF->m_Exc->GetSignalPeriodTS();
 	id<MTLComputePipelineState> pso = d->Pipeline(TFSF_SOURCE, "tfsf_apply");
 	for (size_t p=0; p<planes.size(); ++p)
 	{

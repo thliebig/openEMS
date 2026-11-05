@@ -73,6 +73,9 @@ to what a user notices, in a few lines; the details belong in the commit.
 - A SAR dump needs 24 bytes per dumped cell and frequency less memory.
 - `Write2XML()` crashed when no excitation or no structure was set.
 - A delayed excitation injected its first sample before the delay.
+- A sinusoidal excitation could repeat its signal one timestep early, e.g. at
+  2.4 GHz on some meshes: it ran slightly above its frequency, and the
+  steady-state detection never ended the simulation.
 
 ### Build
 
