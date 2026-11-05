@@ -22,11 +22,12 @@ probes of every run next to it. Other binaries: `--openems path/to/openEMS`.
 |---|---|---|
 | `--cases a,b` | all | `ideal`, `pml`, `inhomogeneous`, `dispersive`, `cylindrical` |
 | `--size S,M` | `S,M` | `XS` (~50 k cells, smoke test), `S` (~1 M), `M` (~8 M), `L` (~30 M, 3–4 GB RAM) |
-| `--engine a,b` | `multithreaded`, plus `gpu` with a device | also `basic` |
+| `--engine a,b` | `multithreaded`, plus `gpu` with a device | also `basic`, `cpu` |
 | `--threads 1,4,8` | the physical cores | performance cores only on a hybrid CPU |
 | `--gpu-device N` | the best device | |
 | `--duration T` | 3 | seconds of time-stepping per run |
-| `--repeat N` | 1, with two binaries 3 | timed runs per point |
+| `--variant NAME:VAR=VALUE,…` | | run every point once more with these environment variables, see below |
+| `--repeat N` | 1, with two binaries or variants 3 | timed runs per point |
 | `--workdir DIR`, `-o FILE` | `./bench-<date>-<time>/`, `<workdir>/result.json` | |
 
 The thread count is always passed explicitly: with the default
@@ -77,6 +78,51 @@ pml            M    multithreaded      8/8     184.6     185.3  1.004    0.9%   
   A mismatch does not stop anything, a change in the last bits (fused
   multiply-add, another summation order) is legitimate; a broken update is
   not, and shows up here. `compare` exits with 1 on a mismatch.
+
+## Compare variants of one build
+
+`--variant NAME:VAR=VALUE[,VAR=VALUE]` runs every point once more with these
+variables in the environment of openEMS, interleaved like two binaries; a
+variant `NAME:` runs as is. With one binary the variants are named by
+`NAME`, with several each binary runs each variant (`A-NAME`). The tables
+compare every variant with the first:
+
+```bash
+python3 benchmark/bench.py run --engine cpu --threads 4,8 \
+    --variant flat:OPENEMS_CPU_TBLOCK=0 --variant blocked:
+```
+
+The runs pass `-v` to openEMS, and the rows of the `cpu` engine end with what
+it chose: the kernels, the fast axis, the timesteps per block and the tile
+width (`k8 W19`) or why it ran flat, and the cache size it detected. They are
+in `result.json` too (`engine_info` of each point).
+
+## The CPU engine on other machines
+
+The CPU engine (`--engine=cpu`, experimental) is tuned on one 8-core desktop
+CPU: how many timesteps a block holds and how wide a tile is come from the
+cache size, all threads work on one tile. Machines with many cores, an L3
+split over several chiplets or two sockets may want other choices. To help,
+run on such a machine, with the physical core counts you want to compare:
+
+```bash
+python3 benchmark/bench.py run --engine cpu,multithreaded --size M,L --threads 8,16,32 \
+    --variant flat:OPENEMS_CPU_TBLOCK=0 --variant blocked:
+```
+
+and send the `result.json`: it holds the machine, the build, the speeds,
+what the engine chose and the probes, no field data. The `multithreaded`
+rows are the default engine on that machine for reference; the variables do
+not touch it, so its two variants agree up to noise.
+
+Its variables, all experimental (they may change or go):
+
+| Variable | |
+|---|---|
+| `OPENEMS_CPU_TBLOCK` | `0`: no temporal blocking; `k` or `k:W`: k timesteps per block, tiles of W lines (default: from the cache size) |
+| `OPENEMS_CPU_FAST_AXIS` | `x`, `y` or `z`: the axis contiguous in memory (default: the one with the longest runs of equal cells) |
+| `OPENEMS_CPU_ISA` | `generic` or `avx2`: the kernels (default: AVX2 and FMA if the CPU has them) |
+| `OPENEMS_CPU_INERT` | `0`: update the magnetic field inside metal too (default: skipped where it cannot change) |
 
 ## Cases
 
