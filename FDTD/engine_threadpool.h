@@ -23,6 +23,9 @@
 
 #include <atomic>
 #include <thread>
+#if defined(_MSC_VER)
+#include <intrin.h>   // _mm_pause(), __yield()
+#endif
 
 #include <boost/thread.hpp>
 
@@ -58,10 +61,17 @@ public:
 
 protected:
 	static const unsigned int SPIN = 2000;
+	//! the CPU's hint for a spin-wait loop: less power, and the core's other thread runs on
 	static void Pause()
 	{
 #if defined(__x86_64__) || defined(__i386__)
 		__builtin_ia32_pause();
+#elif defined(_M_X64) || defined(_M_IX86)
+		_mm_pause();
+#elif defined(__aarch64__) || defined(__arm__)
+		__asm__ __volatile__("yield");
+#elif defined(_M_ARM64) || defined(_M_ARM)
+		__yield();
 #endif
 	}
 	const unsigned int m_Count;
