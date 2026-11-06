@@ -124,6 +124,9 @@ jobs:
           #                   distribution, so exactly one modern entry should
           #                   carry them; the smoketests above are what covers
           #                   every entry.
+          # mpi: true or false (default false). true: build with -DWITH_MPI=ON
+          #      (OpenMPI), so the full test suites also run the MPI build
+          #      serially and python/Tests/MPI_Engine.py compares decompositions.
           - name: "Debian oldstable"
             libc: "GNU"
             docker-image: "debian:oldstable"
@@ -136,6 +139,7 @@ jobs:
             libc: "GNU"
             docker-image: "ubuntu:latest"
             full-tests: true
+            mpi: true
 
           # gpu: also build a HIP GPU plugin and check it on a runner without a GPU;
           # rocm: for AMD, with ROCm from AMD's Python wheels; cuda: for NVIDIA, the
@@ -378,10 +382,18 @@ jobs:
           ip netns add no-network
           ip netns exec no-network pip3 install . "${pip_opts[@]}"
 
+      - name: Install MPI
+        if: matrix.os.mpi
+        run: apt-get install -y libopenmpi-dev openmpi-bin
+
       - name: Build and install openEMS
         run: |
           cd $GITHUB_WORKSPACE/openEMS
           mkdir build && cd build
+          mpi_opts=()
+          if [ "${{ matrix.os.mpi }}" = "true" ]; then
+            mpi_opts=( -DWITH_MPI=ON )
+          fi
           hip_opts=()
           if [ "${OPENEMS_CI_GPU:-}" = "cuda" ]; then
             hip_opts=( -DENABLE_HIP=ON -DOPENEMS_HIP_AS_CUDA=ON )
@@ -392,7 +404,7 @@ jobs:
                        -DCMAKE_HIP_COMPILER_ROCM_ROOT=$ROCM_PATH
                        "-DCMAKE_HIP_FLAGS=--gcc-install-dir=$(dirname $(g++ -print-libgcc-file-name))" )
           fi
-          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt "${hip_opts[@]}"
+          cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt "${mpi_opts[@]}" "${hip_opts[@]}"
           make -j`nproc` && make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
@@ -492,6 +504,10 @@ jobs:
         if: matrix.os.full-tests
         run: |
           cd $GITHUB_WORKSPACE/openEMS/python/Tests
+          # MPI_Engine.py runs the binary through mpirun; OpenMPI in a container
+          # cannot use cross-memory attach
+          export OPENEMS_BIN=$HOME/opt/bin/openEMS
+          export OMPI_MCA_btl_vader_single_copy_mechanism=none
           python3 run_testsuite.py
 
       - name: Benchmark smoke run
