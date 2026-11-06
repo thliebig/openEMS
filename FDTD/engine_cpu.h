@@ -64,9 +64,19 @@ public:
 	virtual void Init();
 	virtual void Reset();
 
-	virtual int GetSplitAxis() const {return m_SplitAxis;}
+	//! The fast axis (stride 1 in memory)
+	int GetFastAxis() const {return m_FastAxis;}
+
+protected:
+	Engine_CPU(const Operator* op);
+
+	using Engine::UpdateVoltages;   // the x ranges of the basic kernels: never called here, the box updates are overridden
+	using Engine::UpdateCurrents;
+	virtual void UpdateVoltages(const Engine_Box& box);
+	virtual void UpdateCurrents(const Engine_Box& box);
 	//! Any box: the kernels walk the runs of each line clipped to it
 	virtual bool CanUpdateBox(const Engine_Box& box, bool currents) const {(void)box; (void)currents; return true;}
+	virtual int GetSplitAxis() const {return m_SplitAxis;}
 
 	//! Trapezoid tiles along the split axis sized for the L3, if every extension supports boxes and there is no sub-grid
 	/*!
@@ -74,20 +84,6 @@ public:
 	  and the tile width in lines.
 	  */
 	virtual bool BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans);
-
-	//! The fast axis (stride 1 in memory)
-	int GetFastAxis() const {return m_FastAxis;}
-
-protected:
-	Engine_CPU(const Operator* op);
-
-	using Engine::UpdateVoltages;
-	using Engine::UpdateCurrents;
-	virtual void UpdateVoltages(const Engine_Box& box);
-	virtual void UpdateCurrents(const Engine_Box& box);
-	//! the range updates of the old thread split: the box of x lines [startX, startX+numX)
-	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
-	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
 
 	virtual std::string GetFieldLayout() const {return m_Layout;}
 

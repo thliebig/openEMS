@@ -458,15 +458,3 @@ void Engine_CPU::UpdateCurrents(const Engine_Box& box)
 {
 	m_UpdateCurrents(m_Kernel, box.start, box.stop);
 }
-
-void Engine_CPU::UpdateVoltages(unsigned int startX, unsigned int numX)
-{
-	Engine_Box box = {{startX, 0, 0}, {startX+numX, numLines[1], numLines[2]}};
-	UpdateVoltages(box);
-}
-
-void Engine_CPU::UpdateCurrents(unsigned int startX, unsigned int numX)
-{
-	Engine_Box box = {{startX, 0, 0}, {startX+numX, numLines[1]-1, numLines[2]-1}};
-	UpdateCurrents(box);
-}

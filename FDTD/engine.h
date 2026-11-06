@@ -99,45 +99,8 @@ public:
 		curr(n, pos[0], pos[1], pos[2]) = value;
 	}
 
-	//! Execute Pre-Voltage extension updates
-	virtual void DoPreVoltageUpdates();
-	//! Main FDTD engine voltage updates
-	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
-	//! The voltage update of \a box (Engine_Plan), one CanUpdateBox() accepts; the default through UpdateVoltages(startX, numX)
-	virtual void UpdateVoltages(const Engine_Box& box);
-	//! Execute Post-Voltage extension updates
-	virtual void DoPostVoltageUpdates();
-	//! Apply extension voltage changes
-	virtual void Apply2Voltages();
-
-	//! Execute Pre-Current extension updates
-	virtual void DoPreCurrentUpdates();
-	//! Main FDTD engine current updates
-	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
-	//! The current update of \a box, see UpdateVoltages(const Engine_Box&)
-	virtual void UpdateCurrents(const Engine_Box& box);
-
-	//! Whether UpdateVoltages(const Engine_Box&) (\a currents false) or UpdateCurrents(const Engine_Box&) takes \a box
-	/*!
-	  The default: boxes spanning all lines in y and z (all but the last for the
-	  currents), the x ranges of the kernels of the basic and the SSE engine.
-	  Engine_ThreadPool checks its plans once, when it builds them.
-	  */
-	virtual bool CanUpdateBox(const Engine_Box& box, bool currents) const;
-
-	//! The axis the flat plan splits over the threads: one of the slowest in memory
-	virtual int GetSplitAxis() const {return 0;}
-
-	//! Blocked plans (temporal blocking) for \a numThreads threads, by decreasing k, if this engine runs them for this model; the default: none
-	virtual bool BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans) {(void)numThreads; (void)plans; return false;}
-	//! Execute Post-Current extension updates
-	virtual void DoPostCurrentUpdates();
-	//! Apply extension current changes
-	virtual void Apply2Current();
-
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
-	virtual void SortExtensionByPriority();
 
 	EngineType GetType() const {return m_type;}
 
@@ -170,6 +133,46 @@ protected:
 
 	//! The memory layout of the fields (ArrayNIJK), allocated by Init()
 	virtual std::string GetFieldLayout() const {return "NIJK";}
+
+	// The steps of a half step: the extension hooks around the main update, called by
+	// Engine_ThreadPool (a friend), not from outside the engine
+	//! Execute Pre-Voltage extension updates
+	virtual void DoPreVoltageUpdates();
+	//! The voltage update of the x lines [startX, startX+numX): the kernel of the basic engine (SSE: its own), behind the box update
+	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
+	//! The voltage update of \a box (Engine_Plan), one CanUpdateBox() accepts; the default through UpdateVoltages(startX, numX)
+	virtual void UpdateVoltages(const Engine_Box& box);
+	//! Execute Post-Voltage extension updates
+	virtual void DoPostVoltageUpdates();
+	//! Apply extension voltage changes
+	virtual void Apply2Voltages();
+
+	//! Execute Pre-Current extension updates
+	virtual void DoPreCurrentUpdates();
+	//! The current update of the x lines [startX, startX+numX), see UpdateVoltages(unsigned int, unsigned int)
+	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
+	//! The current update of \a box, see UpdateVoltages(const Engine_Box&)
+	virtual void UpdateCurrents(const Engine_Box& box);
+
+	//! Whether UpdateVoltages(const Engine_Box&) (\a currents false) or UpdateCurrents(const Engine_Box&) takes \a box
+	/*!
+	  The default: boxes spanning all lines in y and z (all but the last for the
+	  currents), the x ranges of the kernels of the basic and the SSE engine.
+	  Engine_ThreadPool checks its plans once, when it builds them.
+	  */
+	virtual bool CanUpdateBox(const Engine_Box& box, bool currents) const;
+
+	//! The axis the flat plan splits over the threads: one of the slowest in memory
+	virtual int GetSplitAxis() const {return 0;}
+
+	//! Blocked plans (temporal blocking) for \a numThreads threads, by decreasing k, if this engine runs them for this model; the default: none
+	virtual bool BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans) {(void)numThreads; (void)plans; return false;}
+	//! Execute Post-Current extension updates
+	virtual void DoPostCurrentUpdates();
+	//! Apply extension current changes
+	virtual void Apply2Current();
+
+	virtual void SortExtensionByPriority();
 
 	virtual void InitExtensions();
 	virtual void ClearExtensions();
