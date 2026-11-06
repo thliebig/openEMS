@@ -1034,6 +1034,7 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 
 int Operator::CalcECOperator( DebugFlags debugFlags )
 {
+	m_DebugFlags = debugFlags;
 	Init_EC();
 	InitDataStorage();
 

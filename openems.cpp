@@ -207,7 +207,7 @@ void openEMS::collectCommandLineArguments()
 					DebugOperator();
 				}
 			),
-			"Dump operator to vtk file for debugging"
+			"Dump operator to vtk file for debugging (the CPU engine: also its cell model, 'cellmodel_dump')"
 		)
 		(
 			"debug-boxes",

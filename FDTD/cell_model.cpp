@@ -33,6 +33,8 @@
 #include "tools/global.h"
 #include "tools/useful.h"
 #include "operator.h"
+#include "tools/vtk_file_writer.h"
+#include "tools/arraylib/array_nijk.h"
 #include "extensions/operator_ext_upml.h"
 #include "extensions/operator_ext_cylinder.h"
 #include "extensions/operator_ext_lorentzmaterial.h"
@@ -607,6 +609,9 @@ int CellModel::RecommendFastAxis() const
 
 void CellModel::Build(int F, int S, int M)
 {
+	m_F = F;
+	m_S = S;
+	m_M = M;
 	// one thread per component, each with its own cell counts
 	size_t counts[2][3][6] = {};
 	auto build = [&](int f, int n)
@@ -810,6 +815,72 @@ void CellModel::Build(int F, int S, int M)
 		     << 100.0*count[0]/cells << " %, lossless " << 100.0*count[1]/cells << " %, lossy "
 		     << 100.0*count[2]/cells << " %, upml " << 100.0*count[3]/cells << " %, dispersive "
 		     << 100.0*count[4]/cells << " %, inert (skipped) " << 100.0*count[5]/cells << " %" << endl;
+		// the same as counts, for scripts (python/Tests/CPU_CellModel.py)
+		cout << "CellModel: counts: runs " << runs << ", sets " << sets << ", zero " << count[0] << ", lossless " << count[1]
+		     << ", lossy " << count[2] << ", upml " << count[3] << ", dispersive " << count[4] << ", inert " << count[5] << endl;
 	}
 }
 
+void CellModel::Dump(const std::string& filename) const
+{
+	cout << "CellModel: dumping the cells as the engine sees them to vtk file: " << filename << endl;
+	std::vector<double> lines[3];
+	const double* lp[3];
+	for (int a=0; a<3; ++a)
+	{
+		lines[a].resize(numLines[a]);
+		for (unsigned int i=0; i<numLines[a]; ++i)
+			lines[a][i] = Op->GetDiscLine(a, i);
+		lp[a] = lines[a].data();
+	}
+	VTK_File_Writer vtk(filename, Op->GetMeshType());
+	vtk.SetMeshLines(lp, numLines, Op->GetGridDelta());
+	vtk.SetHeader("openEMS - cell model dump");
+	vtk.SetNativeDump(true);
+	const int F = m_F, S = m_S, M = m_M;
+	const char* name[2] = {"volt", "curr"};
+	for (int f=0; f<2; ++f)
+	{
+		unsigned int nl[3] = {numLines[0], numLines[1], numLines[2]};
+		ArrayLib::ArrayNIJK<float> cls(std::string(name[f]) + "_class", nl);
+		ArrayLib::ArrayNIJK<float> set(std::string(name[f]) + "_set", nl);
+		ArrayLib::ArrayNIJK<float> run(std::string(name[f]) + "_run", nl);
+		const unsigned int last = (f==0) ? 0 : 1;   // the currents end a line earlier on every axis
+		for (int n=0; n<3; ++n)
+		{
+			const CellModel_Component& c = m_Comp[f][n];
+			unsigned int pos[3];
+			for (pos[S]=0; pos[S]<numLines[S]; ++pos[S])
+				for (pos[M]=0; pos[M]<numLines[M]; ++pos[M])
+				{
+					const bool updated = (pos[S]+last<numLines[S]) && (pos[M]+last<numLines[M]);
+					for (pos[F]=0; pos[F]<numLines[F]; ++pos[F])
+					{
+						// a cell of an updated line in no run is an inert current
+						const bool inline_ = updated && (pos[F]+last<numLines[F]);
+						cls(n, pos[0], pos[1], pos[2]) = inline_ ? 6 : -1;
+						set(n, pos[0], pos[1], pos[2]) = -1;
+						run(n, pos[0], pos[1], pos[2]) = 0;
+					}
+					if (!updated)
+						continue;
+					const size_t line = (size_t)pos[S]*numLines[M] + pos[M];
+					for (uint64_t i=c.first[line]; i<c.first[line+1]; ++i)
+					{
+						const CellModel_Run& r = c.runs[i];
+						for (pos[F]=r.start; pos[F]<r.stop; ++pos[F])
+						{
+							cls(n, pos[0], pos[1], pos[2]) = c.sets[r.set].cls;
+							set(n, pos[0], pos[1], pos[2]) = r.set;
+							run(n, pos[0], pos[1], pos[2]) = r.stop - r.start;
+						}
+					}
+				}
+		}
+		vtk.AddVectorField(std::string(name[f]) + "_class", cls);
+		vtk.AddVectorField(std::string(name[f]) + "_set", set);
+		vtk.AddVectorField(std::string(name[f]) + "_run", run);
+	}
+	if (vtk.Write()==false)
+		std::cerr << "CellModel::Dump: Error: can't write file " << filename << "... skipping!" << endl;
+}

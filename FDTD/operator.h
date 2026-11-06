@@ -71,6 +71,8 @@ public:
 	virtual bool SetGeometryCSX(ContinuousStructure* geo);
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
+	//! The debug dumps CalcECOperator() was asked for: an engine may dump its view of the operator too
+	DebugFlags GetDebugFlags() const {return m_DebugFlags;}
 
 	//! The update coefficients, see Operator_Coeffs
 	const Operator_Coeffs* GetCoeffs() const {return m_Coeffs;}
@@ -219,6 +221,7 @@ public:
 	virtual void CalcStartStopLines(unsigned int &numThreads, std::vector<unsigned int> &start, std::vector<unsigned int> &stop) const;
 
 protected:
+	DebugFlags m_DebugFlags = None;
 	//! use New() for creating a new Operator
 	Operator();
 

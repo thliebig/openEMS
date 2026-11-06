@@ -148,6 +148,19 @@ public:
 	//! Free the operator data of the fused extensions and the analysis, after the engine took the runs
 	void FreeFused();
 
+	//! Write the cells as the engine sees them to the VTK file \a filename (no extension), after Build()
+	/*!
+	  Per edge of the voltages and the currents (vector fields volt_*, curr_*):
+	  `class` (CellModel_Set::Class: 0 ZERO, 1 LOSSLESS, 2 LOSSY, 3 UPML, 4 DISP,
+	  5 UPML_PROFILE; 6 an inert current in no run; -1 not updated, the last
+	  line of the currents), `set` (its coefficient set in the component, -1
+	  none) and `run` (the length of its run). For a look in ParaView at what
+	  the model made of a structure: runs broken where the material does not
+	  change, an unexpected class, inert regions missing. `--debug-operator`
+	  writes it as cellmodel_dump with the CPU engine.
+	  */
+	void Dump(const std::string& filename) const;
+
 	const CellModel_Component& Component(int f, int n) const {return m_Comp[f][n];}
 	//! The factor of each line along \a axis of field \a f (0 voltages, 1 currents), component \a n: g = product over the axes
 	const std::vector<double>& G(int f, int n, int axis) const {return m_G[f][n][axis];}
@@ -155,6 +168,7 @@ public:
 protected:
 	const Operator* Op;
 	unsigned int numLines[3];
+	int m_F = 2, m_S = 0, m_M = 1;   //!< the axes of the runs (Build())
 
 	//! the per-axis geometry factors g of field \a volt, component n
 	void CalcGeometry();

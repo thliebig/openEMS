@@ -94,6 +94,8 @@ void Engine_CPU::Init()
 	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
 	DropFusedExtensions();
 	m_Model->Build(m_FastAxis, m_SplitAxis, m_MidAxis);
+	if (Op->GetDebugFlags() & Operator::debugOperator)
+		m_Model->Dump("cellmodel_dump");
 	m_Model->FreeFused();
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)

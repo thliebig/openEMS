@@ -41,6 +41,9 @@ public:
 	//! Get the timestep used by this operator
 	virtual double GetTimestep() const {return dT;}
 
+	//! The coordinate system of the mesh
+	CoordinateSystem GetMeshType() const {return m_MeshType;}
+
 	//! Get the number of cells or nodes defined by this operator
 	virtual double GetNumberCells() const =0;
 
