@@ -21,8 +21,9 @@
      along a line merge into one profile run per side, about 3 runs per line;
      without the profiles a run per layer, a mean run length below 2
 
- Run with --engine=cpu -v; `--debug-operator` writes the model as
- cellmodel_dump.vtk (class, set and run length per edge) for a look in ParaView.
+ Run with --engine=cpu -v; `--debug-operator` writes the whole model to
+ cellmodel_dump.h5 (CellModel::Dump(): class, set and run per edge, the sets,
+ runs and poles per component) for a closer look, e.g. with h5py.
 
  Tested with
   - python 3.13

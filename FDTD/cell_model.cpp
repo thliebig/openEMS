@@ -33,7 +33,7 @@
 #include "tools/global.h"
 #include "tools/useful.h"
 #include "operator.h"
-#include "tools/vtk_file_writer.h"
+#include "tools/hdf5_file_writer.h"
 #include "tools/arraylib/array_nijk.h"
 #include "extensions/operator_ext_upml.h"
 #include "extensions/operator_ext_cylinder.h"
@@ -168,6 +168,7 @@ void CellModel::FreeFused()
 void CellModel::FindDispersive()
 {
 	m_Disp.clear();
+	m_NotFused.clear();
 	bool cylinder = false;
 	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
 		if (dynamic_cast<const Operator_Ext_Cylinder*>(Op->GetExtension(n)))
@@ -221,8 +222,12 @@ void CellModel::FindDispersive()
 			poles[kind] += np;
 			m_Disp.push_back(d);
 		}
-		else if (g_settings.GetVerboseLevel()>0)
-			cout << "CellModel: the " << d.op->GetExtensionName() << " stays an extension: " << why << endl;
+		else
+		{
+			m_NotFused.push_back(d.op->GetExtensionName() + ": " + why);
+			if (g_settings.GetVerboseLevel()>0)
+				cout << "CellModel: the " << d.op->GetExtensionName() << " stays an extension: " << why << endl;
+		}
 	}
 }
 
@@ -823,7 +828,9 @@ void CellModel::Build(int F, int S, int M)
 
 void CellModel::Dump(const std::string& filename) const
 {
-	cout << "CellModel: dumping the cells as the engine sees them to vtk file: " << filename << endl;
+	const std::string fn = filename + ".h5";
+	cout << "CellModel: dumping the cell model to hdf5 file: " << fn << endl;
+	HDF5_File_Writer h5(fn);
 	std::vector<double> lines[3];
 	const double* lp[3];
 	for (int a=0; a<3; ++a)
@@ -833,19 +840,32 @@ void CellModel::Dump(const std::string& filename) const
 			lines[a][i] = Op->GetDiscLine(a, i);
 		lp[a] = lines[a].data();
 	}
-	VTK_File_Writer vtk(filename, Op->GetMeshType());
-	vtk.SetMeshLines(lp, numLines, Op->GetGridDelta());
-	vtk.SetHeader("openEMS - cell model dump");
-	vtk.SetNativeDump(true);
+	bool ok = h5.WriteRectMesh(numLines, lp, Op->GetMeshType(), Op->GetGridDelta());
+
 	const int F = m_F, S = m_S, M = m_M;
-	const char* name[2] = {"volt", "curr"};
+	std::string fused, notFused;
+	for (const Operator_Extension* e : m_Fused)
+		fused += (fused.empty() ? "" : "; ") + e->GetExtensionName();
+	for (const std::string& w : m_NotFused)
+		notFused += (notFused.empty() ? "" : "; ") + w;
+	h5.SetCurrentGroup("/CellModel");
+	ok &= h5.WriteAttribute("/CellModel", "fast_axis", F);
+	ok &= h5.WriteAttribute("/CellModel", "split_axis", S);
+	ok &= h5.WriteAttribute("/CellModel", "mid_axis", M);
+	ok &= h5.WriteAttribute("/CellModel", "skip_inert", m_SkipInert);
+	ok &= h5.WriteAttribute("/CellModel", "classes", std::string("0 ZERO, 1 LOSSLESS, 2 LOSSY, 3 UPML, 4 DISP, 5 UPML_PROFILE, 6 inert (in no run), -1 not updated"));
+	ok &= h5.WriteAttribute("/CellModel", "fused", fused);
+	ok &= h5.WriteAttribute("/CellModel", "not_fused", notFused);
+
+	const char* field[2] = {"volt", "curr"};
+	const char* comp[3] = {"x", "y", "z"};
 	for (int f=0; f<2; ++f)
 	{
+		const std::string grp = std::string("/CellModel/") + field[f];
 		unsigned int nl[3] = {numLines[0], numLines[1], numLines[2]};
-		ArrayLib::ArrayNIJK<float> cls(std::string(name[f]) + "_class", nl);
-		ArrayLib::ArrayNIJK<float> set(std::string(name[f]) + "_set", nl);
-		ArrayLib::ArrayNIJK<float> run(std::string(name[f]) + "_run", nl);
+		ArrayLib::ArrayNIJK<float> cls("class", nl), set("set", nl), run("run", nl);
 		const unsigned int last = (f==0) ? 0 : 1;   // the currents end a line earlier on every axis
+		std::vector<double> counts(7, 0);
 		for (int n=0; n<3; ++n)
 		{
 			const CellModel_Component& c = m_Comp[f][n];
@@ -857,8 +877,8 @@ void CellModel::Dump(const std::string& filename) const
 					for (pos[F]=0; pos[F]<numLines[F]; ++pos[F])
 					{
 						// a cell of an updated line in no run is an inert current
-						const bool inline_ = updated && (pos[F]+last<numLines[F]);
-						cls(n, pos[0], pos[1], pos[2]) = inline_ ? 6 : -1;
+						const bool inLine = updated && (pos[F]+last<numLines[F]);
+						cls(n, pos[0], pos[1], pos[2]) = inLine ? 6 : -1;
 						set(n, pos[0], pos[1], pos[2]) = -1;
 						run(n, pos[0], pos[1], pos[2]) = 0;
 					}
@@ -876,11 +896,80 @@ void CellModel::Dump(const std::string& filename) const
 						}
 					}
 				}
+			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
+				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+					{
+						const int k = (int)cls(n, pos[0], pos[1], pos[2]);
+						if (k>=0)
+							counts[k] += 1;
+					}
 		}
-		vtk.AddVectorField(std::string(name[f]) + "_class", cls);
-		vtk.AddVectorField(std::string(name[f]) + "_set", set);
-		vtk.AddVectorField(std::string(name[f]) + "_run", run);
+		h5.SetCurrentGroup(grp);
+		ok &= h5.WriteVectorField("class", cls);
+		ok &= h5.WriteVectorField("set", set);
+		ok &= h5.WriteVectorField("run", run);
+		ok &= h5.WriteAttribute(grp, "counts", counts);
+
+		// the model of each component as the kernels read it
+		for (int n=0; n<3; ++n)
+		{
+			const CellModel_Component& c = m_Comp[f][n];
+			const std::string cg = grp + "/" + comp[n];
+			h5.SetCurrentGroup(cg);
+			std::vector<double> tab;
+			for (const CellModel_Set& s : c.sets)
+			{
+				const double row[10] = {(double)s.cls, s.m, s.vv, s.uvv, s.ufo, s.ufn, (double)s.offset, (double)s.nl, (double)s.nd, s.solve};
+				tab.insert(tab.end(), row, row+10);
+			}
+			if (!c.sets.empty())
+			{
+				size_t dims[2] = {c.sets.size(), 10};
+				ok &= h5.WriteData("sets", tab.data(), 2, dims);
+				ok &= h5.WriteAttribute(cg + "/sets", "columns", std::string("class, m, vv, uvv, ufo, ufn, offset, nl, nd, solve"));
+			}
+			tab.clear();
+			for (const CellModel_Run& r : c.runs)
+			{
+				const double row[4] = {(double)r.start, (double)r.stop, (double)r.set, (double)r.u};
+				tab.insert(tab.end(), row, row+4);
+			}
+			if (!c.runs.empty())
+			{
+				size_t dims[2] = {c.runs.size(), 4};
+				ok &= h5.WriteData("runs", tab.data(), 2, dims);
+				ok &= h5.WriteAttribute(cg + "/runs", "columns", std::string("start, stop (along the fast axis), set, state offset"));
+			}
+			std::vector<double> first(c.first.begin(), c.first.end());
+			size_t nfirst[1] = {first.size()};
+			ok &= h5.WriteData("first", first.data(), 1, nfirst);
+			ok &= h5.WriteAttribute(cg + "/first", "lines", std::string("the first run of line split*N_mid + mid, plus the end"));
+			if (!c.poles.empty())
+			{
+				std::vector<float> p;
+				for (const CellModel_Pole& q : c.poles)
+				{
+					p.push_back(q.k_int);
+					p.push_back(q.k_ext);
+					p.push_back(q.k_lor);
+				}
+				size_t dims[2] = {c.poles.size(), 3};
+				ok &= h5.WriteData("poles", p.data(), 2, dims);
+				ok &= h5.WriteAttribute(cg + "/poles", "columns", std::string("k_int, k_ext, k_lor (Debye: relax, drive, 0)"));
+			}
+			if (!c.profile[0].empty())
+			{
+				std::vector<float> p;
+				for (int q=0; q<5; ++q)
+					p.insert(p.end(), c.profile[q].begin(), c.profile[q].end());
+				size_t dims[2] = {5, c.profile[0].size()};
+				ok &= h5.WriteData("profile", p.data(), 2, dims);
+				ok &= h5.WriteAttribute(cg + "/profile", "rows", std::string("m, vv, uvv, ufo, ufn"));
+			}
+			ok &= h5.WriteAttribute(cg, "state", c.state);
+		}
 	}
-	if (vtk.Write()==false)
-		std::cerr << "CellModel::Dump: Error: can't write file " << filename << "... skipping!" << endl;
+	if (!ok)
+		std::cerr << "CellModel::Dump: Error: can't write file " << fn << "... incomplete!" << endl;
 }

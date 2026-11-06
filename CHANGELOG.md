@@ -34,9 +34,9 @@ there are unreleased changes. It becomes the next release entry.
   multi-grid or local absorbers in more than one orientation it advances
   cache-sized tiles several timesteps at a time (temporal blocking;
   `OPENEMS_CPU_TBLOCK=0` turns it off). `--debug-operator` also writes its
-  cell model, the class, coefficient set and run of every edge
-  (`cellmodel_dump`). Its results agree with the other engines to float
-  rounding, not bit for bit. On real models with a PML it is
+  cell model to `cellmodel_dump.h5`: the class, coefficient set and run of
+  every edge, the sets, runs and poles, and which extensions it fused. Its
+  results agree with the other engines to float rounding, not bit for bit. On real models with a PML it is
   3-6x faster than the default engine, with dispersive materials up to 10x,
   and needs less memory while running.
 - The multithreaded engines wait for each other in a spinning barrier instead

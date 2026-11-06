@@ -148,16 +148,28 @@ public:
 	//! Free the operator data of the fused extensions and the analysis, after the engine took the runs
 	void FreeFused();
 
-	//! Write the cells as the engine sees them to the VTK file \a filename (no extension), after Build()
+	//! Write the model to the HDF5 file \a filename (no extension), after Build()
 	/*!
-	  Per edge of the voltages and the currents (vector fields volt_*, curr_*):
-	  `class` (CellModel_Set::Class: 0 ZERO, 1 LOSSLESS, 2 LOSSY, 3 UPML, 4 DISP,
-	  5 UPML_PROFILE; 6 an inert current in no run; -1 not updated, the last
-	  line of the currents), `set` (its coefficient set in the component, -1
-	  none) and `run` (the length of its run). For a look in ParaView at what
-	  the model made of a structure: runs broken where the material does not
-	  change, an unexpected class, inert regions missing. `--debug-operator`
-	  writes it as cellmodel_dump with the CPU engine.
+	  For a script or a reader to find what the model made of a structure:
+	  runs broken where the material does not change, an unexpected class,
+	  inert regions missing, an extension not fused. `--debug-operator` writes
+	  it as cellmodel_dump.h5 with the CPU engine. The layout:
+
+	  - /Mesh: the mesh lines, as in the field dumps
+	  - /CellModel, attributes: the axes of the runs (fast, split, mid: 0..2 for
+	    x, y, z), skip_inert, the class names, the fused extensions and why
+	    others were not fused
+	  - /CellModel/volt, /CellModel/curr: per edge (vector fields [3][x][y][z])
+	    `class` (CellModel_Set::Class; 6 an inert current in no run; -1 not
+	    updated, the last line of the currents), `set` (its coefficient set,
+	    -1 none) and `run` (the length of its run); attribute `counts`: the
+	    edges per class 0..6
+	  - /CellModel/volt/x .. z (and curr): the model of the component as the
+	    kernels read it: `sets` [sets][10] (columns in its attribute), `runs`
+	    [runs][4] (start, stop along the fast axis, set, state offset),
+	    `first` [lines+1] (the first run of line split*N_mid + mid), `poles`
+	    [poles][3] (k_int, k_ext, k_lor), `profile` [5][cells] (m, vv, uvv,
+	    ufo, ufn of the UPML_PROFILE sets)
 	  */
 	void Dump(const std::string& filename) const;
 
@@ -218,6 +230,8 @@ protected:
 	std::vector<Dispersive> m_Disp;
 	//! the operator extensions IsFused() answers for, kept after FreeFused()
 	std::vector<const Operator_Extension*> m_Fused;
+	//! the dispersive extensions not fused, and why (Dump())
+	std::vector<std::string> m_NotFused;
 	//! free the cell lists and coefficients of the operator extensions of m_Disp
 	void FreeDispersive();
 	//! the poles of a cell into \a key
