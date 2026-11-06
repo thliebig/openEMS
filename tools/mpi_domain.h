@@ -59,9 +59,13 @@ public:
 	//! The number of blocks per direction, 0 for a choice by MPI_Dims_create(); set before Decompose()
 	void SetSplitRequest(const std::string& splits);
 
+	//! A box that no split may cross (a voltage, current or mode probe), in drawing units; set before Decompose()
+	void AddUnsplitBox(const double start[3], const double stop[3]);
+
 	//! Replace the lines of \a grid by the block of this rank, given the boundary conditions and their sizes in cells (PML)
 	/*!
-	  No split is placed inside a boundary layer of \a bcSize cells. Returns
+	  No split is placed inside a boundary layer of \a bcSize cells or through
+	  a box of AddUnsplitBox(): a split moves to the nearest allowed line. Returns
 	  false (on all ranks) if the requested decomposition is impossible.
 	  */
 	bool Decompose(CSRectGrid* grid, const unsigned int bcSize[6]);
@@ -102,6 +106,7 @@ protected:
 	int m_Size;
 	bool m_Initialized;
 
+	std::vector<std::vector<double> > m_UnsplitBoxes;
 	int m_SplitRequest[3];   //!< requested blocks per direction, 0 for automatic
 	int m_Splits[3];         //!< blocks per direction
 	int m_Coord[3];          //!< the block position of this rank

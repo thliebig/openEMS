@@ -17,10 +17,12 @@
 
 #include "mpi_domain.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 #include "CSRectGrid.h"
 #include "tools/useful.h"
@@ -108,22 +110,37 @@ void MPI_Domain::SetSplitRequest(const std::string& splits)
 }
 
 // the split lines of \a cells cells into \a parts blocks, none inside the first \a lo or the last \a hi cells
-static bool CalcSplitLines(unsigned int cells, int parts, unsigned int lo, unsigned int hi, std::vector<unsigned int>& lines)
+// and none inside one of the line intervals \a keep; a split moves to the nearest line allowed
+static bool CalcSplitLines(unsigned int cells, int parts, unsigned int lo, unsigned int hi,
+						   const std::vector<std::pair<unsigned int, unsigned int> >& keep, std::vector<unsigned int>& lines)
 {
 	lines.clear();
 	lines.push_back(0);
 	// a split line s must keep the boundary layers in one block, and the line s+1 inside the mesh
-	unsigned int minLine = lo+1;
-	unsigned int maxLine = (cells>hi+1) ? cells-hi-1 : 0;
+	int minLine = lo+1;
+	int maxLine = (cells>hi+1) ? cells-hi-1 : 0;
+	auto allowed = [&](int s, int c)
+	{
+		// at least two cells per block, also for the blocks still to come
+		if ((s<minLine) || (s>maxLine) || (s<(int)lines.back()+2) || (s>(int)cells-2*(parts-c)))
+			return false;
+		for (size_t k=0; k<keep.size(); ++k)
+			if ((s>=(int)keep[k].first) && (s<=(int)keep[k].second))
+				return false;
+		return true;
+	};
 	for (int c=1; c<parts; ++c)
 	{
-		unsigned int s = (unsigned int)std::lround((double)c*cells/parts);
-		if (s<minLine)
-			s = minLine;
-		if (s>maxLine)
-			s = maxLine;
-		// at least two cells per block
-		if (s<lines.back()+2)
+		int s0 = (int)std::lround((double)c*cells/parts);
+		int s = -1;
+		for (int d=0; d<=(int)cells && s<0; ++d)
+		{
+			if (allowed(s0+d, c))
+				s = s0+d;
+			else if (allowed(s0-d, c))
+				s = s0-d;
+		}
+		if (s<0)
 			return false;
 		lines.push_back(s);
 	}
@@ -131,6 +148,17 @@ static bool CalcSplitLines(unsigned int cells, int parts, unsigned int lo, unsig
 		return false;
 	lines.push_back(cells);
 	return true;
+}
+
+void MPI_Domain::AddUnsplitBox(const double start[3], const double stop[3])
+{
+	std::vector<double> box(6);
+	for (int n=0; n<3; ++n)
+	{
+		box[2*n] = std::min(start[n], stop[n]);
+		box[2*n+1] = std::max(start[n], stop[n]);
+	}
+	m_UnsplitBoxes.push_back(box);
 }
 
 bool MPI_Domain::Decompose(CSRectGrid* grid, const unsigned int bcSize[6])
@@ -189,11 +217,21 @@ bool MPI_Domain::Decompose(CSRectGrid* grid, const unsigned int bcSize[6])
 	for (int n=0; n<3; ++n)
 	{
 		m_Splits[n] = best[n];
-		if (!CalcSplitLines(numLines[n]-1, best[n], bcSize[2*n], bcSize[2*n+1], split[n]))
+		// no split through a probe: the line range it snaps to, with two lines to spare for the dual mesh
+		std::vector<std::pair<unsigned int, unsigned int> > keep;
+		for (size_t k=0; k<m_UnsplitBoxes.size(); ++k)
+		{
+			bool inside;
+			unsigned int i0 = grid->Snap2LineNumber(n, m_UnsplitBoxes[k][2*n], inside);
+			unsigned int i1 = grid->Snap2LineNumber(n, m_UnsplitBoxes[k][2*n+1], inside);
+			keep.push_back(std::make_pair(i0>2 ? i0-2 : 0, i1+2));
+		}
+		if (!CalcSplitLines(numLines[n]-1, best[n], bcSize[2*n], bcSize[2*n+1], keep, split[n]))
 		{
 			if (m_Rank==0)
 				cerr << "MPI_Domain::Decompose: Error: cannot split direction " << n << " into " << best[n]
-					 << " blocks outside the boundary layers (PML), the mesh is too small" << endl;
+					 << " blocks outside the boundary layers (PML) and the voltage/current probes;"
+					 << " use fewer blocks in this direction (--mpi-split)" << endl;
 			return false;
 		}
 	}

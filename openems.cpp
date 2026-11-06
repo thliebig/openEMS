@@ -1353,13 +1353,29 @@ int openEMS::SetupFDTD()
 		if (CylinderCoords)
 		{
 			cerr << "openEMS::SetupFDTD: Error: the MPI domain decomposition supports Cartesian meshes only" << endl;
-			return 2;
+			return 5;
 		}
 		unsigned int bcSize[6];
 		for (int n=0; n<6; ++n)
 			bcSize[n] = (m_BC_type[n]==3) ? m_PML_size[n] : ((m_BC_type[n]==2) ? 1 : 0);
+		// the integrals of the voltage, current and mode probes need the whole box on one rank
+		vector<CSProperties*> probes = m_CSX->GetPropertyByType(CSProperties::PROBEBOX);
+		for (size_t i=0; i<probes.size(); ++i)
+		{
+			CSPropProbeBox* pb = probes.at(i)->ToProbeBox();
+			if (!pb || (pb->GetProbeType()==2) || (pb->GetProbeType()==3))
+				continue;
+			for (size_t nb=0; nb<pb->GetQtyPrimitives(); ++nb)
+			{
+				double bnd[6] = {0,0,0,0,0,0};
+				pb->GetPrimitive(nb)->GetBoundBox(bnd, true);
+				double start[3] = {bnd[0], bnd[2], bnd[4]};
+				double stop[3] = {bnd[1], bnd[3], bnd[5]};
+				g_mpi.AddUnsplitBox(start, stop);
+			}
+		}
 		if (!g_mpi.Decompose(m_CSX->GetGrid(), bcSize))
-			return 2;
+			return 5;  // the same on all ranks, see main()
 	}
 
 	//*************** setup operator ************//

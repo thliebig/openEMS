@@ -11,13 +11,13 @@
  Together the cases split through PML, Mur ABC, lumped port and RLC element,
  Lorentz/Debye materials and a conducting sheet, in 1D, 2D and 3D
  decompositions with both CPU engines, and stop on the energy end criteria and
- on the steady-state detection. A probe that crosses a block boundary has to
- stop all ranks with an error.
+ on the steady-state detection. The splits move past the voltage and current
+ probes; where no split is possible, all ranks stop with an error.
 
  Pass criteria (per case and decomposition)
    the decomposition requested was used
    all probe files bit-identical to the serial run
-   probe crossing a block boundary: exit status != 0 and the error message
+   no split possible past a probe: exit status != 0 and the error message
 
  Skipped (with a message) unless the openEMS binary was built with
  -DWITH_MPI=ON and mpirun is found. The binary is $OPENEMS_BIN, or openEMS
@@ -141,10 +141,18 @@ def case_steady_state():
     return FDTD, CSX
 
 
-def case_probe_split():
-    """ a voltage probe from x=-20 to 20: crosses every split in x """
+def case_probe_long():
+    """ a voltage probe from x=-8 to 8 and a current probe below the patch: the splits move past them """
     FDTD, CSX = case_patch()
-    CSX.AddProbe('u_long', p_type=0).AddBox([-20, 0, 6], [20, 0, 6])
+    CSX.AddProbe('u_long', p_type=0).AddBox([-8, 0, 6], [8, 0, 6])
+    CSX.AddProbe('i_patch', p_type=1, norm_dir=2).AddBox([-5, -4, 0.8], [5, 4, 0.8])
+    return FDTD, CSX
+
+
+def case_probe_full():
+    """ a voltage probe across the whole mesh between the PMLs in x: no split in x is possible """
+    FDTD, CSX = case_patch()
+    CSX.AddProbe('u_full', p_type=0).AddBox([-29, 0, 6], [29, 0, 6])
     return FDTD, CSX
 
 
@@ -180,7 +188,8 @@ cases = [(case_patch,        [(2, '2,1,1'), (2, '1,2,1'), (4, '2,2,1'), (3, '3,1
          (case_patch,        [(4, '2,2,1')],                                'basic'),
          (case_materials,    [(2, '1,1,2'), (8, '2,2,2'), (4, '0,0,0')],    None),
          (case_materials,    [(6, '1,2,3')],                                'basic'),
-         (case_steady_state, [(4, '2,1,2')],                                None)]
+         (case_steady_state, [(4, '2,1,2')],                                None),
+         (case_probe_long,   [(2, '2,1,1'), (4, '2,2,1')],                  None)]
 
 failures = []
 for case, decomps, engine in cases:
@@ -208,13 +217,13 @@ for case, decomps, engine in cases:
         if diff:
             failures.append('{}: differs from the serial run: {}'.format(label, diff))
 
-# a probe across a block boundary stops all ranks with an error
-xml = os.path.join(Sim_Base, 'probe_split.xml')
-write_xml(case_probe_split, xml)
-rc, out = run(exe, mpicmd, xml, os.path.join(Sim_Base, 'probe_split_n2'), 2, '2,1,1')
-print('{:28s} exit status {}'.format('probe_split_n2_211', rc))
-if rc == 0 or 'crosses an MPI block boundary' not in out:
-    failures.append('probe_split: expected an error exit, got {}:\n{}'.format(rc, out[-2000:]))
+# no split in x past a probe across the whole mesh: all ranks stop with an error
+xml = os.path.join(Sim_Base, 'probe_full.xml')
+write_xml(case_probe_full, xml)
+rc, out = run(exe, mpicmd, xml, os.path.join(Sim_Base, 'probe_full_n2'), 2, '2,1,1')
+print('{:28s} exit status {}'.format('probe_full_n2_211', rc))
+if rc == 0 or 'cannot split direction 0' not in out:
+    failures.append('probe_full: expected an error exit, got {}:\n{}'.format(rc, out[-2000:]))
 
 assert not failures, 'FAIL:\n' + '\n'.join(failures)
 print('MPI_Engine: all decompositions bit-identical to the serial runs')
