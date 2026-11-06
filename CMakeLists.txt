@@ -155,6 +155,14 @@ INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
 find_package(ZLIB REQUIRED)
 INCLUDE_DIRECTORIES (${ZLIB_INCLUDE_DIRS})
 
+# optional MPI domain decomposition (mpirun -n <N> openEMS ...)
+option(WITH_MPI "Build with MPI domain decomposition" OFF)
+if (WITH_MPI)
+  find_package(MPI REQUIRED COMPONENTS C)
+  ADD_DEFINITIONS(-DMPI_SUPPORT)
+  message(STATUS "MPI: ${MPI_C_LIBRARIES}")
+endif()
+
 # independent tool
 ADD_SUBDIRECTORY( nf2ff )
 
@@ -455,6 +463,9 @@ TARGET_LINK_LIBRARIES( openEMS
   ${Boost_LIBRARIES}
   ${ZLIB_LIBRARIES}
 )
+if (WITH_MPI)
+  TARGET_LINK_LIBRARIES( openEMS MPI::MPI_C )
+endif()
 
 if (WIN32)
     # make sure "BUILD_OPENEMS_LIB" is only set for openEMS (dll) not openEMS_bin (exe)

@@ -37,6 +37,7 @@
 
 #include "CSPropMaterial.h"
 #include "CSPropLumpedElement.h"
+#include "tools/mpi_domain.h"
 
 using std::cout;
 using std::cerr;
@@ -1040,6 +1041,8 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	{
 		double save_dT = dT;
 		CalcTimestep();
+		// the stable timestep of the whole mesh (MPI domain decomposition), unchanged otherwise
+		dT = g_mpi.AllreduceMin(dT);
 		opt_dT = dT;
 		if (dT<save_dT)
 		{
@@ -1050,7 +1053,10 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 		dT = save_dT;
 	}
 	else
+	{
 		CalcTimestep();
+		dT = g_mpi.AllreduceMin(dT);
+	}
 
 	dT*=m_TimeStepFactor;
 

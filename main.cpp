@@ -22,6 +22,7 @@
 #include "openems.h"
 
 #include "tools/global.h"
+#include "tools/mpi_domain.h"
 
 #ifndef GIT_VERSION
 #define GIT_VERSION "unknown:compiled@" __DATE__
@@ -29,11 +30,12 @@
 
 using namespace std;
 
-int main(int argc, const char* argv[])
+static int run(int argc, const char* argv[])
 {
 	openEMS FDTD;
 
-	openEMS::WelcomeScreen();
+	if (g_mpi.Rank()==0)
+		openEMS::WelcomeScreen();
 
 	if (argc<=1)
 	{
@@ -62,4 +64,34 @@ int main(int argc, const char* argv[])
 	}
 
 	return 0;
+}
+
+int main(int argc, const char* argv[])
+{
+	g_mpi.Init(&argc, const_cast<char***>(&argv));
+
+	// the console is rank 0's, the other ranks write a log file each
+	std::ofstream rankLog;
+	std::streambuf* coutBuf = cout.rdbuf();
+	std::streambuf* cerrBuf = cerr.rdbuf();
+	if (g_mpi.Rank()>0)
+	{
+		rankLog.open(g_mpi.RankFileName("openEMS.log").c_str());
+		cout.rdbuf(rankLog.rdbuf());
+		cerr.rdbuf(rankLog.rdbuf());
+	}
+
+	int ret = run(argc, argv);
+
+	cout.rdbuf(coutBuf);
+	cerr.rdbuf(cerrBuf);
+	if ((ret!=0) && g_mpi.Enabled())
+	{
+		// the other ranks may wait in a collective call
+		if (g_mpi.Rank()>0)
+			cerr << "openEMS: rank " << g_mpi.Rank() << " failed, see " << g_mpi.RankFileName("openEMS.log") << endl;
+		g_mpi.Abort(ret);
+	}
+	g_mpi.Finalize();
+	return ret;
 }

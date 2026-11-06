@@ -58,6 +58,8 @@
 #include "CSPropProbeBox.h"
 #include "CSPrimBox.h"
 #include "CSPropDumpBox.h"
+#include "tools/mpi_domain.h"
+#include "FDTD/extensions/operator_ext_mpi.h"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -293,6 +295,17 @@ void openEMS::collectCommandLineArguments()
 			"printed at --verbose=1 (default: the best device)"
 		)
 		(
+			"mpi-split",
+			po::value<std::string>()->notifier(
+				[&](std::string val)
+				{
+					g_mpi.SetSplitRequest(val);
+				}
+			),
+			"MPI blocks per direction x,y,z, 0 for automatic (default: 0,0,0, "
+			"the least inner interface area)"
+		)
+		(
 			"numThreads",
 			po::value<int>()->default_value(0)->notifier(
 				[&](int val)
@@ -429,13 +442,22 @@ void openEMS::WelcomeScreen()
 
 bool openEMS::SetupBoundaryConditions()
 {
-	FDTD_Op->SetBoundaryCondition(m_BC_type); //operator only knows about PEC and PMC, everything else is defined by extensions (see below)
+	// an inner face of an MPI block is PEC: the halo exchange overwrites its tangential fields
+	int bc[6];
+	unsigned int pml[6];
+	for (int n=0; n<6; ++n)
+	{
+		bc[n] = g_mpi.IsInnerFace(n) ? 0 : m_BC_type[n];
+		pml[n] = g_mpi.IsInnerFace(n) ? 0 : m_PML_size[n];
+	}
+
+	FDTD_Op->SetBoundaryCondition(bc); //operator only knows about PEC and PMC, everything else is defined by extensions (see below)
 
 	/**************************** create all operator/engine extensions here !!!! **********************************/
 	for (int n=0; n<6; ++n)
 	{
 		FDTD_Op->SetBCSize(n, 0);
-		if (m_BC_type[n]==2) //Mur-ABC
+		if (bc[n]==2) //Mur-ABC
 		{
 			FDTD_Op->SetBCSize(n, 1);
 			Operator_Ext_Mur_ABC* op_ext_mur = new Operator_Ext_Mur_ABC(FDTD_Op);
@@ -444,13 +466,16 @@ bool openEMS::SetupBoundaryConditions()
 				op_ext_mur->SetPhaseVelocity(m_Mur_v_ph[n]);
 			FDTD_Op->AddExtension(op_ext_mur);
 		}
-		if (m_BC_type[n]==3)
-			FDTD_Op->SetBCSize(n, m_PML_size[n]);
+		if (bc[n]==3)
+			FDTD_Op->SetBCSize(n, pml[n]);
 	}
 
 
 	//create the upml
-	Operator_Ext_UPML::Create_UPML(FDTD_Op, m_BC_type, m_PML_size, string());
+	Operator_Ext_UPML::Create_UPML(FDTD_Op, bc, pml, string());
+
+	if (g_mpi.Enabled())
+		FDTD_Op->AddExtension(new Operator_Ext_MPI(FDTD_Op));
 
 	return true;
 }
@@ -570,6 +595,20 @@ bool openEMS::SetupProcessing()
 				stop[0] = bnd[1];
 				stop[1] =bnd[3];
 				stop[2] =bnd[5];
+
+				// MPI: a probe belongs to the one block that contains it
+				MPI_Domain::BoxOwner owner = g_mpi.OwnsBox(start, stop);
+				if (owner==MPI_Domain::BOX_SPLIT)
+				{
+					cerr << "openEMS::SetupProcessing: Error: probe '" << pb->GetName() << "' crosses an MPI block boundary,"
+						 << " choose other splits (--mpi-split) or move the probe" << endl;
+					return false;
+				}
+				if (owner==MPI_Domain::BOX_OTHER)
+				{
+					prim->SetPrimitiveUsed(true);
+					continue;
+				}
 
 				ProcessIntegral* proc = NULL;
 				if (pb->GetProbeType()==0)
@@ -762,7 +801,8 @@ bool openEMS::SetupProcessing()
 						else
 							ProcField->SetName(db->GetName(),nb);
 
-						ProcField->SetFileName(ProcField->GetName());
+						// MPI: every rank dumps its part of the box, to a file of its own
+						ProcField->SetFileName(g_mpi.RankFileName(ProcField->GetName()));
 						ProcField->DefineStartStopCoord(start,stop);
 						if (g_settings.showProbeDiscretization())
 							ProcField->ShowSnappedCoords();
@@ -1307,6 +1347,21 @@ int openEMS::SetupFDTD()
 	if (m_debugCSX)
 		m_CSX->Write2XML("debugCSX.xml");
 
+	// MPI: from here on this rank simulates its block of the mesh
+	if (g_mpi.Enabled())
+	{
+		if (CylinderCoords)
+		{
+			cerr << "openEMS::SetupFDTD: Error: the MPI domain decomposition supports Cartesian meshes only" << endl;
+			return 2;
+		}
+		unsigned int bcSize[6];
+		for (int n=0; n<6; ++n)
+			bcSize[n] = (m_BC_type[n]==3) ? m_PML_size[n] : ((m_BC_type[n]==2) ? 1 : 0);
+		if (!g_mpi.Decompose(m_CSX->GetGrid(), bcSize))
+			return 2;
+	}
+
 	//*************** setup operator ************//
 	if (SetupOperator()==false)
 	{
@@ -1418,8 +1473,11 @@ int openEMS::SetupFDTD()
 
 	if (!m_Exc->buildExcitationSignal(NrTS))
 		return 2;
-	m_Exc->DumpVoltageExcite("et");
-	m_Exc->DumpCurrentExcite("ht");
+	if (g_mpi.Rank()==0)
+	{
+		m_Exc->DumpVoltageExcite("et");
+		m_Exc->DumpCurrentExcite("ht");
+	}
 
 	timeval OpDoneTime;
 	gettimeofday(&OpDoneTime,NULL);
@@ -1590,7 +1648,7 @@ void openEMS::RunFDTD()
 
 	double change=1;
 	int prevTS=0,currTS=0;
-	double numCells = FDTD_Op->GetNumberCells();
+	double numCells = g_mpi.Enabled() ? g_mpi.GetGlobalNumberCells() : FDTD_Op->GetNumberCells();
 	double speed = 0;
 	double t_diff;
 	double t_run;
@@ -1607,17 +1665,19 @@ void openEMS::RunFDTD()
 	PA->PreProcess();
 	int step=PA->Process();
 	if ((step<0) || (step>(int)NrTS)) step=NrTS;
+	// MPI: all ranks take the same steps and decisions, the smallest step any processing asks for
+	step = g_mpi.AllreduceMin(step);
 	bool aborted = false;
-	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit) && !(aborted = CheckAbortCond()))
+	while ((FDTD_Eng->GetNumberOfTimesteps()<NrTS) && (change>endCrit) && !(aborted = g_mpi.AllreduceOr(CheckAbortCond())))
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
 
 		if (Eng_Ext_SSD)
-			change = Eng_Ext_SSD->GetLastDiff(); // cheap: extension keeps this up to date itself
+			change = g_mpi.AllreduceMax(Eng_Ext_SSD->GetLastDiff()); // cheap: extension keeps this up to date itself
 		else if (ProcField->CheckTimestep())
 		{
-			currE = ProcField->CalcTotalEnergyEstimate();
+			currE = g_mpi.AllreduceSum(ProcField->CalcTotalEnergyEstimate());
 			if (currE>maxE)
 				maxE=currE;
 			if (exactEndCrit && maxE)
@@ -1626,12 +1686,14 @@ void openEMS::RunFDTD()
 
 		currTS = FDTD_Eng->GetNumberOfTimesteps();
 		if ((step<0) || (step>(int)(NrTS - currTS))) step=NrTS - currTS;
+		step = g_mpi.AllreduceMin(step);
 
 		gettimeofday(&currTime,NULL);
 
-		t_diff = CalcDiffTime(currTime,prevTime);
+		// the slowest rank decides on the wall-clock schedule
+		t_diff = g_mpi.AllreduceMax(CalcDiffTime(currTime,prevTime));
 
-		if (exactEndCrit && !m_exactEndCriteria && (CalcDiffTime(currTime,startTime)>EXACT_ENDCRIT_TIME))
+		if (exactEndCrit && !m_exactEndCriteria && (g_mpi.AllreduceMax(CalcDiffTime(currTime,startTime))>EXACT_ENDCRIT_TIME))
 		{
 			// from here on with the progress report only
 			exactEndCrit = false;
@@ -1650,7 +1712,7 @@ void openEMS::RunFDTD()
 			{
 				if (!exactEndCrit) // otherwise already kept current above, every Nyquist period
 				{
-					currE = ProcField->CalcTotalEnergyEstimate();
+					currE = g_mpi.AllreduceSum(ProcField->CalcTotalEnergyEstimate());
 					if (currE>maxE)
 						maxE=currE;
 					if (maxE)
