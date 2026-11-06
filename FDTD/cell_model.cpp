@@ -134,6 +134,7 @@ void CellModel::Analyse(bool skipInert)
 	FindDispersive();
 	for (const Dispersive& d : m_Disp)
 		m_Fused.push_back(d.op);
+	WarnLumpedInDispersive();
 	FindInert();
 	CalcGeometry();
 }
@@ -221,6 +222,40 @@ void CellModel::FindDispersive()
 		else if (g_settings.GetVerboseLevel()>0)
 			cout << "CellModel: the " << d.op->GetExtensionName() << " stays an extension: " << why << endl;
 	}
+}
+
+void CellModel::WarnLumpedInDispersive() const
+{
+	// the edges of the lumped RLC elements (an inductor, or in series: those with an engine
+	// extension) that also have a pole of a fused Drude/Lorentz material
+	size_t edges = 0;
+	for (size_t n=0; n<Op->GetNumberOfExtentions(); ++n)
+	{
+		const Operator_Ext_LumpedRLC* rlc = dynamic_cast<const Operator_Ext_LumpedRLC*>(Op->GetExtension(n));
+		if (rlc==NULL)
+			continue;
+		for (size_t i=0; i<rlc->RLC_count; ++i)
+		{
+			const unsigned int p[3] = {rlc->v_RLC_pos[0][i], rlc->v_RLC_pos[1][i], rlc->v_RLC_pos[2][i]};
+			const int c = rlc->v_RLC_dir[i];
+			const size_t lin = ((size_t)p[0]*numLines[1] + p[1])*numLines[2] + p[2];
+			bool pole = false;
+			for (const Dispersive& d : m_Disp)
+				for (int o=0; d.lorentz && (o<d.lorentz->m_Order) && !pole; ++o)
+				{
+					if (!d.lorentz->m_volt_ADE_On[o])
+						continue;
+					const int64_t idx = d.cells[o].Find(lin);
+					pole = (idx>=0) && (d.lorentz->v_ext_ADE[o][c][idx]!=0);
+				}
+			edges += pole;
+		}
+	}
+	if (edges>0)
+		std::cerr << "CellModel: Warning: " << edges << " edges of lumped RLC elements lie in a Drude/Lorentz material:"
+		          << " this engine applies the material's correction before the element, the other engines after it"
+		          << " (both only approximate the two parallel branches of one edge). Keep lumped elements out of"
+		          << " dispersive materials." << std::endl;
 }
 
 void CellModel::FindInert()

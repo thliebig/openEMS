@@ -101,10 +101,17 @@ struct CellModel_Component
   and per cell and pole their state. The kernel runs the extensions' pre
   passes, the main update, the Debye post pass and the Drude/Lorentz apply
   pass (X -= J) in one, so the latter two before the other extensions' post
-  and apply hooks instead of in the order of their priority: the same for
-  additive hooks up to rounding, but not for the cylinder's at r=0. With a
-  cylindrical mesh, a dispersive cell in a UPML, more than MAX_POLES poles of
-  a kind or a second Debye extension, the extension stays.
+  and apply hooks instead of in the order of their priority. The same up to
+  rounding for additive hooks (excitation, TF/SF); the same for Mur, which
+  overwrites its plane after the apply pass in the other engines too (equal
+  priority runs in reverse order of creation); not the same for the
+  cylinder's r=0 (so no fusion on a cylindrical mesh) and for a lumped RLC
+  element with an engine extension (an inductor, or in series) on a
+  Drude/Lorentz edge, which here sees the corrected field, in the other
+  engines the uncorrected one: a modelling conflict either way, warned about
+  (a lumped element is no material, so priority does not separate them).
+  With a cylindrical mesh, a dispersive cell in a UPML, more than MAX_POLES
+  poles of a kind or a second Debye extension, the extension stays.
 
   A lossless current inside metal, whose four voltages of the curl are ZERO
   cells, never changes: it is in no run, so the kernels skip it. Only if no
@@ -185,6 +192,8 @@ protected:
 
 	//! the dispersive extensions the model takes over, with their cells
 	void FindDispersive();
+	//! a warning about lumped RLC edges with Drude/Lorentz poles, where the order of the two differs from the other engines
+	void WarnLumpedInDispersive() const;
 	struct Dispersive
 	{
 		const Operator_Ext_Dispersive* op;
