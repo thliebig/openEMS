@@ -195,7 +195,12 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 	double H_energy=0.0;
 
 	unsigned int pos[3];
-	if ((m_Eng->GetType()==Engine::BASIC) || (m_Eng->GetType()==Engine::CPU))   // Engine::GetVolt() follows the layout
+	unsigned int numNodes[3];
+	for (int n=0; n<3; ++n)
+		numNodes[n] = m_Op->GetNumberOfLines(n)-1;
+	if (m_Eng->CalcFastEnergy(numNodes, E_energy, H_energy))   // the engine itself, e.g. in its memory order
+		return EPS0*E_energy + MUE0*H_energy;
+	if (m_Eng->GetType()==Engine::BASIC)
 	{
 		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
 		{

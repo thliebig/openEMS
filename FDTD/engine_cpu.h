@@ -67,6 +67,14 @@ public:
 	//! The fast axis (stride 1 in memory)
 	int GetFastAxis() const {return m_FastAxis;}
 
+	//! In memory order and on several threads; the same sums in the same order whatever the threads, per line of the split axis
+	/*!
+	  The interface walked the cells x, y, z, across the layout when the fast
+	  axis is x or y: about 9 % of a run with a Gaussian excitation, whose end
+	  criteria takes the energy every Nyquist period during the first minute.
+	  */
+	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
+
 protected:
 	Engine_CPU(const Operator* op);
 

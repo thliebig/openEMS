@@ -104,6 +104,9 @@ public:
 
 	EngineType GetType() const {return m_type;}
 
+	//! The sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, if the engine computes them itself (on the device, in its memory order); false: Engine_Interface_FDTD::CalcFastEnergy() does
+	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const {(void)numNodes; (void)E_energy; (void)H_energy; return false;}
+
 	//! The voltages and currents of the engines that keep them in these arrays (basic, CPU), else NULL
 	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* GetVoltageArray() const {return volt_ptr;}
 	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* GetCurrentArray() const {return curr_ptr;}

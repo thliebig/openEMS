@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 #include <typeinfo>
 #ifdef OPENEMS_CPU_AVX2
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -446,6 +447,49 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Engine_CPU: temporal blocking, up to " << k << " timesteps per block, tiles of " << W << " lines along "
 		     << (char)('x'+m_SplitAxis) << ", " << plans[0].phases.size() << " phases" << endl;
+	return true;
+}
+
+bool Engine_CPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const
+{
+	const unsigned int nS = numNodes[m_SplitAxis], nM = numNodes[m_MidAxis], nF = numNodes[m_FastAxis];
+	const size_t sN = volt_ptr->stride(0), sS = volt_ptr->stride(1+m_SplitAxis), sM = volt_ptr->stride(1+m_MidAxis);
+	const float* const V = volt_ptr->data();
+	const float* const I = curr_ptr->data();
+	// a sum per line of the split axis, added in line order: the same result for any number of threads
+	std::vector<double> e(nS, 0), h(nS, 0);
+	auto lines = [&](unsigned int s0, unsigned int s1) {
+		for (unsigned int s=s0; s<s1; ++s)
+		{
+			double es = 0, hs = 0;
+			for (int n=0; n<3; ++n)
+				for (unsigned int m=0; m<nM; ++m)
+				{
+					const float* v = V + n*sN + s*sS + m*sM;
+					const float* c = I + n*sN + s*sS + m*sM;
+					for (unsigned int f=0; f<nF; ++f)
+					{
+						es += v[f]*v[f];   // the products in float, as the interface did
+						hs += c[f]*c[f];
+					}
+				}
+			e[s] = es;
+			h[s] = hs;
+		}
+	};
+	const unsigned int numThreads = std::max(1u, std::min(AvailableThreads(), nS));
+	std::vector<std::thread> threads;
+	for (unsigned int t=1; t<numThreads; ++t)
+		threads.push_back(std::thread(lines, (unsigned int)((size_t)nS*t/numThreads), (unsigned int)((size_t)nS*(t+1)/numThreads)));
+	lines(0, nS/numThreads);
+	for (std::thread& th : threads)
+		th.join();
+	E_energy = H_energy = 0;
+	for (unsigned int s=0; s<nS; ++s)
+	{
+		E_energy += e[s];
+		H_energy += h[s];
+	}
 	return true;
 }
 
