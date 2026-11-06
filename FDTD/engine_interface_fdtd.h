@@ -200,6 +200,9 @@ protected:
 	bool m_Closed[3];
 	unsigned int m_ClosedFirst[3], m_ClosedLast[3];
 	void UpdateClosedMesh();
+
+	//! The first node of the energy sum: 2 above an inner face of an MPI block (ghost and split line are the lower rank's), 0 otherwise
+	unsigned int m_EnergyStart[3];
 	//! The line of direction \a n an interpolated field at \a line is evaluated at: on the seam of a closed mesh its other side, where the interpolation has the neighbours
 	unsigned int GetSeamLine(int n, unsigned int line) const;
 

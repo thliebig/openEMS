@@ -27,14 +27,14 @@ class CSRectGrid;
 
 //! The MPI domain decomposition of a Cartesian mesh into blocks, one block per rank
 /*!
-  Every rank runs a complete openEMS simulation on its block of mesh lines. A
-  block that has a neighbour above in direction n gets one more line, the
-  first line of that neighbour's block: the two blocks then share the planes
-  of the lines \a s and \a s+1, \a s being the split line. The lower rank owns
-  the tangential voltages on line \a s, the upper rank the tangential currents
-  between \a s and \a s+1; Engine_Ext_MPI copies them across after every half
-  step, so the planes the other rank cannot compute are overwritten with the
-  right values.
+  Every rank runs a complete openEMS simulation on its block of mesh lines,
+  plus one ghost line towards each neighbour: the two blocks of a split line
+  \a s share the lines \a s-1 to \a s+1. The lower rank owns the tangential
+  voltages on line \a s, the upper rank the tangential currents between \a s
+  and \a s+1; Engine_Ext_MPI copies them across after every half step, so the
+  planes the other rank cannot compute are overwritten with the right values.
+  With the ghost lines nothing a rank owns lies on the first or last line of
+  its mesh, which the operator and the extensions treat as the mesh boundary.
 
   Without MPI_SUPPORT, or with a single rank, Enabled() is false and the
   reductions return their argument.
@@ -73,6 +73,10 @@ public:
 
 	//! The number of cells of the whole (undecomposed) mesh
 	double GetGlobalNumberCells() const {return m_GlobalCells;}
+	//! The number of lines of the whole mesh in direction \a n; \a local without MPI
+	unsigned int GetGlobalNumberOfLines(int n, unsigned int local) const {return Enabled() ? m_GlobalLines[n] : local;}
+	//! The local mesh position of the global node \a gpos, if this rank owns it (as for OwnsBox); always true without MPI
+	bool GlobalToLocal(const unsigned int gpos[3], unsigned int lpos[3]) const;
 
 	//! Whether this rank owns the box \a start..\a stop (drawing units), see OwnsBox
 	enum BoxOwner {BOX_OWNED, BOX_OTHER, BOX_SPLIT};
@@ -104,6 +108,10 @@ protected:
 	int m_NeighborUp[3];
 	int m_NeighborDown[3];
 	double m_GlobalCells;
+	unsigned int m_GlobalLines[3];
+	unsigned int m_SplitLo[3];   //!< the global line of the lower split of this block
+	unsigned int m_SplitHi[3];   //!< ... and of the upper one (the last line at the end of the mesh)
+	unsigned int m_FirstLine[3]; //!< the global line of the first local line (the ghost line, if any)
 
 	//! The owned interval of this rank in drawing units, per direction: [lo, hi), closed at the upper end of the mesh
 	double m_OwnLo[3];

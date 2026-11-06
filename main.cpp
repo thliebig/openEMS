@@ -85,7 +85,8 @@ int main(int argc, const char* argv[])
 
 	cout.rdbuf(coutBuf);
 	cerr.rdbuf(cerrBuf);
-	if ((ret!=0) && g_mpi.Enabled())
+	// 1: --no-simulation, all ranks stop after the setup
+	if ((ret!=0) && (ret!=1) && g_mpi.Enabled())
 	{
 		// the other ranks may wait in a collective call
 		if (g_mpi.Rank()>0)

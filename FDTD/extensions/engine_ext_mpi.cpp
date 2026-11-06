@@ -93,13 +93,14 @@ void Engine_Ext_MPI::ExchangeImpl(EngType* eng, bool voltages)
 	for (int n=0; n<3; ++n)
 	{
 		// voltages: the lower rank owns the tangential voltages on the split line, they go up;
-		// currents: the upper rank owns the tangential currents above it, they go down
+		// currents: the upper rank owns the tangential currents above it, they go down.
+		// The split line is the last but one line of the lower block, the second of the upper.
 		int to   = voltages ? m_Op_Ext_MPI->m_NeighborUp[n]   : m_Op_Ext_MPI->m_NeighborDown[n];
 		int from = voltages ? m_Op_Ext_MPI->m_NeighborDown[n] : m_Op_Ext_MPI->m_NeighborUp[n];
 		if ((to<0) && (from<0))
 			continue;
-		unsigned int sendPos = voltages ? numLines[n]-2 : 0;
-		unsigned int recvPos = voltages ? 0 : numLines[n]-2;
+		unsigned int sendPos = voltages ? numLines[n]-2 : 1;
+		unsigned int recvPos = voltages ? 1 : numLines[n]-2;
 		if (to>=0)
 			PackPlane(eng, voltages, n, sendPos, m_SendBuf[n].data());
 		g_mpi.SendRecv(m_SendBuf[n].data(), to, m_RecvBuf[n].data(), from, (int)m_SendBuf[n].size(), (voltages ? 100 : 200) + n);

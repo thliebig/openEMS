@@ -1409,27 +1409,34 @@ int openEMS::SetupFDTD()
 	{
 		cout << "Create a steady state detection using a period of " << m_Exc->GetSignalPeriod() << " s" << endl;
 		Op_Ext_SSD = new Operator_Ext_SteadyState(FDTD_Op, m_Exc->GetSignalPeriod());
-		unsigned int pos[3];
+		// the probe positions on the whole mesh; with MPI the rank that owns a node gets its probes
+		unsigned int numLines[3];
 		for (int p=0;p<3;++p)
-			pos[p] = FDTD_Op->GetNumberOfLines(p)/2;
-		Op_Ext_SSD->Add_E_Probe(pos, 0);
-		Op_Ext_SSD->Add_E_Probe(pos, 1);
-		Op_Ext_SSD->Add_E_Probe(pos, 2);
+			numLines[p] = g_mpi.GetGlobalNumberOfLines(p, FDTD_Op->GetNumberOfLines(p));
+		unsigned int pos[3];
+		auto addProbes = [&]()
+		{
+			unsigned int lpos[3];
+			if (!g_mpi.GlobalToLocal(pos, lpos))
+				return;
+			Op_Ext_SSD->Add_E_Probe(lpos, 0);
+			Op_Ext_SSD->Add_E_Probe(lpos, 1);
+			Op_Ext_SSD->Add_E_Probe(lpos, 2);
+		};
+		for (int p=0;p<3;++p)
+			pos[p] = numLines[p]/2;
+		addProbes();
 
 		for (int n=0;n<3;++n)
 		{
 			for (int p=0;p<3;++p)
-				pos[p] = FDTD_Op->GetNumberOfLines(p)/2;
+				pos[p] = numLines[p]/2;
 
-			pos[n] = FDTD_Op->GetNumberOfLines(n)/4;
-			Op_Ext_SSD->Add_E_Probe(pos, 0);
-			Op_Ext_SSD->Add_E_Probe(pos, 1);
-			Op_Ext_SSD->Add_E_Probe(pos, 2);
+			pos[n] = numLines[n]/4;
+			addProbes();
 
-			pos[n] = FDTD_Op->GetNumberOfLines(n)*3/4;
-			Op_Ext_SSD->Add_E_Probe(pos, 0);
-			Op_Ext_SSD->Add_E_Probe(pos, 1);
-			Op_Ext_SSD->Add_E_Probe(pos, 2);
+			pos[n] = numLines[n]*3/4;
+			addProbes();
 		}
 		FDTD_Op->AddExtension(Op_Ext_SSD);
 	}
@@ -1750,7 +1757,7 @@ void openEMS::RunFDTD()
 	gettimeofday(&currTime,NULL);
 	t_diff = CalcDiffTime(currTime,startTime);
 
-	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
+	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << numCells << " cells : " << t_diff << " sec" << endl;
 	cout << "Speed: " << numCells*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff*1e-6 << " MCells/s " << endl;
 
 	if (m_DumpStats)

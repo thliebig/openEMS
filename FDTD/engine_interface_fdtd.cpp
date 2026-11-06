@@ -16,6 +16,7 @@
 */
 
 #include "engine_interface_fdtd.h"
+#include "tools/mpi_domain.h"
 #include <stdexcept>
 
 using std::cerr;
@@ -30,6 +31,8 @@ Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op) : Engine_Interface_Ba
 	if (m_Eng==NULL)
 		throw std::runtime_error("Engine_Interface_FDTD::Engine_Interface_FDTD: Error: Engine is not set!");
 	UpdateClosedMesh();
+	for (int n=0; n<3; ++n)
+		m_EnergyStart[n] = g_mpi.IsInnerFace(2*n) ? 2 : 0;
 }
 
 void Engine_Interface_FDTD::SetFDTDOperator(Operator* op)
@@ -196,11 +199,11 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 	unsigned int pos[3];
 	if (m_Eng->GetType()==Engine::BASIC)
 	{
-		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
+		for (pos[0]=m_EnergyStart[0]; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
 		{
-			for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
+			for (pos[1]=m_EnergyStart[1]; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
 			{
-				for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
+				for (pos[2]=m_EnergyStart[2]; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
 				{
 					E_energy+=m_Eng->Engine::GetVolt(0,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(0,pos[0],pos[1],pos[2]);
 					E_energy+=m_Eng->Engine::GetVolt(1,pos[0],pos[1],pos[2]) * m_Eng->Engine::GetVolt(1,pos[0],pos[1],pos[2]);
@@ -215,11 +218,11 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 	}
 	else
 	{
-		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
+		for (pos[0]=m_EnergyStart[0]; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
 		{
-			for (pos[1]=0; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
+			for (pos[1]=m_EnergyStart[1]; pos[1]<m_Op->GetNumberOfLines(1)-1; ++pos[1])
 			{
-				for (pos[2]=0; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
+				for (pos[2]=m_EnergyStart[2]; pos[2]<m_Op->GetNumberOfLines(2)-1; ++pos[2])
 				{
 					E_energy+=m_Eng->GetVolt(0,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(0,pos[0],pos[1],pos[2]);
 					E_energy+=m_Eng->GetVolt(1,pos[0],pos[1],pos[2]) * m_Eng->GetVolt(1,pos[0],pos[1],pos[2]);

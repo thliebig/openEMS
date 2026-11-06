@@ -43,7 +43,9 @@ double Engine_Interface_GPU_FDTD::CalcFastEnergy() const
 	for (int n=0; n<3; ++n)
 		numNodes[n] = m_Op->GetNumberOfLines(n)-1;
 	double E_energy=0.0, H_energy=0.0;
-	if (m_Eng_GPU->CalcFastEnergy(numNodes, E_energy, H_energy))
+	// MPI: the device sums the whole block, an inner face needs the host sum of the owned nodes
+	bool owned = (m_EnergyStart[0]==0) && (m_EnergyStart[1]==0) && (m_EnergyStart[2]==0);
+	if (owned && m_Eng_GPU->CalcFastEnergy(numNodes, E_energy, H_energy))
 		return EPS0*E_energy + MUE0*H_energy;
 	m_Eng_GPU->UpdateHostMirror();
 	return Engine_Interface_FDTD::CalcFastEnergy();

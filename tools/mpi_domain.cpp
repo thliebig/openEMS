@@ -219,21 +219,27 @@ bool MPI_Domain::Decompose(CSRectGrid* grid, const unsigned int bcSize[6])
 		}
 	}
 
-	// replace the mesh lines by the block of this rank, plus the first line of the block above
+	// replace the mesh lines by the block of this rank, plus one ghost line towards each neighbour
 	for (int n=0; n<3; ++n)
 	{
 		unsigned int qty = 0;
 		double* lines = grid->GetLines(n, NULL, qty, true);
 		unsigned int first = split[n].at(m_Coord[n]);
 		unsigned int last = split[n].at(m_Coord[n]+1);
+		if (m_NeighborDown[n]>=0)
+			--first;
 		if (m_NeighborUp[n]>=0)
 			++last;
+		m_GlobalLines[n] = numLines[n];
+		m_SplitLo[n] = split[n].at(m_Coord[n]);
+		m_SplitHi[n] = split[n].at(m_Coord[n]+1);
+		m_FirstLine[n] = first;
 		grid->ClearLines(n);
 		for (unsigned int i=first; i<=last; ++i)
 			grid->AddDiscLine(n, lines[i]);
 
 		// probes from the line above the lower split up to and including the upper split line
-		m_OwnLo[n] = lines[first];
+		m_OwnLo[n] = lines[split[n].at(m_Coord[n])];
 		m_OwnHi[n] = lines[split[n].at(m_Coord[n]+1)];
 		m_OwnHiClosed[n] = (m_NeighborUp[n]<0);
 		delete[] lines;
@@ -265,6 +271,25 @@ MPI_Domain::BoxOwner MPI_Domain::OwnsBox(const double start[3], const double sto
 			return BOX_SPLIT;
 	}
 	return BOX_OWNED;
+}
+
+bool MPI_Domain::GlobalToLocal(const unsigned int gpos[3], unsigned int lpos[3]) const
+{
+	for (int n=0; n<3; ++n)
+	{
+		if (!Enabled())
+		{
+			lpos[n] = gpos[n];
+			continue;
+		}
+		// the lower rank owns the split line itself, like the probe boxes
+		if ((m_NeighborDown[n]>=0) && (gpos[n]<=m_SplitLo[n]))
+			return false;
+		if (gpos[n]>m_SplitHi[n])
+			return false;
+		lpos[n] = gpos[n] - m_FirstLine[n];
+	}
+	return true;
 }
 
 std::string MPI_Domain::RankFileName(const std::string& name) const

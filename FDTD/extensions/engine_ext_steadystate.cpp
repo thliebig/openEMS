@@ -21,6 +21,7 @@
 #include "operator_ext_steadystate.h"
 #include "FDTD/engine_sse.h"
 #include "FDTD/engine_interface_fdtd.h"
+#include "tools/mpi_domain.h"
 
 Engine_Ext_SteadyState::Engine_Ext_SteadyState(Operator_Ext_SteadyState* op_ext): Engine_Extension(op_ext)
 {
@@ -66,7 +67,8 @@ void Engine_Ext_SteadyState::CheckPeriod(unsigned int rel_pos, const std::functi
 	const size_t count = m_Op_SS->m_E_probe_dir.size();
 	bool no_valid = true;
 	m_last_max_diff = 0;
-	double curr_total_energy = m_Eng_Interface->CalcFastEnergy();
+	// MPI: the energy, the peak power and the result are those of all ranks (the probes are spread over them)
+	double curr_total_energy = g_mpi.AllreduceSum(m_Eng_Interface->CalcFastEnergy());
 	if (last_total_energy>0)
 	{
 		m_last_max_diff = std::fabs(curr_total_energy-last_total_energy)/last_total_energy;
@@ -93,6 +95,7 @@ void Engine_Ext_SteadyState::CheckPeriod(unsigned int rel_pos, const std::functi
 		}
 		max_pow = std::max(max_pow, curr_pow[n]);
 	}
+	max_pow = g_mpi.AllreduceMax(max_pow);
 	for (size_t n=0;n<count;++n)
 	{
 		if (curr_pow[n]>max_pow*1e-2)
@@ -101,6 +104,8 @@ void Engine_Ext_SteadyState::CheckPeriod(unsigned int rel_pos, const std::functi
 			no_valid = false;
 		}
 	}
+	m_last_max_diff = g_mpi.AllreduceMax(m_last_max_diff);
+	no_valid = !g_mpi.AllreduceOr(!no_valid);
 	if ((no_valid) || (m_last_max_diff>1))
 		m_last_max_diff = 1;
 }
