@@ -699,7 +699,10 @@ void CellModel::Build(int F, int S, int M)
 						prev = key;
 						open = true;
 					}
-					// neighbouring short UPML runs: one run with a profile (a PML normal to the fast axis)
+					// neighbouring short UPML runs: one run with a profile (a PML normal to the fast axis). Their
+					// mean length is ~1 along a PML's normal and long along it, so the threshold barely matters:
+					// pml and inhomogeneous M give the same runs for 2, 4 and 8 and speeds within noise; no
+					// profiles is 15-20 % slower, profiles for all UPML runs up to 8 % slower (per-cell coefficients)
 					std::vector<CellModel_Run> merged;
 					const size_t first = r.first[line];
 					for (size_t i=first; i<r.runs.size(); )
