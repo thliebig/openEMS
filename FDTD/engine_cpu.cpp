@@ -76,6 +76,7 @@ Engine_CPU::Engine_CPU(const Operator* op) : Engine(op)
 {
 	m_type = CPU;
 	m_FastAxis = 2;
+	m_GatherBudget = 0;
 	m_SplitAxis = 0;
 	m_MidAxis = 1;
 	m_Layout = "NIJK";
@@ -106,6 +107,11 @@ void Engine_CPU::Init()
 			const std::vector<double>& g = m_Model->G(f, n, m_FastAxis);
 			m_Gf[f][n].assign(g.begin(), g.end());
 		}
+	m_GatherBudget = volt_ptr->bytes() + curr_ptr->bytes();
+	for (int f=0; f<2; ++f)
+		for (int n=0; n<3; ++n)
+			m_GatherBudget += m_State[f][n].size()*sizeof(float);
+	m_GatherBudget = std::max(m_GatherBudget, (size_t)256<<20);
 	InitKernels();
 }
 

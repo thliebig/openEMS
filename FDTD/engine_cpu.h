@@ -18,6 +18,7 @@
 #ifndef ENGINE_CPU_H
 #define ENGINE_CPU_H
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -75,6 +76,17 @@ public:
 	  */
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
 
+	//! The bytes left for the weight tables of the field dumps (Field_Gather_FDTD::BuildTable()), shared by all dumps
+	/*!
+	  As much as the fields and the state of the engine, 256 MiB at least: the
+	  tables scale with the model (and so with the machine that runs it), and
+	  the same model gets the same tables on any machine.
+	  */
+	size_t GatherBudget() const {return m_GatherBudget;}
+	void UseGatherBudget(size_t bytes) {m_GatherBudget -= std::min(bytes, m_GatherBudget);}
+	//! The threads for work at setup: --numThreads, or DefaultThreads()
+	unsigned int SetupThreads() const {return (m_numThreads>0) ? m_numThreads : DefaultThreads();}
+
 protected:
 	Engine_CPU(const Operator* op);
 
@@ -123,6 +135,7 @@ protected:
 	int m_SplitAxis;     //!< the slowest axis
 	int m_MidAxis;       //!< the other slow axis
 	std::string m_Layout;
+	size_t m_GatherBudget;   //!< see GatherBudget()
 };
 
 #endif // ENGINE_CPU_H

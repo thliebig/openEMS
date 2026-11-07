@@ -74,9 +74,10 @@ public:
 	  Evaluate() without a snapshot then sums the weighted raw values: a few multiply-adds per
 	  node instead of the interpolation, with the edge lengths, per node and sample. The
 	  interpolation is linear in the raw values, so the weights are what it gives for one
-	  raw value 1 and the others 0; the values agree with it to float rounding.
+	  raw value 1 and the others 0; the values agree with it to float rounding. Built on
+	  \a numThreads threads, the same table for any number. Returns its bytes, 0 without.
 	  */
-	void BuildTable(size_t budget);
+	size_t BuildTable(size_t budget, unsigned int numThreads);
 	//! The frequency domain values of the dump from the sums \a raw of the raw values of \a region
 	void EvaluateSums(const std::complex<float>* raw, ArrayLib::ArrayNIJK<std::complex<float>> &field) const;
 

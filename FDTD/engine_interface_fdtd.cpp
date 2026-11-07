@@ -17,9 +17,14 @@
 
 #include "engine_interface_fdtd.h"
 #include "engine_field_gather.h"
+#include "engine_cpu.h"
+#include "tools/global.h"
+#include <iostream>
 #include <stdexcept>
+#include <string>
 
 using std::cerr;
+using std::cout;
 using std::endl;
 
 Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op) : Engine_Interface_Base(op)
@@ -248,6 +253,13 @@ Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, cons
 	if ((m_Eng==NULL) || (m_Eng->GetType()!=Engine::CPU) || (m_Eng->GetVoltageArray()==NULL) || (m_Eng->GetCurrentArray()==NULL))
 		return NULL;
 	Field_Gather_FDTD* g = new Field_Gather_FDTD(this, m_Op, m_Eng->GetVoltageArray(), m_Eng->GetCurrentArray(), h_field, numLines, posLines);
-	g->BuildTable(256u<<20);   // the weights of up to about 5 M nodes; a larger dump interpolates per sample
+	// a table of weights while the budget of all dumps lasts (Engine_CPU::GatherBudget()); beyond it the dump interpolates per sample
+	Engine_CPU* cpu = static_cast<Engine_CPU*>(m_Eng);
+	const size_t bytes = g->BuildTable(cpu->GatherBudget(), cpu->SetupThreads());
+	cpu->UseGatherBudget(bytes);
+	if (g_settings.GetVerboseLevel()>1)
+		cout << "Engine_CPU: " << (h_field ? "H" : "E") << " dump of " << (size_t)numLines[0]*numLines[1]*numLines[2] << " nodes: "
+		     << (bytes ? "a table of " + std::to_string(bytes>>20) + " MiB" : std::string("interpolated per sample"))
+		     << ", " << (cpu->GatherBudget()>>20) << " MiB left for tables" << endl;
 	return g;
 }

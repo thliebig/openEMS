@@ -16,7 +16,10 @@
 */
 
 
+#include <algorithm>
+#include <atomic>
 #include <climits>
+#include <thread>
 
 #include "engine_field_gather.h"
 #include "engine_interface_fdtd.h"
@@ -82,71 +85,108 @@ void Field_Gather_FDTD::Interpolate(unsigned int i, unsigned int j, unsigned int
 		m_EngIf->InterpolateField(pos, out, raw);
 }
 
-void Field_Gather_FDTD::BuildTable(size_t budget)
+size_t Field_Gather_FDTD::BuildTable(size_t budget, unsigned int numThreads)
 {
 	m_TabStart.clear();
 	m_TabIndex.clear();
 	m_TabWeight.clear();
 	const size_t ni = m_PosLines[0].size(), nj = m_PosLines[1].size(), nk = m_PosLines[2].size();
 	const size_t nodes = ni*nj*nk;
-	// estimated with 4 weights per component (the cell interpolation), 12 bytes each
-	if ((nodes==0) || (nodes*3*(4*12 + 4) > budget))
-		return;
-	std::vector<uint32_t> start;
-	std::vector<size_t> index;
-	std::vector<float> weight;
-	start.reserve(3*nodes+1);
-	struct Edge {unsigned int n, p[3];};
-	std::vector<Edge> edges;
-	std::vector<std::pair<size_t, float> > comp[3];
-	double out[3];
-	for (unsigned int i=0; i<ni; ++i)
-		for (unsigned int j=0; j<nj; ++j)
-			for (unsigned int k=0; k<nk; ++k)
-			{
-				// the raw values the node reads, each once
-				edges.clear();
-				Interpolate(i, j, k, out, [&](unsigned int n, const unsigned int* p) -> double {
-					for (const Edge& e : edges)
-						if ((e.n==n) && (e.p[0]==p[0]) && (e.p[1]==p[1]) && (e.p[2]==p[2]))
-							return 0.0;
-					edges.push_back(Edge{n, {p[0], p[1], p[2]}});
-					return 0.0;
-				});
-				for (int c=0; c<3; ++c)
-					comp[c].clear();
-				// the weight of each: the node for this raw value (divided by its edge length) 1, the others 0
-				for (const Edge& e : edges)
+	const size_t perStart = sizeof(uint32_t), perWeight = sizeof(size_t) + sizeof(float);
+	// at least one weight per component (four with the cell interpolation): refused at once if not even that fits
+	if ((nodes==0) || (nodes*3*(perStart + perWeight) > budget))
+		return 0;
+
+	// the threads take ranges of the first axis of the dump, joined in order: the same table for any number
+	numThreads = (unsigned int)std::max<size_t>(1, std::min<size_t>(std::max(numThreads, 1u), ni));
+	struct Part
+	{
+		std::vector<uint32_t> start;   // relative to the part's first weight
+		std::vector<size_t> index;
+		std::vector<float> weight;
+	};
+	std::vector<Part> parts(numThreads);
+	std::atomic<size_t> used(0);
+	std::atomic<bool> over(false);
+	auto build = [&](unsigned int t) {
+		struct Edge {unsigned int n, p[3];};
+		std::vector<Edge> edges;
+		std::vector<std::pair<size_t, float> > comp[3];
+		double out[3];
+		Part& part = parts[t];
+		const size_t i0 = ni*t/numThreads, i1 = ni*(t+1)/numThreads;
+		part.start.reserve(3*(i1-i0)*nj*nk);
+		for (size_t i=i0; (i<i1) && !over; ++i)
+			for (unsigned int j=0; j<nj; ++j)
+				for (unsigned int k=0; k<nk; ++k)
 				{
-					const double delta = m_Op->GetEdgeLength(e.n, e.p, m_H);
-					if (delta==0)
-						continue;   // read as 0
-					Interpolate(i, j, k, out, [&](unsigned int n, const unsigned int* p) -> double {
-						return ((n==e.n) && (p[0]==e.p[0]) && (p[1]==e.p[1]) && (p[2]==e.p[2])) ? 1.0 : 0.0;
+					// the raw values the node reads, each once
+					edges.clear();
+					Interpolate((unsigned int)i, j, k, out, [&](unsigned int n, const unsigned int* p) -> double {
+						for (const Edge& e : edges)
+							if ((e.n==n) && (e.p[0]==p[0]) && (e.p[1]==p[1]) && (e.p[2]==p[2]))
+								return 0.0;
+						edges.push_back(Edge{n, {p[0], p[1], p[2]}});
+						return 0.0;
 					});
-					const size_t idx = e.n*m_S[0] + e.p[0]*m_S[1] + e.p[1]*m_S[2] + e.p[2]*m_S[3];
 					for (int c=0; c<3; ++c)
-						if (out[c]!=0)
-							comp[c].push_back(std::make_pair(idx, (float)(out[c]/delta)));
-				}
-				for (int c=0; c<3; ++c)
-				{
-					if (index.size() > 0xffffffffu)
-						return;   // the old path
-					start.push_back((uint32_t)index.size());
-					for (const std::pair<size_t, float>& w : comp[c])
+						comp[c].clear();
+					// the weight of each: the node for this raw value (divided by its edge length) 1, the others 0
+					for (const Edge& e : edges)
 					{
-						index.push_back(w.first);
-						weight.push_back(w.second);
+						const double delta = m_Op->GetEdgeLength(e.n, e.p, m_H);
+						if (delta==0)
+							continue;   // read as 0
+						Interpolate((unsigned int)i, j, k, out, [&](unsigned int n, const unsigned int* p) -> double {
+							return ((n==e.n) && (p[0]==e.p[0]) && (p[1]==e.p[1]) && (p[2]==e.p[2])) ? 1.0 : 0.0;
+						});
+						const size_t idx = e.n*m_S[0] + e.p[0]*m_S[1] + e.p[1]*m_S[2] + e.p[2]*m_S[3];
+						for (int c=0; c<3; ++c)
+							if (out[c]!=0)
+								comp[c].push_back(std::make_pair(idx, (float)(out[c]/delta)));
 					}
+					size_t w = 0;
+					for (int c=0; c<3; ++c)
+					{
+						part.start.push_back((uint32_t)part.index.size());
+						for (const std::pair<size_t, float>& iw : comp[c])
+						{
+							part.index.push_back(iw.first);
+							part.weight.push_back(iw.second);
+						}
+						w += comp[c].size();
+					}
+					if ((used += 3*perStart + w*perWeight) > budget)
+						over = true;   // more weights than fit: the old path
 				}
-				if (start.size()*4 + index.size()*12 > budget)
-					return;   // more weights than estimated: the old path
-			}
-	start.push_back((uint32_t)index.size());
-	m_TabStart.swap(start);
-	m_TabIndex.swap(index);
-	m_TabWeight.swap(weight);
+	};
+	std::vector<std::thread> threads;
+	for (unsigned int t=1; t<numThreads; ++t)
+		threads.emplace_back(build, t);
+	build(0);
+	for (std::thread& th : threads)
+		th.join();
+	size_t weights = 0;
+	for (const Part& part : parts)
+		weights += part.index.size();
+	if (over || (weights > 0xffffffffu))   // the starts are 32 bit
+		return 0;
+
+	// joined, each part freed once copied
+	m_TabStart.reserve(3*nodes+1);
+	m_TabIndex.reserve(weights);
+	m_TabWeight.reserve(weights);
+	for (Part& part : parts)
+	{
+		const uint32_t offset = (uint32_t)m_TabIndex.size();
+		for (uint32_t st : part.start)
+			m_TabStart.push_back(offset + st);
+		m_TabIndex.insert(m_TabIndex.end(), part.index.begin(), part.index.end());
+		m_TabWeight.insert(m_TabWeight.end(), part.weight.begin(), part.weight.end());
+		part = Part();
+	}
+	m_TabStart.push_back((uint32_t)m_TabIndex.size());
+	return m_TabStart.size()*perStart + weights*perWeight;
 }
 
 void Field_Gather_FDTD::Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src) const
