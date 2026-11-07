@@ -1504,6 +1504,10 @@ int openEMS::SetupFDTD()
 		PA->DumpBoxes2File("box_dump_");
 	}
 
+	timeval setupDoneTime;
+	gettimeofday(&setupDoneTime,NULL);
+	cout << "Setup time: " << CalcDiffTime(setupDoneTime,startTime) << " s" << endl;
+
 	return 0;
 }
 

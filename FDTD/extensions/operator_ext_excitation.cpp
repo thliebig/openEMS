@@ -149,6 +149,8 @@ bool Operator_Ext_Excitation::BuildExtension()
 				-1, pos[1], pos[2],
 				CSProperties::EXCITATION
 			);
+			if (vPrims.empty())
+				continue;   // no excitation along this line
 
 			for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
 			{

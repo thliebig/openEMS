@@ -95,7 +95,8 @@ protected:
 	std::string m_GradFunc;
 	FunctionParser* m_GradingFunction;
 
-	void CalcGradingKappa(int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3]);
+	//! the grading of the cell at \a pos, with \a grading parsed from m_GradFunc (fparser evaluates on one thread at a time per parser)
+	void CalcGradingKappa(FunctionParser& grading, int ny, unsigned int pos[3], double Zm, double kappa_v[3], double kappa_i[3]);
 
 	void DeleteOp();
 

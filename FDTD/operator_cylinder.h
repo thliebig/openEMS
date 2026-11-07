@@ -108,7 +108,8 @@ protected:
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
-	virtual double GetMaterial(int ny, const double coords[3], int MatType, std::vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
+	virtual void GetMaterials(int ny, const double coords[3], int type1, int type2, double& val1, double& val2, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 	virtual double CalcTimestep();

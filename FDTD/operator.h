@@ -27,6 +27,7 @@
 #include "operator_coeffs.h"
 #include "engine_type.h"
 
+#include <functional>
 #include <stdexcept>
 
 class Operator_Extension;
@@ -220,6 +221,18 @@ public:
 	//! Split the lines in x-direction into ranges for up to \a numThreads threads; \a numThreads returns the number of ranges. Used for the operator build and by Engine_ThreadPool.
 	virtual void CalcStartStopLines(unsigned int &numThreads, std::vector<unsigned int> &start, std::vector<unsigned int> &stop) const;
 
+	//! The number of threads the operator build uses, from m_numThreads and AvailableThreads().
+	unsigned int GetBuildThreads() const;
+	//! Run \a fn(thread, begin, end) on the build threads, [0, \a count) split into consecutive ranges in thread order
+	/*!
+	  At most GetBuildThreads() ranges, fewer if \a count is smaller; \a thread numbers them
+	  from 0, so results kept per thread and joined in thread order are in the order of the
+	  serial loop. An exception of a thread is rethrown after all have ended.
+	  */
+	void ParallelFor(size_t count, const std::function<void(unsigned int thread, size_t begin, size_t end)>& fn) const;
+	//! The index of the node \a pos in the EC arrays (the layout of MainOp), without changing the position of MainOp
+	size_t GetECIndex(const unsigned int pos[3]) const {return pos[0] + (size_t)numLines[0]*(pos[1] + (size_t)numLines[1]*pos[2]);}
+
 protected:
 	DebugFlags m_DebugFlags = None;
 	//! use New() for creating a new Operator
@@ -232,9 +245,6 @@ protected:
 	GPU_Backend* m_GPU_Parent;
 	//! hands the backend on to the engine
 	GPU_Backend* TakeGPUBackend() {GPU_Backend* b = m_GPU_Backend; m_GPU_Backend = NULL; return b;}
-	//! The number of threads the operator build uses, from m_numThreads and AvailableThreads().
-	unsigned int GetBuildThreads() const;
-
 	virtual void Init();
 	void Delete();
 	virtual void Reset();
@@ -267,7 +277,7 @@ protected:
 	double CalcTimestep_Var3();
 
 	//! Calculate the FDTD equivalent circuit parameter for the given position and direction ny. \sa Calc_EffMat_Pos
-	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC, std::vector<CSPrimitives *> vPrims) const;
+	virtual bool Calc_ECPos(int ny, const unsigned int* pos, double* EC, const std::vector<CSPrimitives*>& vPrims) const;
 
 	//! Get the FDTD raw disc delta, needed by Calc_EffMatPos() \sa Calc_EffMatPos
 	/*!
@@ -278,16 +288,20 @@ protected:
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
 	//! Get the material at a given coordinate, direction and type from CSX (internal use only)
-	virtual double GetMaterial(int ny, const double coords[3], int MatType, std::vector<CSPrimitives*> vPrims, bool markAsUsed=true) const;
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
+	//! GetMaterial() of the types \a type1 and \a type2 at the same point, with one lookup of the property
+	virtual void GetMaterials(int ny, const double coords[3], int type1, int type2, double& val1, double& val2, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
+	//! The material value \a MatType of the property \a prop (the background without a material) at \a coords
+	double GetMaterialValue(CSProperties* prop, int ny, const double coords[3], int MatType) const;
 
 	MatAverageMethods m_MatAverageMethod;
 
 	//! Calculate the effective/averaged material properties at the given position and direction ny.
-	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, std::vector<CSPrimitives*> vPrims) const;
+	virtual bool Calc_EffMatPos(int ny, const unsigned int* pos, double* EffMat, const std::vector<CSPrimitives*>& vPrims) const;
 
-	virtual bool AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat, std::vector<CSPrimitives*> vPrims) const;
+	virtual bool AverageMatCellCenter(int ny, const unsigned int* pos, double* EffMat, const std::vector<CSPrimitives*>& vPrims) const;
 
-	virtual bool AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat, std::vector<CSPrimitives*> vPrims) const;
+	virtual bool AverageMatQuarterCell(int ny, const unsigned int* pos, double* EffMat, const std::vector<CSPrimitives*>& vPrims) const;
 
 	//! Calc operator at certain \a pos
 	virtual void Calc_ECOperatorPos(int n, unsigned int* pos);

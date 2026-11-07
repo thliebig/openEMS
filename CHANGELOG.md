@@ -51,6 +51,8 @@ to what a user notices, in a few lines; the details belong in the commit.
 - The CPU engines use all threads (`--numThreads`); `sse` and
   `sse-compressed` are other names of the default engine now. Small models
   run up to twice as fast, cylindrical multi-grid meshes 12-25 % faster.
+- The setup is 3-5x faster on large models, most of it runs on all threads
+  now, and openEMS prints how long it took.
 
 ### Fixed
 

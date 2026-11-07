@@ -15,6 +15,9 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
+#include <atomic>
+#include <utility>
 #include "operator_ext_debyematerial.h"
 #include "engine_ext_debyematerial.h"
 #include "operator_ext_cylinder.h"
@@ -90,8 +93,6 @@ Operator_Extension* Operator_Ext_DebyeMaterial::Clone(Operator* op)
 bool Operator_Ext_DebyeMaterial::BuildExtension()
 {
 	double dT = m_Op->GetTimestep();
-	unsigned int pos[] = {0,0,0};
-	double coord[3];
 	unsigned int numLines[3] = {m_Op->GetNumberOfLines(0,true),m_Op->GetNumberOfLines(1,true),m_Op->GetNumberOfLines(2,true)};
 
 	m_PoleCount = 0;
@@ -107,35 +108,51 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 	if (m_PoleCount<1)
 		return false; //no Debye material, drop this extension
 
-	// collected in step: one entry per cell, m_PoleCount coefficient sets per direction
-	std::vector<unsigned int> v_pos[3];
-	std::vector<double> v_solve[3];
-	std::vector<std::vector<double> > v_relax[3], v_drive[3];
-	for (int n=0; n<3; ++n)
+	//! the cells a thread found: one entry per cell, m_PoleCount coefficient sets per direction, FDTD_FLOAT as the arrays (the same conversion, earlier)
+	struct Cells
 	{
-		v_relax[n].resize(m_PoleCount);
-		v_drive[n].resize(m_PoleCount);
-	}
+		std::vector<unsigned int> pos[3];
+		std::vector<FDTD_FLOAT> solve[3];
+		std::vector<std::vector<FDTD_FLOAT> > relax[3], drive[3];
+	};
+	std::atomic<bool> warn_once(true);
 
-	// per cell scratch
-	std::vector<std::vector<double> > relax(3), drive(3);
-	for (int n=0; n<3; ++n)
-	{
-		relax[n].resize(m_PoleCount);
-		drive[n].resize(m_PoleCount);
-	}
-	double S[3];
-
-	bool warn_once = true;
-
-	for (pos[0]=0; pos[0]<numLines[0]; ++pos[0])
-	{
-		for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+	// the columns (x, y) on the build threads, their cells joined in the order of the columns;
+	// a column without a primitive of a Debye material in its bounding box has none
+	// every thread's lists sized, also of those without columns (fewer columns than threads)
+	std::vector<Cells> found(m_Op->GetBuildThreads());
+	for (Cells& c : found)
+		for (int n=0; n<3; ++n)
 		{
+			c.relax[n].resize(m_PoleCount);
+			c.drive[n].resize(m_PoleCount);
+		}
+	m_Op->ParallelFor((size_t)numLines[0]*numLines[1], [&](unsigned int thread, size_t begin, size_t end) {
+		Cells& c = found[thread];
+		unsigned int pos[3];
+		double coord[3];
+		// per cell scratch
+		std::vector<std::vector<double> > relax(3), drive(3);
+		for (int n=0; n<3; ++n)
+		{
+			relax[n].resize(m_PoleCount);
+			drive[n].resize(m_PoleCount);
+		}
+		double S[3];
+
+		for (size_t col=begin; col<end; ++col)
+		{
+			pos[0] = col/numLines[1];
+			pos[1] = col%numLines[1];
 			std::vector<CSPrimitives*> vPrims = m_Op->GetPrimitivesBoundBox(
 				pos[0], pos[1], -1,
 				(CSProperties::PropertyType)(CSProperties::MATERIAL | CSProperties::METAL)
 			);
+			bool any = false;
+			for (size_t p=0; p<vPrims.size() && !any; ++p)
+				any = vPrims[p]->GetProperty() && vPrims[p]->GetProperty()->ToDebyeMaterial();
+			if (!any)
+				continue;
 
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
@@ -185,9 +202,8 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 							continue;
 						if (t_relax < DEBYE_MIN_TAU_PER_DT*dT)
 						{
-							if (warn_once)
+							if (warn_once.exchange(false))
 							{
-								warn_once = false;
 								cerr << "Operator_Ext_DebyeMaterial::BuildExtension(): Warning, "
 								     << "relaxation time (" << t_relax << "s) of material \""
 								     << mat->GetName() << "\" needs at least "
@@ -211,19 +227,20 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 
 				for (int n=0; n<3; ++n)
 				{
-					v_pos[n].push_back(pos[n]);
-					v_solve[n].push_back(1.0/(1.0 + S[n]));
+					c.pos[n].push_back(pos[n]);
+					c.solve[n].push_back(1.0/(1.0 + S[n]));
 					for (int o=0; o<m_PoleCount; ++o)
 					{
-						v_relax[n][o].push_back(relax[n][o]);
-						v_drive[n][o].push_back(drive[n][o]);
+						c.relax[n][o].push_back(relax[n][o]);
+						c.drive[n][o].push_back(drive[n][o]);
 					}
 				}
 			}
 		}
-	}
-
-	size_t count = v_pos[0].size();
+	});
+	size_t count = 0;
+	for (size_t t=0; t<found.size(); ++t)
+		count += found[t].pos[0].size();
 	if (count==0)
 		return false; //no active cell, drop this extension
 
@@ -248,26 +265,34 @@ bool Operator_Ext_DebyeMaterial::BuildExtension()
 		v_relax_ADE[o] = new FDTD_FLOAT*[3];
 		v_drive_ADE[o]  = new FDTD_FLOAT*[3];
 	}
-
 	for (int n=0; n<3; ++n)
 	{
 		m_LM_pos[0][n] = new unsigned int[count];
-		v_solve_ADE[n]       = new FDTD_FLOAT[count];
-		for (size_t i=0; i<count; ++i)
-		{
-			m_LM_pos[0][n][i] = v_pos[n].at(i);
-			v_solve_ADE[n][i]       = v_solve[n].at(i);
-		}
+		v_solve_ADE[n] = new FDTD_FLOAT[count];
 		for (int o=0; o<m_PoleCount; ++o)
 		{
 			v_relax_ADE[o][n] = new FDTD_FLOAT[count];
-			v_drive_ADE[o][n]  = new FDTD_FLOAT[count];
-			for (size_t i=0; i<count; ++i)
+			v_drive_ADE[o][n] = new FDTD_FLOAT[count];
+		}
+	}
+
+	// into the arrays, thread after thread, each thread's lists freed once copied: no second copy of all cells
+	size_t offset = 0;
+	for (size_t t=0; t<found.size(); ++t)
+	{
+		Cells c;
+		std::swap(c, found[t]);   // freed at the end of this iteration
+		for (int n=0; n<3; ++n)
+		{
+			std::copy(c.pos[n].begin(), c.pos[n].end(), m_LM_pos[0][n]+offset);
+			std::copy(c.solve[n].begin(), c.solve[n].end(), v_solve_ADE[n]+offset);
+			for (int o=0; o<m_PoleCount; ++o)
 			{
-				v_relax_ADE[o][n][i] = v_relax[n][o].at(i);
-				v_drive_ADE[o][n][i]  = v_drive[n][o].at(i);
+				std::copy(c.relax[n][o].begin(), c.relax[n][o].end(), v_relax_ADE[o][n]+offset);
+				std::copy(c.drive[n][o].begin(), c.drive[n][o].end(), v_drive_ADE[o][n]+offset);
 			}
 		}
+		offset += c.pos[0].size();
 	}
 
 	return true;
