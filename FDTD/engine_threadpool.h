@@ -23,6 +23,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 #if defined(_MSC_VER)
 #include <intrin.h>   // _mm_pause(), __yield()
@@ -34,12 +36,13 @@
 
 class Engine;
 
-//! A barrier that spins briefly before it yields: the phases of the blocked plans and the
-//! extension hooks wait at one many times per timestep, often for a few microseconds only
+//! A barrier that spins briefly, then yields, then sleeps: the phases of the blocked plans and the
+//! extension hooks wait at one many times per timestep, often for a few microseconds only, but the
+//! hooks that run on one thread (and the work between two calls) keep the others waiting longer
 class Engine_SpinBarrier
 {
 public:
-	explicit Engine_SpinBarrier(unsigned int count) : m_Count(count), m_Waiting(0), m_Generation(0) {}
+	explicit Engine_SpinBarrier(unsigned int count) : m_Count(count), m_Waiting(0), m_Generation(0), m_Sleeping(0) {}
 
 	void wait()
 	{
@@ -48,26 +51,45 @@ public:
 		{
 			// the last one releases the others, and with them the writes of all
 			m_Waiting.store(0, std::memory_order_relaxed);
-			m_Generation.fetch_add(1, std::memory_order_release);
+			m_Generation.fetch_add(1, std::memory_order_seq_cst);
+			if (m_Sleeping.load(std::memory_order_seq_cst)>0)
+			{
+				// a sleeper checks the generation under the lock: taking it orders the wakeup after its wait
+				{ std::lock_guard<std::mutex> lock(m_Mutex); }
+				m_Wake.notify_all();
+			}
 			return;
 		}
-		// spin for a time, not a count: a pause takes ~10 to ~140 cycles depending on the CPU
+		// spin, then yield, for a time, not a count: a pause takes ~10 to ~140 cycles depending on the CPU
 		const std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-		bool spin = true;
+		std::chrono::steady_clock::duration waited(0);
 		for (unsigned int i=0; m_Generation.load(std::memory_order_acquire)==gen; ++i)
 		{
-			if (!spin)
-				std::this_thread::yield();   // more threads than cores, or a long wait
-			else if (((i&31)==31) && (std::chrono::steady_clock::now()-t0 > std::chrono::microseconds(SPIN_US)))
-				spin = false;
-			else
+			if ((i&31)==31)
+				waited = std::chrono::steady_clock::now()-t0;
+			if (waited < std::chrono::microseconds(SPIN_US))
 				Pause();
+			else if (waited < std::chrono::microseconds(YIELD_US))
+				std::this_thread::yield();   // more threads than cores, or a longer wait
+			else
+			{
+				// a long wait: sleep, no core burnt (seq_cst against the release above: one of the two sees the other)
+				std::unique_lock<std::mutex> lock(m_Mutex);
+				m_Sleeping.fetch_add(1, std::memory_order_seq_cst);
+				while (m_Generation.load(std::memory_order_seq_cst)==gen)
+					m_Wake.wait(lock);
+				m_Sleeping.fetch_sub(1, std::memory_order_relaxed);
+				return;
+			}
 		}
 	}
 
 protected:
-	//! the spin before yielding (measured with 2000 pauses on a Ryzen 7 5800X, ~27 us; small models up to 2x)
-	static const unsigned int SPIN_US = 30;
+	//! the spin, then the yields, in microseconds (the spin measured as 2000 pauses on a Ryzen 7 5800X, ~27 us;
+	//! small models up to 2x). A sleep after 1 ms of yields cost small models up to 16 % (woken after every
+	//! gap between two calls); after 10 ms a wakeup is ~1 % of the wait. Enums, not static members:
+	//! std::chrono takes them by reference
+	enum {SPIN_US = 30, YIELD_US = 10000};
 	//! the CPU's hint for a spin-wait loop: less power, and the core's other thread runs on
 	static void Pause()
 	{
@@ -84,6 +106,9 @@ protected:
 	const unsigned int m_Count;
 	std::atomic<unsigned int> m_Waiting;
 	std::atomic<unsigned int> m_Generation;
+	std::atomic<unsigned int> m_Sleeping;   //!< the threads asleep in m_Wake
+	std::mutex m_Mutex;
+	std::condition_variable m_Wake;
 };
 
 //! The worker threads of a CPU engine

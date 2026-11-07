@@ -21,20 +21,21 @@
 
 #include "tools/useful.h"
 
-Engine_Plan Engine_Plan::Flat(const unsigned int numLines[3], unsigned int numThreads, int splitAxis)
+Engine_Plan Engine_Plan::Flat(const unsigned int numLines[3], unsigned int numThreads, int splitAxis, const unsigned int* first)
 {
 	Engine_Plan plan;
-	std::vector<unsigned int> jpt = AssignJobs2Threads(numLines[splitAxis], numThreads, true);
+	const unsigned int f[3] = {first ? first[0] : 0, first ? first[1] : 0, first ? first[2] : 0};
+	std::vector<unsigned int> jpt = AssignJobs2Threads(numLines[splitAxis]-f[splitAxis], numThreads, true);
 	plan.volt.resize(jpt.size());
 	plan.curr.resize(jpt.size());
 
-	unsigned int start = 0;
+	unsigned int start = f[splitAxis];
 	for (size_t t=0; t<jpt.size(); ++t)
 	{
 		Engine_Box v, c;
 		for (int n=0; n<3; ++n)
 		{
-			v.start[n] = c.start[n] = 0;
+			v.start[n] = c.start[n] = f[n];
 			v.stop[n] = numLines[n];
 			c.stop[n] = numLines[n]-1;
 		}

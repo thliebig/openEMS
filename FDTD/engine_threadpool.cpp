@@ -365,7 +365,13 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 	for (size_t g=0; g<m_Grids.size(); ++g)
 	{
 		Engine* eng = m_Grids[g];
-		m_Plans.push_back(Engine_Plan::Flat(eng->numLines, m_numThreads, eng->GetSplitAxis()));
+		// the lines along x the operator updates: all, but on the outer grid of a cylindrical multi-grid not
+		// those its sub-grid covers (they are interpolated from it)
+		unsigned int one = 1;
+		std::vector<unsigned int> start, stop;
+		eng->Op->CalcStartStopLines(one, start, stop);
+		const unsigned int first[3] = {start.empty() ? 0 : start[0], 0, 0};
+		m_Plans.push_back(Engine_Plan::Flat(eng->numLines, m_numThreads, eng->GetSplitAxis(), first));
 		if (g==0)
 			m_numThreads = m_Plans[0].GetNumThreads();   // the engine itself may use fewer threads (few lines)
 	}
@@ -401,6 +407,15 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 			for (const Engine_Box& box : m_Plans[g].curr[t])
 				CheckPlanBox(m_Grids[g], box, true);
 		}
+	for (const std::vector<Engine_BlockedPlan>& plans : m_Choice.candidates)
+	{
+		// the workers pick the plan of k as plans[kmax-k] (BlockLength()): every k from kmax down to 2
+		for (size_t i=0; i<plans.size(); ++i)
+			if (plans[i].k != plans.front().k-i)
+				throw std::logic_error("Engine_ThreadPool: a candidate of blocked plans without every k down to 2");
+		if (plans.empty() || (plans.back().k!=2))
+			throw std::logic_error("Engine_ThreadPool: a candidate of blocked plans without every k down to 2");
+	}
 	for (const std::vector<Engine_BlockedPlan>& plans : m_Choice.candidates)
 		for (const Engine_BlockedPlan& plan : plans)
 			for (const auto& phase : plan.phases)

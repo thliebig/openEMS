@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <vector>
 #include "operator_ext_tfsf.h"
 #include "FDTD/engine_sse.h"
 
@@ -71,6 +72,10 @@ void Engine_Ext_TFSF::PlanesImpl(bool volt, const Engine_Box& box, unsigned int 
 	const int p = int(op->m_Exc->GetSignalPeriod()/op->m_Exc->GetTimestep());
 	// a voltage gets the H-field signal and the other way round
 	const FDTD_FLOAT* signal = volt ? op->m_Exc->GetCurrentSignal() : op->m_Exc->GetVoltageSignal();
+	// the signal position of each delay at this timestep, built once a plane meets the box (the box hooks of
+	// several threads run at once: a buffer per thread)
+	thread_local std::vector<unsigned int> delay;
+	bool built = false;
 	unsigned int pos[3];
 	for (int n=0;n<3;++n)
 	{
@@ -86,6 +91,15 @@ void Engine_Ext_TFSF::PlanesImpl(bool volt, const Engine_Box& box, unsigned int 
 			const unsigned int i1 = std::min(op->m_Start[nP]+op->m_numLines[nP], box.stop[nP]);
 			const unsigned int j0 = std::max(op->m_Start[nPP], box.start[nPP]);
 			const unsigned int j1 = std::min(op->m_Start[nPP]+op->m_numLines[nPP], box.stop[nPP]);
+			if ((i0>=i1) || (j0>=j1))
+				continue;
+			if (!built)
+			{
+				delay.resize(op->m_maxDelay+2);
+				for (unsigned int d=0; d<delay.size(); ++d)
+					delay[d] = Delay(ts, d, length, p);
+				built = true;
+			}
 			for (pos[nP]=i0; pos[nP]<i1; ++pos[nP])
 				for (pos[nPP]=j0; pos[nPP]<j1; ++pos[nPP])
 				{
@@ -97,7 +111,7 @@ void Engine_Ext_TFSF::PlanesImpl(bool volt, const Engine_Box& box, unsigned int 
 						const FDTD_FLOAT dd = volt ? op->m_VoltDelayDelta[n][side][c][ui_pos] : op->m_CurrDelayDelta[n][side][c][ui_pos];
 						const FDTD_FLOAT amp = volt ? op->m_VoltAmp[n][side][c][ui_pos] : op->m_CurrAmp[n][side][c][ui_pos];
 						// the evaluation order of the flat hooks: (field + first) + second
-						const FDTD_FLOAT s0 = signal[Delay(ts, d, length, p)], s1 = signal[Delay(ts, d+1, length, p)];
+						const FDTD_FLOAT s0 = signal[delay[d]], s1 = signal[delay[d+1]];
 						if (volt)
 							eng->SetVolt(ny, pos, eng->GetVolt(ny, pos) + (1.0f-dd)*amp*s0 + dd*amp*s1);
 						else

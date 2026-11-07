@@ -124,7 +124,7 @@ Its variables, all experimental (they may change or go):
 
 | Variable | |
 |---|---|
-| `OPENEMS_CPU_TBLOCK` | `0`: no temporal blocking; `k` or `k:W`: k timesteps per block, tiles of W lines, several separated by commas, ordered: the trials search them from the first (default: the tile from the cache size, and tiles 4x and 2x, half and a quarter as wide) |
+| `OPENEMS_CPU_TBLOCK` | `0`: no temporal blocking; `k` or `k:W`: k timesteps per block (2 at least), tiles of W lines, several separated by commas, ordered: the trials search them from the first (default: the tile from the cache size, and tiles 4x and 2x, half and a quarter as wide) |
 | `OPENEMS_CPU_TRIAL` | the seconds the engine runs each tile it tries and the flat sweep at the start before it keeps the fastest; `0` none (default: 0.5 with the automatic tiles, none with `OPENEMS_CPU_TBLOCK`) |
 | `OPENEMS_CPU_CACHE` | the cache size in MiB the tiles are sized for (default: the last level cache the system reports) |
 | `OPENEMS_CPU_FAST_AXIS` | `x`, `y` or `z`: the axis contiguous in memory (default: the one with the longest runs of equal cells) |

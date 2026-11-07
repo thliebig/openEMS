@@ -448,6 +448,14 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 		why = "OPENEMS_CPU_TBLOCK=0";
 	else if (m_SubGrid)
 		why = "a cylindrical multi-grid";
+	for (size_t n=0; n<Op->GetNumberOfExtentions() && why.empty(); ++n)
+	{
+		// the cylinder's box hooks need boxes that span the closed alpha axis: the fast axis (ChooseLayout()),
+		// unless OPENEMS_CPU_FAST_AXIS chose another
+		const Operator_Ext_Cylinder* cyl = dynamic_cast<const Operator_Ext_Cylinder*>(Op->GetExtension(n));
+		if (cyl && cyl->ClosedAlpha() && (m_FastAxis!=1))
+			why = "a closed alpha axis that is not the fast axis";
+	}
 	for (size_t n=0; n<m_Eng_exts.size() && why.empty(); ++n)
 	{
 		const Engine_Ext_Absorbing_BC* abc = dynamic_cast<const Engine_Ext_Absorbing_BC*>(m_Eng_exts[n]);
@@ -466,8 +474,8 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 			unsigned int kk = (unsigned int)std::strtoul(p, &end, 10), WW = 0;
 			if ((end!=NULL) && (*end==':'))
 				WW = (unsigned int)std::strtoul(end+1, &end, 10);
-			if ((kk==0) || (end==NULL) || ((*end!='\0') && (*end!=',')))
-				throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TBLOCK must be 0, or k or k:W, several separated by commas");
+			if ((kk<2) || (end==NULL) || ((*end!='\0') && (*end!=',')))
+				throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TBLOCK must be 0, or k or k:W (k at least 2), several separated by commas");
 			tiles.push_back(std::make_pair(kk, std::max(WW, 2*kk+1)));
 			if (*end=='\0')
 				break;
@@ -622,7 +630,10 @@ bool Engine_CPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy
 			h[s] = hs;
 		}
 	};
-	const unsigned int numThreads = std::max(1u, std::min(AvailableThreads(), nS));
+	// threads of the engine's count, each 64 K nodes at least (~0.1 ms of work, more than a thread's start);
+	// tiny models on this thread alone
+	const size_t nodes = (size_t)nS*nM*nF;
+	const unsigned int numThreads = (unsigned int)std::max<size_t>(1, std::min<size_t>(std::min(SetupThreads(), nS), nodes>>16));
 	std::vector<std::thread> threads;
 	for (unsigned int t=1; t<numThreads; ++t)
 		threads.push_back(std::thread(lines, (unsigned int)((size_t)nS*t/numThreads), (unsigned int)((size_t)nS*(t+1)/numThreads)));

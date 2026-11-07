@@ -58,7 +58,11 @@ struct Engine_Plan
 	unsigned int GetNumThreads() const {return volt.size();}
 
 	//! The flat sweep: the domain split into one box per thread along \a splitAxis; fewer threads than requested if the axis has fewer lines
-	static Engine_Plan Flat(const unsigned int numLines[3], unsigned int numThreads, int splitAxis);
+	/*!
+	  \a first: per axis the first line updated (default 0), e.g. the outer grid of a
+	  cylindrical multi-grid leaves the lines its sub-grid covers (Operator::CalcStartStopLines())
+	  */
+	static Engine_Plan Flat(const unsigned int numLines[3], unsigned int numThreads, int splitAxis, const unsigned int* first=NULL);
 };
 
 //! One half step of one thread in a blocked plan: the voltages or currents of a box at timestep t of the block
