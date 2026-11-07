@@ -48,26 +48,31 @@ public:
 	virtual void Apply2Current() {Engine_Ext_Absorbing_BC::Apply2Current(0);}
 	virtual void Apply2Current(int threadID);
 
+	//! The box hooks need the sheet and the line next to it along its normal in one box: the
+	//! blocked plans guarantee that only along the fast axis of Engine_CPU (GetNormalAxis())
+	virtual bool SupportsBoxes() const {return true;}
+	virtual void DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPreCurrentUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void Apply2CurrentBox(const Engine_Box& box, unsigned int ts);
+
+	//! the axis normal to the sheet
+	int GetNormalAxis() const {return m_ny;}
+
 protected:
 	Operator_Ext_Absorbing_BC* m_Op_ABC;
 
+	//! the cells [i0, i1) x [j0, j1) of the sheet: hook 0 pre, 1 post, 2 apply, of the voltages or currents
 	template <typename EngType>
-	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
-
+	void SheetImpl(EngType* eng, bool volt, int hook, unsigned int i0, unsigned int i1, unsigned int j0, unsigned int j1);
+	//! the lines of thread \a threadID
 	template <typename EngType>
-	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
-
+	void FlatImpl(EngType* eng, bool volt, int hook, int threadID);
+	//! the part of the sheet in \a box at timestep \a ts
 	template <typename EngType>
-	void Apply2VoltagesImpl(EngType* eng, int threadID);
-
-	template <typename EngType>
-	void DoPreCurrentUpdatesImpl(EngType* eng, int threadID);
-
-	template <typename EngType>
-	void DoPostCurrentUpdatesImpl(EngType* eng, int threadID);
-
-	template <typename EngType>
-	void Apply2CurrentImpl(EngType* eng, int threadID);
+	void BoxImpl(EngType* eng, bool volt, int hook, const Engine_Box* box, unsigned int ts);
 
 	inline bool IsActive() {if (m_Eng->GetNumberOfTimesteps() < m_start_TS) return false; return true;}
 

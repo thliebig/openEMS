@@ -109,3 +109,23 @@ void Engine_Ext_SteadyState::Apply2Current()
 {
 
 }
+
+bool Engine_Ext_SteadyState::NeedsFlatStep(unsigned int ts) const
+{
+	const unsigned int p = m_Op_SS->m_TS_period;
+	return (ts%p==0) && (ts>=2*p);
+}
+
+void Engine_Ext_SteadyState::Apply2VoltagesBox(const Engine_Box& box, unsigned int ts)
+{
+	const unsigned int rel_pos = ts%(2*m_Op_SS->m_TS_period);
+	for (size_t n=0;n<m_E_records.size();++n)
+	{
+		const unsigned int pos[3] = {m_Op_SS->m_E_probe_pos[0].at(n), m_Op_SS->m_E_probe_pos[1].at(n), m_Op_SS->m_E_probe_pos[2].at(n)};
+		bool inside = true;
+		for (int a=0; a<3; ++a)
+			inside = inside && (pos[a]>=box.start[a]) && (pos[a]<box.stop[a]);
+		if (inside)
+			m_E_records.at(n)[rel_pos] = m_Eng->GetVolt(m_Op_SS->m_E_probe_dir.at(n), pos[0], pos[1], pos[2]);
+	}
+}

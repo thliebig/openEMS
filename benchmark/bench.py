@@ -46,7 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cases  # noqa: E402
 
 FORMAT_VERSION = 1
-ENGINES = ('multithreaded', 'gpu', 'basic')
+ENGINES = ('multithreaded', 'gpu', 'basic', 'cpu')
 MISMATCH = 1e-4     # probe deviation relative to its peak that is reported as a mismatch
 NOISE = 0.03        # a speed ratio within this (or the spread of the runs) is reported as noise
 
@@ -208,10 +208,50 @@ def _remove(fn):
         pass
 
 
-def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log):
+# what the CPU engine chose, from its log (-v)
+ENGINE_INFO = (
+    ('cache', r'^Engine_CPU: cache (\S+ MiB, .*)$'),
+    ('kernels', r'^Engine_CPU: kernels for (\S+)$'),
+    ('layout', r'^Engine_CPU: fast axis (\S+), layout (\S+)$'),
+    ('blocking', r'^Engine_CPU: temporal blocking, up to (\d+) timesteps per block, tiles of (\d+) lines'),
+    ('flat', r'^Engine_CPU: no temporal blocking: (.*)$'),
+    ('trials', r'^Multithreaded engine: tried (.*); running (.*)$'),
+)
+
+
+def engine_info(text):
+    """ the settings the CPU engine chose for a run (empty for the other engines) """
+    info = {}
+    for key, rx in ENGINE_INFO:
+        m = re.search(rx, text, re.M)
+        if m:
+            info[key] = m.group(1) if len(m.groups()) == 1 else list(m.groups())
+    return info
+
+
+def engine_note(info):
+    """ a short line of engine_info() for the tables """
+    if not info:
+        return ''
+    parts = [info.get('kernels', '?')]
+    if 'layout' in info:
+        parts.append('fast ' + info['layout'][0])
+    if 'blocking' in info:
+        parts.append('k{} W{}'.format(*info['blocking']))
+    elif 'flat' in info:
+        parts.append('flat (' + info['flat'] + ')')
+    if 'trials' in info:
+        parts.append('trials kept ' + info['trials'][1])
+    if 'cache' in info:
+        parts.append('cache ' + info['cache'].split(',')[0])
+    return ', '.join(parts)
+
+
+def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, env=None):
     """ Run openEMS and stop it `duration` seconds after its time-stepping started, by the
-        file ABORT in its working directory: the same time for every engine and machine """
-    cmd = [path, xml, '--engine={}'.format(engine), '--numThreads={}'.format(threads)]
+        file ABORT in its working directory: the same time for every engine and machine.
+        `env`: variables added to the environment (a variant). """
+    cmd = [path, xml, '--engine={}'.format(engine), '--numThreads={}'.format(threads), '-v']
     if engine == 'gpu' and gpu_device is not None:
         cmd.append('--gpu-device={}'.format(gpu_device))
     abort = os.path.join(rundir, 'ABORT')
@@ -219,7 +259,12 @@ def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log):
     done = None
     with open(log, 'w') as logf:
         t0 = time.perf_counter()
-        p = subprocess.Popen(cmd, cwd=rundir, stdout=logf, stderr=subprocess.STDOUT)
+        run_env = dict(os.environ, **(env or {}))
+        # the CPU engine tries its tiles during its first seconds (OPENEMS_CPU_TRIAL), a start-up cost
+        # like the setup: off unless asked for, so a run of a few seconds times the steady state
+        if engine == 'cpu' and 'OPENEMS_CPU_TRIAL' not in run_env:
+            run_env['OPENEMS_CPU_TRIAL'] = '0'
+        p = subprocess.Popen(cmd, cwd=rundir, stdout=logf, stderr=subprocess.STDOUT, env=run_env)
         try:
             # the setup, until the time-stepping starts
             started = None
@@ -254,7 +299,7 @@ def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log):
         return {'error': 'stopped on its own after {} timesteps, see {}'.format(t.group(1), log)}
     run_s = float(t.group(3))
     r = {'mcells_s': float(s.group(1)), 'timesteps': int(t.group(1)), 'cells': float(t.group(2)), 'run_s': run_s,
-         'wall_s': wall, 'setup_s': wall - run_s, 'rss_mib': rss}
+         'wall_s': wall, 'setup_s': wall - run_s, 'rss_mib': rss, 'engine_info': engine_info(text)}
     if engine == 'gpu':
         backend = re.search(r'^Create FDTD engine \(GPU, backend: (.*)\)$', text, re.M)
         r['gpu_backend'] = backend.group(1) if backend else None
@@ -276,6 +321,25 @@ def _list(text, choices, what):
     return items
 
 
+def _variants(specs):
+    """ [(name, {VAR: value})] from --variant NAME:VAR=VALUE,VAR=VALUE; [(None, {})] without """
+    if not specs:
+        return [(None, {})]
+    out = []
+    for spec in specs:
+        name, _, rest = spec.partition(':')
+        env = {}
+        for item in [x for x in rest.split(',') if x]:
+            var, eq, value = item.partition('=')
+            if not eq or not var:
+                sys.exit('bench.py: --variant {}: give VAR=VALUE pairs after the name'.format(spec))
+            env[var] = value
+        if not name or name in [n for n, _ in out]:
+            sys.exit('bench.py: --variant {}: give each variant a distinct name'.format(spec))
+        out.append((name, env))
+    return out
+
+
 def cmd_run(args):
     names = _list(args.cases, list(cases.CASES), 'case') if args.cases else list(cases.CASES)
     sizes = _list(args.size, cases.SIZES, 'size') if args.size else list(cases.DEFAULT_SIZES)
@@ -283,9 +347,19 @@ def cmd_run(args):
 
     paths = args.openems or [shutil.which('openEMS') or 'openEMS']
     paths = [os.path.abspath(shutil.which(p) or p) for p in paths]   # the runs change the directory
-    labels = args.label or [chr(ord('A') + n) for n in range(len(paths))]
-    if len(labels) != len(paths) or len(set(labels)) != len(labels):
+    bin_labels = args.label or [chr(ord('A') + n) for n in range(len(paths))]
+    if len(bin_labels) != len(paths) or len(set(bin_labels)) != len(bin_labels):
         sys.exit('bench.py: give one distinct --label per --openems')
+    # the contestants: every binary with every variant, named by the variant with one binary
+    variants = _variants(args.variant)
+    contestants = []   # (label, binary label, path, variant, env)
+    for bl, path in zip(bin_labels, paths):
+        for vname, env in variants:
+            if vname is None:
+                label = bl
+            else:
+                label = vname if len(paths) == 1 else '{}-{}'.format(bl, vname)
+            contestants.append((label, bl, path, vname, env))
 
     machine = machine_info()
     if args.threads:
@@ -302,17 +376,22 @@ def cmd_run(args):
     cases.write_case('ideal', 'XS', probe_xml)
 
     binaries = {}
-    for label, path in zip(labels, paths):
+    checked = {}   # per binary
+    for label, bl, path, vname, env in contestants:
         if not os.path.isfile(path):
             sys.exit('bench.py: no openEMS binary at {}'.format(path))
-        info = binary_info(path)
-        gpudir = os.path.join(workdir, label, 'gpu_check')
-        os.makedirs(gpudir, exist_ok=True)
-        info['gpu_devices'] = gpu_devices(path, probe_xml, gpudir, args.gpu_device)
-        binaries[label] = info
-        print('{}: {} (openEMS {}, CSXCAD {}){}'.format(
-            label, path, info['version'], info['csxcad'],
-            ', GPU: ' + '; '.join(info['gpu_devices']) if info['gpu_devices'] else ''))
+        if path not in checked:
+            info = binary_info(path)
+            gpudir = os.path.join(workdir, bl, 'gpu_check')
+            os.makedirs(gpudir, exist_ok=True)
+            info['gpu_devices'] = gpu_devices(path, probe_xml, gpudir, args.gpu_device)
+            checked[path] = info
+            print('{}: {} (openEMS {}, CSXCAD {}){}'.format(
+                bl, path, info['version'], info['csxcad'],
+                ', GPU: ' + '; '.join(info['gpu_devices']) if info['gpu_devices'] else ''))
+        binaries[label] = dict(checked[path], variant=vname, env=env)
+        if vname is not None:
+            print('  variant {}: {}'.format(label, ' '.join('{}={}'.format(k, v) for k, v in env.items()) or 'as is'))
     print('machine: {}, {} physical cores / {} logical CPUs, {} GiB RAM, {}'.format(
         machine['cpu'], machine['physical_cores'], machine['logical_cpus'], machine['ram_gib'], machine['os']))
     if machine['env']:
@@ -331,7 +410,7 @@ def cmd_run(args):
         rundir = os.path.join(workdir, label, 'warmup')
         os.makedirs(rundir, exist_ok=True)
         run_once(info['path'], probe_xml, rundir, 'multithreaded', threads[0], None, min(1.0, args.duration),
-                 os.path.join(rundir, 'openEMS.log'))
+                 os.path.join(rundir, 'openEMS.log'), info['env'])
 
     # all points first, for the progress count
     todo = []
@@ -370,7 +449,7 @@ def cmd_run(args):
                         continue
                     count += 1
                     r = run_once(binaries[label]['path'], xml, pt['dir'], engine, nt, args.gpu_device, args.duration,
-                                 os.path.join(pt['dir'], 'openEMS_{}.log'.format(rep)))
+                                 os.path.join(pt['dir'], 'openEMS_{}.log'.format(rep)), binaries[label]['env'])
                     tag = '[{:3d}/{}] {:14s} {:2s} {:14s} t{:<3d} {}'.format(
                         count, nruns, name, size, engine, nt, label)
                     if 'error' in r:
@@ -388,6 +467,7 @@ def cmd_run(args):
                     pt['setup_s'] = _stats([r['setup_s'] for r in pt['runs']])
                     rss = [r['rss_mib'] for r in pt['runs'] if r['rss_mib'] is not None]
                     pt['rss_mib'] = max(rss) if rss else None
+                    pt['engine_info'] = pt['runs'][0].get('engine_info', {})
                     if engine == 'gpu':
                         pt['gpu_backend'] = pt['runs'][0]['gpu_backend']
                         pt['gpu_on_device'] = all(r['gpu_on_device'] for r in pt['runs'])
@@ -402,9 +482,10 @@ def cmd_run(args):
     print()
     for label in binaries:
         print_table(result, label)
-    if len(binaries) > 1:
-        a, b = list(binaries)[:2]
-        print_compare((result, a), (result, b))
+    # each against the first: the reference binary, or the first variant
+    labels = list(binaries)
+    for b in labels[1:]:
+        print_compare((result, labels[0]), (result, b))
     print('results: ' + output)
 
 
@@ -423,7 +504,8 @@ def _spread(s):
 
 def print_table(result, label):
     info = result['binaries'][label]
-    print('{}: openEMS {} ({})'.format(label, info['version'], info['path']))
+    env = ' '.join('{}={}'.format(k, v) for k, v in (info.get('env') or {}).items())
+    print('{}: openEMS {} ({}){}'.format(label, info['version'], info['path'], ', ' + env if env else ''))
     print('{:14s} {:4s} {:14s} {:>4s} {:>7s} {:>9s} {:>9s} {:>6s} {:>8s} {:>8s}'.format(
         'case', 'size', 'engine', 'thr', 'MCells', 'timesteps', 'MC/s', 'spread', 'setup s', 'RSS MiB'))
     for pt in result['points']:
@@ -434,6 +516,8 @@ def print_table(result, label):
             print(head + '  FAILED')
             continue
         note = '  (extensions on the host)' if pt.get('gpu_on_device') is False else ''
+        if engine_note(pt.get('engine_info')):
+            note += '  ' + engine_note(pt.get('engine_info'))
         print(head + ' {:7.2f} {:9d} {:9.1f} {:>6s} {:8.2f} {:>8s}{}'.format(
             pt['runs'][0]['cells'] / 1e6, int(statistics.median(r['timesteps'] for r in pt['runs'])),
             pt['mcells_s']['median'], _spread_text(pt),
@@ -469,8 +553,10 @@ def print_compare(side_a, side_b):
     print('compare {} (A) with {} (B)'.format(la, lb))
     for tag, r, l in (('A', ra, la), ('B', rb, lb)):
         m, b = r['machine'], r['binaries'][l]
-        print('  {}: openEMS {}, {}, {} cores, {}, {}'.format(tag, b['version'], m['cpu'],
-                                                            m['physical_cores'], m['os'], r['date']))
+        env = ' '.join('{}={}'.format(k, v) for k, v in (b.get('env') or {}).items())
+        print('  {}: openEMS {}, {}, {} cores, {}, {}{}'.format(tag, b['version'], m['cpu'],
+                                                              m['physical_cores'], m['os'], r['date'],
+                                                              ', ' + env if env else ''))
     if _machine_key(ra) != _machine_key(rb) or ra['machine']['env'] != rb['machine']['env']:
         print('  different machines (or environment): the ratio is the hardware, not only the code')
     elif ra is not rb:
@@ -554,6 +640,9 @@ def main(argv=None):
     p.add_argument('--openems', action='append', metavar='PATH',
                    help='openEMS binary, twice for an interleaved A/B comparison (default: openEMS in PATH)')
     p.add_argument('--label', action='append', help='name of each binary (default: A, B)')
+    p.add_argument('--variant', action='append', metavar='NAME:VAR=VALUE[,VAR=VALUE]',
+                   help='run every point once more with these environment variables, e.g. '
+                        'flat:OPENEMS_CPU_TBLOCK=0; several, interleaved like binaries; "NAME:" runs as is')
     p.add_argument('--cases', help='comma separated, default: all of ' + ', '.join(cases.CASES))
     p.add_argument('--size', help='comma separated of {}, default: {}'.format(
         ', '.join(cases.SIZES), ','.join(cases.DEFAULT_SIZES)))
@@ -562,7 +651,7 @@ def main(argv=None):
     p.add_argument('--threads', help='comma separated thread counts, default: the physical cores')
     p.add_argument('--gpu-device', type=int, help='GPU device of the gpu engine (default: the best)')
     p.add_argument('--repeat', type=int,
-                   help='timed runs per point (default: 1, and 3 with two binaries, a comparison needs the spread)')
+                   help='timed runs per point (default: 1, and 3 with two binaries or variants, a comparison needs the spread)')
     p.add_argument('--duration', type=float, default=3.0,
                    help='seconds of time-stepping per run, the setup comes on top (default: 3)')
     p.add_argument('--workdir', help='for the XML, the logs and the probes (default: ./bench-<date>-<time>)')
@@ -576,7 +665,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.command == 'run':
         if args.repeat is None:
-            args.repeat = 3 if args.openems and len(args.openems) > 1 else 1
+            n = len(args.openems or [None]) * len(args.variant or [None])
+            args.repeat = 3 if n > 1 else 1
         if args.repeat < 1:
             parser.error('--repeat must be at least 1')
         return cmd_run(args)

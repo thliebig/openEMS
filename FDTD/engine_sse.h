@@ -84,6 +84,8 @@ public:
 protected:
 	Engine_sse(const Operator* op);
 
+	using Engine::UpdateVoltages;   // the box variants of Engine
+	using Engine::UpdateCurrents;
 	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
 	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
 

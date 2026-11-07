@@ -98,8 +98,8 @@ void Engine::InterpolateFromSubGrid()
 void Engine::Init()
 {
 	numTS = 0;
-	volt_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("volt", numLines);
-	curr_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("curr", numLines);
+	volt_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("volt", {numLines[0], numLines[1], numLines[2]}, GetFieldLayout());
+	curr_ptr = new ArrayLib::ArrayNIJK<FDTD_FLOAT>("curr", {numLines[0], numLines[1], numLines[2]}, GetFieldLayout());
 
 	InitExtensions();
 	SortExtensionByPriority();
@@ -217,6 +217,26 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 		}
 		++pos[0];
 	}
+}
+
+bool Engine::CanUpdateBox(const Engine_Box& box, bool currents) const
+{
+	// the kernels update whole y-z planes of x lines
+	const unsigned int last = currents ? 1 : 0;
+	for (int n=1; n<3; ++n)
+		if ((box.start[n]!=0) || (box.stop[n]+last<numLines[n]))
+			return false;
+	return true;
+}
+
+void Engine::UpdateVoltages(const Engine_Box& box)
+{
+	UpdateVoltages(box.start[0], box.stop[0]-box.start[0]);
+}
+
+void Engine::UpdateCurrents(const Engine_Box& box)
+{
+	UpdateCurrents(box.start[0], box.stop[0]-box.start[0]);
 }
 
 void Engine::UpdateCurrents(unsigned int startX, unsigned int numX)

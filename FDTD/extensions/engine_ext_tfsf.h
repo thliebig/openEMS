@@ -31,10 +31,16 @@ public:
 	virtual void DoPostVoltageUpdates();
 	virtual void DoPostCurrentUpdates();
 
-protected:
-	Operator_Ext_TFSF* m_Op_TFSF;
+	//! The box hooks compute the delays per cell, as the threads may run several boxes at once
+	virtual bool SupportsBoxes() const {return true;}
+	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPostCurrentUpdatesBox(const Engine_Box& box, unsigned int ts);
 
-	unsigned int* m_DelayLookup;
+protected:
+	//! the cells of the TF/SF planes in \a box at timestep \a ts, the delays per cell (the flat hooks: the whole domain)
+	void PlanesImpl(bool volt, const Engine_Box& box, unsigned int ts);
+
+	Operator_Ext_TFSF* m_Op_TFSF;
 };
 
 #endif // ENGINE_EXT_TFSF_H

@@ -21,6 +21,8 @@
 
 Engine_Ext_Excitation::Engine_Ext_Excitation(Operator_Ext_Excitation* op_ext) : Engine_Extension(op_ext)
 {
+	m_Index[0].SetList(op_ext->Volt_Count, op_ext->Volt_index);
+	m_Index[1].SetList(op_ext->Curr_Count, op_ext->Curr_index);
 	m_Op_Exc = op_ext;
 	m_Priority = ENG_EXT_PRIO_EXCITATION;
 }
@@ -31,13 +33,12 @@ Engine_Ext_Excitation::~Engine_Ext_Excitation()
 }
 
 template <typename EngType>
-void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
+void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng, int numTS, const Engine_Box* box)
 {
 	//soft voltage excitation here (E-field excite)
 	int exc_pos;
 	unsigned int ny;
 	unsigned int pos[3];
-	int numTS = m_Eng->GetNumberOfTimesteps();
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_volt =  m_Op_Exc->m_Exc->GetVoltageSignal();
 
@@ -45,11 +46,11 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	for (size_t n=0; n<m_Op_Exc->Volt_Count; ++n)
+	m_Index[0].ForEach(box, [&](size_t n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Volt_delay[n];
 		if (exc_pos<0) // delay not yet expired
-			continue;
+			return;
 		exc_pos %= p;
 		exc_pos *= (exc_pos<(int)length);
 		ny = m_Op_Exc->Volt_dir[n];
@@ -57,22 +58,26 @@ void Engine_Ext_Excitation::Apply2VoltagesImpl(EngType* eng)
 		pos[1]=m_Op_Exc->Volt_index[1][n];
 		pos[2]=m_Op_Exc->Volt_index[2][n];
 		eng->EngType::SetVolt(ny,pos, eng->EngType::GetVolt(ny,pos) + m_Op_Exc->Volt_amp[n]*exc_volt[exc_pos]);
-	}
+	});
 }
 
 void Engine_Ext_Excitation::Apply2Voltages()
 {
-	ENG_DISPATCH(Apply2VoltagesImpl);
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, (int)m_Eng->GetNumberOfTimesteps(), (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_Excitation::Apply2VoltagesBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, (int)ts, &box);
 }
 
 template <typename EngType>
-void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
+void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng, int numTS, const Engine_Box* box)
 {
 	//soft current excitation here (H-field excite)
 	int exc_pos;
 	unsigned int ny;
 	unsigned int pos[3];
-	int numTS = m_Eng->GetNumberOfTimesteps();
 	unsigned int length = m_Op_Exc->m_Exc->GetLength();
 	FDTD_FLOAT* exc_curr =  m_Op_Exc->m_Exc->GetCurrentSignal();
 
@@ -80,11 +85,11 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
 	if (m_Op_Exc->m_Exc->GetSignalPeriod()>0)
 		p = int(m_Op_Exc->m_Exc->GetSignalPeriod()/m_Op_Exc->m_Exc->GetTimestep());
 
-	for (size_t n=0; n<m_Op_Exc->Curr_Count; ++n)
+	m_Index[1].ForEach(box, [&](size_t n)
 	{
 		exc_pos = numTS - (int)m_Op_Exc->Curr_delay[n];
 		if (exc_pos<0) // delay not yet expired
-			continue;
+			return;
 		exc_pos %= p;
 		exc_pos *= (exc_pos<(int)length);
 		ny = m_Op_Exc->Curr_dir[n];
@@ -92,10 +97,21 @@ void Engine_Ext_Excitation::Apply2CurrentImpl(EngType* eng)
 		pos[1]=m_Op_Exc->Curr_index[1][n];
 		pos[2]=m_Op_Exc->Curr_index[2][n];
 		eng->EngType::SetCurr(ny,pos, eng->EngType::GetCurr(ny,pos) + m_Op_Exc->Curr_amp[n]*exc_curr[exc_pos]);
-	}
+	});
 }
 
 void Engine_Ext_Excitation::Apply2Current()
 {
-	ENG_DISPATCH(Apply2CurrentImpl);
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, (int)m_Eng->GetNumberOfTimesteps(), (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_Excitation::Apply2CurrentBox(const Engine_Box& box, unsigned int ts)
+{
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, (int)ts, &box);
+}
+
+void Engine_Ext_Excitation::PrepareBoxes(const unsigned int numLines[3])
+{
+	m_Index[0].Build(numLines);
+	m_Index[1].Build(numLines);
 }

@@ -34,6 +34,7 @@ class FunctionParser;
 class Operator_Ext_UPML : public Operator_Extension
 {
 	friend class Engine_Ext_UPML;
+	friend class CellModel;   // fuses the cells into the engine update
 	friend class HIP_Ext_UPML;
 	friend class Metal_Ext_UPML;
 public:

@@ -33,6 +33,9 @@ double CalcNyquistFrequency(unsigned int nyquist, double dT);
 //! applies or cannot be determined (non-Linux). Limited further by SetThreadLimit().
 unsigned int AvailableThreads();
 
+//! The physical cores among the CPUs of this process (SMT siblings counted once), at most MachineThreads(); MachineThreads() if the system does not say
+unsigned int PhysicalCores();
+
 //! Limit AvailableThreads() to n threads (the numThreads option); 0 removes the limit
 void SetThreadLimit(unsigned int n);
 

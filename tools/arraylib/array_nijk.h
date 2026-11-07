@@ -22,6 +22,8 @@
 #include <cstdint>
 #include <iostream>
 #include <array>
+#include <string>
+#include <stdexcept>
 
 #include "impl/array_base.h"
 
@@ -48,11 +50,19 @@ public:
 		InitView(name, extent, NULL);
 	}
 
+	// Allocate with the memory layout \a layout, see layout().
+	void Init(std::string name, std::array<IndexType, 3> extent, const std::string& layout)
+	{
+		InitView(name, extent, NULL, layout);
+	}
+
 	// Use the external memory at ptr (at least extentN*i*j*k elements) instead
 	// of allocating, e.g. memory shared with a GPU. The array does not free it.
 	// With ptr==NULL, allocate and own the memory like Init().
-	void InitView(std::string name, std::array<IndexType, 3> extent, T* ptr)
+	void InitView(std::string name, std::array<IndexType, 3> extent, T* ptr,
+	              const std::string& layout="NIJK")
 	{
+		std::array<int, 4> order = ParseLayout(layout);   // throws before allocating
 		this->Reset();
 
 		this->m_name = name;
@@ -62,12 +72,26 @@ public:
 		this->m_ptr = ptr ? ptr : Base::AllocatorType::alloc(this->m_size);
 
 		this->m_extent = {extentN, extent[0], extent[1], extent[2]};
+		size_t stride = 1;
+		for (int m=3; m>=0; --m)
+		{
+			this->m_stride[order[m]] = stride;
+			stride *= this->m_extent[order[m]];
+		}
+		m_layout = layout;
+	}
 
-		// N-I-J-K ordering
-		this->m_stride[0] = (size_t)extent[0] * extent[1] * extent[2];
-		this->m_stride[1] = (size_t)extent[1] * extent[2];
-		this->m_stride[2] = extent[2];
-		this->m_stride[3] = 1;
+	// The order of the four axes in memory, slowest first: a permutation of
+	// "NIJK", e.g. "NIJK" (the default, one block per component), "IJNK" (the
+	// component rows of a line next to each other) or "IJKN" (the components
+	// of a node interleaved). Only the strides change; access via operator()
+	// is the same for every layout. Code that walks data() linearly must
+	// check layout().
+	std::string layout() const {return m_layout;}
+
+	ArrayNIJK(std::string name, std::array<IndexType, 3> extent, const std::string& layout)
+	{
+		Init(name, extent, layout);
 	}
 
 	void Init(std::string name, IndexType extent[3])
@@ -97,6 +121,28 @@ public:
 	T& operator() (IndexType n, IndexType i, IndexType j, IndexType k) const
 	{
 		return this->m_ptr[linearIndex({n, i, j, k})];
+	}
+
+private:
+	std::string m_layout = "NIJK";
+
+	// the axis (0=N .. 3=K) at each position of layout, slowest first
+	static std::array<int, 4> ParseLayout(const std::string& layout)
+	{
+		const std::string axes = "NIJK";
+		bool seen[4] = {false, false, false, false};
+		std::array<int, 4> order = {0, 1, 2, 3};
+		for (size_t m=0; m<layout.size() && m<4; ++m)
+		{
+			size_t a = axes.find(layout[m]);
+			if (a==std::string::npos || seen[a])
+				break;
+			seen[a] = true;
+			order[m] = (int)a;
+		}
+		if (layout.size()!=4 || !(seen[0] && seen[1] && seen[2] && seen[3]))
+			throw std::invalid_argument("ArrayNIJK: layout \"" + layout + "\" is not a permutation of NIJK");
+		return order;
 	}
 };
 

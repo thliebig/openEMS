@@ -32,6 +32,7 @@
 class Operator_Ext_LumpedRLC : public Operator_Extension
 {
 	friend class Engine_Ext_LumpedRLC;
+	friend class CellModel;   // its edges in fused dispersive materials
 	friend class HIP_Ext_LumpedRLC;
 	friend class Metal_Ext_LumpedRLC;
 public:

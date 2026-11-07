@@ -59,6 +59,19 @@ vector in space, N (0, 1, 2) selects the X/Y/Z value from the vector.
 To avoid ambiguity, IJK is always used to describe coordinates in
 space, not X/Y/Z.
 
+Memory Layout of ArrayNIJK
+--------------------------
+
+By default an ArrayNIJK is stored in N-I-J-K order: one contiguous block per
+component, K fastest. Any other order of the four axes can be given as a
+string, slowest axis first:
+
+    ArrayLib::ArrayNIJK<float> volt("volt", {nx, ny, nz}, "IJNK");
+
+Only the strides change, so `arr(n, i, j, k)` addresses the same element in
+every layout. Code that walks `data()` linearly (e.g. copies to a GPU) must
+check `layout()`.
+
 Usage 1: new/delete
 --------------------
 

@@ -26,6 +26,21 @@
 #include <thread>
 #ifdef __linux__
 #include <sched.h>
+#include <set>
+#include <utility>
+#endif
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#endif
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <vector>
 #endif
 #include <boost/algorithm/string.hpp>
 #include <iostream>
@@ -188,6 +203,55 @@ unsigned int MachineThreads()
 	threads = (n>0) ? n : 1;
 	return threads;
 }
+}
+
+unsigned int PhysicalCores()
+{
+	static unsigned int cores = 0;
+	if (cores)
+		return cores;
+	unsigned int n = 0;
+#if defined(__linux__)
+	// the distinct (package, core) of the CPUs this process may run on
+	cpu_set_t set;
+	if (sched_getaffinity(0, sizeof(set), &set)==0)
+	{
+		std::set< std::pair<int, int> > distinct;
+		for (int cpu=0; cpu<CPU_SETSIZE; ++cpu)
+		{
+			if (!CPU_ISSET(cpu, &set))
+				continue;
+			const std::string dir = "/sys/devices/system/cpu/cpu" + std::to_string(cpu) + "/topology/";
+			std::ifstream fp(dir + "physical_package_id"), fc(dir + "core_id");
+			int package = 0, core = 0;
+			if (!(fp >> package) || !(fc >> core))
+			{
+				distinct.clear();
+				break;   // no topology: the threads
+			}
+			distinct.insert(std::make_pair(package, core));
+		}
+		n = distinct.size();
+	}
+#elif defined(__APPLE__)
+	int count = 0;
+	size_t size = sizeof(count);
+	if ((sysctlbyname("hw.physicalcpu", &count, &size, NULL, 0)==0) && (count>0))
+		n = count;
+#elif defined(_WIN32)
+	DWORD len = 0;
+	GetLogicalProcessorInformationEx(RelationProcessorCore, NULL, &len);
+	if (len>0)
+	{
+		std::vector<char> buf(len);
+		if (GetLogicalProcessorInformationEx(RelationProcessorCore, (SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)buf.data(), &len))
+			for (DWORD off=0; off<len; off+=((SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)(buf.data()+off))->Size)
+				++n;
+	}
+#endif
+	const unsigned int threads = MachineThreads();   // the affinity and the cgroup quota
+	cores = ((n>0) && (n<threads)) ? n : threads;
+	return cores;
 }
 
 unsigned int AvailableThreads()

@@ -44,15 +44,22 @@ public:
 	//! The ABC is switched off until this timestep, if an excitation lies on its plane
 	unsigned int GetStartTimestep() const {return m_start_TS;}
 
+	//! The box hooks need the boundary line and the line inward of it in one box, which the blocked plans guarantee
+	virtual bool SupportsBoxes() const {return true;}
+	virtual void DoPreVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void DoPostVoltageUpdatesBox(const Engine_Box& box, unsigned int ts);
+	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts);
+
 protected:
+	//! the cells [i0, i1) x [j0, j1) of the plane: hook 0 pre, 1 post, 2 apply
 	template <typename EngType>
-	void DoPreVoltageUpdatesImpl(EngType* eng, int threadID);
-
+	void PlaneImpl(EngType* eng, int hook, unsigned int i0, unsigned int i1, unsigned int j0, unsigned int j1);
+	//! the lines of thread \a threadID
 	template <typename EngType>
-	void DoPostVoltageUpdatesImpl(EngType* eng, int threadID);
-
+	void FlatImpl(EngType* eng, int hook, int threadID);
+	//! the part of the plane in \a box at timestep \a ts
 	template <typename EngType>
-	void Apply2VoltagesImpl(EngType* eng, int threadID);
+	void BoxImpl(EngType* eng, int hook, const Engine_Box* box, unsigned int ts);
 
 	Operator_Ext_Mur_ABC* m_Op_mur;
 

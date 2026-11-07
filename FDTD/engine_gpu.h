@@ -95,7 +95,7 @@ public:
 	bool FieldsOnHost() const {return m_FieldsOnHost;}
 
 	//! Sums of the squared voltages and currents on the device (see GPU_Backend::CalcFastEnergy()); false if it has none or the fields are on the host
-	bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
+	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
 
 	//! Host mirror of the fields (basic engine layout)
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>& HostVoltages() const {return *volt_ptr;}

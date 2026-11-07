@@ -16,9 +16,15 @@
 */
 
 #include "engine_interface_fdtd.h"
+#include "engine_field_gather.h"
+#include "engine_cpu.h"
+#include "tools/global.h"
+#include <iostream>
 #include <stdexcept>
+#include <string>
 
 using std::cerr;
+using std::cout;
 using std::endl;
 
 Engine_Interface_FDTD::Engine_Interface_FDTD(Operator* op) : Engine_Interface_Base(op)
@@ -194,6 +200,11 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 	double H_energy=0.0;
 
 	unsigned int pos[3];
+	unsigned int numNodes[3];
+	for (int n=0; n<3; ++n)
+		numNodes[n] = m_Op->GetNumberOfLines(n)-1;
+	if (m_Eng->CalcFastEnergy(numNodes, E_energy, H_energy))   // the engine itself, e.g. in its memory order
+		return EPS0*E_energy + MUE0*H_energy;
 	if (m_Eng->GetType()==Engine::BASIC)
 	{
 		for (pos[0]=0; pos[0]<m_Op->GetNumberOfLines(0)-1; ++pos[0])
@@ -233,4 +244,22 @@ double Engine_Interface_FDTD::CalcFastEnergy() const
 		}
 	}
 	return EPS0*E_energy + MUE0*H_energy;
+}
+
+Engine_Field_Gather* Engine_Interface_FDTD::CreateFieldGather(bool h_field, const unsigned int numLines[3], unsigned int* const posLines[3]) const
+{
+	// the CPU engine's fields are plain arrays (in a layout of its own), read directly; the per-node path
+	// asks the engine for every edge through virtual calls, a fifth of the time of a model with NF2FF dumps
+	if ((m_Eng==NULL) || (m_Eng->GetType()!=Engine::CPU) || (m_Eng->GetVoltageArray()==NULL) || (m_Eng->GetCurrentArray()==NULL))
+		return NULL;
+	Field_Gather_FDTD* g = new Field_Gather_FDTD(this, m_Op, m_Eng->GetVoltageArray(), m_Eng->GetCurrentArray(), h_field, numLines, posLines);
+	// a table of weights while the budget of all dumps lasts (Engine_CPU::GatherBudget()); beyond it the dump interpolates per sample
+	Engine_CPU* cpu = static_cast<Engine_CPU*>(m_Eng);
+	const size_t bytes = g->BuildTable(cpu->GatherBudget(), cpu->SetupThreads());
+	cpu->UseGatherBudget(bytes);
+	if (g_settings.GetVerboseLevel()>1)
+		cout << "Engine_CPU: " << (h_field ? "H" : "E") << " dump of " << (size_t)numLines[0]*numLines[1]*numLines[2] << " nodes: "
+		     << (bytes ? "a table of " + std::to_string(bytes>>20) + " MiB" : std::string("interpolated per sample"))
+		     << ", " << (cpu->GatherBudget()>>20) << " MiB left for tables" << endl;
+	return g;
 }

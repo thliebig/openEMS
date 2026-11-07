@@ -49,6 +49,9 @@ Engine_Ext_Dispersive::Engine_Ext_Dispersive(Operator_Ext_Dispersive* op_ext_dis
 				volt_ADE[o][n] = NULL;
 		}
 	}
+	m_Index.resize(order);
+	for (int o=0;o<order;++o)
+		m_Index[o].SetList(m_Op_Ext_Disp->m_LM_Count[o], m_Op_Ext_Disp->m_LM_pos[o]);
 }
 
 Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
@@ -74,7 +77,7 @@ Engine_Ext_Dispersive::~Engine_Ext_Dispersive()
 }
 
 template <typename EngType>
-void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
+void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng, const Engine_Box* box)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -82,7 +85,7 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		m_Index.at(o).ForEach(box, [&](size_t i)
 		{
 			eng->EngType::SetVolt(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetVolt(0,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][0][i]
@@ -93,17 +96,17 @@ void Engine_Ext_Dispersive::Apply2VoltagesImpl(EngType* eng)
 			eng->EngType::SetVolt(2,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetVolt(2,pos[0][i],pos[1][i],pos[2][i]) - volt_ADE[o][2][i]
 			);
-		}
+		});
 	}
 }
 
 void Engine_Ext_Dispersive::Apply2Voltages()
 {
-	ENG_DISPATCH(Apply2VoltagesImpl);
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, (const Engine_Box*)NULL);
 }
 
 template <typename EngType>
-void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
+void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng, const Engine_Box* box)
 {
 	for (int o=0;o<m_Op_Ext_Disp->m_Order;++o)
 	{
@@ -111,7 +114,7 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 
 		unsigned int **pos = m_Op_Ext_Disp->m_LM_pos[o];
 
-		for (size_t i=0; i<m_Op_Ext_Disp->m_LM_Count.at(o); ++i)
+		m_Index.at(o).ForEach(box, [&](size_t i)
 		{
 			eng->EngType::SetCurr(0,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetCurr(0,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][0][i]
@@ -122,11 +125,29 @@ void Engine_Ext_Dispersive::Apply2CurrentImpl(EngType* eng)
 			eng->EngType::SetCurr(2,pos[0][i],pos[1][i],pos[2][i],
 				eng->EngType::GetCurr(2,pos[0][i],pos[1][i],pos[2][i]) - curr_ADE[o][2][i]
 			);
-		}
+		});
 	}
 }
 
 void Engine_Ext_Dispersive::Apply2Current()
 {
-	ENG_DISPATCH(Apply2CurrentImpl);
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, (const Engine_Box*)NULL);
+}
+
+void Engine_Ext_Dispersive::Apply2VoltagesBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(Apply2VoltagesImpl, &box);
+}
+
+void Engine_Ext_Dispersive::Apply2CurrentBox(const Engine_Box& box, unsigned int ts)
+{
+	(void)ts;   // the update does not depend on the timestep
+	ENG_DISPATCH_ARGS(Apply2CurrentImpl, &box);
+}
+
+void Engine_Ext_Dispersive::PrepareBoxes(const unsigned int numLines[3])
+{
+	for (int o=0; o<m_Op_Ext_Disp->m_Order; ++o)
+		m_Index[o].Build(numLines);
 }

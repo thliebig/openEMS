@@ -37,6 +37,11 @@ public:
 	virtual void Apply2Voltages();
 	virtual void Apply2Current();
 
+	//! In blocks the probes are recorded per box; the timesteps of a period check, which takes the energy of the whole grid, run flat
+	virtual bool SupportsBoxes() const {return true;}
+	virtual bool NeedsFlatStep(unsigned int ts) const;
+	virtual void Apply2VoltagesBox(const Engine_Box& box, unsigned int ts);
+
 	void SetEngineInterface(Engine_Interface_FDTD* eng_if) {m_Eng_Interface=eng_if;}
 	double GetLastDiff() {return m_last_max_diff;}
 

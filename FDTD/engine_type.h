@@ -20,14 +20,14 @@
 
 //! The engine types, of the engine (Engine::GetType()) and of the engine an operator creates (Operator::SetEngineType())
 /*!
-  A base of Engine, so the types read Engine::BASIC, Engine::SSE and Engine::GPU;
+  A base of Engine, so the types read Engine::BASIC, Engine::SSE, Engine::GPU and Engine::CPU;
   on its own so that operator.h, which engine.h includes, can use them too.
   */
 struct Engine_Types
 {
 	enum EngineType
 	{
-		BASIC, SSE, GPU, UNKNOWN
+		BASIC, SSE, GPU, CPU, UNKNOWN
 	};
 
 	//! The name of \a type in the messages, e.g. "Create FDTD operator (<name>)"
@@ -41,6 +41,8 @@ struct Engine_Types
 			return "compressed SSE + multi-threading";
 		case GPU:
 			return "GPU";
+		case CPU:
+			return "CPU, cell runs + multi-threading, experimental";
 		default:
 			return "unknown";
 		}

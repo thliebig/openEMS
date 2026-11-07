@@ -46,8 +46,10 @@ public:
 	//! Snapshot of the fields of timestep \a ts, shared by all dumps of that timestep; false if the engine has none
 	bool Snapshot(Engine_Interface_Base* eng_if, unsigned int ts, const float* &volt, const float* &curr)
 	{
-		std::unique_lock<std::mutex> lock(m_Mutex);
 		const void* id = eng_if->GetEngineID();
+		if (id==NULL)
+			return false;   // no snapshots; nor the empty one below (id NULL, ts 0), which a dump would read as the live fields
+		std::unique_lock<std::mutex> lock(m_Mutex);
 		if ((m_Snap.id==id) && (m_Snap.ts==ts))
 		{
 			volt = m_Snap.volt;

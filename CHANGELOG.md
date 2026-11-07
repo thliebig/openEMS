@@ -25,6 +25,11 @@ there are unreleased changes. It becomes the next release entry.
   several GPUs it takes a discrete one before an integrated one, then the one
   with more memory; `--gpu-device=N` (`gpu_device=N`) picks device N of the
   list printed at `--verbose=1`.
+- **A CPU engine, experimental**, `--engine=cpu` (`engine='cpu'`): on an
+  8-core Ryzen 7 5800X it runs typical models 3-6x faster than the default
+  engine, with dispersive materials up to 10x, and needs less memory.
+  Benchmarks from other machines are welcome (`benchmark/bench.py`).
+- The multithreaded engines run small models up to twice as fast.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.

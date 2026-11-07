@@ -5,6 +5,8 @@
 
 set(TESTS
   test_arraylib
+  test_engine_plan
+  test_cell_model
 )
 
 foreach(test ${TESTS})

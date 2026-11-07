@@ -207,7 +207,7 @@ void openEMS::collectCommandLineArguments()
 					DebugOperator();
 				}
 			),
-			"Dump operator to vtk file for debugging"
+			"Dump operator to vtk file for debugging (the CPU engine: also its cell model, 'cellmodel_dump.h5')"
 		)
 		(
 			"debug-boxes",
@@ -264,6 +264,11 @@ void openEMS::collectCommandLineArguments()
 						cout << "openEMS - enabled GPU engine with the reference backend" << endl;
 						m_engine = EngineType_GPU_Reference;
 					}
+					else if (val == "cpu")
+					{
+						cout << "openEMS - enabled the CPU engine (experimental)" << endl;
+						m_engine = EngineType_CPU;
+					}
 					else
 					{
 						po::invalid_option_value e(val);
@@ -280,6 +285,7 @@ void openEMS::collectCommandLineArguments()
 			"  sse, sse-compressed: \tother names of multithreaded\n"
 			"  gpu: \tGPU engine on the best available backend\n"
 			"  gpu-reference: \tGPU engine with the reference backend on the CPU\n"
+			"  cpu: \tCPU engine on cell runs, experimental\n"
 		)
 		(
 			"gpu-device",
@@ -832,6 +838,9 @@ bool openEMS::SetupOperator()
 		break;
 	case EngineType_SSE:
 		type = Engine::SSE;
+		break;
+	case EngineType_CPU:
+		type = Engine::CPU;
 		break;
 	case EngineType_GPU:
 	case EngineType_GPU_Reference:   // the GPU engine, the reference backend chosen below

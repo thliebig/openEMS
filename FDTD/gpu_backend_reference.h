@@ -31,7 +31,7 @@
   be built and tested anywhere (--engine=gpu-reference). It is never chosen
   by itself: --engine=gpu without a device is an error. Being bit-identical
   makes it the oracle of the GPU engine test
-  (python/Tests/GPU_Engine.py runs every case with the basic engine, this backend
+  (python/Tests/Engine_Compare.py runs every case with the basic engine, this backend
   and the device backend): a difference here is in the engine, not in a device
   backend.
 

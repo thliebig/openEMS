@@ -21,6 +21,7 @@
 #include <fstream>
 #include "operator.h"
 #include "engine_type.h"
+#include "engine_plan.h"
 
 #include "tools/arraylib/array_nijk.h"
 
@@ -98,29 +99,17 @@ public:
 		curr(n, pos[0], pos[1], pos[2]) = value;
 	}
 
-	//! Execute Pre-Voltage extension updates
-	virtual void DoPreVoltageUpdates();
-	//! Main FDTD engine voltage updates
-	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
-	//! Execute Post-Voltage extension updates
-	virtual void DoPostVoltageUpdates();
-	//! Apply extension voltage changes
-	virtual void Apply2Voltages();
-
-	//! Execute Pre-Current extension updates
-	virtual void DoPreCurrentUpdates();
-	//! Main FDTD engine current updates
-	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
-	//! Execute Post-Current extension updates
-	virtual void DoPostCurrentUpdates();
-	//! Apply extension current changes
-	virtual void Apply2Current();
-
 	inline size_t GetExtensionCount() {return m_Eng_exts.size();}
 	inline Engine_Extension* GetExtension(size_t nr) {return m_Eng_exts.at(nr);}
-	virtual void SortExtensionByPriority();
 
 	EngineType GetType() const {return m_type;}
+
+	//! The sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, if the engine computes them itself (on the device, in its memory order); false: Engine_Interface_FDTD::CalcFastEnergy() does
+	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const {(void)numNodes; (void)E_energy; (void)H_energy; return false;}
+
+	//! The voltages and currents of the engines that keep them in these arrays (basic, CPU), else NULL
+	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* GetVoltageArray() const {return volt_ptr;}
+	const ArrayLib::ArrayNIJK<FDTD_FLOAT>* GetCurrentArray() const {return curr_ptr;}
 
 	//! The sub-grid of a cylindrical multi-grid level: its engine (of the same type) and the coupling of the two, both taken over; before the first IterateTS(), throws after
 	void SetSubGrid(Engine* sub, Engine_SubGridCoupling* coupling);
@@ -144,6 +133,51 @@ protected:
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>* volt_ptr;
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr_ptr;
 	unsigned int numTS;
+
+	//! The memory layout of the fields (ArrayNIJK), allocated by Init()
+	virtual std::string GetFieldLayout() const {return "NIJK";}
+
+	// The steps of a half step: the extension hooks around the main update, called by
+	// Engine_ThreadPool (a friend), not from outside the engine
+	//! Execute Pre-Voltage extension updates
+	virtual void DoPreVoltageUpdates();
+	//! The voltage update of the x lines [startX, startX+numX): the kernel of the basic engine (SSE: its own), behind the box update
+	virtual void UpdateVoltages(unsigned int startX, unsigned int numX);
+	//! The voltage update of \a box (Engine_Plan), one CanUpdateBox() accepts; the default through UpdateVoltages(startX, numX)
+	virtual void UpdateVoltages(const Engine_Box& box);
+	//! Execute Post-Voltage extension updates
+	virtual void DoPostVoltageUpdates();
+	//! Apply extension voltage changes
+	virtual void Apply2Voltages();
+
+	//! Execute Pre-Current extension updates
+	virtual void DoPreCurrentUpdates();
+	//! The current update of the x lines [startX, startX+numX), see UpdateVoltages(unsigned int, unsigned int)
+	virtual void UpdateCurrents(unsigned int startX, unsigned int numX);
+	//! The current update of \a box, see UpdateVoltages(const Engine_Box&)
+	virtual void UpdateCurrents(const Engine_Box& box);
+
+	//! Whether UpdateVoltages(const Engine_Box&) (\a currents false) or UpdateCurrents(const Engine_Box&) takes \a box
+	/*!
+	  The default: boxes spanning all lines in y and z (all but the last for the
+	  currents), the x ranges of the kernels of the basic and the SSE engine.
+	  Engine_ThreadPool checks its plans once, when it builds them.
+	  */
+	virtual bool CanUpdateBox(const Engine_Box& box, bool currents) const;
+
+	//! The axis the flat plan splits over the threads: one of the slowest in memory
+	virtual int GetSplitAxis() const {return 0;}
+
+	//! The blocked plans (temporal blocking) for \a numThreads threads this engine offers for this model, see Engine_BlockedChoice; the default: none
+	virtual bool BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice& choice) {(void)numThreads; (void)choice; return false;}
+	//! The threads for --numThreads=0: 0 lets Engine_ThreadPool add threads while the speed increases (the basic and the SSE engine)
+	virtual unsigned int DefaultThreads() const {return 0;}
+	//! Execute Post-Current extension updates
+	virtual void DoPostCurrentUpdates();
+	//! Apply extension current changes
+	virtual void Apply2Current();
+
+	virtual void SortExtensionByPriority();
 
 	virtual void InitExtensions();
 	virtual void ClearExtensions();

@@ -20,6 +20,7 @@
 #define ENGINE_FIELD_GATHER_H
 
 #include <complex>
+#include <cstdint>
 #include <vector>
 #include "Common/engine_interface_base.h"
 #include "tools/constants.h"
@@ -50,6 +51,7 @@ struct Engine_GatherRegion
   of these raw values. All are interpolated with Engine_Interface_FDTD::InterpolateField()
   and InterpolateDualField(), the code of the node by node evaluation, so the dumps from the
   host mirror and the snapshots are bit-identical to it. Nothing is stored per node.
+  The CPU engine (Engine_CPU) reads its own fields through it, in their layout.
   */
 class Field_Gather_FDTD : public Engine_Field_Gather
 {
@@ -66,6 +68,16 @@ public:
 	void SetSnapshotRegion(size_t offset) {m_RegionSnapshot = true; m_Offset = offset;}
 
 	virtual void Evaluate(size_t line_start, size_t line_stop, ArrayLib::ArrayNIJK<float> &field, const float* src=NULL) const;
+
+	//! The evaluation from the fields as weights of their raw values, per node and component, if it takes at most \a budget bytes
+	/*!
+	  Evaluate() without a snapshot then sums the weighted raw values: a few multiply-adds per
+	  node instead of the interpolation, with the edge lengths, per node and sample. The
+	  interpolation is linear in the raw values, so the weights are what it gives for one
+	  raw value 1 and the others 0; the values agree with it to float rounding. Built on
+	  \a numThreads threads, the same table for any number. Returns its bytes, 0 without.
+	  */
+	size_t BuildTable(size_t budget, unsigned int numThreads);
 	//! The frequency domain values of the dump from the sums \a raw of the raw values of \a region
 	void EvaluateSums(const std::complex<float>* raw, ArrayLib::ArrayNIJK<std::complex<float>> &field) const;
 
@@ -79,7 +91,7 @@ protected:
 	{
 		if (in_region)
 			return f[m_RegionStart[n] + ((size_t)m_RegionPos[n][0][pos[0]]*region.lines[n][1].size() + m_RegionPos[n][1][pos[1]])*region.lines[n][2].size() + m_RegionPos[n][2][pos[2]]];
-		return f[(((size_t)n*m_N[0] + pos[0])*m_N[1] + pos[1])*m_N[2] + pos[2]];
+		return f[n*m_S[0] + pos[0]*m_S[1] + pos[1]*m_S[2] + pos[2]*m_S[3]];
 	}
 
 	const Engine_Interface_FDTD* m_EngIf;
@@ -89,10 +101,16 @@ protected:
 	bool m_H;
 	std::vector<unsigned int> m_PosLines[3];      //!< the dumped mesh lines
 	unsigned int m_N[3];                          //!< mesh lines of the fields
+	size_t m_S[4];                                //!< the strides of the fields (and their snapshots), the layout of the engine
 	size_t m_RegionStart[3];                      //!< first raw value of component n in the region
 	std::vector<unsigned int> m_RegionPos[3][3];  //!< [n][direction][line]: position of the line in region.lines[n][direction]
 	bool m_RegionSnapshot;   //!< a snapshot holds the raw values of the region, see SetSnapshotRegion()
 	size_t m_Offset;
+
+	//! BuildTable(): per node and component (3*node + n, node (i*nj + j)*nk + k) its first weight, and one past the last
+	std::vector<uint32_t> m_TabStart;
+	std::vector<size_t> m_TabIndex;   //!< the raw value of each weight in the field array
+	std::vector<float> m_TabWeight;
 };
 
 #endif // ENGINE_FIELD_GATHER_H

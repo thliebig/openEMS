@@ -16,9 +16,11 @@
 */
 
 /*
-  Tests for the memory layout of ArrayLib::ArrayNIJK: every element has its
-  own place in memory, and the order is N-I-J-K with K fastest, which code
-  walking data() linearly (the GPU copies) relies on.
+  Tests for the memory layout of ArrayLib::ArrayNIJK: in every layout each
+  element has its own place in memory and the last axis of the layout string
+  is the fastest; the default stays N-I-J-K, which code walking data()
+  linearly (the GPU copies) relies on; a string that is not a permutation of
+  NIJK is refused.
 
   Build with -DOPENEMS_BUILD_TESTS=ON and run it through ctest:
 
@@ -32,6 +34,8 @@
 
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 static int fails = 0;
@@ -82,6 +86,29 @@ int main()
 	for (size_t m=0; m<a.size(); ++m)
 		linear = linear && a.data()[m]==(float)m;
 	CHECK(linear, "default layout is not N-I-J-K");
+	CHECK(a.layout()=="NIJK", "default layout() is " << a.layout());
+
+	// every permutation of the four axes
+	std::string layout = "IJKN";
+	std::sort(layout.begin(), layout.end());
+	int count = 0;
+	do
+	{
+		Array b("permuted", {ext[0], ext[1], ext[2]}, layout);
+		CheckAccess(b, layout);
+		CHECK(b.layout()==layout, layout << ": layout() is " << b.layout());
+		CHECK(b.stride(std::string("NIJK").find(layout[3]))==1, layout << ": the last axis is not the fastest");
+		++count;
+	} while (std::next_permutation(layout.begin(), layout.end()));
+	CHECK(count==24, "tested " << count << " layouts, not 24");
+
+	for (const char* bad : {"", "NIJ", "NIJKK", "NIIK", "XIJK", "nijk"})
+	{
+		bool refused = false;
+		try {Array c("bad", {2, 2, 2}, bad);}
+		catch (const std::invalid_argument&) {refused = true;}
+		CHECK(refused, "layout \"" << bad << "\" accepted");
+	}
 
 	if (fails==0)
 		std::cout << "all ArrayLib checks passed\n";

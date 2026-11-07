@@ -58,6 +58,9 @@ public:
 	Operator_Ext_Absorbing_BC(Operator* op);
 	~Operator_Ext_Absorbing_BC();
 
+	//! the axis normal to the sheet
+	int GetNormalAxis() const {return m_ny;}
+
 	virtual Operator_Extension* Clone(Operator* op);
 
 
