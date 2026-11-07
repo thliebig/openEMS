@@ -21,6 +21,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <stdexcept>
 #include <thread>
 #include <typeinfo>
@@ -34,6 +35,9 @@
 #endif
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
+#endif
+#if defined(__linux__)
+#include <sched.h>    // sched_getaffinity()
 #endif
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
@@ -290,9 +294,43 @@ void Engine_CPU::InitKernels()
 		cout << "Engine_CPU: kernels for " << m_ISA << endl;
 }
 
-// the bytes of the last level cache the cores share, and where they come from; 32 MiB if the system does not say
-static size_t CacheBytes(std::string& source)
+#if defined(__linux__)
+// the distinct caches of \a level of the CPUs this process may run on (shared_cpu_list in sysfs), 0 if it does not say
+// (other systems: 1)
+static unsigned int CacheInstancesSysfs(int level)
 {
+	cpu_set_t set;
+	if (sched_getaffinity(0, sizeof(set), &set)!=0)
+		return 1;
+	std::set<std::string> distinct;
+	for (int cpu=0; cpu<CPU_SETSIZE; ++cpu)
+	{
+		if (!CPU_ISSET(cpu, &set))
+			continue;
+		for (int index=0; index<8; ++index)
+		{
+			const std::string dir = "/sys/devices/system/cpu/cpu" + std::to_string(cpu) + "/cache/index" + std::to_string(index) + "/";
+			std::ifstream fl(dir + "level"), ft(dir + "type"), fs(dir + "shared_cpu_list");
+			int l = 0;
+			std::string type, cpus;
+			if ((fl >> l) && (ft >> type) && (fs >> cpus) && (l==level) && (type!="Instruction"))
+			{
+				distinct.insert(cpus);
+				break;
+			}
+		}
+	}
+	return distinct.size();
+}
+#else
+static unsigned int CacheInstancesSysfs(int) {return 1;}
+#endif
+
+// the bytes of one last level cache, where they come from, and how many such caches the machine has (\a instances,
+// e.g. one per CCD of a Zen CPU or per socket); 32 MiB and one if the system does not say
+static size_t CacheBytes(std::string& source, unsigned int& instances)
+{
+	instances = 1;
 #if defined(_WIN32)
 	// the largest cache of the highest level
 	DWORD len = 0;
@@ -321,6 +359,15 @@ static size_t CacheBytes(std::string& source)
 			}
 			if (bytes>0)
 			{
+				unsigned int count = 0;   // the caches of that level, each an entry with its processors
+				for (DWORD off=0; off<len; )
+				{
+					const SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX* e = (const SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX*)(buf.data()+off);
+					if ((e->Relationship==RelationCache) && (e->Cache.Type!=CacheInstruction) && (e->Cache.Level==level))
+						++count;
+					off += e->Size;
+				}
+				instances = std::max(count, 1u);
 				source = "L" + std::to_string(level) + " (Windows)";
 				return bytes;
 			}
@@ -336,6 +383,13 @@ static size_t CacheBytes(std::string& source)
 		if ((sysctlbyname(name, &bytes, &size, NULL, 0)==0) && (bytes>0))
 		{
 			source = name;
+			// the performance cores of a larger Apple chip are several clusters, an L2 each
+			int cores = 0, perL2 = 0;
+			size_t s1 = sizeof(cores), s2 = sizeof(perL2);
+			if ((std::string(name)=="hw.perflevel0.l2cachesize")
+			    && (sysctlbyname("hw.perflevel0.physicalcpu", &cores, &s1, NULL, 0)==0)
+			    && (sysctlbyname("hw.perflevel0.cpusperl2", &perL2, &s2, NULL, 0)==0) && (cores>0) && (perL2>0))
+				instances = std::max(1, cores/perL2);
 			return (size_t)bytes;
 		}
 	}
@@ -345,6 +399,7 @@ static size_t CacheBytes(std::string& source)
 	if (l3>0)
 	{
 		source = "L3 (sysconf)";
+		instances = std::max(CacheInstancesSysfs(3), 1u);
 		return l3;
 	}
 #endif
@@ -374,6 +429,7 @@ static size_t CacheBytes(std::string& source)
 	if (best>0)
 	{
 		source = "L" + std::to_string(bestLevel) + " (sysfs)";
+		instances = std::max(CacheInstancesSysfs(bestLevel), 1u);
 		return best;
 	}
 #endif
@@ -440,8 +496,16 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
 		const double fieldBytes = 6*sizeof(FDTD_FLOAT);   // the voltages and currents of a node
 		const double bytes = plane*fieldBytes + (sizeof(float)*state + sizeof(CellModel_Run)*runs + ext)/numLines[m_SplitAxis];
+		// the threads keep their lines of a tile through its timesteps, so each cache holds the part of its cores:
+		// the caches of the fewest the threads span (all at the default threads, all physical cores; with fewer
+		// threads the scheduler may spread them wider, the trials try larger tiles)
 		std::string source;
-		size_t cache = CacheBytes(source);
+		unsigned int instances = 1;
+		size_t cache = CacheBytes(source, instances);
+		const unsigned int coresPer = std::max(1u, PhysicalCores()/instances);
+		const unsigned int spanned = std::min(instances, (numThreads+coresPer-1)/coresPer);
+		cache *= spanned;
+		source += ", " + std::to_string(spanned) + " of " + std::to_string(instances) + " such caches for " + std::to_string(numThreads) + " threads";
 		if (const char* mib = std::getenv("OPENEMS_CPU_CACHE"))   // to try other cache sizes
 		{
 			char* end = NULL;
