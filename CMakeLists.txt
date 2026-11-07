@@ -287,7 +287,7 @@ ELSEIF(ENABLE_HIP)
   enable_language(HIP)
   set(CMAKE_HIP_STANDARD 17)
   # No fused multiply-add and the same denormal handling, so the kernels round like the
-  # CPU engines (python/Tests/GPU_Engine.py compares them value by value). The flags are
+  # CPU engines (python/Tests/Engine_Compare.py compares them value by value). The flags are
   # those of the compiler behind hipcc: hipcc on the NVIDIA platform, clang on AMD, and
   # the clang spelling would only reach the host compiler under hipcc.
   IF(CMAKE_HIP_PLATFORM STREQUAL "nvidia")

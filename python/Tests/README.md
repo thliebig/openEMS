@@ -115,10 +115,14 @@ The full-simulation tests themselves have only ever been run on Linux, though --
 CI runs `test_*.py` everywhere but no simulation, so expect to adjust a
 tolerance when you first run them on Windows or macOS.
 
-## No engine selection
+## Engines
 
 The Octave suite can sweep a test over all four FDTD engines; this one cannot,
 because every script here passes its own options to `FDTD.Run` and the
-`openEMS` extension type cannot be patched from the outside. Checking that the
-engines agree is `TESTSUITE/enginetests/engine_compare`'s job anyway, and it is
-not specific to the language bindings.
+`openEMS` extension type cannot be patched from the outside. Instead
+`Engine_Compare.py` runs its own small cases with every engine (`basic`,
+`gpu-reference`, `gpu` if there is a GPU, `cpu` flat and with temporal blocking,
+`multithreaded` on cylindrical meshes) and compares all probes and field dumps
+with the basic engine: bit-identical where the arithmetic is the same, within
+1e-4 of the peak value where it is not. Its docstring lists the cases and what
+each must show; `CPU_CellModel.py` checks the CPU engine's cell model on top.

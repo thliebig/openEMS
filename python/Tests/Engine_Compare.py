@@ -1,47 +1,67 @@
 # -*- coding: utf-8 -*-
 """
- GPU engine test — comparison with the basic engine
+ Engine comparison test — every engine against the basic engine
 
- Each case runs with engine='basic', engine='gpu-reference' and engine='gpu'
- and compares all probe files and all HDF5 field dumps. The CPU engine
- (engine='cpu', cell runs and factorised coefficients, the UPML and the
- dispersive materials fused into its update) runs every case too and is compared like a device backend, once on
- its flat sweep and once with temporal blocking forced (OPENEMS_CPU_TBLOCK).
+ Each case is a small model run with several engines; all probe files and all
+ HDF5 field dumps are compared with those of engine='basic':
 
- The reference backend performs the main FDTD updates on the CPU on its own
- copy of the fields, exactly like the basic engine, so its results must be
- bit-identical. A device backend (engine='gpu': Metal on macOS, HIP) runs on
- the GPU, whose float arithmetic may differ in rounding (e.g. fused
- multiply-add), so it is compared with a tolerance.
+   engine='gpu-reference'  the GPU engine's host backend: the main updates on
+                           the CPU, on its own copy of the fields, exactly like
+                           the basic engine, so bit-identical
+   engine='gpu'            a device backend (Metal on macOS, HIP), if a GPU is
+                           there: its float arithmetic may round differently
+                           (e.g. fused multiply-add), so within a tolerance
+   engine='cpu'            cell runs and factorised coefficients, the UPML and
+                           the dispersive materials fused into its update:
+                           within the tolerance, once on its flat sweep and
+                           once with temporal blocking forced, which must be
+                           bit-identical to the flat sweep
+   engine='multithreaded'  (cylindrical and multi-grid cases) bit-identical
 
- Together the cases use the excitation, UPML, Mur ABC, Lorentz and Debye material,
- lumped RLC, conducting sheet, TF/SF, local absorber, steady-state and
- cylinder extensions, and cylindrical meshes with one and two multi-grid
- levels.
+ Together the cases use the excitation, UPML, Mur ABC, Lorentz and Debye
+ material, lumped RLC, conducting sheet, TF/SF, local absorber, steady-state
+ and cylinder extensions, and cylindrical meshes with one and two multi-grid
+ levels. Run on its own (python3 Engine_Compare.py) or by run_testsuite.py;
+ without a GPU the device backend is skipped.
 
- Pass criteria (per case)
-   the requested backend was created (not a silent fallback)
-   device backend: all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
-   device backend, cases dumps_snapshot, multigrid_snapshot and dumps_snapshot_host_dft: the
-     dumps read field snapshots (FULL_DEVICE_BACKENDS); dumps_snapshot_host_dft sums the
-     frequency domain dumps from them on the host (OPENEMS_GPU_DUMPS=snapshot)
-   HIP backend, cases pml, pml_upml_regions and pml_upml_separate: the UPML is updated in the
-     fused step, by region kernels (OPENEMS_HIP_FUSED_STEP=0) and by separate kernels
-     (OPENEMS_HIP_UPML_FUSION=0), each bit-identical; pml_index32: the fused step with 32 bit
-     indices (OPENEMS_HIP_INDEX=32, the default on NVIDIA), bit-identical; pml_full_separate: the
-     separate kernels with the full UPML coefficient arrays instead of sets, bit-identical
-   device backend, cases dumps and sar: the FD dumps (the E field of the SAR) are accumulated on
-     the device (DEVICE_DFT_BACKENDS)
-   device backend, cases coeff_index32 and coeff_full: the update coefficients as sets with
-     a 32 bit index, and as full arrays (FULL_DEVICE_BACKENDS)
-   reference backend: all probe data and field dumps bit-identical
-   cylindrical and multi-grid cases: engine='multithreaded' bit-identical to engine='basic'
-   device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
-     (skipped without a GPU device)
-   engine='cpu': created, and max. deviation < 1e-4 of the peak value like a device backend;
-     with blocking forced (tiles of 5 lines and 2 timesteps per block, of 7 lines and 3, and the
-     flat sweep, switched on every call at the start: OPENEMS_CPU_TRIAL) bit-identical to its
-     flat sweep, and blocked in at least one case (the multi-grid cases run the flat sweep)
+ Pass criteria, per case
+
+   every engine
+     created as requested (not a silent fallback)
+
+   gpu-reference
+     all probe data and field dumps bit-identical
+
+   gpu (skipped without a GPU device)
+     max. deviation < 1e-4 of the peak value, per probe file and per field dump
+     all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
+     dumps_snapshot, multigrid_snapshot, dumps_snapshot_host_dft: the dumps
+       read field snapshots (FULL_DEVICE_BACKENDS); dumps_snapshot_host_dft
+       sums the frequency domain dumps from them on the host
+       (OPENEMS_GPU_DUMPS=snapshot)
+     dumps, sar: the FD dumps (the E field of the SAR) accumulated on the
+       device (DEVICE_DFT_BACKENDS)
+     coeff_index32, coeff_full: the update coefficients as sets with a 32 bit
+       index, and as full arrays (FULL_DEVICE_BACKENDS)
+     HIP only, each bit-identical to basic:
+       pml, pml_upml_regions, pml_upml_separate: the UPML in the fused step,
+         by region kernels (OPENEMS_HIP_FUSED_STEP=0) and by separate kernels
+         (OPENEMS_HIP_UPML_FUSION=0)
+       pml_index32: the fused step with 32 bit indices (OPENEMS_HIP_INDEX=32,
+         the default on NVIDIA)
+       pml_full_separate: the separate kernels with the full UPML coefficient
+         arrays instead of sets
+
+   cpu
+     max. deviation < 1e-4 of the peak value, like a device backend
+     blocking forced (OPENEMS_CPU_TBLOCK=2:5,3:7: tiles of 5 lines and 2
+       timesteps per block, of 7 lines and 3) and switched between those and
+       the flat sweep on every call at the start (OPENEMS_CPU_TRIAL):
+       bit-identical to the flat sweep
+     blocked in at least one case (the multi-grid cases run the flat sweep)
+
+   multithreaded (cylindrical and multi-grid cases)
+     bit-identical to basic
 
  Tested with
   - python 3.13
@@ -649,7 +669,7 @@ for name, case, on_device in cases:
     engines = ('basic', 'gpu-reference', 'gpu', 'cpu', 'cpu-blocked')
     if name.startswith(('cylinder', 'multigrid')):
         engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
-    paths = {engine: os.path.join(tempfile.gettempdir(), f'GPU_Engine_{name}_{engine}') for engine in engines}
+    paths = {engine: os.path.join(tempfile.gettempdir(), f'Engine_Compare_{name}_{engine}') for engine in engines}
     os.environ.update(CASE_ENV.get(name, {}))
     try:
         logs = {}

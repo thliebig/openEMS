@@ -3,7 +3,7 @@
  CPU engine: the cell model (CellModel) of three structures with known numbers
 
  The CPU engine (engine='cpu') turns the operator into runs of cell classes
- along its fast axis. A mistake there need not change any result (GPU_Engine.py
+ along its fast axis. A mistake there need not change any result (Engine_Compare.py
  compares the fields): a lossless cell taken as lossy, runs broken where nothing
  changes, inert cells no longer skipped, UPML layers not merged into a profile
  all compute the same fields, only slower. This test checks the model itself,

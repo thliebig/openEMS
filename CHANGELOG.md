@@ -32,16 +32,18 @@ there are unreleased changes. It becomes the next release entry.
   materials updated together with the main update in one pass; the magnetic
   field inside metal is skipped. Unless the model has a cylindrical
   multi-grid or local absorbers in more than one orientation it advances
-  cache-sized tiles several timesteps at a time (temporal blocking;
-  `OPENEMS_CPU_TBLOCK=0` turns it off); during its first seconds it times tile
-  sizes around the one for the cache size, and the plain sweep, and keeps the
-  fastest. It uses all physical
-  cores by default. `--debug-operator` also writes its
-  cell model to `cellmodel_dump.h5`: the class, coefficient set and run of
-  every edge, the sets, runs and poles, and which extensions it fused. Its
-  results agree with the other engines to float rounding, not bit for bit. On real models with a PML it is
+  cache-sized tiles several timesteps at a time (temporal blocking): during
+  its first seconds it times tile sizes around the one for the cache, and the
+  plain sweep, and keeps the fastest. It uses all physical cores by default.
+  Its results agree with the other engines to float rounding, not bit for
+  bit. Measured on an 8-core Ryzen 7 5800X, on real models with a PML it is
   3-6x faster than the default engine, with dispersive materials up to 10x,
-  and needs less memory while running.
+  and needs less memory while running; other machines may differ (please
+  send `benchmark/bench.py` results). `--debug-operator` also writes its cell
+  model to `cellmodel_dump.h5`: the class, coefficient set and run of every
+  edge, the sets, runs and poles, and which extensions it fused. Its
+  `OPENEMS_CPU_*` environment variables (e.g. `OPENEMS_CPU_TBLOCK=0`: no
+  temporal blocking) are listed in `benchmark/README.md`.
 - The multithreaded engines wait for each other in a spinning barrier instead
   of sleeping: small models run up to twice as fast.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
