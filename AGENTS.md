@@ -157,7 +157,9 @@ not verification.
   behaviour, a fix for something that bit someone, a new build requirement —
   gets a bullet under `## Unreleased` in `CHANGELOG.md` **in the same commit**,
   creating that section if it is absent. Internal refactoring, CI and test-only
-  changes get none. Use only the subsections you need, in the order `Added`,
+  changes get none. Write for users: what they notice, in a few lines, with no
+  implementation details; those belong in the commit message. Use only the
+  subsections you need, in the order `Added`,
   `Changed`, `Fixed`, `Build`, `Upgrade notes`; `Upgrade notes` is prose, for
   what a bullet cannot carry — a rename, a behaviour change that breaks existing
   scripts, a rebuild requirement. Never write a version heading by hand: the

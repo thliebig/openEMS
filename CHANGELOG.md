@@ -9,155 +9,86 @@ of the [openEMS documentation](https://docs.openems.de/).
 
 **When you change something user-visible, add a bullet under `Unreleased` in the
 same commit**, creating that section if it is not there — it exists only while
-there are unreleased changes. It becomes the next release entry.
+there are unreleased changes. It becomes the next release entry. Keep an entry
+to what a user notices, in a few lines; the details belong in the commit.
 
 ## Unreleased
 
 ### Added
 
-- **A GPU engine**, `--engine=gpu` (`engine='gpu'` from Python), with a Metal
-  backend on macOS and a HIP backend for AMD (ROCm) and NVIDIA (CUDA) GPUs. It
-  is selected like the other engines, runs Cartesian and cylindrical meshes
-  (including multi-grid) with the usual extensions on the device, and writes
-  the same probes and dumps. Without a usable GPU the setup fails with an
-  error instead of running something slower. `--engine=gpu-reference` runs it
-  on a CPU reference backend, to check the device backends against. With
-  several GPUs it takes a discrete one before an integrated one, then the one
-  with more memory; `--gpu-device=N` (`gpu_device=N`) picks device N of the
-  list printed at `--verbose=1`.
+- **A GPU engine**, `--engine=gpu` (`engine='gpu'` from Python), for AMD and
+  NVIDIA GPUs (HIP/CUDA) and on macOS (Metal), with Cartesian and cylindrical
+  meshes and the usual extensions. `--gpu-device=N` picks one of the GPUs
+  listed at `--verbose=1`.
 - **A CPU engine, experimental**, `--engine=cpu` (`engine='cpu'`): on an
   8-core Ryzen 7 5800X it runs typical models 3-6x faster than the default
   engine, with dispersive materials up to 10x, and needs less memory.
   Benchmarks from other machines are welcome (`benchmark/bench.py`).
-- The multithreaded engines run small models up to twice as fast.
-- `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
-  and field dumps of two runs, e.g. of two engines, and
-  `openEMS.compare.compare_sim_results()` does the same from Python.
-- A DC-free Gaussian pulse: `SetGaussExcite(f0, fc, dc_free=True)` (Matlab
-  `'DCFree',1`, XML `DCFree="1"`) uses a sine instead of a cosine carrier, so
-  the pulse has no DC part and leaves no static charge behind, e.g. in a
-  structure closed by PEC. Away from DC the spectrum is the same; below about
-  f0-fc it falls to zero at DC. With `f0=0` the pulse is the derivative of the
-  Gaussian, with its peak at about 0.47*fc and its -20dB edge at 1.3*fc.
-
-### Fixed
-
-- A number of timesteps above 2^31 (about 2.1e9) made the setup fail with
-  "excitation setup failed". It is now limited to that.
-- A run switched flush-to-zero on in the calling process and left it on: in
-  Python, numpy computations after `Run()` lost their denormal (subnormal)
-  values, and the results of a following run with the basic engine depended
-  on it. Every engine now flushes denormals to zero during the run only.
-- Python: an option passed as `False` to `Run()`, e.g. `debug_PEC=False`, made
-  openEMS ignore all options after it without a message, so that for example
-  a following `engine=...` or `numThreads=...` had no effect.
-- A node-interpolated B-field dump of a closed cylindrical mesh was zero on
-  its first alpha line: the B field was not evaluated across the seam of the
-  mesh as the H field is.
-- A simulation that was aborted (`SetAbort()`, an `ABORT` file, Ctrl-C) no
-  longer ends with the warning that the max. number of timesteps was reached;
-  it reports the abort.
-- An error during the setup or the run of a simulation, e.g. running out of
-  memory, or an invalid command line option, e.g. an unknown `--engine`, no
-  longer terminates the process: openEMS ends with an error message,
-  Python raises a `RuntimeError`, and Ctrl-C works again afterwards.
-- A simulation with more than about 1.4 billion mesh nodes no longer
-  overflows the size of its field and coefficient arrays, which corrupted
-  memory without a message. The operator statistics show the right memory
-  size above about 89 million nodes, and the cell count, the speed, frequency
-  domain and SAR dumps, the SAR calculation, VTK field dumps and the node
-  counts of materials, excitations and lumped elements no longer wrap around
-  at 2 to 4 billion nodes.
-- A SAR dump kept a second, unused copy of its frequency domain fields:
-  24 bytes per dumped cell and frequency less memory now.
-- `Write2XML()` crashed when no excitation or no structure was set. It now
-  reports the missing part and returns false, as the file could not be read
-  back anyway.
-- An excitation with a delay injected the first sample of its signal before
-  the delay had expired: a delayed step excitation started at t=0, and so did
-  a custom excitation whose function is not zero at t=0.
+- `python -m openEMS.compare <sim_path_a> <sim_path_b>` (or
+  `openEMS.compare.compare_sim_results()`) compares the probes and field
+  dumps of two runs.
+- A DC-free Gaussian pulse, `SetGaussExcite(f0, fc, dc_free=True)` (Matlab
+  `'DCFree',1`): it leaves no static charge behind, e.g. in a structure
+  closed by PEC.
 
 ### Changed
 
-- The Python bindings need Python 3.6 or newer (was 3.4), the oldest version
-  CI still tests; CentOS 7 and Ubuntu 14.04 are no longer tested.
-- Time-domain HDF5 field dumps are written in the background instead of
-  stalling the timestepping, with the file kept open for the whole run; with
-  the GPU engine from snapshots of the fields.
-- Field dumps are evaluated on several threads, with every engine; large
-  dumps, like the surfaces of an NF2FF box, slow the simulation down less.
-- The end criteria is checked every Nyquist period during the first minute of
-  a simulation, and only after that with the progress report every few
-  seconds. A short simulation used to run on until the first report, on a fast
-  machine several times longer than necessary, with correspondingly larger
-  dumps; it now stops where the end criteria is met, at the same timestep on
-  every machine. `--exact-endcriteria` keeps this for the whole run.
-- The memory of the operator and the engine is freed at the end of the
-  simulation, not when the `openEMS` object is destroyed. A post-processing in
-  the same script (NF2FF, SAR) has it available, and running one `openEMS`
-  object several times no longer keeps the memory of every run.
-- Reading a time-domain field dump with many timesteps is much faster: its
-  datasets are listed once instead of looked up one by one, which took
-  quadratic time. A far-field (NF2FF) calculation from a recording of 3200
-  timesteps went from 79 s to 2.4 s per frequency.
-- An unknown `--engine` value (`engine=` from Python) is an error; it used to
-  run the default engine without a word, e.g. for `--engine=GPU` or `cuda`.
+- The Python bindings need Python 3.6 or newer (was 3.4).
+- Field dumps slow the simulation down less: they are evaluated on several
+  threads, and time-domain HDF5 dumps are written in the background.
+- A short simulation stops where the end criteria is met, at the same
+  timestep on every machine, instead of running on until the first progress
+  report.
+- The memory of a simulation is freed when it ends, so a post-processing in
+  the same script (NF2FF, SAR) has it available.
+- Reading a time-domain field dump with many timesteps is much faster, e.g.
+  an NF2FF from 3200 timesteps takes 2.4 instead of 79 s per frequency.
+- An unknown `--engine` value is an error instead of running the default
+  engine.
 - A mesh line within 1/1000 of the smallest mesh step of a primitive's
-  surface counts as lying on it, and so as metal or material there (CSXCAD's
-  drawing tolerance): for STL files, coordinates rounded in the XML or
-  computed ones. A few edges more can become metal, e.g. on sloped walls; a
-  slit at x=0 in the split ground plane of the StripLine2MSL tutorial is
-  closed.
-- Two CPU engines, both on all threads (`--numThreads`) and on every mesh:
-  `basic` and the compressed SSE engine, the default. `--engine=sse` and
-  `sse-compressed` (`engine='sse'`...) are other names of `multithreaded`
-  now; they and `basic` ran on a single thread, and on a cylindrical mesh
-  every CPU engine choice ran the multithreaded one. The results do not
-  change. The setup of `basic` takes half the time, the default engine needs
-  about 4 % less memory, and a cylindrical multi-grid mesh of 5.6 MCell runs
-  12-25 % faster.
-- The GPU engine on a cylindrical mesh builds the plain host coefficients
-  instead of the compressed SSE ones and frees them once the device has
-  them, as on a Cartesian mesh: with HIP the setup of an 8 MCell model takes
-  5.6 instead of 6.2 s and 952 instead of 986 MiB.
+  surface counts as lying on it, e.g. for STL files or rounded coordinates;
+  a few more edges can become metal.
+- The CPU engines use all threads (`--numThreads`); `sse` and
+  `sse-compressed` are other names of the default engine now. Small models
+  run up to twice as fast, cylindrical multi-grid meshes 12-25 % faster.
+
+### Fixed
+
+- More than 2^31 timesteps made the setup fail; the number is now limited to
+  that.
+- Python: numpy lost denormal values after `Run()`.
+- Python: an option passed as `False` to `Run()`, e.g. `debug_PEC=False`,
+  silently disabled all options after it.
+- A node-interpolated B-field dump of a closed cylindrical mesh was zero on
+  its first alpha line.
+- An aborted simulation reports the abort, not the max. number of timesteps.
+- An error during the setup or the run, e.g. out of memory or an unknown
+  `--engine`, no longer terminates the process: openEMS ends with an error
+  message, Python raises a `RuntimeError`.
+- Simulations with more than about 1.4 billion mesh nodes corrupted memory,
+  and several counts and dumps were wrong above 2 to 4 billion nodes.
+- A SAR dump needs 24 bytes per dumped cell and frequency less memory.
+- `Write2XML()` crashed when no excitation or no structure was set.
+- A delayed excitation injected its first sample before the delay.
 
 ### Build
 
-- `ENABLE_HIP` and `ENABLE_METAL` CMake options for the GPU backends. HIP
-  (CMake 3.28) is on when a HIP compiler is found. `OPENEMS_HIP_AS_CUDA`
-  compiles the same sources as CUDA, for NVIDIA GPUs without a HIP compiler
-  (CMake 3.24, a CUDA compiler and the HIP headers, looked for in `ROCM_PATH`
-  and `/opt/rocm`); it is the default on Windows. Metal (macOS, CMake 3.16)
-  is on by default. The GPU code is built for the GPU of the build machine,
-  or without one (CI, packages) for all AMD GPUs from RDNA1 and CDNA1 on
-  (`OPENEMS_HIP_AMD_ARCHITECTURES`, the plugin is then about 9 MB) or all
-  major NVIDIA architectures, unless `CMAKE_HIP_ARCHITECTURES` /
-  `CMAKE_CUDA_ARCHITECTURES` name others.
-  Whatever a backend is missing switches it off with a warning; openEMS
-  builds without it. The HIP backend is a plugin, `openEMS_gpu_hip_amd` or
-  `openEMS_gpu_hip_nvidia`, loaded at runtime from `openEMS/plugins` next to
-  `libopenEMS` (`OPENEMS_PLUGIN_PATH` overrides that directory), so
-  `libopenEMS` itself needs no GPU runtime; a plugin of another build is
-  refused (a release build is told by its version, so it stays
-  reproducible). `OPENEMS_GPU_PLUGINS=OFF` links it into `libopenEMS`
-  instead. On Windows the AMD plugin needs ROCm's clang, which CMake does not
-  combine with MSVC: build all of openEMS with it, or only the plugin in a
-  second build with `-DOPENEMS_GPU_BUILD_ID` of the first, as the Windows
-  package does.
-- C++17 is now required (was C++11), e.g. GCC 8 or newer, also for the
-  Python bindings and the GPU sources (HIP/CUDA, were C++14).
-- VTK is no longer needed: openEMS writes its VTK files (`.vtr`, `.vts`,
-  `.vtp`) itself, in the same format as before. zlib is needed instead,
-  which HDF5 usually brings along.
+- `ENABLE_HIP` and `ENABLE_METAL` CMake options for the GPU backends, on when
+  their compiler is found; `OPENEMS_HIP_AS_CUDA` builds the HIP backend with
+  a CUDA compiler for NVIDIA GPUs. A missing dependency switches a backend
+  off with a warning. The HIP backend is a plugin loaded at runtime from
+  `openEMS/plugins` next to `libopenEMS` (`OPENEMS_GPU_PLUGINS=OFF` links it
+  in), so `libopenEMS` needs no GPU runtime.
+- C++17 is now required (was C++11), e.g. GCC 8 or newer.
+- VTK is no longer needed; zlib is needed instead, which HDF5 usually brings
+  along.
 
 ### Upgrade notes
 
-- **Rebuild the Python bindings** together with openEMS: the layout of its
-  array classes changed, the soname did not.
-- The `sse` and `sse-compressed` engines and `basic` use all threads now; for
-  a run on one thread pass `--numThreads=1` (`numThreads=1`). The
-  uncompressed SSE engine is gone; it was only ever used with an explicit
-  `--engine=sse`.
+- **Rebuild the Python bindings** together with openEMS.
+- `basic`, `sse` and `sse-compressed` use all threads now; for one thread
+  pass `--numThreads=1` (`numThreads=1`). The uncompressed SSE engine is
+  gone.
 
 ## 0.37.0 — 2026-10-09
 
