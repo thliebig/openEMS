@@ -36,7 +36,7 @@ from CSXCAD import ContinuousStructure
 from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from openEMS import openEMS
 
-CASES_VERSION = 2
+CASES_VERSION = 3
 
 SIZES = ('XS', 'S', 'M', 'L')
 DEFAULT_SIZES = ('S', 'M')
@@ -163,6 +163,36 @@ def dispersive(size):
     return FDTD
 
 
+def antenna(size):
+    """ graded mesh, a patch on a substrate fed by a lumped port, a lossy Debye block above
+        it (tissue), PML; with the dumps of a typical antenna model: an NF2FF box in the
+        frequency domain and a time-domain E-field plane """
+    FDTD, CSX = _setup(['PML_8'] * 6)
+    lines = _graded(LINES[size])
+    mesh = CSX.GetGrid()
+    for d in 'xyz':
+        mesh.AddLine(d, lines)
+    E = lines[-1]
+
+    h = 1.5
+    feed = lines[np.argmin(np.abs(lines + 0.15*E))]   # on a mesh line, like the ports of inhomogeneous
+    CSX.AddMaterial('substrate', epsilon=3.66).AddBox([-0.5*E, -0.5*E, -h], [0.5*E, 0.5*E, 0])
+    metal = CSX.AddMetal('metal')
+    metal.AddBox([-0.5*E, -0.5*E, -h], [0.5*E, 0.5*E, -h], priority=10)
+    metal.AddBox([-0.3*E, -0.3*E, 0], [0.3*E, 0.3*E, 0], priority=10)
+    FDTD.AddLumpedPort(1, 50, [feed, -1, -h], [feed, 1, 0], 'z', excite=1, priority=5)
+
+    tissue = CSPropDebyeMaterial(CSX.GetParameterSet(), order=1, epsilon=40, kappa=0.7)
+    tissue.SetName('tissue')
+    tissue.SetDispersiveMaterialProperty(0, eps_delta=10, eps_relax=1/(2*np.pi*4e9))
+    CSX.AddProperty(tissue)
+    tissue.AddBox([-0.4*E, -0.4*E, 0.3*E], [0.4*E, 0.4*E, 0.5*E], priority=10)
+
+    FDTD.CreateNF2FFBox(frequency=[f0])
+    CSX.AddDump('Et', dump_type=0, file_type=1).AddBox([-E, 0, -E], [E, 0, E])
+    return FDTD
+
+
 def cylindrical(size):
     """ closed cylindrical mesh including r=0, a dielectric ring, PEC/Mur: the cylinder
         operator and extension """
@@ -187,6 +217,7 @@ CASES = {
     'pml':           pml,
     'inhomogeneous': inhomogeneous,
     'dispersive':    dispersive,
+    'antenna':       antenna,
     'cylindrical':   cylindrical,
 }
 

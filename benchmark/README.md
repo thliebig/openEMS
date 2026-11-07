@@ -20,7 +20,7 @@ probes of every run next to it. Other binaries: `--openems path/to/openEMS`.
 
 | Option | Default | |
 |---|---|---|
-| `--cases a,b` | all | `ideal`, `pml`, `inhomogeneous`, `dispersive`, `cylindrical` |
+| `--cases a,b` | all | `ideal`, `pml`, `inhomogeneous`, `dispersive`, `antenna`, `cylindrical` |
 | `--size S,M` | `S,M` | `XS` (~50 k cells, smoke test), `S` (~1 M), `M` (~8 M), `L` (~30 M, 3–4 GB RAM) |
 | `--engine a,b` | `multithreaded`, plus `gpu` with a device | also `basic`, `cpu` |
 | `--threads 1,4,8` | the physical cores | performance cores only on a hybrid CPU |
@@ -139,6 +139,7 @@ Its variables, all experimental (they may change or go):
 | `pml` | uniform | vacuum, PML_8 on all sides | the UPML extension |
 | `inhomogeneous` | graded 0.25–1 mm | microstrip with two lumped ports, dielectric, lossy and metal blocks, PML_8 | many distinct coefficients, the usual extensions |
 | `dispersive` | uniform | a Lorentz and a Debye block, Mur | the dispersive material extensions |
+| `antenna` | graded 0.25–1 mm | patch with a lumped port, a lossy Debye block, PML_8; an NF2FF box (frequency domain) and a time-domain E-field plane | the field dumps of a typical model |
 | `cylindrical` | cylindrical incl. r=0 | a dielectric ring, PEC and Mur | the cylinder operator and extension |
 
 Changing a case changes the results: bump `cases.CASES_VERSION` with it.
@@ -161,8 +162,8 @@ two sides of a comparison stop at different timesteps, the probes are
 compared over the timesteps both did; a run is deterministic, so a timestep
 has the same result however long the run went on.
 
-A run of the defaults takes about 9 minutes per binary on an 8-core desktop
-with a GPU, 18 minutes for an A/B comparison; the setup of the M cases is
+A run of the defaults takes about 10 minutes per binary on an 8-core desktop
+with a GPU, 20 minutes for an A/B comparison; the setup of the M cases is
 almost half of it.
 
 ## In a pull request
