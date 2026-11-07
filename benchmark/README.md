@@ -101,8 +101,10 @@ in `result.json` too (`engine_info` of each point).
 
 The CPU engine (`--engine=cpu`, experimental) is tuned on one 8-core desktop
 CPU: how many timesteps a block holds and how wide a tile is come from the
-cache size, all threads work on one tile. Machines with many cores, an L3
-split over several chiplets or two sockets may want other choices. To help,
+cache size, all threads work on one tile. At the start of a run it tries two
+tile sizes and the flat sweep and keeps the fastest, which covers a cache size
+that is off; machines with many cores, an L3 split over several chiplets or two
+sockets may still want other choices. To help,
 run on such a machine, with the physical core counts you want to compare:
 
 ```bash
@@ -111,7 +113,10 @@ python3 benchmark/bench.py run --engine cpu,multithreaded --size M,L --threads 8
 ```
 
 and send the `result.json`: it holds the machine, the build, the speeds,
-what the engine chose and the probes, no field data. The `multithreaded`
+what the engine chose and the probes, no field data. `bench.py` turns the
+engine's trials of tile sizes off (a start-up cost, like the setup); a
+variant `trials:OPENEMS_CPU_TRIAL=1` with `--duration 10` shows what they
+choose on that machine. The `multithreaded`
 rows are the default engine on that machine for reference; the variables do
 not touch it, so its two variants agree up to noise.
 
@@ -119,7 +124,9 @@ Its variables, all experimental (they may change or go):
 
 | Variable | |
 |---|---|
-| `OPENEMS_CPU_TBLOCK` | `0`: no temporal blocking; `k` or `k:W`: k timesteps per block, tiles of W lines (default: from the cache size) |
+| `OPENEMS_CPU_TBLOCK` | `0`: no temporal blocking; `k` or `k:W`: k timesteps per block, tiles of W lines, several separated by commas, ordered: the trials search them from the first (default: the tile from the cache size, and tiles 4x and 2x, half and a quarter as wide) |
+| `OPENEMS_CPU_TRIAL` | the seconds the engine runs each tile it tries and the flat sweep at the start before it keeps the fastest; `0` none (default: 0.5 with the automatic tiles, none with `OPENEMS_CPU_TBLOCK`) |
+| `OPENEMS_CPU_CACHE` | the cache size in MiB the tiles are sized for (default: the last level cache the system reports) |
 | `OPENEMS_CPU_FAST_AXIS` | `x`, `y` or `z`: the axis contiguous in memory (default: the one with the longest runs of equal cells) |
 | `OPENEMS_CPU_ISA` | `generic` or `avx2`: the kernels (default: AVX2 and FMA if the CPU has them) |
 | `OPENEMS_CPU_INERT` | `0`: update the magnetic field inside metal too (default: skipped where it cannot change) |

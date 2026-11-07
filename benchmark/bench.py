@@ -215,6 +215,7 @@ ENGINE_INFO = (
     ('layout', r'^Engine_CPU: fast axis (\S+), layout (\S+)$'),
     ('blocking', r'^Engine_CPU: temporal blocking, up to (\d+) timesteps per block, tiles of (\d+) lines'),
     ('flat', r'^Engine_CPU: no temporal blocking: (.*)$'),
+    ('trials', r'^Multithreaded engine: tried (.*); running (.*)$'),
 )
 
 
@@ -239,6 +240,8 @@ def engine_note(info):
         parts.append('k{} W{}'.format(*info['blocking']))
     elif 'flat' in info:
         parts.append('flat (' + info['flat'] + ')')
+    if 'trials' in info:
+        parts.append('trials kept ' + info['trials'][1])
     if 'cache' in info:
         parts.append('cache ' + info['cache'].split(',')[0])
     return ', '.join(parts)
@@ -256,8 +259,12 @@ def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, env=
     done = None
     with open(log, 'w') as logf:
         t0 = time.perf_counter()
-        p = subprocess.Popen(cmd, cwd=rundir, stdout=logf, stderr=subprocess.STDOUT,
-                             env=dict(os.environ, **env) if env else None)
+        run_env = dict(os.environ, **(env or {}))
+        # the CPU engine tries its tiles during its first seconds (OPENEMS_CPU_TRIAL), a start-up cost
+        # like the setup: off unless asked for, so a run of a few seconds times the steady state
+        if engine == 'cpu' and 'OPENEMS_CPU_TRIAL' not in run_env:
+            run_env['OPENEMS_CPU_TRIAL'] = '0'
+        p = subprocess.Popen(cmd, cwd=rundir, stdout=logf, stderr=subprocess.STDOUT, env=run_env)
         try:
             # the setup, until the time-stepping starts
             started = None

@@ -168,8 +168,10 @@ protected:
 	//! The axis the flat plan splits over the threads: one of the slowest in memory
 	virtual int GetSplitAxis() const {return 0;}
 
-	//! Blocked plans (temporal blocking) for \a numThreads threads, by decreasing k, if this engine runs them for this model; the default: none
-	virtual bool BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans) {(void)numThreads; (void)plans; return false;}
+	//! The blocked plans (temporal blocking) for \a numThreads threads this engine offers for this model, see Engine_BlockedChoice; the default: none
+	virtual bool BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice& choice) {(void)numThreads; (void)choice; return false;}
+	//! The threads for --numThreads=0: 0 lets Engine_ThreadPool add threads while the speed increases (the basic and the SSE engine)
+	virtual unsigned int DefaultThreads() const {return 0;}
 	//! Execute Post-Current extension updates
 	virtual void DoPostCurrentUpdates();
 	//! Apply extension current changes

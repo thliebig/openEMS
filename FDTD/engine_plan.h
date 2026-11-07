@@ -95,4 +95,23 @@ struct Engine_BlockedPlan
 	                                     unsigned int width, unsigned int k);
 };
 
+//! The blocked plans an engine offers its thread pool (Engine::BuildBlockedPlans())
+/*!
+  Each candidate is a set of plans, one per k by decreasing k (the processing
+  between two calls of the engine may leave fewer timesteps than the largest
+  k). The candidates are ordered, e.g. by decreasing tile size. With a trial
+  window the pool runs, at the start of the run, candidates for that many
+  seconds each (after a warm-up of \a start): \a start, then on to the next
+  as long as each is faster than the one before; if already the one after
+  \a start is slower, from \a start towards the first. Then the flat sweep,
+  and it keeps the fastest: the blocked and the flat sweep compute the same,
+  so it may switch between two calls. Without a window it runs \a start.
+  */
+struct Engine_BlockedChoice
+{
+	std::vector< std::vector<Engine_BlockedPlan> > candidates;
+	unsigned int start = 0;    //!< the candidate expected fastest
+	double trialSeconds = 0;   //!< 0: no trials, \a start
+};
+
 #endif // ENGINE_PLAN_H

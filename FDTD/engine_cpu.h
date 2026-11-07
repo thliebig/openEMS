@@ -88,10 +88,16 @@ protected:
 
 	//! Trapezoid tiles along the split axis sized for the L3, if every extension supports boxes and there is no sub-grid
 	/*!
-	  OPENEMS_CPU_TBLOCK=0 keeps the flat sweep, =k:W sets the timesteps per block
-	  and the tile width in lines.
+	  The tile from the estimate of the cache and, as candidates, tiles 4x and 2x,
+	  half and a quarter as wide; the thread pool searches them from the estimate
+	  and tries the flat sweep at the start of the run (OPENEMS_CPU_TRIAL seconds
+	  each, default 0.5, 0 none). OPENEMS_CPU_TBLOCK=0 keeps the flat sweep,
+	  =k:W[,k:W...] sets the timesteps per block and the tile widths in lines,
+	  without trials.
 	  */
-	virtual bool BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans);
+	virtual bool BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice& choice);
+	//! All physical cores, no ramp
+	virtual unsigned int DefaultThreads() const;
 
 	virtual std::string GetFieldLayout() const {return m_Layout;}
 

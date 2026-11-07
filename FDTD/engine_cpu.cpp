@@ -24,6 +24,7 @@
 #include <stdexcept>
 #include <thread>
 #include <typeinfo>
+#include <utility>
 #ifdef OPENEMS_CPU_AVX2
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>   // __cpuid(), __cpuidex(), _xgetbv()
@@ -374,11 +375,13 @@ static size_t CacheBytes(std::string& source)
 	return 32u<<20;
 }
 
-bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_BlockedPlan>& plans)
+bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice& choice)
 {
 	const char* env = std::getenv("OPENEMS_CPU_TBLOCK");
 	std::string why;
 	unsigned int k = 0, W = 0;
+	bool explicitTile = false;
+	std::vector< std::pair<unsigned int, unsigned int> > tiles;   // OPENEMS_CPU_TBLOCK=k:W,k:W,...
 	if (env && (std::string(env)=="0"))
 		why = "OPENEMS_CPU_TBLOCK=0";
 	else if (m_SubGrid)
@@ -393,14 +396,24 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 	}
 	if (why.empty() && env && env[0])
 	{
-		char* end = NULL;
-		k = (unsigned int)std::strtoul(env, &end, 10);
-		if ((end!=NULL) && (*end==':'))
-			W = (unsigned int)std::strtoul(end+1, &end, 10);
-		if ((k==0) || (end==NULL) || (*end!='\0'))
-			throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TBLOCK must be 0, k or k:W");
-		if (W==0)
-			W = 2*k+1;
+		// k or k:W, several separated by commas
+		const char* p = env;
+		while (true)
+		{
+			char* end = NULL;
+			unsigned int kk = (unsigned int)std::strtoul(p, &end, 10), WW = 0;
+			if ((end!=NULL) && (*end==':'))
+				WW = (unsigned int)std::strtoul(end+1, &end, 10);
+			if ((kk==0) || (end==NULL) || ((*end!='\0') && (*end!=',')))
+				throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TBLOCK must be 0, or k or k:W, several separated by commas");
+			tiles.push_back(std::make_pair(kk, std::max(WW, 2*kk+1)));
+			if (*end=='\0')
+				break;
+			p = end+1;
+		}
+		k = tiles[0].first;
+		W = tiles[0].second;
+		explicitTile = true;
 	}
 	else if (why.empty())
 	{
@@ -422,7 +435,16 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 		const double fieldBytes = 6*sizeof(FDTD_FLOAT);   // the voltages and currents of a node
 		const double bytes = plane*fieldBytes + (sizeof(float)*state + sizeof(CellModel_Run)*runs + ext)/numLines[m_SplitAxis];
 		std::string source;
-		const size_t cache = CacheBytes(source);
+		size_t cache = CacheBytes(source);
+		if (const char* mib = std::getenv("OPENEMS_CPU_CACHE"))   // to try other cache sizes
+		{
+			char* end = NULL;
+			const double v = std::strtod(mib, &end);
+			if ((end==mib) || (*end!='\0') || (v<=0))
+				throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_CACHE must be the cache size in MiB");
+			cache = (size_t)(v*1048576.0);
+			source = "OPENEMS_CPU_CACHE";
+		}
 		if (g_settings.GetVerboseLevel()>0)
 			cout << "Engine_CPU: cache " << cache/1048576.0 << " MiB, " << source << endl;
 		const unsigned int full = (unsigned int)(cache/bytes);
@@ -441,13 +463,66 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, std::vector<Engine_B
 	}
 	for (size_t n=0; n<m_Eng_exts.size(); ++n)
 		m_Eng_exts[n]->PrepareBoxes(numLines);
-	// every k down to 2: the processing between two calls of IterateTS() may leave fewer timesteps
-	for (unsigned int kk=k; kk>=2; --kk)
-		plans.push_back(Engine_BlockedPlan::Trapezoids(numLines, numThreads, m_SplitAxis, m_MidAxis, W, kk));
+	// a set of plans per tile, every k down to 2: the processing between two calls of IterateTS() may leave fewer timesteps
+	auto add = [&](unsigned int kmax, unsigned int width) {
+		std::vector<Engine_BlockedPlan> plans;
+		for (unsigned int kk=kmax; kk>=2; --kk)
+			plans.push_back(Engine_BlockedPlan::Trapezoids(numLines, numThreads, m_SplitAxis, m_MidAxis, width, kk));
+		choice.candidates.push_back(plans);
+	};
+	// the seconds per trial: OPENEMS_CPU_TRIAL, default 0.5 with the automatic tiles, none with given ones
+	choice.trialSeconds = explicitTile ? 0 : 0.5;
+	if (const char* trial = std::getenv("OPENEMS_CPU_TRIAL"))
+	{
+		char* end = NULL;
+		choice.trialSeconds = std::strtod(trial, &end);
+		if ((end==trial) || (*end!='\0') || (choice.trialSeconds<0))
+			throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TRIAL must be the seconds per trial, 0 for none");
+	}
+	if (!explicitTile)
+	{
+		// the tile from the estimate of the cache, and as candidates tiles 4x and 2x, half and a quarter as wide:
+		// the estimate is off by a cache shared or split other than it says, a working set larger than counted.
+		// The thread pool searches them from the estimate (Engine_BlockedChoice; measured on one CPU: with the
+		// cache assumed 4x too large or too small the search ends at the speed of the right tile)
+		tiles.clear();
+		const unsigned int Wmax = numLines[m_SplitAxis]/2;   // two tiles at least
+		for (unsigned int m=4; m>=2; m/=2)
+			if (m*W<=Wmax)
+				tiles.push_back(std::make_pair(std::min(8u, (m*W-1)/2), m*W));
+		choice.start = tiles.size();
+		tiles.push_back(std::make_pair(k, W));
+		for (unsigned int d=2; d<=4; d*=2)
+		{
+			const unsigned int Wd = W/d, kd = std::min(k, (Wd>0) ? (Wd-1)/2 : 0);
+			if ((kd>=2) && (Wd<tiles.back().second))
+				tiles.push_back(std::make_pair(kd, Wd));
+		}
+	}
+	for (size_t t=0; t<tiles.size(); ++t)
+		add(tiles[t].first, tiles[t].second);
 	if (g_settings.GetVerboseLevel()>0)
+	{
 		cout << "Engine_CPU: temporal blocking, up to " << k << " timesteps per block, tiles of " << W << " lines along "
-		     << (char)('x'+m_SplitAxis) << ", " << plans[0].phases.size() << " phases" << endl;
+		     << (char)('x'+m_SplitAxis) << ", " << choice.candidates[choice.start][0].phases.size() << " phases" << endl;
+		if ((choice.trialSeconds>0) && (tiles.size()>1))
+		{
+			cout << "Engine_CPU: tiles to try (timesteps:lines)";
+			for (size_t t=0; t<tiles.size(); ++t)
+				cout << " " << t+1 << ") " << tiles[t].first << ":" << tiles[t].second;
+			cout << ", and the flat sweep, " << choice.trialSeconds << " s each" << endl;
+		}
+		else if (choice.trialSeconds>0)
+			cout << "Engine_CPU: trying the tile and the flat sweep, " << choice.trialSeconds << " s each" << endl;
+	}
 	return true;
+}
+
+unsigned int Engine_CPU::DefaultThreads() const
+{
+	// all physical cores: the blocked plans keep them busy (no ramp as for the SSE engine); SMT siblings
+	// share the core and its caches, measured slower (pml M: 8 cores 1200 MC/s, 16 threads 1050)
+	return std::min(PhysicalCores(), AvailableThreads());
 }
 
 bool Engine_CPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const

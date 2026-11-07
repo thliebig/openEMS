@@ -101,7 +101,7 @@ class Engine_ThreadPool
 {
 	friend class Engine_ThreadPool_Worker;
 public:
-	//! Threads for \a eng; \a numThreads 0 starts with one and adds threads while the speed increases, see NextInterval()
+	//! Threads for \a eng; \a numThreads 0: Engine::DefaultThreads(), or, if that is 0, one and more while the speed increases, see NextInterval()
 	Engine_ThreadPool(Engine* eng, unsigned int numThreads);
 	~Engine_ThreadPool();
 
@@ -134,9 +134,22 @@ protected:
 	std::vector<Engine*> m_Grids;   //!< the engine and its sub-grids, outermost first
 	//! per grid the plan of the threads; fewer threads in it than in the pool on a small grid
 	std::vector<Engine_Plan> m_Plans;
-	//! the blocked plans of the engine (Engine::BuildBlockedPlans()), by decreasing k: the largest that fits the timesteps left first
-	std::vector<Engine_BlockedPlan> m_BlockedPlans;
-	bool m_Blocked;
+	//! the candidates of blocked plans of the engine (Engine::BuildBlockedPlans()), each by decreasing k
+	Engine_BlockedChoice m_Choice;
+	//! the candidate the workers run, -1 the flat sweep; changed between two calls of IterateTS() only
+	int m_Active;
+	bool m_Blocked;   //!< m_Active>=0
+	const std::vector<Engine_BlockedPlan>& BlockedPlans() const {return m_Choice.candidates[m_Active];}
+	void SetActive(int active) {m_Active = active; m_Blocked = (active>=0);}
+	//! the trials of the candidates and the flat sweep at the start (Engine_BlockedChoice::trialSeconds)
+	bool m_Trying;
+	int m_Trial;                       //!< -1 the warm-up (the start candidate), then the candidates, then the flat sweep
+	int m_TrialDir;                    //!< the direction of the search along the candidates, +1 or -1, 0 at its end
+	std::vector<double> m_TrialSpeed;  //!< timesteps per second of each candidate and the flat sweep
+	double m_TrialSeconds;
+	unsigned long long m_TrialTS;
+	//! account \a iterTS timesteps in \a seconds to the trial running, on to the next when it is complete
+	void Trial(unsigned int iterTS, double seconds);
 	unsigned long long m_TS_blocked, m_TS_flat;   //!< the timesteps run blocked and flat, for the log
 	//! one step of the blocked plan at timestep \a ts, with the box hooks of the extensions
 	void BlockedStep(const Engine_Step& step, unsigned int ts);

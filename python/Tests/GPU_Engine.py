@@ -39,8 +39,9 @@
    device backend: max. deviation < 1e-4 of the peak value, per probe file and per field dump
      (skipped without a GPU device)
    engine='cpu': created, and max. deviation < 1e-4 of the peak value like a device backend;
-     with blocking forced (2 timesteps per block, tiles of 5 lines) bit-identical to its flat
-     sweep, and blocked in at least one case (the multi-grid cases run the flat sweep)
+     with blocking forced (tiles of 5 lines and 2 timesteps per block, of 7 lines and 3, and the
+     flat sweep, switched on every call at the start: OPENEMS_CPU_TRIAL) bit-identical to its
+     flat sweep, and blocked in at least one case (the multi-grid cases run the flat sweep)
 
  Tested with
   - python 3.13
@@ -653,11 +654,15 @@ for name, case, on_device in cases:
     try:
         logs = {}
         for engine in engines:
-            # the CPU engine flat, and with blocking forced even where the model fits the cache
-            os.environ['OPENEMS_CPU_TBLOCK'] = '2:5' if engine=='cpu-blocked' else '0'
+            # the CPU engine flat, and with blocking forced even where the model fits the cache: two
+            # tiles and the flat sweep tried for a tiny time each, so the engine switches between them
+            # on every call at the start, then keeps one
+            os.environ['OPENEMS_CPU_TBLOCK'] = '2:5,3:7' if engine=='cpu-blocked' else '0'
+            os.environ['OPENEMS_CPU_TRIAL'] = '1e-9'
             logs[engine] = run_captured(case, paths[engine], 'cpu' if engine=='cpu-blocked' else engine)
     finally:
         del os.environ['OPENEMS_CPU_TBLOCK']
+        del os.environ['OPENEMS_CPU_TRIAL']
         for var in CASE_ENV.get(name, {}):
             del os.environ[var]
 

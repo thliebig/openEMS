@@ -16,6 +16,8 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -67,7 +69,8 @@ void Engine_ThreadPool_Worker::operator()()
 				const unsigned int k = m_pool->BlockLength(ts, left);
 				if (k>=2)
 				{
-					const Engine_BlockedPlan& plan = m_pool->m_BlockedPlans[m_pool->m_BlockedPlans.front().k - k];
+					const std::vector<Engine_BlockedPlan>& plans = m_pool->BlockedPlans();
+					const Engine_BlockedPlan& plan = plans[plans.front().k - k];
 					for (const auto& phase : plan.phases)
 					{
 						if (m_threadID<phase.size())
@@ -98,6 +101,8 @@ void Engine_ThreadPool_Worker::operator()()
 				m_pool->m_Eng->numTS = ts;
 			flat = 0;
 		}
+		else if (m_threadID == 0)
+			m_pool->m_TS_flat += flat;   // the flat sweep, e.g. after the trials chose it
 
 		for (unsigned int iter=0; iter<flat; ++iter)
 		{
@@ -154,6 +159,68 @@ void Engine_ThreadPool::CurrentHalfStep(size_t g, unsigned int threadID)
 	Apply2Current(eng, threadID);
 }
 
+void Engine_ThreadPool::Trial(unsigned int iterTS, double seconds)
+{
+	m_TrialTS += iterTS;
+	m_TrialSeconds += seconds;
+	if (m_TrialSeconds < m_Choice.trialSeconds)
+		return;
+	const int n = m_Choice.candidates.size();   // the trials 0..n-1 the candidates, n the flat sweep
+	const int start = m_Choice.start;
+	if (m_Trial>=0)
+		m_TrialSpeed[m_Trial] = m_TrialTS/m_TrialSeconds;
+	m_TrialTS = 0;
+	m_TrialSeconds = 0;
+	// the next trial: a line search along the candidates from the start (Engine_BlockedChoice), then the flat sweep
+	int next = n;
+	if (m_Trial<0)
+		next = start;
+	else if (m_Trial<n)
+	{
+		const int c = m_Trial;
+		int from = c;
+		if (c==start)
+			m_TrialDir = (start+1<n) ? 1 : -1;
+		else if (m_TrialSpeed[c] <= m_TrialSpeed[c-m_TrialDir])
+		{
+			// slower than the one before: done, unless it was the first step, then from the start the other way
+			if ((m_TrialDir>0) && (c==start+1))
+			{
+				m_TrialDir = -1;
+				from = start;
+			}
+			else
+				m_TrialDir = 0;
+		}
+		if ((m_TrialDir!=0) && (from+m_TrialDir>=0) && (from+m_TrialDir<n))
+			next = from+m_TrialDir;
+	}
+	if (m_Trial<n)
+	{
+		m_Trial = next;
+		SetActive((next<n) ? next : -1);
+		return;
+	}
+	// done: the fastest of those tried
+	int best = n;
+	for (int t=0; t<n; ++t)
+		if (m_TrialSpeed[t] > m_TrialSpeed[best])
+			best = t;
+	SetActive((best<n) ? best : -1);
+	m_Trying = false;
+	if (g_settings.GetVerboseLevel()>0)
+	{
+		// in MC/s like the progress of the run
+		const double cells = m_Eng->Op->GetNumberCells();
+		cout << "Multithreaded engine: tried";
+		for (int t=0; t<=n; ++t)
+			if (m_TrialSpeed[t]>0)
+				cout << ((t<n) ? " tile " + std::to_string(t+1) : std::string(", flat")) << " "
+				     << std::fixed << std::setprecision(1) << m_TrialSpeed[t]*cells*1e-6 << std::defaultfloat << " MC/s";
+		cout << "; running " << ((best<n) ? "tile " + std::to_string(best+1) : std::string("flat")) << endl;
+	}
+}
+
 void Engine_ThreadPool::CheckPlanBox(const Engine* eng, const Engine_Box& box, bool currents)
 {
 	if (!eng->CanUpdateBox(box, currents))
@@ -162,7 +229,7 @@ void Engine_ThreadPool::CheckPlanBox(const Engine* eng, const Engine_Box& box, b
 
 unsigned int Engine_ThreadPool::BlockLength(unsigned int ts, unsigned int left) const
 {
-	const unsigned int kmax = std::min(left, m_BlockedPlans.front().k);
+	const unsigned int kmax = std::min(left, BlockedPlans().front().k);
 	unsigned int k = 0;
 	while (k<kmax)
 	{
@@ -235,6 +302,12 @@ Engine_ThreadPool::Engine_ThreadPool(Engine* eng, unsigned int numThreads)
 	m_IterateBarrier = NULL;
 	m_iterTS = 0;
 	m_Blocked = false;
+	m_Active = -1;
+	m_Trying = false;
+	m_Trial = -1;
+	m_TrialDir = 1;
+	m_TrialSeconds = 0;
+	m_TrialTS = 0;
 	m_TS_blocked = m_TS_flat = 0;
 	m_max_numThreads = AvailableThreads();
 	m_last_speed = 0;
@@ -244,7 +317,9 @@ Engine_ThreadPool::Engine_ThreadPool(Engine* eng, unsigned int numThreads)
 	for (Engine* g=eng; g; g=g->GetSubGridEngine())
 		m_Grids.push_back(g);
 
-	if (numThreads == 0)
+	if ((numThreads == 0) && (eng->DefaultThreads()>0))
+		numThreads = std::min(eng->DefaultThreads(), m_max_numThreads);   // e.g. all physical cores
+	else if (numThreads == 0)
 	{
 		m_opt_speed = true;
 		numThreads = 1;
@@ -258,7 +333,7 @@ Engine_ThreadPool::Engine_ThreadPool(Engine* eng, unsigned int numThreads)
 
 Engine_ThreadPool::~Engine_ThreadPool()
 {
-	if (m_Blocked && (g_settings.GetVerboseLevel()>0))
+	if (!m_Choice.candidates.empty() && (g_settings.GetVerboseLevel()>0))
 		cout << "Multithreaded engine: " << m_TS_blocked << " timesteps in blocks, " << m_TS_flat << " flat" << endl;
 	StopThreads();
 	delete m_IterateBarrier;
@@ -306,9 +381,16 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 	if (g_settings.GetVerboseLevel()>0)
 		cout << endl;
 
-	// a blocked plan, on a single grid only
-	m_BlockedPlans.clear();
-	m_Blocked = (m_Grids.size()==1) && m_Eng->BuildBlockedPlans(m_numThreads, m_BlockedPlans) && !m_BlockedPlans.empty();
+	// the blocked plans, on a single grid only: the start candidate, others and the flat sweep tried at the start
+	m_Choice = Engine_BlockedChoice();
+	const bool blocked = (m_Grids.size()==1) && m_Eng->BuildBlockedPlans(m_numThreads, m_Choice) && !m_Choice.candidates.empty();
+	SetActive(blocked ? (int)m_Choice.start : -1);
+	m_Trying = blocked && (m_Choice.trialSeconds>0);
+	m_Trial = -1;
+	m_TrialDir = 1;
+	m_TrialSpeed.assign(m_Choice.candidates.size()+1, 0);
+	m_TrialSeconds = 0;
+	m_TrialTS = 0;
 
 	// every box of the plans must be one its engine can update: checked once here, not per update
 	for (size_t g=0; g<m_Grids.size(); ++g)
@@ -319,11 +401,12 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 			for (const Engine_Box& box : m_Plans[g].curr[t])
 				CheckPlanBox(m_Grids[g], box, true);
 		}
-	for (const Engine_BlockedPlan& plan : m_BlockedPlans)
-		for (const auto& phase : plan.phases)
-			for (const auto& steps : phase)
-				for (const Engine_Step& step : steps)
-					CheckPlanBox(m_Eng, step.box, !step.volt);
+	for (const std::vector<Engine_BlockedPlan>& plans : m_Choice.candidates)
+		for (const Engine_BlockedPlan& plan : plans)
+			for (const auto& phase : plan.phases)
+				for (const auto& steps : phase)
+					for (const Engine_Step& step : steps)
+						CheckPlanBox(m_Eng, step.box, !step.volt);
 
 	delete m_IterateBarrier;
 	// make sure all threads are waiting
@@ -349,9 +432,12 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 
 void Engine_ThreadPool::IterateTS(unsigned int iterTS)
 {
+	const std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
 	m_iterTS = iterTS;
 	m_startBarrier->wait(); // start the threads
 	m_stopBarrier->wait(); // wait for the threads to finish <iterTS> time steps
+	if (m_Trying)
+		Trial(iterTS, std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
 
 	// the grids from their sub-grids, the innermost first
 	for (size_t g=m_Grids.size()-1; g-->0; )

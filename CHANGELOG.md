@@ -33,7 +33,10 @@ there are unreleased changes. It becomes the next release entry.
   field inside metal is skipped. Unless the model has a cylindrical
   multi-grid or local absorbers in more than one orientation it advances
   cache-sized tiles several timesteps at a time (temporal blocking;
-  `OPENEMS_CPU_TBLOCK=0` turns it off). `--debug-operator` also writes its
+  `OPENEMS_CPU_TBLOCK=0` turns it off); during its first seconds it times tile
+  sizes around the one for the cache size, and the plain sweep, and keeps the
+  fastest. It uses all physical
+  cores by default. `--debug-operator` also writes its
   cell model to `cellmodel_dump.h5`: the class, coefficient set and run of
   every edge, the sets, runs and poles, and which extensions it fused. Its
   results agree with the other engines to float rounding, not bit for bit. On real models with a PML it is
