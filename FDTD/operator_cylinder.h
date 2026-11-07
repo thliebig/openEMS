@@ -108,8 +108,10 @@ protected:
 
 	virtual double GetRawDiscDelta(int ny, const int pos) const;
 
-	virtual double GetMaterial(int ny, const double coords[3], int MatType, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
-	virtual void GetMaterials(int ny, const double coords[3], int type1, int type2, double& val1, double& val2, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
+	//! \a coords with alpha moved into the mesh by 2 pi in a closed alpha mesh, for the material lookups
+	void WrapAlpha(const double coords[3], double wrapped[3]) const;
+	virtual double GetMaterial(int ny, const double coords[3], int MatType, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const override;
+	virtual void GetMaterials(int ny, const double coords[3], int type1, int type2, double& val1, double& val2, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const override;
 
 	virtual int CalcECOperator( DebugFlags debugFlags = None );
 	virtual double CalcTimestep();

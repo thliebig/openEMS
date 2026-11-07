@@ -40,7 +40,7 @@ struct GPU_CoeffSets
 	std::vector<float> table;     //!< the sets, \a width values each
 };
 
-//! Find the distinct sets of \a width values of \a count items, \a get(i, values) returns the values of item i
+//! Find the distinct sets of \a width values of \a count items, \a get(i, values) returns the values of item i (called on several threads at once)
 /*!
   Returns false if a set index plus the sets would be larger than half the full
   arrays (\a width floats per item), in which case the caller keeps those.

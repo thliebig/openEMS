@@ -87,6 +87,9 @@ bool Operator_Ext_Cylinder::BuildExtension()
 
 		for (unsigned int i=0; i<m_Op->GetNumberOfLines(1,true); ++i)
 		{
+			// the coefficients stay those of the circuit values before
+			const unsigned int node[3] = {0, i, pos[2]};
+			m_Op->FreezeCoeffs(node);
 			m_Op->EC_C[2][m_Op->MainOp->SetPos(0,i,pos[2])] = C;
 			m_Op->EC_G[2][m_Op->MainOp->SetPos(0,i,pos[2])] = G;
 		}

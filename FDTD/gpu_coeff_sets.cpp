@@ -19,8 +19,10 @@
 #include <cstring>
 #include <limits>
 #include <unordered_map>
+#include <vector>
 
 #include "gpu_coeff_sets.h"
+#include "tools/useful.h"
 
 namespace
 {
@@ -60,30 +62,41 @@ bool GPU_FindSets(size_t count, unsigned int width, const std::function<void(siz
 
 	SetKey prev;
 	bool have_prev = false;
-	float values[GPU_MAX_SET_WIDTH];
-	for (size_t i=0; i<count; ++i)
+	// the values in blocks, each filled on all threads (get() may compute them, Coeffs_EC), then searched in order
+	const size_t block = std::min(count, (size_t)1<<20);
+	std::vector<float> buffer(block*width);
+	const unsigned int numThreads = std::max(1u, std::min(AvailableThreads(), (unsigned int)std::max<size_t>(1, block/4096)));
+	for (size_t b0=0; b0<count; b0+=block)
 	{
-		SetKey key;
-		key.width = width;
-		get(i, values);
-		std::memcpy(key.v, values, width*sizeof(float));
-		// neighbours mostly share the set
-		if (have_prev && (key==prev))
+		const size_t b1 = std::min(count, b0+block);
+		ParallelFor(b1-b0, numThreads, [&](unsigned int, size_t begin, size_t end) {
+			for (size_t i=b0+begin; i<b0+end; ++i)
+				get(i, &buffer[(i-b0)*width]);
+		});
+		for (size_t i=b0; i<b1; ++i)
 		{
-			sets.index[i] = sets.index[i-1];
-			continue;
+			SetKey key;
+			key.width = width;
+			const float* values = &buffer[(i-b0)*width];
+			std::memcpy(key.v, values, width*sizeof(float));
+			// neighbours mostly share the set
+			if (have_prev && (key==prev))
+			{
+				sets.index[i] = sets.index[i-1];
+				continue;
+			}
+			std::unordered_map<SetKey, uint32_t, SetKeyHash>::const_iterator it = found.find(key);
+			if (it==found.end())
+			{
+				if (found.size()>=max_sets)
+					return false;
+				it = found.insert(std::make_pair(key, (uint32_t)found.size())).first;
+				sets.table.insert(sets.table.end(), values, values+width);
+			}
+			sets.index[i] = it->second;
+			prev = key;
+			have_prev = true;
 		}
-		std::unordered_map<SetKey, uint32_t, SetKeyHash>::const_iterator it = found.find(key);
-		if (it==found.end())
-		{
-			if (found.size()>=max_sets)
-				return false;
-			it = found.insert(std::make_pair(key, (uint32_t)found.size())).first;
-			sets.table.insert(sets.table.end(), values, values+width);
-		}
-		sets.index[i] = it->second;
-		prev = key;
-		have_prev = true;
 	}
 	sets.count = found.size();
 	sets.mode = (sets.count<=max_sets16) ? 1 : 2;

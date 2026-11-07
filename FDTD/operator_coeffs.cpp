@@ -15,6 +15,7 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -62,6 +63,176 @@ void Coeffs_Basic::Free()
 	vi = NULL;
 	iv = NULL;
 	ii = NULL;
+}
+
+// ----------------------------------------------------------------------------
+
+Coeffs_EC::Coeffs_EC()
+{
+	m_Lines[0] = m_Lines[1] = m_Lines[2] = 0;
+	m_dT = 0;
+	for (int e=0; e<4; ++e)
+		for (int n=0; n<3; ++n)
+			m_EC[e][n] = NULL;
+}
+
+Coeffs_EC::~Coeffs_EC()
+{
+	Free();
+}
+
+void Coeffs_EC::Init(const unsigned int numLines[3])
+{
+	Free();
+	for (int n=0; n<3; ++n)
+		m_Lines[n] = numLines[n];
+	m_Flags.assign((size_t)numLines[0]*numLines[1]*numLines[2], 0);
+}
+
+void Coeffs_EC::Free()
+{
+	std::vector<uint16_t>().swap(m_Flags);
+	std::vector<Box>().swap(m_Boxes);
+	std::unordered_map<size_t, size_t>().swap(m_MapIndex);
+	std::vector<std::array<float,12> >().swap(m_MapValues);
+	for (int e=0; e<4; ++e)
+		for (int n=0; n<3; ++n)
+			m_EC[e][n] = NULL;
+}
+
+void Coeffs_EC::ShowStat(std::ostream& ostr) const
+{
+	size_t box = 0;
+	for (const Box& b : m_Boxes)
+		box += b.values.size()/12;
+	ostr << "Coefficients\t\t: computed from the circuit values; stored for " << box << " nodes in boxes (UPML), " << m_MapValues.size() << " in a map" << endl;
+}
+
+void Coeffs_EC::SetEC(FDTD_FLOAT* const C[3], FDTD_FLOAT* const G[3], FDTD_FLOAT* const L[3], FDTD_FLOAT* const R[3], double dT)
+{
+	for (int n=0; n<3; ++n)
+	{
+		m_EC[0][n] = C[n];
+		m_EC[1][n] = G[n];
+		m_EC[2][n] = L[n];
+		m_EC[3][n] = R[n];
+	}
+	m_dT = dT;
+}
+
+void Coeffs_EC::ReserveBox(const unsigned int start[3], const unsigned int lines[3])
+{
+	// the box index has 3 bits in the flags: beyond MAX_BOXES the nodes go to the map (a UPML has at most 6 regions)
+	if (m_Boxes.size()>=MAX_BOXES)
+		return;
+	Box b;
+	size_t nodes = 1;
+	for (int n=0; n<3; ++n)
+	{
+		if (start[n]+lines[n]>m_Lines[n])
+			throw std::out_of_range("Coeffs_EC::ReserveBox: the box exceeds the mesh");
+		b.start[n] = start[n];
+		b.lines[n] = lines[n];
+		nodes *= lines[n];
+	}
+	if (nodes==0)
+		return;
+	b.values.resize(12*nodes);
+	m_Boxes.push_back(std::move(b));
+}
+
+const float* Coeffs_EC::Own(size_t i, unsigned int x, unsigned int y, unsigned int z) const
+{
+	return const_cast<Coeffs_EC*>(this)->Own(i, x, y, z);
+}
+
+float* Coeffs_EC::Own(size_t i, unsigned int x, unsigned int y, unsigned int z)
+{
+	const unsigned int box = m_Flags[i]>>BOX_SHIFT;
+	if (box==0)
+		return m_MapValues[m_MapIndex.at(i)].data();
+	Box& b = m_Boxes[box-1];
+	const size_t l = (x-b.start[0]) + (size_t)b.lines[0]*((y-b.start[1]) + (size_t)b.lines[1]*(z-b.start[2]));
+	return &b.values[12*l];
+}
+
+float* Coeffs_EC::MakeOwn(size_t i, unsigned int x, unsigned int y, unsigned int z)
+{
+	float values[12];
+	for (int k=0; k<12; ++k)
+		values[k] = (m_Flags[i] & (1u<<k)) ? 0 : Compute(k, i);
+	const unsigned int p[3] = {x, y, z};
+	for (size_t n=0; n<m_Boxes.size(); ++n)
+	{
+		const Box& b = m_Boxes[n];
+		bool inside = true;
+		for (int a=0; a<3 && inside; ++a)
+			inside = (p[a]-b.start[a])<b.lines[a];   // wraps below the start
+		if (inside)
+		{
+			m_Flags[i] = OWN | (uint16_t)((n+1)<<BOX_SHIFT);
+			float* own = Own(i, x, y, z);
+			std::copy(values, values+12, own);
+			return own;
+		}
+	}
+	// the map is not locked: a single thread only (the class doc)
+	m_MapIndex[i] = m_MapValues.size();
+	m_MapValues.emplace_back();
+	std::copy(values, values+12, m_MapValues.back().begin());
+	m_Flags[i] = OWN;
+	return m_MapValues.back().data();
+}
+
+void Coeffs_EC::GetPair(int f, unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT& self, FDTD_FLOAT& curl) const
+{
+	const size_t i = Index(x, y, z);
+	const uint16_t flags = m_Flags[i];
+	const int k = 4*n + 2*f;
+	if (flags & OWN)
+	{
+		const float* own = Own(i, x, y, z);
+		self = own[k];
+		curl = own[k+1];
+		return;
+	}
+	Coeffs_FromEC(m_EC[2*f][n][i], m_EC[2*f+1][n][i], m_dT, self, curl);
+	if (flags & (1u<<k))
+		self = 0;
+	if (flags & (1u<<(k+1)))
+		curl = 0;
+}
+
+void Coeffs_EC::Set(int k, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value)
+{
+	const size_t i = Index(x, y, z);
+	const uint16_t f = m_Flags[i];
+	if (f & OWN)
+		Own(i, x, y, z)[k] = value;
+	else if (value==0)
+		m_Flags[i] = f | (1u<<k);
+	else
+		MakeOwn(i, x, y, z)[k] = value;
+}
+
+void Coeffs_EC::Reset(int n, unsigned int x, unsigned int y, unsigned int z)
+{
+	const size_t i = Index(x, y, z);
+	if (m_Flags[i] & OWN)
+	{
+		float* own = Own(i, x, y, z);
+		for (int c=0; c<4; ++c)
+			own[4*n+c] = Compute(4*n+c, i);
+	}
+	else
+		m_Flags[i] &= ~(uint16_t)(0xF<<(4*n));
+}
+
+void Coeffs_EC::Freeze(unsigned int x, unsigned int y, unsigned int z)
+{
+	const size_t i = Index(x, y, z);
+	if (!(m_Flags[i] & OWN))
+		MakeOwn(i, x, y, z);
 }
 
 // ----------------------------------------------------------------------------

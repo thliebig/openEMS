@@ -226,9 +226,10 @@ void GPU_NodeCoefficients(const Operator* op, const unsigned int numLines[3], si
 	const unsigned int x = node/((size_t)numLines[1]*numLines[2]);
 	const unsigned int y = (node/numLines[2]) % numLines[1];
 	const unsigned int z = node % numLines[2];
-	for (int c=0; c<4; ++c)
-		for (int n=0; n<3; ++n)
-			values[3*c+n] = GPU_Coefficient(op, c, n, x, y, z);
+	const unsigned int pos[3] = {x, y, z};
+	for (int n=0; n<3; ++n)
+		for (int f=0; f<2; ++f)
+			op->GetCoeffPair(f, n, pos, values[3*(2*f)+n], values[3*(2*f+1)+n]);
 }
 
 void GPU_CoefficientArray(const Operator* op, const unsigned int numLines[3], int c, std::vector<float>& values)

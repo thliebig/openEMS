@@ -19,7 +19,9 @@
 #define CELL_MODEL_H
 
 #include <cstdint>
+#include <map>
 #include <string>
+#include <tuple>
 #include <unordered_set>
 #include <vector>
 
@@ -121,8 +123,8 @@ struct CellModel_Component
 
   The engine updates the fused extensions' cells itself and drops their
   engine extensions (IsFused()); FreeFused() frees their operator data and
-  the operator's own coefficients are freed by the operator after creating
-  the engine (Operator::CreateEngine()), so an operator serves one engine.
+  the operator's own coefficients are freed once the runs are built
+  (Operator::CreateEngine()), so an operator serves one engine.
   */
 class CellModel
 {
@@ -215,6 +217,7 @@ protected:
 	//! the UPML region of a cell and the cell's position in it, or NULL
 	const Operator_Ext_UPML* FindUPML(const unsigned int pos[3], unsigned int loc[3]) const;
 	std::vector<const Operator_Ext_UPML*> m_UPML;
+	std::vector<uint64_t> m_UPMLMask[3];   //!< per axis and line the UPML regions (m_UPML, at most 64) that cover it, FindUPML()
 
 	//! the dispersive extensions the model takes over, with their cells
 	void FindDispersive();
@@ -245,6 +248,31 @@ protected:
 	bool IsZeroVolt(int n, const unsigned int pos[3]) const;
 	//! a lossless current whose curl voltages are all IsZeroVolt()
 	bool IsInertCurr(int n, const unsigned int pos[3]) const;
+
+	//! Build(): what identifies a coefficient set (class, vv, q, sign, uvv, ufo, ufn, nl, solve and the poles)
+	typedef std::tuple<int, float, int64_t, int, float, float, float, std::vector<float> > SetKey;
+	//! Build(): what a chunk of the lines of a component found: its sets (the runs refer to them) and UPML profiles
+	struct BuildPart
+	{
+		std::map<SetKey, uint32_t> setIndex;
+		std::vector<SetKey> keys;              //!< per set
+		std::vector<CellModel_Set> sets;
+		std::vector<CellModel_Pole> poles;
+		std::map<std::vector<float>, uint32_t> profileIndex;   //!< the start of each distinct profile
+		std::vector<float> profile[5];
+		size_t count[6] = {0, 0, 0, 0, 0, 0};
+		std::vector<CellModel_Run> runs;      //!< of its lines, in the order it walked them (LineRuns)
+	};
+	//! Build(): per line (pos[S]*numLines[M] + pos[M]) where its runs are: the chunk, the first in the chunk's runs and how many
+	struct LineRuns
+	{
+		std::vector<uint32_t> chunk, count;
+		std::vector<uint64_t> first;
+	};
+	//! Build(): the runs of field \a f, component \a n on the lines a0 <= pos[A] < a1 (all pos[B]) into \a P, as chunk \a chunk
+	void BuildLines(int f, int n, int A, int B, uint32_t chunk, unsigned int a0, unsigned int a1, BuildPart& P, LineRuns& where) const;
+	//! Build(): the parts of component (\a f, \a n) into m_Comp[f][n]: sets and profiles in chunk order, the runs in line order, the state; adds the cell counts to \a count
+	void MergeParts(int f, int n, std::vector<BuildPart>& parts, const LineRuns& where, size_t count[6]);
 
 	//! [field: 0 volt, 1 curr][component][axis] the factor of each line, g = product over the axes
 	std::vector<double> m_G[2][3][3];

@@ -133,6 +133,18 @@ void CellModel::Analyse(bool skipInert)
 		m_UPML.push_back(upml);
 		m_Fused.push_back(upml);
 	}
+	// the UPML regions per axis and line, for FindUPML()
+	for (int a=0; a<3; ++a)
+		m_UPMLMask[a].clear();
+	if (!m_UPML.empty() && (m_UPML.size()<=64))
+		for (int a=0; a<3; ++a)
+		{
+			m_UPMLMask[a].assign(numLines[a], 0);
+			for (size_t u=0; u<m_UPML.size(); ++u)
+				for (unsigned int l=0; l<m_UPML[u]->m_numLines[a]; ++l)
+					if (m_UPML[u]->m_StartPos[a]+l<numLines[a])
+						m_UPMLMask[a][m_UPML[u]->m_StartPos[a]+l] |= (uint64_t)1<<u;
+		}
 	FindDispersive();
 	for (const Dispersive& d : m_Disp)
 		m_Fused.push_back(d.op);
@@ -294,8 +306,10 @@ bool CellModel::IsZeroVolt(int n, const unsigned int pos[3]) const
 	for (int a=0; a<3; ++a)
 		if ((pos[a]==0) || (pos[a]+1>=numLines[a]))
 			return false;
-	unsigned int p[3] = {pos[0], pos[1], pos[2]}, loc[3];
-	if ((Op->GetVV(n, p)!=0) || (Op->GetVI(n, p)!=0) || FindUPML(pos, loc))
+	unsigned int loc[3];
+	FDTD_FLOAT vv, vi;
+	Op->GetCoeffPair(0, n, pos, vv, vi);
+	if ((vv!=0) || (vi!=0) || FindUPML(pos, loc))
 		return false;
 	const size_t lin = ((size_t)pos[0]*numLines[1] + pos[1])*numLines[2] + pos[2];
 	return m_ExcitedVolt.count(3*lin + n)==0;
@@ -425,6 +439,19 @@ void CellModel::GetCellPoles(int f, int n, const unsigned int pos[3], CellKey& k
 
 const Operator_Ext_UPML* CellModel::FindUPML(const unsigned int pos[3], unsigned int loc[3]) const
 {
+	if (m_UPML.empty())
+		return NULL;
+	if (!m_UPMLMask[0].empty())
+	{
+		// the first region that covers pos, as the search below
+		const uint64_t m = m_UPMLMask[0][pos[0]] & m_UPMLMask[1][pos[1]] & m_UPMLMask[2][pos[2]];
+		if (m==0)
+			return NULL;
+		const Operator_Ext_UPML* upml = m_UPML[__builtin_ctzll(m)];
+		for (int a=0; a<3; ++a)
+			loc[a] = pos[a] - upml->m_StartPos[a];
+		return upml;
+	}
 	for (const Operator_Ext_UPML* upml : m_UPML)
 	{
 		bool inside = true;
@@ -505,9 +532,8 @@ uint32_t CellModel::CellKey::Hash() const
 CellModel::CellKey CellModel::GetCellKey(int f, int n, const unsigned int pos[3]) const
 {
 	CellKey key;
-	unsigned int p[3] = {pos[0], pos[1], pos[2]};
-	const float s = (f==0) ? Op->GetVV(n, p) : Op->GetII(n, p);
-	const float c = (f==0) ? Op->GetVI(n, p) : Op->GetIV(n, p);
+	FDTD_FLOAT s, c;
+	Op->GetCoeffPair(f, n, pos, s, c);
 	key.vv = s;
 	key.q = 0;
 	key.sign = 0;
@@ -612,196 +638,286 @@ int CellModel::RecommendFastAxis() const
 	return fast;
 }
 
+void CellModel::BuildLines(int f, int n, int A, int B, uint32_t chunk, unsigned int a0, unsigned int a1, BuildPart& P, LineRuns& where) const
+{
+	const int F = m_F, S = m_S, M = m_M;
+	// the currents are updated on [0, numLines-1) per axis
+	const unsigned int last = (f==0) ? 0 : 1;
+	unsigned int pos[3];
+	for (pos[A]=a0; pos[A]<a1; ++pos[A])
+		for (pos[B]=0; pos[B]<numLines[B]; ++pos[B])
+		{
+			const size_t line = (size_t)pos[S]*numLines[M] + pos[M];
+			std::vector<CellModel_Run>& runs = P.runs;
+			const size_t first = runs.size();
+			where.chunk[line] = chunk;
+			where.first[line] = first;
+			if ((pos[S]+last>=numLines[S]) || (pos[M]+last>=numLines[M]))
+				continue;
+			CellKey prev = CellKey();
+			bool open = false;   // the last run ends at pos[F]
+			for (pos[F]=0; pos[F]+last<numLines[F]; ++pos[F])
+			{
+				CellKey key = GetCellKey(f, n, pos);
+				if ((f==1) && m_SkipInert && (key.cls==CellModel_Set::LOSSLESS) && IsInertCurr(n, pos))
+				{
+					++P.count[5];   // in no run
+					open = false;
+					continue;
+				}
+				++P.count[key.cls];
+				if (open && (key==prev))
+				{
+					++runs.back().stop;
+					continue;
+				}
+				std::vector<float> pk;
+				pk.push_back(key.nl);
+				pk.push_back(key.solve);
+				for (int p=0; p<key.NumPoles(); ++p)
+				{
+					pk.push_back(key.poles[p].k_int);
+					pk.push_back(key.poles[p].k_ext);
+					pk.push_back(key.poles[p].k_lor);
+				}
+				const SetKey sk(key.cls, key.vv, key.q, key.sign, key.uvv, key.ufo, key.ufn, pk);
+				auto it = P.setIndex.find(sk);
+				if (it==P.setIndex.end())
+				{
+					CellModel_Set set;
+					set.cls = key.cls;
+					set.m = key.M();
+					set.vv = (key.cls==CellModel_Set::LOSSLESS) ? 1.0f : key.vv;
+					set.uvv = key.uvv;
+					set.ufo = key.ufo;
+					set.ufn = key.ufn;
+					set.offset = (uint32_t)P.poles.size();
+					set.nl = key.nl;
+					set.nd = key.nd;
+					set.solve = key.solve;
+					P.poles.insert(P.poles.end(), key.poles, key.poles+key.NumPoles());
+					it = P.setIndex.insert(std::make_pair(sk, (uint32_t)P.sets.size())).first;
+					P.sets.push_back(set);
+					P.keys.push_back(sk);
+				}
+				CellModel_Run run;
+				run.start = pos[F];
+				run.stop = pos[F]+1;
+				run.set = it->second;
+				run.u = 0;
+				runs.push_back(run);
+				prev = key;
+				open = true;
+			}
+			// neighbouring short UPML runs: one run with a profile (a PML normal to the fast axis). Their
+			// mean length is ~1 along a PML's normal and long along it, so the threshold barely matters:
+			// pml and inhomogeneous M give the same runs for 2, 4 and 8 and speeds within noise; no
+			// profiles is 15-20 % slower, profiles for all UPML runs up to 8 % slower (per-cell coefficients)
+			std::vector<CellModel_Run> merged;
+			for (size_t i=first; i<runs.size(); )
+			{
+				size_t j = i+1;
+				if (P.sets[runs[i].set].cls==CellModel_Set::UPML)
+					while ((j<runs.size()) && (P.sets[runs[j].set].cls==CellModel_Set::UPML) && (runs[j].start==runs[j-1].stop))
+						++j;
+				const unsigned int len = runs[j-1].stop - runs[i].start;
+				if ((j-i<2) || (len >= 4*(j-i)))
+				{
+					merged.insert(merged.end(), runs.begin()+i, runs.begin()+j);
+					i = j;
+					continue;
+				}
+				std::vector<float> values(5*len);
+				for (size_t q=i; q<j; ++q)
+				{
+					const CellModel_Set& s = P.sets[runs[q].set];
+					for (unsigned int k=runs[q].start; k<runs[q].stop; ++k)
+					{
+						const unsigned int c = k - runs[i].start;
+						values[0*len+c] = (float)s.m;
+						values[1*len+c] = s.vv;
+						values[2*len+c] = s.uvv;
+						values[3*len+c] = s.ufo;
+						values[4*len+c] = s.ufn;
+					}
+				}
+				auto pit = P.profileIndex.find(values);
+				if (pit==P.profileIndex.end())
+				{
+					if (P.profile[0].size()+len > 0xffffffffu)
+						throw std::length_error("CellModel: more than 2^32 cells of UPML profiles in a component");
+					pit = P.profileIndex.insert(std::make_pair(values, (uint32_t)P.profile[0].size())).first;
+					for (int q=0; q<5; ++q)
+						P.profile[q].insert(P.profile[q].end(), values.begin()+q*len, values.begin()+(q+1)*len);
+				}
+				const SetKey sk(CellModel_Set::UPML_PROFILE, 0, pit->second, 0, 0, 0, 0, std::vector<float>());
+				auto it = P.setIndex.find(sk);
+				if (it==P.setIndex.end())
+				{
+					CellModel_Set set = CellModel_Set();
+					set.cls = CellModel_Set::UPML_PROFILE;
+					set.m = 1;   // the kernel's a is then the slow factor, the profile has m
+					set.solve = 1;
+					set.offset = pit->second;
+					it = P.setIndex.insert(std::make_pair(sk, (uint32_t)P.sets.size())).first;
+					P.sets.push_back(set);
+					P.keys.push_back(sk);
+				}
+				CellModel_Run run;
+				run.start = runs[i].start;
+				run.stop = runs[j-1].stop;
+				run.set = it->second;
+				run.u = 0;
+				merged.push_back(run);
+				i = j;
+			}
+			runs.resize(first);
+			runs.insert(runs.end(), merged.begin(), merged.end());
+			where.count[line] = (uint32_t)(runs.size() - first);
+		}
+}
+
+void CellModel::MergeParts(int f, int n, std::vector<BuildPart>& parts, const LineRuns& where, size_t count[6])
+{
+	CellModel_Component& r = m_Comp[f][n];
+	const size_t nc = parts.size();
+	const size_t numLinesSM = (size_t)numLines[m_S]*numLines[m_M];
+	// the sets and profiles of the chunks into those of the component, in chunk order
+	for (int q=0; q<5; ++q)
+		r.profile[q].clear();
+	r.runs.clear();
+	r.sets.clear();
+	r.poles.clear();
+	std::map<SetKey, uint32_t> setIndex;
+	std::map<std::vector<float>, uint32_t> profileIndex;
+	for (unsigned int c=0; c<nc; ++c)
+	{
+		BuildPart& P = parts[c];
+		for (int k=0; k<6; ++k)
+			count[k] += P.count[k];
+		std::map<uint32_t, uint32_t> profileMap;   // local start -> start in the component
+		for (const auto& pr : P.profileIndex)
+		{
+			auto pit = profileIndex.find(pr.first);
+			if (pit==profileIndex.end())
+			{
+				const size_t len = pr.first.size()/5;
+				if (r.profile[0].size()+len > 0xffffffffu)
+					throw std::length_error("CellModel: more than 2^32 cells of UPML profiles in a component");
+				pit = profileIndex.insert(std::make_pair(pr.first, (uint32_t)r.profile[0].size())).first;
+				for (int q=0; q<5; ++q)
+					r.profile[q].insert(r.profile[q].end(), pr.first.begin()+q*len, pr.first.begin()+(q+1)*len);
+			}
+			profileMap[pr.second] = pit->second;
+		}
+		std::vector<uint32_t> setMap(P.sets.size());
+		for (size_t k=0; k<P.sets.size(); ++k)
+		{
+			SetKey sk = P.keys[k];
+			CellModel_Set set = P.sets[k];
+			if (set.cls==CellModel_Set::UPML_PROFILE)
+			{
+				set.offset = profileMap.at(set.offset);
+				std::get<2>(sk) = set.offset;
+			}
+			auto it = setIndex.find(sk);
+			if (it==setIndex.end())
+			{
+				if (set.cls!=CellModel_Set::UPML_PROFILE)
+				{
+					const uint32_t local = set.offset;
+					set.offset = (uint32_t)r.poles.size();
+					r.poles.insert(r.poles.end(), P.poles.begin()+local, P.poles.begin()+local+set.nl+set.nd);
+				}
+				it = setIndex.insert(std::make_pair(sk, (uint32_t)r.sets.size())).first;
+				r.sets.push_back(set);
+			}
+			setMap[k] = it->second;
+		}
+		for (CellModel_Run& run : P.runs)
+			run.set = setMap[run.set];
+		// freed, all but the runs
+		P.setIndex.clear();
+		P.profileIndex.clear();
+		std::vector<SetKey>().swap(P.keys);
+		std::vector<CellModel_Set>().swap(P.sets);
+		std::vector<CellModel_Pole>().swap(P.poles);
+		for (int q=0; q<5; ++q)
+			std::vector<float>().swap(P.profile[q]);
+	}
+
+	// the runs in line order
+	r.first.assign(numLinesSM + 1, 0);
+	size_t total = 0;
+	for (const BuildPart& P : parts)
+		total += P.runs.size();
+	r.runs.reserve(total);
+	for (size_t line=0; line<numLinesSM; ++line)
+	{
+		r.first[line] = r.runs.size();
+		const CellModel_Run* l = parts[where.chunk[line]].runs.data() + where.first[line];
+		r.runs.insert(r.runs.end(), l, l + where.count[line]);
+	}
+	r.first.back() = r.runs.size();
+	std::vector<BuildPart>().swap(parts);
+	// the state of the UPML and DISP runs, now that their lengths are known
+	size_t state = 0;
+	for (CellModel_Run& run : r.runs)
+	{
+		const CellModel_Set& set = r.sets[run.set];
+		const size_t len = run.stop - run.start;
+		if ((set.cls!=CellModel_Set::UPML) && (set.cls!=CellModel_Set::UPML_PROFILE) && (set.cls!=CellModel_Set::DISP))
+			continue;
+		if (state > 0xffffffffu)
+			throw std::length_error("CellModel: more than 2^32 floats of UPML and ADE state in a component");
+		run.u = (uint32_t)state;
+		if ((set.cls==CellModel_Set::UPML) || (set.cls==CellModel_Set::UPML_PROFILE))
+			state += len;
+		else
+		{
+			for (unsigned int p=0; p<set.nl; ++p)
+				state += ((r.poles[set.offset+p].k_lor!=0) ? 2 : 1)*len;
+			state += set.nd*len;
+		}
+	}
+	r.state = state;
+}
+
 void CellModel::Build(int F, int S, int M)
 {
 	m_F = F;
 	m_S = S;
 	m_M = M;
-	// one thread per component, each with its own cell counts
 	size_t counts[2][3][6] = {};
-	auto build = [&](int f, int n)
+	// two chunks per component: on 16 threads nearly the gain of three (inhomogeneous L 1.75 s, 1.70 s, one
+	// 2.2 s), for less memory: what the chunks free stays in the allocator's thread arenas (three ~1 byte per cell)
+	const unsigned int chunks = std::min(2u, std::max(1u, AvailableThreads()/6));
+	// the lines are walked in the order of the operator's circuit values in memory, z fastest, else every
+	// line along a slow axis misses the cache; MergeParts() puts their runs in line order
+	const int A = (S==2) ? M : S, B = (S==2) ? S : M;
+	// a thread per component, its lines in chunks on threads of their own, each chunk with its own sets
+	ParallelFor(6, 6, [&](unsigned int, size_t c0, size_t c1) {
+		for (size_t c=c0; c<c1; ++c)
 		{
-			size_t* count = counts[f][n];
-			CellModel_Component& r = m_Comp[f][n];
-			std::vector<CellModel_Pole>& poles = r.poles;
-			std::vector<float>* profile = r.profile;
-			std::map<std::vector<float>, uint32_t> profileIndex;   // the start of each distinct profile
-			for (int q=0; q<5; ++q)
-				profile[q].clear();
-			r.runs.clear();
-			r.sets.clear();
-			poles.clear();
-			// the index of each distinct key in r.sets
-			typedef std::tuple<int, float, int64_t, int, float, float, float, std::vector<float> > SetKey;
-			std::map<SetKey, uint32_t> setIndex;
-			r.first.assign((size_t)numLines[S]*numLines[M] + 1, 0);
-			// the currents are updated on [0, numLines-1) per axis
-			const unsigned int last = (f==0) ? 0 : 1;
-			unsigned int pos[3];
-			for (pos[S]=0; pos[S]<numLines[S]; ++pos[S])
-				for (pos[M]=0; pos[M]<numLines[M]; ++pos[M])
-				{
-					const size_t line = (size_t)pos[S]*numLines[M] + pos[M];
-					r.first[line] = r.runs.size();
-					if ((pos[S]+last>=numLines[S]) || (pos[M]+last>=numLines[M]))
-						continue;
-					CellKey prev = CellKey();
-					bool open = false;   // the last run ends at pos[F]
-					for (pos[F]=0; pos[F]+last<numLines[F]; ++pos[F])
-					{
-						CellKey key = GetCellKey(f, n, pos);
-						if ((f==1) && m_SkipInert && (key.cls==CellModel_Set::LOSSLESS) && IsInertCurr(n, pos))
-						{
-							++count[5];   // in no run
-							open = false;
-							continue;
-						}
-						++count[key.cls];
-						if (open && (key==prev))
-						{
-							++r.runs.back().stop;
-							continue;
-						}
-						std::vector<float> pk;
-						pk.push_back(key.nl);
-						pk.push_back(key.solve);
-						for (int p=0; p<key.NumPoles(); ++p)
-						{
-							pk.push_back(key.poles[p].k_int);
-							pk.push_back(key.poles[p].k_ext);
-							pk.push_back(key.poles[p].k_lor);
-						}
-						const SetKey sk(key.cls, key.vv, key.q, key.sign, key.uvv, key.ufo, key.ufn, pk);
-						auto it = setIndex.find(sk);
-						if (it==setIndex.end())
-						{
-							CellModel_Set set;
-							set.cls = key.cls;
-							set.m = key.M();
-							set.vv = (key.cls==CellModel_Set::LOSSLESS) ? 1.0f : key.vv;
-							set.uvv = key.uvv;
-							set.ufo = key.ufo;
-							set.ufn = key.ufn;
-							set.offset = (uint32_t)poles.size();
-							set.nl = key.nl;
-							set.nd = key.nd;
-							set.solve = key.solve;
-							poles.insert(poles.end(), key.poles, key.poles+key.NumPoles());
-							it = setIndex.insert(std::make_pair(sk, (uint32_t)r.sets.size())).first;
-							r.sets.push_back(set);
-						}
-						CellModel_Run run;
-						run.start = pos[F];
-						run.stop = pos[F]+1;
-						run.set = it->second;
-						run.u = 0;
-						r.runs.push_back(run);
-						prev = key;
-						open = true;
-					}
-					// neighbouring short UPML runs: one run with a profile (a PML normal to the fast axis). Their
-					// mean length is ~1 along a PML's normal and long along it, so the threshold barely matters:
-					// pml and inhomogeneous M give the same runs for 2, 4 and 8 and speeds within noise; no
-					// profiles is 15-20 % slower, profiles for all UPML runs up to 8 % slower (per-cell coefficients)
-					std::vector<CellModel_Run> merged;
-					const size_t first = r.first[line];
-					for (size_t i=first; i<r.runs.size(); )
-					{
-						size_t j = i+1;
-						if (r.sets[r.runs[i].set].cls==CellModel_Set::UPML)
-							while ((j<r.runs.size()) && (r.sets[r.runs[j].set].cls==CellModel_Set::UPML) && (r.runs[j].start==r.runs[j-1].stop))
-								++j;
-						const unsigned int len = r.runs[j-1].stop - r.runs[i].start;
-						if ((j-i<2) || (len >= 4*(j-i)))
-						{
-							merged.insert(merged.end(), r.runs.begin()+i, r.runs.begin()+j);
-							i = j;
-							continue;
-						}
-						std::vector<float> values(5*len);
-						for (size_t q=i; q<j; ++q)
-						{
-							const CellModel_Set& s = r.sets[r.runs[q].set];
-							for (unsigned int k=r.runs[q].start; k<r.runs[q].stop; ++k)
-							{
-								const unsigned int c = k - r.runs[i].start;
-								values[0*len+c] = (float)s.m;
-								values[1*len+c] = s.vv;
-								values[2*len+c] = s.uvv;
-								values[3*len+c] = s.ufo;
-								values[4*len+c] = s.ufn;
-							}
-						}
-						auto pit = profileIndex.find(values);
-						if (pit==profileIndex.end())
-						{
-							if (profile[0].size()+len > 0xffffffffu)
-								throw std::length_error("CellModel: more than 2^32 cells of UPML profiles in a component");
-							pit = profileIndex.insert(std::make_pair(values, (uint32_t)profile[0].size())).first;
-							for (int q=0; q<5; ++q)
-								profile[q].insert(profile[q].end(), values.begin()+q*len, values.begin()+(q+1)*len);
-						}
-						const SetKey sk(CellModel_Set::UPML_PROFILE, 0, pit->second, 0, 0, 0, 0, std::vector<float>());
-						auto it = setIndex.find(sk);
-						if (it==setIndex.end())
-						{
-							CellModel_Set set = CellModel_Set();
-							set.cls = CellModel_Set::UPML_PROFILE;
-							set.m = 1;   // the kernel's a is then the slow factor, the profile has m
-							set.solve = 1;
-							set.offset = pit->second;
-							it = setIndex.insert(std::make_pair(sk, (uint32_t)r.sets.size())).first;
-							r.sets.push_back(set);
-						}
-						CellModel_Run run;
-						run.start = r.runs[i].start;
-						run.stop = r.runs[j-1].stop;
-						run.set = it->second;
-						run.u = 0;
-						merged.push_back(run);
-						i = j;
-					}
-					r.runs.resize(first);
-					r.runs.insert(r.runs.end(), merged.begin(), merged.end());
-				}
-			r.first.back() = r.runs.size();
-			// the state of the UPML and DISP runs, now that their lengths are known
-			size_t state = 0;
-			for (CellModel_Run& run : r.runs)
-			{
-				const CellModel_Set& set = r.sets[run.set];
-				const size_t len = run.stop - run.start;
-				if ((set.cls!=CellModel_Set::UPML) && (set.cls!=CellModel_Set::UPML_PROFILE) && (set.cls!=CellModel_Set::DISP))
-					continue;
-				if (state > 0xffffffffu)
-					throw std::length_error("CellModel: more than 2^32 floats of UPML and ADE state in a component");
-				run.u = (uint32_t)state;
-				if ((set.cls==CellModel_Set::UPML) || (set.cls==CellModel_Set::UPML_PROFILE))
-					state += len;
-				else
-				{
-					for (unsigned int p=0; p<set.nl; ++p)
-						state += ((poles[set.offset+p].k_lor!=0) ? 2 : 1)*len;
-					state += set.nd*len;
-				}
-			}
-			r.state = state;
-		};
-	// an exception in a thread would end the program: carried out and rethrown
-	std::exception_ptr error[2][3];
-	std::vector<std::thread> threads;
-	for (int f=0; f<2; ++f)
-		for (int n=0; n<3; ++n)
-			threads.push_back(std::thread([&, f, n]() {
-				try {build(f, n);}
-				catch (...) {error[f][n] = std::current_exception();}
-			}));
-	for (std::thread& th : threads)
-		th.join();
-	for (int f=0; f<2; ++f)
-		for (int n=0; n<3; ++n)
-			if (error[f][n])
-				std::rethrow_exception(error[f][n]);
+			const int f = (int)c/3, n = (int)c%3;
+			const size_t numLinesSM = (size_t)numLines[S]*numLines[M];
+			LineRuns where;
+			where.chunk.assign(numLinesSM, 0);
+			where.first.assign(numLinesSM, 0);
+			where.count.assign(numLinesSM, 0);
+			const unsigned int nc = std::max(1u, std::min(chunks, numLines[A]));
+			std::vector<BuildPart> parts(nc);
+			std::vector<unsigned int> a0(nc+1);
+			for (unsigned int k=0; k<=nc; ++k)
+				a0[k] = (unsigned int)((size_t)numLines[A]*k/nc);
+			ParallelFor(nc, nc, [&](unsigned int, size_t k0, size_t k1) {
+				for (size_t k=k0; k<k1; ++k)
+					BuildLines(f, n, A, B, (uint32_t)k, a0[k], a0[k+1], parts[k], where);
+			});
+			MergeParts(f, n, parts, where, counts[f][n]);
+		}
+	});
+
 	size_t count[6] = {0, 0, 0, 0, 0, 0};
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)

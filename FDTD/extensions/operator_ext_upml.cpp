@@ -25,7 +25,6 @@ using namespace std;
 Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 {
 	setlocale(LC_NUMERIC, "en_US.UTF-8");
-	m_GradingFunction = new FunctionParser();
 	//default grading function
 	SetGradingFunction(" -log(1e-6)*log(2.5)/(2*dl*Z*(pow(2.5,W/dl)-1)) * pow(2.5, D/dl) ");
 
@@ -43,8 +42,6 @@ Operator_Ext_UPML::Operator_Ext_UPML(Operator* op) : Operator_Extension(op)
 
 Operator_Ext_UPML::~Operator_Ext_UPML()
 {
-	delete m_GradingFunction;
-	m_GradingFunction = NULL;
 	DeleteOp();
 }
 
@@ -258,11 +255,13 @@ bool Operator_Ext_UPML::SetGradingFunction(string func)
 		return true;
 
 	m_GradFunc = func;
-	int res = m_GradingFunction->Parse(m_GradFunc.c_str(), "D,dl,W,Z,N");
+	// only checked here: the build parses it per thread (CalcGradingKappa())
+	FunctionParser grading;
+	int res = grading.Parse(m_GradFunc.c_str(), "D,dl,W,Z,N");
 	if (res < 0) return true;
 
 	cerr << "Operator_Ext_UPML::SetGradingFunction: Warning, an error occurred parsing the pml grading function (see below) ..." << endl;
-	cerr << func << "\n" << string(res, ' ') << "^\n" << m_GradingFunction->ErrorMsg() << "\n";
+	cerr << func << "\n" << string(res, ' ') << "^\n" << grading.ErrorMsg() << "\n";
 	return false;
 }
 
@@ -360,6 +359,33 @@ bool Operator_Ext_UPML::BuildExtension()
 	iifn.Init("iifn", m_numLines);
 
 	const double dT = m_Op->GetTimestep();
+	// the main coefficients of the box are rewritten below
+	m_Op->m_Coeffs->ReserveBox(m_StartPos, m_numLines);
+
+	// The grading of axis a depends only on the line along a and on whether the edge is along a (in
+	// Cartesian coordinates; in cylindrical ones alpha depends on r too): computed once per line, by
+	// CalcGradingKappa() itself, and looked up per edge. [ny][a][line in the box]
+	std::vector<double> gradV[3][3], gradI[3][3];
+	if (m_Op_Cyl==NULL)
+	{
+		FunctionParser grading;
+		grading.Parse(m_GradFunc.c_str(), "D,dl,W,Z,N");
+		for (int ny=0; ny<3; ++ny)
+			for (int a=0; a<3; ++a)
+			{
+				gradV[ny][a].resize(m_numLines[a]);
+				gradI[ny][a].resize(m_numLines[a]);
+				unsigned int pos[3] = {m_StartPos[0], m_StartPos[1], m_StartPos[2]};
+				for (unsigned int l=0; l<m_numLines[a]; ++l)
+				{
+					pos[a] = m_StartPos[a] + l;
+					double kv[3], ki[3];
+					CalcGradingKappa(grading, ny, pos, Z0, kv, ki);
+					gradV[ny][a][l] = kv[a];
+					gradI[ny][a][l] = ki[a];
+				}
+			}
+	}
 
 	// the columns (x, y) of the PML on the build threads, each with its own parser of the grading
 	m_Op->ParallelFor((size_t)m_numLines[0]*m_numLines[1], [&](unsigned int, size_t begin, size_t end) {
@@ -384,7 +410,14 @@ bool Operator_Ext_UPML::BuildExtension()
 				for (int n=0; n<3; ++n)
 				{
 					m_Op->Calc_EffMatPos(n,pos,eff_Mat,vPrims);
-					CalcGradingKappa(grading, n, pos,Z0 ,kappa_v ,kappa_i);
+					if (m_Op_Cyl)
+						CalcGradingKappa(grading, n, pos,Z0 ,kappa_v ,kappa_i);
+					else
+						for (int a=0; a<3; ++a)
+						{
+							kappa_v[a] = gradV[n][a][loc_pos[a]];
+							kappa_i[a] = gradI[n][a][loc_pos[a]];
+						}
 					nP = (n+1)%3;
 					nPP = (n+2)%3;
 					// if eff_Mat[1] > 1e3 assume a metal and disable PML to continue a signal layer

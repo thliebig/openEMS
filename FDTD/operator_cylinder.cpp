@@ -61,23 +61,28 @@ double Operator_Cylinder::GetRawDiscDelta(int ny, const int pos) const
 	return Operator::GetRawDiscDelta(ny,pos);
 }
 
+void Operator_Cylinder::WrapAlpha(const double coords[3], double wrapped[3]) const
+{
+	wrapped[0] = coords[0];
+	wrapped[1] = coords[1];
+	wrapped[2] = coords[2];
+	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
+		wrapped[1] -= 2*PI;
+	if (CC_closedAlpha && (coords[1]<GetDiscLine(1,0,false)))
+		wrapped[1] += 2*PI;
+}
+
 double Operator_Cylinder::GetMaterial(int ny, const double* coords, int MatType, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed) const
 {
-	double l_coords[] = {coords[0],coords[1],coords[2]};
-	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
-		l_coords[1]-=2*PI;
-	if (CC_closedAlpha && (coords[1]<GetDiscLine(1,0,false)))
-		l_coords[1] += 2*PI;
+	double l_coords[3];
+	WrapAlpha(coords, l_coords);
 	return Operator::GetMaterial(ny,l_coords,MatType,vPrims,markAsUsed);
 }
 
 void Operator_Cylinder::GetMaterials(int ny, const double* coords, int type1, int type2, double& val1, double& val2, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed) const
 {
-	double l_coords[] = {coords[0],coords[1],coords[2]};
-	if (CC_closedAlpha && (coords[1]>GetDiscLine(1,0,false)+2*PI))
-		l_coords[1]-=2*PI;
-	if (CC_closedAlpha && (coords[1]<GetDiscLine(1,0,false)))
-		l_coords[1] += 2*PI;
+	double l_coords[3];
+	WrapAlpha(coords, l_coords);
 	Operator::GetMaterials(ny,l_coords,type1,type2,val1,val2,vPrims,markAsUsed);
 }
 

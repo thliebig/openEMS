@@ -67,11 +67,12 @@ using std::endl;
 
 static const char AXIS_LETTER[3] = {'I', 'J', 'K'};
 
-Engine_CPU* Engine_CPU::New(const Operator* op, unsigned int numThreads)
+Engine_CPU* Engine_CPU::New(const Operator* op, unsigned int numThreads, const std::function<void()>& modelBuilt)
 {
 	cout << "Create FDTD engine (" << GetTypeName(CPU) << ")" << endl;
 	Engine_CPU* e = new Engine_CPU(op);
 	e->SetNumThreads(numThreads);
+	e->m_ModelBuilt = modelBuilt;
 	e->Init();
 	return e;
 }
@@ -98,11 +99,17 @@ void Engine_CPU::Init()
 	m_Model.reset(new CellModel(Op));
 	m_Model->Analyse(!(inert && (std::string(inert)=="0")));
 	ChooseLayout();
-	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
-	DropFusedExtensions();
 	m_Model->Build(m_FastAxis, m_SplitAxis, m_MidAxis);
 	if (Op->GetDebugFlags() & Operator::debugOperator)
 		m_Model->Dump("cellmodel_dump");
+	// the runs hold the coefficients now: the operator's go before the fields come
+	if (m_ModelBuilt)
+	{
+		m_ModelBuilt();
+		m_ModelBuilt = nullptr;
+	}
+	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
+	DropFusedExtensions();
 	m_Model->FreeFused();
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)

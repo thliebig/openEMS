@@ -22,8 +22,9 @@ to what a user notices, in a few lines; the details belong in the commit.
   listed at `--verbose=1`.
 - **A CPU engine, experimental**, `--engine=cpu` (`engine='cpu'`): on an
   8-core Ryzen 7 5800X it runs typical models 3-6x faster than the default
-  engine, with dispersive materials up to 10x, and needs less memory.
-  Benchmarks from other machines are welcome (`benchmark/bench.py`).
+  engine, with dispersive materials up to 10x, and needs less memory, at
+  the peak of the setup about a third less. Benchmarks from other machines
+  are welcome (`benchmark/bench.py`).
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` (or
   `openEMS.compare.compare_sim_results()`) compares the probes and field
   dumps of two runs.
@@ -51,7 +52,7 @@ to what a user notices, in a few lines; the details belong in the commit.
 - The CPU engines use all threads (`--numThreads`); `sse` and
   `sse-compressed` are other names of the default engine now. Small models
   run up to twice as fast, cylindrical multi-grid meshes 12-25 % faster.
-- The setup is 3-5x faster on large models, most of it runs on all threads
+- The setup is 5-10x faster on large models, most of it runs on all threads
   now, and openEMS prints how long it took.
 
 ### Fixed

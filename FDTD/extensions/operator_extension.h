@@ -42,6 +42,12 @@ public:
 	*/
 	virtual Operator_Extension* Clone(Operator* op) {UNUSED(op); return NULL;}
 
+	//! Build the extension, once the operator has its coefficients
+	/*!
+		An extension that changes the operator's circuit values (EC_C, EC_G, EC_L, EC_R) of a node must call
+		Operator::Calc_ECOperatorPos() for it afterwards, or Operator::FreezeCoeffs() before to keep its
+		coefficients: the CPU and GPU engines compute the coefficients from the circuit values when read.
+	*/
 	virtual bool BuildExtension() {return true;}
 
 	virtual Engine_Extension* CreateEngineExtention() {return 0;}

@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -59,7 +60,8 @@
 class Engine_CPU : public Engine
 {
 public:
-	static Engine_CPU* New(const Operator* op, unsigned int numThreads = 0);
+	//! \a modelBuilt is called once the runs are built, before the fields are allocated: the operator frees the coefficients then
+	static Engine_CPU* New(const Operator* op, unsigned int numThreads = 0, const std::function<void()>& modelBuilt = nullptr);
 	virtual ~Engine_CPU();
 
 	virtual void Init();
@@ -126,6 +128,7 @@ protected:
 	std::string m_ISA;
 
 	std::unique_ptr<CellModel> m_Model;
+	std::function<void()> m_ModelBuilt;   //!< see New(), called once
 	//! [field][component] the state of the UPML and DISP runs (CellModel_Run::u)
 	std::vector<float> m_State[2][3];
 	//! [field][component] the fast geometry factor as float, for the kernels

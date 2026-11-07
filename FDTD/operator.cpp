@@ -18,9 +18,6 @@
 #include <fstream>
 #include <algorithm>
 #include <stdexcept>
-#include <exception>
-#include <mutex>
-#include <thread>
 #include "operator.h"
 #include "tools/useful.h"
 #include "engine.h"
@@ -61,6 +58,7 @@ Operator::Operator() : Operator_Base()
 	m_TimeStepVar = 3;
 	m_numThreads = 0;
 	m_Coeffs = NULL;
+	m_ECCoeffs = NULL;
 	m_EngineType = Engine::UNKNOWN;   // SetEngineType() before the build
 	m_GPU_Backend = NULL;
 	m_GPU_Parent = NULL;
@@ -100,9 +98,9 @@ Engine* Operator::CreateEngine()
 	{
 	case Engine::GPU:
 		m_Engine = Engine_GPU::New(this, TakeGPUBackend(), m_GPU_Parent);
-		// The device holds the coefficients now: free the host ones (48 bytes per node),
-		// as the compressed storage frees its full arrays. GetVV() and friends are invalid after this.
-		m_Coeffs->Free();
+		// The device holds the coefficients now: free the circuit values they are computed from
+		// (48 bytes per node), as the compressed storage frees its full arrays. GetVV() and friends are invalid after this.
+		FreeCoeffs();
 		break;
 	case Engine::SSE:
 		m_Engine = Engine_sse::New(this, m_numThreads);
@@ -111,9 +109,9 @@ Engine* Operator::CreateEngine()
 		m_Engine = Engine::New(this, m_numThreads);
 		break;
 	case Engine::CPU:
-		m_Engine = Engine_CPU::New(this, m_numThreads);
-		// the engine holds its runs now: free the full coefficients (48 bytes per node), as for the GPU
-		m_Coeffs->Free();
+		// the engine holds its runs once they are built: it has the coefficients and the circuit values
+		// they are computed from (48 bytes per node) freed then, before it allocates its fields
+		m_Engine = Engine_CPU::New(this, m_numThreads, [this]() {FreeCoeffs();});
 		break;
 	default:
 		throw std::logic_error("Operator::CreateEngine: no engine type set (SetEngineType())");
@@ -130,6 +128,7 @@ void Operator::Init()
 
 	delete m_Coeffs;
 	m_Coeffs = NULL;
+	m_ECCoeffs = NULL;
 
 	m_epsR_ptr = NULL;
 	m_kappa_ptr = NULL;
@@ -154,9 +153,16 @@ void Operator::Init()
 void Operator::Delete()
 {
 	CSX = NULL;
+	for (int d=0; d<2; ++d)
+		for (int n=0; n<3; ++n)
+		{
+			m_LineTable[d][n].clear();
+			m_EdgeLengthTable[d][n].clear();
+		}
 
 	delete m_Coeffs;
 	m_Coeffs = NULL;
+	m_ECCoeffs = NULL;
 
 	delete MainOp; MainOp=0;
 	for (int n=0; n<3; ++n)
@@ -187,6 +193,9 @@ double Operator::GetDiscLine(int n, unsigned int pos, bool dualMesh) const
 {
 	if ((n<0) || (n>2)) return 0.0;
 	if (pos>=numLines[n]) return 0.0;
+	const std::vector<double>& table = m_LineTable[dualMesh][n];
+	if (!table.empty())
+		return table[pos];
 	if (dualMesh==false)
 		return discLines[n][pos];
 
@@ -253,7 +262,38 @@ bool Operator::GetNodeCoords(const unsigned int pos[3], double* coords, bool dua
 
 double Operator::GetEdgeLength(int n, const unsigned int* pos, bool dualMesh) const
 {
+	const std::vector<double>& table = m_EdgeLengthTable[dualMesh][n];
+	if (pos[n]<table.size())
+		return table[pos[n]];
 	return GetDiscDelta(n,pos[n],dualMesh)*gridDelta;
+}
+
+void Operator::InitGeometry()
+{
+	// from the functions themselves, the same values: lines first, the lengths from them
+	for (int d=0; d<2; ++d)
+		for (int n=0; n<3; ++n)
+		{
+			m_LineTable[d][n].clear();
+			m_EdgeLengthTable[d][n].clear();
+		}
+	for (int d=0; d<2; ++d)
+		for (int n=0; n<3; ++n)
+		{
+			std::vector<double> lines(numLines[n]);
+			for (unsigned int i=0; i<numLines[n]; ++i)
+				lines[i] = GetDiscLine(n, i, d==1);
+			m_LineTable[d][n].swap(lines);
+		}
+	for (int d=0; d<2; ++d)
+		for (int n=0; n<3; ++n)
+		{
+			std::vector<double> lengths(numLines[n]);
+			unsigned int pos[3] = {0, 0, 0};
+			for (pos[n]=0; pos[n]<numLines[n]; ++pos[n])
+				lengths[pos[n]] = GetDiscDelta(n, pos[n], d==1)*gridDelta;
+			m_EdgeLengthTable[d][n].swap(lengths);
+		}
 }
 
 double Operator::GetCellVolume(const unsigned int pos[3], bool dualMesh) const
@@ -892,11 +932,42 @@ void Operator::InitOperator()
 	if (m_EngineType==Engine::UNKNOWN)
 		throw std::logic_error("Operator::InitOperator: no engine type set (SetEngineType())");
 	delete m_Coeffs;
+	m_ECCoeffs = NULL;
 	if (m_EngineType==Engine::SSE)
 		m_Coeffs = new Coeffs_SSE_Compressed();
-	else
+	else if (m_EngineType==Engine::BASIC)
 		m_Coeffs = new Coeffs_Basic();
+	else
+	{
+		// the CPU and GPU engines read each coefficient once to build their own form of them:
+		// computed from the circuit values when read, no array of their own
+		m_ECCoeffs = new Coeffs_EC();
+		m_Coeffs = m_ECCoeffs;
+	}
 	m_Coeffs->Init(numLines);
+	if (m_ECCoeffs)
+		m_ECCoeffs->SetEC(EC_C, EC_G, EC_L, EC_R, dT);
+}
+
+void Operator::FreeEC()
+{
+	for (int n=0; n<3; ++n)
+	{
+		delete[] EC_C[n];
+		EC_C[n]=NULL;
+		delete[] EC_G[n];
+		EC_G[n]=NULL;
+		delete[] EC_L[n];
+		EC_L[n]=NULL;
+		delete[] EC_R[n];
+		EC_R[n]=NULL;
+	}
+}
+
+void Operator::FreeCoeffs()
+{
+	m_Coeffs->Free();
+	FreeEC();
 }
 
 void Operator::InitDataStorage()
@@ -1006,32 +1077,20 @@ void Operator::SetExcitationSignal(Excitation* exc)
 
 void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 {
+	if (m_ECCoeffs)
+	{
+		// computed from the circuit values when read
+		m_ECCoeffs->Reset(n, pos[0], pos[1], pos[2]);
+		return;
+	}
 	const size_t i = GetECIndex(pos);
-	double C = EC_C[n][i];
-	double G = EC_G[n][i];
-	if (C>0)
-	{
-		SetVV(n,pos[0],pos[1],pos[2], (1.0-dT*G/2.0/C)/(1.0+dT*G/2.0/C) );
-		SetVI(n,pos[0],pos[1],pos[2], (dT/C)/(1.0+dT*G/2.0/C) );
-	}
-	else
-	{
-		SetVV(n,pos[0],pos[1],pos[2], 0 );
-		SetVI(n,pos[0],pos[1],pos[2], 0 );
-	}
-
-	double L = EC_L[n][i];
-	double R = EC_R[n][i];
-	if (L>0)
-	{
-		SetII(n,pos[0],pos[1],pos[2], (1.0-dT*R/2.0/L)/(1.0+dT*R/2.0/L) );
-		SetIV(n,pos[0],pos[1],pos[2], (dT/L)/(1.0+dT*R/2.0/L) );
-	}
-	else
-	{
-		SetII(n,pos[0],pos[1],pos[2], 0 );
-		SetIV(n,pos[0],pos[1],pos[2], 0 );
-	}
+	FDTD_FLOAT self, curl;
+	Coeffs_FromEC(EC_C[n][i], EC_G[n][i], dT, self, curl);
+	SetVV(n,pos[0],pos[1],pos[2], self);
+	SetVI(n,pos[0],pos[1],pos[2], curl);
+	Coeffs_FromEC(EC_L[n][i], EC_R[n][i], dT, self, curl);
+	SetII(n,pos[0],pos[1],pos[2], self);
+	SetIV(n,pos[0],pos[1],pos[2], curl);
 }
 
 int Operator::CalcECOperator( DebugFlags debugFlags )
@@ -1075,14 +1134,15 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 
 	InitOperator();
 
-	ParallelFor(numLines[0], [this](unsigned int, size_t begin, size_t end) {
-		unsigned int pos[3];
-		for (int n=0; n<3; ++n)
-			for (pos[0]=begin; pos[0]<end; ++pos[0])
-				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
-						Calc_ECOperatorPos(n,pos);
-	});
+	if (m_ECCoeffs==NULL)   // else computed from the circuit values when read
+		ParallelFor(numLines[0], [this](unsigned int, size_t begin, size_t end) {
+			unsigned int pos[3];
+			for (int n=0; n<3; ++n)
+				for (pos[0]=begin; pos[0]<end; ++pos[0])
+					for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+						for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+							Calc_ECOperatorPos(n,pos);
+		});
 
 	//Apply PEC to all boundary's
 	bool PEC[6]={1,1,1,1,1,1};
@@ -1126,18 +1186,9 @@ int Operator::CalcECOperator( DebugFlags debugFlags )
 	if (debugFlags & debugPEC)
 		DumpPEC2File( "PEC_dump" );
 
-	//cleanup
-	for (int n=0; n<3; ++n)
-	{
-		delete[] EC_C[n];
-		EC_C[n]=NULL;
-		delete[] EC_G[n];
-		EC_G[n]=NULL;
-		delete[] EC_L[n];
-		EC_L[n]=NULL;
-		delete[] EC_R[n];
-		EC_R[n]=NULL;
-	}
+	// the circuit values are no longer needed, unless the coefficients are computed from them (FreeCoeffs())
+	if (m_ECCoeffs==NULL)
+		FreeEC();
 
 	m_Coeffs->Finalize();
 
@@ -1807,6 +1858,7 @@ bool Operator::IsLEparRC(const CSPropLumpedElement* const p_prop)
 
 void Operator::Init_EC()
 {
+	InitGeometry();
 	for (int n=0; n<3; ++n)
 	{
 		//init x-cell-array
@@ -1818,14 +1870,17 @@ void Operator::Init_EC()
 		EC_G[n] = new FDTD_FLOAT[MainOp->GetSize()];
 		EC_L[n] = new FDTD_FLOAT[MainOp->GetSize()];
 		EC_R[n] = new FDTD_FLOAT[MainOp->GetSize()];
-		for (unsigned int i=0; i<MainOp->GetSize(); i++) //init all
-		{
-			EC_C[n][i]=0;
-			EC_G[n][i]=0;
-			EC_L[n][i]=0;
-			EC_R[n][i]=0;
-		}
 	}
+	// all 0 (a multi-grid leaves out the lines of its sub-grid), on the build threads
+	ParallelFor(MainOp->GetSize(), [this](unsigned int, size_t begin, size_t end) {
+		for (int n=0; n<3; ++n)
+		{
+			std::fill(EC_C[n]+begin, EC_C[n]+end, 0);
+			std::fill(EC_G[n]+begin, EC_G[n]+end, 0);
+			std::fill(EC_L[n]+begin, EC_L[n]+end, 0);
+			std::fill(EC_R[n]+begin, EC_R[n]+end, 0);
+		}
+	});
 }
 
 bool Operator::Calc_EC()
@@ -1844,11 +1899,14 @@ bool Operator::Calc_EC()
 	if (g_settings.GetVerboseLevel()>0)
 		cout << "Building the operator on " << numThreads << " threads." << endl;
 
-	std::vector<std::thread> threads;
+	// the x lines one by one to the threads as they get done: the material lookups cost unevenly
+	std::vector<unsigned int> lines;
 	for (unsigned int n=0; n<numThreads; ++n)
-		threads.push_back(std::thread(&Operator::Calc_EC_Range, this, start.at(n), stop.at(n)));
-	for (size_t n=0; n<threads.size(); ++n)
-		threads[n].join();
+		for (unsigned int x=start.at(n); x<=stop.at(n); ++x)
+			lines.push_back(x);
+	ParallelForEach(lines.size(), numThreads, [&](unsigned int, size_t i) {
+		Calc_EC_Range(lines[i], lines[i]);
+	});
 	return true;
 }
 
@@ -1861,39 +1919,7 @@ unsigned int Operator::GetBuildThreads() const
 
 void Operator::ParallelFor(size_t count, const std::function<void(unsigned int thread, size_t begin, size_t end)>& fn) const
 {
-	if (count==0)
-		return;
-	const unsigned int numThreads = (unsigned int)std::min<size_t>(GetBuildThreads(), count);
-	if (numThreads<=1)
-	{
-		fn(0, 0, count);
-		return;
-	}
-	std::vector<std::thread> threads;
-	std::exception_ptr error;
-	std::mutex error_mutex;
-	size_t begin = 0;
-	for (unsigned int t=0; t<numThreads; ++t)
-	{
-		const size_t end = begin + count/numThreads + ((t < count%numThreads) ? 1 : 0);
-		threads.push_back(std::thread([&, t, begin, end]() {
-			try
-			{
-				fn(t, begin, end);
-			}
-			catch (...)
-			{
-				std::lock_guard<std::mutex> lock(error_mutex);
-				if (!error)
-					error = std::current_exception();
-			}
-		}));
-		begin = end;
-	}
-	for (size_t t=0; t<threads.size(); ++t)
-		threads[t].join();
-	if (error)
-		std::rethrow_exception(error);
+	::ParallelFor(count, GetBuildThreads(), fn);
 }
 
 void Operator::CalcStartStopLines(unsigned int &numThreads, std::vector<unsigned int> &start, std::vector<unsigned int> &stop) const
@@ -1954,7 +1980,7 @@ void Operator::Calc_EC_Range(unsigned int xStart, unsigned int xStop)
 
 			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 			{
-				ipos = MainOp->GetPos(pos[0],pos[1],pos[2]);
+				ipos = GetECIndex(pos);
 				for (int n=0; n<3; ++n)
 				{
 					Calc_ECPos(n,pos,inEC,vPrims);
@@ -1980,6 +2006,58 @@ void Operator::SetTimestepFactor(double factor)
 	m_TimeStepFactor=factor;
 }
 
+namespace
+{
+//! the smallest timestep a search found and where; on equal values the first in the order of the serial loops (n, z, y, x),
+//! so the result does not depend on how the search is split over the threads
+struct Timestep_Min
+{
+	double dT = 1e200;
+	unsigned int n = 0;
+	unsigned int pos[3] = {0, 0, 0};
+
+	//! (n1, p1) before (n2, p2) in the order n, z, y, x
+	static bool Earlier(unsigned int n1, const unsigned int p1[3], unsigned int n2, const unsigned int p2[3])
+	{
+		if (n1!=n2)
+			return n1<n2;
+		for (int a=2; a>=0; --a)
+			if (p1[a]!=p2[a])
+				return p1[a]<p2[a];
+		return false;
+	}
+	void Add(double newT, unsigned int ny, const unsigned int p[3])
+	{
+		if (!(newT>0.0))
+			return;
+		if ((newT<dT) || ((newT==dT) && Earlier(ny, p, n, pos)))
+		{
+			dT = newT;
+			n = ny;
+			pos[0] = p[0]; pos[1] = p[1]; pos[2] = p[2];
+		}
+	}
+	void Join(const Timestep_Min& o)
+	{
+		if ((o.dT<dT) || ((o.dT==dT) && Earlier(o.n, o.pos, n, pos)))
+			*this = o;
+	}
+};
+
+//! the smallest of the per thread results
+double Timestep_Result(const std::vector<Timestep_Min>& found, const char* name)
+{
+	Timestep_Min best;
+	for (size_t t=0; t<found.size(); ++t)
+		best.Join(found[t]);
+	if (best.dT==0)
+		throw std::runtime_error("Operator::CalcTimestep: Timestep is zero... this is not supposed to happen!");
+	if (g_settings.GetVerboseLevel()>1)
+		cout << "Operator::" << name << ": Smallest timestep (" << best.dT << "s) found at position: " <<  best.n << " : " << best.pos[0] << ";" <<  best.pos[1] << ";" <<  best.pos[2] << endl;
+	return best.dT;
+}
+}
+
 double Operator::CalcTimestep()
 {
 	if (m_TimeStepVar==3)
@@ -1990,76 +2068,31 @@ double Operator::CalcTimestep()
 }
 
 ////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52
-namespace
-{
-//! the smallest timestep a search found and where, the first in the order of the serial search (n, z, y, x) on equal values
-struct Timestep_Min
-{
-	double dT = 1e200;
-	unsigned int n = 0;
-	unsigned int pos[3] = {0, 0, 0};
-
-	void Add(double newT, unsigned int ny, const unsigned int p[3])
-	{
-		if ((newT<dT) && (newT>0.0))
-		{
-			dT = newT;
-			n = ny;
-			pos[0] = p[0]; pos[1] = p[1]; pos[2] = p[2];
-		}
-	}
-	//! join the result of the next range of x lines
-	void Join(const Timestep_Min& o)
-	{
-		const bool earlier = (o.n<n) || ((o.n==n) && ((o.pos[2]<pos[2]) || ((o.pos[2]==pos[2]) && ((o.pos[1]<pos[1]) || ((o.pos[1]==pos[1]) && (o.pos[0]<pos[0]))))));
-		if ((o.dT<dT) || ((o.dT==dT) && earlier))
-			*this = o;
-	}
-};
-}
-
-////Berechnung nach Andreas Rennings Dissertation 2008, Seite 66, Formel 4.52
 double Operator::CalcTimestep_Var1()
 {
 	m_Used_TS_Name = std::string("Rennings_1");
-	MainOp->SetReflection2Cell();
-	// on the build threads along x, each with its own address operator
+	// on the build threads along x
 	std::vector<Timestep_Min> found(GetBuildThreads());
 	ParallelFor(numLines[0], [&](unsigned int thread, size_t begin, size_t end) {
-		AdrOp adr(numLines[0], numLines[1], numLines[2]);
-		adr.SetReflection2Cell();
 		Timestep_Min& m = found[thread];
 		unsigned int pos[3];
-		unsigned int ipos, ipos_PM, ipos_PPM;
+		size_t ipos, ipos_PM, ipos_PPM;
 		for (int n=0; n<3; ++n)
 		{
 			int nP = (n+1)%3;
 			int nPP = (n+2)%3;
-			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+			for (pos[0]=begin; pos[0]<end; ++pos[0])
 				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
-					for (pos[0]=begin; pos[0]<end; ++pos[0])
+					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 					{
-						ipos = adr.SetPos(pos[0],pos[1],pos[2]);
-						ipos_PM = adr.Shift(nP,-1);
-						adr.ResetShift();
-						ipos_PPM= adr.Shift(nPP,-1);
-						adr.ResetShift();
+						ipos = GetECIndex(pos);
+						ipos_PM = GetECIndexShifted(pos, nP, -1);
+						ipos_PPM= GetECIndexShifted(pos, nPP, -1);
 						m.Add(2/sqrt( ( 4/EC_L[nP][ipos] + 4/EC_L[nP][ipos_PPM] + 4/EC_L[nPP][ipos] + 4/EC_L[nPP][ipos_PM]) / EC_C[n][ipos] ), n, pos);
 					}
 		}
 	});
-	Timestep_Min best;
-	for (size_t t=0; t<found.size(); ++t)
-		best.Join(found[t]);
-	dT = best.dT;
-	if (dT==0)
-	{
-		throw std::runtime_error("Operator::CalcTimestep: Timestep is zero... this is not supposed to happen!");
-	}
-	if (g_settings.GetVerboseLevel()>1)
-	{
-		cout << "Operator::CalcTimestep_Var1: Smallest timestep (" << dT << "s) found at position: " <<  best.n << " : " << best.pos[0] << ";" <<  best.pos[1] << ";" <<  best.pos[2] << endl;
-	}
+	dT = Timestep_Result(found, "CalcTimestep_Var1");
 	return 0;
 }
 
@@ -2075,19 +2108,14 @@ double min(double* val, unsigned int count)
 }
 
 //Berechnung nach Andreas Rennings Dissertation 2008, Seite 76 ff, Formel 4.77 ff
-//Berechnung nach Andreas Rennings Dissertation 2008, Seite 76 ff, Formel 4.77 ff
 double Operator::CalcTimestep_Var3()
 {
 	m_Used_TS_Name = std::string("Rennings_2");
-	MainOp->SetReflection2Cell();
-	// on the build threads along x, each with its own address operator
+	// on the build threads along x
 	std::vector<Timestep_Min> found(GetBuildThreads());
 	ParallelFor(numLines[0], [&](unsigned int thread, size_t begin, size_t end) {
-		AdrOp adr(numLines[0], numLines[1], numLines[2]);
-		adr.SetReflection2Cell();
 		Timestep_Min& m = found[thread];
 		unsigned int pos[3];
-		unsigned int ipos;
 		double w_total=0;
 		double wqp=0,wt1=0,wt2=0;
 		double wt_4[4]={0,0,0,0};
@@ -2096,36 +2124,42 @@ double Operator::CalcTimestep_Var3()
 			int nP = (n+1)%3;
 			int nPP = (n+2)%3;
 
-			for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+			for (pos[0]=begin; pos[0]<end; ++pos[0])
 			{
 				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
 				{
-					for (pos[0]=begin; pos[0]<end; ++pos[0])
+					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 					{
-						adr.ResetShift();
-						ipos = adr.SetPos(pos[0],pos[1],pos[2]);
-						wqp  = 1/(EC_L[nPP][ipos]*EC_C[n][adr.GetShiftedPos(nP ,1)]) + 1/(EC_L[nPP][ipos]*EC_C[n][ipos]);
-						wqp += 1/(EC_L[nP ][ipos]*EC_C[n][adr.GetShiftedPos(nPP,1)]) + 1/(EC_L[nP ][ipos]*EC_C[n][ipos]);
-						ipos = adr.Shift(nP,-1);
-						wqp += 1/(EC_L[nPP][ipos]*EC_C[n][adr.GetShiftedPos(nP ,1)]) + 1/(EC_L[nPP][ipos]*EC_C[n][ipos]);
-						ipos = adr.Shift(nPP,-1);
-						wqp += 1/(EC_L[nP ][ipos]*EC_C[n][adr.GetShiftedPos(nPP,1)]) + 1/(EC_L[nP ][ipos]*EC_C[n][ipos]);
+						// the neighbours, clamped into the mesh at its borders
+						const size_t i0     = GetECIndex(pos);
+						const size_t iP     = GetECIndexShifted(pos, nP, 1);
+						const size_t iPP    = GetECIndexShifted(pos, nPP, 1);
+						const size_t iN     = GetECIndexShifted(pos, n, 1);
+						const size_t iPm    = GetECIndexShifted(pos, nP, -1);
+						const size_t iPPm   = GetECIndexShifted(pos, nPP, -1);
+						const size_t iPmPPm = GetECIndexShifted(pos, nP, -1, nPP, -1);
+						wqp  = 1/(EC_L[nPP][i0]*EC_C[n][iP]) + 1/(EC_L[nPP][i0]*EC_C[n][i0]);
+						wqp += 1/(EC_L[nP ][i0]*EC_C[n][iPP]) + 1/(EC_L[nP ][i0]*EC_C[n][i0]);
+						wqp += 1/(EC_L[nPP][iPm]*EC_C[n][i0]) + 1/(EC_L[nPP][iPm]*EC_C[n][iPm]);
+						// TODO check against Rennings, formula 4.77: this term reads at the diagonal neighbour (nP-1, nPP-1),
+						// as the former AdrOp code did (its Shift(nP,-1) was not reset before Shift(nPP,-1)). The mirror
+						// of the term above would be the commented line below. Per cell it changes the timestep by up to
+						// a factor 3 at material and mesh transitions, the minimum of the benchmark cases not at all
+						// (graded mesh: 1.7e-9 relative).
+						wqp += 1/(EC_L[nP ][iPmPPm]*EC_C[n][iPm]) + 1/(EC_L[nP ][iPmPPm]*EC_C[n][iPmPPm]);
+						// wqp += 1/(EC_L[nP ][iPPm]*EC_C[n][i0]) + 1/(EC_L[nP ][iPPm]*EC_C[n][iPPm]);
 
-						adr.ResetShift();
-						ipos = adr.SetPos(pos[0],pos[1],pos[2]);
-						wt_4[0] = 1/(EC_L[nPP][ipos]						  *EC_C[nP ][ipos]);
-						wt_4[1] = 1/(EC_L[nPP][adr.GetShiftedPos(nP ,-1)] *EC_C[nP ][ipos]);
-						wt_4[2] = 1/(EC_L[nP ][ipos]						  *EC_C[nPP][ipos]);
-						wt_4[3] = 1/(EC_L[nP ][adr.GetShiftedPos(nPP,-1)] *EC_C[nPP][ipos]);
+						wt_4[0] = 1/(EC_L[nPP][i0]  *EC_C[nP ][i0]);
+						wt_4[1] = 1/(EC_L[nPP][iPm] *EC_C[nP ][i0]);
+						wt_4[2] = 1/(EC_L[nP ][i0]  *EC_C[nPP][i0]);
+						wt_4[3] = 1/(EC_L[nP ][iPPm]*EC_C[nPP][i0]);
 
 						wt1 = wt_4[0]+wt_4[1]+wt_4[2]+wt_4[3] - 2*min(wt_4,4);
 
-						adr.ResetShift();
-						ipos = adr.SetPos(pos[0],pos[1],pos[2]);
-						wt_4[0] = 1/(EC_L[nPP][ipos]						  *EC_C[nP ][adr.GetShiftedPos(n,1)]);
-						wt_4[1] = 1/(EC_L[nPP][adr.GetShiftedPos(nP ,-1)] *EC_C[nP ][adr.GetShiftedPos(n,1)]);
-						wt_4[2] = 1/(EC_L[nP ][ipos]						  *EC_C[nPP][adr.GetShiftedPos(n,1)]);
-						wt_4[3] = 1/(EC_L[nP ][adr.GetShiftedPos(nPP,-1)] *EC_C[nPP][adr.GetShiftedPos(n,1)]);
+						wt_4[0] = 1/(EC_L[nPP][i0]  *EC_C[nP ][iN]);
+						wt_4[1] = 1/(EC_L[nPP][iPm] *EC_C[nP ][iN]);
+						wt_4[2] = 1/(EC_L[nP ][i0]  *EC_C[nPP][iN]);
+						wt_4[3] = 1/(EC_L[nP ][iPPm]*EC_C[nPP][iN]);
 
 						wt2 = wt_4[0]+wt_4[1]+wt_4[2]+wt_4[3] - 2*min(wt_4,4);
 
@@ -2136,18 +2170,7 @@ double Operator::CalcTimestep_Var3()
 			}
 		}
 	});
-	Timestep_Min best;
-	for (size_t t=0; t<found.size(); ++t)
-		best.Join(found[t]);
-	dT = best.dT;
-	if (dT==0)
-	{
-		throw std::runtime_error("Operator::CalcTimestep: Timestep is zero... this is not supposed to happen!");
-	}
-	if (g_settings.GetVerboseLevel()>1)
-	{
-		cout << "Operator::CalcTimestep_Var3: Smallest timestep (" << dT << "s) found at position: " <<  best.n << " : " << best.pos[0] << ";" <<  best.pos[1] << ";" <<  best.pos[2] << endl;
-	}
+	dT = Timestep_Result(found, "CalcTimestep_Var3");
 	return 0;
 }
 
@@ -2158,11 +2181,14 @@ bool Operator::CalcPEC()
 	CalcStartStopLines(numThreads, start, stop);
 
 	std::vector<unsigned int> counter(3*numThreads, 0);   // three PEC counters per thread, summed up below
-	std::vector<std::thread> threads;
+	// the x lines one by one to the threads as they get done, as in Calc_EC()
+	std::vector<unsigned int> lines;
 	for (unsigned int n=0; n<numThreads; ++n)
-		threads.push_back(std::thread(&Operator::CalcPEC_Range, this, start.at(n), stop.at(n), &counter[3*n]));
-	for (size_t n=0; n<threads.size(); ++n)
-		threads[n].join();
+		for (unsigned int x=start.at(n); x<=stop.at(n); ++x)
+			lines.push_back(x);
+	ParallelForEach(lines.size(), numThreads, [&](unsigned int thread, size_t i) {
+		CalcPEC_Range(lines[i], lines[i], &counter[3*thread]);
+	});
 
 	for (int n=0; n<3; ++n)
 	{

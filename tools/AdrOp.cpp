@@ -213,7 +213,7 @@ unsigned int AdrOp::GetPos(int muiIrel, int muiJrel, int muiKrel, int /*muiLrel*
 	{
 		ADRESSEXPENSE(9,3,0,0,0,11)
 		if ( (muiIrel+uiIpos<uiImax) && (muiJrel+uiJpos<uiJmax) && (muiKrel+uiKpos<uiKmax) )
-			return (muiIrel+uiIpos) + (muiJrel+uiJpos)*uiImax + (muiKrel+uiKpos)*uiJmax*uiImax;
+			return (muiKrel+uiKpos) + uiKmax*((muiJrel+uiJpos) + uiJmax*(muiIrel+uiIpos));   // K fastest, as the arrays of the engines
 		else error->Error(2);
 		return 0;
 	}
@@ -225,15 +225,26 @@ unsigned int AdrOp::GetPosFromNode(int ny, unsigned int uiNode)
 	while (ny<0) ny+=uiDimension;
 	ny=ny%uiDimension;
 	unsigned int help=uiNode,i=0,j=0,k=0,l=0;
-	i=help%uiImax;
-	help=help/uiImax;
-	j=help%uiJmax;
-	help=help/uiJmax;
-	if (uiKmax>0)
+	if (uiDimension==3)
 	{
+		// K fastest (GetPos())
 		k=help%uiKmax;
 		help=help/uiKmax;
-		l=help;
+		j=help%uiJmax;
+		i=help/uiJmax;
+	}
+	else
+	{
+		i=help%uiImax;
+		help=help/uiImax;
+		j=help%uiJmax;
+		help=help/uiJmax;
+		if (uiKmax>0)
+		{
+			k=help%uiKmax;
+			help=help/uiKmax;
+			l=help;
+		}
 	}
 	if (!CheckPos(i,j,k,l)) error->Error(8);
 	ADRESSEXPENSE(0,7,0,0,13,4)

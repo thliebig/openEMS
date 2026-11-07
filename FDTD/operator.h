@@ -27,6 +27,7 @@
 #include "operator_coeffs.h"
 #include "engine_type.h"
 
+#include <algorithm>
 #include <functional>
 #include <stdexcept>
 
@@ -59,7 +60,7 @@ public:
 	static Operator* New(unsigned int numThreads = 0);
 	virtual ~Operator();
 
-	//! Choose the engine the operator creates (CreateEngine()), Engine::BASIC, SSE, GPU or CPU (no default: building the operator without it throws), and with it the layout of the coefficients (Coeffs_SSE_Compressed for the SSE engine, else Coeffs_Basic); before the operator is built, throws after
+	//! Choose the engine the operator creates (CreateEngine()), Engine::BASIC, SSE, GPU or CPU (no default: building the operator without it throws), and with it the layout of the coefficients (Coeffs_SSE_Compressed for the SSE engine, Coeffs_Basic for the basic one, else Coeffs_EC); before the operator is built, throws after
 	virtual void SetEngineType(Engine_Types::EngineType type);
 	Engine_Types::EngineType GetEngineType() const {return m_EngineType;}
 	//! The backend of a GPU engine (see GPU_Backend::New), which the operator takes over and hands on to its engine
@@ -96,6 +97,9 @@ public:
 	inline FDTD_FLOAT GetVI(unsigned int n, unsigned int pos[3]) const {return GetVI(n, pos[0], pos[1], pos[2]);}
 	inline FDTD_FLOAT GetII(unsigned int n, unsigned int pos[3]) const {return GetII(n, pos[0], pos[1], pos[2]);}
 	inline FDTD_FLOAT GetIV(unsigned int n, unsigned int pos[3]) const {return GetIV(n, pos[0], pos[1], pos[2]);}
+
+	//! The voltage (\a f 0: vv, vi) or current (1: ii, iv) coefficients of direction \a n at \a pos, in one go
+	inline void GetCoeffPair(int f, unsigned int n, const unsigned int pos[3], FDTD_FLOAT& self, FDTD_FLOAT& curl) const {m_Coeffs->GetPair(f, n, pos[0], pos[1], pos[2], self, curl);}
 
 	inline void SetVV(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value) {m_Coeffs->SetVV(n, x, y, z, value);}
 	inline void SetVI(unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value) {m_Coeffs->SetVI(n, x, y, z, value);}
@@ -231,7 +235,18 @@ public:
 	  */
 	void ParallelFor(size_t count, const std::function<void(unsigned int thread, size_t begin, size_t end)>& fn) const;
 	//! The index of the node \a pos in the EC arrays (the layout of MainOp), without changing the position of MainOp
-	size_t GetECIndex(const unsigned int pos[3]) const {return pos[0] + (size_t)numLines[0]*(pos[1] + (size_t)numLines[1]*pos[2]);}
+	size_t GetECIndex(const unsigned int pos[3]) const {return pos[2] + (size_t)numLines[2]*(pos[1] + (size_t)numLines[1]*pos[0]);}
+	//! GetECIndex() of \a pos shifted by \a step along \a a (and \a step2 along \a a2), clamped to the mesh (-1 -> 0, numLines -> numLines-1, as AdrOp::SetReflection2Cell() for steps of 1)
+	size_t GetECIndexShifted(const unsigned int pos[3], int a, int step, int a2=0, int step2=0) const
+	{
+		int p[3] = {(int)pos[0], (int)pos[1], (int)pos[2]};
+		p[a] += step;
+		p[a2] += step2;
+		unsigned int q[3];
+		for (int d=0; d<3; ++d)
+			q[d] = (unsigned int)std::min(std::max(p[d], 0), (int)numLines[d]-1);
+		return GetECIndex(q);
+	}
 
 protected:
 	DebugFlags m_DebugFlags = None;
@@ -289,7 +304,7 @@ protected:
 
 	//! Get the material at a given coordinate, direction and type from CSX (internal use only)
 	virtual double GetMaterial(int ny, const double coords[3], int MatType, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
-	//! GetMaterial() of the types \a type1 and \a type2 at the same point, with one lookup of the property
+	//! GetMaterial() of the types \a type1 and \a type2 at the same point, with one lookup of the property. The averaging calls this one: a subclass overrides both
 	virtual void GetMaterials(int ny, const double coords[3], int type1, int type2, double& val1, double& val2, const std::vector<CSPrimitives*>& vPrims, bool markAsUsed=true) const;
 	//! The material value \a MatType of the property \a prop (the background without a material) at \a coords
 	double GetMaterialValue(CSProperties* prop, int ny, const double coords[3], int MatType) const;
@@ -325,12 +340,21 @@ protected:
 	virtual void Init_EC();
 	virtual bool Calc_EC();
 	virtual void Calc_EC_Range(unsigned int xStart, unsigned int xStop);
+	//! The circuit values per direction (GetECIndex()). After InitOperator() the coefficients of the CPU
+	//! and GPU engines are computed from them when read (Coeffs_EC): who changes those of a node must call
+	//! Calc_ECOperatorPos() for it afterwards, or FreezeCoeffs() before to keep its coefficients as they are.
 	FDTD_FLOAT* EC_C[3];
 	FDTD_FLOAT* EC_G[3];
 	FDTD_FLOAT* EC_L[3];
 	FDTD_FLOAT* EC_R[3];
 
 	AdrOp* MainOp;
+
+	//! GetDiscLine() and GetEdgeLength() per direction and line, main [0] and dual [1] mesh: computed once per build (InitGeometry()), they are looked up per edge
+	std::vector<double> m_LineTable[2][3];
+	std::vector<double> m_EdgeLengthTable[2][3];
+	//! Fill the tables of the mesh, once it is final
+	void InitGeometry();
 
 	std::vector<Operator_Extension*> m_Op_exts;
 
@@ -341,6 +365,14 @@ protected:
 //	Operator_Ext_Excitation* m_Op_Ext_Exc; // excitation extension
 
 	Operator_Coeffs* m_Coeffs; //!< owned, created by InitOperator() for m_EngineType; NULL before
+	Coeffs_EC* m_ECCoeffs;     //!< m_Coeffs if it computes the coefficients from EC_C, EC_G, EC_L, EC_R, else NULL
+
+	//! Free the circuit values EC_C, EC_G, EC_L, EC_R
+	void FreeEC();
+	//! Free the coefficients and the circuit values they are computed from (once the engine holds them); GetVV() and friends are invalid after this
+	void FreeCoeffs();
+	//! Keep the coefficients of the node \a pos as they are, before an extension changes its circuit values without Calc_ECOperatorPos()
+	void FreezeCoeffs(const unsigned int pos[3]) {if (m_ECCoeffs) m_ECCoeffs->Freeze(pos[0], pos[1], pos[2]);}
 };
 
 inline Operator::DebugFlags operator|( Operator::DebugFlags a, Operator::DebugFlags b ) { return static_cast<Operator::DebugFlags>(static_cast<int>(a) | static_cast<int>(b)); }

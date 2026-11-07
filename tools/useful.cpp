@@ -24,6 +24,10 @@
 #include <sstream>
 #include <fstream>
 #include <thread>
+#include <algorithm>
+#include <atomic>
+#include <exception>
+#include <mutex>
 #ifdef __linux__
 #include <sched.h>
 #include <set>
@@ -263,6 +267,70 @@ unsigned int AvailableThreads()
 void SetThreadLimit(unsigned int n)
 {
 	g_ThreadLimit = n;
+}
+
+namespace
+{
+//! run fn(t) for t in [0, numThreads), t 0 on the calling thread, the others on threads of their own; the first exception rethrown after all ended
+void RunThreads(unsigned int numThreads, const std::function<void(unsigned int)>& fn)
+{
+	std::vector<std::thread> threads;
+	std::exception_ptr error;
+	std::mutex error_mutex;
+	auto run = [&](unsigned int t) {
+		try
+		{
+			fn(t);
+		}
+		catch (...)
+		{
+			std::lock_guard<std::mutex> lock(error_mutex);
+			if (!error)
+				error = std::current_exception();
+		}
+	};
+	for (unsigned int t=1; t<numThreads; ++t)
+		threads.push_back(std::thread(run, t));
+	run(0);
+	for (std::thread& th : threads)
+		th.join();
+	if (error)
+		std::rethrow_exception(error);
+}
+}
+
+void ParallelFor(size_t count, unsigned int numThreads, const std::function<void(unsigned int thread, size_t begin, size_t end)>& fn)
+{
+	if (count==0)
+		return;
+	numThreads = (unsigned int)std::min<size_t>(std::max(1u, numThreads), count);
+	if (numThreads==1)
+	{
+		fn(0, 0, count);
+		return;
+	}
+	RunThreads(numThreads, [&](unsigned int t) {
+		// the first count%numThreads ranges one longer
+		const size_t q = count/numThreads, r = count%numThreads;
+		const size_t begin = t*q + std::min<size_t>(t, r);
+		fn(t, begin, begin + q + ((t<r) ? 1 : 0));
+	});
+}
+
+void ParallelForEach(size_t count, unsigned int numThreads, const std::function<void(unsigned int thread, size_t i)>& fn)
+{
+	if (count==0)
+		return;
+	numThreads = (unsigned int)std::min<size_t>(std::max(1u, numThreads), count);
+	std::atomic<size_t> next(0);
+	auto work = [&](unsigned int t) {
+		for (size_t i=next++; i<count; i=next++)
+			fn(t, i);
+	};
+	if (numThreads==1)
+		work(0);
+	else
+		RunThreads(numThreads, work);
 }
 
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty)
