@@ -24,6 +24,7 @@
 #include <boost/thread.hpp>
 #include "../tools/arraylib/array_ij.h"
 #include "../tools/arraylib/array_nijk.h"
+#include "nf2ff_kernels.h"
 
 class nf2ff_calc;
 
@@ -33,7 +34,7 @@ enum MirrorType { MIRROR_OFF = 0, MIRROR_PEC = 1, MIRROR_PMC = 2 };
 struct nf2ff_data
 {
 	unsigned int numP, numPP;  // surface points along the two tangential directions
-	unsigned int strideQ;      // numPP padded to a multiple of NF2FF_LANES
+	unsigned int strideQ;      // numPP padded to a multiple of NF2FF_STRIDE_ALIGN
 	unsigned int numComp;      // number of non-zero current components
 	int comp[6];               // their index: 0..2 = Js x/y/z, 3..5 = Ms x/y/z
 
@@ -48,6 +49,8 @@ struct nf2ff_data
 	const double* r;    // [p][q][3]
 
 	double k;
+
+	nf2ff_row_func row;   // the kernel for this CPU
 
 	ArrayLib::ArrayIJ<std::complex<float>>* Nt;
 	ArrayLib::ArrayIJ<std::complex<float>>* Np;

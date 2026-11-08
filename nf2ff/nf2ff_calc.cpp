@@ -22,60 +22,17 @@
 #include <vector>
 #include <cmath>
 #include <complex>
+#include <cstdlib>
 #include <iostream>
 
 using namespace std;
 
-// lanes of the complex dot product; the inner loop over them is what the compiler vectorizes
-#ifndef NF2FF_LANES
+// the kernel for any CPU: 4 lanes, one SSE or NEON register
+#define NF2FF_KERNEL_NAMESPACE nf2ff_generic
 #define NF2FF_LANES 4
-#endif
-
-// S[c] += a * sum_q b[q]*f[c*fstride+q] for c<NC, split complex arrays, n a multiple of NF2FF_LANES
-template <unsigned int NC>
-static inline void nf2ff_cdot(const float* b_re, const float* b_im, const float* f_re, const float* f_im, size_t fstride, unsigned int n, complex<double> a, complex<double>* S)
-{
-	float s_re[NC][NF2FF_LANES] = {};
-	float s_im[NC][NF2FF_LANES] = {};
-	for (unsigned int q=0; q<n; q+=NF2FF_LANES)
-		for (unsigned int c=0; c<NC; ++c)
-			for (unsigned int l=0; l<NF2FF_LANES; ++l)
-			{
-				float fr = f_re[c*fstride+q+l];
-				float fi = f_im[c*fstride+q+l];
-				s_re[c][l] += b_re[q+l]*fr - b_im[q+l]*fi;
-				s_im[c][l] += b_re[q+l]*fi + b_im[q+l]*fr;
-			}
-	for (unsigned int c=0; c<NC; ++c)
-	{
-		double re=0, im=0;
-		for (unsigned int l=0; l<NF2FF_LANES; ++l)
-		{
-			re += s_re[c][l];
-			im += s_im[c][l];
-		}
-		S[c] += a*complex<double>(re, im);
-	}
-}
-
-// all current components of row p in one pass, so the phase factors are loaded once
-static inline void nf2ff_row(const nf2ff_data &d, unsigned int p, const float* b_re, const float* b_im, complex<double> a, complex<double>* S)
-{
-	size_t off = (size_t)p*d.strideQ;
-	size_t fstride = (size_t)d.numP*d.strideQ;
-	switch (d.numComp)
-	{
-	case 4:
-		nf2ff_cdot<4>(b_re, b_im, d.F_re+off, d.F_im+off, fstride, d.strideQ, a, S);
-		break;
-	case 6:
-		nf2ff_cdot<6>(b_re, b_im, d.F_re+off, d.F_im+off, fstride, d.strideQ, a, S);
-		break;
-	default:
-		for (unsigned int c=0; c<d.numComp; ++c)
-			nf2ff_cdot<1>(b_re, b_im, d.F_re+off+c*fstride, d.F_im+off+c*fstride, 0, d.strideQ, a, S+c);
-	}
-}
+#include "nf2ff_kernels.inc"
+#undef NF2FF_KERNEL_NAMESPACE
+#undef NF2FF_LANES
 
 nf2ff_calc_thread::nf2ff_calc_thread(nf2ff_calc* nfc, unsigned int start, unsigned int stop, const nf2ff_data &data)
 {
@@ -90,6 +47,7 @@ void nf2ff_calc_thread::operator()()
 	const nf2ff_data &d = m_data;
 	const unsigned int numPhi = m_nf_calc->m_numPhi;
 	const unsigned int nQ = d.strideQ;
+	const size_t fstride = (size_t)d.numP*nQ;   // between the current components
 
 	// phase factors exp(jk*r.r_hat): per point along PP, and per point along P if separable
 	vector<float> b_re(nQ, 0), b_im(nQ, 0);
@@ -111,7 +69,7 @@ void nf2ff_calc_thread::operator()()
 		double kdir[3] = {d.k*sinT*cosP, d.k*sinT*sinP, d.k*cosT};
 
 		// sum over the surface of exp(jk*r.r_hat) times each current component
-		complex<double> S[6];
+		double S_re[6] = {0}, S_im[6] = {0};
 		if (d.separable)
 		{
 			for (unsigned int p=0; p<d.numP; ++p)
@@ -127,7 +85,8 @@ void nf2ff_calc_thread::operator()()
 				b_im[q] = sin(arg);
 			}
 			for (unsigned int p=0; p<d.numP; ++p)
-				nf2ff_row(d, p, b_re.data(), b_im.data(), a[p], S);
+				d.row(d.F_re+(size_t)p*nQ, d.F_im+(size_t)p*nQ, fstride, d.numComp, b_re.data(), b_im.data(), nQ,
+				      a[p].real(), a[p].imag(), S_re, S_im);
 		}
 		else
 		{
@@ -140,7 +99,8 @@ void nf2ff_calc_thread::operator()()
 					b_re[q] = cos(arg);
 					b_im[q] = sin(arg);
 				}
-				nf2ff_row(d, p, b_re.data(), b_im.data(), 1.0, S);
+				d.row(d.F_re+(size_t)p*nQ, d.F_im+(size_t)p*nQ, fstride, d.numComp, b_re.data(), b_im.data(), nQ,
+				      1.0, 0.0, S_re, S_im);
 			}
 		}
 
@@ -148,9 +108,9 @@ void nf2ff_calc_thread::operator()()
 		for (unsigned int c=0; c<d.numComp; ++c)
 		{
 			if (d.comp[c]<3)
-				J[d.comp[c]] = S[c];
+				J[d.comp[c]] = complex<double>(S_re[c], S_im[c]);
 			else
-				M[d.comp[c]-3] = S[c];
+				M[d.comp[c]-3] = complex<double>(S_re[c], S_im[c]);
 		}
 
 		// radiation vectors N and L in spherical components
@@ -421,8 +381,16 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 	nf2ff_data data;
 	data.numP = numLines[nP];
 	data.numPP = numLines[nPP];
-	data.strideQ = (data.numPP + NF2FF_LANES-1) / NF2FF_LANES * NF2FF_LANES;
+	data.strideQ = (data.numPP + NF2FF_STRIDE_ALIGN-1) / NF2FF_STRIDE_ALIGN * NF2FF_STRIDE_ALIGN;
 	data.k = 2*PI*m_freq/C0*sqrt(m_permittivity*m_permeability);
+
+	// the kernel: AVX2 and FMA if the CPU has both (OPENEMS_CPU_ISA=generic overrides)
+	data.row = nf2ff_generic::Row;
+#ifdef NF2FF_AVX2
+	const char* isa = getenv("OPENEMS_CPU_ISA");
+	if (!(isa && string(isa)=="generic") && CpuHasAVX2FMA())
+		data.row = nf2ff_avx2::Row;
+#endif
 
 	// current components that are not zero by construction: the normal one
 	// in Cartesian coordinates, z on a cylindrical r-a surface

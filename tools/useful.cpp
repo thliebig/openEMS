@@ -46,6 +46,13 @@
 #include <windows.h>
 #include <vector>
 #endif
+#if defined(__x86_64__) || defined(_M_X64)
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>   // __cpuid(), __cpuidex(), _xgetbv()
+#else
+#include <cpuid.h>    // GCC and Clang, clang-cl too
+#endif
+#endif
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 
@@ -331,6 +338,45 @@ void ParallelForEach(size_t count, unsigned int numThreads, const std::function<
 		work(0);
 	else
 		RunThreads(numThreads, work);
+}
+
+// from CPUID and XGETBV directly: __builtin_cpu_supports() needs __cpu_model of the
+// compiler runtime, which e.g. clang on Windows does not link
+bool CpuHasAVX2FMA()
+{
+#if defined(__x86_64__) || defined(_M_X64)
+	unsigned int b, c;   // CPUID leaf 1 ECX, leaf 7 EBX
+	unsigned long long xcr0;
+#if defined(_MSC_VER) && !defined(__clang__)
+	int r[4];
+	__cpuid(r, 0);
+	if (r[0]<7)
+		return false;
+	__cpuid(r, 1);
+	c = (unsigned int)r[2];
+	if (!((c>>27) & 1))   // OSXSAVE: XGETBV available
+		return false;
+	xcr0 = _xgetbv(0);
+	__cpuidex(r, 7, 0);
+	b = (unsigned int)r[1];
+#else
+	unsigned int a, d, c7;
+	if (!__get_cpuid(1, &a, &b, &c, &d))
+		return false;
+	if (!((c>>27) & 1))   // OSXSAVE: XGETBV available
+		return false;
+	unsigned int lo, hi;
+	__asm__ volatile ("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0));
+	xcr0 = ((unsigned long long)hi<<32) | lo;
+	if (!__get_cpuid_count(7, 0, &a, &b, &c7, &d))   // c keeps leaf 1
+		return false;
+#endif
+	const bool fma = (c>>12) & 1, avx = (c>>28) & 1;
+	return fma && avx && ((xcr0 & 6)==6)   // the SSE and the AVX state saved
+	       && ((b>>5) & 1);                // AVX2
+#else
+	return false;
+#endif
 }
 
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty)
