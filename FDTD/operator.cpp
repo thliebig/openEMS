@@ -2137,17 +2137,13 @@ double Operator::CalcTimestep_Var3()
 						const size_t iN     = GetECIndexShifted(pos, n, 1);
 						const size_t iPm    = GetECIndexShifted(pos, nP, -1);
 						const size_t iPPm   = GetECIndexShifted(pos, nPP, -1);
-						const size_t iPmPPm = GetECIndexShifted(pos, nP, -1, nPP, -1);
 						wqp  = 1/(EC_L[nPP][i0]*EC_C[n][iP]) + 1/(EC_L[nPP][i0]*EC_C[n][i0]);
 						wqp += 1/(EC_L[nP ][i0]*EC_C[n][iPP]) + 1/(EC_L[nP ][i0]*EC_C[n][i0]);
 						wqp += 1/(EC_L[nPP][iPm]*EC_C[n][i0]) + 1/(EC_L[nPP][iPm]*EC_C[n][iPm]);
-						// TODO check against Rennings, formula 4.77: this term reads at the diagonal neighbour (nP-1, nPP-1),
-						// as the former AdrOp code did (its Shift(nP,-1) was not reset before Shift(nPP,-1)). The mirror
-						// of the term above would be the commented line below. Per cell it changes the timestep by up to
-						// a factor 3 at material and mesh transitions, the minimum of the benchmark cases not at all
-						// (graded mesh: 1.7e-9 relative).
-						wqp += 1/(EC_L[nP ][iPmPPm]*EC_C[n][iPm]) + 1/(EC_L[nP ][iPmPPm]*EC_C[n][iPmPPm]);
-						// wqp += 1/(EC_L[nP ][iPPm]*EC_C[n][i0]) + 1/(EC_L[nP ][iPPm]*EC_C[n][iPPm]);
+						// TODO check against Rennings, formula 4.77: the mirror of the term above. Up to openEMS 0.37 this
+						// term read at the diagonal neighbour (nP-1, nPP-1): the former AdrOp code did not reset its
+						// Shift(nP,-1) before Shift(nPP,-1)
+						wqp += 1/(EC_L[nP ][iPPm]*EC_C[n][i0]) + 1/(EC_L[nP ][iPPm]*EC_C[n][iPPm]);
 
 						wt_4[0] = 1/(EC_L[nPP][i0]  *EC_C[nP ][i0]);
 						wt_4[1] = 1/(EC_L[nPP][iPm] *EC_C[nP ][i0]);

@@ -236,12 +236,11 @@ public:
 	void ParallelFor(size_t count, const std::function<void(unsigned int thread, size_t begin, size_t end)>& fn) const;
 	//! The index of the node \a pos in the EC arrays (the layout of MainOp), without changing the position of MainOp
 	size_t GetECIndex(const unsigned int pos[3]) const {return pos[2] + (size_t)numLines[2]*(pos[1] + (size_t)numLines[1]*pos[0]);}
-	//! GetECIndex() of \a pos shifted by \a step along \a a (and \a step2 along \a a2), clamped to the mesh (-1 -> 0, numLines -> numLines-1, as AdrOp::SetReflection2Cell() for steps of 1)
-	size_t GetECIndexShifted(const unsigned int pos[3], int a, int step, int a2=0, int step2=0) const
+	//! GetECIndex() of \a pos shifted by \a step along \a a, clamped to the mesh (-1 -> 0, numLines -> numLines-1, as AdrOp::SetReflection2Cell() for steps of 1)
+	size_t GetECIndexShifted(const unsigned int pos[3], int a, int step) const
 	{
 		int p[3] = {(int)pos[0], (int)pos[1], (int)pos[2]};
 		p[a] += step;
-		p[a2] += step2;
 		unsigned int q[3];
 		for (int d=0; d<3; ++d)
 			q[d] = (unsigned int)std::min(std::max(p[d], 0), (int)numLines[d]-1);
