@@ -340,7 +340,8 @@ for d in 'xyz':
 csx.AddExcitation('ex', 0, [0, 0, 1]).AddBox([10, 10, 10], [10, 10, 12])
 csx.AddDump('Et', dump_type=0, file_type=1).AddBox([0, 0, 0], [39, 39, 39])
 before = len(os.listdir('/proc/self/task'))
-fdtd.Run(sys.argv[1], verbose=0, numThreads=2)
+# a CPU engine: a GPU runtime keeps threads of its own (run_testsuite.py --engine=gpu)
+fdtd.Run(sys.argv[1], verbose=0, numThreads=2, engine='multithreaded')
 assert os.path.isfile(os.path.join(sys.argv[1], 'Et.h5'))
 # a joined thread can still be listed for a moment while the kernel tears it down
 for n in range(50):
