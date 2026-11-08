@@ -18,19 +18,17 @@
 #ifndef NF2FF_CALC_H
 #define NF2FF_CALC_H
 
+#include <cstddef>
 #include <vector>
 #include <cmath>
 #include <complex>
-#include <boost/thread.hpp>
 #include "../tools/arraylib/array_ij.h"
 #include "../tools/arraylib/array_nijk.h"
 #include "nf2ff_kernels.h"
 
-class nf2ff_calc;
-
 enum MirrorType { MIRROR_OFF = 0, MIRROR_PEC = 1, MIRROR_PMC = 2 };
 
-// one surface, prepared for the far-field sums; read-only for the worker threads
+// one surface, prepared for the far-field sums; read-only for the threads
 struct nf2ff_data
 {
 	unsigned int numP, numPP;  // surface points along the two tangential directions
@@ -58,24 +56,8 @@ struct nf2ff_data
 	ArrayLib::ArrayIJ<std::complex<float>>* Lp;
 };
 
-// computes Nt, Np, Lt and Lp for the flattened (theta,phi) indices start..stop
-class nf2ff_calc_thread
-{
-public:
-	nf2ff_calc_thread(nf2ff_calc* nfc, unsigned int start, unsigned int stop, const nf2ff_data &data);
-	void operator()();
-
-protected:
-	unsigned int m_start, m_stop;
-	nf2ff_calc *m_nf_calc;
-
-	nf2ff_data m_data;
-};
-
 class nf2ff_calc
 {
-	// allow full data access to nf2ff_calc_thread class
-	friend class nf2ff_calc_thread;
 public:
 	nf2ff_calc(float freq, std::vector<float> theta, std::vector<float> phi, std::vector<float> center);
 	~nf2ff_calc();
@@ -128,7 +110,9 @@ protected:
 	bool AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, int MeshType=0);
 	bool AddMirrorPlane(int n, float **lines, unsigned int* numLines, ArrayLib::ArrayNIJK<std::complex<float>> &E_field, ArrayLib::ArrayNIJK<std::complex<float>> &H_field, int MeshType=0);
 
-	//boost multi-threading
+	//! Nt, Np, Lt and Lp of surface \a d for the flattened (theta,phi) indices [begin, end), on one thread
+	void CalcAngles(const nf2ff_data &d, size_t begin, size_t end) const;
+
 	unsigned int m_numThreads;
 };
 

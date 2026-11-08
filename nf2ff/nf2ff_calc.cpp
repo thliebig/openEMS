@@ -34,18 +34,9 @@ using namespace std;
 #undef NF2FF_KERNEL_NAMESPACE
 #undef NF2FF_LANES
 
-nf2ff_calc_thread::nf2ff_calc_thread(nf2ff_calc* nfc, unsigned int start, unsigned int stop, const nf2ff_data &data)
+void nf2ff_calc::CalcAngles(const nf2ff_data &d, size_t begin, size_t end) const
 {
-	m_nf_calc = nfc;
-	m_start = start;
-	m_stop = stop;
-	m_data = data;
-}
-
-void nf2ff_calc_thread::operator()()
-{
-	const nf2ff_data &d = m_data;
-	const unsigned int numPhi = m_nf_calc->m_numPhi;
+	const unsigned int numPhi = m_numPhi;
 	const unsigned int nQ = d.strideQ;
 	const size_t fstride = (size_t)d.numP*nQ;   // between the current components
 
@@ -58,14 +49,14 @@ void nf2ff_calc_thread::operator()()
 	ArrayLib::ArrayIJ<complex<float>> &Lt = *d.Lt;
 	ArrayLib::ArrayIJ<complex<float>> &Lp = *d.Lp;
 
-	for (unsigned int idx=m_start; idx<=m_stop; ++idx)
+	for (size_t idx=begin; idx<end; ++idx)
 	{
 		unsigned int tn = idx / numPhi;
 		unsigned int pn = idx % numPhi;
-		double sinT = sin((double)m_nf_calc->m_theta[tn]);
-		double cosT = cos((double)m_nf_calc->m_theta[tn]);
-		double sinP = sin((double)m_nf_calc->m_phi[pn]);
-		double cosP = cos((double)m_nf_calc->m_phi[pn]);
+		double sinT = sin((double)m_theta[tn]);
+		double cosT = cos((double)m_theta[tn]);
+		double sinP = sin((double)m_phi[pn]);
+		double cosP = cos((double)m_phi[pn]);
 		double kdir[3] = {d.k*sinT*cosP, d.k*sinT*sinP, d.k*cosT};
 
 		// sum over the surface of exp(jk*r.r_hat) times each current component
@@ -513,16 +504,10 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 	data.Lt = &Lt;
 	data.Lp = &Lp;
 
-	// threads calc Nt,Np,Lt and Lp, each for its own range of angles
-	vector<unsigned int> jpt = AssignJobs2Threads(m_numTheta*m_numPhi, m_numThreads, true);
-	boost::thread_group threads;
-	unsigned int start = 0;
-	for (size_t n=0; n<jpt.size(); ++n)
-	{
-		threads.create_thread(nf2ff_calc_thread(this, start, start+jpt.at(n)-1, data));
-		start += jpt.at(n);
-	}
-	threads.join_all();
+	// Nt,Np,Lt and Lp on all threads, each for its own range of angles
+	ParallelFor((size_t)m_numTheta*m_numPhi, m_numThreads, [&](unsigned int, size_t begin, size_t end) {
+		CalcAngles(data, begin, end);
+	});
 
 	ArrayLib::ArrayIJ<std::complex<double>>& E_theta = *m_E_theta;
 	ArrayLib::ArrayIJ<std::complex<double>>& E_phi   = *m_E_phi;
