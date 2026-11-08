@@ -29,38 +29,41 @@ class nf2ff_calc;
 
 enum MirrorType { MIRROR_OFF = 0, MIRROR_PEC = 1, MIRROR_PMC = 2 };
 
-// data structure to exchange data between thread-controller and worker-threads
+// one surface, prepared for the far-field sums; read-only for the worker threads
 struct nf2ff_data
 {
-	//local working data IN
-	int ny;
-	int mesh_type;
-	float* normDir;
-	unsigned int* numLines;
-	float **lines;
-	float* edge_length_P;
-	float* edge_length_PP;
+	unsigned int numP, numPP;  // surface points along the two tangential directions
+	unsigned int strideQ;      // numPP padded to a multiple of NF2FF_LANES
+	unsigned int numComp;      // number of non-zero current components
+	int comp[6];               // their index: 0..2 = Js x/y/z, 3..5 = Ms x/y/z
 
-	ArrayLib::ArrayNIJK<std::complex<float>>* E_field;
-	ArrayLib::ArrayNIJK<std::complex<float>>* H_field;
-	ArrayLib::ArrayNIJK<std::complex<float>>* Js;
-	ArrayLib::ArrayNIJK<std::complex<float>>* Ms;
+	// area-weighted Cartesian surface currents, [comp][p][q], zero padded in q
+	const float* F_re;
+	const float* F_im;
 
-	//local working data OUT
-	ArrayLib::ArrayIJ<std::complex<double>>* m_Nt;
-	ArrayLib::ArrayIJ<std::complex<double>>* m_Np;
-	ArrayLib::ArrayIJ<std::complex<double>>* m_Lt;
-	ArrayLib::ArrayIJ<std::complex<double>>* m_Lp;
+	// the position r-r_center of point (p,q) is rP[p]+rPP[q] if separable, else r[p][q]
+	bool separable;
+	const double* rP;   // [p][3]
+	const double* rPP;  // [q][3]
+	const double* r;    // [p][q][3]
+
+	double k;
+
+	ArrayLib::ArrayIJ<std::complex<float>>* Nt;
+	ArrayLib::ArrayIJ<std::complex<float>>* Np;
+	ArrayLib::ArrayIJ<std::complex<float>>* Lt;
+	ArrayLib::ArrayIJ<std::complex<float>>* Lp;
 };
 
+// computes Nt, Np, Lt and Lp for the flattened (theta,phi) indices start..stop
 class nf2ff_calc_thread
 {
 public:
-	nf2ff_calc_thread(nf2ff_calc* nfc, unsigned int start, unsigned int stop, unsigned int threadID, nf2ff_data &data);
+	nf2ff_calc_thread(nf2ff_calc* nfc, unsigned int start, unsigned int stop, const nf2ff_data &data);
 	void operator()();
 
 protected:
-	unsigned int m_start, m_stop, m_threadID;
+	unsigned int m_start, m_stop;
 	nf2ff_calc *m_nf_calc;
 
 	nf2ff_data m_data;
@@ -124,8 +127,6 @@ protected:
 
 	//boost multi-threading
 	unsigned int m_numThreads;
-	boost::thread_group m_thread_group;
-	boost::barrier *m_Barrier;
 };
 
 

@@ -54,6 +54,8 @@ to what a user notices, in a few lines; the details belong in the commit.
   run up to twice as fast, cylindrical multi-grid meshes 12-25 % faster.
 - The setup is 5-10x faster on large models, most of it runs on all threads
   now, and openEMS prints how long it took.
+- The NF2FF far-field calculation is about 25x faster on Cartesian meshes and
+  6x on cylindrical ones.
 
 ### Fixed
 
