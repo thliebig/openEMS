@@ -22,137 +22,96 @@
 #include <vector>
 #include <cmath>
 #include <complex>
+#include <cstdlib>
 #include <iostream>
 
 using namespace std;
 
-nf2ff_calc_thread::nf2ff_calc_thread(nf2ff_calc* nfc, unsigned int start, unsigned int stop, unsigned int threadID, nf2ff_data &data)
+// the kernel for any CPU: 4 lanes, one SSE or NEON register
+#define NF2FF_KERNEL_NAMESPACE nf2ff_generic
+#define NF2FF_LANES 4
+#include "nf2ff_kernels.inc"
+#undef NF2FF_KERNEL_NAMESPACE
+#undef NF2FF_LANES
+
+void nf2ff_calc::CalcAngles(const nf2ff_data &d, size_t begin, size_t end) const
 {
-	m_nf_calc = nfc;
-	m_start = start;
-	m_stop = stop;
-	m_threadID = threadID;
-	m_data = data;
-}
+	const unsigned int numPhi = m_numPhi;
+	const unsigned int nQ = d.strideQ;
+	const size_t fstride = (size_t)d.numP*nQ;   // between the current components
 
-void nf2ff_calc_thread::operator()()
-{
-	m_nf_calc->m_Barrier->wait(); // start
+	// phase factors exp(jk*r.r_hat): per point along PP, and per point along P if separable
+	vector<float> b_re(nQ, 0), b_im(nQ, 0);
+	vector<complex<double>> a(d.numP);
 
-	int ny = m_data.ny;
-	int nP = (ny+1)%3;
-	int nPP = (ny+2)%3;
+	ArrayLib::ArrayIJ<complex<float>> &Nt = *d.Nt;
+	ArrayLib::ArrayIJ<complex<float>> &Np = *d.Np;
+	ArrayLib::ArrayIJ<complex<float>> &Lt = *d.Lt;
+	ArrayLib::ArrayIJ<complex<float>> &Lp = *d.Lp;
 
-	unsigned int* numLines = m_data.numLines;
-	float* normDir = m_data.normDir;
-	float **lines = m_data.lines;
-	float* edge_length_P = m_data.edge_length_P;
-	float* edge_length_PP = m_data.edge_length_PP;
-
-	unsigned int pos[3];
-	unsigned int pos_t=0;
-	unsigned int num_t=m_stop-m_start+1;
-
-
-	ArrayLib::ArrayNIJK<std::complex<float>> &Js     = *m_data.Js;
-	ArrayLib::ArrayNIJK<std::complex<float>> &Ms     = *m_data.Ms;
-	ArrayLib::ArrayNIJK<std::complex<float>> &E_field= *m_data.E_field;
-	ArrayLib::ArrayNIJK<std::complex<float>> &H_field= *m_data.H_field;
-
-	int mesh_type = m_data.mesh_type;
-
-	// calc Js and Ms (eq. 8.15a/b)
-	pos[ny]=0;
-	for (pos_t=0; pos_t<num_t; ++pos_t)
+	for (size_t idx=begin; idx<end; ++idx)
 	{
-		pos[nP] = m_start+pos_t;
-		for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
+		unsigned int tn = idx / numPhi;
+		unsigned int pn = idx % numPhi;
+		double sinT = sin((double)m_theta[tn]);
+		double cosT = cos((double)m_theta[tn]);
+		double sinP = sin((double)m_phi[pn]);
+		double cosP = cos((double)m_phi[pn]);
+		double kdir[3] = {d.k*sinT*cosP, d.k*sinT*sinP, d.k*cosT};
+
+		// sum over the surface of exp(jk*r.r_hat) times each current component
+		double S_re[6] = {0}, S_im[6] = {0};
+		if (d.separable)
 		{
-			// Js =  n x H
-			Js(0, pos[0], pos[1], pos[2]) = normDir[1]*H_field(2, pos[0], pos[1], pos[2]) - normDir[2]*H_field(1, pos[0], pos[1], pos[2]);
-			Js(1, pos[0], pos[1], pos[2]) = normDir[2]*H_field(0, pos[0], pos[1], pos[2]) - normDir[0]*H_field(2, pos[0], pos[1], pos[2]);
-			Js(2, pos[0], pos[1], pos[2]) = normDir[0]*H_field(1, pos[0], pos[1], pos[2]) - normDir[1]*H_field(0, pos[0], pos[1], pos[2]);
-
-			// Ms = -n x E
-			Ms(0, pos[0], pos[1], pos[2]) = normDir[2]*E_field(1, pos[0], pos[1], pos[2]) - normDir[1]*E_field(2, pos[0], pos[1], pos[2]);
-			Ms(1, pos[0], pos[1], pos[2]) = normDir[0]*E_field(2, pos[0], pos[1], pos[2]) - normDir[2]*E_field(0, pos[0], pos[1], pos[2]);
-			Ms(2, pos[0], pos[1], pos[2]) = normDir[1]*E_field(0, pos[0], pos[1], pos[2]) - normDir[0]*E_field(1, pos[0], pos[1], pos[2]);
-
-			//transform to cartesian coordinates
-			if (mesh_type==1)
+			for (unsigned int p=0; p<d.numP; ++p)
 			{
-				Js(0, pos[0], pos[1], pos[2]) = (normDir[1]*H_field(2, pos[0], pos[1], pos[2]) - normDir[2]*H_field(1, pos[0], pos[1], pos[2]))*cos(lines[1][pos[1]]) \
-						- (normDir[2]*H_field(0, pos[0], pos[1], pos[2]) - normDir[0]*H_field(2, pos[0], pos[1], pos[2]))*sin(lines[1][pos[1]]);
-				Js(1, pos[0], pos[1], pos[2]) = (normDir[1]*H_field(2, pos[0], pos[1], pos[2]) - normDir[2]*H_field(1, pos[0], pos[1], pos[2]))*sin(lines[1][pos[1]]) \
-						+ (normDir[2]*H_field(0, pos[0], pos[1], pos[2]) - normDir[0]*H_field(2, pos[0], pos[1], pos[2]))*cos(lines[1][pos[1]]);
-
-				Ms(0, pos[0], pos[1], pos[2]) = (normDir[2]*E_field(1, pos[0], pos[1], pos[2]) - normDir[1]*E_field(2, pos[0], pos[1], pos[2]))*cos(lines[1][pos[1]]) \
-						- (normDir[0]*E_field(2, pos[0], pos[1], pos[2]) - normDir[2]*E_field(0, pos[0], pos[1], pos[2]))*sin(lines[1][pos[1]]);
-				Ms(1, pos[0], pos[1], pos[2]) = (normDir[2]*E_field(1, pos[0], pos[1], pos[2]) - normDir[1]*E_field(2, pos[0], pos[1], pos[2]))*sin(lines[1][pos[1]]) \
-						+ (normDir[0]*E_field(2, pos[0], pos[1], pos[2]) - normDir[2]*E_field(0, pos[0], pos[1], pos[2]))*cos(lines[1][pos[1]]);
+				const double* r = d.rP + 3*p;
+				a[p] = polar(1.0, r[0]*kdir[0] + r[1]*kdir[1] + r[2]*kdir[2]);
 			}
-		}
-	}
-
-	ArrayLib::ArrayIJ<complex<double>>& m_Nt = *m_data.m_Nt;
-	ArrayLib::ArrayIJ<complex<double>>& m_Np = *m_data.m_Np;
-	ArrayLib::ArrayIJ<complex<double>>& m_Lt = *m_data.m_Lt;
-	ArrayLib::ArrayIJ<complex<double>>& m_Lp = *m_data.m_Lp;
-
-	float center[3] = {m_nf_calc->m_centerCoord[0],m_nf_calc->m_centerCoord[1],m_nf_calc->m_centerCoord[2]};
-	if (mesh_type==1)
-	{
-		center[0] = m_nf_calc->m_centerCoord[0]*cos(m_nf_calc->m_centerCoord[1]);
-		center[1] = m_nf_calc->m_centerCoord[0]*sin(m_nf_calc->m_centerCoord[1]);
-	}
-	// calc local Nt,Np,Lt and Lp
-	float area;
-	float cosT_cosP,cosP_sinT;
-	float cosT_sinP,sinT_sinP;
-	float sinT,sinP;
-	float cosP,cosT;
-	float r_cos_psi;
-	float k = 2*PI*m_nf_calc->m_freq/C0*sqrt(m_nf_calc->m_permittivity*m_nf_calc->m_permeability);
-	complex<float> exp_jkr;
-	complex<float> _I_(0,1);
-	for (unsigned int tn=0;tn<m_nf_calc->m_numTheta;++tn)
-		for (unsigned int pn=0;pn<m_nf_calc->m_numPhi;++pn)
-		{
-			sinT = sin(m_nf_calc->m_theta[tn]);
-			sinP = sin(m_nf_calc->m_phi[pn]);
-			cosT = cos(m_nf_calc->m_theta[tn]);
-			cosP = cos(m_nf_calc->m_phi[pn]);
-			cosT_cosP = cosT*cosP;
-			cosT_sinP = cosT*sinP;
-			cosP_sinT = cosP*sinT;
-			sinT_sinP = sinP*sinT;
-
-			for (pos_t=0; pos_t<num_t; ++pos_t)
+			for (unsigned int q=0; q<d.numPP; ++q)
 			{
-				pos[nP] = m_start+pos_t;
-				for (pos[nPP]=0; pos[nPP]<numLines[nPP]; ++pos[nPP])
+				const double* r = d.rPP + 3*q;
+				double arg = r[0]*kdir[0] + r[1]*kdir[1] + r[2]*kdir[2];
+				b_re[q] = cos(arg);
+				b_im[q] = sin(arg);
+			}
+			for (unsigned int p=0; p<d.numP; ++p)
+				d.row(d.F_re+(size_t)p*nQ, d.F_im+(size_t)p*nQ, fstride, d.numComp, b_re.data(), b_im.data(), nQ,
+				      a[p].real(), a[p].imag(), S_re, S_im);
+		}
+		else
+		{
+			for (unsigned int p=0; p<d.numP; ++p)
+			{
+				for (unsigned int q=0; q<d.numPP; ++q)
 				{
-					if (mesh_type==0)
-						r_cos_psi = (lines[0][pos[0]]-center[0])*cosP_sinT + (lines[1][pos[1]]-center[1])*sinT_sinP + (lines[2][pos[2]]-center[2])*cosT;
-					else
-						r_cos_psi = ((lines[0][pos[0]]*cos(lines[1][pos[1]]))-center[0])*cosP_sinT + ((lines[0][pos[0]]*sin(lines[1][pos[1]]))-center[1])*sinT_sinP + (lines[2][pos[2]]-center[2])*cosT;
-					exp_jkr = exp(_I_*k*r_cos_psi);
-					area = edge_length_P[pos[nP]]*edge_length_PP[pos[nPP]];
-					m_Nt(tn, pn) += area*exp_jkr*(Js(0, pos[0], pos[1], pos[2])*cosT_cosP + Js(1, pos[0], pos[1], pos[2])*cosT_sinP \
-												  - Js(2, pos[0], pos[1], pos[2])*sinT);
-					m_Np(tn, pn) += area*exp_jkr*(Js(1, pos[0], pos[1], pos[2])*cosP - Js(0, pos[0], pos[1], pos[2])*sinP);
-
-					m_Lt(tn, pn) += area*exp_jkr*(Ms(0, pos[0], pos[1], pos[2])*cosT_cosP + Ms(1, pos[0], pos[1], pos[2])*cosT_sinP \
-												  - Ms(2, pos[0], pos[1], pos[2])*sinT);
-					m_Lp(tn, pn) += area*exp_jkr*(Ms(1, pos[0], pos[1], pos[2])*cosP - Ms(0, pos[0], pos[1], pos[2])*sinP);
+					const double* r = d.r + 3*((size_t)p*d.numPP + q);
+					double arg = r[0]*kdir[0] + r[1]*kdir[1] + r[2]*kdir[2];
+					b_re[q] = cos(arg);
+					b_im[q] = sin(arg);
 				}
+				d.row(d.F_re+(size_t)p*nQ, d.F_im+(size_t)p*nQ, fstride, d.numComp, b_re.data(), b_im.data(), nQ,
+				      1.0, 0.0, S_re, S_im);
 			}
 		}
 
-	m_nf_calc->m_Barrier->wait(); //combine all thread local Nt,Np,Lt and Lp
+		complex<double> J[3], M[3];
+		for (unsigned int c=0; c<d.numComp; ++c)
+		{
+			if (d.comp[c]<3)
+				J[d.comp[c]] = complex<double>(S_re[c], S_im[c]);
+			else
+				M[d.comp[c]-3] = complex<double>(S_re[c], S_im[c]);
+		}
 
-	m_nf_calc->m_Barrier->wait(); //wait for termination
+		// radiation vectors N and L in spherical components
+		Nt(tn, pn) = J[0]*cosT*cosP + J[1]*cosT*sinP - J[2]*sinT;
+		Np(tn, pn) = J[1]*cosP - J[0]*sinP;
+		Lt(tn, pn) = M[0]*cosT*cosP + M[1]*cosT*sinP - M[2]*sinT;
+		Lp(tn, pn) = M[1]*cosP - M[0]*sinP;
+	}
 }
+
 
 
 /***********************************************************************/
@@ -204,8 +163,6 @@ nf2ff_calc::nf2ff_calc(float freq, vector<float> theta, vector<float> phi, vecto
 		m_MirrorType[n] = MIRROR_OFF;
 		m_MirrorPos[n]  = 0.0;
 	}
-
-	m_Barrier = NULL;
 	m_numThreads = AvailableThreads();
 }
 
@@ -226,9 +183,6 @@ nf2ff_calc::~nf2ff_calc()
 	m_H_phi = NULL;
 	delete m_P_rad;
 	m_P_rad = NULL;
-
-	delete m_Barrier;
-	m_Barrier = NULL;
 }
 
 int nf2ff_calc::GetNormalDir(unsigned int* numLines)
@@ -415,77 +369,145 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 			}
 	unsigned int numAngles[2] = {m_numTheta, m_numPhi};
 
-	// setup multi-threading jobs
-	vector<unsigned int> jpt = AssignJobs2Threads(numLines[nP], m_numThreads, true);
-	m_numThreads = jpt.size();
-	nf2ff_data* thread_data = new nf2ff_data[m_numThreads];
-	m_Barrier = new boost::barrier(m_numThreads+1); // numThread workers + 1 controller
-	unsigned int start=0;
-	unsigned int stop=jpt.at(0)-1;
-	for (unsigned int n=0; n<m_numThreads; n++)
+	nf2ff_data data;
+	data.numP = numLines[nP];
+	data.numPP = numLines[nPP];
+	data.strideQ = (data.numPP + NF2FF_STRIDE_ALIGN-1) / NF2FF_STRIDE_ALIGN * NF2FF_STRIDE_ALIGN;
+	data.k = 2*PI*m_freq/C0*sqrt(m_permittivity*m_permeability);
+
+	// the kernel: AVX2 and FMA if the CPU has both (OPENEMS_CPU_ISA=generic overrides)
+	data.row = nf2ff_generic::Row;
+#ifdef NF2FF_AVX2
+	const char* isa = getenv("OPENEMS_CPU_ISA");
+	if (!(isa && string(isa)=="generic") && CpuHasAVX2FMA())
+		data.row = nf2ff_avx2::Row;
+#endif
+
+	// current components that are not zero by construction: the normal one
+	// in Cartesian coordinates, z on a cylindrical r-a surface
+	data.numComp = 0;
+	for (int c=0; c<6; ++c)
+		if ((MeshType==0 && c%3!=ny) || (MeshType==1 && (c%3!=2 || ny!=2)))
+			data.comp[data.numComp++] = c;
+
+	// area-weighted surface currents Js = n x H and Ms = -n x E (eq. 8.15a/b),
+	// in Cartesian coordinates
+	size_t numF = (size_t)data.numComp*data.numP*data.strideQ;
+	vector<float> F_re(numF, 0), F_im(numF, 0);
+	pos[ny] = 0;
+	for (unsigned int p=0; p<data.numP; ++p)
+		for (unsigned int q=0; q<data.numPP; ++q)
+		{
+			pos[nP] = p;
+			pos[nPP] = q;
+			complex<float> JM[6];
+			JM[0] = normDir[1]*H_field(2, pos[0], pos[1], pos[2]) - normDir[2]*H_field(1, pos[0], pos[1], pos[2]);
+			JM[1] = normDir[2]*H_field(0, pos[0], pos[1], pos[2]) - normDir[0]*H_field(2, pos[0], pos[1], pos[2]);
+			JM[2] = normDir[0]*H_field(1, pos[0], pos[1], pos[2]) - normDir[1]*H_field(0, pos[0], pos[1], pos[2]);
+			JM[3] = normDir[2]*E_field(1, pos[0], pos[1], pos[2]) - normDir[1]*E_field(2, pos[0], pos[1], pos[2]);
+			JM[4] = normDir[0]*E_field(2, pos[0], pos[1], pos[2]) - normDir[2]*E_field(0, pos[0], pos[1], pos[2]);
+			JM[5] = normDir[1]*E_field(0, pos[0], pos[1], pos[2]) - normDir[0]*E_field(1, pos[0], pos[1], pos[2]);
+			if (MeshType==1)
+			{
+				float cos_a = cos(lines[1][pos[1]]);
+				float sin_a = sin(lines[1][pos[1]]);
+				for (int m=0; m<6; m+=3)
+				{
+					complex<float> r = JM[m], a = JM[m+1];
+					JM[m]   = r*cos_a - a*sin_a;
+					JM[m+1] = r*sin_a + a*cos_a;
+				}
+			}
+			float pq_area = edge_length_P[p]*edge_length_PP[q];
+			for (unsigned int c=0; c<data.numComp; ++c)
+			{
+				size_t idx = ((size_t)c*data.numP + p)*data.strideQ + q;
+				F_re[idx] = pq_area*real(JM[data.comp[c]]);
+				F_im[idx] = pq_area*imag(JM[data.comp[c]]);
+			}
+		}
+	data.F_re = F_re.data();
+	data.F_im = F_im.data();
+
+	// point positions relative to the center; separable into a P and a PP part
+	// except on a cylindrical r-a surface
+	double center[3] = {m_centerCoord[0], m_centerCoord[1], m_centerCoord[2]};
+	if (MeshType==1)
 	{
-		thread_data[n].ny=ny;
-		thread_data[n].mesh_type = MeshType;
-		thread_data[n].normDir=normDir;
-		thread_data[n].numLines=numLines;
-		thread_data[n].lines=lines;
-		thread_data[n].edge_length_P=edge_length_P;
-		thread_data[n].edge_length_PP=edge_length_PP;
-		thread_data[n].E_field=&E_field;
-		thread_data[n].H_field=&H_field;
-		thread_data[n].Js=&Js;
-		thread_data[n].Ms=&Ms;
-		thread_data[n].m_Nt=new ArrayLib::ArrayIJ<complex<double> >("Nt", numAngles);
-		thread_data[n].m_Np=new ArrayLib::ArrayIJ<complex<double> >("Np", numAngles);
-		thread_data[n].m_Lt=new ArrayLib::ArrayIJ<complex<double> >("Lt", numAngles);
-		thread_data[n].m_Lp=new ArrayLib::ArrayIJ<complex<double> >("Lp", numAngles);
-
-		boost::thread *t = new boost::thread( nf2ff_calc_thread(this,start,stop,n,thread_data[n]) );
-
-		m_thread_group.add_thread( t );
-
-		start = stop+1;
-		if (n<m_numThreads-1)
-			stop = start + jpt.at(n+1)-1;
+		center[0] = m_centerCoord[0]*cos(m_centerCoord[1]);
+		center[1] = m_centerCoord[0]*sin(m_centerCoord[1]);
 	}
-	//all threads a running and waiting for the barrier
-
-	m_Barrier->wait(); //start
-
-	// threads: calc Js and Ms (eq. 8.15a/b)
-	// threads calc their local Nt,Np,Lt and Lp
-
-	m_Barrier->wait(); //combine all thread local Nt,Np,Lt and Lp
+	vector<double> rP, rPP, r;
+	data.separable = (MeshType==0) || (ny!=2);
+	if (data.separable)
+	{
+		rP.assign(3*data.numP, 0);
+		rPP.assign(3*data.numPP, 0);
+		for (unsigned int p=0; p<data.numP; ++p)
+		{
+			double* v = &rP[3*p];
+			if (MeshType==0)
+			{
+				v[ny]  = lines[ny][0] - center[ny];
+				v[nP]  = lines[nP][p] - center[nP];
+				v[nPP] = -center[nPP];
+			}
+			else if (ny==0) // P = alpha, PP = z
+			{
+				v[0] = lines[0][0]*cos(lines[1][p]) - center[0];
+				v[1] = lines[0][0]*sin(lines[1][p]) - center[1];
+				v[2] = -center[2];
+			}
+			else // ny==1: P = z, PP = r
+			{
+				v[0] = -center[0];
+				v[1] = -center[1];
+				v[2] = lines[2][p] - center[2];
+			}
+		}
+		for (unsigned int q=0; q<data.numPP; ++q)
+		{
+			double* v = &rPP[3*q];
+			if (MeshType==0)
+				v[nPP] = lines[nPP][q];
+			else if (ny==0)
+				v[2] = lines[2][q];
+			else
+			{
+				v[0] = lines[0][q]*cos(lines[1][0]);
+				v[1] = lines[0][q]*sin(lines[1][0]);
+			}
+		}
+	}
+	else // cylindrical, ny==2: P = r, PP = alpha
+	{
+		r.resize(3*(size_t)data.numP*data.numPP);
+		for (unsigned int p=0; p<data.numP; ++p)
+			for (unsigned int q=0; q<data.numPP; ++q)
+			{
+				double* v = &r[3*((size_t)p*data.numPP + q)];
+				v[0] = lines[0][p]*cos(lines[1][q]) - center[0];
+				v[1] = lines[0][p]*sin(lines[1][q]) - center[1];
+				v[2] = lines[2][0] - center[2];
+			}
+	}
+	data.rP = rP.data();
+	data.rPP = rPP.data();
+	data.r = r.data();
 
 	ArrayLib::ArrayIJ<complex<float>> Nt("l_Nt", numAngles);
 	ArrayLib::ArrayIJ<complex<float>> Np("l_Np", numAngles);
 	ArrayLib::ArrayIJ<complex<float>> Lt("l_Lt", numAngles);
 	ArrayLib::ArrayIJ<complex<float>> Lp("l_Lp", numAngles);
+	data.Nt = &Nt;
+	data.Np = &Np;
+	data.Lt = &Lt;
+	data.Lp = &Lp;
 
-	for (unsigned int n=0; n<m_numThreads; n++)
-	{
-		for (unsigned int tn=0;tn<m_numTheta;++tn)
-			for (unsigned int pn=0;pn<m_numPhi;++pn)
-			{
-				Nt(tn, pn) += (*thread_data[n].m_Nt)(tn, pn);
-				Np(tn, pn) += (*thread_data[n].m_Np)(tn, pn);
-				Lt(tn, pn) += (*thread_data[n].m_Lt)(tn, pn);
-				Lp(tn, pn) += (*thread_data[n].m_Lp)(tn, pn);
-			}
-		delete thread_data[n].m_Nt;
-		delete thread_data[n].m_Np;
-		delete thread_data[n].m_Lt;
-		delete thread_data[n].m_Lp;
-	}
-
-	m_Barrier->wait(); //wait for termination
-	m_thread_group.join_all(); // wait for termination
-	delete m_Barrier;
-	m_Barrier = NULL;
-
-	//cleanup Js & Ms
-	Js.Reset();
-	Ms.Reset();
+	// Nt,Np,Lt and Lp on all threads, each for its own range of angles
+	ParallelFor((size_t)m_numTheta*m_numPhi, m_numThreads, [&](unsigned int, size_t begin, size_t end) {
+		CalcAngles(data, begin, end);
+	});
 
 	ArrayLib::ArrayIJ<std::complex<double>>& E_theta = *m_E_theta;
 	ArrayLib::ArrayIJ<std::complex<double>>& E_phi   = *m_E_phi;
@@ -494,7 +516,7 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 	ArrayLib::ArrayIJ<double>& P_rad = *m_P_rad;
 
 	// calc equations 8.23a/b and 8.24a/b
-	float k = 2*PI*m_freq/C0*sqrt(m_permittivity*m_permeability);
+	float k = data.k;
 	complex<float> factor(0,k/4.0/PI/m_radius);
 	complex<float> f_exp(0,-1*k*m_radius);
 	factor *= exp(f_exp);
@@ -515,10 +537,8 @@ bool nf2ff_calc::AddSinglePlane(float **lines, unsigned int* numLines, ArrayLib:
 				P_max = P_rad(tn, pn);
 		}
 
-	//cleanup Nx and Lx
 	delete[] edge_length_P; edge_length_P=NULL;
 	delete[] edge_length_PP; edge_length_PP=NULL;
-	delete[] thread_data; thread_data=NULL;
 
 	// Maximum directivity (unitless) across sampled angles theta and phi
 	// P_max (W/m^2), m_radPower (W), m_radius (m)
