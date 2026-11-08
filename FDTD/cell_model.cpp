@@ -447,7 +447,10 @@ const Operator_Ext_UPML* CellModel::FindUPML(const unsigned int pos[3], unsigned
 		const uint64_t m = m_UPMLMask[0][pos[0]] & m_UPMLMask[1][pos[1]] & m_UPMLMask[2][pos[2]];
 		if (m==0)
 			return NULL;
-		const Operator_Ext_UPML* upml = m_UPML[__builtin_ctzll(m)];
+		unsigned int n = 0;
+		while (!((m>>n) & 1))
+			++n;
+		const Operator_Ext_UPML* upml = m_UPML[n];
 		for (int a=0; a<3; ++a)
 			loc[a] = pos[a] - upml->m_StartPos[a];
 		return upml;

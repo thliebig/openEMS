@@ -243,7 +243,7 @@ public:
 		p[a] += step;
 		unsigned int q[3];
 		for (int d=0; d<3; ++d)
-			q[d] = (unsigned int)std::min(std::max(p[d], 0), (int)numLines[d]-1);
+			q[d] = (unsigned int)(std::min)((std::max)(p[d], 0), (int)numLines[d]-1);
 		return GetECIndex(q);
 	}
 
