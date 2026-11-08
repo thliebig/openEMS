@@ -15,6 +15,8 @@ options:
 
   --unittests     also run the test_*.py unit tests (fast, no simulation)
   --only-unittests  run only those
+  --engine=<e>    run with this engine, e.g. --engine=cpu (default: the
+                  fastest). Tests that choose their engines keep them.
   --keep          keep the simulation files of passed tests too
   --timeout=<s>   kill a test that runs longer than this (default 1800,
                   0 disables)
@@ -111,9 +113,14 @@ def collect(groups, patterns):
     return tests, skipped
 
 
-def child_env(work_dir):
+def child_env(work_dir, engine=None):
     """The environment a test is run in."""
     env = os.environ.copy()
+
+    # The scripts call FDTD.Run themselves; it takes the engine from here
+    # unless the script names one, as Engine_Compare.py does for each run.
+    if engine:
+        env['OPENEMS_ENGINE'] = engine
 
     # Every test builds its simulation folder below tempfile.gettempdir(), so
     # pointing that at a per-test directory is what lets the runner hand each
@@ -146,10 +153,10 @@ def decode(raw):
     return raw.decode(locale.getpreferredencoding(False), 'replace')
 
 
-def run_one(test, work_dir, timeout, verbose):
+def run_one(test, work_dir, timeout, verbose, engine=None):
     """Run one test and return (status, seconds, output)."""
     os.makedirs(work_dir)
-    env = child_env(work_dir)
+    env = child_env(work_dir, engine)
 
     out = ''
     t0  = time.time()
@@ -210,6 +217,10 @@ def main(argv):
                         help='also run the test_*.py unit tests')
     parser.add_argument('--only-unittests', action='store_true',
                         help='run only the test_*.py unit tests')
+    parser.add_argument('--engine', metavar='E',
+                        help='run with this engine, e.g. cpu, gpu or basic '
+                             '(default: the fastest); tests that choose their '
+                             'engines keep them')
     parser.add_argument('--keep', action='store_true',
                         help='keep the simulation files of passed tests too')
     parser.add_argument('--timeout', type=float, default=1800, metavar='S',
@@ -243,8 +254,9 @@ def main(argv):
 
     run_dir = tempfile.mkdtemp(prefix='openEMS_testsuite_')
 
-    print('\n*** {} openEMS Python testsuite started -- {} test(s)\n'.format(
-        datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(tests)))
+    print('\n*** {} openEMS Python testsuite started -- {} test(s){}\n'.format(
+        datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(tests),
+        ', engine ' + args.engine if args.engine else ''))
 
     results = []
     total   = time.time()
@@ -257,7 +269,8 @@ def main(argv):
         sys.stdout.flush()
 
         work_dir = os.path.join(run_dir, test.name)
-        status, secs, out = run_one(test, work_dir, args.timeout, args.verbose)
+        status, secs, out = run_one(test, work_dir, args.timeout, args.verbose,
+                                     args.engine)
 
         if args.verbose:
             print('  ==> {}: {} ({:.1f} s)'.format(test.id, status, secs))

@@ -63,6 +63,11 @@
    multithreaded (cylindrical and multi-grid cases)
      bit-identical to basic
 
+ With the environment variable OPENEMS_ENGINE set (run_testsuite.py
+ --engine=<e>), only that engine is compared with basic: cpu (flat and
+ blocked), gpu or gpu-reference (both GPU backends), multithreaded (then in
+ every case); with basic there is nothing to compare.
+
  Tested with
   - python 3.13
   - openEMS v0.37+
@@ -663,12 +668,30 @@ DEVICE_RTOL = 1e-4
 FULL_DEVICE_BACKENDS = ('HIP', 'Metal')
 # device backends that accumulate the frequency domain dumps
 DEVICE_DFT_BACKENDS = ('HIP',)
+# the engines compared with basic: all of them, or those of OPENEMS_ENGINE (run_testsuite.py --engine)
+ENGINE_SETS = {'cpu': ('cpu', 'cpu-blocked'),
+               'gpu': ('gpu-reference', 'gpu'), 'gpu-reference': ('gpu-reference', 'gpu'),
+               'multithreaded': ('multithreaded',), 'sse': ('multithreaded',),
+               'sse-compressed': ('multithreaded',), 'fastest': ('multithreaded',),
+               'basic': ()}
+only = os.environ.get('OPENEMS_ENGINE')
+if only:
+    assert only in ENGINE_SETS, f'FAIL: OPENEMS_ENGINE={only} is no engine this test knows'
+    if not ENGINE_SETS[only]:
+        print(f'OPENEMS_ENGINE={only}: nothing to compare with the basic engine')
+        print('PASS')
+        sys.exit(0)
+    print(f'OPENEMS_ENGINE={only}: comparing {", ".join(ENGINE_SETS[only])} with the basic engine')
+
 blocked_cases = []
 for name, case, on_device in cases:
     print(f'Testing case: {name}')
-    engines = ('basic', 'gpu-reference', 'gpu', 'cpu', 'cpu-blocked')
-    if name.startswith(('cylinder', 'multigrid')):
-        engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
+    if only:
+        engines = ('basic',) + ENGINE_SETS[only]
+    else:
+        engines = ('basic', 'gpu-reference', 'gpu', 'cpu', 'cpu-blocked')
+        if name.startswith(('cylinder', 'multigrid')):
+            engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
     paths = {engine: os.path.join(tempfile.gettempdir(), f'Engine_Compare_{name}_{engine}') for engine in engines}
     os.environ.update(CASE_ENV.get(name, {}))
     try:
@@ -688,23 +711,25 @@ for name, case, on_device in cases:
 
     assert 'Create FDTD engine (GPU' not in logs['basic'], \
         f'FAIL [{name}]: engine=basic created the GPU engine'
-    assert 'Create FDTD engine (GPU, backend: reference' in logs['gpu-reference'], \
-        f'FAIL [{name}]: engine=gpu-reference did not create the GPU engine with the reference backend'
 
-    diff, n_probes, n_dumps, _ = compare_outputs(paths['basic'], paths['gpu-reference'])
-    print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
-    assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
+    if 'gpu-reference' in engines:
+        assert 'Create FDTD engine (GPU, backend: reference' in logs['gpu-reference'], \
+            f'FAIL [{name}]: engine=gpu-reference did not create the GPU engine with the reference backend'
+        diff, n_probes, n_dumps, _ = compare_outputs(paths['basic'], paths['gpu-reference'])
+        print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
+        assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
 
-    assert 'Create FDTD engine (CPU' in logs['cpu'], f'FAIL [{name}]: engine=cpu did not create the CPU engine'
-    diff, _, _, worst = compare_outputs(paths['basic'], paths['cpu'], rtol=DEVICE_RTOL)
-    print(f'  CPU engine: max. deviation {worst:.1e} of the peak value')
-    assert not diff, f'FAIL [{name}]: the CPU engine deviates from the basic engine: ' + \
-        ', '.join(f'{n} ({d:.1e})' for n, d in diff)
-    if 'Engine_CPU: temporal blocking' in logs['cpu-blocked']:
-        blocked_cases.append(name)
-        diff, _, _, _ = compare_outputs(paths['cpu'], paths['cpu-blocked'])
-        assert not diff, f'FAIL [{name}]: the blocked CPU engine differs from its flat sweep in: {", ".join(n for n, _ in diff)}'
-        print('  CPU engine blocked: bit-identical to its flat sweep')
+    if 'cpu' in engines:
+        assert 'Create FDTD engine (CPU' in logs['cpu'], f'FAIL [{name}]: engine=cpu did not create the CPU engine'
+        diff, _, _, worst = compare_outputs(paths['basic'], paths['cpu'], rtol=DEVICE_RTOL)
+        print(f'  CPU engine: max. deviation {worst:.1e} of the peak value')
+        assert not diff, f'FAIL [{name}]: the CPU engine deviates from the basic engine: ' + \
+            ', '.join(f'{n} ({d:.1e})' for n, d in diff)
+        if 'Engine_CPU: temporal blocking' in logs['cpu-blocked']:
+            blocked_cases.append(name)
+            diff, _, _, _ = compare_outputs(paths['cpu'], paths['cpu-blocked'])
+            assert not diff, f'FAIL [{name}]: the blocked CPU engine differs from its flat sweep in: {", ".join(n for n, _ in diff)}'
+            print('  CPU engine blocked: bit-identical to its flat sweep')
 
     if 'multithreaded' in engines:
         diff, _, _, _ = compare_outputs(paths['basic'], paths['multithreaded'])
@@ -717,44 +742,46 @@ for name, case, on_device in cases:
             dev = deviation(H['FieldData/TD'][ts][()], B['FieldData/TD'][ts][()]/(4e-7*np.pi))
         assert dev<1e-6, f'FAIL [{name}]: the B field dump is not mue0 times the H field dump ({dev:.1e} of the peak)'
 
-    backend = re.search(r'Create FDTD engine \(GPU, backend: (\w+)', logs['gpu'])
-    backend = backend.group(1) if backend else None
-    if backend and backend!='reference':
-        if on_device and backend in FULL_DEVICE_BACKENDS:
-            assert ('Engine_GPU: all extensions run on the device' in logs['gpu']) and ('host fallback' not in logs['gpu']), \
-                f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
-        if name in ('dumps_snapshot', 'multigrid_snapshot', 'dumps_snapshot_host_dft') and backend in FULL_DEVICE_BACKENDS:
-            assert 'Engine_GPU: field dumps from snapshots' in logs['gpu'], \
-                f'FAIL [{name}]: the {backend} backend did not take field snapshots for the dumps'
-        if name=='dumps_snapshot_host_dft':
-            assert 'frequency domain dumps accumulated on the device' not in logs['gpu'], \
-                f'FAIL [{name}]: OPENEMS_GPU_DUMPS=snapshot did not keep the sums off the device'
-        if name in ('dumps', 'sar') and backend in DEVICE_DFT_BACKENDS:
-            assert 'Engine_GPU: frequency domain dumps accumulated on the device' in logs['gpu'], \
-                f'FAIL [{name}]: the {backend} backend did not accumulate the frequency domain dumps'
-        if name=='coeff_index32' and backend in FULL_DEVICE_BACKENDS:
-            assert 'compressed update coefficients (32 bit index)' in logs['gpu'], \
-                f'FAIL [{name}]: the {backend} backend did not use a 32 bit coefficient set index'
-        if name=='coeff_full' and backend in FULL_DEVICE_BACKENDS:
-            assert 'compressed update coefficients' not in logs['gpu'], \
-                f'FAIL [{name}]: the {backend} backend did not use the full coefficient arrays'
-        if name in UPML_MODES and backend=='HIP':
-            expected, unexpected = UPML_MODES[name]
-            assert (expected is None or expected in logs['gpu']) and (unexpected is None or unexpected not in logs['gpu']), \
-                f'FAIL [{name}]: the HIP backend did not take the intended UPML update'
-        diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
-        print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
-        assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
-            ', '.join(f'{n} ({d:.1e})' for n, d in diff)
-        if name in UPML_MODES and backend=='HIP':
-            assert worst==0, f'FAIL [{name}]: the HIP UPML update is not bit-identical ({worst:.1e})'
-    else:
-        # no silent fallback to the (slow) reference backend
-        assert 'Running FDTD engine' not in logs['gpu'], \
-            f'FAIL [{name}]: engine=gpu ran without a GPU device'
-        print('  no GPU device, device backend not tested')
+    if 'gpu' in engines:
+        backend = re.search(r'Create FDTD engine \(GPU, backend: (\w+)', logs['gpu'])
+        backend = backend.group(1) if backend else None
+        if backend and backend!='reference':
+            if on_device and backend in FULL_DEVICE_BACKENDS:
+                assert ('Engine_GPU: all extensions run on the device' in logs['gpu']) and ('host fallback' not in logs['gpu']), \
+                    f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
+            if name in ('dumps_snapshot', 'multigrid_snapshot', 'dumps_snapshot_host_dft') and backend in FULL_DEVICE_BACKENDS:
+                assert 'Engine_GPU: field dumps from snapshots' in logs['gpu'], \
+                    f'FAIL [{name}]: the {backend} backend did not take field snapshots for the dumps'
+            if name=='dumps_snapshot_host_dft':
+                assert 'frequency domain dumps accumulated on the device' not in logs['gpu'], \
+                    f'FAIL [{name}]: OPENEMS_GPU_DUMPS=snapshot did not keep the sums off the device'
+            if name in ('dumps', 'sar') and backend in DEVICE_DFT_BACKENDS:
+                assert 'Engine_GPU: frequency domain dumps accumulated on the device' in logs['gpu'], \
+                    f'FAIL [{name}]: the {backend} backend did not accumulate the frequency domain dumps'
+            if name=='coeff_index32' and backend in FULL_DEVICE_BACKENDS:
+                assert 'compressed update coefficients (32 bit index)' in logs['gpu'], \
+                    f'FAIL [{name}]: the {backend} backend did not use a 32 bit coefficient set index'
+            if name=='coeff_full' and backend in FULL_DEVICE_BACKENDS:
+                assert 'compressed update coefficients' not in logs['gpu'], \
+                    f'FAIL [{name}]: the {backend} backend did not use the full coefficient arrays'
+            if name in UPML_MODES and backend=='HIP':
+                expected, unexpected = UPML_MODES[name]
+                assert (expected is None or expected in logs['gpu']) and (unexpected is None or unexpected not in logs['gpu']), \
+                    f'FAIL [{name}]: the HIP backend did not take the intended UPML update'
+            diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
+            print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
+            assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
+                ', '.join(f'{n} ({d:.1e})' for n, d in diff)
+            if name in UPML_MODES and backend=='HIP':
+                assert worst==0, f'FAIL [{name}]: the HIP UPML update is not bit-identical ({worst:.1e})'
+        else:
+            # no silent fallback to the (slow) reference backend
+            assert 'Running FDTD engine' not in logs['gpu'], \
+                f'FAIL [{name}]: engine=gpu ran without a GPU device'
+            print('  no GPU device, device backend not tested')
     print('PASS [{}]'.format(name))
 
-assert blocked_cases, 'FAIL: the CPU engine blocked in no case'
-print(f'CPU engine blocked in {len(blocked_cases)} cases: {", ".join(blocked_cases)}')
+if not only or 'cpu' in ENGINE_SETS[only]:
+    assert blocked_cases, 'FAIL: the CPU engine blocked in no case'
+    print(f'CPU engine blocked in {len(blocked_cases)} cases: {", ".join(blocked_cases)}')
 print('PASS')

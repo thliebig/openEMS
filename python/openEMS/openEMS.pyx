@@ -668,7 +668,9 @@ cdef class openEMS:
 
         * verbose (int) -- set the openEMS verbosity level 0..3
         * numThreads (int) -- set the number of threads (default 0 --> max)
-        * engine (str) -- e.g. 'gpu' for the GPU engine
+        * engine (str) -- e.g. 'gpu' for the GPU engine; without it the
+          environment variable ``OPENEMS_ENGINE``, if set (``run_testsuite.py
+          --engine`` runs a whole test suite this way), else the fastest engine
         * gpu_device (int) -- GPU device of the GPU engine, a number of the
           device list printed at verbose >= 1 (default: the best device)
         * disable_dumps (bool) -- disable all field dumps for faster simulation
@@ -693,6 +695,8 @@ cdef class openEMS:
             os.mkdir(sim_path)
         os.chdir(sim_path)
 
+        if 'engine' not in kw and os.environ.get('OPENEMS_ENGINE'):
+            kw['engine'] = os.environ['OPENEMS_ENGINE']
         self._SetLibraryArguments(kw)
 
         if Path(os.getcwd()).resolve() != Path(sim_path).resolve():

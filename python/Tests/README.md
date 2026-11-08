@@ -28,6 +28,7 @@ run.
 |---|---|
 | `--unittests` | also run the `test_*.py` unit tests, before the simulations |
 | `--only-unittests` | run only those |
+| `--engine=<e>` | run with this engine, e.g. `cpu`, `gpu`, `basic` (default: the fastest); tests that choose their engines keep them |
 | `--keep` | keep the simulation files of passed tests too |
 | `--timeout=<s>` | kill a test running longer than this (default 1800, `0` disables) |
 | `-v`, `--verbose` | stream the test output instead of showing it on failure only |
@@ -117,12 +118,13 @@ tolerance when you first run them on Windows or macOS.
 
 ## Engines
 
-The Octave suite can sweep a test over all four FDTD engines; this one cannot,
-because every script here passes its own options to `FDTD.Run` and the
-`openEMS` extension type cannot be patched from the outside. Instead
+`--engine=<e>` runs every test with that engine: the runner sets
+`OPENEMS_ENGINE`, which `FDTD.Run` takes when a script names no engine. Unlike
+the Octave suite there is no sweep over all engines in one run;
 `Engine_Compare.py` runs its own small cases with every engine (`basic`,
 `gpu-reference`, `gpu` if there is a GPU, `cpu` flat and with temporal blocking,
 `multithreaded` on cylindrical meshes) and compares all probes and field dumps
 with the basic engine: bit-identical where the arithmetic is the same, within
-1e-4 of the peak value where it is not. Its docstring lists the cases and what
-each must show; `CPU_CellModel.py` checks the CPU engine's cell model on top.
+1e-4 of the peak value where it is not. With `--engine` it compares only that
+engine with basic (nothing for `--engine=basic`). Its docstring lists the cases
+and what each must show; `CPU_CellModel.py` checks the CPU engine's cell model on top.
