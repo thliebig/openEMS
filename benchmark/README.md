@@ -29,7 +29,7 @@ probes of every run next to it. Other binaries: `--openems path/to/openEMS`.
 | `--threads 1,4,8` | the physical cores | performance cores only on a hybrid CPU |
 | `--gpu-device N` | the best device | |
 | `--duration T` | 3 | seconds of time-stepping per run |
-| `--variant NAME:VAR=VALUE,…` | | run every point once more with these environment variables, see below |
+| `--variant NAME:VAR=VALUE,…` | | run every point once more with these environment variables or openEMS options, see below |
 | `--repeat N` | 1, with two binaries or variants 3 | timed runs per point |
 | `--workdir DIR`, `-o FILE` | `./bench-<date>-<time>/`, `<workdir>/result.json` | |
 | `--scratch DIR` | `/dev/shm` if there is one, else the workdir | where openEMS runs and writes its dumps |
@@ -95,6 +95,17 @@ compare every variant with the first:
 ```bash
 python3 benchmark/bench.py run --engine cpu --threads 4,8 \
     --variant flat:OPENEMS_CPU_TBLOCK=0 --variant blocked:
+```
+
+An item that starts with `-` is an openEMS option instead, its value after
+`=`, e.g. `nodumps:--disable-dumps`. It replaces one that bench.py passes
+itself (`--engine`, `--numThreads`, `--gpu-device`, `-v`): openEMS takes an
+option only once, and the rows keep bench.py's engine name. So two engines
+compare row by row, interleaved and with their probes:
+
+```bash
+python3 benchmark/bench.py run --engine multithreaded \
+    --variant multithreaded: --variant cpu:--engine=cpu
 ```
 
 The runs pass `-v` to openEMS, and the rows of the `cpu` engine end with what

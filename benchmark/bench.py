@@ -336,15 +336,24 @@ def engine_note(info):
     return ', '.join(parts)
 
 
-def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, env=None, guard=None):
+def _option(arg):
+    """ the name of an openEMS option; -v, -vv and -vvv are --verbose """
+    return '--verbose' if re.match(r'-v+$', arg) else arg.split('=')[0]
+
+
+def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, env=None, guard=None, args=None):
     """ Run openEMS and stop it `duration` seconds after its time-stepping started, by the
         file ABORT in its working directory: the same time for every engine and machine.
-        With `duration` None it runs to its end. `env`: variables added to the environment
-        (a variant). `guard` is called during the time-stepping and stops the run early when
-        it returns a reason, see Scratch. """
-    cmd = [path, xml, '--engine={}'.format(engine), '--numThreads={}'.format(threads), '-v']
+        With `duration` None it runs to its end. `env`: variables added to the environment,
+        `args`: openEMS options (a variant); an option given here replaces the same one of
+        bench.py, openEMS takes an option only once. `guard` is called during the
+        time-stepping and stops the run early when it returns a reason, see Scratch. """
+    own = ['--engine={}'.format(engine), '--numThreads={}'.format(threads), '-v']
     if engine == 'gpu' and gpu_device is not None:
-        cmd.append('--gpu-device={}'.format(gpu_device))
+        own.append('--gpu-device={}'.format(gpu_device))
+    args = list(args or [])
+    given = {_option(a) for a in args}
+    cmd = [path, xml] + [a for a in own if _option(a) not in given] + args
     abort = os.path.join(rundir, 'ABORT')
     _remove(abort)   # a left-over one would stop the run at once
     done = stopped = None
@@ -353,7 +362,7 @@ def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, env=
         run_env = dict(os.environ, **(env or {}))
         # the CPU engine tries its tiles during its first seconds (OPENEMS_CPU_TRIAL), a start-up cost
         # like the setup: off unless asked for, so a run of a few seconds times the steady state
-        if engine == 'cpu' and 'OPENEMS_CPU_TRIAL' not in run_env:
+        if '--engine=cpu' in cmd and 'OPENEMS_CPU_TRIAL' not in run_env:
             run_env['OPENEMS_CPU_TRIAL'] = '0'
         p = subprocess.Popen(cmd, cwd=rundir, stdout=logf, stderr=subprocess.STDOUT, env=run_env)
         try:
@@ -420,22 +429,31 @@ def _list(text, choices, what):
 
 
 def _variants(specs):
-    """ [(name, {VAR: value})] from --variant NAME:VAR=VALUE,VAR=VALUE; [(None, {})] without """
+    """ [(name, {VAR: value}, [openEMS options])] from --variant NAME:VAR=VALUE,--OPTION,...;
+        [(None, {}, [])] without """
     if not specs:
-        return [(None, {})]
+        return [(None, {}, [])]
     out = []
     for spec in specs:
         name, _, rest = spec.partition(':')
-        env = {}
+        env, opts = {}, []
         for item in [x for x in rest.split(',') if x]:
+            if item.startswith('-'):
+                opts.append(item)
+                continue
             var, eq, value = item.partition('=')
             if not eq or not var:
-                sys.exit('bench.py: --variant {}: give VAR=VALUE pairs after the name'.format(spec))
+                sys.exit('bench.py: --variant {}: give VAR=VALUE pairs or openEMS options after the name'.format(spec))
             env[var] = value
-        if not name or name in [n for n, _ in out]:
+        if not name or name in [n for n, _, _ in out]:
             sys.exit('bench.py: --variant {}: give each variant a distinct name'.format(spec))
-        out.append((name, env))
+        out.append((name, env, opts))
     return out
+
+
+def _variant_text(info):
+    """ the environment and the openEMS options of a variant, for the headers """
+    return ' '.join(['{}={}'.format(k, v) for k, v in (info.get('env') or {}).items()] + (info.get('args') or []))
 
 
 def _dumps(text):
@@ -458,14 +476,14 @@ def setup(args):
         sys.exit('bench.py: give one distinct --label per --openems')
     # the contestants: every binary with every variant, named by the variant with one binary
     variants = _variants(args.variant)
-    contestants = []   # (label, binary label, path, variant, env)
+    contestants = []   # (label, binary label, path, variant, env, openEMS options)
     for bl, path in zip(bin_labels, paths):
-        for vname, env in variants:
+        for vname, env, opts in variants:
             if vname is None:
                 label = bl
             else:
                 label = vname if len(paths) == 1 else '{}-{}'.format(bl, vname)
-            contestants.append((label, bl, path, vname, env))
+            contestants.append((label, bl, path, vname, env, opts))
 
     machine = machine_info()
     if args.threads:
@@ -484,7 +502,7 @@ def setup(args):
 
     binaries = {}
     checked = {}   # per binary
-    for label, bl, path, vname, env in contestants:
+    for label, bl, path, vname, env, opts in contestants:
         if not os.path.isfile(path):
             sys.exit('bench.py: no openEMS binary at {}'.format(path))
         if path not in checked:
@@ -496,9 +514,9 @@ def setup(args):
             print('{}: {} (openEMS {}, CSXCAD {}){}'.format(
                 bl, path, info['version'], info['csxcad'],
                 ', GPU: ' + '; '.join(info['gpu_devices']) if info['gpu_devices'] else ''))
-        binaries[label] = dict(checked[path], variant=vname, env=env)
+        binaries[label] = dict(checked[path], variant=vname, env=env, args=opts)
         if vname is not None:
-            print('  variant {}: {}'.format(label, ' '.join('{}={}'.format(k, v) for k, v in env.items()) or 'as is'))
+            print('  variant {}: {}'.format(label, _variant_text(binaries[label]) or 'as is'))
     print('machine: {}, {} physical cores / {} logical CPUs, {} GiB RAM, {}'.format(
         machine['cpu'], machine['physical_cores'], machine['logical_cpus'], machine['ram_gib'], machine['os']))
     if machine['env']:
@@ -530,7 +548,7 @@ def cmd_run(args):
         os.makedirs(logdir, exist_ok=True)
         rundir = scratch.rundir('warmup_' + label)
         run_once(info['path'], probe_xml, rundir, 'multithreaded', threads[0], None, min(1.0, args.duration),
-                 os.path.join(logdir, 'openEMS.log'), info['env'])
+                 os.path.join(logdir, 'openEMS.log'), info['env'], args=info['args'])
         scratch.remove(rundir)
 
     # all points first, for the progress count
@@ -572,9 +590,10 @@ def cmd_run(args):
                     count += 1
                     rundir = scratch.rundir('{}_{}'.format(os.path.basename(pt['dir']), label))
                     try:
-                        r = run_once(binaries[label]['path'], xml, rundir, engine, nt, args.gpu_device, args.duration,
-                                     os.path.join(pt['dir'], 'openEMS_{}.log'.format(rep)), binaries[label]['env'],
-                                     scratch.guard(rundir))
+                        info = binaries[label]
+                        r = run_once(info['path'], xml, rundir, engine, nt, args.gpu_device, args.duration,
+                                     os.path.join(pt['dir'], 'openEMS_{}.log'.format(rep)), info['env'],
+                                     scratch.guard(rundir), info['args'])
                         if 'error' not in r:
                             if rep == 0:
                                 pt['probes'] = read_probes(rundir)
@@ -643,8 +662,8 @@ def _with_dumps(*results):
 
 def print_table(result, label):
     info = result['binaries'][label]
-    env = ' '.join('{}={}'.format(k, v) for k, v in (info.get('env') or {}).items())
-    print('{}: openEMS {} ({}){}'.format(label, info['version'], info['path'], ', ' + env if env else ''))
+    variant = _variant_text(info)
+    print('{}: openEMS {} ({}){}'.format(label, info['version'], info['path'], ', ' + variant if variant else ''))
     dumps = _with_dumps(result)
     print('{:14s} {:4s} {}{:14s} {:>4s} {:>7s} {:>9s} {:>9s} {:>6s} {:>8s} {:>8s}{}'.format(
         'case', 'size', 'dumps   ' if dumps else '', 'engine', 'thr', 'MCells', 'timesteps', 'MC/s', 'spread',
@@ -704,10 +723,10 @@ def print_compare(side_a, side_b):
     print('compare {} (A) with {} (B)'.format(la, lb))
     for tag, r, l in (('A', ra, la), ('B', rb, lb)):
         m, b = r['machine'], r['binaries'][l]
-        env = ' '.join('{}={}'.format(k, v) for k, v in (b.get('env') or {}).items())
+        variant = _variant_text(b)
         print('  {}: openEMS {}, {}, {} cores, {}, {}{}'.format(tag, b['version'], m['cpu'],
                                                               m['physical_cores'], m['os'], r['date'],
-                                                              ', ' + env if env else ''))
+                                                              ', ' + variant if variant else ''))
     if _machine_key(ra) != _machine_key(rb) or ra['machine']['env'] != rb['machine']['env']:
         print('  different machines (or environment): the ratio is the hardware, not only the code')
     elif ra is not rb:
@@ -823,7 +842,8 @@ def cmd_verify(args):
                         row = {'case': name, 'size': size, 'dumps': dump, 'label': label, 'engine': engine}
                         try:
                             r = run_once(info['path'], xml, rundir, engine, threads[0], args.gpu_device, None,
-                                         os.path.join(logdir, 'openEMS.log'), info['env'], scratch.guard(rundir))
+                                         os.path.join(logdir, 'openEMS.log'), info['env'], scratch.guard(rundir),
+                                         info['args'])
                             if 'error' in r:
                                 row['error'] = r['error']
                             else:
@@ -880,9 +900,11 @@ def main(argv=None):
     common.add_argument('--openems', action='append', metavar='PATH',
                         help='openEMS binary, twice for an interleaved A/B comparison (default: openEMS in PATH)')
     common.add_argument('--label', action='append', help='name of each binary (default: A, B)')
-    common.add_argument('--variant', action='append', metavar='NAME:VAR=VALUE[,VAR=VALUE]',
-                        help='run every point once more with these environment variables, e.g. '
-                             'flat:OPENEMS_CPU_TBLOCK=0; several, interleaved like binaries; "NAME:" runs as is')
+    common.add_argument('--variant', action='append', metavar='NAME:VAR=VALUE|--OPTION[,...]',
+                        help='run every point once more with these environment variables and openEMS options, '
+                             'e.g. flat:OPENEMS_CPU_TBLOCK=0 or nodumps:--disable-dumps; an option replaces the '
+                             'same one of bench.py (--engine, --numThreads, --gpu-device, -v); several, '
+                             'interleaved like binaries; "NAME:" runs as is')
     common.add_argument('--cases', help='comma separated, default: all of ' + ', '.join(cases.CASES))
     common.add_argument('--engine', help='comma separated of {}, default: multithreaded, and gpu with a device'.format(
         ', '.join(ENGINES)))
