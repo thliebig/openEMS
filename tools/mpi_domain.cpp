@@ -47,6 +47,8 @@ MPI_Domain::MPI_Domain()
 	m_Initialized = false;
 	m_GlobalCells = 0;
 	m_MeshOp = NULL;
+	m_HaloPack = 0;
+	m_HaloComm = 0;
 	for (int n=0; n<3; ++n)
 	{
 		m_SplitRequest[n] = 0;
@@ -407,6 +409,18 @@ void MPI_Domain::GatherBlocks(const float* local, const unsigned int lsize[3], c
 	UNUSED(ncomp);
 	UNUSED(elem);
 #endif
+}
+
+void MPI_Domain::ShowHaloTime(double runTime) const
+{
+	if (!Enabled())
+		return;
+	double pack = AllreduceSum(m_HaloPack)/m_Size;
+	double comm = AllreduceSum(m_HaloComm)/m_Size;
+	double worst = AllreduceMax(m_HaloPack+m_HaloComm);
+	if ((m_Rank==0) && (runTime>0))
+		cout << "MPI halo exchange: " << pack+comm << " s per rank on average (copy " << pack << " s, communication "
+			 << comm << " s), at most " << worst << " s: " << 100*(pack+comm)/runTime << " % of " << runTime << " s" << endl;
 }
 
 std::string MPI_Domain::RankFileName(const std::string& name) const

@@ -121,6 +121,11 @@ public:
 	bool AllreduceOr(bool val) const;
 	void Barrier() const;
 
+	//! The time of the halo exchange: copying the planes (\a pack) and the communication, see Engine_Ext_MPI
+	void AddHaloTime(double pack, double comm) {m_HaloPack+=pack; m_HaloComm+=comm;}
+	//! Rank 0 prints the halo exchange time of all ranks against \a runTime (collective)
+	void ShowHaloTime(double runTime) const;
+
 	//! Exchange \a count floats with the neighbours in direction \a n: send \a send to rank \a to, receive \a recv from rank \a from (-1: no partner)
 	void SendRecv(const float* send, int to, float* recv, int from, int count, int tag) const;
 
@@ -131,6 +136,8 @@ protected:
 
 	std::vector<std::vector<double> > m_UnsplitBoxes;
 	const Operator_Base* m_MeshOp;
+	double m_HaloPack;
+	double m_HaloComm;
 	int m_SplitRequest[3];   //!< requested blocks per direction, 0 for automatic
 	int m_Splits[3];         //!< blocks per direction
 	int m_Coord[3];          //!< the block position of this rank

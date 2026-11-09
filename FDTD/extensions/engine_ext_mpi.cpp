@@ -20,6 +20,8 @@
 #include "engine_extension_dispatcher.h"
 #include "tools/mpi_domain.h"
 
+#include <chrono>
+
 Engine_Ext_MPI::Engine_Ext_MPI(Operator_Ext_MPI* op_ext) : Engine_Extension(op_ext)
 {
 	m_Op_Ext_MPI = op_ext;
@@ -89,6 +91,8 @@ void Engine_Ext_MPI::UnpackPlane(EngType* eng, bool voltages, int n, unsigned in
 template <typename EngType>
 void Engine_Ext_MPI::ExchangeImpl(EngType* eng, bool voltages)
 {
+	typedef std::chrono::steady_clock clock;
+	clock::duration pack(0), comm(0);
 	const unsigned int* numLines = m_Op_Ext_MPI->m_numLines;
 	for (int n=0; n<3; ++n)
 	{
@@ -101,12 +105,18 @@ void Engine_Ext_MPI::ExchangeImpl(EngType* eng, bool voltages)
 			continue;
 		unsigned int sendPos = voltages ? numLines[n]-2 : 1;
 		unsigned int recvPos = voltages ? 1 : numLines[n]-2;
+		clock::time_point t0 = clock::now();
 		if (to>=0)
 			PackPlane(eng, voltages, n, sendPos, m_SendBuf[n].data());
+		clock::time_point t1 = clock::now();
 		g_mpi.SendRecv(m_SendBuf[n].data(), to, m_RecvBuf[n].data(), from, (int)m_SendBuf[n].size(), (voltages ? 100 : 200) + n);
+		clock::time_point t2 = clock::now();
 		if (from>=0)
 			UnpackPlane(eng, voltages, n, recvPos, m_RecvBuf[n].data());
+		pack += (t1-t0) + (clock::now()-t2);
+		comm += t2-t1;
 	}
+	g_mpi.AddHaloTime(std::chrono::duration<double>(pack).count(), std::chrono::duration<double>(comm).count());
 }
 
 void Engine_Ext_MPI::Apply2Voltages()

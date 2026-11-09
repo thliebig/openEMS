@@ -1796,6 +1796,7 @@ void openEMS::RunFDTD()
 
 	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << numCells << " cells : " << t_diff << " sec" << endl;
 	cout << "Speed: " << numCells*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff*1e-6 << " MCells/s " << endl;
+	g_mpi.ShowHaloTime(t_diff);
 
 	if (m_DumpStats)
 		DumpStatistics(OPENEMS_STAT_FILE, t_diff);
