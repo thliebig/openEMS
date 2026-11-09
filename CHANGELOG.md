@@ -31,6 +31,11 @@ to what a user notices, in a few lines; the details belong in the commit.
 - A DC-free Gaussian pulse, `SetGaussExcite(f0, fc, dc_free=True)` (Matlab
   `'DCFree',1`): it leaves no static charge behind, e.g. in a structure
   closed by PEC.
+- Conductor loss and surface roughness of 3D metal bodies, with the CSXCAD
+  `LossyMetal` property (`AddLossyMetal`): the faces carry the surface
+  impedance of the conductor, optionally with the gradient roughness model,
+  while the inside stays PEC; the skin depth needs no mesh. Bodies thinner
+  than the mesh become conducting sheets. Runs on all engines.
 
 ### Changed
 
