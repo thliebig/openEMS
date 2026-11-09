@@ -18,6 +18,7 @@
 #ifndef ENGINE_EXT_MPI_H
 #define ENGINE_EXT_MPI_H
 
+#include <memory>
 #include <vector>
 
 #include "engine_extension.h"
@@ -28,6 +29,7 @@
 #define ENG_EXT_PRIO_MPI -1e7
 
 class Operator_Ext_MPI;
+class HaloThreads;
 
 //! Copies the shared planes to the neighbour ranks after every half step (see MPI_Domain)
 /*!
@@ -49,14 +51,20 @@ protected:
 	std::vector<float> m_SendBuf[3];
 	std::vector<float> m_RecvBuf[3];
 
+	//! Threads that copy the planes with the calling engine thread: the other engine threads wait meanwhile
+	std::unique_ptr<HaloThreads> m_Threads;
+
 	template <typename EngType>
 	void ExchangeImpl(EngType* eng, bool voltages);
 
-	//! Copy the two tangential components of the plane \a pos (direction \a n) to/from \a buf
+	//! Copy the two tangential components of the rows [\a r0, \a r1) of the plane \a pos (direction \a n) to/from \a buf
 	template <typename EngType>
-	void PackPlane(EngType* eng, bool voltages, int n, unsigned int pos, float* buf) const;
+	void PackPlane(EngType* eng, bool voltages, int n, unsigned int pos, float* buf, unsigned int r0, unsigned int r1) const;
 	template <typename EngType>
-	void UnpackPlane(EngType* eng, bool voltages, int n, unsigned int pos, const float* buf) const;
+	void UnpackPlane(EngType* eng, bool voltages, int n, unsigned int pos, const float* buf, unsigned int r0, unsigned int r1) const;
+	//! Copy the plane on the threads (pack or unpack)
+	template <typename EngType>
+	void CopyPlane(EngType* eng, bool voltages, bool pack, int n, unsigned int pos, float* buf);
 };
 
 #endif // ENGINE_EXT_MPI_H

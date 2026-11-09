@@ -20,12 +20,89 @@
 #include "engine_extension_dispatcher.h"
 #include "tools/mpi_domain.h"
 
+#include <algorithm>
 #include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <thread>
+
+#include "tools/useful.h"
+
+//! A fixed set of threads that run fn(t) for t in [0, n) with the caller (t=0), see Engine_Ext_MPI
+class HaloThreads
+{
+public:
+	explicit HaloThreads(size_t threads)
+	{
+		for (size_t id=1; id<threads; ++id)
+			m_Workers.push_back(std::thread(&HaloThreads::Work, this, id));
+	}
+	~HaloThreads()
+	{
+		{
+			std::lock_guard<std::mutex> lock(m_Mutex);
+			m_Quit = true;
+			++m_Generation;
+		}
+		m_Start.notify_all();
+		for (size_t i=0; i<m_Workers.size(); ++i)
+			m_Workers[i].join();
+	}
+	size_t Size() const {return m_Workers.size()+1;}
+
+	void Run(size_t n, const std::function<void(size_t)>& fn)
+	{
+		std::unique_lock<std::mutex> lock(m_Mutex);
+		m_Fn = &fn;
+		m_Count = n;
+		m_Pending = n-1;
+		++m_Generation;
+		m_Start.notify_all();
+		lock.unlock();
+		fn(0);
+		lock.lock();
+		m_Done.wait(lock, [this] {return m_Pending==0;});
+		m_Fn = NULL;
+	}
+
+protected:
+	void Work(size_t id)
+	{
+		size_t generation = 0;
+		std::unique_lock<std::mutex> lock(m_Mutex);
+		while (true)
+		{
+			m_Start.wait(lock, [&] {return m_Generation!=generation;});
+			generation = m_Generation;
+			if (m_Quit)
+				return;
+			if (id>=m_Count)
+				continue;
+			const std::function<void(size_t)>* fn = m_Fn;
+			lock.unlock();
+			(*fn)(id);
+			lock.lock();
+			if (--m_Pending==0)
+				m_Done.notify_one();
+		}
+	}
+
+	std::vector<std::thread> m_Workers;
+	std::mutex m_Mutex;
+	std::condition_variable m_Start, m_Done;
+	const std::function<void(size_t)>* m_Fn = NULL;
+	size_t m_Count = 0;
+	size_t m_Pending = 0;
+	size_t m_Generation = 0;
+	bool m_Quit = false;
+};
 
 Engine_Ext_MPI::Engine_Ext_MPI(Operator_Ext_MPI* op_ext) : Engine_Extension(op_ext)
 {
 	m_Op_Ext_MPI = op_ext;
 	SetPriority(ENG_EXT_PRIO_MPI);
+	m_Threads.reset(new HaloThreads(std::max(1u, AvailableThreads())));
 	for (int n=0; n<3; ++n)
 	{
 		size_t size = 2 * (size_t)op_ext->m_numLines[(n+1)%3] * op_ext->m_numLines[(n+2)%3];
@@ -39,15 +116,15 @@ Engine_Ext_MPI::~Engine_Ext_MPI()
 }
 
 template <typename EngType>
-void Engine_Ext_MPI::PackPlane(EngType* eng, bool voltages, int n, unsigned int pos, float* buf) const
+void Engine_Ext_MPI::PackPlane(EngType* eng, bool voltages, int n, unsigned int pos, float* buf, unsigned int r0, unsigned int r1) const
 {
 	const unsigned int* numLines = m_Op_Ext_MPI->m_numLines;
 	int nP  = (n+1)%3;
 	int nPP = (n+2)%3;
 	unsigned int p[3];
 	p[n] = pos;
-	size_t i = 0;
-	for (p[nP]=0; p[nP]<numLines[nP]; ++p[nP])
+	size_t i = 2*(size_t)r0*numLines[nPP];
+	for (p[nP]=r0; p[nP]<r1; ++p[nP])
 		for (p[nPP]=0; p[nPP]<numLines[nPP]; ++p[nPP])
 		{
 			if (voltages)
@@ -64,15 +141,15 @@ void Engine_Ext_MPI::PackPlane(EngType* eng, bool voltages, int n, unsigned int 
 }
 
 template <typename EngType>
-void Engine_Ext_MPI::UnpackPlane(EngType* eng, bool voltages, int n, unsigned int pos, const float* buf) const
+void Engine_Ext_MPI::UnpackPlane(EngType* eng, bool voltages, int n, unsigned int pos, const float* buf, unsigned int r0, unsigned int r1) const
 {
 	const unsigned int* numLines = m_Op_Ext_MPI->m_numLines;
 	int nP  = (n+1)%3;
 	int nPP = (n+2)%3;
 	unsigned int p[3];
 	p[n] = pos;
-	size_t i = 0;
-	for (p[nP]=0; p[nP]<numLines[nP]; ++p[nP])
+	size_t i = 2*(size_t)r0*numLines[nPP];
+	for (p[nP]=r0; p[nP]<r1; ++p[nP])
 		for (p[nPP]=0; p[nPP]<numLines[nPP]; ++p[nPP])
 		{
 			if (voltages)
@@ -86,6 +163,27 @@ void Engine_Ext_MPI::UnpackPlane(EngType* eng, bool voltages, int n, unsigned in
 				eng->EngType::SetCurr(nPP, p[0], p[1], p[2], buf[i++]);
 			}
 		}
+}
+
+template <typename EngType>
+void Engine_Ext_MPI::CopyPlane(EngType* eng, bool voltages, bool pack, int n, unsigned int pos, float* buf)
+{
+	const unsigned int rows = m_Op_Ext_MPI->m_numLines[(n+1)%3];
+	const size_t values = m_SendBuf[n].size();
+	// a thread per 16k values at most: below that, waking threads costs more than it saves
+	const size_t threads = std::min<size_t>(std::min<size_t>(m_Threads->Size(), values/16384+1), rows);
+	auto copy = [&](size_t t)
+	{
+		unsigned int r0 = rows*t/threads, r1 = rows*(t+1)/threads;
+		if (pack)
+			PackPlane(eng, voltages, n, pos, buf, r0, r1);
+		else
+			UnpackPlane(eng, voltages, n, pos, buf, r0, r1);
+	};
+	if (threads<=1)
+		copy(0);
+	else
+		m_Threads->Run(threads, copy);
 }
 
 template <typename EngType>
@@ -107,12 +205,12 @@ void Engine_Ext_MPI::ExchangeImpl(EngType* eng, bool voltages)
 		unsigned int recvPos = voltages ? 1 : numLines[n]-2;
 		clock::time_point t0 = clock::now();
 		if (to>=0)
-			PackPlane(eng, voltages, n, sendPos, m_SendBuf[n].data());
+			CopyPlane(eng, voltages, true, n, sendPos, m_SendBuf[n].data());
 		clock::time_point t1 = clock::now();
 		g_mpi.SendRecv(m_SendBuf[n].data(), to, m_RecvBuf[n].data(), from, (int)m_SendBuf[n].size(), (voltages ? 100 : 200) + n);
 		clock::time_point t2 = clock::now();
 		if (from>=0)
-			UnpackPlane(eng, voltages, n, recvPos, m_RecvBuf[n].data());
+			CopyPlane(eng, voltages, false, n, recvPos, m_RecvBuf[n].data());
 		pack += (t1-t0) + (clock::now()-t2);
 		comm += t2-t1;
 	}
