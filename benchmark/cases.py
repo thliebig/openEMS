@@ -28,6 +28,9 @@ stops early on the end criteria (an end criteria of 0 in the XML means the
 default of 1e-6), and the probes carry a signal over the whole run. A sinus
 only stores two periods, whatever the number of timesteps. With a sinus
 openEMS adds its steady-state detection to every case.
+
+Each case can also run with a field dump added, see `DUMPS`: the dumps are
+part of the cases, a change of them bumps `CASES_VERSION` too.
 """
 
 import numpy as np
@@ -226,6 +229,66 @@ CASES = {
 }
 
 
-def write_case(name, size, xml_file):
-    """ Write case `name` at `size` to `xml_file` """
-    CASES[name](size).Write2XML(xml_file)
+# --- field dumps --------------------------------------------------------------
+#
+# Written during the time-stepping, they cost the engine the field transfer,
+# the interpolation and the file output. All are time-domain HDF5 files; a dump
+# of the full volume is not among them, already at size M it writes several GB/s.
+
+def _lines(CSX):
+    """ the mesh lines of each direction """
+    grid = CSX.GetGrid()
+    return [grid.GetLines(n) for n in range(3)]
+
+
+def _plane(FDTD, CSX):
+    """ the E-field in the plane z=0 across the whole mesh, cell interpolated, at the
+        default rate of a time-domain dump, Nyquist/4 """
+    l = _lines(CSX)
+    CSX.AddDump('Et_plane', dump_type=0, dump_mode=2, file_type=1).AddBox(
+        [l[0][0], l[1][0], 0], [l[0][-1], l[1][-1], 0])
+
+
+def _partial(FDTD, CSX):
+    """ the E-field in the central box of half the extent in each direction (an eighth of
+        the volume), not interpolated, at the default rate of a time-domain dump """
+    start, stop = [], []
+    for l in _lines(CSX):
+        start.append(l[0] + 0.25 * (l[-1] - l[0]))
+        stop.append(l[0] + 0.75 * (l[-1] - l[0]))
+    CSX.AddDump('Et_partial', dump_type=0, dump_mode=0, file_type=1).AddBox(start, stop)
+
+
+def _nf2ff(FDTD, CSX):
+    """ a near-field to far-field box as CreateNF2FFBox() records it by default: the E- and
+        H-fields on the faces of a box 10 mesh lines inside the boundary, node interpolated,
+        in the time domain at the default rate. Also on the closed cases, where it has no
+        far-field meaning; on the cylindrical mesh the outer cylinder and both ends. Named
+        apart from the frequency-domain box of the antenna case """
+    l = _lines(CSX)
+    start = [l[n][10] for n in range(3)]
+    stop = [l[n][-11] for n in range(3)]
+    directions = [True] * 6
+    if CSX.GetGrid().GetMeshType() == 1:
+        start[0], start[1], stop[1] = l[0][0], l[1][0], l[1][-1]
+        directions = [False, True, False, False, True, True]
+    FDTD.CreateNF2FFBox('nf2ff_td', start=start, stop=stop, directions=directions, mirror=[0] * 6)
+
+
+DUMPS = {
+    'none':    None,
+    'plane':   _plane,
+    'partial': _partial,
+    'nf2ff':   _nf2ff,
+}
+
+
+def write_case(name, size, xml_file, dumps='none', nrts=None):
+    """ Write case `name` at `size` with the field dump `dumps` added to `xml_file`; `nrts`
+        sets a number of timesteps instead of a practically unlimited one """
+    FDTD = CASES[name](size)
+    if DUMPS[dumps]:
+        DUMPS[dumps](FDTD, FDTD.GetCSX())
+    if nrts:
+        FDTD.SetNumberOfTimeSteps(nrts)
+    FDTD.Write2XML(xml_file)
