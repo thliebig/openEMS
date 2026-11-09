@@ -38,6 +38,15 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 %   - Settings.LogFile = 'openEMS.log'
 %   - Settings.Silent  = 0
 %
+% - MPI domain decomposition (openEMS built with -DWITH_MPI=ON, unix only),
+%   on a file system shared by all hosts:
+%   - Settings.MPI.NrProc = <number of ranks>, run with MPI if > 1
+%   - Settings.MPI.Binary = '<path_to_openEMS>/openEMS' (default: openEMS on the PATH)
+%   - Settings.MPI.Launcher = 'mpiexec' (default), or e.g. 'srun'
+%   - Settings.MPI.GlobalArgs = '<arguments of the launcher>'
+%   - Settings.MPI.Hosts = {'host1','host2'} (optional, passed as -host)
+%   opts may add --mpi-split=x,y,z, the blocks per direction.
+%
 % - additional remote simulation settings
 %   Note: ssh only on unix with working ssh client or windows with putty client
 %   openEMS Linux server or Windows with cygwin necessary
@@ -56,7 +65,7 @@ function RunOpenEMS(Sim_Path, Sim_File, opts, Settings)
 %     WriteOpenEMS('/tmp/path_to_run_in/myfile.xml', FDTD, CSX)
 %     RunOpenEMS('/tmp/path_to_run_in','myfile.xml','-v')
 %
-% See also WriteOpenEMS FindFreeSSH InitCSX InitFDTD
+% See also RunOpenEMS_MPI WriteOpenEMS FindFreeSSH InitCSX InitFDTD
 %
 % openEMS matlab interface
 % -----------------------
@@ -76,8 +85,9 @@ if (nargin<4)
     Settings = [];
 end
 
-if isfield(Settings,'MPI')
-    warning('openEMS:RunOpenEMS','MPI support was removed, Settings.MPI is ignored and the multithreaded engine is used');
+if isfield(Settings,'MPI') && isfield(Settings.MPI,'NrProc') && (Settings.MPI.NrProc>1)
+    RunOpenEMS_MPI(Sim_Path, Sim_File, opts, Settings);
+    return
 end
 
 ssh_command = 'ssh';

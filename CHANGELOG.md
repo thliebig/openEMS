@@ -27,7 +27,9 @@ there are unreleased changes. It becomes the next release entry.
   list printed at `--verbose=1`.
 - **MPI domain decomposition** of Cartesian meshes, for simulations larger
   than one machine: build with `-DWITH_MPI=ON` and run
-  `mpirun -n N openEMS sim.xml`, each rank with its usual threads.
+  `mpirun -n N openEMS sim.xml`, each rank with its usual threads; from
+  Python `FDTD.Run(sim_path, mpi=N)` (`mpi_cmd`, `mpi_args` for the launcher),
+  from Matlab `Settings.MPI.NrProc` of `RunOpenEMS`.
   `--mpi-split=x,y,z` sets the blocks per direction (default: the least inner
   interface). The probes, field dumps and NF2FF boxes are written whole by
   rank 0, plane waves (TF/SF) may cross the blocks, and the results match a

@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os, sys, glob
+import os, sys, glob, shutil, subprocess
 import numpy as np
 import h5py
 cimport openEMS
@@ -586,7 +586,23 @@ cdef class openEMS:
                     continue
                 grid.AddLine(n, hint[n])
 
-    def _SetLibraryArguments(self, arguments):
+    def _RunMPI(self, sim_path, mpi, mpi_cmd, mpi_args, openEMS_bin, setup_only, arguments):
+        exe = openEMS_bin or shutil.which('openEMS')
+        if not exe:
+            raise RuntimeError('Run: MPI needs the openEMS binary, set openEMS_bin or add it to the PATH')
+        xml = os.path.join(sim_path, 'openEMS_MPI.xml')
+        self.Write2XML(xml)
+        cmd = [mpi_cmd] + list(mpi_args) + ['-n', str(int(mpi)), exe, xml]
+        cmd += ['--' + opt for opt in self._ArgumentList(arguments)]
+        if setup_only:
+            cmd.append('--no-simulation')
+        EC = subprocess.call(cmd, cwd=sim_path)
+        if EC not in (0, 1 if setup_only else 0):
+            print('Run: MPI run failed, exit status: {}'.format(EC))
+        return EC
+
+    def _ArgumentList(self, arguments):
+        """ The command-line options of the keyword arguments, without the leading dashes """
         allOptions = []
         integerOptions = ["verbose", "numthreads", "gpu-device"]
 
@@ -614,8 +630,11 @@ cdef class openEMS:
                 # integer and string options are explicit
                 opt = "%s=%s" % (key, val)
 
-            allOptions.append(opt.encode("UTF-8"))
+            allOptions.append(opt)
+        return allOptions
 
+    def _SetLibraryArguments(self, arguments):
+        allOptions = [opt.encode("UTF-8") for opt in self._ArgumentList(arguments)]
         cdef vector[string] allOptionsBuffer = allOptions
         self.thisptr.SetLibraryArguments(allOptionsBuffer)
 
@@ -684,7 +703,23 @@ cdef class openEMS:
           for debugging
         * nativeFieldDumps (bool) - dump all fields using the native field
           components
+        * mpi_split (str) - MPI blocks per direction, e.g. '2,2,1'
+
+        MPI domain decomposition (openEMS built with -DWITH_MPI=ON): with
+        ``mpi=N`` (N>1) the setup is written to `openEMS_MPI.xml` in sim_path
+        and run by the openEMS binary on N ranks, with the options above:
+
+        * mpi (int) -- the number of ranks
+        * mpi_cmd (str) -- the MPI launcher (default 'mpiexec'), e.g. 'srun'
+        * mpi_args (list) -- arguments of the launcher, e.g. ['--mpi=pmi2']
+        * openEMS_bin (str) -- the openEMS binary (default: openEMS on the PATH)
+
+        It returns the exit status of the launcher.
         """
+        mpi = kw.pop('mpi', 0)
+        mpi_cmd = kw.pop('mpi_cmd', 'mpiexec')
+        mpi_args = kw.pop('mpi_args', [])
+        openEMS_bin = kw.pop('openEMS_bin', None)
         # a relative sim_path would be resolved against itself after the chdir below
         sim_path = os.path.abspath(sim_path)
         if cleanup and os.path.exists(sim_path):
@@ -692,6 +727,9 @@ cdef class openEMS:
         if not os.path.exists(sim_path):
             os.mkdir(sim_path)
         os.chdir(sim_path)
+
+        if mpi and mpi>1:
+            return self._RunMPI(sim_path, mpi, mpi_cmd, mpi_args, openEMS_bin, setup_only, kw)
 
         self._SetLibraryArguments(kw)
 
