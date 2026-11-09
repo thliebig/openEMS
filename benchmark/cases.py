@@ -28,6 +28,9 @@ stops early on the end criteria (an end criteria of 0 in the XML means the
 default of 1e-6), and the probes carry a signal over the whole run. A sinus
 only stores two periods, whatever the number of timesteps. With a sinus
 openEMS adds its steady-state detection to every case.
+
+Each case can also run with a field dump added, see `DUMPS`: the dumps are
+part of the cases, a change of them bumps `CASES_VERSION` too.
 """
 
 import numpy as np
@@ -36,7 +39,7 @@ from CSXCAD import ContinuousStructure
 from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from openEMS import openEMS
 
-CASES_VERSION = 3
+CASES_VERSION = 4
 
 SIZES = ('XS', 'S', 'M', 'L')
 DEFAULT_SIZES = ('S', 'M')
@@ -65,9 +68,11 @@ def _setup(bc, **kw):
 
 
 def _uniform(CSX, size):
-    """ a cube of 1 mm cells centred at the origin, returns its half width """
+    """ a cube of 1 mm cells around the origin, returns its half width. The lines
+        are integers, so the dipole and the probes sit on the mesh: with an even
+        number of lines the cube is half a cell off centre """
     n = LINES[size]
-    lines = np.arange(n) - (n - 1) / 2
+    lines = np.arange(n) - n // 2
     mesh = CSX.GetGrid()
     for d in 'xyz':
         mesh.AddLine(d, lines)
@@ -77,8 +82,8 @@ def _uniform(CSX, size):
 def _dipole(CSX):
     """ a short z-directed soft source at the origin with field probes two cells away """
     CSX.AddExcitation('dipole', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -1], [0, 0, 1])
-    CSX.AddProbe('et', p_type=2).AddPoint([2, 1, 0])
-    CSX.AddProbe('ht', p_type=3).AddPoint([-1, 2, 1])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([2, 1, 0])
+    CSX.AddProbe('H_probe', p_type=3).AddPoint([-1, 2, 1])
 
 
 def _vacuum(size, bc):
@@ -138,7 +143,7 @@ def inhomogeneous(size):
     CSX.AddMaterial('lossy', epsilon=6, kappa=0.5).AddBox([0.2*E, -0.6*E, 0.2*E], [0.6*E, -0.2*E, 0.6*E])
     metal.AddBox([-0.7*E, -0.2*E, -0.5*E], [-0.6*E, 0.2*E, -0.2*E], priority=10)
 
-    CSX.AddProbe('et', p_type=2).AddPoint([0, 0, -h/2])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([0, 0, -h/2])
     return FDTD
 
 
@@ -194,8 +199,10 @@ def antenna(size):
 
 
 def cylindrical(size):
-    """ closed cylindrical mesh including r=0, a dielectric ring, PEC/Mur: the cylinder
-        operator and extension """
+    """ closed cylindrical mesh including r=0, a dielectric tube, PEC/Mur: the cylinder
+        operator and extension. The tube runs through both Mur ends: a first-order Mur
+        ABC loads an evanescent TM field with a negative resistance, and the ends of a
+        shorter tube reflect that field back to it, so the fields grew exponentially """
     FDTD, CSX = _setup(['PEC', 'PEC', 'PEC', 'PEC', 'MUR', 'MUR'], CoordSystem=1)
     nr, na, nz = CYL_CELLS[size]
     mesh = CSX.GetGrid()
@@ -205,10 +212,10 @@ def cylindrical(size):
     R = nr - 1
     Z = (nz - 1) / 2
 
-    CSX.AddMaterial('ring', epsilon=4).AddBox([0.4*R, -np.pi, -0.6*Z], [0.6*R, np.pi, 0.6*Z])
+    CSX.AddMaterial('tube', epsilon=4).AddBox([0.4*R, -np.pi, -Z], [0.6*R, np.pi, Z])
     CSX.AddExcitation('line', exc_type=0, exc_val=[0, 0, 1]).AddBox([3, 0, -1], [3, 0, 1])
-    CSX.AddProbe('et', p_type=2).AddPoint([5, 0.2, 0])
-    CSX.AddProbe('ht', p_type=3).AddPoint([2, -0.3, 1])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([5, 0.2, 0])
+    CSX.AddProbe('H_probe', p_type=3).AddPoint([2, -0.3, 1])
     return FDTD
 
 
@@ -222,6 +229,66 @@ CASES = {
 }
 
 
-def write_case(name, size, xml_file):
-    """ Write case `name` at `size` to `xml_file` """
-    CASES[name](size).Write2XML(xml_file)
+# --- field dumps --------------------------------------------------------------
+#
+# Written during the time-stepping, they cost the engine the field transfer,
+# the interpolation and the file output. All are time-domain HDF5 files; a dump
+# of the full volume is not among them, already at size M it writes several GB/s.
+
+def _lines(CSX):
+    """ the mesh lines of each direction """
+    grid = CSX.GetGrid()
+    return [grid.GetLines(n) for n in range(3)]
+
+
+def _plane(FDTD, CSX):
+    """ the E-field in the plane z=0 across the whole mesh, cell interpolated, at the
+        default rate of a time-domain dump, Nyquist/4 """
+    l = _lines(CSX)
+    CSX.AddDump('Et_plane', dump_type=0, dump_mode=2, file_type=1).AddBox(
+        [l[0][0], l[1][0], 0], [l[0][-1], l[1][-1], 0])
+
+
+def _partial(FDTD, CSX):
+    """ the E-field in the central box of half the extent in each direction (an eighth of
+        the volume), not interpolated, at the default rate of a time-domain dump """
+    start, stop = [], []
+    for l in _lines(CSX):
+        start.append(l[0] + 0.25 * (l[-1] - l[0]))
+        stop.append(l[0] + 0.75 * (l[-1] - l[0]))
+    CSX.AddDump('Et_partial', dump_type=0, dump_mode=0, file_type=1).AddBox(start, stop)
+
+
+def _nf2ff(FDTD, CSX):
+    """ a near-field to far-field box as CreateNF2FFBox() records it by default: the E- and
+        H-fields on the faces of a box 10 mesh lines inside the boundary, node interpolated,
+        in the time domain at the default rate. Also on the closed cases, where it has no
+        far-field meaning; on the cylindrical mesh the outer cylinder and both ends. Named
+        apart from the frequency-domain box of the antenna case """
+    l = _lines(CSX)
+    start = [l[n][10] for n in range(3)]
+    stop = [l[n][-11] for n in range(3)]
+    directions = [True] * 6
+    if CSX.GetGrid().GetMeshType() == 1:
+        start[0], start[1], stop[1] = l[0][0], l[1][0], l[1][-1]
+        directions = [False, True, False, False, True, True]
+    FDTD.CreateNF2FFBox('nf2ff_td', start=start, stop=stop, directions=directions, mirror=[0] * 6)
+
+
+DUMPS = {
+    'none':    None,
+    'plane':   _plane,
+    'partial': _partial,
+    'nf2ff':   _nf2ff,
+}
+
+
+def write_case(name, size, xml_file, dumps='none', nrts=None):
+    """ Write case `name` at `size` with the field dump `dumps` added to `xml_file`; `nrts`
+        sets a number of timesteps instead of a practically unlimited one """
+    FDTD = CASES[name](size)
+    if DUMPS[dumps]:
+        DUMPS[dumps](FDTD, FDTD.GetCSX())
+    if nrts:
+        FDTD.SetNumberOfTimeSteps(nrts)
+    FDTD.Write2XML(xml_file)
