@@ -36,6 +36,11 @@ physical_constants;
 limit_beta     = 0.01;   % 1% on the propagation constant
 limit_profile  = 0.01;   % 1% on the radial voltage distribution
 limit_symmetry = 1e-9;   % the rotational symmetry is exact, not approximate
+if ~isempty(strfind(opt.openEMS_opts, '--engine=cpu'))
+    % the CPU engine factorises its coefficients into per-line mesh factors, rounded in single
+    % precision per alpha line: symmetric to the rounding
+    limit_symmetry = 1e-6;
+end
 
 % geometry, in mm
 unit        = 1e-3;

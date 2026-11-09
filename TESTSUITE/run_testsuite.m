@@ -15,10 +15,11 @@
 %
 % options:
 %
-%   --engine=<e>    run with this engine, e.g. --engine=basic. By default
-%                   openEMS picks the fastest engine it has; comparing the
-%                   engines is the job of enginetests/, not of every test.
-%   --all-engines   run every simulating test with every engine (slow)
+%   --engine=<e>    run with this engine, e.g. --engine=cpu or --engine=gpu.
+%                   By default openEMS picks the fastest engine it has;
+%                   comparing the engines is the job of enginetests/, not of
+%                   every test.
+%   --all-engines   run every simulating test with every CPU engine (slow)
 %   --keep          keep the simulation folder of passed tests too
 %   --list          list the tests without running them
 %   <name>          run only the tests whose group/name contains <name>
@@ -65,8 +66,10 @@ ts_filter  = {};
 % groups that do their own engine handling and are never swept over engines
 ts_engine_independent = {'unittests', 'enginetests'};
 
-% all known engines, in the order the engine sweep uses them
-ts_all_engines = {'--engine=basic', '--engine=multithreaded'};
+% the engines of the sweep (--all-engines), in its order: those of the CPU
+ts_all_engines = {'--engine=basic', '--engine=multithreaded', '--engine=cpu'};
+% all known engines: the GPU ones too, which need a GPU (gpu) or are slow (gpu-reference)
+ts_known_engines = [ts_all_engines, {'--engine=sse', '--engine=sse-compressed', '--engine=fastest', '--engine=gpu', '--engine=gpu-reference'}];
 
 % Only "octave run_testsuite.m [options]" puts this script's options into
 % argv(); in a session argv() holds Octave's own command line instead (--gui and
@@ -87,11 +90,10 @@ end
 for ts_n = 1:numel(ts_args)
     ts_arg = ts_args{ts_n};
     if strncmp(ts_arg, '--engine=', 9)
-        % openEMS silently falls back to its default on an unknown engine
-        % name, so a typo here would quietly test something else
-        if ~any(strcmp(ts_arg, ts_all_engines)) && ~strcmp(ts_arg, '--engine=fastest')
+        % a typo would only fail inside every test
+        if ~any(strcmp(ts_arg, ts_known_engines))
             error('openEMS:TESTSUITE', 'unknown engine: %s\n  known: %s', ...
-                  ts_arg(10:end), strjoin(strrep(ts_all_engines,'--engine=',''), ', '));
+                  ts_arg(10:end), strjoin(strrep(ts_known_engines,'--engine=',''), ', '));
         end
         ts_engines = {ts_arg};
     elseif strcmp(ts_arg, '--all-engines')
