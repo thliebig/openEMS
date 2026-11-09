@@ -78,7 +78,22 @@ public:
 	virtual bool NeedPermittivity() const;
 	virtual bool NeedPermeability() const;
 
+	//! MPI: snap and sample the dump on \a mesh, the whole mesh, before DefineStartStopCoord(); rank 0 writes the whole dump
+	void SetMPIMesh(const Operator_Base* mesh) {m_MeshOp=mesh;}
+
 protected:
+	//! MPI: the whole mesh (see SetMPIMesh()), NULL without
+	const Operator_Base* m_MeshOp;
+	//! the lines of the dump file and the offset of this rank's lines (numLines) in them, see CalcMeshPos()
+	unsigned int m_FileNumLines[3];
+	unsigned int m_FileOffset[3];
+	//! MPI: this rank dumps no node
+	bool LocalEmpty() const {return (numLines[0]==0) || (numLines[1]==0) || (numLines[2]==0);}
+	//! MPI: whether this rank writes the file (rank 0, or always without MPI)
+	bool WritesFile() const;
+	//! MPI: collect the \a ncomp x numLines arrays of all ranks (\a elem floats a value) to \a global (m_FileNumLines) on rank 0
+	void GatherField(const float* local, float* global, int elem) const;
+
 	DumpType m_DumpType;
 	FileType m_fileType;
 

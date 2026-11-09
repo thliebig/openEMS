@@ -72,7 +72,10 @@ void ProcessFieldsFD::InitProcess()
 	//create data structures...
 	for (size_t n = 0; n<m_FD_Samples.size(); ++n)
 	{
-		ArrayLib::ArrayNIJK<std::complex<float>>* field_fd = new ArrayLib::ArrayNIJK<std::complex<float>>("FD field", numLines);
+		// MPI: a rank without nodes of the dump keeps an empty array
+		ArrayLib::ArrayNIJK<std::complex<float>>* field_fd = new ArrayLib::ArrayNIJK<std::complex<float>>();
+		if (!LocalEmpty())
+			field_fd->Init("FD field", numLines);
 		m_FD_Fields.push_back(field_fd);
 	}
 
@@ -80,7 +83,8 @@ void ProcessFieldsFD::InitProcess()
 	// in the background. Both need the node gather, so not the SAR dumps, whose dump type
 	// has none, and both are decided before the run: the engine takes the dumped nodes of
 	// every dump before the first snapshot
-	if (GetGather())
+	// MPI: neither, the sums are gathered on the main thread at the end (see DumpFDData())
+	if (!m_MeshOp && GetGather())
 	{
 		m_FieldDFT = m_Eng_Interface->CreateFieldDFT(m_Gather, m_FD_Samples.size());
 		if (m_FieldDFT<0)
@@ -175,9 +179,28 @@ void ProcessFieldsFD::PostProcess()
 
 void ProcessFieldsFD::DumpFDData()
 {
+	// MPI: the sums of all ranks to rank 0, which writes them
+	if (m_MeshOp)
+	{
+		for (size_t n = 0; n<m_FD_Fields.size(); ++n)
+		{
+			ArrayLib::ArrayNIJK<std::complex<float>>* global = NULL;
+			if (WritesFile())
+				global = new ArrayLib::ArrayNIJK<std::complex<float>>("FD field", m_FileNumLines);
+			GatherField((const float*)m_FD_Fields.at(n)->data(), global ? (float*)global->data() : NULL, 2);
+			if (global)
+			{
+				delete m_FD_Fields.at(n);
+				m_FD_Fields.at(n) = global;
+			}
+		}
+		if (!WritesFile())
+			return;
+	}
+
 	if (m_fileType==VTK_FILETYPE)
 	{
-		ArrayLib::ArrayNIJK<float> tmp_field("field", numLines);
+		ArrayLib::ArrayNIJK<float> tmp_field("field", m_FileNumLines);
 		std::complex<float>* field_fd = NULL;
 		float* field = tmp_field.data();
 		double angle=0;

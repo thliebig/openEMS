@@ -158,6 +158,10 @@ protected:
 	int m_OverSampling;
 	bool m_CellConstantMaterial;
 	Operator* FDTD_Op;
+	//! MPI: the whole mesh, for the field dumps (only the mesh lines, no coefficients)
+	Operator* m_MeshOp;
+	//! MPI: SetupProcessing() failed alike on all ranks (an MPI limitation of the setup), see main()
+	bool m_MPISetupError;
 	Engine* FDTD_Eng;
 	Engine_Ext_SteadyState* Eng_Ext_SSD; //!< non-owning observer; owned/deleted by the engine (m_Eng_exts)
 	ProcessingArray* PA;

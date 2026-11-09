@@ -80,7 +80,8 @@ void ProcessFieldsTD::InitProcess()
 
 	// before the run: the engine takes the dumped nodes of every dump before the first
 	// snapshot, so this cannot be decided at the first dump
-	m_Snapshots = GetGather() && m_Eng_Interface->PrepareSnapshotGather(m_Gather);
+	// MPI: no snapshots, the field is gathered on the main thread (see Process())
+	m_Snapshots = !m_MeshOp && GetGather() && m_Eng_Interface->PrepareSnapshotGather(m_Gather);
 
 	if (m_Vtk_Dump_File)
 		m_Vtk_Dump_File->SetHeader(string("openEMS TD Field Dump -- Interpolation: ")+m_Eng_Interface->GetInterpolationTypeString());
@@ -112,6 +113,45 @@ int ProcessFieldsTD::Process()
 	if (CheckTimestep()==false) return GetNextInterval();
 
 	string filename = m_filename;
+
+	// MPI: every rank calculates its nodes, rank 0 writes the whole dump
+	if (m_MeshOp)
+	{
+		ArrayLib::ArrayNIJK<float> local;
+		if (!CalcField(local))
+		{
+			SetEnable(false);
+			cerr << "ProcessFieldsTD::Process: can't dump to file... disabled! " << endl;
+			return GetNextInterval();
+		}
+		ArrayLib::ArrayNIJK<float>* field = WritesFile() ? new ArrayLib::ArrayNIJK<float>("TD_field", m_FileNumLines) : NULL;
+		GatherField(local.data(), field ? field->data() : NULL, 1);
+		if (!field)
+			return GetNextInterval();
+		if (m_fileType==HDF5_FILETYPE)
+		{
+			const unsigned int ts = m_Eng_Interface->GetNumberOfTimesteps();
+			const float time = (float)m_Eng_Interface->GetTime(m_dualTime);
+			m_AsyncUsed = true;
+			AsyncDumps::Get().Push(this, false, [this, ts, time, field]()
+			{
+				if (!WriteHDF5(ts, time, field, NULL))
+					m_AsyncFailed = true;
+				delete field;
+			});
+			return GetNextInterval();
+		}
+		m_Vtk_Dump_File->SetTimestep(m_Eng_Interface->GetNumberOfTimesteps());
+		m_Vtk_Dump_File->ClearAllFields();
+		m_Vtk_Dump_File->AddVectorField(GetFieldNameByType(m_DumpType),*field);
+		if (!m_Vtk_Dump_File->Write())
+		{
+			SetEnable(false);
+			cerr << "ProcessFieldsTD::Process: can't dump to file... disabled! " << endl;
+		}
+		delete field;
+		return GetNextInterval();
+	}
 
 	// HDF5: written in the background, see AsyncDumps; with a snapshot of the fields also calculated there
 	if (m_fileType==HDF5_FILETYPE)

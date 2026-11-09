@@ -81,6 +81,8 @@ openEMS::openEMS()
 {
 	setlocale(LC_NUMERIC, "en_US.UTF-8");
 	FDTD_Op=NULL;
+	m_MeshOp=NULL;
+	m_MPISetupError=false;
 	FDTD_Eng=NULL;
 	Eng_Ext_SSD=NULL;
 	m_CSX=NULL;
@@ -118,6 +120,8 @@ void openEMS::FreeSimulation()
 	FDTD_Eng=0;
 	delete FDTD_Op;
 	FDTD_Op=0;
+	delete m_MeshOp;
+	m_MeshOp=0;
 	Eng_Ext_SSD=0; // non-owning observer; deleted by the engine (m_Eng_exts) in 'delete FDTD_Eng' above
 }
 
@@ -801,8 +805,18 @@ bool openEMS::SetupProcessing()
 						else
 							ProcField->SetName(db->GetName(),nb);
 
-						// MPI: every rank dumps its part of the box, to a file of its own
-						ProcField->SetFileName(g_mpi.RankFileName(ProcField->GetName()));
+						ProcField->SetFileName(ProcField->GetName());
+						// MPI: the dump of the whole mesh, every rank its part of it, rank 0 writes the file
+						if (m_MeshOp)
+						{
+							if (db->GetDumpType()>=20)
+							{
+								cerr << "openEMS::SetupProcessing: Error: the SAR dump '" << ProcField->GetName() << "' is not available with MPI" << endl;
+								m_MPISetupError = true;
+								return false;
+							}
+							ProcField->SetMPIMesh(m_MeshOp);
+						}
 						ProcField->DefineStartStopCoord(start,stop);
 						if (g_settings.showProbeDiscretization())
 							ProcField->ShowSnappedCoords();
@@ -1374,6 +1388,11 @@ int openEMS::SetupFDTD()
 				g_mpi.AddUnsplitBox(start, stop);
 			}
 		}
+		// the whole mesh for the field dumps, before the grid becomes this rank's block
+		delete m_MeshOp;
+		m_MeshOp = Operator::New(1);
+		if (!m_MeshOp->SetGeometryCSX(m_CSX))
+			return 2;
 		if (!g_mpi.Decompose(m_CSX->GetGrid(), bcSize))
 			return 5;  // the same on all ranks, see main()
 	}
@@ -1561,7 +1580,7 @@ int openEMS::SetupFDTD()
 	//setup all processing classes
 	if (SetupProcessing()==false)
 	{
-		return 2;
+		return m_MPISetupError ? 5 : 2;
 	}
 
 	// Cleanup all unused material storages...

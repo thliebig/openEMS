@@ -25,6 +25,13 @@ there are unreleased changes. It becomes the next release entry.
   several GPUs it takes a discrete one before an integrated one, then the one
   with more memory; `--gpu-device=N` (`gpu_device=N`) picks device N of the
   list printed at `--verbose=1`.
+- **MPI domain decomposition** of Cartesian meshes, for simulations larger
+  than one machine: build with `-DWITH_MPI=ON` and run
+  `mpirun -n N openEMS sim.xml`, each rank with its usual threads.
+  `--mpi-split=x,y,z` sets the blocks per direction (default: the least inner
+  interface). The probes, field dumps and NF2FF boxes are written whole by
+  rank 0 and match a serial run; the splits stay clear of the PML and of the
+  voltage, current and mode probes. Not with cylindrical meshes or SAR dumps.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
   `openEMS.compare.compare_sim_results()` does the same from Python.

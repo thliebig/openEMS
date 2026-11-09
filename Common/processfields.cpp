@@ -27,6 +27,8 @@
 #include "tools/hdf5_file_writer.h"
 #include "processfields.h"
 #include "FDTD/engine_interface_fdtd.h"
+#include "Common/operator_base.h"
+#include "tools/mpi_domain.h"
 
 using std::cerr;
 using std::endl;
@@ -41,6 +43,7 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	m_HDF5_Dump_File = NULL;
 	m_Gather = NULL;
 	m_GatherTried = false;
+	m_MeshOp = NULL;
 	SetPrecision(6);
 	m_dualTime = false;
 
@@ -50,6 +53,8 @@ ProcessFields::ProcessFields(Engine_Interface_Base* eng_if) : Processing(eng_if)
 	for (int n=0; n<3; ++n)
 	{
 		numLines[n]=0;
+		m_FileNumLines[n]=0;
+		m_FileOffset[n]=0;
 		posLines[n]=NULL;
 		discLines[n]=NULL;
 		subSample[n]=1;
@@ -147,6 +152,9 @@ void ProcessFields::InitProcess()
 
 	CalcMeshPos();
 
+	if (!WritesFile())
+		return;
+
 	if (m_fileType==VTK_FILETYPE)
 	{
 		delete m_Vtk_Dump_File;
@@ -157,7 +165,7 @@ void ProcessFields::InitProcess()
 		#else
 		double discScaling = Op->GetGridDelta();
 		#endif
-		m_Vtk_Dump_File->SetMeshLines(discLines,numLines,discScaling);
+		m_Vtk_Dump_File->SetMeshLines(discLines,m_FileNumLines,discScaling);
 		m_Vtk_Dump_File->SetNativeDump(g_settings.NativeFieldDumps());
 	}
 	if (m_fileType==HDF5_FILETYPE)
@@ -170,7 +178,7 @@ void ProcessFields::InitProcess()
 		#else
 		double discScaling = Op->GetGridDelta();
 		#endif
-		m_HDF5_Dump_File->WriteRectMesh(numLines,discLines,(int)m_Mesh_Type,discScaling);
+		m_HDF5_Dump_File->WriteRectMesh(m_FileNumLines,discLines,(int)m_Mesh_Type,discScaling);
 
 		m_HDF5_Dump_File->WriteAttribute("/", "openEMS_HDF5_version", OPENEMS_HDF5_VERSION);
 		m_HDF5_Dump_File->WriteAttribute("/", "dump_type", m_DumpType);
@@ -192,7 +200,19 @@ void ProcessFields::SetDumpMode(Engine_Interface_Base::InterpolationType mode)
 
 void ProcessFields::DefineStartStopCoord(double* dstart, double* dstop)
 {
-	Processing::DefineStartStopCoord(dstart,dstop);
+	if (m_MeshOp)
+	{
+		// MPI: as a serial run would, on the whole mesh
+		m_Dimension = m_MeshOp->SnapBox2Mesh(dstart,dstop,start,stop,m_dualMesh,false,m_SnapMethod, m_start_inside, m_stop_inside);
+		if (m_Dimension<0)
+		{
+			cerr << "ProcessFields::DefineStartStopCoord: Warning in " << m_Name << " (" << GetProcessingName() << ") : Box is outside the field domain!! Disabling" << endl;
+			Enabled = false;
+			return;
+		}
+	}
+	else
+		Processing::DefineStartStopCoord(dstart,dstop);
 
 	// normalize order of start and stop
 	for (int n=0; n<3; ++n)
@@ -239,6 +259,7 @@ void ProcessFields::SetOptResolution(double optRes, int dir)
 
 void ProcessFields::CalcMeshPos()
 {
+	const Operator_Base* mesh = m_MeshOp ? m_MeshOp : Op;
 	if ((m_SampleType==SUBSAMPLE) || (m_SampleType==NONE))
 	{
 		std::vector<unsigned int> tmp_pos;
@@ -258,7 +279,7 @@ void ProcessFields::CalcMeshPos()
 			for (unsigned int i=0; i<numLines[n]; ++i)
 			{
 				posLines[n][i] = tmp_pos.at(i);
-				discLines[n][i] = Op->GetDiscLine(n,tmp_pos.at(i),m_dualMesh);
+				discLines[n][i] = mesh->GetDiscLine(n,tmp_pos.at(i),m_dualMesh);
 			}
 		}
 	}
@@ -271,16 +292,16 @@ void ProcessFields::CalcMeshPos()
 			// construct new discLines
 			tmp_pos.clear();
 			tmp_pos.push_back(start[n]);
-			oldPos=Op->GetDiscLine(n,start[n],m_dualMesh);
+			oldPos=mesh->GetDiscLine(n,start[n],m_dualMesh);
 			if (stop[n]==0)
 				tmp_pos.push_back(stop[n]);
 			else
 				for (unsigned int i=start[n]+1; i<=stop[n]-1; ++i)
 				{
-					if ( (Op->GetDiscLine(n,i+1,m_dualMesh)-oldPos) >= optResolution[n])
+					if ( (mesh->GetDiscLine(n,i+1,m_dualMesh)-oldPos) >= optResolution[n])
 					{
 						tmp_pos.push_back(i);
-						oldPos=Op->GetDiscLine(n,i,m_dualMesh);
+						oldPos=mesh->GetDiscLine(n,i,m_dualMesh);
 					}
 				}
 			if (start[n]!=stop[n])
@@ -293,9 +314,35 @@ void ProcessFields::CalcMeshPos()
 			for (unsigned int i=0; i<numLines[n]; ++i)
 			{
 				posLines[n][i] = tmp_pos.at(i);
-				discLines[n][i] = Op->GetDiscLine(n,tmp_pos.at(i),m_dualMesh);
+				discLines[n][i] = mesh->GetDiscLine(n,tmp_pos.at(i),m_dualMesh);
 			}
 		}
+	}
+
+	for (int n=0; n<3; ++n)
+	{
+		m_FileNumLines[n] = numLines[n];
+		m_FileOffset[n] = 0;
+	}
+	if (!m_MeshOp)
+		return;
+
+	// MPI: this rank calculates the lines it owns (posLines in its own mesh), rank 0 writes them all
+	for (int n=0; n<3; ++n)
+	{
+		std::vector<unsigned int> local;
+		for (unsigned int i=0; i<m_FileNumLines[n]; ++i)
+		{
+			unsigned int l;
+			if (!g_mpi.OwnsDumpLine(n, posLines[n][i], m_dualMesh, l))
+				continue;
+			if (local.empty())
+				m_FileOffset[n] = i;
+			local.push_back(l);
+		}
+		numLines[n] = local.size();
+		for (unsigned int i=0; i<numLines[n]; ++i)
+			posLines[n][i] = local[i];
 	}
 }
 
@@ -369,10 +416,22 @@ protected:
 };
 }
 
+bool ProcessFields::WritesFile() const
+{
+	return !m_MeshOp || (g_mpi.Rank()==0);
+}
+
+void ProcessFields::GatherField(const float* local, float* global, int elem) const
+{
+	g_mpi.GatherBlocks(LocalEmpty() ? NULL : local, numLines, m_FileOffset, global, m_FileNumLines, 3, elem);
+}
+
 const Engine_Field_Gather* ProcessFields::GetGather()
 {
 	const DumpType type = FieldDumpType();
 	if ((type!=E_FIELD_DUMP) && (type!=H_FIELD_DUMP))
+		return NULL;
+	if (LocalEmpty())
 		return NULL;
 	if (!m_GatherTried)
 	{
@@ -384,6 +443,10 @@ const Engine_Field_Gather* ProcessFields::GetGather()
 
 bool ProcessFields::CalcField(ArrayLib::ArrayNIJK<FDTD_FLOAT> &field, const float* src)
 {
+	// MPI: no node of the dump on this rank, the array stays empty
+	if (LocalEmpty())
+		return true;
+
 	//init the array
 	field.Init("Field", numLines);
 

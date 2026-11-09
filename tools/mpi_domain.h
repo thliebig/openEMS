@@ -81,6 +81,22 @@ public:
 	unsigned int GetGlobalNumberOfLines(int n, unsigned int local) const {return Enabled() ? m_GlobalLines[n] : local;}
 	//! The local mesh position of the global node \a gpos, if this rank owns it (as for OwnsBox); always true without MPI
 	bool GlobalToLocal(const unsigned int gpos[3], unsigned int lpos[3]) const;
+	//! The local line of the global line \a g in direction \a n of a field dump, if this rank dumps it
+	/*!
+	  Primary mesh: the lower rank dumps the split line, it has the fields around it.
+	  Dual mesh: the upper rank dumps the cell above the split line, the lower rank
+	  has no fields on its last (ghost) line.
+	  */
+	bool OwnsDumpLine(int n, unsigned int g, bool dualMesh, unsigned int& local) const;
+
+	//! Collect the blocks of the ranks into the array \a global of rank 0
+	/*!
+	  Every rank has the block \a local of \a lsize nodes at \a offset of the whole array
+	  of \a gsize nodes, both in the N-I-J-K order of ArrayNIJK with \a ncomp components
+	  of \a elem floats (2 for a complex value). A rank may have no nodes (\a local NULL).
+	  */
+	void GatherBlocks(const float* local, const unsigned int lsize[3], const unsigned int offset[3],
+					  float* global, const unsigned int gsize[3], int ncomp, int elem) const;
 
 	//! Whether this rank owns the box \a start..\a stop (drawing units), see OwnsBox
 	enum BoxOwner {BOX_OWNED, BOX_OTHER, BOX_SPLIT};

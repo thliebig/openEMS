@@ -330,6 +330,84 @@ bool MPI_Domain::GlobalToLocal(const unsigned int gpos[3], unsigned int lpos[3])
 	return true;
 }
 
+bool MPI_Domain::OwnsDumpLine(int n, unsigned int g, bool dualMesh, unsigned int& local) const
+{
+	if (!Enabled())
+	{
+		local = g;
+		return true;
+	}
+	if (dualMesh)
+	{
+		if ((m_NeighborDown[n]>=0) && (g<m_SplitLo[n]))
+			return false;
+		if ((m_NeighborUp[n]>=0) && (g>=m_SplitHi[n]))
+			return false;
+	}
+	else
+	{
+		if ((m_NeighborDown[n]>=0) && (g<=m_SplitLo[n]))
+			return false;
+		if ((m_NeighborUp[n]>=0) && (g>m_SplitHi[n]))
+			return false;
+	}
+	local = g - m_FirstLine[n];
+	return true;
+}
+
+void MPI_Domain::GatherBlocks(const float* local, const unsigned int lsize[3], const unsigned int offset[3],
+							  float* global, const unsigned int gsize[3], int ncomp, int elem) const
+{
+#ifdef MPI_SUPPORT
+	int meta[6] = {(int)lsize[0], (int)lsize[1], (int)lsize[2], (int)offset[0], (int)offset[1], (int)offset[2]};
+	int count = ncomp*elem*(int)((size_t)lsize[0]*lsize[1]*lsize[2]);
+	std::vector<int> metas, counts, displs;
+	if (m_Rank==0)
+	{
+		metas.resize(6*m_Size);
+		counts.resize(m_Size);
+		displs.resize(m_Size);
+	}
+	MPI_Gather(meta, 6, MPI_INT, metas.data(), 6, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Gather(&count, 1, MPI_INT, counts.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+	std::vector<float> buf;
+	if (m_Rank==0)
+	{
+		int total = 0;
+		for (int r=0; r<m_Size; ++r)
+		{
+			displs[r] = total;
+			total += counts[r];
+		}
+		buf.resize(total);
+	}
+	MPI_Gatherv(local, count, MPI_FLOAT, buf.data(), counts.data(), displs.data(), MPI_FLOAT, 0, MPI_COMM_WORLD);
+	if (m_Rank!=0)
+		return;
+	for (int r=0; r<m_Size; ++r)
+	{
+		const int* m = &metas[6*r];
+		const float* src = buf.data() + displs[r];
+		for (int c=0; c<ncomp; ++c)
+			for (int i=0; i<m[0]; ++i)
+				for (int j=0; j<m[1]; ++j)
+				{
+					size_t g = (((size_t)c*gsize[0] + m[3]+i)*gsize[1] + m[4]+j)*gsize[2] + m[5];
+					std::copy(src, src + (size_t)m[2]*elem, global + g*elem);
+					src += (size_t)m[2]*elem;
+				}
+	}
+#else
+	UNUSED(local);
+	UNUSED(lsize);
+	UNUSED(offset);
+	UNUSED(global);
+	UNUSED(gsize);
+	UNUSED(ncomp);
+	UNUSED(elem);
+#endif
+}
+
 std::string MPI_Domain::RankFileName(const std::string& name) const
 {
 	if (!Enabled())

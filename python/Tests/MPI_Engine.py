@@ -12,11 +12,13 @@
  Lorentz/Debye materials and a conducting sheet, in 1D, 2D and 3D
  decompositions with both CPU engines, and stop on the energy end criteria and
  on the steady-state detection. The splits move past the voltage and current
- probes; where no split is possible, all ranks stop with an error.
+ probes; where no split is possible, all ranks stop with an error. Field dumps
+ (TD and FD, HDF5 and VTK, sub-sampled, node and cell interpolated) and a
+ NF2FF box cross the splits: rank 0 writes them whole, as a serial run.
 
  Pass criteria (per case and decomposition)
    the decomposition requested was used
-   all probe files bit-identical to the serial run
+   all probe files, field dumps and far fields bit-identical to the serial run
    no split possible past a probe: exit status != 0 and the error message
 
  Skipped (with a message) unless the openEMS binary was built with
@@ -149,6 +151,24 @@ def case_probe_long():
     return FDTD, CSX
 
 
+def case_dumps():
+    """ the patch with TD/FD field dumps across the splits and a NF2FF box """
+    FDTD, CSX = case_patch()
+    CSX.AddDump('Et_vol', dump_type=0, dump_mode=1, file_type=1, sub_sampling=[2, 2, 1]).AddBox([-15, -12, -4], [15, 12, 9])
+    CSX.AddDump('Ht_cell', dump_type=1, dump_mode=2, file_type=1, opt_resolution=[1, 1, 1]).AddBox([-20, -16, 0.8], [20, 16, 0.8])
+    CSX.AddDump('Jt', dump_type=2, dump_mode=0, file_type=1).AddBox([-20, -16, 0.8], [20, 16, 0.8])
+    CSX.AddDump('Ef', dump_type=10, dump_mode=0, file_type=1, frequency=[3e9, 4e9]).AddBox([-10, -8, -2], [10, 8, 4])
+    CSX.AddDump('Hf_cell', dump_type=11, dump_mode=2, file_type=1, frequency=[3.5e9]).AddBox([-20, 0, -8], [20, 0, 16])
+    CSX.AddDump('Et_vtk', dump_type=0, dump_mode=1, file_type=0).AddBox([-20, -16, 6], [20, 16, 6])
+    case_dumps.nf2ff = FDTD.CreateNF2FFBox(start=[-14, -11, -3], stop=[14, 11, 8], frequency=[3.5e9])
+    return FDTD, CSX
+
+
+def post_dumps(sim_path):
+    """ the far field from the NF2FF box, into sim_path """
+    case_dumps.nf2ff.CalcNF2FF(sim_path, 3.5e9, np.arange(0, 181, 15), [0, 90], read_cached=False)
+
+
 def case_probe_full():
     """ a voltage probe across the whole mesh between the PMLs in x: no split in x is possible """
     FDTD, CSX = case_patch()
@@ -189,7 +209,9 @@ cases = [(case_patch,        [(2, '2,1,1'), (2, '1,2,1'), (4, '2,2,1'), (3, '3,1
          (case_materials,    [(2, '1,1,2'), (8, '2,2,2'), (4, '0,0,0')],    None),
          (case_materials,    [(6, '1,2,3')],                                'basic'),
          (case_steady_state, [(4, '2,1,2')],                                None),
-         (case_probe_long,   [(2, '2,1,1'), (4, '2,2,1')],                  None)]
+         (case_probe_long,   [(2, '2,1,1'), (4, '2,2,1')],                  None),
+         (case_dumps,        [(2, '2,1,1'), (4, '1,2,2'), (8, '2,2,2')],    None),
+         (case_dumps,        [(4, '2,2,1')],                                'basic')]
 
 failures = []
 for case, decomps, engine in cases:
@@ -199,6 +221,9 @@ for case, decomps, engine in cases:
     ref = os.path.join(Sim_Base, name + '_serial')
     rc, out = run(exe, mpicmd, xml, ref, engine=engine)
     assert rc == 0, 'FAIL: serial run of {} failed:\n{}'.format(name, out[-2000:])
+    post = globals().get('post_' + case.__name__[5:])
+    if post:
+        post(ref)
     for n, split in decomps:
         label = '{}_n{}_{}'.format(name, n, split.replace(',', ''))
         path = os.path.join(Sim_Base, label)
@@ -206,13 +231,15 @@ for case, decomps, engine in cases:
         if rc != 0:
             failures.append(label + ': run failed:\n' + out[-2000:])
             continue
+        if post:
+            post(path)
         m = re.search(r'decomposition into (\d+)x(\d+)x(\d+) blocks', out)
         want = [int(s) for s in split.split(',')]
         if not m or any(w and int(g) != w for g, w in zip(m.groups(), want)):
             failures.append('{}: decomposition not used ({})'.format(label, m.group(0) if m else 'none'))
             continue
         diff = [(f, d) for f, d in compare_sim_results(ref, path) if d != 0]
-        print('{:28s} {}  {} probe files {}'.format(label, m.group(0),
+        print('{:28s} {}  {} probes/datasets {}'.format(label, m.group(0),
               len(compare_sim_results(ref, path)), 'bit-identical' if not diff else 'DIFFER'))
         if diff:
             failures.append('{}: differs from the serial run: {}'.format(label, diff))
