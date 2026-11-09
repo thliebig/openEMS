@@ -343,7 +343,8 @@ jobs:
           cd $GITHUB_WORKSPACE/fparser
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j`nproc` && make install
+          make -j`nproc`
+          make install
 
       - name: Build and install CSXCAD
         run: |
@@ -357,7 +358,8 @@ jobs:
           cd $GITHUB_WORKSPACE/CSXCAD
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j`nproc` && make install
+          make -j`nproc`
+          make install
 
       - name: Build and install CSXCAD Python module with --no-build-isolation
         run: |
@@ -393,7 +395,8 @@ jobs:
                        "-DCMAKE_HIP_FLAGS=--gcc-install-dir=$(dirname $(g++ -print-libgcc-file-name))" )
           fi
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt -DOPENEMS_BUILD_TESTS=ON "${hip_opts[@]}"
-          make -j`nproc` && make install
+          make -j`nproc`
+          make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
           echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
@@ -663,7 +666,8 @@ jobs:
 
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j$NCPUS && make install
+          make -j$NCPUS
+          make install
 
       - name: Build and install fparser
         run: |
@@ -671,7 +675,8 @@ jobs:
           cd $GITHUB_WORKSPACE/fparser
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j$NCPUS && make install
+          make -j$NCPUS
+          make install
 
       - name: Build and install CSXCAD
         run: |
@@ -686,7 +691,8 @@ jobs:
           cd $GITHUB_WORKSPACE/CSXCAD
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-          make -j$NCPUS && make install
+          make -j$NCPUS
+          make install
 
       - name: Build and install CSXCAD Python module with --no-build-isolation
         run: |
@@ -701,7 +707,8 @@ jobs:
           cd $GITHUB_WORKSPACE/openEMS
           mkdir build && cd build
           cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt -DOPENEMS_BUILD_TESTS=ON
-          make -j$NCPUS && make install
+          make -j$NCPUS
+          make install
 
           echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
           echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
@@ -887,7 +894,8 @@ jobs:
             cd $GITHUB_WORKSPACE/fparser
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-            make -j$NCPUS && make install
+            make -j$NCPUS
+            make install
 
             echo "Build and install CSXCAD..."
             # cmake may fail with "fatal: No names found, cannot describe anything."
@@ -900,7 +908,8 @@ jobs:
             cd $GITHUB_WORKSPACE/CSXCAD
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt
-            make -j$NCPUS && make install
+            make -j$NCPUS
+            make install
 
             echo "Build and install CSXCAD Python module with --no-build-isolation..."
             cd $GITHUB_WORKSPACE/CSXCAD/python
@@ -911,7 +920,8 @@ jobs:
             cd $GITHUB_WORKSPACE/openEMS
             mkdir build && cd build
             cmake ../ -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFPARSER_ROOT_DIR=$HOME/opt
-            make -j$NCPUS && make install
+            make -j$NCPUS
+            make install
 
             echo "addpath('~/opt/share/openEMS/matlab')" >> ~/.octaverc
             echo "addpath('~/opt/share/CSXCAD/matlab')" >> ~/.octaverc
