@@ -2199,13 +2199,18 @@ void Operator::DeleteExtension(Operator_Extension* op_ext)
 double Operator::CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const
 {
 	double average_mesh_disc[3];
-	double c0 = C0/sqrt(GetBackgroundEpsR()*GetBackgroundMueR());
 
 	//calculate average mesh deltas
 	for (int n=0;n<3;++n)
 	{
 		average_mesh_disc[n] = fabs(GetDiscLine(n,start[n])-GetDiscLine(n,stop[n]))*GetGridDelta() / (fabs(stop[n]-start[n]));
 	}
+	return CalcNumericPhaseVelocity(average_mesh_disc, propDir, freq);
+}
+
+double Operator::CalcNumericPhaseVelocity(const double average_mesh_disc[3], double propDir[3], float freq) const
+{
+	double c0 = C0/sqrt(GetBackgroundEpsR()*GetBackgroundMueR());
 
 	// if propagation is in a Cartesian direction, return analytic solution
 	for (int n=0;n<3;++n)

@@ -120,6 +120,7 @@ void openEMS::FreeSimulation()
 	FDTD_Eng=0;
 	delete FDTD_Op;
 	FDTD_Op=0;
+	g_mpi.SetMeshOperator(NULL);
 	delete m_MeshOp;
 	m_MeshOp=0;
 	Eng_Ext_SSD=0; // non-owning observer; deleted by the engine (m_Eng_exts) in 'delete FDTD_Eng' above
@@ -1393,6 +1394,7 @@ int openEMS::SetupFDTD()
 		m_MeshOp = Operator::New(1);
 		if (!m_MeshOp->SetGeometryCSX(m_CSX))
 			return 2;
+		g_mpi.SetMeshOperator(m_MeshOp);
 		if (!g_mpi.Decompose(m_CSX->GetGrid(), bcSize))
 			return 5;  // the same on all ranks, see main()
 	}

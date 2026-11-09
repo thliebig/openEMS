@@ -16,6 +16,8 @@
 */
 
 #include "operator_ext_tfsf.h"
+#include "tools/mpi_domain.h"
+#include <algorithm>
 #include "engine_ext_tfsf.h"
 #include <cmath>
 
@@ -148,11 +150,29 @@ bool Operator_Ext_TFSF::BuildExtension()
 		//make it a unit vector
 		m_PropDir[0]/=dir_norm;m_PropDir[1]/=dir_norm;m_PropDir[2]/=dir_norm;
 
-		if (m_Op->SnapBox2Mesh(box->GetStartCoord()->GetNativeCoords(), box->GetStopCoord()->GetNativeCoords(), m_Start, m_Stop)!=3)
+		// MPI: the box, its origin and phase velocity on the whole mesh, then this rank's part of it
+		const Operator_Base* mesh = g_mpi.GetMeshOperator();
+		if (!mesh)
+			mesh = m_Op;
+		unsigned int gStart[3], gStop[3];
+		if (mesh->SnapBox2Mesh(box->GetStartCoord()->GetNativeCoords(), box->GetStopCoord()->GetNativeCoords(), gStart, gStop)!=3)
 		{
 			cerr << "Operator_Ext_TFSF::BuildExtension: Warning, plane wave box dimension is invalid, skipping..." << endl;
 			SetActive(false);
 			return false;
+		}
+		unsigned int first[3], last[3];
+		for (int n=0;n<3;++n)
+		{
+			first[n] = g_mpi.GetFirstLine(n);
+			last[n] = first[n] + m_Op->GetNumberOfLines(n,true) - 1;
+			if ((gStop[n]<first[n]) || (gStart[n]>last[n]))
+			{
+				SetActive(false);   // the box is in other blocks
+				return false;
+			}
+			m_Start[n] = std::max(gStart[n],first[n]) - first[n];
+			m_Stop[n] = std::min(gStop[n],last[n]) - first[n];
 		}
 
 		m_Frequency = elec->GetFrequency();
@@ -161,7 +181,12 @@ bool Operator_Ext_TFSF::BuildExtension()
 		if (m_Frequency<=0)
 			m_PhVel=C0/ref_index;
 		else
-			m_PhVel=m_Op->CalcNumericPhaseVelocity(m_Start,m_Stop,m_PropDir,m_Frequency);
+		{
+			double average_mesh_disc[3];
+			for (int n=0;n<3;++n)
+				average_mesh_disc[n] = fabs(mesh->GetDiscLine(n,gStart[n])-mesh->GetDiscLine(n,gStop[n]))*m_Op->GetGridDelta() / (fabs(gStop[n]-gStart[n]));
+			m_PhVel=m_Op->CalcNumericPhaseVelocity(average_mesh_disc,m_PropDir,m_Frequency);
+		}
 
 		if ((m_PhVel<0) || (m_PhVel>C0/ref_index) || std::isnan(m_PhVel))
 		{
@@ -177,24 +202,20 @@ bool Operator_Ext_TFSF::BuildExtension()
 			m_numLines[n] = m_Stop[n]-m_Start[n]+1;
 			m_IncLow[n] = m_PropDir[n]>=0;
 
-			if (m_Start[n]==0)
-				m_ActiveDir[n][0]=false;
-			else
-				m_ActiveDir[n][0]=true;
-			if (m_Stop[n]==m_Op->GetNumberOfLines(n,true)-1)
-				m_ActiveDir[n][1]=false;
-			else
-				m_ActiveDir[n][1]=true;
+			// a face on the mesh boundary is none; with MPI a face on the first or last
+			// (ghost) line of this rank's mesh is the neighbour's, it owns the fields there
+			m_ActiveDir[n][0] = (gStart[n]!=0) && (gStart[n]>first[n]) && (gStart[n]<last[n]);
+			m_ActiveDir[n][1] = (gStop[n]!=mesh->GetNumberOfLines(n,true)-1) && (gStop[n]>first[n]) && (gStop[n]<last[n]);
 
 			if (m_IncLow[n])
 			{
-				ui_origin[n] = m_Start[n]-1;
+				ui_origin[n] = gStart[n]-1;
 			}
 			else
 			{
-				ui_origin[n] = m_Stop[n]+1;
+				ui_origin[n] = gStop[n]+1;
 			}
-			origin[n] = m_Op->GetDiscLine(n,ui_origin[n]);
+			origin[n] = mesh->GetDiscLine(n,ui_origin[n]);
 		}
 
 		double dotEk = (m_E_Amp[0]*m_PropDir[0] + m_E_Amp[1]*m_PropDir[1] + m_E_Amp[2]*m_PropDir[2]);

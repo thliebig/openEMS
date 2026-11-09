@@ -208,6 +208,10 @@ public:
 
 	virtual double CalcNumericPhaseVelocity(unsigned int start[3], unsigned int stop[3], double propDir[3], float freq) const;
 
+	//! The numeric phase velocity for the average mesh steps \a average_mesh_disc (in m) of a region, see above
+
+	double CalcNumericPhaseVelocity(const double average_mesh_disc[3], double propDir[3], float freq) const;
+
 	virtual std::vector<CSPrimitives*> GetPrimitivesBoundBox(int posX, int posY, int posZ, CSProperties::PropertyType type=CSProperties::ANY) const;
 
 	//! Number of threads that build the operator, 0 (the default) for AvailableThreads(). More than AvailableThreads() are limited to it.

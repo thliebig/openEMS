@@ -24,6 +24,7 @@
 #include "tools/global.h"
 
 class CSRectGrid;
+class Operator_Base;
 
 //! The MPI domain decomposition of a Cartesian mesh into blocks, one block per rank
 /*!
@@ -77,6 +78,12 @@ public:
 
 	//! The number of cells of the whole (undecomposed) mesh
 	double GetGlobalNumberCells() const {return m_GlobalCells;}
+	//! The whole mesh (only its lines, see openEMS::SetupFDTD()), NULL without MPI
+	void SetMeshOperator(const Operator_Base* op) {m_MeshOp=op;}
+	const Operator_Base* GetMeshOperator() const {return Enabled() ? m_MeshOp : NULL;}
+	//! The global line of the first local line in direction \a n (0 without MPI)
+	unsigned int GetFirstLine(int n) const {return Enabled() ? m_FirstLine[n] : 0;}
+
 	//! The number of lines of the whole mesh in direction \a n; \a local without MPI
 	unsigned int GetGlobalNumberOfLines(int n, unsigned int local) const {return Enabled() ? m_GlobalLines[n] : local;}
 	//! The local mesh position of the global node \a gpos, if this rank owns it (as for OwnsBox); always true without MPI
@@ -123,6 +130,7 @@ protected:
 	bool m_Initialized;
 
 	std::vector<std::vector<double> > m_UnsplitBoxes;
+	const Operator_Base* m_MeshOp;
 	int m_SplitRequest[3];   //!< requested blocks per direction, 0 for automatic
 	int m_Splits[3];         //!< blocks per direction
 	int m_Coord[3];          //!< the block position of this rank

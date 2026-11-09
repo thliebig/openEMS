@@ -46,6 +46,7 @@ MPI_Domain::MPI_Domain()
 	m_Size = 1;
 	m_Initialized = false;
 	m_GlobalCells = 0;
+	m_MeshOp = NULL;
 	for (int n=0; n<3; ++n)
 	{
 		m_SplitRequest[n] = 0;

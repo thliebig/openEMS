@@ -14,7 +14,8 @@
  on the steady-state detection. The splits move past the voltage and current
  probes; where no split is possible, all ranks stop with an error. Field dumps
  (TD and FD, HDF5 and VTK, sub-sampled, node and cell interpolated) and a
- NF2FF box cross the splits: rank 0 writes them whole, as a serial run.
+ NF2FF box cross the splits: rank 0 writes them whole, as a serial run. So
+ do the faces of an oblique plane wave (TF/SF) box.
 
  Pass criteria (per case and decomposition)
    the decomposition requested was used
@@ -169,6 +170,31 @@ def post_dumps(sim_path):
     case_dumps.nf2ff.CalcNF2FF(sim_path, 3.5e9, np.arange(0, 181, 15), [0, 90], read_cached=False)
 
 
+def case_planewave():
+    """ an oblique plane wave (TF/SF box) on a dielectric sphere, the box faces across the splits """
+    FDTD = openEMS(NrTS=900, EndCriteria=0)
+    FDTD.SetGaussExcite(5e9, 4e9)
+    FDTD.SetBoundaryCond(['PML_8'] * 6)
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('x', np.linspace(-40, 40, 49))
+    mesh.AddLine('y', np.concatenate([np.linspace(-40, -10, 11), np.linspace(-8, 8, 17), np.linspace(10, 40, 11)]))
+    mesh.AddLine('z', np.linspace(-40, 40, 41))
+    k = np.array([1.0, 0.6, -0.4])
+    E = np.cross(k, [0, 0, 1])
+    pw = CSX.AddExcitation('plane_wave', exc_type=10, exc_val=E / np.linalg.norm(E))
+    pw.SetPropagationDir(k / np.linalg.norm(k))
+    pw.SetFrequency(5e9)
+    pw.AddBox([-22, -21, -23], [23, 22, 21])
+    CSX.AddMaterial('sphere', epsilon=4, kappa=0.01).AddSphere([2, 0, 0], 8)
+    for i, p in enumerate([[0, 0, 0], [15, 15, 15], [-17, 4, -10], [30, -30, 30], [-33, 33, 0]]):
+        CSX.AddProbe('e%d' % i, p_type=2).AddPoint(p)
+        CSX.AddProbe('h%d' % i, p_type=3).AddPoint(p)
+    return FDTD, CSX
+
+
 def case_probe_full():
     """ a voltage probe across the whole mesh between the PMLs in x: no split in x is possible """
     FDTD, CSX = case_patch()
@@ -211,7 +237,9 @@ cases = [(case_patch,        [(2, '2,1,1'), (2, '1,2,1'), (4, '2,2,1'), (3, '3,1
          (case_steady_state, [(4, '2,1,2')],                                None),
          (case_probe_long,   [(2, '2,1,1'), (4, '2,2,1')],                  None),
          (case_dumps,        [(2, '2,1,1'), (4, '1,2,2'), (8, '2,2,2')],    None),
-         (case_dumps,        [(4, '2,2,1')],                                'basic')]
+         (case_dumps,        [(4, '2,2,1')],                                'basic'),
+         (case_planewave,    [(2, '2,1,1'), (4, '1,2,2'), (8, '2,2,2')],    None),
+         (case_planewave,    [(3, '3,1,1')],                                'basic')]
 
 failures = []
 for case, decomps, engine in cases:

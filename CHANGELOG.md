@@ -30,7 +30,8 @@ there are unreleased changes. It becomes the next release entry.
   `mpirun -n N openEMS sim.xml`, each rank with its usual threads.
   `--mpi-split=x,y,z` sets the blocks per direction (default: the least inner
   interface). The probes, field dumps and NF2FF boxes are written whole by
-  rank 0 and match a serial run; the splits stay clear of the PML and of the
+  rank 0, plane waves (TF/SF) may cross the blocks, and the results match a
+  serial run; the splits stay clear of the PML and of the
   voltage, current and mode probes. Not with cylindrical meshes or SAR dumps.
 - `python -m openEMS.compare <sim_path_a> <sim_path_b>` compares the probes
   and field dumps of two runs, e.g. of two engines, and
