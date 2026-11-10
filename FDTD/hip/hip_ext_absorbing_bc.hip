@@ -91,6 +91,19 @@ class HIP_Ext_Absorbing_BC : public GPU_Extension
 public:
 	HIP_Ext_Absorbing_BC(GPU_Backend_HIP::Impl* impl, Operator_Ext_Absorbing_BC* op_ext);
 
+	//! False if the lines of a sheet normal to x (the voltage and current lines and the lines next
+	//! to them, see the constructor) are on different parts: then the host runs the extensions
+	static bool OnOnePart(const GPU_Backend_HIP::Impl* d, const Operator_Ext_Absorbing_BC* op_ext)
+	{
+		if ((op_ext->m_ny!=0) || (d->x1 - d->x0 == d->gnx))
+			return true;
+		const unsigned int s = op_ext->m_sheetX0[0];
+		const bool own = d->Owns(s);
+		if (op_ext->m_normalSignPositive)
+			return d->Owns(s+1)==own;
+		return (d->Owns(s-1)==own) && (d->Owns(s-2)==own);
+	}
+
 	virtual void DoPreVoltageUpdates()  {Launch("abc_pre", abc_pre, (const float*)d->volt, m_VoltData, m_VoltParam);}
 	virtual void DoPostVoltageUpdates() {Launch("abc_post", abc_post, (const float*)d->volt, m_VoltData, m_VoltParam);}
 	virtual void Apply2Voltages()       {Launch("abc_apply_volt", abc_apply_volt, d->volt, m_VoltData, m_VoltParam);}
@@ -144,11 +157,51 @@ HIP_Ext_Absorbing_BC::HIP_Ext_Absorbing_BC(GPU_Backend_HIP::Impl* impl, Operator
 	m_CurrParam.ni = ni>0 ? ni-1 : 0;
 	m_CurrParam.nj = nj>0 ? nj-1 : 0;
 
-	const size_t count = (size_t)ni*nj;
-	const float* k1_nyP  = d->Alloc<float>(count, op_ext->m_K1_nyP.data());
-	const float* k1_nyPP = d->Alloc<float>(count, op_ext->m_K1_nyPP.data());
-	const float* k2_nyP  = d->Alloc<float>(count, op_ext->m_K2_nyP.valid() ? op_ext->m_K2_nyP.data() : NULL);
-	const float* k2_nyPP = d->Alloc<float>(count, op_ext->m_K2_nyPP.valid() ? op_ext->m_K2_nyPP.data() : NULL);
+	// The nodes of the part (see GPU_Backend_HIP::Impl::Owns()); a node reads only the line next to
+	// it along ny. A sheet normal to x: on the part that owns its lines (see HIP_CreateExt_Absorbing_BC()),
+	// else none. Else the rows (x along nyP) or columns (x along nyPP) on the owned lines.
+	std::vector<float> k[4];
+	const ArrayLib::ArrayIJ<FDTD_FLOAT>* src[4] = {&op_ext->m_K1_nyP, &op_ext->m_K1_nyPP, &op_ext->m_K2_nyP, &op_ext->m_K2_nyPP};
+	for (int c=0; c<4; ++c)
+		if (src[c]->valid())
+			k[c].assign(src[c]->data(), src[c]->data() + (size_t)ni*nj);
+	size_t count = (size_t)ni*nj;
+	if (ny==0)
+	{
+		if (d->Owns(start))
+		{
+			m_VoltParam.line = d->LocalX(m_VoltParam.line);
+			m_VoltParam.line_shift = d->LocalX(m_VoltParam.line_shift);
+			m_CurrParam.line = d->LocalX(m_CurrParam.line);
+			m_CurrParam.line_shift = d->LocalX(m_CurrParam.line_shift);
+		}
+		else
+			m_VoltParam.ni = m_VoltParam.nj = m_CurrParam.ni = m_CurrParam.nj = count = 0;
+	}
+	else if (d->x1 - d->x0 < d->gnx)
+	{
+		const int axis = (base.nyP==0) ? 0 : 1;
+		const unsigned int n = axis ? nj : ni;   // lines of the sheet along x
+		unsigned int first;
+		const unsigned int owned = d->OwnedLines(axis ? base.startPP : base.startP, n, first);
+		for (int c=0; c<4; ++c)
+			if (!k[c].empty())
+				k[c] = HIP_PlaneSlice(k[c].data(), ni, nj, axis, first, owned);
+		// the currents use the first n-1 lines along x
+		const unsigned int owned_curr = (first+owned<n) ? owned : (first+1<n ? n-1-first : 0);
+		for (ABCParam* P : {&m_VoltParam, &m_CurrParam})
+		{
+			(axis ? P->startPP : P->startP) = d->LocalX((axis ? base.startPP : base.startP) + first);
+			(axis ? P->nj : P->ni) = (P==&m_VoltParam) ? owned : owned_curr;
+			P->stride = axis ? owned : nj;
+		}
+		count = (size_t)(axis ? ni : owned)*(axis ? owned : nj);
+	}
+
+	const float* k1_nyP  = d->Alloc<float>(count, k[0].data());
+	const float* k1_nyPP = d->Alloc<float>(count, k[1].data());
+	const float* k2_nyP  = d->Alloc<float>(count, k[2].empty() ? NULL : k[2].data());
+	const float* k2_nyPP = d->Alloc<float>(count, k[3].empty() ? NULL : k[3].data());
 
 	m_VoltData.s_nyP  = d->Alloc<float>(count);
 	m_VoltData.s_nyPP = d->Alloc<float>(count);
@@ -167,6 +220,8 @@ GPU_Extension* HIP_CreateExt_Absorbing_BC(GPU_Backend_HIP::Impl* d, Engine_Exten
 		return NULL;
 	Operator_Ext_Absorbing_BC* op_ext = dynamic_cast<Operator_Ext_Absorbing_BC*>(eng_ext->GetOperatorExtension());
 	if (!op_ext)
+		return NULL;
+	if (!HIP_Ext_Absorbing_BC::OnOnePart(d, op_ext))
 		return NULL;
 	return new HIP_Ext_Absorbing_BC(d, op_ext);
 }

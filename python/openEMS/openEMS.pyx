@@ -594,6 +594,10 @@ cdef class openEMS:
             key = key.replace("_", "-")
             key = key.replace("setup-only", "no-simulation")
 
+            # a list of devices, e.g. gpu_devices=[0, 1], as the comma list of --gpu-devices
+            if isinstance(val, (list, tuple)):
+                val = ",".join(str(int(v)) for v in val)
+
             # Using 1/0 instead of True/False is tolerated, but only
             # if the option is not an integer (which is ambiguous)
             if key.lower() not in integerOptions:
@@ -673,6 +677,10 @@ cdef class openEMS:
           --engine`` runs a whole test suite this way), else the fastest engine
         * gpu_device (int) -- GPU device of the GPU engine, a number of the
           device list printed at verbose >= 1 (default: the best device)
+        * gpu_devices (list of int) -- GPU devices to split the grid over
+          (along x), e.g. [0, 1]; a device may be listed more than once
+          (default: the environment variable ``OPENEMS_GPU_DEVICES``, else
+          gpu_device)
         * disable_dumps (bool) -- disable all field dumps for faster simulation
         * debug_material (bool) - dump material distribution to a vtk file for
           debugging.

@@ -99,31 +99,39 @@ HIP_Ext_Excitation::HIP_Ext_Excitation(GPU_Backend_HIP::Impl* impl, Operator_Ext
 	// fused step (see update_fused): the currents next to the excited voltages are recomputed;
 	// excited currents on the last mesh lines (never updated) would differ between its buffers
 	for (unsigned int n=0; n<op_ext->Volt_Count; ++n)
-		d->volt_modified.push_back((((size_t)op_ext->Volt_dir[n]*d->dim.nx + op_ext->Volt_index[0][n])*d->dim.ny + op_ext->Volt_index[1][n])*d->dim.nz + op_ext->Volt_index[2][n]);
+		if (d->Owns(op_ext->Volt_index[0][n]))
+			d->volt_modified.push_back((((size_t)op_ext->Volt_dir[n]*d->dim.nx + d->LocalX(op_ext->Volt_index[0][n]))*d->dim.ny + op_ext->Volt_index[1][n])*d->dim.nz + op_ext->Volt_index[2][n]);
 	for (unsigned int n=0; n<op_ext->Curr_Count; ++n)
-		if ((op_ext->Curr_index[0][n]+1>=d->dim.nx) || (op_ext->Curr_index[1][n]+1>=d->dim.ny) || (op_ext->Curr_index[2][n]+1>=d->dim.nz))
+		if ((op_ext->Curr_index[0][n]+1>=d->gnx) || (op_ext->Curr_index[1][n]+1>=d->dim.ny) || (op_ext->Curr_index[2][n]+1>=d->dim.nz))
 			d->fused_blockers++;
 }
 
 void HIP_Ext_Excitation::Setup(Sources& s, unsigned int count, unsigned int* const index[3], const unsigned short* dir,
                                 const FDTD_FLOAT* amp, const unsigned int* delay, const FDTD_FLOAT* signal)
 {
-	s.count = count;
 	s.serial = false;
-	if (count==0)
-		return;
 
-	std::vector<size_t> flat(count);
+	// the points of this part (see GPU_Backend_HIP::Impl::Owns()), in their order
+	std::vector<size_t> flat;
+	std::vector<float> amps;
+	std::vector<unsigned int> delays;
 	std::set<size_t> edges;
 	for (unsigned int n=0; n<count; ++n)
 	{
-		flat[n] = (((size_t)dir[n]*d->dim.nx + index[0][n])*d->dim.ny + index[1][n])*d->dim.nz + index[2][n];
-		if (!edges.insert(flat[n]).second)
+		if (!d->Owns(index[0][n]))
+			continue;
+		flat.push_back((((size_t)dir[n]*d->dim.nx + d->LocalX(index[0][n]))*d->dim.ny + index[1][n])*d->dim.nz + index[2][n]);
+		amps.push_back(amp[n]);
+		delays.push_back(delay[n]);
+		if (!edges.insert(flat.back()).second)
 			s.serial = true;
 	}
-	s.index = d->Alloc<size_t>(count, flat.data());
-	s.amp = d->Alloc<float>(count, amp);
-	s.delay = d->Alloc<unsigned int>(count, delay);
+	s.count = flat.size();
+	if (s.count==0)
+		return;
+	s.index = d->Alloc<size_t>(s.count, flat.data());
+	s.amp = d->Alloc<float>(s.count, amps.data());
+	s.delay = d->Alloc<unsigned int>(s.count, delays.data());
 	s.signal = d->Alloc<float>(m_Op_Exc->m_Exc->GetLength(), signal);
 }
 

@@ -116,22 +116,28 @@ protected:
 	size_t* m_Pos;                     //!< flat NIJK index of direction 0
 	float *m_Pole, *m_Pre, *m_ADE;     //!< state
 	float *m_Relax, *m_Drive, *m_Solve;
+	std::vector<size_t> m_Sel;         //!< the positions of the operator extension this part has
 };
 
 HIP_Ext_DebyeMaterial::HIP_Ext_DebyeMaterial(GPU_Backend_HIP::Impl* impl, Operator_Ext_DebyeMaterial* op_ext)
 {
 	d = impl;
-	const size_t count = op_ext->m_LM_Count.at(0);
+	// the positions of this part (see GPU_Backend_HIP::Impl::Owns()), each node only reads and
+	// writes its own voltages
+	unsigned int** pos = op_ext->m_LM_pos[0];
+	for (size_t i=0; i<op_ext->m_LM_Count.at(0); ++i)
+		if (d->Owns(pos[0][i]))
+			m_Sel.push_back(i);
+	const size_t count = m_Sel.size();
 	m_Param.count = count;
 	m_Param.poles = op_ext->m_PoleCount;
 	m_Param.sn = d->numCells;
 	if (count==0)
 		return;
 
-	unsigned int** pos = op_ext->m_LM_pos[0];
 	std::vector<size_t> flat(count);
 	for (size_t i=0; i<count; ++i)
-		flat[i] = ((size_t)pos[0][i]*d->dim.ny + pos[1][i])*d->dim.nz + pos[2][i];
+		flat[i] = ((size_t)d->LocalX(pos[0][m_Sel[i]])*d->dim.ny + pos[1][m_Sel[i]])*d->dim.nz + pos[2][m_Sel[i]];
 	m_Pos = d->Alloc<size_t>(count, flat.data());
 
 	m_Pole  = d->Alloc<float>((size_t)m_Param.poles*3*count);
@@ -149,7 +155,7 @@ float* HIP_Ext_DebyeMaterial::Coefficients(int poles, FDTD_FLOAT*** c)
 	for (int o=0; o<poles; ++o)
 		for (int n=0; n<3; ++n)
 			for (size_t i=0; i<count; ++i)
-				data[((size_t)o*3 + n)*count + i] = c[o][n][i];
+				data[((size_t)o*3 + n)*count + i] = c[o][n][m_Sel[i]];
 	return d->Alloc<float>(data.size(), data.data());
 }
 

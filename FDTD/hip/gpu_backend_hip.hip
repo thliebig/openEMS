@@ -34,6 +34,11 @@
 #include "FDTD/extensions/engine_ext_excitation.h"
 #include "FDTD/extensions/engine_ext_lumpedRLC.h"
 #include "FDTD/extensions/engine_ext_steadystate.h"
+#include "FDTD/extensions/engine_ext_lorentzmaterial.h"
+#include "FDTD/extensions/engine_ext_mur_abc.h"
+#include "FDTD/extensions/engine_ext_tfsf.h"
+#include "FDTD/extensions/engine_ext_debyematerial.h"
+#include "FDTD/extensions/engine_ext_absorbing_bc.h"
 
 // Main FDTD updates, operation by operation the same as Engine::UpdateVoltages/UpdateCurrents,
 // over the nodes in [B, E). One thread per mesh node: z along x-threads (contiguous), y along
@@ -440,7 +445,8 @@ namespace
 {
 struct KernelTimeTable
 {
-	hipEvent_t start = NULL, stop = NULL;
+	// an event pair per device: an event can only be recorded on a stream of its own device
+	std::map<int, std::pair<hipEvent_t, hipEvent_t>> events;
 	std::map<std::string, std::pair<double, size_t>> times;   // total ms, launches
 	~KernelTimeTable()
 	{
@@ -460,6 +466,19 @@ struct KernelTimeTable
 			fprintf(stderr, "  %6.1f %%  %10.1f ms  %8zu x %8.1f us  %s\n", 100*t.first/total, t.first, n, 1000*t.first/n, t.second.c_str());
 		}
 	}
+	//! the event pair of the current device
+	std::pair<hipEvent_t, hipEvent_t>& Events(int& device)
+	{
+		device = 0;
+		(void)hipGetDevice(&device);
+		std::pair<hipEvent_t, hipEvent_t>& e = events[device];
+		if (!e.first)
+		{
+			(void)hipEventCreate(&e.first);
+			(void)hipEventCreate(&e.second);
+		}
+		return e;
+	}
 };
 KernelTimeTable& KernelTimes() {static KernelTimeTable table; return table;}
 }
@@ -470,25 +489,24 @@ bool HIP_KernelTimes::Enabled()
 	return enabled;
 }
 
+// Begin() and End() take a stream of the current device
 void HIP_KernelTimes::Begin(hipStream_t stream)
 {
-	KernelTimeTable& t = KernelTimes();
-	if (!t.start)
-	{
-		(void)hipEventCreate(&t.start);
-		(void)hipEventCreate(&t.stop);
-	}
-	(void)hipEventRecord(t.start, stream);
+	int device;
+	(void)hipEventRecord(KernelTimes().Events(device).first, stream);
 }
 
 void HIP_KernelTimes::End(hipStream_t stream, const char* name)
 {
 	KernelTimeTable& t = KernelTimes();
-	(void)hipEventRecord(t.stop, stream);
-	(void)hipEventSynchronize(t.stop);
+	int device;
+	const std::pair<hipEvent_t, hipEvent_t>& e = t.Events(device);
+	(void)hipEventRecord(e.second, stream);
+	(void)hipEventSynchronize(e.second);
 	float ms = 0;
-	(void)hipEventElapsedTime(&ms, t.start, t.stop);
-	std::pair<double, size_t>& entry = t.times[name];
+	(void)hipEventElapsedTime(&ms, e.first, e.second);
+	// the kernels of devices other than the first one apart (parts on several devices)
+	std::pair<double, size_t>& entry = t.times[device ? std::string(name) + " (device " + std::to_string(device) + ")" : std::string(name)];
 	entry.first += ms;
 	++entry.second;
 }
@@ -507,8 +525,14 @@ HIP_Context::HIP_Context()
 	warp_size = 32;
 }
 
+void HIP_Context::MakeCurrent() const
+{
+	HIP_Check(hipSetDevice(device), "hipSetDevice");
+}
+
 HIP_Context::~HIP_Context()
 {
+	(void)hipSetDevice(device);
 	if (stream)
 	{
 		(void)hipStreamSynchronize(stream);
@@ -542,20 +566,28 @@ GPU_Backend_HIP::Impl::Impl()
 	snap_dev = NULL;
 	snap_host = NULL;
 	snap_taken = false;
+	x0 = x1 = x_off = gnx = 0;
+	pin_flags = hipHostRegisterDefault;
+	// on the current device, that of the part (see New())
 	HIP_Check(hipEventCreateWithFlags(&snap_evaluated, hipEventDisableTiming), "hipEventCreate");
 	HIP_Check(hipEventCreateWithFlags(&snap_done, hipEventDisableTiming), "hipEventCreate");
+	HIP_Check(hipEventCreateWithFlags(&halo_sent, hipEventDisableTiming), "hipEventCreate");
+	HIP_Check(hipEventCreateWithFlags(&halo_received, hipEventDisableTiming), "hipEventCreate");
 }
 
 GPU_Backend_HIP::Impl::~Impl()
 {
 	if (ctx)
 	{
+		(void)hipSetDevice(ctx->device);
 		(void)hipStreamSynchronize(ctx->stream);
 		(void)hipStreamSynchronize(ctx->copy_stream);
 	}
 	FreeSnapshots();
 	(void)hipEventDestroy(snap_evaluated);
 	(void)hipEventDestroy(snap_done);
+	(void)hipEventDestroy(halo_sent);
+	(void)hipEventDestroy(halo_received);
 	for (size_t n=0; n<m_Allocations.size(); ++n)
 		(void)hipFree(m_Allocations.at(n));
 	for (std::set<void*>::iterator it=m_Pinned.begin(); it!=m_Pinned.end(); ++it)
@@ -626,6 +658,7 @@ bool GPU_Backend_HIP::Impl::DecideFusedStep()
 	fixup = Alloc<size_t>(fixup_count, list.data());
 
 	// both buffers start with the current fields
+	ctx->MakeCurrent();
 	HIP_Check(hipMemcpyAsync(volt_next, volt, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
 	HIP_Check(hipMemcpyAsync(curr_next, curr, 3*numCells*sizeof(float), hipMemcpyDeviceToDevice, Stream()), "fused step buffers");
 	Flush();
@@ -676,15 +709,19 @@ void GPU_Backend_HIP::Impl::FreeSnapshots()
 	snap_lines.clear();
 	snap_regions[0].clear();
 	snap_regions[1].clear();
+	if (ctx)
+		(void)hipSetDevice(ctx->device);
 	(void)hipFree(snap_dev);
 	(void)hipHostFree(snap_host);
 	snap_dev = snap_host = NULL;
 	snap_nv = snap_n = 0;
 	snap_taken = false;
+	snap_copies.clear();
 }
 
 void GPU_Backend_HIP::Impl::Flush()
 {
+	ctx->MakeCurrent();
 	HIP_Check(hipStreamSynchronize(Stream()), "stream synchronization");
 }
 
@@ -698,7 +735,8 @@ void GPU_Backend_HIP::Impl::PinHostMemory(void* ptr, size_t bytes)
 	if (m_Pinned.count(ptr))
 		return;
 	// not fatal: unpinned memory only makes the transfers slower
-	if (hipHostRegister(ptr, bytes, hipHostRegisterDefault)==hipSuccess)
+	ctx->MakeCurrent();
+	if (hipHostRegister(ptr, bytes, pin_flags)==hipSuccess)
 		m_Pinned.insert(ptr);
 	else
 		(void)hipGetLastError();
@@ -756,11 +794,16 @@ GPU_Backend* NewHIPBackend(int n)
 {
 	return GPU_Backend_HIP::New(n);
 }
+
+GPU_Backend* NewHIPBackendParts(const int* n, int count)
+{
+	return GPU_Backend_HIP::New(n, count);
+}
 }
 
 const GPU_Plugin* GPU_Backend_HIP::Plugin()
 {
-	static const GPU_Plugin plugin = {OPENEMS_GPU_BUILD_ID, OPENEMS_GPU_PLUGIN_NAME, DeviceCount, DeviceInfo, NewHIPBackend};
+	static const GPU_Plugin plugin = {OPENEMS_GPU_BUILD_ID, OPENEMS_GPU_PLUGIN_NAME, DeviceCount, DeviceInfo, NewHIPBackend, NewHIPBackendParts};
 	return &plugin;
 }
 
@@ -795,9 +838,11 @@ bool BuiltForArch(std::string arch)
 }
 #endif
 
-GPU_Backend_HIP* GPU_Backend_HIP::New(int device)
+//! The state of a grid (part) on HIP device \a device, with its own streams, or NULL if it cannot run there
+static GPU_Backend_HIP::Impl* NewPart(int device)
 {
-	if ((device<0) || (device>=DeviceCount()) || (hipSetDevice(device)!=hipSuccess))
+	typedef GPU_Backend_HIP::Impl Impl;
+	if ((device<0) || (device>=GPU_Backend_HIP::DeviceCount()) || (hipSetDevice(device)!=hipSuccess))
 	{
 		(void)hipGetLastError();
 		return NULL;
@@ -843,31 +888,66 @@ GPU_Backend_HIP* GPU_Backend_HIP::New(int device)
 		delete impl;
 		return NULL;
 	}
-	return new GPU_Backend_HIP(impl);
+	return impl;
+}
+
+GPU_Backend_HIP* GPU_Backend_HIP::New(int device)
+{
+	return New(&device, 1);
+}
+
+GPU_Backend_HIP* GPU_Backend_HIP::New(const int* devices, int count)
+{
+	std::vector<Impl*> parts;
+	for (int n=0; n<count; ++n)
+	{
+		Impl* impl = NewPart(devices[n]);
+		if (!impl)
+		{
+			for (Impl* p : parts)
+				delete p;
+			return NULL;
+		}
+		parts.push_back(impl);
+	}
+	if (parts.empty())
+		return NULL;
+	return new GPU_Backend_HIP(parts);
 }
 
 GPU_Backend* GPU_Backend_HIP::NewSubGridBackend()
 {
+	if (m_Parts.size()>1)
+		throw std::runtime_error("GPU_Backend_HIP: a cylindrical multi-grid cannot be split over several GPU devices, use one (--gpu-devices)");
 	// no fused step with sub-grids (cylindrical multi-grid)
 	d->fused_blockers++;
+	d->ctx->MakeCurrent();
 	Impl* impl = new Impl();
 	impl->fused_blockers++;
 	impl->ctx = d->ctx;
-	return new GPU_Backend_HIP(impl);
+	return new GPU_Backend_HIP(std::vector<Impl*>(1, impl));
 }
 
-GPU_Backend_HIP::GPU_Backend_HIP(Impl* impl)
+GPU_Backend_HIP::GPU_Backend_HIP(const std::vector<Impl*>& parts)
 {
-	d = impl;
+	m_Parts = parts;
+	d = m_Parts.front();
+	m_SnapshotParts = false;
+	m_SnapshotNV = 0;
+	if (m_Parts.size()>1)
+		d->pin_flags = hipHostRegisterPortable;   // the first part pins the host mirror for all
 }
 
 GPU_Backend_HIP::~GPU_Backend_HIP()
 {
-	delete d;
+	for (Impl* p : m_Parts)
+		delete p;
 }
 
 std::string GPU_Backend_HIP::GetName() const
 {
+	if (m_Parts.size()>1)
+		return "HIP (" + d->ctx->name + ", " + std::to_string(m_Parts.size()) + " parts)";
 	return "HIP (" + d->ctx->name + ")";
 }
 
@@ -876,57 +956,98 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	unsigned int numLines[3];
 	for (int n=0; n<3; ++n)
 		numLines[n] = op->GetNumberOfLines(n, true);
-	d->dim.nx = numLines[0];
-	d->dim.ny = numLines[1];
-	d->dim.nz = numLines[2];
-	d->numCells = (size_t)numLines[0]*numLines[1]*numLines[2];
-	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
-	d->main_stop = d->dim;
-	d->upml_fused = -1;
-	d->ResetZSlabs();
+	if (m_Parts.size()==1)
+		return InitPart(d, op, numLines, 0, numLines[0]);
+
+	// Parts along x with the same number of lines (cells), at least 3 each
+	const unsigned int count = m_Parts.size();
+	if (numLines[0]<3*count)
+	{
+		std::cerr << "GPU_Backend_HIP::Init: Error: " << numLines[0] << " mesh lines in x are too few for "
+		          << count << " parts (at least 3 lines each)" << std::endl;
+		return false;
+	}
+	unsigned int x0 = 0;
+	for (unsigned int n=0; n<count; ++n)
+	{
+		const unsigned int x1 = x0 + numLines[0]/count + ((n<numLines[0]%count) ? 1 : 0);
+		Impl* p = m_Parts[n];
+		p->fused_blockers++;   // no fused step with parts
+		if (!InitPart(p, op, numLines, x0, x1))
+			return false;
+		if (g_settings.GetVerboseLevel()>0)
+			std::cout << "GPU_Backend_HIP: part " << n << " on device " << p->ctx->device << " (" << p->ctx->name << "): x lines "
+			          << x0 << " to " << x1-1 << ", " << (size_t)(x1-x0)*numLines[1]*numLines[2] << " cells" << std::endl;
+		x0 = x1;
+	}
+	return true;
+}
+
+bool GPU_Backend_HIP::InitPart(Impl* p, const Operator* op, const unsigned int numLines[3], unsigned int x0, unsigned int x1)
+{
+	// the owned lines and a halo line at each cut, see Impl::x0
+	const unsigned int lo = (x0>0) ? 1 : 0;
+	const unsigned int hi = (x1<numLines[0]) ? 1 : 0;
+	p->x0 = x0;
+	p->x1 = x1;
+	p->x_off = x0 - lo;
+	p->gnx = numLines[0];
+	p->dim.nx = x1 - x0 + lo + hi;
+	p->dim.ny = numLines[1];
+	p->dim.nz = numLines[2];
+	p->numCells = (size_t)p->dim.nx*numLines[1]*numLines[2];
+	p->main_start.nx = p->main_start.ny = p->main_start.nz = 0;
+	p->main_stop = p->dim;
+	// the main updates cover the owned lines: at a cut x>0 and x+1<nx hold, as inside the grid
+	p->main_start.nx = lo;
+	p->main_stop.nx = lo + x1 - x0;
+	p->upml_fused = -1;
+	p->ResetZSlabs();
 
 	// the main updates launch one block per x line along z, which the device limits (64k on AMD and NVIDIA);
 	// from the properties: hipDeviceGetAttribute calls the CUDA driver API on NVIDIA, which the
 	// plugin does not link (MSVC keeps that call, GCC folds it away)
 	hipDeviceProp_t prop;
-	HIP_Check(hipGetDeviceProperties(&prop, d->ctx->device), "hipGetDeviceProperties");
+	HIP_Check(hipGetDeviceProperties(&prop, p->ctx->device), "hipGetDeviceProperties");
 	int max_grid_z = prop.maxGridSize[2];
-	if ((max_grid_z>0) && (d->dim.nx>(unsigned int)max_grid_z))
+	if ((max_grid_z>0) && (p->dim.nx>(unsigned int)max_grid_z))
 	{
-		std::cerr << "GPU_Backend_HIP::Init: Error: " << d->dim.nx << " mesh lines in x, the device allows at most "
+		std::cerr << "GPU_Backend_HIP::Init: Error: " << p->dim.nx << " mesh lines in x, the device allows at most "
 		          << max_grid_z << "; swap the axes, or use a CPU engine" << std::endl;
 		return false;
 	}
 
 	// The fused step indexes with 32 bit on NVIDIA while the fields fit (faster there), with
 	// 64 bit on AMD; OPENEMS_HIP_INDEX=32 or 64 overrides.
-	const bool fits32 = 3*d->numCells <= UINT_MAX;
+	const bool fits32 = 3*p->numCells <= UINT_MAX;
 #ifdef __HIP_PLATFORM_AMD__
-	d->index32 = false;
+	p->index32 = false;
 #else
-	d->index32 = fits32;
+	p->index32 = fits32;
 #endif
 	if (const char* env = getenv("OPENEMS_HIP_INDEX"))
-		d->index32 = (atoi(env)==32);
-	if (d->index32 && !fits32)
+		p->index32 = (atoi(env)==32);
+	if (p->index32 && !fits32)
 	{
 		std::cerr << "GPU_Backend_HIP: the mesh is too large for 32 bit indices, the fused step uses 64 bit" << std::endl;
-		d->index32 = false;
+		p->index32 = false;
 	}
 
-	const size_t count = 3*d->numCells;
-	d->volt = d->Alloc<float>(count);
-	d->curr = d->Alloc<float>(count);
+	const size_t count = 3*p->numCells;
+	p->volt = p->Alloc<float>(count);
+	p->curr = p->Alloc<float>(count);
 
 	// upload the final operator coefficients, including all changes by operator extensions.
 	// Most nodes share one of a few coefficient sets (same material and mesh spacing): store
-	// every distinct set of the 12 coefficients of a node once and a set index per node
+	// every distinct set of the 12 coefficients of a node once and a set index per node.
+	// A part uploads those of its local nodes, the global node is offset by its first line.
+	const size_t node_off = (size_t)p->x_off*numLines[1]*numLines[2];
 	GPU_CoeffSets sets;
-	if (GPU_FindSets(d->numCells, 12, [&](size_t i, float* values) {GPU_NodeCoefficients(op, numLines, i, values);}, sets))
+	if (GPU_FindSets(p->numCells, 12, [&](size_t i, float* values) {GPU_NodeCoefficients(op, numLines, node_off + i, values);}, sets))
 	{
-		d->coeff_mode = sets.mode;
-		d->index = d->AllocIndex(sets);
-		d->coeff = d->Alloc<float>(sets.table.size(), sets.table.data());
+		p->coeff_mode = sets.mode;
+		p->index = p->AllocIndex(sets);
+		p->coeff = p->Alloc<float>(sets.table.size(), sets.table.data());
 		if (g_settings.GetVerboseLevel()>1)
 			std::cout << "GPU_Backend_HIP: " << sets.count << " distinct coefficient sets, compressed update coefficients ("
 			          << (sets.mode==1 ? 16 : 32) << " bit index)" << std::endl;
@@ -934,18 +1055,37 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	}
 
 	// the full arrays, one host copy at a time
-	d->coeff_mode = 0;
+	p->coeff_mode = 0;
 	std::vector<float> values;
-	auto upload = [&](int c) {GPU_CoefficientArray(op, numLines, c, values); return d->Alloc<float>(count, values.data());};
-	d->vv = upload(0);
-	d->vi = upload(1);
-	d->ii = upload(2);
-	d->iv = upload(3);
+	auto upload = [&](int c)
+	{
+		if (m_Parts.size()==1)
+			GPU_CoefficientArray(op, numLines, c, values);
+		else
+		{
+			// the local nodes of the part, from the 12 coefficients of each (see GPU_NodeCoefficients())
+			values.resize(count);
+			float node[12];
+			for (size_t i=0; i<p->numCells; ++i)
+			{
+				GPU_NodeCoefficients(op, numLines, node_off + i, node);
+				for (int n=0; n<3; ++n)
+					values[n*p->numCells + i] = node[3*c + n];
+			}
+		}
+		return p->Alloc<float>(count, values.data());
+	};
+	p->vv = upload(0);
+	p->vi = upload(1);
+	p->ii = upload(2);
+	p->iv = upload(3);
 	return true;
 }
 
-void GPU_Backend_HIP::UpdateVoltages()
+// the main voltage update of one grid or part
+static void UpdateVoltagesOf(GPU_Backend_HIP::Impl* d)
 {
+	d->ctx->MakeCurrent();
 	const bool c = d->coeff_mode>0;
 	if (d->DecideFusedStep())
 	{
@@ -989,7 +1129,8 @@ void GPU_Backend_HIP::UpdateVoltages()
 	            d->volt, (const float*)d->curr, (const void*)d->index, (const float*)(c ? d->coeff : d->vv), (const float*)(c ? d->coeff : d->vi), d->coeff_mode, d->dim, B, E, d->zslabs);
 }
 
-void GPU_Backend_HIP::UpdateCurrents()
+// the main current update of one grid or part
+static void UpdateCurrentsOf(GPU_Backend_HIP::Impl* d)
 {
 	const bool c = d->coeff_mode>0;
 	if (d->fused_step>0)
@@ -1009,57 +1150,193 @@ void GPU_Backend_HIP::UpdateCurrents()
 	            d->curr, (const float*)d->volt, (const void*)d->index, (const float*)(c ? d->coeff : d->ii), (const float*)(c ? d->coeff : d->iv), d->coeff_mode, d->dim, B, E, d->zslabs);
 }
 
+void GPU_Backend_HIP::UpdateVoltages()
+{
+	if (m_Parts.size()>1)
+		ExchangeHalos(true);
+	for (Impl* p : m_Parts)
+		UpdateVoltagesOf(p);
+	if (m_Parts.size()>1)
+		ReleaseHalos(true);
+}
+
+void GPU_Backend_HIP::UpdateCurrents()
+{
+	if (m_Parts.size()>1)
+		ExchangeHalos(false);
+	for (Impl* p : m_Parts)
+		UpdateCurrentsOf(p);
+	if (m_Parts.size()>1)
+		ReleaseHalos(false);
+}
+
+// The halo lines are copied lazily, before the update that reads them: the voltage update of a part
+// reads the currents of the line below its first one (the last line of the part below), the current
+// update the voltages of the line above its last one (the first line of the part above). Only the y
+// and z components are read across x (see update_voltages/update_currents), so only they are copied,
+// on the stream of the receiving part once the sending part has computed the line (all extension
+// hooks are done by then). This works across devices without peer access and between parts on one
+// device.
+void GPU_Backend_HIP::ExchangeHalos(bool currents)
+{
+	for (size_t n=0; n+1<m_Parts.size(); ++n)
+	{
+		Impl* src = m_Parts[currents ? n : n+1];
+		Impl* dst = m_Parts[currents ? n+1 : n];
+		const size_t line = (size_t)src->dim.ny*src->dim.nz;
+		// currents: the last owned line of the lower part to the halo below the upper part;
+		// voltages: the first owned line of the upper part to the halo above the lower part
+		const size_t src_x = currents ? src->LocalX(src->x1)-1 : src->LocalX(src->x0);
+		const size_t dst_x = currents ? 0 : dst->dim.nx-1;
+		const float* sf = currents ? src->curr : src->volt;
+		float* df = currents ? dst->curr : dst->volt;
+		src->ctx->MakeCurrent();
+		HIP_Check(hipEventRecord(src->halo_sent, src->Stream()), "hipEventRecord");
+		dst->ctx->MakeCurrent();
+		HIP_Check(hipStreamWaitEvent(dst->Stream(), src->halo_sent, 0), "hipStreamWaitEvent");
+		const bool timed = HIP_KernelTimes::Enabled();
+		if (timed)
+			HIP_KernelTimes::Begin(dst->Stream());
+		for (int c=1; c<3; ++c)
+			HIP_Check(hipMemcpyAsync(df + c*dst->numCells + dst_x*line, sf + c*src->numCells + src_x*line, line*sizeof(float),
+			                         hipMemcpyDeviceToDevice, dst->Stream()), "halo copy");
+		if (timed)
+			HIP_KernelTimes::End(dst->Stream(), currents ? "halo copy (currents)" : "halo copy (voltages)");
+		HIP_Check(hipEventRecord(dst->halo_received, dst->Stream()), "hipEventRecord");
+	}
+}
+
+// The sending part of each halo copy waits for it before it writes the sent line again. Called after
+// the main updates are queued: they do not write the field that is sent (the voltage update reads the
+// currents, the current update the voltages; no fused step with parts), so they run during the copy.
+void GPU_Backend_HIP::ReleaseHalos(bool currents)
+{
+	for (size_t n=0; n+1<m_Parts.size(); ++n)
+	{
+		Impl* src = m_Parts[currents ? n : n+1];
+		Impl* dst = m_Parts[currents ? n+1 : n];
+		src->ctx->MakeCurrent();
+		HIP_Check(hipStreamWaitEvent(src->Stream(), dst->halo_received, 0), "hipStreamWaitEvent");
+	}
+}
+
 static void CheckSize(size_t host_count, size_t device_count)
 {
 	if (host_count!=device_count)
 		throw std::runtime_error("GPU_Backend_HIP: host and device field size mismatch");
 }
 
+// The owned lines of every part to the host mirror \a host (\a size values), or the host mirror to
+// the owned and halo lines of every part: one copy per component and part
+void GPU_Backend_HIP::CopyParts(bool currents, bool upload, float* host, size_t size)
+{
+	const size_t line = (size_t)d->dim.ny*d->dim.nz;
+	const size_t global = (size_t)d->gnx*line;
+	CheckSize(size, 3*global);
+	d->PinHostMemory(host, size*sizeof(float));
+	d->ctx->MakeCurrent();
+	for (Impl* p : m_Parts)
+	{
+		const size_t x = upload ? 0 : p->LocalX(p->x0);   // first local line
+		const size_t lines = upload ? p->dim.nx : p->x1 - p->x0;
+		float* field = currents ? p->curr : p->volt;
+		p->ctx->MakeCurrent();
+		for (int c=0; c<3; ++c)
+		{
+			float* dev = field + c*p->numCells + x*line;
+			float* h = host + c*global + (p->x_off + x)*line;
+			if (upload)
+				HIP_Check(hipMemcpyAsync(dev, h, lines*line*sizeof(float), hipMemcpyHostToDevice, p->Stream()), "upload");
+			else
+				HIP_Check(hipMemcpyAsync(h, dev, lines*line*sizeof(float), hipMemcpyDeviceToHost, p->Stream()), "download");
+		}
+	}
+	for (Impl* p : m_Parts)
+		p->Flush();
+}
+
 void GPU_Backend_HIP::DownloadVoltages(ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt)
 {
+	if (m_Parts.size()>1)
+		return CopyParts(false, false, volt.data(), volt.size());
 	CheckSize(volt.size(), 3*d->numCells);
 	d->PinHostMemory(volt.data(), volt.size()*sizeof(FDTD_FLOAT));
+	d->ctx->MakeCurrent();
 	HIP_Check(hipMemcpyAsync(volt.data(), d->volt, volt.size()*sizeof(float), hipMemcpyDeviceToHost, d->Stream()), "download");
 	d->Flush();
 }
 
 void GPU_Backend_HIP::DownloadCurrents(ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr)
 {
+	if (m_Parts.size()>1)
+		return CopyParts(true, false, curr.data(), curr.size());
 	CheckSize(curr.size(), 3*d->numCells);
 	d->PinHostMemory(curr.data(), curr.size()*sizeof(FDTD_FLOAT));
+	d->ctx->MakeCurrent();
 	HIP_Check(hipMemcpyAsync(curr.data(), d->curr, curr.size()*sizeof(float), hipMemcpyDeviceToHost, d->Stream()), "download");
 	d->Flush();
 }
 
 void GPU_Backend_HIP::UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt)
 {
+	if (m_Parts.size()>1)
+		return CopyParts(false, true, const_cast<FDTD_FLOAT*>(volt.data()), volt.size());
 	CheckSize(volt.size(), 3*d->numCells);
 	d->PinHostMemory(volt.data(), volt.size()*sizeof(FDTD_FLOAT));
+	d->ctx->MakeCurrent();
 	HIP_Check(hipMemcpyAsync(d->volt, volt.data(), volt.size()*sizeof(float), hipMemcpyHostToDevice, d->Stream()), "upload");
 	d->Flush();
 }
 
 void GPU_Backend_HIP::UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr)
 {
+	if (m_Parts.size()>1)
+		return CopyParts(true, true, const_cast<FDTD_FLOAT*>(curr.data()), curr.size());
 	CheckSize(curr.size(), 3*d->numCells);
 	d->PinHostMemory(curr.data(), curr.size()*sizeof(FDTD_FLOAT));
+	d->ctx->MakeCurrent();
 	HIP_Check(hipMemcpyAsync(d->curr, curr.data(), curr.size()*sizeof(float), hipMemcpyHostToDevice, d->Stream()), "upload");
 	d->Flush();
 }
 
 bool GPU_Backend_HIP::DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst)
 {
-	if (offset+count > 3*d->numCells)
+	if (m_Parts.size()==1)
+	{
+		if (offset+count > 3*d->numCells)
+			return false;
+		const float* src = (currents ? d->curr : d->volt) + offset;
+		d->ctx->MakeCurrent();
+		HIP_Check(hipMemcpyAsync(dst, src, count*sizeof(float), hipMemcpyDeviceToHost, d->Stream()), "range download");
+		d->Flush();
+		return true;
+	}
+	// from the part that owns the range: one component and lines of one part (a z-line always is)
+	if (count==0)
+		return true;
+	const size_t line = (size_t)d->dim.ny*d->dim.nz;
+	const size_t global = (size_t)d->gnx*line;
+	const size_t last = offset+count-1;
+	if ((last>=3*global) || (offset/global!=last/global))
 		return false;
-	const float* src = (currents ? d->curr : d->volt) + offset;
-	HIP_Check(hipMemcpyAsync(dst, src, count*sizeof(float), hipMemcpyDeviceToHost, d->Stream()), "range download");
-	d->Flush();
-	return true;
+	for (Impl* p : m_Parts)
+	{
+		if (!p->Owns((offset%global)/line) || !p->Owns((last%global)/line))
+			continue;
+		const size_t local = (offset/global)*p->numCells + (offset%global) - (size_t)p->x_off*line;
+		const float* src = (currents ? p->curr : p->volt) + local;
+		p->ctx->MakeCurrent();
+		HIP_Check(hipMemcpyAsync(dst, src, count*sizeof(float), hipMemcpyDeviceToHost, p->Stream()), "range download");
+		p->Flush();
+		return true;
+	}
+	return false;
 }
 
 void GPU_Backend_HIP::Synchronize()
 {
-	d->Flush();
+	for (Impl* p : m_Parts)
+		p->Flush();
 }
 
 void* GPU_Backend_HIP::Impl::UploadRegion(const Engine_GatherRegion& region, HIP_GatherRegion& dev)
@@ -1071,6 +1348,7 @@ void* GPU_Backend_HIP::Impl::UploadRegion(const Engine_GatherRegion& region, HIP
 	unsigned int* buf = TryAlloc<unsigned int>(lines.size());
 	if (!buf)
 		return NULL;
+	ctx->MakeCurrent();
 	HIP_Check(hipMemcpy(buf, lines.data(), lines.size()*sizeof(unsigned int), hipMemcpyHostToDevice), "hipMemcpy");
 	size_t pos = 0, start = 0;
 	for (int n=0; n<3; ++n)
@@ -1088,8 +1366,42 @@ void* GPU_Backend_HIP::Impl::UploadRegion(const Engine_GatherRegion& region, HIP
 	return buf;
 }
 
+void GPU_Backend_HIP::Impl::OwnedRegion(const Engine_GatherRegion& region, size_t src, size_t dst, Engine_GatherRegion& owned, std::vector<RegionCopy>& copies) const
+{
+	for (int n=0; n<3; ++n)
+	{
+		// the lines are ascending: the owned x lines follow each other from the first one
+		const std::vector<unsigned int>& xl = region.lines[n][0];
+		owned.lines[n][0].clear();
+		size_t first = 0;
+		for (size_t a=0; a<xl.size(); ++a)
+			if (Owns(xl[a]))
+			{
+				if (owned.lines[n][0].empty())
+					first = a;
+				owned.lines[n][0].push_back(LocalX(xl[a]));
+			}
+		owned.lines[n][1] = region.lines[n][1];
+		owned.lines[n][2] = region.lines[n][2];
+		const size_t count = owned.Size(n);
+		const size_t to = dst + first*region.lines[n][1].size()*region.lines[n][2].size();
+		if (count)
+		{
+			if (!copies.empty() && (copies.back().src+copies.back().count==src) && (copies.back().dst+copies.back().count==to))
+				copies.back().count += count;   // continues the last copy
+			else
+				copies.push_back(RegionCopy{src, to, count});
+		}
+		src += count;
+		dst += region.Size(n);
+	}
+}
+
 bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherRegion>& volt_regions, const std::vector<Engine_GatherRegion>& curr_regions)
 {
+	if (m_Parts.size()>1)
+		return SetSnapshotGatherParts(volt_regions, curr_regions);
+	d->ctx->MakeCurrent();
 	HIP_Check(hipStreamSynchronize(d->ctx->copy_stream), "stream synchronization");
 	d->FreeSnapshots();
 	size_t nv = 0, n = 0;
@@ -1101,6 +1413,7 @@ bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherRegion>& 
 	if ((n==0) || (n>UINT_MAX))
 		return false;
 	// not fatal: without snapshots the dumps read the fields from the host mirror
+	d->ctx->MakeCurrent();
 	bool ok = (hipMalloc(&d->snap_dev, n*sizeof(float))==hipSuccess)
 	          && (hipHostMalloc(&d->snap_host, n*sizeof(float))==hipSuccess);
 	const std::vector<Engine_GatherRegion>* regions[2] = {&volt_regions, &curr_regions};
@@ -1128,11 +1441,115 @@ bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherRegion>& 
 	return true;
 }
 
+// Each part gathers the raw values of the regions on the x lines it owns into its own snap_dev, and
+// downloads them to their places in one page-locked host buffer, the snapshot of all parts (see
+// Impl::OwnedRegion()). The interpolation of the dumps reads neighbouring lines, but on the host from
+// the snapshot, where every line comes from the part that owns and updates it: no halo is read.
+bool GPU_Backend_HIP::SetSnapshotGatherParts(const std::vector<Engine_GatherRegion>& volt_regions, const std::vector<Engine_GatherRegion>& curr_regions)
+{
+	for (Impl* p : m_Parts)
+	{
+		p->ctx->MakeCurrent();
+		HIP_Check(hipStreamSynchronize(p->ctx->copy_stream), "stream synchronization");
+		p->FreeSnapshots();
+	}
+	m_SnapshotParts = false;
+	size_t nv = 0, n = 0;
+	for (size_t r=0; r<volt_regions.size(); ++r)
+		nv += volt_regions[r].Size();
+	n = nv;
+	for (size_t r=0; r<curr_regions.size(); ++r)
+		n += curr_regions[r].Size();
+	if ((n==0) || (n>UINT_MAX))
+		return false;
+	// not fatal: without snapshots the dumps read the fields from the host mirror
+	d->ctx->MakeCurrent();
+	bool ok = (hipHostMalloc(&d->snap_host, n*sizeof(float), hipHostMallocPortable)==hipSuccess);   // written by all devices
+	const std::vector<Engine_GatherRegion>* regions[2] = {&volt_regions, &curr_regions};
+	for (Impl* p : m_Parts)
+	{
+		size_t src = 0, dst = 0;   // the first raw value of the region in snap_dev of the part, in the snapshot
+		for (int f=0; f<2 && ok; ++f)
+		{
+			for (size_t r=0; r<regions[f]->size() && ok; ++r)
+			{
+				const Engine_GatherRegion& region = regions[f]->at(r);
+				Engine_GatherRegion owned;
+				p->OwnedRegion(region, src, dst, owned, p->snap_copies);
+				dst += region.Size();
+				if (owned.Size()==0)
+					continue;
+				HIP_GatherRegion dev;
+				void* buf = p->UploadRegion(owned, dev);
+				ok = (buf!=NULL);
+				if (ok)
+				{
+					p->snap_lines.push_back(buf);
+					p->snap_regions[f].push_back(dev);
+					src += dev.total;
+				}
+			}
+			if (f==0)
+				p->snap_nv = src;
+		}
+		p->snap_n = src;
+		p->ctx->MakeCurrent();
+		ok = ok && (hipMalloc(&p->snap_dev, std::max(src, (size_t)1)*sizeof(float))==hipSuccess);
+	}
+	if (!ok)
+	{
+		(void)hipGetLastError();
+		for (Impl* p : m_Parts)
+			p->FreeSnapshots();
+		std::cerr << "GPU_Backend_HIP: not enough memory for field snapshots, the field dumps wait for the device" << std::endl;
+		return false;
+	}
+	m_SnapshotNV = nv;
+	m_SnapshotParts = true;
+	return true;
+}
+
+bool GPU_Backend_HIP::SnapshotFieldsParts(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
+{
+	if (!m_SnapshotParts)
+		return false;
+	for (Impl* p : m_Parts)
+	{
+		// the raw values on the work stream, once the last snapshot was downloaded from snap_dev
+		p->ctx->MakeCurrent();
+		if (p->snap_taken)
+			HIP_Check(hipStreamWaitEvent(p->Stream(), p->snap_done, 0), "hipStreamWaitEvent");
+		size_t offset = 0;
+		for (int f=0; f<2; ++f)
+			for (size_t r=0; r<p->snap_regions[f].size(); ++r)
+			{
+				const HIP_GatherRegion& R = p->snap_regions[f][r];
+				HIP_Launch(p, "gather_region", gather_region, R.total, 1, 1, (const float*)(f ? p->curr : p->volt), R, p->dim, p->snap_dev + offset);
+				offset += R.total;
+			}
+		p->ctx->MakeCurrent();
+		HIP_Check(hipEventRecord(p->snap_evaluated, p->Stream()), "hipEventRecord");
+		// the download on the copy stream of the part, while its work stream continues
+		hipStream_t copy = p->ctx->copy_stream;
+		HIP_Check(hipStreamWaitEvent(copy, p->snap_evaluated, 0), "hipStreamWaitEvent");
+		for (const Impl::RegionCopy& c : p->snap_copies)
+			HIP_Check(hipMemcpyAsync(d->snap_host + c.dst, p->snap_dev + c.src, c.count*sizeof(float), hipMemcpyDeviceToHost, copy), "snapshot download");
+		HIP_Check(hipEventRecord(p->snap_done, copy), "hipEventRecord");
+		p->snap_taken = true;
+	}
+	volt = d->snap_host;
+	curr = d->snap_host + m_SnapshotNV;
+	return true;
+}
+
 bool GPU_Backend_HIP::SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr)
 {
+	if (m_Parts.size()>1)
+		return SnapshotFieldsParts(volt, curr);
 	if (!d->snap_n)
 		return false;
 	// the raw values on the work stream, once the last snapshot was downloaded from snap_dev
+	d->ctx->MakeCurrent();
 	if (d->snap_taken)
 		HIP_Check(hipStreamWaitEvent(d->Stream(), d->snap_done, 0), "hipStreamWaitEvent");
 	size_t offset = 0;
@@ -1143,6 +1560,7 @@ bool GPU_Backend_HIP::SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* 
 			HIP_Launch(d, "gather_region", gather_region, R.total, 1, 1, (const float*)(f ? d->curr : d->volt), R, d->dim, d->snap_dev + offset);
 			offset += R.total;
 		}
+	d->ctx->MakeCurrent();
 	HIP_Check(hipEventRecord(d->snap_evaluated, d->Stream()), "hipEventRecord");
 	// the download on the copy stream, while the work stream continues with the next timesteps
 	hipStream_t copy = d->ctx->copy_stream;
@@ -1160,6 +1578,48 @@ int GPU_Backend_HIP::AddFieldDFT(bool h_field, const Engine_GatherRegion& region
 	const size_t n = region.Size();
 	if ((n==0) || (count==0))
 		return -1;
+	if (m_Parts.size()>1)
+	{
+		// each part sums the raw values on the x lines it owns (see Impl::OwnedRegion()), all with the same id
+		std::vector<Impl::FieldDFT> dfts(m_Parts.size(), Impl::FieldDFT());
+		std::vector<void*> lines(m_Parts.size(), (void*)NULL);
+		bool ok = true;
+		for (size_t i=0; i<m_Parts.size() && ok; ++i)
+		{
+			Impl* p = m_Parts[i];
+			Impl::FieldDFT& dft = dfts[i];
+			dft.count = count;
+			dft.currents = h_field;
+			dft.all = n;
+			Engine_GatherRegion owned;
+			p->OwnedRegion(region, 0, 0, owned, dft.copies);
+			const size_t pn = owned.Size();
+			if (pn==0)
+				continue;   // no raw values: no sums and no launches (region.total 0)
+			lines[i] = p->UploadRegion(owned, dft.region);
+			dft.sums = lines[i] ? p->TryAlloc<float2>(pn*count) : NULL;
+			ok = (dft.sums!=NULL);
+			if (ok)
+			{
+				p->ctx->MakeCurrent();
+				HIP_Check(hipMemsetAsync(dft.sums, 0, pn*count*sizeof(float2), p->Stream()), "hipMemset");
+			}
+		}
+		if (!ok)
+		{
+			// not fatal: without device sums the dump sums the fields on the host
+			for (size_t i=0; i<m_Parts.size(); ++i)
+			{
+				m_Parts[i]->Free(dfts[i].sums);
+				m_Parts[i]->Free(lines[i]);
+			}
+			std::cerr << "GPU_Backend_HIP: not enough memory for a frequency domain dump on the device" << std::endl;
+			return -1;
+		}
+		for (size_t i=0; i<m_Parts.size(); ++i)
+			m_Parts[i]->field_dfts.push_back(dfts[i]);
+		return d->field_dfts.size()-1;
+	}
 	Impl::FieldDFT dft;
 	dft.count = count;
 	dft.currents = h_field;
@@ -1172,6 +1632,7 @@ int GPU_Backend_HIP::AddFieldDFT(bool h_field, const Engine_GatherRegion& region
 		std::cerr << "GPU_Backend_HIP: not enough memory for a frequency domain dump on the device" << std::endl;
 		return -1;
 	}
+	d->ctx->MakeCurrent();
 	HIP_Check(hipMemsetAsync(dft.sums, 0, n*count*sizeof(float2), d->Stream()), "hipMemset");
 	d->field_dfts.push_back(dft);
 	return d->field_dfts.size()-1;
@@ -1181,16 +1642,20 @@ void GPU_Backend_HIP::AccumulateFieldDFT(int id, const std::vector<std::complex<
 {
 	if ((id<0) || ((size_t)id>=d->field_dfts.size()))
 		return;
-	const Impl::FieldDFT& dft = d->field_dfts[id];
-	const unsigned int count = std::min((size_t)dft.count, weights.size());
+	const unsigned int count = std::min((size_t)d->field_dfts[id].count, weights.size());
 	for (unsigned int k0=0; k0<count; k0+=DFT_WEIGHTS)
 	{
 		HIP_DFTWeights W;
 		const unsigned int nw = std::min(count-k0, (unsigned int)DFT_WEIGHTS);
 		for (unsigned int k=0; k<nw; ++k)
 			W.w[k] = make_float2(weights[k0+k].real(), weights[k0+k].imag());
-		HIP_Launch(d, "field_dft", field_dft, dft.region.total, 1, 1, (const float*)(dft.currents ? d->curr : d->volt),
-		            dft.region, d->dim, W, nw, dft.sums + k0*dft.region.total);
+		// several parts: each sums its own raw values, a part without any launches nothing
+		for (Impl* p : m_Parts)
+		{
+			const Impl::FieldDFT& dft = p->field_dfts[id];
+			HIP_Launch(p, "field_dft", field_dft, dft.region.total, 1, 1, (const float*)(dft.currents ? p->curr : p->volt),
+			            dft.region, p->dim, W, nw, dft.sums + k0*dft.region.total);
+		}
 	}
 }
 
@@ -1198,8 +1663,25 @@ bool GPU_Backend_HIP::ReadFieldDFT(int id, unsigned int k, std::vector<std::comp
 {
 	if ((id<0) || ((size_t)id>=d->field_dfts.size()) || (k>=d->field_dfts[id].count))
 		return false;
+	if (m_Parts.size()>1)
+	{
+		// the sums of each part to their places in those of the whole region
+		sums.resize(d->field_dfts[id].all);
+		for (Impl* p : m_Parts)
+		{
+			const Impl::FieldDFT& dft = p->field_dfts[id];
+			p->ctx->MakeCurrent();
+			for (const Impl::RegionCopy& c : dft.copies)
+				HIP_Check(hipMemcpyAsync(sums.data() + c.dst, dft.sums + k*dft.region.total + c.src, c.count*sizeof(float2),
+				                         hipMemcpyDeviceToHost, p->Stream()), "download");
+		}
+		for (Impl* p : m_Parts)
+			p->Flush();
+		return true;
+	}
 	const Impl::FieldDFT& dft = d->field_dfts[id];
 	sums.resize(dft.region.total);
+	d->ctx->MakeCurrent();
 	HIP_Check(hipMemcpyAsync(sums.data(), dft.sums + k*dft.region.total, sums.size()*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "download");
 	d->Flush();
 	return true;
@@ -1208,33 +1690,50 @@ bool GPU_Backend_HIP::ReadFieldDFT(int id, unsigned int k, std::vector<std::comp
 void GPU_Backend_HIP::WaitSnapshot()
 {
 	// called on the dump thread: report errors instead of throwing
-	const hipError_t err = hipEventSynchronize(d->snap_done);
-	if (err!=hipSuccess)
-		std::cerr << "GPU_Backend_HIP: field snapshot failed: " << hipGetErrorString(err) << std::endl;
+	for (Impl* p : m_Parts)
+	{
+		const hipError_t err = hipEventSynchronize(p->snap_done);
+		if (err!=hipSuccess)
+			std::cerr << "GPU_Backend_HIP: field snapshot failed: " << hipGetErrorString(err) << std::endl;
+	}
 }
 
 bool GPU_Backend_HIP::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)
 {
 	E_energy = H_energy = 0;
-	HIP_GridDim L = {numNodes[0], numNodes[1], numNodes[2]};
-	if ((L.nx>d->dim.nx) || (L.ny>d->dim.ny) || (L.nz>d->dim.nz))
+	const HIP_GridDim L = {numNodes[0], numNodes[1], numNodes[2]};
+	if ((L.nx>d->gnx) || (L.ny>d->dim.ny) || (L.nz>d->dim.nz))
 		return false;
 	const size_t count = (size_t)L.ny*L.nz;
 	if (L.nx==0 || count==0)
 		return true;
-	if (d->energy_count<count)
+	// each part sums its owned lines below L.nx, from its first owned line on
+	const size_t line = (size_t)d->dim.ny*d->dim.nz;
+	std::vector<Impl*> summed;
+	for (Impl* p : m_Parts)
 	{
-		d->energy = d->Alloc<float2>(count);
-		d->energy_count = count;
-		d->energy_host.resize(count);   // small, not pinned
+		const HIP_GridDim Lp = {std::min(p->x1, L.nx) - std::min(p->x0, std::min(p->x1, L.nx)), L.ny, L.nz};
+		if (Lp.nx==0)
+			continue;
+		if (p->energy_count<count)
+		{
+			p->energy = p->Alloc<float2>(count);
+			p->energy_count = count;
+			p->energy_host.resize(count);   // small, not pinned
+		}
+		const size_t first = (size_t)p->LocalX(p->x0)*line;
+		HIP_Launch(p, "energy_lines", energy_lines, L.nz, L.ny, 1, (const float*)p->volt + first, (const float*)p->curr + first, p->energy, p->dim, Lp);
+		HIP_Check(hipMemcpyAsync(p->energy_host.data(), p->energy, count*sizeof(float2), hipMemcpyDeviceToHost, p->Stream()), "energy download");
+		summed.push_back(p);
 	}
-	HIP_Launch(d, "energy_lines", energy_lines, L.nz, L.ny, 1, (const float*)d->volt, (const float*)d->curr, d->energy, d->dim, L);
-	HIP_Check(hipMemcpyAsync(d->energy_host.data(), d->energy, count*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "energy download");
-	d->Flush();
-	for (size_t k=0; k<count; ++k)
+	for (Impl* p : summed)
 	{
-		E_energy += d->energy_host[k].x;
-		H_energy += d->energy_host[k].y;
+		p->Flush();
+		for (size_t k=0; k<count; ++k)
+		{
+			E_energy += p->energy_host[k].x;
+			H_energy += p->energy_host[k].y;
+		}
 	}
 	return true;
 }
@@ -1253,8 +1752,83 @@ static const HIP_ExtensionFactory HIP_EXTENSIONS[] = {
 	HIP_CreateExt_Cylinder,
 };
 
+namespace
+{
+//! An extension with a device implementation per part: the hooks of all of them, part by part
+class HIP_PartsExtension : public GPU_Extension
+{
+public:
+	HIP_PartsExtension(const std::vector<GPU_Extension*>& parts) : m_Parts(parts) {}
+	virtual ~HIP_PartsExtension()
+	{
+		for (GPU_Extension* e : m_Parts)
+			delete e;
+	}
+
+	virtual void DoPreVoltageUpdates()  {for (GPU_Extension* e : m_Parts) e->DoPreVoltageUpdates();}
+	virtual void DoPostVoltageUpdates() {for (GPU_Extension* e : m_Parts) e->DoPostVoltageUpdates();}
+	virtual void Apply2Voltages()       {for (GPU_Extension* e : m_Parts) e->Apply2Voltages();}
+	virtual void DoPreCurrentUpdates()  {for (GPU_Extension* e : m_Parts) e->DoPreCurrentUpdates();}
+	virtual void DoPostCurrentUpdates() {for (GPU_Extension* e : m_Parts) e->DoPostCurrentUpdates();}
+	virtual void Apply2Current()        {for (GPU_Extension* e : m_Parts) e->Apply2Current();}
+	virtual void Synchronize()          {for (GPU_Extension* e : m_Parts) e->Synchronize();}
+
+protected:
+	std::vector<GPU_Extension*> m_Parts;
+};
+}
+
 GPU_Extension* GPU_Backend_HIP::CreateExtension(Engine_Extension* eng_ext, Engine* eng)
 {
+	// OPENEMS_HIP_EXTENSIONS=0: all extensions on the host, to compare with the host fallback of parts
+	static const bool device_exts = !getenv("OPENEMS_HIP_EXTENSIONS") || (atoi(getenv("OPENEMS_HIP_EXTENSIONS"))!=0);
+	if (!device_exts)
+	{
+		d->fused_blockers++;
+		return NULL;
+	}
+	if (m_Parts.size()>1)
+	{
+		// The extensions keep only the nodes of their part (see Impl::Owns()), one per part, but the
+		// steady-state detection. A factory returns NULL for a layout it does not split (e.g. a Mur
+		// plane and the line it reads on two parts) or another extension: then all extensions run
+		// on the host (host fallback).
+		if (dynamic_cast<Engine_Ext_SteadyState*>(eng_ext))
+			return HIP_CreateExt_SteadyStateParts(m_Parts, eng_ext, eng);   // one check over the probes of all parts
+		HIP_ExtensionFactory factory = NULL;
+		if (dynamic_cast<Engine_Ext_Excitation*>(eng_ext))
+			factory = HIP_CreateExt_Excitation;
+		else if (dynamic_cast<Engine_Ext_LorentzMaterial*>(eng_ext))
+			factory = HIP_CreateExt_LorentzMaterial;
+		else if (dynamic_cast<Engine_Ext_UPML*>(eng_ext))
+			factory = HIP_CreateExt_UPML;   // the separate region kernels (see HIP_Ext_UPML::Fused())
+		else if (dynamic_cast<Engine_Ext_Mur_ABC*>(eng_ext))
+			factory = HIP_CreateExt_Mur_ABC;
+		else if (dynamic_cast<Engine_Ext_LumpedRLC*>(eng_ext))
+			factory = HIP_CreateExt_LumpedRLC;
+		else if (dynamic_cast<Engine_Ext_TFSF*>(eng_ext))
+			factory = HIP_CreateExt_TFSF;
+		else if (dynamic_cast<Engine_Ext_DebyeMaterial*>(eng_ext))
+			factory = HIP_CreateExt_DebyeMaterial;
+		else if (dynamic_cast<Engine_Ext_Absorbing_BC*>(eng_ext))
+			factory = HIP_CreateExt_Absorbing_BC;
+		else
+			factory = HIP_CreateExt_Cylinder;   // detected by its operator extension, NULL for any other
+		std::vector<GPU_Extension*> exts;
+		for (size_t n=0; factory && (n<m_Parts.size()); ++n)
+		{
+			GPU_Extension* e = factory(m_Parts[n], eng_ext, eng);
+			if (!e)
+				break;
+			exts.push_back(e);
+		}
+		if (factory && (exts.size()==m_Parts.size()))
+			return new HIP_PartsExtension(exts);
+		for (GPU_Extension* e : exts)
+			delete e;
+		return NULL;
+	}
+
 	// the fused step (see update_fused) knows the UPML, the excitation, lumped RLC elements and the steady-state detection
 	if (!dynamic_cast<Engine_Ext_UPML*>(eng_ext) && !dynamic_cast<Engine_Ext_Excitation*>(eng_ext) && !dynamic_cast<Engine_Ext_LumpedRLC*>(eng_ext)
 	    && !dynamic_cast<Engine_Ext_SteadyState*>(eng_ext))

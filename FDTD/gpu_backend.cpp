@@ -16,6 +16,7 @@
 */
 
 #include <algorithm>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -98,22 +99,73 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 		}
 	}
 
-	const int chosen = g_settings.GetGPUDevice();
+	int chosen = g_settings.GetGPUDevice();
 	if (g_settings.GetVerboseLevel()>0)
 	{
 		std::cout << "GPU devices:" << std::endl;
 		for (size_t n=0; n<devices.size(); ++n)
 			std::cout << "  " << DeviceLine(n, devices.at(n)) << std::endl;
 	}
-	if ((chosen<-1) || (chosen>=(int)devices.size()))
+	auto no_such_device = [&](const std::string& option, int device)
 	{
 		std::ostringstream err;
-		err << "--gpu-device=" << chosen << ", but there " << (devices.size()==1 ? "is " : "are ")
+		err << option << device << ", but there " << (devices.size()==1 ? "is " : "are ")
 		    << devices.size() << " GPU device" << (devices.size()==1 ? "" : "s");
 		for (size_t n=0; n<devices.size(); ++n)
 			err << (n==0 ? ": " : ", ") << DeviceLine(n, devices.at(n));
 		throw std::runtime_error(err.str());
+	};
+
+	// --gpu-devices, else OPENEMS_GPU_DEVICES: the grid split over several devices of one backend
+	std::string option = "--gpu-devices=";
+	std::string list = g_settings.GetGPUDevices();
+	if (list.empty() && getenv("OPENEMS_GPU_DEVICES"))
+	{
+		option = "OPENEMS_GPU_DEVICES=";
+		list = getenv("OPENEMS_GPU_DEVICES");
 	}
+	if (!list.empty())
+	{
+		std::vector<int> parts;
+		std::istringstream items(list);
+		std::string item;
+		while (std::getline(items, item, ','))
+		{
+			char* end = NULL;
+			const long dev = strtol(item.c_str(), &end, 10);
+			if ((end==item.c_str()) || (*end!='\0'))
+				throw std::runtime_error(option + list + ": not a comma separated list of device numbers");
+			if ((dev<0) || (dev>=(long)devices.size()))
+				no_such_device(option + list + ": device ", dev);
+			parts.push_back(dev);
+		}
+		if (parts.empty())
+			throw std::runtime_error(option + list + ": no device");
+		if (parts.size()==1)
+			chosen = parts.front();   // one device: as --gpu-device
+		else
+		{
+			// one backend for all parts
+			const GPU_Plugin* plugin = devices.at(parts.front()).plugin;
+			std::vector<int> index;
+			for (int n : parts)
+			{
+				if (devices.at(n).plugin!=plugin)
+					throw std::runtime_error(option + list + ": the devices belong to different backends");
+				index.push_back(devices.at(n).index);
+			}
+			if (plugin->NewBackendParts==NULL)
+				throw std::runtime_error(option + list + ": the " + plugin->name + " backend cannot split the grid over several devices");
+			if (GPU_Backend* backend = plugin->NewBackendParts(index.data(), (int)index.size()))
+				return backend;
+			for (const std::string& msg : messages)
+				std::cerr << "GPU_Backend::New: Warning: " << msg << std::endl;
+			std::cerr << "GPU_Backend::New: Warning: cannot run on the devices " << list << std::endl;
+			return NULL;
+		}
+	}
+	if ((chosen<-1) || (chosen>=(int)devices.size()))
+		no_such_device("--gpu-device=", chosen);
 
 	// the chosen device, else the best one that can run
 	std::vector<size_t> order;

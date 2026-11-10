@@ -87,7 +87,7 @@ protected:
 
 	void Setup(std::vector<Order>& orders, size_t count, unsigned int** pos,
 	           bool lorentz, FDTD_FLOAT** c_int, FDTD_FLOAT** c_ext, FDTD_FLOAT** c_lor);
-	float* Coefficients(size_t count, FDTD_FLOAT** c);
+	float* Coefficients(const std::vector<size_t>& sel, FDTD_FLOAT** c);
 	void Pre(Order& o, float* field)
 	{
 		HIP_Launch(d, "lorentz_pre", lorentz_pre, o.param.count, 1, 1, (const float*)field, o.ade, o.lor,
@@ -118,19 +118,27 @@ HIP_Ext_LorentzMaterial::HIP_Ext_LorentzMaterial(GPU_Backend_HIP::Impl* impl, Op
 	}
 }
 
-float* HIP_Ext_LorentzMaterial::Coefficients(size_t count, FDTD_FLOAT** c)
+// the coefficients of the positions \a sel
+float* HIP_Ext_LorentzMaterial::Coefficients(const std::vector<size_t>& sel, FDTD_FLOAT** c)
 {
+	const size_t count = sel.size();
 	std::vector<float> data(3*(size_t)count, 0);
 	if (c)
 		for (int n=0; n<3; ++n)
 			for (size_t i=0; i<count; ++i)
-				data[n*count + i] = c[n][i];
+				data[n*count + i] = c[n][sel[i]];
 	return d->Alloc<float>(data.size(), data.data());
 }
 
 void HIP_Ext_LorentzMaterial::Setup(std::vector<Order>& orders, size_t count, unsigned int** pos,
                                      bool lorentz, FDTD_FLOAT** c_int, FDTD_FLOAT** c_ext, FDTD_FLOAT** c_lor)
 {
+	// the positions of this part (see GPU_Backend_HIP::Impl::Owns())
+	std::vector<size_t> sel;
+	for (size_t i=0; i<count; ++i)
+		if (d->Owns(pos[0][i]))
+			sel.push_back(i);
+	count = sel.size();
 	if (count==0)
 		return;
 	Order ord;
@@ -140,14 +148,14 @@ void HIP_Ext_LorentzMaterial::Setup(std::vector<Order>& orders, size_t count, un
 
 	std::vector<size_t> flat(count);
 	for (size_t i=0; i<count; ++i)
-		flat[i] = ((size_t)pos[0][i]*d->dim.ny + pos[1][i])*d->dim.nz + pos[2][i];
+		flat[i] = ((size_t)d->LocalX(pos[0][sel[i]])*d->dim.ny + pos[1][sel[i]])*d->dim.nz + pos[2][sel[i]];
 	ord.pos = d->Alloc<size_t>(count, flat.data());
 
 	ord.ade = d->Alloc<float>(3*(size_t)count);
 	ord.lor = d->Alloc<float>(3*(size_t)count);
-	ord.c_int = Coefficients(count, c_int);
-	ord.c_ext = Coefficients(count, c_ext);
-	ord.c_lor = Coefficients(count, c_lor);
+	ord.c_int = Coefficients(sel, c_int);
+	ord.c_ext = Coefficients(sel, c_ext);
+	ord.c_lor = Coefficients(sel, c_lor);
 	orders.push_back(ord);
 }
 

@@ -89,6 +89,10 @@ protected:
 	bool m_ClosedAlpha;
 	bool m_R0Included;
 	float *m_vv_R0, *m_vi_R0;
+	//! the r (x) lines of the alpha seam of this part: m_Lines voltages and m_LinesCurr currents from
+	//! the field offset m_Shift on (several parts, see GPU_Backend_HIP::Impl::Owns())
+	unsigned int m_Lines, m_LinesCurr;
+	size_t m_Shift;
 };
 
 HIP_Ext_Cylinder::HIP_Ext_Cylinder(GPU_Backend_HIP::Impl* impl, Operator_Ext_Cylinder* op_ext)
@@ -96,6 +100,17 @@ HIP_Ext_Cylinder::HIP_Ext_Cylinder(GPU_Backend_HIP::Impl* impl, Operator_Ext_Cyl
 	d = impl;
 	m_ClosedAlpha = op_ext->CC_closedAlpha;
 	m_R0Included = op_ext->CC_R0_included;
+	m_Lines = m_LinesCurr = d->dim.nx;
+	m_Shift = 0;
+	if (d->x1 - d->x0 < d->gnx)
+	{
+		// one of several parts: the seam on the owned lines (the kernels count r from the field
+		// offset), the currents not on the last line of the grid; the axis r = 0 on the first part
+		m_Lines = d->x1 - d->x0;
+		m_LinesCurr = m_Lines - ((d->x1==d->gnx) ? 1 : 0);
+		m_Shift = (size_t)d->LocalX(d->x0)*d->dim.ny*d->dim.nz;
+		m_R0Included = m_R0Included && (d->x0==0);
+	}
 	m_vv_R0 = m_vi_R0 = NULL;
 	if (m_ClosedAlpha && m_R0Included)
 	{
@@ -113,14 +128,14 @@ void HIP_Ext_Cylinder::DoPostVoltageUpdates()
 		HIP_Launch(d, "cyl_r0_ez", cyl_r0_ez, d->dim.nz, 1, 1, d->volt, (const float*)d->curr, (const float*)m_vv_R0, (const float*)m_vi_R0, d->dim);
 		HIP_Launch(d, "cyl_r0_spread", cyl_r0_spread, d->dim.nz, d->dim.ny, 1, d->volt, d->dim);
 	}
-	HIP_Launch(d, "cyl_close_volt", cyl_close_volt, d->dim.nz, d->dim.nx, 1, d->volt, d->dim);
+	HIP_Launch(d, "cyl_close_volt", cyl_close_volt, d->dim.nz, m_Lines, 1, d->volt + m_Shift, d->dim);
 }
 
 void HIP_Ext_Cylinder::DoPostCurrentUpdates()
 {
 	if (!m_ClosedAlpha)
 		return;
-	HIP_Launch(d, "cyl_close_curr", cyl_close_curr, d->dim.nz, d->dim.nx, 1, d->curr, d->dim);
+	HIP_Launch(d, "cyl_close_curr", cyl_close_curr, d->dim.nz, m_LinesCurr, 1, d->curr + m_Shift, d->dim);
 }
 
 GPU_Extension* HIP_CreateExt_Cylinder(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng)

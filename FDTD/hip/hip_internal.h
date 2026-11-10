@@ -109,15 +109,44 @@ struct HIP_Context
 
 	HIP_Context();
 	~HIP_Context();
+
+	//! Make the device current: a launch, allocation or copy on a stream of another device fails
+	void MakeCurrent() const;
 };
 
-//! State of one grid
+//! State of one grid, or of one part of it (see GPU_Backend_HIP::Init())
 struct GPU_Backend_HIP::Impl
 {
 	std::shared_ptr<HIP_Context> ctx;
 
 	HIP_GridDim dim;
 	size_t numCells;    //!< nx*ny*nz, the field buffers hold 3*numCells values
+
+	//! The part owns the global x lines [x0, x1). Its buffers (dim, local x) hold them and, at a cut,
+	//! a halo line below and above; local line 0 is global line x_off. One part: the whole grid.
+	unsigned int x0, x1, x_off;
+	unsigned int gnx;   //!< global number of x lines
+	bool Owns(unsigned int x) const {return (x>=x0) && (x<x1);}
+	unsigned int LocalX(unsigned int x) const {return x - x_off;}
+	//! Of the  count x lines from global line  start, the  owned ones from index  first on (none: 0)
+	unsigned int OwnedLines(unsigned int start, unsigned int count, unsigned int& first) const
+	{
+		const unsigned int b = std::max(start, x0), e = std::min(start + count, x1);
+		first = (b<e) ? b - start : 0;
+		return (b<e) ? e - b : 0;
+	}
+	//! Raw values of a part to the raw values of all parts (several parts):  count values from  src to  dst
+	struct RegionCopy { size_t src, dst, count; };
+	//! The raw values of  region on the x lines this part owns, as  owned with local x lines, and
+	//! the copies of its raw values (from  src on) to their place in those of  region (from  dst on)
+	/*!
+	  The x line is the outermost index of the raw values of a component, so those of a part are
+	  contiguous per component: at most three copies. Only owned lines are read, never a halo.
+	  */
+	void OwnedRegion(const Engine_GatherRegion& region, size_t src, size_t dst, Engine_GatherRegion& owned, std::vector<RegionCopy>& copies) const;
+	//! The halo exchange, see GPU_Backend_HIP::ExchangeHalos()
+	hipEvent_t halo_sent, halo_received;
+	unsigned int pin_flags;   //!< of hipHostRegister: portable with several parts
 
 	float *volt, *curr;
 	float2* energy;                      //!< per-line energy sums, see GPU_Backend_HIP::CalcFastEnergy()
@@ -162,6 +191,9 @@ struct GPU_Backend_HIP::Impl
 	hipEvent_t snap_evaluated;       //!< snap_dev is written
 	hipEvent_t snap_done;            //!< the download is done
 	bool snap_taken;                  //!< a download from snap_dev was started
+	//! Several parts: the raw values of the part in snap_dev, downloaded to their place in the snapshot
+	//! of all parts (snap_host of the first part, the other parts have none)
+	std::vector<RegionCopy> snap_copies;
 	void FreeSnapshots();
 
 	//! Sums of weighted raw values (frequency domain dumps, see GPU_Backend_HIP::AddFieldDFT())
@@ -171,6 +203,10 @@ struct GPU_Backend_HIP::Impl
 		unsigned int count;   //!< number of sums per raw value
 		bool currents;        //!< raw values of the currents, else of the voltages
 		float2* sums;         //!< sum k of raw value e at [k*region.total + e]
+		//! Several parts: region holds the raw values the part owns (none: no sums), they go to these
+		//! places in the sums of all  all raw values
+		std::vector<RegionCopy> copies;
+		size_t all;
 	};
 	//! Device copy of the line tables of \a region (one buffer, see TryAlloc()); NULL if out of memory
 	void* UploadRegion(const Engine_GatherRegion& region, HIP_GatherRegion& dev);
@@ -186,6 +222,7 @@ struct GPU_Backend_HIP::Impl
 	T* Alloc(size_t count, const T* host=NULL)
 	{
 		T* ptr = NULL;
+		ctx->MakeCurrent();
 		HIP_Check(hipMalloc(&ptr, std::max(count, (size_t)1)*sizeof(T)), "hipMalloc");
 		m_Allocations.push_back(ptr);
 		// on the work stream: it does not synchronize with the legacy default stream
@@ -203,6 +240,7 @@ struct GPU_Backend_HIP::Impl
 	T* TryAlloc(size_t count)
 	{
 		T* ptr = NULL;
+		ctx->MakeCurrent();
 		if (hipMalloc(&ptr, std::max(count, (size_t)1)*sizeof(T))!=hipSuccess)
 		{
 			(void)hipGetLastError();   // not sticky, but reported by the next CheckLaunch()
@@ -218,6 +256,7 @@ struct GPU_Backend_HIP::Impl
 		if (ptr==NULL)
 			return;
 		m_Allocations.erase(std::remove(m_Allocations.begin(), m_Allocations.end(), ptr), m_Allocations.end());
+		(void)hipSetDevice(ctx->device);   // also called by the destructor: no throw
 		(void)hipFree(ptr);
 	}
 
@@ -270,6 +309,7 @@ void HIP_Launch(GPU_Backend_HIP::Impl* d, const char* name, Kernel kernel, size_
 {
 	if (ni==0 || nj==0 || nk==0)
 		return;
+	d->ctx->MakeCurrent();
 	dim3 block = GPU_Backend_HIP::Impl::Block(ni, nj);
 	const bool timed = HIP_KernelTimes::Enabled();
 	if (timed)
@@ -278,6 +318,22 @@ void HIP_Launch(GPU_Backend_HIP::Impl* d, const char* name, Kernel kernel, size_
 	d->CheckLaunch(name);
 	if (timed)
 		HIP_KernelTimes::End(d->Stream(), name);
+}
+
+//! The values of the rows (\a axis 0) or columns (\a axis 1) [first, first+count) of a plane of
+//! \a ni x \a nj values (j fastest), in their order: the part of a plane extension on its x lines
+template<typename T>
+std::vector<T> HIP_PlaneSlice(const T* plane, unsigned int ni, unsigned int nj, int axis, unsigned int first, unsigned int count)
+{
+	std::vector<T> out;
+	for (unsigned int i=0; i<ni; ++i)
+		for (unsigned int j=0; j<nj; ++j)
+		{
+			const unsigned int a = axis ? j : i;
+			if ((a>=first) && (a<first+count))
+				out.push_back(plane[(size_t)i*nj + j]);
+		}
+	return out;
 }
 
 //! Factory of a HIP extension: the device implementation of \a eng_ext, or NULL if \a eng_ext is not of its type
@@ -291,6 +347,8 @@ GPU_Extension* HIP_CreateExt_LumpedRLC(GPU_Backend_HIP::Impl* d, Engine_Extensio
 GPU_Extension* HIP_CreateExt_TFSF(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
 GPU_Extension* HIP_CreateExt_Absorbing_BC(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
 GPU_Extension* HIP_CreateExt_SteadyState(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
+//! The steady-state detection over the probes of all parts (one check of all probes)
+GPU_Extension* HIP_CreateExt_SteadyStateParts(const std::vector<GPU_Backend_HIP::Impl*>& parts, Engine_Extension* eng_ext, Engine* eng);
 GPU_Extension* HIP_CreateExt_Cylinder(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
 
 #endif // HIP_INTERNAL_H
