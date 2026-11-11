@@ -20,6 +20,12 @@ to what a user notices, in a few lines; the details belong in the commit.
   NVIDIA GPUs (HIP/CUDA) and on macOS (Metal), with Cartesian and cylindrical
   meshes and the usual extensions. `--gpu-device=N` picks one of the GPUs
   listed at `--verbose=1`.
+- **Several GPUs for one simulation** (HIP/CUDA): `--gpu-devices=0,1`
+  (`gpu_devices=[0,1]` from Python) splits the mesh along x over the listed
+  GPUs, for their combined memory and speed. Results are the same as on one
+  GPU. Not with cylindrical multi-grid meshes. `--gpu-domain-cuts=0,100,300`
+  sets the x lines of the split, for GPUs of different speed or memory;
+  without it the parts are equal.
 - **A CPU engine, experimental**, `--engine=cpu` (`engine='cpu'`): on an
   8-core Ryzen 7 5800X it runs typical models 3-6x faster than the default
   engine, with dispersive materials up to 10x, and needs less memory, at

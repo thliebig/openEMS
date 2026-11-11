@@ -50,6 +50,8 @@ struct GPU_Plugin
 	int (*DeviceCount)();                            //!< number of devices, 0 if there is no runtime or driver
 	bool (*DeviceInfo)(int n, GPU_DeviceInfo* info); //!< describe device n
 	GPU_Backend* (*NewBackend)(int n);               //!< a backend on device n, or NULL if it cannot run there
+	//! a backend that splits the grid over the \a count devices \a n (a device may repeat), NULL if it cannot; NULL if the backend has no parts
+	GPU_Backend* (*NewBackendParts)(const int* n, int count);
 };
 
 //! Name of the function a plugin exports, of type GPU_PluginEntry

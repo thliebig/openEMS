@@ -134,6 +134,29 @@ void HIP_Ext_TFSF::SetupPlanes(std::vector<Plane>& planes, bool currents, Operat
 			pl.param.ni = op_ext->m_numLines[nP];
 			pl.param.nj = op_ext->m_numLines[nPP];
 
+			// The nodes of this part (see GPU_Backend_HIP::Impl::Owns()), each node only adds to its
+			// own value: a plane normal to x on the part that owns its line, else the rows (x along
+			// nP) or columns (x along nPP) on the owned lines
+			const unsigned int ni = pl.param.ni, nj = pl.param.nj;
+			int axis = -1;
+			unsigned int first = 0;
+			if (n==0)
+			{
+				if (!d->Owns(pl.param.line))
+					continue;
+				pl.param.line = d->LocalX(pl.param.line);
+			}
+			else
+			{
+				axis = (nP==0) ? 0 : 1;
+				unsigned int& start = axis ? pl.param.startPP : pl.param.startP;
+				unsigned int& lines = axis ? pl.param.nj : pl.param.ni;
+				lines = d->OwnedLines(start, lines, first);
+				if (lines==0)
+					continue;
+				start = d->LocalX(start + first);
+			}
+
 			const size_t count = (size_t)pl.param.ni*pl.param.nj;
 			std::vector<unsigned int> delay(2*count);
 			std::vector<float> delta(2*count), amp(2*count);
@@ -142,6 +165,17 @@ void HIP_Ext_TFSF::SetupPlanes(std::vector<Plane>& planes, bool currents, Operat
 				const unsigned int* src_delay = currents ? op_ext->m_CurrDelay[n][l][c] : op_ext->m_VoltDelay[n][l][c];
 				const FDTD_FLOAT* src_delta = currents ? op_ext->m_CurrDelayDelta[n][l][c] : op_ext->m_VoltDelayDelta[n][l][c];
 				const FDTD_FLOAT* src_amp = currents ? op_ext->m_CurrAmp[n][l][c] : op_ext->m_VoltAmp[n][l][c];
+				if (axis>=0)
+				{
+					const unsigned int owned = axis ? pl.param.nj : pl.param.ni;
+					const std::vector<unsigned int> d_c = HIP_PlaneSlice(src_delay, ni, nj, axis, first, owned);
+					const std::vector<FDTD_FLOAT> dd_c = HIP_PlaneSlice(src_delta, ni, nj, axis, first, owned);
+					const std::vector<FDTD_FLOAT> a_c = HIP_PlaneSlice(src_amp, ni, nj, axis, first, owned);
+					std::copy(d_c.begin(), d_c.end(), delay.begin() + c*count);
+					std::copy(dd_c.begin(), dd_c.end(), delta.begin() + c*count);
+					std::copy(a_c.begin(), a_c.end(), amp.begin() + c*count);
+					continue;
+				}
 				for (size_t k=0; k<count; ++k)
 				{
 					delay[c*count+k] = src_delay[k];

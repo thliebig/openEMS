@@ -185,12 +185,18 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 	m_InMain = false;
 	m_Side = -1;
 	m_VoltFlux2 = NULL;
-	m_Region.sx = op_ext->m_StartPos[0];
 	m_Region.sy = op_ext->m_StartPos[1];
 	m_Region.sz = op_ext->m_StartPos[2];
-	m_Region.lx = op_ext->m_numLines[0];
 	m_Region.ly = op_ext->m_numLines[1];
 	m_Region.lz = op_ext->m_numLines[2];
+	// the x lines of the region this part owns (see GPU_Backend_HIP::Impl::Owns()), in local x; the
+	// separate region kernels are local to each node, so a part needs nothing beyond its own lines
+	unsigned int first_x;
+	m_Region.lx = d->OwnedLines(op_ext->m_StartPos[0], op_ext->m_numLines[0], first_x);
+	m_Region.sx = m_Region.lx ? d->LocalX(op_ext->m_StartPos[0] + first_x) : 0;
+	// x is the outermost index of the region arrays: the owned cells are contiguous per component
+	const size_t all = (size_t)op_ext->m_numLines[0]*m_Region.ly*m_Region.lz;
+	const size_t first = (size_t)first_x*m_Region.ly*m_Region.lz;
 
 	const size_t cells = (size_t)m_Region.lx*m_Region.ly*m_Region.lz;
 	m_VoltFlux = d->Alloc<float>(3*cells);
@@ -206,11 +212,25 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 	m_Sets = NULL;
 	m_VV = m_VVFO = m_VVFN = NULL;
 	m_II = m_IIFO = m_IIFN = NULL;
-	if (GPU_FindSets(cells, 18, [&](size_t l0, float* values)
+	// the owned cells of a full array
+	auto upload = [&](const ArrayLib::ArrayNIJK<FDTD_FLOAT>& arr)
+	{
+		if (cells==all)
+			return Upload(arr);
+		std::vector<float> owned(3*cells);
+		for (int n=0; n<3; ++n)
+			std::copy(arr.data() + n*all + first, arr.data() + n*all + first + cells, owned.begin() + n*cells);
+		return d->Alloc<float>(owned.size(), owned.data());
+	};
+	// none if the part owns no line of the region: then the kernels launch nothing (see HIP_Launch())
+	if (cells==0)
+	{
+	}
+	else if (GPU_FindSets(cells, 18, [&](size_t l0, float* values)
 	    {
 		    for (int c=0; c<6; ++c)
 			    for (int n=0; n<3; ++n)
-				    values[3*c+n] = src[c][n*cells + l0];
+				    values[3*c+n] = src[c][n*all + first + l0];
 	    }, sets))
 	{
 		m_CoeffMode = sets.mode;
@@ -219,12 +239,12 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 	}
 	else
 	{
-		m_VV   = Upload(op_ext->vv);
-		m_VVFO = Upload(op_ext->vvfo);
-		m_VVFN = Upload(op_ext->vvfn);
-		m_II   = Upload(op_ext->ii);
-		m_IIFO = Upload(op_ext->iifo);
-		m_IIFN = Upload(op_ext->iifn);
+		m_VV   = upload(op_ext->vv);
+		m_VVFO = upload(op_ext->vvfo);
+		m_VVFN = upload(op_ext->vvfn);
+		m_II   = upload(op_ext->ii);
+		m_IIFO = upload(op_ext->iifo);
+		m_IIFN = upload(op_ext->iifn);
 		if (g_settings.GetVerboseLevel()>1)
 			std::cout << "GPU_Backend_HIP: UPML region of " << cells << " cells: full coefficient arrays" << std::endl;
 	}
@@ -237,10 +257,12 @@ HIP_Ext_UPML::HIP_Ext_UPML(GPU_Backend_HIP::Impl* impl, Operator_Ext_UPML* op_ex
 HIP_Ext_UPML::~HIP_Ext_UPML()
 {
 	d->upml.erase(std::remove(d->upml.begin(), d->upml.end(), this), d->upml.end());
-	// the main updates cover the whole grid again
+	// the main updates cover the whole grid (the owned lines of a part) again
 	d->upml_fused = -1;
 	d->main_start.nx = d->main_start.ny = d->main_start.nz = 0;
 	d->main_stop = d->dim;
+	d->main_start.nx = d->LocalX(d->x0);
+	d->main_stop.nx = d->LocalX(d->x1);
 	d->ResetZSlabs();
 	for (size_t r=0; r<d->upml.size(); ++r)
 		static_cast<HIP_Ext_UPML*>(d->upml[r])->m_InMain = false;
@@ -250,9 +272,12 @@ bool HIP_Ext_UPML::Fused()
 {
 	if (d->upml_fused<0)
 	{
-		// OPENEMS_HIP_UPML_FUSION=0: the separate UPML kernels, which the usual region layout never needs
+		// OPENEMS_HIP_UPML_FUSION=0: the separate UPML kernels, which the usual region layout never needs.
+		// One of several parts (see GPU_Backend_HIP::Init()): the separate kernels too, they keep the
+		// main updates on the owned lines and need no line of another part.
 		const char* env = getenv("OPENEMS_HIP_UPML_FUSION");
-		d->upml_fused = (env && (atoi(env)==0)) ? 0 : CanFuse();
+		const bool part = d->x1 - d->x0 < d->gnx;
+		d->upml_fused = ((env && (atoi(env)==0)) || part) ? 0 : CanFuse();
 		if (d->upml_fused && (g_settings.GetVerboseLevel()>1))
 			std::cout << "GPU_Backend_HIP: " << d->upml.size() << " UPML regions fused with the main updates ("
 			          << d->zslab_lo+d->zslab_hi << " along z in the main kernels)" << std::endl;

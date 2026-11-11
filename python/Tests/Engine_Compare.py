@@ -51,6 +51,11 @@
          the default on NVIDIA)
        pml_full_separate: the separate kernels with the full UPML coefficient
          arrays instead of sets
+     HIP only: every case once more with the grid split in two parts on the
+       device (OPENEMS_GPU_DEVICES=0,0), as it is split over several GPUs:
+       all extensions on the device and bit-identical to the run in one part.
+       Not the cases with only 3 mesh lines along x or with a multi-grid
+       (NO_PARTS_CASES), which cannot be split
 
    cpu
      max. deviation < 1e-4 of the peak value, like a device backend
@@ -663,6 +668,10 @@ UPML_MODES = {'pml': ('UPML regions in the kernel', None),
               'pml_upml_separate': (None, 'UPML regions fused with the main updates'),
               'pml_full_separate': ('full coefficient arrays', 'UPML regions fused with the main updates')}
 
+# cases the HIP backend cannot split into parts along x: 3 mesh lines along x, or a multi-grid
+NO_PARTS_CASES = ('materials', 'absorbers', 'dispersive_pml', 'steady_state',
+                  'multigrid', 'multigrid2', 'multigrid_wedge', 'multigrid_snapshot')
+
 DEVICE_RTOL = 1e-4
 # device backends with a device implementation of every extension
 FULL_DEVICE_BACKENDS = ('HIP', 'Metal')
@@ -703,6 +712,13 @@ for name, case, on_device in cases:
             os.environ['OPENEMS_CPU_TBLOCK'] = '2:5,3:7' if engine=='cpu-blocked' else '0'
             os.environ['OPENEMS_CPU_TRIAL'] = '1e-9'
             logs[engine] = run_captured(case, paths[engine], 'cpu' if engine=='cpu-blocked' else engine)
+            if engine=='gpu' and name not in NO_PARTS_CASES and 'OPENEMS_GPU_DEVICES' not in os.environ                and 'Create FDTD engine (GPU, backend: HIP' in logs['gpu']:
+                # the HIP backend once more, the grid split in two parts on the first device
+                os.environ['OPENEMS_GPU_DEVICES'] = '0,0'
+                try:
+                    logs['gpu-parts'] = run_captured(case, paths['gpu'] + '-parts', 'gpu')
+                finally:
+                    del os.environ['OPENEMS_GPU_DEVICES']
     finally:
         del os.environ['OPENEMS_CPU_TBLOCK']
         del os.environ['OPENEMS_CPU_TRIAL']
@@ -768,6 +784,13 @@ for name, case, on_device in cases:
                 expected, unexpected = UPML_MODES[name]
                 assert (expected is None or expected in logs['gpu']) and (unexpected is None or unexpected not in logs['gpu']), \
                     f'FAIL [{name}]: the HIP backend did not take the intended UPML update'
+            if 'gpu-parts' in logs:
+                assert '2 parts)' in logs['gpu-parts'], f'FAIL [{name}]: the HIP backend did not split the grid in two parts'
+                if on_device:
+                    assert ('Engine_GPU: all extensions run on the device' in logs['gpu-parts']) and ('host fallback' not in logs['gpu-parts']),                         f'FAIL [{name}]: the HIP backend in two parts did not run all extensions on the device'
+                diff, _, _, _ = compare_outputs(paths['gpu'], paths['gpu'] + '-parts')
+                assert not diff, f'FAIL [{name}]: the HIP backend in two parts differs from one part in: {", ".join(n for n, _ in diff)}'
+                print('  HIP backend in two parts: bit-identical to one part')
             diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
             print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
             assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \

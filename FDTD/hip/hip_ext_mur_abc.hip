@@ -68,20 +68,27 @@ class HIP_Ext_Mur_ABC : public GPU_Extension
 public:
 	HIP_Ext_Mur_ABC(GPU_Backend_HIP::Impl* impl, Operator_Ext_Mur_ABC* op_ext, Engine_Ext_Mur_ABC* eng_ext, Engine* eng);
 
+	//! False if a plane normal to x and the line it reads are on different parts (not on a boundary
+	//! of the grid, see GPU_Backend_HIP::Init()): then the host runs the extensions
+	static bool OnOnePart(const GPU_Backend_HIP::Impl* d, const Operator_Ext_Mur_ABC* op_ext)
+	{
+		return (op_ext->m_ny!=0) || (d->Owns(op_ext->m_LineNr)==d->Owns(op_ext->m_LineNr_Shift));
+	}
+
 	virtual void DoPreVoltageUpdates()
 	{
 		if (IsActive())
-			HIP_Launch(d, "mur_pre", mur_pre, m_Param.nj, m_Param.ni, 1, (const float*)d->volt, m_Volt_nyP, m_Volt_nyPP, (const float*)m_Coeff_nyP, (const float*)m_Coeff_nyPP, d->dim, m_Param);
+			HIP_Launch(d, "mur_pre", mur_pre, m_Param.nj, m_Param.ni, 1, (const float*)(d->volt + m_Shift), m_Volt_nyP, m_Volt_nyPP, (const float*)m_Coeff_nyP, (const float*)m_Coeff_nyPP, d->dim, m_Param);
 	}
 	virtual void DoPostVoltageUpdates()
 	{
 		if (IsActive())
-			HIP_Launch(d, "mur_post", mur_post, m_Param.nj, m_Param.ni, 1, (const float*)d->volt, m_Volt_nyP, m_Volt_nyPP, (const float*)m_Coeff_nyP, (const float*)m_Coeff_nyPP, d->dim, m_Param);
+			HIP_Launch(d, "mur_post", mur_post, m_Param.nj, m_Param.ni, 1, (const float*)(d->volt + m_Shift), m_Volt_nyP, m_Volt_nyPP, (const float*)m_Coeff_nyP, (const float*)m_Coeff_nyPP, d->dim, m_Param);
 	}
 	virtual void Apply2Voltages()
 	{
 		if (IsActive())
-			HIP_Launch(d, "mur_apply", mur_apply, m_Param.nj, m_Param.ni, 1, d->volt, (const float*)m_Volt_nyP, (const float*)m_Volt_nyPP, d->dim, m_Param);
+			HIP_Launch(d, "mur_apply", mur_apply, m_Param.nj, m_Param.ni, 1, d->volt + m_Shift, (const float*)m_Volt_nyP, (const float*)m_Volt_nyPP, d->dim, m_Param);
 	}
 
 protected:
@@ -92,6 +99,7 @@ protected:
 	Engine* m_Eng;
 	unsigned int m_StartTS;
 	MurParam m_Param;
+	size_t m_Shift;   //!< offset of the field values the kernels address (several parts, see the constructor)
 
 	float *m_Volt_nyP, *m_Volt_nyPP;
 	float *m_Coeff_nyP, *m_Coeff_nyPP;
@@ -109,12 +117,40 @@ HIP_Ext_Mur_ABC::HIP_Ext_Mur_ABC(GPU_Backend_HIP::Impl* impl, Operator_Ext_Mur_A
 	m_Param.line_shift = op_ext->m_LineNr_Shift;
 	m_Param.ni = op_ext->m_numLines[0];
 	m_Param.nj = op_ext->m_numLines[1];
+	m_Shift = 0;
+
+	// The nodes of the part (see GPU_Backend_HIP::Impl::Owns()); a node reads only the line next to
+	// it along ny. A plane normal to x: on the part that owns it and that line (see
+	// HIP_CreateExt_Mur_ABC()). Else the owned rows (x along nyP) or columns (x along nyPP), with the
+	// field addressed from the first owned line on (m_Shift), so the plane index counts from there.
+	std::vector<float> c_nyP(op_ext->m_Mur_Coeff_nyP.data(), op_ext->m_Mur_Coeff_nyP.data() + (size_t)m_Param.ni*m_Param.nj);
+	std::vector<float> c_nyPP(op_ext->m_Mur_Coeff_nyPP.data(), op_ext->m_Mur_Coeff_nyPP.data() + (size_t)m_Param.ni*m_Param.nj);
+	if (m_Param.ny==0)
+	{
+		if (d->Owns(m_Param.line))
+		{
+			m_Param.line = d->LocalX(m_Param.line);
+			m_Param.line_shift = d->LocalX(m_Param.line_shift);
+		}
+		else
+			m_Param.ni = m_Param.nj = 0;
+	}
+	else if (d->x1 - d->x0 < d->gnx)
+	{
+		const int axis = (m_Param.nyP==0) ? 0 : 1;
+		unsigned int first;
+		const unsigned int owned = d->OwnedLines(0, d->gnx, first);
+		c_nyP = HIP_PlaneSlice(c_nyP.data(), m_Param.ni, m_Param.nj, axis, first, owned);
+		c_nyPP = HIP_PlaneSlice(c_nyPP.data(), m_Param.ni, m_Param.nj, axis, first, owned);
+		(axis ? m_Param.nj : m_Param.ni) = owned;
+		m_Shift = (size_t)d->LocalX(d->x0)*d->dim.ny*d->dim.nz;
+	}
 
 	const size_t count = (size_t)m_Param.ni*m_Param.nj;
 	m_Volt_nyP  = d->Alloc<float>(count);
 	m_Volt_nyPP = d->Alloc<float>(count);
-	m_Coeff_nyP  = d->Alloc<float>(count, op_ext->m_Mur_Coeff_nyP.data());
-	m_Coeff_nyPP = d->Alloc<float>(count, op_ext->m_Mur_Coeff_nyPP.data());
+	m_Coeff_nyP  = d->Alloc<float>(count, c_nyP.data());
+	m_Coeff_nyPP = d->Alloc<float>(count, c_nyPP.data());
 }
 
 GPU_Extension* HIP_CreateExt_Mur_ABC(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng)
@@ -124,6 +160,8 @@ GPU_Extension* HIP_CreateExt_Mur_ABC(GPU_Backend_HIP::Impl* d, Engine_Extension*
 		return NULL;
 	Operator_Ext_Mur_ABC* op_ext = dynamic_cast<Operator_Ext_Mur_ABC*>(eng_ext->GetOperatorExtension());
 	if (!op_ext)
+		return NULL;
+	if (!HIP_Ext_Mur_ABC::OnOnePart(d, op_ext))
 		return NULL;
 	return new HIP_Ext_Mur_ABC(d, op_ext, mur_ext, eng);
 }
