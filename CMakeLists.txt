@@ -252,7 +252,28 @@ IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
   IF(ENABLE_FLUSH_TO_ZERO)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --ftz=true")
   ENDIF()
-  message(STATUS "HIP GPU backend enabled as CUDA sources, architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+  # The HIP headers have to be complete and fit the CUDA version: a distribution's HIP
+  # package can lack hip/nvidia_detail, a minimal CUDA install cuda_profiler_api.h, and
+  # HIP headers before 7.2 do not compile with CUDA 13. Found here, not in the build.
+  include(CheckSourceCompiles)
+  set(CMAKE_REQUIRED_INCLUDES ${HIP_INCLUDE_DIR})
+  set(CMAKE_REQUIRED_DEFINITIONS -D__HIP_PLATFORM_NVIDIA__=1)
+  set(_try_compile_target_type ${CMAKE_TRY_COMPILE_TARGET_TYPE})
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+  check_source_compiles(CUDA "#include <hip/hip_runtime.h>
+int main() { return 0; }" HIP_HEADERS_COMPILE_AS_CUDA)
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE ${_try_compile_target_type})
+  unset(CMAKE_REQUIRED_INCLUDES)
+  unset(CMAKE_REQUIRED_DEFINITIONS)
+  IF(HIP_HEADERS_COMPILE_AS_CUDA)
+    message(STATUS "HIP GPU backend enabled as CUDA sources, architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+  ELSE()
+    message(WARNING "The HIP headers in ${HIP_INCLUDE_DIR} do not compile with ${CMAKE_CUDA_COMPILER} "
+      "(CUDA ${CMAKE_CUDA_COMPILER_VERSION}), building without the HIP GPU backend. They need "
+      "hip/nvidia_detail (in the hip-dev package of AMD), cuda_profiler_api.h of CUDA, and for "
+      "CUDA 13 the HIP headers of ROCm 7.2 or newer; CMakeFiles/CMakeConfigureLog.yaml has the error.")
+    set(ENABLE_HIP OFF)
+  ENDIF()
 ELSEIF(ENABLE_HIP)
   set(_hip_nvidia OFF)
   IF((CMAKE_HIP_PLATFORM STREQUAL "nvidia") OR ("$ENV{HIP_PLATFORM}" STREQUAL "nvidia"))
