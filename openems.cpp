@@ -312,6 +312,19 @@ void openEMS::collectCommandLineArguments()
 			"variable OPENEMS_GPU_DEVICES, else --gpu-device)"
 		)
 		(
+			"gpu-domain-cuts",
+			po::value<std::string>()->default_value("")->notifier(
+				[&](std::string val)
+				{
+					g_settings.SetGPUDomainCuts(val);
+				}
+			),
+			"x mesh lines at which --gpu-devices splits the grid, one more "
+			"than devices, from 0 to the number of x lines, e.g. 0,100,300: "
+			"lines 0-99 on the first device, 100-299 on the second (default: "
+			"the environment variable OPENEMS_GPU_DOMAIN_CUTS, else equal parts)"
+		)
+		(
 			"numThreads",
 			po::value<int>()->default_value(0)->notifier(
 				[&](int val)

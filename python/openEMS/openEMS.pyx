@@ -681,6 +681,9 @@ cdef class openEMS:
           (along x), e.g. [0, 1]; a device may be listed more than once
           (default: the environment variable ``OPENEMS_GPU_DEVICES``, else
           gpu_device)
+        * gpu_domain_cuts (list of int) -- x mesh lines at which gpu_devices
+          splits the grid, one more than devices, from 0 to the number of x
+          lines, e.g. [0, 100, 300] (default: equal parts)
         * disable_dumps (bool) -- disable all field dumps for faster simulation
         * debug_material (bool) - dump material distribution to a vtk file for
           debugging.

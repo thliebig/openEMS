@@ -124,6 +124,9 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 		option = "OPENEMS_GPU_DEVICES=";
 		list = getenv("OPENEMS_GPU_DEVICES");
 	}
+	const bool cuts = !g_settings.GetGPUDomainCuts().empty() || getenv("OPENEMS_GPU_DOMAIN_CUTS");
+	if (cuts && list.empty())
+		throw std::runtime_error("--gpu-domain-cuts needs the devices to split the grid over (--gpu-devices)");
 	if (!list.empty())
 	{
 		std::vector<int> parts;
@@ -141,6 +144,8 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 		}
 		if (parts.empty())
 			throw std::runtime_error(option + list + ": no device");
+		if (cuts && (parts.size()==1))
+			throw std::runtime_error(option + list + ": --gpu-domain-cuts needs at least two devices");
 		if (parts.size()==1)
 			chosen = parts.front();   // one device: as --gpu-device
 		else

@@ -23,6 +23,7 @@
 #include <cstring>
 #include <map>
 #include <set>
+#include <sstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -959,7 +960,8 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 	if (m_Parts.size()==1)
 		return InitPart(d, op, numLines, 0, numLines[0]);
 
-	// Parts along x with the same number of lines (cells), at least 3 each
+	// Parts along x, at least 3 lines each: with the same number of lines (cells),
+	// or between the lines of --gpu-domain-cuts (else OPENEMS_GPU_DOMAIN_CUTS)
 	const unsigned int count = m_Parts.size();
 	if (numLines[0]<3*count)
 	{
@@ -967,10 +969,43 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 		          << count << " parts (at least 3 lines each)" << std::endl;
 		return false;
 	}
-	unsigned int x0 = 0;
+	std::vector<unsigned int> cuts;
+	for (unsigned int n=0; n<=count; ++n)
+		cuts.push_back(n*(numLines[0]/count) + std::min(n, numLines[0]%count));
+	std::string option = "--gpu-domain-cuts=";
+	std::string list = g_settings.GetGPUDomainCuts();
+	if (list.empty() && getenv("OPENEMS_GPU_DOMAIN_CUTS"))
+	{
+		option = "OPENEMS_GPU_DOMAIN_CUTS=";
+		list = getenv("OPENEMS_GPU_DOMAIN_CUTS");
+	}
+	if (!list.empty())
+	{
+		cuts.clear();
+		std::istringstream items(list);
+		std::string item;
+		bool valid = true;
+		while (std::getline(items, item, ','))
+		{
+			char* end = NULL;
+			const long cut = strtol(item.c_str(), &end, 10);
+			valid = valid && (end!=item.c_str()) && (*end=='\0') && (cut>=0) && (cut<=(long)numLines[0]);
+			cuts.push_back(valid ? cut : 0);
+		}
+		valid = valid && (cuts.size()==count+1) && (cuts.front()==0) && (cuts.back()==numLines[0]);
+		for (unsigned int n=0; valid && (n<count); ++n)
+			valid = (cuts[n+1]>=cuts[n]+3);
+		if (!valid)
+		{
+			std::cerr << "GPU_Backend_HIP::Init: Error: " << option << list << ": " << count << " parts need " << count+1
+			          << " x lines from 0 to " << numLines[0] << " (the number of mesh lines in x), at least 3 lines apart" << std::endl;
+			return false;
+		}
+	}
 	for (unsigned int n=0; n<count; ++n)
 	{
-		const unsigned int x1 = x0 + numLines[0]/count + ((n<numLines[0]%count) ? 1 : 0);
+		const unsigned int x0 = cuts[n];
+		const unsigned int x1 = cuts[n+1];
 		Impl* p = m_Parts[n];
 		p->fused_blockers++;   // no fused step with parts
 		if (!InitPart(p, op, numLines, x0, x1))
@@ -978,7 +1013,6 @@ bool GPU_Backend_HIP::Init(const Operator* op)
 		if (g_settings.GetVerboseLevel()>0)
 			std::cout << "GPU_Backend_HIP: part " << n << " on device " << p->ctx->device << " (" << p->ctx->name << "): x lines "
 			          << x0 << " to " << x1-1 << ", " << (size_t)(x1-x0)*numLines[1]*numLines[2] << " cells" << std::endl;
-		x0 = x1;
 	}
 	return true;
 }

@@ -56,6 +56,9 @@ public:
 	//! GPU devices of the GPU engine (--gpu-devices), a comma separated list to split the grid over; empty: --gpu-device
 	void SetGPUDevices(const std::string& devices) {m_GPUDevices=devices;}
 	const std::string& GetGPUDevices() const {return m_GPUDevices;}
+	//! The x lines at which --gpu-devices splits the grid (--gpu-domain-cuts), a comma separated list; empty: equal parts
+	void SetGPUDomainCuts(const std::string& cuts) {m_GPUDomainCuts=cuts;}
+	const std::string& GetGPUDomainCuts() const {return m_GPUDomainCuts;}
 
 	//! Set a new verbose level temporarily, restore it with RestoreVerboseLevel()
 	void SetTempVerboseLevel(int level) {m_SavedVerboseLevel=m_VerboseLevel;m_VerboseLevel=level;}
@@ -141,6 +144,7 @@ protected:
 	int m_SavedVerboseLevel;
 	int m_GPUDevice;
 	std::string m_GPUDevices;
+	std::string m_GPUDomainCuts;
 
 	boost::program_options::variables_map m_options;
 	boost::program_options::options_description* m_optionDesc;
