@@ -36,7 +36,7 @@ from CSXCAD import ContinuousStructure
 from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from openEMS import openEMS
 
-CASES_VERSION = 3
+CASES_VERSION = 4
 
 SIZES = ('XS', 'S', 'M', 'L', 'XL')
 DEFAULT_SIZES = ('S', 'M')
@@ -96,9 +96,11 @@ def _setup(bc, **kw):
 
 
 def _uniform(CSX, size):
-    """ a cube of 1 mm cells centred at the origin, returns its half width """
+    """ a cube of 1 mm cells around the origin, returns its half width. The lines
+        are integers, so the dipole and the probes sit on the mesh: with an even
+        number of lines the cube is half a cell off centre """
     n = _lines(size)
-    lines = np.arange(n) - (n - 1) / 2
+    lines = np.arange(n) - n // 2
     mesh = CSX.GetGrid()
     for d in 'xyz':
         mesh.AddLine(d, lines)
@@ -108,8 +110,8 @@ def _uniform(CSX, size):
 def _dipole(CSX):
     """ a short z-directed soft source at the origin with field probes two cells away """
     CSX.AddExcitation('dipole', exc_type=0, exc_val=[0, 0, 1]).AddBox([0, 0, -1], [0, 0, 1])
-    CSX.AddProbe('et', p_type=2).AddPoint([2, 1, 0])
-    CSX.AddProbe('ht', p_type=3).AddPoint([-1, 2, 1])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([2, 1, 0])
+    CSX.AddProbe('H_probe', p_type=3).AddPoint([-1, 2, 1])
 
 
 def _vacuum(size, bc):
@@ -169,7 +171,7 @@ def inhomogeneous(size):
     CSX.AddMaterial('lossy', epsilon=6, kappa=0.5).AddBox([0.2*E, -0.6*E, 0.2*E], [0.6*E, -0.2*E, 0.6*E])
     metal.AddBox([-0.7*E, -0.2*E, -0.5*E], [-0.6*E, 0.2*E, -0.2*E], priority=10)
 
-    CSX.AddProbe('et', p_type=2).AddPoint([0, 0, -h/2])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([0, 0, -h/2])
     return FDTD
 
 
@@ -225,8 +227,10 @@ def antenna(size):
 
 
 def cylindrical(size):
-    """ closed cylindrical mesh including r=0, a dielectric ring, PEC/Mur: the cylinder
-        operator and extension """
+    """ closed cylindrical mesh including r=0, a dielectric tube, PEC/Mur: the cylinder
+        operator and extension. The tube runs through both Mur ends: a first-order Mur
+        ABC loads an evanescent TM field with a negative resistance, and the ends of a
+        shorter tube reflect that field back to it, so the fields grew exponentially """
     FDTD, CSX = _setup(['PEC', 'PEC', 'PEC', 'PEC', 'MUR', 'MUR'], CoordSystem=1)
     nr, na, nz = _cyl_cells(size)
     mesh = CSX.GetGrid()
@@ -236,10 +240,10 @@ def cylindrical(size):
     R = nr - 1
     Z = (nz - 1) / 2
 
-    CSX.AddMaterial('ring', epsilon=4).AddBox([0.4*R, -np.pi, -0.6*Z], [0.6*R, np.pi, 0.6*Z])
+    CSX.AddMaterial('tube', epsilon=4).AddBox([0.4*R, -np.pi, -Z], [0.6*R, np.pi, Z])
     CSX.AddExcitation('line', exc_type=0, exc_val=[0, 0, 1]).AddBox([3, 0, -1], [3, 0, 1])
-    CSX.AddProbe('et', p_type=2).AddPoint([5, 0.2, 0])
-    CSX.AddProbe('ht', p_type=3).AddPoint([2, -0.3, 1])
+    CSX.AddProbe('E_probe', p_type=2).AddPoint([5, 0.2, 0])
+    CSX.AddProbe('H_probe', p_type=3).AddPoint([2, -0.3, 1])
     return FDTD
 
 

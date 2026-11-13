@@ -179,10 +179,11 @@ def _decode(d):
 
 
 def read_probes(rundir):
-    """ the probe files of a run: the files without an extension """
+    """ the probe files of a run: the files without an extension, except et and ht,
+        which hold the excitation signal """
     probes = {}
     for f in sorted(os.listdir(rundir)):
-        if '.' not in f and os.path.isfile(os.path.join(rundir, f)):
+        if '.' not in f and f not in ('et', 'ht') and os.path.isfile(os.path.join(rundir, f)):
             probes[f] = _encode(np.loadtxt(os.path.join(rundir, f), comments='%', ndmin=2))
     return probes
 
