@@ -138,7 +138,7 @@ Its variables, all experimental (they may change or go):
 | `ideal` | uniform | vacuum, PEC and PMC walls | the bare update kernel, one coefficient set (both walls are only zeroed coefficients) |
 | `pml` | uniform | vacuum, PML_8 on all sides | the UPML extension |
 | `inhomogeneous` | graded 0.25–1 mm | microstrip with two lumped ports, dielectric, lossy and metal blocks, PML_8 | many distinct coefficients, the usual extensions |
-| `dispersive` | uniform | a Lorentz and a Debye block, Mur | the dispersive material extensions |
+| `dispersive` | uniform | a Lorentz and a Debye block, PEC | the dispersive material extensions |
 | `antenna` | graded 0.25–1 mm | patch with a lumped port, a lossy Debye block, PML_8; an NF2FF box (frequency domain) and a time-domain E-field plane | the field dumps of a typical model |
 | `cylindrical` | cylindrical incl. r=0 | a dielectric tube through both Mur ends, PEC and Mur | the cylinder operator and extension |
 

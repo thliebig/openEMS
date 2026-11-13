@@ -36,7 +36,7 @@ from CSXCAD import ContinuousStructure
 from CSXCAD.CSProperties import CSPropLorentzMaterial, CSPropDebyeMaterial
 from openEMS import openEMS
 
-CASES_VERSION = 4
+CASES_VERSION = 5
 
 SIZES = ('XS', 'S', 'M', 'L', 'XL')
 DEFAULT_SIZES = ('S', 'M')
@@ -176,8 +176,11 @@ def inhomogeneous(size):
 
 
 def dispersive(size):
-    """ uniform mesh, a Lorentz and a Debye block, Mur ABC: the dispersive material extensions """
-    FDTD, CSX = _setup(['MUR'] * 6)
+    """ uniform mesh, a Lorentz and a Debye block, PEC: the dispersive material extensions.
+        PEC, not Mur: the fringe fields of the blocks made Mur's ABC grow, at every distance
+        tried (6 cells at XS, 15 at M) within the timesteps a run makes; the losses of both
+        materials keep the field in the closed box bounded """
+    FDTD, CSX = _setup(['PEC'] * 6)
     E = _uniform(CSX, size)
 
     lorentz = CSPropLorentzMaterial(CSX.GetParameterSet(), order=1)
