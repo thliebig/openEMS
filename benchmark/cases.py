@@ -18,10 +18,10 @@
 """The benchmark cases: each one isolates one cost of the solver.
 
 A case is written to an openEMS XML file at a given size, which sets the cell
-count. The number of timesteps is practically unlimited: bench.py stops each
-run after a fixed time, so every engine and machine runs equally long. Changing
-a case or a size changes the results: bump `CASES_VERSION`, results of
-different versions are not compared.
+count: a name of SIZES, or a number of million cells. The number of timesteps
+is practically unlimited: bench.py stops each run after a fixed time, so every
+engine and machine runs equally long. Changing a case or a size changes the
+results: bump `CASES_VERSION`, results of different versions are not compared.
 
 All cases use a sinusoidal excitation: its energy never decays, so no run
 stops early on the end criteria (an end criteria of 0 in the XML means the
@@ -38,17 +38,48 @@ from openEMS import openEMS
 
 CASES_VERSION = 3
 
-SIZES = ('XS', 'S', 'M', 'L')
+SIZES = ('XS', 'S', 'M', 'L', 'XL')
 DEFAULT_SIZES = ('S', 'M')
 
 # stopped by bench.py long before
 NRTS = 1e9
 
-# mesh lines per direction of the Cartesian cases: ~50 k, 1 M, 8 M, 30 M cells
-LINES = {'XS': 37, 'S': 100, 'M': 200, 'L': 311}
+# mesh lines per direction of the Cartesian cases: ~50 k, 1 M, 8 M, 30 M, 100 M cells
+LINES = {'XS': 37, 'S': 100, 'M': 200, 'L': 311, 'XL': 464}
 
 # r, alpha and z cells of the cylindrical case, about the same cell counts
-CYL_CELLS = {'XS': (40, 32, 40), 'S': (125, 64, 125), 'M': (250, 128, 250), 'L': (390, 192, 390)}
+CYL_CELLS = {'XS': (40, 32, 40), 'S': (125, 64, 125), 'M': (250, 128, 250), 'L': (390, 192, 390),
+             'XL': (585, 292, 585)}
+
+MIN_MCELLS = 0.05   # a size given as a number: million cells, at least XS
+
+
+def check_size(size):
+    """ None if `size` is a name of SIZES or a number of million cells, else why not """
+    if size in SIZES:
+        return None
+    try:
+        mc = float(size)
+    except ValueError:
+        return 'not one of {} nor a number of million cells'.format(', '.join(SIZES))
+    if not mc >= MIN_MCELLS:   # also NaN
+        return 'less than {} million cells'.format(MIN_MCELLS)
+    return None
+
+
+def _lines(size):
+    """ mesh lines per direction of the Cartesian cases """
+    if size in LINES:
+        return LINES[size]
+    return int(round((float(size) * 1e6) ** (1 / 3)))
+
+
+def _cyl_cells(size):
+    """ r, alpha and z cells of the cylindrical case, half as many alpha as r and z cells """
+    if size in CYL_CELLS:
+        return CYL_CELLS[size]
+    n = int(round((2 * float(size) * 1e6) ** (1 / 3)))
+    return n, 2 * int(round(n / 4)), n
 
 unit = 1e-3     # drawing unit: mm, the uniform meshes have 1 mm cells
 f0   = 5e9      # excitation frequency, 60 mm wavelength
@@ -66,7 +97,7 @@ def _setup(bc, **kw):
 
 def _uniform(CSX, size):
     """ a cube of 1 mm cells centred at the origin, returns its half width """
-    n = LINES[size]
+    n = _lines(size)
     lines = np.arange(n) - (n - 1) / 2
     mesh = CSX.GetGrid()
     for d in 'xyz':
@@ -115,7 +146,7 @@ def inhomogeneous(size):
     """ graded mesh, dielectric, lossy and metal objects, a microstrip line between two
         lumped ports, PML: many distinct coefficients and the usual extensions """
     FDTD, CSX = _setup(['PML_8'] * 6)
-    lines = _graded(LINES[size])
+    lines = _graded(_lines(size))
     mesh = CSX.GetGrid()
     for d in 'xyz':
         mesh.AddLine(d, lines)
@@ -168,7 +199,7 @@ def antenna(size):
         it (tissue), PML; with the dumps of a typical antenna model: an NF2FF box in the
         frequency domain and a time-domain E-field plane """
     FDTD, CSX = _setup(['PML_8'] * 6)
-    lines = _graded(LINES[size])
+    lines = _graded(_lines(size))
     mesh = CSX.GetGrid()
     for d in 'xyz':
         mesh.AddLine(d, lines)
@@ -197,7 +228,7 @@ def cylindrical(size):
     """ closed cylindrical mesh including r=0, a dielectric ring, PEC/Mur: the cylinder
         operator and extension """
     FDTD, CSX = _setup(['PEC', 'PEC', 'PEC', 'PEC', 'MUR', 'MUR'], CoordSystem=1)
-    nr, na, nz = CYL_CELLS[size]
+    nr, na, nz = _cyl_cells(size)
     mesh = CSX.GetGrid()
     mesh.AddLine('r', np.arange(nr))
     mesh.AddLine('a', np.linspace(-np.pi, np.pi, na + 1))

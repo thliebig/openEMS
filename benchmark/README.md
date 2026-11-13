@@ -21,7 +21,7 @@ probes of every run next to it. Other binaries: `--openems path/to/openEMS`.
 | Option | Default | |
 |---|---|---|
 | `--cases a,b` | all | `ideal`, `pml`, `inhomogeneous`, `dispersive`, `antenna`, `cylindrical` |
-| `--size S,M` | `S,M` | `XS` (~50 k cells, smoke test), `S` (~1 M), `M` (~8 M), `L` (~30 M, 3–4 GB RAM) |
+| `--size S,M` | `S,M` | `XS` (~50 k cells, smoke test), `S` (~1 M), `M` (~8 M), `L` (~30 M, 3–4 GB RAM); only when asked for: `XL` (~100 M, 5–9 GB); or a number of million cells, e.g. `200` |
 | `--engine a,b` | `multithreaded`, plus `gpu` with a device | also `basic`, `cpu` |
 | `--threads 1,4,8` | the physical cores | performance cores only on a hybrid CPU |
 | `--gpu-device N` | the best device | |
