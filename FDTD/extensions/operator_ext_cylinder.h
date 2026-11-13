@@ -26,8 +26,7 @@ class Operator_Cylinder;
 class Operator_Ext_Cylinder : public Operator_Extension
 {
 	friend class Engine_Ext_Cylinder;
-	friend class HIP_Ext_Cylinder;
-	friend class Metal_Ext_Cylinder;
+	friend class GPU_Ext_Cylinder;
 	friend class Operator_Ext_LorentzMaterial;
 	friend class Operator_Ext_DebyeMaterial;
 public:

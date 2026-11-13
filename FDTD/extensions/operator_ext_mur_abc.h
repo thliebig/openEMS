@@ -35,8 +35,7 @@
 class Operator_Ext_Mur_ABC : public Operator_Extension
 {
 	friend class Engine_Ext_Mur_ABC;
-	friend class HIP_Ext_Mur_ABC;
-	friend class Metal_Ext_Mur_ABC;
+	friend class GPU_Ext_Mur_ABC;
 public:
 	Operator_Ext_Mur_ABC(Operator* op);
 	~Operator_Ext_Mur_ABC();

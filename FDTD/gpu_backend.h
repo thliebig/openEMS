@@ -19,6 +19,8 @@
 #define GPU_BACKEND_H
 
 #include <complex>
+#include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -30,104 +32,74 @@
 #include "multigrid_interpolation.h"
 
 class Operator;
-class Engine;
-class Engine_Extension;
+struct GPU_CellModel;
+struct Engine_Box;
 
-//! Device implementation of an engine extension, see GPU_Backend::CreateExtension()
+//! The hooks of a half step around the main update, in this order: pre (the extensions in reverse order), post, apply (see Engine)
+enum GPU_Hook {GPU_PRE, GPU_POST, GPU_APPLY};
+
+//! Device implementation of an engine extension, see GPU_CreateExtension() (gpu_ext.h)
 /*!
-  Engine_GPU calls it through the same hooks and in the same order as the engine
-  extension it replaces, while the fields stay on the device. It works on the
-  device data of the backend that created it, so Engine_GPU deletes it before
-  that backend.
+  Engine_GPU calls it in the same order as the engine extension it replaces,
+  while the fields stay on the device. It works on the device data of the
+  backend that created it, so Engine_GPU deletes it before that backend.
   */
 class GPU_Extension
 {
 public:
 	virtual ~GPU_Extension() {}
 
-	virtual void DoPreVoltageUpdates() {}
-	virtual void DoPostVoltageUpdates() {}
-	virtual void Apply2Voltages() {}
-
-	virtual void DoPreCurrentUpdates() {}
-	virtual void DoPostCurrentUpdates() {}
-	virtual void Apply2Current() {}
-
-	//! Called after each IterateTS() of the engine, with the host mirror up to date
-	virtual void Synchronize() {}
-};
-
-//! Device implementation of the coupling of a multi-grid level and its sub-grid, see GPU_Backend::CreateMultiGridLink()
-/*!
-  Works on the device data of both backends, so SubGrid_Coupling_GPU
-  is deleted before either of them.
-  */
-class GPU_MultiGridLink
-{
-public:
-	virtual ~GPU_MultiGridLink() {}
-
-	//! Base grid voltages at r line split_pos-1 to the sub-grid, after the voltage updates of both grids
-	virtual void SyncVoltages() = 0;
-	//! Sub-grid currents to the base grid at r line split_pos-2, after the current updates of both grids
-	virtual void SyncCurrents() = 0;
-	//! Interpolate the sub-grid fields to the base grid inside the sub-grid (r lines below split_pos-1 / split_pos-2)
+	//! Hook \a h of the voltage (\a currents false) or current half step of timestep \a ts, as Engine_Extension::DoPreVoltageUpdates() to Apply2Current()
 	/*!
-	  Called at the end of a batch, like Engine::InterpolateFromSubGrid(),
-	  not in every timestep.
+	  On the nodes with x in [box.start[0], box.stop[0]): a tile of the temporal
+	  blocking (the boxes span y and z) or the whole domain.
 	  */
-	virtual void InterpolateToBase() = 0;
+	virtual void Hook(bool currents, GPU_Hook h, const Engine_Box& box, unsigned int ts) = 0;
+
+	//! Whether timestep \a ts needs the main updates of the whole domain, one after the other: no temporal blocking and no fused step then (e.g. the steady-state check reads the energy of all fields between them)
+	virtual bool NeedsFlatStep(unsigned int ts) const {(void)ts; return false;}
+	//! For the fused step (GPU_Backend::PrepareFused()): the nodes (x*ny + y)*nz + z whose voltages the hooks between the main voltage and current update write, and whose currents they read or write
+	/*!
+	  These hooks are the post and apply hooks of the voltages and the pre hook of the currents.
+	  Returns false if the extension does not know them: no fused step then.
+	  */
+	virtual bool MidStepNodes(std::vector<uint64_t>& volt, std::vector<uint64_t>& curr) const {(void)volt; (void)curr; return false;}
 };
 
-//! Nodes of a UPML region on the device: start node and number of nodes per direction
-struct GPU_UPMLRegion
+//! The per-point operations of the device extensions (GPU_Ext_*, kernels/ext_ops.h) a backend runs with GPU_Backend::RunPoints(), as CM_POINT_OPS lists them
+enum GPU_PointOp
 {
-	unsigned int start[3];
-	unsigned int size[3];
+	GPU_OP_EXCITATION,
+	GPU_OP_SHEET,
+	GPU_OP_LUMPED_RLC,
+	GPU_OP_TFSF,
+	GPU_OP_STEADY_STATE,
+	GPU_OP_CYLINDER,
+	GPU_OP_MULTIGRID,
+	GPU_OP_DISPERSIVE,
 };
-
-//! Whether the UPML of \a eng can run fused with the main updates, and the node box [start, stop) the main updates then cover
-/*!
-  Fused kernels do the UPML pre-update, the main update and the UPML post-update of
-  the nodes of a region in one pass. This is the same as the separate steps if:
-  - the UPML hooks run directly before and after the main update: only extensions
-    without device pre/post hooks (steady-state) come before the UPML extensions,
-  - all UPML extensions of the engine run on the device (\a regions has one entry per UPML extension),
-  - the regions cover exactly the nodes outside a box, which the main updates then cover.
-  A voltage/current update only reads its own node of the updated field, so the
-  regions and the box can be updated in any order.
-  */
-OPENEMS_EXPORT bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
-                                      unsigned int start[3], unsigned int stop[3]);
-
-//! The 12 update coefficients of node \a node of \a op, in the order vv[3], vi[3], ii[3], iv[3]
-/*!
-  \a node is (x*numLines[1] + y)*numLines[2] + z. The backends read the operator node by
-  node while uploading it, instead of copying its arrays first: a host copy would be
-  another 48 bytes per node at the peak of the host memory.
-  */
-OPENEMS_EXPORT void GPU_NodeCoefficients(const Operator* op, const unsigned int numLines[3], size_t node, float values[12]);
-//! Coefficient array \a c (0: vv, 1: vi, 2: ii, 3: iv) of \a op as uploaded, the value of direction n at [n*numCells + node]
-OPENEMS_EXPORT void GPU_CoefficientArray(const Operator* op, const unsigned int numLines[3], int c, std::vector<float>& values);
 
 //! Abstract interface to the device used by Engine_GPU
 /*!
-  A backend owns the device memory: the voltage and current fields and the update
-  coefficients of the operator. It performs the main FDTD updates on the device.
+  A backend owns the device memory: the voltage and current fields and the cell
+  model of the operator. It performs the main FDTD updates on the device, and runs
+  the device extensions of all backends (GPU_Ext_*, gpu_ext.h) through
+  DeviceAlloc(), DeviceField() and RunPoints(). What it must provide is pure
+  virtual; the rest (snapshots, device DFT sums, the fused step, ...) only
+  speeds things up, and Engine_GPU takes another path without it.
 
-  Engine_GPU keeps a host mirror of the fields in the basic Engine layout (ArrayNIJK),
-  used by the field processing and by extensions without a device implementation,
-  and synchronizes it with the Download/Upload methods. If the device shares its
+  Engine_GPU keeps a host mirror of the fields in the basic Engine layout (ArrayNIJK)
+  for the field processing, and brings it up to date with Download(). If the device shares its
   memory with the host (unified memory), the host mirror is the device memory
-  itself (see GetSharedVoltages()) and synchronizing means waiting for the device.
+  itself (see GetShared()) and synchronizing means waiting for the device.
 
   Init() is called once and before everything else; the rest may follow in any
   order, except where a method says otherwise. The device work of all calls is
   queued in the order they are made and all of them run on the engine thread,
   only WaitSnapshot() may be called from another thread.
 
-  The backend outlives everything it creates (sub-grid backend, device
-  extensions, multi-grid link), and the caller frees those first.
+  The backend outlives what works on its device data (sub-grid backend, device
+  extensions, multi-grid coupling), and the caller frees those first.
   */
 class GPU_Backend
 {
@@ -143,38 +115,57 @@ public:
 
 	virtual std::string GetName() const = 0;
 
-	//! Allocate the device fields (all zero) and upload the update coefficients of \a op
+	//! The bytes of the device's last-level cache, 0 if the backend cannot tell; \a source says where they come from (temporal blocking, see Engine_GPU::PrepareBlocking())
+	virtual size_t CacheBytes(std::string& source) const {source.clear(); return 0;}
+
+	//! Allocate the device fields (all zero) and upload \a model, the cell model of the grid of \a op
 	/*!
-	  \a op is fully built: its coefficients include all changes made by the
-	  operator extensions.
-	  Returns false if the backend cannot run this operator. After a successful Init(),
+	  The model fuses the UPML and (where it can) the dispersive materials into
+	  the main updates (kernels/cell_update.h); Engine_GPU drops their engine
+	  extensions. The results are within single precision of the CPU engine on
+	  the same model (Engine_CPU with the flat sweep, its generic kernels and
+	  the fast axis z): the coefficients in float per node (CM_FACTOR).
+
+	  Returns false if the backend cannot run this grid. After a successful Init(),
 	  a device failure (a failed launch, transfer or required allocation, a lost
 	  device) throws std::runtime_error; it ends the run with an error message, see
 	  main() and openEMS::RunFDTD(). Memory that only speeds things up (the fused
 	  step, snapshots) is optional: without it the backend takes the slower path.
 	  */
-	virtual bool Init(const Operator* op) = 0;
+	virtual bool Init(const Operator* op, const GPU_CellModel& model) = 0;
 
-	//! Main voltage update over the whole domain, equivalent to Engine::UpdateVoltages
-	virtual void UpdateVoltages() = 0;
-	//! Main current update over the whole domain, equivalent to Engine::UpdateCurrents
-	virtual void UpdateCurrents() = 0;
+	//! Device memory of \a bytes, initialized with \a host or zero, freed with the backend
+	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL) = 0;
+	//! Copy \a bytes of the device memory \a dev to \a host, after the work so far (waits for it)
+	virtual void DeviceDownload(void* host, const void* dev, size_t bytes) = 0;
+	//! The device voltages (false) or currents (true), ArrayNIJK layout
+	virtual float* DeviceField(bool currents) = 0;
+	//! The main voltage or current update on the cell model of the nodes with x in [box.start[0], box.stop[0]): a tile of the temporal blocking (the boxes span y and z), or the whole domain
+	virtual void UpdateVoltages(const Engine_Box& box) = 0;
+	virtual void UpdateCurrents(const Engine_Box& box) = 0;
+	//! Prepare the fused step: the main voltage and current update in one pass over the fields, see FusedUpdate()
+	/*!
+	  \a late are the nodes (x*ny + y)*nz + z, sorted, whose currents must wait for
+	  the hooks between the two main updates: the hooks read them, or their curl
+	  reads a voltage the hooks write. Returns false if the backend has no fused
+	  step, or not the memory for it (it is only a speed-up); then the main
+	  updates stay separate.
+	  */
+	virtual bool PrepareFused(const std::vector<uint64_t>& late) {UNUSED(late); return false;}
+	//! Free what PrepareFused() allocated: the main updates stay separate from here on
+	virtual void ReleaseFused() {}
+	//! The new voltages and the currents except the late ones; the hooks between the main updates see the new voltages and the old currents
+	virtual void FusedUpdate() {throw std::logic_error("GPU_Backend: no fused step");}
+	//! The late currents, after the hooks between the main updates: the currents are new from here on
+	virtual void SeamUpdate() {throw std::logic_error("GPU_Backend: no fused step");}
+	//! Run the point operation \a op (of type \a kind, see kernels/ext_ops.h) for its points [begin, end), in parallel or, if \a serial, in order
+	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial) = 0;
 
-	//! Copy the device voltages to the host mirror
-	virtual void DownloadVoltages(ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt) = 0;
-	//! Copy the device currents to the host mirror
-	virtual void DownloadCurrents(ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr) = 0;
-	//! Copy the host mirror voltages to the device
-	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt) = 0;
-	//! Copy the host mirror currents to the device
-	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr) = 0;
-	//! Copy \a count values of the device voltages or \a currents from the flat ArrayNIJK index \a offset to \a dst, returns false if the backend cannot
-	virtual bool DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst) {UNUSED(currents); UNUSED(offset); UNUSED(count); UNUSED(dst); return false;}
+	//! Copy the device voltages (\a currents false) or currents to the host mirror \a field
+	virtual void Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& field) = 0;
 
-	//! Host pointer to the device voltages in the ArrayNIJK layout, if the device shares memory with the host, else NULL. Valid after Init().
-	virtual FDTD_FLOAT* GetSharedVoltages() const {return NULL;}
-	//! Host pointer to the device currents in the ArrayNIJK layout, if the device shares memory with the host, else NULL. Valid after Init().
-	virtual FDTD_FLOAT* GetSharedCurrents() const {return NULL;}
+	//! Host pointer to the device voltages (\a currents false) or currents in the ArrayNIJK layout, if the device shares memory with the host, else NULL. Valid after Init().
+	virtual FDTD_FLOAT* GetShared(bool currents) const {UNUSED(currents); return NULL;}
 	//! Wait until the device finished all work, required before the host accesses shared memory
 	virtual void Synchronize() {}
 
@@ -214,15 +205,6 @@ public:
 
 	//! Create a backend for a sub-grid (e.g. a cylindrical multi-grid level) whose work is ordered with the work of this backend. It's the responsibility of the caller to free it.
 	virtual GPU_Backend* NewSubGridBackend() = 0;
-	//! Create the device coupling of this (base grid) backend and \a sub_grid (created by NewSubGridBackend()), or NULL if this backend has none. It's the responsibility of the caller to free it.
-	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const MultiGridInterpolation& interpol) {UNUSED(sub_grid); UNUSED(interpol); return NULL;}
-
-	//! Create the device implementation of the engine extension \a eng_ext of engine \a eng, or NULL if this backend has none. It's the responsibility of the caller to free it.
-	/*!
-	  Called after Init(), once per engine extension. \a eng_ext stays alive
-	  alongside it and holds the data the device implementation is built from.
-	  */
-	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng) {UNUSED(eng_ext); UNUSED(eng); return NULL;}
 };
 
 #endif // GPU_BACKEND_H

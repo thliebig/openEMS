@@ -19,6 +19,7 @@
 #define ENGINE_PLAN_H
 
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 //! A box of mesh lines, [start, stop) per axis
@@ -84,6 +85,7 @@ struct Engine_Step
 struct Engine_BlockedPlan
 {
 	unsigned int k = 0;   //!< the timesteps of a block
+	unsigned int tiles = 0;   //!< the tiles along the split axis
 	std::vector< std::vector< std::vector<Engine_Step> > > phases;   //!< [phase][thread] its steps
 
 	unsigned int GetNumThreads() const {return phases.empty() ? 0 : phases[0].size();}
@@ -97,6 +99,18 @@ struct Engine_BlockedPlan
 	  */
 	static Engine_BlockedPlan Trapezoids(const unsigned int numLines[3], unsigned int numThreads, int splitAxis, int threadAxis,
 	                                     unsigned int width, unsigned int k);
+	//! Parallelograms of \a width lines along \a splitAxis, one tile after the other, all threads on one tile
+	/*!
+	  A tile moves down by a line per half step: V_t on [a-2t, b-2t), I_t on
+	  [a-2t-1, b-2t-1). It reads only lines of the tile before it, which that
+	  one has finished up to there, so no wedges are needed, but the tiles run
+	  in order: a phase per half step of a tile, half the phases of
+	  Trapezoids(). The first tile starts at line 0 at every step, the last
+	  reaches the end of the axis. Needs width >= 2k+1; a short last tile is
+	  folded into the one before.
+	  */
+	static Engine_BlockedPlan Parallelograms(const unsigned int numLines[3], unsigned int numThreads, int splitAxis, int threadAxis,
+	                                         unsigned int width, unsigned int k);
 };
 
 //! The blocked plans an engine offers its thread pool (Engine::BuildBlockedPlans())
@@ -117,5 +131,15 @@ struct Engine_BlockedChoice
 	unsigned int start = 0;    //!< the candidate expected fastest
 	double trialSeconds = 0;   //!< 0: no trials, \a start
 };
+
+//! The tiles of the temporal blocking the environment variable \a name sets, as (k, W): "0" none, "k:W" or "k:W,k:W,..." (k timesteps per block, at least 2; tiles of W lines, at least 2k+1, "k" alone the narrowest)
+/*!
+  For OPENEMS_CPU_TBLOCK and OPENEMS_GPU_TBLOCK. Returns false if the variable is
+  unset or empty (the engine chooses), true with \a tiles empty for "0". Throws
+  std::invalid_argument for anything else.
+  */
+bool Engine_TilesFromEnv(const char* name, std::vector< std::pair<unsigned int, unsigned int> >& tiles);
+//! The number the environment variable \a name sets, \a fallback if it is unset or empty; throws std::invalid_argument if it is no number, negative, or 0 and not \a zero
+double Engine_NumberFromEnv(const char* name, double fallback, bool zero);
 
 #endif // ENGINE_PLAN_H

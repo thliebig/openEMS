@@ -29,7 +29,7 @@
   interpolated from the sub-grid alpha lines pos_2p[n][a] and pos_2pp[n][a] with
   the weights w_2p[n][a] and w_2pp[n][a] (_v: voltages, _i: currents).
   Independent of the engine: each coupling (Engine_SubGridCoupling,
-  GPU_MultiGridLink) takes it into its own layout.
+  SubGrid_Coupling_GPU) takes it into its own layout.
   */
 struct MultiGridInterpolation
 {

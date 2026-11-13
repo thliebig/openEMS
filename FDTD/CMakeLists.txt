@@ -2,17 +2,8 @@
 if(ENABLE_HIP)
   set(HIP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/hip/gpu_backend_hip.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_excitation.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_upml.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_mur_abc.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_lorentzmaterial.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_debyematerial.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_lumpedRLC.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_tfsf.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_absorbing_bc.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_steadystate.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_cylinder.hip
-    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_multigrid.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_cell_model.hip
+    ${CMAKE_CURRENT_SOURCE_DIR}/hip/hip_ext_ops.hip
   )
   # the top level needs the list by itself: source file properties belong to the
   # directory of the target, and the openEMS and plugin targets are defined there
@@ -28,18 +19,28 @@ endif()
 if(APPLE AND ENABLE_METAL)
   set(METAL_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metal/gpu_backend_metal.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_excitation.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_upml.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_mur_abc.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_lorentzmaterial.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_debyematerial.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_lumpedRLC.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_tfsf.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_absorbing_bc.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_steadystate.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_ext_cylinder.mm
-    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_multigrid.mm
   )
+
+  # All kernels of the Metal backend in Metal Shading Language: the shared code and the entry
+  # points, compiled by the backend at run time from metal_cm_source.h. metal_cm_kernels.metal
+  # is the same source for an offline compile: `cmake --build . --target metal_check` (CI).
+  set(METAL_CM_PARTS
+    ${CMAKE_CURRENT_SOURCE_DIR}/kernels/cell_update.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/kernels/ext_ops.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/metal/metal_kernels.metal)
+  set(METAL_CM_SOURCE "#include <metal_stdlib>\nusing namespace metal;\n#pragma STDC FP_CONTRACT OFF\n")
+  foreach(part ${METAL_CM_PARTS})
+    file(READ ${part} part_text)
+    string(APPEND METAL_CM_SOURCE "${part_text}\n")
+  endforeach()
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${METAL_CM_PARTS})
+  file(WRITE ${CMAKE_BINARY_DIR}/metal_cm_kernels.metal "${METAL_CM_SOURCE}")
+  file(WRITE ${CMAKE_BINARY_DIR}/metal_cm_source.h
+       "// generated from ${METAL_CM_PARTS}\nstatic const char* METAL_CM_SOURCE = R\"CMSRC(${METAL_CM_SOURCE})CMSRC\";\n")
+  add_custom_target(metal_check
+    COMMAND xcrun -sdk macosx metal -std=metal3.0 -c ${CMAKE_BINARY_DIR}/metal_cm_kernels.metal -o ${CMAKE_BINARY_DIR}/metal_cm_kernels.air
+    COMMENT "Compiling the Metal kernels offline"
+    VERBATIM)
 endif()
 
 set(SOURCES
@@ -50,6 +51,8 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_threadpool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_plan.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/cell_model.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/gpu_cell_model.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/gpu_ext.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_cpu.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_cpu_kernels.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator.cpp
@@ -66,7 +69,6 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_gpu.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_plugins.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/gpu_coeff_sets.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend_reference.cpp
   PARENT_SCOPE
 )

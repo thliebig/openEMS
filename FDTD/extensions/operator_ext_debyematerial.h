@@ -60,8 +60,7 @@ class Operator_Ext_DebyeMaterial : public Operator_Ext_Dispersive
 {
 	friend class Engine_Ext_DebyeMaterial;
 	friend class CellModel;   // fuses the cells into the engine update
-	friend class HIP_Ext_DebyeMaterial;
-	friend class Metal_Ext_DebyeMaterial;
+	friend class GPU_Ext_Dispersive;
 public:
 	Operator_Ext_DebyeMaterial(Operator* op);
 	virtual ~Operator_Ext_DebyeMaterial();

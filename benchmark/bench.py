@@ -304,7 +304,6 @@ def run_once(path, xml, rundir, engine, threads, gpu_device, duration, log, env=
     if engine == 'gpu':
         backend = re.search(r'^Create FDTD engine \(GPU, backend: (.*)\)$', text, re.M)
         r['gpu_backend'] = backend.group(1) if backend else None
-        r['gpu_on_device'] = '(host fallback)' not in text
     return r
 
 
@@ -475,7 +474,6 @@ def cmd_run(args):
                     pt['engine_info'] = pt['runs'][0].get('engine_info', {})
                     if engine == 'gpu':
                         pt['gpu_backend'] = pt['runs'][0]['gpu_backend']
-                        pt['gpu_on_device'] = all(r['gpu_on_device'] for r in pt['runs'])
                 result['points'].append(pt)
     except KeyboardInterrupt:
         print('\ninterrupted, writing the results so far')
@@ -520,7 +518,7 @@ def print_table(result, label):
         if not pt['runs']:
             print(head + '  FAILED')
             continue
-        note = '  (extensions on the host)' if pt.get('gpu_on_device') is False else ''
+        note = ''
         if engine_note(pt.get('engine_info')):
             note += '  ' + engine_note(pt.get('engine_info'))
         print(head + ' {:7.2f} {:9d} {:9.1f} {:>6s} {:8.2f} {:>8s}{}'.format(

@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 #include "FDTD/engine_plan.h"
@@ -44,10 +45,12 @@ public:
 		m_Ready = false;
 	}
 
-	//! The index by box, on a mesh of numLines
+	//! The index by box, on a mesh of numLines; 32 bit per element and axis, so at most 2^32-1 elements
 	void Build(const unsigned int numLines[3])
 	{
 		const size_t count = m_Count;
+		if (count > UINT32_MAX)
+			throw std::length_error("Engine_Ext_CellIndex: more than 2^32-1 elements of an extension");
 		unsigned int* const* pos = m_Pos;
 		for (int a=0; a<3; ++a)
 		{

@@ -26,8 +26,7 @@ class Engine_Ext_SteadyState;
 class Operator_Ext_SteadyState : public Operator_Extension
 {
 	friend class Engine_Ext_SteadyState;
-	friend class HIP_Ext_SteadyState;
-	friend class Metal_Ext_SteadyState;
+	friend class GPU_Ext_SteadyState;
 public:
 	Operator_Ext_SteadyState(Operator* op, double period);
 	virtual ~Operator_Ext_SteadyState();

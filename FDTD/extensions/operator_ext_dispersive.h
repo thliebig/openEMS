@@ -27,8 +27,7 @@ class Operator_Ext_Dispersive : public Operator_Extension
 {
 	friend class Engine_Ext_Dispersive;
 	friend class CellModel;   // fuses the dispersive cells into the engine update
-	friend class HIP_Ext_LorentzMaterial;
-	friend class Metal_Ext_LorentzMaterial;
+	friend class GPU_Ext_Dispersive;
 public:
 	virtual ~Operator_Ext_Dispersive();
 

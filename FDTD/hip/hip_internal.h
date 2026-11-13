@@ -15,12 +15,13 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// HIP only: shared by the HIP backend and the HIP extensions
+// HIP only: shared by the source files of the HIP backend
 
 #ifndef HIP_INTERNAL_H
 #define HIP_INTERNAL_H
 
 #include <hip/hip_runtime.h>
+#include "FDTD/kernels/cell_update.h"
 
 #include <algorithm>
 #include <memory>
@@ -29,7 +30,6 @@
 #include <vector>
 
 #include "gpu_backend_hip.h"
-#include "FDTD/gpu_coeff_sets.h"
 
 //! Grid size (number of mesh lines) as passed to the kernels
 struct HIP_GridDim
@@ -37,12 +37,7 @@ struct HIP_GridDim
 	unsigned int nx, ny, nz;
 };
 
-//! The kernels index the fields with size_t. The fused step (update_fused) is also built with
-//! 32 bit indices, chosen in Init() (see GPU_Backend_HIP::Impl::index32); the helpers it uses take
-//! the index type I as a template parameter, size_t by default.
-template<typename T> struct HIP_NoDeduce { typedef T type; };
-
-//! Fields and coefficients use the ArrayNIJK layout of the host:
+//! The fields use the ArrayNIJK layout of the host:
 //! index(n,x,y,z) = n*nx*ny*nz + x*ny*nz + y*nz + z
 template<typename I = size_t>
 __device__ __forceinline__ I nijk(const HIP_GridDim& N, unsigned int n, unsigned int x, unsigned int y, unsigned int z)
@@ -50,9 +45,6 @@ __device__ __forceinline__ I nijk(const HIP_GridDim& N, unsigned int n, unsigned
 	return (((I)n*N.nx + x)*N.ny + y)*N.nz + z;
 }
 
-//! Main update coefficients of node i, see GPU_Backend_HIP::Impl::coeff_mode:
-//! a[n*s] and b[n*s] are vv/vi (voltages, set_offset 0) or ii/iv (currents, set_offset 6)
-//! of direction n. Mode 0: ca/cb are the full arrays, else ca is the table of sets.
 //! The raw values of a dump on the device, see Engine_GatherRegion: value e of component n is
 //! the edge (n, lines[n][0][a], lines[n][1][b], lines[n][2][c]) with e = start[n] + (a*size[n][1] + b)*size[n][2] + c
 struct HIP_GatherRegion
@@ -74,26 +66,6 @@ __device__ __forceinline__ size_t region_field_index(const HIP_GatherRegion& R, 
 	return nijk(N, n, R.lines[n][0][a], R.lines[n][1][b], R.lines[n][2][c]);
 }
 
-template<typename I> struct HIP_MainCoeffT { const float* a; const float* b; I s; };
-typedef HIP_MainCoeffT<size_t> HIP_MainCoeff;
-
-template<typename I = size_t>
-__device__ __forceinline__ HIP_MainCoeffT<I> main_coeff(const void* index, const float* ca, const float* cb, unsigned int mode,
-                                                        typename HIP_NoDeduce<I>::type sn, typename HIP_NoDeduce<I>::type i,
-                                                        unsigned int set_offset)
-{
-	HIP_MainCoeffT<I> c;
-	if (mode==0)
-	{
-		c.a = ca + i; c.b = cb + i; c.s = sn;
-		return c;
-	}
-	const unsigned int set = (mode==1) ? (unsigned int)((const unsigned short*)index)[i] : ((const unsigned int*)index)[i];
-	c.a = ca + (size_t)12*set + set_offset; c.b = c.a + 3; c.s = 1;   // 64 bit: more than 358M sets wrap in 32
-	return c;
-}
-
-#include "hip_upml.hiph"
 
 //! Throw a std::runtime_error if \a err is an error
 void HIP_Check(hipError_t err, const char* what);
@@ -105,7 +77,8 @@ struct HIP_Context
 	hipStream_t stream;
 	hipStream_t copy_stream;   //!< downloads of field snapshots, overlapping the work (see GPU_Backend_HIP::SnapshotFields())
 	std::string name;
-	unsigned int warp_size;    //!< threads that run in lockstep: 32 on NVIDIA, 64 on the CDNA GPUs of AMD
+	size_t cache_bytes = 0;      //!< the last-level cache, 0 unknown (see GPU_Backend_HIP::CacheBytes())
+	std::string cache_source;
 
 	HIP_Context();
 	~HIP_Context();
@@ -118,45 +91,35 @@ struct GPU_Backend_HIP::Impl
 
 	HIP_GridDim dim;
 	size_t numCells;    //!< nx*ny*nz, the field buffers hold 3*numCells values
+	unsigned int max_grid_z = 65535;   //!< the most blocks of a launch along z (x lines of the main updates)
 
 	float *volt, *curr;
 	float2* energy;                      //!< per-line energy sums, see GPU_Backend_HIP::CalcFastEnergy()
 	size_t energy_count;
 	std::vector<float2> energy_host;
-	//! Main update coefficients: 0: full arrays vv, vi, ii, iv; 1/2: a 16/32 bit set index per node and the sets (see main_coeff())
-	unsigned int coeff_mode;
-	float *vv, *vi, *ii, *iv;
-	void* index;
-	float* coeff;
-
-	//! The main updates cover the nodes in [main_start, main_stop), the fused UPML kernels the others (see hip_ext_upml.cu)
-	HIP_GridDim main_start, main_stop;
-	//! UPML extensions of this grid and whether they run fused with the main updates (-1: not decided yet), see hip_ext_upml.cu
-	std::vector<GPU_Extension*> upml;
-	int upml_fused;
-	//! UPML regions along z updated by the main kernels (nodes below main_start.nz / above main_stop.nz)
-	HIP_ZSlabs zslabs;
-	bool zslab_lo, zslab_hi;
-
-	//! Fused step (see update_fused): voltages and currents of the main nodes in one pass, from the
-	//! current fields (volt, curr) into the next buffers (volt_next, curr_next), swapped afterwards.
-	int fused_step;                          //!< -1: not decided yet, 0: off, 1: on
-	int fused_blockers;                      //!< extensions or grids that do not allow it
-	float *volt_next, *curr_next;
-	std::vector<size_t> volt_modified;       //!< flat indices of the voltages the extensions register as changed between the half-steps (excitation, lumped RLC)
-	HIP_FusedRegions fregions;              //!< the UPML regions in the kernel (see HIP_Ext_UPML::CanFuse())
-	size_t* fixup;                           //!< main nodes whose currents are recomputed after the voltage extensions
-	unsigned int fixup_count;
-	bool index32;                            //!< the fused step indexes with 32 bit (see Init())
-	//! Decide once whether the fused step is used, and prepare it
-	bool DecideFusedStep();
+	//! The main updates on the cell model (see Init(), hip_cell_model.hip)
+	bool cm_index16 = true;
+	void* cm_index[2] = {NULL, NULL};
+	CM_Field cm_field[2];
+	size_t cm_state_size[2] = {0, 0};   //!< floats of cm_field[f].state
+	//! The fused step (see GPU_Backend_HIP::PrepareFused(), hip_cell_model.hip): blocks of TZ x TY threads, through XC lines along x
+	struct Fused
+	{
+		unsigned int TZ = 0, TY = 0, XC = 0;
+		float* volt = NULL;      //!< the second field buffers, NULL without the fused step
+		float* curr = NULL;
+		float* vstate = NULL;    //!< and of the state of the voltages
+		uint32_t* late = NULL;   //!< bitmap of the late currents (GPU_Backend::PrepareFused()), NULL none
+		uint64_t* list = NULL;   //!< and their list
+		size_t count = 0;
+	} fused;
 
 	//! Field snapshots (see GPU_Backend_HIP::SnapshotFields()): the raw values the dumps read, copied on
 	//! the device (gather_region) and downloaded on the copy stream into a page-locked host buffer
 	//! while the next timesteps run
 	std::vector<HIP_GatherRegion> snap_regions[2];   //!< of the voltages, of the currents
 	std::vector<void*> snap_lines;    //!< device line tables of the regions
-	unsigned int snap_nv, snap_n;     //!< number of raw voltages, of all raw values
+	size_t snap_nv, snap_n;           //!< number of raw voltages, of all raw values
 	float* snap_dev;                  //!< the raw values
 	float* snap_host;                 //!< the downloaded raw values
 	hipEvent_t snap_evaluated;       //!< snap_dev is written
@@ -221,21 +184,6 @@ struct GPU_Backend_HIP::Impl
 		(void)hipFree(ptr);
 	}
 
-	//! Device buffer of the set indices of \a sets (16 or 32 bit)
-	void* AllocIndex(const GPU_CoeffSets& sets)
-	{
-		if (sets.mode==1)
-		{
-			std::vector<unsigned short> index16(sets.index.begin(), sets.index.end());
-			return Alloc<unsigned short>(index16.size(), index16.data());
-		}
-		return Alloc<unsigned int>(sets.index.size(), sets.index.data());
-	}
-
-	//! No UPML regions updated by the main kernels (call after changing main_start/main_stop)
-	void ResetZSlabs();
-	//! Nodes [B, E) of the main kernels: main_start/main_stop and the UPML regions along z they update
-	void MainRange(HIP_GridDim& B, HIP_GridDim& E, unsigned int& threads_z);
 
 	//! Wait until all work on the stream is done
 	void Flush();
@@ -279,18 +227,5 @@ void HIP_Launch(GPU_Backend_HIP::Impl* d, const char* name, Kernel kernel, size_
 	if (timed)
 		HIP_KernelTimes::End(d->Stream(), name);
 }
-
-//! Factory of a HIP extension: the device implementation of \a eng_ext, or NULL if \a eng_ext is not of its type
-typedef GPU_Extension* (*HIP_ExtensionFactory)(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_Excitation(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_UPML(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_Mur_ABC(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_LorentzMaterial(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_DebyeMaterial(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_LumpedRLC(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_TFSF(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_Absorbing_BC(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_SteadyState(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
-GPU_Extension* HIP_CreateExt_Cylinder(GPU_Backend_HIP::Impl* d, Engine_Extension* eng_ext, Engine* eng);
 
 #endif // HIP_INTERNAL_H

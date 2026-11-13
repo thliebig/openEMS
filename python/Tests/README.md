@@ -125,6 +125,8 @@ the Octave suite there is no sweep over all engines in one run;
 `gpu-reference`, `gpu` if there is a GPU, `cpu` flat and with temporal blocking,
 `multithreaded` on cylindrical meshes) and compares all probes and field dumps
 with the basic engine: bit-identical where the arithmetic is the same, within
-1e-4 of the peak value where it is not. With `--engine` it compares only that
+1e-4 of the peak value where it is not. `gpu-reference` runs the GPU kernels on
+the CPU and is compared with the CPU engine on the same cell model: its probes
+bit-identical. With `--engine` it compares only that
 engine with basic (nothing for `--engine=basic`). Its docstring lists the cases
 and what each must show; `CPU_CellModel.py` checks the CPU engine's cell model on top.

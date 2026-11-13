@@ -25,11 +25,17 @@
 
 //! GPU backend using Apple Metal
 /*!
-  The fields and coefficients live in shared-storage Metal buffers (unified
+  The fields and the cell model live in shared-storage Metal buffers (unified
   memory), which Engine_GPU uses directly as its host mirror: there is no
-  download, Download/Upload only wait for the device. All kernels of a batch of
-  timesteps are encoded into one serial compute encoder, which is only committed
-  when the host needs the fields.
+  download, Download() only waits for the device. All kernels of a batch of
+  timesteps are encoded into one compute encoder, which is only committed when
+  the host needs the fields.
+
+  The main updates and the device extensions are the code of every backend on
+  the cell model (kernels/cell_update.h, kernels/ext_ops.h, gpu_ext.h), compiled
+  at run time with the entry points of metal/metal_kernels.metal. Its structs
+  hold device pointers: the gpuAddress of the buffers (Metal 3, macOS 13), which
+  every encoder declares resident.
 
   The field dumps are copied on the device at a snapshot (see SnapshotFields())
   and evaluated on the dump thread while the device keeps stepping; the frequency
@@ -48,27 +54,25 @@ public:
 
 	virtual std::string GetName() const;
 
-	virtual bool Init(const Operator* op);
+	virtual bool Init(const Operator* op, const GPU_CellModel& model);
 
-	virtual void UpdateVoltages();
-	virtual void UpdateCurrents();
+	virtual void UpdateVoltages(const Engine_Box& box);
+	virtual void UpdateCurrents(const Engine_Box& box);
 
-	virtual void DownloadVoltages(ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
-	virtual void DownloadCurrents(ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
-	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
-	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
+	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL);
+	virtual void DeviceDownload(void* host, const void* dev, size_t bytes);
+	virtual float* DeviceField(bool currents);
+	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial);
 
-	virtual FDTD_FLOAT* GetSharedVoltages() const;
-	virtual FDTD_FLOAT* GetSharedCurrents() const;
+	virtual void Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& field);
+
+	virtual FDTD_FLOAT* GetShared(bool currents) const;
 	virtual void Synchronize();
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
 	virtual bool SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	virtual void WaitSnapshot();
 
 	virtual GPU_Backend* NewSubGridBackend();
-	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const MultiGridInterpolation& interpol);
-
-	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng);
 
 	struct Impl;
 	Impl* GetImpl() const {return d;}
@@ -76,8 +80,8 @@ public:
 protected:
 	GPU_Backend_Metal(Impl* impl);
 
-	//! Store the coefficients as distinct sets and a set index per node, returns false if there are too many sets
-	bool CompressCoefficients(const Operator* op, const unsigned int numLines[3]);
+	//! The main voltage or current update of the x lines [x0, x1)
+	void Update(bool voltages, unsigned int x0, unsigned int x1);
 
 	Impl* d;
 };

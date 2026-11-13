@@ -117,9 +117,6 @@ protected:
 
 	//! the axes and the layout: the model's fast axis, the constraints of the box plans, OPENEMS_CPU_FAST_AXIS=x|y|z
 	void ChooseLayout();
-	//! drop the engine extensions of the operator extensions the model fuses
-	void DropFusedExtensions();
-
 	//! the kernel data and the kernels of the instruction set of this CPU, after CellModel::Build()
 	void InitKernels();
 	Engine_CPU_Kernel m_Kernel;

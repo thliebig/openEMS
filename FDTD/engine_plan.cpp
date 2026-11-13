@@ -18,6 +18,10 @@
 #include "engine_plan.h"
 
 #include <algorithm>
+#include <climits>
+#include <cstdlib>
+#include <stdexcept>
+#include <string>
 
 #include "tools/useful.h"
 
@@ -87,19 +91,24 @@ static void AddPhase(Engine_BlockedPlan& plan, const unsigned int numLines[3], u
 	plan.phases.push_back(phase);
 }
 
+//! The tile borders along an axis of \a N lines, tiles of \a width lines: 0, width, ..., N, a short last tile folded into the one before
+static std::vector<unsigned int> TileBorders(unsigned int N, unsigned int width)
+{
+	std::vector<unsigned int> border(1, 0);
+	while (N - border.back() >= 2*width)
+		border.push_back(border.back() + width);
+	border.push_back(N);
+	return border;
+}
+
 Engine_BlockedPlan Engine_BlockedPlan::Trapezoids(const unsigned int numLines[3], unsigned int numThreads, int S, int T,
                                                   unsigned int width, unsigned int k)
 {
 	Engine_BlockedPlan plan;
 	plan.k = k;
 	const unsigned int N = numLines[S];
-	if (width < 2*k+1)
-		width = 2*k+1;
-	// the tile borders, a short last tile folded into the one before
-	std::vector<unsigned int> border(1, 0);
-	while (N - border.back() >= 2*width)
-		border.push_back(border.back() + width);
-	border.push_back(N);
+	const std::vector<unsigned int> border = TileBorders(N, std::max(width, 2*k+1));
+	plan.tiles = border.size()-1;
 
 	// the cores: V_t on [a+t, b-t), I_t on [a+t, b-t-1), not shrinking at the domain edges
 	for (size_t i=0; i+1<border.size(); ++i)
@@ -123,4 +132,67 @@ Engine_BlockedPlan Engine_BlockedPlan::Trapezoids(const unsigned int numLines[3]
 		}
 	}
 	return plan;
+}
+
+Engine_BlockedPlan Engine_BlockedPlan::Parallelograms(const unsigned int numLines[3], unsigned int numThreads, int S, int T,
+                                                      unsigned int width, unsigned int k)
+{
+	Engine_BlockedPlan plan;
+	plan.k = k;
+	const unsigned int N = numLines[S];
+	const std::vector<unsigned int> border = TileBorders(N, std::max(width, 2*k+1));
+	plan.tiles = border.size()-1;
+	for (size_t i=0; i+1<border.size(); ++i)
+	{
+		const unsigned int a = border[i], b = border[i+1];
+		for (unsigned int t=0; t<k; ++t)
+		{
+			// the first tile starts at line 0, the last ends at the end of the axis, at every step
+			AddPhase(plan, numLines, numThreads, S, T, true,  t, (a>0) ? a-2*t   : 0, (b<N) ? b-2*t   : N);
+			AddPhase(plan, numLines, numThreads, S, T, false, t, (a>0) ? a-2*t-1 : 0, (b<N) ? b-2*t-1 : N-1);
+		}
+	}
+	return plan;
+}
+
+bool Engine_TilesFromEnv(const char* name, std::vector< std::pair<unsigned int, unsigned int> >& tiles)
+{
+	tiles.clear();
+	const char* env = std::getenv(name);
+	if ((env==NULL) || (env[0]=='\0'))
+		return false;
+	if (std::string(env)=="0")
+		return true;
+	const char* p = env;
+	while (true)
+	{
+		char* end = NULL;
+		const unsigned long k = std::strtoul(p, &end, 10);
+		unsigned long W = 0;
+		if ((end!=p) && (*end==':'))
+		{
+			const char* w = end+1;
+			W = std::strtoul(w, &end, 10);
+			if (end==w)
+				end = NULL;
+		}
+		if ((end==NULL) || (end==p) || (k<2) || (k>(UINT_MAX-1)/2) || (W>UINT_MAX) || ((*end!='\0') && (*end!=',')))
+			throw std::invalid_argument(std::string(name) + " must be 0, or k or k:W (k at least 2), several separated by commas");
+		tiles.push_back(std::make_pair((unsigned int)k, (unsigned int)std::max<unsigned long>(W, 2*k+1)));
+		if (*end=='\0')
+			return true;
+		p = end+1;
+	}
+}
+
+double Engine_NumberFromEnv(const char* name, double fallback, bool zero)
+{
+	const char* env = std::getenv(name);
+	if ((env==NULL) || (env[0]=='\0'))
+		return fallback;
+	char* end = NULL;
+	const double v = std::strtod(env, &end);
+	if ((end==env) || (*end!='\0') || (v<0) || ((v==0) && !zero))
+		throw std::invalid_argument(std::string(name) + " must be a number " + (zero ? "of 0 or more" : "greater than 0"));
+	return v;
 }

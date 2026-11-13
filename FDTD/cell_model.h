@@ -28,6 +28,7 @@
 #include "cell_model_data.h"
 
 class Operator;
+class Engine_Extension;
 class Operator_Extension;
 class Operator_Ext_UPML;
 class Operator_Ext_Dispersive;
@@ -42,7 +43,7 @@ class Operator_Ext_DebyeMaterial;
 struct CellModel_NodeSet
 {
 	std::vector<uint64_t> bits;
-	std::vector<uint32_t> before;   //!< per word the nodes in the words before it
+	std::vector<uint64_t> before;   //!< per word the nodes in the words before it
 
 	//! an empty set of \a nodes nodes
 	void Init(size_t nodes);
@@ -70,8 +71,8 @@ struct CellModel_Component
   Built by an engine from its operator (Analyse(), RecommendFastAxis(),
   Build(), FreeFused()); the engine keeps the runs in the form its kernels
   want and frees the model's analysis. Engine-neutral: the CPU engine
-  (Engine_CPU) updates the runs directly, a GPU engine would expand them to an
-  index per cell (notes: cell-model-SPEC).
+  (Engine_CPU) updates the runs directly, the GPU engine expands them to an
+  index per node (GPU_CellModel).
 
   Per field component and line of the fast axis, the cells are runs of one
   class (CellModel_Set::Class): ZERO (both coefficients 0: PEC, the outer
@@ -107,13 +108,14 @@ struct CellModel_Component
   rounding for additive hooks (excitation, TF/SF); the same for Mur, which
   overwrites its plane after the apply pass in the other engines too (equal
   priority runs in reverse order of creation); not the same for the
-  cylinder's r=0 (so no fusion on a cylindrical mesh) and for a lumped RLC
-  element with an engine extension (an inductor, or in series) on a
+  cylinder's r=0 (so no fusion with the cylinder extension) and for a
+  lumped RLC element with an engine extension (an inductor, or in series) on a
   Drude/Lorentz edge, which here sees the corrected field, in the other
   engines the uncorrected one: a modelling conflict either way, warned about
   (a lumped element is no material, so priority does not separate them).
-  With a cylindrical mesh, a dispersive cell in a UPML, more than MAX_POLES
-  poles of a kind or a second Debye extension, the extension stays.
+  With the cylinder extension (a closed alpha axis or r=0), a dispersive cell
+  in a UPML, more than MAX_POLES poles of a kind or a second Debye extension,
+  the extension stays.
 
   A lossless current inside metal, whose four voltages of the curl are ZERO
   cells, never changes: it is in no run, so the kernels skip it. Only if no
@@ -137,6 +139,8 @@ public:
 	void Analyse(bool skipInert = true);
 	//! Whether the model updates the cells of the operator extension \a ext: the engine drops its engine extension
 	bool IsFused(const Operator_Extension* ext) const;
+	//! Delete the engine extensions in \a exts whose operator extension the model fuses, and remove them from the list: the engine updates their cells
+	void DropFused(std::vector<Engine_Extension*>& exts) const;
 
 	//! The axis along which the cells form the fewest runs: the fast axis the model is most compact on
 	/*!
@@ -155,7 +159,7 @@ public:
 	  For a script or a reader to find what the model made of a structure:
 	  runs broken where the material does not change, an unexpected class,
 	  inert regions missing, an extension not fused. `--debug-operator` writes
-	  it as cellmodel_dump.h5 with the CPU engine. The layout:
+	  it as cellmodel_dump.h5 with the CPU and the GPU engine. The layout:
 
 	  - /Mesh: the mesh lines, as in the field dumps
 	  - /CellModel, attributes: the axes of the runs (fast, split, mid: 0..2 for

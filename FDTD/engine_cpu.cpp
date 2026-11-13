@@ -23,8 +23,6 @@
 #include <iostream>
 #include <set>
 #include <stdexcept>
-#include <thread>
-#include <typeinfo>
 #include <utility>
 #ifdef OPENEMS_CPU_AVX2
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -55,9 +53,6 @@
 #include "tools/global.h"
 #include "tools/useful.h"
 #include "extensions/engine_extension.h"
-#include "extensions/engine_ext_upml.h"
-#include "extensions/engine_ext_lorentzmaterial.h"
-#include "extensions/engine_ext_debyematerial.h"
 #include "extensions/engine_ext_absorbing_bc.h"
 #include "extensions/operator_ext_absorbing_bc.h"
 #include "extensions/operator_ext_cylinder.h"
@@ -109,7 +104,7 @@ void Engine_CPU::Init()
 		m_ModelBuilt = nullptr;
 	}
 	Engine::Init();   // the fields in m_Layout (GetFieldLayout()), the extensions
-	DropFusedExtensions();
+	m_Model->DropFused(m_Eng_exts);
 	m_Model->FreeFused();
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)
@@ -124,26 +119,6 @@ void Engine_CPU::Init()
 			m_GatherBudget += m_State[f][n].size()*sizeof(float);
 	m_GatherBudget = std::max(m_GatherBudget, (size_t)256<<20);
 	InitKernels();
-}
-
-void Engine_CPU::DropFusedExtensions()
-{
-	// the engine updates their cells itself (the classes UPML, UPML_PROFILE, DISP)
-	std::vector<Engine_Extension*> keep;
-	for (size_t n=0; n<m_Eng_exts.size(); ++n)
-	{
-		Engine_Extension* e = m_Eng_exts[n];
-		if (!m_Model->IsFused(e->GetOperatorExtension()))
-		{
-			keep.push_back(e);
-			continue;
-		}
-		const std::type_info& type = typeid(*e);
-		if ((type!=typeid(Engine_Ext_UPML)) && (type!=typeid(Engine_Ext_LorentzMaterial)) && (type!=typeid(Engine_Ext_DebyeMaterial)))
-			throw std::logic_error("Engine_CPU: an unknown engine extension of the fused " + e->GetExtensionName());
-		delete e;
-	}
-	m_Eng_exts = keep;
 }
 
 void Engine_CPU::Reset()
@@ -446,12 +421,11 @@ static size_t CacheBytes(std::string& source, unsigned int& instances)
 
 bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice& choice)
 {
-	const char* env = std::getenv("OPENEMS_CPU_TBLOCK");
+	std::vector< std::pair<unsigned int, unsigned int> > tiles;   // OPENEMS_CPU_TBLOCK=k:W,k:W,...
+	const bool explicitTile = Engine_TilesFromEnv("OPENEMS_CPU_TBLOCK", tiles);
 	std::string why;
 	unsigned int k = 0, W = 0;
-	bool explicitTile = false;
-	std::vector< std::pair<unsigned int, unsigned int> > tiles;   // OPENEMS_CPU_TBLOCK=k:W,k:W,...
-	if (env && (std::string(env)=="0"))
+	if (explicitTile && tiles.empty())
 		why = "OPENEMS_CPU_TBLOCK=0";
 	else if (m_SubGrid)
 		why = "a cylindrical multi-grid";
@@ -471,26 +445,10 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 		else if (abc && (abc->GetNormalAxis()!=m_FastAxis))
 			why = "a local absorber not normal to the fast axis";
 	}
-	if (why.empty() && env && env[0])
+	if (why.empty() && explicitTile)
 	{
-		// k or k:W, several separated by commas
-		const char* p = env;
-		while (true)
-		{
-			char* end = NULL;
-			unsigned int kk = (unsigned int)std::strtoul(p, &end, 10), WW = 0;
-			if ((end!=NULL) && (*end==':'))
-				WW = (unsigned int)std::strtoul(end+1, &end, 10);
-			if ((kk<2) || (end==NULL) || ((*end!='\0') && (*end!=',')))
-				throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TBLOCK must be 0, or k or k:W (k at least 2), several separated by commas");
-			tiles.push_back(std::make_pair(kk, std::max(WW, 2*kk+1)));
-			if (*end=='\0')
-				break;
-			p = end+1;
-		}
 		k = tiles[0].first;
 		W = tiles[0].second;
-		explicitTile = true;
 	}
 	else if (why.empty())
 	{
@@ -521,13 +479,9 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 		const unsigned int spanned = std::min(instances, (numThreads+coresPer-1)/coresPer);
 		cache *= spanned;
 		source += ", " + std::to_string(spanned) + " of " + std::to_string(instances) + " such caches for " + std::to_string(numThreads) + " threads";
-		if (const char* mib = std::getenv("OPENEMS_CPU_CACHE"))   // to try other cache sizes
+		if (const double mib = Engine_NumberFromEnv("OPENEMS_CPU_CACHE", 0, false))   // to try other cache sizes
 		{
-			char* end = NULL;
-			const double v = std::strtod(mib, &end);
-			if ((end==mib) || (*end!='\0') || (v<=0))
-				throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_CACHE must be the cache size in MiB");
-			cache = (size_t)(v*1048576.0);
+			cache = (size_t)(mib*1048576.0);
 			source = "OPENEMS_CPU_CACHE";
 		}
 		if (g_settings.GetVerboseLevel()>0)
@@ -556,14 +510,7 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 		choice.candidates.push_back(plans);
 	};
 	// the seconds per trial: OPENEMS_CPU_TRIAL, default 0.5 with the automatic tiles, none with given ones
-	choice.trialSeconds = explicitTile ? 0 : 0.5;
-	if (const char* trial = std::getenv("OPENEMS_CPU_TRIAL"))
-	{
-		char* end = NULL;
-		choice.trialSeconds = std::strtod(trial, &end);
-		if ((end==trial) || (*end!='\0') || (choice.trialSeconds<0))
-			throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_TRIAL must be the seconds per trial, 0 for none");
-	}
+	choice.trialSeconds = Engine_NumberFromEnv("OPENEMS_CPU_TRIAL", explicitTile ? 0 : 0.5, true);
 	if (!explicitTile)
 	{
 		// the tile from the estimate of the cache, and as candidates tiles 4x and 2x, half and a quarter as wide:
@@ -618,8 +565,12 @@ bool Engine_CPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy
 	const float* const I = curr_ptr->data();
 	// a sum per line of the split axis, added in line order: the same result for any number of threads
 	std::vector<double> e(nS, 0), h(nS, 0);
-	auto lines = [&](unsigned int s0, unsigned int s1) {
-		for (unsigned int s=s0; s<s1; ++s)
+	// threads of the engine's count, each 64 K nodes at least (~0.1 ms of work, more than a thread's start);
+	// tiny models on this thread alone
+	const size_t nodes = (size_t)nS*nM*nF;
+	const unsigned int numThreads = (unsigned int)std::max<size_t>(1, std::min<size_t>(SetupThreads(), nodes>>16));
+	ParallelFor(nS, numThreads, [&](unsigned int, size_t s0, size_t s1) {
+		for (size_t s=s0; s<s1; ++s)
 		{
 			double es = 0, hs = 0;
 			for (int n=0; n<3; ++n)
@@ -636,17 +587,7 @@ bool Engine_CPU::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy
 			e[s] = es;
 			h[s] = hs;
 		}
-	};
-	// threads of the engine's count, each 64 K nodes at least (~0.1 ms of work, more than a thread's start);
-	// tiny models on this thread alone
-	const size_t nodes = (size_t)nS*nM*nF;
-	const unsigned int numThreads = (unsigned int)std::max<size_t>(1, std::min<size_t>(std::min(SetupThreads(), nS), nodes>>16));
-	std::vector<std::thread> threads;
-	for (unsigned int t=1; t<numThreads; ++t)
-		threads.push_back(std::thread(lines, (unsigned int)((size_t)nS*t/numThreads), (unsigned int)((size_t)nS*(t+1)/numThreads)));
-	lines(0, nS/numThreads);
-	for (std::thread& th : threads)
-		th.join();
+	});
 	E_energy = H_energy = 0;
 	for (unsigned int s=0; s<nS; ++s)
 	{

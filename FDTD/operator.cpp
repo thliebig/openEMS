@@ -97,10 +97,10 @@ Engine* Operator::CreateEngine()
 	switch (m_EngineType)
 	{
 	case Engine::GPU:
-		m_Engine = Engine_GPU::New(this, TakeGPUBackend(), m_GPU_Parent);
-		// The device holds the coefficients now: free the circuit values they are computed from
-		// (48 bytes per node), as the compressed storage frees its full arrays. GetVV() and friends are invalid after this.
-		FreeCoeffs();
+		// as the CPU engine: the coefficients and the circuit values they are computed from (48 bytes per
+		// node) freed once the engine has its cell model, before it allocates its fields. GetVV() and
+		// friends are invalid after this.
+		m_Engine = Engine_GPU::New(this, TakeGPUBackend(), m_GPU_Parent, [this]() {FreeCoeffs();});
 		break;
 	case Engine::SSE:
 		m_Engine = Engine_sse::New(this, m_numThreads);
@@ -927,8 +927,7 @@ double Operator::GetMinMeshStep() const
 
 void Operator::InitOperator()
 {
-	// the layout the engine reads; the GPU backends read the coefficients through GetVV() and
-	// friends, in any layout, the basic one is the fastest to build and read
+	// the layout the engine reads
 	if (m_EngineType==Engine::UNKNOWN)
 		throw std::logic_error("Operator::InitOperator: no engine type set (SetEngineType())");
 	delete m_Coeffs;

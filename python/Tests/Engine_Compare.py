@@ -5,9 +5,10 @@
  Each case is a small model run with several engines; all probe files and all
  HDF5 field dumps are compared with those of engine='basic':
 
-   engine='gpu-reference'  the GPU engine's host backend: the main updates on
-                           the CPU, on its own copy of the fields, exactly like
-                           the basic engine, so bit-identical
+   engine='gpu-reference'  the GPU engine's host backend: the kernels of the
+                           device backends on the CPU, on its own copy of the
+                           fields and of the cell model; compared with the CPU
+                           engine on the same model (cpu-ref below)
    engine='gpu'            a device backend (Metal on macOS, HIP), if a GPU is
                            there: its float arithmetic may round differently
                            (e.g. fused multiply-add), so within a tolerance
@@ -19,9 +20,10 @@
    engine='multithreaded'  (cylindrical and multi-grid cases) bit-identical
 
  Together the cases use the excitation, UPML, Mur ABC, Lorentz and Debye
- material, lumped RLC, conducting sheet, TF/SF, local absorber, steady-state
- and cylinder extensions, and cylindrical meshes with one and two multi-grid
- levels. Run on its own (python3 Engine_Compare.py) or by run_testsuite.py;
+ material (fused into the update, and on a cylindrical mesh extensions of
+ their own), lumped RLC, conducting sheet, TF/SF, local absorber,
+ steady-state and cylinder extensions, and cylindrical meshes with one and
+ two multi-grid levels. Run on its own (python3 Engine_Compare.py) or by run_testsuite.py;
  without a GPU the device backend is skipped.
 
  Pass criteria, per case
@@ -29,28 +31,38 @@
    every engine
      created as requested (not a silent fallback)
 
-   gpu-reference
-     all probe data and field dumps bit-identical
+   gpu-reference, against cpu-ref (the CPU engine with the flat sweep, its
+   generic kernels and the fast axis z: OPENEMS_CPU_TBLOCK=0,
+   OPENEMS_CPU_ISA=generic, OPENEMS_CPU_FAST_AXIS=z)
+     within 1e-5 of the peak value, probes and field dumps (the reference
+     backend computes the coefficients in float per node, as a device)
+
+   gpu-reference-blocked, gpu-blocked: temporal blocking forced
+   (OPENEMS_GPU_TBLOCK=2:5, the flat runs with 0): bit-identical to the flat
+   sweep; blocked across tile borders (more than one tile along x) in at least
+   one case, absorbers among them (not with a multi-grid or an extension
+   without box hooks on the device)
+     absorber_x: a local absorber normal to x next to a tile border, which
+       the GPU engine does not block (its tiles split x)
 
    gpu (skipped without a GPU device)
      max. deviation < 1e-4 of the peak value, per probe file and per field dump
-     all extensions run on the device (backends in FULL_DEVICE_BACKENDS)
+     on the cell model: within 1e-5 of gpu-reference, probes and field dumps;
+       bit-identical (BITIDENT_BACKENDS), but for the frequency domain dumps
+       summed on the device
      dumps_snapshot, multigrid_snapshot, dumps_snapshot_host_dft: the dumps
-       read field snapshots (FULL_DEVICE_BACKENDS); dumps_snapshot_host_dft
+       read field snapshots (SNAPSHOT_BACKENDS); dumps_snapshot_host_dft
        sums the frequency domain dumps from them on the host
        (OPENEMS_GPU_DUMPS=snapshot)
      dumps, sar: the FD dumps (the E field of the SAR) accumulated on the
        device (DEVICE_DFT_BACKENDS)
-     coeff_index32, coeff_full: the update coefficients as sets with a 32 bit
-       index, and as full arrays (FULL_DEVICE_BACKENDS)
-     HIP only, each bit-identical to basic:
-       pml, pml_upml_regions, pml_upml_separate: the UPML in the fused step,
-         by region kernels (OPENEMS_HIP_FUSED_STEP=0) and by separate kernels
-         (OPENEMS_HIP_UPML_FUSION=0)
-       pml_index32: the fused step with 32 bit indices (OPENEMS_HIP_INDEX=32,
-         the default on NVIDIA)
-       pml_full_separate: the separate kernels with the full UPML coefficient
-         arrays instead of sets
+     the fused step (FUSED_BACKENDS: the main updates in one pass into second
+       field buffers, the currents next to what the extensions write between
+       them after those): in every case without a multi-grid (the bit-identity
+       of the blocked runs above then compares it with the separate updates),
+       and tried against the two updates for a tiny time each at the start
+       (OPENEMS_GPU_TRIAL), so it switches to them; steady_state needs the
+       separate updates at its checks
 
    cpu
      max. deviation < 1e-4 of the peak value, like a device backend
@@ -373,16 +385,38 @@ def case_absorbers():
     FDTD.SetCSX(CSX)
     mesh = CSX.GetGrid()
     mesh.SetDeltaUnit(unit)
-    mesh.AddLine('x', [0, 0.5, 1])
+    # 21 lines along x: the GPU engine's tiles (blocked runs, 5 lines) cut the sheets
+    mesh.AddLine('x', np.arange(0, 10.5, 0.5))
     mesh.AddLine('y', [0, 0.5, 1])
     mesh.AddLine('z', np.arange(0, 100.5, 0.5))
-    CSX.AddExcitation('plane', exc_type=0, exc_val=[1, 0, 0]).AddBox([0, 0, 40], [1, 1, 40])
+    CSX.AddExcitation('plane', exc_type=0, exc_val=[1, 0, 0]).AddBox([0, 0, 40], [10, 1, 40])
     CSX.AddAbsorbingBC('abs_low', NormalSignPositive=False, AbsorbingBoundaryType=ABCtype.MUR_1ST,
-                       PhaseVelocity=C0).AddBox([0, 0, 5], [1, 1, 5], priority=6)
+                       PhaseVelocity=C0).AddBox([0, 0, 5], [10, 1, 5], priority=6)
     CSX.AddAbsorbingBC('abs_high', NormalSignPositive=True, AbsorbingBoundaryType=ABCtype.MUR_1ST_SA,
-                       PhaseVelocity=C0).AddBox([0, 0, 95], [1, 1, 95], priority=6)
+                       PhaseVelocity=C0).AddBox([0, 0, 95], [10, 1, 95], priority=6)
     CSX.AddProbe('et', p_type=2).AddPoint([0.5, 0.5, 70])
     CSX.AddProbe('ht', p_type=3).AddPoint([0.5, 0.75, 20])   # Hy on the line y=0.5, see channel_1d()
+    return FDTD, CSX
+
+
+def case_absorber_x():
+    """ channel along x with a local absorber normal to x, its sheet (line 124) and the line next to it
+        (125) on either side of a tile border of the blocked GPU runs: the GPU engine must not block """
+    FDTD = openEMS(NrTS=2000, EndCriteria=0)
+    FDTD.SetGaussExcite(5.5e9, 4.5e9)
+    FDTD.SetBoundaryCond(['PEC', 'PEC', 'PMC', 'PMC', 'PEC', 'PEC'])
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('x', np.arange(0, 100.5, 0.5))
+    mesh.AddLine('y', [0, 0.5, 1])
+    mesh.AddLine('z', [0, 0.5, 1])
+    CSX.AddExcitation('plane', exc_type=0, exc_val=[0, 0, 1]).AddBox([40, 0, 0], [40, 1, 1])
+    CSX.AddAbsorbingBC('abs', NormalSignPositive=True, AbsorbingBoundaryType=ABCtype.MUR_1ST_SA,
+                       PhaseVelocity=C0).AddBox([62, 0, 0], [62, 1, 1], priority=6)
+    CSX.AddProbe('et', p_type=2).AddPoint([55, 0.5, 0.5])   # between the source and the sheet: what it reflects
+    CSX.AddProbe('ht', p_type=3).AddPoint([20, 0.75, 0.5])
     return FDTD, CSX
 
 
@@ -432,6 +466,34 @@ def case_cylinder_wedge():
     CSX.AddExcitation('coax', exc_type=0, exc_val=[1, 0, 0]).AddBox([10, -np.pi/4, 12], [40, np.pi/4, 12])
     CSX.AddProbe('et', p_type=2).AddPoint([20, 0, 20])
     CSX.AddProbe('ht', p_type=3).AddPoint([30, np.pi/8, 6])
+    return FDTD, CSX
+
+
+def case_cylinder_dispersive():
+    """ Drude (electric and magnetic), Lorentz and two-pole Debye materials on a closed cylindrical mesh, where
+        the cell model does not fuse them (the cylinder extension): the dispersive extensions of their own, two
+        orders of one of them """
+    FDTD = openEMS(CoordSystem=1, NrTS=1500, EndCriteria=0)
+    FDTD.SetGaussExcite(3e9, 2e9)
+    FDTD.SetBoundaryCond(['PEC'] * 6)
+    CSX = cylinder_mesh(FDTD, (np.arange(25) - 12) * 2*np.pi/24, 0, 40)
+    CSX.AddExcitation('line', exc_type=0, exc_val=[0, 0, 1]).AddBox([14, 0, 0], [14, 0, 30])
+    CSX.AddExcitation('radial', exc_type=0, exc_val=[1, 0, 0]).AddBox([6, np.pi/2, 10], [10, np.pi/2, 10])
+    lorentz = CSPropLorentzMaterial(CSX.GetParameterSet(), order=2)
+    lorentz.SetName('lorentz')
+    lorentz.SetDispersiveMaterialProperty(0, eps_plasma=5e9, eps_relax=1e-9, mue_plasma=5e9, mue_relax=1e-8)
+    lorentz.SetDispersiveMaterialProperty(1, eps_plasma=4e9, eps_pole_freq=3e9, eps_relax=1e-9)
+    CSX.AddProperty(lorentz)
+    lorentz.AddBox([20, -np.pi/8, 14], [30, np.pi/8, 22], priority=10)
+    debye = CSPropDebyeMaterial(CSX.GetParameterSet(), order=2, epsilon=4)
+    debye.SetName('debye')
+    debye.SetDispersiveMaterialProperty(0, eps_delta=1, eps_relax=4e-11)
+    debye.SetDispersiveMaterialProperty(1, eps_delta=0.5, eps_relax=1e-10)
+    CSX.AddProperty(debye)
+    debye.AddBox([12, -np.pi/4, 20], [18, np.pi/4, 28], priority=10)
+    CSX.AddProbe('et', p_type=2).AddPoint([24, 0, 18])
+    CSX.AddProbe('et_debye', p_type=2).AddPoint([16, 0, 24])
+    CSX.AddProbe('ht', p_type=3).AddPoint([30, np.pi/8, 12])
     return FDTD, CSX
 
 
@@ -497,12 +559,13 @@ def case_steady_state():
 
 
 def graded(n):
-    """ n mesh lines with all spacings different, so most nodes get their own update coefficients """
+    """ n mesh lines with all spacings different """
     return np.cumsum(1.002**np.arange(n)) * 0.5
 
 
-def coeff_case(lines):
-    """ dipole in a PML box on a graded mesh """
+def case_graded_mesh():
+    """ dipole in a PML box on a mesh graded in all directions: the mesh factors differ on every line """
+    lines = [graded(70), graded(70), graded(70)]
     FDTD = openEMS(NrTS=150, EndCriteria=0)
     FDTD.SetGaussExcite(5.5e9, 4.5e9)
     FDTD.SetBoundaryCond(['PML_8'] * 6)
@@ -518,18 +581,8 @@ def coeff_case(lines):
     return FDTD, CSX
 
 
-def case_coeff_index32():
-    """ graded in x and y: more than 65536 coefficient sets, a 32 bit set index """
-    return coeff_case([graded(300), graded(300), np.arange(-6, 6.5, 1)])
-
-
-def case_coeff_full():
-    """ graded in all directions: nearly a set per node, the full coefficient arrays """
-    return coeff_case([graded(70), graded(70), graded(70)])
-
-
 def case_pml_graded():
-    """ PML around a graded permittivity: nearly a UPML coefficient set per cell, the full arrays """
+    """ PML around a graded permittivity: the UPML coefficients change from cell to cell """
     FDTD, CSX = case_pml()
     mat = CSX.AddMaterial('graded_eps', epsilon=2)
     mat.SetMaterialWeight(epsilon='1+0.02*sin(x)+0.03*cos(y)+0.04*sin(z)')
@@ -618,59 +671,55 @@ def case_coax_resonator():
     return FDTD, CSX
 
 
-# (name, case, every extension the case uses has a device implementation)
-cases = [('excitation',     case_excitation,     True),
-         ('pml',            case_pml,            True),
-         ('pml_upml_regions', case_pml,          True),
-         ('pml_upml_separate', case_pml,         True),
-         ('pml_index32',    case_pml,            True),
-         ('pml_full_separate', case_pml_graded,  True),
-         ('mur',            case_mur,            True),
-         ('materials',      case_materials,      True),
-         ('lumped',         case_lumped,         True),
-         ('lumped_pml',     case_lumped_pml,     True),
-         ('tfsf',           case_tfsf,           True),
-         ('absorbers',      case_absorbers,      True),
-         ('cylinder_closed', case_cylinder_closed, True),
-         ('cylinder_wedge', case_cylinder_wedge,  True),
-         ('multigrid',      case_multigrid,       True),
-         ('multigrid2',     case_multigrid2,      True),
-         ('multigrid_wedge', case_multigrid_wedge, True),
-         ('multigrid_snapshot', case_multigrid_snapshot, True),
-         ('dispersive_pml', case_dispersive_pml, True),
-         ('3d_mixed',       case_3d_mixed,       True),
-         ('steady_state',   case_steady_state,   True),
-         ('dumps',          case_dumps,          True),
-         ('dumps_snapshot', case_dumps_snapshot, True),
-         ('coax_resonator', case_coax_resonator, True),
-         ('coeff_index32',  case_coeff_index32,  True),
-         ('coeff_full',     case_coeff_full,     True),
-         ('dumps_snapshot_host_dft', case_dumps_snapshot, True),
-         ('sar',            case_sar,            True)]
+# (name, case)
+cases = [('excitation',             case_excitation),
+         ('pml',                    case_pml),
+         ('mur',                    case_mur),
+         ('materials',              case_materials),
+         ('lumped',                 case_lumped),
+         ('lumped_pml',             case_lumped_pml),
+         ('tfsf',                   case_tfsf),
+         ('absorbers',              case_absorbers),
+         ('absorber_x',             case_absorber_x),
+         ('cylinder_closed',        case_cylinder_closed),
+         ('cylinder_wedge',         case_cylinder_wedge),
+         ('cylinder_dispersive',    case_cylinder_dispersive),
+         ('multigrid',              case_multigrid),
+         ('multigrid2',             case_multigrid2),
+         ('multigrid_wedge',        case_multigrid_wedge),
+         ('multigrid_snapshot',     case_multigrid_snapshot),
+         ('dispersive_pml',         case_dispersive_pml),
+         ('3d_mixed',               case_3d_mixed),
+         ('steady_state',           case_steady_state),
+         ('dumps',                  case_dumps),
+         ('dumps_snapshot',         case_dumps_snapshot),
+         ('coax_resonator',         case_coax_resonator),
+         ('graded_mesh',            case_graded_mesh),
+         ('pml_graded',             case_pml_graded),
+         ('dumps_snapshot_host_dft', case_dumps_snapshot),
+         ('sar',                    case_sar)]
 
 # environment of a case: the frequency domain dumps of dumps_snapshot without device sums,
-# summed on the host from the snapshots; the pml case with each of the three UPML updates of
-# the HIP backend (in the fused step, region kernels, separate kernels)
-CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'},
-            'pml_upml_regions': {'OPENEMS_HIP_FUSED_STEP': '0'},
-            'pml_upml_separate': {'OPENEMS_HIP_UPML_FUSION': '0'},
-            'pml_index32': {'OPENEMS_HIP_INDEX': '32'},
-            'pml_full_separate': {'OPENEMS_HIP_UPML_FUSION': '0'}}
-# the messages of the HIP backend for these UPML updates: (expected, not expected)
-UPML_MODES = {'pml': ('UPML regions in the kernel', None),
-              'pml_index32': ('fused voltage and current updates, 32 bit indices', None),
-              'pml_upml_regions': ('UPML regions fused with the main updates', 'UPML regions in the kernel'),
-              'pml_upml_separate': (None, 'UPML regions fused with the main updates'),
-              'pml_full_separate': ('full coefficient arrays', 'UPML regions fused with the main updates')}
+# summed on the host from the snapshots
+CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'}}
 
 DEVICE_RTOL = 1e-4
-# device backends with a device implementation of every extension
-FULL_DEVICE_BACKENDS = ('HIP', 'Metal')
+# the reference backend against the CPU engine: the coefficients in float per node (CM_FACTOR)
+REF_RTOL = 1e-5
+# a device backend on the cell model against the reference backend: its float arithmetic may round differently
+CELL_MODEL_RTOL = 1e-5
+# device backends bit-identical to the reference backend (HIP: no FMA contraction, -ffp-contract=off)
+BITIDENT_BACKENDS = ('HIP',)
+# device backends that take field snapshots for the dumps
+SNAPSHOT_BACKENDS = ('HIP', 'Metal')
 # device backends that accumulate the frequency domain dumps
 DEVICE_DFT_BACKENDS = ('HIP',)
+# the backends with the fused step (GPU_Backend::PrepareFused())
+FUSED_BACKENDS = ('HIP',)
 # the engines compared with basic: all of them, or those of OPENEMS_ENGINE (run_testsuite.py --engine)
 ENGINE_SETS = {'cpu': ('cpu', 'cpu-blocked'),
-               'gpu': ('gpu-reference', 'gpu'), 'gpu-reference': ('gpu-reference', 'gpu'),
+               'gpu': ('cpu-ref', 'gpu-reference', 'gpu-reference-blocked', 'gpu', 'gpu-blocked'),
+               'gpu-reference': ('cpu-ref', 'gpu-reference', 'gpu-reference-blocked', 'gpu', 'gpu-blocked'),
                'multithreaded': ('multithreaded',), 'sse': ('multithreaded',),
                'sse-compressed': ('multithreaded',), 'fastest': ('multithreaded',),
                'basic': ()}
@@ -684,12 +733,15 @@ if only:
     print(f'OPENEMS_ENGINE={only}: comparing {", ".join(ENGINE_SETS[only])} with the basic engine')
 
 blocked_cases = []
-for name, case, on_device in cases:
+gpu_blocked_cases = []
+gpu_tiled_cases = []   # blocked across tile borders: more than one tile along x
+gpu_fused_cases = []   # the gpu run with the fused step
+for name, case in cases:
     print(f'Testing case: {name}')
     if only:
         engines = ('basic',) + ENGINE_SETS[only]
     else:
-        engines = ('basic', 'gpu-reference', 'gpu', 'cpu', 'cpu-blocked')
+        engines = ('basic', 'cpu-ref', 'gpu-reference', 'gpu-reference-blocked', 'gpu', 'gpu-blocked', 'cpu', 'cpu-blocked')
         if name.startswith(('cylinder', 'multigrid')):
             engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
     paths = {engine: os.path.join(tempfile.gettempdir(), f'Engine_Compare_{name}_{engine}') for engine in engines}
@@ -701,11 +753,27 @@ for name, case, on_device in cases:
             # tiles and the flat sweep tried for a tiny time each, so the engine switches between them
             # on every call at the start, then keeps one
             os.environ['OPENEMS_CPU_TBLOCK'] = '2:5,3:7' if engine=='cpu-blocked' else '0'
+            # the GPU engine flat, and blocked in tiles of 5 lines and 2 timesteps
+            os.environ['OPENEMS_GPU_TBLOCK'] = '2:5' if engine.endswith('-blocked') else '0'
             os.environ['OPENEMS_CPU_TRIAL'] = '1e-9'
-            logs[engine] = run_captured(case, paths[engine], 'cpu' if engine=='cpu-blocked' else engine)
+            # the flat GPU run: the fused step and the two updates tried for a tiny time each, so it switches between
+            # them; the blocked one keeps its tile
+            os.environ['OPENEMS_GPU_TRIAL'] = '0' if engine.endswith('-blocked') else '1e-9'
+            # the CPU engine as the GPU kernels compute: generic kernels (no FMA), the runs along z
+            for var, val in (('OPENEMS_CPU_ISA', 'generic'), ('OPENEMS_CPU_FAST_AXIS', 'z')):
+                if engine=='cpu-ref':
+                    os.environ[var] = val
+                else:
+                    os.environ.pop(var, None)
+            logs[engine] = run_captured(case, paths[engine], {'cpu-blocked': 'cpu', 'cpu-ref': 'cpu', 'gpu-blocked': 'gpu',
+                                                              'gpu-reference-blocked': 'gpu-reference'}.get(engine, engine))
     finally:
         del os.environ['OPENEMS_CPU_TBLOCK']
+        del os.environ['OPENEMS_GPU_TBLOCK']
         del os.environ['OPENEMS_CPU_TRIAL']
+        del os.environ['OPENEMS_GPU_TRIAL']
+        os.environ.pop('OPENEMS_CPU_ISA', None)
+        os.environ.pop('OPENEMS_CPU_FAST_AXIS', None)
         for var in CASE_ENV.get(name, {}):
             del os.environ[var]
 
@@ -715,9 +783,27 @@ for name, case, on_device in cases:
     if 'gpu-reference' in engines:
         assert 'Create FDTD engine (GPU, backend: reference' in logs['gpu-reference'], \
             f'FAIL [{name}]: engine=gpu-reference did not create the GPU engine with the reference backend'
-        diff, n_probes, n_dumps, _ = compare_outputs(paths['basic'], paths['gpu-reference'])
-        print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps')
-        assert not diff, f'FAIL [{name}]: reference backend differs from the basic engine in: {", ".join(n for n, _ in diff)}'
+        if name=='cylinder_dispersive':
+            assert len(re.findall(r'CellModel: the .* stays an extension: the cylinder extension', logs['gpu-reference']))==2, \
+                f'FAIL [{name}]: the cell model fused a dispersive material on the cylindrical mesh'
+        diff, n_probes, n_dumps, worst = compare_outputs(paths['cpu-ref'], paths['gpu-reference'])
+        print(f'  reference backend: compared {n_probes} probe files and {n_dumps} field dumps with the CPU engine, '
+              f'max. deviation {worst:.1e} of the peak value')
+        dev = [f'{n} ({d:.1e})' for n, d in diff if d > REF_RTOL]
+        assert not dev, f'FAIL [{name}]: reference backend deviates from the CPU engine in: {", ".join(dev)}'
+        if name=='absorber_x':
+            assert 'Engine_GPU: no temporal blocking: a local absorber normal to x' in logs['gpu-reference-blocked'], \
+                f'FAIL [{name}]: the GPU engine blocked with a local absorber normal to x'
+        if 'Engine_GPU: temporal blocking' in logs['gpu-reference-blocked']:
+            gpu_blocked_cases.append(name)
+            tiles = re.search(r'Engine_GPU: temporal blocking, tiles to try \(timesteps:lines\) 1\) \d+:\d+ \((\d+) tiles\)',
+                              logs['gpu-reference-blocked'])
+            assert tiles, f'FAIL [{name}]: the blocked GPU engine did not report its tiles'
+            if int(tiles.group(1)) > 1:
+                gpu_tiled_cases.append(name)
+            diff, _, _, _ = compare_outputs(paths['gpu-reference'], paths['gpu-reference-blocked'])
+            assert not diff, f'FAIL [{name}]: the blocked reference backend differs from its flat sweep in: {", ".join(n for n, _ in diff)}'
+            print('  reference backend blocked: bit-identical to its flat sweep')
 
     if 'cpu' in engines:
         assert 'Create FDTD engine (CPU' in logs['cpu'], f'FAIL [{name}]: engine=cpu did not create the CPU engine'
@@ -745,11 +831,14 @@ for name, case, on_device in cases:
     if 'gpu' in engines:
         backend = re.search(r'Create FDTD engine \(GPU, backend: (\w+)', logs['gpu'])
         backend = backend.group(1) if backend else None
+        if 'Engine_GPU: fused step' in logs['gpu']:
+            gpu_fused_cases.append(name)
+            assert re.search(r'Engine_GPU: tried the fused step \d+ MC/s, the two updates \d+ MC/s', logs['gpu']), \
+                f'FAIL [{name}]: the flat GPU run did not try the fused step and the two updates'
+        elif backend in FUSED_BACKENDS and 'multigrid' not in name:
+            assert False, f'FAIL [{name}]: the {backend} backend did not run the fused step'
         if backend and backend!='reference':
-            if on_device and backend in FULL_DEVICE_BACKENDS:
-                assert ('Engine_GPU: all extensions run on the device' in logs['gpu']) and ('host fallback' not in logs['gpu']), \
-                    f'FAIL [{name}]: the {backend} backend did not run all extensions on the device'
-            if name in ('dumps_snapshot', 'multigrid_snapshot', 'dumps_snapshot_host_dft') and backend in FULL_DEVICE_BACKENDS:
+            if name in ('dumps_snapshot', 'multigrid_snapshot', 'dumps_snapshot_host_dft') and backend in SNAPSHOT_BACKENDS:
                 assert 'Engine_GPU: field dumps from snapshots' in logs['gpu'], \
                     f'FAIL [{name}]: the {backend} backend did not take field snapshots for the dumps'
             if name=='dumps_snapshot_host_dft':
@@ -758,22 +847,25 @@ for name, case, on_device in cases:
             if name in ('dumps', 'sar') and backend in DEVICE_DFT_BACKENDS:
                 assert 'Engine_GPU: frequency domain dumps accumulated on the device' in logs['gpu'], \
                     f'FAIL [{name}]: the {backend} backend did not accumulate the frequency domain dumps'
-            if name=='coeff_index32' and backend in FULL_DEVICE_BACKENDS:
-                assert 'compressed update coefficients (32 bit index)' in logs['gpu'], \
-                    f'FAIL [{name}]: the {backend} backend did not use a 32 bit coefficient set index'
-            if name=='coeff_full' and backend in FULL_DEVICE_BACKENDS:
-                assert 'compressed update coefficients' not in logs['gpu'], \
-                    f'FAIL [{name}]: the {backend} backend did not use the full coefficient arrays'
-            if name in UPML_MODES and backend=='HIP':
-                expected, unexpected = UPML_MODES[name]
-                assert (expected is None or expected in logs['gpu']) and (unexpected is None or unexpected not in logs['gpu']), \
-                    f'FAIL [{name}]: the HIP backend did not take the intended UPML update'
             diff, _, _, worst = compare_outputs(paths['basic'], paths['gpu'], rtol=DEVICE_RTOL)
             print(f'  {backend} backend: max. deviation {worst:.1e} of the peak value')
             assert not diff, f'FAIL [{name}]: {backend} backend deviates from the basic engine: ' + \
                 ', '.join(f'{n} ({d:.1e})' for n, d in diff)
-            if name in UPML_MODES and backend=='HIP':
-                assert worst==0, f'FAIL [{name}]: the HIP UPML update is not bit-identical ({worst:.1e})'
+            if 'gpu-blocked' in engines and 'Engine_GPU: temporal blocking' in logs['gpu-blocked']:
+                diff, _, _, _ = compare_outputs(paths['gpu'], paths['gpu-blocked'])
+                assert not diff, f'FAIL [{name}]: the blocked {backend} backend differs from its flat sweep in: {", ".join(n for n, _ in diff)}'
+                print(f'  {backend} backend blocked: bit-identical to its flat sweep')
+            # the kernels of the reference backend on the same data
+            if 'gpu-reference' in engines:
+                diff, _, _, worst = compare_outputs(paths['gpu-reference'], paths['gpu'])
+                print(f'  {backend} backend on the cell model: max. deviation {worst:.1e} from the reference backend')
+                # the same code on the same data: bit-identical, but for the frequency domain dumps summed on the
+                # device (in another order than the host)
+                device_dft = 'frequency domain dumps accumulated on the device' in logs['gpu']
+                exact = backend in BITIDENT_BACKENDS
+                dev = [f'{n} ({d:.1e})' for n, d in diff
+                       if d > CELL_MODEL_RTOL or (exact and not (device_dft and 'FieldData/FD' in n))]
+                assert not dev, f'FAIL [{name}]: the {backend} backend deviates from the reference backend: ' + ', '.join(dev)
         else:
             # no silent fallback to the (slow) reference backend
             assert 'Running FDTD engine' not in logs['gpu'], \
@@ -784,4 +876,11 @@ for name, case, on_device in cases:
 if not only or 'cpu' in ENGINE_SETS[only]:
     assert blocked_cases, 'FAIL: the CPU engine blocked in no case'
     print(f'CPU engine blocked in {len(blocked_cases)} cases: {", ".join(blocked_cases)}')
+if not only or 'gpu-reference' in ENGINE_SETS[only]:
+    assert gpu_blocked_cases, 'FAIL: the GPU engine blocked in no case'
+    print(f'GPU engine blocked in {len(gpu_blocked_cases)} cases: {", ".join(gpu_blocked_cases)}')
+    print(f'  across tile borders in {len(gpu_tiled_cases)}: {", ".join(gpu_tiled_cases)}')
+    assert 'absorbers' in gpu_tiled_cases, 'FAIL: the GPU engine did not block the absorbers case across tile borders'
+if gpu_fused_cases:
+    print(f'GPU engine fused in {len(gpu_fused_cases)} cases: {", ".join(gpu_fused_cases)}')
 print('PASS')

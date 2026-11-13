@@ -30,8 +30,6 @@
 
 class Engine;
 class Engine_sse;
-class Engine_GPU;
-class GPU_MultiGridLink;
 class Operator_CylinderMultiGrid;
 
 //! The coupling of a cylindrical multi-grid level (base grid) and its sub-grid, see Engine::SetSubGrid()
@@ -41,7 +39,8 @@ class Operator_CylinderMultiGrid;
   the base voltages on the split radius go to the sub-grid, after the current
   half step the sub-grid currents next to it go to the base grid; at the end of
   a batch the base grid is filled inside the split radius from the sub-grid.
-  One implementation per field layout of the engines.
+  One implementation per field layout of the engines; the one of the GPU
+  engine on the device, SubGrid_Coupling_GPU (gpu_ext.h).
   */
 class Engine_SubGridCoupling
 {
@@ -55,7 +54,7 @@ public:
 	virtual void Interpolate() = 0;
 };
 
-//! On the basic field layout (Engine), also the host fallback of SubGrid_Coupling_GPU
+//! On the basic field layout (Engine)
 class SubGrid_Coupling_Basic : public Engine_SubGridCoupling
 {
 public:
@@ -75,30 +74,6 @@ protected:
 	Engine* m_Sub;
 	MultiGridInterpolation m_Interpol;
 	unsigned int m_numLines[3];
-};
-
-//! Of two GPU engines (Engine_GPU): on the device with the GPU_MultiGridLink of the backend, else on the host mirrors
-/*!
-  The link needs both grids on the device. Without one (one of them in the host
-  fallback, or the backend has no link), both grids and their sub-grids are
-  forced into the host fallback, and the coupling of SubGrid_Coupling_Basic
-  works on the host mirrors, which are then up to date after every half step.
-  */
-class SubGrid_Coupling_GPU : public SubGrid_Coupling_Basic
-{
-public:
-	SubGrid_Coupling_GPU(Engine_GPU* base, Engine_GPU* sub, const Operator_CylinderMultiGrid* op);
-	virtual ~SubGrid_Coupling_GPU();
-
-	virtual void SyncVoltages();
-	virtual void SyncCurrents();
-	virtual void Interpolate();
-
-	//! Couple on the host mirrors from now on (see Engine_GPU::ForceHostFallback())
-	void DropLink();
-
-protected:
-	GPU_MultiGridLink* m_Link;   //!< refers to the backends of both grids
 };
 
 //! On the SSE field layout (Engine_sse)

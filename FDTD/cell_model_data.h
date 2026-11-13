@@ -59,7 +59,7 @@ struct CellModel_Run
 	uint32_t start;   //!< first line along the fast axis
 	uint32_t stop;    //!< one past the last
 	uint32_t set;     //!< index in CellModel_Component::sets
-	uint32_t u;       //!< UPML, UPML_PROFILE, DISP: the index of the run's state (CellModel_Component::state)
+	uint64_t u;       //!< UPML, UPML_PROFILE, DISP: the index of the run's state (CellModel_Component::state), 64 bit: more than 2^32 floats of it in a large model
 };
 
 #endif // CELL_MODEL_DATA_H

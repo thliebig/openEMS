@@ -23,13 +23,13 @@
 
 //! GPU backend using HIP, for AMD GPUs and for NVIDIA GPUs through CUDA
 /*!
-  The fields and coefficients live in device memory. The host mirror of
+  The fields and the cell model live in device memory. The host mirror of
   Engine_GPU is a separate copy, synchronized with explicit transfers (the host
   arrays are page-locked on first use for full transfer speed). All kernels of
   the grids of a simulation run in order on one HIP stream (see
   NewSubGridBackend()), which is only synchronized when the host needs the fields.
-  Where the extensions allow it, a timestep is a single fused kernel with the UPML
-  regions folded into it (see Impl::DecideFusedStep()).
+  Where the extensions allow it, the voltages and currents of a timestep can be
+  one fused kernel (see PrepareFused(), hip_cell_model.hip).
   The field dumps are evaluated on the device at a snapshot and downloaded on a
   second stream, overlapping the work (see SnapshotFields()). Frequency domain
   dumps are summed on the device (see AddFieldDFT()).
@@ -50,18 +50,23 @@ public:
 	virtual ~GPU_Backend_HIP();
 
 	virtual std::string GetName() const;
+	virtual size_t CacheBytes(std::string& source) const;
 
-	virtual bool Init(const Operator* op);
+	virtual bool Init(const Operator* op, const GPU_CellModel& model);
+	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL);
+	virtual void DeviceDownload(void* host, const void* dev, size_t bytes);
+	virtual float* DeviceField(bool currents);
+	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial);
 
-	virtual void UpdateVoltages();
-	virtual void UpdateCurrents();
+	virtual void UpdateVoltages(const Engine_Box& box);
+	virtual void UpdateCurrents(const Engine_Box& box);
+	virtual bool PrepareFused(const std::vector<uint64_t>& late);
+	virtual void ReleaseFused();
+	virtual void FusedUpdate();
+	virtual void SeamUpdate();
 
-	virtual void DownloadVoltages(ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
-	virtual void DownloadCurrents(ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
-	virtual void UploadVoltages(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& volt);
-	virtual void UploadCurrents(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& curr);
+	virtual void Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& field);
 
-	virtual bool DownloadRange(bool currents, size_t offset, size_t count, FDTD_FLOAT* dst);
 	virtual void Synchronize();
 	virtual bool SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT* &curr);
 	virtual void WaitSnapshot();
@@ -73,15 +78,15 @@ public:
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
 
 	virtual GPU_Backend* NewSubGridBackend();
-	virtual GPU_MultiGridLink* CreateMultiGridLink(GPU_Backend* sub_grid, const MultiGridInterpolation& interpol);
-
-	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, Engine* eng);
 
 	struct Impl;
 	Impl* GetImpl() const {return d;}
 
 protected:
 	GPU_Backend_HIP(Impl* impl);
+
+	//! The grid dimensions and the device fields (all zero), the first part of Init()
+	bool InitFields(const Operator* op);
 
 	Impl* d;
 };

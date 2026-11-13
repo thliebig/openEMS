@@ -85,7 +85,7 @@ inline void Coeffs_FromEC(double C, double G, double dT, FDTD_FLOAT& self, FDTD_
 	}
 }
 
-//! One float per coefficient, node and direction (Engine, and the host side of Engine_GPU)
+//! One float per coefficient, node and direction (Engine)
 class Coeffs_Basic : public Operator_Coeffs
 {
 public:

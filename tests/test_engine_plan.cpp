@@ -189,7 +189,14 @@ int main()
 						     << ", threads along " << "xyz"[T] << ", k " << p[0] << ", width " << p[1] << ", " << threads << " threads";
 						Engine_BlockedPlan plan = Engine_BlockedPlan::Trapezoids(numLines, threads, S, T, p[1], p[0]);
 						CHECK(plan.k==p[0], what.str() << ": k " << plan.k);
+						// tiles of at least 2k+1 lines, a short last one folded into the one before
+						const unsigned int tiles = std::max(1u, numLines[S]/std::max(p[1], 2*p[0]+1));
+						CHECK(plan.tiles==tiles, what.str() << ": " << plan.tiles << " tiles, not " << tiles);
 						CheckBlocked(plan, numLines, what.str());
+						plan = Engine_BlockedPlan::Parallelograms(numLines, threads, S, T, p[1], p[0]);
+						CHECK(plan.k==p[0], what.str() << ", parallelograms: k " << plan.k);
+						CHECK(plan.tiles==tiles, what.str() << ", parallelograms: " << plan.tiles << " tiles, not " << tiles);
+						CheckBlocked(plan, numLines, what.str() + ", parallelograms");
 					}
 			}
 

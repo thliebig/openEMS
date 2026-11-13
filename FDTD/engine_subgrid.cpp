@@ -19,6 +19,7 @@
 #include "engine_subgrid.h"
 #include "engine_sse.h"
 #include "engine_gpu.h"
+#include "gpu_ext.h"
 #include "operator_cylindermultigrid.h"
 
 #include <iostream>
@@ -110,60 +111,6 @@ void SubGrid_Coupling_Basic::Interpolate(ArrayLib::ArrayNIJK<FDTD_FLOAT>& base, 
 			base(1, r, a, z) = w_2p[1][a]*sub(1, r, pos_2p[1][a], z) + w_2pp[1][a]*sub(1, r, pos_2pp[1][a], z);
 		}
 	}
-}
-
-// ----------------------------------------------------------------------------
-
-SubGrid_Coupling_GPU::SubGrid_Coupling_GPU(Engine_GPU* base, Engine_GPU* sub, const Operator_CylinderMultiGrid* op)
-	: SubGrid_Coupling_Basic(base, sub, op)
-{
-	m_Link = NULL;
-	// all levels on the device with a device coupling, or all in the host fallback
-	if (!base->FieldsOnHost() && !sub->FieldsOnHost())
-		m_Link = base->GetBackend()->CreateMultiGridLink(sub->GetBackend(), m_Interpol);
-	if (m_Link==NULL)
-	{
-		if (!base->FieldsOnHost() || !sub->FieldsOnHost())
-			std::cerr << "SubGrid_Coupling_GPU: Warning: multi-grid level " << op->GetMultiGridLevel()
-			          << " and its sub-grid run in the host fallback" << std::endl;
-		base->ForceHostFallback();
-		sub->ForceHostFallback();
-	}
-}
-
-SubGrid_Coupling_GPU::~SubGrid_Coupling_GPU()
-{
-	delete m_Link;
-}
-
-void SubGrid_Coupling_GPU::DropLink()
-{
-	delete m_Link;
-	m_Link = NULL;
-}
-
-void SubGrid_Coupling_GPU::SyncVoltages()
-{
-	if (m_Link)
-		m_Link->SyncVoltages();
-	else
-		SubGrid_Coupling_Basic::SyncVoltages();
-}
-
-void SubGrid_Coupling_GPU::SyncCurrents()
-{
-	if (m_Link)
-		m_Link->SyncCurrents();
-	else
-		SubGrid_Coupling_Basic::SyncCurrents();
-}
-
-void SubGrid_Coupling_GPU::Interpolate()
-{
-	if (m_Link)
-		m_Link->InterpolateToBase();
-	else
-		SubGrid_Coupling_Basic::Interpolate();
 }
 
 // ----------------------------------------------------------------------------

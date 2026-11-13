@@ -23,12 +23,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
-#include <functional>
 #include <iostream>
 #include <map>
 #include <stdexcept>
-#include <thread>
 #include <tuple>
+#include <typeinfo>
 
 #include "tools/global.h"
 #include "tools/useful.h"
@@ -37,6 +36,9 @@
 #include "tools/arraylib/array_nijk.h"
 #include "extensions/operator_ext_upml.h"
 #include "extensions/operator_ext_cylinder.h"
+#include "extensions/engine_ext_upml.h"
+#include "extensions/engine_ext_lorentzmaterial.h"
+#include "extensions/engine_ext_debyematerial.h"
 #include "extensions/operator_ext_lorentzmaterial.h"
 #include "extensions/operator_ext_debyematerial.h"
 #include "extensions/operator_ext_excitation.h"
@@ -94,7 +96,7 @@ bool CellModel_NodeSet::Add(size_t lin)
 void CellModel_NodeSet::Finish()
 {
 	before.resize(bits.size());
-	uint32_t count = 0;
+	uint64_t count = 0;
 	for (size_t w=0; w<bits.size(); ++w)
 	{
 		before[w] = count;
@@ -158,6 +160,26 @@ bool CellModel::IsFused(const Operator_Extension* ext) const
 	return std::find(m_Fused.begin(), m_Fused.end(), ext)!=m_Fused.end();
 }
 
+void CellModel::DropFused(std::vector<Engine_Extension*>& exts) const
+{
+	// the engine updates their cells itself (the classes UPML, UPML_PROFILE, DISP)
+	std::vector<Engine_Extension*> keep;
+	for (size_t n=0; n<exts.size(); ++n)
+	{
+		Engine_Extension* e = exts[n];
+		if (!IsFused(e->GetOperatorExtension()))
+		{
+			keep.push_back(e);
+			continue;
+		}
+		const std::type_info& type = typeid(*e);
+		if ((type!=typeid(Engine_Ext_UPML)) && (type!=typeid(Engine_Ext_LorentzMaterial)) && (type!=typeid(Engine_Ext_DebyeMaterial)))
+			throw std::logic_error("CellModel: an unknown engine extension of the fused " + e->GetExtensionName());
+		delete e;
+	}
+	exts = keep;
+}
+
 void CellModel::FreeFused()
 {
 	FreeDispersive();
@@ -200,7 +222,7 @@ void CellModel::FindDispersive()
 		const int np = d.lorentz ? d.lorentz->m_Order : d.debye->m_PoleCount;
 		std::string why;
 		if (cylinder)
-			why = "a cylindrical mesh";
+			why = "the cylinder extension (a closed alpha axis or r=0)";
 		else if (poles[kind]+np>MAX_POLES)
 			why = "more than 4 poles of a kind";
 		else if (d.debye && (poles[1]>0))
@@ -585,32 +607,21 @@ int CellModel::RecommendFastAxis() const
 	const size_t N0 = numLines[0], N1 = numLines[1], N2 = numLines[2];
 	std::vector<uint32_t> keys(N0*N1*N2);   // 4 bytes per node, the peak of the setup
 	// the threads fill and count slices of x lines
-	const unsigned int numThreads = std::max(1u, std::min(AvailableThreads(), numLines[0]));
-	std::vector<unsigned int> jpt = AssignJobs2Threads(numLines[0], numThreads, true);
-	std::vector<unsigned int> x0(jpt.size()+1, 0);
-	for (size_t t=0; t<jpt.size(); ++t)
-		x0[t+1] = x0[t] + jpt[t];
-	auto parallel = [&](const std::function<void(unsigned int, unsigned int, size_t)>& work) {
-		std::vector<std::thread> threads;
-		for (size_t t=0; t<jpt.size(); ++t)
-			threads.push_back(std::thread(work, x0[t], x0[t+1], t));
-		for (std::thread& th : threads)
-			th.join();
-	};
-	std::vector<double> part(3*jpt.size());
+	const unsigned int numThreads = AvailableThreads();
+	std::vector<double> part(3*numThreads);
 	for (int f=0; f<2; ++f)
 		for (int n=0; n<3; ++n)
 		{
-			parallel([&](unsigned int xa, unsigned int xb, size_t) {
+			ParallelFor(N0, numThreads, [&](unsigned int, size_t xa, size_t xb) {
 				unsigned int pos[3];
-				for (pos[0]=xa; pos[0]<xb; ++pos[0])
+				for (pos[0]=(unsigned int)xa; pos[0]<xb; ++pos[0])
 					for (pos[1]=0; pos[1]<N1; ++pos[1])
 						for (pos[2]=0; pos[2]<N2; ++pos[2])
 							keys[(pos[0]*N1 + pos[1])*N2 + pos[2]] = GetCellKey(f, n, pos).Hash();
 			});
 			// a run starts at the first line of the axis or where the key changes
 			std::fill(part.begin(), part.end(), 0.0);
-			parallel([&](unsigned int xa, unsigned int xb, size_t t) {
+			ParallelFor(N0, numThreads, [&](unsigned int t, size_t xa, size_t xb) {
 				for (size_t x=xa; x<xb; ++x)
 					for (size_t y=0; y<N1; ++y)
 					{
@@ -623,7 +634,7 @@ int CellModel::RecommendFastAxis() const
 						}
 					}
 			});
-			for (size_t t=0; t<jpt.size(); ++t)
+			for (size_t t=0; t<numThreads; ++t)
 				for (int a=0; a<3; ++a)
 					runs[a] += part[3*t+a];
 		}
@@ -871,9 +882,7 @@ void CellModel::MergeParts(int f, int n, std::vector<BuildPart>& parts, const Li
 		const size_t len = run.stop - run.start;
 		if ((set.cls!=CellModel_Set::UPML) && (set.cls!=CellModel_Set::UPML_PROFILE) && (set.cls!=CellModel_Set::DISP))
 			continue;
-		if (state > 0xffffffffu)
-			throw std::length_error("CellModel: more than 2^32 floats of UPML and ADE state in a component");
-		run.u = (uint32_t)state;
+		run.u = state;
 		if ((set.cls==CellModel_Set::UPML) || (set.cls==CellModel_Set::UPML_PROFILE))
 			state += len;
 		else

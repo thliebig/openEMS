@@ -27,10 +27,6 @@
 #ifdef OPENEMS_WITH_HIP
 #include "hip/gpu_backend_hip.h"
 #endif
-#include "engine.h"
-#include "operator.h"
-#include "extensions/engine_ext_upml.h"
-#include "extensions/engine_ext_steadystate.h"
 #ifdef OPENEMS_WITH_METAL
 #include "metal/gpu_backend_metal.h"
 #endif
@@ -137,108 +133,4 @@ GPU_Backend* GPU_Backend::New(const std::string& name)
 		std::cerr << "GPU_Backend::New: Warning: " << msg << std::endl;
 	// not the reference backend: it is far slower than the CPU engines, the caller has to say so
 	return NULL;
-}
-
-bool GPU_UPMLFusionBox(Engine* eng, const std::vector<GPU_UPMLRegion>& regions, const unsigned int numLines[3],
-                       unsigned int start[3], unsigned int stop[3])
-{
-	// the extension order: UPML (and steady-state) first, so that nothing else
-	// touches the fields between the UPML hooks and the main update
-	size_t num_upml = 0;
-	size_t last_upml = 0;
-	for (size_t n=0; n<eng->GetExtensionCount(); ++n)
-		if (dynamic_cast<Engine_Ext_UPML*>(eng->GetExtension(n)))
-		{
-			++num_upml;
-			last_upml = n;
-		}
-	if ((num_upml==0) || (num_upml!=regions.size()))
-		return false;
-	for (size_t n=0; n<last_upml; ++n)
-	{
-		Engine_Extension* ext = eng->GetExtension(n);
-		if (!dynamic_cast<Engine_Ext_UPML*>(ext) && !dynamic_cast<Engine_Ext_SteadyState*>(ext))
-			return false;
-	}
-
-	// mark the region nodes, the others must form a box
-	const size_t nx = numLines[0], ny = numLines[1], nz = numLines[2];
-	std::vector<unsigned char> mask(nx*ny*nz, 0);
-	for (size_t r=0; r<regions.size(); ++r)
-	{
-		const GPU_UPMLRegion& R = regions[r];
-		for (int n=0; n<3; ++n)
-			if (R.start[n]+R.size[n]>numLines[n])
-				return false;
-		for (size_t x=R.start[0]; x<R.start[0]+R.size[0]; ++x)
-			for (size_t y=R.start[1]; y<R.start[1]+R.size[1]; ++y)
-				for (size_t z=R.start[2]; z<R.start[2]+R.size[2]; ++z)
-				{
-					unsigned char& m = mask[(x*ny + y)*nz + z];
-					if (m)
-						return false;   // overlapping regions
-					m = 1;
-				}
-	}
-	unsigned int lo[3] = {numLines[0], numLines[1], numLines[2]};
-	unsigned int hi[3] = {0, 0, 0};
-	size_t free_nodes = 0;
-	for (unsigned int x=0; x<nx; ++x)
-		for (unsigned int y=0; y<ny; ++y)
-			for (unsigned int z=0; z<nz; ++z)
-				if (!mask[((size_t)x*ny + y)*nz + z])
-				{
-					++free_nodes;
-					const unsigned int pos[3] = {x, y, z};
-					for (int n=0; n<3; ++n)
-					{
-						lo[n] = std::min(lo[n], pos[n]);
-						hi[n] = std::max(hi[n], pos[n]+1);
-					}
-				}
-	if (free_nodes==0)
-		return false;
-	// the nodes left over must fill their bounding box, else they are no single box
-	if (free_nodes!=(size_t)(hi[0]-lo[0])*(hi[1]-lo[1])*(hi[2]-lo[2]))
-		return false;
-
-	for (int n=0; n<3; ++n)
-	{
-		start[n] = lo[n];
-		stop[n] = hi[n];
-	}
-	return true;
-}
-
-static FDTD_FLOAT GPU_Coefficient(const Operator* op, int c, int n, unsigned int x, unsigned int y, unsigned int z)
-{
-	switch (c)
-	{
-	case 0: return op->GetVV(n, x, y, z);
-	case 1: return op->GetVI(n, x, y, z);
-	case 2: return op->GetII(n, x, y, z);
-	default: return op->GetIV(n, x, y, z);
-	}
-}
-
-void GPU_NodeCoefficients(const Operator* op, const unsigned int numLines[3], size_t node, float values[12])
-{
-	const unsigned int x = node/((size_t)numLines[1]*numLines[2]);
-	const unsigned int y = (node/numLines[2]) % numLines[1];
-	const unsigned int z = node % numLines[2];
-	const unsigned int pos[3] = {x, y, z};
-	for (int n=0; n<3; ++n)
-		for (int f=0; f<2; ++f)
-			op->GetCoeffPair(f, n, pos, values[3*(2*f)+n], values[3*(2*f+1)+n]);
-}
-
-void GPU_CoefficientArray(const Operator* op, const unsigned int numLines[3], int c, std::vector<float>& values)
-{
-	values.resize(3*(size_t)numLines[0]*numLines[1]*numLines[2]);
-	size_t idx = 0;
-	for (int n=0; n<3; ++n)
-		for (unsigned int x=0; x<numLines[0]; ++x)
-			for (unsigned int y=0; y<numLines[1]; ++y)
-				for (unsigned int z=0; z<numLines[2]; ++z, ++idx)
-					values[idx] = GPU_Coefficient(op, c, n, x, y, z);
 }

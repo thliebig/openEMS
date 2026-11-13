@@ -20,7 +20,9 @@
 
 #include "engine.h"
 #include "gpu_backend.h"
+#include "engine_plan.h"
 
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -32,29 +34,22 @@ class GPU_Extension;
 /*!
   The fields live on the device (see GPU_Backend). The base class arrays
   (volt_ptr, curr_ptr) serve as host mirror in the basic engine layout, read by
-  the field processing through GetVolt/GetCurr and by the engine extensions.
-  If the device shares its memory with the host, the host mirror is a view of
-  the device memory and no copies are needed.
+  the field processing through GetVolt/GetCurr. If the device shares its
+  memory with the host, the host mirror is a view of the device memory and no
+  copies are needed.
 
-  An extension runs on the device if the backend provides a device
-  implementation of it (GPU_Backend::CreateExtension()); a fallback means the
-  backend has no implementation of one of them (the reference backend has none
-  at all).
-  If all extensions do, the fields stay on the device for a whole IterateTS()
-  call. Without shared memory, the host mirror is then not updated at the end of
-  a batch: GetVolt/GetCurr read the z-line of a value from the device (e.g. for
-  a probe), or the whole field if a batch reads many lines (e.g. for a dump).
-
-  Otherwise all extensions run on the host mirror, and the engine uploads both fields before and downloads the updated field
-  after each main update (host fallback, correct but slow). Note that the pre-
-  and post-update hooks may write the fields too, despite the Engine_Extension
-  documentation: the UPML in all four, the TF/SF and the cylinder extension in
-  the post-update hooks.
+  Every extension runs on the device, through its device implementation,
+  written once for every backend (GPU_CreateExtension(), gpu_ext.h); an
+  extension without one is an error. The fields stay on the device for a whole
+  IterateTS() call. Without shared memory, the host mirror is not updated at the
+  end of a batch: GetVolt/GetCurr read the z-line of a value from the device
+  (e.g. for a probe), or the whole field if a batch reads many lines (e.g. for a
+  dump).
 
   A cylindrical multi-grid level gets the engine of its sub-grid with
   Engine::SetSubGrid(): a GPU engine on a backend sharing the work stream of
-  this one (GPU_Backend::NewSubGridBackend()), coupled by SubGrid_Coupling_GPU,
-  on the device or with all levels in the host fallback.
+  this one (GPU_Backend::NewSubGridBackend()), coupled on the device by
+  SubGrid_Coupling_GPU (gpu_ext.h).
 
   The engine type is Engine::GPU, which the extension dispatcher and
   Engine_Interface_FDTD handle like the basic engine, because that is the layout
@@ -65,10 +60,15 @@ class Engine_GPU : public Engine
 {
 public:
 	//! Create the engine for \a op on \a backend (see GPU_Backend::New), which the engine takes over, or for a sub-grid on a backend sharing the work stream of \a parent
-	static Engine_GPU* New(const Operator* op, GPU_Backend* backend, GPU_Backend* parent=NULL);
+	/*!
+	  \a modelBuilt is called once the engine no longer needs the coefficients of
+	  \a op: when the cell model is built, before the fields are allocated (the
+	  lower memory peak, as Engine_CPU::New()).
+	  */
+	static Engine_GPU* New(const Operator* op, GPU_Backend* backend, GPU_Backend* parent=NULL, const std::function<void()>& modelBuilt=nullptr);
 	virtual ~Engine_GPU();
 
-	//! Create the backend, the device extensions and decide device or host fallback
+	//! Create the backend and the device extensions
 	virtual void Init();
 	//! Free the device extensions before the backend they belong to
 	virtual void Reset();
@@ -76,6 +76,49 @@ public:
 	//! A batch of timesteps, the host mirror is brought up to date at its end
 	virtual bool IterateTS(unsigned int iterTS);
 
+	//! Temporal blocking (see IterateTS()): the plans of the candidate tiles, and which runs
+	/*!
+	  If the extensions run on the device and there is no sub-grid: parallelograms along x
+	  (Engine_BlockedPlan::Parallelograms(): the tiles in order, no wedges, half
+	  the launches of the trapezoids), all of the device on one tile, the stream
+	  order in place of the barriers. The tile has to fit the last-level cache:
+	  of its size (GPU_Backend::CacheBytes(), or OPENEMS_GPU_CACHE in MiB) tiles
+	  of 1/2, 3/4 and all of it, else of 8 to 256 MiB; they and the flat sweep
+	  are tried for OPENEMS_GPU_TRIAL seconds each (default 0.3) at the start,
+	  the fastest is kept. With the fused step (see
+	  PrepareFused(): the choice for a small cache) the flat sweep is two
+	  candidates, the fused step and the two updates, also without temporal
+	  blocking; a tile or the two updates free its memory. OPENEMS_GPU_TBLOCK=0
+	  switches blocking off, =k:W[,k:W...] runs those tiles, tried against each
+	  other and the flat sweep only with OPENEMS_GPU_TRIAL (Engine_TilesFromEnv(),
+	  as OPENEMS_CPU_TBLOCK).
+	  */
+	void PrepareBlocking();
+	//! Start the trials of PrepareBlocking() with the first candidate
+	void StartTrials();
+	//! The steps of the next block, up to \a left: until an extension needs a flat step (as Engine_ThreadPool::BlockLength())
+	unsigned int BlockLength(unsigned int left, unsigned int kmax) const;
+	//! Run the k timesteps of \a plan
+	void RunBlock(const Engine_BlockedPlan& plan);
+	//! One step of a blocked plan: the order of the flat half step, restricted to the box (as Engine_ThreadPool::BlockedStep())
+	void BlockedStep(const Engine_Step& step, unsigned int ts);
+	//! Count \a steps timesteps of the running trial, move on when it took long enough
+	void TrialProgress(unsigned int steps);
+	//! Run (\a run) or pause the clock of the running trial; it runs only inside IterateTS(), not over the host's work between the batches (probes, dumps), and pausing waits for the device
+	void TrialClock(bool run);
+
+	//! The fused step of the backend (GPU_Backend::PrepareFused()) for the flat timesteps, if every extension tells the nodes its hooks between the main updates touch
+	/*!
+	  Not with a sub-grid or the extensions on the host. The trials of
+	  PrepareBlocking() decide whether it runs. OPENEMS_GPU_FUSED=0 keeps the
+	  two main updates separate, =1 runs the fused step without the trial
+	  against them. Called by PrepareBlocking(): \a skip, if not empty, is why
+	  the fused step is not worth trying (the cache holds tiles of the full
+	  depth); =1 runs it anyway.
+	  */
+	void PrepareFused(const std::string& skip);
+	//! One flat timestep with the fused step: the hooks in the order of VoltageHalfStep() and CurrentHalfStep()
+	void FusedStep();
 	//! One voltage half-step: extensions and main update, then the sub-grid and the coupling of the two (see Engine::SetSubGrid())
 	void VoltageHalfStep();
 	//! One current half-step: extensions and main update, then the sub-grid and the coupling
@@ -85,16 +128,10 @@ public:
 	//! After a batch of timesteps: fill this grid from the sub-grid, update the host mirror for the field processing
 	void FinishBatch();
 
-	//! Run all extensions on the host mirror, even if they have a device implementation; the sub-grids too, coupled on the host mirrors
-	void ForceHostFallback();
-
 	//! The device backend holding the fields
 	GPU_Backend* GetBackend() const {return m_Backend;}
 
-	//! True if the extensions run on the host mirror, which is then kept in sync during IterateTS()
-	bool FieldsOnHost() const {return m_FieldsOnHost;}
-
-	//! Sums of the squared voltages and currents on the device (see GPU_Backend::CalcFastEnergy()); false if it has none or the fields are on the host
+	//! Sums of the squared voltages and currents on the device (see GPU_Backend::CalcFastEnergy()); false if it has none
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) const;
 
 	//! Host mirror of the fields (basic engine layout)
@@ -126,16 +163,12 @@ public:
 	virtual FDTD_FLOAT GetVolt(unsigned int n, const unsigned int pos[3]) const {return GetVolt(n, pos[0], pos[1], pos[2]);}
 	virtual FDTD_FLOAT GetCurr(unsigned int n, unsigned int x, unsigned int y, unsigned int z) const;
 	virtual FDTD_FLOAT GetCurr(unsigned int n, const unsigned int pos[3]) const {return GetCurr(n, pos[0], pos[1], pos[2]);}
-	//! Make the host mirror changes visible to the device
-	void VoltagesToDevice();
-	void CurrentsToDevice();
 
 protected:
 	Engine_GPU(const Operator* op, GPU_Backend* backend, GPU_Backend* parent);
 
 	GPU_Backend* m_ParentBackend;
 	GPU_Backend* m_Backend;
-	bool m_FieldsOnHost;
 	bool m_SharedMemory; //!< the host mirror is the device memory
 	bool m_SnapshotsUsed; //!< SnapshotFields() succeeded once
 	std::vector<Engine_GatherRegion> m_SnapshotGather[2]; //!< raw values of the snapshots: from the voltages, the currents (see AddSnapshotGather())
@@ -146,7 +179,7 @@ protected:
 	//! 0 (device): device sums and snapshots, 1 (snapshot): no device sums, 2 (host): neither
 	int m_DumpPath;
 
-	//! device implementations of the engine extensions, same order as m_Eng_exts (fast path only)
+	//! device implementations of the engine extensions, same order as m_Eng_exts
 	std::vector<GPU_Extension*> m_GPU_exts;
 
 	//! Out-of-date host mirror of one field (see GetVolt()): the z-lines read from the device in this batch
@@ -164,6 +197,29 @@ protected:
 	void MarkStale(StaleField& field);
 
 	void ClearGPUExtensions();
+	//! All lines of the grid: the main updates of a flat timestep
+	Engine_Box Domain() const {return {{0, 0, 0}, {numLines[0], numLines[1], numLines[2]}};}
+	//! The hooks of the device extensions around \a update, the main update of the voltages or \a currents of \a box at timestep \a ts, in the order of Engine
+	template <typename Update>
+	void DeviceHalfStep(bool currents, const Engine_Box& box, unsigned int ts, Update update);
+
+	std::vector< std::vector<Engine_BlockedPlan> > m_BlockCandidates;   //!< per candidate tile its plans, every k from the largest down to 2
+	int m_Block = -1;                                                  //!< the running candidate, -1 the flat sweep
+	bool m_Fused = false;                                              //!< the flat timesteps run FusedStep()
+	bool m_FusedForced = false;                                        //!< OPENEMS_GPU_FUSED=1: no trial against the two updates
+	bool m_FlatTrial = false;                                          //!< the trials try the fused step and the two updates as the flat sweep
+	bool m_FlatSplit = false;                                          //!< the trial of the two updates runs
+	bool m_BlockingPrepared = false;                                   //!< PrepareBlocking() ran (at the first IterateTS())
+	std::function<void()> m_ModelBuilt;                                //!< see New(), called once
+	double m_NodeBytes = 0;                                            //!< GPU_CellModel::NodeBytes(), for the tiles
+	//! the trials: candidate m_Trial (the tiles, then the flat sweep, then the two updates with m_FlatTrial), its timesteps and seconds; -1 done
+	int m_Trial = -1;
+	double m_TrialSeconds = 0.3;
+	unsigned int m_TrialSteps = 0;
+	double m_TrialTime = 0;        //!< the seconds of the running trial so far, inside IterateTS() only
+	double m_TrialMark = -1;       //!< when the clock was started, -1 paused
+	bool m_TrialWarm = false;      //!< the first steps of the running trial are still to come (not timed)
+	std::vector<double> m_TrialSpeed;
 };
 
 #endif // ENGINE_GPU_H

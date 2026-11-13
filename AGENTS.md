@@ -33,14 +33,17 @@ The pipeline, and where each part lives:
    `CalcECOperator()`, and holds the mesh (`discLines[]`). The coefficients live
    in an `Operator_Coeffs` (`FDTD/operator_coeffs.h`) in the layout the engine
    reads: basic or compressed SSE, chosen by `SetEngineType()` with the
-   engine. The subclasses are the mesh geometry:
+   engine; the CPU and GPU engines build their cell model (`FDTD/cell_model.h`)
+   from them. The subclasses are the mesh geometry:
    `Operator_Cylinder`/`_CylinderMultiGrid`.
 3. **`Engine`** (`FDTD/engine.h`) time-steps those coefficients —
    `UpdateVoltages`/`UpdateCurrents` over `volt_ptr`/`curr_ptr`. The CPU
-   engines are `Engine` (basic) and `Engine_sse` (compressed SSE, the
-   default); both run on the worker threads of an `Engine_ThreadPool`, which
-   calls the thread-aware extension hooks with a `threadID`. `Engine_GPU` runs
-   on a device backend. A cylindrical multi-grid level holds the engine of its
+   engines are `Engine` (basic), `Engine_sse` (compressed SSE, the default)
+   and `Engine_CPU` (the cell model, temporal blocking); they run on the
+   worker threads of an `Engine_ThreadPool`, which calls the thread-aware
+   extension hooks with a `threadID`. `Engine_GPU` runs on a device backend
+   (`FDTD/gpu_backend.h`: HIP, Metal, and the reference backend on the CPU).
+   A cylindrical multi-grid level holds the engine of its
    sub-grid and an `Engine_SubGridCoupling` (`Engine::SetSubGrid()`), for every
    engine type.
 4. **`Processing`** subclasses (`Common/`) sample the running simulation through
@@ -71,12 +74,16 @@ current-side equivalents.
   declaration order is not a contract.
 - An extension that touches the engine's fields must work for every engine
   subclass, not just the basic one.
-- For the GPU engine that means a device implementation in every backend (HIP,
-  Metal): one extension without one moves all extensions to the host and copies
-  both fields every half-step, which makes GPU runs slow. A change to an
-  extension's update is made in the host, HIP and Metal versions alike;
-  `python/Tests/Engine_Compare.py` compares them with the CPU, but only on a
-  machine with that GPU (CI has none).
+- For the GPU engine that means a device implementation, written once for
+  every backend: a class in `FDTD/gpu_ext.cpp` and its per-point operation in
+  `FDTD/kernels/ext_ops.h`. The GPU engine refuses a model with an extension
+  without one: a new extension implements it from the start.
+  A change to an extension's update is made in the engine extension and in its
+  device operation alike; `python/Tests/Engine_Compare.py` compares them, on
+  any machine through the reference backend (`--engine=gpu-reference`).
+- The CPU and GPU engines fuse the UPML and the dispersive materials into
+  their main update (`FDTD/cell_model.h`, `FDTD/engine_cpu_kernels.inc`,
+  `FDTD/kernels/cell_update.h`): a change to those updates goes there too.
 
 Modifying `Operator`/`Engine` directly is for changes that genuinely belong to
 the core scheme, and those need discussion first.

@@ -287,7 +287,7 @@ ELSEIF(ENABLE_HIP)
   enable_language(HIP)
   set(CMAKE_HIP_STANDARD 17)
   # No fused multiply-add and the same denormal handling, so the kernels round like the
-  # CPU engines (python/Tests/Engine_Compare.py compares them value by value). The flags are
+  # reference backend (python/Tests/Engine_Compare.py compares them value by value). The flags are
   # those of the compiler behind hipcc: hipcc on the NVIDIA platform, clang on AMD, and
   # the clang spelling would only reach the host compiler under hipcc.
   IF(CMAKE_HIP_PLATFORM STREQUAL "nvidia")
@@ -391,6 +391,19 @@ IF(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
   IF(OPENEMS_CPU_AVX2)
     set(SOURCES ${SOURCES} ${CPU_AVX2_SOURCE})
   ENDIF()
+ENDIF()
+
+# Without fused multiply-add, whatever the target offers: the reference backend of the GPU
+# engine computes as a device (HIP below), and the CPU engine's generic kernels and engine
+# extensions (which the reference runs as kernels/ext_ops.h) as both;
+# python/Tests/Engine_Compare.py compares HIP with the reference bit for bit and the reference
+# with the CPU engine (Clang contracts by default, e.g. on ARM). The AVX2 kernels keep their FMA.
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|IntelLLVM" AND NOT MSVC)
+  file(GLOB ENGINE_EXT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/FDTD/extensions/engine_ext_*.cpp)
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/FDTD/gpu_backend_reference.cpp
+                              ${CMAKE_CURRENT_SOURCE_DIR}/FDTD/engine_cpu_kernels.cpp
+                              ${ENGINE_EXT_SOURCES}
+                              PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
 ENDIF()
 
 add_library( openEMS SHARED ${SOURCES})
