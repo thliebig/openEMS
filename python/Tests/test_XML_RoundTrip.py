@@ -88,6 +88,12 @@ class Test_Write2XML(unittest.TestCase):
         fdtd_el = ET.parse(self.fn).getroot().find('FDTD')
         self.assertEqual(int(fdtd_el.get('NumberOfTimesteps')), 1234)
 
+    def test_timestep_factor_in_xml(self):
+        self.fdtd.SetTimeStepFactor(0.5)
+        self.fdtd.Write2XML(self.fn)
+        fdtd_el = ET.parse(self.fn).getroot().find('FDTD')
+        self.assertAlmostEqual(float(fdtd_el.get('TimeStepFactor')), 0.5)
+
     def test_end_criteria_in_xml(self):
         self.fdtd.Write2XML(self.fn)
         fdtd_el = ET.parse(self.fn).getroot().find('FDTD')
