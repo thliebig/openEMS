@@ -52,6 +52,9 @@ void ParallelFor(size_t count, unsigned int numThreads, const std::function<void
 //! Run \a fn(thread, i) for each i in [0, \a count) on up to \a numThreads threads, the items handed out one by one as the threads get done (for items of uneven cost); an exception is rethrown as by ParallelFor()
 void ParallelForEach(size_t count, unsigned int numThreads, const std::function<void(unsigned int thread, size_t i)>& fn);
 
+//! True if the CPU has AVX2 and FMA and the system saves the AVX registers (x86-64 only, false elsewhere)
+bool CpuHasAVX2FMA();
+
 //! Calculate an optimal job distribution to a given number of threads. Will return a vector with the jobs for each thread.
 std::vector<unsigned int> AssignJobs2Threads(unsigned int jobs, unsigned int nrThreads, bool RemoveEmpty=false);
 

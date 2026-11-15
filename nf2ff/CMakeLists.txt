@@ -35,9 +35,28 @@ set(HEADERS
   nf2ff_calc.h
 )
 
+# the far-field kernels once more for AVX2 and FMA, chosen at run time
+# (nf2ff_calc::AddSinglePlane()); on x86-64 with GCC, Clang, MSVC and clang-cl
+set(NF2FF_AVX2_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/nf2ff_kernels_avx2.cpp)
+IF(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+  IF(MSVC)   # MSVC and clang-cl
+    set(NF2FF_AVX2 ON)
+    set_source_files_properties(${NF2FF_AVX2_SOURCE} PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+  ELSEIF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(NF2FF_AVX2 ON)
+    set_source_files_properties(${NF2FF_AVX2_SOURCE} PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma")
+  ENDIF()
+  IF(NF2FF_AVX2)
+    set(SOURCES ${SOURCES} ${NF2FF_AVX2_SOURCE})
+  ENDIF()
+ENDIF()
+
 add_library( nf2ff SHARED ${SOURCES})
 set_target_properties(nf2ff PROPERTIES VERSION ${LIB_VERSION_STRING} SOVERSION ${LIB_VERSION_MAJOR})
 set_target_properties(nf2ff PROPERTIES CXX_STANDARD 17)
+IF(NF2FF_AVX2)
+  target_compile_definitions(nf2ff PRIVATE NF2FF_AVX2)
+ENDIF()
 if (WIN32)
     target_compile_definitions(nf2ff PRIVATE -DBUILD_NF2FF_LIB )
 endif (WIN32)
