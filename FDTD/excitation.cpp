@@ -28,6 +28,8 @@ Excitation::Excitation()
 {
 	m_signal_volt = 0;
 	m_signal_curr = 0;
+	m_f0 = 0;
+	m_fc = 0;
 	m_GaussDCFree = false;
 
 	this->Reset(0);

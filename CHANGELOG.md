@@ -75,6 +75,8 @@ to what a user notices, in a few lines; the details belong in the commit.
 - A SAR dump needs 24 bytes per dumped cell and frequency less memory.
 - `Write2XML()` crashed when no excitation or no structure was set.
 - A delayed excitation injected its first sample before the delay.
+- Lumped RLC elements (series, or parallel with an L and no C) could turn the
+  fields into NaN at random with any excitation but the Gaussian pulse (#255).
 
 ### Build
 
