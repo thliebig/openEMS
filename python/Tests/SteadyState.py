@@ -42,7 +42,7 @@ slab_d   = 20      # slab thickness (mm)
 z_probe  = 110     # transmitted-field probe
 
 ### Excitation & slab material
-f0      = 3e9
+f0      = 2.4e9   # 433 timesteps per period, T/dT in floating point just below
 eps_r   = 4.0
 kappa   = 0.05     # S/m
 NrTS    = 1000000  # far more than needed, the steady-state detection must end the run
@@ -100,7 +100,7 @@ def steady_state(label, t, val):
     print(f'  {label}: change between the last two periods: {change*100:.4f} %')
     assert change < 1e-3, \
         f'FAIL [{label}]: probe changes {change*100:.3f} % between the last two periods, expected < 0.1 % (not steady)'
-    return phasor(t, val, t_end - 4*T0, t_end)
+    return last
 
 
 print('Running reference (no slab)...')
