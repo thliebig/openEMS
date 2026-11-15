@@ -252,6 +252,17 @@ class Test_XML_RoundTrip(unittest.TestCase):
         fdtd_el = ET.parse(self.fn2).getroot().find('FDTD')
         self.assertEqual(int(fdtd_el.get('NumberOfTimesteps')), 1234)
 
+    def test_roundtrip_end_criteria_zero(self):
+        fdtd = _make_fdtd()
+        fdtd.SetEndCriteria(0)  # none: run all timesteps
+        fdtd.Write2XML(self.fn1)
+        fdtd2 = openEMS()
+        fdtd2.ReadFromXML(self.fn1)
+        fdtd2.Write2XML(self.fn2)
+
+        fdtd_el = ET.parse(self.fn2).getroot().find('FDTD')
+        self.assertEqual(float(fdtd_el.get('endCriteria')), 0)
+
     def test_roundtrip_excitation(self):
         _make_fdtd().Write2XML(self.fn1)
         fdtd2 = openEMS()

@@ -1000,12 +1000,10 @@ bool openEMS::Parse_XML_FDTDSetup(TiXmlElement* FDTD_Opts)
 	if (dhelp>0)
 		this->SetMaxTime(dhelp);
 
-	dhelp = 0;
+	// a missing one is the default, 0 is none (run all timesteps)
+	dhelp = 1e-6;
 	FDTD_Opts->QueryDoubleAttribute("endCriteria",&dhelp);
-	if (dhelp==0)
-		this->SetEndCriteria(1e-6);
-	else
-		this->SetEndCriteria(dhelp);
+	this->SetEndCriteria(dhelp);
 
 	ihelp = 0;
 	FDTD_Opts->QueryIntAttribute("OverSampling",&ihelp);
@@ -1692,6 +1690,8 @@ void openEMS::RunFDTD()
 			cout << " (-" << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)";
 		cout << endl;
 	}
+	else if (endCrit<=0) // none set, nothing to report
+		;
 	else if ((change>endCrit) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0))
 		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
