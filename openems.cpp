@@ -1660,7 +1660,10 @@ void openEMS::RunFDTD()
 			// for everything printed after, even for the next Run() in the same process
 			ostringstream line;
 			line << "[@" <<  FormatTime(t_run) <<  "] Timestep: " << setw(12)  << currTS ;
-			line << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
+			// timesteps per second, three digits at least: below 1 for very large models
+			const double ts_rate = (currTS-prevTS)/t_diff;
+			line << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s ("
+			     << setw(5) << setprecision((ts_rate<10) ? 2 : ((ts_rate<100) ? 1 : 0)) << ts_rate << " TS/s)";
 			if (Eng_Ext_SSD==NULL)
 			{
 				if (!exactEndCrit) // otherwise already kept current above, every Nyquist period
