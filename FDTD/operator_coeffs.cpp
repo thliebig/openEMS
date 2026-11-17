@@ -23,6 +23,7 @@
 #include <stdexcept>
 
 #include "operator_coeffs.h"
+#include "operator.h"
 #include "tools/global.h"
 
 using std::cout;
@@ -71,9 +72,7 @@ Coeffs_EC::Coeffs_EC()
 {
 	m_Lines[0] = m_Lines[1] = m_Lines[2] = 0;
 	m_dT = 0;
-	for (int e=0; e<4; ++e)
-		for (int n=0; n<3; ++n)
-			m_EC[e][n] = NULL;
+	m_Op = NULL;
 }
 
 Coeffs_EC::~Coeffs_EC()
@@ -95,9 +94,7 @@ void Coeffs_EC::Free()
 	std::vector<Box>().swap(m_Boxes);
 	std::unordered_map<size_t, size_t>().swap(m_MapIndex);
 	std::vector<std::array<float,12> >().swap(m_MapValues);
-	for (int e=0; e<4; ++e)
-		for (int n=0; n<3; ++n)
-			m_EC[e][n] = NULL;
+	m_Op = NULL;
 }
 
 void Coeffs_EC::ShowStat(std::ostream& ostr) const
@@ -108,16 +105,23 @@ void Coeffs_EC::ShowStat(std::ostream& ostr) const
 	ostr << "Coefficients\t\t: computed from the circuit values; stored for " << box << " nodes in boxes (UPML), " << m_MapValues.size() << " in a map" << endl;
 }
 
-void Coeffs_EC::SetEC(FDTD_FLOAT* const C[3], FDTD_FLOAT* const G[3], FDTD_FLOAT* const L[3], FDTD_FLOAT* const R[3], double dT)
+void Coeffs_EC::SetEC(const Operator* op, double dT)
 {
-	for (int n=0; n<3; ++n)
-	{
-		m_EC[0][n] = C[n];
-		m_EC[1][n] = G[n];
-		m_EC[2][n] = L[n];
-		m_EC[3][n] = R[n];
-	}
+	m_Op = op;
 	m_dT = dT;
+}
+
+void Coeffs_EC::ComputePair(int f, unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT& self, FDTD_FLOAT& curl) const
+{
+	const unsigned int pos[3] = {x, y, z};
+	Coeffs_FromEC(m_Op->GetEC(2*f, n, pos), m_Op->GetEC(2*f+1, n, pos), m_dT, self, curl);
+}
+
+FDTD_FLOAT Coeffs_EC::Compute(int k, unsigned int x, unsigned int y, unsigned int z) const
+{
+	FDTD_FLOAT self, curl;
+	ComputePair((k&3)>>1, k>>2, x, y, z, self, curl);
+	return (k&1) ? curl : self;
 }
 
 void Coeffs_EC::ReserveBox(const unsigned int start[3], const unsigned int lines[3])
@@ -158,9 +162,11 @@ float* Coeffs_EC::Own(size_t i, unsigned int x, unsigned int y, unsigned int z)
 
 float* Coeffs_EC::MakeOwn(size_t i, unsigned int x, unsigned int y, unsigned int z)
 {
+	// its coefficients so far, a pair per edge and field (GetPair(): the node is not one of its own yet)
 	float values[12];
-	for (int k=0; k<12; ++k)
-		values[k] = (m_Flags[i] & (1u<<k)) ? 0 : Compute(k, i);
+	for (unsigned int n=0; n<3; ++n)
+		for (int f=0; f<2; ++f)
+			GetPair(f, n, x, y, z, values[4*n+2*f], values[4*n+2*f+1]);
 	const unsigned int p[3] = {x, y, z};
 	for (size_t n=0; n<m_Boxes.size(); ++n)
 	{
@@ -196,7 +202,7 @@ void Coeffs_EC::GetPair(int f, unsigned int n, unsigned int x, unsigned int y, u
 		curl = own[k+1];
 		return;
 	}
-	Coeffs_FromEC(m_EC[2*f][n][i], m_EC[2*f+1][n][i], m_dT, self, curl);
+	ComputePair(f, n, x, y, z, self, curl);
 	if (flags & (1u<<k))
 		self = 0;
 	if (flags & (1u<<(k+1)))
@@ -221,8 +227,8 @@ void Coeffs_EC::Reset(int n, unsigned int x, unsigned int y, unsigned int z)
 	if (m_Flags[i] & OWN)
 	{
 		float* own = Own(i, x, y, z);
-		for (int c=0; c<4; ++c)
-			own[4*n+c] = Compute(4*n+c, i);
+		for (int f=0; f<2; ++f)
+			ComputePair(f, n, x, y, z, own[4*n+2*f], own[4*n+2*f+1]);
 	}
 	else
 		m_Flags[i] &= ~(uint16_t)(0xF<<(4*n));

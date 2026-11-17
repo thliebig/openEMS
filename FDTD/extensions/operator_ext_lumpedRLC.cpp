@@ -318,7 +318,6 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 					}
 				}
 
-				int iPos = 0;
 
 				double Zmin, Zcd_min;
 
@@ -329,7 +328,6 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 					{
 						for (pos[dir_p2] = uiStart[dir_p2] ; pos[dir_p2] <= uiStop[dir_p2] ; ++pos[dir_p2])
 						{
-							iPos = m_Op->MainOp->SetPos(pos[0],pos[1],pos[2]);
 
 							switch (lumpedType)
 							{
@@ -339,20 +337,24 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 									// natural grid capacitance, adjusting upward if it is too small
 									// to keep the ADE stable relative to R and L.
 									double dC_cell;
+									double ec[4] = {0, 0, 0, 0};
+									unsigned int mask = 0;
 									if (dC > 0)
 									{
-										m_Op->EC_C[dir][iPos] = dC;
+										ec[Operator::EC_CAP] = dC;
+										mask |= 1u<<Operator::EC_CAP;
 										dC_cell = dC;
 									}
 									else
 									{
-										dC_cell = m_Op->EC_C[dir][iPos];
+										dC_cell = m_Op->GetEC(Operator::EC_CAP, dir, pos);
 										Zmin    = std::max(dR, 2*PI*fMax*dL);
 										Zcd_min = 1.0/(2.0*PI*fMax*dC_cell);
 										if (Zcd_min < LUMPED_RLC_Z_FACT*Zmin)
 										{
 											dC_cell = 1.0/(2*PI*fMax*Zmin*LUMPED_RLC_Z_FACT);
-											m_Op->EC_C[dir][iPos] = dC_cell;
+											ec[Operator::EC_CAP] = dC_cell;
+											mask |= 1u<<Operator::EC_CAP;
 										}
 									}
 
@@ -360,7 +362,12 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 									// Update conductivity
 									if (R >= 0)
-										m_Op->EC_G[dir][iPos] = dG;
+									{
+										ec[Operator::EC_CON] = dG;
+										mask |= 1u<<Operator::EC_CON;
+									}
+									if (mask)
+										m_Op->SetEC(dir, pos, mask, ec);
 
 									// Update coefficients with respect to the parallel inductance
 									v_ilv.push_back((L > 0) ? dT/dL : 0.0);
@@ -385,9 +392,8 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 
 								case CSPropLumpedElement::SERIES:
 								{
-									m_Op->EC_G[dir][iPos] = 0.0;
-
-									FDTD_FLOAT Cd = m_Op->EC_C[dir][iPos];
+									FDTD_FLOAT Cd = m_Op->GetEC(Operator::EC_CAP, dir, pos);
+									unsigned int mask = 1u<<Operator::EC_CON;   // G is 0
 
 									// Check if the natural grid capacitance is too small
 									// relative to the series impedance at fMax.
@@ -401,8 +407,10 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 									if (Zcd_min < LUMPED_RLC_Z_FACT*Zmin)
 									{
 										Cd = 1.0/(2*PI*fMax*Zmin*LUMPED_RLC_Z_FACT);
-										m_Op->EC_C[dir][iPos] = Cd;
+										mask |= 1u<<Operator::EC_CAP;
 									}
+									const double ec[4] = {Cd, 0, 0, 0};
+									m_Op->SetEC(dir, pos, mask, ec);
 
 									// No contribution from parallel inductor or capacitor update
 									v_ilv.push_back(0.0);

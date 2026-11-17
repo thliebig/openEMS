@@ -190,7 +190,6 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
-					const size_t index = m_Op->GetECIndex(pos);
 					//calc epsilon lorentz material
 					b_pos_on = false;
 					for (int n=0; n<3; ++n)
@@ -214,11 +213,11 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetEpsPlasmaFreqWeighted(order,n,coord) * 2 * PI;
-							if ((w_plasma>0) && (m_Op->EC_C[n][index]>0))
+							if ((w_plasma>0) && (m_Op->GetEC(Operator::EC_CAP,n,pos)>0))
 							{
 								b_pos_on = true;
 								c.volt = true;
-								L_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_C[n][index]);
+								L_D[n] = 1/(w_plasma*w_plasma*m_Op->GetEC(Operator::EC_CAP,n,pos));
 							}
 							t_relax = mat->GetEpsRelaxTimeWeighted(order,n,coord);
 							if ((t_relax>0) && c.volt)
@@ -252,11 +251,11 @@ bool Operator_Ext_LorentzMaterial::BuildExtension()
 						if ((mat = prop->ToLorentzMaterial()))
 						{
 							w_plasma = mat->GetMuePlasmaFreqWeighted(order,n,coord) * 2 * PI;
-							if ((w_plasma>0) && (m_Op->EC_L[n][index]>0))
+							if ((w_plasma>0) && (m_Op->GetEC(Operator::EC_IND,n,pos)>0))
 							{
 								b_pos_on = true;
 								c.curr = true;
-								C_D[n] = 1/(w_plasma*w_plasma*m_Op->EC_L[n][index]);
+								C_D[n] = 1/(w_plasma*w_plasma*m_Op->GetEC(Operator::EC_IND,n,pos));
 							}
 							t_relax = mat->GetMueRelaxTimeWeighted(order,n,coord);
 							if ((t_relax>0) && c.curr)

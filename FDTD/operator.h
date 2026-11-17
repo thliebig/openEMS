@@ -247,7 +247,20 @@ public:
 		return GetECIndex(q);
 	}
 
+	//! The circuit values of an edge: capacitance, conductance (main mesh), inductance, resistance (dual mesh)
+	enum ECValue {EC_CAP=0, EC_CON=1, EC_IND=2, EC_RES=3};
+	//! The circuit value \a k (ECValue) of the edge \a n at the node \a pos, from CalcECOperator() until the coefficients are freed (FreeCoeffs())
+	FDTD_FLOAT GetEC(int k, int n, const unsigned int pos[3]) const;
+	//! GetEC() at the node index \a i (GetECIndex())
+	FDTD_FLOAT GetEC(int k, int n, size_t i) const;
+
 protected:
+	//! Set the circuit values of the edge \a n at the node \a pos: bit k (ECValue) of \a mask says which of \a values; the others and the other edges stay
+	/*!
+	  Who changes the circuit values of a node must call Calc_ECOperatorPos() for it afterwards,
+	  or FreezeCoeffs() before to keep its coefficients as they are.
+	  */
+	void SetEC(int n, const unsigned int pos[3], unsigned int mask, const double values[4]);
 	DebugFlags m_DebugFlags = None;
 	//! use New() for creating a new Operator
 	Operator();
@@ -339,9 +352,8 @@ protected:
 	virtual void Init_EC();
 	virtual bool Calc_EC();
 	virtual void Calc_EC_Range(unsigned int xStart, unsigned int xStop);
-	//! The circuit values per direction (GetECIndex()). After InitOperator() the coefficients of the CPU
-	//! and GPU engines are computed from them when read (Coeffs_EC): who changes those of a node must call
-	//! Calc_ECOperatorPos() for it afterwards, or FreezeCoeffs() before to keep its coefficients as they are.
+	//! The circuit values per direction (GetECIndex()), read with GetEC() and written with SetEC(). After InitOperator()
+	//! the coefficients of the CPU and GPU engines are computed from them when read (Coeffs_EC).
 	FDTD_FLOAT* EC_C[3];
 	FDTD_FLOAT* EC_G[3];
 	FDTD_FLOAT* EC_L[3];

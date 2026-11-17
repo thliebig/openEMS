@@ -945,7 +945,7 @@ void Operator::InitOperator()
 	}
 	m_Coeffs->Init(numLines);
 	if (m_ECCoeffs)
-		m_ECCoeffs->SetEC(EC_C, EC_G, EC_L, EC_R, dT);
+		m_ECCoeffs->SetEC(this, dT);
 }
 
 void Operator::FreeEC()
@@ -1087,14 +1087,34 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 		m_ECCoeffs->Reset(n, pos[0], pos[1], pos[2]);
 		return;
 	}
-	const size_t i = GetECIndex(pos);
 	FDTD_FLOAT self, curl;
-	Coeffs_FromEC(EC_C[n][i], EC_G[n][i], dT, self, curl);
+	Coeffs_FromEC(GetEC(EC_CAP,n,pos), GetEC(EC_CON,n,pos), dT, self, curl);
 	SetVV(n,pos[0],pos[1],pos[2], self);
 	SetVI(n,pos[0],pos[1],pos[2], curl);
-	Coeffs_FromEC(EC_L[n][i], EC_R[n][i], dT, self, curl);
+	Coeffs_FromEC(GetEC(EC_IND,n,pos), GetEC(EC_RES,n,pos), dT, self, curl);
 	SetII(n,pos[0],pos[1],pos[2], self);
 	SetIV(n,pos[0],pos[1],pos[2], curl);
+}
+
+FDTD_FLOAT Operator::GetEC(int k, int n, const unsigned int pos[3]) const
+{
+	const FDTD_FLOAT* const* ec[4] = {EC_C, EC_G, EC_L, EC_R};
+	return ec[k][n][GetECIndex(pos)];
+}
+
+FDTD_FLOAT Operator::GetEC(int k, int n, size_t i) const
+{
+	const FDTD_FLOAT* const* ec[4] = {EC_C, EC_G, EC_L, EC_R};
+	return ec[k][n][i];
+}
+
+void Operator::SetEC(int n, const unsigned int pos[3], unsigned int mask, const double values[4])
+{
+	FDTD_FLOAT* const* ec[4] = {EC_C, EC_G, EC_L, EC_R};
+	const size_t i = GetECIndex(pos);
+	for (int k=0; k<4; ++k)
+		if (mask & (1u<<k))
+			ec[k][n][i] = values[k];
 }
 
 int Operator::CalcECOperator( DebugFlags debugFlags )
@@ -1740,7 +1760,6 @@ bool Operator::Calc_LumpedElements()
 				//calculate geometric property for this lumped element
 				unsigned int pos[3];
 				double unitGC=0;
-				int ipos=0;
 				for (pos[ny]=uiStart[ny];pos[ny]<uiStop[ny];++pos[ny])
 				{
 					double unitGC_Plane=0;
@@ -1781,11 +1800,10 @@ bool Operator::Calc_LumpedElements()
 					{
 						for (pos[nyPP]=uiStart[nyPP];pos[nyPP]<=uiStop[nyPP];++pos[nyPP])
 						{
-							ipos = MainOp->SetPos(pos[0],pos[1],pos[2]);
-							if (C>0)
-								EC_C[ny][ipos] = epsilon * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos);
-							if (R>0)
-								EC_G[ny][ipos] = kappa * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos);
+							const double ec[4] = {epsilon * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos), kappa * GetEdgeArea(ny,pos)/GetEdgeLength(ny,pos), 0, 0};
+							const unsigned int mask = ((C>0) ? (1u<<EC_CAP) : 0) | ((R>0) ? (1u<<EC_CON) : 0);
+							if (mask)
+								SetEC(ny, pos, mask, ec);
 
 							if (R==0) //make lumped element a PEC if resistance is zero
 							{
@@ -2092,7 +2110,7 @@ double Operator::CalcTimestep_Var1()
 						ipos = GetECIndex(pos);
 						ipos_PM = GetECIndexShifted(pos, nP, -1);
 						ipos_PPM= GetECIndexShifted(pos, nPP, -1);
-						m.Add(2/sqrt( ( 4/EC_L[nP][ipos] + 4/EC_L[nP][ipos_PPM] + 4/EC_L[nPP][ipos] + 4/EC_L[nPP][ipos_PM]) / EC_C[n][ipos] ), n, pos);
+						m.Add(2/sqrt( ( 4/GetEC(EC_IND,nP,ipos) + 4/GetEC(EC_IND,nP,ipos_PPM) + 4/GetEC(EC_IND,nPP,ipos) + 4/GetEC(EC_IND,nPP,ipos_PM)) / GetEC(EC_CAP,n,ipos) ), n, pos);
 					}
 		}
 	});
@@ -2119,6 +2137,8 @@ double Operator::CalcTimestep_Var3()
 	std::vector<Timestep_Min> found(GetBuildThreads());
 	ParallelFor(numLines[0], [&](unsigned int thread, size_t begin, size_t end) {
 		Timestep_Min& m = found[thread];
+		auto L = [this](int d, size_t i) {return GetEC(EC_IND, d, i);};
+		auto C = [this](int d, size_t i) {return GetEC(EC_CAP, d, i);};
 		unsigned int pos[3];
 		double w_total=0;
 		double wqp=0,wt1=0,wt2=0;
@@ -2141,25 +2161,25 @@ double Operator::CalcTimestep_Var3()
 						const size_t iN     = GetECIndexShifted(pos, n, 1);
 						const size_t iPm    = GetECIndexShifted(pos, nP, -1);
 						const size_t iPPm   = GetECIndexShifted(pos, nPP, -1);
-						wqp  = 1/(EC_L[nPP][i0]*EC_C[n][iP]) + 1/(EC_L[nPP][i0]*EC_C[n][i0]);
-						wqp += 1/(EC_L[nP ][i0]*EC_C[n][iPP]) + 1/(EC_L[nP ][i0]*EC_C[n][i0]);
-						wqp += 1/(EC_L[nPP][iPm]*EC_C[n][i0]) + 1/(EC_L[nPP][iPm]*EC_C[n][iPm]);
+						wqp  = 1/(L(nPP,i0)*C(n,iP)) + 1/(L(nPP,i0)*C(n,i0));
+						wqp += 1/(L(nP,i0)*C(n,iPP)) + 1/(L(nP,i0)*C(n,i0));
+						wqp += 1/(L(nPP,iPm)*C(n,i0)) + 1/(L(nPP,iPm)*C(n,iPm));
 						// TODO check against Rennings, formula 4.77: the mirror of the term above. Up to openEMS 0.37 this
 						// term read at the diagonal neighbour (nP-1, nPP-1): the former AdrOp code did not reset its
 						// Shift(nP,-1) before Shift(nPP,-1)
-						wqp += 1/(EC_L[nP ][iPPm]*EC_C[n][i0]) + 1/(EC_L[nP ][iPPm]*EC_C[n][iPPm]);
+						wqp += 1/(L(nP,iPPm)*C(n,i0)) + 1/(L(nP,iPPm)*C(n,iPPm));
 
-						wt_4[0] = 1/(EC_L[nPP][i0]  *EC_C[nP ][i0]);
-						wt_4[1] = 1/(EC_L[nPP][iPm] *EC_C[nP ][i0]);
-						wt_4[2] = 1/(EC_L[nP ][i0]  *EC_C[nPP][i0]);
-						wt_4[3] = 1/(EC_L[nP ][iPPm]*EC_C[nPP][i0]);
+						wt_4[0] = 1/(L(nPP,i0)  *C(nP,i0));
+						wt_4[1] = 1/(L(nPP,iPm) *C(nP,i0));
+						wt_4[2] = 1/(L(nP,i0)  *C(nPP,i0));
+						wt_4[3] = 1/(L(nP,iPPm)*C(nPP,i0));
 
 						wt1 = wt_4[0]+wt_4[1]+wt_4[2]+wt_4[3] - 2*min(wt_4,4);
 
-						wt_4[0] = 1/(EC_L[nPP][i0]  *EC_C[nP ][iN]);
-						wt_4[1] = 1/(EC_L[nPP][iPm] *EC_C[nP ][iN]);
-						wt_4[2] = 1/(EC_L[nP ][i0]  *EC_C[nPP][iN]);
-						wt_4[3] = 1/(EC_L[nP ][iPPm]*EC_C[nPP][iN]);
+						wt_4[0] = 1/(L(nPP,i0)  *C(nP,iN));
+						wt_4[1] = 1/(L(nPP,iPm) *C(nP,iN));
+						wt_4[2] = 1/(L(nP,i0)  *C(nPP,iN));
+						wt_4[3] = 1/(L(nP,iPPm)*C(nPP,iN));
 
 						wt2 = wt_4[0]+wt_4[1]+wt_4[2]+wt_4[3] - 2*min(wt_4,4);
 

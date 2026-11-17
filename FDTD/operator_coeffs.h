@@ -31,6 +31,8 @@
 #include "tools/arraylib/array_nijk.h"
 #include "tools/arraylib/array_ijk.h"
 
+class Operator;
+
 //! The update coefficients of the operator: vv, vi (voltage update) and ii, iv (current update) per node and direction
 /*!
   The operator builds them through the Set functions, whatever the layout; an
@@ -142,8 +144,8 @@ public:
 	virtual void ShowStat(std::ostream& ostr) const;
 	virtual void ReserveBox(const unsigned int start[3], const unsigned int lines[3]);
 
-	//! Compute the coefficients from these circuit values (per direction, indexed z + Nz*(y + Ny*x), the order of MainOp) and the timestep \a dT
-	void SetEC(FDTD_FLOAT* const C[3], FDTD_FLOAT* const G[3], FDTD_FLOAT* const L[3], FDTD_FLOAT* const R[3], double dT);
+	//! Compute the coefficients from the circuit values of \a op (Operator::GetEC()) and the timestep \a dT
+	void SetEC(const Operator* op, double dT);
 	//! The coefficients of the edge \a n at the node from the circuit values again (Operator::Calc_ECOperatorPos())
 	void Reset(int n, unsigned int x, unsigned int y, unsigned int z);
 	//! Keep the coefficients of the node as they are, before its circuit values change
@@ -177,24 +179,17 @@ protected:
 
 	unsigned int m_Lines[3];
 	double m_dT;
-	FDTD_FLOAT* m_EC[4][3];        //!< C, G, L, R
+	const Operator* m_Op;          //!< the circuit values, Operator::GetEC()
 	std::vector<uint16_t> m_Flags;  //!< per node
 	std::vector<Box> m_Boxes;
 	std::unordered_map<size_t, size_t> m_MapIndex;   //!< node -> m_MapValues
 	std::vector<std::array<float,12> > m_MapValues;
 
 	size_t Index(unsigned int x, unsigned int y, unsigned int z) const {return z + (size_t)m_Lines[2]*(y + (size_t)m_Lines[1]*x);}
-	//! the coefficient k from the circuit values
-	FDTD_FLOAT Compute(int k, size_t i) const
-	{
-		const int n = k>>2, c = k&3;
-		FDTD_FLOAT self, curl;
-		if (c<II)
-			Coeffs_FromEC(m_EC[0][n][i], m_EC[1][n][i], m_dT, self, curl);
-		else
-			Coeffs_FromEC(m_EC[2][n][i], m_EC[3][n][i], m_dT, self, curl);
-		return (c&1) ? curl : self;
-	}
+	//! the coefficient k of the node from the circuit values
+	FDTD_FLOAT Compute(int k, unsigned int x, unsigned int y, unsigned int z) const;
+	//! the pair of field \a f (0: vv, vi; 1: ii, iv) of the edge \a n from the circuit values
+	void ComputePair(int f, unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT& self, FDTD_FLOAT& curl) const;
 	//! the coefficients of a node of its own (OWN)
 	const float* Own(size_t i, unsigned int x, unsigned int y, unsigned int z) const;
 	float* Own(size_t i, unsigned int x, unsigned int y, unsigned int z);
@@ -209,7 +204,7 @@ protected:
 			return Own(i, x, y, z)[k];
 		if (f & (1u<<k))
 			return 0;
-		return Compute(k, i);
+		return Compute(k, x, y, z);
 	}
 	void Set(int k, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT value);
 };
