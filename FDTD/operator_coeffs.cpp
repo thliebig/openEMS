@@ -114,7 +114,9 @@ void Coeffs_EC::SetEC(const Operator* op, double dT)
 void Coeffs_EC::ComputePair(int f, unsigned int n, unsigned int x, unsigned int y, unsigned int z, FDTD_FLOAT& self, FDTD_FLOAT& curl) const
 {
 	const unsigned int pos[3] = {x, y, z};
-	Coeffs_FromEC(m_Op->GetEC(2*f, n, pos), m_Op->GetEC(2*f+1, n, pos), m_dT, self, curl);
+	FDTD_FLOAT a, b;
+	m_Op->GetECPair(f, n, pos, a, b);
+	Coeffs_FromEC(a, b, m_dT, self, curl);
 }
 
 FDTD_FLOAT Coeffs_EC::Compute(int k, unsigned int x, unsigned int y, unsigned int z) const

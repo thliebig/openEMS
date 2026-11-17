@@ -23,8 +23,10 @@
 #include "excitation.h"
 #include "Common/operator_base.h"
 
+#include "tools/arraylib/array_ijk.h"
 #include "tools/arraylib/array_nijk.h"
 #include "operator_coeffs.h"
+#include "ec_table.h"
 #include "engine_type.h"
 
 #include <algorithm>
@@ -236,23 +238,15 @@ public:
 	void ParallelFor(size_t count, const std::function<void(unsigned int thread, size_t begin, size_t end)>& fn) const;
 	//! The index of the node \a pos in the EC arrays (the layout of MainOp), without changing the position of MainOp
 	size_t GetECIndex(const unsigned int pos[3]) const {return pos[2] + (size_t)numLines[2]*(pos[1] + (size_t)numLines[1]*pos[0]);}
-	//! GetECIndex() of \a pos shifted by \a step along \a a, clamped to the mesh (-1 -> 0, numLines -> numLines-1, as AdrOp::SetReflection2Cell() for steps of 1)
-	size_t GetECIndexShifted(const unsigned int pos[3], int a, int step) const
-	{
-		int p[3] = {(int)pos[0], (int)pos[1], (int)pos[2]};
-		p[a] += step;
-		unsigned int q[3];
-		for (int d=0; d<3; ++d)
-			q[d] = (unsigned int)(std::min)((std::max)(p[d], 0), (int)numLines[d]-1);
-		return GetECIndex(q);
-	}
+	//! \a pos shifted by \a step along \a a into \a q, clamped to the mesh (-1 -> 0, numLines -> numLines-1, as AdrOp::SetReflection2Cell() for steps of 1); inline in operator.cpp, for its use only
+	void GetShiftedPos(const unsigned int pos[3], int a, int step, unsigned int q[3]) const;
 
 	//! The circuit values of an edge: capacitance, conductance (main mesh), inductance, resistance (dual mesh)
 	enum ECValue {EC_CAP=0, EC_CON=1, EC_IND=2, EC_RES=3};
 	//! The circuit value \a k (ECValue) of the edge \a n at the node \a pos, from CalcECOperator() until the coefficients are freed (FreeCoeffs())
 	FDTD_FLOAT GetEC(int k, int n, const unsigned int pos[3]) const;
-	//! GetEC() at the node index \a i (GetECIndex())
-	FDTD_FLOAT GetEC(int k, int n, size_t i) const;
+	//! GetEC() of C and G (\a f 0) or of L and R (\a f 1) of the edge \a n at the node \a pos, in one go
+	void GetECPair(int f, int n, const unsigned int pos[3], FDTD_FLOAT& a, FDTD_FLOAT& b) const;
 
 protected:
 	//! Set the circuit values of the edge \a n at the node \a pos: bit k (ECValue) of \a mask says which of \a values; the others and the other edges stay
@@ -349,12 +343,25 @@ protected:
 	ArrayLib::ArrayNIJK<float>* m_sigma_ptr;
 
 	//EC elements, internal only!
-	virtual void Init_EC();
+	//! Allocate the circuit values: the material table and its index per node, or with \a dense the four arrays per direction
+	virtual void Init_EC(bool dense=false);
 	virtual bool Calc_EC();
-	virtual void Calc_EC_Range(unsigned int xStart, unsigned int xStop);
-	//! The circuit values per direction (GetECIndex()), read with GetEC() and written with SetEC(). After InitOperator()
-	//! the coefficients of the CPU and GPU engines are computed from them when read (Coeffs_EC).
-	FDTD_FLOAT* EC_C[3];
+	//! The circuit values of the x lines \a xStart to \a xStop: the materials into \a table (a table of the build thread), else into the dense arrays
+	virtual void Calc_EC_Range(unsigned int xStart, unsigned int xStop, EC_Table* table=NULL);
+	//! Write the effective material \a EffMat of the edge \a ny at \a pos to the material storage of the dumps, if it is kept
+	void StoreMaterial(int ny, const unsigned int* pos, const double* EffMat) const;
+	//! The most entries of the material table before the circuit values go dense, for a mesh of \a nodes nodes
+	size_t GetECTableLimit(size_t nodes) const;
+	size_t m_ECTableLimit;   //!< GetECTableLimit() of this mesh, from Init_EC()
+	//! Replace the material table by the dense circuit values, computed from it
+	void ECTableToDense();
+
+	//! The circuit values, read with GetEC() and written with SetEC(). After InitOperator() the coefficients of the CPU
+	//! and GPU engines are computed from them when read (Coeffs_EC). Either the material table and its index (the
+	//! material of a node times the geometry of an edge), or, if the materials hardly repeat, dense per direction.
+	EC_Table* m_ECTable;   //!< the distinct effective materials (or NULL)
+	ArrayLib::ArrayIJK<uint32_t> m_ECIndex;   //!< per node its entry in m_ECTable (data(): by GetECIndex(), as the dense arrays)
+	FDTD_FLOAT* EC_C[3];   //!< dense: per direction and node (or NULL)
 	FDTD_FLOAT* EC_G[3];
 	FDTD_FLOAT* EC_L[3];
 	FDTD_FLOAT* EC_R[3];
@@ -366,6 +373,9 @@ protected:
 	std::vector<double> m_EdgeLengthTable[2][3];
 	//! Fill the tables of the mesh, once it is final
 	void InitGeometry();
+	//! Whether GetEdgeLength() and GetEdgeArea() are those of this class, the per-line edge lengths and their products: GetEC() then reads the tables itself
+	virtual bool TableGeometry() const {return true;}
+	bool m_TableGeometry;   //!< TableGeometry(), from InitGeometry()
 
 	std::vector<Operator_Extension*> m_Op_exts;
 
@@ -376,9 +386,9 @@ protected:
 //	Operator_Ext_Excitation* m_Op_Ext_Exc; // excitation extension
 
 	Operator_Coeffs* m_Coeffs; //!< owned, created by InitOperator() for m_EngineType; NULL before
-	Coeffs_EC* m_ECCoeffs;     //!< m_Coeffs if it computes the coefficients from EC_C, EC_G, EC_L, EC_R, else NULL
+	Coeffs_EC* m_ECCoeffs;     //!< m_Coeffs if it computes the coefficients from the circuit values (GetEC()), else NULL
 
-	//! Free the circuit values EC_C, EC_G, EC_L, EC_R
+	//! Free the circuit values (the material table or the dense arrays)
 	void FreeEC();
 	//! Free the coefficients and the circuit values they are computed from (once the engine holds them); GetVV() and friends are invalid after this
 	void FreeCoeffs();
