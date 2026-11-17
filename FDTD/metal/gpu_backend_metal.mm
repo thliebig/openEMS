@@ -327,10 +327,10 @@ bool GPU_Backend_Metal::Init(const Operator* op, const GPU_CellModel& m)
 	return true;
 }
 
-void GPU_Backend_Metal::Update(bool voltages, unsigned int x0, unsigned int x1)
+void GPU_Backend_Metal::Update(bool voltages, const Engine_Box& box)
 {
-	x1 = std::min(x1, d->dim.nx);
-	if (x0>=x1)
+	CM_Box b;
+	if (!GPU_UpdateBox(box, d->dim.nx, d->dim.ny, d->dim.nz, b))
 		return;
 	const char* name = voltages ? (d->cm_index16 ? "cm_voltages16" : "cm_voltages32") : (d->cm_index16 ? "cm_currents16" : "cm_currents32");
 	id<MTLComputePipelineState> pso = d->Pipeline(name);
@@ -340,13 +340,14 @@ void GPU_Backend_Metal::Update(bool voltages, unsigned int x0, unsigned int x1)
 	[enc setBuffer:(voltages ? d->curr : d->volt) offset:0 atIndex:1];
 	[enc setBuffer:d->cm_index[voltages ? 0 : 1] offset:0 atIndex:2];
 	[enc setBytes:&d->cm_field[voltages ? 0 : 1] length:sizeof(CM_Field) atIndex:3];
-	const uint32_t grid[4] = {d->dim.nx, d->dim.ny, d->dim.nz, x0};   // CM_Grid
+	const uint32_t grid[3] = {d->dim.nx, d->dim.ny, d->dim.nz};   // CM_Grid
 	[enc setBytes:grid length:sizeof(grid) atIndex:4];
-	d->Dispatch(pso, d->dim.nz, d->dim.ny, x1-x0);
+	[enc setBytes:&b length:sizeof(CM_Box) atIndex:5];
+	d->Dispatch(pso, b.z1-b.z0, b.y1-b.y0, b.x1-b.x0);
 }
 
-void GPU_Backend_Metal::UpdateVoltages(const Engine_Box& box) {Update(true, box.start[0], box.stop[0]);}
-void GPU_Backend_Metal::UpdateCurrents(const Engine_Box& box) {Update(false, box.start[0], box.stop[0]);}
+void GPU_Backend_Metal::UpdateVoltages(const Engine_Box& box) {Update(true, box);}
+void GPU_Backend_Metal::UpdateCurrents(const Engine_Box& box) {Update(false, box);}
 
 void* GPU_Backend_Metal::DeviceAlloc(size_t bytes, const void* host)
 {
@@ -383,7 +384,7 @@ float* GPU_Backend_Metal::DeviceField(bool currents)
 	return (float*)address;
 }
 
-void GPU_Backend_Metal::RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial)
+void GPU_Backend_Metal::RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter)
 {
 	if (end<=begin)
 		return;
@@ -403,6 +404,7 @@ void GPU_Backend_Metal::RunPoints(GPU_PointOp kind, const void* op, uint64_t beg
 	[enc setBytes:op length:size atIndex:0];
 	const uint64_t range[2] = {begin, end};   // ulong2
 	[enc setBytes:range length:sizeof(range) atIndex:1];
+	[enc setBytes:&filter length:sizeof(CM_PointFilter) atIndex:2];
 	d->Dispatch(pso, serial ? 1 : end-begin);
 }
 
@@ -455,7 +457,7 @@ bool GPU_Backend_Metal::SnapshotFields(const FDTD_FLOAT* &volt, const FDTD_FLOAT
 	[enc setBuffer:d->curr offset:0 atIndex:1];
 	[enc setBuffer:d->snap_volt offset:0 atIndex:2];
 	[enc setBuffer:d->snap_curr offset:0 atIndex:3];
-	const uint32_t grid[4] = {d->dim.nx, d->dim.ny, d->dim.nz, 0};   // CM_Grid
+	const uint32_t grid[3] = {d->dim.nx, d->dim.ny, d->dim.nz};   // CM_Grid
 	[enc setBytes:grid length:sizeof(grid) atIndex:4];
 	d->Dispatch(pso, d->dim.nz, d->dim.ny, 3*(size_t)d->dim.nx);
 	// commit without waiting: the next timesteps are encoded into a new command buffer,
@@ -492,7 +494,7 @@ bool GPU_Backend_Metal::CalcFastEnergy(const unsigned int numNodes[3], double& E
 	[enc setBuffer:d->volt offset:0 atIndex:0];
 	[enc setBuffer:d->curr offset:0 atIndex:1];
 	[enc setBuffer:d->energy offset:0 atIndex:2];
-	const uint32_t grid[4] = {d->dim.nx, d->dim.ny, d->dim.nz, 0}, lines[4] = {L.nx, L.ny, L.nz, 0};   // CM_Grid
+	const uint32_t grid[3] = {d->dim.nx, d->dim.ny, d->dim.nz}, lines[3] = {L.nx, L.ny, L.nz};   // CM_Grid
 	[enc setBytes:grid length:sizeof(grid) atIndex:3];
 	[enc setBytes:lines length:sizeof(lines) atIndex:4];
 	d->Dispatch(pso, L.nz, L.ny);

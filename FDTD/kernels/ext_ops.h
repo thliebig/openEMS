@@ -29,6 +29,21 @@
 #include "cell_update.h"
 #endif
 
+//! The points of a box limited along y or z (GPU_PointList::Run()): point n if its line (yz[2n], yz[2n+1]) is in [y0, y1) x [z0, z1); all points without yz (CM_PointFilter())
+struct CM_PointFilter
+{
+	CM_GLOBAL const uint32_t* yz;
+	uint32_t y0, y1, z0, z1;
+
+	CM_FN bool operator()(uint64_t n) const
+	{
+		if (!yz)
+			return true;
+		const uint32_t y = yz[2*n], z = yz[2*n+1];
+		return (y>=y0) && (y<y1) && (z>=z0) && (z<z1);
+	}
+};
+
 //! Soft excitation of the voltages or currents (Engine_Ext_Excitation): field += amp*signal
 struct Op_Excitation
 {

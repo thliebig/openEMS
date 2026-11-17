@@ -34,6 +34,7 @@
 class Operator;
 struct GPU_CellModel;
 struct Engine_Box;
+struct CM_PointFilter;
 
 //! The hooks of a half step around the main update, in this order: pre (the extensions in reverse order), post, apply (see Engine)
 enum GPU_Hook {GPU_PRE, GPU_POST, GPU_APPLY};
@@ -51,8 +52,8 @@ public:
 
 	//! Hook \a h of the voltage (\a currents false) or current half step of timestep \a ts, as Engine_Extension::DoPreVoltageUpdates() to Apply2Current()
 	/*!
-	  On the nodes with x in [box.start[0], box.stop[0]): a tile of the temporal
-	  blocking (the boxes span y and z) or the whole domain.
+	  On the nodes in \a box: a tile of the temporal blocking or the whole
+	  domain.
 	  */
 	virtual void Hook(bool currents, GPU_Hook h, const Engine_Box& box, unsigned int ts) = 0;
 
@@ -140,7 +141,7 @@ public:
 	virtual void DeviceDownload(void* host, const void* dev, size_t bytes) = 0;
 	//! The device voltages (false) or currents (true), ArrayNIJK layout
 	virtual float* DeviceField(bool currents) = 0;
-	//! The main voltage or current update on the cell model of the nodes with x in [box.start[0], box.stop[0]): a tile of the temporal blocking (the boxes span y and z), or the whole domain
+	//! The main voltage or current update on the cell model of the nodes in \a box: a tile of the temporal blocking, or the whole domain
 	virtual void UpdateVoltages(const Engine_Box& box) = 0;
 	virtual void UpdateCurrents(const Engine_Box& box) = 0;
 	//! Prepare the fused step: the main voltage and current update in one pass over the fields, see FusedUpdate()
@@ -158,8 +159,8 @@ public:
 	virtual void FusedUpdate() {throw std::logic_error("GPU_Backend: no fused step");}
 	//! The late currents, after the hooks between the main updates: the currents are new from here on
 	virtual void SeamUpdate() {throw std::logic_error("GPU_Backend: no fused step");}
-	//! Run the point operation \a op (of type \a kind, see kernels/ext_ops.h) for its points [begin, end), in parallel or, if \a serial, in order
-	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial) = 0;
+	//! Run the point operation \a op (of type \a kind, see kernels/ext_ops.h) for its points [begin, end) that \a filter passes (all with CM_PointFilter()), in parallel or, if \a serial, in order
+	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter) = 0;
 
 	//! Copy the device voltages (\a currents false) or currents to the host mirror \a field
 	virtual void Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& field) = 0;

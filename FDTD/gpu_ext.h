@@ -34,8 +34,9 @@ class Engine_GPU;
   from the operator extension, uploads them with GPU_Backend::DeviceAlloc() and
   runs its per-point operations (kernels/ext_ops.h) with
   GPU_Backend::RunPoints(). The points are sorted along x, so that the box of
-  a hook (a tile of the temporal blocking, whose boxes span y and z, or the
-  whole domain) is a range of them.
+  a hook (a tile of the temporal blocking, or the whole domain) is a range of
+  them, filtered along y and z on the device where the box cuts those
+  (GPU_PointList::Run()).
 
   Returns NULL for an engine extension it has no device implementation of:
   Engine_GPU refuses the model then (every extension needs one).
@@ -73,16 +74,19 @@ protected:
 	Weights m_Volt, m_Curr;
 };
 
-//! Points of a device extension sorted along x (stable: points at one x keep their order), and the range a box covers
+//! Points of a device extension sorted along x (stable: points at one x keep their order), and the points a box covers
 class GPU_PointList
 {
 public:
-	//! Sort the points by \a x; Order() gives the original index of each sorted point
-	void Init(const std::vector<unsigned int>& x);
+	//! The points at the flat ArrayNIJK indices (or the nodes) \a flat on a mesh of \a numLines, sorted by x; Order() gives the original index of each sorted point
+	/*!
+	  Their y and z go to the device of \a b, for the boxes cut along y or z.
+	  */
+	void Init(GPU_Backend* b, const unsigned int numLines[3], const std::vector<uint64_t>& flat);
 	size_t Size() const {return m_Order.size();}
 	const std::vector<size_t>& Order() const {return m_Order;}
-	//! The sorted points in [box.start[0], box.stop[0]) along x
-	void Range(const Engine_Box& box, uint64_t& begin, uint64_t& end) const;
+	//! Run the point operation \a op of type \a kind (GPU_Backend::RunPoints()) for the sorted points in \a box: their range along x, filtered along y and z if the box cuts those
+	void Run(GPU_PointOp kind, const void* op, const Engine_Box& box, bool serial) const;
 
 	//! The values \a v of the points in the sorted order
 	template <typename T>
@@ -95,8 +99,11 @@ public:
 	}
 
 protected:
+	GPU_Backend* m_B = NULL;
 	std::vector<size_t> m_Order;
 	std::vector<unsigned int> m_X;   //!< x of the sorted points
+	unsigned int m_Lines[3] = {0, 0, 0};
+	const uint32_t* m_YZ = NULL;   //!< on the device: y and z of the sorted points
 };
 
 #endif // GPU_EXT_H

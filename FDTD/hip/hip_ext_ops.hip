@@ -24,31 +24,32 @@
 #include "FDTD/kernels/ext_ops.h"
 
 template <typename Op>
-__global__ void run_points(Op op, uint64_t begin, uint64_t end)
+__global__ void run_points(Op op, uint64_t begin, uint64_t end, CM_PointFilter f)
 {
 	const uint64_t n = begin + (uint64_t)blockIdx.x*blockDim.x + threadIdx.x;
-	if (n<end)
+	if ((n<end) && f(n))
 		op(n);
 }
 
 // points that share an edge, in their order
 template <typename Op>
-__global__ void run_points_serial(Op op, uint64_t begin, uint64_t end)
+__global__ void run_points_serial(Op op, uint64_t begin, uint64_t end, CM_PointFilter f)
 {
 	if (blockIdx.x*blockDim.x + threadIdx.x != 0)
 		return;
 	for (uint64_t n=begin; n<end; ++n)
-		op(n);
+		if (f(n))
+			op(n);
 }
 
 template <typename Op>
-static void Run(GPU_Backend_HIP::Impl* d, const char* name, const void* op, uint64_t begin, uint64_t end, bool serial)
+static void Run(GPU_Backend_HIP::Impl* d, const char* name, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& f)
 {
 	const Op& o = *(const Op*)op;
 	if (serial)
-		HIP_Launch(d, name, run_points_serial<Op>, 1, 1, 1, o, begin, end);
+		HIP_Launch(d, name, run_points_serial<Op>, 1, 1, 1, o, begin, end, f);
 	else
-		HIP_Launch(d, name, run_points<Op>, end-begin, 1, 1, o, begin, end);
+		HIP_Launch(d, name, run_points<Op>, end-begin, 1, 1, o, begin, end, f);
 }
 
 void* GPU_Backend_HIP::DeviceAlloc(size_t bytes, const void* host)
@@ -67,13 +68,13 @@ float* GPU_Backend_HIP::DeviceField(bool currents)
 	return currents ? d->curr : d->volt;
 }
 
-void GPU_Backend_HIP::RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial)
+void GPU_Backend_HIP::RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter)
 {
 	if (end<=begin)
 		return;
 	switch (kind)
 	{
-#define RUN(K, T, name) case K: Run<T>(d, #name, op, begin, end, serial); break;
+#define RUN(K, T, name) case K: Run<T>(d, #name, op, begin, end, serial, filter); break;
 	CM_POINT_OPS(RUN)
 #undef RUN
 	}

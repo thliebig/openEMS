@@ -18,9 +18,11 @@
 #ifndef GPU_CELL_MODEL_H
 #define GPU_CELL_MODEL_H
 
-#include <vector>
+#include <algorithm>
 #include <cstdint>
+#include <vector>
 #include "kernels/cell_update.h"
+#include "engine_plan.h"
 
 class CellModel;
 
@@ -56,5 +58,17 @@ struct GPU_CellModel
 	//! The device memory a main update reads per node, on average: the fields, the node index, the state slot and the state (the tile size of the temporal blocking)
 	double NodeBytes() const;
 };
+
+//! The nodes of \a box on a grid of \a nx x \a ny x \a nz lines as the main update kernels take them; false if there are none
+inline bool GPU_UpdateBox(const Engine_Box& box, unsigned int nx, unsigned int ny, unsigned int nz, CM_Box& b)
+{
+	b.x0 = box.start[0];
+	b.x1 = (std::min)(box.stop[0], nx);
+	b.y0 = box.start[1];
+	b.y1 = (std::min)(box.stop[1], ny);
+	b.z0 = box.start[2];
+	b.z1 = (std::min)(box.stop[2], nz);
+	return (b.x0<b.x1) && (b.y0<b.y1) && (b.z0<b.z1);
+}
 
 #endif // GPU_CELL_MODEL_H

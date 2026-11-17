@@ -64,21 +64,21 @@ bool GPU_Backend_Reference::Init(const Operator* op, const GPU_CellModel& model)
 	return true;
 }
 
-// the kernels of the device backends (kernels/cell_update.h) on the x planes [x0, x1), one plane per item
-void GPU_Backend_Reference::Update(bool voltages, unsigned int x0, unsigned int x1)
+// the kernels of the device backends (kernels/cell_update.h) on the nodes of the box, an x plane per item
+void GPU_Backend_Reference::Update(bool voltages, const Engine_Box& box)
 {
 	const unsigned int nx = numLines[0], ny = numLines[1], nz = numLines[2];
-	x1 = std::min(x1, nx);
-	if (x0>=x1)
+	CM_Box b;
+	if (!GPU_UpdateBox(box, nx, ny, nz, b))
 		return;
 	float* V = m_volt.data();
 	float* I = m_curr.data();
 	const uint32_t* index = m_Model->field[voltages ? 0 : 1].index.data();
 	const CM_Field& F = m_Field[voltages ? 0 : 1];
-	ParallelFor(x1-x0, AvailableThreads(), [&](unsigned int, size_t begin, size_t end) {
-		for (unsigned int x=x0+(unsigned int)begin; x<x0+end; ++x)
-			for (unsigned int y=0; y<ny; ++y)
-				for (unsigned int z=0; z<nz; ++z)
+	ParallelFor(b.x1-b.x0, AvailableThreads(), [&](unsigned int, size_t begin, size_t end) {
+		for (unsigned int x=b.x0+(unsigned int)begin; x<b.x0+end; ++x)
+			for (unsigned int y=b.y0; y<b.y1; ++y)
+				for (unsigned int z=b.z0; z<b.z1; ++z)
 					if (voltages)
 						cm_update_voltages<uint32_t>(V, I, index, F, nx, ny, nz, x, y, z);
 					else
@@ -86,8 +86,8 @@ void GPU_Backend_Reference::Update(bool voltages, unsigned int x0, unsigned int 
 	});
 }
 
-void GPU_Backend_Reference::UpdateVoltages(const Engine_Box& box) {Update(true, box.start[0], box.stop[0]);}
-void GPU_Backend_Reference::UpdateCurrents(const Engine_Box& box) {Update(false, box.start[0], box.stop[0]);}
+void GPU_Backend_Reference::UpdateVoltages(const Engine_Box& box) {Update(true, box);}
+void GPU_Backend_Reference::UpdateCurrents(const Engine_Box& box) {Update(false, box);}
 
 static void CopyField(const ArrayLib::ArrayNIJK<FDTD_FLOAT>& src, ArrayLib::ArrayNIJK<FDTD_FLOAT>& dst)
 {
@@ -133,29 +133,31 @@ bool GPU_Backend_Reference::CalcFastEnergy(const unsigned int numNodes[3], doubl
 
 namespace
 {
-//! the points [begin, end) of \a op on the host threads, or in order
+//! the points [begin, end) of \a op that \a f passes, on the host threads, or in order
 template <typename Op>
-void Run(const void* op, uint64_t begin, uint64_t end, bool serial)
+void Run(const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& f)
 {
 	const Op& o = *(const Op*)op;
 	if (serial || (end-begin<1024))
 	{
 		for (uint64_t n=begin; n<end; ++n)
-			o(n);
+			if (f(n))
+				o(n);
 		return;
 	}
 	ParallelFor(end-begin, AvailableThreads(), [&](unsigned int, size_t b, size_t e) {
 		for (size_t n=b; n<e; ++n)
-			o(begin+n);
+			if (f(begin+n))
+				o(begin+n);
 	});
 }
 }
 
-void GPU_Backend_Reference::RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial)
+void GPU_Backend_Reference::RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter)
 {
 	switch (kind)
 	{
-#define RUN(K, T, name) case K: Run<T>(op, begin, end, serial); break;
+#define RUN(K, T, name) case K: Run<T>(op, begin, end, serial, filter); break;
 	CM_POINT_OPS(RUN)
 #undef RUN
 	}

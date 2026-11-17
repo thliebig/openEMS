@@ -62,7 +62,7 @@ public:
 	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL);
 	virtual void DeviceDownload(void* host, const void* dev, size_t bytes);
 	virtual float* DeviceField(bool currents);
-	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial);
+	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter);
 
 	virtual void Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& field);
 
@@ -80,8 +80,8 @@ public:
 protected:
 	GPU_Backend_Metal(Impl* impl);
 
-	//! The main voltage or current update of the x lines [x0, x1)
-	void Update(bool voltages, unsigned int x0, unsigned int x1);
+	//! The main voltage or current update of the nodes of \a box
+	void Update(bool voltages, const Engine_Box& box);
 
 	Impl* d;
 };

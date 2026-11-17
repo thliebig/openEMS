@@ -109,6 +109,12 @@ struct CM_Field
 	CM_GLOBAL const float* gz[3];        //!< of each z line (the fast axis)
 };
 
+//! The nodes of a main update, [x0, x1) x [y0, y1) x [z0, z1) within the grid: a tile of the temporal blocking, or all (GPU_UpdateBox())
+struct CM_Box
+{
+	uint32_t x0, x1, y0, y1, z0, z1;
+};
+
 //! The new value of component \a n of a node (line z) from its value \a x and \a curl; its class is neither CM_SKIP nor CM_ZERO
 /*!
   Reads the node's state (UPML, dispersive materials) from F.state and, if \a store, writes the

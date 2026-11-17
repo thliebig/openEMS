@@ -49,22 +49,6 @@
 #include <map>
 #include <stdexcept>
 
-void GPU_PointList::Init(const std::vector<unsigned int>& x)
-{
-	m_Order.resize(x.size());
-	std::iota(m_Order.begin(), m_Order.end(), 0);
-	std::stable_sort(m_Order.begin(), m_Order.end(), [&](size_t a, size_t b) {return x[a]<x[b];});
-	m_X.resize(x.size());
-	for (size_t n=0; n<m_Order.size(); ++n)
-		m_X[n] = x[m_Order[n]];
-}
-
-void GPU_PointList::Range(const Engine_Box& box, uint64_t& begin, uint64_t& end) const
-{
-	begin = std::lower_bound(m_X.begin(), m_X.end(), box.start[0]) - m_X.begin();
-	end = std::lower_bound(m_X.begin(), m_X.end(), box.stop[0]) - m_X.begin();
-}
-
 namespace
 {
 //! the flat ArrayNIJK index of component \a n at \a pos
@@ -86,6 +70,44 @@ T* Upload(GPU_Backend* b, const std::vector<T>& v)
 {
 	return (T*)b->DeviceAlloc(std::max<size_t>(v.size(), 1)*sizeof(T), v.empty() ? NULL : v.data());
 }
+}
+
+void GPU_PointList::Init(GPU_Backend* b, const unsigned int numLines[3], const std::vector<uint64_t>& flat)
+{
+	m_B = b;
+	for (int a=0; a<3; ++a)
+		m_Lines[a] = numLines[a];
+	std::vector<uint64_t> nodes;
+	AddNodes(nodes, flat, numLines);
+	const uint64_t nyz = (uint64_t)numLines[1]*numLines[2];
+	std::vector<unsigned int> x(nodes.size());
+	for (size_t n=0; n<nodes.size(); ++n)
+		x[n] = (unsigned int)(nodes[n]/nyz);
+	m_Order.resize(nodes.size());
+	std::iota(m_Order.begin(), m_Order.end(), 0);
+	std::stable_sort(m_Order.begin(), m_Order.end(), [&](size_t p, size_t q) {return x[p]<x[q];});
+	m_X.resize(nodes.size());
+	std::vector<uint32_t> yz(2*nodes.size());
+	for (size_t n=0; n<m_Order.size(); ++n)
+	{
+		const uint64_t node = nodes[m_Order[n]];
+		m_X[n] = x[m_Order[n]];
+		yz[2*n] = (uint32_t)((node/numLines[2])%numLines[1]);
+		yz[2*n+1] = (uint32_t)(node%numLines[2]);
+	}
+	m_YZ = Upload(b, yz);
+}
+
+void GPU_PointList::Run(GPU_PointOp kind, const void* op, const Engine_Box& box, bool serial) const
+{
+	const uint64_t begin = std::lower_bound(m_X.begin(), m_X.end(), box.start[0]) - m_X.begin();
+	const uint64_t end = std::lower_bound(m_X.begin(), m_X.end(), box.stop[0]) - m_X.begin();
+	if (begin>=end)
+		return;
+	CM_PointFilter filter = CM_PointFilter();
+	if ((box.start[1]>0) || (box.stop[1]<m_Lines[1]) || (box.start[2]>0) || (box.stop[2]<m_Lines[2]))
+		filter = CM_PointFilter{m_YZ, box.start[1], box.stop[1], box.start[2], box.stop[2]};
+	m_B->RunPoints(kind, op, begin, end, serial, filter);
 }
 
 /***************************************************************************************************/
@@ -117,16 +139,14 @@ protected:
 	void Setup(Sources& s, size_t count, unsigned int* const index[3], const unsigned short* dir, const FDTD_FLOAT* amp,
 	           const unsigned int* delay, const FDTD_FLOAT* signal)
 	{
-		std::vector<unsigned int> x(count);
 		std::vector<uint64_t> flat(count);
 		std::set<uint64_t> edges;
 		for (size_t n=0; n<count; ++n)
 		{
-			x[n] = index[0][n];
 			flat[n] = FlatIndex(numLines, dir[n], index[0][n], index[1][n], index[2][n]);
 			s.serial |= !edges.insert(flat[n]).second;
 		}
-		s.list.Init(x);
+		s.list.Init(m_B, numLines, flat);
 		s.op.index = Upload(m_B, s.list.Sorted(flat));
 		s.flat.swap(flat);
 		s.op.amp = Upload(m_B, s.list.Sorted(std::vector<float>(amp, amp+count)));
@@ -139,16 +159,12 @@ protected:
 	void Apply(int f, const Engine_Box& box, unsigned int ts)
 	{
 		Sources& s = m_Src[f];
-		uint64_t begin, end;
-		s.list.Range(box, begin, end);
-		if (begin>=end)
-			return;
 		s.op.field = m_B->DeviceField(f==1);
 		s.op.numTS = (int)ts;
 		s.op.period = (int)ts+1;
 		if (m_Op->m_Exc->GetSignalPeriod()>0)
 			s.op.period = m_Op->m_Exc->GetSignalPeriodTS();
-		m_B->RunPoints(GPU_OP_EXCITATION, &s.op, begin, end, s.serial);
+		s.list.Run(GPU_OP_EXCITATION, &s.op, box, s.serial);
 	}
 
 	Operator_Ext_Excitation* m_Op;
@@ -192,7 +208,6 @@ public:
 		S.shift = shift;
 		const int nyP = (m_ny+1)%3, nyPP = (m_ny+2)%3;
 		const uint64_t nodes = (uint64_t)numLines[0]*numLines[1]*numLines[2];
-		std::vector<unsigned int> x;
 		std::vector<uint64_t> il, is;
 		std::vector<float> k1[2], k2[2];
 		unsigned int pos[3];
@@ -202,7 +217,6 @@ public:
 				pos[nyP] = p0P+i;
 				pos[nyPP] = p0PP+j;
 				pos[m_ny] = line;
-				x.push_back(pos[0]);
 				il.push_back(((uint64_t)pos[0]*numLines[1] + pos[1])*numLines[2] + pos[2]);
 				pos[m_ny] = shift;
 				is.push_back(((uint64_t)pos[0]*numLines[1] + pos[1])*numLines[2] + pos[2]);
@@ -212,7 +226,7 @@ public:
 					k2[c].push_back(superAbsorption ? K2(c, i, j) : 0.0f);
 				}
 			}
-		S.list.Init(x);
+		S.list.Init(m_B, numLines, il);
 		S.nodes = il;
 		S.nodes.insert(S.nodes.end(), is.begin(), is.end());
 		S.op.line = Upload(m_B, S.list.Sorted(il));
@@ -221,7 +235,7 @@ public:
 		{
 			S.op.K1[c] = Upload(m_B, S.list.Sorted(k1[c]));
 			S.op.K2[c] = Upload(m_B, S.list.Sorted(k2[c]));
-			S.op.s[c] = Upload(m_B, std::vector<float>(x.size(), 0.0f));
+			S.op.s[c] = Upload(m_B, std::vector<float>(il.size(), 0.0f));
 		}
 		S.op.offset[0] = nyP*nodes;
 		S.op.offset[1] = nyPP*nodes;
@@ -249,12 +263,10 @@ protected:
 			return;
 		if ((S.shift<box.start[m_ny]) || (S.shift>=box.stop[m_ny]))
 			throw std::logic_error("GPU_Ext_Sheet: a box holds the sheet but not the line next to it");
-		uint64_t begin, end;
-		S.list.Range(box, begin, end);
 		S.op.field = m_B->DeviceField(f==1);
 		// Op_Sheet numbers its hooks as GPU_Hook, plus the apply hook with super-absorption
 		S.op.hook = ((hook==GPU_APPLY) && S.superAbsorption) ? 3 : (int)hook;
-		m_B->RunPoints(GPU_OP_SHEET, &S.op, begin, end, false);
+		S.list.Run(GPU_OP_SHEET, &S.op, box, false);
 	}
 
 	GPU_Backend* m_B;
@@ -304,16 +316,14 @@ public:
 	GPU_Ext_LumpedRLC(Operator_Ext_LumpedRLC* op, GPU_Backend* b, const unsigned int numLines[3]) : m_B(b)
 	{
 		const size_t count = op->RLC_count;
-		std::vector<unsigned int> x(count);
 		std::vector<uint64_t> flat(count);
 		std::set<uint64_t> edges;
 		for (size_t n=0; n<count; ++n)
 		{
-			x[n] = op->v_RLC_pos[0][n];
 			flat[n] = FlatIndex(numLines, op->v_RLC_dir[n], op->v_RLC_pos[0][n], op->v_RLC_pos[1][n], op->v_RLC_pos[2][n]);
 			m_Serial |= !edges.insert(flat[n]).second;
 		}
-		m_List.Init(x);
+		m_List.Init(m_B, numLines, flat);
 		AddNodes(m_Nodes, flat, numLines);
 		auto up = [&](const FDTD_FLOAT* v) {return Upload(m_B, m_List.Sorted(std::vector<float>(v, v+count)));};
 		m_Op.index = Upload(m_B, m_List.Sorted(flat));
@@ -346,10 +356,6 @@ protected:
 	// the rings hold timesteps ts, ts-1, ts-2 at [ts%3], [(ts+2)%3], [(ts+1)%3], see Engine_Ext_LumpedRLC
 	void Run(const Engine_Box& box, unsigned int ts, bool pre)
 	{
-		uint64_t begin, end;
-		m_List.Range(box, begin, end);
-		if (begin>=end)
-			return;
 		m_Op.volt = m_B->DeviceField(false);
 		m_Op.Vd0 = m_Vd[ts%3];
 		m_Op.Vd1 = m_Vd[(ts+2)%3];
@@ -360,14 +366,14 @@ protected:
 		if (pre)
 		{
 			m_Op.mode = 0;
-			m_B->RunPoints(GPU_OP_LUMPED_RLC, &m_Op, begin, end, false);
+			m_List.Run(GPU_OP_LUMPED_RLC, &m_Op, box, false);
 			return;
 		}
 		// the passes of the engine extension: elements on one edge see each other's values as there
 		for (int mode=1; mode<=3; ++mode)
 		{
 			m_Op.mode = mode;
-			m_B->RunPoints(GPU_OP_LUMPED_RLC, &m_Op, begin, end, m_Serial && (mode==3));
+			m_List.Run(GPU_OP_LUMPED_RLC, &m_Op, box, m_Serial && (mode==3));
 		}
 	}
 
@@ -392,7 +398,6 @@ public:
 		{
 			const bool volt = (f==0);
 			// the points in the order of Engine_Ext_TFSF::PlanesImpl()
-			std::vector<unsigned int> x;
 			std::vector<uint64_t> flat;
 			std::vector<uint32_t> delay;
 			std::vector<float> dd, amp;
@@ -413,7 +418,6 @@ public:
 							const unsigned int ui_pos = (pos[nP]-op->m_Start[nP])*op->m_numLines[nPP] + (pos[nPP]-op->m_Start[nPP]);
 							for (int c=0; c<2; ++c)
 							{
-								x.push_back(pos[0]);
 								flat.push_back(FlatIndex(numLines, (c==0) ? nP : nPP, pos[0], pos[1], pos[2]));
 								delay.push_back(volt ? op->m_VoltDelay[n][side][c][ui_pos] : op->m_CurrDelay[n][side][c][ui_pos]);
 								dd.push_back(volt ? op->m_VoltDelayDelta[n][side][c][ui_pos] : op->m_CurrDelayDelta[n][side][c][ui_pos]);
@@ -445,7 +449,7 @@ public:
 						sel.push_back(p);
 				auto pick = [&](const auto& v) {std::vector<typename std::decay<decltype(v)>::type::value_type> r; for (size_t p : sel) r.push_back(v[p]); return r;};
 				Pass& P = m_Pass[f][k];
-				P.list.Init(pick(x));
+				P.list.Init(m_B, numLines, pick(flat));
 				P.op.index = Upload(m_B, P.list.Sorted(pick(flat)));
 				P.op.delay = Upload(m_B, P.list.Sorted(pick(delay)));
 				P.op.dd = Upload(m_B, P.list.Sorted(pick(dd)));
@@ -471,11 +475,9 @@ protected:
 	{
 		for (Pass& P : m_Pass[f])
 		{
-			uint64_t begin, end;
-			P.list.Range(box, begin, end);
 			P.op.field = m_B->DeviceField(f==1);
 			P.op.ts = ts;
-			m_B->RunPoints(GPU_OP_TFSF, &P.op, begin, end, false);
+			P.list.Run(GPU_OP_TFSF, &P.op, box, false);
 		}
 	}
 
@@ -495,14 +497,12 @@ public:
 		: m_EngExt(eng_ext), m_B(b), m_Period(op->m_TS_period)
 	{
 		const size_t count = op->m_E_probe_dir.size();
-		std::vector<unsigned int> x(count);
 		std::vector<uint64_t> flat(count);
 		for (size_t n=0; n<count; ++n)
 		{
-			x[n] = op->m_E_probe_pos[0].at(n);
 			flat[n] = FlatIndex(numLines, op->m_E_probe_dir.at(n), op->m_E_probe_pos[0].at(n), op->m_E_probe_pos[1].at(n), op->m_E_probe_pos[2].at(n));
 		}
-		m_List.Init(x);
+		m_List.Init(m_B, numLines, flat);
 		m_Op.index = Upload(m_B, m_List.Sorted(flat));
 		m_Op.length = 2*m_Period;
 		m_Host.assign(std::max<size_t>(count, 1)*2*(size_t)m_Period, 0.0f);
@@ -533,11 +533,9 @@ public:
 protected:
 	void Record(const Engine_Box& box, unsigned int ts)
 	{
-		uint64_t begin, end;
-		m_List.Range(box, begin, end);
 		m_Op.volt = m_B->DeviceField(false);
 		m_Op.pos = ts%(2*m_Period);
-		m_B->RunPoints(GPU_OP_STEADY_STATE, &m_Op, begin, end, false);
+		m_List.Run(GPU_OP_STEADY_STATE, &m_Op, box, false);
 	}
 
 	Engine_Ext_SteadyState* m_EngExt;
@@ -602,15 +600,15 @@ protected:
 		{
 			// the r=0 axis: per z its voltage, then per (alpha, z) its copies
 			m_Op.mode = 0;
-			m_B->RunPoints(GPU_OP_CYLINDER, &m_Op, z0, z1, false);
+			m_B->RunPoints(GPU_OP_CYLINDER, &m_Op, z0, z1, false, CM_PointFilter());
 			m_Op.mode = 1;
-			m_B->RunPoints(GPU_OP_CYLINDER, &m_Op, 0, (uint64_t)numLines[1]*numLines[2], false);
+			m_B->RunPoints(GPU_OP_CYLINDER, &m_Op, 0, (uint64_t)numLines[1]*numLines[2], false, CM_PointFilter());
 		}
 		m_Op.mode = volt ? 2 : 3;
 		m_Op.r0 = r0;
 		m_Op.z0 = z0;
 		m_Op.nzr = z1-z0;
-		m_B->RunPoints(GPU_OP_CYLINDER, &m_Op, 0, (uint64_t)(r1-r0)*(z1-z0), false);
+		m_B->RunPoints(GPU_OP_CYLINDER, &m_Op, 0, (uint64_t)(r1-r0)*(z1-z0), false, CM_PointFilter());
 	}
 
 	GPU_Backend* m_B;
@@ -701,17 +699,15 @@ protected:
 		m_Orders[f].emplace_back();
 		Order& o = m_Orders[f].back();
 		std::memset(&o.op, 0, sizeof(o.op));
-		std::vector<unsigned int> x(count);
 		o.nodes.resize(count);
 		for (size_t i=0; i<count; ++i)
 		{
-			x[i] = pos[0][i];
 			o.nodes[i] = ((uint64_t)pos[0][i]*numLines[1] + pos[1][i])*numLines[2] + pos[2][i];
 		}
 		std::vector<uint64_t> sorted(o.nodes);
 		std::sort(sorted.begin(), sorted.end());
 		o.serial = std::adjacent_find(sorted.begin(), sorted.end())!=sorted.end();
-		o.list.Init(x);
+		o.list.Init(m_B, numLines, o.nodes);
 		o.op.node = Upload(m_B, o.list.Sorted(o.nodes));
 		o.op.sN = (uint64_t)numLines[0]*numLines[1]*numLines[2];
 		o.op.count = count;
@@ -735,11 +731,9 @@ protected:
 	{
 		for (Order& o : m_Orders[f])
 		{
-			uint64_t begin, end;
-			o.list.Range(box, begin, end);
 			o.op.field = m_B->DeviceField(f==1);
 			o.op.mode = mode;
-			m_B->RunPoints(GPU_OP_DISPERSIVE, &o.op, begin, end, o.serial && (mode==3));
+			o.list.Run(GPU_OP_DISPERSIVE, &o.op, box, o.serial && (mode==3));
 		}
 	}
 
@@ -822,7 +816,7 @@ void SubGrid_Coupling_GPU::SyncVoltages()
 	op.sub = m_Sub->DeviceField(false);
 	op.r0 = m_SplitPos-1;
 	op.mode = 0;
-	m_Base->RunPoints(GPU_OP_MULTIGRID, &op, 0, (uint64_t)(m_BaseLines[1]/2)*m_BaseLines[2], false);
+	m_Base->RunPoints(GPU_OP_MULTIGRID, &op, 0, (uint64_t)(m_BaseLines[1]/2)*m_BaseLines[2], false, CM_PointFilter());
 }
 
 void SubGrid_Coupling_GPU::SyncCurrents()
@@ -869,5 +863,5 @@ void SubGrid_Coupling_GPU::Interpolate(bool currents, unsigned int r0, unsigned 
 	op.w_2pp = w.w2pp;
 	op.r0 = r0;
 	op.mode = 1;
-	m_Base->RunPoints(GPU_OP_MULTIGRID, &op, 0, (uint64_t)count*m_BaseLines[1]*m_BaseLines[2], false);
+	m_Base->RunPoints(GPU_OP_MULTIGRID, &op, 0, (uint64_t)count*m_BaseLines[1]*m_BaseLines[2], false, CM_PointFilter());
 }

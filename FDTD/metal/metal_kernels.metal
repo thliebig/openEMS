@@ -21,20 +21,22 @@
 // shared code hold device pointers (MTLBuffer.gpuAddress); a kernel copies them from the constant
 // buffer into its own memory before calling their functions. The node indices are 64 bit.
 
-//! The grid of a kernel: the lines, and the first x line of the box (temporal blocking; the others 0)
+//! The grid of a kernel: the lines
 struct CM_Grid
 {
-	uint nx, ny, nz, x0;
+	uint nx, ny, nz;
 };
 
 #define CM_UPDATE_KERNEL(name, update, Index) \
 kernel void name(device float* X [[buffer(0)]], device const float* Y [[buffer(1)]], device const Index* index [[buffer(2)]], \
-                 constant CM_Field& field [[buffer(3)]], constant CM_Grid& G [[buffer(4)]], uint3 gid [[thread_position_in_grid]]) \
+                 constant CM_Field& field [[buffer(3)]], constant CM_Grid& G [[buffer(4)]], constant CM_Box& B [[buffer(5)]], \
+                 uint3 gid [[thread_position_in_grid]]) \
 { \
-	if ((gid.x>=G.nz) || (gid.y>=G.ny)) \
+	const uint z = B.z0 + gid.x, y = B.y0 + gid.y; \
+	if ((z>=B.z1) || (y>=B.y1)) \
 		return; \
 	const CM_Field F = field; \
-	update<Index>(X, Y, index, F, G.nx, G.ny, G.nz, G.x0 + gid.z, gid.y, gid.x); \
+	update<Index>(X, Y, index, F, G.nx, G.ny, G.nz, B.x0 + gid.z, y, z); \
 }
 
 CM_UPDATE_KERNEL(cm_voltages16, cm_update_voltages, ushort)
@@ -42,23 +44,28 @@ CM_UPDATE_KERNEL(cm_voltages32, cm_update_voltages, uint)
 CM_UPDATE_KERNEL(cm_currents16, cm_update_currents, ushort)
 CM_UPDATE_KERNEL(cm_currents32, cm_update_currents, uint)
 
-//! The points [r.x, r.y) of a point operation, in parallel; and in order (points sharing a field value)
+//! The points [r.x, r.y) of a point operation that the filter passes, in parallel; and in order (points sharing a field value)
 #define CM_POINT_KERNELS(name, Op) \
-kernel void name(constant Op& op [[buffer(0)]], constant ulong2& r [[buffer(1)]], uint gid [[thread_position_in_grid]]) \
+kernel void name(constant Op& op [[buffer(0)]], constant ulong2& r [[buffer(1)]], constant CM_PointFilter& filter [[buffer(2)]], \
+                 uint gid [[thread_position_in_grid]]) \
 { \
 	const ulong n = r.x + gid; \
-	if (n>=r.y) \
+	const CM_PointFilter f = filter; \
+	if ((n>=r.y) || !f(n)) \
 		return; \
 	const Op o = op; \
 	o(n); \
 } \
-kernel void name##_serial(constant Op& op [[buffer(0)]], constant ulong2& r [[buffer(1)]], uint gid [[thread_position_in_grid]]) \
+kernel void name##_serial(constant Op& op [[buffer(0)]], constant ulong2& r [[buffer(1)]], constant CM_PointFilter& filter [[buffer(2)]], \
+                          uint gid [[thread_position_in_grid]]) \
 { \
 	if (gid!=0) \
 		return; \
 	const Op o = op; \
+	const CM_PointFilter f = filter; \
 	for (ulong n=r.x; n<r.y; ++n) \
-		o(n); \
+		if (f(n)) \
+			o(n); \
 }
 
 #define CM_OP_KERNELS(kind, Op, name) CM_POINT_KERNELS(name, Op)

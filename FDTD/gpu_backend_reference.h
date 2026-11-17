@@ -60,7 +60,7 @@ public:
 	virtual void DeviceDownload(void* host, const void* dev, size_t bytes);
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
 	virtual float* DeviceField(bool currents) {return currents ? m_curr.data() : m_volt.data();}
-	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial);
+	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter);
 
 	virtual void UpdateVoltages(const Engine_Box& box);
 	virtual void UpdateCurrents(const Engine_Box& box);
@@ -71,7 +71,7 @@ public:
 	virtual GPU_Backend* NewSubGridBackend() {return new GPU_Backend_Reference();}
 
 protected:
-	void Update(bool voltages, unsigned int x0, unsigned int x1);
+	void Update(bool voltages, const Engine_Box& box);
 
 	unsigned int numLines[3];
 

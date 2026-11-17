@@ -31,23 +31,23 @@
 #include <algorithm>
 
 template <typename Index>
-__global__ void cm_voltages(float* __restrict__ V, const float* __restrict__ I, const Index* __restrict__ index, CM_Field F, HIP_GridDim N, unsigned int x0)
+__global__ void cm_voltages(float* __restrict__ V, const float* __restrict__ I, const Index* __restrict__ index, CM_Field F, HIP_GridDim N, CM_Box b)
 {
-	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
-	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
-	const unsigned int x = x0 + blockIdx.z;
-	if ((z>=N.nz) || (y>=N.ny))
+	const unsigned int z = b.z0 + blockIdx.x*blockDim.x + threadIdx.x;
+	const unsigned int y = b.y0 + blockIdx.y*blockDim.y + threadIdx.y;
+	const unsigned int x = b.x0 + blockIdx.z;
+	if ((z>=b.z1) || (y>=b.y1))
 		return;
 	cm_update_voltages<Index>(V, I, index, F, N.nx, N.ny, N.nz, x, y, z);
 }
 
 template <typename Index>
-__global__ void cm_currents(float* __restrict__ I, const float* __restrict__ V, const Index* __restrict__ index, CM_Field F, HIP_GridDim N, unsigned int x0)
+__global__ void cm_currents(float* __restrict__ I, const float* __restrict__ V, const Index* __restrict__ index, CM_Field F, HIP_GridDim N, CM_Box b)
 {
-	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
-	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
-	const unsigned int x = x0 + blockIdx.z;
-	if ((z>=N.nz) || (y>=N.ny))
+	const unsigned int z = b.z0 + blockIdx.x*blockDim.x + threadIdx.x;
+	const unsigned int y = b.y0 + blockIdx.y*blockDim.y + threadIdx.y;
+	const unsigned int x = b.x0 + blockIdx.z;
+	if ((z>=b.z1) || (y>=b.y1))
 		return;
 	cm_update_currents<Index>(I, V, index, F, N.nx, N.ny, N.nz, x, y, z);
 }
@@ -221,40 +221,46 @@ bool GPU_Backend_HIP::Init(const Operator* op, const GPU_CellModel& m)
 	return true;
 }
 
-//! The main voltage or current update of the x lines [x0, x1)
-static void HIP_CM_Update(GPU_Backend_HIP::Impl* d, bool voltages, unsigned int x0, unsigned int x1)
+//! The main voltage or current update of the nodes of \a box
+static void HIP_CM_Update(GPU_Backend_HIP::Impl* d, bool voltages, const Engine_Box& box)
 {
 	const HIP_GridDim N = d->dim;
-	x1 = std::min(x1, N.nx);
-	// a block per x line: in launches of at most max_grid_z lines
-	for (unsigned int xa=x0; xa<x1; xa=(unsigned int)std::min<uint64_t>(x1, (uint64_t)xa + d->max_grid_z))
+	CM_Box all;
+	if (!GPU_UpdateBox(box, N.nx, N.ny, N.nz, all))
+		return;
+	const unsigned int nz = all.z1-all.z0, ny = all.y1-all.y0;
+	// a block per x line: in launches of at most max_grid_z lines, each from its first line b.x0
+	for (unsigned int xa=all.x0; xa<all.x1; xa=(unsigned int)std::min<uint64_t>(all.x1, (uint64_t)xa + d->max_grid_z))
 	{
-		const unsigned int n = (unsigned int)std::min<uint64_t>(x1-xa, d->max_grid_z);
+		const unsigned int n = (unsigned int)std::min<uint64_t>(all.x1-xa, d->max_grid_z);
+		CM_Box b = all;
+		b.x0 = xa;
+		b.x1 = xa+n;
 		if (voltages)
 		{
 			if (d->cm_index16)
-				HIP_Launch(d, "cm_voltages", cm_voltages<uint16_t>, N.nz, N.ny, n, d->volt, (const float*)d->curr, (const uint16_t*)d->cm_index[0], d->cm_field[0], N, xa);
+				HIP_Launch(d, "cm_voltages", cm_voltages<uint16_t>, nz, ny, n, d->volt, (const float*)d->curr, (const uint16_t*)d->cm_index[0], d->cm_field[0], N, b);
 			else
-				HIP_Launch(d, "cm_voltages", cm_voltages<uint32_t>, N.nz, N.ny, n, d->volt, (const float*)d->curr, (const uint32_t*)d->cm_index[0], d->cm_field[0], N, xa);
+				HIP_Launch(d, "cm_voltages", cm_voltages<uint32_t>, nz, ny, n, d->volt, (const float*)d->curr, (const uint32_t*)d->cm_index[0], d->cm_field[0], N, b);
 		}
 		else
 		{
 			if (d->cm_index16)
-				HIP_Launch(d, "cm_currents", cm_currents<uint16_t>, N.nz, N.ny, n, d->curr, (const float*)d->volt, (const uint16_t*)d->cm_index[1], d->cm_field[1], N, xa);
+				HIP_Launch(d, "cm_currents", cm_currents<uint16_t>, nz, ny, n, d->curr, (const float*)d->volt, (const uint16_t*)d->cm_index[1], d->cm_field[1], N, b);
 			else
-				HIP_Launch(d, "cm_currents", cm_currents<uint32_t>, N.nz, N.ny, n, d->curr, (const float*)d->volt, (const uint32_t*)d->cm_index[1], d->cm_field[1], N, xa);
+				HIP_Launch(d, "cm_currents", cm_currents<uint32_t>, nz, ny, n, d->curr, (const float*)d->volt, (const uint32_t*)d->cm_index[1], d->cm_field[1], N, b);
 		}
 	}
 }
 
 void GPU_Backend_HIP::UpdateVoltages(const Engine_Box& box)
 {
-	HIP_CM_Update(d, true, box.start[0], box.stop[0]);
+	HIP_CM_Update(d, true, box);
 }
 
 void GPU_Backend_HIP::UpdateCurrents(const Engine_Box& box)
 {
-	HIP_CM_Update(d, false, box.start[0], box.stop[0]);
+	HIP_CM_Update(d, false, box);
 }
 
 bool GPU_Backend_HIP::PrepareFused(const std::vector<uint64_t>& late)

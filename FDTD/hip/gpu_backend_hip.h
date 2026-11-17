@@ -56,7 +56,7 @@ public:
 	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL);
 	virtual void DeviceDownload(void* host, const void* dev, size_t bytes);
 	virtual float* DeviceField(bool currents);
-	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial);
+	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter);
 
 	virtual void UpdateVoltages(const Engine_Box& box);
 	virtual void UpdateCurrents(const Engine_Box& box);
