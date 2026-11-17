@@ -81,6 +81,8 @@ to what a user notices, in a few lines; the details belong in the commit.
   fields into NaN at random with any excitation but the Gaussian pulse (#255).
 - A sine excitation could miss its frequency slightly and never reach the
   steady state.
+- Python: a second `Run()` in the same script printed the timestep and other
+  numbers of its setup with two decimals, e.g. `Timestep (s): 0.00` (#256).
 
 ### Build
 

@@ -20,6 +20,7 @@
 #include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <sstream>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -215,12 +216,15 @@ void Engine_ThreadPool::Trial(unsigned int iterTS, double seconds)
 	{
 		// in MC/s like the progress of the run
 		const double cells = m_Eng->Op->GetNumberCells();
-		cout << "Multithreaded engine: tried";
+		// on its own stream, setprecision would stay set on cout
+		std::ostringstream line;
+		line << "Multithreaded engine: tried" << std::fixed << std::setprecision(1);
 		for (int t=0; t<=n; ++t)
 			if (m_TrialSpeed[t]>0)
-				cout << ((t<n) ? " tile " + std::to_string(t+1) : std::string(", flat")) << " "
-				     << std::fixed << std::setprecision(1) << m_TrialSpeed[t]*cells*1e-6 << std::defaultfloat << " MC/s";
-		cout << "; running " << ((best<n) ? "tile " + std::to_string(best+1) : std::string("flat")) << endl;
+				line << ((t<n) ? " tile " + std::to_string(t+1) : std::string(", flat")) << " "
+				     << m_TrialSpeed[t]*cells*1e-6 << " MC/s";
+		line << "; running " << ((best<n) ? "tile " + std::to_string(best+1) : std::string("flat"));
+		cout << line.str() << endl;
 	}
 }
 

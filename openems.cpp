@@ -1656,8 +1656,11 @@ void openEMS::RunFDTD()
 		{
 			t_run = CalcDiffTime(currTime,startTime);
 			speed = numCells*(currTS-prevTS)/t_diff;
-			cout << "[@" <<  FormatTime(t_run) <<  "] Timestep: " << setw(12)  << currTS ;
-			cout << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
+			// formatted on its own stream: fixed and setprecision on cout would stay set
+			// for everything printed after, even for the next Run() in the same process
+			ostringstream line;
+			line << "[@" <<  FormatTime(t_run) <<  "] Timestep: " << setw(12)  << currTS ;
+			line << " || Speed: " << setw(6) << setprecision(1) << std::fixed << speed*1e-6 << " MC/s (" <<  setw(4) << setprecision(3) << std::scientific << t_diff/(currTS-prevTS) << " s/TS)" ;
 			if (Eng_Ext_SSD==NULL)
 			{
 				if (!exactEndCrit) // otherwise already kept current above, every Nyquist period
@@ -1668,10 +1671,11 @@ void openEMS::RunFDTD()
 					if (maxE)
 						change = currE/maxE;
 				}
-				cout << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)" << endl;
+				line << " || Energy: ~" << setw(6) << setprecision(2) << std::scientific << currE << " (-" << setw(5)  << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)";
 			}
 			else
-				cout << " || SteadyState: " << setw(6) << setprecision(2) << std::fixed << 10.0*log10(change) << " dB" << endl;
+				line << " || SteadyState: " << setw(6) << setprecision(2) << std::fixed << 10.0*log10(change) << " dB";
+			cout << line.str() << endl;
 			prevTime=currTime;
 			prevTS=currTS;
 
@@ -1682,13 +1686,16 @@ void openEMS::RunFDTD()
 			FDTD_Eng->NextInterval(speed);
 		}
 	}
+	// the decay reached, two decimals like the progress line
+	ostringstream decay;
+	decay << setprecision(2) << std::fixed << fabs(10.0*log10(change));
 	if (aborted)
 	{
 		// not the timestep limit: say so, the advice below would be wrong
 		cout << "RunFDTD: simulation aborted after " << FDTD_Eng->GetNumberOfTimesteps() << " timesteps";
 		// the energy decay, once there is one: with a Gaussian pulse, after the first check
 		if ((Eng_Ext_SSD==NULL) && (FDTD_Op->GetExcitationSignal()->GetExciteType()==0) && (change<1))
-			cout << " (-" << setprecision(2) << std::fixed << fabs(10.0*log10(change)) << "dB)";
+			cout << " (-" << decay.str() << "dB)";
 		cout << endl;
 	}
 	else if (endCrit<=0) // none set, nothing to report
@@ -1697,7 +1704,7 @@ void openEMS::RunFDTD()
 		cerr << "RunFDTD: Warning: Max. number of timesteps was reached before the end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB was reached... " << endl << \
 				"\tYou may want to choose a higher number of max. timesteps... " << endl;
 	else if (FDTD_Op->GetExcitationSignal()->GetExciteType()==0)
-		cout << "RunFDTD: end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB reached after " << FDTD_Eng->GetNumberOfTimesteps() << " timesteps (-" << fabs(10.0*log10(change)) << "dB)" << endl;
+		cout << "RunFDTD: end-criteria of -" << fabs(10.0*log10(endCrit)) << "dB reached after " << FDTD_Eng->GetNumberOfTimesteps() << " timesteps (-" << decay.str() << "dB)" << endl;
 
 	gettimeofday(&currTime,NULL);
 	t_diff = CalcDiffTime(currTime,startTime);
