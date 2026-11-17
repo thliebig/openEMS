@@ -811,9 +811,9 @@ bool openEMS::SetupMaterialStorages()
 			  (db->GetDumpType()==20) || (db->GetDumpType()==21) || (db->GetDumpType()==22)) && // SAR dump types
 			  Enable_Dumps )
 			FDTD_Op->SetMaterialStoreFlags(1,true); //tell operator to store kappa material data
-		if ( ((db->GetDumpType()==4) || (db->GetDumpType()==14)) || Enable_Dumps) // electric flux density storage
+		if ( ((db->GetDumpType()==4) || (db->GetDumpType()==14)) && Enable_Dumps) // electric flux density storage
 			FDTD_Op->SetMaterialStoreFlags(0,true); //tell operator to store epsR material data
-		if ( ((db->GetDumpType()==5) || (db->GetDumpType()==15)) || Enable_Dumps) // magnetic flux density storage
+		if ( ((db->GetDumpType()==5) || (db->GetDumpType()==15)) && Enable_Dumps) // magnetic flux density storage
 			FDTD_Op->SetMaterialStoreFlags(2,true); //tell operator to store mueR material data
 	}
 	return true;

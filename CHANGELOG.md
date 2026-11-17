@@ -59,6 +59,9 @@ to what a user notices, in a few lines; the details belong in the commit.
 
 ### Fixed
 
+- Any field dump made the setup store the permittivity and permeability of
+  every cell, about 24 bytes per cell more peak memory than needed; only D-
+  and B-field dumps need them.
 - More than 2^31 timesteps made the setup fail; the number is now limited to
   that.
 - Python: numpy lost denormal values after `Run()`.
