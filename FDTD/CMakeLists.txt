@@ -55,6 +55,7 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_ext.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_cpu.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/engine_cpu_kernels.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ec_table.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator_coeffs.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operator_cylinder.cpp

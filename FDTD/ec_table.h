@@ -19,9 +19,7 @@
 #define EC_TABLE_H
 
 #include <cstdint>
-#include <cstring>
-#include <stdexcept>
-#include <unordered_set>
+#include <memory>
 #include <vector>
 
 //! The distinct effective materials of the nodes of an operator, each stored once (Operator::GetEC())
@@ -49,69 +47,27 @@ public:
 		uint32_t base;       //!< with keep_mask: an entry without circuit values of its own, the material of the node; else 0
 	};
 
-	EC_Table() : m_Lookup(64, Hash(&m_Entries), Equal(&m_Entries))
-	{
-		Entry zero;
-		std::memset(&zero, 0, sizeof(zero));
-		Intern(zero);
-	}
-	// the lookup refers to m_Entries of this object
-	EC_Table(const EC_Table&) = delete;
-	EC_Table& operator=(const EC_Table&) = delete;
+	EC_Table();
 
 	//! The index of \a e, added if it is new
-	uint32_t Intern(const Entry& e)
-	{
-		// the operator goes dense long before (Operator::GetECTableLimit()): never a wrapped index
-		if (m_Entries.size()>=UINT32_MAX)
-			throw std::length_error("EC_Table::Intern: more entries than a 32 bit index can address");
-		m_Entries.push_back(e);
-		const uint32_t id = (uint32_t)(m_Entries.size()-1);
-		auto r = m_Lookup.insert(id);
-		if (!r.second)
-		{
-			m_Entries.pop_back();
-			return *r.first;
-		}
-		return id;
-	}
+	uint32_t Intern(const Entry& e);
 
-	size_t Size() const {return m_Entries.size();}
-	const Entry& operator[](size_t i) const {return m_Entries[i];}
-	//! The memory held, in bytes, about
-	size_t Bytes() const {return m_Entries.capacity()*sizeof(Entry) + m_Lookup.size()*(sizeof(void*)+sizeof(uint32_t)+sizeof(size_t)) + m_Lookup.bucket_count()*sizeof(void*);}
+	size_t Size() const {return m_Size;}
+	const Entry& operator[](size_t i) const {return m_Blocks[i/BLOCK][i%BLOCK];}
+	//! The memory held, in bytes
+	size_t Bytes() const {return m_Blocks.size()*BLOCK*sizeof(Entry) + m_Slots.size()*sizeof(uint32_t);}
 
 private:
-	// field by field, not the bytes of the struct: no assumption about its padding
-	static bool Same(const Entry& a, const Entry& b) {return (a.abs_mask==b.abs_mask) && (a.keep_mask==b.keep_mask) && (a.base==b.base) && (std::memcmp(a.v, b.v, sizeof(a.v))==0);}
-	struct Hash
-	{
-		const std::vector<Entry>* entries;
-		explicit Hash(const std::vector<Entry>* e) : entries(e) {}
-		size_t operator()(uint32_t id) const
-		{
-			const Entry& e = (*entries)[id];
-			uint64_t h = 0x9e3779b97f4a7c15ull ^ e.abs_mask ^ ((uint64_t)e.keep_mask<<16) ^ ((uint64_t)e.base<<32);
-			for (int k=0; k<12; ++k)
-			{
-				uint64_t b;
-				std::memcpy(&b, &e.v[k], sizeof(b));
-				h ^= b + 0x9e3779b97f4a7c15ull + (h<<6) + (h>>2);
-				h *= 0xbf58476d1ce4e5b9ull;
-				h ^= h>>31;
-			}
-			return (size_t)h;
-		}
-	};
-	struct Equal
-	{
-		const std::vector<Entry>* entries;
-		explicit Equal(const std::vector<Entry>* e) : entries(e) {}
-		bool operator()(uint32_t a, uint32_t b) const {return Same((*entries)[a], (*entries)[b]);}
-	};
+	// the entries in blocks: no copies when it grows, and no small allocations
+	static const size_t BLOCK = 4096;
+	std::vector<std::unique_ptr<Entry[]> > m_Blocks;
+	size_t m_Size;
+	//! open addressing, linear probing: the index of an entry plus one, 0 for a free slot; at most half of them used
+	std::vector<uint32_t> m_Slots;
 
-	std::vector<Entry> m_Entries;
-	std::unordered_set<uint32_t, Hash, Equal> m_Lookup;
+	Entry& Get(size_t i) {return m_Blocks[i/BLOCK][i%BLOCK];}
+	//! Twice the slots, the entries hashed into them again
+	void Grow();
 };
 
 #endif // EC_TABLE_H

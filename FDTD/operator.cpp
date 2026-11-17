@@ -19,6 +19,9 @@
 #include <atomic>
 #include <cstring>
 #include <memory>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 #include <algorithm>
 #include <stdexcept>
 #include "operator.h"
@@ -2043,6 +2046,15 @@ void Operator::Init_EC(bool dense)
 	});
 }
 
+void Operator::ReleaseFreedMemory()
+{
+#ifdef __GLIBC__
+	// the tables of the build threads came from the arenas of these threads: glibc keeps their memory
+	// for them when freed, so it would count for the rest of the run
+	malloc_trim(0);
+#endif
+}
+
 size_t Operator::GetECTableLimit(size_t nodes) const
 {
 	// an entry costs about 140 bytes with its lookup, the dense circuit values 48 per node: beyond a
@@ -2155,6 +2167,7 @@ bool Operator::Calc_EC()
 	{
 		// the materials hardly repeat (a weighting function, a discrete material): build again, dense
 		local.clear();
+		ReleaseFreedMemory();
 		if (g_settings.GetVerboseLevel()>0)
 			cout << "Operator: more than " << limit << " distinct materials, more than the material table is worth: the circuit values go dense" << endl;
 		Init_EC(true);
@@ -2175,6 +2188,7 @@ bool Operator::Calc_EC()
 			remap[t][j] = m_ECTable->Intern((*local[t])[j]);
 		local[t].reset();
 	}
+	ReleaseFreedMemory();
 	ParallelFor(numLines[0], [&](unsigned int, size_t begin, size_t end) {
 		unsigned int pos[3] = {0, 0, 0};
 		for (pos[0]=begin; pos[0]<end; ++pos[0])

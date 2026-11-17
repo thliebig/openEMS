@@ -367,6 +367,8 @@ protected:
 	size_t m_ECTableLimit;   //!< GetECTableLimit() of this mesh, from Init_EC()
 	//! Replace the material table by the dense circuit values, computed from it
 	void ECTableToDense();
+	//! Give memory freed on the build threads back to the system (glibc)
+	static void ReleaseFreedMemory();
 
 	//! The circuit values, read with GetEC() and written with SetEC(). After InitOperator() the coefficients of the CPU
 	//! and GPU engines are computed from them when read (Coeffs_EC). Either the material table and its index (the
