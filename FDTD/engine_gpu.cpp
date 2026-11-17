@@ -437,6 +437,11 @@ void Engine_GPU::TrialProgress(unsigned int steps)
 		return;
 	}
 	m_TrialSteps += steps;
+	// the launches are asynchronous: the host would queue far more than the trial's time of work (a few
+	// hundred timesteps fit in the queue of HIP, seconds of a large model), so it waits for the device after
+	// every block or flat step of a trial (a few 10 us; the candidates of a model small enough for that to
+	// matter are flat steps alike)
+	m_Backend->Synchronize();
 	if (m_TrialTime + WallSeconds()-m_TrialMark < m_TrialSeconds)
 		return;
 	TrialClock(false);

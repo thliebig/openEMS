@@ -168,7 +168,7 @@ protected:
 	std::vector<Engine_Plan> m_Plans;
 	//! the candidates of blocked plans of the engine (Engine::BuildBlockedPlans()), each by decreasing k
 	Engine_BlockedChoice m_Choice;
-	//! the candidate the workers run, -1 the flat sweep; changed between two calls of IterateTS() only
+	//! the candidate the workers run, -1 the flat sweep; changed while the workers wait (between two chunks of IterateTS())
 	int m_Active;
 	bool m_Blocked;   //!< m_Active>=0
 	const std::vector<Engine_BlockedPlan>& BlockedPlans() const {return m_Choice.candidates[m_Active];}
@@ -180,6 +180,9 @@ protected:
 	std::vector<double> m_TrialSpeed;  //!< timesteps per second of each candidate and the flat sweep
 	double m_TrialSeconds;
 	unsigned long long m_TrialTS;
+	double m_TrialRate;                //!< timesteps per second of the last chunk run trying, 0 before the first
+	//! the timesteps of the next chunk while trying: about the rest of the trial running
+	unsigned int TrialChunk() const;
 	//! account \a iterTS timesteps in \a seconds to the trial running, on to the next when it is complete
 	void Trial(unsigned int iterTS, double seconds);
 	unsigned long long m_TS_blocked, m_TS_flat;   //!< the timesteps run blocked and flat, for the log

@@ -134,7 +134,8 @@ struct Engine_BlockedPlan
   as long as each is faster than the one before; if already the one after
   \a start is slower, from \a start towards the first. Then the flat sweep,
   and it keeps the fastest: the blocked and the flat sweep compute the same,
-  so it may switch between two calls. Without a window it runs \a start.
+  so it may switch between two chunks of the trials. Without a window it runs
+  \a start.
   */
 struct Engine_BlockedChoice
 {
