@@ -114,10 +114,8 @@ python3 benchmark/bench.py run --engine cpu,multithreaded --size M,L --threads 8
 ```
 
 and send the `result.json`: it holds the machine, the build, the speeds,
-what the engine chose and the probes, no field data. `bench.py` turns the
-engine's trials of tile sizes off (a start-up cost, like the setup); a
-variant `trials:OPENEMS_CPU_TRIAL=1` with `--duration 10` shows what they
-choose on that machine. The `multithreaded`
+what the engine chose and the probes, no field data. The speeds are those
+of the tile the engine's trials keep (see below). The `multithreaded`
 rows are the default engine on that machine for reference; the variables do
 not touch it, so its two variants agree up to noise.
 
@@ -155,6 +153,17 @@ and stops gracefully. This works with every openEMS build, also an old
 release to compare against. The speed is the one openEMS measured itself,
 over the timesteps it did. The setup before comes on top and is reported
 separately.
+
+The CPU and GPU engines try their tiles, and the flat sweep, during the first
+seconds of a run and keep the fastest. Then the `--duration` starts only at
+the end of these trials, and the speed is the one after them, which openEMS
+reports at `-v` (`Speed after the trials`): what a long run gets.
+`mcells_s_total` in `result.json` keeps the speed of the whole run, the
+trials included, and the table's **total s** the wall time of the whole
+process: the setup, the trials and the `--duration`. Long trials show there;
+trials that do not end within ten times the `--duration` (60 s at least) fail
+the run. `OPENEMS_CPU_TRIAL=0` or `OPENEMS_GPU_TRIAL=0` time the engine's
+first choice without trials.
 
 The cases are driven by a sinusoidal source, so the energy never decays and
 no run ends on its own; one that does is reported as failed. A sinus also
