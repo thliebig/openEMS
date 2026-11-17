@@ -163,7 +163,7 @@ public:
 	//! Get the node area for a given direction \a n and a given mesh position \a pos
 	virtual double GetNodeArea(int ny, const int pos[3], bool dualMesh = false) const;
 
-	//! Get the length of an FDTD edge (unit is meter).
+	//! Get the length of an FDTD edge (unit is meter). A subclass overriding it overrides TableGeometry() too, see there
 	virtual double GetEdgeLength(int ny, const unsigned int pos[3], bool dualMesh = false) const;
 
 	//! The smallest mesh step (in drawing units)
@@ -176,6 +176,7 @@ public:
 	/*!
 		This will return the area around an edge with a given direction, measured at the middle of the edge.
 		In a cartesian mesh this is equal to the NodeArea, may be different in other coordinate systems.
+		A subclass overriding it (or GetNodeArea()) overrides TableGeometry() too, see there.
 	*/
 	virtual double GetEdgeArea(int ny, const unsigned int pos[3], bool dualMesh = false) const {return GetNodeArea(ny,pos,dualMesh);}
 
@@ -398,8 +399,18 @@ protected:
 	//! Fill the tables of the mesh, once it is final
 	void InitGeometry();
 	//! Whether GetEdgeLength() and GetEdgeArea() are those of this class, the per-line edge lengths and their products: GetEC() then reads the tables itself
+	/*!
+	  A subclass with a geometry of its own (GetEdgeLength(), GetEdgeArea(), GetNodeArea() or GetNodeWidth()
+	  overridden) returns false and overrides GetECGeometry() with it, as Operator_Cylinder does. Otherwise its
+	  circuit values keep the Cartesian geometry of the tables, while the dumps, which call the virtual
+	  functions, use its own.
+	  */
 	virtual bool TableGeometry() const {return true;}
+	//! GetEdgeArea() and GetEdgeLength() of the edge \a n at \a pos, on the dual mesh with \a dual, which GetEC() multiplies the material with: a subclass with a geometry of its own computes both in one go
+	virtual void GetECGeometry(int n, bool dual, const unsigned int pos[3], double& area, double& delta) const;
 	bool m_TableGeometry;   //!< TableGeometry(), from InitGeometry()
+	//! GetECGeometry(), or with m_TableGeometry its tables read inline: GetEC() and GetECPair() both, in the same order of operations; inline in operator.cpp, for its use only
+	void ECGeometry(int n, bool dual, const unsigned int pos[3], double& area, double& delta) const;
 
 	std::vector<Operator_Extension*> m_Op_exts;
 

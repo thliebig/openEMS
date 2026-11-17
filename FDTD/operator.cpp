@@ -1170,6 +1170,28 @@ void Operator::Calc_ECOperatorPos(int n, unsigned int* pos)
 	SetIV(n,pos[0],pos[1],pos[2], curl);
 }
 
+void Operator::GetECGeometry(int n, bool dual, const unsigned int pos[3], double& area, double& delta) const
+{
+	delta = GetEdgeLength(n, pos, dual);
+	area = GetEdgeArea(n, pos, dual);
+}
+
+// inline: per edge, and only this file calls it (an exported function of the library would be called
+// through the PLT, -fPIC)
+inline void Operator::ECGeometry(int n, bool dual, const unsigned int pos[3], double& area, double& delta) const
+{
+	if (!m_TableGeometry)
+	{
+		GetECGeometry(n, dual, pos, area, delta);
+		return;
+	}
+	// GetEdgeLength() and GetEdgeArea() (GetNodeArea(): the product of the node widths, the
+	// edge lengths of the other mesh) of this class, from the same tables in the same order
+	delta = m_EdgeLengthTable[dual][n][pos[n]];
+	const int nP = (n+1)%3, nPP = (n+2)%3;
+	area = m_EdgeLengthTable[!dual][nP][pos[nP]] * m_EdgeLengthTable[!dual][nPP][pos[nPP]];
+}
+
 FDTD_FLOAT Operator::GetEC(int k, int n, const unsigned int pos[3]) const
 {
 	const size_t i = GetECIndex(pos);
@@ -1185,28 +1207,14 @@ FDTD_FLOAT Operator::GetEC(int k, int n, const unsigned int pos[3]) const
 	if (pos[0]<m_ECZeroLines)
 		return 0;
 	// as Calc_ECPos(): the material times area/length of the edge, on the dual mesh for L and R
-	const bool dual = (k>=EC_IND);
-	if (m_TableGeometry)
-	{
-		// GetEdgeLength() and GetEdgeArea() (GetNodeArea(): the product of the node widths, the
-		// edge lengths of the other mesh) of this class, from the same tables in the same order
-		const double delta = m_EdgeLengthTable[dual][n][pos[n]];
-		if (delta==0)
-			return 0;
-		const int nP = (n+1)%3, nPP = (n+2)%3;
-		const double area = m_EdgeLengthTable[!dual][nP][pos[nP]] * m_EdgeLengthTable[!dual][nPP][pos[nPP]];
-		return e.v[s] * area/delta;
-	}
-	const double delta = GetEdgeLength(n, pos, dual);
-	if (delta==0)
-		return 0;
-	const double area = GetEdgeArea(n, pos, dual);
-	return e.v[s] * area/delta;
+	double area, delta;
+	ECGeometry(n, (k>=EC_IND), pos, area, delta);
+	return (delta==0) ? 0 : (FDTD_FLOAT)(e.v[s] * area/delta);
 }
 
 void Operator::GetECPair(int f, int n, const unsigned int pos[3], FDTD_FLOAT& a, FDTD_FLOAT& b) const
 {
-	if ((m_ECTable==NULL) || !m_TableGeometry || (pos[0]<m_ECZeroLines))
+	if ((m_ECTable==NULL) || (pos[0]<m_ECZeroLines))
 	{
 		a = GetEC(2*f, n, pos);
 		b = GetEC(2*f+1, n, pos);
@@ -1215,10 +1223,8 @@ void Operator::GetECPair(int f, int n, const unsigned int pos[3], FDTD_FLOAT& a,
 	// GetEC() of both, the entry and the geometry once
 	const EC_Table::Entry& e = (*m_ECTable)[m_ECIndex(pos[0], pos[1], pos[2])];
 	const int s = 4*n + 2*f;
-	const bool dual = (f==1);
-	const double delta = m_EdgeLengthTable[dual][n][pos[n]];
-	const int nP = (n+1)%3, nPP = (n+2)%3;
-	const double area = m_EdgeLengthTable[!dual][nP][pos[nP]] * m_EdgeLengthTable[!dual][nPP][pos[nPP]];
+	double area, delta;
+	ECGeometry(n, (f==1), pos, area, delta);
 	a = (e.abs_mask & (1u<<s)) ? (FDTD_FLOAT)e.v[s] : ((delta==0) ? 0 : (FDTD_FLOAT)(e.v[s] * area/delta));
 	b = (e.abs_mask & (1u<<(s+1))) ? (FDTD_FLOAT)e.v[s+1] : ((delta==0) ? 0 : (FDTD_FLOAT)(e.v[s+1] * area/delta));
 }
@@ -2376,8 +2382,7 @@ double Operator::CalcTimestep()
 	return CalcTimestep_Var1();
 }
 
-// inline: per node in the timestep loops below, the only callers (an exported function of the library
-// would be called through the PLT, -fPIC)
+// inline: per node in the timestep loops below, the only callers (see ECGeometry())
 inline void Operator::GetShiftedPos(const unsigned int pos[3], int a, int step, unsigned int q[3]) const
 {
 	q[0] = pos[0]; q[1] = pos[1]; q[2] = pos[2];

@@ -259,6 +259,40 @@ double Operator_Cylinder::GetEdgeArea(int ny, const unsigned int pos[3], bool du
 	return GetEdgeLength(1,pos,!dualMesh) * GetEdgeLength(2,pos,!dualMesh);
 }
 
+void Operator_Cylinder::GetECGeometry(int n, bool dual, const unsigned int pos[3], double& area, double& delta) const
+{
+	// GetEdgeLength() and GetEdgeArea() of this class from the tables of the mesh (GetDiscLine() reads them too),
+	// in the same order of operations, without the calls through GetNodeArea() and GetNodeWidth()
+	const std::vector<double>* length = m_EdgeLengthTable[dual];      // Operator::GetEdgeLength()
+	const std::vector<double>* other  = m_EdgeLengthTable[!dual];
+	delta = length[n][pos[n]];
+	if (n==1)
+		delta *= m_LineTable[dual][0][pos[0]];
+	if (n==0)        // GetEdgeLength(1,pos,!dual) * GetEdgeLength(2,pos,!dual)
+		area = other[1][pos[1]] * m_LineTable[!dual][0][pos[0]] * other[2][pos[2]];
+	else if (n==1)   // Operator::GetNodeArea(1): GetNodeWidth(2) * GetNodeWidth(0)
+		area = other[2][pos[2]] * other[0][pos[0]];
+	else             // GetNodeArea(2): the ring segment
+	{
+		const double da = length[1][pos[1]]/gridDelta;
+		double r1, r2;
+		if (dual)
+		{
+			r1 = m_LineTable[0][0][pos[0]]*gridDelta;
+			r2 = r1 + m_EdgeLengthTable[0][0][pos[0]];
+		}
+		else
+		{
+			r2 = m_LineTable[1][0][pos[0]]*gridDelta;
+			r1 = r2 - m_EdgeLengthTable[1][0][pos[0]];
+		}
+		if (r1<=0)
+			area = da/2 * pow(r2,2);
+		else
+			area = da/2* (pow(r2,2) - pow(r1,2));
+	}
+}
+
 double Operator_Cylinder::FitToAlphaRange(double a_coord, bool fullMesh) const
 {
 	double min = GetDiscLine(1,0);
