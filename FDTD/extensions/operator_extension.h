@@ -44,9 +44,10 @@ public:
 
 	//! Build the extension, once the operator has its coefficients
 	/*!
-		An extension that changes the operator's circuit values (EC_C, EC_G, EC_L, EC_R) of a node must call
-		Operator::Calc_ECOperatorPos() for it afterwards, or Operator::FreezeCoeffs() before to keep its
-		coefficients: the CPU and GPU engines compute the coefficients from the circuit values when read.
+		An extension reads the operator's circuit values with Operator::GetEC() and changes those of a node
+		with Operator::SetEC(), all values of an edge in one call; it must call Operator::Calc_ECOperatorPos()
+		for the node afterwards, or Operator::FreezeCoeffs() before to keep its coefficients: the CPU and GPU
+		engines compute the coefficients from the circuit values when read.
 	*/
 	virtual bool BuildExtension() {return true;}
 

@@ -148,6 +148,8 @@ void Operator::Init()
 		EC_R[n]=NULL;
 	}
 	m_ECTable = NULL;
+	m_ECKeep = false;
+	m_ECZeroLines = 0;
 	m_ECTableLimit = 0;
 	m_TableGeometry = false;
 
@@ -171,6 +173,7 @@ void Operator::Delete()
 	m_ECCoeffs = NULL;
 
 	FreeEC();
+	FreeECTable();
 	delete MainOp; MainOp=0;
 
 	delete m_epsR_ptr;
@@ -962,9 +965,16 @@ void Operator::FreeEC()
 		delete[] EC_R[n];
 		EC_R[n]=NULL;
 	}
+	if (!m_ECKeep)
+		FreeECTable();
+}
+
+void Operator::FreeECTable()
+{
 	delete m_ECTable;
 	m_ECTable = NULL;
 	m_ECIndex.Reset();
+	m_ECKeep = false;
 }
 
 void Operator::FreeCoeffs()
@@ -980,6 +990,17 @@ void Operator::InitDataStorage()
 	delete m_kappa_ptr; m_kappa_ptr = NULL;
 	delete m_mueR_ptr; m_mueR_ptr = NULL;
 	delete m_sigma_ptr; m_sigma_ptr = NULL;
+	if (m_ECTable)
+	{
+		// the dumps read the material from the table: it stays until CleanupMaterialStorage()
+		m_ECKeep = m_StoreMaterial[0] || m_StoreMaterial[1] || m_StoreMaterial[2] || m_StoreMaterial[3];
+		return;
+	}
+	AllocMaterialArrays();
+}
+
+void Operator::AllocMaterialArrays()
+{
 	if (m_StoreMaterial[0])
 	{
 		if (g_settings.GetVerboseLevel()>0)
@@ -1036,10 +1057,54 @@ void Operator::CleanupMaterialStorage()
 		delete m_sigma_ptr;
 		m_sigma_ptr = NULL;
 	}
+	if (m_ECKeep && !(m_StoreMaterial[0] || m_StoreMaterial[1] || m_StoreMaterial[2] || m_StoreMaterial[3]))
+	{
+		if (g_settings.GetVerboseLevel()>0)
+			cerr << "Operator::CleanupMaterialStorage(): Delete the material table, no dump needs it..." << endl;
+		FreeECTable();
+	}
+}
+
+bool Operator::HasDiscMaterial(int type) const
+{
+	if (m_ECKeep && m_ECTable)
+		return true;
+	const ArrayLib::ArrayNIJK<float>* mat[4] = {m_epsR_ptr, m_kappa_ptr, m_mueR_ptr, m_sigma_ptr};
+	return (type>=0) && (type<4) && mat[type];
+}
+
+uint32_t Operator::MaterialEntry(const EC_Table::Entry& e)
+{
+	// the material of the entry: its values but the circuit values set, those from base if kept, else 0
+	EC_Table::Entry m = e;
+	m.abs_mask = m.keep_mask = 0;
+	m.base = 0;
+	for (int s=0; s<12; ++s)
+		if (e.abs_mask & (1u<<s))
+			m.v[s] = (e.keep_mask & (1u<<s)) ? (*m_ECTable)[e.base].v[s] : 0;
+	return m_ECTable->Intern(m);
+}
+
+double Operator::GetTableMaterial(int type, int n, const unsigned int pos[3]) const
+{
+	const EC_Table::Entry& e = (*m_ECTable)[m_ECIndex(pos[0], pos[1], pos[2])];
+	const int s = 4*n + type;
+	if (!(e.abs_mask & (1u<<s)))
+		return (float)e.v[s];   // as the material arrays: float
+	if (e.keep_mask & (1u<<s))
+		return (float)(*m_ECTable)[e.base].v[s];   // the material of the node, the circuit value is not one of its own
+	// a circuit value an extension set (a lumped element, a conducting sheet): the effective material of it
+	const bool dual = (type>=2);
+	const double area = GetEdgeArea(n, pos, dual);
+	if (area==0)
+		return 0;
+	return (float)(e.v[s] * GetEdgeLength(n, pos, dual) / area);
 }
 
 double Operator::GetDiscMaterial(int type, int n, const unsigned int pos[3]) const
 {
+	if (m_ECKeep && m_ECTable)
+		return ((type>=0) && (type<4)) ? GetTableMaterial(type, n, pos) : 0;
 	switch (type)
 	{
 	case 0:
@@ -1114,6 +1179,8 @@ FDTD_FLOAT Operator::GetEC(int k, int n, const unsigned int pos[3]) const
 	const int s = 4*n + k;
 	if (e.abs_mask & (1u<<s))
 		return e.v[s];
+	if (pos[0]<m_ECZeroLines)
+		return 0;
 	// as Calc_ECPos(): the material times area/length of the edge, on the dual mesh for L and R
 	const bool dual = (k>=EC_IND);
 	if (m_TableGeometry)
@@ -1136,7 +1203,7 @@ FDTD_FLOAT Operator::GetEC(int k, int n, const unsigned int pos[3]) const
 
 void Operator::GetECPair(int f, int n, const unsigned int pos[3], FDTD_FLOAT& a, FDTD_FLOAT& b) const
 {
-	if ((m_ECTable==NULL) || !m_TableGeometry)
+	if ((m_ECTable==NULL) || !m_TableGeometry || (pos[0]<m_ECZeroLines))
 	{
 		a = GetEC(2*f, n, pos);
 		b = GetEC(2*f+1, n, pos);
@@ -1153,7 +1220,7 @@ void Operator::GetECPair(int f, int n, const unsigned int pos[3], FDTD_FLOAT& a,
 	b = (e.abs_mask & (1u<<(s+1))) ? (FDTD_FLOAT)e.v[s+1] : ((delta==0) ? 0 : (FDTD_FLOAT)(e.v[s+1] * area/delta));
 }
 
-void Operator::SetEC(int n, const unsigned int pos[3], unsigned int mask, const double values[4])
+void Operator::SetEC(int n, const unsigned int pos[3], unsigned int mask, const double values[4], bool keepMaterial)
 {
 	const size_t i = GetECIndex(pos);
 	if (m_ECTable==NULL)
@@ -1166,12 +1233,21 @@ void Operator::SetEC(int n, const unsigned int pos[3], unsigned int mask, const 
 	}
 	// the node gets an entry of its own: the values as they are, the other edges and values keep the material
 	EC_Table::Entry e = (*m_ECTable)[m_ECIndex.data(i)];
+	if (keepMaterial && (e.keep_mask==0))
+		e.base = (e.abs_mask==0) ? m_ECIndex.data(i) : MaterialEntry(e);
 	for (int k=0; k<4; ++k)
 		if (mask & (1u<<k))
 		{
+			const uint16_t bit = (uint16_t)(1u<<(4*n+k));
 			e.v[4*n+k] = (FDTD_FLOAT)values[k];   // as the dense arrays: the circuit values are float
-			e.abs_mask |= (uint16_t)(1u<<(4*n+k));
+			e.abs_mask |= bit;
+			if (keepMaterial)
+				e.keep_mask |= bit;
+			else
+				e.keep_mask &= (uint16_t)~bit;
 		}
+	if (e.keep_mask==0)
+		e.base = 0;
 	m_ECIndex.data(i) = m_ECTable->Intern(e);
 	if (m_ECTable->Size()>m_ECTableLimit)
 		ECTableToDense();
@@ -1937,6 +2013,8 @@ void Operator::Init_EC(bool dense)
 {
 	InitGeometry();
 	FreeEC();
+	FreeECTable();
+	m_ECZeroLines = 0;
 	const size_t nodes = MainOp->GetSize();
 	m_ECTableLimit = GetECTableLimit(nodes);
 	if (!dense)
@@ -1998,7 +2076,24 @@ void Operator::ECTableToDense()
 							ec[k][n][i] = GetEC(k, n, pos);
 				}
 	});
+	// the dumps' material in arrays, from the table
+	if (m_ECKeep)
+	{
+		AllocMaterialArrays();
+		ArrayLib::ArrayNIJK<float>* mat[4] = {m_epsR_ptr, m_kappa_ptr, m_mueR_ptr, m_sigma_ptr};
+		ParallelFor(numLines[0], [&](unsigned int, size_t begin, size_t end) {
+			unsigned int pos[3];
+			for (pos[0]=begin; pos[0]<end; ++pos[0])
+				for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+					for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+						for (int t=0; t<4; ++t)
+							if (mat[t])
+								for (int n=0; n<3; ++n)
+									(*mat[t])(n, pos[0], pos[1], pos[2]) = GetTableMaterial(t, n, pos);
+		});
+	}
 	FreeEC();
+	FreeECTable();
 	for (int n=0; n<3; ++n)
 	{
 		EC_C[n] = ec[EC_CAP][n];
@@ -2063,6 +2158,7 @@ bool Operator::Calc_EC()
 		if (g_settings.GetVerboseLevel()>0)
 			cout << "Operator: more than " << limit << " distinct materials, more than the material table is worth: the circuit values go dense" << endl;
 		Init_EC(true);
+		InitDataStorage();   // the dumps' material in arrays, as Calc_EC_Range() fills them
 		ParallelForEach(lines.size(), numThreads, [&](unsigned int, size_t i) {
 			Calc_EC_Range(lines[i], lines[i]);
 		});

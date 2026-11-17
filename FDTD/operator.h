@@ -205,7 +205,10 @@ public:
 
 	virtual void CleanupMaterialStorage();
 
+	//! The material \a type (0: epsilon, 1: kappa, 2: mue, 3: sigma) of the edge \a ny at \a pos for the dumps: those a dump asked for (SetMaterialStoreFlags()), with the material table all four; else 0
 	virtual double GetDiscMaterial(int type, int ny, const unsigned int pos[3]) const;
+	//! Whether GetDiscMaterial() has the material \a type (with the material table: all four)
+	bool HasDiscMaterial(int type) const;
 
 	//! Get the cell center coordinate usable for material averaging (Warning, may not be the yee cell center)
 	virtual bool GetCellCenterMaterialAvgCoord(const int pos[3], double coord[3]) const;
@@ -253,8 +256,15 @@ protected:
 	/*!
 	  Who changes the circuit values of a node must call Calc_ECOperatorPos() for it afterwards,
 	  or FreezeCoeffs() before to keep its coefficients as they are.
+
+	  The material dumps (GetDiscMaterial()) see the effective material of a value set here (a
+	  lumped resistor as the conductivity it stands for), or with \a keepMaterial the material
+	  of the node from before.
+
+	  From one thread at a time only: it adds to the one table of the operator and may make the
+	  circuit values dense (ECTableToDense()).
 	  */
-	void SetEC(int n, const unsigned int pos[3], unsigned int mask, const double values[4]);
+	void SetEC(int n, const unsigned int pos[3], unsigned int mask, const double values[4], bool keepMaterial=false);
 	DebugFlags m_DebugFlags = None;
 	//! use New() for creating a new Operator
 	Operator();
@@ -348,6 +358,8 @@ protected:
 	virtual bool Calc_EC();
 	//! The circuit values of the x lines \a xStart to \a xStop: the materials into \a table (a table of the build thread), else into the dense arrays
 	virtual void Calc_EC_Range(unsigned int xStart, unsigned int xStop, EC_Table* table=NULL);
+	//! Allocate the material arrays of the dumps that asked for them (SetMaterialStoreFlags()), with the dense circuit values
+	void AllocMaterialArrays();
 	//! Write the effective material \a EffMat of the edge \a ny at \a pos to the material storage of the dumps, if it is kept
 	void StoreMaterial(int ny, const unsigned int* pos, const double* EffMat) const;
 	//! The most entries of the material table before the circuit values go dense, for a mesh of \a nodes nodes
@@ -361,6 +373,16 @@ protected:
 	//! material of a node times the geometry of an edge), or, if the materials hardly repeat, dense per direction.
 	EC_Table* m_ECTable;   //!< the distinct effective materials (or NULL)
 	ArrayLib::ArrayIJK<uint32_t> m_ECIndex;   //!< per node its entry in m_ECTable (data(): by GetECIndex(), as the dense arrays)
+	//! The material table stays after the coefficients (FreeEC()) for the material the dumps read (GetDiscMaterial()), until CleanupMaterialStorage()
+	bool m_ECKeep;
+	//! The x lines below this one have no circuit values (GetEC() 0), only a material for the dumps: the region of a multi-grid's sub-grid
+	unsigned int m_ECZeroLines;
+	//! The material \a type (0: epsilon, 1: kappa, 2: mue, 3: sigma) of the edge \a n at \a pos from the table, as the material arrays hold it; for a circuit value an extension set, the effective material of it
+	double GetTableMaterial(int type, int n, const unsigned int pos[3]) const;
+	//! Free the material table and its index, also if kept for the dumps
+	void FreeECTable();
+	//! The index of an entry without circuit values of its own, with the material of \a e (for EC_Table::Entry::base)
+	uint32_t MaterialEntry(const EC_Table::Entry& e);
 	FDTD_FLOAT* EC_C[3];   //!< dense: per direction and node (or NULL)
 	FDTD_FLOAT* EC_G[3];
 	FDTD_FLOAT* EC_L[3];
@@ -388,7 +410,7 @@ protected:
 	Operator_Coeffs* m_Coeffs; //!< owned, created by InitOperator() for m_EngineType; NULL before
 	Coeffs_EC* m_ECCoeffs;     //!< m_Coeffs if it computes the coefficients from the circuit values (GetEC()), else NULL
 
-	//! Free the circuit values (the material table or the dense arrays)
+	//! Free the circuit values (the dense arrays, the material table unless kept for the dumps: m_ECKeep)
 	void FreeEC();
 	//! Free the coefficients and the circuit values they are computed from (once the engine holds them); GetVV() and friends are invalid after this
 	void FreeCoeffs();

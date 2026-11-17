@@ -21,6 +21,7 @@
 #include "extensions/operator_ext_cylinder.h"
 #include "tools/useful.h"
 #include "CSUseful.h"
+#include <cstring>
 #include <stdexcept>
 
 using std::cout;
@@ -206,6 +207,48 @@ void Operator_CylinderMultiGrid::FillMissingDataStorage()
 {
 	unsigned int pos[3];
 	double EffMat[4];
+	if (m_ECTable)
+	{
+		// the material table: the nodes of the sub-grid's region get the material the dumps read, their
+		// circuit values stay 0 (m_ECZeroLines), but for the values an extension set there
+		if (!m_ECKeep)
+			return;
+		m_ECZeroLines = m_Split_Pos-1;
+		for (pos[0]=0; pos[0]<m_Split_Pos-1; ++pos[0])
+			for (pos[1]=0; pos[1]<numLines[1]; ++pos[1])
+			{
+				std::vector<CSPrimitives*> vPrims = this->GetPrimitivesBoundBox(
+					pos[0], pos[1], -1, CSProperties::MATERIAL
+				);
+				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
+				{
+					EC_Table::Entry mat;
+					std::memset(&mat, 0, sizeof(mat));
+					for (int ny=0; ny<3; ++ny)
+						Calc_EffMatPos(ny, pos, mat.v+4*ny, vPrims);
+					uint32_t& index = m_ECIndex(pos[0], pos[1], pos[2]);
+					EC_Table::Entry e = (*m_ECTable)[index];
+					if (e.abs_mask==0)
+						e = mat;
+					else
+					{
+						for (int s=0; s<12; ++s)
+							if (!(e.abs_mask & (1u<<s)))
+								e.v[s] = mat.v[s];
+						if (e.keep_mask)
+							e.base = m_ECTable->Intern(mat);
+					}
+					index = m_ECTable->Intern(e);
+				}
+			}
+		if (m_ECTable->Size()>m_ECTableLimit)
+		{
+			ECTableToDense();
+			if (m_ECCoeffs==NULL)   // as CalcECOperator(): the coefficients have them already, the dumps need the material only
+				FreeEC();
+		}
+		return;
+	}
 	for (int ny=0; ny<3; ++ny)
 	{
 		for (pos[0]=0; pos[0]<m_Split_Pos-1; ++pos[0])
@@ -219,27 +262,7 @@ void Operator_CylinderMultiGrid::FillMissingDataStorage()
 				for (pos[2]=0; pos[2]<numLines[2]; ++pos[2])
 				{
 					Calc_EffMatPos(ny,pos,EffMat,vPrims);
-
-					if (m_epsR_ptr)
-					{
-						ArrayLib::ArrayNIJK<float>& m_epsR = *m_epsR_ptr;
-						m_epsR(ny, pos[0], pos[1], pos[2]) =  EffMat[0];
-					}
-					if (m_kappa_ptr)
-					{
-						ArrayLib::ArrayNIJK<float>& m_kappa = *m_kappa_ptr;
-						m_kappa(ny, pos[0], pos[1], pos[2]) =  EffMat[1];
-					}
-					if (m_mueR_ptr)
-					{
-						ArrayLib::ArrayNIJK<float>& m_mueR = *m_mueR_ptr;
-						m_mueR(ny, pos[0], pos[1], pos[2]) =  EffMat[2];
-					}
-					if (m_sigma_ptr)
-					{
-						ArrayLib::ArrayNIJK<float>& m_sigma = *m_sigma_ptr;
-						m_sigma(ny, pos[0], pos[1], pos[2]) =  EffMat[3];
-					}
+					StoreMaterial(ny, pos, EffMat);
 				}
 			}
 		}

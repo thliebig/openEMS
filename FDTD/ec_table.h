@@ -30,6 +30,10 @@
   circuit value of an edge is its material times the geometry of the edge. An
   extension that sets a circuit value itself (a lumped element, a conducting
   sheet) gives the node an entry with that value and its bit in abs_mask set.
+  The material dumps see the effective material of such a value, unless its bit
+  in keep_mask is set too: then they see the material of the entry \a base, the
+  node's entry before the extension changed it (the cylinder axis, whose
+  circuit values are those of all the sectors around it).
 
   Entry 0 is all zero: no material, e.g. the nodes of a multi-grid operator left to
   its sub-grid. Intern() returns the index of an entry, adding it if it is new.
@@ -41,6 +45,8 @@ public:
 	{
 		double v[12];        //!< [n*4 + k]: epsilon, kappa, mue, sigma (k: Operator::ECValue) of direction n, or the circuit value itself (abs_mask)
 		uint16_t abs_mask;   //!< bit n*4 + k: v[n*4 + k] is the circuit value itself, not to be multiplied with the geometry
+		uint16_t keep_mask;  //!< bit n*4 + k (with abs_mask): the dumps see the material of entry \a base for it, not the effective material of v[n*4 + k]
+		uint32_t base;       //!< with keep_mask: an entry without circuit values of its own, the material of the node; else 0
 	};
 
 	EC_Table() : m_Lookup(64, Hash(&m_Entries), Equal(&m_Entries))
@@ -76,8 +82,8 @@ public:
 	size_t Bytes() const {return m_Entries.capacity()*sizeof(Entry) + m_Lookup.size()*(sizeof(void*)+sizeof(uint32_t)+sizeof(size_t)) + m_Lookup.bucket_count()*sizeof(void*);}
 
 private:
-	// the values of an entry, field by field: its padding is not initialised
-	static bool Same(const Entry& a, const Entry& b) {return (a.abs_mask==b.abs_mask) && (std::memcmp(a.v, b.v, sizeof(a.v))==0);}
+	// field by field, not the bytes of the struct: no assumption about its padding
+	static bool Same(const Entry& a, const Entry& b) {return (a.abs_mask==b.abs_mask) && (a.keep_mask==b.keep_mask) && (a.base==b.base) && (std::memcmp(a.v, b.v, sizeof(a.v))==0);}
 	struct Hash
 	{
 		const std::vector<Entry>* entries;
@@ -85,7 +91,7 @@ private:
 		size_t operator()(uint32_t id) const
 		{
 			const Entry& e = (*entries)[id];
-			uint64_t h = 0x9e3779b97f4a7c15ull ^ e.abs_mask;
+			uint64_t h = 0x9e3779b97f4a7c15ull ^ e.abs_mask ^ ((uint64_t)e.keep_mask<<16) ^ ((uint64_t)e.base<<32);
 			for (int k=0; k<12; ++k)
 			{
 				uint64_t b;

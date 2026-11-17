@@ -56,6 +56,10 @@ to what a user notices, in a few lines; the details belong in the commit.
   now, and openEMS prints how long it took.
 - The setup needs less memory: per million cells the peak drops from 93 to
   51 MiB with `sse-compressed`, from 92 to 69 MiB with `basic`.
+- D-, B- and J-field dumps hold their material in 4 bytes per cell during
+  the run, instead of 12 per dump type.
+- D- and J-field dumps show lumped elements and conducting sheets, e.g. the
+  current through a lumped resistor, instead of the material around them.
 - The progress line shows timesteps per second (`TS/s`) instead of seconds
   per timestep.
 

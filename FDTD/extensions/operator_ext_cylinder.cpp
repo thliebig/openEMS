@@ -91,7 +91,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 			const unsigned int node[3] = {0, i, pos[2]};
 			m_Op->FreezeCoeffs(node);
 			const double ec[4] = {C, G, 0, 0};
-			m_Op->SetEC(2, node, (1u<<Operator::EC_CAP) | (1u<<Operator::EC_CON), ec);
+			m_Op->SetEC(2, node, (1u<<Operator::EC_CAP) | (1u<<Operator::EC_CON), ec, true);   // the material dumps keep the material of the node
 		}
 
 		//search for metal on z-axis
@@ -106,7 +106,7 @@ bool Operator_Ext_Cylinder::BuildExtension()
 				vi_R0[pos[2]] = 0;
 				const unsigned int axis[3] = {0, 0, pos[2]};
 				const double ec[4] = {0, 0, 0, 0};
-				m_Op->SetEC(2, axis, (1u<<Operator::EC_CAP) | (1u<<Operator::EC_CON), ec);
+				m_Op->SetEC(2, axis, (1u<<Operator::EC_CAP) | (1u<<Operator::EC_CON), ec, true);   // the material dumps keep the material of the node
 			}
 		}
 	}

@@ -30,7 +30,10 @@ The pipeline, and where each part lives:
    `Operator`, one `Engine`, one `ProcessingArray`, and the engine-type choice.
 2. **`Operator`** (`FDTD/operator.h`, `Common/operator_base.h`) pre-computes the
    equivalent-circuit coefficients (`vv`, `vi`, `ii`, `iv`) for every Yee cell in
-   `CalcECOperator()`, and holds the mesh (`discLines[]`). The coefficients live
+   `CalcECOperator()`, and holds the mesh (`discLines[]`). The circuit values
+   (C, G, L, R) they come from are the effective material of a node, kept once
+   per distinct value (`EC_Table`, `FDTD/ec_table.h`), times the geometry of the
+   edge: read them with `GetEC()`, change them with `SetEC()`. The coefficients live
    in an `Operator_Coeffs` (`FDTD/operator_coeffs.h`) in the layout the engine
    reads: basic or compressed SSE, chosen by `SetEngineType()` with the
    engine; the CPU and GPU engines build their cell model (`FDTD/cell_model.h`)
