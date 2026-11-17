@@ -16,6 +16,7 @@
 */
 
 #include "openems.h"
+#include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -1703,6 +1704,15 @@ void openEMS::RunFDTD()
 
 	cout << "Time for " << FDTD_Eng->GetNumberOfTimesteps() << " iterations with " << FDTD_Op->GetNumberCells() << " cells : " << t_diff << " sec" << endl;
 	cout << "Speed: " << numCells*(double)FDTD_Eng->GetNumberOfTimesteps()/t_diff*1e-6 << " MCells/s " << endl;
+	unsigned int trialsTS;
+	double trialsSeconds;
+	if ((g_settings.GetVerboseLevel()>0) && FDTD_Eng->GetTrialsEnd(trialsTS, trialsSeconds) && (FDTD_Eng->GetNumberOfTimesteps()>trialsTS))
+	{
+		// the variant the engine kept, without its trials at the start (Engine::MarkTrialsEnd())
+		const unsigned int steps = FDTD_Eng->GetNumberOfTimesteps()-trialsTS;
+		cout << "Speed after the trials: " << numCells*(double)steps/(std::max)(trialsSeconds, 1e-9)*1e-6 << " MCells/s ("
+		     << steps << " timesteps in " << trialsSeconds << " sec)" << endl;
+	}
 
 	if (m_DumpStats)
 		DumpStatistics(OPENEMS_STAT_FILE, t_diff);

@@ -17,6 +17,8 @@
 
 #include <stdexcept>
 
+#include <chrono>
+
 #include "engine.h"
 #include "extensions/engine_extension.h"
 #include "extensions/operator_extension.h"
@@ -217,6 +219,29 @@ void Engine::UpdateVoltages(unsigned int startX, unsigned int numX)
 		}
 		++pos[0];
 	}
+}
+
+void Engine::MarkTrialsStart()
+{
+	m_TrialsEnded = false;
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Engine: trials started" << endl;
+}
+
+void Engine::MarkTrialsEnd()
+{
+	m_TrialsEnded = true;
+	m_TrialsEndTS = numTS;
+	m_TrialsEndTime = std::chrono::steady_clock::now();
+	if (g_settings.GetVerboseLevel()>0)
+		cout << "Engine: trials done at timestep " << numTS << endl;
+}
+
+bool Engine::GetTrialsEnd(unsigned int& ts, double& seconds) const
+{
+	ts = m_TrialsEndTS;
+	seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - m_TrialsEndTime).count();
+	return m_TrialsEnded;
 }
 
 bool Engine::CanUpdateBox(const Engine_Box& box, bool currents) const

@@ -18,6 +18,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#include <chrono>
 #include <fstream>
 #include "operator.h"
 #include "engine_type.h"
@@ -43,6 +44,13 @@ public:
 	virtual bool IterateTS(unsigned int iterTS);
 
 	virtual unsigned int GetNumberOfTimesteps() {return numTS;}
+
+	//! The engine starts trying its variants (tiles, the flat sweep) at the start of the run; at --verbose "Engine: trials started"
+	void MarkTrialsStart();
+	//! The engine finished trying its variants; at --verbose "Engine: trials done" (benchmark/bench.py times the run from there)
+	void MarkTrialsEnd();
+	//! The timestep of MarkTrialsEnd() and the seconds since, false if the engine ran no trials
+	bool GetTrialsEnd(unsigned int& ts, double& seconds) const;
 
 	//! The speed of the last interval, for the thread count of the CPU engines
 	virtual void NextInterval(float curr_speed);
@@ -133,6 +141,10 @@ protected:
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>* volt_ptr;
 	ArrayLib::ArrayNIJK<FDTD_FLOAT>* curr_ptr;
 	unsigned int numTS;
+
+	bool m_TrialsEnded = false;
+	unsigned int m_TrialsEndTS = 0;
+	std::chrono::steady_clock::time_point m_TrialsEndTime;
 
 	//! The memory layout of the fields (ArrayNIJK), allocated by Init()
 	virtual std::string GetFieldLayout() const {return "NIJK";}

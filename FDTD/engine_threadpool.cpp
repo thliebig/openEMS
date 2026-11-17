@@ -210,6 +210,7 @@ void Engine_ThreadPool::Trial(unsigned int iterTS, double seconds)
 			best = t;
 	SetActive((best<n) ? best : -1);
 	m_Trying = false;
+	m_Eng->MarkTrialsEnd();
 	if (g_settings.GetVerboseLevel()>0)
 	{
 		// in MC/s like the progress of the run
@@ -395,6 +396,8 @@ void Engine_ThreadPool::ChangeNumThreads(unsigned int numThreads)
 	const bool blocked = (m_Grids.size()==1) && m_Eng->BuildBlockedPlans(m_numThreads, m_Choice) && !m_Choice.candidates.empty();
 	SetActive(blocked ? (int)m_Choice.start : -1);
 	m_Trying = blocked && (m_Choice.trialSeconds>0);
+	if (m_Trying)
+		m_Eng->MarkTrialsStart();
 	m_Trial = -1;
 	m_TrialDir = 1;
 	m_TrialSpeed.assign(m_Choice.candidates.size()+1, 0);

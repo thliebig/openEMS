@@ -293,6 +293,7 @@ void Engine_GPU::PrepareBlocking()
 
 void Engine_GPU::StartTrials()
 {
+	MarkTrialsStart();
 	m_Trial = 0;
 	m_TrialSteps = 0;
 	m_TrialSpeed.assign(m_BlockCandidates.size() + 1 + (m_FlatTrial ? 1 : 0), 0);
@@ -466,6 +467,7 @@ void Engine_GPU::TrialProgress(unsigned int steps)
 	m_Block = (best<tiles) ? best : -1;
 	m_Trial = -1;
 	m_FlatSplit = false;
+	MarkTrialsEnd();
 	if (m_Fused && ((m_Block>=0) || (best==tiles+1)))
 	{
 		// the memory of the fused step back (the flat steps of the blocked runs are rare)
