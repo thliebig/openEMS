@@ -329,13 +329,16 @@ public:
 		m_Op.index = Upload(m_B, m_List.Sorted(flat));
 		m_Op.ilv = up(op->v_RLC_ilv);
 		m_Op.i2v = up(op->v_RLC_i2v);
+		m_Op.vvd = up(op->v_RLC_vvd);
+		m_Op.vv1 = up(op->v_RLC_vv1);
 		m_Op.vv2 = up(op->v_RLC_vv2);
 		m_Op.vj1 = up(op->v_RLC_vj1);
 		m_Op.vj2 = up(op->v_RLC_vj2);
-		m_Op.vvd = up(op->v_RLC_vvd);
-		m_Op.ib0 = up(op->v_RLC_ib0);
-		m_Op.b1 = up(op->v_RLC_b1);
-		m_Op.b2 = up(op->v_RLC_b2);
+		m_Op.jv0 = up(op->v_RLC_jv0);
+		m_Op.jv1 = up(op->v_RLC_jv1);
+		m_Op.jv2 = up(op->v_RLC_jv2);
+		m_Op.jj1 = up(op->v_RLC_jj1);
+		m_Op.jj2 = up(op->v_RLC_jj2);
 		const std::vector<float> zero(std::max<size_t>(count, 1), 0.0f);
 		m_Op.Il = Upload(m_B, zero);
 		for (int r=0; r<3; ++r)

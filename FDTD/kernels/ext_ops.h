@@ -105,7 +105,9 @@ struct Op_LumpedRLC
 {
 	CM_GLOBAL float* volt;
 	CM_GLOBAL const uint64_t* index;
-	CM_GLOBAL const float *ilv, *i2v, *vv2, *vj1, *vj2, *vvd, *ib0, *b1, *b2;
+	CM_GLOBAL const float *ilv, *i2v;
+	CM_GLOBAL const float *vvd, *vv1, *vv2, *vj1, *vj2;   //!< the node voltage, see Operator_Ext_LumpedRLC
+	CM_GLOBAL const float *jv0, *jv1, *jv2, *jj1, *jj2;   //!< the current J of a series element
 	CM_GLOBAL float* Il;
 	CM_GLOBAL float *Vd0, *Vd1, *Vd2;   //!< the rings at this timestep: ts, ts-1, ts-2
 	CM_GLOBAL float *J0, *J1, *J2;
@@ -118,8 +120,8 @@ struct Op_LumpedRLC
 		case 0: Il[n] += (i2v[n])*(ilv[n])*Vd1[n]; break;
 		case 1: Vd0[n] = volt[index[n]]; break;
 		case 2:
-			Vd0[n] = (vvd[n])*(Vd0[n] - Il[n] + (vv2[n])*Vd2[n] + (vj1[n])*J1[n] + (vj2[n])*J2[n]);
-			J0[n] = (ib0[n])*(Vd0[n] - Vd2[n]) - ((b1[n])*(ib0[n]))*J1[n] - ((b2[n])*(ib0[n]))*J2[n];
+			Vd0[n] = (vvd[n])*(Vd0[n] - Il[n] + (vv1[n])*Vd1[n] + (vv2[n])*Vd2[n] + (vj1[n])*J1[n] + (vj2[n])*J2[n]);
+			J0[n] = (jv0[n])*Vd0[n] + (jv1[n])*Vd1[n] + (jv2[n])*Vd2[n] + (jj1[n])*J1[n] + (jj2[n])*J2[n];
 			break;
 		default: volt[index[n]] = Vd0[n]; break;
 		}

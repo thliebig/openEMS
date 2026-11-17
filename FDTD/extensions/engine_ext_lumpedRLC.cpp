@@ -122,10 +122,12 @@ void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngType* eng, unsigned int ts, con
 	unsigned int **pos = m_Op_Ext_RLC->v_RLC_pos;
 	int *dir = m_Op_Ext_RLC->v_RLC_dir;
 	FDTD_FLOAT* Vd0 = v_Vdn[ts%3];
+	const FDTD_FLOAT* Vd1 = v_Vdn[(ts+2)%3];
 	const FDTD_FLOAT* Vd2 = v_Vdn[(ts+1)%3];
 	FDTD_FLOAT* J0 = v_Jn[ts%3];
 	const FDTD_FLOAT* J1 = v_Jn[(ts+2)%3];
 	const FDTD_FLOAT* J2 = v_Jn[(ts+1)%3];
+	const Operator_Ext_LumpedRLC* op = m_Op_Ext_RLC;
 
 	// Read engine calculated node voltage
 	m_Index.ForEach(box, [&](size_t pIdx) {
@@ -136,21 +138,16 @@ void Engine_Ext_LumpedRLC::Apply2VoltagesImpl(EngType* eng, unsigned int ts, con
 	m_Index.ForEach(box, [&](size_t pIdx)
 	{
 		// Calculate updated node voltage, with series and parallel additions
-		Vd0[pIdx] = 	(m_Op_Ext_RLC->v_RLC_vvd[pIdx])*(
-							Vd0[pIdx] - v_Il[pIdx]						// Addition for Parallel inductor
-							+
-							(m_Op_Ext_RLC->v_RLC_vv2[pIdx])*Vd2[pIdx]	// Vd[n-2] addition
-							+
-							(m_Op_Ext_RLC->v_RLC_vj1[pIdx])*J1[pIdx]	// J[n-1] addition
-							+
-							(m_Op_Ext_RLC->v_RLC_vj2[pIdx])*J2[pIdx]);	// J[n-2] addition
+		Vd0[pIdx] = (op->v_RLC_vvd[pIdx])*(
+						Vd0[pIdx] - v_Il[pIdx]					// Addition for Parallel inductor
+						+ (op->v_RLC_vv1[pIdx])*Vd1[pIdx]
+						+ (op->v_RLC_vv2[pIdx])*Vd2[pIdx]
+						+ (op->v_RLC_vj1[pIdx])*J1[pIdx]
+						+ (op->v_RLC_vj2[pIdx])*J2[pIdx]);
 
 		// Update J[0]
-		J0[pIdx] =	(m_Op_Ext_RLC->v_RLC_ib0[pIdx])*(Vd0[pIdx] - Vd2[pIdx])
-						-
-						((m_Op_Ext_RLC->v_RLC_b1[pIdx])*(m_Op_Ext_RLC->v_RLC_ib0[pIdx]))*J1[pIdx]
-						-
-						((m_Op_Ext_RLC->v_RLC_b2[pIdx])*(m_Op_Ext_RLC->v_RLC_ib0[pIdx]))*J2[pIdx];
+		J0[pIdx] =	(op->v_RLC_jv0[pIdx])*Vd0[pIdx] + (op->v_RLC_jv1[pIdx])*Vd1[pIdx] + (op->v_RLC_jv2[pIdx])*Vd2[pIdx]
+					+ (op->v_RLC_jj1[pIdx])*J1[pIdx] + (op->v_RLC_jj2[pIdx])*J2[pIdx];
 	});
 
 	// Update node voltage

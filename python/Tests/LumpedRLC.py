@@ -20,11 +20,13 @@ Test cases
 4. Series   RL   (C = NaN)         — absent capacitor, RL series impedance
 5. Parallel RC   (L = NaN)         — absent inductor, handled by base FDTD (not the extension)
 6. Series   RC   (L = NaN)         — absent inductor, RC series impedance via extension with dL=0
+7. Series   RL in a microstrip gap — the fields must not grow again long after the pulse (#241)
 
 Pass criteria
 -------------
 Resonant cases : f_res within 5 % of f0, |Z| at resonance within 15 % of R
 Non-resonant   : |Z_measured − Z_analytic| / |Z_analytic| < 10 % at spot freqs
+Long run       : port voltage in the last quarter of 30000 timesteps < 1e-4 of its peak
 
 (c) 2026 Thorsten Liebig <thorsten.liebig@gmx.de>
 """
@@ -260,6 +262,45 @@ Z_ser_rc = run_loop(os.path.join(tempfile.gettempdir(), 'LRLC_ser_rc'), add_ser_
 check_spot('Series RC', Z_ser_rc,
            lambda f: z_ser(f, R=R_ser, C=C_val),
            f_spot)
+
+# ---------------------------------------------------------------------------
+# Test 7: Series RL stays stable long after the pulse (#241)
+#         A series inductor with a small R in the gap of a microstrip: with
+#         the RL update in float, the fields fell to about -57 dB and grew
+#         again from there, past the start within 40000 timesteps.
+# ---------------------------------------------------------------------------
+def run_msl_rl(Sim_Path, nrts=30000):
+    from CSXCAD.SmoothMeshLines import SmoothMeshLines
+    L_msl, w, h, res = 30.0, 1.9, 1.0, 0.2
+    FDTD = openEMS(NrTS=nrts, EndCriteria=0)   # all timesteps
+    FDTD.SetGaussExcite(2e9, 1.5e9)
+    FDTD.SetBoundaryCond(['PML_8', 'PML_8', 'MUR', 'MUR', 'PEC', 'MUR'])
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('x', SmoothMeshLines([-L_msl/2, -res/2, res/2, L_msl/2], res, 1.5))
+    mesh.AddLine('y', SmoothMeshLines([-4, -w/2 - res/3, -w/2 + 2*res/3, w/2 - 2*res/3, w/2 + res/3, 4], res, 1.5))
+    mesh.AddLine('z', SmoothMeshLines(np.concatenate([np.linspace(0, h, 6), [h + 4]]), res, 1.5))
+    CSX.AddMaterial('FR4', epsilon=4.3).AddBox([-L_msl/2, -4, 0], [L_msl/2, 4, h])
+    pec = CSX.AddMetal('strip')
+    pec.AddBox([-L_msl/2 + 5, -w/2, h], [-res/2, w/2, h], priority=10)
+    pec.AddBox([res/2, -w/2, h], [L_msl/2 - 5, w/2, h], priority=10)
+    e = CSX.AddLumpedElement('ser_l', ny='x', caps=True, R=0.1, L=1.8e-9, LEtype=1)
+    e.AddBox([-res/2, -w/2, h], [res/2, w/2, h], priority=20)
+    port = FDTD.AddMSLPort(1, pec, [-L_msl/2, -w/2, h], [-L_msl/2 + 5, w/2, 0], 'x', 'z',
+                           excite=-1, FeedShift=2, MeasPlaneShift=2.5, priority=10)
+    FDTD.AddMSLPort(2, pec, [L_msl/2, -w/2, h], [L_msl/2 - 5, w/2, 0], 'x', 'z',
+                    MeasPlaneShift=2.5, priority=10)
+    FDTD.Run(Sim_Path, cleanup=True)
+    port.ReadUIData(Sim_Path, freq)
+    return np.abs(port.ut_tot)
+
+print('Test 7: Series RL, long run (#241) ...')
+u_msl = run_msl_rl(os.path.join(tempfile.gettempdir(), 'LRLC_msl_rl'))
+late = u_msl[3*len(u_msl)//4:].max() / u_msl.max()
+assert late < 1e-4, 'FAIL [Series RL long run]: the port voltage grows again, {:.1e} of its peak in the last quarter'.format(late)
+print('  PASS [Series RL long run]: last quarter {:.1e} of the peak'.format(late))
 
 print('\nAll lumped RLC tests PASSED')
 

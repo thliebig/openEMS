@@ -40,13 +40,16 @@ Operator_Ext_LumpedRLC::Operator_Ext_LumpedRLC(Operator* op) : Operator_Extensio
 	v_RLC_i2v = NULL;
 
 	// Series circuit coefficients
-	v_RLC_vv2	= NULL;	// Coefficient for [n-2] time of Vd update in Vd equation
-	v_RLC_vj1	= NULL;	// Coefficient for [n-1] time of J update in Vd equation
-	v_RLC_vj2	= NULL;	// Coefficient for [n-2] time of J update in Vd equation
-	v_RLC_vvd	= NULL;	// Coefficient to multiply all Vd in the Vd update equation
-	v_RLC_ib0	= NULL;	// Inverse of beta_0
-	v_RLC_b1	= NULL;	// beta_1
-	v_RLC_b2	= NULL;	// beta_2
+	v_RLC_vvd	= NULL;
+	v_RLC_vv1	= NULL;
+	v_RLC_vv2	= NULL;
+	v_RLC_vj1	= NULL;
+	v_RLC_vj2	= NULL;
+	v_RLC_jv0	= NULL;
+	v_RLC_jv1	= NULL;
+	v_RLC_jv2	= NULL;
+	v_RLC_jj1	= NULL;
+	v_RLC_jj2	= NULL;
 
 	// Additional containers
 	v_RLC_dir = NULL;
@@ -59,8 +62,8 @@ Operator_Ext_LumpedRLC::Operator_Ext_LumpedRLC(Operator* op, Operator_Ext_Lumped
 {
 	RLC_count = 0;
 	v_RLC_ilv = NULL; v_RLC_i2v = NULL;
-	v_RLC_vv2 = NULL; v_RLC_vj1 = NULL; v_RLC_vj2 = NULL;
-	v_RLC_vvd = NULL; v_RLC_ib0 = NULL; v_RLC_b1  = NULL; v_RLC_b2  = NULL;
+	v_RLC_vvd = NULL; v_RLC_vv1 = NULL; v_RLC_vv2 = NULL; v_RLC_vj1 = NULL; v_RLC_vj2 = NULL;
+	v_RLC_jv0 = NULL; v_RLC_jv1 = NULL; v_RLC_jv2 = NULL; v_RLC_jj1 = NULL; v_RLC_jj2 = NULL;
 	v_RLC_dir = NULL;
 	v_RLC_pos = NULL;
 }
@@ -74,13 +77,16 @@ Operator_Ext_LumpedRLC::~Operator_Ext_LumpedRLC()
 		delete[] v_RLC_i2v;
 
 		// Series circuit coefficients
+		delete[] v_RLC_vvd;
+		delete[] v_RLC_vv1;
 		delete[] v_RLC_vv2;
 		delete[] v_RLC_vj1;
 		delete[] v_RLC_vj2;
-		delete[] v_RLC_vvd;
-		delete[] v_RLC_ib0;
-		delete[] v_RLC_b1;
-		delete[] v_RLC_b2;
+		delete[] v_RLC_jv0;
+		delete[] v_RLC_jv1;
+		delete[] v_RLC_jv2;
+		delete[] v_RLC_jj1;
+		delete[] v_RLC_jj2;
 
 		// Additional containers
 		delete[] v_RLC_dir;
@@ -118,13 +124,16 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 	std::vector<double>  v_ilv;
 	std::vector<double>	v_i2v;
 
+	std::vector<double>	v_vvd;
+	std::vector<double>	v_vv1;
 	std::vector<double>	v_vv2;
 	std::vector<double>	v_vj1;
 	std::vector<double>	v_vj2;
-	std::vector<double>	v_vvd;
-	std::vector<double>	v_ib0;
-	std::vector<double>	v_b1;
-	std::vector<double>	v_b2;
+	std::vector<double>	v_jv0;
+	std::vector<double>	v_jv1;
+	std::vector<double>	v_jv2;
+	std::vector<double>	v_jj1;
+	std::vector<double>	v_jj2;
 
 	// Lumped RLC parameters
 	double R, L, C;
@@ -138,13 +147,16 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 	v_ilv.clear();
 	v_i2v.clear();
 
+	v_vvd.clear();
+	v_vv1.clear();
 	v_vv2.clear();
 	v_vj1.clear();
 	v_vj2.clear();
-	v_vvd.clear();
-	v_ib0.clear();
-	v_b1.clear();
-	v_b2.clear();
+	v_jv0.clear();
+	v_jv1.clear();
+	v_jv2.clear();
+	v_jj1.clear();
+	v_jj2.clear();
 
 	// Obtain from CSX (continuous structure) all the lumped RLC properties
 	// Properties are material properties, not the objects themselves
@@ -275,22 +287,34 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 						dG = (std::isnan(R) || R == 0.0) ? 0.0 : (1.0/R)*Ncells_0/Npar,
 						dC = std::isnan(C) ? 0.0 : C*Ncells_0/Npar;
 
-				// Series ADE coefficients — computed only for SERIES to avoid division
-				// by zero when dC == 0.  Absent C uses the RL-only form.
-				double ib0 = 0.0, b1 = 0.0, b2 = 0.0;
+				// Series ADE, the current J of the element (trapezoidal rule):
+				//   J[n] = jv0*Vd[n] + jv1*Vd[n-1] + jv2*Vd[n-2] + jj1*J[n-1] + jj2*J[n-2]
+				// computed only for SERIES to avoid a division by zero when dC == 0.
+				double jv0 = 0.0, jv1 = 0.0, jv2 = 0.0, jj1 = 0.0, jj2 = 0.0;
 				if (lumpedType == CSPropLumpedElement::SERIES)
 				{
 					if (dC == 0.0)
 					{
-						ib0 = dT/(2.0*dL + dT*dR);
-						b1  = -4.0*dL/dT;
-						b2  = (2.0*dL - dT*dR)/dT;
+						// RL: (2L/dT + R)*J[n] - (2L/dT - R)*J[n-1] = Vd[n] + Vd[n-1]. Not the
+						// difference of two timesteps of it (the RLC form below with C -> inf):
+						// that has a second root at z = 1, which the float coefficients and
+						// their rounding errors turn into a slow growth of the fields, with any
+						// R > 0 into an exponential one (#241).
+						const double b0 = 2.0*dL/dT + dR;
+						jv0 = 1.0/b0;
+						jv1 = 1.0/b0;
+						jj1 = (2.0*dL/dT - dR)/b0;
 					}
 					else
 					{
-						ib0 = 2.0*dT*dC/(4.0*dL*dC + 2.0*dT*dR*dC + dT*dT);
-						b1  = (dT*dT - 4.0*dL*dC)/(dT*dC);
-						b2  = (4.0*dL*dC - 2.0*dT*dR*dC + dT*dT)/(2.0*dT*dC);
+						// RLC: b0*J[n] + b1*J[n-1] + b2*J[n-2] = Vd[n] - Vd[n-2]
+						const double b0 = 2.0*dL/dT + dR + dT/(2.0*dC);
+						const double b1 = dT/dC - 4.0*dL/dT;
+						const double b2 = 2.0*dL/dT - dR + dT/(2.0*dC);
+						jv0 = 1.0/b0;
+						jv2 = -1.0/b0;
+						jj1 = -b1/b0;
+						jj2 = -b2/b0;
 					}
 				}
 
@@ -341,13 +365,16 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 									// Update coefficients with respect to the parallel inductance
 									v_ilv.push_back((L > 0) ? dT/dL : 0.0);
 
+									v_vvd.push_back(1.0);
+									v_vv1.push_back(0.0);
 									v_vv2.push_back(0.0);
 									v_vj1.push_back(0.0);
 									v_vj2.push_back(0.0);
-									v_vvd.push_back(1.0);
-									v_ib0.push_back(0.0);
-									v_b1.push_back(0.0);
-									v_b2.push_back(0.0);
+									v_jv0.push_back(0.0);
+									v_jv1.push_back(0.0);
+									v_jv2.push_back(0.0);
+									v_jj1.push_back(0.0);
+									v_jj2.push_back(0.0);
 
 									m_Op->Calc_ECOperatorPos(dir,pos);
 
@@ -381,14 +408,20 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 									v_ilv.push_back(0.0);
 									v_i2v.push_back(0.0);
 
-									// Contributions from series R, L, C via ADE coefficients
-									v_vv2.push_back(0.5*dT*ib0/Cd);
-									v_vj1.push_back(0.5*dT*(b1*ib0 - 1.0)/Cd);
-									v_vj2.push_back(0.5*dT*b2*ib0/Cd);
-									v_vvd.push_back(1.0/(1.0 + 0.5*dT*ib0/Cd));
-									v_ib0.push_back(ib0);
-									v_b1.push_back(b1);
-									v_b2.push_back(b2);
+									// Contributions from series R, L, C via ADE coefficients: the
+									// node takes Cd*(Vd[n]-Vd[n-1])/dT = I - (J[n]+J[n-1])/2, with
+									// J[n] from above
+									const double k = 0.5*dT/Cd;
+									v_vvd.push_back(1.0/(1.0 + k*jv0));
+									v_vv1.push_back(-k*jv1);
+									v_vv2.push_back(-k*jv2);
+									v_vj1.push_back(-k*(jj1 + 1.0));
+									v_vj2.push_back(-k*jj2);
+									v_jv0.push_back(jv0);
+									v_jv1.push_back(jv1);
+									v_jv2.push_back(jv2);
+									v_jj1.push_back(jj1);
+									v_jj2.push_back(jj2);
 
 									m_Op->Calc_ECOperatorPos(dir,pos);
 
@@ -466,13 +499,16 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		v_RLC_i2v 	= new FDTD_FLOAT[RLC_count];
 
 		// Series circuit coefficients
+		v_RLC_vvd = new FDTD_FLOAT[RLC_count];
+		v_RLC_vv1 = new FDTD_FLOAT[RLC_count];
 		v_RLC_vv2 = new FDTD_FLOAT[RLC_count];
 		v_RLC_vj1 = new FDTD_FLOAT[RLC_count];
 		v_RLC_vj2 = new FDTD_FLOAT[RLC_count];
-		v_RLC_vvd = new FDTD_FLOAT[RLC_count];
-		v_RLC_ib0 = new FDTD_FLOAT[RLC_count];
-		v_RLC_b1 = new FDTD_FLOAT[RLC_count];
-		v_RLC_b2 = new FDTD_FLOAT[RLC_count];
+		v_RLC_jv0 = new FDTD_FLOAT[RLC_count];
+		v_RLC_jv1 = new FDTD_FLOAT[RLC_count];
+		v_RLC_jv2 = new FDTD_FLOAT[RLC_count];
+		v_RLC_jj1 = new FDTD_FLOAT[RLC_count];
+		v_RLC_jj2 = new FDTD_FLOAT[RLC_count];
 
 		v_RLC_pos = new unsigned int*[3];
 		for (unsigned int dIdx = 0 ; dIdx < 3 ; ++dIdx)
@@ -484,13 +520,16 @@ bool Operator_Ext_LumpedRLC::BuildExtension()
 		COPY_V2A(v_ilv, v_RLC_ilv);
 		COPY_V2A(v_i2v, v_RLC_i2v);
 
+		COPY_V2A(v_vvd,v_RLC_vvd);
+		COPY_V2A(v_vv1,v_RLC_vv1);
 		COPY_V2A(v_vv2,v_RLC_vv2);
 		COPY_V2A(v_vj1,v_RLC_vj1);
 		COPY_V2A(v_vj2,v_RLC_vj2);
-		COPY_V2A(v_vvd,v_RLC_vvd);
-		COPY_V2A(v_ib0,v_RLC_ib0);
-		COPY_V2A(v_b1,v_RLC_b1);
-		COPY_V2A(v_b2,v_RLC_b2);
+		COPY_V2A(v_jv0,v_RLC_jv0);
+		COPY_V2A(v_jv1,v_RLC_jv1);
+		COPY_V2A(v_jv2,v_RLC_jv2);
+		COPY_V2A(v_jj1,v_RLC_jj1);
+		COPY_V2A(v_jj2,v_RLC_jj2);
 
 		for (unsigned int dIdx = 0 ; dIdx < 3 ; ++dIdx)
 			COPY_V2A(v_pos[dIdx],v_RLC_pos[dIdx]);
