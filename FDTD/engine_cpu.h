@@ -50,8 +50,9 @@
   The extensions see the fields through Engine::GetVolt() and friends, which
   follow the layout, and run in the dispatch of the basic engine.
 
-  Temporal blocking (BuildBlockedPlans()): the threads advance cache-sized
-  tiles along the split axis up to 8 timesteps at a time (Engine_BlockedPlan,
+  Temporal blocking (BuildBlockedPlans()): each thread advances its own
+  tiles, blocks of lines along the split and the mid axis sized for its share
+  of the cache, up to 8 timesteps at a time (Engine_BlockedPlan::Tiles(),
   walked by Engine_ThreadPool), the extensions per step on the box of the
   step (Engine_Extension::SupportsBoxes()). It needs every extension to
   support boxes, no cylindrical multi-grid, and a model larger than the cache;
@@ -100,14 +101,15 @@ protected:
 	virtual bool CanUpdateBox(const Engine_Box& box, bool currents) const {(void)box; (void)currents; return true;}
 	virtual int GetSplitAxis() const {return m_SplitAxis;}
 
-	//! Trapezoid tiles along the split axis sized for the L3, if every extension supports boxes and there is no sub-grid
+	//! Tiles along the split and the mid axis sized for a thread's share of the L3, if every extension supports boxes and there is no sub-grid
 	/*!
-	  The tile from the estimate of the cache and, as candidates, tiles 4x and 2x,
-	  half and a quarter as wide; the thread pool searches them from the estimate
-	  and tries the flat sweep at the start of the run (OPENEMS_CPU_TRIAL seconds
-	  each, default 0.5, 0 none). OPENEMS_CPU_TBLOCK=0 keeps the flat sweep,
-	  =k:W[,k:W...] sets the timesteps per block and the tile widths in lines,
-	  without trials.
+	  Square tiles of 2k+1 lines, the largest whose lines fit a thread's share of
+	  the cache, smaller if the threads get fewer than two each; as candidates
+	  those of up to 2 timesteps more and fewer. The thread pool searches them
+	  from the estimate and tries the flat sweep at the start of the run
+	  (OPENEMS_CPU_TRIAL seconds each, default 0.5, 0 none).
+	  OPENEMS_CPU_TBLOCK=0 keeps the flat sweep, =k:W[,k:W...] sets the
+	  timesteps per block and the tile widths in lines, without trials.
 	  */
 	virtual bool BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice& choice);
 	//! All physical cores, no ramp

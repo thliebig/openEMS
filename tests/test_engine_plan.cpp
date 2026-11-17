@@ -172,31 +172,54 @@ int main()
 				CheckCover(plan.curr, numLines, 1, what.str() + ", currents");
 			}
 
-	// blocked plans: tiles that divide the axis and ones that do not, a short tail, a single tile
-	const unsigned int bsizes[][3] = {{23, 4, 5}, {16, 5, 3}, {9, 3, 4}, {41, 3, 3}};
-	const unsigned int kw[][2] = {{1, 3}, {2, 5}, {3, 7}, {2, 8}, {4, 9}};
+	// parallelograms (one thread): widths that divide the axes and ones that do not, a short tail, a single tile,
+	// a width of the whole mid axis (cut along the split axis only)
+	const unsigned int bsizes[][3] = {{23, 4, 5}, {16, 5, 3}, {9, 3, 4}, {41, 3, 3}, {23, 17, 4}, {9, 30, 5}};
+	const unsigned int pkw[][3] = {{1, 3, 3}, {2, 5, 5}, {3, 7, 9}, {2, 8, 6}, {4, 9, 9}, {2, 5, 1000}, {3, 7, 1000}};
 	for (const auto& numLines : bsizes)
 		for (int S=0; S<3; ++S)
-			for (int T=0; T<3; ++T)
+			for (int M=0; M<3; ++M)
 			{
-				if (T==S)
+				if (M==S)
 					continue;
-				for (const auto& p : kw)
-					for (unsigned int threads : {1u, 2u, 3u})
+				for (const auto& p : pkw)
+				{
+					std::ostringstream what;
+					what << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << ", parallelograms along " << "xyz"[S] << " and "
+					     << "xyz"[M] << ", k " << p[0] << ", widths " << p[1] << "x" << p[2];
+					const Engine_BlockedPlan plan = Engine_BlockedPlan::Parallelograms(numLines, S, M, p[1], p[2], p[0]);
+					CHECK(plan.k==p[0], what.str() << ": k " << plan.k);
+					const unsigned int tS = std::max(1u, numLines[S]/std::max(p[1], 2*p[0]+1));
+					const unsigned int tM = std::max(1u, numLines[M]/std::max(p[2], 2*p[0]+1));
+					CHECK(plan.tiles[0]==tS && plan.tiles[1]==tM, what.str() << ": " << plan.tiles[0] << "x" << plan.tiles[1] << " tiles, not " << tS << "x" << tM);
+					CHECK(plan.GetNumThreads()==1 && plan.phases.size()==1, what.str() << ": not one thread in one phase");
+					CheckBlocked(plan, numLines, what.str());
+				}
+			}
+
+	// tiles along two axes: widths that divide the axes and ones that do not, a single tile along one or both
+	const unsigned int tsizes[][3] = {{23, 17, 4}, {16, 9, 3}, {9, 30, 5}, {5, 5, 6}};
+	const unsigned int kww[][3] = {{2, 5, 5}, {3, 7, 9}, {2, 8, 6}, {4, 9, 9}, {2, 5, 30}};
+	for (const auto& numLines : tsizes)
+		for (int S=0; S<3; ++S)
+			for (int M=0; M<3; ++M)
+			{
+				if (M==S)
+					continue;
+				for (const auto& p : kww)
+					for (unsigned int threads : {1u, 2u, 3u, 8u})
 					{
 						std::ostringstream what;
-						what << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << ", split " << "xyz"[S]
-						     << ", threads along " << "xyz"[T] << ", k " << p[0] << ", width " << p[1] << ", " << threads << " threads";
-						Engine_BlockedPlan plan = Engine_BlockedPlan::Trapezoids(numLines, threads, S, T, p[1], p[0]);
+						what << numLines[0] << "x" << numLines[1] << "x" << numLines[2] << ", tiles along " << "xyz"[S] << " and "
+						     << "xyz"[M] << ", k " << p[0] << ", widths " << p[1] << "x" << p[2] << ", " << threads << " threads";
+						const Engine_BlockedPlan plan = Engine_BlockedPlan::Tiles(numLines, threads, S, M, p[1], p[2], p[0]);
 						CHECK(plan.k==p[0], what.str() << ": k " << plan.k);
-						// tiles of at least 2k+1 lines, a short last one folded into the one before
-						const unsigned int tiles = std::max(1u, numLines[S]/std::max(p[1], 2*p[0]+1));
-						CHECK(plan.tiles==tiles, what.str() << ": " << plan.tiles << " tiles, not " << tiles);
+						const unsigned int tS = std::max(1u, numLines[S]/std::max(p[1], 2*p[0]+1));
+						const unsigned int tM = std::max(1u, numLines[M]/std::max(p[2], 2*p[0]+1));
+						CHECK(plan.tiles[0]==tS && plan.tiles[1]==tM, what.str() << ": " << plan.tiles[0] << "x" << plan.tiles[1] << " tiles, not " << tS << "x" << tM);
+						CHECK(plan.GetNumThreads()==threads, what.str() << ": " << plan.GetNumThreads() << " threads in the plan");
+						CHECK(plan.phases.size()<=4, what.str() << ": " << plan.phases.size() << " phases");
 						CheckBlocked(plan, numLines, what.str());
-						plan = Engine_BlockedPlan::Parallelograms(numLines, threads, S, T, p[1], p[0]);
-						CHECK(plan.k==p[0], what.str() << ", parallelograms: k " << plan.k);
-						CHECK(plan.tiles==tiles, what.str() << ", parallelograms: " << plan.tiles << " tiles, not " << tiles);
-						CheckBlocked(plan, numLines, what.str() + ", parallelograms");
 					}
 			}
 

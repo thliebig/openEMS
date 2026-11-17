@@ -78,18 +78,23 @@ public:
 
 	//! Temporal blocking (see IterateTS()): the plans of the candidate tiles, and which runs
 	/*!
-	  If the extensions run on the device and there is no sub-grid: parallelograms along x
+	  If the extensions run on the device and there is no sub-grid: parallelograms
 	  (Engine_BlockedPlan::Parallelograms(): the tiles in order, no wedges, half
 	  the launches of the trapezoids), all of the device on one tile, the stream
 	  order in place of the barriers. The tile has to fit the last-level cache:
-	  of its size (GPU_Backend::CacheBytes(), or OPENEMS_GPU_CACHE in MiB) tiles
-	  of 1/2, 3/4 and all of it, else of 8 to 256 MiB; they and the flat sweep
-	  are tried for OPENEMS_GPU_TRIAL seconds each (default 0.3) at the start,
-	  the fastest is kept. With the fused step (see
+	  of its size (GPU_Backend::CacheBytes(), or OPENEMS_GPU_CACHE in MiB) whole
+	  y-z planes cut along x in 1/2, 3/4 and all of it, and where those hold
+	  fewer than 8 timesteps also square tiles cut along x and y in 1/8, 1/4
+	  and 1/2 of it, which do not shrink with the cross-section (not with a
+	  cylinder, whose hooks need the whole alpha axis y, or a local absorber
+	  normal to y); else of 8 to 256 MiB. They and the flat sweep are tried for
+	  OPENEMS_GPU_TRIAL seconds each (default 0.3) at the start, the fastest is
+	  kept. With the fused step (see
 	  PrepareFused(): the choice for a small cache) the flat sweep is two
 	  candidates, the fused step and the two updates, also without temporal
 	  blocking; a tile or the two updates free its memory. OPENEMS_GPU_TBLOCK=0
-	  switches blocking off, =k:W[,k:W...] runs those tiles, tried against each
+	  switches blocking off, =k:W[,k:W...] runs those tiles (W x W lines along x
+	  and y, whole planes where y cannot be cut), tried against each
 	  other and the flat sweep only with OPENEMS_GPU_TRIAL (Engine_TilesFromEnv(),
 	  as OPENEMS_CPU_TBLOCK).
 	  */

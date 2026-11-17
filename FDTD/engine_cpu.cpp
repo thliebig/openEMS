@@ -452,10 +452,11 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 	}
 	else if (why.empty())
 	{
-		// the tile: the fields, the UPML and ADE state and the runs of its planes in the cache. The timesteps
-		// per block from the whole cache, the width then 3/4 of it as long as it holds them (measured: a tile
-		// that fills the whole cache is much slower, the rest of the working set evicts it; but fewer
-		// timesteps per block cost more than that)
+		// each thread takes its own tiles through the timesteps of a block (Engine_BlockedPlan::Tiles()), so a
+		// tile has the share of a thread in the cache: the fields, the UPML and ADE state and the runs of its
+		// lines (along the fast axis). Square tiles of 2k+1 lines, cores of a full pyramid and the thinnest
+		// wedges, up to 8 timesteps (measured on a Ryzen 7 5800X: 8:17 the fastest from 8 to 200 million cells,
+		// wider tiles or more timesteps slower; a tile that fills the cache is evicted by the rest)
 		size_t runs = 0, state = 0;
 		for (int f=0; f<2; ++f)
 			for (int n=0; n<3; ++n)
@@ -466,10 +467,9 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 		double ext = 0;   // the per-cell state of the extensions (dispersive materials)
 		for (size_t n=0; n<m_Eng_exts.size(); ++n)
 			ext += m_Eng_exts[n]->BoxBytes();
-		const double plane = (double)numLines[m_MidAxis]*numLines[m_FastAxis];
+		const double lines = (double)numLines[m_SplitAxis]*numLines[m_MidAxis];
 		const double fieldBytes = 6*sizeof(FDTD_FLOAT);   // the voltages and currents of a node
-		const double bytes = plane*fieldBytes + (sizeof(float)*state + sizeof(CellModel_Run)*runs + ext)/numLines[m_SplitAxis];
-		// the threads keep their lines of a tile through its timesteps, so each cache holds the part of its cores:
+		const double lineBytes = numLines[m_FastAxis]*fieldBytes + (sizeof(float)*state + sizeof(CellModel_Run)*runs + ext)/lines;
 		// the caches of the fewest the threads span (all at the default threads, all physical cores; with fewer
 		// threads the scheduler may spread them wider, the trials try larger tiles)
 		std::string source;
@@ -485,14 +485,27 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 			source = "OPENEMS_CPU_CACHE";
 		}
 		if (g_settings.GetVerboseLevel()>0)
-			cout << "Engine_CPU: cache " << cache/1048576.0 << " MiB, " << source << endl;
-		const unsigned int full = (unsigned int)(cache/bytes);
-		k = std::min(8u, (full>0) ? (full-1)/2 : 0);
-		W = std::max(2*k+1, (unsigned int)(0.75*full));
+			cout << "Engine_CPU: cache " << cache/1048576.0 << " MiB, " << source << "; the model " << lines*lineBytes/1048576.0 << " MiB" << endl;
+		const double share = (double)cache/std::max(1u, numThreads);
+		k = 8;
+		// 5 % over the share still pays (measured at 200 million cells: dispersive 7:15 at 1.03x the share
+		// 1073 MC/s, 6:13 886; the PML 8:17 at 1.09x 1305, 7:15 1393)
+		while ((k>=2) && ((2*k+1)*(2*k+1)*lineBytes > 1.05*share))
+			--k;
 		if (k<2)
-			why = "a plane is too large for the cache";
-		else if (numLines[m_SplitAxis] < 2*W)
+			why = "the smallest tile is too large for a thread's share of the cache";
+		else if (lines*lineBytes < 1.25*cache)   // measured: blocked at 1.3x the cache 15-20% faster, at 1.1x and below slower
 			why = "the model fits the cache";
+		else
+		{
+			// two tiles per thread at least: smaller ones on a narrow model (measured, 32x32x2000 cells on 8 threads:
+			// 3:7 in 4x4 tiles 1521 MC/s, 4:9 in 3x3 1464, the flat sweep 941)
+			while ((k>=2) && (Engine_BlockedPlan::TileCount(numLines[m_SplitAxis], 2*k+1)*Engine_BlockedPlan::TileCount(numLines[m_MidAxis], 2*k+1) < 2*numThreads))
+				--k;
+			if (k<2)
+				why = "too few tiles for the threads";
+		}
+		W = 2*k+1;
 	}
 	if (!why.empty())
 	{
@@ -506,37 +519,32 @@ bool Engine_CPU::BuildBlockedPlans(unsigned int numThreads, Engine_BlockedChoice
 	auto add = [&](unsigned int kmax, unsigned int width) {
 		std::vector<Engine_BlockedPlan> plans;
 		for (unsigned int kk=kmax; kk>=2; --kk)
-			plans.push_back(Engine_BlockedPlan::Trapezoids(numLines, numThreads, m_SplitAxis, m_MidAxis, width, kk));
+			plans.push_back(Engine_BlockedPlan::Tiles(numLines, numThreads, m_SplitAxis, m_MidAxis, width, width, kk));
 		choice.candidates.push_back(plans);
 	};
 	// the seconds per trial: OPENEMS_CPU_TRIAL, default 0.5 with the automatic tiles, none with given ones
 	choice.trialSeconds = Engine_NumberFromEnv("OPENEMS_CPU_TRIAL", explicitTile ? 0 : 0.5, true);
 	if (!explicitTile)
 	{
-		// the tile from the estimate of the cache, and as candidates tiles 4x and 2x, half and a quarter as wide:
-		// the estimate is off by a cache shared or split other than it says, a working set larger than counted.
-		// The thread pool searches them from the estimate (Engine_BlockedChoice; measured on one CPU: with the
-		// cache assumed 4x too large or too small the search ends at the speed of the right tile)
+		// the tile from the estimate, and as candidates the tiles of up to 2 timesteps more and fewer (up to
+		// 10, at least 2): the estimate is off by a cache shared or split other than it says, a working set
+		// larger than counted. The thread pool searches them from the estimate as long as they get faster
+		// (Engine_BlockedChoice)
 		tiles.clear();
-		const unsigned int Wmax = numLines[m_SplitAxis]/2;   // two tiles at least
-		for (unsigned int m=4; m>=2; m/=2)
-			if (m*W<=Wmax)
-				tiles.push_back(std::make_pair(std::min(8u, (m*W-1)/2), m*W));
-		choice.start = tiles.size();
-		tiles.push_back(std::make_pair(k, W));
-		for (unsigned int d=2; d<=4; d*=2)
+		for (unsigned int kk=std::min(k+2, 10u); kk+2>=k && kk>=2; --kk)
 		{
-			const unsigned int Wd = W/d, kd = std::min(k, (Wd>0) ? (Wd-1)/2 : 0);
-			if ((kd>=2) && (Wd<tiles.back().second))
-				tiles.push_back(std::make_pair(kd, Wd));
+			if (kk==k)
+				choice.start = tiles.size();
+			tiles.push_back(std::make_pair(kk, 2*kk+1));
 		}
 	}
 	for (size_t t=0; t<tiles.size(); ++t)
 		add(tiles[t].first, tiles[t].second);
 	if (g_settings.GetVerboseLevel()>0)
 	{
+		const Engine_BlockedPlan& plan = choice.candidates[choice.start][0];
 		cout << "Engine_CPU: temporal blocking, up to " << k << " timesteps per block, tiles of " << W << " lines along "
-		     << (char)('x'+m_SplitAxis) << ", " << choice.candidates[choice.start][0].phases.size() << " phases" << endl;
+		     << (char)('x'+m_SplitAxis) << " and " << (char)('x'+m_MidAxis) << ", " << plan.tiles[0] << "x" << plan.tiles[1] << " tiles" << endl;
 		if ((choice.trialSeconds>0) && (tiles.size()>1))
 		{
 			cout << "Engine_CPU: tiles to try (timesteps:lines)";

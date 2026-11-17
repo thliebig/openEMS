@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -28,6 +29,7 @@
 #include "engine_subgrid.h"
 #include "extensions/engine_extension.h"
 #include "extensions/engine_ext_absorbing_bc.h"
+#include "extensions/engine_ext_cylinder.h"
 #include "extensions/operator_extension.h"
 
 using std::cout;
@@ -145,29 +147,46 @@ void Engine_GPU::PrepareBlocking()
 	m_Trial = -1;
 	m_FlatSplit = false;
 	// as Engine_CPU: tiles given (no trials then, unless asked for), or the cache size to choose them from
-	std::vector< std::pair<unsigned int, unsigned int> > tiles;   // (k, W)
-	const bool explicitTile = Engine_TilesFromEnv("OPENEMS_GPU_TBLOCK", tiles);
-	m_TrialSeconds = Engine_NumberFromEnv("OPENEMS_GPU_TRIAL", tiles.empty() ? 0.3 : 0, true);
+	std::vector< std::pair<unsigned int, unsigned int> > given;   // (k, W)
+	const bool explicitTile = Engine_TilesFromEnv("OPENEMS_GPU_TBLOCK", given);
+	m_TrialSeconds = Engine_NumberFromEnv("OPENEMS_GPU_TRIAL", given.empty() ? 0.3 : 0, true);
+	// tiles of whole planes, cut along x (wM the lines of y), and tiles cut along x and y as well, for planes too large for
+	// the cache: those do not grow with the cross-section. Not along y with a cylinder (its hooks need the whole alpha
+	// axis, y; cutting z, the fast axis, instead was slower than whole planes, measured at 100 and 200 million cells)
+	// or a local absorber normal to y
+	const int S = 0, M = 1;
+	bool cutM = true;
+	for (size_t n=0; n<m_Eng_exts.size(); ++n)
+		if (dynamic_cast<const Engine_Ext_Cylinder*>(m_Eng_exts[n]))
+			cutM = false;
+	struct Tile {unsigned int k, wS, wM;};
+	std::vector<Tile> tiles;
 	std::string why;
-	if (explicitTile && tiles.empty())
+	if (explicitTile && given.empty())
 		why = "OPENEMS_GPU_TBLOCK=0";
 	else if (m_SubGrid || m_ParentBackend)
 		why = "a cylindrical multi-grid";
-	// a local absorber needs its sheet and the next line along its normal in one box: the boxes split x
+	// a local absorber needs its sheet and the next line along its normal in one box
 	// (Engine_CPU blocks along its normal instead, Engine_CPU::ChooseLayout())
 	for (size_t n=0; n<m_Eng_exts.size() && why.empty(); ++n)
-	{
-		const Engine_Ext_Absorbing_BC* abc = dynamic_cast<const Engine_Ext_Absorbing_BC*>(m_Eng_exts[n]);
-		if (abc && (abc->GetNormalAxis()==0))
-			why = "a local absorber normal to x";
-	}
+		if (const Engine_Ext_Absorbing_BC* abc = dynamic_cast<const Engine_Ext_Absorbing_BC*>(m_Eng_exts[n]))
+		{
+			if (abc->GetNormalAxis()==S)
+				why = "a local absorber normal to x";
+			else if (abc->GetNormalAxis()==M)
+				cutM = false;
+		}
+	if (why.empty())
+		for (const std::pair<unsigned int, unsigned int>& t : given)
+			tiles.push_back(Tile{t.first, t.second, cutM ? t.second : numLines[M]});
 
 	std::string skipFused;   // why the fused step is not worth trying
 	if (why.empty() && !explicitTile)
 	{
-		// the tile: what the main updates read of its planes (GPU_CellModel::NodeBytes()) in the last-level cache. Of its
-		// size, if the backend tells it (or OPENEMS_GPU_CACHE): tiles of 1/2, 3/4 and all of it; else of 8 to
-		// 256 MiB. The trials keep the fastest
+		// the tile: what the main updates read of its lines (GPU_CellModel::NodeBytes()) in the last-level cache. Of
+		// its size, if the backend tells it (or OPENEMS_GPU_CACHE): whole planes in 1/2, 3/4 and all of it, square
+		// tiles in 1/8, 1/4 and 1/2 (they drift along two axes, measured: smaller ones faster); else of 8 to 256 MiB.
+		// The trials keep the fastest
 		std::string source;
 		double cache = (double)m_Backend->CacheBytes(source);
 		if (const double mib = Engine_NumberFromEnv("OPENEMS_GPU_CACHE", 0, false))
@@ -175,12 +194,18 @@ void Engine_GPU::PrepareBlocking()
 			cache = mib*1048576.0;
 			source = "OPENEMS_GPU_CACHE";
 		}
-		std::vector<double> budgets;
+		std::vector<double> planeBudgets, squareBudgets;
 		if (cache>0)
-			budgets = {0.5*cache, 0.75*cache, cache};
+		{
+			planeBudgets = {0.5*cache, 0.75*cache, cache};
+			squareBudgets = {0.125*cache, 0.25*cache, 0.5*cache};
+		}
 		else
 			for (double mib=8; mib<=256; mib*=2)
-				budgets.push_back(mib*1048576.0);
+			{
+				planeBudgets.push_back(mib*1048576.0);
+				squareBudgets.push_back(mib*1048576.0/4);
+			}
 		if (g_settings.GetVerboseLevel()>0)
 		{
 			if (cache>0)
@@ -188,19 +213,38 @@ void Engine_GPU::PrepareBlocking()
 			else
 				cout << "Engine_GPU: last-level cache unknown, tiles for 8 to 256 MiB" << endl;
 		}
-		const double plane = (double)numLines[1]*numLines[2]*m_NodeBytes;
-		for (double bytes : budgets)
+		const double line = (double)numLines[2]*m_NodeBytes;   // along z, which every tile spans
+		auto add = [&](std::vector<Tile>& list, unsigned int wS, unsigned int wM) {
+			const unsigned int k = std::min(8u, (std::min(wS, wM)>0) ? (std::min(wS, wM)-1)/2 : 0);
+			const unsigned int count = Engine_BlockedPlan::TileCount(numLines[S], wS)*Engine_BlockedPlan::TileCount(numLines[M], wM);
+			if ((k>=2) && (count>=2) && (list.empty() || (list.back().wS!=wS)))
+				list.push_back(Tile{k, wS, wM});
+		};
+		std::vector<Tile> planes, squares;
+		for (double bytes : planeBudgets)
+			add(planes, (unsigned int)(bytes/(line*numLines[M])), numLines[M]);
+		// squares only where whole planes hold fewer than 8 timesteps: else those are as fast or faster (measured)
+		if (cutM && (planes.empty() || (planes.back().k<8)))
+			for (double bytes : squareBudgets)
+			{
+				const unsigned int w = (unsigned int)std::sqrt(bytes/line);
+				if (w<numLines[M])
+					add(squares, w, w);
+			}
+		// the first is the start without trials: the middle square if any, else the smallest plane
+		if (!squares.empty())
 		{
-			const unsigned int W = (unsigned int)(bytes/plane);
-			const unsigned int k = std::min(8u, (W>0) ? (W-1)/2 : 0);
-			if ((k>=2) && (2*W<=numLines[0]) && (tiles.empty() || (tiles.back().second!=W)))
-				tiles.push_back(std::make_pair(k, W));
+			const size_t mid = squares.size()/2;
+			tiles.push_back(squares[mid]);
+			squares.erase(squares.begin()+mid);
 		}
+		tiles.insert(tiles.end(), squares.begin(), squares.end());
+		tiles.insert(tiles.end(), planes.begin(), planes.end());
 		if (tiles.empty())
-			why = "the model fits the cache, or a plane is too large for it";
+			why = "the model fits the cache, or the smallest tile is too large for it";
 		// a tile of the full depth streams the fields once per 8 timesteps, the fused step once per timestep:
 		// with the cache known to hold one, the fused step cannot win, so neither its memory nor its trial
-		else if ((cache>0) && (tiles.back().first>=8))
+		else if ((cache>0) && std::any_of(tiles.begin(), tiles.end(), [](const Tile& t) {return t.k>=8;}))
 			skipFused = "the cache holds tiles of 8 timesteps";
 	}
 	PrepareFused(skipFused);
@@ -218,18 +262,22 @@ void Engine_GPU::PrepareBlocking()
 		}
 		return;
 	}
-	for (const std::pair<unsigned int, unsigned int>& t : tiles)
+	for (const Tile& t : tiles)
 	{
 		std::vector<Engine_BlockedPlan> plans;
-		for (unsigned int k=t.first; k>=2; --k)
-			plans.push_back(Engine_BlockedPlan::Parallelograms(numLines, 1, 0, 1, t.second, k));
+		for (unsigned int k=t.k; k>=2; --k)
+			plans.push_back(Engine_BlockedPlan::Parallelograms(numLines, S, M, t.wS, t.wM, k));
 		m_BlockCandidates.push_back(plans);
 	}
 	if (g_settings.GetVerboseLevel()>0)
 	{
-		cout << "Engine_GPU: temporal blocking, tiles to try (timesteps:lines)";
+		cout << "Engine_GPU: temporal blocking along " << (char)('x'+S) << " and " << (char)('x'+M) << ", tiles to try (timesteps:lines)";
 		for (size_t c=0; c<tiles.size(); ++c)
-			cout << " " << c+1 << ") " << tiles[c].first << ":" << tiles[c].second << " (" << m_BlockCandidates[c].front().tiles << " tiles)";
+		{
+			const Engine_BlockedPlan& plan = m_BlockCandidates[c].front();
+			cout << " " << c+1 << ") " << tiles[c].k << ":" << tiles[c].wS << "x" << std::min(tiles[c].wM, numLines[M]) << " ("
+			     << plan.tiles[0] << "x" << plan.tiles[1] << " tiles)";
+		}
 		cout << (m_TrialSeconds>0 ? (m_FlatTrial ? ", the fused step and the two updates" : ", and the flat sweep") : "") << endl;
 	}
 	m_Block = 0;

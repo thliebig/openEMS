@@ -38,10 +38,11 @@
      backend computes the coefficients in float per node, as a device)
 
    gpu-reference-blocked, gpu-blocked: temporal blocking forced
-   (OPENEMS_GPU_TBLOCK=2:5, the flat runs with 0): bit-identical to the flat
-   sweep; blocked across tile borders (more than one tile along x) in at least
-   one case, absorbers among them (not with a multi-grid or an extension
-   without box hooks on the device)
+   (OPENEMS_GPU_TBLOCK=2:5, tiles of 5 x 5 lines, the flat runs with 0):
+   bit-identical to the flat sweep; blocked across tile borders in at least
+   one case, absorbers among them, and in one at least along both axes it
+   tiles (not with a multi-grid or an extension without box hooks on the
+   device)
      absorber_x: a local absorber normal to x next to a tile border, which
        the GPU engine does not block (its tiles split x)
 
@@ -70,7 +71,8 @@
        timesteps per block, of 7 lines and 3) and switched between those and
        the flat sweep on every call at the start (OPENEMS_CPU_TRIAL):
        bit-identical to the flat sweep
-     blocked in at least one case (the multi-grid cases run the flat sweep)
+     blocked in at least one case (the multi-grid cases run the flat sweep),
+       in one at least across tile borders along both axes it tiles
 
    multithreaded (cylindrical and multi-grid cases)
      bit-identical to basic
@@ -734,7 +736,9 @@ if only:
 
 blocked_cases = []
 gpu_blocked_cases = []
-gpu_tiled_cases = []   # blocked across tile borders: more than one tile along x
+gpu_tiled_cases = []   # blocked across tile borders: more than one tile
+gpu_tiled2_cases = []   # blocked across tile borders along both axes the GPU engine tiles
+cpu_tiled_cases = []   # blocked across tile borders along both axes the CPU engine tiles
 gpu_fused_cases = []   # the gpu run with the fused step
 for name, case in cases:
     print(f'Testing case: {name}')
@@ -796,11 +800,13 @@ for name, case in cases:
                 f'FAIL [{name}]: the GPU engine blocked with a local absorber normal to x'
         if 'Engine_GPU: temporal blocking' in logs['gpu-reference-blocked']:
             gpu_blocked_cases.append(name)
-            tiles = re.search(r'Engine_GPU: temporal blocking, tiles to try \(timesteps:lines\) 1\) \d+:\d+ \((\d+) tiles\)',
+            tiles = re.search(r'Engine_GPU: temporal blocking along \w and \w, tiles to try \(timesteps:lines\) 1\) \d+:\d+x\d+ \((\d+)x(\d+) tiles\)',
                               logs['gpu-reference-blocked'])
             assert tiles, f'FAIL [{name}]: the blocked GPU engine did not report its tiles'
-            if int(tiles.group(1)) > 1:
+            if int(tiles.group(1))*int(tiles.group(2)) > 1:
                 gpu_tiled_cases.append(name)
+            if int(tiles.group(1)) > 1 and int(tiles.group(2)) > 1:
+                gpu_tiled2_cases.append(name)
             diff, _, _, _ = compare_outputs(paths['gpu-reference'], paths['gpu-reference-blocked'])
             assert not diff, f'FAIL [{name}]: the blocked reference backend differs from its flat sweep in: {", ".join(n for n, _ in diff)}'
             print('  reference backend blocked: bit-identical to its flat sweep')
@@ -813,6 +819,11 @@ for name, case in cases:
             ', '.join(f'{n} ({d:.1e})' for n, d in diff)
         if 'Engine_CPU: temporal blocking' in logs['cpu-blocked']:
             blocked_cases.append(name)
+            tiles = re.search(r'Engine_CPU: temporal blocking, .* tiles of \d+ lines along \w and \w, (\d+)x(\d+) tiles',
+                              logs['cpu-blocked'])
+            assert tiles, f'FAIL [{name}]: the blocked CPU engine did not report its tiles'
+            if int(tiles.group(1)) > 1 and int(tiles.group(2)) > 1:
+                cpu_tiled_cases.append(name)
             diff, _, _, _ = compare_outputs(paths['cpu'], paths['cpu-blocked'])
             assert not diff, f'FAIL [{name}]: the blocked CPU engine differs from its flat sweep in: {", ".join(n for n, _ in diff)}'
             print('  CPU engine blocked: bit-identical to its flat sweep')
@@ -876,10 +887,14 @@ for name, case in cases:
 if not only or 'cpu' in ENGINE_SETS[only]:
     assert blocked_cases, 'FAIL: the CPU engine blocked in no case'
     print(f'CPU engine blocked in {len(blocked_cases)} cases: {", ".join(blocked_cases)}')
+    print(f'  across tile borders along both axes in {len(cpu_tiled_cases)}: {", ".join(cpu_tiled_cases)}')
+    assert cpu_tiled_cases, 'FAIL: the CPU engine blocked in no case across tile borders along both axes'
 if not only or 'gpu-reference' in ENGINE_SETS[only]:
     assert gpu_blocked_cases, 'FAIL: the GPU engine blocked in no case'
     print(f'GPU engine blocked in {len(gpu_blocked_cases)} cases: {", ".join(gpu_blocked_cases)}')
     print(f'  across tile borders in {len(gpu_tiled_cases)}: {", ".join(gpu_tiled_cases)}')
+    print(f'  across tile borders along both axes in {len(gpu_tiled2_cases)}: {", ".join(gpu_tiled2_cases)}')
+    assert gpu_tiled2_cases, 'FAIL: the GPU engine blocked in no case across tile borders along both axes'
     assert 'absorbers' in gpu_tiled_cases, 'FAIL: the GPU engine did not block the absorbers case across tile borders'
 if gpu_fused_cases:
     print(f'GPU engine fused in {len(gpu_fused_cases)} cases: {", ".join(gpu_fused_cases)}')

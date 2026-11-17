@@ -18,6 +18,7 @@
 #ifndef ENGINE_PLAN_H
 #define ENGINE_PLAN_H
 
+#include <algorithm>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -85,32 +86,42 @@ struct Engine_Step
 struct Engine_BlockedPlan
 {
 	unsigned int k = 0;   //!< the timesteps of a block
-	unsigned int tiles = 0;   //!< the tiles along the split axis
+	unsigned int tiles[2] = {0, 0};   //!< the tiles along the split and the mid axis
 	std::vector< std::vector< std::vector<Engine_Step> > > phases;   //!< [phase][thread] its steps
 
 	unsigned int GetNumThreads() const {return phases.empty() ? 0 : phases[0].size();}
+	//! The tiles of \a width lines along an axis of \a N lines: a short last tile is folded into the one before
+	static unsigned int TileCount(unsigned int N, unsigned int width) {return (std::max)(1u, N/(std::max)(1u, width));}
 
-	//! Trapezoids of \a width lines along \a splitAxis, all threads on one tile, the tile split along \a threadAxis
+	//! Parallelograms of \a widthS lines along \a splitAxis by \a widthM along \a midAxis, one tile after the other, for a single thread (a GPU)
 	/*!
-	  The cores (the tiles, shrinking by a line per timestep on each side that
-	  borders another tile) first, then the wedges between them, which grow
-	  into the gaps; each a phase per half step. Needs width >= 2k+1; a short
-	  last tile is folded into the one before.
+	  Along each axis a tile moves down by a line per timestep: V_t on
+	  [a-t, b-t), I_t on [a-t-1, b-t-1), so over a block its data drift by k
+	  lines. It reads only lines of the tiles before it along either axis,
+	  which those have finished up to there (and not further), so
+	  no wedges are needed, but the tiles run in order, along the mid axis
+	  first, each through all k timesteps; one phase. The first tile of an axis
+	  starts at line 0 at every step, the last reaches its end. Needs widths
+	  >= 2k+1; a short last tile is folded into the one before; a width of
+	  the whole axis does not cut it.
 	  */
-	static Engine_BlockedPlan Trapezoids(const unsigned int numLines[3], unsigned int numThreads, int splitAxis, int threadAxis,
-	                                     unsigned int width, unsigned int k);
-	//! Parallelograms of \a width lines along \a splitAxis, one tile after the other, all threads on one tile
+	static Engine_BlockedPlan Parallelograms(const unsigned int numLines[3], int splitAxis, int midAxis,
+	                                         unsigned int widthS, unsigned int widthM, unsigned int k);
+	//! Trapezoids along two axes, \a widthS lines along \a splitAxis by \a widthM along \a midAxis, each tile on one thread
 	/*!
-	  A tile moves down by a line per half step: V_t on [a-2t, b-2t), I_t on
-	  [a-2t-1, b-2t-1). It reads only lines of the tile before it, which that
-	  one has finished up to there, so no wedges are needed, but the tiles run
-	  in order: a phase per half step of a tile, half the phases of
-	  Trapezoids(). The first tile starts at line 0 at every step, the last
-	  reaches the end of the axis. Needs width >= 2k+1; a short last tile is
-	  folded into the one before.
+	  Per axis the trapezoids of a tile (the cores, shrinking by a line per
+	  timestep on each side that borders another tile) and the wedges between
+	  them, which grow into the gaps; their products in four phases:
+	  the cores, the wedges along the split axis (cores along the mid axis), the
+	  wedges along the mid axis, the corners where both meet. The pieces of a
+	  phase do not touch each other, so a thread takes a piece through all k
+	  timesteps on its own: four barriers per block, and the tile size no longer
+	  grows with the cross-section. The pieces of a phase are dealt to the
+	  threads in order, about the same number of cells each. Needs widths
+	  >= 2k+1; a short last tile is folded into the one before.
 	  */
-	static Engine_BlockedPlan Parallelograms(const unsigned int numLines[3], unsigned int numThreads, int splitAxis, int threadAxis,
-	                                         unsigned int width, unsigned int k);
+	static Engine_BlockedPlan Tiles(const unsigned int numLines[3], unsigned int numThreads, int splitAxis, int midAxis,
+	                                unsigned int widthS, unsigned int widthM, unsigned int k);
 };
 
 //! The blocked plans an engine offers its thread pool (Engine::BuildBlockedPlans())
