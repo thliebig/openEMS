@@ -144,6 +144,9 @@ public:
 
 	//! The axis along which the cells form the fewest runs: the fast axis the model is most compact on
 	/*!
+	  Counted on planes normal to x and y, in a large model on a sample of
+	  them (one in 16, at least 32 per axis); within 2 % the axis with more
+	  lines wins, else z.
 	  The run statistics only: an engine applies its own constraints on top
 	  (Engine_CPU: the box plans need a closed cylinder's alpha or the local
 	  absorbers' normal as the fast axis).

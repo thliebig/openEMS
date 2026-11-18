@@ -135,7 +135,6 @@ void Engine_CPU::Reset()
 
 void Engine_CPU::ChooseLayout()
 {
-	m_FastAxis = m_Model->RecommendFastAxis();
 	// the box plans: a closed alpha mesh couples the first and the last alpha plane (Engine_Ext_Cylinder),
 	// a local absorber its sheet and the next line along its normal within a half step; as the fast
 	// axis, which every box spans, the blocked plans can run them (BuildBlockedPlans())
@@ -153,19 +152,22 @@ void Engine_CPU::ChooseLayout()
 		else if (abc && (normal!=abc->GetNormalAxis()))
 			normal = 3;   // several: no blocking
 	}
+	int fast = -1;
 	if (alpha)
-		m_FastAxis = 1;
+		fast = 1;
 	else if ((normal>=0) && (normal<3))   // the cylinder's alpha first: its box hooks need it
-		m_FastAxis = normal;
+		fast = normal;
 	const char* env = std::getenv("OPENEMS_CPU_FAST_AXIS");
 	if (env && env[0])
 	{
 		const char c = env[0];
 		if ((c>='x') && (c<='z'))
-			m_FastAxis = c-'x';
+			fast = c-'x';
 		else
 			throw std::invalid_argument("Engine_CPU: OPENEMS_CPU_FAST_AXIS must be x, y or z");
 	}
+	// else the model's: a scan of its cells, only when the axis is not given
+	m_FastAxis = (fast>=0) ? fast : m_Model->RecommendFastAxis();
 
 	// the threads split the slow axis with more lines
 	const int a1 = (m_FastAxis+1)%3, a2 = (m_FastAxis+2)%3;

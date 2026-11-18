@@ -602,52 +602,77 @@ CellModel::CellKey CellModel::GetCellKey(int f, int n, const unsigned int pos[3]
 
 int CellModel::RecommendFastAxis() const
 {
-	// the number of runs along each axis, over all components of both fields
-	double runs[3] = {0, 0, 0};
-	const size_t N0 = numLines[0], N1 = numLines[1], N2 = numLines[2];
-	std::vector<uint32_t> keys(N0*N1*N2);   // 4 bytes per node, the peak of the setup
-	// the threads fill and count slices of x lines
-	const unsigned int numThreads = AvailableThreads();
-	std::vector<double> part(3*numThreads);
-	for (int f=0; f<2; ++f)
-		for (int n=0; n<3; ++n)
+	// the runs along each axis, over all components of both fields, counted on planes: along y and z on planes
+	// normal to x, along x and z on planes normal to y, every line walked along z, the operator's order in memory.
+	// A large model is sampled, one plane in 16 per axis (at least 32), at a random position within its 16 so that
+	// a periodic structure does not line up with the sample; a run starts at the first line or where the key changes
+	const unsigned int N[3] = {numLines[0], numLines[1], numLines[2]};
+	unsigned int K[2];
+	std::vector< std::pair<int, unsigned int> > planes;   // (normal, line)
+	for (int a=0; a<2; ++a)
+	{
+		K[a] = std::min(N[a], std::max(32u, (N[a]+15)/16));
+		uint32_t r = 2463534242u + a;   // the same planes in every run
+		for (unsigned int k=0; k<K[a]; ++k)
 		{
-			ParallelFor(N0, numThreads, [&](unsigned int, size_t xa, size_t xb) {
-				unsigned int pos[3];
-				for (pos[0]=(unsigned int)xa; pos[0]<xb; ++pos[0])
-					for (pos[1]=0; pos[1]<N1; ++pos[1])
-						for (pos[2]=0; pos[2]<N2; ++pos[2])
-							keys[(pos[0]*N1 + pos[1])*N2 + pos[2]] = GetCellKey(f, n, pos).Hash();
-			});
-			// a run starts at the first line of the axis or where the key changes
-			std::fill(part.begin(), part.end(), 0.0);
-			ParallelFor(N0, numThreads, [&](unsigned int t, size_t xa, size_t xb) {
-				for (size_t x=xa; x<xb; ++x)
-					for (size_t y=0; y<N1; ++y)
-					{
-						const uint32_t* k = &keys[(x*N1 + y)*N2];
-						for (size_t z=0; z<N2; ++z)
-						{
-							part[3*t+0] += (x==0) || (k[z]!=k[z-N1*N2]);
-							part[3*t+1] += (y==0) || (k[z]!=k[z-N2]);
-							part[3*t+2] += (z==0) || (k[z]!=k[z-1]);
-						}
-					}
-			});
-			for (size_t t=0; t<numThreads; ++t)
-				for (int a=0; a<3; ++a)
-					runs[a] += part[3*t+a];
+			const unsigned int lo = (unsigned int)((uint64_t)N[a]*k/K[a]);
+			const unsigned int hi = (unsigned int)((uint64_t)N[a]*(k+1)/K[a]);
+			r ^= r<<13;
+			r ^= r>>17;
+			r ^= r<<5;
+			planes.push_back(std::make_pair(a, lo + r%(hi-lo)));
 		}
+	}
+	const unsigned int numThreads = AvailableThreads();
+	std::vector<uint64_t> part(6*numThreads, 0);   // per thread runs and cells per axis
+	std::vector< std::vector<uint32_t> > last(numThreads, std::vector<uint32_t>(N[2]));
+	ParallelForEach(6*planes.size(), numThreads, [&](unsigned int t, size_t i) {
+		const int f = (int)(i%6)/3, n = (int)(i%6)%3;
+		const int a = planes[i/6].first, b = 1-a;   // the lines across the plane: along b and z
+		uint32_t* prev = last[t].data();   // the keys of the previous line along b
+		uint64_t runsB = 0, runsZ = 0;
+		unsigned int pos[3];
+		pos[a] = planes[i/6].second;
+		for (pos[b]=0; pos[b]<N[b]; ++pos[b])
+		{
+			uint32_t before = 0;
+			for (pos[2]=0; pos[2]<N[2]; ++pos[2])
+			{
+				const uint32_t k = GetCellKey(f, n, pos).Hash();
+				runsB += (pos[b]==0) || (k!=prev[pos[2]]);
+				runsZ += (pos[2]==0) || (k!=before);
+				prev[pos[2]] = before = k;
+			}
+		}
+		uint64_t* p = &part[6*t];
+		p[b] += runsB;
+		p[2] += runsZ;
+		p[3+b] += (uint64_t)N[b]*N[2];
+		p[5] += (uint64_t)N[b]*N[2];
+	});
+	double len[3] = {0, 0, 0};   // the mean run length
+	for (int a=0; a<3; ++a)
+	{
+		uint64_t runs = 0, cells = 0;
+		for (size_t t=0; t<numThreads; ++t)
+		{
+			runs += part[6*t+a];
+			cells += part[6*t+3+a];
+		}
+		len[a] = runs ? (double)cells/runs : 0;
+	}
 
+	// the longest runs; within 2 % (the sample's error, no difference in speed) the axis with more lines, else z
 	int fast = 2;
 	for (int a=0; a<2; ++a)
-		if ((runs[a]<runs[fast]) || ((runs[a]==runs[fast]) && (numLines[a]>numLines[fast])))
+		if ((len[a]>1.02*len[fast]) || ((len[a]>=len[fast]/1.02) && (N[a]>N[fast])))
 			fast = a;
 	if (g_settings.GetVerboseLevel()>0)
 	{
-		const double cells = 6.0*N0*N1*N2;
-		cout << "CellModel: mean run length along x, y, z: " << cells/runs[0] << ", " << cells/runs[1]
-		     << ", " << cells/runs[2] << "; the fewest runs along " << (char)('x'+fast) << endl;
+		cout << "CellModel: mean run length along x, y, z: " << len[0] << ", " << len[1] << ", " << len[2];
+		if ((K[0]<N[0]) || (K[1]<N[1]))
+			cout << " (on " << K[0] << " of " << N[0] << " planes normal to x, " << K[1] << " of " << N[1] << " normal to y)";
+		cout << "; the fewest runs along " << (char)('x'+fast) << endl;
 	}
 	return fast;
 }
