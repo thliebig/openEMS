@@ -93,7 +93,8 @@ public:
 	  and 1/2 of it, which do not shrink with the cross-section (not with a
 	  cylinder, whose hooks need the whole alpha axis y, or a local absorber
 	  normal to y); else of 8 to 256 MiB. They and the flat sweep are tried for
-	  OPENEMS_GPU_TRIAL seconds each (default 0.3) at the start, the fastest is
+	  OPENEMS_GPU_TRIAL seconds each (default 0.3) at the start, in two halves
+	  (in order, then in reverse: the device speed drifts), the fastest is
 	  kept. With the fused step (see
 	  PrepareFused(): the choice for a small cache) the flat sweep is two
 	  candidates, the fused step and the two updates, also without temporal
@@ -229,7 +230,11 @@ protected:
 	double m_TrialTime = 0;        //!< the seconds of the running trial so far, inside IterateTS() only
 	double m_TrialMark = -1;       //!< when the clock was started, -1 paused
 	bool m_TrialWarm = false;      //!< the first steps of the running trial are still to come (not timed)
+	bool m_TrialWarmed = false;    //!< the device warmed up for a trial's time before the first candidate
 	std::vector<double> m_TrialSpeed;
+	int m_TrialSlot = 0;                  //!< the position in the order of the trials, see TrialProgress()
+	std::vector<double> m_TrialStepSum;   //!< the timed steps of each candidate, over both its trials
+	std::vector<double> m_TrialTimeSum;   //!< and their seconds
 };
 
 #endif // ENGINE_GPU_H
