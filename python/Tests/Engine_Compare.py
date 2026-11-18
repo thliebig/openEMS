@@ -970,6 +970,9 @@ for name, case in cases:
             f'FAIL [{name}]: {engine} did not split the grid into {parts} parts'
         assert 'Engine_GPU: no temporal blocking: a grid split over several devices' in logs[engine], \
             f'FAIL [{name}]: {engine} did not run the flat sweep'
+        if engine.startswith('gpu-split') and backend in FUSED_BACKENDS:
+            assert re.search(r'Engine_GPU: tried the fused step \d+ MC/s, the two updates \d+ MC/s', logs[engine]), \
+                f'FAIL [{name}]: {engine} did not try the fused step and the two updates'
         diff, _, _, _ = compare_outputs(paths['gpu-reference'], paths[engine])
         assert not diff, f'FAIL [{name}]: {engine} ({devices}, cuts {cuts or "equal"}) differs from the reference backend in: ' + \
             ', '.join(f'{n} ({d:.1e})' for n, d in diff)

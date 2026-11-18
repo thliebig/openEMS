@@ -294,6 +294,7 @@ bool GPU_Backend_HIP::PrepareFused(const std::vector<uint64_t>& late)
 	// leave some memory free (256 MiB or 5 %), for what is allocated later (energy sums, snapshots)
 	const size_t need = (2*3*d->numCells + d->cm_state_size[0])*sizeof(float) + (late.empty() ? 0 : d->numCells/8 + 8*late.size());
 	size_t free_bytes = 0, total_bytes = 0;
+	d->ctx->MakeCurrent();   // the memory of this part's device, on a split grid
 	if ((hipMemGetInfo(&free_bytes, &total_bytes)==hipSuccess)
 	    && (free_bytes < need + std::max<size_t>((size_t)256 << 20, total_bytes/20)))
 	{

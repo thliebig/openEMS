@@ -38,9 +38,10 @@ class Engine_Extension;
   (GPU_Extension::HaloReads()): the results are those of one backend.
 
   Engine_GPU runs it like one backend, through GPU_CreateExtension() and the
-  methods here; it has no temporal blocking, no fused step, no snapshots and
-  no device sums of the dumps (the dumps read the host mirror), and no
-  cylindrical multi-grid. Any number of parts may share a device, for tests.
+  methods here; it has the fused step of the parts (PrepareFused()), but no
+  temporal blocking, no snapshots and no device sums of the dumps (the dumps
+  read the host mirror), and no cylindrical multi-grid. Any number of parts
+  may share a device, for tests.
   */
 class GPU_Backend_Split : public GPU_Backend
 {
@@ -64,6 +65,14 @@ public:
 	virtual void UpdateVoltages(const Engine_Box& box);
 	virtual void UpdateCurrents(const Engine_Box& box);
 
+	//! The fused step of every part, \a late in nodes of the whole grid; the currents of the last line a part owns are late too (except on the last part): they read the halo line above
+	virtual bool PrepareFused(const std::vector<uint64_t>& late);
+	virtual void ReleaseFused();
+	//! The fused step of every part, after the copies of the halo lines of the currents below
+	virtual void FusedUpdate();
+	//! The late currents of every part, after the copies of the halo lines of the voltages above
+	virtual void SeamUpdate();
+
 	virtual void Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& field);
 	virtual void Synchronize();
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
@@ -78,6 +87,7 @@ public:
 	virtual void ReadLine(bool currents, unsigned int n, unsigned int x, unsigned int y, const unsigned int numLines[3], FDTD_FLOAT* line);
 
 	size_t Parts() const {return m_Parts.size();}
+	const GPU_Slab& Slab(size_t p) const {return m_Slabs.at(p);}
 	//! Copy the halo lines of the voltages (\a currents false) or currents from the neighbours: 1 the line below each part, 2 the one above, 3 both
 	void Exchange(bool currents, int halos);
 	//! Exchange() at cut \a c only, between part \a c and part \a c+1: 1 the halo line of part \a c+1, 2 that of part \a c

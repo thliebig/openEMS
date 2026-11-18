@@ -62,6 +62,23 @@ public:
 				return true;
 		return false;
 	}
+	//! the nodes of the parts in the whole grid: the local node plus the lines before the part
+	virtual bool MidStepNodes(std::vector<uint64_t>& volt, std::vector<uint64_t>& curr) const
+	{
+		for (size_t p=0; p<m_Parts.size(); ++p)
+		{
+			std::vector<uint64_t> v, c;
+			if (!m_Parts[p]->MidStepNodes(v, c))
+				return false;
+			const GPU_Slab& s = m_Split->Slab(p);
+			const uint64_t shift = (uint64_t)s.off*s.lines[1]*s.lines[2];
+			for (uint64_t n : v)
+				volt.push_back(n + shift);
+			for (uint64_t n : c)
+				curr.push_back(n + shift);
+		}
+		return true;
+	}
 
 protected:
 	GPU_Backend_Split* m_Split;
@@ -217,6 +234,53 @@ void GPU_Backend_Split::UpdateCurrents(const Engine_Box& box)
 	for (size_t p=0; p<m_Parts.size(); ++p)
 		if (LocalBox(p, box, local))
 			m_Parts[p]->UpdateCurrents(local);
+}
+
+// The fused step of every part. The currents of the last line a part owns read the voltages of the halo
+// line above, new only after the hooks of the voltages and its copy: they are late. On its halo lines a
+// part computes values of its own, which the copies replace before anything reads them.
+bool GPU_Backend_Split::PrepareFused(const std::vector<uint64_t>& late)
+{
+	for (size_t p=0; p<m_Parts.size(); ++p)
+	{
+		const GPU_Slab& s = m_Slabs[p];
+		const uint64_t plane = (uint64_t)s.lines[1]*s.lines[2];
+		std::vector<uint64_t> local;
+		for (uint64_t n : late)
+			if (s.Owns(n/plane))
+				local.push_back(n - s.off*plane);
+		if (p+1<m_Parts.size())
+			for (uint64_t n=0; n<plane; ++n)
+				local.push_back((s.x1-1-s.off)*plane + n);
+		std::sort(local.begin(), local.end());
+		local.erase(std::unique(local.begin(), local.end()), local.end());
+		if (!m_Parts[p]->PrepareFused(local))
+		{
+			ReleaseFused();
+			return false;
+		}
+	}
+	return true;
+}
+
+void GPU_Backend_Split::ReleaseFused()
+{
+	for (GPU_Backend* b : m_Parts)
+		b->ReleaseFused();
+}
+
+void GPU_Backend_Split::FusedUpdate()
+{
+	Exchange(true, 1);
+	for (GPU_Backend* b : m_Parts)
+		b->FusedUpdate();
+}
+
+void GPU_Backend_Split::SeamUpdate()
+{
+	Exchange(false, 2);
+	for (GPU_Backend* b : m_Parts)
+		b->SeamUpdate();
 }
 
 void GPU_Backend_Split::Exchange(bool currents, int halos)

@@ -52,8 +52,9 @@ class GPU_Extension;
   SubGrid_Coupling_GPU (gpu_ext.h).
 
   The backend may be a grid split along x over several backends
-  (GPU_Backend_Split, --gpu-devices), which runs like one: the flat sweep,
-  the dumps from the host mirror, no multi-grid.
+  (GPU_Backend_Split, --gpu-devices), which runs like one: the flat sweep
+  (the fused step or the two updates, tried as on one backend), no temporal
+  blocking, the dumps from the host mirror, no multi-grid.
 
   The engine type is Engine::GPU, which the extension dispatcher and
   Engine_Interface_FDTD handle like the basic engine, because that is the layout
