@@ -971,6 +971,11 @@ void Operator::FreeCoeffs()
 
 void Operator::InitDataStorage()
 {
+	// those of a build before (a multi-grid builds again with another timestep)
+	delete m_epsR_ptr; m_epsR_ptr = NULL;
+	delete m_kappa_ptr; m_kappa_ptr = NULL;
+	delete m_mueR_ptr; m_mueR_ptr = NULL;
+	delete m_sigma_ptr; m_sigma_ptr = NULL;
 	if (m_StoreMaterial[0])
 	{
 		if (g_settings.GetVerboseLevel()>0)
