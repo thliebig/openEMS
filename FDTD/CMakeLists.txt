@@ -70,5 +70,6 @@ set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_plugins.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gpu_backend_reference.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/gpu_split.cpp
   PARENT_SCOPE
 )

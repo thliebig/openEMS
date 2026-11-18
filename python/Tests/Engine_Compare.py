@@ -65,6 +65,14 @@
        (OPENEMS_GPU_TRIAL), so it switches to them; steady_state needs the
        separate updates at its checks
 
+   gpu-reference-split<n>, gpu-split<n>: the grid split along x over several
+   backends (GPU_Backend_Split, OPENEMS_GPU_DEVICES), the reference backend in
+   three parts, a device backend in two (OPENEMS_TEST_GPU_DEVICES, default
+   0,0: both on the first device), with cuts next to the sheet of a local
+   absorber, a lumped element and sources where SPLIT_CUTS says so
+     bit-identical to gpu-reference (not the multi-grid cases, which a split
+     grid refuses, nor those with too few x lines)
+
    cpu
      max. deviation < 1e-4 of the peak value, like a device backend
      blocking forced (OPENEMS_CPU_TBLOCK=2:5,3:7: tiles of 5 lines and 2
@@ -401,7 +409,7 @@ def case_absorbers():
     return FDTD, CSX
 
 
-def case_absorber_x():
+def case_absorber_x(positive=True):
     """ channel along x with a local absorber normal to x, its sheet (line 124) and the line next to it
         (125) on either side of a tile border of the blocked GPU runs: the GPU engine must not block """
     FDTD = openEMS(NrTS=2000, EndCriteria=0)
@@ -415,11 +423,17 @@ def case_absorber_x():
     mesh.AddLine('y', [0, 0.5, 1])
     mesh.AddLine('z', [0, 0.5, 1])
     CSX.AddExcitation('plane', exc_type=0, exc_val=[0, 0, 1]).AddBox([40, 0, 0], [40, 1, 1])
-    CSX.AddAbsorbingBC('abs', NormalSignPositive=True, AbsorbingBoundaryType=ABCtype.MUR_1ST_SA,
+    CSX.AddAbsorbingBC('abs', NormalSignPositive=positive, AbsorbingBoundaryType=ABCtype.MUR_1ST_SA,
                        PhaseVelocity=C0).AddBox([62, 0, 0], [62, 1, 1], priority=6)
     CSX.AddProbe('et', p_type=2).AddPoint([55, 0.5, 0.5])   # between the source and the sheet: what it reflects
     CSX.AddProbe('ht', p_type=3).AddPoint([20, 0.75, 0.5])
     return FDTD, CSX
+
+
+def case_absorber_x_low():
+    """ case_absorber_x with the normal towards -x: the line next to the sheet below it (the voltages: sheet
+        line 124 and line 123, the currents: line 123 and 122) """
+    return case_absorber_x(False)
 
 
 def cylinder_mesh(FDTD, alpha, r0, r1, z_pad=0):
@@ -560,6 +574,25 @@ def case_steady_state():
     return FDTD, CSX
 
 
+def case_steady_state_x():
+    """ the steady-state case along x, with probes on several parts of a split grid """
+    FDTD = openEMS(NrTS=100000, EndCriteria=1e-6)
+    FDTD.SetSinusExcite(3e9)
+    FDTD.SetBoundaryCond(['PML_8', 'PML_8', 'PEC', 'PEC', 'PMC', 'PMC'])
+    CSX = ContinuousStructure()
+    FDTD.SetCSX(CSX)
+    mesh = CSX.GetGrid()
+    mesh.SetDeltaUnit(unit)
+    mesh.AddLine('x', np.arange(0, 100.5, 0.5))
+    mesh.AddLine('y', [0, 0.5, 1])
+    mesh.AddLine('z', [0, 0.5, 1])
+    CSX.AddExcitation('plane', exc_type=0, exc_val=[0, 1, 0]).AddBox([20, 0, 0], [20, 1, 1])
+    CSX.AddProbe('et', p_type=2).AddPoint([70, 0.5, 0.5])
+    CSX.AddProbe('et2', p_type=2).AddPoint([30, 0.5, 0.5])
+    CSX.AddProbe('ht', p_type=3).AddPoint([70, 0.5, 0.75])   # Hz on the line z=0.5, see channel_1d()
+    return FDTD, CSX
+
+
 def graded(n):
     """ n mesh lines with all spacings different """
     return np.cumsum(1.002**np.arange(n)) * 0.5
@@ -683,6 +716,7 @@ cases = [('excitation',             case_excitation),
          ('tfsf',                   case_tfsf),
          ('absorbers',              case_absorbers),
          ('absorber_x',             case_absorber_x),
+         ('absorber_x_low',         case_absorber_x_low),
          ('cylinder_closed',        case_cylinder_closed),
          ('cylinder_wedge',         case_cylinder_wedge),
          ('cylinder_dispersive',    case_cylinder_dispersive),
@@ -693,6 +727,7 @@ cases = [('excitation',             case_excitation),
          ('dispersive_pml',         case_dispersive_pml),
          ('3d_mixed',               case_3d_mixed),
          ('steady_state',           case_steady_state),
+         ('steady_state_x',         case_steady_state_x),
          ('dumps',                  case_dumps),
          ('dumps_snapshot',         case_dumps_snapshot),
          ('coax_resonator',         case_coax_resonator),
@@ -704,6 +739,30 @@ cases = [('excitation',             case_excitation),
 # environment of a case: the frequency domain dumps of dumps_snapshot without device sums,
 # summed on the host from the snapshots
 CASE_ENV = {'dumps_snapshot_host_dft': {'OPENEMS_GPU_DUMPS': 'snapshot'}}
+
+# The GPU engine on a grid split along x (GPU_Backend_Split), bit-identical to one backend: per case
+# the x lines of its cuts (OPENEMS_GPU_DOMAIN_CUTS), a run each; None: equal parts. The reference
+# backend in three parts (more where cuts say so), a device in two: OPENEMS_TEST_GPU_DEVICES, e.g.
+# 0,1 on a machine with two GPUs (default 0,0: both on the first one). Not the multi-grid cases (a
+# split grid refuses them) or those with fewer than 3 x lines per part (the channels along z).
+SPLIT_CUTS = {'absorber_x': ['0,125,201', '0,60,125,201'],    # the sheet below a cut, the line next to it above
+              'absorber_x_low': ['0,124,201', '0,123,201'],   # the voltages, the currents of the sheet above a cut
+              'lumped': ['0,10,21'],                          # the cut on the series RLC element
+              'excitation': ['0,10,13,21']}                   # sources on a part of 3 lines and on both sides of it
+SPLIT_SKIP = ('dispersive_pml', 'materials', 'steady_state')
+SPLIT_GPU_DEVICES = os.environ.get('OPENEMS_TEST_GPU_DEVICES', '0,0')
+
+def split_engines(name):
+    """ the split runs of case name: (engine, devices, cuts) """
+    if name in SPLIT_SKIP or name.startswith('multigrid'):
+        return []
+    runs = []
+    for n, cuts in enumerate(SPLIT_CUTS.get(name, [None])):
+        parts = len(cuts.split(','))-1 if cuts else 3
+        runs.append((f'gpu-reference-split{n}', ','.join(['0']*parts), cuts))
+        if not cuts or len(cuts.split(','))-1==len(SPLIT_GPU_DEVICES.split(',')):
+            runs.append((f'gpu-split{n}', SPLIT_GPU_DEVICES, cuts))
+    return runs
 
 DEVICE_RTOL = 1e-4
 # the reference backend against the CPU engine: the coefficients in float per node (CM_FACTOR)
@@ -748,11 +807,25 @@ for name, case in cases:
         engines = ('basic', 'cpu-ref', 'gpu-reference', 'gpu-reference-blocked', 'gpu', 'gpu-blocked', 'cpu', 'cpu-blocked')
         if name.startswith(('cylinder', 'multigrid')):
             engines += ('multithreaded',)   # the basic engine on a cylindrical mesh against the default one
+    split = {e: (devices, cuts) for e, devices, cuts in split_engines(name)} if 'gpu-reference' in engines else {}
+    engines += tuple(split)
     paths = {engine: os.path.join(tempfile.gettempdir(), f'Engine_Compare_{name}_{engine}') for engine in engines}
     os.environ.update(CASE_ENV.get(name, {}))
     try:
         logs = {}
         for engine in engines:
+            # the split runs: flat (no blocking with a split grid), on a device only if the gpu run had one
+            if engine in split:
+                if engine.startswith('gpu-split') and not re.search(r'Create FDTD engine \(GPU, backend: (?!reference)', logs.get('gpu', '')):
+                    continue
+                os.environ['OPENEMS_GPU_DEVICES'] = split[engine][0]
+                if split[engine][1]:
+                    os.environ['OPENEMS_GPU_DOMAIN_CUTS'] = split[engine][1]
+                else:
+                    os.environ.pop('OPENEMS_GPU_DOMAIN_CUTS', None)
+            else:
+                os.environ.pop('OPENEMS_GPU_DEVICES', None)
+                os.environ.pop('OPENEMS_GPU_DOMAIN_CUTS', None)
             # the CPU engine flat, and with blocking forced even where the model fits the cache: two
             # tiles and the flat sweep tried for a tiny time each, so the engine switches between them
             # on every call at the start, then keeps one
@@ -769,9 +842,13 @@ for name, case in cases:
                     os.environ[var] = val
                 else:
                     os.environ.pop(var, None)
-            logs[engine] = run_captured(case, paths[engine], {'cpu-blocked': 'cpu', 'cpu-ref': 'cpu', 'gpu-blocked': 'gpu',
-                                                              'gpu-reference-blocked': 'gpu-reference'}.get(engine, engine))
+            run_as = {'cpu-blocked': 'cpu', 'cpu-ref': 'cpu', 'gpu-blocked': 'gpu', 'gpu-reference-blocked': 'gpu-reference'}.get(engine, engine)
+            if engine in split:
+                run_as = 'gpu-reference' if engine.startswith('gpu-reference') else 'gpu'
+            logs[engine] = run_captured(case, paths[engine], run_as)
     finally:
+        os.environ.pop('OPENEMS_GPU_DEVICES', None)
+        os.environ.pop('OPENEMS_GPU_DOMAIN_CUTS', None)
         del os.environ['OPENEMS_CPU_TBLOCK']
         del os.environ['OPENEMS_GPU_TBLOCK']
         del os.environ['OPENEMS_CPU_TRIAL']
@@ -882,6 +959,21 @@ for name, case in cases:
             assert 'Running FDTD engine' not in logs['gpu'], \
                 f'FAIL [{name}]: engine=gpu ran without a GPU device'
             print('  no GPU device, device backend not tested')
+
+    # a split grid: bit-identical to one backend, the device backends to the reference backend (on a split
+    # grid their dumps read the host mirror, no sums on the device)
+    for engine, (devices, cuts) in split.items():
+        if engine not in logs:
+            continue
+        parts = len(devices.split(','))
+        assert f'Create FDTD engine (GPU, backend: {parts} parts:' in logs[engine], \
+            f'FAIL [{name}]: {engine} did not split the grid into {parts} parts'
+        assert 'Engine_GPU: no temporal blocking: a grid split over several devices' in logs[engine], \
+            f'FAIL [{name}]: {engine} did not run the flat sweep'
+        diff, _, _, _ = compare_outputs(paths['gpu-reference'], paths[engine])
+        assert not diff, f'FAIL [{name}]: {engine} ({devices}, cuts {cuts or "equal"}) differs from the reference backend in: ' + \
+            ', '.join(f'{n} ({d:.1e})' for n, d in diff)
+        print(f'  {engine}: {parts} parts, cuts {cuts or "equal"}: bit-identical to the reference backend')
     print('PASS [{}]'.format(name))
 
 if not only or 'cpu' in ENGINE_SETS[only]:

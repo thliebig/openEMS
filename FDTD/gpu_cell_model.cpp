@@ -218,6 +218,50 @@ GPU_CellModel::GPU_CellModel(const CellModel& model, const unsigned int lines[3]
 	}
 }
 
+GPU_CellModel::GPU_CellModel(const GPU_CellModel& model, unsigned int x0, unsigned int x1)
+{
+	if ((x0>=x1) || (x1>model.numLines[0]))
+		throw std::invalid_argument("GPU_CellModel: no x lines to slice");
+	numLines[0] = x1-x0;
+	numLines[1] = model.numLines[1];
+	numLines[2] = model.numLines[2];
+	const size_t plane = (size_t)numLines[1]*numLines[2];
+	for (int f=0; f<2; ++f)
+	{
+		const Field& src = model.field[f];
+		Field& F = field[f];
+		// the combinations, poles and profiles are shared by all lines: the whole lists
+		F.combos = src.combos;
+		F.poles = src.poles;
+		F.slotFloats = src.slotFloats;
+		for (int q=0; q<5; ++q)
+			F.profile[q] = src.profile[q];
+		F.index.assign(src.index.begin() + x0*plane, src.index.begin() + x1*plane);
+		for (int n=0; n<3; ++n)
+		{
+			F.gxy[n].assign(src.gxy[n].begin() + (size_t)x0*numLines[1], src.gxy[n].begin() + (size_t)x1*numLines[1]);
+			F.gz[n] = src.gz[n];
+		}
+		// the slots are numbered in node order: those of the lines are a range
+		if (src.slot.empty())
+			continue;
+		uint32_t first = UINT32_MAX, last = 0;
+		for (size_t i=x0*plane; i<x1*plane; ++i)
+			if (src.slot[i]!=UINT32_MAX)
+			{
+				first = std::min(first, src.slot[i]);
+				last = std::max(last, src.slot[i]);
+			}
+		if (first==UINT32_MAX)
+			continue;
+		F.numSlots = (uint64_t)last-first+1;
+		F.slot.assign(src.slot.begin() + x0*plane, src.slot.begin() + x1*plane);
+		for (uint32_t& s : F.slot)
+			if (s!=UINT32_MAX)
+				s -= first;
+	}
+}
+
 double GPU_CellModel::NodeBytes() const
 {
 	const double nodes = (double)numLines[0]*numLines[1]*numLines[2];

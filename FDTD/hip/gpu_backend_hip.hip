@@ -63,10 +63,10 @@ __global__ void field_dft(const float* __restrict__ f, HIP_GatherRegion R, HIP_G
 	}
 }
 
-// Field energy: the squared voltages and currents of the nodes below L, summed along x
-// in float, one thread per (y,z) line. The host sums the lines in double.
+// Field energy: the squared voltages and currents of the nodes below L from x line x0 on, summed
+// along x in float, one thread per (y,z) line. The host sums the lines in double.
 __global__ void energy_lines(const float* __restrict__ volt, const float* __restrict__ curr, float2* partial,
-                             HIP_GridDim N, HIP_GridDim L)
+                             HIP_GridDim N, HIP_GridDim L, unsigned int x0)
 {
 	const unsigned int z = blockIdx.x*blockDim.x + threadIdx.x;
 	const unsigned int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -74,7 +74,7 @@ __global__ void energy_lines(const float* __restrict__ volt, const float* __rest
 		return;
 	const size_t sn = (size_t)N.nx*N.ny*N.nz;
 	float E = 0, H = 0;
-	for (unsigned int x=0; x<L.nx; ++x)
+	for (unsigned int x=x0; x<L.nx; ++x)
 	{
 		const size_t i = nijk(N, 0, x, y, z);
 		E += volt[i]*volt[i];
@@ -159,6 +159,14 @@ HIP_Context::HIP_Context()
 	copy_stream = 0;
 }
 
+void HIP_Context::MakeCurrent() const
+{
+	// errors not here: the call that needs the device reports them
+	int current = -1;
+	if ((hipGetDevice(&current)!=hipSuccess) || (current!=device))
+		(void)hipSetDevice(device);
+}
+
 HIP_Context::~HIP_Context()
 {
 	if (stream)
@@ -186,18 +194,21 @@ GPU_Backend_HIP::Impl::Impl()
 	snap_taken = false;
 	HIP_Check(hipEventCreateWithFlags(&snap_evaluated, hipEventDisableTiming), "hipEventCreate");
 	HIP_Check(hipEventCreateWithFlags(&snap_done, hipEventDisableTiming), "hipEventCreate");
+	HIP_Check(hipEventCreateWithFlags(&plane_event, hipEventDisableTiming), "hipEventCreate");
 }
 
 GPU_Backend_HIP::Impl::~Impl()
 {
 	if (ctx)
 	{
+		ctx->MakeCurrent();
 		(void)hipStreamSynchronize(ctx->stream);
 		(void)hipStreamSynchronize(ctx->copy_stream);
 	}
 	FreeSnapshots();
 	(void)hipEventDestroy(snap_evaluated);
 	(void)hipEventDestroy(snap_done);
+	(void)hipEventDestroy(plane_event);
 	for (size_t n=0; n<m_Allocations.size(); ++n)
 		(void)hipFree(m_Allocations.at(n));
 	for (std::set<void*>::iterator it=m_Pinned.begin(); it!=m_Pinned.end(); ++it)
@@ -444,6 +455,7 @@ GPU_Backend_HIP* GPU_Backend_HIP::New(int device)
 
 GPU_Backend* GPU_Backend_HIP::NewSubGridBackend()
 {
+	d->ctx->MakeCurrent();   // the events of Impl belong to the current device
 	Impl* impl = new Impl();
 	impl->ctx = d->ctx;
 	return new GPU_Backend_HIP(impl);
@@ -470,11 +482,8 @@ size_t GPU_Backend_HIP::CacheBytes(std::string& source) const
 	return d->ctx->cache_bytes;
 }
 
-bool GPU_Backend_HIP::InitFields(const Operator* op)
+bool GPU_Backend_HIP::InitFields(const unsigned int numLines[3])
 {
-	unsigned int numLines[3];
-	for (int n=0; n<3; ++n)
-		numLines[n] = op->GetNumberOfLines(n, true);
 	d->dim.nx = numLines[0];
 	d->dim.ny = numLines[1];
 	d->dim.nz = numLines[2];
@@ -511,6 +520,34 @@ void GPU_Backend_HIP::Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& f
 void GPU_Backend_HIP::Synchronize()
 {
 	d->Flush();
+}
+
+bool GPU_Backend_HIP::CanSendPlane(const GPU_Backend* dst) const
+{
+	const GPU_Backend_HIP* o = dynamic_cast<const GPU_Backend_HIP*>(dst);
+	return o && (o!=this) && (o->d->dim.ny==d->dim.ny) && (o->d->dim.nz==d->dim.nz);
+}
+
+// The copy runs on the stream of dst, after the work queued on this stream so far (the event of this
+// backend); the work queued on this stream from here on waits for the copy (the event of dst), so
+// neither writes the lines while the other still reads them. Across devices the runtime stages the
+// copy through the host: peer access is not enabled (see CanSendPlane()).
+void GPU_Backend_HIP::SendPlane(bool currents, unsigned int x, GPU_Backend* dst, unsigned int dst_x)
+{
+	if (!CanSendPlane(dst))
+		throw std::logic_error("GPU_Backend_HIP::SendPlane: not to this backend");
+	Impl* o = static_cast<GPU_Backend_HIP*>(dst)->d;
+	const size_t plane = (size_t)d->dim.ny*d->dim.nz;
+	HIP_Check(hipEventRecord(d->plane_event, d->Stream()), "hipEventRecord");
+	hipStream_t stream = o->Stream();
+	HIP_Check(hipStreamWaitEvent(stream, d->plane_event, 0), "hipStreamWaitEvent");
+	const float* src = currents ? d->curr : d->volt;
+	float* to = currents ? o->curr : o->volt;
+	for (unsigned int n=1; n<3; ++n)
+		HIP_Check(hipMemcpyPeerAsync(to + (n*(size_t)o->dim.nx + dst_x)*plane, o->ctx->device,
+		                             src + (n*(size_t)d->dim.nx + x)*plane, d->ctx->device, plane*sizeof(float), stream), "plane copy");
+	HIP_Check(hipEventRecord(o->plane_event, stream), "hipEventRecord");
+	HIP_Check(hipStreamWaitEvent(d->Stream(), o->plane_event, 0), "hipStreamWaitEvent");
 }
 
 void* GPU_Backend_HIP::Impl::UploadRegion(const Engine_GatherRegion& region, HIP_GatherRegion& dev)
@@ -552,6 +589,7 @@ bool GPU_Backend_HIP::SetSnapshotGather(const std::vector<Engine_GatherRegion>& 
 	if (n==0)
 		return false;
 	// not fatal: without snapshots the dumps read the fields from the host mirror
+	d->ctx->MakeCurrent();
 	bool ok = (hipMalloc(&d->snap_dev, n*sizeof(float))==hipSuccess)
 	          && (hipHostMalloc(&d->snap_host, n*sizeof(float))==hipSuccess);
 	const std::vector<Engine_GatherRegion>* regions[2] = {&volt_regions, &curr_regions};
@@ -666,12 +704,17 @@ void GPU_Backend_HIP::WaitSnapshot()
 
 bool GPU_Backend_HIP::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)
 {
+	return CalcFastEnergyLines(0, numNodes, E_energy, H_energy);
+}
+
+bool GPU_Backend_HIP::CalcFastEnergyLines(unsigned int x0, const unsigned int numNodes[3], double& E_energy, double& H_energy)
+{
 	E_energy = H_energy = 0;
 	HIP_GridDim L = {numNodes[0], numNodes[1], numNodes[2]};
 	if ((L.nx>d->dim.nx) || (L.ny>d->dim.ny) || (L.nz>d->dim.nz))
 		return false;
 	const size_t count = (size_t)L.ny*L.nz;
-	if (L.nx==0 || count==0)
+	if (L.nx<=x0 || count==0)
 		return true;
 	if (d->energy_count<count)
 	{
@@ -679,7 +722,7 @@ bool GPU_Backend_HIP::CalcFastEnergy(const unsigned int numNodes[3], double& E_e
 		d->energy_count = count;
 		d->energy_host.resize(count);   // small, not pinned
 	}
-	HIP_Launch(d, "energy_lines", energy_lines, L.nz, L.ny, 1, (const float*)d->volt, (const float*)d->curr, d->energy, d->dim, L);
+	HIP_Launch(d, "energy_lines", energy_lines, L.nz, L.ny, 1, (const float*)d->volt, (const float*)d->curr, d->energy, d->dim, L, x0);
 	HIP_Check(hipMemcpyAsync(d->energy_host.data(), d->energy, count*sizeof(float2), hipMemcpyDeviceToHost, d->Stream()), "energy download");
 	d->Flush();
 	for (size_t k=0; k<count; ++k)

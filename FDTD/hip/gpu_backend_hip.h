@@ -55,6 +55,8 @@ public:
 	virtual bool Init(const Operator* op, const GPU_CellModel& model);
 	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL);
 	virtual void DeviceDownload(void* host, const void* dev, size_t bytes);
+	virtual void DeviceDownloadAsync(void* host, const void* dev, size_t bytes);
+	virtual void PinHost(void* ptr, size_t bytes);
 	virtual float* DeviceField(bool currents);
 	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter);
 
@@ -76,6 +78,11 @@ public:
 	virtual void AccumulateFieldDFT(int id, const std::vector<std::complex<float>>& weights);
 	virtual bool ReadFieldDFT(int id, unsigned int k, std::vector<std::complex<float>>& sums);
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
+	virtual bool CalcFastEnergyLines(unsigned int x0, const unsigned int numNodes[3], double& E_energy, double& H_energy);
+
+	//! Another HIP backend, on any device: the copies go through the host without peer access
+	virtual bool CanSendPlane(const GPU_Backend* dst) const;
+	virtual void SendPlane(bool currents, unsigned int x, GPU_Backend* dst, unsigned int dst_x);
 
 	virtual GPU_Backend* NewSubGridBackend();
 
@@ -86,7 +93,7 @@ protected:
 	GPU_Backend_HIP(Impl* impl);
 
 	//! The grid dimensions and the device fields (all zero), the first part of Init()
-	bool InitFields(const Operator* op);
+	bool InitFields(const unsigned int numLines[3]);
 
 	Impl* d;
 };

@@ -162,7 +162,9 @@ void Engine_GPU::PrepareBlocking()
 	struct Tile {unsigned int k, wS, wM;};
 	std::vector<Tile> tiles;
 	std::string why;
-	if (explicitTile && given.empty())
+	if (const char* no = m_Backend->NoTemporalBlocking())
+		why = no;
+	else if (explicitTile && given.empty())
 		why = "OPENEMS_GPU_TBLOCK=0";
 	else if (m_SubGrid || m_ParentBackend)
 		why = "a cylindrical multi-grid";
@@ -559,7 +561,7 @@ FDTD_FLOAT Engine_GPU::ReadStale(bool currents, unsigned int n, unsigned int x, 
 	if (!field.full_last_batch && (field.lines.size()<MAX_STALE_LINES))
 	{
 		std::vector<FDTD_FLOAT> line(numLines[2]);
-		m_Backend->DeviceDownload(line.data(), m_Backend->DeviceField(currents) + key*numLines[2], numLines[2]*sizeof(FDTD_FLOAT));
+		m_Backend->ReadLine(currents, n, x, y, numLines, line.data());
 		const FDTD_FLOAT value = line.at(z);
 		field.lines[key].swap(line);
 		return value;
