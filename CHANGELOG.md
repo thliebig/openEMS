@@ -17,9 +17,9 @@ to what a user notices, in a few lines; the details belong in the commit.
 ### Added
 
 - **A GPU engine**, `--engine=gpu` (`engine='gpu'` from Python), for AMD and
-  NVIDIA GPUs (HIP/CUDA) and on macOS (Metal), with Cartesian and cylindrical
-  meshes and the usual extensions. `--gpu-device=N` picks one of the GPUs
-  listed at `--verbose=1`.
+  NVIDIA GPUs (HIP/CUDA), Intel GPUs (SYCL) and on macOS (Metal), with
+  Cartesian and cylindrical meshes and the usual extensions.
+  `--gpu-device=N` picks one of the GPUs listed at `--verbose=1`.
 - **A CPU engine, experimental**, `--engine=cpu` (`engine='cpu'`): on an
   8-core Ryzen 7 5800X it runs typical models 3-6x faster than the
   `sse-compressed` engine, with dispersive materials up to 10x, at about half

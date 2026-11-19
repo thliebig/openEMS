@@ -347,6 +347,66 @@ IF(ENABLE_HIP AND NOT OPENEMS_GPU_PLUGINS)
   ADD_DEFINITIONS( -DOPENEMS_WITH_HIP )
 ENDIF()
 
+# SYCL GPU backend for the GPU engine (--engine=gpu), for Intel GPUs through Level Zero.
+# It needs the Intel oneAPI DPC++/C++ compiler (icpx, icx on Windows) 2026 or newer and
+# is always a plugin: libopenEMS then needs no SYCL runtime. With that compiler as the C++
+# compiler of the whole build the plugin is a target of it; with another one (GCC, MSVC)
+# it builds the plugin as a project of its own (FDTD/sycl) against the libopenEMS just
+# built, after the sub-build of thliebig/openEMS#243: OPENEMS_ICPX is that compiler, a
+# path that does not exist turns the backend off. Whatever is missing switches it off,
+# with a warning if it was asked for.
+set(SYCL_MISSING "")
+set(_sycl_subbuild OFF)
+set(_sycl_version "")
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+  set(_sycl_version ${CMAKE_CXX_COMPILER_VERSION})
+ELSE()
+  # searched once: a value given by the user, even OPENEMS_ICPX-NOTFOUND, is kept
+  IF(NOT DEFINED OPENEMS_ICPX)
+    IF(WIN32)
+      set(_icpx_names icx)
+    ELSE()
+      set(_icpx_names icpx)
+    ENDIF()
+    find_program(OPENEMS_ICPX NAMES ${_icpx_names} HINTS ${ONEAPI_ROOT}/compiler/latest/bin
+                 $ENV{ONEAPI_ROOT}/compiler/latest/bin /opt/intel/oneapi/compiler/latest/bin)
+  ENDIF()
+  IF(OPENEMS_ICPX AND EXISTS "${OPENEMS_ICPX}")
+    set(_sycl_subbuild ON)
+    execute_process(COMMAND ${OPENEMS_ICPX} --version OUTPUT_VARIABLE _icpx_out ERROR_QUIET)
+    string(REGEX MATCH "Compiler ([0-9]+\\.[0-9]+(\\.[0-9]+)?)" _icpx_match "${_icpx_out}")
+    set(_sycl_version ${CMAKE_MATCH_1})
+  ELSE()
+    set(SYCL_MISSING "the Intel oneAPI DPC++/C++ compiler (OPENEMS_ICPX)")
+  ENDIF()
+ENDIF()
+# the version line CI tests; an older one is not tried
+IF(NOT SYCL_MISSING AND (NOT _sycl_version OR _sycl_version VERSION_LESS 2026))
+  set(SYCL_MISSING "the Intel oneAPI DPC++/C++ compiler 2026 or newer (found '${_sycl_version}')")
+ENDIF()
+IF(SYCL_MISSING)
+  OPTION(ENABLE_SYCL "Build the SYCL GPU backend (Intel GPUs)" OFF)
+ELSE()
+  OPTION(ENABLE_SYCL "Build the SYCL GPU backend (Intel GPUs)" ON)
+ENDIF()
+IF(ENABLE_SYCL AND SYCL_MISSING)
+  message(WARNING "The SYCL GPU backend needs ${SYCL_MISSING}, building without it")
+  set(ENABLE_SYCL OFF)
+ENDIF()
+IF(ENABLE_SYCL AND NOT OPENEMS_GPU_PLUGINS)
+  message(WARNING "The SYCL GPU backend is only built as a plugin (OPENEMS_GPU_PLUGINS), building without it")
+  set(ENABLE_SYCL OFF)
+ENDIF()
+# Without ahead-of-time devices every Intel GPU compiles the SPIR-V image when the GPU
+# engine starts, kept in SYCL's cache on disk after the first time.
+set(OPENEMS_SYCL_AOT_DEVICES "" CACHE STRING
+  "Intel GPUs the SYCL backend is compiled for ahead of time (ocloc -device syntax, e.g. bmg-g21); empty: SPIR-V only, compiled on the device at run time")
+IF(ENABLE_SYCL AND _sycl_subbuild)
+  message(STATUS "SYCL GPU backend enabled, built by ${OPENEMS_ICPX} (${_sycl_version}) in the sub-build sycl-plugin")
+ELSEIF(ENABLE_SYCL)
+  message(STATUS "SYCL GPU backend enabled")
+ENDIF()
+
 # libopenEMS refuses a plugin of another build (see FDTD/gpu_plugin.h). In a git
 # checkout the version does not tell uncommitted changes apart: a random id per build
 # directory, kept across reconfigures. A release (no .git) is told by its version
@@ -485,6 +545,53 @@ IF(ENABLE_HIP AND OPENEMS_HIP_AS_CUDA)
   target_include_directories( ${HIP_TARGET} PRIVATE ${HIP_INCLUDE_DIR} )
   target_compile_definitions( ${HIP_TARGET} PRIVATE __HIP_PLATFORM_NVIDIA__=1 )
 ENDIF()
+set(SYCL_PLUGIN_FILE ${CMAKE_CURRENT_BINARY_DIR}/plugins/openEMS_gpu_sycl${CMAKE_SHARED_MODULE_SUFFIX})
+IF(ENABLE_SYCL AND NOT _sycl_subbuild)
+  ADD_SUBDIRECTORY( FDTD/sycl )
+ELSEIF(ENABLE_SYCL)
+  # FDTD/sycl as a project of its own, compiled by the Intel compiler with the include
+  # directories and definitions of libopenEMS; its plugin lands in plugins/ as the HIP one
+  include(ExternalProject)
+  get_directory_property(_sycl_includes INCLUDE_DIRECTORIES)
+  get_directory_property(_sycl_definitions COMPILE_DEFINITIONS)
+  # GIT_VERSION: its quotes do not survive the command line, and the plugin has no use for it
+  set(_sycl_defs "")
+  foreach(_def ${_sycl_definitions})
+    IF(NOT _def MATCHES "^GIT_VERSION=")
+      list(APPEND _sycl_defs ${_def})
+    ENDIF()
+  endforeach()
+  string(REPLACE ";" "|" _sycl_includes "${_sycl_includes}")
+  string(REPLACE ";" "|" _sycl_defs "${_sycl_defs}")
+  set(_sycl_args
+    -DCMAKE_CXX_COMPILER=${OPENEMS_ICPX}
+    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DOPENEMS_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+    -DOPENEMS_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+    -DOPENEMS_LIBRARY=$<TARGET_LINKER_FILE:openEMS>
+    -DOPENEMS_INCLUDE_DIRS=${_sycl_includes}
+    -DOPENEMS_COMPILE_DEFINITIONS=${_sycl_defs}
+    -DOPENEMS_SYCL_AOT_DEVICES=${OPENEMS_SYCL_AOT_DEVICES}
+    -DENABLE_FLUSH_TO_ZERO=${ENABLE_FLUSH_TO_ZERO})
+  IF(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # the GCC of libopenEMS, whose libstdc++ the plugin is compiled against (icpx would
+    # take the newest GCC it finds)
+    execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-libgcc-file-name
+      OUTPUT_VARIABLE _libgcc OUTPUT_STRIP_TRAILING_WHITESPACE)
+    get_filename_component(_gcc_install_dir "${_libgcc}" DIRECTORY)
+    list(APPEND _sycl_args -DOPENEMS_GCC_INSTALL_DIR=${_gcc_install_dir})
+  ENDIF()
+  # BUILD_ALWAYS: the sub-build sees changes of the SYCL sources, the outer one does not
+  ExternalProject_Add( openEMS_gpu_sycl
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/FDTD/sycl
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/sycl-plugin
+    DEPENDS openEMS
+    LIST_SEPARATOR |
+    CMAKE_ARGS ${_sycl_args}
+    BUILD_ALWAYS ON
+    BUILD_BYPRODUCTS ${SYCL_PLUGIN_FILE}
+    INSTALL_COMMAND "" )
+ENDIF()
 #ADD_EXECUTABLE( openEMS main.cpp ${SOURCES})
 IF(ENABLE_HIP AND NOT OPENEMS_HIP_AS_CUDA AND CMAKE_HIP_PLATFORM STREQUAL "amd")
   TARGET_LINK_LIBRARIES( ${HIP_TARGET} ${HIP_RUNTIME_LIBRARY} )
@@ -533,6 +640,14 @@ IF(ENABLE_HIP AND OPENEMS_GPU_PLUGINS)
     INSTALL(TARGETS ${HIP_TARGET} LIBRARY DESTINATION bin/openEMS/plugins)
   ELSE()
     INSTALL(TARGETS ${HIP_TARGET} LIBRARY DESTINATION lib${LIB_SUFFIX}/openEMS/plugins)
+  ENDIF()
+ENDIF()
+IF(ENABLE_SYCL AND _sycl_subbuild)
+  # the file of the sub-build; the in-tree target installs itself (FDTD/sycl)
+  IF(WIN32)
+    INSTALL(PROGRAMS ${SYCL_PLUGIN_FILE} DESTINATION bin/openEMS/plugins)
+  ELSE()
+    INSTALL(PROGRAMS ${SYCL_PLUGIN_FILE} DESTINATION lib${LIB_SUFFIX}/openEMS/plugins)
   ENDIF()
 ENDIF()
 
