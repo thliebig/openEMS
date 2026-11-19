@@ -1,6 +1,12 @@
 {
   "dependencies": [
-    "boost",
+    "boost-algorithm",
+    "boost-chrono",
+    "boost-date-time",
+    "boost-predef",
+    "boost-program-options",
+    "boost-serialization",
+    "boost-thread",
     {
       "name": "hdf5",
       "features": ["hl"]

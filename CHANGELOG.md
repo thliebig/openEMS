@@ -112,6 +112,8 @@ to what a user notices, in a few lines; the details belong in the commit.
 - C++17 is now required (was C++11), e.g. GCC 8 or newer.
 - VTK is no longer needed; zlib is needed instead, which HDF5 usually brings
   along.
+- With vcpkg (Windows), only the Boost libraries openEMS uses are built
+  instead of all of Boost, which is much faster.
 
 ### Upgrade notes
 
