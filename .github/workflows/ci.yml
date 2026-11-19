@@ -1130,10 +1130,13 @@ jobs:
         with:
           path: ${{ env.VCPKG_CACHE_PATH }}
           # almost always nonexistent
-          key: "Windows - ${{ matrix.toolchain.name }}${{ matrix.toolchain.runner }} - ${{ github.sha }}"
-          # use GitHub's fallback feature to pick the latest cache with this prefix
+          key: "Windows - ${{ matrix.toolchain.name }} - ${{ matrix.toolchain.runner || 'latest' }} - ${{ github.sha }}"
+          # use GitHub's fallback feature to pick the latest cache with this prefix;
+          # it ends with the runner and " -", or "Windows - MSVC" would also take
+          # the newer cache of "Windows - MSVC + CUDA + ROCm" (another compiler,
+          # none of its packages fit, all built from source)
           restore-keys: |
-            Windows - ${{ matrix.toolchain.name }}${{ matrix.toolchain.runner }}
+            Windows - ${{ matrix.toolchain.name }} - ${{ matrix.toolchain.runner || 'latest' }} -
 
       - name: Build and install fparser
         run: |
@@ -1349,4 +1352,4 @@ jobs:
           path: ${{ env.VCPKG_CACHE_PATH }}
           # GitHub cache is immutable and can't be overwritten
           # save a new cache key every time
-          key: Windows - ${{ matrix.toolchain.name }}${{ matrix.toolchain.runner }} - ${{ github.sha }}
+          key: Windows - ${{ matrix.toolchain.name }} - ${{ matrix.toolchain.runner || 'latest' }} - ${{ github.sha }}
