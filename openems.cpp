@@ -91,6 +91,7 @@ openEMS::openEMS()
 	m_debugBox = m_debugPEC = m_no_simulation = false;
 	m_DumpStats = false;
 	m_exactEndCriteria = false;
+	m_MemoryCheck = true;
 
 	m_engine = EngineType_SSE; //default engine type
 	m_engine_numThreads = 0;
@@ -326,6 +327,17 @@ void openEMS::collectCommandLineArguments()
 			"only run preprocessing; do not simulate"
 		)
 		(
+			"no-memory-check",
+			po::bool_switch()->notifier(
+				[&](bool val)
+				{
+					if (val)
+						m_MemoryCheck = false;
+				}
+			),
+			"set up the simulation also if the free memory cannot hold what the engine needs at least for the mesh"
+		)
+		(
 			"dump-statistics",
 			po::bool_switch()->notifier(
 				[&](bool val)
@@ -432,6 +444,40 @@ void openEMS::WelcomeScreen()
 	cout << " | (C) 2010-2026 Thorsten Liebig <thorsten.liebig@gmx.de>  GPL license"   << endl;
 	cout << " ---------------------------------------------------------------------- " << endl;
 	cout << openEMS::GetExtLibsInfo("\t") << endl;
+}
+
+bool openEMS::CheckMemory() const
+{
+	// what the engine cannot do without, per node: the E and H fields (24 bytes); the basic engine keeps
+	// its coefficients dense (48 bytes) for the run, the SSE engine builds into them next to the index of
+	// the material table (4 bytes) before it compresses them
+	double perNode = 24;
+	if (m_engine==EngineType_Basic)
+		perNode = 72;
+	else if (m_engine==EngineType_SSE)
+		perNode = 52;
+	const double nodes = FDTD_Op->GetNumberCells();
+	const double need = perNode*nodes;
+	const size_t avail = AvailableMemory();
+	if (avail==0)
+		return true;   // the system does not say
+	const double GiB = 1024.0*1024.0*1024.0;
+	// formatted on their own stream: setprecision on cout or cerr would stay set for everything printed after
+	std::ostringstream msg;
+	msg << std::fixed << std::setprecision(1);
+	if (g_settings.GetVerboseLevel()>0)
+	{
+		msg << "Memory: " << avail/GiB << " GiB available, the engine needs at least " << need/GiB << " GiB";
+		cout << msg.str() << endl;
+		msg.str("");
+	}
+	if (need<=avail)
+		return true;
+	msg << "openEMS::SetupFDTD: Error, the mesh of " << nodes/1e6 << " MCells needs at least " << need/GiB
+	    << " GiB of memory with this engine, " << avail/GiB << " GiB are available. Check the mesh,"
+	    << " or set up anyway with --no-memory-check.";
+	cerr << msg.str() << endl;
+	return false;
 }
 
 bool openEMS::SetupBoundaryConditions()
@@ -1346,6 +1392,9 @@ int openEMS::SetupFDTD()
 	{
 		return(2);
 	}
+	// before the build, which can take long on a mesh too large by mistake
+	if (m_MemoryCheck && !CheckMemory())
+		return 2;
 
 	SetupBoundaryConditions();
 

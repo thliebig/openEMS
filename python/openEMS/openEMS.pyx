@@ -674,6 +674,8 @@ cdef class openEMS:
         * gpu_device (int) -- GPU device of the GPU engine, a number of the
           device list printed at verbose >= 1 (default: the best device)
         * disable_dumps (bool) -- disable all field dumps for faster simulation
+        * no_memory_check (bool) -- set up also if the free memory cannot hold
+          what the engine needs at least for the mesh (the setup stops then)
         * debug_material (bool) - dump material distribution to a vtk file for
           debugging.
         * debug_PEC (bool) - dump metal distribution to a vtk file for debugging

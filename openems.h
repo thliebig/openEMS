@@ -153,6 +153,7 @@ protected:
 	bool m_DumpStats;
 	bool m_debugBox, m_debugPEC, m_no_simulation;
 	bool m_exactEndCriteria;
+	bool m_MemoryCheck;   //!< see CheckMemory(), off with --no-memory-check
 
 	double endCrit;
 	int m_OverSampling;
@@ -172,6 +173,8 @@ protected:
 
 	//! Setup an operator matching the requested engine
 	virtual bool SetupOperator();
+	//! Whether the free memory (AvailableMemory()) can hold what the engine needs at least for the mesh: false with an error message
+	bool CheckMemory() const;
 
 	//! Read boundary conditions from xml element and apply to FDTD operator
 	bool SetupBoundaryConditions();

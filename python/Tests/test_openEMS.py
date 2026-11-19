@@ -313,6 +313,19 @@ class Test_Run(unittest.TestCase):
         self.fdtd.Run(os.path.join(self.tmp.name, 'link'), setup_only=True, verbose=0)
         self.assertInDir(os.path.join(self.tmp.name, 'real'))
 
+    def test_memory_check(self):
+        # too little free memory for the fields of the mesh stops the setup before the build, unless told not to check
+        os.environ['OPENEMS_AVAILABLE_MEMORY'] = '1000'   # bytes; the 605 nodes need at least 24 each
+        try:
+            self.assertNotEqual(self.fdtd.Run(os.path.join(self.tmp.name, 'a'), setup_only=True, verbose=0), 0)
+            fdtd = openEMS(NrTS=10)
+            fdtd.SetGaussExcite(1e9, 1e9)
+            fdtd.SetBoundaryCond(['PEC'] * 6)
+            fdtd.SetCSX(_make_csx_with_grid())
+            self.assertEqual(fdtd.Run(os.path.join(self.tmp.name, 'b'), setup_only=True, verbose=0, no_memory_check=True), 0)
+        finally:
+            os.environ.pop('OPENEMS_AVAILABLE_MEMORY', None)
+
     def test_flush_to_zero_restored(self):
         # the engines flush denormals to zero during the run only, not in the calling process
         tiny = np.float32(1e-39)   # a float32 denormal

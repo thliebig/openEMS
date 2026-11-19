@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <climits>
+#include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <fstream>
@@ -132,22 +133,24 @@ unsigned int CgroupV2QuotaAt(const std::string& dir)
 	return (unsigned int)std::ceil(std::atof(quota.c_str())/period);
 }
 
+//! This process' cgroup v2 path, empty without the unified hierarchy
+std::string OwnCgroupV2Path()
+{
+	std::ifstream self("/proc/self/cgroup");
+	std::string line;
+	while (std::getline(self, line))
+		if (line.compare(0, 3, "0::")==0) // unified hierarchy: "0::<path>"
+			return line.substr(3);
+	return "";
+}
+
 //! CPUs of a cgroup v2 CPU quota (rounded up), 0 if there is none. cgroup v2 quotas
 //! are hierarchical (a parent's quota always constrains its children), so this
 //! walks from this process' own cgroup up to the mount root and returns the
 //! tightest limit found.
 unsigned int CgroupV2Quota()
 {
-	std::ifstream self("/proc/self/cgroup");
-	std::string line, rel;
-	while (std::getline(self, line))
-	{
-		if (line.compare(0, 3, "0::")==0) // unified hierarchy: "0::<path>"
-		{
-			rel = line.substr(3);
-			break;
-		}
-	}
+	const std::string rel = OwnCgroupV2Path();
 	if (rel.empty())
 		return 0;
 
@@ -172,6 +175,48 @@ unsigned int CgroupCPUQuota()
 {
 	unsigned int q = CgroupV2Quota();
 	return (q>0) ? q : CgroupV1Quota();
+}
+
+//! The number in a cgroup file, false if it is missing or "max"
+bool CgroupValue(const std::string& file, double& value)
+{
+	std::ifstream f(file);
+	std::string s;
+	if (!(f >> s) || (s=="max"))
+		return false;
+	value = std::atof(s.c_str());
+	return true;
+}
+
+//! The memory left under the cgroup memory limits of this process, SIZE_MAX without one: cgroup v2
+//! from its own cgroup up to the root (a parent's limit holds for its children), cgroup v1 its own
+size_t CgroupMemoryLeft()
+{
+	double left = -1;
+	auto limit = [&left](const std::string& max, const std::string& used) {
+		double m = 0, u = 0;
+		if (!CgroupValue(max, m) || (m>=4e18))   // v1 writes "no limit" as about 2^63
+			return;
+		CgroupValue(used, u);
+		const double l = (m>u) ? m-u : 0;
+		if ((left<0) || (l<left))
+			left = l;
+	};
+	const std::string root = "/sys/fs/cgroup";
+	const std::string rel = OwnCgroupV2Path();
+	if (!rel.empty())
+		for (std::string dir = root + rel; ; )
+		{
+			limit(dir + "/memory.max", dir + "/memory.current");
+			if (dir==root)
+				break;
+			size_t slash = dir.find_last_of('/');
+			dir = (slash>root.size()) ? dir.substr(0, slash) : root;
+		}
+	const std::string rel1 = OwnCgroupV1Path("memory");
+	if (!rel1.empty())
+		limit(root + "/memory" + rel1 + "/memory.limit_in_bytes", root + "/memory" + rel1 + "/memory.usage_in_bytes");
+	return (left<0) ? SIZE_MAX : (size_t)left;
 }
 #endif
 }
@@ -256,6 +301,34 @@ unsigned int PhysicalCores()
 	const unsigned int threads = MachineThreads();   // the affinity and the cgroup quota
 	cores = ((n>0) && (n<threads)) ? n : threads;
 	return cores;
+}
+
+size_t AvailableMemory()
+{
+	if (const char* env = getenv("OPENEMS_AVAILABLE_MEMORY"))   // for testing
+		return (size_t)strtoull(env, NULL, 10);
+#if defined(__linux__)
+	std::ifstream f("/proc/meminfo");
+	std::string key, rest;
+	unsigned long long kb = 0;
+	while (f >> key >> kb)
+	{
+		if (key=="MemAvailable:")
+			return std::min<unsigned long long>(kb*1024, CgroupMemoryLeft());
+		std::getline(f, rest);
+	}
+	return 0;
+#elif defined(_WIN32)
+	MEMORYSTATUSEX status;
+	status.dwLength = sizeof(status);
+	return GlobalMemoryStatusEx(&status) ? (size_t)status.ullAvailPhys : 0;
+#elif defined(__APPLE__)
+	uint64_t mem = 0;
+	size_t size = sizeof(mem);
+	return (sysctlbyname("hw.memsize", &mem, &size, NULL, 0)==0) ? (size_t)mem : 0;
+#else
+	return 0;
+#endif
 }
 
 unsigned int AvailableThreads()

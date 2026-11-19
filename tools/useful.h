@@ -41,6 +41,15 @@ unsigned int PhysicalCores();
 //! Limit AvailableThreads() to n threads (the numThreads option); 0 removes the limit
 void SetThreadLimit(unsigned int n);
 
+//! The memory this process can still allocate without swapping, in bytes; 0 if the system does not say
+/*!
+  Linux: MemAvailable of /proc/meminfo, limited by a cgroup memory limit (a container, a batch
+  job). Windows: the available physical memory. macOS: the physical memory, as the free and
+  inactive pages leave out what the memory compressor and the file cache give way to.
+  OPENEMS_AVAILABLE_MEMORY (bytes) replaces it, for testing.
+  */
+size_t AvailableMemory();
+
 //! Run \a fn(thread, begin, end) on up to \a numThreads threads, [0, \a count) split into consecutive ranges in thread order
 /*!
   Fewer threads if \a count is smaller, on the calling thread if only one; \a thread numbers
