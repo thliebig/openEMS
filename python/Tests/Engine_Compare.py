@@ -9,7 +9,7 @@
                            device backends on the CPU, on its own copy of the
                            fields and of the cell model; compared with the CPU
                            engine on the same model (cpu-ref below)
-   engine='gpu'            a device backend (Metal on macOS, HIP), if a GPU is
+   engine='gpu'            a device backend (Metal on macOS, HIP, SYCL), if a GPU is
                            there: its float arithmetic may round differently
                            (e.g. fused multiply-add), so within a tolerance
    engine='cpu'            cell runs and factorised coefficients, the UPML and
@@ -710,14 +710,14 @@ DEVICE_RTOL = 1e-4
 REF_RTOL = 1e-5
 # a device backend on the cell model against the reference backend: its float arithmetic may round differently
 CELL_MODEL_RTOL = 1e-5
-# device backends bit-identical to the reference backend (HIP: no FMA contraction, -ffp-contract=off)
-BITIDENT_BACKENDS = ('HIP',)
+# device backends bit-identical to the reference backend (HIP and SYCL: no FMA contraction, -ffp-contract=off)
+BITIDENT_BACKENDS = ('HIP', 'SYCL')
 # device backends that take field snapshots for the dumps
-SNAPSHOT_BACKENDS = ('HIP', 'Metal')
+SNAPSHOT_BACKENDS = ('HIP', 'Metal', 'SYCL')
 # device backends that accumulate the frequency domain dumps
-DEVICE_DFT_BACKENDS = ('HIP',)
+DEVICE_DFT_BACKENDS = ('HIP', 'SYCL')
 # the backends with the fused step (GPU_Backend::PrepareFused())
-FUSED_BACKENDS = ('HIP',)
+FUSED_BACKENDS = ('HIP', 'SYCL')
 # the engines compared with basic: all of them, or those of OPENEMS_ENGINE (run_testsuite.py --engine)
 ENGINE_SETS = {'cpu': ('cpu', 'cpu-blocked'),
                'gpu': ('cpu-ref', 'gpu-reference', 'gpu-reference-blocked', 'gpu', 'gpu-blocked'),
