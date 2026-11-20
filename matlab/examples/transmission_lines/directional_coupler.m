@@ -201,8 +201,8 @@ grid on
 
 smithchart
 S11 = squeeze(S(1,1,:));
-plot( real(S11), imag(S11) );
-legend( 'S_{11}' );
+h = plot( real(S11), imag(S11) );
+legend( h, 'S_{11}' );   % not the grid of the smith chart, plotted before
 title( ['performance of the coupler for a termination resistance of R=' num2str(R)] );
 axis( [-1 1 -1 1] );
 
