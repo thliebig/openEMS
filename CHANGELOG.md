@@ -98,6 +98,8 @@ to what a user notices, in a few lines; the details belong in the commit.
   steady state.
 - Python: a second `Run()` in the same script printed the timestep and other
   numbers of its setup with two decimals, e.g. `Timestep (s): 0.00` (#256).
+- `--disable-dumps` (`disable_dumps=True`) made a run with a frequency domain
+  field dump fail at its end.
 - A series lumped RL element (no C) made the fields grow again late in a
   simulation, with any R exponentially until they exploded (#241).
 

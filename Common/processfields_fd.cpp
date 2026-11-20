@@ -167,6 +167,7 @@ void ProcessFieldsFD::FinishAsync()
 
 void ProcessFieldsFD::PostProcess()
 {
+	if (Enabled==false) return;
 	FinishAsync();
 	if ((m_FieldDFT>=0) && !m_Eng_Interface->ReadFieldDFT(m_FieldDFT, m_FD_Fields))
 		cerr << "ProcessFieldsFD::PostProcess: can't read the frequency domain fields of the engine!" << endl;
