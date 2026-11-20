@@ -82,6 +82,10 @@ struct HIP_Context
 
 	HIP_Context();
 	~HIP_Context();
+
+	//! Make the device current on this thread: a launch, allocation or copy on a stream of another device
+	//! fails (a grid split over several devices, see GPU_Backend_Split)
+	void MakeCurrent() const;
 };
 
 //! State of one grid
@@ -89,7 +93,7 @@ struct GPU_Backend_HIP::Impl
 {
 	std::shared_ptr<HIP_Context> ctx;
 
-	HIP_GridDim dim;
+	HIP_GridDim dim = {0, 0, 0};   //!< none before Init()
 	size_t numCells;    //!< nx*ny*nz, the field buffers hold 3*numCells values
 	unsigned int max_grid_z = 65535;   //!< the most blocks of a launch along z (x lines of the main updates)
 
@@ -139,16 +143,21 @@ struct GPU_Backend_HIP::Impl
 	void* UploadRegion(const Engine_GatherRegion& region, HIP_GatherRegion& dev);
 	std::vector<FieldDFT> field_dfts;
 
+	//! Orders the plane copies between the backends of a split grid with their work (see GPU_Backend_HIP::SendPlane())
+	hipEvent_t plane_event;
+
 	Impl();
 	~Impl();
 
-	hipStream_t Stream() const {return ctx->stream;}
+	//! The work stream, with its device made current: every launch and copy on it takes it from here
+	hipStream_t Stream() const {ctx->MakeCurrent(); return ctx->stream;}
 
 	//! Device buffer of \a count elements, initialized with \a host or zero; freed with this Impl
 	template <typename T>
 	T* Alloc(size_t count, const T* host=NULL)
 	{
 		T* ptr = NULL;
+		ctx->MakeCurrent();
 		HIP_Check(hipMalloc(&ptr, std::max(count, (size_t)1)*sizeof(T)), "hipMalloc");
 		m_Allocations.push_back(ptr);
 		// on the work stream: it does not synchronize with the legacy default stream
@@ -166,6 +175,7 @@ struct GPU_Backend_HIP::Impl
 	T* TryAlloc(size_t count)
 	{
 		T* ptr = NULL;
+		ctx->MakeCurrent();
 		if (hipMalloc(&ptr, std::max(count, (size_t)1)*sizeof(T))!=hipSuccess)
 		{
 			(void)hipGetLastError();   // not sticky, but reported by the next CheckLaunch()
@@ -181,6 +191,7 @@ struct GPU_Backend_HIP::Impl
 		if (ptr==NULL)
 			return;
 		m_Allocations.erase(std::remove(m_Allocations.begin(), m_Allocations.end(), ptr), m_Allocations.end());
+		ctx->MakeCurrent();
 		(void)hipFree(ptr);
 	}
 

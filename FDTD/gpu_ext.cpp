@@ -47,6 +47,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <stdexcept>
 
 namespace
@@ -57,45 +58,71 @@ uint64_t FlatIndex(const unsigned int numLines[3], unsigned int n, unsigned int 
 	return (((uint64_t)n*numLines[0] + x)*numLines[1] + y)*numLines[2] + z;
 }
 
-//! the nodes (x*ny + y)*nz + z of flat ArrayNIJK indices
-void AddNodes(std::vector<uint64_t>& nodes, const std::vector<uint64_t>& flat, const unsigned int numLines[3])
-{
-	const uint64_t N = (uint64_t)numLines[0]*numLines[1]*numLines[2];
-	for (uint64_t f : flat)
-		nodes.push_back(f%N);
-}
-
 template <typename T>
 T* Upload(GPU_Backend* b, const std::vector<T>& v)
 {
 	return (T*)b->DeviceAlloc(std::max<size_t>(v.size(), 1)*sizeof(T), v.empty() ? NULL : v.data());
 }
+
+//! the x line of a flat ArrayNIJK index (or a node) on a grid of \a numLines
+unsigned int LineX(uint64_t flat, const unsigned int numLines[3])
+{
+	const uint64_t nyz = (uint64_t)numLines[1]*numLines[2];
+	return (unsigned int)((flat/nyz)%numLines[0]);
+}
 }
 
-void GPU_PointList::Init(GPU_Backend* b, const unsigned int numLines[3], const std::vector<uint64_t>& flat)
+GPU_Slab GPU_Slab::Whole(const unsigned int numLines[3])
+{
+	GPU_Slab s;
+	for (int a=0; a<3; ++a)
+		s.lines[a] = numLines[a];
+	s.x0 = s.off = 0;
+	s.x1 = s.nx = numLines[0];
+	return s;
+}
+
+uint64_t GPU_Slab::Local(uint64_t flat) const
+{
+	const uint64_t nyz = (uint64_t)lines[1]*lines[2];
+	const uint64_t n = flat/(nyz*lines[0]);
+	const uint64_t x = (flat/nyz)%lines[0];
+	return (n*nx + (x-off))*nyz + flat%nyz;
+}
+
+void GPU_PointList::Init(GPU_Backend* b, const GPU_Slab& slab, const std::vector<uint64_t>& flat)
 {
 	m_B = b;
-	for (int a=0; a<3; ++a)
-		m_Lines[a] = numLines[a];
-	std::vector<uint64_t> nodes;
-	AddNodes(nodes, flat, numLines);
-	const uint64_t nyz = (uint64_t)numLines[1]*numLines[2];
-	std::vector<unsigned int> x(nodes.size());
-	for (size_t n=0; n<nodes.size(); ++n)
-		x[n] = (unsigned int)(nodes[n]/nyz);
-	m_Order.resize(nodes.size());
-	std::iota(m_Order.begin(), m_Order.end(), 0);
+	slab.Local(m_Lines);
+	// the points on the lines the slab owns, by x
+	std::vector<unsigned int> x(flat.size());
+	m_Order.clear();
+	for (size_t n=0; n<flat.size(); ++n)
+	{
+		x[n] = LineX(flat[n], slab.lines);
+		if (slab.Owns(x[n]))
+			m_Order.push_back(n);
+	}
 	std::stable_sort(m_Order.begin(), m_Order.end(), [&](size_t p, size_t q) {return x[p]<x[q];});
-	m_X.resize(nodes.size());
-	std::vector<uint32_t> yz(2*nodes.size());
+	m_X.resize(m_Order.size());
+	m_Index.resize(m_Order.size());
+	std::vector<uint32_t> yz(2*m_Order.size());
 	for (size_t n=0; n<m_Order.size(); ++n)
 	{
-		const uint64_t node = nodes[m_Order[n]];
-		m_X[n] = x[m_Order[n]];
-		yz[2*n] = (uint32_t)((node/numLines[2])%numLines[1]);
-		yz[2*n+1] = (uint32_t)(node%numLines[2]);
+		const uint64_t f = flat[m_Order[n]];
+		m_X[n] = x[m_Order[n]] - slab.off;
+		m_Index[n] = slab.Local(f);
+		yz[2*n] = (uint32_t)((f/slab.lines[2])%slab.lines[1]);
+		yz[2*n+1] = (uint32_t)(f%slab.lines[2]);
 	}
 	m_YZ = Upload(b, yz);
+}
+
+void GPU_PointList::AddNodes(std::vector<uint64_t>& nodes) const
+{
+	const uint64_t N = (uint64_t)m_Lines[0]*m_Lines[1]*m_Lines[2];
+	for (uint64_t i : m_Index)
+		nodes.push_back(i%N);
 }
 
 void GPU_PointList::Run(GPU_PointOp kind, const void* op, const Engine_Box& box, bool serial) const
@@ -116,23 +143,20 @@ void GPU_PointList::Run(GPU_PointOp kind, const void* op, const Engine_Box& box,
 class GPU_Ext_Excitation : public GPU_Extension
 {
 public:
-	GPU_Ext_Excitation(Operator_Ext_Excitation* op_ext, GPU_Backend* b, const unsigned int lines[3]) : m_Op(op_ext), m_B(b)
+	GPU_Ext_Excitation(Operator_Ext_Excitation* op_ext, GPU_Backend* b, const GPU_Slab& slab) : m_Op(op_ext), m_B(b), m_Slab(slab)
 	{
-		for (int a=0; a<3; ++a)
-			numLines[a] = lines[a];
 		Setup(m_Src[0], op_ext->Volt_Count, op_ext->Volt_index, op_ext->Volt_dir, op_ext->Volt_amp, op_ext->Volt_delay, op_ext->m_Exc->GetVoltageSignal());
 		Setup(m_Src[1], op_ext->Curr_Count, op_ext->Curr_index, op_ext->Curr_dir, op_ext->Curr_amp, op_ext->Curr_delay, op_ext->m_Exc->GetCurrentSignal());
 	}
 
 	virtual void Hook(bool currents, GPU_Hook h, const Engine_Box& box, unsigned int ts) {if (h==GPU_APPLY) Apply(currents, box, ts);}
-	virtual bool MidStepNodes(std::vector<uint64_t>& volt, std::vector<uint64_t>&) const {AddNodes(volt, m_Src[0].flat, numLines); return true;}
+	virtual bool MidStepNodes(std::vector<uint64_t>& volt, std::vector<uint64_t>&) const {m_Src[0].list.AddNodes(volt); return true;}
 
 protected:
 	struct Sources
 	{
 		GPU_PointList list;
 		bool serial = false;   //!< points share an edge: in order
-		std::vector<uint64_t> flat;   //!< the flat index of each point
 		Op_Excitation op;
 	};
 
@@ -143,12 +167,11 @@ protected:
 		std::set<uint64_t> edges;
 		for (size_t n=0; n<count; ++n)
 		{
-			flat[n] = FlatIndex(numLines, dir[n], index[0][n], index[1][n], index[2][n]);
+			flat[n] = FlatIndex(m_Slab.lines, dir[n], index[0][n], index[1][n], index[2][n]);
 			s.serial |= !edges.insert(flat[n]).second;
 		}
-		s.list.Init(m_B, numLines, flat);
-		s.op.index = Upload(m_B, s.list.Sorted(flat));
-		s.flat.swap(flat);
+		s.list.Init(m_B, m_Slab, flat);
+		s.op.index = Upload(m_B, s.list.Index());
 		s.op.amp = Upload(m_B, s.list.Sorted(std::vector<float>(amp, amp+count)));
 		s.op.delay = Upload(m_B, s.list.Sorted(std::vector<uint32_t>(delay, delay+count)));
 		const unsigned int length = m_Op->m_Exc->GetLength();
@@ -169,7 +192,7 @@ protected:
 
 	Operator_Ext_Excitation* m_Op;
 	GPU_Backend* m_B;
-	unsigned int numLines[3];
+	GPU_Slab m_Slab;
 	Sources m_Src[2];
 };
 
@@ -184,16 +207,15 @@ public:
 	{
 		bool active = false;
 		bool superAbsorption = false;   //!< the apply hook of the currents of Engine_Ext_Absorbing_BC
-		unsigned int line, shift;       //!< along ny
+		unsigned int line, shift;       //!< along ny (local)
+		bool halo = false;              //!< the line next to the sheet is a halo line of the part
 		std::vector<uint64_t> nodes;    //!< the nodes on the sheet and next to it
 		GPU_PointList list;
 		Op_Sheet op;
 	};
 
-	GPU_Ext_Sheet(GPU_Backend* b, const unsigned int lines[3], int ny, unsigned int start_TS) : m_B(b), m_ny(ny), m_StartTS(start_TS)
+	GPU_Ext_Sheet(GPU_Backend* b, const GPU_Slab& slab, int ny, unsigned int start_TS) : m_B(b), m_Slab(slab), m_ny(ny), m_StartTS(start_TS)
 	{
-		for (int a=0; a<3; ++a)
-			numLines[a] = lines[a];
 	}
 
 	//! the points of field \a f: (i, j) in [0, ni) x [0, nj) at p0 + (i, j) along nyP and nyPP, K1 and K2 by \a K(c, i, j)
@@ -202,12 +224,16 @@ public:
 	           const KFunc& K1, const KFunc& K2, bool superAbsorption)
 	{
 		Sheet& S = m_Sheet[f];
+		// normal to x: on the part that owns the sheet, in its local lines, the line next to it may be a halo line
+		if ((m_ny==0) && (!m_Slab.Owns(line) || !m_Slab.Holds(shift)))
+			return;
 		S.active = true;
 		S.superAbsorption = superAbsorption;
-		S.line = line;
-		S.shift = shift;
+		S.line = (m_ny==0) ? line-m_Slab.off : line;
+		S.shift = (m_ny==0) ? shift-m_Slab.off : shift;
+		S.halo = (m_ny==0) && !m_Slab.Owns(shift);
 		const int nyP = (m_ny+1)%3, nyPP = (m_ny+2)%3;
-		const uint64_t nodes = (uint64_t)numLines[0]*numLines[1]*numLines[2];
+		const unsigned int* numLines = m_Slab.lines;
 		std::vector<uint64_t> il, is;
 		std::vector<float> k1[2], k2[2];
 		unsigned int pos[3];
@@ -226,17 +252,22 @@ public:
 					k2[c].push_back(superAbsorption ? K2(c, i, j) : 0.0f);
 				}
 			}
-		S.list.Init(m_B, numLines, il);
-		S.nodes = il;
-		S.nodes.insert(S.nodes.end(), is.begin(), is.end());
-		S.op.line = Upload(m_B, S.list.Sorted(il));
-		S.op.shift = Upload(m_B, S.list.Sorted(is));
+		S.list.Init(m_B, m_Slab, il);
+		// the points the part owns, the lines next to them may be on its halo lines
+		std::vector<uint64_t> ls = S.list.Index(), ss = S.list.Sorted(is);
+		for (uint64_t& i : ss)
+			i = m_Slab.Local(i);
+		S.nodes = ls;
+		S.nodes.insert(S.nodes.end(), ss.begin(), ss.end());
+		S.op.line = Upload(m_B, ls);
+		S.op.shift = Upload(m_B, ss);
 		for (int c=0; c<2; ++c)
 		{
 			S.op.K1[c] = Upload(m_B, S.list.Sorted(k1[c]));
 			S.op.K2[c] = Upload(m_B, S.list.Sorted(k2[c]));
-			S.op.s[c] = Upload(m_B, std::vector<float>(il.size(), 0.0f));
+			S.op.s[c] = Upload(m_B, std::vector<float>(ls.size(), 0.0f));
 		}
+		const uint64_t nodes = (uint64_t)m_Slab.nx*numLines[1]*numLines[2];
 		S.op.offset[0] = nyP*nodes;
 		S.op.offset[1] = nyPP*nodes;
 	}
@@ -251,6 +282,14 @@ public:
 			curr.insert(curr.end(), m_Sheet[1].nodes.begin(), m_Sheet[1].nodes.end());
 		return true;
 	}
+	//! the pre and post hooks read the line next to the sheet, on a halo line where a cut runs between the two
+	virtual int HaloReads(bool currents, GPU_Hook h) const
+	{
+		const Sheet& S = m_Sheet[currents ? 1 : 0];
+		if (!S.active || !S.halo || (h==GPU_APPLY))
+			return 0;
+		return (S.shift<S.line) ? 1 : 2;
+	}
 
 protected:
 	void Run(int f, GPU_Hook hook, const Engine_Box& box, unsigned int ts)
@@ -259,9 +298,10 @@ protected:
 		if (!S.active || (ts<m_StartTS))
 			return;
 		// the box must hold the line next to the sheet as well: the post hook reads it after the update of the box
+		// (or it is a halo line, copied before the hook)
 		if ((S.line<box.start[m_ny]) || (S.line>=box.stop[m_ny]))
 			return;
-		if ((S.shift<box.start[m_ny]) || (S.shift>=box.stop[m_ny]))
+		if (!S.halo && ((S.shift<box.start[m_ny]) || (S.shift>=box.stop[m_ny])))
 			throw std::logic_error("GPU_Ext_Sheet: a box holds the sheet but not the line next to it");
 		S.op.field = m_B->DeviceField(f==1);
 		// Op_Sheet numbers its hooks as GPU_Hook, plus the apply hook with super-absorption
@@ -270,7 +310,7 @@ protected:
 	}
 
 	GPU_Backend* m_B;
-	unsigned int numLines[3];
+	GPU_Slab m_Slab;
 	int m_ny;
 	unsigned int m_StartTS;
 	Sheet m_Sheet[2];
@@ -279,9 +319,9 @@ protected:
 class GPU_Ext_Mur_ABC
 {
 public:
-	static GPU_Extension* New(Operator_Ext_Mur_ABC* op, Engine_Ext_Mur_ABC* eng_ext, GPU_Backend* b, const unsigned int numLines[3])
+	static GPU_Extension* New(Operator_Ext_Mur_ABC* op, Engine_Ext_Mur_ABC* eng_ext, GPU_Backend* b, const GPU_Slab& slab)
 	{
-		GPU_Ext_Sheet* s = new GPU_Ext_Sheet(b, numLines, op->m_ny, eng_ext->GetStartTimestep());
+		GPU_Ext_Sheet* s = new GPU_Ext_Sheet(b, slab, op->m_ny, eng_ext->GetStartTimestep());
 		auto K1 = [op](int c, unsigned int i, unsigned int j) {return (c==0) ? op->m_Mur_Coeff_nyP(i, j) : op->m_Mur_Coeff_nyPP(i, j);};
 		s->Setup(0, op->m_LineNr, op->m_LineNr_Shift, 0, 0, op->m_numLines[0], op->m_numLines[1], K1, K1, false);
 		return s;
@@ -291,9 +331,9 @@ public:
 class GPU_Ext_Absorbing_BC
 {
 public:
-	static GPU_Extension* New(Operator_Ext_Absorbing_BC* op, GPU_Backend* b, const unsigned int numLines[3])
+	static GPU_Extension* New(Operator_Ext_Absorbing_BC* op, GPU_Backend* b, const GPU_Slab& slab)
 	{
-		GPU_Ext_Sheet* s = new GPU_Ext_Sheet(b, numLines, op->m_ny, 0);
+		GPU_Ext_Sheet* s = new GPU_Ext_Sheet(b, slab, op->m_ny, 0);
 		const unsigned int* p0 = op->m_sheetX0;
 		const bool pos = op->m_normalSignPositive;
 		auto K1 = [op](int c, unsigned int i, unsigned int j) {return (c==0) ? op->m_K1_nyP(i, j) : op->m_K1_nyPP(i, j);};
@@ -313,20 +353,20 @@ public:
 class GPU_Ext_LumpedRLC : public GPU_Extension
 {
 public:
-	GPU_Ext_LumpedRLC(Operator_Ext_LumpedRLC* op, GPU_Backend* b, const unsigned int numLines[3]) : m_B(b)
+	GPU_Ext_LumpedRLC(Operator_Ext_LumpedRLC* op, GPU_Backend* b, const GPU_Slab& slab) : m_B(b)
 	{
 		const size_t count = op->RLC_count;
 		std::vector<uint64_t> flat(count);
 		std::set<uint64_t> edges;
 		for (size_t n=0; n<count; ++n)
 		{
-			flat[n] = FlatIndex(numLines, op->v_RLC_dir[n], op->v_RLC_pos[0][n], op->v_RLC_pos[1][n], op->v_RLC_pos[2][n]);
+			flat[n] = FlatIndex(slab.lines, op->v_RLC_dir[n], op->v_RLC_pos[0][n], op->v_RLC_pos[1][n], op->v_RLC_pos[2][n]);
 			m_Serial |= !edges.insert(flat[n]).second;
 		}
-		m_List.Init(m_B, numLines, flat);
-		AddNodes(m_Nodes, flat, numLines);
+		m_List.Init(m_B, slab, flat);
+		m_List.AddNodes(m_Nodes);
 		auto up = [&](const FDTD_FLOAT* v) {return Upload(m_B, m_List.Sorted(std::vector<float>(v, v+count)));};
-		m_Op.index = Upload(m_B, m_List.Sorted(flat));
+		m_Op.index = Upload(m_B, m_List.Index());
 		m_Op.ilv = up(op->v_RLC_ilv);
 		m_Op.i2v = up(op->v_RLC_i2v);
 		m_Op.vvd = up(op->v_RLC_vvd);
@@ -339,7 +379,7 @@ public:
 		m_Op.jv2 = up(op->v_RLC_jv2);
 		m_Op.jj1 = up(op->v_RLC_jj1);
 		m_Op.jj2 = up(op->v_RLC_jj2);
-		const std::vector<float> zero(std::max<size_t>(count, 1), 0.0f);
+		const std::vector<float> zero(std::max<size_t>(m_List.Size(), 1), 0.0f);
 		m_Op.Il = Upload(m_B, zero);
 		for (int r=0; r<3; ++r)
 		{
@@ -395,8 +435,9 @@ protected:
 class GPU_Ext_TFSF : public GPU_Extension
 {
 public:
-	GPU_Ext_TFSF(Operator_Ext_TFSF* op, GPU_Backend* b, const unsigned int numLines[3]) : m_Op(op), m_B(b)
+	GPU_Ext_TFSF(Operator_Ext_TFSF* op, GPU_Backend* b, const GPU_Slab& slab) : m_Op(op), m_B(b)
 	{
+		const unsigned int* numLines = slab.lines;
 		for (int f=0; f<2; ++f)
 		{
 			const bool volt = (f==0);
@@ -429,8 +470,6 @@ public:
 						}
 				}
 			}
-			if (volt)
-				AddNodes(m_VoltNodes, flat, numLines);
 			// pass k: the k-th addition to a field value
 			std::map<uint64_t, unsigned int> seen;
 			std::vector<unsigned int> pass(flat.size());
@@ -452,8 +491,10 @@ public:
 						sel.push_back(p);
 				auto pick = [&](const auto& v) {std::vector<typename std::decay<decltype(v)>::type::value_type> r; for (size_t p : sel) r.push_back(v[p]); return r;};
 				Pass& P = m_Pass[f][k];
-				P.list.Init(m_B, numLines, pick(flat));
-				P.op.index = Upload(m_B, P.list.Sorted(pick(flat)));
+				P.list.Init(m_B, slab, pick(flat));
+				P.op.index = Upload(m_B, P.list.Index());
+				if (volt)
+					P.list.AddNodes(m_VoltNodes);
 				P.op.delay = Upload(m_B, P.list.Sorted(pick(delay)));
 				P.op.dd = Upload(m_B, P.list.Sorted(pick(dd)));
 				P.op.amp = Upload(m_B, P.list.Sorted(pick(amp)));
@@ -496,20 +537,24 @@ protected:
 class GPU_Ext_SteadyState : public GPU_Extension
 {
 public:
-	GPU_Ext_SteadyState(Operator_Ext_SteadyState* op, Engine_Ext_SteadyState* eng_ext, GPU_Backend* b, const unsigned int numLines[3])
+	//! the probes on \a slab; \a first: of the first part of a split grid, which the check of the probes of all parts reads
+	GPU_Ext_SteadyState(Operator_Ext_SteadyState* op, Engine_Ext_SteadyState* eng_ext, GPU_Backend* b, const GPU_Slab& slab, GPU_Ext_SteadyState* first)
 		: m_EngExt(eng_ext), m_B(b), m_Period(op->m_TS_period)
 	{
 		const size_t count = op->m_E_probe_dir.size();
 		std::vector<uint64_t> flat(count);
 		for (size_t n=0; n<count; ++n)
 		{
-			flat[n] = FlatIndex(numLines, op->m_E_probe_dir.at(n), op->m_E_probe_pos[0].at(n), op->m_E_probe_pos[1].at(n), op->m_E_probe_pos[2].at(n));
+			flat[n] = FlatIndex(slab.lines, op->m_E_probe_dir.at(n), op->m_E_probe_pos[0].at(n), op->m_E_probe_pos[1].at(n), op->m_E_probe_pos[2].at(n));
 		}
-		m_List.Init(m_B, numLines, flat);
-		m_Op.index = Upload(m_B, m_List.Sorted(flat));
+		m_Count = count;
+		m_List.Init(m_B, slab, flat);
+		m_Op.index = Upload(m_B, m_List.Index());
 		m_Op.length = 2*m_Period;
-		m_Host.assign(std::max<size_t>(count, 1)*2*(size_t)m_Period, 0.0f);
+		m_Host.assign(std::max<size_t>(m_List.Size(), 1)*2*(size_t)m_Period, 0.0f);
 		m_Op.records = Upload(m_B, m_Host);
+		m_Parts = first ? first->m_Parts : std::make_shared< std::vector<GPU_Ext_SteadyState*> >();
+		m_Parts->push_back(this);
 	}
 
 	virtual void Hook(bool currents, GPU_Hook h, const Engine_Box& box, unsigned int ts)
@@ -517,17 +562,19 @@ public:
 		if (currents || (h!=GPU_APPLY))
 			return;
 		Record(box, ts);
-		// the check reads the records of all probes: a timestep of the whole domain (NeedsFlatStep())
-		if (NeedsFlatStep(ts))
+		// the check reads the records of all probes: a timestep of the whole domain (NeedsFlatStep()), of the last part
+		if (NeedsFlatStep(ts) && (m_Parts->back()==this))
 		{
-			// the records of the sorted probes, in the order of the engine extension
-			m_B->DeviceDownload(m_Host.data(), m_Op.records, m_Host.size()*sizeof(float));
-			std::vector<size_t> sorted(m_List.Size());
-			for (size_t n=0; n<sorted.size(); ++n)
-				sorted[m_List.Order()[n]] = n;
-			const float* rec = m_Host.data();
+			// the records of the sorted probes of each part, in the order of the engine extension
+			std::vector<const float*> rec(m_Count, NULL);
+			for (GPU_Ext_SteadyState* p : *m_Parts)
+			{
+				p->m_B->DeviceDownload(p->m_Host.data(), p->m_Op.records, p->m_Host.size()*sizeof(float));
+				for (size_t n=0; n<p->m_List.Size(); ++n)
+					rec[p->m_List.Order()[n]] = p->m_Host.data() + n*2*m_Period;
+			}
 			const unsigned int len = 2*m_Period;
-			m_EngExt->CheckPeriod(ts%len, [&](size_t n, unsigned int t) {return (double)rec[sorted[n]*len + t];});
+			m_EngExt->CheckPeriod(ts%len, [&](size_t n, unsigned int t) {return (double)rec[n][t];});
 		}
 	}
 	virtual bool NeedsFlatStep(unsigned int ts) const {return m_EngExt->NeedsFlatStep(ts);}
@@ -544,9 +591,11 @@ protected:
 	Engine_Ext_SteadyState* m_EngExt;
 	GPU_Backend* m_B;
 	unsigned int m_Period;
+	size_t m_Count;   //!< the probes of all parts
 	GPU_PointList m_List;
 	Op_SteadyState m_Op;
 	std::vector<float> m_Host;
+	std::shared_ptr< std::vector<GPU_Ext_SteadyState*> > m_Parts;   //!< of all parts, in order
 };
 
 /***************************************************************************************************/
@@ -555,10 +604,11 @@ protected:
 class GPU_Ext_Cylinder : public GPU_Extension
 {
 public:
-	GPU_Ext_Cylinder(Operator_Ext_Cylinder* op, GPU_Backend* b, const unsigned int lines[3]) : m_B(b), m_Closed(op->CC_closedAlpha), m_R0(op->CC_R0_included)
+	//! the r=0 axis only on the part that holds it (local line 0 is r=0 there)
+	GPU_Ext_Cylinder(Operator_Ext_Cylinder* op, GPU_Backend* b, const GPU_Slab& slab)
+		: m_B(b), m_Closed(op->CC_closedAlpha), m_R0(op->CC_R0_included && (slab.x0==0))
 	{
-		for (int a=0; a<3; ++a)
-			numLines[a] = lines[a];
+		slab.Local(numLines);
 		m_Op.ny = numLines[1];
 		m_Op.nz = numLines[2];
 		m_Op.N = (uint64_t)numLines[0]*numLines[1]*numLines[2];
@@ -627,9 +677,8 @@ protected:
 class GPU_Ext_Dispersive : public GPU_Extension
 {
 public:
-	GPU_Ext_Dispersive(Operator_Ext_LorentzMaterial* op, GPU_Backend* b, const unsigned int lines[3]) : m_B(b), m_Debye(false)
+	GPU_Ext_Dispersive(Operator_Ext_LorentzMaterial* op, GPU_Backend* b, const GPU_Slab& slab) : m_B(b), m_Debye(false), m_Slab(slab)
 	{
-		Init(lines);
 		for (int o=0; o<op->m_Order; ++o)
 			for (int f=0; f<2; ++f)
 			{
@@ -648,9 +697,8 @@ public:
 			}
 	}
 
-	GPU_Ext_Dispersive(Operator_Ext_DebyeMaterial* op, GPU_Backend* b, const unsigned int lines[3]) : m_B(b), m_Debye(true)
+	GPU_Ext_Dispersive(Operator_Ext_DebyeMaterial* op, GPU_Backend* b, const GPU_Slab& slab) : m_B(b), m_Debye(true), m_Slab(slab)
 	{
-		Init(lines);
 		// one cell list for all poles, the voltages only (Operator_Ext_DebyeMaterial)
 		Order& ord = Add(0, op->m_LM_Count.at(0), op->m_LM_pos[0]);
 		ord.op.poles = op->m_PoleCount;
@@ -686,35 +734,31 @@ protected:
 	{
 		GPU_PointList list;
 		bool serial = false;           //!< a cell twice: the apply passes in order
-		std::vector<uint64_t> nodes;   //!< the node of each cell, in the order of the operator extension
+		std::vector<uint64_t> nodes;   //!< the local node of each cell
 		Op_Dispersive op;
 	};
 
-	void Init(const unsigned int lines[3])
-	{
-		for (int a=0; a<3; ++a)
-			numLines[a] = lines[a];
-	}
-
-	//! the order of field \a f with \a count cells at \a pos, with its state of the apply pass
+	//! the order of field \a f with \a count cells at \a pos, with its state of the apply pass: the cells on the lines the part owns
 	Order& Add(int f, size_t count, unsigned int* const pos[3])
 	{
 		m_Orders[f].emplace_back();
 		Order& o = m_Orders[f].back();
 		std::memset(&o.op, 0, sizeof(o.op));
-		o.nodes.resize(count);
+		const unsigned int* numLines = m_Slab.lines;
+		std::vector<uint64_t> nodes(count);
 		for (size_t i=0; i<count; ++i)
 		{
-			o.nodes[i] = ((uint64_t)pos[0][i]*numLines[1] + pos[1][i])*numLines[2] + pos[2][i];
+			nodes[i] = ((uint64_t)pos[0][i]*numLines[1] + pos[1][i])*numLines[2] + pos[2][i];
 		}
-		std::vector<uint64_t> sorted(o.nodes);
+		std::vector<uint64_t> sorted(nodes);
 		std::sort(sorted.begin(), sorted.end());
 		o.serial = std::adjacent_find(sorted.begin(), sorted.end())!=sorted.end();
-		o.list.Init(m_B, numLines, o.nodes);
-		o.op.node = Upload(m_B, o.list.Sorted(o.nodes));
-		o.op.sN = (uint64_t)numLines[0]*numLines[1]*numLines[2];
-		o.op.count = count;
-		o.op.ade = Upload(m_B, std::vector<float>(3*count, 0.0f));
+		o.list.Init(m_B, m_Slab, nodes);
+		o.list.AddNodes(o.nodes);
+		o.op.node = Upload(m_B, o.list.Index());
+		o.op.sN = (uint64_t)m_Slab.nx*numLines[1]*numLines[2];
+		o.op.count = o.list.Size();
+		o.op.ade = Upload(m_B, std::vector<float>(3*o.op.count, 0.0f));
 		return o;
 	}
 
@@ -742,39 +786,44 @@ protected:
 
 	GPU_Backend* m_B;
 	bool m_Debye;
-	unsigned int numLines[3];
+	GPU_Slab m_Slab;
 	std::vector<Order> m_Orders[2];   //!< of the voltages, of the currents
 };
 
 GPU_Extension* GPU_CreateExtension(Engine_Extension* eng_ext, GPU_Backend* backend, const unsigned int numLines[3])
 {
+	return backend->CreateExtension(eng_ext, numLines);
+}
+
+GPU_Extension* GPU_CreatePartExtension(Engine_Extension* eng_ext, GPU_Backend* backend, const GPU_Slab& slab, GPU_Extension* first)
+{
 	if (dynamic_cast<Engine_Ext_Excitation*>(eng_ext))
 		if (Operator_Ext_Excitation* op = dynamic_cast<Operator_Ext_Excitation*>(eng_ext->GetOperatorExtension()))
-			return new GPU_Ext_Excitation(op, backend, numLines);
+			return new GPU_Ext_Excitation(op, backend, slab);
 	if (Engine_Ext_Mur_ABC* e = dynamic_cast<Engine_Ext_Mur_ABC*>(eng_ext))
 		if (Operator_Ext_Mur_ABC* op = dynamic_cast<Operator_Ext_Mur_ABC*>(eng_ext->GetOperatorExtension()))
-			return GPU_Ext_Mur_ABC::New(op, e, backend, numLines);
+			return GPU_Ext_Mur_ABC::New(op, e, backend, slab);
 	if (dynamic_cast<Engine_Ext_Absorbing_BC*>(eng_ext))
 		if (Operator_Ext_Absorbing_BC* op = dynamic_cast<Operator_Ext_Absorbing_BC*>(eng_ext->GetOperatorExtension()))
-			return GPU_Ext_Absorbing_BC::New(op, backend, numLines);
+			return GPU_Ext_Absorbing_BC::New(op, backend, slab);
 	if (dynamic_cast<Engine_Ext_LumpedRLC*>(eng_ext))
 		if (Operator_Ext_LumpedRLC* op = dynamic_cast<Operator_Ext_LumpedRLC*>(eng_ext->GetOperatorExtension()))
-			return new GPU_Ext_LumpedRLC(op, backend, numLines);
+			return new GPU_Ext_LumpedRLC(op, backend, slab);
 	if (dynamic_cast<Engine_Ext_TFSF*>(eng_ext))
 		if (Operator_Ext_TFSF* op = dynamic_cast<Operator_Ext_TFSF*>(eng_ext->GetOperatorExtension()))
-			return new GPU_Ext_TFSF(op, backend, numLines);
+			return new GPU_Ext_TFSF(op, backend, slab);
 	if (Engine_Ext_SteadyState* e = dynamic_cast<Engine_Ext_SteadyState*>(eng_ext))
 		if (Operator_Ext_SteadyState* op = dynamic_cast<Operator_Ext_SteadyState*>(eng_ext->GetOperatorExtension()))
-			return new GPU_Ext_SteadyState(op, e, backend, numLines);
+			return new GPU_Ext_SteadyState(op, e, backend, slab, dynamic_cast<GPU_Ext_SteadyState*>(first));
 	if (dynamic_cast<Engine_Ext_Cylinder*>(eng_ext))
 		if (Operator_Ext_Cylinder* op = dynamic_cast<Operator_Ext_Cylinder*>(eng_ext->GetOperatorExtension()))
-			return new GPU_Ext_Cylinder(op, backend, numLines);
+			return new GPU_Ext_Cylinder(op, backend, slab);
 	if (dynamic_cast<Engine_Ext_LorentzMaterial*>(eng_ext))
 		if (Operator_Ext_LorentzMaterial* op = dynamic_cast<Operator_Ext_LorentzMaterial*>(eng_ext->GetOperatorExtension()))
-			return new GPU_Ext_Dispersive(op, backend, numLines);
+			return new GPU_Ext_Dispersive(op, backend, slab);
 	if (dynamic_cast<Engine_Ext_DebyeMaterial*>(eng_ext))
 		if (Operator_Ext_DebyeMaterial* op = dynamic_cast<Operator_Ext_DebyeMaterial*>(eng_ext->GetOperatorExtension()))
-			return new GPU_Ext_Dispersive(op, backend, numLines);
+			return new GPU_Ext_Dispersive(op, backend, slab);
 	return NULL;
 }
 

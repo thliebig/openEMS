@@ -59,6 +59,10 @@ public:
 	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL);
 	virtual void DeviceDownload(void* host, const void* dev, size_t bytes);
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy);
+	virtual bool CalcFastEnergyLines(unsigned int x0, const unsigned int numNodes[3], double& E_energy, double& H_energy);
+	//! Another reference backend: a grid split over several of them, to test GPU_Backend_Split without a device
+	virtual bool CanSendPlane(const GPU_Backend* dst) const;
+	virtual void SendPlane(bool currents, unsigned int x, GPU_Backend* dst, unsigned int dst_x);
 	virtual float* DeviceField(bool currents) {return currents ? m_curr.data() : m_volt.data();}
 	virtual void RunPoints(GPU_PointOp kind, const void* op, uint64_t begin, uint64_t end, bool serial, const CM_PointFilter& filter);
 

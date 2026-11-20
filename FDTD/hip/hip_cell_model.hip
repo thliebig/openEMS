@@ -167,9 +167,10 @@ __global__ void cm_late_currents(float* __restrict__ I, float* __restrict__ Iout
 
 bool GPU_Backend_HIP::Init(const Operator* op, const GPU_CellModel& m)
 {
-	if (!InitFields(op))
+	// the grid of the model: of the operator, or a part of it (GPU_Backend_Split, op NULL)
+	if (!FitsOperator(op, m))
 		return false;
-	if ((m.numLines[0]!=d->dim.nx) || (m.numLines[1]!=d->dim.ny) || (m.numLines[2]!=d->dim.nz))
+	if (!InitFields(m.numLines))
 		return false;
 	d->cm_index16 = m.Index16();
 	size_t bytes = 0;
@@ -184,6 +185,7 @@ bool GPU_Backend_HIP::Init(const Operator* op, const GPU_CellModel& m)
 			uint16_t* dev = d->Alloc<uint16_t>(n);
 			const size_t chunk = (size_t)1<<22;
 			std::vector<uint16_t> part(std::min(n, chunk));
+			d->ctx->MakeCurrent();
 			for (size_t i=0; i<n; i+=chunk)
 			{
 				const size_t m = std::min(chunk, n-i);
@@ -292,6 +294,7 @@ bool GPU_Backend_HIP::PrepareFused(const std::vector<uint64_t>& late)
 	// leave some memory free (256 MiB or 5 %), for what is allocated later (energy sums, snapshots)
 	const size_t need = (2*3*d->numCells + d->cm_state_size[0])*sizeof(float) + (late.empty() ? 0 : d->numCells/8 + 8*late.size());
 	size_t free_bytes = 0, total_bytes = 0;
+	d->ctx->MakeCurrent();   // the memory of this part's device, on a split grid
 	if ((hipMemGetInfo(&free_bytes, &total_bytes)==hipSuccess)
 	    && (free_bytes < need + std::max<size_t>((size_t)256 << 20, total_bytes/20)))
 	{
