@@ -30,7 +30,9 @@ IF(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   # what the openEMS sources are compiled with, from the top level
   include_directories(${OPENEMS_SOURCE_DIR} ${OPENEMS_BINARY_DIR} ${OPENEMS_INCLUDE_DIRS})
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${OPENEMS_COMPILE_DEFINITIONS})
-  set(_openems_lib ${OPENEMS_LIBRARY})
+  # and CSXCAD, which libopenEMS links publicly: the files that include CSUseful.h
+  # construct a CSDebug, which a Windows DLL cannot leave to the loader
+  set(_openems_lib ${OPENEMS_LIBRARY} ${OPENEMS_CSXCAD_LIBRARY})
 ELSE()
   set(_sycl_standalone OFF)
   set(OPENEMS_BINARY_DIR ${openEMS_BINARY_DIR})
