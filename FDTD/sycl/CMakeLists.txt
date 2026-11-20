@@ -11,7 +11,20 @@ IF(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   IF(OPENEMS_GCC_INSTALL_DIR)
     set(ENV{CXXFLAGS} "$ENV{CXXFLAGS} --gcc-install-dir=${OPENEMS_GCC_INSTALL_DIR}")
   ENDIF()
+  IF(WIN32)
+    # icx names the Intel runtime libraries (libircmt, libmmd, svml) in its objects and
+    # leaves finding them to the linker, through LIB: the oneAPI environment (setvars.bat)
+    # puts the compiler's lib directory there, a Visual Studio prompt does not. LIB for
+    # the compiler check of project(), a link directory for the plugin.
+    file(TO_CMAKE_PATH "${CMAKE_CXX_COMPILER}" _icx_lib_dir)
+    get_filename_component(_icx_lib_dir "${_icx_lib_dir}" DIRECTORY)
+    get_filename_component(_icx_lib_dir "${_icx_lib_dir}/../lib" ABSOLUTE)
+    set(ENV{LIB} "${_icx_lib_dir};$ENV{LIB}")
+  ENDIF()
   project(openEMS_gpu_sycl CXX)
+  IF(WIN32)
+    link_directories(${_icx_lib_dir})
+  ENDIF()
   set(CMAKE_CXX_STANDARD 17)
   set(_sycl_standalone ON)
   # what the openEMS sources are compiled with, from the top level
