@@ -51,7 +51,7 @@ public:
 	template <typename T>
 	bool WriteVectorField(std::string dataSetName, ArrayLib::ArrayNIJK<T> &data, bool legacy_fmt=false);
 
-
+	//! A dataset or attribute written before is written again: a dataset of the same shape and type in place, so the file does not grow
 	bool WriteData(std::string dataSetName, float const* field_buf, size_t dim, size_t* datasize, std::string d_order="");
 	bool WriteData(std::string dataSetName, double const* field_buf, size_t dim, size_t* datasize, std::string d_order="");
 	bool WriteData(std::string dataSetName, std::complex<float> const* field_buf, size_t dim, size_t* datasize, std::string d_order="");

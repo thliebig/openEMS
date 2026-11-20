@@ -29,7 +29,7 @@
 
 //! Background work of the field dumps, one thread in the order of the tasks.
 //! - the HDF5 writes of the TD dumps: during the run it is the only user of HDF5 (the
-//!   other dumps write in InitProcess()/PostProcess(), after FinishAsync()), so the writes
+//!   other dumps write in InitProcess()/PostProcess()/DumpFDNow(), after FinishAsync()), so the writes
 //!   and the simulation overlap,
 //! - with field snapshots of the engine (see Engine_Interface_Base::TakeFieldSnapshot()),
 //!   the dumped fields from the snapshot (TD dumps) and the FD sums (FD dumps), while the

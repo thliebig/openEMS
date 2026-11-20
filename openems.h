@@ -27,6 +27,7 @@
 #include <ctime>
 #include <vector>
 #include <climits>
+#include <atomic>
 
 #include "openems_global.h"
 
@@ -108,6 +109,11 @@ public:
 	//! Check for abort conditions
 	bool CheckAbortCond();
 
+	//! Write the frequency domain field dumps with the sums so far at the next timestep the running simulation reaches, e.g. from another thread; they are written again at the end. The file "DUMP_FD" in the simulation directory asks for it as well, and is removed once they are written.
+	void RequestFDDump() {m_FDDumpRequest=true;}
+	//! A requested dump is not written yet
+	bool FDDumpPending() const {return m_FDDumpRequest;}
+
 	void SetGaussExcite(double f0, double fc, bool dcFree=false);
 	void SetSinusExcite(double f0);
 	void SetDiracExcite(double f_max);
@@ -166,6 +172,10 @@ protected:
 	Excitation* m_Exc;
 
 	bool m_Abort;
+	std::atomic<bool> m_FDDumpRequest;
+	bool m_FDDumpFile;   //!< whether to look for the file DUMP_FD (no more after it could not be removed)
+	//! Write the frequency domain dumps if asked for, see RequestFDDump()
+	void DumpFDOnRequest();
 
 	enum EngineType {EngineType_Basic, EngineType_SSE, EngineType_GPU, EngineType_GPU_Reference, EngineType_CPU};
 	EngineType m_engine;

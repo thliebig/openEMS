@@ -35,6 +35,8 @@ public:
 
 	virtual int Process();
 	virtual void PostProcess();
+	//! the sums so far, written as at the end: the run goes on with them
+	virtual void DumpFDNow() {PostProcess();}
 
 	//! Wait for the samples summed from snapshots in the background
 	virtual void FinishAsync();

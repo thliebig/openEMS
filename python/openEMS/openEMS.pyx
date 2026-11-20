@@ -718,6 +718,28 @@ cdef class openEMS:
     def SetAbort(self, val):
         self.thisptr.SetAbort(val)
 
+    def RequestFDDump(self):
+        """ RequestFDDump()
+
+        Write the frequency domain field dumps with the results so far, at the
+        next timestep a running simulation reaches, e.g. from another thread
+        while :func:`Run` runs. They are written again, to the same files, at
+        the end. Creating the file ``DUMP_FD`` in `sim_path` does the same, and
+        openEMS removes it once the dumps are written. Read them, e.g. for an
+        NF2FF, in another process: HDF5 is not thread-safe, and openEMS may
+        still write its time domain dumps.
+
+        See also :func:`FDDumpPending`.
+        """
+        self.thisptr.RequestFDDump()
+
+    def FDDumpPending(self):
+        """ FDDumpPending()
+
+        Whether a dump asked for by :func:`RequestFDDump` is not written yet.
+        """
+        return self.thisptr.FDDumpPending()
+
     def Write2XML(self, file):
         """ Write2XML(file)
 

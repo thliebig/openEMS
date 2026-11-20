@@ -384,6 +384,13 @@ void ProcessingArray::PostProcess()
 	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->PostProcess();
 }
 
+void ProcessingArray::DumpFDNow()
+{
+	// as PostProcess(): the background writer is the only user of HDF5 during the run
+	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->FinishAsync();
+	for (size_t i=0; i<ProcessArray.size(); ++i) ProcessArray.at(i)->DumpFDNow();
+}
+
 void ProcessingArray::DumpBoxes2File( string vtkfilenameprefix ) const
 {
 	for (size_t i=0; i<ProcessArray.size(); ++i)

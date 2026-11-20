@@ -388,7 +388,26 @@ bool HDF5_File_Writer::WriteData(hid_t group, std::string dataSetName, hid_t mem
 	for (size_t n=0;n<dim;++n)
 		dims[n]=datasize[n];
 	hid_t space = H5Screate_simple(dim, dims, NULL);
-	hid_t dataset = H5Dcreate(group, dataSetName.c_str(), mem_type, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t dataset = -1;
+	if (H5Lexists(group, dataSetName.c_str(), H5P_DEFAULT)>0)
+	{
+		// written before, e.g. a frequency domain dump during the run (openEMS::RequestFDDump())
+		dataset = H5Dopen(group, dataSetName.c_str(), H5P_DEFAULT);
+		hid_t old_space = H5Dget_space(dataset);
+		hid_t old_type = H5Dget_type(dataset);
+		const bool same = (H5Sextent_equal(old_space, space)>0) && (H5Tequal(old_type, mem_type)>0);
+		H5Tclose(old_type);
+		H5Sclose(old_space);
+		if (!same)
+		{
+			H5Dclose(dataset);
+			H5Ldelete(group, dataSetName.c_str(), H5P_DEFAULT);
+			dataset = -1;
+		}
+	}
+	const bool created = (dataset<0);
+	if (created)
+		dataset = H5Dcreate(group, dataSetName.c_str(), mem_type, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	if (H5Dwrite(dataset, mem_type, space, H5P_DEFAULT, H5P_DEFAULT, field_buf))
 	{
 		cerr << "HDF5_File_Writer::WriteData: Error, writing to dataset failed" << endl;
@@ -398,7 +417,8 @@ bool HDF5_File_Writer::WriteData(hid_t group, std::string dataSetName, hid_t mem
 		return false;
 	}
 
-	if (!d_order.empty())
+	// once: a string attribute written again takes new space in the file
+	if (created && !d_order.empty())
 	{
 		hid_t tid = H5Tcopy(H5T_C_S1);
 		H5Tset_size(tid, H5T_VARIABLE);
@@ -449,6 +469,9 @@ bool HDF5_File_Writer::WriteAttribute(hid_t loc, std::string attr_name, void con
 		dataspace_id = H5Screate_simple(1, &size, NULL);
 	else  // size == 0 means scalar value
 		dataspace_id = H5Screate(H5S_SCALAR);
+
+	if (H5Aexists(loc, attr_name.c_str())>0)
+		H5Adelete(loc, attr_name.c_str());
 
 	/* Create a dataset attribute. */
 	hid_t attribute_id = H5Acreate(loc, attr_name.c_str(), mem_type, dataspace_id, H5P_DEFAULT, H5P_DEFAULT);

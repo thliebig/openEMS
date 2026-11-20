@@ -93,6 +93,9 @@ public:
 	//! Wait for data processing still running in the background (e.g. dumps written asynchronously), called before any PostProcess()
 	virtual void FinishAsync() {}
 
+	//! Write the frequency domain results so far while the run goes on, after FinishAsync() (see openEMS::RequestFDDump())
+	virtual void DumpFDNow() {}
+
 	//! If disabled, Process() will do nothing...
 	virtual void SetEnable(bool val) {Enabled=val;}
 	//! If disabled, Process() will do nothing...
@@ -207,6 +210,9 @@ public:
 
 	//! Invoke PostProcess() on all Processings.
 	void PostProcess();
+
+	//! Invoke DumpFDNow() on all Processings, during the run
+	void DumpFDNow();
 
 	void DumpBoxes2File(std::string vtkfilenameprefix ) const;
 

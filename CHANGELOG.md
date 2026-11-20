@@ -35,6 +35,11 @@ to what a user notices, in a few lines; the details belong in the commit.
   needs at least for the mesh, instead of failing after a long build, e.g. on
   a mesh far finer than intended. `--no-memory-check` (`no_memory_check=True`)
   sets up anyway.
+- A running simulation writes its frequency domain field dumps on request,
+  e.g. for a look at the far field long before the end: create the file
+  `DUMP_FD` in the simulation folder (removed once they are written), or call
+  `RequestFDDump()` in Python from another thread. They are written again at
+  the end.
 
 ### Changed
 

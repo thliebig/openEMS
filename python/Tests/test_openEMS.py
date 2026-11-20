@@ -23,6 +23,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import h5py
 import numpy as np
 
 from CSXCAD import ContinuousStructure
@@ -376,6 +377,47 @@ class Test_NumThreads(unittest.TestCase):
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                  universal_newlines=True, check=True, cwd=tmp)
         self.assertLessEqual(int(out.stdout.split()[-1]), 2)
+
+
+_FD_DUMP_SCRIPT = """
+import os, sys
+import numpy as np
+from CSXCAD import ContinuousStructure
+from openEMS.openEMS import openEMS
+fdtd = openEMS(NrTS=100, EndCriteria=0)
+fdtd.SetGaussExcite(1e9, 1e9)
+fdtd.SetBoundaryCond(['PEC'] * 6)
+csx = ContinuousStructure()
+fdtd.SetCSX(csx)
+grid = csx.GetGrid()
+grid.SetDeltaUnit(1e-3)
+for d in 'xyz':
+    grid.SetLines(d, np.linspace(-50, 50, 11))
+csx.AddExcitation('ex', 0, [0, 0, 1]).AddBox([0, 0, -10], [0, 0, 10])
+csx.AddDump('Ef', dump_type=10, frequency=[1e9], file_type=1).AddBox([-50, -50, 0], [50, 50, 0])
+os.mkdir(sys.argv[1])
+if sys.argv[2] == 'request':
+    open(os.path.join(sys.argv[1], 'DUMP_FD'), 'w').close()
+fdtd.Run(sys.argv[1], verbose=0)
+"""
+
+
+class Test_FDDumpRequest(unittest.TestCase):
+    def test_dump_file(self):
+        # DUMP_FD in sim_path: the FD dumps are written at the first timesteps and again, in place,
+        # at the end, as without the request; the file is removed
+        with tempfile.TemporaryDirectory() as tmp:
+            f0 = []
+            for mode in ('request', 'none'):
+                sim = os.path.join(tmp, mode)
+                out = subprocess.run([sys.executable, '-c', _FD_DUMP_SCRIPT, sim, mode],
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     universal_newlines=True, check=True, cwd=tmp)
+                self.assertEqual('writing the frequency domain dumps' in out.stdout, mode == 'request')
+                self.assertFalse(os.path.exists(os.path.join(sim, 'DUMP_FD')))
+                with h5py.File(os.path.join(sim, 'Ef.h5'), 'r') as h:
+                    f0.append(np.array(h['/FieldData/FD/f0']))
+        np.testing.assert_allclose(f0[0], f0[1], rtol=0, atol=1e-6*np.abs(f0[1]).max())
 
 
 _GPU_ENGINE_SCRIPT = """

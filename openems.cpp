@@ -17,6 +17,7 @@
 
 #include "openems.h"
 #include <algorithm>
+#include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -97,6 +98,8 @@ openEMS::openEMS()
 	m_engine_numThreads = 0;
 
 	m_Abort = false;
+	m_FDDumpRequest = false;
+	m_FDDumpFile = true;
 	m_Exc = 0;
 
 	Reset();
@@ -1600,6 +1603,25 @@ bool openEMS::CheckAbortCond()
 	return false;
 }
 
+//! The file that asks a running simulation for its frequency domain dumps, see openEMS::RequestFDDump()
+static const char FD_DUMP_FILE[] = "DUMP_FD";
+
+void openEMS::DumpFDOnRequest()
+{
+	const bool file = m_FDDumpFile && ifstream(FD_DUMP_FILE).good();
+	if (!file && !m_FDDumpRequest)
+		return;
+	cout << "RunFDTD: writing the frequency domain dumps at timestep " << FDTD_Eng->GetNumberOfTimesteps() << endl;
+	PA->DumpFDNow();
+	PA->FlushNext();   // the probes at their next sample, not after the next progress report
+	m_FDDumpRequest = false;
+	if (file && (remove(FD_DUMP_FILE)!=0))
+	{
+		cerr << "openEMS: Error: can't remove the file \"" << FD_DUMP_FILE << "\", not looking for it any more" << endl;
+		m_FDDumpFile = false;
+	}
+}
+
 //! Wall-clock time of a run (s) during which the end criteria is evaluated every Nyquist period, see RunFDTD()
 static const double EXACT_ENDCRIT_TIME = 60;
 
@@ -1663,6 +1685,7 @@ void openEMS::RunFDTD()
 
 	if (m_DumpStats)
 		InitRunStatistics(OPENEMS_RUN_STAT_FILE);
+	m_FDDumpFile = true;
 	//*************** simulate ************//
 
 	PA->PreProcess();
@@ -1673,6 +1696,7 @@ void openEMS::RunFDTD()
 	{
 		FDTD_Eng->IterateTS(step);
 		step=PA->Process();
+		DumpFDOnRequest();
 
 		if (Eng_Ext_SSD)
 			change = Eng_Ext_SSD->GetLastDiff(); // cheap: extension keeps this up to date itself
@@ -1778,6 +1802,10 @@ void openEMS::RunFDTD()
 
 	//*************** postproc ************//
 	PA->PostProcess();
+	// the final dumps answer a request still pending
+	m_FDDumpRequest = false;
+	if (m_FDDumpFile)
+		remove(FD_DUMP_FILE);
 
 	// the results are written: free the memory of the operator and the engine,
 	// e.g. for a post-processing in the same process (NF2FF, SAR)

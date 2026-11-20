@@ -38,6 +38,9 @@ public:
 
 	virtual int Process();
 
+	//! only at the end: the SAR looks up the material of every cell
+	virtual void DumpFDNow() {}
+
 	virtual void SetSubSampling(unsigned int subSampleRate, int dir=-1);
 
 	virtual void SetOptResolution(double optRes, int dir=-1);
