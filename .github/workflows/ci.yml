@@ -528,10 +528,12 @@ jobs:
         if: matrix.os.gpu == 'sycl'
         run: |
           # the GPU engine test with the SYCL kernels run on the CPU; the oneAPI
-          # environment has the libraries of the OpenCL CPU runtime (TBB)
+          # environment has the libraries of the OpenCL CPU runtime (TBB). Every
+          # kernel launch costs the CPU device far more than a GPU: about 30 min,
+          # most of it the 100000 timesteps of coax_resonator in tiles of 5 lines
           source $ONEAPI_ROOT/setvars.sh
           cd $GITHUB_WORKSPACE/openEMS/python/Tests
-          ONEAPI_DEVICE_SELECTOR=opencl:cpu OPENEMS_ENGINE=gpu python3 run_testsuite.py -v Engine_Compare 2>&1 | tee /tmp/sycl.log
+          ONEAPI_DEVICE_SELECTOR=opencl:cpu OPENEMS_ENGINE=gpu python3 run_testsuite.py -v --timeout=3600 Engine_Compare 2>&1 | tee /tmp/sycl.log
           # without a device the test passes too: make sure the SYCL backend ran
           grep -q "SYCL backend: max. deviation" /tmp/sycl.log || { echo "SYCL did not run"; exit 1; }
 
