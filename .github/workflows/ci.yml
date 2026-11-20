@@ -1426,6 +1426,12 @@ jobs:
           cmd /c "`"$env:ONEAPI_ROOT\setvars.bat`" > nul && set" | ForEach-Object {
             if ($_ -match "^(.*?)=(.*)$") { Set-Item -Path "env:$($matches[1])" -Value $matches[2] }
           }
+          # a plugin finds the libraries it links next to it, not on PATH (FDTD/gpu_plugins.cpp):
+          # the SYCL runtime, its adapters and their memory framework
+          $plugins = "$HOME/opt/bin/openEMS/plugins"
+          foreach ($d in @("compiler\latest\bin", "umf\latest\bin")) {
+            Get-ChildItem "$env:ONEAPI_ROOT\$d" -Filter *.dll -ErrorAction SilentlyContinue | Copy-Item -Destination $plugins
+          }
           $env:PATH = "$HOME/opt/bin;$env:GITHUB_WORKSPACE/openEMS/build/vcpkg_installed/x64-windows-release/bin;$env:PATH"
           $env:ONEAPI_DEVICE_SELECTOR = "opencl:cpu"
           $xml = "$env:GITHUB_WORKSPACE/openEMS/.github/smoketests/gpu/gpu_engine.xml"
