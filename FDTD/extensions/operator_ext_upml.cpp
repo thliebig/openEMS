@@ -70,7 +70,7 @@ bool Operator_Ext_UPML::Create_UPML(Operator* op, const int ui_BC[6], const unsi
 
 	//check if mesh is large enough to support the pml
 	for (int n=0; n<3; ++n)
-		if ( (size[2*n]*(BC[2*n]==3)+size[2*n+1]*(BC[2*n+1]==3)) >= op->GetNumberOfLines(n,true) )
+		if ( ((size[2*n]+1)*(BC[2*n]==3)+(size[2*n+1]+1)*(BC[2*n+1]==3)) >= op->GetNumberOfLines(n,true) )
 		{
 			cerr << "Operator_Ext_UPML::Create_UPML: Warning: Not enough lines in direction: " << n << ", resetting to PEC" << endl;
 			BC[2*n]=0;
