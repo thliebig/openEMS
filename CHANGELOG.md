@@ -119,6 +119,11 @@ to what a user notices, in a few lines; the details belong in the commit.
   off with a warning. The HIP backend is a plugin loaded at runtime from
   `openEMS/plugins` next to `libopenEMS` (`OPENEMS_GPU_PLUGINS=OFF` links it
   in), so `libopenEMS` needs no GPU runtime.
+- `ENABLE_SYCL` for the SYCL backend (Intel GPUs), on when the Intel oneAPI
+  DPC++/C++ compiler 2026 or newer is found (`OPENEMS_ICPX`; with another
+  compiler for openEMS itself, the plugin is built in a sub-build). Always a
+  plugin. `OPENEMS_SYCL_AOT_DEVICES` (e.g. `bmg-g21`) compiles it for those
+  GPUs ahead of time; otherwise the first run on a GPU compiles it.
 - C++17 is now required (was C++11), e.g. GCC 8 or newer.
 - VTK is no longer needed; zlib is needed instead, which HDF5 usually brings
   along.

@@ -212,11 +212,33 @@ bool GPU_Backend_SYCL::PrepareFused(const std::vector<uint64_t>& late)
 		return false;
 	}
 	// the second buffers: only a speed-up, without the memory the main updates stay separate. They
-	// leave some memory free (256 MiB or 5 %), for what is allocated later (energy sums, snapshots):
-	// SYCL does not tell the free memory, so that much is held while they are allocated
+	// leave some memory free (256 MiB or 5 %), for what is allocated later (energy sums, snapshots).
+	// An Intel GPU tells its free memory, and is asked: its driver gives out more than the card
+	// holds and spills to host memory, which slows the fused step instead of failing the
+	// allocation (a B580 spilling 2 % of the fields ran it 24 % slower). A device that does not
+	// tell it holds that much while they are allocated
+	const size_t need = (2*3*d->numCells + d->cm_state_size[0])*sizeof(float) + (late.empty() ? 0 : d->numCells/8 + 8*late.size());
 	const size_t total = d->ctx->device.get_info<sycl::info::device::global_mem_size>();
-	void* reserve = d->TryAlloc<char>(std::min<size_t>(std::max<size_t>((size_t)256 << 20, total/20), d->ctx->max_alloc));
-	f.volt = reserve ? d->TryAlloc<float>(3*d->numCells) : NULL;
+	const size_t spare = std::max<size_t>((size_t)256 << 20, total/20);
+	void* reserve = NULL;
+	bool room = true;
+	if (d->ctx->device.has(sycl::aspect::ext_intel_free_memory))
+	{
+		const size_t free_bytes = d->ctx->device.get_info<sycl::ext::intel::info::device::free_memory>();
+		if (free_bytes < need + spare)
+		{
+			if (g_settings.GetVerboseLevel()>0)
+				std::cout << "GPU_Backend_SYCL: no fused step: " << need/1048576 << " MiB for the second field buffers, "
+				          << free_bytes/1048576 << " MiB free" << std::endl;
+			return false;
+		}
+	}
+	else
+	{
+		reserve = d->TryAlloc<char>(std::min<size_t>(spare, d->ctx->max_alloc));
+		room = (reserve!=NULL);
+	}
+	f.volt = room ? d->TryAlloc<float>(3*d->numCells) : NULL;
 	f.curr = f.volt ? d->TryAlloc<float>(3*d->numCells) : NULL;
 	f.vstate = f.curr ? d->TryAlloc<float>(std::max<size_t>(d->cm_state_size[0], 1)) : NULL;
 	d->Free(reserve);

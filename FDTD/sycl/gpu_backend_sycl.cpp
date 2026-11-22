@@ -62,6 +62,10 @@ SYCL_Context::~SYCL_Context()
 	{
 		queue.wait();
 		copy_queue.wait();
+		// an asynchronous error still pending goes through the handler, which writes
+		// members destroyed before the queues: deliver it here
+		queue.throw_asynchronous();
+		copy_queue.throw_asynchronous();
 	}
 	catch (...)
 	{
@@ -330,7 +334,8 @@ bool GPU_Backend_SYCL::InitFields(const Operator* op)
 	d->dim.ny = numLines[1];
 	d->dim.nz = numLines[2];
 	d->numCells = (size_t)numLines[0]*numLines[1]*numLines[2];
-	// one allocation per field: Intel GPUs allow 4 GiB per allocation by default
+	// one allocation per field, up to the device's limit: 4 GiB on many Intel GPUs, the
+	// whole memory on a B580, whose driver addresses larger buffers (tested past 4 GiB)
 	if (3*d->numCells*sizeof(float) > d->ctx->max_alloc)
 	{
 		std::cerr << "GPU_Backend_SYCL: a field of " << 3*d->numCells*sizeof(float)/1048576 << " MiB is more than the largest allocation of "

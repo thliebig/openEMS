@@ -104,15 +104,29 @@ ENDIF()
 IF(NOT WIN32)
   # The SYCL runtime (and the Intel math libraries icpx links) sit next to the compiler,
   # which the driver links implicitly: no RPATH entry of CMake's own. With it in the
-  # RPATH the plugin loads without the oneAPI environment (setvars.sh).
+  # RPATH the plugin loads without the oneAPI environment (setvars.sh). Its Level Zero
+  # adapter needs libumf, which oneAPI keeps in a directory of its own that only
+  # setvars.sh puts on the loader's path; without it the adapter fails to load and the
+  # plugin finds no GPU. Linked into the plugin, libumf is there before the adapter
+  # asks for it (--no-as-needed: the plugin itself calls nothing of it).
   get_filename_component(_icpx_dir ${CMAKE_CXX_COMPILER} REALPATH)
   get_filename_component(_icpx_dir ${_icpx_dir} DIRECTORY)
   find_library(OPENEMS_SYCL_LIBRARY sycl HINTS ${_icpx_dir}/../lib)
+  find_library(OPENEMS_UMF_LIBRARY umf HINTS ${_icpx_dir}/../lib ${_icpx_dir}/../../../umf/latest/lib)
   IF(OPENEMS_SYCL_LIBRARY)
     get_filename_component(_sycl_lib_dir ${OPENEMS_SYCL_LIBRARY} REALPATH)
     get_filename_component(_sycl_lib_dir ${_sycl_lib_dir} DIRECTORY)
-    set_property(TARGET openEMS_gpu_sycl PROPERTY BUILD_RPATH ${_sycl_lib_dir})
-    set_property(TARGET openEMS_gpu_sycl PROPERTY INSTALL_RPATH ${CMAKE_INSTALL_RPATH} ${_sycl_lib_dir})
+    set(_sycl_rpath ${_sycl_lib_dir})
+    IF(OPENEMS_UMF_LIBRARY)
+      get_filename_component(_umf_lib_dir ${OPENEMS_UMF_LIBRARY} REALPATH)
+      get_filename_component(_umf_lib_dir ${_umf_lib_dir} DIRECTORY)
+      TARGET_LINK_LIBRARIES( openEMS_gpu_sycl -Wl,--no-as-needed ${OPENEMS_UMF_LIBRARY} )
+      list(APPEND _sycl_rpath ${_umf_lib_dir})
+    ELSE()
+      message(STATUS "SYCL plugin: libumf not found, the Intel GPUs need the oneAPI environment (setvars.sh)")
+    ENDIF()
+    set_property(TARGET openEMS_gpu_sycl PROPERTY BUILD_RPATH ${_sycl_rpath})
+    set_property(TARGET openEMS_gpu_sycl PROPERTY INSTALL_RPATH ${CMAKE_INSTALL_RPATH} ${_sycl_rpath})
   ENDIF()
 ENDIF()
 

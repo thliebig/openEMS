@@ -29,6 +29,18 @@ IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|IntelLLVM")
   SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ffp-contract=off")
 ENDIF()
 
+# The Intel compiler (icpx, icx) defaults to fast math, which assumes there are no
+# NaNs: the setup uses NaN for a value not given (e.g. of a lumped element), and the
+# reference GPU backend has to round like the other compilers. Precise math for a
+# build with it; the SYCL plugin sets its own flags (FDTD/sycl).
+IF(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+  IF(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    add_compile_options(/fp:precise)
+  ELSE()
+    add_compile_options(-fno-fast-math)
+  ENDIF()
+ENDIF()
+
 # default
 set(LIB_VERSION_MAJOR 0)
 set(LIB_VERSION_MINOR 37)
