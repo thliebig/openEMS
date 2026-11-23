@@ -1295,7 +1295,7 @@ jobs:
         run: |
           & "$env:VS_ROOT_DIR/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
 
-          $hip_opts = @()
+          $gpu_opts = @()
           if ("${{ matrix.toolchain.gpu }}" -eq "rocm") {
             # CMake does not mix MSVC with the GNU-like clang for HIP: ROCm's
             # clang builds all of openEMS (for the MSVC ABI), fparser and
@@ -1303,19 +1303,19 @@ jobs:
             $rocm = $env:HIP_PATH -replace '\\', '/'
             $env:CFLAGS = "-D_WIN32_WINNT=0x0601"
             $env:CXXFLAGS = "-D_WIN32_WINNT=0x0601"
-            $hip_opts = @("-DENABLE_HIP=ON", "-DOPENEMS_HIP_AS_CUDA=OFF", "-DROCM_PATH=$rocm",
+            $gpu_opts = @("-DENABLE_HIP=ON", "-DOPENEMS_HIP_AS_CUDA=OFF", "-DROCM_PATH=$rocm",
                           "-DCMAKE_C_COMPILER=$rocm/lib/llvm/bin/clang.exe",
                           "-DCMAKE_CXX_COMPILER=$rocm/lib/llvm/bin/clang++.exe",
                           "-DCMAKE_HIP_COMPILER=$rocm/lib/llvm/bin/clang++.exe",
                           "-DCMAKE_HIP_COMPILER_ROCM_ROOT=$rocm")
           }
           if ("${{ matrix.toolchain.gpu }}" -match "cuda") {
-            $hip_opts = @("-DENABLE_HIP=ON", "-DOPENEMS_HIP_AS_CUDA=ON",
+            $gpu_opts = @("-DENABLE_HIP=ON", "-DOPENEMS_HIP_AS_CUDA=ON",
                           "-DROCM_PATH=$($env:HIP_NVIDIA_ROOT -replace '\\', '/')")
           }
           if ("${{ matrix.toolchain.gpu }}" -eq "sycl") {
             # icx builds the plugin in a sub-build against the openEMS.dll of MSVC
-            $hip_opts = @("-DENABLE_SYCL=ON", "-DOPENEMS_ICPX=$($env:ONEAPI_ROOT -replace '\\', '/')/compiler/latest/bin/icx.exe")
+            $gpu_opts = @("-DENABLE_SYCL=ON", "-DOPENEMS_ICPX=$($env:ONEAPI_ROOT -replace '\\', '/')/compiler/latest/bin/icx.exe")
           }
           cd "$env:GITHUB_WORKSPACE/openEMS"
           mkdir build && cd build
@@ -1327,7 +1327,7 @@ jobs:
                     -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
                     -DVCPKG_HOST_TRIPLET="x64-windows-release" `
                     -DVCPKG_TARGET_TRIPLET="x64-windows-release" `
-                    @hip_opts
+                    @gpu_opts
           if ($LASTEXITCODE -ne 0) { throw "cmake failed" }
 
           cmake --build ./ --parallel
