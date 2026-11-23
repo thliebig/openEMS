@@ -224,7 +224,16 @@ bool GPU_Backend_SYCL::PrepareFused(const std::vector<uint64_t>& late)
 	bool room = true;
 	if (d->ctx->device.has(sycl::aspect::ext_intel_free_memory))
 	{
-		const size_t free_bytes = d->ctx->device.get_info<sycl::ext::intel::info::device::free_memory>();
+		// Level Zero answers through sysman: if that fails, no check, as with a failing
+		// hipMemGetInfo on HIP (the reserve would not help on xe, which gives it out anyway)
+		size_t free_bytes = SIZE_MAX;
+		try
+		{
+			free_bytes = d->ctx->device.get_info<sycl::ext::intel::info::device::free_memory>();
+		}
+		catch (const sycl::exception&)
+		{
+		}
 		if (free_bytes < need + spare)
 		{
 			if (g_settings.GetVerboseLevel()>0)
