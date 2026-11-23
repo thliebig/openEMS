@@ -397,6 +397,11 @@ ENDIF()
 IF(NOT SYCL_MISSING AND (NOT _sycl_version OR _sycl_version VERSION_LESS 2026))
   set(SYCL_MISSING "the Intel oneAPI DPC++/C++ compiler 2026 or newer (found '${_sycl_version}')")
 ENDIF()
+# the sub-build takes the generator of this build, and a Visual Studio one compiles with
+# the compiler of its toolset (cl), not with OPENEMS_ICPX
+IF(NOT SYCL_MISSING AND _sycl_subbuild AND CMAKE_GENERATOR MATCHES "^Visual Studio")
+  set(SYCL_MISSING "a Ninja or Makefile generator (a Visual Studio one builds the plugin with cl, not OPENEMS_ICPX)")
+ENDIF()
 IF(SYCL_MISSING)
   OPTION(ENABLE_SYCL "Build the SYCL GPU backend (Intel GPUs)" OFF)
 ELSE()
