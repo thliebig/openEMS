@@ -108,11 +108,13 @@ IF(NOT WIN32)
   # adapter needs libumf, which oneAPI keeps in a directory of its own that only
   # setvars.sh puts on the loader's path; without it the adapter fails to load and the
   # plugin finds no GPU. Linked into the plugin, libumf is there before the adapter
-  # asks for it (--no-as-needed: the plugin itself calls nothing of it).
+  # asks for it (--no-as-needed for it alone: the plugin itself calls nothing of it).
+  # Only oneAPI's own: another libumf on the system need not be the one of the adapter.
   get_filename_component(_icpx_dir ${CMAKE_CXX_COMPILER} REALPATH)
   get_filename_component(_icpx_dir ${_icpx_dir} DIRECTORY)
   find_library(OPENEMS_SYCL_LIBRARY sycl HINTS ${_icpx_dir}/../lib)
-  find_library(OPENEMS_UMF_LIBRARY umf HINTS ${_icpx_dir}/../lib ${_icpx_dir}/../../../umf/latest/lib)
+  find_library(OPENEMS_UMF_LIBRARY umf HINTS ${_icpx_dir}/../lib ${_icpx_dir}/../../../umf/latest/lib
+               NO_DEFAULT_PATH)
   IF(OPENEMS_SYCL_LIBRARY)
     get_filename_component(_sycl_lib_dir ${OPENEMS_SYCL_LIBRARY} REALPATH)
     get_filename_component(_sycl_lib_dir ${_sycl_lib_dir} DIRECTORY)
@@ -120,7 +122,7 @@ IF(NOT WIN32)
     IF(OPENEMS_UMF_LIBRARY)
       get_filename_component(_umf_lib_dir ${OPENEMS_UMF_LIBRARY} REALPATH)
       get_filename_component(_umf_lib_dir ${_umf_lib_dir} DIRECTORY)
-      TARGET_LINK_LIBRARIES( openEMS_gpu_sycl -Wl,--no-as-needed ${OPENEMS_UMF_LIBRARY} )
+      TARGET_LINK_LIBRARIES( openEMS_gpu_sycl -Wl,--push-state,--no-as-needed ${OPENEMS_UMF_LIBRARY} -Wl,--pop-state )
       list(APPEND _sycl_rpath ${_umf_lib_dir})
     ELSE()
       message(STATUS "SYCL plugin: libumf not found, the Intel GPUs need the oneAPI environment (setvars.sh)")
