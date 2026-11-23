@@ -34,10 +34,11 @@ ENDIF()
 # reference GPU backend has to round like the other compilers. Precise math for a
 # build with it; the SYCL plugin sets its own flags (FDTD/sycl).
 IF(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+  # C++ only: a HIP or CUDA compiler of the same tree does not take them
   IF(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    add_compile_options(/fp:precise)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:precise")
   ELSE()
-    add_compile_options(-fno-fast-math)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-fast-math")
   ENDIF()
 ENDIF()
 
