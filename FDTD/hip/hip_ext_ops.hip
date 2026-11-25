@@ -57,9 +57,20 @@ void* GPU_Backend_HIP::DeviceAlloc(size_t bytes, const void* host)
 	return d->Alloc<char>(bytes, (const char*)host);
 }
 
-void GPU_Backend_HIP::DeviceDownload(void* host, const void* dev, size_t bytes)
+void GPU_Backend_HIP::DeviceDownloadAsync(void* host, const void* dev, size_t bytes)
 {
 	HIP_Check(hipMemcpyAsync(host, dev, bytes, hipMemcpyDeviceToHost, d->Stream()), "download");
+}
+
+void GPU_Backend_HIP::PinHost(void* ptr, size_t bytes)
+{
+	d->ctx->MakeCurrent();
+	d->PinHostMemory(ptr, bytes);
+}
+
+void GPU_Backend_HIP::DeviceDownload(void* host, const void* dev, size_t bytes)
+{
+	DeviceDownloadAsync(host, dev, bytes);
 	d->Flush();
 }
 

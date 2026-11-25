@@ -40,8 +40,43 @@ class Engine_GPU;
 
   Returns NULL for an engine extension it has no device implementation of:
   Engine_GPU refuses the model then (every extension needs one).
+
+  On a grid split over several backends (GPU_Backend_Split) it runs one
+  device extension per part, see GPU_CreatePartExtension().
   */
 GPU_Extension* GPU_CreateExtension(Engine_Extension* eng_ext, GPU_Backend* backend, const unsigned int numLines[3]);
+
+//! The x lines of a grid a backend holds: all of them, or a part of a grid split along x over several backends (GPU_Backend_Split)
+/*!
+  A part owns the x lines [x0, x1) of the whole grid and holds them and, at
+  each cut, the line on the other side of it (a halo line, which the neighbour
+  updates); its local x line 0 is the line off of the whole grid.
+  */
+struct GPU_Slab
+{
+	unsigned int lines[3];   //!< of the whole grid
+	unsigned int x0, x1;     //!< the x lines it owns
+	unsigned int off;        //!< the x line of the whole grid at its local line 0
+	unsigned int nx;         //!< its local x lines
+
+	//! All lines of a grid of \a numLines
+	static GPU_Slab Whole(const unsigned int numLines[3]);
+	bool Owns(unsigned int x) const {return (x>=x0) && (x<x1);}
+	bool Holds(unsigned int x) const {return (x>=off) && (x<off+nx);}
+	//! Its local lines
+	void Local(unsigned int l[3]) const {l[0] = nx; l[1] = lines[1]; l[2] = lines[2];}
+	//! The local index of the flat ArrayNIJK index \a flat (or a node, component 0) of the whole grid, on an x line it holds
+	uint64_t Local(uint64_t flat) const;
+};
+
+//! The device implementation of \a eng_ext on the part \a slab of a grid split over several backends, on \a backend (GPU_Backend_Split)
+/*!
+  Its points are those on the x lines the part owns. \a first is the device
+  extension of \a eng_ext on the first part, NULL on the first part itself:
+  the parts of the steady-state detection check the probes of all of them
+  together. A part's extension may read its halo lines (GPU_Extension::HaloReads()).
+  */
+GPU_Extension* GPU_CreatePartExtension(Engine_Extension* eng_ext, GPU_Backend* backend, const GPU_Slab& slab, GPU_Extension* first);
 
 //! The coupling of two GPU engines, a cylindrical multi-grid level and its sub-grid (Engine_SubGridCoupling), on the device: as SubGrid_Coupling_Basic
 /*!
@@ -78,21 +113,25 @@ protected:
 class GPU_PointList
 {
 public:
-	//! The points at the flat ArrayNIJK indices (or the nodes) \a flat on a mesh of \a numLines, sorted by x; Order() gives the original index of each sorted point
+	//! The points at the flat ArrayNIJK indices (or the nodes) \a flat of the whole grid of \a slab that it owns, sorted by x; Order() gives the original index of each sorted point
 	/*!
 	  Their y and z go to the device of \a b, for the boxes cut along y or z.
 	  */
-	void Init(GPU_Backend* b, const unsigned int numLines[3], const std::vector<uint64_t>& flat);
+	void Init(GPU_Backend* b, const GPU_Slab& slab, const std::vector<uint64_t>& flat);
 	size_t Size() const {return m_Order.size();}
 	const std::vector<size_t>& Order() const {return m_Order;}
-	//! Run the point operation \a op of type \a kind (GPU_Backend::RunPoints()) for the sorted points in \a box: their range along x, filtered along y and z if the box cuts those
+	//! The local flat indices of the sorted points
+	const std::vector<uint64_t>& Index() const {return m_Index;}
+	//! The local nodes (x*ny + y)*nz + z of the sorted points, added to \a nodes
+	void AddNodes(std::vector<uint64_t>& nodes) const;
+	//! Run the point operation \a op of type \a kind (GPU_Backend::RunPoints()) for the sorted points in \a box (local lines): their range along x, filtered along y and z if the box cuts those
 	void Run(GPU_PointOp kind, const void* op, const Engine_Box& box, bool serial) const;
 
 	//! The values \a v of the points in the sorted order
 	template <typename T>
 	std::vector<T> Sorted(const std::vector<T>& v) const
 	{
-		std::vector<T> s(v.size());
+		std::vector<T> s(m_Order.size());
 		for (size_t n=0; n<m_Order.size(); ++n)
 			s[n] = v[m_Order[n]];
 		return s;
@@ -101,8 +140,9 @@ public:
 protected:
 	GPU_Backend* m_B = NULL;
 	std::vector<size_t> m_Order;
-	std::vector<unsigned int> m_X;   //!< x of the sorted points
-	unsigned int m_Lines[3] = {0, 0, 0};
+	std::vector<uint64_t> m_Index;   //!< local flat index of the sorted points
+	std::vector<unsigned int> m_X;   //!< local x of the sorted points
+	unsigned int m_Lines[3] = {0, 0, 0};   //!< local
 	const uint32_t* m_YZ = NULL;   //!< on the device: y and z of the sorted points
 };
 

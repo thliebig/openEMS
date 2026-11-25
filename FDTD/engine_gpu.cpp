@@ -162,7 +162,9 @@ void Engine_GPU::PrepareBlocking()
 	struct Tile {unsigned int k, wS, wM;};
 	std::vector<Tile> tiles;
 	std::string why;
-	if (explicitTile && given.empty())
+	if (const char* no = m_Backend->NoTemporalBlocking())
+		why = no;
+	else if (explicitTile && given.empty())
 		why = "OPENEMS_GPU_TBLOCK=0";
 	else if (m_SubGrid || m_ParentBackend)
 		why = "a cylindrical multi-grid";
@@ -295,11 +297,15 @@ void Engine_GPU::StartTrials()
 {
 	MarkTrialsStart();
 	m_Trial = 0;
+	m_TrialSlot = 0;
 	m_TrialSteps = 0;
 	m_TrialSpeed.assign(m_BlockCandidates.size() + 1 + (m_FlatTrial ? 1 : 0), 0);
+	m_TrialStepSum.assign(m_TrialSpeed.size(), 0);
+	m_TrialTimeSum.assign(m_TrialSpeed.size(), 0);
 	m_TrialTime = 0;
 	m_TrialMark = -1;
 	m_TrialWarm = true;
+	m_TrialWarmed = false;
 	m_Block = m_BlockCandidates.empty() ? -1 : 0;
 	m_FlatSplit = false;
 }
@@ -429,7 +435,15 @@ void Engine_GPU::TrialProgress(unsigned int steps)
 		return;
 	if (m_TrialWarm)
 	{
-		// the first steps of a candidate are not timed (the warm-up of its kernels and caches)
+		// the first steps of a candidate are not timed (the warm-up of its kernels and caches); those of the first
+		// candidate for a trial's time, the device clocks rise under load
+		if ((m_Trial==0) && !m_TrialWarmed)
+		{
+			m_Backend->Synchronize();
+			if (m_TrialTime + WallSeconds()-m_TrialMark < m_TrialSeconds)
+				return;
+			m_TrialWarmed = true;
+		}
 		TrialClock(false);
 		m_TrialTime = 0;
 		m_TrialSteps = 0;
@@ -443,17 +457,22 @@ void Engine_GPU::TrialProgress(unsigned int steps)
 	// every block or flat step of a trial (a few 10 us; the candidates of a model small enough for that to
 	// matter are flat steps alike)
 	m_Backend->Synchronize();
-	if (m_TrialTime + WallSeconds()-m_TrialMark < m_TrialSeconds)
+	if (m_TrialTime + WallSeconds()-m_TrialMark < m_TrialSeconds/2)
 		return;
 	TrialClock(false);
-	m_TrialSpeed[m_Trial] = m_TrialSteps/std::max(m_TrialTime, 1e-9);
-	++m_Trial;
+	m_TrialStepSum[m_Trial] += m_TrialSteps;
+	m_TrialTimeSum[m_Trial] += m_TrialTime;
 	m_TrialTime = 0;
-	m_TrialWarm = true;
-	// the candidates: the tiles, the flat sweep (the fused step, if prepared), the two updates (m_FlatTrial)
-	const int tiles = m_BlockCandidates.size();
-	if (m_Trial<(int)m_TrialSpeed.size())
+	m_TrialSteps = 0;
+	// the candidates: the tiles, the flat sweep (the fused step, if prepared), the two updates (m_FlatTrial); in the
+	// order 0..n-1, then n-1..0, half the trial's time each: the speed of a device drifts while it runs, in this
+	// order it favours none of them
+	const int tiles = m_BlockCandidates.size(), n = m_TrialSpeed.size();
+	if (++m_TrialSlot<2*n)
 	{
+		const int last = m_Trial;
+		m_Trial = (m_TrialSlot<n) ? m_TrialSlot : 2*n-1-m_TrialSlot;
+		m_TrialWarm = (m_Trial!=last);   // the candidate in the middle runs on, warm
 		TrialClock(true);
 		m_Block = (m_Trial<tiles) ? m_Trial : -1;
 		m_FlatSplit = (m_Trial==tiles+1);
@@ -461,9 +480,12 @@ void Engine_GPU::TrialProgress(unsigned int steps)
 	}
 	// all tried: the fastest
 	int best = 0;
-	for (size_t c=1; c<m_TrialSpeed.size(); ++c)
+	for (int c=0; c<n; ++c)
+	{
+		m_TrialSpeed[c] = m_TrialStepSum[c]/std::max(m_TrialTimeSum[c], 1e-9);
 		if (m_TrialSpeed[c]>m_TrialSpeed[best])
 			best = c;
+	}
 	m_Block = (best<tiles) ? best : -1;
 	m_Trial = -1;
 	m_FlatSplit = false;
@@ -559,7 +581,7 @@ FDTD_FLOAT Engine_GPU::ReadStale(bool currents, unsigned int n, unsigned int x, 
 	if (!field.full_last_batch && (field.lines.size()<MAX_STALE_LINES))
 	{
 		std::vector<FDTD_FLOAT> line(numLines[2]);
-		m_Backend->DeviceDownload(line.data(), m_Backend->DeviceField(currents) + key*numLines[2], numLines[2]*sizeof(FDTD_FLOAT));
+		m_Backend->ReadLine(currents, n, x, y, numLines, line.data());
 		const FDTD_FLOAT value = line.at(z);
 		field.lines[key].swap(line);
 		return value;

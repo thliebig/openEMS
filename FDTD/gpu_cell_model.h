@@ -52,6 +52,9 @@ struct GPU_CellModel
 
 	//! Expand \a model (built along z, split x, mid y); throws if it was built along other axes
 	explicit GPU_CellModel(const CellModel& model, const unsigned int numLines[3]);
+	//! The x lines [x0, x1) of \a model, as a grid of their own (a part of a split grid, see GPU_Backend_Split): the per node and per line data of those lines, the state slots renumbered from 0
+	GPU_CellModel(const GPU_CellModel& model, unsigned int x0, unsigned int x1);
+	GPU_CellModel(const GPU_CellModel&) = default;
 
 	//! Whether a device stores the node index in 16 bit: both fields have at most 65536 combinations
 	bool Index16() const {return (field[0].combos.size()<=65536) && (field[1].combos.size()<=65536);}

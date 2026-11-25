@@ -34,10 +34,11 @@ GPU_Backend_Reference::GPU_Backend_Reference()
 
 bool GPU_Backend_Reference::Init(const Operator* op, const GPU_CellModel& model)
 {
-	for (int n=0; n<3; ++n)
-		numLines[n] = op->GetNumberOfLines(n, true);
-	if ((model.numLines[0]!=numLines[0]) || (model.numLines[1]!=numLines[1]) || (model.numLines[2]!=numLines[2]))
+	// the grid of the model: of the operator, or a part of it (GPU_Backend_Split, op NULL)
+	if (!FitsOperator(op, model))
 		return false;
+	for (int n=0; n<3; ++n)
+		numLines[n] = model.numLines[n];
 	m_volt.Init("gpu_volt", numLines);
 	m_curr.Init("gpu_curr", numLines);
 
@@ -117,9 +118,32 @@ void GPU_Backend_Reference::DeviceDownload(void* host, const void* dev, size_t b
 // as Engine_Interface_FDTD::CalcFastEnergy() on the host mirror, in the same order: the host mirror is stale during a batch
 bool GPU_Backend_Reference::CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy)
 {
+	return CalcFastEnergyLines(0, numNodes, E_energy, H_energy);
+}
+
+bool GPU_Backend_Reference::CanSendPlane(const GPU_Backend* dst) const
+{
+	const GPU_Backend_Reference* o = dynamic_cast<const GPU_Backend_Reference*>(dst);
+	return o && (o!=this) && (o->numLines[1]==numLines[1]) && (o->numLines[2]==numLines[2]);
+}
+
+void GPU_Backend_Reference::SendPlane(bool currents, unsigned int x, GPU_Backend* dst, unsigned int dst_x)
+{
+	if (!CanSendPlane(dst))
+		throw std::logic_error("GPU_Backend_Reference::SendPlane: not to this backend");
+	GPU_Backend_Reference* o = static_cast<GPU_Backend_Reference*>(dst);
+	const size_t plane = (size_t)numLines[1]*numLines[2];
+	const float* src = currents ? m_curr.data() : m_volt.data();
+	float* to = currents ? o->m_curr.data() : o->m_volt.data();
+	for (unsigned int n=1; n<3; ++n)
+		std::copy_n(src + (n*(size_t)numLines[0] + x)*plane, plane, to + (n*(size_t)o->numLines[0] + dst_x)*plane);
+}
+
+bool GPU_Backend_Reference::CalcFastEnergyLines(unsigned int x0, const unsigned int numNodes[3], double& E_energy, double& H_energy)
+{
 	E_energy = H_energy = 0;
 	unsigned int pos[3];
-	for (pos[0]=0; pos[0]<numNodes[0]; ++pos[0])
+	for (pos[0]=x0; pos[0]<numNodes[0]; ++pos[0])
 		for (pos[1]=0; pos[1]<numNodes[1]; ++pos[1])
 			for (pos[2]=0; pos[2]<numNodes[2]; ++pos[2])
 			{

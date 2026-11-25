@@ -32,6 +32,7 @@
 #include "multigrid_interpolation.h"
 
 class Operator;
+class Engine_Extension;
 struct GPU_CellModel;
 struct Engine_Box;
 struct CM_PointFilter;
@@ -65,6 +66,12 @@ public:
 	  Returns false if the extension does not know them: no fused step then.
 	  */
 	virtual bool MidStepNodes(std::vector<uint64_t>& volt, std::vector<uint64_t>& curr) const {(void)volt; (void)curr; return false;}
+	//! On a part of a split grid (GPU_Backend_Split): the halo lines hook \a h of the voltages or \a currents reads, 1 the one below the part, 2 the one above, 3 both
+	/*!
+	  The parts copy them from their neighbours before that hook. The main
+	  updates read halo lines too, which the parts copy before those.
+	  */
+	virtual int HaloReads(bool currents, GPU_Hook h) const {(void)currents; (void)h; return 0;}
 };
 
 //! The per-point operations of the device extensions (GPU_Ext_*, kernels/ext_ops.h) a backend runs with GPU_Backend::RunPoints(), as CM_POINT_OPS lists them
@@ -121,6 +128,10 @@ public:
 
 	//! Allocate the device fields (all zero) and upload \a model, the cell model of the grid of \a op
 	/*!
+	  \a op is NULL for a part of a split grid (GPU_Backend_Split): the grid is
+	  the model's then. Otherwise the model must be of the grid of \a op, else
+	  Init() returns false (FitsOperator()).
+
 	  The model fuses the UPML and (where it can) the dispersive materials into
 	  the main updates (kernels/cell_update.h); Engine_GPU drops their engine
 	  extensions. The results are within single precision of the CPU engine on
@@ -134,11 +145,17 @@ public:
 	  step, snapshots) is optional: without it the backend takes the slower path.
 	  */
 	virtual bool Init(const Operator* op, const GPU_CellModel& model) = 0;
+	//! Whether \a model is of the grid of \a op; true if \a op is NULL (see Init())
+	static bool FitsOperator(const Operator* op, const GPU_CellModel& model);
 
 	//! Device memory of \a bytes, initialized with \a host or zero, freed with the backend
 	virtual void* DeviceAlloc(size_t bytes, const void* host=NULL) = 0;
 	//! Copy \a bytes of the device memory \a dev to \a host, after the work so far (waits for it)
 	virtual void DeviceDownload(void* host, const void* dev, size_t bytes) = 0;
+	//! DeviceDownload() without the wait: done at the next Synchronize()
+	virtual void DeviceDownloadAsync(void* host, const void* dev, size_t bytes) {DeviceDownload(host, dev, bytes);}
+	//! Page-lock the host memory \a ptr of \a bytes for faster copies, for as long as the backend lives; not fatal if it cannot
+	virtual void PinHost(void* ptr, size_t bytes) {UNUSED(ptr); UNUSED(bytes);}
 	//! The device voltages (false) or currents (true), ArrayNIJK layout
 	virtual float* DeviceField(bool currents) = 0;
 	//! The main voltage or current update on the cell model of the nodes in \a box: a tile of the temporal blocking, or the whole domain
@@ -164,6 +181,13 @@ public:
 
 	//! Copy the device voltages (\a currents false) or currents to the host mirror \a field
 	virtual void Download(bool currents, ArrayLib::ArrayNIJK<FDTD_FLOAT>& field) = 0;
+	//! The z line (\a n, \a x, \a y) of the voltages (\a currents false) or currents of the grid of \a numLines into \a line, after the work so far (waits for it)
+	virtual void ReadLine(bool currents, unsigned int n, unsigned int x, unsigned int y, const unsigned int numLines[3], FDTD_FLOAT* line);
+
+	//! The device implementation of \a eng_ext on the grid of \a numLines, see GPU_CreateExtension(); NULL if there is none
+	virtual GPU_Extension* CreateExtension(Engine_Extension* eng_ext, const unsigned int numLines[3]);
+	//! Why the backend runs no temporal blocking (Engine_GPU), NULL if it can
+	virtual const char* NoTemporalBlocking() const {return NULL;}
 
 	//! Host pointer to the device voltages (\a currents false) or currents in the ArrayNIJK layout, if the device shares memory with the host, else NULL. Valid after Init().
 	virtual FDTD_FLOAT* GetShared(bool currents) const {UNUSED(currents); return NULL;}
@@ -203,6 +227,24 @@ public:
 
 	//! Sums of the squared voltages and currents of the first numNodes[n] nodes in each direction, see Engine_Interface_FDTD::CalcFastEnergy(). Returns false if the backend cannot compute them.
 	virtual bool CalcFastEnergy(const unsigned int numNodes[3], double& E_energy, double& H_energy) {UNUSED(numNodes); UNUSED(E_energy); UNUSED(H_energy); return false;}
+	//! CalcFastEnergy() of the x lines from \a x0 on (a part of a split grid, see GPU_Backend_Split)
+	virtual bool CalcFastEnergyLines(unsigned int x0, const unsigned int numNodes[3], double& E_energy, double& H_energy)
+	{
+		return (x0==0) && CalcFastEnergy(numNodes, E_energy, H_energy);
+	}
+
+	//! Whether SendPlane() can copy to \a dst: a grid can be split over this backend and \a dst (see GPU_Backend_Split); also before Init() of either
+	virtual bool CanSendPlane(const GPU_Backend* dst) const {UNUSED(dst); return false;}
+	//! Copy the y and z components of the voltages (\a currents false) or currents on x line \a x to x line \a dst_x of \a dst, which has the same y and z lines
+	/*!
+	  The copy follows the work queued on both backends so far, and the work
+	  queued on either from here on follows the copy.
+	  */
+	virtual void SendPlane(bool currents, unsigned int x, GPU_Backend* dst, unsigned int dst_x)
+	{
+		UNUSED(currents); UNUSED(x); UNUSED(dst); UNUSED(dst_x);
+		throw std::logic_error("GPU_Backend: no copies between backends");
+	}
 
 	//! Create a backend for a sub-grid (e.g. a cylindrical multi-grid level) whose work is ordered with the work of this backend. It's the responsibility of the caller to free it.
 	virtual GPU_Backend* NewSubGridBackend() = 0;
