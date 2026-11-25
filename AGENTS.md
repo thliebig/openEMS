@@ -45,7 +45,9 @@ The pipeline, and where each part lives:
    and `Engine_CPU` (the cell model, temporal blocking); they run on the
    worker threads of an `Engine_ThreadPool`, which calls the thread-aware
    extension hooks with a `threadID`. `Engine_GPU` runs on a device backend
-   (`FDTD/gpu_backend.h`: HIP, Metal, and the reference backend on the CPU).
+   (`FDTD/gpu_backend.h`: HIP, SYCL, Metal, and the reference backend on the
+   CPU); the SYCL one runs on the CPU too (`ONEAPI_DEVICE_SELECTOR=opencl:cpu`),
+   which is how CI tests it.
    A cylindrical multi-grid level holds the engine of its
    sub-grid and an `Engine_SubGridCoupling` (`Engine::SetSubGrid()`), for every
    engine type.
